@@ -1,0 +1,35 @@
+PASS: CLI reaches Bend service
+PASS: integration starts with an empty reference instance
+PASS: CLI uploads private data
+PASS: CLI performs managed copy through Bend
+PASS: CLI inspects retained policy
+PASS: archive retains source secrecy and origin
+PASS: CLI cat cannot release plaintext
+PASS: denied command returns no plaintext on stdout
+PASS: public destination denied
+PASS: denied command returns no plaintext on stdout
+PASS: forcing manual fallback cannot release plaintext
+PASS: denied command returns no plaintext on stdout
+PASS: CLI lists public namespace
+PASS: denied copy leaves public namespace empty
+PASS: CLI creates an empty directory
+PASS: CLI lists empty directory
+PASS: empty directory has no fabricated objects
+PASS: CLI lists immediate children
+PASS: listing includes file and persistent directory
+PASS: CLI writes a new immutable source version
+PASS: checksum comparison detects a same-size edit
+PASS: CLI inspects updated archive
+PASS: same-size edit published a new archive version
+PASS: unsupported delete fails closed
+PASS: denied command returns no plaintext on stdout
+PASS: CLI reports final reference state
+PASS: only four accepted writes created versions
+PASS: CLI uploads the exact 64 KiB limit
+PASS: CLI inspects the maximum-sized payload
+PASS: network ingress hashes every byte of the maximum-sized payload
+PASS: CLI rejects an oversized payload
+PASS: oversized ingress returns no payload
+PASS: CLI inspects state after boundary requests
+PASS: oversized ingress creates no version
+ALL CLI INTEGRATION CHECKS PASSED

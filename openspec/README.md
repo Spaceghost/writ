@@ -21,7 +21,7 @@ and actual confinement evidence.
 | [Traceability](#baseline-capabilities) | Requirement IDs mapped to Bend functions, named tests, reviewed cases, and missing evidence |
 | [Pending changes](ROADMAP.md) | Proposed new behavior, design decisions, and unchecked implementation tasks |
 | [State machines](STATE-MACHINES.md) | Existing negotiation, reservation, and descriptor lifecycles |
-| [Project context](config.yaml) | Bend-only implementation, security invariants, and OpenSpec authoring rules |
+| [Project context](config.yaml) | Bend enforcement, optional adapter boundary, security invariants, and OpenSpec authoring rules |
 
 A scenario is an acceptance contract. Its presence does not mean it has an
 automated test. Each traceability table distinguishes executable evidence,
@@ -44,11 +44,16 @@ source review, and host assumptions.
 | [Commit backplane](specs/commit-backplane/spec.md) | Current authority and independent verification before a scoped intent | [Traceability](traceability/commit-backplane.md) |
 | [Authority boundary](specs/authority-boundary/spec.md) | Trusted-input and host-integration preconditions | [Traceability](traceability/authority-boundary.md) |
 | [Verification evidence](specs/verification-evidence/spec.md) | Source, backend, tests, proof scope, and honest reporting | [Traceability](traceability/verification-evidence.md) |
+| [Optional rclone remote](specs/rclone-contrib-remote/spec.md) | Bounded memory-only integration with Bend authority and a minimal Go client adapter | [Traceability](traceability/rclone-contrib-remote.md) |
 
 The authority-boundary spec records obligations of an enforcing integration.
 It does not claim those host services already exist. GPU-directed source is
 implemented; physical GPU execution remains unverified. The DLM is finite,
 and public record constructors are not unforgeable capabilities.
+
+The [rclone contribution](../contrib/rclone/README.md) is executable within its
+explicit local reference profile. It does not qualify a native host platform or
+complete the pending issuer, confinement, or durable-publication changes.
 
 ## Validate and inspect
 

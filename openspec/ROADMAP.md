@@ -1,7 +1,13 @@
 # Pending implementation
 
-Every change below is proposed. Its implementation tasks are unchecked. Existing
+Every pending change below is proposed. Its implementation tasks are unchecked. Existing
 Bend decisions and protocol models do not make the missing host service complete.
+
+The separately implemented [rclone contribution](../contrib/rclone/README.md)
+provides a bounded memory-only client integration exercise. Its
+[reference contract](specs/rclone-contrib-remote/spec.md) and
+[evidence](../contrib/rclone/VERIFICATION.md) leave all production host,
+authenticated issuer, confinement, and durable-publication work below pending.
 
 **Genode is the reference native capability platform.** The shared Bend policy
 core will also support direct Linux, native Windows, and a later kernel using

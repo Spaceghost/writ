@@ -3,8 +3,10 @@
 A Bend 2 library for data-centered authorization, parallel constraint solving,
 independent verification, and multiparty transformation negotiation.
 
-**Every authored implementation, test, example, and proof in this package is
-Bend 2.** There is no project Rust, C, WGSL, JavaScript, or Python implementation.
+**The core implementation, tests, examples, and proofs are Bend 2.** The optional
+[rclone contribution](contrib/rclone/README.md) has a separate minimal Go interface
+adapter; its policy and reference service are also Bend. There is no project
+Rust, C, WGSL, JavaScript, or Python implementation.
 Bend's compiler, Base effects, generated backends, operating system, and device
 drivers remain external dependencies.
 

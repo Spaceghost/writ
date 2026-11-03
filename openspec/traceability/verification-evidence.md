@@ -2,7 +2,7 @@
 
 | Requirement | Source or record | Evidence | Coverage |
 | --- | --- | --- | --- |
-| VE-001 | [AGENTS.md](../../AGENTS.md), root and `examples/` `.bend` files | Source inventory and artifact exclusions; 34 authored Bend files | Repository inspection |
+| VE-001 | [AGENTS.md](../../AGENTS.md), root and `examples/` `.bend` files; [optional adapter](../../contrib/rclone/README.md) | 34 unchanged core/example Bend files; 14 contribution Bend files and a separate minimal Go adapter; generated artifacts excluded | Repository inspection and separate contribution checks |
 | VE-002 | [verification/environment.txt](../../verification/environment.txt) | Bend 2.0.39, clang 19.1.1, four native CPU threads | Recorded toolchain |
 | VE-003 | [VERIFICATION.md](../../VERIFICATION.md), [tests-js.txt](../../verification/tests-js.txt), [tests-native.txt](../../verification/tests-native.txt) | Both suite logs have 638 passing checks and completion sentinel; four self-checking teaching examples add 29 assertions per backend | Executed on JS/native CPU; examples counted separately |
 | VE-004 | [PropertyTests.bend](../../PropertyTests.bend) | 324 checks: four oracle fixtures, 256 directed cases, 64 separate equality cases | Finite executable oracle coverage |

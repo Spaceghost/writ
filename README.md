@@ -80,7 +80,7 @@ ports remain proposed. The current execution evidence is for the Bend library.
 
 ## Status
 
-All authored implementation, test, example, and proof source files are **Bend 2**.
+The core implementation, tests, examples, and proofs are **Bend 2**.
 The recorded suite passes **638 checks on each of the JavaScript and native CPU
 backends**. Physical GPU execution and independent Lean kernel verification have
 not been established.
@@ -89,6 +89,12 @@ This is an executable security library and protocol model. Real POSIX devices,
 worker confinement, authenticated grant issuance, durable storage, payment
 settlement, and hosted-language execution remain integration work. S3 follows the
 POSIX adapter. The current DLM supports up to 30 named principals plus top/bottom.
+
+The optional [rclone remote](contrib/rclone/README.md) lives under
+`contrib/rclone/`. Its bounded, memory-only Bend service supports private uploads,
+policy-preserving managed copies, and metadata inspection through a minimal Go
+rclone adapter. It is an independent contribution with its own build and tests;
+the core library does not depend on it.
 
 ## Read further
 

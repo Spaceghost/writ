@@ -1,0 +1,22 @@
+2026/11/04 00:44:57 ERROR internal error: no overview data found for "writ"
+=== RUN   TestDecodeBoundedCanonicalResponse
+--- PASS: TestDecodeBoundedCanonicalResponse (0.01s)
+=== RUN   TestTruncatedListingCannotBecomeSuccess
+--- PASS: TestTruncatedListingCannotBecomeSuccess (0.00s)
+=== RUN   TestLoopbackAndTokenFraming
+--- PASS: TestLoopbackAndTokenFraming (0.00s)
+=== RUN   TestNineFieldEnvelopeAndDenial
+--- PASS: TestNineFieldEnvelopeAndDenial (0.00s)
+=== RUN   TestBinaryPutAndMalformedWriteReceipt
+--- PASS: TestBinaryPutAndMalformedWriteReceipt (0.00s)
+=== RUN   TestOpenNeverReturnsAReader
+--- PASS: TestOpenNeverReturnsAReader (0.00s)
+=== RUN   TestTransportResponseLimit
+--- PASS: TestTransportResponseLimit (0.01s)
+=== RUN   TestMaximumMetadataListingFitsResponseLimit
+--- PASS: TestMaximumMetadataListingFitsResponseLimit (0.01s)
+=== RUN   TestTransportHonorsContextDeadline
+--- PASS: TestTransportHonorsContextDeadline (0.05s)
+PASS
+ok  	github.com/Spaceghost/writ/contrib/rclone/go	0.084s
+?   	github.com/Spaceghost/writ/contrib/rclone/go/cmd/rclone-writ	[no test files]

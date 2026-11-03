@@ -1,8 +1,10 @@
 # Writ requirements and implementation coverage
 
-This document maps Writ's design requirements to the Bend 2 library. All authored
-implementation, tests, examples, and proofs use Bend 2. Correct enforcement takes
-priority over initial throughput.
+This document maps Writ's design requirements to the Bend 2 library. The core
+implementation, tests, examples, and proofs use Bend 2. The optional
+[rclone contribution](contrib/rclone/README.md) permits a minimal Go client adapter
+while retaining all policy and service behavior in Bend. Correct enforcement
+takes priority over initial throughput.
 
 **Status vocabulary:** implemented means executable library behavior; modeled
 means protocol/state semantics without the corresponding operating-system

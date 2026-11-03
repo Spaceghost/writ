@@ -6,6 +6,11 @@ Read `bend guide` and `bend guide shaders` before changing language or parallel 
 All authored implementation, tests, examples, and proofs stay in Bend 2. Generated
 backend C/JavaScript and native binaries belong outside the source package.
 
+The user-approved exception is `contrib/rclone/go/`: keep only the Go interface
+adapter required by rclone and its transport checks there. Policy, authority,
+protocol semantics, and reference-service behavior remain in Bend under the
+same contribution. Do not introduce a root Go module or a core dependency on it.
+
 Run `bend Tests.bend`, native tests, and `bend PROOF.bend` after meaningful security
 changes. Use `--verdict` when the documented Lean kernel toolchain is available.
 Report proof and GPU verification limits accurately; a CPU fallback is not a GPU test.

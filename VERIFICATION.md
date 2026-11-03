@@ -1,8 +1,9 @@
 # Verification record
 
 Verified on 2026-11-03 using **Bend 2.0.39**, Linux x86_64, and **clang 19.1.1**.
-The final source package contains 34 authored `.bend` files. The implementation,
-examples, test drivers, and proof declarations are all Bend 2.
+The core and examples contain 34 authored `.bend` files. Their implementation,
+test drivers, and proof declarations are Bend 2. The optional rclone contribution
+adds 14 Bend files and a separate minimal Go adapter, with its own evidence below.
 
 ## Executable checks
 
@@ -126,11 +127,13 @@ was changed to bypass it. See `verification/kernel-verdict.txt` and `proofs.txt`
 
 ## OpenSpec suite
 
-The repository includes 13 baseline capability specs and 15 pending change
-packages. OpenSpec 1.16.0 strict validation passed all 28 items with no errors or
-warnings. Baseline specifications contain 135 requirements and 297 scenarios;
+The repository includes 14 baseline capability specs and 15 pending change
+packages. OpenSpec 1.16.0 strict validation passed all 29 items with no errors or
+warnings. Baseline specifications contain 143 requirements and 314 scenarios;
 pending deltas contain 141 requirements and 241 scenarios. All 133 implementation
-tasks remain unchecked. See `verification/openspec-validation.txt`.
+tasks in those pending packages remain unchecked. The bounded rclone reference
+change is implemented and archived with eight completed tasks; it does not
+complete a production adapter. See `verification/openspec-validation.txt`.
 
 This is specification validation, not execution of every acceptance scenario.
 Traceability tables distinguish named executable tests from source review and
@@ -151,18 +154,40 @@ Linux and Windows mechanism claims are linked to primary documentation. These
 are source/document reviews; no Writ Genode image, Linux confinement broker,
 native Windows adapter, future kernel, or GPU isolation profile was executed.
 
-All 34 Bend files are byte-identical to verified revision
+All 34 pre-existing core/example Bend files are byte-identical to verified revision
 `5982d18dff6ef21953058423ebdfb410d1de6b11`. The 638 library checks and 29 example
 assertions per backend are retained evidence for that identical source, not new
 host-port results. See [platform-review.txt](verification/platform-review.txt).
+
+## Optional rclone contribution
+
+The [rclone reference remote](contrib/rclone/README.md) lives entirely under
+`contrib/rclone/`, apart from documentation and its specification. Bend owns its
+loopback service, canonical protocol, SHA-256, immutable object model, metadata,
+and policy/commit behavior. A separate Go module adapts rclone interfaces and
+bounded TCP transport. The root library has no new implementation dependency.
+
+The contribution passes 165 pure checks per Bend backend, 34 real CLI integration
+checks per test-driver backend against a native service, and nine Go tests. The
+root 638-check suites and ordinary proof checks were rerun successfully. See the
+[detailed record](contrib/rclone/VERIFICATION.md) for captured results, exact
+limits, toolchain versions, and the distinction between these test lanes.
+
+This is a memory-only, single-principal reference with a fixed standing profile.
+It does not qualify the proposed native host ports or implement external grant
+issuance, durable publication, arbitrary worker confinement, or a revocation feed.
 
 ## Model boundaries
 
 Passing tests does not authenticate a caller-supplied Context, Session, Capability,
 Binding, graph, or ledger. Those must remain monitor-owned state. The code verifies
-relationships among the supplied authoritative facts; it does not discover the
+relationships among the supplied authoritative facts; the core does not discover the
 complete source manifest from arbitrary code, compute an artifact digest, or
 prove the bytes were produced by the pinned execution.
+
+The optional reference service computes actual SHA-256 digests for its bounded
+ingress/copy operation; that specific association does not establish arbitrary
+worker execution provenance or complete source extraction.
 
 The character-device interface is a pure protocol model. Durable atomic state
 updates, real payload writes, syscall/process/device confinement, actual payments,

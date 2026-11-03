@@ -2,7 +2,10 @@ schema: spec-driven
 
 context: |
   Writ is a Bend 2.0.39 security-core library and protocol model.
-  All authored implementation, tests, examples, and proofs are Bend 2.
+  Core implementation, tests, examples, and proofs are Bend 2.
+  The optional contrib/rclone/go module is the explicitly authorized exception
+  for minimal rclone interfaces and transport tests. Its policy and service
+  behavior remain Bend; the root library has no dependency on Go.
   Correct enforcement precedes throughput. The GPU proposes; independent
   verification and current authority govern commit, all expressed in Bend.
   Read AGENTS.md, DESIGN.md, REQUIREMENTS.md, and VERIFICATION.md.
