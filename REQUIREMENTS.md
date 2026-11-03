@@ -21,8 +21,9 @@ effect; deferred means code is not included. These are not deployment claims.
    sample is evidence about a candidate, never permission to drop restrictions.
 6. A final write requires current authority and independently checked constraints.
    A denied transition preserves the supplied authoritative state.
-7. The capability POSIX interface comes first; S3 and hosted transformation
-   languages follow the same authority path when their adapters are implemented.
+7. Genode is the native capability reference. Linux, Windows, and a future kernel
+   using Drift must preserve the same Writ rules. POSIX is the first file-style
+   interface; S3 and hosted languages follow the same authority path.
 
 The governing rule is **no amplification**: control of an intermediate bucket
 does not grant authority to widen its origins' permissions. No declassification
@@ -47,6 +48,7 @@ or endorsement exception has been added.
 | B13 | Mount a capability through a POSIX character-device interface | `Frontend.mount/open/dup/attenuate/close/checked_plan` model subject-bound tokens, handles, rights, revocation, and exact plan resolution. `DataOS.commit_from_capability` connects the descriptor to final commit. `FrontendTests` has 70 checks; `FacadeTests` has 10. | Modeled. These are Bend records, not OS file descriptors, a kernel character device, a mounted filesystem, or a complete POSIX ABI. |
 | B14 | State machines with possible AI/Trealla proposals | Immutable requests, revisions, and guarded transitions govern `Negotiation`, `Ledger`, and `Frontend`. All authorization decisions are deterministic given trusted state. | Implemented state machines. AI/Trealla may later propose plans or evidence; their adapters and runtimes are deferred and gain no authority from proposing. |
 | B15 | POSIX first, S3 afterward | Both belong behind `DataOS.commit_from_capability` and the backplane's scoped output intent. | Ordering recorded. Neither a live POSIX adapter nor an S3 server is included. |
+| B16 | Build on Genode and support Linux, Windows, then a kernel using Drift | [Platform architecture](docs/PLATFORMS.md), [Genode mapping](docs/GENODE.md), [Linux/Windows profiles](docs/HOST-PLATFORMS.md), [Drift boundary](docs/DRIFT.md), and five proposed host OpenSpec changes | Researched and specified. The current tests execute the Bend model; native Writ ports, runtime bindings, and confinement qualification remain pending. |
 
 ## 3. Precise integration obligations
 
@@ -88,6 +90,13 @@ the selected, authenticated executor to the approved operation and execution
 receipt; code identity alone does not identify who ran it.
 
 ### POSIX and actual anti-exfil enforcement
+
+A native host boundary precedes file-style compatibility. Genode supplies the
+reference session/capability architecture; direct Linux and Windows integrations
+must enforce the same portable contract using their actual native mechanisms.
+The later kernel may preserve Genode's component boundary over a new base or use
+a separately qualified direct adapter. Drift provides driver machinery; it does
+not supply that kernel's capability tables, protected address spaces, or policy.
 
 A real host must authenticate callers, own the live registries and ledger, derive
 the complete data/control source manifest, and confine each worker's effects.

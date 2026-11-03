@@ -3,6 +3,16 @@
 This suite describes the Bend library that exists and the integration work needed
 to turn it into an enforcing operating environment.
 
+Genode is the reference native capability platform. The proposed
+[portable host contract](changes/add-portable-host-contract/proposal.md) connects
+[Genode](changes/add-genode-host/proposal.md),
+[Linux](changes/add-linux-host/proposal.md),
+[Windows](changes/add-windows-host/proposal.md), and a
+[future kernel using Drift](changes/add-drift-kernel-host/proposal.md).
+See the [platform architecture](../docs/PLATFORMS.md) and
+[roadmap](ROADMAP.md) for the distinction between host bring-up, policy behavior,
+and actual confinement evidence.
+
 ## Start here
 
 | Material | Meaning |

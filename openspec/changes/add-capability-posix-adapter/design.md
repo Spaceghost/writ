@@ -10,9 +10,14 @@ Implement the requested capability while preserving existing admission and verif
 
 ## Decisions
 
-### First host contract
+### Linux file-style adapter
 
 Target a Linux POSIX character-device control interface with a per-session capability namespace. The capability mount is a logical binding of token and immutable plan; filesystem mounting is not assumed to grant broader OS authority.
+
+Build on the [Linux host](../add-linux-host/design.md) and shared portable host
+contract. Genode is the native capability reference; this Linux character device
+is not a required foundation for its session services or the native Windows port.
+POSIX remains the first file-style compatibility interface, followed by S3.
 
 ### Authenticated descriptors
 

@@ -126,16 +126,35 @@ was changed to bypass it. See `verification/kernel-verdict.txt` and `proofs.txt`
 
 ## OpenSpec suite
 
-The repository includes 13 baseline capability specs and 10 pending change
-packages. OpenSpec 1.16.0 strict validation passed all 23 items with no errors or
+The repository includes 13 baseline capability specs and 15 pending change
+packages. OpenSpec 1.16.0 strict validation passed all 28 items with no errors or
 warnings. Baseline specifications contain 135 requirements and 297 scenarios;
-pending deltas contain 81 requirements and 121 scenarios. All 87 implementation
+pending deltas contain 141 requirements and 241 scenarios. All 133 implementation
 tasks remain unchecked. See `verification/openspec-validation.txt`.
 
 This is specification validation, not execution of every acceptance scenario.
 Traceability tables distinguish named executable tests from source review and
 host preconditions. The documentation cleanup does not complete any proposed
 adapter task or expand the scope of the selected formal laws.
+
+## Host platform research
+
+The [platform architecture](docs/PLATFORMS.md) adopts Genode as the native
+capability reference and specifies direct Linux, native Windows, and a later
+kernel using Drift as distinct host targets. The update adds five proposed
+changes with 60 requirements, 120 scenarios, and 46 unchecked tasks.
+
+Genode 26.08 source was downloaded, checked against the recorded archive digest,
+and inspected at commit `d18ee9e917200b059549e21f2dd9a55bfe61a0eb`. Drift source
+and retained evidence were inspected at `0b7aaca7f4ff5e3da0570379632f952ecfe754f7`.
+Linux and Windows mechanism claims are linked to primary documentation. These
+are source/document reviews; no Writ Genode image, Linux confinement broker,
+native Windows adapter, future kernel, or GPU isolation profile was executed.
+
+All 34 Bend files are byte-identical to verified revision
+`5982d18dff6ef21953058423ebdfb410d1de6b11`. The 638 library checks and 29 example
+assertions per backend are retained evidence for that identical source, not new
+host-port results. See [platform-review.txt](verification/platform-review.txt).
 
 ## Model boundaries
 

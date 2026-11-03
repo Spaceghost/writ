@@ -65,6 +65,19 @@ the functions that enforce them.
 | `Frontend`, `Backplane`, `DataOS` | Capability mount protocol, live authorization and final commit |
 | `Guard`, `LAWS`, `PROOF` | Selected guard and state-preservation laws |
 
+## Platforms
+
+**Genode is the reference capability platform.** Writ adds data-flow and
+operation policy above native capability/session enforcement. The same Bend
+decision core is intended for direct Linux, native Windows, and a later kernel
+using [Drift](https://github.com/Spaceghost/drift) for portable drivers.
+
+Start with [the platform architecture](docs/PLATFORMS.md): it maps native authority,
+delegation, worker isolation, sealed artifacts, and publication to one host
+contract. Genode-on-Linux bring-up precedes native Genode qualification; direct
+Linux and Windows adapters can develop against the shared contract. These host
+ports remain proposed. The current execution evidence is for the Bend library.
+
 ## Status
 
 All authored implementation, test, example, and proof source files are **Bend 2**.

@@ -24,5 +24,6 @@ New Bend execution-service interfaces and dependency capture around existing ver
 
 ## Dependencies
 
+- [add-portable-host-contract](../add-portable-host-contract/proposal.md)
 - [add-authenticated-grant-issuance](../add-authenticated-grant-issuance/proposal.md)
 - [add-executor-rendezvous](../add-executor-rendezvous/proposal.md)

@@ -1,5 +1,11 @@
 # Enforcement design and adapter contract
 
+The host architecture is now **Genode first**, with direct Linux, native Windows,
+and a later kernel using Drift as additional targets. See
+[docs/PLATFORMS.md](docs/PLATFORMS.md) for the common contract and source-backed
+platform designs. The sections below describe the existing Bend decision model;
+the native host integrations remain pending.
+
 ## 1. Authority is a monitor-owned state transition
 
 The library is a deterministic decision engine over immutable snapshots. A
@@ -192,7 +198,7 @@ commit updated session, ledger, payload metadata, and actual output as one durab
 operation, or use a crash-safe transaction/outbox protocol with the same invocation
 identity. This library does not implement the persistence transaction.
 
-## 7. Capability POSIX interface first
+## 7. Native authority and file-style interfaces
 
 `Frontend` models a capability mount and descriptor interface. It supports
 mount, open, narrowing rights, duplicating a descriptor, closing it, and resolving
@@ -205,6 +211,22 @@ decisions, not plaintext or OS descriptors. An actual character-device or mount
 adapter must map those requests to this same authority path. An eventual S3
 adapter should call the same facade instead of handing out unrestricted raw
 storage URLs or allowing alternate write routes.
+
+Genode is the reference native boundary: trusted parent routing establishes
+session authority, and the Writ service performs the complete Bend checks.
+Direct Linux and Windows hosts must independently establish equivalent semantics
+with their own authenticated IPC and confinement. The frontend's numeric records
+are not native capability selectors, POSIX descriptors, or Windows HANDLEs.
+
+Possession of a transferable native endpoint does not automatically establish the
+original requesting subject. Bind identity and permitted delegation through the
+host's trusted session mechanism; deny an ambiguous attribution. The initial
+worker topology keeps release authority in the trusted supervisor and supplies
+only approved input and private result channels to untrusted transformations.
+
+POSIX remains the first file-style interface, followed by S3. A Linux character
+device is a proposed Linux adapter, not the mandatory foundation of Genode or
+Windows integration. Neither interface changes the shared authorization rules.
 
 Once a process receives protected plaintext, access through this device alone is
 insufficient confinement. The host must gate or disable all other output paths:

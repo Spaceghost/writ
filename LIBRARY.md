@@ -13,6 +13,11 @@ bootable OS, a running kernel character device, a process sandbox, or a deployed
 payment service. Hosted transformation languages are deliberately left for the
 later execution-adapter stage.
 
+The native integration direction is [Genode first](docs/PLATFORMS.md), with the
+same Bend decision core intended for Linux, Windows, and a later Drift-backed
+kernel. These are separately qualified host targets; a successful library run
+does not establish their IPC authentication, confinement, or durable effects.
+
 New to the code? Start with the [report-to-summary walkthrough](docs/GETTING-STARTED.md)
 and [runnable examples](examples/README.md). This file is the API reference.
 See [REQUIREMENTS.md](REQUIREMENTS.md) for implementation coverage and remaining

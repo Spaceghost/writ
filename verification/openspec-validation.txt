@@ -2,39 +2,47 @@ Writ OpenSpec validation
 Date: 2026-11-03
 OpenSpec: 1.16.0
 Node.js: v24.22.1
-Command: openspec validate --all --strict --no-interactive
-
-✓ change/add-authenticated-grant-issuance
-✓ change/add-capability-posix-adapter
-✓ change/add-confined-transform-execution
-✓ change/add-durable-publication
-✓ change/add-executor-rendezvous
-✓ change/add-external-planner-adapters
-✓ change/add-metered-sample-execution
-✓ change/add-policy-aware-audit
-✓ change/add-s3-adapter
-✓ spec/authority-boundary
-✓ spec/candidate-verification
-✓ spec/capability-frontend
-✓ spec/commit-backplane
-✓ spec/constraint-solving
-✓ spec/data-model
-✓ spec/decentralized-labels
-✓ spec/parallel-execution
-✓ spec/provenance-preservation
-✓ spec/reservation-ledger
-✓ spec/transfer-admission
-✓ spec/transformation-negotiation
-✓ change/validate-physical-gpu-execution
-✓ spec/verification-evidence
-Totals: 23 passed, 0 failed (23 items)
+Command: openspec validate --all --strict --json --no-interactive
+Result: PASS; 28 items, 0 errors, 0 warnings
 
 Baseline: 13 capabilities, 135 requirements, 297 scenarios
-Pending: 10 changes/capabilities, 81 requirements, 121 scenarios
-Pending implementation tasks: 87; none marked complete
+Pending: 15 changes/capabilities, 141 requirements, 241 scenarios
+Pending implementation tasks: 133; none marked complete
+
+Per-item validation:
+PASS change add-authenticated-grant-issuance
+PASS change add-capability-posix-adapter
+PASS change add-confined-transform-execution
+PASS change add-drift-kernel-host
+PASS change add-durable-publication
+PASS change add-executor-rendezvous
+PASS change add-external-planner-adapters
+PASS change add-genode-host
+PASS change add-linux-host
+PASS change add-metered-sample-execution
+PASS change add-policy-aware-audit
+PASS change add-portable-host-contract
+PASS change add-s3-adapter
+PASS change add-windows-host
+PASS spec authority-boundary
+PASS spec candidate-verification
+PASS spec capability-frontend
+PASS spec commit-backplane
+PASS spec constraint-solving
+PASS spec data-model
+PASS spec decentralized-labels
+PASS spec parallel-execution
+PASS spec provenance-preservation
+PASS spec reservation-ledger
+PASS spec transfer-admission
+PASS spec transformation-negotiation
+PASS change validate-physical-gpu-execution
+PASS spec verification-evidence
 
 This is document validation, not execution of every acceptance scenario.
-Fresh JS/native CPU library runs each passed 638 checks.
-Four examples separately passed 29 assertions on each backend.
-Ordinary Bend proof checks passed; independent Lean verdict unverified.
-Physical GPU execution remains unverified.
+Platform update: five proposed host changes; no native host port was executed.
+All 34 Bend files match verified revision 5982d18dff6ef21953058423ebdfb410d1de6b11.
+Retained JS/native CPU library evidence: 638 passing checks per backend.
+Retained example evidence: 29 passing assertions per backend.
+Ordinary Bend proof evidence retained; independent Lean verdict unverified.
+Physical GPU execution and host confinement remain unverified.

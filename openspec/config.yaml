@@ -13,6 +13,14 @@ context: |
   endorsement route is implemented. Capability possession cannot widen policy.
   Authority records, complete manifests, graphs, execution bindings, and time
   are monitor-owned inputs. Public data constructors do not authenticate them.
+  Genode is the reference native capability platform. Direct Linux, native
+  Windows, and a later kernel using Spaceghost/Drift share the host contract.
+  Native selectors/FDs/HANDLEs/driver tokens are host-local resources, not
+  portable credentials or proof of the original caller's identity. Delegation
+  preserves exact scope and current Writ authorization. Ports remain proposed.
+  Host/runtime/driver qualification is distinct from pure library execution.
+  WSL evidence is Linux evidence; Drift is a driver dependency, not a kernel
+  authority implementation. Missing required host controls deny protected work.
   POSIX is a protocol model; S3 and hosted languages are later adapters.
   Physical GPU execution and independent Lean kernel verification are unverified.
   OpenSpec is development tooling, not part of Writ's enforcement runtime.

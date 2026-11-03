@@ -30,6 +30,12 @@ Validated output bytes become immutable artifacts with an authenticated executio
 
 Bend supplies policy and verification logic. The host isolation mechanism protects monitor state from workers and devices. Where shared hardware timing cannot be bounded, document it as outside the validated guarantee rather than claiming noninterference.
 
+Use the [portable host contract](../add-portable-host-contract/design.md), with
+Genode as the reference capability architecture. Direct Linux, native Windows,
+and a future Drift-backed kernel require their own runtime and confinement
+evidence. The same pure decision tests do not establish equivalent native
+isolation, authenticated caller identity, or device safety across those hosts.
+
 ## Risks and trade-offs
 
 A complete graph does not stop an unchecked physical output path, and an identifier does not authenticate execution. Protect monitor memory, bound resources, and deny unimplemented adapters before releasing plaintext. No specific hardware side-channel proof is claimed.

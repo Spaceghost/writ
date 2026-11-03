@@ -3,6 +3,44 @@
 Every change below is proposed. Its implementation tasks are unchecked. Existing
 Bend decisions and protocol models do not make the missing host service complete.
 
+**Genode is the reference native capability platform.** The shared Bend policy
+core will also support direct Linux, native Windows, and a later kernel using
+Drift. Host qualification and file-style API compatibility are separate work.
+See the [platform architecture](../docs/PLATFORMS.md).
+
+## Native host foundation
+
+| Lane | Change | Required evidence |
+| --- | --- | --- |
+| Shared contract | [Portable host contract](changes/add-portable-host-contract/proposal.md) | Exact subject/delegation binding, scoped resources, immutable artifacts, current commit, shared vectors, and native probes |
+| Reference | [Genode host](changes/add-genode-host/proposal.md) | Real Bend runtime/component bring-up, session routing, confined report-to-summary execution, and a separately qualified native base |
+| Linux | [Direct Linux host](changes/add-linux-host/proposal.md) | Required kernel controls, authenticated broker, restricted descriptors/processes, and actual escape-path tests |
+| Windows | [Native Windows host](changes/add-windows-host/proposal.md) | Validated runtime/ABI, LPAC/AppContainer profile, authenticated IPC, restricted handles/process tree, and native probes |
+| Later kernel | [Drift-backed kernel host](changes/add-drift-kernel-host/proposal.md) | Kernel authority/isolation plus scoped driver resources; reuse Genode over a new base where feasible |
+
+Genode-on-Linux is the first runtime/session bring-up lane. Its restricted
+components and unrestricted host bridges must be inventoried; it is not equivalent
+to native Genode qualification. The first native reference is pinned Genode 26.08
+x86_64/base-hw under QEMU; hardware deployment needs its own evidence. Direct
+Linux and Windows can develop against the common contract
+without depending on a Genode binary installation.
+
+```mermaid
+flowchart TD
+    C["Common host contract"] --> G["Genode on Linux bring-up"]
+    G --> N["Native Genode qualification"]
+    C --> L["Direct Linux adapter"]
+    C --> W["Native Windows adapter"]
+    N --> K["Later kernel with Drift"]
+```
+
+Every native lane also needs the feature-level issuance, confinement, and durable
+publication dependencies below before handling protected data. Passing a model
+test, booting a component, or observing one denied syscall completes none of those
+combined enforcement gates by itself.
+
+## Feature dependencies
+
 | Order | Change | Capability and exit evidence |
 | --- | --- | --- |
 | 1 | [Authenticated grant issuance](changes/add-authenticated-grant-issuance/proposal.md) | Authenticate source and destination issuers; no effective read grant without its exact current write approval |
@@ -48,6 +86,11 @@ The POSIX change proposes a Linux character-device control interface and a
 capability-bound logical namespace. The transport and host isolation mechanism
 are explicit dependencies. The published baseline does not contain a kernel
 driver, filesystem mount, or foreign-language runtime.
+
+POSIX remains the first file-style interface, followed by S3. A Linux character
+device is one host adapter, not a required substrate for the Genode or Windows
+targets. Host ports must preserve the common subject, delegation, exact-plan,
+and publication semantics before exposing compatibility interfaces.
 
 Each change records migration and rollback behavior. Rollback never restores
 consumed receipts or authority epochs, and never falls back to an unchecked

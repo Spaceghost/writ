@@ -24,6 +24,7 @@ New Bend request dispatcher and binary protocol for a host-provided character-de
 
 ## Dependencies
 
+- [add-linux-host](../add-linux-host/proposal.md)
 - [add-authenticated-grant-issuance](../add-authenticated-grant-issuance/proposal.md)
 - [add-confined-transform-execution](../add-confined-transform-execution/proposal.md)
 - [add-durable-publication](../add-durable-publication/proposal.md)

@@ -16,3 +16,10 @@ Acceptance scenarios for missing adapters are not reported as executable passes.
 Pending changes implement these preconditions at the real authority, executor,
 publication, and POSIX boundaries. Their unchecked tasks remain the source of
 truth for missing integration work.
+
+The [portable host contract](../changes/add-portable-host-contract/proposal.md)
+now defines the shared native preconditions for Genode, Linux, Windows, and a
+future kernel using Drift. The [platform architecture](../../docs/PLATFORMS.md)
+and linked source reviews explain their mechanisms and limits. This is researched
+design evidence; none of these native host profiles has passed Writ confinement
+or durable-publication tests yet.

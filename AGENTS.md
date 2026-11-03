@@ -35,6 +35,20 @@ When a cleanup is intended to change comments only, compare the implementation
 tokens with the previous revision as well as running the appropriate checks.
 Keep the source manifest and verification record aligned with the delivered tree.
 
+## Host platforms
+
+Read docs/PLATFORMS.md before changing native boundaries. Genode is the capability
+reference; direct Linux, native Windows, and a future kernel using Drift are
+separate targets. Preserve one Bend policy/verification implementation. A native
+capability, descriptor, handle, or driver token is not a portable credential, and
+bearer possession alone does not establish the original caller's identity.
+
+Keep host qualification distinct from library tests. Require real confinement,
+delegation, revocation, artifact, and recovery evidence for each claimed profile.
+WSL is Linux execution evidence. Drift supplies drivers, not the future kernel's
+authority boundary. An unimplemented runtime port or missing native control must
+not be hidden by a successful model test or CPU fallback.
+
 ## Specifications
 
 Read openspec/README.md and the relevant baseline specifications before changing

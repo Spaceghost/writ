@@ -1,0 +1,25 @@
+Writ platform research and specification review
+Date: 2026-11-03
+
+Compared against: 5982d18dff6ef21953058423ebdfb410d1de6b11
+PASS all 34 Bend source files are byte-identical.
+Existing library/example/proof evidence remains scoped to that identical source.
+
+Genode source: 26.08, commit d18ee9e917200b059549e21f2dd9a55bfe61a0eb
+Official archive SHA256: df74f96c70c72607d66f5440439680b63683f09edd92809996845f0f29453a74
+Archive downloaded and hash-checked against Drift SDK pin.
+Reviewed capability/RPC, routing, PD/dataspace sealing, base-linux IPC/seccomp, hybrid startup, and GPU API source.
+No Genode Writ image built or booted.
+
+Drift source: 0b7aaca7f4ff5e3da0570379632f952ecfe754f7
+Read portable-driver APIs, reference kernel, Genode recipes, and stored host records.
+Stored records for earlier source remain earlier evidence; no Drift target rerun.
+
+Linux/Windows mechanisms: primary kernel/man-page and Microsoft documentation review.
+No Writ Linux confinement broker or native Windows host executed.
+No future kernel, GPU isolation, or physical-device test executed.
+
+OpenSpec: 13 baseline specs + 15 proposed changes; all 28 strictly valid.
+New host scope: 60 requirements, 120 scenarios, 46 unchecked tasks.
+Total scope: 276 requirements, 538 scenarios, 133 unchecked tasks.
+Shared contract and target designs cross-reviewed for identity/delegation, exact plan, writable aliases, revocation/authorization ordering, and unsupported-feature denial.
