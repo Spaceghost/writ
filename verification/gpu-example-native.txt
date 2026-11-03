@@ -1,0 +1,5 @@
+Native GPU dispatch requested; Bend may use its CPU fallback.
+This example does not attest physical GPU execution.
+Independent constraint verification: True
+Label batch matches host replay: True
+Batch with missing read grant denied: True

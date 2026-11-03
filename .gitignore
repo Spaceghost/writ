@@ -1,0 +1,8 @@
+/build/
+/tools/
+/tests-native
+/example-native
+/gpu-example
+/*.c
+/*.js
+*.o

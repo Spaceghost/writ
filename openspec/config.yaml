@@ -1,0 +1,47 @@
+schema: spec-driven
+
+context: |
+  Writ is a Bend 2.0.39 security-core library and protocol model.
+  All authored implementation, tests, examples, and proofs are Bend 2.
+  Correct enforcement precedes throughput. The GPU proposes; independent
+  verification and current authority govern commit, all expressed in Bend.
+  Read AGENTS.md, DESIGN.md, REQUIREMENTS.md, and VERIFICATION.md.
+  Baseline specs describe current code or explicitly identified API preconditions.
+  Pending changes specify missing integration and are not completed features.
+  Read/write domains are separate, effective reads require paired write approval,
+  every contributing origin survives derivation, and no declassification or
+  endorsement route is implemented. Capability possession cannot widen policy.
+  Authority records, complete manifests, graphs, execution bindings, and time
+  are monitor-owned inputs. Public data constructors do not authenticate them.
+  POSIX is a protocol model; S3 and hosted languages are later adapters.
+  Physical GPU execution and independent Lean kernel verification are unverified.
+  OpenSpec is development tooling, not part of Writ's enforcement runtime.
+
+rules:
+  proposal:
+    - State the concrete behavior being added and its current implementation gap.
+    - Name new and modified capabilities using their exact existing paths.
+    - Identify dependencies on other pending changes without marking them complete.
+  specs:
+    - Use one observable SHALL or MUST obligation per numbered requirement.
+    - Keep requirement descriptions at most 500 characters and include concrete GIVEN/WHEN/THEN scenarios.
+    - Include denial, stale-state, replay, or boundary scenarios where relevant.
+    - Keep implementation and test links in the traceability documents, not normative text.
+    - Preserve the distinction between machine-mediated guarantees and trusted-host assumptions.
+  design:
+    - Identify authority ownership, inputs, state transitions, and the actual effect boundary.
+    - Specify denial behavior and concurrency or crash behavior for state changes.
+    - Keep all proposed policy and verification logic in Bend 2.
+  tasks:
+    - Leave implementation tasks unchecked until the code and stated evidence exist.
+    - Include acceptance evidence in each task and distinguish executable tests from review.
+
+operations:
+  apply:
+    guidance:
+      - Preserve existing security laws and authoritative-input boundaries.
+      - Run meaningful Bend tests and ordinary proof checking after security changes.
+  archive:
+    guidance:
+      - Archive only implemented changes with their acceptance evidence recorded.
+      - Do not turn a protocol model or a proposed host guarantee into a deployment claim.

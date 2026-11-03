@@ -1,0 +1,4 @@
+Bend 2 data-isolation library
+Authorized transaction committed: True
+Original restrictions retained: True
+Revoked capability committed: False

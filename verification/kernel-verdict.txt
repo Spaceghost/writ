@@ -1,0 +1,8 @@
+Command: bend PROOF.bend --verdict
+Status: NOT VERIFIED by the independent BendTT kernel.
+The official Lean 4.34.0 distribution was downloaded and its release SHA-256 verified.
+Its executable exits 1 before kernel compilation:
+error: failed to locate application
+Shared libraries resolve; supported LEAN_SYSROOT and LEAN_PATH did not fix startup.
+No checker, proof, or compiler was modified to bypass this failure.
+Ordinary Bend typechecking of the three laws passes; see proofs.txt.

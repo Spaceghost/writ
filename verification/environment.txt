@@ -1,0 +1,17 @@
+{
+  "compiler": "Bend 2.0.39",
+  "native_compiler": "Ubuntu clang 19.1.1",
+  "platform": "Linux x86_64",
+  "native_threads": 4,
+  "gpu_test_mode": "CPU fallback with --gpu off; no hardware device validation",
+  "cuda_toolkit": false,
+  "device_nodes": {
+    "nvidia0": false,
+    "dri": false
+  },
+  "bend_source_files": 28,
+  "bend_source_lines": 4760,
+  "javascript_checks": 638,
+  "bend_release_archive_sha256": "6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab",
+  "native_checks": 638
+}
