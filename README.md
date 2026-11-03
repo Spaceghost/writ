@@ -11,47 +11,49 @@ GPU-directed solvers propose results. An independent Bend verifier checks the
 original constraints, and the commit path rechecks current authority before
 producing a scoped write intent.
 
-## Run
+## Try it
 
-Use [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39).
+Use **Bend 2.0.39**. The [installation guide](docs/INSTALL.md) includes the pinned
+download, checksum, and native build instructions.
 
 ```sh
 git clone https://github.com/Spaceghost/writ.git
 cd writ
 bend version
-bend Tests.bend
-bend Example.bend
-bend PROOF.bend
+bend examples/Flow.bend
 ```
 
-The example admits an authorized transaction, preserves its restrictions, and
-rejects a revoked capability. It uses synthetic authority records.
+The examples follow one story: **a restricted incident report becomes an approved
+internal summary**. Each example explains its decisions and exits unsuccessfully
+if an expected result changes.
 
-For a native CPU build, install clang 19 or newer:
+| Run from the repository root | What it demonstrates |
+| --- | --- |
+| `bend examples/Flow.bend` | A summary inherits its source's restrictions; a forged candidate fails verification |
+| `bend examples/Transfer.bend` | Source and destination approvals must match, and provenance survives the transfer |
+| `bend Example.bend` | Negotiation, a live capability, and the final commit; revocation blocks release |
+| `bend GpuExample.bend` | All three device-requesting paths, with host verification and a denied batch member |
 
-```sh
-mkdir -p build
-bend Tests.bend -o build/tests
-./build/tests +RTS --threads 4 --gpu off
-```
+Start with the [walkthrough](docs/GETTING-STARTED.md), or compare your run with the
+[example outputs](examples/README.md). Examples construct their own clearly
+marked synthetic authority records; they do not depend on test modules.
 
-`GpuExample.bend` exercises the three device-requesting paths. Bend can fall back
-to the CPU; a successful run alone does not establish GPU execution.
+## How a write is authorized
 
-## Use
+A solver proposes a type, label, and effect assignment. `Core.verify` checks it
+against the original graph. Transfer admission requires matching read/write
+grants and retains every origin's restrictions. Negotiation adds current origin
+approvals and a reader-funded reservation.
 
-```bend
-import Base
-import ./Core.bend as Core
-import ./GpuLibrary.bend as GPU
+The combined release entry point is `DataOS.commit_from_capability`. It resolves
+the live descriptor and repeats the final authority checks before returning an
+updated session, ledger, and scoped write intent. The enforcing monitor owns that
+state and performs the actual effects. A candidate or ticket alone cannot
+authorize publication.
 
-def solve_constraints(graph: Core.Graph) -> Core.SolveResult:
-  GPU.solve(graph, 0n)
-```
-
-Use `DataOS.commit_from_capability` for the combined capability-to-commit path.
-Returned candidates, tickets, and intents are data records; the enforcing monitor
-owns authoritative state and performs the actual effects.
+For signatures, trust assumptions, and failure behavior, see the
+[library reference](LIBRARY.md). The source comments explain the invariants at
+the functions that enforce them.
 
 ## Inside
 
@@ -65,7 +67,7 @@ owns authoritative state and performs the actual effects.
 
 ## Status
 
-All 28 implementation, test, example, and proof source files are **Bend 2**.
+All authored implementation, test, example, and proof source files are **Bend 2**.
 The recorded suite passes **638 checks on each of the JavaScript and native CPU
 backends**. Physical GPU execution and independent Lean kernel verification have
 not been established.
@@ -77,8 +79,8 @@ POSIX adapter. The current DLM supports up to 30 named principals plus top/botto
 
 ## Read further
 
+- [Getting started: report to summary](docs/GETTING-STARTED.md)
 - [OpenSpec suite, state machines, and implementation roadmap](openspec/README.md)
-- [Library APIs and examples](LIBRARY.md)
+- [Library APIs](LIBRARY.md)
 - [Enforcement design and adapter contract](DESIGN.md)
-- [Requirements and remaining work](REQUIREMENTS.md)
 - [Verification record and captured results](VERIFICATION.md)

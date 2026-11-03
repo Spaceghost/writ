@@ -1,0 +1,20 @@
+Writ documentation and example cleanup review
+Comparison base: 03efcc6361528c17773bc04c1c62c553da728209
+
+PASS Core.bend: all non-comment, nonblank lines unchanged
+PASS Gpu.bend: all non-comment, nonblank lines unchanged
+PASS Dlm.bend: all non-comment, nonblank lines unchanged
+PASS DlmGpu.bend: all non-comment, nonblank lines unchanged
+PASS Transfer.bend: all non-comment, nonblank lines unchanged
+PASS TransferGpu.bend: all non-comment, nonblank lines unchanged
+PASS DataOS.bend: all non-comment, nonblank lines unchanged
+PASS GpuLibrary.bend: all non-comment, nonblank lines unchanged
+PASS Frontend.bend: all non-comment, nonblank lines unchanged
+PASS Negotiation.bend: all non-comment, nonblank lines unchanged
+PASS Ledger.bend: all non-comment, nonblank lines unchanged
+PASS Backplane.bend: all non-comment, nonblank lines unchanged
+PASS Guard.bend: all non-comment, nonblank lines unchanged
+
+13 runtime modules: comments/blank lines only.
+Test drivers and declared proof laws: unchanged from the comparison base.
+New examples: separately compiled and executed; see example run records.

@@ -7,6 +7,10 @@ import ./Transfer.bend as T
 # registry, and trusted time/epoch. Token words are compared in full; this code
 # does not generate random tokens, authenticate callers, or verify signatures.
 # State updates require a current revision and an atomic host-side commit.
+# Public Data records are a model, not unforgeable capabilities. Keep registry,
+# caller authentication and current state outside untrusted transformation code.
+# Successful mutations advance revision once; rejection returns the old state.
+# All operational expiry checks are exclusive: authority requires now < expires.
 
 type Capability is Data:
   Capability{token: T.CodeId, subject: Nat, plan: T.Plan, rights: U32,
@@ -19,6 +23,8 @@ type Registry is Data:
 type Caller is Data:
   Caller{subject: Nat, token: T.CodeId}
 
+# The host authenticates Caller before constructing a Ref. A numeric handle ID
+# never suffices: the stored owner, token, exact plan and live scope are checked.
 type Ref is Data:
   Ref{caller: Caller, id: Nat}
 
@@ -169,6 +175,8 @@ def capability_valid(capability: Capability) -> Bool:
     case Capability{_, _, plan, rights, epoch, _}:
       rights_valid(rights) && Nat.is_eq(authority(T.Plan.stamp(plan)), epoch)
 
+# Duplicate tokens deny the entire registry, even when their records match.
+# Choosing the first match would make authority depend on registry ordering.
 def registry_valid(registry: Registry) -> Bool:
   match registry:
     case EmptyRegistry{}:
@@ -198,6 +206,8 @@ def handles_valid(handles: Handles, +next: Nat) -> Bool:
       handle_valid(handle, next) && Bool.not(handle_exists(rest, handle_id(handle)))
         && handles_valid(rest, next)
 
+# IDs are unique and positive; next exceeds every allocated ID, including
+# closed tombstones. Validation does not authenticate the state supplied by host.
 def valid(state: State) -> Bool:
   match state:
     case State{_, +next, handles}:
@@ -272,6 +282,9 @@ def mount_checked(ok: Bool, state: State, registry: Registry, +caller: Caller, l
     case True{}:
       mount_found(find_capability(registry, caller_token(caller)), state, caller, live, rights)
 
+# Allocate a Mounted handle with rights contained in the live registry grant.
+# This records a scoped attachment; it neither mints grants nor admits a read.
+# Transfer admission happens when checked_plan resolves an operational request.
 def mount(+state: State, +registry: Registry, expected_revision: Nat, caller: Caller, rights: U32, live: Live) -> Change:
   mount_checked(valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),
     state, registry, caller, live, rights)
@@ -283,6 +296,9 @@ def ref_matches(handle: Handle, ref: Ref) -> Bool:
       Bool.not(closed) && Nat.is_eq(id, claimed_id) && Nat.is_eq(subject, claimed_subject)
         && T.CodeId.equal(token, claimed_token)
 
+# Check the whole retained scope, not only the requested right. A registry
+# contraction invalidates a handle with broader rights or a later expiry;
+# registry expansion does not widen the handle. Replacing its plan also denies.
 def scope_current(handle: Handle, capability: Capability, live: Live) -> Bool:
   match handle capability live:
     case Handle{_, _, hs, ht, hp, hr, he, +hu, _}
@@ -343,6 +359,8 @@ def open_found(found: Maybe<&2, Handle>, state: State, +rights: U32) -> Change:
       open_gate(is_mount(handle) && rights_valid(rights) && T.word_subset(rights, handle_rights(handle)),
         state, handle, rights)
 
+# Open a fresh Descriptor from a current Mounted handle. The mount survives;
+# the descriptor keeps the exact plan and can only narrow the mount's rights.
 def open(+state: State, registry: Registry, expected_revision: Nat, ref: Ref, rights: U32, live: Live) -> Change:
   open_found(authorized(state, registry, expected_revision, ref, live), state, rights)
 
@@ -353,6 +371,8 @@ def dup_found(found: Maybe<&2, Handle>, state: State) -> Change:
     case Some{+handle}:
       open_gate(is_descriptor(handle), state, handle, handle_rights(handle))
 
+# Duplicate only a current Descriptor into a new ID with the same scope.
+# Future local attenuation or closure of one handle does not alter its sibling.
 def dup(+state: State, registry: Registry, expected_revision: Nat, ref: Ref, live: Live) -> Change:
   dup_found(authorized(state, registry, expected_revision, ref, live), state)
 
@@ -456,6 +476,8 @@ def resolve_found(found: Maybe<&2, Handle>, request: Request, context: T.Context
 # The client supplies no replacement plan. Every request yields the same
 # immutable registered plan, after live paired read/write admission. This is
 # a proposal for Backplane; it is not a committed write or a plaintext result.
+# Read-only descriptor rights still require the plan's destination write grant:
+# narrowing the request kind never removes source-origin restrictions.
 def checked_plan(+state: State, registry: Registry, expected_revision: Nat, ref: Ref,
     request: Request, +context: T.Context) -> Maybe<&2, T.Plan>:
   resolve_found(authorized(state, registry, expected_revision, ref, live(context)), request, context)

@@ -32,7 +32,7 @@ or endorsement exception has been added.
 
 | ID | Requirement | Implementation and evidence | Status and boundary |
 | --- | --- | --- | --- |
-| B01 | All system logic and verification in Bend 2 | `DataOS`, `Core`, `Transfer`, `Dlm`, `Frontend`, `Negotiation`, `Ledger`, `Backplane`, GPU wrappers, examples, tests, and proofs; 28 `.bend` files | Implemented for this library. Compiler/runtime, drivers, and host facilities remain external dependencies. |
+| B01 | All system logic and verification in Bend 2 | `DataOS`, `Core`, `Transfer`, `Dlm`, `Frontend`, `Negotiation`, `Ledger`, `Backplane`, GPU wrappers, examples, tests, and proofs | Implemented for this library. Compiler/runtime, drivers, and host facilities remain external dependencies. |
 | B02 | Data and operations are the programming model | `Core.Graph` represents type domains, data/control dependencies, and effects; `Transfer.Plan` binds exact source versions to an operation and destination. `CoreTests` checks types, propagation, cycles, and actual sink effects. | Implemented finite constraint model. Whole-program extraction from arbitrary hosted languages is deferred. |
 | B03 | Read-security and write-security are separate domains | `Transfer.ReadDomain`, `WriteDomain`, `ReadGrant`, and `WriteGrant`; `Transfer.admit` matches both against the same complete scope. `TransferTests` exercises domain, manifest, version, operation, and expiry mismatches. | Implemented admission. Neither domain derives from possession of the other. |
 | B04 | Cannot mint a read without an approved write | `Frontend.checked_plan` calls `Transfer.admit` even for a read request. `FrontendTests`: "read request still requires destination write approval". Missing either grant denies operation admission. | Effective-read pairing is implemented. Grant issuance and token registration are external; there is no authenticated minting API in this package. See section 3. |
@@ -114,14 +114,15 @@ independent Lean kernel verification remains unavailable in the recorded setup.
 
 ## 4. Verification evidence
 
-The 28 Bend source files match the recorded verification: **638 checks passed
-on each of the JavaScript and native CPU backends**. The verification record
+The complete library suite has **638 passing checks on each of the JavaScript
+and native CPU backends**. The four [runnable examples](examples/README.md)
+separately check 29 teaching outcomes on both backends. The verification record
 distinguishes those results from unperformed physical GPU and independent
 proof-kernel validation.
 
 Read `VERIFICATION.md` for execution evidence and `DESIGN.md` for the adapter
-contract. The package hash manifest covers the updated documentation as well as
-the unchanged tested source.
+contract. The package hash manifest covers the current documentation and source,
+including the examples; the recorded runs were repeated after the cleanup.
 
 The DLM reference is Cornell's
 [Jif decentralized label model](https://www.cs.cornell.edu/jif/doc/jif-3.0.0/dlm.html).

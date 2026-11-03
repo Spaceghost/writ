@@ -3,6 +3,10 @@ import Base
 # Pure authoritative ledger model. The hosting monitor serializes transitions
 # and persists the returned state before exposing their external effects.
 # Nat counters and amounts do not wrap. No monetary or signature API is implied.
+# Public state values are not authenticated account balances. expected_revision
+# must match the monitor's current ledger, and the host must install an accepted
+# result atomically. Replaying a stale snapshot cannot be prevented by pure data.
+# Successful operations advance revision once; rejected operations retain old.
 type Ids is Data:
   NoIds{}
   Id{id: Nat, rest: Ids}
@@ -25,6 +29,8 @@ type State is Data:
   State{revision: Nat, accounts: Accounts, holds: Holds, seen_receipts: Ids,
     committed_invocations: Ids}
 
+# The present transition API returns AdmissionDenied for any failed gate.
+# The other variants are vocabulary, not promised diagnostic classifications.
 type Error is Data:
   StaleRevision{}
   InvalidAccount{}
@@ -169,12 +175,16 @@ def holds_valid(holds: Holds, +accounts: Accounts, +seen: Ids, +committed: Ids) 
       account_present(account_find(accounts, payer)) && contains(seen, receipt) &&
       Bool.not(contains(committed, invocation)) && holds_valid(rest, accounts, seen, committed)
 
+# Require unique accounts and replay IDs, one hold per receipt/invocation,
+# a real payer for every hold, and no live hold for a committed invocation.
 def valid(state: State) -> Bool:
   match state:
     case State{_, +accounts, holds, +seen, +committed}:
       accounts_valid(accounts) && ids_valid(seen) && ids_valid(committed) &&
       holds_valid(holds, accounts, seen, committed)
 
+# next is a provisional pure value. Computing it before this selection cannot
+# debit an account or persist a change when allowed is false.
 def result(allowed: Bool, next: State, old: State, reason: Error) -> Outcome:
   match allowed:
     case True{}:
@@ -211,6 +221,8 @@ def empty(accounts: Accounts) -> State:
 
 # Receipt IDs are never recycled, including after cancellation. A reservation
 # immediately removes the amount from the payer's available balance.
+# It remains a hold, not a payment capture; now must be strictly before expiry.
+# For example, reserving 30 from 100 leaves 70 available until commit or refund.
 def reserve(+old: State, expected_revision: Nat, +hold: Hold, now: Nat) -> Outcome:
   match old hold:
     case State{+rev, +accounts, +holds, +seen, +committed}
@@ -234,6 +246,9 @@ def hold_matches(found: FoundHold, invocation: Nat, payer: Nat, units: Nat, now:
       Nat.is_eq(actual_units, units) && Nat.is_lt(now, until)
 
 # Receipt, invocation, payer, and amount are rechecked at the single commit.
+# The entire exact hold is consumed and invocation recorded against replay;
+# available funds were already reduced at reserve, so there is no second debit.
+# Partial captures and incremental sample charges are not implemented here.
 def commit(+old: State, expected_revision: Nat, +receipt: Nat, +invocation: Nat,
   payer: Nat, units: Nat, now: Nat) -> Outcome:
   match old:
@@ -252,6 +267,8 @@ def refund(found: FoundHold, +accounts: Accounts) -> Accounts:
     case HoldFound{Hold{_, _, +payer, units, _}}:
       account_set(accounts, payer, Nat.add(account_amount(account_find(accounts, payer)), units))
 
+# Cancel a still-live exact hold and refund its full amount. The receipt stays
+# in seen_receipts, so even a refunded receipt cannot be reserved again.
 def cancel(+old: State, expected_revision: Nat, +receipt: Nat, +invocation: Nat,
   +payer: Nat, +units: Nat, now: Nat) -> Outcome:
   match old:
@@ -270,6 +287,8 @@ def hold_expired(found: FoundHold, now: Nat) -> Bool:
     case HoldFound{Hold{_, _, _, _, until}}:
       Nat.is_ge(now, until)
 
+# At now >= valid_until, expiry replaces cancellation as the refund path.
+# Removing the hold prevents a second refund while retaining its replay marker.
 def expire(+old: State, expected_revision: Nat, +receipt: Nat, +now: Nat) -> Outcome:
   match old:
     case State{+rev, accounts, +holds, seen, committed}:

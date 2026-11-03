@@ -13,20 +13,25 @@ bootable OS, a running kernel character device, a process sandbox, or a deployed
 payment service. Hosted transformation languages are deliberately left for the
 later execution-adapter stage.
 
-See `REQUIREMENTS.md` for the project requirements mapped to implementation,
-test evidence, and the remaining issuance, execution, and POSIX integration work.
+New to the code? Start with the [report-to-summary walkthrough](docs/GETTING-STARTED.md)
+and [runnable examples](examples/README.md). This file is the API reference.
+See [REQUIREMENTS.md](REQUIREMENTS.md) for implementation coverage and remaining
+issuance, execution, and POSIX integration work.
 
 ## Build and run
 
 Validated compiler: **Bend 2.0.39** from the official `bendlang/bend` project.
 Bend 1 and HVM are different systems and are not compatible targets.
 
-From this directory:
+See the [installation guide](docs/INSTALL.md) for a pinned download and checksum.
+From the repository root:
 
 ```bash
 bend version
 bend DataOS.bend --check-only
 bend GpuLibrary.bend --check-only
+bend examples/Flow.bend
+bend examples/Transfer.bend
 bend Tests.bend
 bend Example.bend
 bend PROOF.bend
@@ -35,17 +40,18 @@ bend PROOF.bend
 The normal IO execution path uses Bend's JavaScript backend. For a native build:
 
 ```bash
-bend Tests.bend -o tests-native
-./tests-native +RTS --threads 4 --gpu off
-bend Example.bend -o example-native
-./example-native
+mkdir -p ../writ-build
+bend Tests.bend -o ../writ-build/tests-native
+../writ-build/tests-native +RTS --threads 4 --gpu off
+bend Example.bend -o ../writ-build/example-native
+../writ-build/example-native +RTS --threads 4 --gpu off
 ```
 
 For the GPU-requesting example:
 
 ```bash
-bend GpuExample.bend -o gpu-example
-./gpu-example
+bend GpuExample.bend -o ../writ-build/gpu-example
+../writ-build/gpu-example
 ```
 
 Native GPU builds require the supported Metal or CUDA toolchain. Bend may build
@@ -117,9 +123,32 @@ The important interfaces are:
 `max_rounds = 0n` selects the reference solver's N+1 sweep bound. Explicit fuel
 exhaustion denies; it never produces an authorization result.
 
-`Example.bend` uses synthetic test fixtures to demonstrate an accepted commit and
-a revoked-capability denial. Its successful commit is a model transition: it
-does not write a real protected object or move money.
+Bend exports module definitions, including the small helpers used to implement
+these entry points. Names such as `*.checked`, `*.finish`, and `*.result` are
+internal steps with preconditions established by their callers; they are not
+alternative release APIs. An enforcing host uses `DataOS.commit_from_capability`
+and obtains every authoritative context from its own state.
+
+`Example.bend` runs a self-contained negotiation and commit scenario, including
+a revoked-capability denial. Its named synthetic records live in
+[examples/Scenario.bend](examples/Scenario.bend), with no dependency on test
+fixtures. A successful commit is a model transition: it does not write a real
+protected object or move money.
+
+### Reading a failure
+
+| Result | Meaning | Next step for the monitor |
+| --- | --- | --- |
+| `SolveFailed{reason}` | Invalid constraints, conflict, or exhausted fuel | Correct or reject the proposal; there is no candidate to authorize |
+| `Core.Denied{reason}` | The candidate or sink violates a verified condition | Preserve the original graph; do not replace it with the producer's account |
+| `Transfer.Denied{reason}` | The exact transfer is not permitted by the live records | Keep the data confined and obtain a properly scoped proposal or grant |
+| `None{}` from `Frontend.checked_plan` | No currently valid capability-bound plan | Resolve current authority; an old handle cannot override denial |
+| `Backplane.Rejected{session, ledger}` | The combined release failed | Retain the supplied state; cancellation or expiry is a separate transition |
+
+All expiry comparisons are exclusive: equality with `valid_until` is expired.
+Revisions, IDs, timestamps, and returned record constructors do not authenticate
+themselves. Failure details may also be sensitive; a public adapter must apply
+its information-flow policy before exposing diagnostics.
 
 ## Why encoding does not authorize exfiltration
 
@@ -131,8 +160,9 @@ all original operation restrictions and payment obligations remain attached.
 
 Both the source read grant and destination write grant bind the complete ordered
 input manifest, input versions, destination/version, write domain, invocation,
-code identity, operation kind, epoch snapshot, and expiry. A fresh write grant
-cannot redirect an old read approval to another bucket. Owning an intermediate
+code identity, operation kind, and epoch snapshot. Each grant has its own
+exclusive expiry and must remain valid; their deadlines need not be equal. A
+fresh write grant cannot redirect an old read approval to another bucket. Owning an intermediate
 bucket does not grant authority to weaken its inherited policy.
 
 The final facade re-resolves the capability, verifies the authenticated subject

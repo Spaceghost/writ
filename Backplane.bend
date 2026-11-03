@@ -11,6 +11,9 @@ import ./Guard.bend as Guard
 # graph, destination clearance, live epochs, or authenticated registries.
 # All commits below are pure state transitions + write intents. An OS adapter
 # must atomically persist both state and output before exposing the write.
+# The library implements the decision, not durable storage or device IO. Host
+# release routes enter through DataOS.commit_from_capability so live descriptor
+# checks precede this gate; these public helpers are not independent release APIs.
 type Backend is Data:
   Storage{}
   Network{}
@@ -34,6 +37,8 @@ type Bindings is Data:
 type Context is Data:
   Context{negotiation: N.Context, live: C.Stamp, principals: D.Snapshot, bindings: Bindings}
 
+# Description of the one sealed artifact and destination effect that passed all
+# gates. A caller constructing this Data record has not authorized an effect.
 type WriteIntent is Data:
   WriteIntent{plan: T.Plan, output: T.OutputPolicy, label: D.Label, backend: Backend,
     artifact: ArtifactId}
@@ -71,6 +76,7 @@ def binding_contains(bindings: Bindings, +request: N.Request) -> Bool:
 
 # Every full request has one authority record. Identical duplicates are also
 # malformed; authorization must not depend on registry order.
+# Validation covers the entire registry, not merely the requested entry.
 def bindings_valid(bindings: Bindings) -> Bool:
   match bindings:
     case NoBindings{}:
@@ -155,6 +161,9 @@ def core_bits(bits: C.Bits64) -> T.Bits64:
     case C.Bits64{lo, hi}:
       T.Bits64{lo, hi}
 
+# Join graph secrecy and untrusted-data influence into the admitted transfer
+# policy. Schema, permitted operation kinds and full origin history are retained.
+# The combined result must still fit destination policy in commit_output.
 def output_policy(decision: T.Decision, candidate: Maybe<&2, C.State>) -> Maybe<&2, T.OutputPolicy>:
   match decision candidate:
     case T.Admitted{T.Ticket{_, T.OutputPolicy{schema, secrecy, untrusted, kinds, origins}}}
@@ -171,6 +180,10 @@ def output_type(candidate: Maybe<&2, C.State>, plan: T.Plan) -> Bool:
     case Some{C.State{types, _, _, _}}:
       U32.is_eq(types, T.Plan.output_type(plan))
 
+# Independent gates remain conjunctive: current negotiation and ledger state,
+# exact scope, source consent, budget/hold, paired grants, graph/sink verification,
+# output type and DLM flow. C.authorize_sink verifies the ORIGINAL trusted graph;
+# the candidate cannot supply a smaller constraint set or manufacture effect grants.
 def checks(+session: N.Session, expected_session: Nat, expected_ledger: Nat,
   +ledger: L.State, +candidate: C.Candidate, binding: Binding, +context: Context) -> Guard.Checks:
   match binding context:
@@ -199,6 +212,11 @@ def commit_result(ok: Bool, next: N.Session, updated: L.State, intent: WriteInte
     case False{}:
       Rejected{old, ledger}
 
+# Ledger.commit below calculates a proposed new ledger; it performs no IO.
+# Only commit_result selects that state and its WriteIntent after every gate,
+# including combined output policy, succeeds. Rejection retains both originals.
+# Preserve this pure boundary when integrating a host: evaluating a provisional
+# ledger value must never itself capture money or publish artifact bytes.
 def commit_output(output: Maybe<&2, T.OutputPolicy>, +session: N.Session, +ledger: L.State,
   expected_ledger: Nat, all_checks: Bool, label: D.Label, backend: Backend,
   artifact: ArtifactId, +context: Context) -> CommitResult:
@@ -228,6 +246,11 @@ def commit_found(found: Maybe<&2, Binding>, +session: N.Session, expected_sessio
         Guard.all(checks(session, expected_session, expected_ledger, ledger, candidate, binding, context)),
         D.join(source_label, destination_label), backend, artifact, context)
 
+# Final model transition for a Running session. Expected session and ledger
+# revisions are checked independently; epochs and all live authorities are read
+# again from Context. Backend, sink and artifact come only from its unique binding.
+# Committed returns state plus intent; the host supplies atomic persistence and
+# publication. Calling this function does not make that external protocol atomic.
 def commit(+session: N.Session, expected_session: Nat, expected_ledger: Nat, ledger: L.State,
   candidate: C.Candidate, +context: Context) -> CommitResult:
   match context:

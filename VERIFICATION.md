@@ -1,7 +1,7 @@
 # Verification record
 
 Verified on 2026-11-03 using **Bend 2.0.39**, Linux x86_64, and **clang 19.1.1**.
-The final source package contains 28 authored `.bend` files. The implementation,
+The final source package contains 34 authored `.bend` files. The implementation,
 examples, test drivers, and proof declarations are all Bend 2.
 
 ## Executable checks
@@ -38,15 +38,45 @@ counting both forms yields 638 per file.
 Reproduction:
 
 ```bash
-bend Tests.bend -o tests.js
-node tests.js
-bend Tests.bend -o tests-native
-./tests-native +RTS --threads 4 --gpu off
+mkdir -p ../writ-build
+bend Tests.bend -o ../writ-build/tests.js
+node ../writ-build/tests.js
+bend Tests.bend -o ../writ-build/tests-native
+../writ-build/tests-native +RTS --threads 4 --gpu off
 ```
 
 A native compiler arity limit encountered in a large test driver was resolved by
 moving large cached fixtures into small helper functions. The final source and
 both complete runs include that fix; the library's policy behavior was unchanged.
+
+## Runnable examples and cleanup review
+
+The four examples are ordinary library clients with named synthetic monitor
+records. They do not import the test suite. Each assertion fails the process
+when its expected outcome changes; the examples are not just printed booleans.
+
+| Example | Assertions per backend | Main demonstration |
+| --- | ---: | --- |
+| `examples/Flow.bend` | 4 | Internal flow permitted, public flow denied, derived-label forgery rejected |
+| `examples/Transfer.bend` | 4 | Exact paired grants and complete retained origin policy |
+| `examples/Commit.bend` | 16 | Guarded negotiation, mount/open, final commit, and exact state preservation after revocation |
+| `examples/Parallel.bend` | 5 | Three device-requesting paths with explicit allow/deny outcomes and host checks |
+| **Total** | **29** | **Separate from the 638-check library suite** |
+
+All four were run through Bend's JavaScript runner and compiled as native
+executables, then run with four CPU threads and `--gpu off`. Their outputs match
+across those backends. The root `Example.bend` and `GpuExample.bend` wrappers were
+also run; their duplicate assertions are not counted again. See
+[examples-js.txt](verification/examples-js.txt),
+[examples-native.txt](verification/examples-native.txt), and the
+[example guide](examples/README.md).
+
+The cleanup added comments to 13 runtime modules. Comparing each against revision
+`03efcc6361528c17773bc04c1c62c553da728209` after removing only full-line comments and
+blank lines gives identical implementation lines. Existing test drivers and proof
+declarations are byte-identical to that revision. Both complete test suites and
+ordinary proof checks were rerun against the current tree. The comparison record
+is in [cleanup-review.txt](verification/cleanup-review.txt).
 
 ## GPU-directed source
 
@@ -59,9 +89,11 @@ entry points survive Bend lowering.
 The example reports:
 
 ```text
-Independent constraint verification: True
-Label batch matches host replay: True
-Batch with missing read grant denied: True
+PASS solver path passes original-graph verifier: True
+PASS label path allows internal and denies public: True
+PASS label path matches complete host replay: True
+PASS transfer path admits paired grants and denies missing read: True
+PASS host transfer replay preserves both outcomes and provenance: True
 ```
 
 See `verification/gpu-codegen.txt`, `gpu-example-js.txt`, and
@@ -102,9 +134,8 @@ tasks remain unchecked. See `verification/openspec-validation.txt`.
 
 This is specification validation, not execution of every acceptance scenario.
 Traceability tables distinguish named executable tests from source review and
-host preconditions. All 28 Bend files remain byte-identical to the earlier native
-test record; the JavaScript suite and ordinary proof checks also passed again
-from the Writ repository layout.
+host preconditions. The documentation cleanup does not complete any proposed
+adapter task or expand the scope of the selected formal laws.
 
 ## Model boundaries
 

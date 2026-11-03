@@ -3,7 +3,12 @@ import Base
 # Pure paired read/write admission. Context is an authenticated snapshot supplied
 # by the monitor; records and tickets are descriptions, not bearer authority.
 # This module performs no IO, cryptography, payment settlement or declassification.
+# Use required_origins to prepare negotiation, then admit for the complete check.
+# Bend exports all helpers; output, scoped and individual *.check functions do
+# not replace admit or the backplane's final commit checks.
 
+# A 64-flag set stored as two U32 words. Secrecy and possible untrusted influence
+# accumulate by union; neither copying nor transforming clears either set.
 type Bits64 is Data:
   Bits64{lo: U32, hi: U32}
 
@@ -13,12 +18,16 @@ type Stamp is Data:
 type ObjectVersion is Data:
   ObjectVersion{object: Nat, version: Nat}
 
+# Separate namespaces: the same numeric ID in each does not confer both rights.
+# The monitor resolves these IDs to authenticated read and write authorities.
 type ReadDomain is Data:
   ReadDomain{id: Nat}
 
 type WriteDomain is Data:
   WriteDomain{id: Nat}
 
+# Exact 256-bit code identity. Equality compares all eight words; this library
+# does not hash artifacts or prove that an executor ran the identified code.
 type CodeId is Data:
   CodeId{a: U32, b: U32, c: U32, d: U32, e: U32, f: U32, g: U32, h: U32}
 
@@ -27,6 +36,8 @@ type OpKind is Data:
   Transform{}
   Summarize{}
 
+# Ordered manifests preserve source order and repeated occurrences. They are
+# not sets: changing order or multiplicity invalidates the matching grant scope.
 type Objects is Data:
   OEnd{}
   OCons{head: ObjectVersion, tail: Objects}
@@ -39,6 +50,8 @@ type Types is Data:
   TEnd{}
   TCons{head: U32, tail: Types}
 
+# required_for is a Copy/Transform/Summarize bitmask (1/2/4). quote identifies
+# the monitor's payment terms; checking a witness does not debit a balance.
 type PaymentRule is Data:
   Free{}
   Charge{quote: Nat, required_for: U32}
@@ -47,6 +60,8 @@ type OriginRule is Data:
   OriginRule{origin: ObjectVersion, secrecy: Bits64, untrusted: Bits64,
     allowed_kinds: U32, approved_codes: Codes, payment: PaymentRule}
 
+# Retain full OriginRule records, including approved code and payment terms.
+# Keeping only origin IDs would lose restrictions on the next transformation.
 type Origins is Data:
   REnd{}
   RCons{head: OriginRule, tail: Origins}
@@ -60,6 +75,9 @@ type Sources is Data:
   SEnd{}
   SCons{head: SourcePolicy, tail: Sources}
 
+# Source schema and operation output_type are single atomic bits within 255.
+# accepted_types and each operation input_types entry are nonempty masks within
+# 255. allowed_kinds uses only bits 1/2/4; zero permits no operation.
 type DestinationPolicy is Data:
   DestinationPolicy{object: ObjectVersion, domain: WriteDomain,
     policy_epoch: Nat, accepted_types: U32, secrecy_clearance: Bits64,
@@ -69,6 +87,9 @@ type ApprovedOperation is Data:
   ApprovedOperation{code: CodeId, kind: OpKind, policy_epoch: Nat,
     input_types: Types, output_type: U32}
 
+# Every read/write grant binds the same complete invocation, input manifest,
+# destination, write domain, code, kind and live stamp. valid_until is exclusive:
+# now == valid_until is already expired. Renewal requires a fresh matching grant.
 type GrantScope is Data:
   GrantScope{invocation: Nat, inputs: Objects, destination: ObjectVersion,
     write_domain: WriteDomain, code: CodeId, kind: OpKind, stamp: Stamp,
@@ -88,6 +109,9 @@ type Writes is Data:
   WriteEnd{}
   WriteCons{head: WriteGrant, tail: Writes}
 
+# An authenticated receipt description, not proof of payment by construction.
+# Receipt authentication, consumption and settlement belong to the monitor;
+# admit only matches witness scope and expiry.
 type PaymentWitness is Data:
   PaymentWitness{receipt: Nat, origin: ObjectVersion, invocation: Nat,
     code: CodeId, kind: OpKind, destination: ObjectVersion, quote: Nat,
@@ -101,6 +125,9 @@ type Plan is Data:
   Plan{stamp: Stamp, invocation: Nat, sources: Objects,
     destination: ObjectVersion, code: CodeId, kind: OpKind, output_type: U32}
 
+# Trusted resolution of the Plan: sources must match its ordered manifest, and
+# operation, grants, payments, epochs and now must come from live monitor state.
+# Passing caller-invented records here would bypass the authority boundary.
 type Context is Data:
   Context{live: Stamp, now: Nat, sources: Sources,
     destination: DestinationPolicy, operation: ApprovedOperation,
@@ -110,6 +137,7 @@ type OutputPolicy is Data:
   OutputPolicy{schema: U32, secrecy: Bits64, untrusted: Bits64,
     allowed_kinds: U32, origins: Origins}
 
+# A proposal for policy persistence, never a consumable or unforgeable permit.
 type Ticket is Data:
   Ticket{plan: Plan, output: OutputPolicy}
 
@@ -297,6 +325,9 @@ def Ticket.output(t: Ticket) -> OutputPolicy:
     case Ticket{p, o}:
       o
 
+# Preserves the full inherited policy when registering a committed artifact.
+# The monitor supplies its actual object/version/domain; this helper neither
+# persists that registration nor proves that the artifact was committed.
 def OutputPolicy.as_source(o: OutputPolicy, object: ObjectVersion,
     domain: ReadDomain, epoch: Nat) -> SourcePolicy:
   match o:
@@ -394,6 +425,8 @@ def lookup_gate(ok: Bool, result: OriginLookup) -> OriginLookup:
 
 # Authoritative origin identities before grants/payment are collected. Exact
 # source versions, ordered manifest, source epochs and live stamp are checked.
+# Missing also covers malformed inherited policies. Found is a preflight result:
+# it grants no read or write and does not establish that payment is satisfied.
 def required_origins(+p: Plan, +c: Context) -> OriginLookup:
   lookup_gate(Stamp.equal(Plan.stamp(p), Context.live(c)) &&
     Objects.nonempty(Plan.sources(p)),
@@ -504,6 +537,8 @@ def Codes.contains(xs: Codes, +wanted: CodeId) -> Bool:
 
 # A read and a write independently bind the complete ordered manifest and the
 # exact write destination/domain; a writer cannot redirect an approved read.
+# For example, adding a write grant for a new bucket cannot make an old read
+# grant valid there: the read grant's destination and write_domain still differ.
 def scoped(g: GrantScope, p: Plan, live: Stamp, now: Nat,
     domain: WriteDomain) -> Bool:
   match g p:
@@ -562,6 +597,9 @@ def Payments.permit(xs: Payments, +origin: ObjectVersion,
       PaymentWitness.matches(h, origin, quote, p, now) ||
         Payments.permit(t, origin, quote, p, now)
 
+# Obligations are checked per origin/quote/invocation, not per occurrence in the
+# input list. Repeated identical origins may use the same matching witness;
+# per-occurrence charges require a distinct ledger policy, not list duplication.
 def PaymentRule.check(rule: PaymentRule, origin: ObjectVersion,
     +p: Plan, c: Context) -> Check:
   match rule c:
@@ -635,6 +673,10 @@ def header(p: Plan, c: Context) -> Check:
                   require(Writes.permit(writes, dobj, ddom,
                     Plan{live, pi, px, pd, pc, pk, pt}, live, now), Write{})))))))
 
+# Each source must already retain every origin's labels and no more operation
+# rights than that origin allows. Aggregation reinforces those constraints:
+# union labels, intersect allowed kinds, and append complete origin records.
+# No content inspection or claimed "summary" can weaken an inherited rule.
 def Origins.aggregate(xs: Origins, out: OutputPolicy) -> OutputPolicy:
   match xs out:
     case REnd{} o:
@@ -661,9 +703,14 @@ def output_seed(p: Plan, d: DestinationPolicy) -> OutputPolicy:
     case Plan{s, i, x, dst, c, k, t} DestinationPolicy{o, w, e, a, sc, si, kinds}:
       OutputPolicy{t, Bits64.zero(), Bits64.zero(), kinds, REnd{}}
 
+# Pure derivation only: callers must use admit to validate this policy before
+# considering it for persistence through the monitor's commit path.
 def output(+p: Plan, +c: Context) -> OutputPolicy:
   Sources.aggregate(Context.sources(c), output_seed(p, Context.destination(c)))
 
+# Copy preserves one source's schema. Transform/Summarize instead use the
+# registered operation's input/output schema contract checked by header/Sources.
+# This checks policy metadata, not the bytes or behavior of an executed program.
 def copy_check(k: OpKind, xs: Sources, output_type: U32) -> Check:
   match k xs:
     case Copy{} SCons{SourcePolicy{o, d, t, e, c, i, kinds, origins}, SEnd{}}:
@@ -689,6 +736,9 @@ def finish(check: Check, p: Plan, out: OutputPolicy) -> Decision:
 
 # Re-run against live authoritative state at release; accepting this result
 # alone does not consume a grant, reservation, receipt or invocation.
+# Admitted contains the Plan and derived OutputPolicy after all paired grants,
+# schema, origin, payment and destination checks. Denied exposes the first
+# failing check in the order below; no output is committed by either result.
 def admit(+p: Plan, +c: Context) -> Decision:
   +out = output(p, c)
   checks = Check.and(header(p, c),
@@ -710,6 +760,7 @@ type Decisions is Data:
 
 # Balanced independent requests can be split across CPU/GPU workers. The GPU
 # entry point is kept in TransferGpu.bend so this library also builds for CPU.
+# Each leaf is its own snapshot check; this is not an atomic batch transaction.
 def batch(xs: Batch) -> Decisions:
   match xs:
     case EmptyBatch{}:
@@ -720,6 +771,8 @@ def batch(xs: Batch) -> Decisions:
       a b = batch(l) batch(r)
       BothDecisions{a, b}
 
+# EmptyDecisions is vacuously true; this predicate is not evidence that any
+# request existed, executed or committed. Use the actual Decision at admission.
 def Decisions.all_accepted(xs: Decisions) -> Bool:
   match xs:
     case EmptyDecisions{}:

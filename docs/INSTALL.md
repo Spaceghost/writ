@@ -1,0 +1,106 @@
+# Install and verify Writ
+
+Writ is validated with **Bend 2.0.39**. Use that exact version when reproducing the
+recorded examples and checks. Bend 1 is a different language and runtime.
+
+## Install the pinned compiler
+
+The following commands install the official Linux x86_64 release into a
+version-specific directory without changing your shell profile. Run them in a
+shell with `curl`, `tar`, and `sha256sum` available:
+
+```sh
+set -eu
+writ_bend_dir="$HOME/.local/share/writ-toolchains/bend-2.0.39"
+mkdir -p "$writ_bend_dir"
+curl --proto '=https' --tlsv1.2 -fL \
+  https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+  -o "$writ_bend_dir/release.tar.gz"
+printf '%s  %s\n' \
+  6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+  "$writ_bend_dir/release.tar.gz" | sha256sum -c -
+tar -xzf "$writ_bend_dir/release.tar.gz" -C "$writ_bend_dir"
+export PATH="$writ_bend_dir/bend/bin:$PATH"
+export BEND_NO_TELEMETRY=1
+bend version
+```
+
+Check that the reported version is `2.0.39`. Keep the extracted `bin/`, `bend2/`,
+and `guide/` directories together: the executable uses its adjacent installation.
+To use it in another shell, repeat the two `export` commands with the same
+`writ_bend_dir` assignment.
+
+For macOS or Linux ARM64, use the matching archive from the same
+[official release](https://github.com/bendlang/bend/releases/tag/v2.0.39).
+The Linux release targets glibc; a musl-only Alpine installation needs a compatible
+environment or a separately validated toolchain. The package's recorded run was
+on Linux x86_64; other platforms are not claimed as tested here.
+
+## Run the examples
+
+```sh
+git clone https://github.com/Spaceghost/writ.git
+cd writ
+bend examples/Flow.bend
+bend examples/Transfer.bend
+bend Example.bend
+bend GpuExample.bend
+```
+
+These are real Bend programs with assertions. A failed expectation exits nonzero.
+The ordinary IO runner uses the JavaScript backend. The
+[example guide](../examples/README.md) records the expected output and explains
+what each check establishes.
+
+All project imports are local. `Base` comes with the compiler. You do not need to
+publish the package to BendHub or install a separate Writ dependency.
+
+## Build a native CPU executable
+
+Install clang 19 or newer for native builds; the recorded build used clang 19.1.1.
+Set `CC` to its executable if the default compiler is different. Keep generated
+files in a sibling build directory, outside the source package:
+
+```sh
+mkdir -p ../writ-build
+CC=clang-19 bend Example.bend -o ../writ-build/example
+../writ-build/example +RTS --threads 4 --gpu off
+CC=clang-19 bend GpuExample.bend -o ../writ-build/parallel
+../writ-build/parallel +RTS --threads 4 --gpu off
+```
+
+Use your compiler's actual name or absolute path in place of `clang-19`.
+`--gpu off` makes this a CPU run, including the device-requesting calls.
+Running without that option still does not establish GPU execution: Bend can
+fall back to the CPU. Device compilation, device identity, execution evidence,
+and performance measurements belong to the separate
+[physical GPU validation change](../openspec/changes/validate-physical-gpu-execution/proposal.md).
+
+## Reproduce the verification
+
+For the explicit JavaScript build below, install Node.js as well; the recorded
+run used Node.js 24.22.1. The ordinary `bend Example.bend` command uses Bend's
+bundled JavaScript runtime and does not require this separate `node` command.
+From the repository root:
+
+```sh
+mkdir -p ../writ-build
+bend DataOS.bend --check-only
+bend GpuLibrary.bend --check-only
+bend Tests.bend -o ../writ-build/tests.js
+node ../writ-build/tests.js
+CC=clang-19 bend Tests.bend -o ../writ-build/tests
+../writ-build/tests +RTS --threads 4 --gpu off
+bend PROOF.bend
+```
+
+Each complete test run should report **638 passing checks** and
+`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks three selected laws about guards
+and preservation of denied state; it does not prove the whole system secure.
+An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.
+The recorded Lean 4.34.0 installation could not start, so that result remains
+unverified. See the [verification record](../VERIFICATION.md).
+
+To validate the specification structure, use OpenSpec **1.16.0** and the commands
+in [openspec/README.md](../openspec/README.md). OpenSpec scenarios and executable
+Bend tests are counted separately.

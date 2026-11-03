@@ -18,6 +18,23 @@ capabilities, epochs, inherited restrictions, budgets, and exact scope at commit
 Changes to a security law require an explicit rationale. Preserve the stated
 invariants; do not weaken a law merely to make a changed implementation pass.
 
+## Code and examples
+
+Keep modules focused and use named helpers for policy bits, identities, and
+scenario facts. Comments should explain authority, invariants, edge direction,
+and failure behavior rather than restating expressions. Document public entry
+points and distinguish them from exported implementation helpers.
+
+Examples belong in `examples/`; root entry points may delegate to them. Keep
+them independent of `*Tests.bend` and `Test.bend`. Mark synthetic authority records
+clearly, exercise both permitted and denied outcomes, and exit nonzero when an
+expected outcome changes. Keep commands, explanations, and captured outputs in
+sync. Do not present example record construction as an authenticated issuer.
+
+When a cleanup is intended to change comments only, compare the implementation
+tokens with the previous revision as well as running the appropriate checks.
+Keep the source manifest and verification record aligned with the delivered tree.
+
 ## Specifications
 
 Read openspec/README.md and the relevant baseline specifications before changing

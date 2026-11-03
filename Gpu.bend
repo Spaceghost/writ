@@ -5,7 +5,11 @@ import ./Core.bend as Core
 # The bang requests the native GPU backend. Bend2 may execute it on the CPU
 # pool when a GPU backend is absent or disabled; JavaScript is sequential.
 # This module never represents successful computation as hardware attestation.
+# solve_gpu is the recommended entry point. Work, Output and the tree helpers
+# are exported by Bend but do not validate an authoritative graph themselves.
 
+# make_tree preserves the original zero-based node order. Blank leaves pad
+# to a power of two; flatten removes that padding from the computed outputs.
 type Work is Data:
   Blank{}
   Item{index: U32, old: Core.State}
@@ -67,6 +71,8 @@ def flatten(tree: Output, tail: +List<Core.State>) -> +List<Core.State>:
     case TwoOutputs{left, right}:
       flatten(left, flatten(right, tail))
 
+# Called by Core.solve_with after graph validation. All leaves read one prior
+# round; only their independent calculations run under the bang.
 def sweep(graph: Core.Graph, previous: +List<Core.State>) -> +List<Core.State>:
   match graph:
     case Core.Graph{stamp, seeds, flow, equal, calls}:
@@ -77,5 +83,8 @@ def sweep(graph: Core.Graph, previous: +List<Core.State>) -> +List<Core.State>:
 
 # Core.solve_with bounds every sweep and runs Core.verify on the authoritative
 # original graph after convergence. The verifier has no bang / GPU call.
+# This is an independent logical check, not a separate memory protection domain.
+# max_rounds has Core.solve_cpu's meaning; a Solved result still needs a live
+# Core.authorize_sink check before the monitor commits an effect.
 def solve_gpu(graph: Core.Graph, max_rounds: Nat) -> Core.SolveResult:
   Core.solve_with(~sweep, graph, max_rounds)

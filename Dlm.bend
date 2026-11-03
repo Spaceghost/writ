@@ -5,6 +5,9 @@ import Base
 # The reference monitor supplies the authoritative epoch and authenticated
 # delegations. These Data constructors are NOT cryptographic capabilities.
 # Compound/dynamic principals are deliberately unsupported and deny closed.
+# Use prepare, acts_for and flows for validated requests, and verify_batch to
+# replay batched answers. Bend exports helpers too; readers/writers and the
+# *_checked functions assume preconditions established by those entry points.
 type Principal is Data:
   Bottom{}
   Top{}
@@ -13,6 +16,8 @@ type Principal is Data:
 
 # Join and Meet are lattice operations. Their meaning is deliberately dual:
 # confidentiality Join intersects readers; integrity Join unions writers.
+# Meet reverses those set operations. Rule uses delegate as the allowed reader
+# in conf, or as a possible writer in integ, under the owner's authority.
 type Policy is Data:
   Rule{owner: Principal, delegate: Principal}
   Join{left: Policy, right: Policy}
@@ -27,6 +32,7 @@ type Edges is Data:
   Edge{actor: Principal, granter: Principal, rest: Edges}
 
 # Row i has bit j exactly when principal i acts for principal j.
+# Slots 0 and 1 are Bottom and Top; Named{id} occupies slot id+2.
 type Rows is Data:
   NoRows{}
   Row{bits: U32, rest: Rows}
@@ -34,6 +40,8 @@ type Rows is Data:
 type Snapshot is Data:
   Snapshot{epoch: Nat, named: U32, delegations: Edges, relation: Rows}
 
+# expected_epoch must come from the caller's live trusted state, not merely
+# from the untrusted proposal being checked.
 type Query is Data:
   Query{expected_epoch: Nat, source: Label, destination: Label}
 
@@ -133,6 +141,8 @@ def edge_bits(edges: Edges, +actor_index: Nat) -> U32:
       own = word(Nat.is_eq(principal_index(actor), actor_index), bit(principal_index(granter)), 0)
       (own .|. edge_bits(rest, actor_index) : U32)
 
+# Seed reflexive edges, everyone acting for Bottom, and Top acting for everyone.
+# Transitive closure then adds only the consequences of these and the edges.
 def seed_row(+i: Nat, mask: U32) -> U32:
   word(Nat.is_eq(i, 1n), mask, (1 .|. bit(i) : U32))
 
@@ -183,6 +193,7 @@ def prepare_checked(ok: Bool, epoch: Nat, +named: U32, +edges: Edges) -> Maybe<&
 
 # Call only with the reference monitor's authenticated delegation snapshot.
 # This library validates its finite semantics; it does not verify signatures.
+# None rejects an oversized universe or an unknown/unsupported principal.
 def prepare(epoch: Nat, +named: U32, +edges: Edges) -> Maybe<&2, Snapshot>:
   prepare_checked(U32.is_le(named, 30) && edges_valid(edges, named), epoch, named, edges)
 
@@ -195,6 +206,7 @@ def closure_checked(ok: Bool, +named: U32, edges: Edges, rows: Rows) -> Bool:
 
 # Exact closure is checked: missing and invented authority are both rejected.
 # Equality with a newly built matrix also checks shape and out-of-range bits.
+# This validates consistency with delegations, not their authenticity or age.
 def valid(snapshot: Snapshot) -> Bool:
   match snapshot:
     case Snapshot{_, +named, +edges, rows}:
@@ -217,6 +229,8 @@ def acts_checked(ok: Bool, snapshot: Snapshot, actor: Principal, granter: Princi
     case False{} _:
       False{}
 
+# Returns false on invalid snapshots, stale epochs or unsupported principals.
+# Direction matters: acts_for(actor, granter) asks who may act for the granter.
 def acts_for(+snapshot: Snapshot, expected_epoch: Nat, +actor: Principal, +granter: Principal) -> Bool:
   acts_checked(valid(snapshot) && Nat.is_eq(epoch(snapshot), expected_epoch)
     && principal_valid(actor, named(snapshot)) && principal_valid(granter, named(snapshot)),
@@ -265,6 +279,9 @@ def writers(policy: Policy, +rows: Rows, +observer: Nat, +mask: U32) -> U32:
 def subset(+small: U32, big: U32) -> Bool:
   U32.is_eq((small .&. big : U32), small)
 
+# A destination may admit fewer readers and more possible writers. These are
+# opposite subset directions: dst.readers <= src.readers, src.writers <= dst.writers.
+# all_observers repeats both checks for every principal, including Top/Bottom.
 def observer_flows(rows: Rows, observer: Nat, mask: U32, source: Label, destination: Label) -> Bool:
   match source destination:
     case Label{sc, si} Label{tc, ti}:
@@ -293,11 +310,16 @@ def flows_checked(ok: Bool, snapshot: Snapshot, source: Label, destination: Labe
 
 # Complete fail-closed entry point. A true result is an IFC check, never a
 # capability, source-owner approval, payment, endorsement, or declassification.
+# For example, copying a value into a label that adds a reader is denied unless
+# the authenticated acts-for relation already makes the two policies equivalent.
 def flows(+snapshot: Snapshot, expected_epoch: Nat, +source: Label, +destination: Label) -> Bool:
   flows_checked(valid(snapshot) && Nat.is_eq(epoch(snapshot), expected_epoch)
     && label_valid(source, named(snapshot)) && label_valid(destination, named(snapshot)),
     snapshot, source, destination)
 
+# These construct label expressions; they neither validate nor authorize them.
+# join safely accumulates dependencies. meet can relax a label, so constructing
+# it is never evidence that a value may be relabeled to the result.
 def join(left: Label, right: Label) -> Label:
   match left right:
     case Label{lc, li} Label{rc, ri}:
@@ -342,10 +364,15 @@ def answers_equal(a: Answers, b: Answers) -> Bool:
 
 # GPU answers are proposals. A CPU caller can replay the complete request
 # tree; shape, denials, epochs, closure and policy semantics must all agree.
+# The replay uses the same policy evaluator, not a separate proof algorithm.
+# Supply a fresh authenticated snapshot and live expected epochs at admission.
+# True means the answer tree agrees, including denials; it does not mean every
+# query is allowed. The caller must also inspect each OneAnswer.allowed value.
 def verify_batch(queries: Batch, snapshot: Snapshot, candidate: Answers) -> Bool:
   answers_equal(batch(queries, snapshot), candidate)
 
 # Fixture registry: Named{0}=Alice, Named{1}=Bob, Named{2}=Mallory.
+# Synthetic example data only; this function does not register real principals.
 def fixture(epoch: Nat) -> Snapshot:
   Snapshot{epoch, 3, NoEdges{},
     Row{1, Row{31, Row{5, Row{9, Row{17, NoRows{}}}}}}}
@@ -356,6 +383,7 @@ def public_untrusted() -> Label:
 def public_trusted() -> Label:
   Label{Rule{Bottom{}, Bottom{}}, Rule{Top{}, Top{}}}
 
+# Uses fixture's Alice/Bob IDs; callers need both names in their own registry.
 def secret_untrusted() -> Label:
   Label{Rule{Named{0}, Named{1}}, Rule{Bottom{}, Bottom{}}}
 

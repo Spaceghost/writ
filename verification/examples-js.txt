@@ -1,0 +1,46 @@
+Writ runnable examples — js
+Bend 2.0.39; native runs: +RTS --threads 4 --gpu off
+
+examples/Flow.bend
+Flow: a summary keeps its report's restrictions.
+PASS constraint candidate verified: True
+PASS internal summary write allowed: True
+PASS public summary write denied for confidentiality: True
+PASS stripped-label candidate rejected: True
+
+examples/Transfer.bend
+Transfer: a source read and destination write must approve the same plan.
+PASS paired transfer keeps exact plan: True
+PASS summary retains full origin policy: True
+PASS write grant alone denied with Read reason: True
+PASS read grant alone denied with Write reason: True
+
+examples/Commit.bend
+Commit: negotiate, mount a capability, and recheck authority at release.
+PASS candidate identity pinned: True
+PASS fresh challenge accepted after pin: True
+PASS paired grants permit protected sampling: True
+PASS registered sample accepted: True
+PASS origin owner approved exact plan: True
+PASS reader execution units reserved: True
+PASS negotiation started: True
+PASS capability mounted in protocol model: True
+PASS descriptor opened in protocol model: True
+PASS authorized commit accepted: True
+PASS write intent retains origin policy and artifact: True
+PASS session reached Committed: True
+PASS reader available units after one reservation: 45
+PASS revoked capability committed: False
+PASS revoked attempt preserves exact held ledger: True
+PASS revoked attempt preserves exact running session: True
+
+examples/Parallel.bend
+Parallel: solver, DLM labels, and paired-transfer batch paths.
+Native GPU dispatch requested; CPU fallback is allowed. No device attestation.
+PASS solver path passes original-graph verifier: True
+PASS label path allows internal and denies public: True
+PASS label path matches complete host replay: True
+PASS transfer path admits paired grants and denies missing read: True
+PASS host transfer replay preserves both outcomes and provenance: True
+
+Total: 29 passing example assertions; four programs exited 0.

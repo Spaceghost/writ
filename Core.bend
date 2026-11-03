@@ -3,25 +3,43 @@ import Base
 # Pure constraint library. These records describe facts; their public
 # constructors do not create capabilities. The enforcing monitor supplies the
 # graph, live stamp, destination policy and live effect grants.
+# Start with solve_cpu, verify and authorize_sink. Bend exports every definition;
+# the merge, fold, sweep and *.checked helpers are implementation steps, not
+# alternate authorization APIs.
 
+# Two U32 words represent 64 independent flags, including flags above bit 31.
+# Labels and effect masks share this representation, not their interpretation.
 type Bits64 is Data:
   Bits64{lo: U32, hi: U32}
 
+# All three epochs must match the monitor's live snapshot at verification.
 type Stamp is Data:
   Stamp{graph: Bits64, policy: Bits64, authority: Bits64}
 
+# types is a nonempty subset of the eight atomic types below. Solving narrows
+# that domain by intersection; secrecy, untrusted and effects grow by union.
+# untrusted records possible influence, so more bits mean less integrity.
 type State is Data:
   State{types: U32, secrecy: Bits64, untrusted: Bits64, effects: Bits64}
 
 type Edge is Data:
   Edge{from: U32, to: U32}
 
+# Node indices are zero-based. flow propagates secrecy/untrusted from -> to;
+# equal constrains both endpoints to the same type domain; calls propagates
+# required effects from -> to, so a call edge is callee -> caller.
+# Example: calls=[Edge{0, 1}] makes node 1 inherit node 0's effects.
+# The monitor must include both data and control dependencies in flow.
 type Graph is Data:
   Graph{stamp: Stamp, nodes: +List<State>, flow: +List<Edge>, equal: +List<Edge>, calls: +List<Edge>}
 
+# Same node order and count as Graph.nodes. A candidate is untrusted until
+# checked against the original graph and the current live stamp.
 type Candidate is Data:
   Candidate{stamp: Stamp, nodes: +List<State>}
 
+# granted_effects is live authority; requested_effect is the actual operation.
+# Both inferred effects and requested_effect must fit the grant mask.
 type Sink is Data:
   Sink{node: U32, secrecy_clearance: Bits64, tolerated_untrusted: Bits64, granted_effects: Bits64, requested_effect: Bits64}
 
@@ -44,6 +62,7 @@ type SolveResult is Data:
   Solved{candidate: Candidate, rounds: Nat}
   SolveFailed{reason: Error}
 
+# A finite schema domain, not Bend's own type system or a byte-format parser.
 def all_types() -> U32:
   255
 
@@ -94,6 +113,8 @@ def Bits64.subset(a: Bits64, b: Bits64) -> Bool:
     case Bits64{+al, +ah} Bits64{bl, bh}:
       U32.is_eq(U32.and(al, bl), al) && U32.is_eq(U32.and(ah, bh), ah)
 
+# Named effect flags occupy the low six bits. Other bits remain representable
+# and must also be covered by the monitor's grant mask when required.
 def read_effect() -> Bits64:
   Bits64{1, 0}
 
@@ -120,6 +141,8 @@ def Stamp.equal(a: Stamp, b: Stamp) -> Bool:
     case Stamp{ag, ap, aa} Stamp{bg, bp, ba}:
       Bits64.equal(ag, bg) && Bits64.equal(ap, bp) && Bits64.equal(aa, ba)
 
+# Constructor conveniences do not validate their input. validate_graph rejects
+# zero domains and bits outside all_types(); unknown means all eight types.
 def State.typed(types: U32) -> State:
   State{types, Bits64.zero(), Bits64.zero(), Bits64.zero()}
 
@@ -211,6 +234,8 @@ def validate_graph.finish(valid: Bool) -> Check:
     case True{}:
       Approved{}
 
+# Checks finite domains, graph sizes and every endpoint before solving. An
+# empty graph is valid, although no sink index can refer to one of its nodes.
 def validate_graph(graph: Graph) -> Check:
   match graph:
     case Graph{stamp, +nodes, flow, equal, calls}:
@@ -290,6 +315,9 @@ def verify.finish(graph_valid: Bool, stamps_valid: Bool, candidate_valid: Bool) 
     case True{} True{} True{}:
       Approved{}
 
+# Independently checks seeds and every original edge; never reuses a solver's
+# work tree or convergence claim. Conservative extra labels/effects and narrower
+# nonempty type domains are allowed. Approval does not authorize a sink.
 def verify(+graph: Graph, candidate: Candidate, +live: Stamp) -> Check:
   match graph candidate:
     case Graph{stamp, seeds, flow, equal, calls} Candidate{candidate_stamp, +nodes}:
@@ -427,6 +455,7 @@ def sweep.go(nodes: +List<State>, +index: U32, +previous: +List<State>, +flow: +
         sweep.go(tail, (index + 1 : U32), previous, flow, equal, calls)}
 
 # Each destination reads the same immutable previous snapshot (Jacobi sweep).
+# This keeps CPU and GPU evaluation order from changing propagation semantics.
 def sweep(graph: Graph, previous: +List<State>) -> +List<State>:
   match graph:
     case Graph{stamp, seeds, flow, equal, calls}:
@@ -476,8 +505,13 @@ def solve_with.checked(~step: Graph -> +List<State> -> +List<State>, check: Chec
       solve_loop(~step, limit, List.is_empty(&2, State, nodes), True{},
         Graph{stamp, nodes, flow, equal, calls}, nodes, 0n)
 
+# Extension point for a sweep implementation. A stable output still has to pass
+# verify against the original graph; step cannot grant authority by returning it.
 def solve_with(~step: Graph -> +List<State> -> +List<State>, +graph: Graph, max_rounds: Nat) -> SolveResult:
   solve_with.checked(~step, validate_graph(graph), graph, max_rounds)
 
+# max_rounds=0n selects node_count+1 sweeps; positive fuel sets an explicit cap.
+# Solved includes the number of sweeps performed, but is not a release permit.
+# Recheck the returned candidate with live state through authorize_sink.
 def solve_cpu(graph: Graph, max_rounds: Nat) -> SolveResult:
   solve_with(~sweep, graph, max_rounds)
