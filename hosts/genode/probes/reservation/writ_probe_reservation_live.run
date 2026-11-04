@@ -1,0 +1,55 @@
+#
+# writ_probe_reservation_live.run - Genode run script (host-layer
+# qualification), not Writ implementation. Genode host-layer lane, Task 1,
+# mode B. Starts writ_probe_reservation with the argument "no-touch" under
+# init on base-linux (BOARD=linux KERNEL=linux) with a 256M RAM quota. The
+# probe reserves 8 GiB through the shim, touches four pages, sets a 16 KiB
+# guard, never touches it, unmaps, and returns 0.
+#
+# Succeeds only if init reports exit value 0 within 60 s and the probe
+# printed no FAIL line.
+#
+# Authority: parent LOG, PD, CPU, ROM, RM, and a Timer session from the
+# sibling timer; the VFS holds only /dev/log.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs app/writ_probe_reservation }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_probe_reservation | caps: 300 | ram: 256M
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_probe_reservation
+    + arg | value: no-touch
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {child "writ_probe_reservation" exited with exit value .*\n} 60
+
+if {[regexp {probe_reservation: FAIL} $output]} {
+	puts stderr "Error: the probe reported a failure"
+	exit 1
+}
+if {![regexp {child "writ_probe_reservation" exited with exit value 0\r?\n} $output]} {
+	puts stderr "Error: writ_probe_reservation did not exit with value 0"
+	exit 1
+}

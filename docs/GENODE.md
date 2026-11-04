@@ -274,3 +274,25 @@ runtime heap-size option for the fixed 8 GiB reservation would be a change to
 Bend's runtime upstream, not to Genode 26.08. Until then, the threads, clock,
 event-loop, and fault rows are established only by plain-C probes, which
 stand in for the Bend program.
+
+### Host-layer memory probe (base-linux, 2026-11)
+
+The memory half of the next step now exists as host binding code in
+[hosts/genode/shim/writ_mem.cc](../hosts/genode/shim/writ_mem.cc) and has
+run with a plain-C probe, not yet with the Bend program. A qualifying anonymous
+`mmap` (at least 1 GiB, read-write, private) becomes a region map from an RM
+session attached into the component. Nothing is backed until a touch. Then a
+2 MiB RAM dataspace from the component's own PD is attached at the touched
+chunk. `mprotect(PROT_NONE)` turns a range into a guard: overlapping chunks
+are re-attached around it, and a touch there is refused and kills the
+component. Under a 256M quota, an 8 GiB reservation cost 233472 bytes of
+metadata. Four touches charged exactly three 2 MiB chunks, and a write into
+the guard ended the component (record:
+[genode-reservation-probe-base-linux.txt](../verification/genode-reservation-probe-base-linux.txt)).
+
+Two base-linux facts limit this result. First, Genode does not deliver
+region-map fault signals on Linux, so the shim fills chunks from a Linux
+SIGSEGV handler it installs itself. Kernels that deliver region-map faults
+need a separate front end, which has not been built. Second, init still
+recorded nothing when the component died, so GB-003's parent-record
+requirement stays open on base-linux.

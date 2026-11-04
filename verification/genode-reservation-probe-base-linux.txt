@@ -1,0 +1,292 @@
+Genode host-layer lane, Task 1: lazily populated reservation with a guard page
+(C probe, base-linux)
+Recorded: 2026-11-03, 22:22 to 22:25 -06:00
+
+Platform: Genode 26.08 (d18ee9e917200b059549e21f2dd9a55bfe61a0eb), build directory
+../writ-genode/build/x86_64 (BOARD=linux KERNEL=linux), tool chain and host as
+verification/genode-pins.txt. This is Genode-on-Linux (base-linux) evidence:
+core, init, and every component are Linux processes. It is not native Genode
+execution and says nothing about base-hw, NOVA, or seL4. CPU only; no device.
+
+The component is a plain-C probe, not a Bend program. No .bend file and no
+generated C was touched. The Bend build (writ_bend_hello) is Task 2.
+
+
+1. What was built
+-----------------
+
+  hosts/genode/shim/writ_mem.cc            the shim's memory unit (C++; GB-006)
+  hosts/genode/probes/reservation/
+    probe_reservation.c                    the C main (two modes, argv[1])
+    target.mk                              LIBS = base libc; SRC_CC = writ_mem.cc
+    writ_probe_reservation_live.run        mode B ("no-touch"), ram 256M
+    writ_probe_reservation_guard.run       mode A ("guard-touch"), ram 256M
+  scripts/genode/writ_hello/build.conf.fragment
+                                           WRIT_RUN_SCENARIOS += the two scenarios
+
+Live copies in the Genode writ-repo (../writ-genode/writ-repo/), byte-identical
+to the committed files (cmp, all five, after the last run):
+
+  8f313e946e027e7587a248cb702c0253719f5153d377f196d03d4a441d5e679b  src/writ_shim/writ_mem.cc
+  3ab767f1abf79476f181c3e117c83060ae23c1bc6f0aecbbe637915b4b464de7  src/app/writ_probe_reservation/probe_reservation.c
+  1d0e82ff5e7743beac5974d58ff61e847ccb918e81ab8755cda237f6420c6529  src/app/writ_probe_reservation/target.mk
+  18ce2570ea2e9f4e95325d318ea814d21b2dce272431d131ffcdac2a4fdeba99  run/writ_probe_reservation_live.run
+  739417b4baf90a36a9dee9f1068637e38dbebe887bd1035d008284d9e3ea7d06  run/writ_probe_reservation_guard.run
+
+Binary (not committed):
+  7d83a94d15e0c4093b9b9091eae70c6a4c73a19f0aef4e73929e764cb3089055  build/x86_64/bin/writ_probe_reservation
+
+Both translation units are compiled by the Genode tool chain (genode-x86-g++ /
+gcc 14.2.0). The target.mk reaches writ_mem.cc with
+"vpath writ_mem.cc $(REP_DIR)/src/writ_shim".
+
+Build errors on the way, with fixes:
+  B1  writ_mem.cc: "'Reservation::used' should be initialized in the member
+      initialization list [-Werror=effc++]" (and Chunk). Fix: default member
+      initializers on Chunk and Reservation.
+  B2  link: undefined references to Genode::Mutex::acquire, Heap::try_alloc,
+      Region_map_client::Region_map_client, Rm_session_client::destroy, ...
+      Fix: LIBS = base libc (posix is not linked; the shim provides
+      Libc::Component::construct itself, as repos/libports/src/lib/posix/
+      construct.cc does).
+
+
+2. Genode 26.08 sources relied on (paths under ../writ-genode/genode/)
+---------------------------------------------------------------------
+
+  repos/base/include/rm_session/connection.h      Rm_connection(env), create(size), destroy(cap)
+  repos/base/include/region_map/client.h          Region_map_client: attach, detach, dataspace
+  repos/base/include/region_map/region_map.h      Region_map::Attr {size, offset, use_at, at,
+                                                  executable, writeable}; fault_handler()'s doc:
+                                                  "On Linux, this signal is never delivered because
+                                                  page-fault handling is performed by the Linux kernel."
+  repos/base/include/base/local.h                 Env::rm() (Local::Constrained_region_map): attach,
+                                                  Attachment.deallocate, detach
+  repos/base/include/pd_session/pd_session.h      alloc_ram (:120), free_ram (:127), Stats with
+                                                  ram.limit/used/avail (:265-279); 26.08 has
+                                                  stats() rather than used_ram()
+  repos/base/include/base/attached_ram_dataspace.h  read for the alloc/attach/free pattern; the shim
+                                                  allocates with Pd_session::alloc_ram directly so it
+                                                  can attach one dataspace in several pieces
+  repos/base/include/base/shared_object.h         Shared_object(env, alloc, "libc.lib.so", ...).lookup
+  repos/libports/include/libc/component.h, libc/args.h   Libc::Component::construct, populate_args_and_env
+  repos/libports/src/lib/libc/file_operations.cc:648-671  libc's anonymous mmap (commits and zeroes)
+  repos/libports/src/lib/libc/dummies.cc:126      libc's mprotect (weak dummy, -1, ENOSYS)
+  repos/libports/lib/symbols/libc:486-490         libc exports only mmap/mprotect/munmap (no
+                                                  __sys_mmap alias), so the originals are reached by
+                                                  a lookup in libc.lib.so, not by a second name
+  repos/base/src/lib/ldso/shared_object.cc:97-114 Shared_object::_lookup starts at the object's
+                                                  first dependency (libc.lib.so), not the binary
+  base-linux specifics:
+  repos/base-linux/src/lib/base/region_map_client.cc:49-56  fault_handler(): empty body
+  repos/base-linux/src/include/base/internal/region_map_mmap.h:132  fault_handler(): empty
+  repos/base-linux/src/include/base/internal/local_rm_session.h:45-65  RM is a local session;
+                                                  destroy() also detaches the sub region map
+  repos/base-linux/src/lib/base/region_map_mmap.cc:76-119  unpopulated managed-dataspace range =
+                                                  PROT_NONE MAP_PRIVATE|MAP_ANONYMOUS reservation
+  repos/base-linux/src/lib/base/region_map_mmap.cc:234-269, 389-406  sub-RM attach maps the RAM
+                                                  dataspace's file MAP_SHARED|MAP_FIXED at
+                                                  base + at with the given file offset; detach
+                                                  munmaps and re-reserves PROT_NONE
+  repos/base-linux/src/include/base/internal/region_registry.h:64  MAX_REGIONS = 4096 per region map
+  repos/base-linux/src/lib/base/thread_env.cc:42-73, 93  base-linux's own SIGSEGV handler,
+                                                  installed once at main-thread start
+  repos/base-linux/src/lib/syscall/linux_syscalls.h:321-378,
+  repos/base-linux/src/lib/syscall/spec/x86_64/lx_restore_rt.S  rt_sigaction with SA_RESTORER
+
+
+3. Mechanism as built, and how it differs from the brief
+-------------------------------------------------------
+
+Reservation: a qualifying mmap (len >= 1 GiB, PROT_READ|PROT_WRITE,
+MAP_PRIVATE|MAP_ANON, no MAP_FIXED/MAP_SHARED, fd -1, offset 0) creates a region
+map of the page-rounded size with Rm_connection::create and attaches its
+dataspace through Env::rm() (at the address hint if one is given and free,
+otherwise anywhere). Nothing is populated.
+
+Population: 2 MiB chunks, each a RAM dataspace from the component's own PD
+(Pd_session::alloc_ram), attached into the region map at the chunk offset.
+Before allocating, the shim checks Pd_session::stats().ram.avail() >= chunk +
+64 KiB, so a fault never becomes a blocking resource request.
+
+Guard: mprotect(PROT_NONE) on a page-aligned range inside a reservation is
+recorded as a guard. Each populated chunk overlapping it is detached and the
+SAME dataspace re-attached as the pieces outside the guard (Region_map::Attr
+size/offset), so bytes outside the guard are kept and the guard range has no
+mapping. The fault handler never populates a guard. Lifting a guard
+(PROT_READ|PROT_WRITE over it) and any other prot value fail with -1 ENOTSUP.
+mprotect outside every reservation is forwarded to libc (-1 ENOSYS).
+
+munmap: only the whole reservation (exact base, page-rounded length) is
+accepted; it detaches each chunk's pieces, frees each chunk dataspace
+(free_ram), detaches the region map from Env::rm(), and destroys it. A partial
+munmap of a reservation fails with -1 EINVAL. Other ranges go to libc.
+
+Fault delivery (DEVIATION from the brief). The brief asks for a Genode fault
+handler (region-map fault signal). On base-linux that signal is never
+delivered (region_map.h doc comment; region_map_client.cc:49-56 is an empty
+body), and an unpopulated managed-dataspace page is a PROT_NONE Linux mapping,
+so the touch is a Linux SIGSEGV. The shim therefore installs its own Linux
+SIGSEGV handler with the raw rt_sigaction system call (SA_SIGINFO |
+SA_RESTORER | SA_RESTART | SA_ONSTACK, own rt_sigreturn restorer), the same way
+base-linux installs its exception handler, at the first qualifying mmap. The
+handler resolves the fault on the faulting thread and returns, so the access
+is retried. Every refusal (guard page, outside every reservation, populated
+chunk, chunk could not be charged) prints one line with Genode::raw, sets
+SIGSEGV to SIG_DFL, and returns; the retried access faults again and Linux
+kills the process. The region-map fault-signal front end needed on base-hw,
+NOVA, or seL4 is NOT built and NOT exercised here.
+
+Reaching libc's originals: the binary defines mmap/munmap/mprotect (and
+exports them in .dynsym: readelf --dyn-syms shows mmap, munmap, mprotect
+GLOBAL DEFAULT in section 1), so calls from the probe bind to the shim at
+static link time. The originals are looked up with
+Shared_object(env, heap, "libc.lib.so", BIND_LAZY, KEEP).lookup(...); the shim
+refuses to start if a lookup returns its own function. Observed: libc
+mmap=0x16d14bc0, munmap=0x16d0aa00, mprotect=0x16cfc150; shim mmap=0x10071d0.
+No libc override mechanism was needed: link order plus that lookup worked.
+
+
+4. Run B (mode "no-touch") - writ_probe_reservation_live
+--------------------------------------------------------
+
+Command (both runs):
+  cd ../writ-genode/build/x86_64 && make run/writ_probe_reservation_live
+Run 1: started 2026-11-03T22:22:29-06:00, make exit 0, log ../writ-genode/run-reservation-live-1.out
+Run 2: started 2026-11-03T22:23:41-06:00, make exit 0, log ../writ-genode/run-reservation-live-2.out
+The two logs are identical from "spawn ./core" on (diff, no output).
+Quota: ram 256M, caps 300.
+
+  spawn ./core
+  Genode 26.08
+  17592186044415 MiB RAM and 19000 caps assigned to init
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x10071d0
+  [init -> writ_probe_reservation] probe_reservation: mode no-touch
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1331200 limit=268319324 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1564672 limit=268319324 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of the guard window
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=7856128 limit=268319324 reservations=1 guards=0 chunks populated (total)=3 faults resolved=3
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=7856128 limit=268319324 reservations=1 guards=1 chunks populated (total)=3 faults resolved=3
+  [init -> writ_probe_reservation] probe_reservation: bytes around the guard kept after the split
+  [init -> writ_probe_reservation] Warning: mprotect: mprotect not implemented
+  [init -> writ_probe_reservation] probe_reservation: small mmap via libc at 0x7ffff7f72000; mprotect outside a reservation = -1 (errno 78)
+  [init -> writ_probe_reservation] probe_reservation: lifting the guard refused (errno 45)
+  [init -> writ_probe_reservation] writ_mem: [after munmap] ram used=1396736 limit=268319324 reservations=0 guards=0 chunks populated (total)=3 faults resolved=3
+  [init -> writ_probe_reservation] probe_reservation: done, exiting 0
+  [init] child "writ_probe_reservation" exited with exit value 0
+
+  Run script execution successful.
+
+(The Warning line carries ANSI colour codes in the raw log.) errno 78 is
+FreeBSD ENOSYS (libc's dummy mprotect, reached by forwarding); errno 45 is
+FreeBSD ENOTSUP/EOPNOTSUPP (the shim refusing to lift a guard).
+
+RAM (Pd_session::stats().ram, bytes, limit 268319324 = 256M minus init's share):
+  start                         1331200
+  after 8 GiB mmap, untouched   1564672   (+233472: region-map and chunk-table metadata, no RAM backing)
+  after four touches            7856128   (+6291456 = exactly 3 x 2 MiB chunks: first page,
+                                           last page, and the one chunk holding both sides of
+                                           the guard window)
+  after mprotect                7856128   (unchanged: the split chunk keeps its dataspace)
+  after munmap                  1396736   (chunks freed; 65536 above start remain, the RM
+                                           session and heap state the shim keeps)
+Exit value: 0.
+
+
+5. Run A (mode "guard-touch") - writ_probe_reservation_guard
+------------------------------------------------------------
+
+Command (both runs):
+  cd ../writ-genode/build/x86_64 && make run/writ_probe_reservation_guard
+Run 1: started 2026-11-03T22:22:45-06:00, make exit 0, log ../writ-genode/run-reservation-guard-1.out
+       (script without the ps control line; printed "process alive: 0")
+Run 2: started 2026-11-03T22:23:46-06:00, make exit 0, log ../writ-genode/run-reservation-guard-2.out
+       (committed script, with the timer process as the ps control)
+The component's lines up to the refusal are identical in both runs (diff).
+Quota: ram 256M, caps 300.
+
+Run 2, from "spawn ./core":
+
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x10071d0
+  [init -> writ_probe_reservation] probe_reservation: mode guard-touch
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1331200 limit=268319324 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1564672 limit=268319324 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of the guard window
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=7856128 limit=268319324 reservations=1 guards=0 chunks populated (total)=3 faults resolved=3
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=7856128 limit=268319324 reservations=1 guards=1 chunks populated (total)=3 faults resolved=3
+  [init -> writ_probe_reservation] probe_reservation: bytes around the guard kept after the split
+  [init -> writ_probe_reservation] probe_reservation: writing inside the guard window at 0x7ffef7f02000
+  Kernel: writ_mem: unresolved fault at 0x7ffef7f02000 (guard page), component terminates
+
+  --- writ_probe_reservation_guard outcome ---
+  guard refusal line: 1
+  resumed line:       0
+  FAIL line:          0
+  init exit line:     0 (value none)
+  process alive:      0
+  ps control (timer): 1
+
+  Run script execution successful.
+
+(Genode::raw output appears in the log prefixed "Kernel:", as base-linux's
+own "Segmentation fault" line did in the fault-row probe.) 0x7ffef7f02000 = base 0x7ffdf7e00000 + 0x100102000, i.e. 8 KiB into
+the guard window at +0x100100000.
+
+Host kernel log (journalctl -k), one line per run:
+  Nov 03 22:22:49 solomon kernel: ld.lib.so[1934290]: segfault at 7ffef7f02000 ip 00000000010004e3 sp 00000000403ffdd0 error 6 in writ_probe_reservation.stripped[14e3,1000000+c000] likely on CPU 31 (core 15, socket 0)
+  Nov 03 22:23:52 solomon kernel: ld.lib.so[1944211]: segfault at 7ffef7f02000 ip 00000000010004e3 sp 00000000403ffdd0 error 6 in writ_probe_reservation.stripped[14e3,1000000+c000] likely on CPU 1 (core 1, socket 0)
+
+Outcome: the guard write was refused by the shim, the probe did not resume
+(no "resumed past the guard" line, no exit value 3), and Linux terminated the
+component's process (absent from ps 30 s later while the sibling timer's
+process was still listed; kernel segfault line at the guard address). RAM
+used at the moment of death: 7856128 bytes (last report before the touch).
+
+Parent record: init logged NOTHING about the child within 60 + 30 s, in both
+runs, as the earlier fault-row probe also found
+(verification/genode-runtime-rows-base-linux.md, Faults). The observation on
+base-linux is the shim's own refusal line, the vanished process, and the host
+kernel log. The acceptance clause "with the parent logging the fault" is NOT
+met on base-linux; GB-003's parent-record requirement stays open.
+
+
+6. Acceptance against the task
+------------------------------
+
+  8 GiB anonymous reservation under a 256M quota      met (both modes; +233472 bytes
+                                                      of metadata, no RAM backing)
+  touched pages charged lazily                        met (+3 x 2 MiB for four touches
+                                                      in three chunks; nothing at mmap)
+  guard-page touch kills the component                met (shim refusal, segfault at the
+                                                      guard address, process gone)
+  parent logs the fault                               NOT met on base-linux (init silent)
+  fault handler is a Genode region-map signal         NOT as specified: base-linux never
+                                                      delivers it; a Linux SIGSEGV front
+                                                      end is used and recorded as such
+
+
+7. Limits
+---------
+
+- base-linux (Genode-on-Linux) only; not native; nothing about base-hw/NOVA/seL4.
+- The fault front end is base-linux-specific (raw Linux rt_sigaction) and runs
+  a PD RPC (alloc_ram) and a local region-map attach from signal context on
+  the faulting thread. Safe for this single-threaded probe; with several
+  lanes, a fault while the same thread holds a Genode lock the handler needs
+  would deadlock. Not tested with threads.
+- The shim's SIGSEGV handler replaces base-linux's process-wide after the
+  first qualifying mmap; for faults outside every reservation it prints its
+  own line instead of base-linux's "Segmentation fault (signum=11)" and still
+  terminates. SIGBUS, SIGILL, SIGFPE keep base-linux's handler.
+- Not exercised: the "chunk could not be charged" refusal (touching more than
+  the quota), address hints (the runtime's corpus_at probes hints from 2^45
+  down), partial-munmap refusal, more than one reservation, more than 4096
+  pieces in one region map (base-linux MAX_REGIONS; an 8 GiB reservation
+  fully touched is exactly 4096 chunks plus any guard split pieces).
+- Bounds: 32 reservations, 4 guards each, 2 MiB chunks, 1 GiB threshold.
+- The probe is a C stand-in; the Bend runtime has not run with the shim yet
+  (Task 2).

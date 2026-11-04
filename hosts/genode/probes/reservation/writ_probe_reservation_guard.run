@@ -1,0 +1,89 @@
+#
+# writ_probe_reservation_guard.run - Genode run script (host-layer
+# qualification), not Writ implementation. Genode host-layer lane, Task 1,
+# mode A. Starts writ_probe_reservation with the argument "guard-touch"
+# under init on base-linux (BOARD=linux KERNEL=linux) with a 256M RAM
+# quota. The probe reserves 8 GiB through the shim, sets a 16 KiB guard,
+# and writes inside it; the shim's fault handler must refuse the fault and
+# the component must die.
+#
+# The script waits up to 60 s for the shim's refusal line, init's exit
+# report, or a "resumed past the guard" line, then keeps reading for 30 s
+# so a later init report is captured, and then asks the host whether the
+# component's Linux process still exists (base-linux runs each component
+# as a Linux process named "[Genode] init -> <name>"; the sibling timer's
+# process is the control that the listing works). It prints what it
+# saw and succeeds only if: the refusal names the guard page, the probe
+# did not resume, no FAIL line appeared, and either init reported a
+# nonzero exit or the component's process is gone while the timer's is
+# still listed.
+#
+# Authority: as writ_probe_reservation_live.run.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs app/writ_probe_reservation }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_probe_reservation | caps: 300 | ram: 256M
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_probe_reservation
+    + arg | value: guard-touch
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {(writ_mem: unresolved fault|child "writ_probe_reservation" exited with exit value|probe_reservation: resumed|probe_reservation: FAIL)[^\n]*\n} 60
+
+set spawn_id [output_spawn_id]
+expect -timeout 30 \
+	-re {[^\n]*\n} { append output $expect_out(0,string); exp_continue } \
+	timeout { } \
+	eof { }
+
+set ps_out ""
+catch { set ps_out [exec ps -eo pid,args] }
+set alive [regexp {\[Genode\] init -> writ_probe_reservation} $ps_out]
+# control: the sibling timer must still be listed, or the ps check proves nothing
+set control [regexp {\[Genode\] init -> timer} $ps_out]
+
+set refused   [regexp {writ_mem: unresolved fault at [^\n]*guard page} $output]
+set resumed   [regexp {probe_reservation: resumed} $output]
+set failed    [regexp {probe_reservation: FAIL} $output]
+set init_exit [regexp {child "writ_probe_reservation" exited with exit value ([0-9-]+)} $output -> exit_value]
+if {!$init_exit} { set exit_value "none" }
+
+puts "\n--- writ_probe_reservation_guard outcome ---"
+puts "guard refusal line: $refused"
+puts "resumed line:       $resumed"
+puts "FAIL line:          $failed"
+puts "init exit line:     $init_exit (value $exit_value)"
+puts "process alive:      $alive"
+puts "ps control (timer): $control"
+
+if {$resumed || $failed || !$refused} {
+	puts stderr "Error: guard touch did not end in a refused fault"
+	exit 1
+}
+if {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
+	puts stderr "Error: the component neither exited nonzero nor vanished"
+	exit 1
+}

@@ -35,7 +35,7 @@
 ## but runs tool/run/run through a locally obtained expect interpreter.
 WRIT_EXPECT ?= <writ-genode>/host-tools/expect/bin/expect
 
-WRIT_RUN_SCENARIOS ?= log writ_hello writ_bend_hello writ_bend_rts writ_probe_threads writ_probe_clock writ_probe_evloop writ_probe_process writ_probe_fault
+WRIT_RUN_SCENARIOS ?= log writ_hello writ_bend_hello writ_bend_rts writ_probe_threads writ_probe_clock writ_probe_evloop writ_probe_process writ_probe_fault writ_probe_reservation_live writ_probe_reservation_guard
 
 $(addprefix run/,$(WRIT_RUN_SCENARIOS)): run/%:
 	$(VERBOSE)test -f "$(call select_from_repositories,run/$*.run)" || (echo "Error: No run script for $*"; exit -1)
