@@ -1,0 +1,191 @@
+name: WritFS native filesystems
+
+on:
+  push:
+    branches:
+      - main
+      - writfs-native-ci
+    paths:
+      - 'writfs/**'
+      - 'lib/**'
+      - '*.bend'
+      - 'contrib/rclone/bend/Authority.bend'
+      - 'docs/INSTALL.md'
+      - '.github/workflows/writfs-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    name: Native ${{ matrix.backend }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [btrfs, zfs]
+    env:
+      BEND_NO_TELEMETRY: '1'
+      CC: clang-19
+      WRITFS_TEST_BACKEND: ${{ matrix.backend }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Record runner environment
+        run: |
+          set -euo pipefail
+          writfs_log_directory="$RUNNER_TEMP/writfs-native-logs"
+          mkdir -p "$writfs_log_directory"
+          printf 'WRITFS_LOG_DIRECTORY=%s\n' "$writfs_log_directory" >> "$GITHUB_ENV"
+          {
+            printf 'Commit: %s\nBackend: %s\n' "$GITHUB_SHA" "$WRITFS_TEST_BACKEND"
+            printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+            uname -a
+            cat /etc/os-release
+          } 2>&1 | tee "$writfs_log_directory/environment.log"
+
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install native tools and require the kernel module
+        run: |
+          set -euo pipefail
+          {
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends \
+              clang-19 btrfs-progs zfsutils-linux kmod coreutils util-linux udev
+            writfs_kernel="$(uname -r)"
+            if ! sudo modprobe "$WRITFS_TEST_BACKEND"; then
+              # Match the running kernel; a replacement kernel would need a reboot.
+              sudo apt-get install --yes --reinstall --no-install-recommends \
+                "linux-modules-$writfs_kernel"
+              sudo depmod -a "$writfs_kernel"
+              sudo modprobe "$WRITFS_TEST_BACKEND"
+            fi
+            clang-19 --version
+            btrfs --version
+            if [ "$WRITFS_TEST_BACKEND" = zfs ]; then
+              zfs version
+            fi
+            modinfo "$WRITFS_TEST_BACKEND"
+          } 2>&1 | tee "$WRITFS_LOG_DIRECTORY/native-tools.log"
+
+      - name: Install and verify Bend 2.0.39
+        run: |
+          set -euo pipefail
+          {
+            writfs_bend_directory="$RUNNER_TEMP/writfs-bend-2.0.39"
+            mkdir -p "$writfs_bend_directory"
+            curl --proto '=https' --tlsv1.2 --retry 3 -fL \
+              https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+              -o "$writfs_bend_directory/release.tar.gz"
+            printf '%s  %s\n' \
+              6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+              "$writfs_bend_directory/release.tar.gz" | sha256sum -c -
+            tar -xzf "$writfs_bend_directory/release.tar.gz" -C "$writfs_bend_directory"
+            writfs_bend_version="$("$writfs_bend_directory/bend/bin/bend" version)"
+            printf '%s\n' "$writfs_bend_version"
+            test "$writfs_bend_version" = 'bend 2.0.39'
+            printf '%s\n' "$writfs_bend_directory/bend/bin" >> "$GITHUB_PATH"
+          } 2>&1 | tee "$WRITFS_LOG_DIRECTORY/bend-toolchain.log"
+
+      - name: Compile native Bend integration tests
+        run: |
+          set -euo pipefail
+          {
+            mkdir -p ../writfs-build
+            bend writfs/NativeIntegration.bend -o ../writfs-build/native-integration
+          } 2>&1 | tee "$WRITFS_LOG_DIRECTORY/compile.log"
+
+      - name: Run Bend tests on an isolated native filesystem
+        run: |
+          set -euo pipefail
+          (
+            writfs_fixture="$(mktemp -d "$RUNNER_TEMP/writfs-native.XXXXXX")"
+            writfs_loop=''
+            writfs_mount="$writfs_fixture/btrfs"
+            writfs_mounted=0
+            writfs_pool=''
+            writfs_pool_created=0
+
+            cleanup() {
+              writfs_result=$?
+              trap - EXIT INT TERM
+              set +e
+              # Ownership flags are set only after successful fixture creation.
+              if [ "$writfs_pool_created" = 1 ]; then
+                if ! sudo zpool destroy "$writfs_pool"; then
+                  writfs_result=1
+                fi
+              fi
+              if [ "$writfs_mounted" = 1 ]; then
+                if sudo umount "$writfs_mount"; then
+                  writfs_mounted=0
+                else
+                  writfs_result=1
+                fi
+              fi
+              if [ -n "$writfs_loop" ] && [ "$writfs_mounted" = 0 ]; then
+                if ! sudo losetup --detach "$writfs_loop"; then
+                  writfs_result=1
+                fi
+              fi
+              printf 'Native fixture cleanup finished; exit status: %s\n' "$writfs_result"
+              exit "$writfs_result"
+            }
+            trap cleanup EXIT
+            trap 'exit 130' INT
+            trap 'exit 143' TERM
+
+            mkdir -p "$writfs_fixture/mounts"
+            case "$WRITFS_TEST_BACKEND" in
+              btrfs)
+                truncate -s 1G "$writfs_fixture/btrfs.img"
+                mkfs.btrfs "$writfs_fixture/btrfs.img"
+                writfs_loop="$(sudo losetup --find --show "$writfs_fixture/btrfs.img")"
+                mkdir -p "$writfs_mount"
+                sudo mount -t btrfs "$writfs_loop" "$writfs_mount"
+                writfs_mounted=1
+                writfs_root="$writfs_mount"
+                findmnt --target "$writfs_mount"
+                ;;
+              zfs)
+                truncate -s 1G "$writfs_fixture/zfs.img"
+                writfs_pool="writfs_ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+                sudo zpool create -o cachefile=none -O mountpoint=none \
+                  "$writfs_pool" "$writfs_fixture/zfs.img"
+                writfs_pool_created=1
+                writfs_root="$writfs_pool"
+                sudo zpool status "$writfs_pool"
+                ;;
+              *)
+                printf 'Unsupported test backend: %s\n' "$WRITFS_TEST_BACKEND" >&2
+                exit 1
+                ;;
+            esac
+
+            # The native Bend program owns the assertions and operation policy.
+            sudo env -i \
+              PATH=/usr/sbin:/usr/bin:/sbin:/bin \
+              LC_ALL=C \
+              BEND_NO_TELEMETRY=1 \
+              WRITFS_TEST_BACKEND="$WRITFS_TEST_BACKEND" \
+              WRITFS_TEST_ROOT="$writfs_root" \
+              WRITFS_TEST_DIRECTORY="$writfs_fixture/mounts" \
+              "$GITHUB_WORKSPACE/../writfs-build/native-integration" \
+              +RTS --threads 4 --gpu off
+          ) 2>&1 | tee "$WRITFS_LOG_DIRECTORY/native-integration.log"
+
+      - name: Retain native verification logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writfs-native-${{ matrix.backend }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writfs-native-logs/
+          if-no-files-found: error
+          retention-days: 14
