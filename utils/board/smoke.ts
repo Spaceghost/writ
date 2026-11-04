@@ -241,6 +241,11 @@ try {
   check("the task row follows the change row, spans the table, and is shown by the signal", taskRowStart > rowStart && taskRowHtml.includes(`data-show="$${sig}"`) && taskRowHtml.includes('data-preserve-attr="style"') && taskRowHtml.includes('<td colspan="6">'));
   check("open tasks come first, done ones behind a nested toggle", taskRowHtml.indexOf('class="task task-open"') < taskRowHtml.indexOf('class="task task-done"') && taskRowHtml.includes(`<details id="done-${expected}" class="donelist" data-preserve-attr="open"><summary>`));
   check("the table declares one signal per change with a task list", tables.includes(`data-signals__ifmissing=`) && tables.includes(`&quot;${sig}&quot;:false`));
+  const asig = `a_${expected.replace(/-/g, "_")}`;
+  check("the change row carries an activity icon with the last lines as its tooltip", row.includes(`class="act" aria-label="Show recent activity" aria-controls="activity-${expected}"`) && row.includes("started the probe build") && row.includes(`data-on:click="$${asig} = !$${asig}"`));
+  const actStart = tables.indexOf(`<tr id="activity-${expected}" class="taskrow activityrow"`);
+  const actRow = tables.slice(actStart, tables.indexOf("</tr>", actStart));
+  check("the activity row follows the change row and lists the lane's lines newest-first in a reversed list", actStart > rowStart && actRow.includes(`data-show="$${asig}"`) && actRow.includes('<ol class="log" reversed>') && actRow.indexOf("started the probe build") < actRow.indexOf("read the brief") && actRow.includes("smoke-lane · implementer"));
   check("changes with no task and no lane are collapsed", tables.includes('id="rest-changes"') && /\d+ more changes with no task done and no lane/.test(tables));
   check("lane card shows its status line and the change it is on", lanesHtml.includes('class="lane-phase">Task 1 · fix round') && lanesHtml.includes(`lane-changes">on <a href="/change/${expected}"`));
   check("lane card's activity feed is newest-first in the DOM inside a reversed list (rendered oldest to newest, scrolled to the end)", lanesHtml.includes('<ol class="log" reversed>') && lanesHtml.indexOf("started the probe build") < lanesHtml.indexOf("read the brief") && lanesHtml.includes('log-who">implementer'));

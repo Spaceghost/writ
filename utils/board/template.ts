@@ -8,7 +8,7 @@
 // <details>, and the `style`/`aria-selected` that the explainer tabs set.
 // Nested elements a morph should match keep stable ids for the same reason.
 
-import type { Baseline, Change, Lane, LaneScan, LaneStatus, Phase, TaskItem } from "./server.ts";
+import type { ActivityLine, Baseline, Change, Lane, LaneScan, LaneStatus, Phase, TaskItem } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
@@ -138,6 +138,39 @@ function taskRow(c: Change, columns: number): string {
   return `<tr id="tasks-${slug(c.name)}" class="taskrow" data-show="$${taskSignal(c)}" data-preserve-attr="style" style="display:none"><td colspan="${columns}"><div class="taskrow-inner"><div class="doc-label">openspec/changes/${esc(c.name)}/tasks.md · ${open.length} to do · ${done.length} done</div>${openList}${doneList}</div></td></tr>`;
 }
 
+/** Datastar signal for a change's activity row. */
+const activitySignal = (c: Change) => `a_${slug(c.name).replace(/-/g, "_")}`;
+
+/** The newest activity lines across the lanes on a change, oldest first. */
+function changeActivity(lanes: Lane[]): (ActivityLine & { lane: string })[] {
+  const all = lanes.flatMap((l) => l.activity.map((a) => ({ ...a, lane: l.name })));
+  return all.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)).slice(-ACTIVITY_ROW_LINES);
+}
+const ACTIVITY_ROW_LINES = 10;
+
+/** The time part of an ISO timestamp, as the feeds show it. */
+const clock = (at: string) => at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, "");
+
+/**
+ * The activity icon on a change row: hover shows the last three lines as a
+ * tooltip, click opens a full-width row with the last ten lines across the
+ * lanes on the change (same reversed list as the lane feeds, newest at the
+ * end and in view).
+ */
+function activityIcon(c: Change, lines: (ActivityLine & { lane: string })[]): string {
+  if (lines.length === 0) return "";
+  const sig = activitySignal(c);
+  const tip = lines.slice(-3).map((a) => `${clock(a.at)} ${a.lane}: ${a.text}`).join("\n");
+  return `<button type="button" class="act" aria-label="Show recent activity" aria-controls="activity-${slug(c.name)}" title="${esc(tip)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-class:open="$${sig}" data-preserve-attr="aria-expanded class"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1 8h3l2-5 3 10 2-5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></button>`;
+}
+
+function activityRow(c: Change, lines: (ActivityLine & { lane: string })[], columns: number): string {
+  if (lines.length === 0) return "";
+  const items = [...lines].reverse().map((a) =>
+    `<li><span class="log-at">${esc(clock(a.at))}</span><span class="log-who">${esc(a.lane)}${a.who ? ` · ${esc(a.who)}` : ""}</span><span class="log-text">${esc(a.text)}</span></li>`).join("");
+  return `<tr id="activity-${slug(c.name)}" class="taskrow activityrow" data-show="$${activitySignal(c)}" data-preserve-attr="style" style="display:none"><td colspan="${columns}"><div class="taskrow-inner"><div class="doc-label">recent activity on ${esc(c.name)}, last ${lines.length} lines across ${new Set(lines.map((a) => a.lane)).size} lane(s)</div><ol class="log" reversed>${items}</ol></div></td></tr>`;
+}
+
 /** The chevron that opens a change's task row; a real button so it is keyboard-reachable. */
 function chevron(c: Change): string {
   if (c.taskList.length === 0) return `<td class="chev-cell"></td>`;
@@ -189,7 +222,8 @@ export function indexTables(baselines: Baseline[], changes: Change[], scan: Lane
   const row = (c: Change) => {
     const on = lanesOf.get(c.name) ?? [];
     const landedOn = on.filter((l) => l.status === "landed");
-    const chips = on.filter((l) => l.status !== "landed").map(laneChip).join("")
+    const lines = changeActivity(on);
+    const chips = activityIcon(c, lines) + on.filter((l) => l.status !== "landed").map(laneChip).join("")
       + (landedOn.length === 0 ? "" : `<span class="muted small landed-list">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
     const deps = c.dependsOn.length === 0 ? "" : ` · depends on ${c.dependsOn.length}`;
     return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
@@ -198,10 +232,13 @@ ${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class=
 <td class="tasks-cell">${progress(c.tasks)}</td>
 <td class="chips">${chips || `<span class="muted">none</span>`}</td>
 <td class="expl-cell">${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
-</tr>${taskRow(c, 6)}`;
+</tr>${taskRow(c, 6)}${activityRow(c, lines, 6)}`;
   };
-  // One signal per change, false unless the reader already flipped it.
-  const signals = JSON.stringify(Object.fromEntries(changes.filter((c) => c.taskList.length > 0).map((c) => [taskSignal(c), false])));
+  // One signal per change for its task row and one for its activity row, false unless the reader already flipped it.
+  const signals = JSON.stringify(Object.fromEntries([
+    ...changes.filter((c) => c.taskList.length > 0).map((c) => [taskSignal(c), false]),
+    ...changes.filter((c) => (lanesOf.get(c.name) ?? []).some((l) => l.activity.length > 0)).map((c) => [activitySignal(c), false]),
+  ]));
   const shown = changes.filter((c) => c.tasks.done > 0 || (lanesOf.get(c.name) ?? []).length > 0);
   const rest = changes.filter((c) => !shown.includes(c));
   const restBoxes = rest.reduce((n, c) => n + c.tasks.total, 0);
