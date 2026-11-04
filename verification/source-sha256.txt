@@ -194,10 +194,12 @@ b1906b520b0a109d2091fc2e9bfaf7ed711fbe4bc39808909c229fe9a982507d  docs/superpowe
 9268a98d741056657f39bec288a032c3ced319fe4fa106128145fc74c3cf6848  docs/superpowers/plans/2026-11-03-nix-flake.md
 e2032f5c34be930318d3654136dbee33a4847ff938b34f26572481eb19821ea0  docs/superpowers/plans/2026-11-03-runtime-profile.md
 6386bdc02de45ad35ed5eba2cf9a18be0b1f017eda148b176400d82bf1561296  docs/superpowers/plans/2026-11-03-unikernel-library.md
+2a7a58077455aef9c1307062ca71f2841f94a956986ad021c2f5098bcc9a2102  docs/superpowers/plans/2026-11-04-adoption-binding-doc.md
 b17ec11a5bc7cfd1742dfb40a033bb0eb711f5b932839eb4f49885a70225ffaf  docs/superpowers/plans/2026-11-04-binding-gaps.md
 c3e3c460cac8b32f33c40858a48c027469b07eaa8ed5b1213e0d3bf9728b8edd  docs/superpowers/plans/2026-11-04-genode-base-hw.md
 b28bd9d7c80d5f4ddce01108371304ec432cd72073ca8e2da7f39e99dba22251  docs/superpowers/plans/2026-11-04-genode-channel.md
 d010cbeadf73055979a762093e06b66bcc21c2ceba1313e1ddcb9d0d0c377fb7  docs/superpowers/plans/2026-11-04-genode-host-layer.md
+b9f5838325d6adb4b808d183dd7d249f88ff43e8f3944c77c84de87c5adc874f  docs/superpowers/plans/2026-11-04-host-profile-evidence.md
 e26cc58f4d3198b4ee6d017b06498209386502c5c26608c57a068b0666cada82  docs/superpowers/plans/2026-11-04-records-alignment.md
 98a97d22f26f76458ff6e77376ca96133c04dc0aecd47e2d808153d34108786e  docs/superpowers/plans/2026-11-04-unikernel-port.md
 aca761b44363b66569cc698e31cb1d37330fa364cceaeb583cbd61cbcaa6d510  docs/superpowers/plans/2026-11-04-unikraft-twins.md
