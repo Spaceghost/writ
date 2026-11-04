@@ -1,6 +1,9 @@
 # Unikraft host binding inventory
 
-Every authored non-Bend file under `hosts/unikraft/` (UL-004). These files are host
+Every authored non-Bend file under `hosts/unikraft/` (UL-004). There are no Bend effect
+definitions or `.c` effect twins here yet: the console, time, and ingress twins of
+tasks.md 2.1 are not written, and the images use Bend 2.0.39's own `IO.print` row
+(verification/unikernel-binary-check.txt). These files are host
 binding code for the Unikraft 0.21.0 target, not Writ policy: they carry how an image
 ended out to the harness and decide no authority question. Nothing under `hosts/` is
 imported by the Bend library or the test suite; the files are linked only into a
@@ -40,6 +43,7 @@ they build or copy is written inside the repository.
 | `scripts/mkapp.sh <set>` | Creates `$W/<set>-unikraft/` from `app/` and `$W/<set>/{gen,images,logs}`; refuses to overwrite a differing app file; links the compiler's own `stdatomic.h` (A1) | `$W` only |
 | `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `$W/<set>-unikraft/app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | `$W` only |
 | `scripts/run.sh <set> <label> <probe> <append> [timeout] [mem]` | One TCG boot under `timeout` with `-device isa-debug-exit,iobase=0xf4,iosize=0x04` and `-no-reboot` (`WRIT_QEMU_DEVICE=0` / `WRIT_QEMU_REBOOT=1` omit them); writes `run-<label>.raw` and a cleaned `run-<label>.log` with the QEMU status | `$W` only |
+| `scripts/console.sh <run.raw>` | Extracts the program's console from a `run.sh` capture for a line-for-line diff: removes NUL, CR, terminal escapes, everything through `Booting from ROM` and its dots, and Unikraft's 7-line banner, which it requires verbatim (fails otherwise); keeps every later line | reads the capture; writes stdout and one `mktemp` file |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
 `lib/uklibid`), and `build.sh` always builds clean.
