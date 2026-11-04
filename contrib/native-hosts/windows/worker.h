@@ -27,6 +27,9 @@ BOOL writ_worker_matches(const WRIT_WORKER *worker, DWORD pid, HANDLE request_to
 BOOL writ_worker_resume(WRIT_WORKER *worker);
 BOOL writ_worker_terminate(WRIT_WORKER *worker);
 BOOL writ_worker_remove_network_filters(WRIT_WORKER *worker);
+/* Fixed no-data diagnostic: same package, registryRead only, no filesystem or
+   policy handle. Its profile and API results are separate from the byte worker. */
+BOOL writ_worker_diagnostic(const WRIT_WORKER *worker, const unsigned short ports[4], DWORD phase);
 BOOL writ_worker_stop(WRIT_WORKER *worker);
 
 #endif

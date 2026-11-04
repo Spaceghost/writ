@@ -1,6 +1,7 @@
 #define _WIN32_WINNT 0x0A00
 #include "worker.h"
 #include "isolation.h"
+#include "probe.h"
 #include <bcrypt.h>
 #include <fwpmu.h>
 #include <rpc.h>
@@ -131,7 +132,7 @@ done:
     return ok;
 }
 
-static BOOL lpac_token(HANDLE token, PSID expected, BOOL diagnostic)
+static BOOL lpac_token(HANDLE token, PSID expected, PSID diagnostic_capability, BOOL diagnostic)
 {
     DWORD app = 0, elevated = 1;
     BYTE user[SECURITY_MAX_SID_SIZE];
@@ -154,7 +155,10 @@ static BOOL lpac_token(HANDLE token, PSID expected, BOOL diagnostic)
     }
     BYTE subauthorities = *GetSidSubAuthorityCount(label->Label.Sid);
     DWORD integrity = subauthorities ? *GetSidSubAuthority(label->Label.Sid, subauthorities - 1) : MAXDWORD;
-    BOOL ok = app == 1 && elevated == 0 && capabilities->GroupCount == 0 &&
+    BOOL capability_ok = diagnostic_capability ? capabilities->GroupCount == 1 &&
+        IsValidSid(capabilities->Groups[0].Sid) && EqualSid(capabilities->Groups[0].Sid, diagnostic_capability) &&
+        (capabilities->Groups[0].Attributes & SE_GROUP_ENABLED) != 0 : capabilities->GroupCount == 0;
+    BOOL ok = app == 1 && elevated == 0 && capability_ok &&
         integrity <= SECURITY_MANDATORY_LOW_RID;
     if (!ok) {
         if (diagnostic) fprintf(stderr, "FAIL LPAC token facts app=%lu elevated=%lu capabilities=%lu integrity=%lu\n",
@@ -464,7 +468,7 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     if (lpac && !EqualSid(actual_user, worker->user_sid)) { error = ERROR_ACCESS_DENIED; goto done; }
     if (!CopySid(sizeof(worker->user_sid), worker->user_sid, actual_user)) goto failed;
     stage = "lpac-token";
-    if (lpac && !lpac_token(token, worker->app_sid, TRUE)) goto failed;
+    if (lpac && !lpac_token(token, worker->app_sid, NULL, TRUE)) goto failed;
     if (lpac) printf("NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny\n");
     stage = "wfp";
     if (lpac && !install_network_filters(worker)) goto failed;
@@ -509,12 +513,154 @@ BOOL writ_worker_matches(const WRIT_WORKER *worker, DWORD pid, HANDLE request_to
        is sufficient for this equality check; anonymous tokens are not. */
     if (facts.TokenType == TokenImpersonation && facts.ImpersonationLevel < SecurityIdentification)
         return FALSE;
-    return !worker->lpac || lpac_token(request_token, worker->app_sid, FALSE);
+    return !worker->lpac || lpac_token(request_token, worker->app_sid, NULL, FALSE);
 }
 
 BOOL writ_worker_resume(WRIT_WORKER *worker)
 {
     return writ_worker_alive(worker) && ResumeThread(worker->thread) != (DWORD)-1;
+}
+
+BOOL writ_worker_diagnostic(const WRIT_WORKER *worker, const unsigned short ports[4], DWORD phase)
+{
+    HANDLE launch = NULL, token = NULL, input = NULL, output = NULL, job = NULL;
+    PROCESS_INFORMATION process = {0};
+    STARTUPINFOEXW startup = {0};
+    SECURITY_ATTRIBUTES security = {0}, inherited = { sizeof(inherited), NULL, TRUE };
+    SECURITY_CAPABILITIES capabilities = {0};
+    SID_AND_ATTRIBUTES registry = {0};
+    PSID *groups = NULL, *sids = NULL;
+    DWORD group_count = 0, sid_count = 0;
+    LPWSTR package_string = NULL, folder = NULL;
+    BYTE user[SECURITY_MAX_SID_SIZE], actual_user[SECURITY_MAX_SID_SIZE];
+    TOKEN_STATISTICS actual_identity = {0};
+    DWORD opt_out = PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT;
+    DWORD child_policy = PROCESS_CREATION_CHILD_PROCESS_RESTRICTED;
+    DWORD error = ERROR_ACCESS_DENIED, exit_code = STILL_ACTIVE, available = 0, got = 0;
+    SIZE_T attribute_size = 0;
+    BOOL attributes_ready = FALSE, ok = FALSE, in_job = FALSE;
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {0}, actual_limits = {0};
+    JOBOBJECT_BASIC_UI_RESTRICTIONS ui = {0}, actual_ui = {0};
+    PROCESS_MITIGATION_CHILD_PROCESS_POLICY children = {0};
+    PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY system_calls = {0};
+    wchar_t command[32768], root[MAX_PATH], environment[WRIT_ENVIRONMENT_CAPACITY];
+    WRIT_PROBE_REPORT report = {0};
+    const char *stage = "profile";
+    if (!worker->lpac || !writ_worker_alive(worker) || (phase != 1 && phase != 2)) goto done;
+    if (!reduced_primary(&launch, user) || !EqualSid(user, (PSID)worker->user_sid) ||
+        !DeriveCapabilitySidsFromName(L"registryRead", &groups, &group_count, &sids, &sid_count)) goto failed;
+    if (sid_count != 1 || !IsValidSid(sids[0])) { error = ERROR_INVALID_SID; goto done; }
+    registry.Sid = sids[0]; registry.Attributes = SE_GROUP_ENABLED;
+    capabilities.AppContainerSid = worker->app_sid;
+    capabilities.Capabilities = &registry; capabilities.CapabilityCount = 1;
+    stage = "job-and-handles";
+    if (!writ_process_security(&security) || !CreatePipe(&input, &output, &inherited, 0) ||
+        !SetHandleInformation(input, HANDLE_FLAG_INHERIT, 0)) goto failed;
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
+        JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_PROCESS_MEMORY | JOB_OBJECT_LIMIT_PROCESS_TIME;
+    limits.BasicLimitInformation.ActiveProcessLimit = 1;
+    limits.BasicLimitInformation.PerProcessUserTimeLimit.QuadPart = 10LL * 10000000LL;
+    limits.ProcessMemoryLimit = 64 * 1024 * 1024;
+    ui.UIRestrictionsClass = JOB_OBJECT_UILIMIT_HANDLES | JOB_OBJECT_UILIMIT_READCLIPBOARD |
+        JOB_OBJECT_UILIMIT_WRITECLIPBOARD | JOB_OBJECT_UILIMIT_SYSTEMPARAMETERS |
+        JOB_OBJECT_UILIMIT_DISPLAYSETTINGS | JOB_OBJECT_UILIMIT_GLOBALATOMS |
+        JOB_OBJECT_UILIMIT_DESKTOP | JOB_OBJECT_UILIMIT_EXITWINDOWS;
+    job = CreateJobObjectW(NULL, NULL);
+    if (!job || !SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits)) ||
+        !SetInformationJobObject(job, JobObjectBasicUIRestrictions, &ui, sizeof(ui))) goto failed;
+    stage = "attributes";
+    InitializeProcThreadAttributeList(NULL, 5, 0, &attribute_size);
+    startup.lpAttributeList = HeapAlloc(GetProcessHeap(), 0, attribute_size);
+    if (!startup.lpAttributeList ||
+        !InitializeProcThreadAttributeList(startup.lpAttributeList, 5, 0, &attribute_size)) goto failed;
+    attributes_ready = TRUE;
+    if (!UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+        &output, sizeof(output), NULL, NULL) ||
+        !UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_JOB_LIST,
+            &job, sizeof(job), NULL, NULL) ||
+        !UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY,
+            &child_policy, sizeof(child_policy), NULL, NULL) ||
+        !UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES,
+            &capabilities, sizeof(capabilities), NULL, NULL) ||
+        !UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY,
+            &opt_out, sizeof(opt_out), NULL, NULL)) goto failed;
+    stage = "environment";
+    if (!ConvertSidToStringSidW(worker->app_sid, &package_string)) goto failed;
+    HRESULT hr = GetAppContainerFolderPath(package_string, &folder);
+    if (FAILED(hr)) { error = HRESULT_CODE(hr); goto done; }
+    if (!writ_child_environment(root, ARRAYSIZE(root), environment, ARRAYSIZE(environment), folder) ||
+        FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --lpac-diagnostic %llu %u %u %u %u",
+            worker->image_path, (unsigned long long)(ULONG_PTR)output, ports[0], ports[1], ports[2], ports[3]))) goto failed;
+    startup.StartupInfo.cb = sizeof(startup);
+    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    stage = "create-process";
+    /* No canary bytes, mount name, input handle, policy pipe or admission route
+       appears in this fixed diagnostic's arguments or inherited handle list. */
+    if (!CreateProcessAsUserW(launch, worker->image_path, command, &security, &security, TRUE,
+        EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT,
+        environment, root, &startup.StartupInfo, &process)) goto failed;
+    CloseHandle(output); output = NULL;
+    stage = "actual-profile-readback";
+    if (!IsProcessInJob(process.hProcess, job, &in_job) || !in_job ||
+        !QueryInformationJobObject(job, JobObjectExtendedLimitInformation, &actual_limits, sizeof(actual_limits), NULL) ||
+        !QueryInformationJobObject(job, JobObjectBasicUIRestrictions, &actual_ui, sizeof(actual_ui), NULL) ||
+        !GetProcessMitigationPolicy(process.hProcess, ProcessChildProcessPolicy, &children, sizeof(children)) ||
+        !GetProcessMitigationPolicy(process.hProcess, ProcessSystemCallDisablePolicy, &system_calls, sizeof(system_calls)) ||
+        !OpenProcessToken(process.hProcess, TOKEN_QUERY | TOKEN_DUPLICATE, &token) ||
+        !capture_user(token, actual_user) || !token_blob(token, TokenStatistics, &actual_identity, sizeof(actual_identity)) ||
+        !lpac_token(token, worker->app_sid, registry.Sid, TRUE)) goto failed;
+    if (actual_limits.BasicLimitInformation.LimitFlags != limits.BasicLimitInformation.LimitFlags ||
+        actual_limits.BasicLimitInformation.ActiveProcessLimit != 1 ||
+        actual_limits.BasicLimitInformation.PerProcessUserTimeLimit.QuadPart != limits.BasicLimitInformation.PerProcessUserTimeLimit.QuadPart ||
+        actual_limits.ProcessMemoryLimit != limits.ProcessMemoryLimit || actual_ui.UIRestrictionsClass != ui.UIRestrictionsClass ||
+        !children.NoChildProcessCreation || system_calls.DisallowWin32kSystemCalls ||
+        !EqualSid(actual_user, (PSID)worker->user_sid) ||
+        actual_identity.AuthenticationId.LowPart != worker->token.AuthenticationId.LowPart ||
+        actual_identity.AuthenticationId.HighPart != worker->token.AuthenticationId.HighPart) {
+        error = ERROR_ACCESS_DENIED; goto done;
+    }
+    printf("DIAGNOSTIC_PROFILE phase=%lu no_data=1 capabilities=registryRead win32k_disabled=0 pid=%lu\n",
+        phase, process.dwProcessId);
+    stage = "run-and-report";
+    if (ResumeThread(process.hThread) == (DWORD)-1) goto failed;
+    DWORD waited = WaitForSingleObject(process.hProcess, 20000);
+    if (waited != WAIT_OBJECT_0) { if (waited == WAIT_FAILED) goto failed; error = ERROR_TIMEOUT; goto done; }
+    if (!GetExitCodeProcess(process.hProcess, &exit_code) ||
+        !PeekNamedPipe(input, NULL, 0, NULL, &available, NULL) || available != sizeof(report) ||
+        !ReadFile(input, &report, sizeof(report), &got, NULL) || got != sizeof(report)) goto failed;
+    printf("DIAGNOSTIC_RESULT phase=%lu passed=%08x failed=%08x tcp4=%u tcp6=%u udp4=%u udp6=%u child=%u clipboard_stage=%u clipboard=%08x com_stage=%u com=%08x\n",
+        phase, report.passed, report.failed, report.errors[7], report.errors[8], report.errors[9], report.errors[10],
+        report.errors[12], report.clipboard_stage, report.errors[15], report.com_stage, report.errors[16]);
+    if (report.magic != WRIT_PROBE_MAGIC || report.phase != 5 || exit_code || report.failed ||
+        report.passed != WRIT_PROBE_DIAGNOSTIC_MASK) { error = ERROR_INVALID_DATA; goto done; }
+    ok = TRUE;
+    goto done;
+failed:
+    error = GetLastError();
+done:
+    if (job) TerminateJobObject(job, ERROR_OPERATION_ABORTED);
+    /* Retire this retained child even if exceptional setup failed before the
+       job association could be verified. Never leave a suspended orphan. */
+    if (process.hProcess) TerminateProcess(process.hProcess, ERROR_OPERATION_ABORTED);
+    if (process.hProcess && WaitForSingleObject(process.hProcess, 5000) != WAIT_OBJECT_0) {
+        ok = FALSE; error = ERROR_TIMEOUT; stage = "process-retirement";
+    }
+    close_handle(&process.hThread); close_handle(&process.hProcess); close_handle(&job);
+    close_handle(&token); close_handle(&launch); close_handle(&input); close_handle(&output);
+    if (attributes_ready) DeleteProcThreadAttributeList(startup.lpAttributeList);
+    if (startup.lpAttributeList) HeapFree(GetProcessHeap(), 0, startup.lpAttributeList);
+    if (security.lpSecurityDescriptor) LocalFree(security.lpSecurityDescriptor);
+    if (folder) CoTaskMemFree(folder);
+    if (package_string) LocalFree(package_string);
+    if (groups) for (DWORD i = 0; i < group_count; ++i) LocalFree(groups[i]);
+    if (sids) for (DWORD i = 0; i < sid_count; ++i) LocalFree(sids[i]);
+    if (groups) LocalFree(groups);
+    if (sids) LocalFree(sids);
+    if (!ok) {
+        fprintf(stderr, "FAIL no-data LPAC diagnostic phase=%lu stage=%s error=%lu exit=%08lx\n", phase, stage, error, exit_code);
+        SetLastError(error ? error : ERROR_ACCESS_DENIED);
+    }
+    return ok;
 }
 
 BOOL writ_worker_remove_network_filters(WRIT_WORKER *worker)

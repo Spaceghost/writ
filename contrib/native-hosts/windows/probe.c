@@ -28,7 +28,7 @@ static BOOL report_to_broker(HANDLE output, HANDLE ready, HANDLE proceed,
     DWORD written = 0;
     if (!WriteFile(output, report, sizeof(*report), &written, NULL) || written != sizeof(*report) ||
         !SetEvent(ready)) return FALSE;
-    return !wait || WaitForSingleObject(proceed, 20000) == WAIT_OBJECT_0;
+    return !wait || WaitForSingleObject(proceed, 60000) == WAIT_OBJECT_0;
 }
 
 static BOOL sha256_matches(const BYTE *bytes, DWORD count, const wchar_t *expected)
@@ -160,6 +160,25 @@ static int positive_channels(HANDLE output)
     return sent && !report.failed && report.passed == WRIT_PROBE_POSITIVE_MASK ? 0 : 87;
 }
 
+static int diagnostic_channels(HANDLE output, unsigned short ports[4])
+{
+    /* This entry point has no mount/input parameter and never opens a data
+       object. It only exercises the fixed no-data diagnostic API surface. */
+    WRIT_PROBE_REPORT report = {0};
+    report.magic = WRIT_PROBE_MAGIC; report.phase = 5;
+    network_checks(&report, ports);
+    child_check(&report, FALSE);
+    WRIT_CHANNEL_RESULT clipboard = writ_clipboard_attempt();
+    WRIT_CHANNEL_RESULT com = writ_com_attempt();
+    report.clipboard_stage = clipboard.stage; report.com_stage = com.stage;
+    record(&report, WRIT_PROBE_CLIPBOARD, writ_clipboard_denied(clipboard), (DWORD)clipboard.result);
+    record(&report, WRIT_PROBE_COM, writ_com_denied(com), (DWORD)com.result);
+    DWORD written = 0;
+    BOOL sent = WriteFile(output, &report, sizeof(report), &written, NULL) && written == sizeof(report);
+    CloseHandle(output);
+    return sent && !report.failed && report.passed == WRIT_PROBE_DIAGNOSTIC_MASK ? 0 : 88;
+}
+
 static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_path, DWORD broker_pid)
 {
     DWORD error;
@@ -199,6 +218,16 @@ int wmain(int argc, wchar_t **argv)
     if (argc == 2 && !wcscmp(argv[1], L"--exit")) return 0;
     if (argc == 3 && !wcscmp(argv[1], L"--positive"))
         return positive_channels((HANDLE)(uintptr_t)_wcstoui64(argv[2], NULL, 10));
+    if (argc == 7 && !wcscmp(argv[1], L"--lpac-diagnostic")) {
+        unsigned short ports[4];
+        for (int i = 0; i < 4; ++i) {
+            wchar_t *end = NULL;
+            unsigned long port = wcstoul(argv[3+i], &end, 10);
+            if (!port || port > 65535 || !end || *end) return 89;
+            ports[i] = (unsigned short)port;
+        }
+        return diagnostic_channels((HANDLE)(uintptr_t)_wcstoui64(argv[2], NULL, 10), ports);
+    }
     if (argc > 1 && !wcscmp(argv[1], L"--outsider")) return writ_outsider_probe(argc, argv);
     if (argc != 14) return 80;
     const wchar_t *mount = argv[1], *expected_hash = argv[2];

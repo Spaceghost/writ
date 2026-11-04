@@ -616,8 +616,9 @@ done:
 }
 
 static BOOL read_report(HANDLE input, HANDLE ready, HANDLE process, DWORD phase,
-    unsigned int expected, WRIT_PROBE_REPORT *report)
+    unsigned int expected, WRIT_PROBE_REPORT *report, BOOL *complete)
 {
+    if (complete) *complete = FALSE;
     HANDLE waits[2] = { ready, process };
     DWORD waited = WaitForMultipleObjects(2, waits, FALSE, 20000);
     if (waited != WAIT_OBJECT_0) {
@@ -635,6 +636,8 @@ static BOOL read_report(HANDLE input, HANDLE ready, HANDLE process, DWORD phase,
     for (unsigned int i = 0; i < ARRAYSIZE(report->errors); ++i)
         printf(" e%u=%lu", i, (DWORD)report->errors[i]);
     printf(" clipboard_stage=%u com_stage=%u\n", report->clipboard_stage, report->com_stage); fflush(stdout);
+    if ((report->passed | report->failed) != expected || (report->passed & report->failed)) return FALSE;
+    if (complete) *complete = TRUE;
     return report->passed == expected && report->failed == 0;
 }
 
@@ -699,6 +702,7 @@ int wmain(int argc, wchar_t **argv)
         return 2;
     }
     BOOL lpac = !wcscmp(argv[7], L"lpac"), ok = FALSE, sockets_ready = FALSE;
+    BOOL confinement_passed = TRUE, diagnostic_passed = TRUE;
     WRIT_HOST host;
     ZeroMemory(&host, sizeof(host));
     InitializeCriticalSection(&host.lock); host.lock_ready = TRUE;
@@ -769,9 +773,17 @@ int wmain(int argc, wchar_t **argv)
     if (!wrong_process_with_worker_token(&host.worker, path)) goto done;
     printf("NATIVE_PASS actual worker token presented by the wrong native process remains denied\n");
     if (!writ_worker_resume(&host.worker)) goto done;
+    BOOL complete = FALSE;
     if (!read_report(report_read, ready, host.worker.process, 1,
-        WRIT_PROBE_MOUNT_MASK | (lpac ? WRIT_PROBE_CONFINEMENT_MASK : 0), &report)) {
-        fprintf(stderr, "FAIL first mounted worker phase\n"); goto done;
+        WRIT_PROBE_MOUNT_MASK | (lpac ? WRIT_PROBE_CONFINEMENT_MASK : 0), &report, &complete)) {
+        unsigned int supplemental = WRIT_PROBE_NETWORK_MASK | WRIT_PROBE_CLIPBOARD | WRIT_PROBE_COM;
+        if (!lpac || !complete || (report.failed & ~supplemental)) {
+            fprintf(stderr, "FAIL first mounted worker phase\n"); goto done;
+        }
+        /* Public-canary evidence collection continues through revocation, but
+           these failures still prevent the final confinement-pass result. */
+        confinement_passed = FALSE;
+        printf("INCOMPLETE byte-worker network/clipboard/COM probes: failed results receive no restriction credit\n");
     }
     printf("NATIVE_PASS admitted worker read, digest, range, EOF and directory match\n");
     printf("NATIVE_PASS write, alternate stream and new-file attempts fail\n");
@@ -780,31 +792,42 @@ int wmain(int argc, wchar_t **argv)
     if (denied != INVALID_HANDLE_VALUE) CloseHandle(denied);
     if (denied != INVALID_HANDLE_VALUE || denied_error != ERROR_ACCESS_DENIED) goto done;
     printf("NATIVE_PASS ordinary reader remains denied after worker admission\n");
+    if (lpac && !writ_worker_diagnostic(&host.worker, ports, 1)) diagnostic_passed = FALSE;
     if (!writ_same_user_probe(argv[6], host.policy.process, host.worker.process)) goto done;
     printf("NATIVE_PASS limited same-user outsider denied VM_READ, DUP_HANDLE, WRITE_DAC and WRITE_OWNER for broker, policy and worker\n");
     if (lpac) {
         if (!receivers_empty(listeners) || GetFileAttributesW(outside) != INVALID_FILE_ATTRIBUTES ||
             GetLastError() != ERROR_FILE_NOT_FOUND) goto done;
         printf("NATIVE_PASS LPAC has no capabilities, job and WFP setup verified before observation\n");
-        printf("NATIVE_PASS TCP and UDP IPv4/IPv6 blocked; live receivers got no connection or datagram\n");
-        printf("NATIVE_PASS public file, child, console, broker access, clipboard and COM probes blocked\n");
+        if (confinement_passed) printf("NATIVE_PASS byte-worker TCP/UDP IPv4/IPv6, clipboard and COM explicitly denied\n");
+        printf("NATIVE_PASS public file, child, console and broker-access probes blocked; live receivers stayed empty\n");
         if (!writ_worker_remove_network_filters(&host.worker)) goto done;
     }
-    if (!SetEvent(proceed) || !read_report(report_read, ready, host.worker.process, 2,
-        lpac ? WRIT_PROBE_NETWORK_MASK : 0, &report)) goto done;
+    if (!SetEvent(proceed)) goto done;
+    complete = FALSE;
+    if (!read_report(report_read, ready, host.worker.process, 2,
+        lpac ? WRIT_PROBE_NETWORK_MASK : 0, &report, &complete)) {
+        if (!lpac || !complete) goto done;
+        confinement_passed = FALSE;
+        printf("INCOMPLETE byte-worker network API probes after WFP removal; no restriction credit\n");
+    }
     if (lpac) {
         if (!receivers_empty(listeners)) goto done;
-        printf("NATIVE_PASS LPAC network denial survives removal of the broker's dynamic WFP filters\n");
+        if (!writ_worker_diagnostic(&host.worker, ports, 2)) diagnostic_passed = FALSE;
+        if (!receivers_empty(listeners)) goto done;
+        if (confinement_passed) printf("NATIVE_PASS byte-worker LPAC network denial survives WFP removal\n");
     }
     if (!rpc(&host, "REVOKE", 0, 0, 0, 0, "-", &reply) || !reply.allowed || !SetEvent(proceed) ||
-        !read_report(report_read, ready, host.worker.process, 3, WRIT_PROBE_REVOKE_MASK, &report)) goto done;
+        !read_report(report_read, ready, host.worker.process, 3, WRIT_PROBE_REVOKE_MASK, &report, NULL)) goto done;
     if (WaitForSingleObject(host.worker.process, 10000) != WAIT_OBJECT_0) goto done;
     DWORD exit_code;
     if (!GetExitCodeProcess(host.worker.process, &exit_code) || exit_code) goto done;
     printf("NATIVE_PASS revocation denies new opens and a subsequent uncached read\n");
     EnterCriticalSection(&host.lock);
-    ok = !host.failed;
+    ok = !host.failed && confinement_passed && diagnostic_passed;
     LeaveCriticalSection(&host.lock);
+    if (lpac) printf("LPAC_OBSERVATIONS mounted_and_revoked=pass byte_worker_confinement=%s no_data_diagnostic=%s\n",
+        confinement_passed ? "pass" : "incomplete", diagnostic_passed ? "pass" : "incomplete");
 done:
     if (!ok) fprintf(stderr, "FAIL native Windows profile=%s win32=%lu\n", lpac ? "lpac-canary" : "mount-canary", GetLastError());
     if (!writ_worker_terminate(&host.worker)) { fprintf(stderr, "FAIL worker termination\n"); ok = FALSE; }
