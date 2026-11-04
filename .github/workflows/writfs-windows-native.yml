@@ -7,7 +7,10 @@ on:
       - '*.bend'
       - 'lib/**'
       - 'writfs/**'
-      - 'contrib/native-hosts/**'
+      - 'contrib/native-hosts/AGENTS.md'
+      - 'contrib/native-hosts/PROTOCOL.md'
+      - 'contrib/native-hosts/runtime/*.mjs'
+      - 'contrib/native-hosts/windows/**'
       - 'contrib/rclone/bend/Authority.bend'
       - '.github/workflows/writfs-windows-native.yml'
   workflow_dispatch:
@@ -43,9 +46,10 @@ jobs:
           tar -xzf "$writ_bend/bend.tar.gz" -C "$writ_bend"
           "$writ_bend/bend/bin/bend" version
           "$writ_bend/bend/bin/bend" writfs/Mount.bend -o "$writ_generated/mount.mjs"
+          "$writ_bend/bend/bin/bend" writfs/MountTests.bend -o "$writ_generated/mount-tests.js"
           (
             cd "$writ_generated"
-            sha256sum mount.mjs > SHA256SUMS
+            sha256sum mount.mjs mount-tests.js > SHA256SUMS
           )
           printf '%s\n' "$GITHUB_SHA" > "$writ_generated/commit.txt"
       - name: Retain generated policy
@@ -92,9 +96,13 @@ jobs:
             throw 'The disposable native fixture requires an elevated broker.'
           }
           $policyDir = Join-Path $env:RUNNER_TEMP 'windows-native-policy'
-          $expected = (Get-Content (Join-Path $policyDir 'SHA256SUMS')).Split(' ')[0]
+          foreach ($line in Get-Content (Join-Path $policyDir 'SHA256SUMS')) {
+            $parts = $line -split '  ', 2
+            if ($parts.Count -ne 2 -or $parts[1] -notin @('mount.mjs', 'mount-tests.js')) { throw 'Invalid policy manifest.' }
+            $actual = (Get-FileHash (Join-Path $policyDir $parts[1]) -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($actual -ne $parts[0]) { throw 'Generated policy digest mismatch.' }
+          }
           $actual = (Get-FileHash (Join-Path $policyDir 'mount.mjs') -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($actual -ne $expected) { throw 'Generated policy digest mismatch.' }
           if ((Get-Content (Join-Path $policyDir 'commit.txt')) -ne $env:GITHUB_SHA) { throw 'Wrong policy source commit.' }
           $os = Get-CimInstance Win32_OperatingSystem
           @(
@@ -106,6 +114,16 @@ jobs:
             'Profile: public-canary only; native WinFsp mount and separately observed LPAC probes.'
             'No WSL. No protected-data product qualification or administrator-resistant audit claim.'
           ) | Tee-Object -FilePath (Join-Path $writLogs 'environment.txt')
+      - name: Run the shared mount model and transport probes on Windows
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          $policyDir = Join-Path $env:RUNNER_TEMP 'windows-native-policy'
+          & node.exe (Join-Path $policyDir 'mount-tests.js') 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'mount-model.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Windows Bend model checks failed.' }
+          & node.exe contrib/native-hosts/runtime/check-bridge.mjs (Join-Path $policyDir 'mount.mjs') 2>&1 |
+            Tee-Object -FilePath (Join-Path $writLogs 'transport.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows transport probes failed.' }
       - name: Install pinned security-fixed WinFsp prerelease
         run: |
           $ErrorActionPreference = 'Stop'

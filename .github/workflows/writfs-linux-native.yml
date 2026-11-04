@@ -10,7 +10,10 @@ on:
       - 'lib/**'
       - 'writfs/**'
       - 'contrib/rclone/bend/**'
-      - 'contrib/native-hosts/**'
+      - 'contrib/native-hosts/AGENTS.md'
+      - 'contrib/native-hosts/PROTOCOL.md'
+      - 'contrib/native-hosts/runtime/*.mjs'
+      - 'contrib/native-hosts/linux/**'
       - '.github/workflows/writfs-linux-native.yml'
   workflow_dispatch:
 

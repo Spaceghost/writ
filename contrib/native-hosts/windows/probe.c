@@ -213,27 +213,34 @@ int wmain(int argc, wchar_t **argv)
     DWORD got = 0, error = file == INVALID_HANDLE_VALUE ? GetLastError() : 0;
     BOOL read_ok = file != INVALID_HANDLE_VALUE && ReadFile(file, bytes, 65536, &got, NULL);
     if (!read_ok && !error) error = GetLastError();
+    if (!expected_size && file != INVALID_HANDLE_VALUE && error == ERROR_HANDLE_EOF) {
+        read_ok = TRUE; got = 0;
+    }
     record(&report, WRIT_PROBE_READ, read_ok && got == expected_size && sha256_matches(bytes, got, expected_hash), error);
     LARGE_INTEGER location;
+    HANDLE range = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    BYTE range_bytes[17];
+    location.QuadPart = expected_size > 4 ? 4 : expected_size;
+    got = 0;
+    BOOL range_ok = range != INVALID_HANDLE_VALUE && SetFilePointerEx(range, location, NULL, FILE_BEGIN) &&
+        ReadFile(range, range_bytes, sizeof(range_bytes), &got, NULL);
+    error = range_ok ? 0 : GetLastError();
+    DWORD remaining = expected_size - (DWORD)location.QuadPart;
+    DWORD wanted = remaining < sizeof(range_bytes) ? remaining : sizeof(range_bytes);
+    if (!wanted && range != INVALID_HANDLE_VALUE && error == ERROR_HANDLE_EOF) {
+        range_ok = TRUE; got = 0;
+    }
+    record(&report, WRIT_PROBE_RANGE, read_ok && range_ok && got == wanted &&
+        !memcmp(range_bytes, bytes + (DWORD)location.QuadPart, got), error);
+    if (range != INVALID_HANDLE_VALUE) CloseHandle(range);
+
+    /* Compare the range before reusing the full-file buffer for the EOF probe. */
     location.QuadPart = 65536;
     got = 99;
     BOOL eof = file != INVALID_HANDLE_VALUE && SetFilePointerEx(file, location, NULL, FILE_BEGIN) &&
         ReadFile(file, bytes, 4096, &got, NULL);
     error = eof ? 0 : GetLastError();
     record(&report, WRIT_PROBE_EOF, (eof && got == 0) || error == ERROR_HANDLE_EOF, error);
-
-    HANDLE range = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
-    BYTE small[17];
-    location.QuadPart = expected_size > 4 ? 4 : expected_size;
-    got = 0;
-    BOOL range_ok = range != INVALID_HANDLE_VALUE && SetFilePointerEx(range, location, NULL, FILE_BEGIN) &&
-        ReadFile(range, small, sizeof(small), &got, NULL);
-    error = range_ok ? 0 : GetLastError();
-    DWORD remaining = expected_size - (DWORD)location.QuadPart;
-    DWORD wanted = remaining < sizeof(small) ? remaining : sizeof(small);
-    record(&report, WRIT_PROBE_RANGE, read_ok && range_ok && got == wanted &&
-        !memcmp(small, bytes + (DWORD)location.QuadPart, got), error);
-    if (range != INVALID_HANDLE_VALUE) CloseHandle(range);
 
     WIN32_FIND_DATAW entry;
     HANDLE enumeration = FindFirstFileW(wildcard, &entry);

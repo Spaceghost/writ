@@ -1,10 +1,9 @@
 /* Native WinFsp presentation for the bounded Bend public-canary profile. */
 #define _WIN32_WINNT 0x0A00
 #define WIN32_LEAN_AND_MEAN
+#include <winfsp/winfsp.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <windows.h>
-#include <winfsp/winfsp.h>
 #include <sddl.h>
 #include <strsafe.h>
 #include <stdint.h>
