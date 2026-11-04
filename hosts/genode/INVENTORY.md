@@ -61,7 +61,7 @@ run scripts source; live copy `run/writ_bend.tcl`).
 | `writ_mem_restore_rt` | local (not global) asm symbol | `rt_sigreturn` restorer for the SIGSEGV handler |
 | `writ_shim_log(char const *text, size_t len)` | effect host function (`Genode.log`) | `Genode::log` of at most `len` bytes as one `Cstring` (ends at the first NUL); nothing added; a null `text` does nothing |
 | `writ_shim_now_ms(void) -> uint64_t` | effect host function (`Genode.now`) | `elapsed_ms()` of the shim's Timer session (ms since the session was opened); 0 before `construct`; the twin truncates to U32 |
-| `writ_shim_sleep_ms(uint32_t ms)` | effect host function (`Genode.sleep`) | `msleep` on the shim's Timer session until its clock has advanced by at least `ms` (re-sleeps the remainder after an early wake and counts it); `ms == 0` or before `construct` returns at once; called from a runtime helper thread (`io_work`) |
+| `writ_shim_sleep_ms(uint32_t ms)` | effect host function (`Genode.sleep`) | `msleep` on the shim's Timer session until its clock has advanced by at least `ms` (re-sleeps the remainder after an early wake and counts it, at most `MAX_SLEEP_ROUNDS` = 16 `msleep` calls); `ms == 0` or before `construct` returns at once; called from a runtime helper thread (`io_work`); stops the component (exit value 1) on a frozen or reversed clock or past the round cap (see Timer failure outcomes) |
 
 ## Sessions and kernel interfaces used
 
@@ -92,7 +92,13 @@ run scripts source; live copy `run/writ_bend.tcl`).
   dispatch). Components that never call these open no Timer session from
   the shim; libc opens its own Timer session for its clock either way. The
   route comes from init (each run script starts a sibling `timer`); a
-  missing route is not handled by the shim (not exercised).
+  missing or denied route stops the component with exit value 1 (see
+  Timer failure outcomes). The shim's first time call opens the session;
+  in `writ_bend_probe` that is always `Genode.now` on the loop thread. A
+  first call from `Genode.sleep`, which would open the session (and run
+  `try_session`) on an `io_work` helper thread, is not exercised.
+- **Parent** (Timer failures only): `exit(1)` through `Env::parent()`, then
+  `sleep_forever`, so init records the exit value.
 - **ROM** (through the dynamic linker): `Shared_object` for `libc.lib.so` to
   reach libc's own `mmap`, `munmap`, `mprotect`.
 - **base-linux only**: the raw Linux `rt_sigaction`, `getpid`, `gettid`, and
@@ -108,6 +114,34 @@ run scripts source; live copy `run/writ_bend.tcl`).
   address space that a later mapping could take. Every run script that links
   the shim fails on that line (`writ_bend_refuse_reserve_failure` in
   `scripts/genode/writ_bend.tcl`).
+
+### Timer failure outcomes (channel lane, Task 1, fix round 1)
+
+Host failure handling, not policy: a component whose clock cannot be
+trusted stops. Each outcome logs one `writ_shim: ...` error line and ends
+with `Parent::exit(1)`.
+
+- **Missing or denied route.** `Env::session` answers a denied session with
+  `stop because parent denied ...` and `sleep_forever`
+  (`repos/base/src/lib/base/component.cc:200-202`), a silent hang for init.
+  The shim therefore first asks with `Env::try_session` under a probe id
+  (`component.cc:117-149`), stops on `DENIED`, and otherwise closes the
+  probe session and lets `Timer::Connection` open the kept one; an
+  exception from that construction stops too. Exercised: with the shim's
+  Timer label routed to the parent (which provides no Timer), the probe
+  logged `Error: writ_shim: Timer session denied (no route for label
+  writ_shim), component exits 1` and init reported exit value 1
+  (`verification/genode-effects-base-linux.txt`, fix round 1).
+- **Frozen or reversed clock.** A reading after `msleep` that has not
+  advanced past the one before it, or any reading before the sleep's
+  start, stops the component. Not exercised (no way to freeze the timer
+  from a run script).
+- **Spin.** In the timeout-framework mode `msleep` logs an error and
+  returns at once (`connection.h:426-430`). Invariant: the shim never calls
+  `curr_time()` on `_timer` and never constructs a `Timeout`,
+  `One_shot_timeout`, or `Periodic_timeout` on it, so the connection never
+  enters that mode. Were it to, the loop would end at the frozen-clock
+  check or after `MAX_SLEEP_ROUNDS` calls, not spin. Not exercised.
 
 ## Build settings carried by every Bend component
 
@@ -168,7 +202,9 @@ Console and time (channel lane, Task 1): `writ_shim_log` passes at most
 (wraps after about 49.7 days; the probe compares by U32 difference).
 `writ_shim_sleep_ms` sleeps at most `ms` per `msleep` call and loops until
 the deadline; each early wake is counted (`timer short wakes=` in
-`writ_mem_report`; 0 in every recorded run). One Timer session.
+`writ_mem_report`; 0 in every recorded run), and stops after 16 `msleep`
+calls for one sleep (`MAX_SLEEP_ROUNDS`). One kept Timer session, plus one
+short-lived probe session at the first open (the route check).
 
 ## Changes in Task 3
 
@@ -196,6 +232,18 @@ the deadline; each early wake is counted (`timer short wakes=` in
   `01d7dccbdf560dcd788dd3dfba4dfebb6513a035da14040d64a4e4b4d126920c`.
   The hello, rts, and 782-check corpus runs were repeated with it (corpus
   lines byte-identical); see `verification/genode-effects-base-linux.txt`.
+- Fix round 1: Timer failure handling (route check through `try_session`,
+  `_timer_fail` with `Parent::exit(1)`, the frozen/reversed-clock checks and
+  `MAX_SLEEP_ROUNDS` in `writ_shim_sleep_ms`); changes confined to the
+  "Console and time" section. sha256 `01d7dccb...920c` ->
+  `6664b650369086615111400f2ac59ee1c20a921db3134c5be8ac10040fffdfca`. The
+  probe, hello, and rts runs were repeated; the corpus was not (it calls
+  no Genode.* effect and the memory code is unchanged).
+- Effect naming convention: `scripts/runtime-profile/check-binary.sh`
+  detects effect rows by the twin's C function name, mapping
+  `genode_<x>_run` to `Genode.<x>`. The Task 2 twins (`Genode.take`,
+  `Genode.put`) must follow it (`genode_take_run`, `genode_put_run`) or the
+  check will not see them.
 
 ## Fault behaviour observed through a Bend program
 
@@ -221,8 +269,10 @@ The Timer functions hold their own mutex only around the open-once check
 (not across `elapsed_ms` or `msleep`);
 `Timer::Connection::msleep` serializes concurrent sleeps on the one
 connection (`connection.h`, its `_mutex`), so two helper threads sleeping at
-once wait one after the other. The early-wake counter is a diagnostic and is
-not atomic.
+once wait one after the other. A queued sleeper computes its remainder
+before it blocks on that mutex, so it overshoots: it returns after roughly
+the earlier sleep plus its own. Not exercised (single sleeps only). The
+early-wake counter is a diagnostic and is not atomic.
 
 ## System calls do not populate
 

@@ -5,7 +5,8 @@
 # linked with the shim, under init on base-linux (BOARD=linux KERNEL=linux)
 # at 256M, and checks that the Bend program's Genode.log text reaches the
 # component's LOG session and that its two Genode.now readings around
-# Genode.sleep(100) differ by at least 100 ms.
+# Genode.sleep(100) are ordered and differ by at least 100 ms and by less
+# than 1100 ms.
 #
 # The configuration is writ_bend.tcl's writ_bend_boot with one change, so it
 # is written out here instead of calling that procedure: libc's stdout goes
@@ -17,6 +18,8 @@
 # the LOG, and every "probe:" line that does appear came through
 # Genode.log -> writ_shim_log -> Genode::log, not through libc's stdout.
 # stderr stays on /dev/log, so a runtime error is still captured.
+# The duplication of writ_bend_boot is known and left for the channel lane's
+# Task 2 (a stdout parameter there would remove it).
 #
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services plus a Timer session from the sibling timer component (the
@@ -88,22 +91,31 @@ if {[regexp {probe-control:} $output]} {
 
 foreach {re what} [list \
 	"\\\[init -> $name\\\] probe: hello from Bend through the Genode LOG session\r?\n" "Genode.log text" \
-	"\\\[init -> $name\\\] probe: PASS delta >= sleep\r?\n"                           "PASS verdict" ] {
+	"\\\[init -> $name\\\] probe: PASS after >= before and sleep <= delta < max\r?\n" "PASS verdict" ] {
 	if {![regexp $re $output]} {
 		puts stderr "Error: missing $what"
 		exit 1
 	}
 }
 
-# Recompute the delta from the logged readings rather than trusting the
-# verdict line alone (U32 difference, as the probe computes it).
-if {![regexp "probe: now before=(\[0-9\]+) after=(\[0-9\]+)" $output -> t0 t1]} {
+# Recompute the outcome from the logged readings rather than trusting the
+# verdict line alone: the readings must be ordered and their difference in
+# [100, 1100), the probe's own window (sleep_ms, max_delta_ms).
+if {![regexp "\\\[init -> $name\\\] probe: now before=(\[0-9\]+) after=(\[0-9\]+)\r?\n" $output -> t0 t1]} {
 	puts stderr "Error: missing the two Genode.now readings"
 	exit 1
 }
-set delta [expr {($t1 - $t0) & 0xffffffff}]
-if {![regexp "probe: delta_ms=$delta sleep_ms=100\r?\n" $output] || $delta < 100} {
-	puts stderr "Error: delta $delta from the readings does not match the logged delta or is below 100 ms"
+if {$t1 < $t0} {
+	puts stderr "Error: the second Genode.now reading $t1 is before the first $t0"
+	exit 1
+}
+set delta [expr {$t1 - $t0}]
+if {![regexp "\\\[init -> $name\\\] probe: delta_ms=$delta sleep_ms=100 max_delta_ms=1100\r?\n" $output]} {
+	puts stderr "Error: the logged delta does not match the readings ($delta)"
+	exit 1
+}
+if {$delta < 100 || $delta >= 1100} {
+	puts stderr "Error: delta $delta ms is outside \[100, 1100)"
 	exit 1
 }
 puts "\n--- $name: readings $t0 -> $t1, delta $delta ms ---"

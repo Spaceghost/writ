@@ -785,31 +785,90 @@ extern "C" int mprotect(void *addr, ::size_t len, int prot)
  * state). It is used in the timer-session mode only: elapsed_ms is a
  * plain RPC, and msleep blocks the calling thread on the connection's
  * own Signal_receiver (connection.h:390-433), so it needs no entrypoint
- * dispatch and may run on a runtime helper thread. Without a Timer
- * route the session request is denied or never answered at the first
- * call (init's routing decides; not exercised, and the shim reports
- * nothing to the parent). The session clock is monotone milliseconds
- * since this session was opened (the timer component subtracts the
- * session's creation time, repos/base/include/timer/component.h:98-100
- * and :202), so the first reading is near 0. writ_shim_sleep_ms returns
- * only when that clock has advanced by at least ms, re-sleeping the
- * remainder if msleep woke early, so a Bend program's delta of two
- * readings around a sleep is at least the sleep (each early wake is
- * counted in _timer_short_wakes and shown in writ_mem_report).
+ * dispatch and may run on a runtime helper thread. Invariant: the shim
+ * never calls curr_time() on _timer and never hands it to a Timeout or
+ * One_shot/Periodic timeout, so the connection never switches to the
+ * timeout-framework mode, in which msleep would log an error and return
+ * at once (connection.h:426-430). The session clock is monotone
+ * milliseconds since this session was opened (the timer component
+ * subtracts the session's creation time, repos/base/include/timer/
+ * component.h:98-100 and :202), so the first reading is near 0.
+ *
+ * writ_shim_sleep_ms returns only when that clock has advanced by at
+ * least ms, re-sleeping the remainder if msleep woke early (each early
+ * wake is counted in _timer_short_wakes and shown in writ_mem_report), so
+ * a Bend program's delta of two readings around a sleep is at least the
+ * sleep.
+ *
+ * Failure behaviour (host failure handling, not policy: no Writ decision
+ * depends on it; a component whose clock cannot be trusted stops). Every
+ * case logs one error line and ends the component with exit value 1
+ * through the parent (Parent::exit), so init records the exit instead of
+ * the component hanging:
+ *   - Timer route missing or denied. Env::session answers a DENIED session
+ *     with an error line and sleep_forever (repos/base/src/lib/base/
+ *     component.cc:200-202), so the shim first asks with Env::try_session
+ *     under a probe id (component.cc:117-149) and stops on DENIED; the
+ *     probe session is closed and Timer::Connection then opens the kept
+ *     one. Any exception from the Connection's construction stops too.
+ *   - Frozen or reversed clock: a reading after msleep that has not
+ *     advanced past the reading before it, or a first reading before the
+ *     sleep's start.
+ *   - More than MAX_SLEEP_ROUNDS msleep calls for one sleep (this also
+ *     bounds a connection that returned from msleep at once, as the
+ *     timeout-framework mode would, while the clock creeps forward).
  */
+
+enum : unsigned {
+	MAX_SLEEP_ROUNDS = 16,            /* msleep calls per writ_shim_sleep_ms */
+	TIMER_PROBE_RAM  = 10*1024,       /* as Timer::Connection requests */
+	TIMER_PROBE_CAPS = Timer::Session::CAP_QUOTA,
+};
 
 static Kept<Timer::Connection> _timer;
 static unsigned long           _timer_short_wakes;
 
 static Mutex &_timer_mutex() { static Mutex m { }; return m; }
 
+/* Ends the component with exit value 1 after one line; does not return. */
+[[noreturn]] static void _timer_fail(char const *what)
+{
+	error("writ_shim: ", what, ", component exits 1");
+	_env->parent().exit(1);
+	sleep_forever();
+}
+
+/*
+ * Whether the parent grants a Timer session labelled "writ_shim". Only
+ * DENIED counts as no route; a quota answer means the route exists and is
+ * left to the Connection's own quota upgrades.
+ */
+static bool _timer_route_granted()
+{
+	Parent::Client client { };
+	Id_space<Parent::Client>::Element const probe(client, _env->id_space());
+	String<Parent::Session_args::MAX_SIZE> const args(
+		"label=\"writ_shim\", ram_quota=", unsigned(TIMER_PROBE_RAM),
+		", cap_quota=", unsigned(TIMER_PROBE_CAPS));
+
+	return _env->try_session(Timer::Session::service_name(), probe.id(),
+	                         Parent::Session_args(args.string()), Affinity())
+		.convert<bool>(
+			[&] (Session_capability) { _env->close(probe.id()); return true; },
+			[&] (Session_error e)    { return e != Session_error::DENIED; });
+}
+
 /* Opens the Timer session on first use; null before construct. */
 static Timer::Connection *_timer_session()
 {
 	if (!_env) return nullptr;
 	Mutex::Guard guard(_timer_mutex());
-	if (!_timer.constructed())
-		_timer.construct(*_env, Timer::Connection::Label("writ_shim"));
+	if (!_timer.constructed()) {
+		if (!_timer_route_granted())
+			_timer_fail("Timer session denied (no route for label writ_shim)");
+		try { _timer.construct(*_env, Timer::Connection::Label("writ_shim")); }
+		catch (...) { _timer_fail("Timer session could not be opened"); }
+	}
 	return &*_timer;
 }
 
@@ -830,11 +889,22 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
 {
 	Timer::Connection *t = _timer_session();
 	if (!t || ms == 0) return;
-	uint64_t const deadline = t->elapsed_ms() + ms;
-	for (bool first = true;; first = false) {
+	uint64_t const start    = t->elapsed_ms();
+	uint64_t const deadline = start + ms;
+	uint64_t       last     = start;
+	for (unsigned round = 0;; round++) {
 		uint64_t const now = t->elapsed_ms();
 		if (now >= deadline) return;
-		if (!first) _timer_short_wakes++;  /* msleep returned before the deadline */
+		if (now < start)
+			_timer_fail("Timer clock went backwards during a sleep");
+		if (round > 0) {
+			if (now <= last)
+				_timer_fail("Timer clock did not advance across msleep");
+			_timer_short_wakes++;  /* msleep returned before the deadline */
+		}
+		if (round == MAX_SLEEP_ROUNDS)
+			_timer_fail("sleep exceeded MAX_SLEEP_ROUNDS msleep calls");
+		last = now;
 		t->msleep(deadline - now);
 	}
 }

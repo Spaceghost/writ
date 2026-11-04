@@ -1,5 +1,7 @@
 Genode console and time effects through the shim on base-linux (Genode channel lane, Task 1)
-Recorded: 2026-11-04, 01:15 to 02:00 -06:00
+Recorded: 2026-11-04, 01:15 to 02:00 -06:00; fix round 1 appended (section
+FIX ROUND 1 at the end, which supersedes the probe verdict, the shim hash, and
+the HASHES list above it).
 
 Everything here is Genode-on-Linux (base-linux: core, init, and components are
 Linux processes) evidence. It is not native Genode execution on any kernel,
@@ -16,6 +18,10 @@ RESULT
   The shim's sleep loop never had to re-sleep ("timer short wakes=0").
   check-binary.sh sees exactly Genode.log, Genode.now, and Genode.sleep as
   effect rows beyond the monitor profile (IO.print is in it).
+  Fix round 1: the verdict now requires after >= before and 100 <= delta <
+  1100 (runs 6-10 pass at 101 ms); the FAIL branch was exercised with a
+  scratch build (exit value 1), and a missing Timer route now ends the
+  component with one line and exit value 1 instead of a hang.
 
 INPUTS
   Bend:        $HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
@@ -236,10 +242,12 @@ RUNTIME PROFILE BINARY CHECK
       Genode.now
       Genode.sleep
     undefined symbols: 129, outside the monitor profile: 88 names
-  Effect rows: the script does see the custom effects. Its rule maps the
-  twin's genode_<name>_run to Genode.<name> (the twins were named for it),
-  so the three Genode effects are exactly the rows beyond the monitor
-  profile. The allow list was not edited: listing them as allowed host
+  Effect rows: the script does see the custom effects, but only through a
+  naming convention: its rule maps the twin's C function genode_<name>_run
+  to Genode.<name> (the twins were named for it), so the three Genode
+  effects are exactly the rows beyond the monitor profile. The Task 2
+  twins must follow the same convention (genode_take_run, genode_put_run)
+  or the check will not see them. The allow list was not edited: listing them as allowed host
   effects is task 2.4's decision (plan Task 3).
   Undefined symbols: the symbol half compares against monitor-symbols.txt,
   the Linux host surface; a Genode component imports Genode's base and
@@ -281,3 +289,108 @@ HASHES (committed files)
   800d9483144202717aab77893d4200f34c0be288badb73fad5483fe787bed9ec  scripts/genode/writ_bend_probe/writ_bend_probe.run
   Live copies src/writ_shim/writ_mem.cc, src/app/writ_bend_probe/target.mk,
   run/writ_bend_probe.run: byte-identical (cmp, 2026-11-04).
+
+FIX ROUND 1 (2026-11-04, review of Task 1)
+  Changes:
+    Probe.bend: the verdict is within(t0, t1) = t1 >= t0 and
+      sleep_ms() <= t1 - t0 < max_delta_ms() (100 and 1100); the delta line
+      now also prints max_delta_ms=1100. A reversed clock or a runaway delta
+      now fails (before, any U32 difference >= 100 passed).
+    writ_bend_probe.run: the "now before=" and "delta_ms=" regexps are
+      anchored to "[init -> writ_bend_probe]"; it requires t1 >= t0, the
+      delta recomputed without a 32-bit mask, matching the logged line, and
+      in [100, 1100).
+    Shim (changes confined to the "Console and time" section): the first
+      Timer open checks the route with Env::try_session under a probe id
+      and stops on DENIED (Env::session would log "stop because parent
+      denied" and sleep_forever, repos/base/src/lib/base/component.cc:
+      200-202); an exception from Timer::Connection's construction stops;
+      writ_shim_sleep_ms stops on a reading before the sleep's start, on a
+      reading after msleep that has not advanced, and after
+      MAX_SLEEP_ROUNDS (16) msleep calls. Each stop logs one
+      "writ_shim: ..." error line and calls Parent::exit(1). This is host
+      failure handling, not policy (stated in the source comment).
+      sha256 01d7dccb...920c -> 6664b650369086615111400f2ac59ee1c20a921db3134c5be8ac10040fffdfca
+  Emit: bend hosts/genode/monitor/Probe.bend -o ../writ-genode/bend-c/probe/probe.c
+    rc 0; 4198 lines; sha256 8f50082f95323cec1d5a7fa9cbe52f1f1c2334f3463ad54942e7b1b047533d03
+  Build: make app/writ_bend_probe (build-bend-probe-3.out: COMPILE probe.o,
+    COMPILE writ_mem.o, LINK; no errors). After the scratch build below the
+    committed probe was rebuilt with probe.o and the binaries removed first
+    (build-bend-probe-4.out: COMPILE probe.o, LINK), because make did not
+    notice the changed WRIT_BEND_C_DIR. Binary sha256
+    ce7c28382f13c72e84aae5c78f2cee0418d596536a97617f3aee855759844012
+    (.stripped d70341c481fb621fb2e31ac8fb342cfba469c3bb7bb3d60f2f29e3755550270f).
+
+  Permitted outcome, runs 6-8 (before the scratch builds) and 9-10 (after
+  the forced rebuild), make run/writ_bend_probe, rc 0 each; run 6 verbatim:
+    [init -> writ_bend_probe] probe: hello from Bend through the Genode LOG session
+    [init -> writ_bend_probe] probe: now before=0 after=101
+    [init -> writ_bend_probe] probe: delta_ms=101 sleep_ms=100 max_delta_ms=1100
+    [init -> writ_bend_probe] probe: PASS after >= before and sleep <= delta < max
+    [init -> writ_bend_probe] writ_mem: [exit] ram used=8581120 limit=268292700 caps used=41 limit=959 reservations=2 guards=1 chunks populated (total)=3 faults resolved=3 benign retries=0 reserved at hint=1 elsewhere=1 released=0 timer short wakes=0
+    [init] child "writ_bend_probe" exited with exit value 0
+    --- writ_bend_probe: readings 0 -> 101, delta 101 ms ---
+  Runs 7-10: identical readings (0 -> 101, delta 101 ms), rc 0.
+
+  Denied outcome 1, the probe's FAIL branch (scratch, not committed).
+    Copy of hosts/genode/{monitor,effects} in ../writ-genode/scratch-probe-fail/
+    with one change in within():
+      <     Bool.and(U32.is_ge(delta, sleep_ms()), U32.is_lt(delta, max_delta_ms())))
+      >     Bool.and(U32.is_ge(delta, 5000), U32.is_lt(delta, max_delta_ms())))
+    bend scratch-probe-fail/monitor/Probe.bend -o bend-c/probe-fail/probe.c
+      (sha256 199bc17273602889fca3870603db42ce7bb35bd16adee996b62be7ff81a6108c)
+    make app/writ_bend_probe WRIT_BEND_C_DIR=.../bend-c/probe-fail, then
+    make run/writ_bend_probe WRIT_BEND_C_DIR=.../bend-c/probe-fail
+    (run-writ_bend_probe-fail-1.out), rc 2:
+      [init -> writ_bend_probe] probe: hello from Bend through the Genode LOG session
+      [init -> writ_bend_probe] probe: now before=0 after=101
+      [init -> writ_bend_probe] probe: delta_ms=101 sleep_ms=100 max_delta_ms=1100
+      [init -> writ_bend_probe] probe: FAIL readings outside after >= before and sleep <= delta < max
+      [init -> writ_bend_probe] writ_mem: [exit] ram used=8581120 ... timer short wakes=0
+      [init] child "writ_bend_probe" exited with exit value 1
+      Error: writ_bend_probe did not exit with value 0
+    The FAIL branch logs its line and exits 1; the run script refuses it.
+
+  Denied outcome 2, missing Timer route for the shim (scratch run script,
+  not committed; ../writ-genode/scratch-probe-noroute/writ_bend_probe_noroute.run,
+  sha256 403eee06cebe0348f9c820edb5adafc3249010a9781e02ddd38d5cbc4dd193e9,
+  run from writ-repo/run/ with writ_bend_probe_noroute temporarily added to
+  WRIT_RUN_SCENARIOS, both removed afterwards). It is writ_bend_probe.run
+  with one route ahead of the default route:
+      + default-route
+        + service Timer | label_suffix: writ_shim
+          + parent
+        + any-service
+          ...
+  so the shim's session (label "writ_bend_probe -> writ_shim") goes to the
+  parent, which provides no Timer; libc's own Timer session keeps its
+  route. make run/writ_bend_probe_noroute (run-writ_bend_probe-noroute-1.out),
+  rc 2:
+      [init -> writ_bend_probe] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1013960
+      [init -> writ_bend_probe] probe: hello from Bend through the Genode LOG session
+      [init -> writ_bend_probe] Error: writ_shim: Timer session denied (no route for label writ_shim), component exits 1
+      [init] child "writ_bend_probe" exited with exit value 1
+      Error: writ_bend_probe did not exit with value 0
+  Init records the exit value; before this fix the same route would have
+  left the component in Env::session's sleep_forever.
+  Not exercised: the frozen/reversed-clock stops, the round cap, and an
+  exception from the Connection's construction.
+
+  Regression: make run/writ_bend_hello (run-writ_bend_hello-channel-t1-fix1.out)
+    rc 0, "hi", exit 0; make run/writ_bend_rts
+    (run-writ_bend_rts-channel-t1-fix1.out) rc 0, help exit 0, bad exit 1.
+    The corpus was not rerun in this round: the shim diff is confined to the
+    Console and time section (git diff hunks at lines 788-907 only), which
+    the corpus never calls; its memory code is unchanged since the corpus
+    run above.
+  check-binary.sh on the new probe ELF: output identical to the run above
+    (same 129 undefined symbols, same three Genode rows; rc 1).
+
+  HASHES (committed files, superseding the list above where they differ)
+    6664b650369086615111400f2ac59ee1c20a921db3134c5be8ac10040fffdfca  hosts/genode/shim/writ_mem.cc
+    e6a9acd4650e62d70abb6725a8d22d0a938838efb5664d185be21ea0473c13fe  hosts/genode/monitor/Probe.bend
+    99f2a1546031b2b7aac819a67ba098ff356e8d5da3a51b0cb8e7791cbaa846d7  scripts/genode/writ_bend_probe/target.mk
+    82f9fa2303ac6f341602f41d69170bc15de17661f726daac87fa770f2dcad464  scripts/genode/writ_bend_probe/writ_bend_probe.run
+    (hosts/genode/effects/* unchanged.) Live copies src/writ_shim/writ_mem.cc,
+    src/app/writ_bend_probe/target.mk, run/writ_bend_probe.run: byte-identical
+    (cmp, end of fix round 1).

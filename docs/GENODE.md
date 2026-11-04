@@ -411,8 +411,9 @@ unit, over the component's LOG session and a Timer session). With libc's
 stdout on `/dev/null`, the probe's text still reached the LOG
 (`[init -> writ_bend_probe] probe: hello from Bend through the Genode LOG
 session`), and its readings around `Genode.sleep(100)` differed by 101 to
-102 ms in four runs at 256M. Current gap: these effects are host rows
-beyond the monitor profile (`check-binary.sh` lists exactly the three) and
-are not yet admitted to it, and the probe's failure branch was not
-exercised. Record:
+102 ms at 256M; the probe accepts only ordered readings with a delta in
+[100, 1100) ms, and its failure branch exits 1. A missing Timer route ends
+the component with one `writ_shim:` line and exit value 1. Current gap:
+these effects are host rows beyond the monitor profile (`check-binary.sh`
+lists exactly the three) and are not yet admitted to it. Record:
 [genode-effects-base-linux.txt](../verification/genode-effects-base-linux.txt).
