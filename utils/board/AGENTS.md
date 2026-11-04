@@ -9,7 +9,7 @@ The board is read-only. It reads the repository given by `--root` and the
 sibling git worktrees under `--lanes`. It never writes to either and never
 executes a file it reads. Its only git invocations are the fixed, read-only
 `git -C <lane> rev-parse --abbrev-ref HEAD` and
-`git -C <lane> log -1 --no-show-signature --format=%h%x09%s%x09%cr`, run with
+`git -C <lane> log -1 --no-show-signature --format=%h%x09%s%x09%cr%x09%ct`, run with
 `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and `GIT_COMMON_DIR` removed and
 `GIT_CONFIG_NOSYSTEM=1`; do not add others. The SDD workspace
 (`.superpowers/sdd/`) is git-ignored and is read from the filesystem. Lane

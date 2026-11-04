@@ -13,7 +13,7 @@
 // not exist, so the panel must degrade to "could not be read" lines.
 
 import { join, resolve } from "node:path";
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { connect } from "node:net";
 
@@ -145,7 +145,12 @@ try {
   mkdirSync(join(lane, "verification"));
   writeFileSync(join(lane, ".git"), `gitdir: ${join(lanesDir, "no-such-gitdir")}\n`);
   writeFileSync(join(lane, "verification", CR_NAME), "synthetic test data\n");
-  writeFileSync(join(plan, "progress.md"), Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
+  writeFileSync(join(plan, "progress.md"),
+    "# SDD ledger — plan: docs/superpowers/plans/smoke.md\nTask 1: review Needs fixes. Fix round 1 dispatched (base 0000000).\n"
+    + Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
+  mkdirSync(join(lane, "docs", "superpowers", "plans"), { recursive: true });
+  writeFileSync(join(lane, "docs", "superpowers", "plans", "smoke.md"), `# Plan: smoke\n\nSpec: \`openspec/changes/${expected}/\` (synthetic).\n`);
+  writeFileSync(join(plan, "activity.log"), "2026-11-04T10:00:00Z\timplementer\tread the brief\n2026-11-04T10:05:00Z\timplementer\tstarted the probe build\n");
   writeFileSync(join(plan, "task-1-report.md"),
     "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
   mkdirSync(join(lanesDir, "not-a-worktree"));
@@ -209,6 +214,20 @@ try {
   check("report raw HTML is escaped", lanesHtml.includes("&lt;script&gt;") && !lanesHtml.includes("<script>alert"));
   check("unsafe link schemes become #", !/href="[^"]*(javascript|&#106;)/i.test(lanesHtml) && lanesHtml.includes('href="https://example.org/"'));
 
+  // With --lanes the lanes panel precedes the tables, so slice to the section's end.
+  const tablesStart = indexHtml.indexOf('id="index-tables"');
+  const tables = indexHtml.slice(tablesStart, indexHtml.indexOf("</section>", tablesStart));
+  check("index shows summary tiles", tables.includes('class="tiles"') && tables.includes("Being worked on"));
+  const rowStart = tables.indexOf(`/change/${expected}"`);
+  const row = tables.slice(rowStart, tables.indexOf("</tr>", rowStart));
+  check("the change the lane's plan names carries the lane's chip", row.includes('class="chip chip-active"') && row.includes("#lane-smoke-lane"));
+  check("the chip shows the ledger phase and an age", row.includes("Task 1 · fix round") && /chip-age">\d+ (s|min)</.test(row));
+  check("task numbers are listed under the progress bar", /tasknums">[\d. ]+ done/.test(row));
+  check("changes with no task and no lane are collapsed", tables.includes('id="rest-changes"') && /\d+ more changes with no task done and no lane/.test(tables));
+  check("lane card shows its status line and the change it is on", lanesHtml.includes('class="lane-phase">Task 1 · fix round') && lanesHtml.includes(`lane-changes">on <a href="/change/${expected}"`));
+  check("lane card shows the activity log, oldest first", lanesHtml.indexOf("read the brief") < lanesHtml.indexOf("started the probe build") && lanesHtml.includes('log-who">implementer'));
+  check("/api/lanes carries the parsed activity and phase", (await (await fetch(`${base}/api/lanes`)).text()).includes('"label":"fix"'));
+
   const changeStream = openStream(base, `/events?page=${encodeURIComponent(`/change/${expected}`)}`);
   const first = await changeStream.waitFor('id="main"', 2000);
   check("/events sends a datastar-patch-elements full render", first.ok && first.text.includes(`change · ${expected}`));
@@ -234,6 +253,14 @@ try {
   writeFileSync(join(plan, "task-1-report.md"), "# Smoke report\n\nStatus: EDITED\n\nedited body\n");
   const edited = await waitFor("edited body", 2000);
   check("editing a report pushes the new text within 2 s", edited.ok && edited.text.includes("EDITED"), `${edited.after} ms`);
+
+  appendFileSync(join(plan, "activity.log"), "2026-11-04T10:09:00Z\timplementer\tprobe printed hi, writing the evidence\n");
+  // The chip tooltip on the index tables and the lane's feed both carry the
+  // line; the tables fragment is sent first, then the lanes panel.
+  const appendedTables = await waitFor("writing the evidence", 2000);
+  const appendedLanes = await waitFor("writing the evidence", 2000);
+  check("appending to activity.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
+  check("appending to activity.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
 
   writeFileSync(join(plan, "task-2-report.md"), "# Second\n\nStatus: NEW\n");
   const added = await waitFor("task-2-report.md", 2000);
