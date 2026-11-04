@@ -60,11 +60,12 @@ static BOOL rpc_locked(WRIT_HOST *host, const char *operation, DWORD actor,
     DWORD handle, DWORD offset, DWORD count, const char *argument, WRIT_REPLY *reply)
 {
     char *request = NULL, response[256], *fields[5];
+    size_t capacity = 0;
     BOOL ok = FALSE;
     DWORD sequence;
     ZeroMemory(reply, sizeof(*reply));
     if (host->failed || host->sequence == MAXDWORD) goto done;
-    size_t capacity = strlen(argument) + 128;
+    capacity = strlen(argument) + 128;
     if (capacity > WRIT_POLICY_FRAME_MAX) goto done;
     request = malloc(capacity);
     if (!request) goto done;
@@ -91,6 +92,7 @@ static BOOL rpc_locked(WRIT_HOST *host, const char *operation, DWORD actor,
     strcpy_s(reply->detail, sizeof(reply->detail), fields[4]);
     ok = TRUE;
 done:
+    if (request) SecureZeroMemory(request, capacity);
     free(request);
     if (!ok) host->failed = TRUE;
     return ok;
@@ -560,12 +562,37 @@ static void print_identity(const WRIT_WORKER *worker)
     if (user) LocalFree(user); if (package) LocalFree(package);
 }
 
+static BOOL wrong_process_with_worker_token(const WRIT_WORKER *worker, const wchar_t *path)
+{
+    HANDLE source = NULL, duplicate = NULL, file = INVALID_HANDLE_VALUE;
+    BOOL impersonating = FALSE, ok = FALSE;
+    DWORD error = 0;
+    if (!OpenProcessToken(worker->process, TOKEN_DUPLICATE | TOKEN_QUERY, &source) ||
+        !DuplicateTokenEx(source, TOKEN_IMPERSONATE | TOKEN_QUERY, NULL, SecurityImpersonation,
+            TokenImpersonation, &duplicate) || !SetThreadToken(NULL, duplicate)) goto done;
+    impersonating = TRUE;
+    /* The privileged fixture deliberately presents the actual worker token from
+       the wrong native process. The mount must still reject its process lifetime. */
+    file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    error = file == INVALID_HANDLE_VALUE ? GetLastError() : ERROR_SUCCESS;
+    ok = file == INVALID_HANDLE_VALUE && error == ERROR_ACCESS_DENIED;
+done:
+    if (impersonating && !RevertToSelf()) ExitProcess(ERROR_ACCESS_DENIED);
+    if (file != INVALID_HANDLE_VALUE) CloseHandle(file);
+    if (duplicate) CloseHandle(duplicate);
+    if (source) CloseHandle(source);
+    if (!ok) fprintf(stderr, "FAIL wrong-process worker-token probe error=%lu\n", error ? error : GetLastError());
+    return ok;
+}
+
 int wmain(int argc, wchar_t **argv)
 {
     /* Explicit public fixture, one fixed probe executable, no general client/control socket. */
     if (argc != 8 || wcscmp(argv[1], L"--public-fixture") ||
         (wcscmp(argv[7], L"mount") && wcscmp(argv[7], L"lpac"))) {
         fprintf(stderr, "usage: writfs-windows --public-fixture INPUT NODE BRIDGE MODULE PROBE mount|lpac\n");
+        fprintf(stderr, "FAIL argument shape argc=%d public_switch=%u\n", argc,
+            argc > 1 && !wcscmp(argv[1], L"--public-fixture"));
         return 2;
     }
     BOOL lpac = !wcscmp(argv[7], L"lpac"), ok = FALSE, sockets_ready = FALSE;
@@ -584,7 +611,8 @@ int wmain(int argc, wchar_t **argv)
         fprintf(stderr, "FAIL initialize error=%lu\n", GetLastError()); goto done;
     }
     for (unsigned int i = 0; i < 65; ++i) digest[i] = host.digest[i];
-    if (!GetTempPathW(ARRAYSIZE(temporary), temporary) ||
+    DWORD temporary_length = GetTempPathW(ARRAYSIZE(temporary), temporary);
+    if (!temporary_length || temporary_length >= ARRAYSIZE(temporary) ||
         FAILED(StringCchPrintfW(outside, ARRAYSIZE(outside), L"%swrit-egress-%lu-%llu.tmp", temporary,
             GetCurrentProcessId(), GetTickCount64()))) goto done;
     /* Verify the ordinary broker can write the exact destination before testing denial. */
@@ -634,6 +662,8 @@ int wmain(int argc, wchar_t **argv)
     printf("NATIVE_PASS ordinary reader receives access denied before admission\n");
     if (!rpc(&host, "ADMIT", 1, 0, 0, 0, "public-canary", &reply) || !reply.allowed || reply.value != 1)
         goto done;
+    if (!wrong_process_with_worker_token(&host.worker, path)) goto done;
+    printf("NATIVE_PASS actual worker token presented by the wrong native process remains denied\n");
     if (!writ_worker_resume(&host.worker)) goto done;
     if (!read_report(report_read, ready, host.worker.process, 1,
         WRIT_PROBE_MOUNT_MASK | (lpac ? WRIT_PROBE_CONFINEMENT_MASK : 0), &report)) {

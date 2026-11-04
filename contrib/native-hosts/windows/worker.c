@@ -161,7 +161,8 @@ static BOOL private_image(WRIT_WORKER *worker)
     DWORD read = 0, written = 0;
     BOOL ok = FALSE;
     zero.QuadPart = 0;
-    if (!GetTempPathW(ARRAYSIZE(temporary), temporary) ||
+    DWORD temporary_length = GetTempPathW(ARRAYSIZE(temporary), temporary);
+    if (!temporary_length || temporary_length >= ARRAYSIZE(temporary) ||
         !ConvertSidToStringSidW(worker->app_sid, &app_sid) ||
         FAILED(StringCchPrintfW(worker->private_directory, ARRAYSIZE(worker->private_directory),
             L"%s%s", temporary, worker->profile)) ||
@@ -283,7 +284,8 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     /* No inherited console or standard I/O. Only the three private test handles
        in HANDLE_LIST can survive. The fixed probe uses WriteFile explicitly. */
     ZeroMemory(environment, sizeof(environment));
-    if (!GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root)) ||
+    DWORD root_length = GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root));
+    if (!root_length || root_length >= ARRAYSIZE(system_root) ||
         FAILED(StringCchPrintfW(environment, ARRAYSIZE(environment) - 1, L"SystemRoot=%s", system_root)))
         goto failed;
     if (!CreateProcessW(worker->image_path, command, &process_sa, &process_sa, TRUE,

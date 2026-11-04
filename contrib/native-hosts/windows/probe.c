@@ -130,13 +130,17 @@ static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_
     STARTUPINFOW startup = {0};
     startup.cb = sizeof(startup);
     PROCESS_INFORMATION child = {0};
-    GetModuleFileNameW(NULL, own_image, ARRAYSIZE(own_image));
-    StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --exit", own_image);
-    BOOL created = CreateProcessW(own_image, command, NULL, NULL, FALSE,
-        CREATE_NO_WINDOW | CREATE_SUSPENDED, NULL, NULL, &startup, &child);
-    error = created ? 0 : GetLastError();
-    if (created) { TerminateProcess(child.hProcess, 91); CloseHandle(child.hThread); CloseHandle(child.hProcess); }
-    record(report, WRIT_PROBE_CHILD, !created, error);
+    DWORD image_length = GetModuleFileNameW(NULL, own_image, ARRAYSIZE(own_image));
+    if (!image_length || image_length >= ARRAYSIZE(own_image) ||
+        FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --exit", own_image))) {
+        record(report, WRIT_PROBE_CHILD, FALSE, ERROR_INVALID_PARAMETER);
+    } else {
+        BOOL created = CreateProcessW(own_image, command, NULL, NULL, FALSE,
+            CREATE_NO_WINDOW | CREATE_SUSPENDED, NULL, NULL, &startup, &child);
+        error = created ? 0 : GetLastError();
+        if (created) { TerminateProcess(child.hProcess, 91); CloseHandle(child.hThread); CloseHandle(child.hProcess); }
+        record(report, WRIT_PROBE_CHILD, !created, error);
+    }
 
     HANDLE console = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     error = console == INVALID_HANDLE_VALUE ? GetLastError() : 0;

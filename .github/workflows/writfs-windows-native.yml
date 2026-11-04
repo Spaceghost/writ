@@ -174,10 +174,13 @@ jobs:
           $build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'
           $fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'
           [IO.File]::WriteAllBytes($fixture, [Text.Encoding]::UTF8.GetBytes("Writ public native canary`n"))
-          $node = (Get-Command node.exe -CommandType Application).Source
+          $node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source
           $bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path
           $module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'
-          & (Join-Path $build 'writfs-windows.exe') --public-fixture $fixture $node $bridge $module (Join-Path $build 'writfs-probe.exe') mount 2>&1 |
+          [string[]] $nativeArgs = @('--public-fixture', $fixture, $node, $bridge, $module, (Join-Path $build 'writfs-probe.exe'), 'mount')
+          if ($nativeArgs.Count -ne 7 -or ($nativeArgs | Where-Object { [string]::IsNullOrEmpty($_) })) { throw 'Invalid native argument vector.' }
+          "Native argument count: $($nativeArgs.Count); Node: $node" | Write-Output
+          & (Join-Path $build 'writfs-windows.exe') @nativeArgs 2>&1 |
             Tee-Object -FilePath (Join-Path $writLogs 'mount.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Native mounted filesystem checks failed.' }
       - name: Exercise LPAC, WFP, egress probes and revocation
@@ -186,10 +189,13 @@ jobs:
           $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
           $build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'
           $fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'
-          $node = (Get-Command node.exe -CommandType Application).Source
+          $node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source
           $bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path
           $module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'
-          & (Join-Path $build 'writfs-windows.exe') --public-fixture $fixture $node $bridge $module (Join-Path $build 'writfs-probe.exe') lpac 2>&1 |
+          [string[]] $nativeArgs = @('--public-fixture', $fixture, $node, $bridge, $module, (Join-Path $build 'writfs-probe.exe'), 'lpac')
+          if ($nativeArgs.Count -ne 7 -or ($nativeArgs | Where-Object { [string]::IsNullOrEmpty($_) })) { throw 'Invalid native argument vector.' }
+          "Native argument count: $($nativeArgs.Count); Node: $node" | Write-Output
+          & (Join-Path $build 'writfs-windows.exe') @nativeArgs 2>&1 |
             Tee-Object -FilePath (Join-Path $writLogs 'lpac.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Native LPAC fixture checks failed; no weaker profile fallback.' }
       - name: Retain all native evidence

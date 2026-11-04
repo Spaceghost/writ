@@ -44,7 +44,8 @@ BOOL writ_policy_start(WRIT_POLICY_PIPE *pipe, const wchar_t *node,
 
     /* NODE_OPTIONS, preload hooks, PATH and a caller-selected working directory
        cannot alter the monitor process. All three executable/module paths are explicit. */
-    if (!GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root))) goto failed;
+    DWORD root_length = GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root));
+    if (!root_length || root_length >= ARRAYSIZE(system_root)) goto failed;
     ZeroMemory(environment, sizeof(environment));
     if (FAILED(StringCchPrintfW(environment, ARRAYSIZE(environment) - 1,
         L"SystemRoot=%s", system_root))) goto done;

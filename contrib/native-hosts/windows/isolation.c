@@ -145,7 +145,8 @@ BOOL writ_same_user_probe(const wchar_t *image, HANDLE policy, HANDLE worker)
     startup.StartupInfo.cb = sizeof(startup);
     startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
     ZeroMemory(environment, sizeof(environment));
-    if (!GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root)) ||
+    DWORD root_length = GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root));
+    if (!root_length || root_length >= ARRAYSIZE(system_root) ||
         FAILED(StringCchPrintfW(environment, ARRAYSIZE(environment) - 1, L"SystemRoot=%s", system_root)) ||
         FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --outsider %lu %lu %lu", image,
             GetCurrentProcessId(), GetProcessId(policy), GetProcessId(worker))) ||

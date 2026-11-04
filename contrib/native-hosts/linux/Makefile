@@ -5,6 +5,9 @@ endif
 ifeq ($(filter /%,$(OUT)),)
 $(error OUT must be absolute)
 endif
+ifneq ($(filter $(abspath ../../..)/% $(abspath ../../..),$(abspath $(OUT))),)
+$(error OUT must be outside the source checkout)
+endif
 
 CC ?= cc
 PKG_CONFIG ?= pkg-config
@@ -14,7 +17,7 @@ FUSE_CFLAGS := $(shell $(PKG_CONFIG) --cflags fuse3)
 FUSE_LIBS := $(shell $(PKG_CONFIG) --libs fuse3)
 
 .PHONY: all
-all: $(OUT)/writfs-linux $(OUT)/transport-probe
+all: $(OUT)/writfs-linux $(OUT)/transport-probe $(OUT)/crash-probe
 
 $(OUT):
 	mkdir -p "$@"
@@ -24,3 +27,6 @@ $(OUT)/writfs-linux: writfs.c policy_pipe.c policy_pipe.h worker.c worker.h | $(
 
 $(OUT)/transport-probe: transport_probe.c policy_pipe.c policy_pipe.h | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) transport_probe.c policy_pipe.c -pthread -o "$@"
+
+$(OUT)/crash-probe: crash_probe.c | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) crash_probe.c -o "$@"

@@ -148,6 +148,12 @@ jobs:
             2>&1 | tee "$WRITFS_LINUX_LOGS/native-revocation.log"
           sudo "$WRITFS_LINUX_BUILD/writfs-linux" "${writfs_arguments[@]}" --case policy-exit \
             2>&1 | tee "$WRITFS_LINUX_LOGS/native-policy-failure.log"
+          sudo "$WRITFS_LINUX_BUILD/crash-probe" "$WRITFS_LINUX_BUILD/writfs-linux" \
+            "$(command -v node)" \
+            "$GITHUB_WORKSPACE/contrib/native-hosts/runtime/node-policy.mjs" \
+            "$WRITFS_LINUX_BUILD/mount.mjs" "$writfs_canary" "$writfs_work" \
+            "$writfs_uid" "$writfs_gid" \
+            2>&1 | tee "$WRITFS_LINUX_LOGS/native-broker-crash.log"
           set +e
           sudo "$WRITFS_LINUX_BUILD/writfs-linux" "${writfs_arguments[@]}" \
             --require-landlock 4294967294 > "$WRITFS_LINUX_LOGS/setup-refusal.log" 2>&1
@@ -155,7 +161,7 @@ jobs:
           set -e
           cat "$WRITFS_LINUX_LOGS/setup-refusal.log"
           test "$writfs_refused" = 1
-          rg --fixed-strings 'SETUP REFUSED before input loading or Bend admission' \
+          grep -F 'SETUP REFUSED before input loading or Bend admission' \
             "$WRITFS_LINUX_LOGS/setup-refusal.log"
           printf 'PASS missing required Landlock capability refuses setup before input\n'
           test "$(find "$writfs_work" -mindepth 1 -maxdepth 1 -type d | wc -l)" = 0

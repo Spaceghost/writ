@@ -39,6 +39,8 @@
 #error This bounded native probe profile is qualified only for Linux x86_64.
 #endif
 
+extern char **environ;
+
 static int64_t now_ms(void)
 {
     struct timespec ts;
@@ -341,28 +343,32 @@ static void outsider_probes(const char *root)
     int n = snprintf(path, sizeof path, "%s/view/data", root);
     if (n <= 0 || (size_t)n >= sizeof path) setup_fail(20);
     emit(W_READY, 1, 0);
-    expect_command('X');
-    errno = 0;
-    int fd = open(path, O_RDONLY | O_CLOEXEC);
-    emit(W_OUTSIDE_OPEN, fd < 0 && errno == EACCES, (uint32_t)errno);
-    if (fd >= 0) close(fd);
-    struct stat st;
-    errno = 0;
-    int result = stat(path, &st);
-    emit(W_OUTSIDE_STAT, result < 0 && errno == EACCES, (uint32_t)errno);
-    n = snprintf(path, sizeof path, "%s/view", root);
-    if (n <= 0 || (size_t)n >= sizeof path) setup_fail(21);
-    errno = 0;
-    fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-    emit(W_OUTSIDE_LIST, fd < 0 && errno == EACCES, (uint32_t)errno);
-    if (fd >= 0) close(fd);
-    uint32_t pid;
-    if (writ_private_read(WRIT_COMMAND_FD, &pid, sizeof pid, 15000) || pid > INT_MAX) _exit(129);
-    errno = 0;
-    long attached = ptrace(PTRACE_ATTACH, (pid_t)pid, NULL, NULL);
-    emit(W_OUTSIDE_PTRACE, attached < 0 && errno == EPERM, (uint32_t)errno);
-    if (!attached) ptrace(PTRACE_DETACH, (pid_t)pid, NULL, NULL);
-    emit(W_DONE, 1, 0);
+    for (unsigned int round = 0; round < 2; ++round) {
+        expect_command('X');
+        n = snprintf(path, sizeof path, "%s/view/data", root);
+        if (n <= 0 || (size_t)n >= sizeof path) setup_fail(21);
+        errno = 0;
+        int fd = open(path, O_RDONLY | O_CLOEXEC);
+        emit(W_OUTSIDE_OPEN, fd < 0 && errno == EACCES, (uint32_t)errno);
+        if (fd >= 0) close(fd);
+        struct stat st;
+        errno = 0;
+        int result = stat(path, &st);
+        emit(W_OUTSIDE_STAT, result < 0 && errno == EACCES, (uint32_t)errno);
+        n = snprintf(path, sizeof path, "%s/view", root);
+        if (n <= 0 || (size_t)n >= sizeof path) setup_fail(22);
+        errno = 0;
+        fd = open(path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+        emit(W_OUTSIDE_LIST, fd < 0 && errno == EACCES, (uint32_t)errno);
+        if (fd >= 0) close(fd);
+        uint32_t pid;
+        if (writ_private_read(WRIT_COMMAND_FD, &pid, sizeof pid, 15000) || pid > INT_MAX) _exit(129);
+        errno = 0;
+        long attached = ptrace(PTRACE_ATTACH, (pid_t)pid, NULL, NULL);
+        emit(W_OUTSIDE_PTRACE, attached < 0 && errno == EPERM, (uint32_t)errno);
+        if (!attached) ptrace(PTRACE_DETACH, (pid_t)pid, NULL, NULL);
+        emit(W_DONE, 1, 0);
+    }
     _exit(0);
 }
 
@@ -377,6 +383,11 @@ int writ_spawn_worker(struct writ_child *child, const char *root, uid_t uid, gid
     if (pipe2(result, O_CLOEXEC)) { close(command[0]); close(command[1]); return -1; }
     pid_t parent = getpid(), pid = fork();
     if (pid == 0) {
+        /* The prelude runs before admission and before any untrusted work.
+           Remove inherited environment bytes as well as the lookup pointers. */
+        for (char **entry = environ; entry && *entry; ++entry)
+            explicit_bzero(*entry, strlen(*entry));
+        if (clearenv()) _exit(134);
         if (dup2(command[0], WRIT_COMMAND_FD) < 0 || dup2(result[1], WRIT_RESULT_FD) < 0)
             _exit(130);
         close(0); close(1); close(2);

@@ -368,7 +368,7 @@ static const char *probe_name(enum writ_probe p)
         "descriptor sendmsg denied", "ioctl denied", "sendfile denied", "copy_file_range denied",
         "existing descriptor read denied after stop", "duplicate read denied after stop",
         "new open denied after stop", "metadata denied after stop", "native descriptors closed",
-        "worker exited", "other process open denied", "other process metadata denied",
+        "native probe phase complete", "other process open denied", "other process metadata denied",
         "other process listing denied", "same-UID memory tracing denied", "setup failed"
     };
     return (unsigned int)p < sizeof names / sizeof names[0] ? names[p] : "invalid";
@@ -450,6 +450,22 @@ static int witnessed_denial(const struct host *h, pid_t pid, uint32_t actor_slot
     return found >= required;
 }
 
+static int outsider_round(struct host *h, struct writ_child *other, unsigned int round)
+{
+    uint32_t reader_pid = (uint32_t)h->reader.pid;
+    if (command(other, 'X') ||
+        writ_private_write(other->command, &reader_pid, sizeof reader_pid, 15000)) return -1;
+    for (enum writ_probe p = W_OUTSIDE_OPEN; p <= W_OUTSIDE_PTRACE; ++p)
+        if (report(other, p, NULL)) return -1;
+    if (report(other, W_DONE, NULL)) return -1;
+    if (!witnessed_denial(h, other->pid, 0, "STAT", round * 2) ||
+        !witnessed_denial(h, other->pid, 0, "OPEN", round)) {
+        fputs("FAIL outsider denials did not reach the mounted Bend boundary\n", stderr); return -1;
+    }
+    printf("PASS kernel-derived outsider requests reached Bend and were denied (round %u)\n", round);
+    return 0;
+}
+
 static int positive_probes(struct host *h, const unsigned char *sealed)
 {
     if (command(&h->reader, 'R')) return -1;
@@ -482,12 +498,18 @@ static int read_uid(const char *text, uint32_t *result)
 
 static int readiness(const char *path, const char *root, const char *mount, const struct host *h)
 {
-    int fd = open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
+    char pending[PATH_MAX];
+    int length = snprintf(pending, sizeof pending, "%s.pending", path);
+    if (length <= 0 || (size_t)length >= sizeof pending) return -1;
+    int fd = open(pending, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC | O_NOFOLLOW, 0600);
     if (fd < 0) return -1;
     int n = dprintf(fd, "broker %ld\nworker %ld\npolicy %ld\nroot %s\nmount %s\n",
                     (long)getpid(), (long)h->reader.pid, (long)h->policy.pid, root, mount);
     int error = n < 0 || fsync(fd);
     close(fd);
+    /* Publish only the complete record; never replace an existing readiness file. */
+    if (!error && link(pending, path)) error = 1;
+    if (unlink(pending)) error = 1;
     return error ? -1 : 0;
 }
 
@@ -534,6 +556,9 @@ int main(int argc, char **argv)
     setvbuf(stdout, NULL, _IOLBF, 0);
     struct host h;
     memset(&h, 0, sizeof h);
+    atomic_init(&h.fatal, 0);
+    atomic_init(&h.initialized, 0);
+    atomic_init(&h.event_count, 0);
     h.uid = uid; h.gid = gid; h.sealed = -1;
     h.reader.pid = -1; h.reader.command = h.reader.result = h.reader.pidfd = -1;
     struct writ_child other = { .pid = -1, .command = -1, .result = -1, .pidfd = -1 };
@@ -587,19 +612,11 @@ int main(int argc, char **argv)
         reply.status != WRIT_OK || reply.value != 1) goto cleanup;
     puts("PASS Bend capability-to-commit admission");
 
-    uint32_t reader_pid = (uint32_t)h.reader.pid;
-    if (command(&other, 'X') ||
-        writ_private_write(other.command, &reader_pid, sizeof reader_pid, 15000)) goto cleanup;
-    for (enum writ_probe p = W_OUTSIDE_OPEN; p <= W_OUTSIDE_PTRACE; ++p)
-        if (report(&other, p, NULL)) goto cleanup;
-    if (report(&other, W_DONE, NULL)) goto cleanup;
-    if (!witnessed_denial(&h, other.pid, 0, "STAT", 2) ||
-        !witnessed_denial(&h, other.pid, 0, "OPEN", 1)) {
-        fputs("FAIL outsider denials did not reach the mounted Bend boundary\n", stderr); goto cleanup;
-    }
-    puts("PASS kernel-derived outsider requests reached Bend and were denied");
-    writ_retire_child(&other);
+    if (outsider_round(&h, &other, 1)) goto cleanup;
     if (positive_probes(&h, bytes)) goto cleanup;
+    /* Repeat after the admitted reader has populated dentry/attribute paths. */
+    if (outsider_round(&h, &other, 2)) goto cleanup;
+    writ_retire_child(&other);
 
     if (!strcmp(test_case, "hold")) {
         if (readiness(ready_file, root, mount, &h)) goto cleanup;
