@@ -36,7 +36,7 @@ of `app.c`; on a Linux build the `writ_uk_*` symbols are undefined and the link 
 | `effects/Unikraft.bend` | `Unikraft.log(text: String) -> IO(Unit)`, `Unikraft.now() -> IO(U32)`, `Unikraft.sleep(ms: U32) -> IO(Unit)`, `Unikraft.take() -> IO(Request)`, `Unikraft.put(reply: Reply) -> IO(Unit)` (public entry points for image programs); the record types `Request` (route subject + 16 body words) and `Reply` (16 words) | the twins below, by `import` | nothing itself | as below |
 | `effects/unikraft_log.c` | `unikraft_log_run` (T), `unikraft_log_use` (constructor) | runtime `io_cstr`, `free`, `term_pak`, `io_eff`; `writ_uk_log` | the argument string (a `malloc`ed copy, freed) | as `writ_uk_log` |
 | `effects/unikraft_now.c` | `unikraft_now_run`, `unikraft_now_use` | `writ_uk_now_ms` | nothing | 64-bit ms truncated to U32 (wraps after about 49.7 days) |
-| `effects/unikraft_sleep.c` | `unikraft_sleep_run`, `unikraft_sleep_use`; `static` `unikraft_sleep_more` | `writ_uk_clock_ns`, `writ_uk_sleep_left`; runtime `io_mem`/`calloc`/`free` (four words in `w->data`, freed when the sleep ends), `io_wait_on(w, 0, 0, io_tick() + left, more)` | parks on the runtime's own timer, as `IO.sleep` does: no helper thread, the loop stays live. Not `io_work` (a helper thread outlives `main` and makes success QEMU 255, evidence R0-E1) and no longer a blocked loop thread (fix round 1: a blocked loop serves no other computation) | at most 16 parks, as `writ_uk_sleep_left` |
+| `effects/unikraft_sleep.c` | `unikraft_sleep_run`, `unikraft_sleep_use`; `static` `unikraft_sleep_more` | `writ_uk_clock_ns`, `writ_uk_sleep_left`; runtime `io_mem`/`calloc`/`free` (four words in `w->data`, freed when the sleep ends), `io_wait_on(w, 0, 0, io_tick() + left, more)` | parks on the runtime's own timer, as `IO.sleep` does: no helper thread, the loop stays live. Not `io_work` (a helper thread outlives `main` and made success QEMU 255 when observed, evidence R0-E1; 19 under the current map, not rerun) and no longer a blocked loop thread (fix round 1: a blocked loop serves no other computation) | at most 16 parks, as `writ_uk_sleep_left` |
 | `effects/unikraft_take.c` | `unikraft_take_run`, `unikraft_take_use`; `static` `unikraft_take_more`, `unikraft_take_pack` | `writ_uk_take_poll`; runtime `io_mem`/`calloc`/`free` (17 words in `w->data`, freed when the Request is built), `heap_alloc`, `io_seal`, `term_ctr`, `io_wait_on(w, 0, 0, io_until(ms), more)` | parks on the runtime timer between polls of COM2: 10 ms while nothing has arrived (`UNIKRAFT_TAKE_IDLE_MS`), 1 ms while a frame is partly in (`UNIKRAFT_TAKE_BUSY_MS`, host.c answers 2, for at most 100 empty polls in a row, `WRIT_UK_BUSY_POLLS`). No helper thread, no loop-thread block, no spin. The port's FIFOs are off, so a wake collects about one byte: 0.14 to 0.56 s per accept round trip (0.86 s with a fixed 10 ms park; Channel.md, "Cost"). Builds a `Request` of 17 U32 fields | no time bound (the harness timeout bounds a take no client answers); one request outstanding |
 | `effects/unikraft_put.c` | `unikraft_put_run`, `unikraft_put_use` | `writ_uk_put`; runtime `ctr_take`, `spare_free`, `cls_fit`, `term_pak` | reads the `Reply`'s 16 fields; runs on the loop, does not park | 16 words |
 | `effects/Channel.md` | documentation: frame and record layout, transport, transport refusal, subject | nothing | nothing (not linked) | as stated there |
@@ -102,17 +102,21 @@ written:
 | --- | --- | --- |
 | halt, program status s, 0 <= s <= 108 (main returned s, or the program called `exit(s)`: `IO.exit`, `IO.die`) | s + 0x10 | 2s + 33 (0 -> 33, 1 -> 35, 3 -> 39) |
 | halt, program status above 108 (clamp) | 0x7f | 255 |
-| halt, status 1 without `exit()`: runtime or host-layer stop (`_exit(1)`: the runtime's `err_fail`, including arena exhaustion, and `host.c`'s `writ_uk_fail`; also `main` returning 1 on a bad `+RTS` argument) | 0x08 | 17 |
+| halt, status 1 without `exit()`: runtime or host-layer stop (`_exit(1)`: the runtime's `err_fail` and `host.c`'s `writ_uk_fail`; also `main` returning 1 on a bad `+RTS` argument. The runtime's own out-of-memory stop would be 17 if reached, but on this kernel a forced arena exhaustion runs out of guest memory first and is a crash, 253) | 0x08 | 17 |
 | halt, other nonzero status without `exit()`: ended by a signal (posix-process stores the signal number, or `0x80 \| SIGKILL` for an init process still running at shutdown) | 0x09 | 19 |
 | shutdown whose target is not a halt (init failure, restart request) | 0x7d | 251 |
 | Unikraft crash (`UK_CRASH_EVENT`) | 0x7e | 253 |
 
 `exit()` is told from `_exit()` by an atexit function: musl's `exit()` runs it and
 `_exit()` does not. The status alone could not separate `IO.die`'s `exit(1)` from
-`err_fail`'s `_exit(1)`. Limit: every runtime fail-stop shares 17; arena exhaustion has
-no value of its own among them (its message goes to stderr, which the hook does not read).
+`err_fail`'s `_exit(1)`. Limits: every runtime fail-stop shares 17 (the runtime's message
+goes to stderr, which the hook does not read); arena exhaustion has no value of its own:
+forced, it is a Unikraft crash (253), shared with a stack-overflow fault.
 
-Evidence and the cited Unikraft hook locations: `verification/unikernel-exit-codes.txt`.
+Evidence: `verification/unikernel-fault-qemu.txt` (the current map, the fault-message
+trial, arena exhaustion), `verification/unikernel-corpus-qemu.txt` ("Task 3 rerun", the
+corpus at QEMU 33), and `verification/unikernel-exit-codes.txt` (the first map and the
+cited Unikraft hook locations).
 
 ## Application template and scripts
 
@@ -136,6 +140,7 @@ they build or copy is written inside the repository.
 | `scripts/check-image.sh <set> <label> <probe> <reference> <qemu_status> [pass] [timeout] [mem]` | Boots the image once through `run.sh` and checks console diff (empty), PASS count (if given), last line (if `WRIT_EXPECT_LAST_LINE`), and QEMU status; exits 1 if any expected outcome changed | reads `WRIT_EXPECT_LAST_LINE`, `WRIT_NO_BOOT=1` (check an existing capture), `WRIT_CONSOLE_SED` (sed script masking run-dependent values before the diff, printed when used) | `$W` only; two `mktemp` files (plus `<first>.m` while masking) |
 | `scripts/check-channel.sh <set> <label> <probe> <client_ref> <console_ref> <qemu_status> RECORD...` | One Writ channel run: builds `probes/client/client.c` into `$W/<set>/client`, boots the image with COM2 on the Unix socket `$W/<set>/logs/chan-<label>.sock`, sends RECORD... with the client, and checks the client's output, the console (console.sh), and QEMU's status against the references; exits 1 if any expected outcome changed, 2 on bad usage | reads `CC` (default `gcc`), `WRIT_CHANNEL_TIMEOUT` (default 120 s) | `$W` only; one `mktemp` file |
 | `scripts/check-corpus.sh <set> <label> [timeout] [mem]` | `check-image.sh` for `tests-qemu` against `verification/unikernel-corpus-linux-reference.txt`, QEMU 33, last line `ALL LIBRARY TESTS PASSED` | reads `WRIT_CORPUS_PASS` (default 782, the merged tree's corpus) | `$W` only |
+| `scripts/check-fault.sh <set> <label> <probe> <reference> <qemu_status> [timeout] [mem]` | For images that end in a Unikraft crash, whose capture console.sh refuses (NUL bytes in the crash screen): boots once through `run.sh` (or reads the existing log with `WRIT_NO_BOOT=1`) and checks the program's lines after the banner (Unikraft's own `[  <s>] ` lines dropped) against the reference, the crash screen when the expected status is 253, and QEMU's status; exits 1 if any expected outcome changed. References: `verification/unikernel-overflow-reference.txt`, `verification/unikernel-exhaust-reference.txt` | reads `WRIT_NO_BOOT` | `$W` only; one `mktemp` file |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
 `lib/uklibid`), and `build.sh` always builds clean.

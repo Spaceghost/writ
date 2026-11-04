@@ -125,7 +125,10 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   message in the delivered configuration (2.3: shown only with posix signals enabled);
   arena exhaustion shares the crash code 253 with a fault (no code of its own); statuses
   above 108 share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU codes of
-  program statuses 46 and 47; more lanes (2.4); accelerated boots (3.1).
+  program statuses 46 and 47; one gpuexample boot (of three) printed Unikraft's "PM driver
+  failed the operation: -5" after the exit hook's port write, before QEMU exited with 33,
+  cause unknown ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt),
+  Task 3 rerun); more lanes (2.4); accelerated boots (3.1).
 
 ## Selection matrix, 2026-11
 

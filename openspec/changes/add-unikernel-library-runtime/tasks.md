@@ -106,7 +106,10 @@ pending.
   `exit()` by an atexit mark. Arena exhaustion, forced with `scripts/unikernel/Exhaust.bend`
   at three memory sizes, is a Unikraft crash (253) when the guest runs out of memory to back
   the arena, before the runtime's own bound; it therefore has no code distinct from a fault,
-  which UL-006 requires. The scenario states no number, so the spec is unchanged.
+  which UL-006 requires. Corpus failure (`Test.bend` `check` ends a failing test with
+  `IO.die(Unit, 1, ...)`) is QEMU 35, distinct from both. The UL-006 gap has two independent halves: enabling the
+  signal library would close only the message half; arena exhaustion would still share
+  253 with a fault. The scenario states no number, so the spec is unchanged.
 - [ ] 2.4 Enable additional lanes behind the kernel's thread library; show the corpus still matches and record the lane count.
 
 ## 3. Boots and deployment rules

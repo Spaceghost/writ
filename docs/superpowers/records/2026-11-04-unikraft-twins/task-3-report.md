@@ -87,3 +87,39 @@ TCG emulated boots; none is native, accelerated, or GPU evidence.
    uk_pm_shutdown's error line before QEMU exited (QEMU still 33); not reproduced in two
    reruns, cause unknown.
 6. Host load (about 48) made wall times indicative only.
+
+## Fix round 1
+
+Status: DONE. Evidence: verification/unikernel-fault-qemu.txt, "Fix round 1".
+
+1. (Important) exit_device.c and INVENTORY.md no longer say arena exhaustion maps to 17:
+   the runtime's own out-of-memory stop would be 17 if reached, but on this kernel a forced
+   exhaustion runs out of guest memory first and is a crash (253). Comment-only:
+   implementation tokens compared with the previous revision (gcc -fpreprocessed -dD -E
+   -P, whitespace squeezed): identical (39158e3e...). New source hash c4012e46... in the
+   evidence; the images were built from 88098cb9..., the same tokens.
+2. INVENTORY cites the fault and corpus evidence as well as exit-codes. Channel.md and
+   unikraft_sleep.c say the leftover helper thread gave 255 when observed and maps to 19
+   now (not rerun). unikraft_sleep.c is comment-only (tokens identical, c92e0284...);
+   the probe's regenerated C differs from the built one in those comment lines only, so
+   the probe image stands.
+3. exit_device.c cites musl 1.2.3: src/exit/exit.c:27-33 (__funcs_on_exit before _Exit)
+   and src/unistd/_exit.c:4-7 (_Exit only).
+4. Booted Hello with "+RTS --bogus" (main returns 1) and "+RTS --threads 0" (err_fail,
+   _exit(1)): both QEMU 17, each with the runtime's message on the console.
+5. tasks.md 2.3: the UL-006 gap has two independent halves (the signal library closes only
+   the message half; exhaustion still shares 253); corpus failure is QEMU 35
+   (Test.bend check -> IO.die(Unit, 1, ...)).
+6. New hosts/unikraft/scripts/check-fault.sh with references
+   verification/unikernel-overflow-reference.txt and unikernel-exhaust-reference.txt
+   (check-image.sh cannot be used: console.sh refuses the crash screen's NUL bytes, tried
+   first). Overflow PASS (253), Exhaust PASS (253, -m 1024), negative control (Hello
+   against the overflow reference) FAIL exit 1; the signals trial capture passes with the
+   message line in its reference.
+7. docs/UNIKERNELS.md Open list names the one-off gpuexample "PM driver failed the
+   operation: -5" line.
+8. OpenSpec, pinned form: `~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all
+   --strict --no-interactive` -> Totals: 44 passed, 0 failed (44 items). (Task 3's earlier
+   runs used the same bunx form, also 44/44.)
+
+Boxes unchanged: 2.1, 2.3, 2.4, section 3 unchecked. No long build in this round.

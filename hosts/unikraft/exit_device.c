@@ -22,8 +22,11 @@
  *   program status above 0x6c                 -> v = 0x7f (q = 255, "status
  *                                                not representable"; clamp)
  *   runtime or host-layer stop: the init process ended with status 1 without
- *     calling exit() (the runtime's err_fail, including arena exhaustion,
- *     and host.c's writ_uk_fail both call _exit(1); see below)
+ *     calling exit() (the runtime's err_fail and host.c's writ_uk_fail both
+ *     call _exit(1); see below. The runtime's own out-of-memory stop would
+ *     be this value if reached, but on this kernel a forced arena exhaustion
+ *     ran out of guest memory first and ended as a crash, 253:
+ *     verification/unikernel-fault-qemu.txt)
  *                                             -> v = 0x08 (q = 17)
  *   ended by a signal: nonzero status other than 1 without exit()
  *     (posix-process stores the signal number for a signal death, or
@@ -43,20 +46,24 @@
  * How exit() is told from _exit(): the generated C of Bend 2.0.39 ends a
  * program by returning from main() (success: status 0), by exit(status) for
  * IO.exit and IO.die (after io_sync), or by _exit(1) in err_fail for every
- * runtime fail-stop, among them arena exhaustion (ERR_TEXT[3], "out of
- * memory: ...", posted by heap_alloc_miss when corpus_grow fails), and the
+ * runtime fail-stop, among them the runtime's out-of-memory stop
+ * (ERR_TEXT[3], "out of memory: ...", posted by heap_alloc_miss when
+ * corpus_grow fails; not reached on this kernel, see above), and the
  * fault handler err_trap re-raises its signal (for example
  * $W/crash/gen/overflow.c: err_fail at :538-542, heap_alloc_miss's
  * err_post(H, ERR_HEAP) at :730, err_trap at :549-555, exit at :3183-3187).
  * The status alone cannot separate IO.die's exit(1) from err_fail's
  * _exit(1), and the runtime's message goes to stderr, which this file does
  * not read. musl's exit() runs atexit functions before _Exit and _exit()
- * does not, so this file registers one (writ_exit_mark, from an application
+ * does not (musl 1.2.3, the lib-musl these builds use: src/exit/exit.c:27-33
+ * calls __funcs_on_exit before _Exit; src/unistd/_exit.c:4-7 calls _Exit
+ * only), so this file registers one (writ_exit_mark, from an application
  * constructor, which lib/ukboot/boot.c do_main runs right before main) and
  * the term function reads whether it ran. A runtime fail-stop therefore has
- * its own value, shared by all runtime and host-layer stops (arena
- * exhaustion is not told apart from, say, a failed reservation); main()
- * returning 1 on a bad +RTS argument is also counted as a runtime stop.
+ * its own value, shared by all runtime and host-layer stops (one of them is
+ * not told apart from another, say a failed reservation from the
+ * out-of-memory stop); main() returning 1 on a bad +RTS argument is also
+ * counted as a runtime stop.
  *
  * Unikraft hooks used (paths under the Unikraft 0.21.0 tree):
  *   - Termination table: include/uk/init.h (struct uk_term_ctx, uk_term_func_t,

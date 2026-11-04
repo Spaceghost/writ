@@ -135,8 +135,9 @@ from an application constructor (lib/ukboot/boot.c do_main runs __init_array rig
 before main) and the term function reads whether it ran. A signal death stores the signal
 number (exit.c:205; deliver.c:44-55), and an init process still running at shutdown
 without signals gets 0x80 | SIGKILL (shutdown.c:101): both are "nonzero without exit()".
-Limits: every runtime and host-layer stop shares 17 (arena exhaustion, if the runtime ever
-reported it here, would not be told from a failed reservation); main returning 1 on a bad
+Limits: every runtime and host-layer stop shares 17 (the runtime's out-of-memory stop, if
+it were ever reached here, would not be told from a failed reservation; forced arena
+exhaustion is a crash, 253, below); main returning 1 on a bad
 +RTS argument also counts as a runtime stop; if atexit failed, exit(s != 0) would be
 misnamed as 17 or 19, never as success.
 
@@ -229,3 +230,55 @@ request, waits 0.5 s, sends the other 40, then three whole requests:
   reply seq=1 decision=1 reason=0, answered 0.098 s after the second half; seq 2 to 4
   Denied reason 6 (replays); console "fuel exhausted"; QEMU 33. The back-off itself (the
   10 ms parks during the pause) is not observable from outside and was not traced.
+
+== Fix round 1 (Task 3 review) ==
+
+Comment-only source changes, implementation tokens compared with the previous revision
+(gcc -fpreprocessed -dD -E -P, whitespace squeezed, sha256):
+  hosts/unikraft/exit_device.c: the header no longer says arena exhaustion maps to 17
+    (the runtime's own out-of-memory stop would be 17 if reached; forced exhaustion is a
+    crash, 253); musl 1.2.3 source cited for exit() running atexit functions
+    (src/exit/exit.c:27-33, __funcs_on_exit before _Exit) and _exit() not
+    (src/unistd/_exit.c:4-7, _Exit only), from the lib-musl tree these builds unpack
+    ($W/<set>-unikraft/.unikraft/build/libmusl/origin/musl-1.2.3/). Tokens: 39158e3e...
+    before and after, identical. New file hash
+    c4012e46747e8e9d256ed811cf7cf839dbfa2659989b152be763ab175a2f0d90 (the images above were
+    built from 88098cb9..., the same tokens).
+  hosts/unikraft/effects/unikraft_sleep.c: the R0-E1 note says the leftover helper thread
+    gave QEMU 255 when observed and maps to 19 now (not rerun). Tokens: c92e0284... before
+    and after, identical. New hash
+    f9ccb6cf0c673ff96aaf88ea8d2d8e0f285a8d080743ae4364ecaba522f1020a. The twin is spliced
+    into the probe's generated C: regenerating probe.c differs from the built one in these
+    comment lines only (diff), so the probe image 413c1e43... stands. monitor.c regenerated
+    is byte-identical (cmp).
+
+The runtime's own _exit(1) and main's return 1 (17), Hello image 8f751440...:
+$ hosts/unikraft/scripts/run.sh codesa rtsrtsbogus hello "+RTS --bogus" 60 1024
+bend: unknown runtime option --bogus          (main returns 1)
+17
+$ hosts/unikraft/scripts/run.sh codesa rtsrtsthreads0 hello "+RTS --threads 0" 60 1024
+bend: expected a thread count of 1 or more after --threads     (err_fail, _exit(1))
+17
+
+Checks that exit nonzero on a changed outcome for the crashing probes:
+hosts/unikraft/scripts/check-fault.sh (bcba50f7...), because console.sh refuses these
+captures (the crash screen carries NUL bytes; check-image.sh with a sed mask was tried
+first and failed on that, run-ovcheck and run-excheck). References:
+verification/unikernel-overflow-reference.txt ("overflow probe start") and
+verification/unikernel-exhaust-reference.txt ("exhaust probe start").
+$ hosts/unikraft/scripts/check-fault.sh codesb ovf1 overflow verification/unikernel-overflow-reference.txt 253 60 4096; echo $?
+program lines: equal / crash screen: present / QEMU exit: 253 / result: PASS
+0
+$ hosts/unikraft/scripts/check-fault.sh codesa exf1 exhaust verification/unikernel-exhaust-reference.txt 253 120 1024; echo $?
+program lines: equal / crash screen: present / QEMU exit: 253 / result: PASS
+0
+negative control (Hello against the overflow reference, 253 expected):
+$ hosts/unikraft/scripts/check-fault.sh codesa negf1 hello verification/unikernel-overflow-reference.txt 253 60 1024; echo $?
+program lines: DIFFER / crash screen: MISSING / QEMU exit: 33, expected 253 / result: FAIL
+1
+the signals trial capture, with the message as part of the expected lines
+($W/fault/sig-ref.txt: "overflow probe start", "bend: memory fault (machine stack overflow?)"):
+$ WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-fault.sh fault sig1 overflow $W/fault/sig-ref.txt 253   -> result: PASS
+
+OpenSpec 1.16.0: ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+  -> Totals: 44 passed, 0 failed (44 items)

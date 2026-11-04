@@ -35,8 +35,9 @@ on a descriptor because this configuration has none for COM2: `lib/posix-tty`'s 
 file reads every STDIN console (not COM2) and reports POLLIN statically
 (`lib/posix-tty/serial.c`, `serial_state`), and `com_setup` disables the port's
 interrupts, so nothing would make a descriptor readable. It does not use `io_work` (its
-helper thread outlives `main` and turns success into QEMU 255,
-`verification/unikernel-effects-qemu.txt` R0-E1) and does not block the loop thread.
+helper thread outlives `main` and turned success into QEMU 255 when observed,
+`verification/unikernel-effects-qemu.txt` R0-E1; 19, a signal death, under the current
+exit map, not rerun) and does not block the loop thread.
 Between wakes the CPU halts in the idle thread; nothing spins.
 
 Cost: `com_setup` never writes the FIFO control register, so the port's 16550A FIFOs are

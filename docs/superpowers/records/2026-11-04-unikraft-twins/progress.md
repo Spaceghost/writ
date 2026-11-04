@@ -17,3 +17,5 @@ Task 2: implementer DONE_WITH_CONCERNS (50ef05d, bc4c0b0): accepted and Bend-den
 Task 2: fix round 1 DONE (e4cdc3d): 1 ms wait while a frame arrives, refusal cap 8, FIFO attempt recorded and dropped, inventory fixed. Scoped re-review dispatched.
 Task 2: complete (5e43f8e..e4cdc3d; re-review approved). Carried into Task 3: host.c:6-7 helper list comment; 1 ms park persists after a partial frame (note or back off). Task 3 dispatched (base e4cdc3d).
 Task 3: dispatched (base f14b626); in progress.
+Task 3: implementer DONE_WITH_CONCERNS (f14b626, 005f560): fault message only with experimental CONFIG_LIBPOSIX_PROCESS_SIGNAL (trial recorded, not adopted); code map success 33, runtime stop 17, crash 253; arena exhaustion shares 253; 2.1 and 2.3 open. Ruling: do not adopt the experimental signal library in this lane; record it as the UL-006 gap and a decision for Spaceghost. Review dispatched.
+Task 3: review Needs fixes (Important: exhaustion wrongly mapped to 17 in header and INVENTORY; minors: stale 255, musl citation, boot the _exit(1) path, 2.3 two halves, Overflow/Exhaust checks, gpuexample line, OpenSpec via bunx). Fix round 1 dispatched (base 005f560).

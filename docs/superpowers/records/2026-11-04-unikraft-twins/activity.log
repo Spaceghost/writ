@@ -63,3 +63,7 @@
 2026-11-04T19:26:48Z	implementer	still building the corpus image (set corpus3, gcc cc1 on tests.c for about 5600 s, then the assembler; the 782 build took 5498 s); examples rerun done and recorded
 2026-11-04T19:28:36Z	implementer	corpus image built (5847 s, 11b07c46); booting check-corpus at -m 4096 and -m 32
 2026-11-04T19:29:34Z	implementer	corpus3 check-corpus -m 4096 and -m 32: 782 PASS, QEMU 33, PASS; bincheck PASS; OpenSpec 44/44; Task 3 report written; committing; DONE_WITH_CONCERNS
+2026-11-04T19:30:13Z	controller	Task 3 done; review dispatched
+2026-11-04T19:37:21Z	controller	review: needs fixes (exhaustion wording); fix round 1 dispatched
+2026-11-04T19:37:22Z	implementer	Task 3 fix round 1 started
+2026-11-04T19:41:10Z	implementer	fix round 1: exit_device/INVENTORY exhaustion wording (tokens identical), 255->19 notes, musl cites, +RTS bad args 17 x2, check-fault.sh (overflow PASS, exhaust PASS, neg FAIL rc1), tasks.md 2.3 halves + 35, UNIKERNELS Open PM line; OpenSpec bunx 1.16.0 44/44; committing
