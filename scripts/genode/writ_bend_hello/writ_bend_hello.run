@@ -19,6 +19,9 @@
 # because the runtime's event loop opens a pipe before the first print
 # (the event-loop row of verification/genode-runtime-rows-base-linux.md).
 #
+# The boot configuration and the shared checks are in writ_bend.tcl (sourced
+# below), shared with the other writ_bend_*.run scripts.
+#
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services plus a Timer session from the sibling timer component (libc uses
 # it for clock_gettime, nanosleep, and select timeouts). The component's VFS
@@ -36,65 +39,21 @@
 set ram 256M
 if {[info exists ::env(WRIT_BEND_HELLO_RAM)]} { set ram $::env(WRIT_BEND_HELLO_RAM) }
 
-build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_hello }
+source [select_from_repositories run/writ_bend.tcl]
 
-create_boot_directory
-
-install_config "
-config
-+ parent-provides
-  + service LOG
-  + service PD
-  + service CPU
-  + service ROM
-  + service RM
-+ default-route
-  + any-service
-    + parent
-    + any-child
-+ default | caps: 200 | ram: 1M
-+ start timer
-  + provides | + service Timer
-+ start writ_bend_hello | caps: 1000 | ram: $ram
-  + config
-    + vfs
-      + dir dev | + log
-      + dir pipe | + pipe
-    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
-    + arg | value: writ_bend_hello
-    + arg | value: +RTS
-    + arg | value: --threads
-    + arg | value: 1
-    + arg | value: --gpu
-    + arg | value: off
-    + env | key: WRIT_MEM_REPORT | value: 1
--
-"
-
-build_boot_image [build_artifacts]
+writ_bend_boot writ_bend_hello $ram 1000
 
 run_genode_until {child "writ_bend_hello" exited with exit value .*\n} 240
 
-# run_genode_until accepts any exit value; require 0 before grep_output
-# narrows $output to the component's own lines.
-if {![regexp {child "writ_bend_hello" exited with exit value 0\r?\n} $output]} {
-	puts stderr "Error: writ_bend_hello did not exit with value 0"
-	exit 1
-}
+# run_genode_until accepts any exit value; require 0, the shim's start
+# line and exit report, and no failed re-reservation before grep_output
+# narrows $output to the component's own lines (writ_bend.tcl).
+writ_bend_require_exit0 writ_bend_hello
+writ_bend_require_shim_lines writ_bend_hello
+writ_bend_refuse_reserve_failure
 
-# The shim logs one line when it has resolved libc's originals and, with
-# WRIT_MEM_REPORT=1, one RAM report from exit. Require both, then require
-# that every other line of the component is exactly "hi", once.
-foreach {re what} {
-	{\[init -> writ_bend_hello\] writ_mem: libc mmap=}                  "shim start line"
-	{\[init -> writ_bend_hello\] writ_mem: \[exit\] ram used=[0-9]+ }    "shim exit report"
-} {
-	if {![regexp $re $output]} {
-		puts stderr "Error: missing $what"
-		exit 1
-	}
-}
-
+# Then require that every component line other than the shim's is exactly
+# "hi", once.
 grep_output {^\[init -> writ_bend_hello\] (?!writ_mem: )}
 
 if {[llength [split [string trim $output] "\n"]] != 1} {

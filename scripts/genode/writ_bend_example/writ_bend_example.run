@@ -13,7 +13,8 @@
 # <bin> +RTS --threads 1 --gpu off), recorded with its command in
 # verification/genode-corpus-linux-reference.txt.
 #
-# Authority and configuration: as writ_bend_hello.run. init routes the
+# Authority and configuration (writ_bend.tcl, sourced below): as
+# writ_bend_hello.run. init routes the
 # parent's LOG, PD, CPU, ROM, and RM services and a Timer session from the
 # sibling timer. The VFS holds /dev/log and a component-local vfs_pipe file
 # system at /pipe for libc's pipe() (the runtime's event loop); no file
@@ -28,58 +29,15 @@ set expected_lines 17
 set ram 256M
 if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
 
-build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
+source [select_from_repositories run/writ_bend.tcl]
 
-create_boot_directory
-
-install_config "
-config
-+ parent-provides
-  + service LOG
-  + service PD
-  + service CPU
-  + service ROM
-  + service RM
-+ default-route
-  + any-service
-    + parent
-    + any-child
-+ default | caps: 200 | ram: 1M
-+ start timer
-  + provides | + service Timer
-+ start $name | caps: 1000 | ram: $ram
-  + config
-    + vfs
-      + dir dev | + log
-      + dir pipe | + pipe
-    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
-    + arg | value: $name
-    + arg | value: +RTS
-    + arg | value: --threads
-    + arg | value: 1
-    + arg | value: --gpu
-    + arg | value: off
-    + env | key: WRIT_MEM_REPORT | value: 1
--
-"
-
-build_boot_image [build_artifacts]
+writ_bend_boot $name $ram 1000
 
 run_genode_until "child \"$name\" exited with exit value .*\n" 240
 
-if {![regexp "child \"$name\" exited with exit value 0\r?\n" $output]} {
-	puts stderr "Error: $name did not exit with value 0"
-	exit 1
-}
-
-foreach {re what} [list \
-	"\\\[init -> $name\\\] writ_mem: libc mmap="               "shim start line" \
-	"\\\[init -> $name\\\] writ_mem: \\\[exit\\\] ram used=\[0-9\]+ " "shim exit report" ] {
-	if {![regexp $re $output]} {
-		puts stderr "Error: missing $what"
-		exit 1
-	}
-}
+writ_bend_require_exit0 $name
+writ_bend_require_shim_lines $name
+writ_bend_refuse_reserve_failure
 
 grep_output "^\\\[init -> $name\\\] (?!writ_mem: )"
 

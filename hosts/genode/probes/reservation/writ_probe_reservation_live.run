@@ -45,6 +45,12 @@ build_boot_image [build_artifacts]
 
 run_genode_until {child "writ_probe_reservation" exited with exit value .*\n} 60
 
+# A failed PROT_NONE re-reservation would leave a guard as free address
+# space; fail on base-linux's line for it (writ_bend.tcl, shared with the
+# Bend component run scripts).
+source [select_from_repositories run/writ_bend.tcl]
+writ_bend_refuse_reserve_failure
+
 if {[regexp {probe_reservation: FAIL} $output]} {
 	puts stderr "Error: the probe reported a failure"
 	exit 1

@@ -22,12 +22,16 @@
 # or init's exit line, then keeps reading for 30 s, lists processes with ps,
 # and prints an outcome block. It fails if the program printed a result
 # (execution continued past the fault), if no shim refusal line appeared,
-# or if the component neither exited nonzero nor vanished. It does not
+# or if the component neither exited nonzero nor vanished. With neither
+# WRIT_BEND_RAM nor WRIT_BEND_CAPS set it also fails unless the refusal is
+# the guard page (the expected default outcome); with an override a quota
+# refusal is accepted and reported. It also fails if base-linux logged
+# "_reserve_local unexpectedly failed" (writ_bend.tcl). It does not
 # require init to record anything: whether the parent logs the fault is
 # what the run records (GB-003's parent-record half).
 #
-# Authority and configuration: as writ_bend_hello.run (parent LOG, PD, CPU,
-# ROM, RM; Timer from the sibling timer; VFS /dev/log and a local vfs_pipe
+# Authority and configuration (writ_bend.tcl, sourced below): as
+# writ_bend_hello.run (parent LOG, PD, CPU, ROM, RM; Timer from the sibling timer; VFS /dev/log and a local vfs_pipe
 # at /pipe; +RTS --threads 1 --gpu off as <arg> nodes; WRIT_MEM_REPORT=1).
 # RAM defaults to 3G and caps to 2000, the values at which the recursion
 # reaches the runtime's stack guard (verification/genode-corpus-base-linux.txt,
@@ -40,46 +44,14 @@
 
 set name writ_bend_overflow
 set ram 3G
-if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
 set caps 2000
-if {[info exists ::env(WRIT_BEND_CAPS)]} { set caps $::env(WRIT_BEND_CAPS) }
+set overridden 0
+if {[info exists ::env(WRIT_BEND_RAM)]}  { set ram  $::env(WRIT_BEND_RAM);  set overridden 1 }
+if {[info exists ::env(WRIT_BEND_CAPS)]} { set caps $::env(WRIT_BEND_CAPS); set overridden 1 }
 
-build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
+source [select_from_repositories run/writ_bend.tcl]
 
-create_boot_directory
-
-install_config "
-config
-+ parent-provides
-  + service LOG
-  + service PD
-  + service CPU
-  + service ROM
-  + service RM
-+ default-route
-  + any-service
-    + parent
-    + any-child
-+ default | caps: 200 | ram: 1M
-+ start timer
-  + provides | + service Timer
-+ start $name | caps: $caps | ram: $ram
-  + config
-    + vfs
-      + dir dev | + log
-      + dir pipe | + pipe
-    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
-    + arg | value: $name
-    + arg | value: +RTS
-    + arg | value: --threads
-    + arg | value: 1
-    + arg | value: --gpu
-    + arg | value: off
-    + env | key: WRIT_MEM_REPORT | value: 1
--
-"
-
-build_boot_image [build_artifacts]
+writ_bend_boot $name $ram $caps
 
 run_genode_until "(writ_mem: unresolved fault|writ_mem: SIGSEGV not from|Kernel: Segmentation fault|child \"$name\" exited with exit value)\[^\n\]*\n" 600
 
@@ -116,6 +88,8 @@ puts "init lines naming child: $init_lines"
 puts "process alive:           $alive"
 puts "ps control (timer):      $control"
 
+writ_bend_refuse_reserve_failure
+
 if {$resumed} {
 	puts stderr "Error: the program printed a result; execution continued past the fault"
 	exit 1
@@ -126,5 +100,9 @@ if {!$refused} {
 }
 if {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
 	puts stderr "Error: the component neither exited nonzero nor vanished"
+	exit 1
+}
+if {!$overridden && !$guard} {
+	puts stderr "Error: at the default quota the expected outcome is a guard-page refusal, got: $reason"
 	exit 1
 }

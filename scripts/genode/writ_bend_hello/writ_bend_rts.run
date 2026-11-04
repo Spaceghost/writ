@@ -67,6 +67,11 @@ build_boot_image [build_artifacts]
 
 run_genode_until {exited with exit value[^\n]*\n.*exited with exit value[^\n]*\n} 60
 
+# A failed PROT_NONE re-reservation would leave a guard as free address
+# space (writ_bend.tcl).
+source [select_from_repositories run/writ_bend.tcl]
+writ_bend_refuse_reserve_failure
+
 foreach {re what} {
 	{child "bend_rts_help" exited with exit value 0\r?\n}          "help exit value 0"
 	{\[init -> bend_rts_help\] usage: writ_bend_hello \[\+RTS}       "help usage line"

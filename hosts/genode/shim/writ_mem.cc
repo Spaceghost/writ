@@ -36,9 +36,17 @@
  * Guards. mprotect(PROT_NONE) on a page-aligned range inside a
  * reservation records the range as a guard. Any populated chunk that
  * overlaps it is detached and its same dataspace re-attached in pieces
- * that leave the guard range unmapped, so data outside the guard is kept
- * and the guard has no mapping. The fault handler never populates a
- * guard range: a touch there is refused and the component dies. mprotect
+ * that leave the guard range unattached, so data outside the guard is kept
+ * and the guard has no dataspace behind it. On base-linux the guard range
+ * is not an unmapped hole: detaching a piece runs base-linux's
+ * Region_map_mmap::detach, which munmaps the range and then re-reserves it
+ * with _reserve_local, a PROT_NONE Linux mapping
+ * (repos/base-linux/src/lib/base/region_map_mmap.cc:401-405). A touch
+ * therefore still faults. If that re-reservation fails, base-linux logs
+ * "_reserve_local unexpectedly failed" and the range is free address
+ * space; the run scripts fail on that line. The fault handler never
+ * populates a guard range: a touch there is refused and the component
+ * dies. mprotect
  * is never a no-op: a request this unit cannot carry out exactly fails
  * with -1.
  *
@@ -84,9 +92,16 @@
  * around a guard. The handler then just returns and the access is
  * retried. The bound on such retries per address is what still kills a
  * truly unresolvable fault. That bound has two limits: the table has
- * 16 slots and its counts never decay, so more than 16 concurrently
- * stuck addresses evict each other and can livelock, and a page that
- * races benignly more than 16 times over the whole run is refused.
+ * 16 slots and its counts never decay while the reservation lives (munmap
+ * clears the entries of its pages), so more than 16 concurrently stuck
+ * addresses evict each other and can livelock, and a page that races
+ * benignly more than 16 times over the reservation's life is refused.
+ *
+ * System calls do not populate. A system call that reads or writes an
+ * untouched chunk of a reservation (for example write(2) from, or read(2)
+ * into, a buffer never touched by user code) gets EFAULT from Linux
+ * instead of a SIGSEGV, so the chunk is not populated on that path.
+ * Buffers handed to I/O must have been touched first. Not exercised.
  * Only single-lane use has been run
  * (verification/genode-reservation-probe-base-linux.txt); a fault taken
  * while the faulting thread itself holds a Genode lock the handler needs
@@ -322,11 +337,11 @@ static Mutex &_mutex() { static Mutex m { }; return m; }
  * MAX_RETRIES is treated as unresolvable.
  *
  * Limits (see the header): the table has RETRY_SLOTS entries and counts
- * never decay. More than RETRY_SLOTS addresses faulting on populated
+ * never decay while their reservation lives (_release clears them). More than RETRY_SLOTS addresses faulting on populated
  * chunks at once evict each other's entries before any reaches
  * MAX_RETRIES, so a truly unresolvable fault among them is retried
  * without bound (livelock instead of termination). And an address whose
- * entry survives accumulates benign retries over the whole run, so a
+ * entry survives accumulates benign retries over the reservation's life, so a
  * page that races legitimately more than MAX_RETRIES times in total is
  * refused and the component dies.
  */
@@ -618,6 +633,15 @@ static void _release(Reservation &r)
 	_env->rm().detach(r.base);
 	_rm_connection->destroy(r.rm_cap);
 	_heap->free(r.chunks, r.num_chunks*sizeof(Chunk));
+
+	/*
+	 * Forget benign-retry counts for pages of this reservation, so a later
+	 * reservation at the same addresses does not inherit them.
+	 */
+	for (Retry &e : _retries)
+		if (e.count && _overlaps(e.page, PAGE, r.base, r.size))
+			e = { 0, 0 };
+
 	r = { };
 	_released++;
 }
@@ -722,8 +746,9 @@ extern "C" int mprotect(void *addr, ::size_t len, int prot)
 
 	if (!ok) {
 		/*
-		 * The guard range itself is unmapped either way (it is never a
-		 * piece), so the guard holds; data outside it may be unreachable.
+		 * The guard range itself is never a piece (it stays a PROT_NONE
+		 * reservation, see the header), so the guard holds; data outside
+		 * it may be unreachable.
 		 */
 		errno = ENOMEM; return -1;
 	}
