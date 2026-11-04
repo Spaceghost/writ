@@ -1,0 +1,170 @@
+Unikraft linuxu: the Bend reference program as a Linux process (task 1.3)
+Recorded 2026-11-04, unikraft-linuxu lane (plan docs/superpowers/plans/2026-11-04-unikraft-linuxu.md).
+Host: Linux x86_64 (Manjaro, kernel 7.2.9), no root, no KVM; 32 CPUs, load average about 80 from
+other builds, so wall times are indicative only. vm.overcommit_memory = 1; `ulimit -v` unlimited.
+
+Every run below is PROCESS EXECUTION of a Unikraft linuxu image on the host kernel. None is a
+boot, none is an emulated or accelerated boot, and none is native-host or device evidence.
+Every run is CPU only (`+RTS --threads 1 --gpu off`, the matrix's single-lane configuration).
+
+OUTCOME: STALLED at the runtime's first reservation. `hi` was not printed. The process prints
+the Unikraft banner, then
+
+    bend: reservation failed
+
+and does not exit (killed by `timeout`, status 124). All three attempts the plan names were made;
+none gets past the first 8 GiB mmap. Task 2 (Tests.bend, 782 PASS) was therefore not attempted.
+
+== Versions and inputs ==
+Unikraft RELEASE-0.16.3 e453b74a2e78a0de98563d75d8e0a97e668088e6, lib-musl RELEASE-0.16.3
+fd1abc9257b40a74c69b3a40467a453bf8892439, musl 1.2.3; tree at $W/linuxu/src-0.16.3, unpatched
+(verification/unikernel-pins.txt, "Unikraft 0.16.3 linuxu tree"). kraft 0.12.16, gcc 16.2.1,
+GNU ld 2.47, gdb 18.1, util-linux script 2.42.4. Bend 2.0.39.
+W=$(realpath ../writ-unikernel); L=$W/linuxu. Nothing below $W is in the tree.
+Input: bend scripts/unikernel/Hello.bend -o $L/gen/hello.c
+  hello.c 3074 lines, sha256 260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
+  (identical to the matrix's $W/hello/hello.c). The generated C was not edited.
+
+== Application ($L/hello-linuxu; written by hand, not from hosts/unikraft/app/) ==
+Config.uk: empty.  compiler-include/stdatomic.h -> $(gcc -print-file-name=include/stdatomic.h)  (A1)
+Makefile.uk:
+  $(eval $(call addlib,apphellobend))
+  APPHELLOBEND_SRCS-y += $(APPHELLOBEND_BASE)/../gen/hello.c
+  APPHELLOBEND_CINCLUDES-y += -I$(APPHELLOBEND_BASE)/compiler-include
+Kraftfile:
+  spec: v0.6
+  name: hello-bend
+  unikraft:
+    source: ../src-0.16.3/unikraft
+    kconfig:
+      CONFIG_LIBPOSIX_MMAP: 'y'
+      CONFIG_LIBPOSIX_PROCESS: 'y'
+      CONFIG_LIBPOSIX_FDTAB: 'y'
+      CONFIG_LIBPOSIX_SYSINFO: 'y'
+      CONFIG_LINUXU_DEFAULT_HEAPMB: 4          # attempt 2 variants: 4095, 8196
+  libraries:
+    musl:
+      source: ../src-0.16.3/libs/musl
+  targets:
+    - linuxu/x86_64
+This is the matrix's 0.16.3 A1 + A2 application, with the heap size made explicit (4 is the
+0.16.3 default, so the baseline image's configuration is unchanged). Resolved .config: PLAT_LINUXU=y,
+LINUXU_DEFAULT_HEAPMB as set, LIBUKMMAP=y, LIBUKVMEM not set (so kconfig drops LIBPOSIX_MMAP, as
+in the matrix), LIBUKLIBPARAM not set.
+
+Build (A2 = UK_CFLAGS=-std=gnu11, for GCC 16's C23 default; cwd the app directory):
+  KRAFT="$W/tools/kraftkit-0.12.16/kraft --config-dir $W/kraft-home/config --manifests-dir $W/kraft-home/manifests \
+    --sources-dir $W/kraft-home/sources --runtime-dir $W/kraft-home/runtime --no-check-updates --no-prompt \
+    --no-emojis --no-color --log-type basic"
+  UK_CFLAGS=-std=gnu11 $KRAFT build --no-update --target linuxu/x86_64 -j 16 . > $L/logs/build-heap4.log 2>&1; echo $?
+  0      (1 min 37 s wall; the two attempt-2 variants: 0 and 0, built side by side with -j 8)
+Images (.unikraft/build/hello-bend_linuxu-x86_64, stripped ELF, 868552 bytes for HEAPMB 4):
+  61686a114f587becd4899064bf5ef304fcfcff41b38228a5906a7cd7a8747f6d  HEAPMB 4
+  0c3c219107656188c56cf56e99fdd7b203e0e8fd3b403fb89c7cf66d7ed60157  HEAPMB 4095
+  2dd2927a356f23487c3b1b3fd1c9ee91244243c4bdfb9cb435dc3bd6836d8b4d  HEAPMB 8196
+  (clean builds embed the build time, so these hashes are not reproducible build to build.)
+
+Run harness (linuxu needs a TTY on stdin, matrix Task 1):
+  cd <app>; timeout <T> script -q -e -c ".unikraft/build/hello-bend_linuxu-x86_64 +RTS --threads 1 --gpu off" $L/logs/run-<v>.log </dev/null >/dev/null; echo $?
+The status printed is timeout's. script's log ends with `COMMAND_EXIT_CODE="0"` after
+"Session terminated, killing shell... ...killed."; that line is written after the session was
+killed and is not taken as the program's status.
+
+== Baseline (HEAPMB 4) ==
+  T=30: status 124. Output after the banner (`Telesto 0.16.3~e453b74`):
+    bend: reservation failed
+  Process state while it hangs (read from /proc/<pid>/maps and /proc/<pid>/status, 6 s in):
+    7f8ae4e00000-7f8ae5200000 rw-s 4 MiB /dev/zero (deleted)     <- the platform heap, the only mapping >= 1 MiB
+    VmSize 5244 kB, VmRSS 892 kB
+
+Observation of the mapping that failed (no strace; gdb breakpoints, executable = the stripped
+image, symbols from hello-bend_linuxu-x86_64.dbg; the .dbg ELF itself segfaults in
+ukplat_memregion_list_insert when run directly, so it was used for symbols only).
+Command file $L/logs/gdb-mmap.cmd: break uk_syscall_e_mmap (print rdi, rsi, rdx, rcx, r8),
+break musl src/mman/mmap.c:34 (print `ret`, the value the syscall returned), break err_fail (print
+the message and `bt 6`, then kill); `run +RTS --threads 1 --gpu off`; run under the same `script` pty.
+Output (log $L/logs/gdb-mmap-heap4.log):
+  mmap addr=0x200000000000 len=0x200000000 prot=0x3 flags=0x4022 fd=-1
+    musl __mmap sees ret=-12
+  ... the same for addr 0x100000000000, 0x80000000000, ... down to 0x400000000 (12 hints) ...
+  mmap addr=0 len=0x200000000 prot=0x3 flags=0x4022 fd=-1
+    musl __mmap sees ret=-12
+  err_fail (msg="reservation failed") at gen/hello.c:523
+  #1 pool_mmap (bytes=8589934592) at hello.c:1662
+  #2 corpus_map (size=8589934592) at hello.c:2219
+  #3 corpus_setup (gpu=false, threads=1, ...) at hello.c:2259
+  #4 main at hello.c:3069
+So the failing reservation is the CPU heap (corpus): 13 requests of 0x200000000 bytes (8 GiB),
+flags 0x4022 = MAP_NORESERVE | MAP_ANONYMOUS | MAP_PRIVATE, each answered -ENOMEM by Unikraft's
+own mmap (uk_syscall_e_mmap, lib/ukmmap), never by the host kernel. The 2 GiB stack reservation
+(pool_stack, called later from io_loop) is not reached.
+
+== Attempt 1: runtime options that shrink the reservations ==
+None exist. The generated C's option parser (gen/hello.c main, lines 2996-3065) accepts exactly
+--help, --gpu-build, --threads N and --gpu on|off|<size>, plus BENDRTS; its help text
+(CLI_HELP, hello.c:295-301) lists the same four, and `bend guide` documents only
+`+RTS --threads 8` and `+RTS --gpu 4GB` ("cap the GPU heap"). The CPU heap size is fixed:
+corpus_setup computes `(!gpu ? 1ull << 33 : bytes != 0 ? bytes : gpu_span())` (hello.c:2257), and
+for this program gpu is false (BANGS == 0, so `--gpu <size>` sets `mem` but not the CPU span;
+matrix E2/E10 ran `--gpu 64MB` and still reached `reservation failed`). The stack is fixed at
+`1ull << 31` + 16 KiB + 4*SIGSTKSZ (pool_stack, hello.c:1667-1670). Shrinking either means editing
+the generated C or the runtime, which the plan forbids. Not run again here (E10 already ran
+--gpu 64MB and BENDRTS); outcome: no option to try.
+
+== Attempt 2: the platform's memory configuration raised ==
+The only linuxu memory option in 0.16.3 is LINUXU_DEFAULT_HEAPMB
+(plat/linuxu/Config.uk:14-21, `int "Default heap size (MB)"`, default 4; the help says it can also
+be set at run time as linuxu.heap_size through uklibparam). There is no mmap limit option.
+How it is used (plat/linuxu/setup.c):
+  51  #define MB2B (1024 * 1024)
+  53  static __u32 heap_size = CONFIG_LINUXU_DEFAULT_HEAPMB;
+  54  UK_LIB_PARAM(heap_size, __u32);
+  62  __u32 len;
+  65  len = heap_size * MB2B;
+  72  pret = sys_mapmem(NULL, len);    // syscall.h:201-203: host mmap, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS
+The length is a 32-bit unsigned product, so the platform heap is at most 4095 MiB, and any
+setting of 4096 or more wraps modulo 4 GiB (the run-time linuxu.heap_size goes through the same
+__u32 multiplication, so enabling uklibparam cannot help). That heap is the only
+UKPLAT_MEMRT_FREE region handed to the allocator (lib/ukboot/boot.c:207-226).
+Builds changed (reason: attempt 2, raise the platform heap): CONFIG_LINUXU_DEFAULT_HEAPMB 4 -> 4095
+(the largest value whose byte length fits __u32) and 4 -> 8196 (to confirm the wrap).
+  HEAPMB 4095, T=60: status 124; output after the banner: `bend: reservation failed`.
+    /proc maps while hung: 7f183a200000-7f193a100000 rw-s 4095 MiB /dev/zero (deleted); VmSize 4194428 kB, VmRSS 1096 kB.
+    The host granted the whole 4095 MiB heap; the runtime's 8 GiB request is still more than twice it.
+  HEAPMB 8196, T=60: status 124; `bend: reservation failed`.
+    /proc maps while hung: a 4 MiB /dev/zero mapping; VmSize 5244 kB. 8196 MiB wrapped to 4 MiB, as the source reads.
+Outcome: the platform heap cannot be made as large as one 8 GiB reservation, let alone the
+8 GiB heap plus the 2 GiB stack the runtime takes next.
+
+== Attempt 3: can linuxu's mmap honour an 8 GiB MAP_NORESERVE request? ==
+No, by reading the 0.16.3 source; the runs above agree.
+- posix-mmap cannot be configured on linuxu: lib/posix-mmap/Config.uk:4 `depends on LIBUKVMEM`;
+  lib/ukvmem/Config.uk:7 `select PAGING`; plat/Config.uk:84-86 HAVE_PAGING `default y if PAGING`;
+  plat/linuxu/Config.uk:5 `depends on !HAVE_PAGING`. This is why the Kraftfile's
+  CONFIG_LIBPOSIX_MMAP is dropped.
+- The mmap that is linked is lib/ukmmap (implied by lib-musl, libs/musl/Config.uk:7
+  `imply LIBUKMMAP`; LIBUKMMAP=y in .config). Its mmap (lib/ukmmap/mmap.c:67-121) never calls the
+  host: it rejects fd != -1, accepts MAP_NORESERVE only as one of the flag combinations it checks
+  (line 86), then takes `uk_memalign(uk_alloc_get_default(), __PAGE_SIZE, len)` (line 98) from the
+  platform heap and `memset(mem, 0, len)` (line 112). So a MAP_NORESERVE request is served as an
+  eager, zeroed allocation from a heap of at most 4095 MiB; there is no lazily backed or reserved
+  path. The address hint is honoured only if it already lies inside an earlier ukmmap region
+  (lines 89-96), so the runtime's high-base hints all fall through to the allocator.
+- Observed: every one of the 13 requests returned -ENOMEM (-12) from uk_syscall_e_mmap.
+
+== Which attempt came closest ==
+Attempt 2 with HEAPMB 4095: the largest heap linuxu can map (4095 MiB, granted by the host), still
+under half of the runtime's first 8 GiB reservation. No attempt reached the stack reservation,
+the event loop, or the first print. The remaining routes all fall outside this lane's rules:
+editing the generated C or the Bend runtime to shrink `1ull << 33`, or patching Unikraft's
+__u32 heap length or ukmmap.
+
+== After the failure ==
+err_fail calls _exit(1) (hello.c:522-526), but the process does not end: in every run it is still
+alive when `timeout` kills it (124), as in the matrix (E10). Why linuxu's _exit does not end the
+process was not traced. A harness can only tell this failure by reading the output.
+
+== Task 2 ==
+Not attempted: hello did not run, so Tests.bend was not built, there is no corpus result to
+compare with tests-native.txt, and check-binary.sh was not run on a linuxu ELF. Box 1.3 stays
+unchecked (openspec/changes/add-unikernel-library-runtime/tasks.md).
