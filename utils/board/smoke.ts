@@ -297,7 +297,9 @@ try {
   check("question HTML is served as-is under a CSP sandbox with forms", qhtml.headers.get("content-security-policy") === "sandbox allow-scripts allow-forms allow-popups" && (await qhtml.text()).includes("Which kernel first?"));
   const posted = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: "kernel=base-hw&text=base-hw+first%2C+then+linux" });
   const answersFile = readFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), "utf8");
-  check("posting the form appends one JSON line with the fields and redirects to the thread", posted.status === 303 && (posted.headers.get("location") ?? "").startsWith("/questions/q1?embed=1") && answersFile.split("\n").filter(Boolean).length === 2 && answersFile.includes('"kernel":"base-hw"') && answersFile.includes('"who":"josh"'));
+  check("posting the form appends one JSON line with the fields and redirects to the thread", posted.status === 303 && (posted.headers.get("location") ?? "").startsWith("/questions/q1/answered?at=") && answersFile.split("\n").filter(Boolean).length === 2 && answersFile.includes('"kernel":"base-hw"') && answersFile.includes('"who":"josh"'));
+  check("the confirmation page renders inside the form's frame with a way back", (await (await fetch(`${base}/questions/q1/answered?at=2026-11-04T19:01:00Z`)).text()).includes('href="/questions/q1/html"'));
+  check("the drawer's frame allows forms so a question's form can submit from it", indexHtml.includes('sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"'));
   const after = await (await fetch(`${base}/questions/q1`)).text();
   check("the thread shows the reader's answer and the question reads answered", after.includes("base-hw first, then linux") && after.includes("answered"));
   const forgedOrigin = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://evil.example" }, body: "text=x" });

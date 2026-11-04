@@ -185,7 +185,9 @@ as-is at `/questions/<id>/html` under the explainer's CSP sandbox plus
 the thread beneath it. The page's form posts to `/questions/<id>/answer`, the
 board's **only write route**: it appends one JSON line
 (`{"at","who":"josh","fields":{...}}`) to `<id>.answers.jsonl` beside the page
-and redirects back to the thread. Every field becomes a capped string with
+and redirects the form's frame to a small confirmation (`/questions/<id>/answered`)
+with a link back to the form; the thread on the board page around it updates
+over its live stream. The quick-view drawer's iframe allows forms for this. Every field becomes a capped string with
 control characters removed; files are ignored; a body over 16 KiB, a foreign
 `Origin` (the board's own or the sandbox's `null` are accepted), a missing page,
 or any other method is refused. The controller appends its own replies to the
