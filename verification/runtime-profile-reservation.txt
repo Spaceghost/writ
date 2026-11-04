@@ -47,6 +47,16 @@ stderr (0 bytes):
 $ ( ulimit -v 8388608; gdb -q -batch -ex 'break err_fail' -ex 'run +RTS --threads 1 --gpu off' \
     -ex 'p (char*)$rdi' -ex 'info proc mappings' ../writ-build/runtime-profile/hello )   # filtered to the message and 8 GiB corpus
 $1 = 0x55555555a4e3 "reservation failed"
+The corpus filter printed nothing. Rerun with `ulimit -c 0` added and the whole gdb output saved to
+../writ-build/runtime-profile/resv/gdb8.txt:
+$ grep -c '^ *0x0000200000000000 ' ../writ-build/runtime-profile/resv/gdb8.txt
+0
+Every anonymous rw-p mapping in that output (none is 8 GiB, 0x200000000):
+0x000055555555e000 0x0000555555576000 0x18000 0x0 rw-p
+0x00007ffff7c1b000 0x00007ffff7c23000 0x8000 0x0 rw-p
+0x00007ffff7dfd000 0x00007ffff7e00000 0x3000 0x0 rw-p
+0x00007ffff7f37000 0x00007ffff7f39000 0x2000 0x0 rw-p
+0x00007ffff7ffe000 0x00007ffff7fff000 0x1000 0x0 rw-p
 
 $ ( ulimit -v 10485760; gdb -q -batch -ex 'break err_fail' -ex 'run +RTS --threads 1 --gpu off' \
     -ex 'p (char*)$rdi' -ex 'info proc mappings' ../writ-build/runtime-profile/hello )   # filtered to the message and 8 GiB corpus
@@ -61,5 +71,6 @@ At 8 GiB err_fail is reached with no corpus mapping present, so the 8 GiB corpus
 the one that failed; at 10 GiB the corpus at 0x200000000 is mapped and the failing reservation is
 the 2 GiB evaluation stack (pool_stack is the only other caller of pool_mmap). With 11 GiB, and
 with no limit, Hello prints "hi" and exits 0, so the failures above come from the limit, not from
-the binary. This is CPU execution on one Linux
-host; a host that overcommits or ignores the limit is not covered by this record.
+the binary. The success threshold lies between 10 GiB (fails) and 11 GiB (succeeds); it was
+bracketed by these two runs, not bisected further. This is CPU execution on one Linux host; a
+host that overcommits or ignores the limit is not covered by this record.

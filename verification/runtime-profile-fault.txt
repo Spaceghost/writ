@@ -15,6 +15,13 @@ re-raises the signal, so the process ends by SIGSEGV (shell status 128 + 11 = 13
 ## Depth attempts
 Each attempt is Overflow.bend with only the overflow_depth literal changed (the committed file
 uses 1000000000n); stdout and stderr are captured separately.
+Core dumps: these runs did NOT set `ulimit -c 0`, and the 10^9 run left a 10 GiB core file
+(core.<pid>) in the repository root, which was deleted before commit and never staged. To rerun the
+probe without that, disable core files in a subshell, for example:
+  ( ulimit -c 0; ../writ-build/runtime-profile/overflow/overflow-1000000000 +RTS --threads 1 --gpu off )
+Checked once afterwards from ../writ-build/runtime-profile/overflow: with `ulimit -c 0` the shell reported
+"Segmentation fault" without "(core dumped)", stderr was the same runtime message, the status was
+139, and no core file was written.
 
 ### depth 1000000
 $ sed 's/^  1000000000n$/  1000000n/' scripts/runtime-profile/Overflow.bend > ../writ-build/runtime-profile/overflow/Overflow-1000000.bend

@@ -18,9 +18,21 @@ $ ../writ-build/runtime-profile/tests-native +RTS --threads 1 --gpu off > verifi
 $ ../writ-build/runtime-profile/tests-native +RTS --threads 4 --gpu off > verification/runtime-profile-parity-4.txt
 [exit status: 0; stderr empty]
 
-PASS lines counted with: grep -cE '^PASS[: ]' FILE (matches both "PASS:" and "PASS ")
-  verification/runtime-profile-parity-1.txt: 638
-  verification/runtime-profile-parity-4.txt: 638
+PASS lines: the pattern ^PASS[: ] matches both forms the corpus prints, "PASS:" and "PASS ".
+Each command below was run against the committed capture; its output follows it.
+$ grep -cE '^PASS[: ]' verification/runtime-profile-parity-1.txt
+638
+$ grep -c '^PASS:' verification/runtime-profile-parity-1.txt
+585
+$ grep -c '^PASS ' verification/runtime-profile-parity-1.txt
+53
+$ grep -cE '^PASS[: ]' verification/runtime-profile-parity-4.txt
+638
+$ grep -c '^PASS:' verification/runtime-profile-parity-4.txt
+585
+$ grep -c '^PASS ' verification/runtime-profile-parity-4.txt
+53
+(585 "PASS:" plus 53 "PASS " lines = 638 in each capture.)
 
 $ diff verification/runtime-profile-parity-1.txt verification/runtime-profile-parity-4.txt
 [exit status: 0; no output, the captures are identical]
@@ -53,9 +65,11 @@ with its exit status:
   ../writ-build/runtime-profile/examples/<Name> +RTS --threads 1 --gpu off >> verification/runtime-profile-parity-examples-1.txt 2>&1
   ../writ-build/runtime-profile/examples/<Name> +RTS --threads 4 --gpu off >> verification/runtime-profile-parity-examples-4.txt 2>&1
 
-PASS lines (same pattern):
-  verification/runtime-profile-parity-examples-1.txt: 29
-  verification/runtime-profile-parity-examples-4.txt: 29
+PASS lines (same pattern, run against the committed captures; the examples print only "PASS "):
+$ grep -cE '^PASS[: ]' verification/runtime-profile-parity-examples-1.txt
+29
+$ grep -cE '^PASS[: ]' verification/runtime-profile-parity-examples-4.txt
+29
 Exit statuses: 4 of 4 zero at one lane; 4 of 4 zero at four lanes
 Parallel prints its own line "Native GPU dispatch requested; CPU fallback is allowed. No device
 attestation."; with --gpu off these runs are CPU execution.
