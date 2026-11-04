@@ -12,3 +12,4 @@ Task 2: complete (commits d7090be..ae79769, review clean). All plan tasks comple
 Final review: ready after fixes. Important: no Host-header allowlist (DNS rebinding reads lane data); CR in lane content breaks SSE framing. Ruling: one fix wave: both Importants plus minors 3 (AGENTS symlink wording), 4 (git --no-show-signature and scrubbed env), 5 (Evidence→Traceability), 10 (development:false + plain 500), 11 (drift links), smoke temp-dir leak, and SRI for Datastar if the hash is obtainable offline from the pinned file; skip 7 (slug collisions), 8 (backpressure), 9 (verification read cost) as deferred.
 Final fix wave: commit 257175c, 34 smoke checks pass; scoped re-review dispatched.
 Final fix wave re-review: all addressed. Finishing: merging lane/dev-board into unikernel-runtime-proposals.
+Merged to master as ee93f1d and pushed.
