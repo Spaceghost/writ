@@ -1,0 +1,231 @@
+Unikraft effect-twins lane, Task 3 (change task 2.3): the runtime's fault message, the
+exit-code map moved off QEMU 1, and arena exhaustion
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run below is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine pc,
+-cpu max, -no-reboot, the isa-debug-exit device at 0xf4, +RTS --threads 1 --gpu off,
+through hosts/unikraft/scripts/run.sh; -m as stated. Not native, not an accelerated boot,
+no GPU. Unikraft 0.21.0 (7351f8b), kraft 0.12.16, Bend 2.0.39 (pins:
+verification/unikernel-pins.txt). W = realpath ../writ-unikernel from the repository root;
+nothing built is in the tree. The host was heavily loaded (load average about 48); wall
+times are indicative only.
+
+== Result ==
+
+1. Fault message. With CONFIG_LIBPOSIX_PROCESS_SIGNAL=y (a trial configuration, not the
+   template) the runtime's own handler runs on its alternate stack and the console shows
+   "bend: memory fault (machine stack overflow?)"; the image then ends in a Unikraft crash
+   ("Cannot deliver SIGSEGV for pf at 0x1080069000", lib/posix-process/signal/deliver.c:428)
+   and the hook's crash value, QEMU 253 (two boots, same outcome). With the template
+   configuration (no posix signals) there is no message: the guard page fault is a Unikraft
+   crash, QEMU 253, as before. The trial needs a build workaround (below) because 0.21.0's
+   posix-process does not compile with signals enabled; the template was NOT changed.
+2. Exit-code map. Program statuses are written as s + 0x10 (success: QEMU 33), so no
+   outcome of the image is QEMU 1, which QEMU itself returns on its own startup errors.
+   exit() is told from _exit() by an atexit function in exit_device.c, which gives
+   runtime and host-layer stops (_exit(1)) their own value, QEMU 17, apart from
+   IO.die(..., 1, ...), QEMU 35.
+3. Arena exhaustion: no code of its own, recorded as a limit. Forced with
+   scripts/unikernel/Exhaust.bend at -m 1024, 4096, and 12288: every run ends in a Unikraft
+   crash, QEMU 253, inside heap_alloc_miss while it writes the free list into a fresh
+   arena page, after a time that grows with guest memory (3.3 s, 21.3 s, 111.4 s). The
+   guest runs out of memory to back the arena's lazily touched pages before the runtime's
+   own bound (corpus_grow failing) is reached, so the runtime's "out of memory" fail-stop
+   (err_fail, _exit(1), which would be QEMU 17) never runs, and arena exhaustion shares
+   QEMU 253 with the stack-overflow fault.
+
+| Program (scripts/unikernel/) | How it ends | Value on 0xf4 | QEMU | Before Task 3 |
+| --- | --- | --- | --- | --- |
+| Hello.bend | main returns 0 | 0x10 | 33 | 1 |
+| Die.bend | IO.die(Unit, 1, "die"): exit(1) | 0x11 | 35 | 3 |
+| Exit.bend | IO.exit(3): exit(3) | 0x13 | 39 | 7 |
+| Overflow.bend | guard page fault: Unikraft crash | 0x7e | 253 | 253 |
+| Exhaust.bend | backing memory exhausted: Unikraft crash | 0x7e | 253 | not run |
+| Monitor.bend, no second serial port | host.c writ_uk_fail: _exit(1) | 0x08 | 17 | 3 |
+| Monitor.bend, channel runs | main returns 0 after fuel 4 | 0x10 | 33 | 1 |
+| Probe.bend | main returns 0 | 0x10 | 33 | 1 |
+
+Not exercised: the signal value 0x09 (QEMU 19; no image in these runs ends by a signal
+death: the one candidate, io_work's leftover thread, is not built), statuses above 108
+(0x7f, QEMU 255), and the non-halt value 0x7d (QEMU 251).
+
+== Fault message: source (Unikraft 0.21.0, $W/src/unikraft) ==
+
+lib/posix-process/Config.uk:78 LIBPOSIX_PROCESS_SIGNAL, "POSIX signals (EXPERIMENTAL)";
+the template Kraftfile does not set it. With it:
+  - lib/posix-process/signal/system_error.c:69-72, :99-100: a page fault
+    (UK_LCPU_EXCEPT_EVENT_ERR_PAGE_FAULT, handler at UK_PRIO_LATEST) becomes SIGSEGV
+    through sys_error_handler_except, unless the fault happened on the auxiliary
+    (kernel) stack or before one exists (:41-42), which is then left to the crash path.
+  - lib/posix-process/signal/deliver.c:375-429 sys_error_handler: if the signal is
+    masked or ignored, or its handler is SIG_DFL, UK_CRASH("Cannot deliver SIGSEGV for pf
+    at ...") (:412-428); otherwise the standard delivery path (:422).
+  - deliver.c:112-132: delivery uses the process's alternate stack when the action has
+    SA_ONSTACK and sigaltstack is enabled (signal/sigaltstack.c).
+So SIGSEGV can reach a handler on an alternate stack, which is what Bend's pool_stack
+installs: sigaltstack plus sigaction(SIGSEGV and SIGBUS, err_trap, SA_ONSTACK |
+SA_NODEFER) (generated C, $W/crash/gen/overflow.c:1940-1953). err_trap (:549-555) writes
+the message to fd 2, sets SIG_DFL, and re-raises. Without LIBPOSIX_PROCESS_SIGNAL nothing
+turns the page fault into a signal and the crash screen is all there is (matrix E4).
+
+Observed sequence with signals (read from the console; not traced): the message, then
+"Cannot deliver SIGSEGV for pf at 0x1080069000" and the crash screen, crash rip in
+sys_error_handler at deliver.c:428 (addr2line on the .dbg). Read as: err_trap's re-raise
+did not end the process, the handler returned, the faulting access ran again, and the
+second fault found SIG_DFL, so posix-process crashed instead of delivering it. The image
+does not resume after the fault either way; the hook's crash value is written.
+
+Build workaround for the trial (no source patched): with LIBPOSIX_PROCESS_SIGNAL=y the
+build stops at lib/posix-process/shutdown.c:63, "implicit declaration of function
+'pprocess_signal_send'": shutdown.c includes "signal/signal.h" before <uk/config.h>, so
+that header's "#if CONFIG_LIBPOSIX_PROCESS_MULTITHREADING" (signal.h:116) reads 0 and
+the declaration (signal.h:287) is skipped. The trial adds "-include uk/config.h" to
+UK_CFLAGS. Scratch script $W/fault/build-sig.sh (fb8ed4a8...): build.sh's steps for set
+"fault" with that flag; the scratch Kraftfile $W/fault-unikraft/Kraftfile is the template
+plus CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y'.
+
+  hosts/unikraft/scripts/mkapp.sh fault        # then add the one Kconfig line to its Kraftfile
+  bend scripts/unikernel/Overflow.bend -o $W/fault/gen/overflow.c
+    1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc (same as the crash set's)
+  sh $W/fault/build-sig.sh "$PWD"
+    cc00069554ae0c99e32a02a3fa49b25f14f1743055de684e078d203d0d7d12f5  $W/fault/images/overflow-qemu
+  hosts/unikraft/scripts/run.sh fault sig1 overflow "+RTS --threads 1 --gpu off" 60 4096; echo $?
+overflow probe start
+bend: memory fault (machine stack overflow?)
+[    7.161419] CRIT: [libposix_process] <deliver.c @  428> Cannot deliver SIGSEGV for pf at 0x1080069000
+[    7.162583] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+  ... (crash screen: registers, stack) ...
+253
+(wall 7.3 s)
+  run sig2: the same lines (fault at the same address), 253, wall 6.5 s.
+
+Adopting this for the delivered images would mean enabling an experimental library in
+every image, carrying the include-order flag in build.sh, and rerunning the corpus with
+the new configuration; it would also change shutdown (posix-process then sends SIGTERM to
+a still-running init process, shutdown.c:61-69). Not done in this task: recorded for a
+decision.
+
+== Exit-code map (hosts/unikraft/exit_device.c) ==
+
+| How the image ends | Value | QEMU (2v + 1) |
+| --- | --- | --- |
+| program status s, 0 <= s <= 108: main returned s, or exit(s) | s + 0x10 | 2s + 33 |
+| program status above 108 (clamp) | 0x7f | 255 |
+| status 1 without exit(): runtime or host-layer stop (_exit(1)) | 0x08 | 17 |
+| other nonzero status without exit(): ended by a signal | 0x09 | 19 |
+| shutdown target not a halt | 0x7d | 251 |
+| crash (UK_CRASH_EVENT) | 0x7e | 253 |
+Values 0x00 to 0x07 and 0x0a to 0x0f are never written, so QEMU 1 (QEMU's own startup
+failure), 0, and 124 (timeout) are never an outcome of the image. timeout(1)'s 125 and
+127 equal QEMU for program statuses 46 and 47.
+
+Why the exit()/_exit() distinction is needed (generated C of Bend 2.0.39, cited from
+$W/crash/gen/overflow.c; the runtime part is the same in every program built here):
+  :538-542  err_fail: fflush, the message to stderr, _exit(1); every runtime fail-stop
+  :545      err_post on the host = err_fail(ERR_TEXT[code])
+  :520      ERR_TEXT[3] "out of memory: run again with a bigger span, as in +RTS --gpu 8GB"
+  :728-731  heap_alloc_miss: err_post(H, ERR_HEAP) when the arena cannot grow (corpus_grow)
+  :3183-3187 CID_Halt / CID_Exit (IO.die, IO.exit): io_sync(), then exit(status)
+  main returns 0 after a normal run.
+posix-process stores the status of exit_group either way (lib/posix-process/exit.c:203,
+:262-269), so the term context's exit_code is 1 for both IO.die(1) and err_fail; the
+message goes to stderr, which the hook does not read. musl's exit() runs the atexit
+functions and _exit() does not, so exit_device.c registers writ_exit_mark with atexit
+from an application constructor (lib/ukboot/boot.c do_main runs __init_array right
+before main) and the term function reads whether it ran. A signal death stores the signal
+number (exit.c:205; deliver.c:44-55), and an init process still running at shutdown
+without signals gets 0x80 | SIGKILL (shutdown.c:101): both are "nonzero without exit()".
+Limits: every runtime and host-layer stop shares 17 (arena exhaustion, if the runtime ever
+reported it here, would not be told from a failed reservation); main returning 1 on a bad
++RTS argument also counts as a runtime stop; if atexit failed, exit(s != 0) would be
+misnamed as 17 or 19, never as success.
+
+== Runs with the new map (template configuration) ==
+
+Generated C (byte-identical to verification/unikernel-exit-codes.txt's):
+  260b70a3...  hello.c   94048ae7...  die.c   7b1b4c43...  exit.c   1e273e1a...  overflow.c
+  8d79a44c43353b54e7b3a5a22a688765687160a158fd8c88ad7350284641dc37  exhaust.c (new probe)
+Sources:
+  88098cb925d49219eb87d0ae99c8738466be85216119371a05a37b8feb8cdcc1  hosts/unikraft/exit_device.c
+  9130a715195c77af5cec270d181bc9147e188cca0fe479f3471ab4370cf862e9  hosts/unikraft/host.c
+  2a1410fc5b964ad90a3393b9daaa1d145c9b567acd57a819f1cb423356bd8bdb  hosts/unikraft/effects/unikraft_take.c
+  774a074973c063166bde6a9b37df22f9ea60ad0a3ded4bf481ecbecd747dfa47  scripts/unikernel/Exhaust.bend
+  hosts/unikraft/scripts/mkapp.sh codesa; hosts/unikraft/scripts/mkapp.sh codesb
+  hosts/unikraft/scripts/build.sh codesa {hello,exit,exhaust}; build.sh codesb {die,overflow}
+Images:
+  8f75144000fe133d263e27b6dc889e601a829f3f20426761802a728ca395e4a8  $W/codesa/images/hello-qemu
+  8d4b6616396689c62460a59f595417a62a2c468babedf95b9002a7082731b1d2  $W/codesa/images/exit-qemu
+  1389225b4fa85cc084d55f5ece4f5f4ba758db0da8b1f58d60f4b67dc936e676  $W/codesa/images/exhaust-qemu
+  014a3c5ad45e83860bc8f85755af7599656b30b39e21b3617ff18824991a5532  $W/codesb/images/die-qemu
+  27ea4f6869112e821550a9ac8b172694c8d4416eafdce76d90aecbd6c37352fb  $W/codesb/images/overflow-qemu
+
+$ hosts/unikraft/scripts/check-image.sh codesa hello hello $W/codesa/hello-ref.txt 33 "" 60 1024   ('hi')
+diff: empty / QEMU exit: 33 / result: PASS
+$ hosts/unikraft/scripts/check-image.sh codesb die die $W/codesb/die-ref.txt 35 "" 60 1024
+  ('die probe start', 'die'; the first boot was checked against a reference without the
+  stderr line 'die' and failed on the diff only; the capture was rechecked with
+  WRIT_NO_BOOT=1 against the corrected reference)
+diff: empty / QEMU exit: 35 / result: PASS
+$ hosts/unikraft/scripts/check-image.sh codesa exit exit $W/codesa/exit-ref.txt 39 "" 60 1024   ('exiting with 3')
+QEMU exit: 39 / result: PASS
+$ hosts/unikraft/scripts/run.sh codesb overflow overflow "+RTS --threads 1 --gpu off" 60 4096
+overflow probe start
+[   10.322037] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)   (no "bend:" line)
+253
+
+== Arena exhaustion (scripts/unikernel/Exhaust.bend) ==
+
+fill(4000000000n, []) builds a 4e9-cell list in an accumulator and sum walks it only
+afterwards, so all cells are live at once. The prediction from the generated C was the
+runtime's "out of memory" fail-stop (err_fail, _exit(1), QEMU 17 under the new map).
+$ hosts/unikraft/scripts/run.sh codesa ex1 exhaust "+RTS --threads 1 --gpu off" 300 1024
+exhaust probe start
+[    3.344375] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[    3.346136] CRIT:  rip: 0008:00000000001c1f0d
+[    3.346515] CRIT:  rax: 000000000b071200 rbx: 0000000007f69080 rcx:0000000000000001
+253   (wall 3.5 s)
+  ex2, -m 4096:  crash at 21.259 s, same rip, rbx 000000001fe9f080; 253 (wall 21.7 s)
+  ex3, -m 12288: crash at 111.367 s, same rip, rbx 000000005fc86080; 253 (wall 112.6 s)
+addr2line on exhaust-qemu.dbg: rip 0x1c1f0d is heap_alloc_miss, app.c:731, the loop
+"H[got + ((u64)(i - 1) << cls)] = ..." that threads a fresh page's cells into the free
+list (exhaust.c:730-732), i.e. the first write to a new arena page. The crash time grows
+with -m; rbx at the crash grows with -m too (read as the arena position; not traced), and
+in the 12 GiB run it is past the initial 8 GiB reservation, so corpus_grow had already
+grown the arena once. Read: the arena's pages are reserved lazily and backed on first
+touch; once the guest has no memory left to back one, the fault is a Unikraft crash, not
+a runtime fail-stop, at every size tried. The runtime's own bound (corpus_grow failing at
+2^43 bytes or on a failed fixed-address map) was never reached. Limit, recorded: on this
+kernel arena exhaustion has no code of its own and is not told apart from the stack
+overflow (both QEMU 253); the "out of memory" message never appears. With posix signals
+enabled the same fault would presumably reach err_trap and print the memory-fault message
+(not run).
+
+== Channel monitor and effects probe with the new map ==
+
+  bend hosts/unikraft/monitor/Monitor.bend -o $W/channel/gen/monitor.c
+    08c58ee1346b2b00a9b25869c2f1a53e502d25ab97dcbc65495a1695e12731a5
+  WRIT_HOST_LAYER=y WRIT_CHANNEL_SUBJECT=1 hosts/unikraft/scripts/build.sh channel monitor
+    5b875b0d79b09ea0087d30ea43ed37eca1216026597e46e4ccf582814353f921  $W/channel/images/monitor-qemu
+  WRIT_HOST_LAYER=y hosts/unikraft/scripts/build.sh effects2 probe   (probe.c unchanged: the
+    Probe.bend edit is a comment; regenerated C is byte-identical)
+    413c1e436156dc417fa61c4224d451aeb81d568fc2f3fbbcbeb9da0ac3b4b967  $W/effects2/images/probe-qemu
+$ hosts/unikraft/scripts/check-channel.sh channel t3acc monitor verification/unikernel-channel-accepted-client.txt verification/unikernel-channel-accepted-console.txt 33 accept badlen badver other accept
+client diff: empty / console diff: empty / QEMU exit: 33 / result: PASS
+$ hosts/unikraft/scripts/check-channel.sh channel t3den monitor verification/unikernel-channel-denied-client.txt verification/unikernel-channel-denied-console.txt 33 other badlen badver accept accept
+client diff: empty / console diff: empty / QEMU exit: 33 / result: PASS
+negative control (t3neg: the denied order against the accepted references): FAIL, exit 1
+cross-check: the t3acc and t3den client logs' Bend replies == MonitorCheck's lines
+  (bend hosts/unikraft/monitor/MonitorCheck.bend: 10 PASS, exit 0)
+$ hosts/unikraft/scripts/run.sh channel t3noport monitor "+RTS --threads 1 --gpu off" 60 1024   (no second serial port)
+writ_uk: COM2 (0x2f8) does not answer; no second -serial, image exits 1
+17
+$ WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' hosts/unikraft/scripts/check-image.sh effects2 t3probe probe verification/unikernel-effects-probe-reference.txt 33 "" 60 1024
+diff: empty / QEMU exit: 33 / result: PASS
+binary check on the new monitor-qemu.dbg: rows Unikraft.log Unikraft.put Unikraft.take,
+  FAIL (outside the monitor profile), exit 1, as before.
+Partial frame across a pause (carried nit; host.c now answers IDLE after 100 empty busy
+polls in a row): scratch $W/fault/split.py (e4708296...) sends 40 bytes of an accept
+request, waits 0.5 s, sends the other 40, then three whole requests:
+  reply seq=1 decision=1 reason=0, answered 0.098 s after the second half; seq 2 to 4
+  Denied reason 6 (replays); console "fuel exhausted"; QEMU 33. The back-off itself (the
+  10 ms parks during the pause) is not observable from outside and was not traced.

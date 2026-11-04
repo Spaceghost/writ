@@ -12,20 +12,51 @@
  * (8 bits seen by the host shell). Without that device the port write is
  * ignored and Unikraft's own shutdown continues, so the image still ends.
  *
- * Values written (so the harness reads QEMU status q = 2v + 1):
- *   exit status s in 0..WRIT_EXIT_MAX_STATUS  -> v = s      (q = 2s + 1; s = 0 -> 1, s = 1 -> 3)
- *   exit status s above WRIT_EXIT_MAX_STATUS  -> v = 0x7f   (q = 255, "status not representable")
+ * Values written (so the harness reads QEMU status q = 2v + 1). Program
+ * statuses are offset by WRIT_EXIT_PROGRAM_BASE (0x10) so that no outcome of
+ * the image is q = 1, which QEMU itself returns on its own startup errors:
+ *   program status s, 0 <= s <= WRIT_EXIT_MAX_STATUS (0x6c = 108): main()
+ *     returned s, or the program called exit(s) (IO.exit, IO.die)
+ *                                             -> v = s + 0x10 (q = 2s + 33;
+ *                                                s = 0 -> 33, s = 1 -> 35)
+ *   program status above 0x6c                 -> v = 0x7f (q = 255, "status
+ *                                                not representable"; clamp)
+ *   runtime or host-layer stop: the init process ended with status 1 without
+ *     calling exit() (the runtime's err_fail, including arena exhaustion,
+ *     and host.c's writ_uk_fail both call _exit(1); see below)
+ *                                             -> v = 0x08 (q = 17)
+ *   ended by a signal: nonzero status other than 1 without exit()
+ *     (posix-process stores the signal number for a signal death, or
+ *     0x80 | SIGKILL when the init process is still running at shutdown)
+ *                                             -> v = 0x09 (q = 19)
  *   shutdown that is not a halt (init failure,
- *   restart request)                          -> v = 0x7d   (q = 251)
- *   crash (UK_CRASH_EVENT)                    -> v = 0x7e   (q = 253)
- * Program statuses are clamped below 0x7d so that no exit status a program can
- * choose produces the crash or non-halt value: those two values come only from
- * this file's crash and shutdown-target checks. QEMU status 0 or 124 (timeout)
- * therefore never means success. q = 1 alone does not prove success either:
- * QEMU itself exits 1 on its own startup errors, so a harness counts q = 1 as
- * success only together with a banner-verified console check
- * (hosts/unikraft/scripts/check-image.sh). timeout(1)'s own 125 and 127 equal
- * q for statuses 62 and 63.
+ *   restart request)                          -> v = 0x7d (q = 251)
+ *   crash (UK_CRASH_EVENT)                    -> v = 0x7e (q = 253)
+ * Values 0x00 to 0x07 and 0x0a to 0x0f are never written, so q = 1 (QEMU's
+ * own startup failure), q = 0, and q = 124 (timeout) never mean an outcome of
+ * the image. The clamp keeps every program status below 0x7d, so no status a
+ * program can choose produces the non-halt, crash, or not-representable
+ * values. timeout(1)'s own 125 and 127 equal q for statuses 46 and 47; the
+ * harness checks the console as well as q (hosts/unikraft/scripts/
+ * check-image.sh).
+ *
+ * How exit() is told from _exit(): the generated C of Bend 2.0.39 ends a
+ * program by returning from main() (success: status 0), by exit(status) for
+ * IO.exit and IO.die (after io_sync), or by _exit(1) in err_fail for every
+ * runtime fail-stop, among them arena exhaustion (ERR_TEXT[3], "out of
+ * memory: ...", posted by heap_alloc_miss when corpus_grow fails), and the
+ * fault handler err_trap re-raises its signal (for example
+ * $W/crash/gen/overflow.c: err_fail at :538-542, heap_alloc_miss's
+ * err_post(H, ERR_HEAP) at :730, err_trap at :549-555, exit at :3183-3187).
+ * The status alone cannot separate IO.die's exit(1) from err_fail's
+ * _exit(1), and the runtime's message goes to stderr, which this file does
+ * not read. musl's exit() runs atexit functions before _Exit and _exit()
+ * does not, so this file registers one (writ_exit_mark, from an application
+ * constructor, which lib/ukboot/boot.c do_main runs right before main) and
+ * the term function reads whether it ran. A runtime fail-stop therefore has
+ * its own value, shared by all runtime and host-layer stops (arena
+ * exhaustion is not told apart from, say, a failed reservation); main()
+ * returning 1 on a bad +RTS argument is also counted as a runtime stop.
  *
  * Unikraft hooks used (paths under the Unikraft 0.21.0 tree):
  *   - Termination table: include/uk/init.h (struct uk_term_ctx, uk_term_func_t,
@@ -56,6 +87,8 @@
  *     verification/unikernel-crash-action.txt).
  */
 
+#include <stdlib.h>
+
 #include <uk/config.h>
 #include <uk/init.h>
 #include <uk/event.h>
@@ -77,10 +110,13 @@
 #endif
 
 #define WRIT_EXIT_PORT          0xf4
-#define WRIT_EXIT_MAX_STATUS    0x7c
-#define WRIT_EXIT_NOT_REPR      0x7f
+#define WRIT_EXIT_PROGRAM_BASE  0x10
+#define WRIT_EXIT_MAX_STATUS    0x6c   /* 0x10 + 0x6c = 0x7c, below 0x7d */
+#define WRIT_EXIT_RUNTIME_STOP  0x08
+#define WRIT_EXIT_SIGNAL        0x09
 #define WRIT_EXIT_NOT_HALT      0x7d
 #define WRIT_EXIT_CRASH         0x7e
+#define WRIT_EXIT_NOT_REPR      0x7f
 
 /* posix-process's init process id (lib/posix-process/process.h, UK_PID_INIT,
  * private to that library): the process main() runs in.
@@ -94,10 +130,34 @@ static void writ_exit_device_write(unsigned char value)
 			     : : "a"(value), "Nd"((unsigned short)WRIT_EXIT_PORT));
 }
 
+/* Set by writ_exit_mark when the program calls exit(); never set by _exit(),
+ * by a signal death, or by a return from main().
+ */
+static volatile int writ_exit_called;
+
+static void writ_exit_mark(void)
+{
+	writ_exit_called = 1;
+}
+
+/* An application constructor: runs before main() (lib/ukboot/boot.c,
+ * do_main's __init_array loop), after libc is initialised. If atexit fails
+ * the mark is never set and an exit(s) with s != 0 is reported as a runtime
+ * stop or a signal: an outcome is misnamed, never turned into success.
+ */
+__attribute__((constructor)) static void writ_exit_register(void)
+{
+	(void)atexit(writ_exit_mark);
+}
+
 static unsigned char writ_exit_value_for_status(int status)
 {
+	if (!writ_exit_called && status == 1)
+		return WRIT_EXIT_RUNTIME_STOP;
+	if (!writ_exit_called && status != 0)
+		return WRIT_EXIT_SIGNAL;
 	if (status >= 0 && status <= WRIT_EXIT_MAX_STATUS)
-		return (unsigned char)status;
+		return (unsigned char)(status + WRIT_EXIT_PROGRAM_BASE);
 	return WRIT_EXIT_NOT_REPR;
 }
 

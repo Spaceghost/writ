@@ -4,7 +4,8 @@
  * Unikraft 0.21.0 host layer for the Unikraft.* effect twins
  * (hosts/unikraft/effects/unikraft_<x>.c, declared in Unikraft.bend). The
  * twins call the functions exported here and the runtime's own helpers
- * (io_cstr, io_mem, io_wait_on, io_tick) and nothing else; these functions
+ * (the full list per twin is in hosts/unikraft/INVENTORY.md) and nothing
+ * else; these functions
  * call only the Unikraft and musl interfaces cited below. Nothing here
  * decides an authority question or interprets a Writ value: it moves bytes
  * to the console and to the Writ channel's serial port, reads a clock, and
@@ -89,7 +90,8 @@
  * Failure behaviour (host failure handling, not policy: no Writ decision
  * depends on it; an image whose clock cannot be trusted stops). Each case
  * writes one "writ_uk: ..." line to the console and ends the image with
- * _exit(1) (QEMU status 3 through exit_device.c):
+ * _exit(1) (QEMU status 17 through exit_device.c, a runtime or host-layer
+ * stop):
  *   - a wake whose reading has not advanced past the previous reading (a
  *     wake without clock progress);
  *   - a reading below the sleep's start (clock went backwards);
@@ -245,6 +247,12 @@ static uint32_t writ_uk_sequence;
 static int writ_uk_pending;
 static unsigned long writ_uk_bad_length;
 static unsigned long writ_uk_bad_dropped;
+/* Empty polls in a row while a frame is partly in. After WRIT_UK_BUSY_POLLS
+ * of them (about 100 ms of 1 ms parks) the poll answers IDLE, so a client
+ * that stops mid-frame leaves the take twin on 10 ms parks, not 1 ms ones.
+ */
+static uint32_t writ_uk_stalled;
+#define WRIT_UK_BUSY_POLLS    100u
 static unsigned long writ_uk_put_skipped;
 
 static uint32_t writ_uk_word(const unsigned char *p)
@@ -360,8 +368,9 @@ static void writ_uk_refusal_line(uint32_t length, int dropped)
  * either way the call answers WRIT_UK_TAKE_BUSY. A length of 64 copies the
  * 16 record words to record, the built-in route subject to *subject, and
  * answers WRIT_UK_TAKE_RECORD. Otherwise it answers WRIT_UK_TAKE_BUSY while
- * a frame is partly received, WRIT_UK_TAKE_IDLE when nothing is; the twin
- * parks 1 ms or 10 ms accordingly (the port holds one byte at a time).
+ * a frame is partly received (for at most WRIT_UK_BUSY_POLLS empty polls in
+ * a row), WRIT_UK_TAKE_IDLE otherwise; the twin parks 1 ms or 10 ms
+ * accordingly (the port holds one byte at a time).
  * There is no resynchronisation: frames are counted from the boot's first
  * byte, so a client that leaves a partial frame shifts every later frame
  * (Channel.md, "Frames").
@@ -376,8 +385,14 @@ uint32_t writ_uk_take_poll(uint32_t *record, uint32_t *subject)
 			WRIT_UK_FRAME_BYTES - writ_uk_fill);
 		uint32_t length, sequence, i;
 
-		if (got <= 0)
-			return writ_uk_fill ? WRIT_UK_TAKE_BUSY : WRIT_UK_TAKE_IDLE;
+		if (got <= 0) {
+			if (writ_uk_fill && writ_uk_stalled < WRIT_UK_BUSY_POLLS) {
+				writ_uk_stalled++;
+				return WRIT_UK_TAKE_BUSY;
+			}
+			return WRIT_UK_TAKE_IDLE;
+		}
+		writ_uk_stalled = 0;
 		writ_uk_fill += (uint32_t)got;
 		if (writ_uk_fill < WRIT_UK_FRAME_BYTES)
 			continue;

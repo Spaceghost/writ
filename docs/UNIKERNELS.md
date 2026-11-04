@@ -76,20 +76,31 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   banner; the four examples match likewise ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt)). Checked by
   `hosts/unikraft/scripts/check-corpus.sh` and `check-image.sh`, which exit nonzero when an
   expected outcome changes.
-- **Exit status:** the exit hook `hosts/unikraft/exit_device.c` gives QEMU 1 for status 0,
-  2s + 1 for status s up to 0x7c, 253 for a crash ([unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)). QEMU 1 is success only
-  together with the console check, since QEMU also exits 1 on its own startup errors.
+- **Exit status:** the exit hook `hosts/unikraft/exit_device.c` writes program statuses as
+  s + 0x10, so success is QEMU 33 and `IO.die(…, 1, …)` is 35 (2s + 33 for s up to 108);
+  a runtime or host-layer `_exit(1)` without `exit()` is 17, a signal death 19, a crash 253
+  ([unikernel-fault-qemu.txt](../verification/unikernel-fault-qemu.txt); the first map,
+  QEMU 1 for success, is in [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)).
+  No outcome is QEMU 1, which QEMU returns on its own startup errors; success still needs
+  the console check.
+- **Faults:** a stack overflow is a Unikraft crash (QEMU 253) with no runtime message in the
+  delivered configuration. With `CONFIG_LIBPOSIX_PROCESS_SIGNAL=y` (experimental, and it
+  needs `-include uk/config.h` to compile in 0.21.0) the runtime's handler runs on its
+  alternate stack and prints `bend: memory fault (machine stack overflow?)` before the
+  crash; that configuration was a trial, not adopted. Arena exhaustion also ends as a
+  Unikraft crash (253): the guest runs out of memory to back the arena before the runtime's
+  "out of memory" bound, so it has no code of its own ([unikernel-fault-qemu.txt](../verification/unikernel-fault-qemu.txt)).
 - **After a crash or `main`:** no reset observed; QEMU ends with 0, consistent with an ACPI
   power-off ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)).
 - **Console and time effects:** `Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`
   (`hosts/unikraft/effects/Unikraft.bend`, `.c` twins over `hosts/unikraft/host.c`). For
   example, `scripts/unikernel/Probe.bend` built with `WRIT_HOST_LAYER=y` prints
   `probe: hello from Bend through the Unikraft console` on serial through the twin, reads
-  102 to 103 ms around `Unikraft.sleep(100)`, and exits 1 (QEMU 3) when the delta leaves
+  102 to 103 ms around `Unikraft.sleep(100)`, and exits 1 (QEMU 3 then, 35 under the current map) when the delta leaves
   [100, 1100), shown once from a scratch build ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), fix round 1).
   The sleep parks on the runtime's own timer (`io_wait_on`, as `IO.sleep` does), so the loop
   stays live and no helper thread is created: an `io_work` helper thread outlives `main` on
-  this configuration and turns success into QEMU 255 ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1).
+  this configuration and turned success into QEMU 255 (now 19, a signal death, by reading the map; not rerun) ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1).
   Gap: the re-park and clock-failure paths of `host.c` have never been exercised (no clock
   fault can be injected without patching Unikraft), and a fully stopped clock is bounded
   only by the harness timeout. `IO.print` still goes through lib-musl, not a twin.
@@ -111,9 +122,10 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   change's tasks.md 2.1).
 - **Host code:** listed in [hosts/unikraft/INVENTORY.md](../hosts/unikraft/INVENTORY.md).
 - **Open:** an authenticated ingress subject (task 2.1, UL-008); the runtime's fault
-  message on a fault (2.3); arena exhaustion and `IO.die(…, 1, …)` share status 1 (QEMU 3);
-  statuses above 0x7c share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU
-  codes of program statuses 62 and 63; more lanes (2.4); accelerated boots (3.1).
+  message in the delivered configuration (2.3: shown only with posix signals enabled);
+  arena exhaustion shares the crash code 253 with a fault (no code of its own); statuses
+  above 108 share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU codes of
+  program statuses 46 and 47; more lanes (2.4); accelerated boots (3.1).
 
 ## Selection matrix, 2026-11
 
@@ -195,6 +207,10 @@ is unavailable there (E10).
    `IO.die(Unit, 1, ...)`, 253 for the Overflow fault, and 7 for `IO.exit(3)`. Open:
    `IO.die` status 1 and a runtime `_exit(1)` (and so arena exhaustion, by reading the
    emitted C) share code 3, and statuses above 124 share 255.
+   **Unikraft effect-twins Task 3 (verification/unikernel-fault-qemu.txt):** program
+   statuses are now s + 0x10 (success 33, `IO.die` 35, `IO.exit(3)` 39), a runtime or
+   host-layer `_exit(1)` is 17 (told from `exit()` by an atexit mark), crash 253. Arena
+   exhaustion, forced, is a Unikraft crash (253), not the runtime's fail-stop.
 2. **A declared single-lane configuration.** Keep `UKPLAT_CPU_MAXCOUNT=1` and the
    cooperative scheduler, run with `+RTS --threads 1`, and use the inline IO helper
    (UL-005). On this kernel `--threads 2` creates a lane whose `pool_work` was not entered before shutdown in a non-yielding program (E6; behaviour when the main lane yields not tried), so a
@@ -203,7 +219,10 @@ is unavailable there (E10).
    investigated as part of it.
 3. **The fault halt to carry the runtime's message.** The runtime's `SIGSEGV` handler
    does not run on Unikraft (E4); the halting fault handler (task 2.3) has to print the
-   runtime's fault text, or an equivalent recorded line, before the coded halt.
+   runtime's fault text, or an equivalent recorded line, before the coded halt. Task 3
+   of the effect-twins lane: with `CONFIG_LIBPOSIX_PROCESS_SIGNAL=y` it does run and
+   prints its text, then the image crashes (253); not adopted (experimental library, a
+   compile workaround, and a corpus rerun needed).
 4. **The A3 libraries kept or replaced.** The event loop needs `posix-pipe` and
    `posix-poll` (Task 1 A1+A2 run); an ingress twin that replaces the self-pipe could drop
    them, and UL-003's binary check decides which stay. lib-musl itself selects

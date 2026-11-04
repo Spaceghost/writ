@@ -6,15 +6,17 @@
 #      whose capture follows a line '== capture ==', as the corpus reference does);
 #   2. if expected_pass is given (not empty), exactly that many lines match ^PASS[: ];
 #   3. if WRIT_EXPECT_LAST_LINE is set, the console's last line equals it;
-#   4. QEMU's exit status equals expected_qemu_status (1 = status 0 through the hook).
+#   4. QEMU's exit status equals expected_qemu_status (exit_device.c's map: 33 = program
+#      status 0, 35 = status 1, 2s + 33 for status s; 17 runtime stop; 19 signal; 253 crash).
 # WRIT_CONSOLE_SED, if set, is a sed script applied to console.sh's output before
 # check 1, for consoles that carry run-dependent values (clock readings); the
 # reference then holds the masked text, and the program's own exit status still
 # checks the values (the effects probe exits 1 outside its window). Printed when used.
 # WRIT_NO_BOOT=1 checks the existing capture run-<label>.{raw,log} instead of booting
 # (the QEMU status is then read from the log, where run.sh recorded it).
-# QEMU 1 counts as success only with checks 1 to 3 passing: QEMU also exits 1 on its
-# own startup errors, which leave no banner, so console.sh fails on them.
+# QEMU 33 counts as success only with checks 1 to 3 passing. QEMU's own startup errors
+# exit 1, which the hook never produces, and leave no banner, so console.sh fails on
+# them as well.
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise.
 . "$(dirname "$0")/env.sh"
 S=${1:?usage}; LB=${2:?usage}; P=${3:?usage}; REF=${4:?usage}; XQ=${5:?usage}

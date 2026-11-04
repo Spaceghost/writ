@@ -44,14 +44,15 @@ off and it holds one received byte; a wake collects about one byte, however long
 park. With a fixed 10 ms park that was about 100 B/s, 0.8 s per 80-byte frame (measured:
 0.86 s from starting the client to its reply, one accept, the monitor already in a take).
 The twin now parks 10 ms while nothing has arrived and 1 ms while a frame is partly in
-(`host.c` answers BUSY): 0.14 to 0.56 s per accept round trip in seven runs, wall time per
-boot 0.8 to 1.8 s (was 4.3 to 4.4 s; the spread follows host load). Enabling the FIFOs
-from `host.c` (FCR 0x2fa = 0x07) was tried and dropped: a client that had connected and
-sent before the first take then hung to the timeout, read as the UART flushing its
-receive FIFO when the FIFOs are enabled after bytes arrived
-(`verification/unikernel-channel-qemu.txt`, "Fix round 1"). An interrupt-driven
-descriptor (COM2's IRQ 3 feeding a pipe) or a driver that enables the FIFO at setup would
-remove the poll; neither is built.
+(`host.c` answers BUSY; after 100 empty polls in a row, about 100 ms, it answers IDLE
+again, so a client that stops mid-frame does not keep the twin on 1 ms parks): 0.14 to
+0.56 s per accept round trip in seven runs, wall time per boot 0.8 to 1.8 s (was 4.3 to
+4.4 s; the spread follows host load). Enabling the FIFOs from `host.c` (FCR 0x2fa = 0x07)
+was tried and dropped: a client that had connected and sent before the first take then
+hung to the timeout, read as the UART flushing its receive FIFO when the FIFOs are
+enabled after bytes arrived (`verification/unikernel-channel-qemu.txt`, "Fix round 1").
+An interrupt-driven descriptor (COM2's IRQ 3 feeding a pipe) or a driver that enables the
+FIFO at setup would remove the poll; neither is built.
 
 Flow control: `host.c` holds one partial frame and no queue, reads only while a take is
 outstanding, and handles at most one whole frame per poll, so the loop always returns to

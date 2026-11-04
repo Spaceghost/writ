@@ -160,3 +160,58 @@ flood/never-read claim, and preferably bound refusals so the loop always parks),
 Important 3 (complete the inventory). After that it can be approved. Important 2's code
 bound may instead be recorded as a gap if the controller prefers to keep host.c unchanged
 in this task.
+
+## Fix round 1 re-review
+
+Scope: bc4c0b0..e4cdc3d (diff `.superpowers/sdd/2026-11-04-unikraft-twins/fix2-bc4c0b0..e4cdc3d.diff`),
+checked against the code, the evidence file, and the logs under `../writ-unikernel/`.
+
+1. ✅ Poll cost. `unikraft_take.c:53` parks on every non-record answer through
+   `io_wait_on(w, 0, 0, io_until(...))`. `io_until(ms)` is `io_tick() + ms*1e6`
+   (generated monitor.c:66557), so the 1 ms branch is a timed park and cannot spin.
+   `host.c:380` answers IDLE (10 ms) once the frame buffer is empty, after a refusal too.
+   The before figure (0.86 s), the after figures (0.14-0.56 s in seven runs), the FIFO attempt
+   (`chanfix/run-fifo-accepted.log`: QEMU 124 at 120 s; client "short read at request 1";
+   host-fifo.c.txt 8b2598f5 matches) and the one-byte-per-wake cause all appear in the
+   evidence, Channel.md:42-54, the INVENTORY take row, docs/UNIKERNELS.md and the C comments.
+2. ✅ Refusal cap. `host.c:387-396` compares the length word only. It echoes the sequence word
+   and never uses either as an index. The bad record is not copied out, and the twin builds a
+   Request only on rc == 1, so a bad frame never reaches Bend. Each call handles at most one
+   frame (returns at 396/403) and reads at most 80 bytes. The 65- and 41-byte memcpy
+   lengths match their literals, and the line fits in 128 bytes. The comment says host
+   failure handling, not policy (host.c:99-100, Channel.md:66). The text "input never waits,
+   but output can block in com_write" appears in the host.c header, Channel.md:56-69 and
+   INVENTORY. Flood runs `channel/logs/run-fl.log` and `run-h1fl.log` each show 8 refused,
+   4 dropped, 4 decisions, "fuel exhausted", QEMU 1.
+3. ✅ INVENTORY. The Unikraft.bend row lists take, put, Request and Reply. The helper list
+   matches the identifiers the twins actually call. The build.sh row lists
+   WRIT_CHANNEL_SUBJECT. The build.sh hash 7361bb9c is in the evidence and recomputes.
+4. ✅ Minors. The evidence (:356) says now and sleep are absent because the monitor does not
+   call them. Misalignment is recorded in Channel.md:90-95 and INVENTORY:77-79. Makefile.uk
+   adds the `-le 4294967295` check, and host.c:135 has a `_Static_assert`. The Monitor.bend
+   diff is one comment line. `chanfix/monitor-g1.c` and the final `channel/gen/monitor.c`
+   differ only in the take comment line. `SER` is now a quoted array. The cross-check
+   mktemp sits under `../writ-unikernel`. check-channel.sh guards the 108-byte socket path.
+5. ✅ Final checks. All 12 recorded hashes (7 sources, monitor.c, monitor-qemu/.dbg,
+   probe-qemu, hello-qemu) recompute. The h1acc, h1den, h1neg, h1fl and m7 runs are on disk.
+   Only the MonitorCheck cross-check comes from the g1 runs, and no rerun is needed for
+   it: `client-g1acc.txt` and `client-g1den.txt` are byte-identical to `client-h1acc.txt` and
+   `client-h1den.txt`, so the comparison carries over to the final image. Probe and hello were
+   built (11:28, 11:30) after host.c's last change (11:22). They do not include the take
+   twin, so they test the final sources.
+6. ✅ The only .bend change is hosts/unikraft/monitor/Monitor.bend. Nothing built is tracked.
+   hosts/ contains no absolute path: INVENTORY:110 quotes `/mnt/...` as the default it
+   replaced. The record directory is committed. activity.log and progress.md have uncommitted
+   edits in the worktree, which belong to the controller.
+
+New findings (Minor, not blocking):
+- host.c:6-7 still says the twins call "io_cstr, io_mem, io_wait_on, io_tick and nothing
+  else". That contradicts the corrected INVENTORY list (io_until, heap_alloc, io_seal,
+  term_ctr, ctr_take, spare_free, cls_fit, term_pak). Fix: point to INVENTORY or copy its list.
+- unikraft_take.c:53 / host.c:380: a client that leaves a partial frame and disconnects
+  keeps the twin at 1 ms parks until another client completes the frame. That is 10x the
+  idle wake rate, though not a spin, and the documentation describes it accurately. Optional:
+  fall back to 10 ms after some number of empty BUSY wakes, or record this next to the
+  misalignment note.
+
+All addressed, approved.

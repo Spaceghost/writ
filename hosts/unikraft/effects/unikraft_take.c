@@ -14,7 +14,8 @@
 //
 // Cost: the port holds one received byte at a time (its FIFOs stay off), so
 // a wake collects about one byte. The twin parks 10 ms while nothing is
-// arriving and 1 ms while a frame is partly in (host.c answers BUSY): one
+// arriving and 1 ms while a frame is partly in (host.c answers BUSY, for at
+// most 100 empty polls in a row, then IDLE again): one
 // request round trip measured 0.14 to 0.56 s under QEMU TCG, against 0.86 s
 // with a fixed 10 ms park (verification/unikernel-channel-qemu.txt,
 // "Fix round 1").

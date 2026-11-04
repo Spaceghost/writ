@@ -10,6 +10,8 @@ nothing generated is in the tree. The `linuxu` runs are **process execution** of
 image as a Linux process, not a boot. The QEMU runs are **emulated boots** under TCG.
 Task 1's runs all use `+RTS --threads 1 --gpu off`; no accelerator was used in either task.
 
+> CODE MAP NOTE (2026-11-04, Unikraft effect-twins lane Task 3): the QEMU statuses below were recorded before the exit hook existed or under the exit hook's map at the time and are kept as recorded. The hook now writes program statuses as s + 0x10 (success 33, status 1 35, 2s + 33 in general), a runtime or host-layer _exit(1) as 17, a signal death as 19; crash 253 and non-halt 251 are unchanged. Reruns under the new map: verification/unikernel-fault-qemu.txt (and the corpus rerun in verification/unikernel-corpus-qemu.txt).
+
 Input: `scripts/unikernel/Hello.bend` (`IO.print("hi")`), emitted with
 `bend scripts/unikernel/Hello.bend -o $W/hello/hello.c`
 (Bend 2.0.39, 3074 lines, sha256 `260b70a3...45d56cf`).

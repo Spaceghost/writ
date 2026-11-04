@@ -37,7 +37,7 @@ of `app.c`; on a Linux build the `writ_uk_*` symbols are undefined and the link 
 | `effects/unikraft_log.c` | `unikraft_log_run` (T), `unikraft_log_use` (constructor) | runtime `io_cstr`, `free`, `term_pak`, `io_eff`; `writ_uk_log` | the argument string (a `malloc`ed copy, freed) | as `writ_uk_log` |
 | `effects/unikraft_now.c` | `unikraft_now_run`, `unikraft_now_use` | `writ_uk_now_ms` | nothing | 64-bit ms truncated to U32 (wraps after about 49.7 days) |
 | `effects/unikraft_sleep.c` | `unikraft_sleep_run`, `unikraft_sleep_use`; `static` `unikraft_sleep_more` | `writ_uk_clock_ns`, `writ_uk_sleep_left`; runtime `io_mem`/`calloc`/`free` (four words in `w->data`, freed when the sleep ends), `io_wait_on(w, 0, 0, io_tick() + left, more)` | parks on the runtime's own timer, as `IO.sleep` does: no helper thread, the loop stays live. Not `io_work` (a helper thread outlives `main` and makes success QEMU 255, evidence R0-E1) and no longer a blocked loop thread (fix round 1: a blocked loop serves no other computation) | at most 16 parks, as `writ_uk_sleep_left` |
-| `effects/unikraft_take.c` | `unikraft_take_run`, `unikraft_take_use`; `static` `unikraft_take_more`, `unikraft_take_pack` | `writ_uk_take_poll`; runtime `io_mem`/`calloc`/`free` (17 words in `w->data`, freed when the Request is built), `heap_alloc`, `io_seal`, `term_ctr`, `io_wait_on(w, 0, 0, io_until(ms), more)` | parks on the runtime timer between polls of COM2: 10 ms while nothing has arrived (`UNIKRAFT_TAKE_IDLE_MS`), 1 ms while a frame is partly in (`UNIKRAFT_TAKE_BUSY_MS`, host.c answers 2). No helper thread, no loop-thread block, no spin. The port's FIFOs are off, so a wake collects about one byte: 0.14 to 0.56 s per accept round trip (0.86 s with a fixed 10 ms park; Channel.md, "Cost"). Builds a `Request` of 17 U32 fields | no time bound (the harness timeout bounds a take no client answers); one request outstanding |
+| `effects/unikraft_take.c` | `unikraft_take_run`, `unikraft_take_use`; `static` `unikraft_take_more`, `unikraft_take_pack` | `writ_uk_take_poll`; runtime `io_mem`/`calloc`/`free` (17 words in `w->data`, freed when the Request is built), `heap_alloc`, `io_seal`, `term_ctr`, `io_wait_on(w, 0, 0, io_until(ms), more)` | parks on the runtime timer between polls of COM2: 10 ms while nothing has arrived (`UNIKRAFT_TAKE_IDLE_MS`), 1 ms while a frame is partly in (`UNIKRAFT_TAKE_BUSY_MS`, host.c answers 2, for at most 100 empty polls in a row, `WRIT_UK_BUSY_POLLS`). No helper thread, no loop-thread block, no spin. The port's FIFOs are off, so a wake collects about one byte: 0.14 to 0.56 s per accept round trip (0.86 s with a fixed 10 ms park; Channel.md, "Cost"). Builds a `Request` of 17 U32 fields | no time bound (the harness timeout bounds a take no client answers); one request outstanding |
 | `effects/unikraft_put.c` | `unikraft_put_run`, `unikraft_put_use` | `writ_uk_put`; runtime `ctr_take`, `spare_free`, `cls_fit`, `term_pak` | reads the `Reply`'s 16 fields; runs on the loop, does not park | 16 words |
 | `effects/Channel.md` | documentation: frame and record layout, transport, transport refusal, subject | nothing | nothing (not linked) | as stated there |
 | `effects/unikraft_{log,now,sleep,take,put}.js` | `unikraft_<x>` registered with `io_eff` | nothing | nothing (throws) | none |
@@ -56,7 +56,7 @@ its park: it answers 0 once the monotonic clock is at least `ms` past the start 
 otherwise the nanoseconds left, and the twin parks again for them, at most 16 parks
 (`WRIT_UK_SLEEP_ROUNDS`). A reading below the start, a wake whose reading has not advanced
 past the previous one (a wake without clock progress), or a 17th park writes one
-`writ_uk: ...` line and ends the image with `_exit(1)` (QEMU 3). A clock that stops
+`writ_uk: ...` line and ends the image with `_exit(1)` (QEMU 17, a runtime or host-layer stop; QEMU 3 before Task 3). A clock that stops
 completely never reaches the park's deadline, so the runtime never wakes the twin and these
 checks never run: that case is bounded only by the harness timeout (`run.sh`, 60 s by
 default, status 124). Neither a second park nor any failure path has been exercised (no
@@ -71,7 +71,7 @@ word is not 64 is read whole, counted, and never reaches Bend: the first 8 per b
 reason 256) and one console line `writ_uk: channel frame refused: length=0x... bad
 length=N`; later ones get no reply and the line `writ_uk: channel frame dropped, no reply
 (refusal cap): ...` (exercised: 12 bad frames sent without reading, 8 refusals, 4 drops,
-then 4 decisions and the fuel-exhausted exit, QEMU 1). The cap is host failure handling,
+then 4 decisions and the fuel-exhausted exit, QEMU 1 under the map before Task 3). The cap is host failure handling,
 not policy: it bounds host.c's own output, because `com_write` busy-waits once a client
 that never reads has filled QEMU's socket buffer; a put to such a client still blocks the
 image until the harness timeout (not tested). There is no resynchronisation: a client that
@@ -82,25 +82,35 @@ take or put with no subject built in, with COM2 not answering at `0x2ff`, or wit
 console device registered writes one `writ_uk: ...` line and ends the image with
 `_exit(1)`. The missing-port path was exercised (the monitor image booted without a
 second serial port prints `writ_uk: COM2 (0x2f8) does not answer; no second -serial, image
-exits 1`, QEMU 3; verification/unikernel-channel-qemu.txt); the missing-subject and
+exits 1`, QEMU 3 under the map before Task 3, 17 since; verification/unikernel-channel-qemu.txt and verification/unikernel-fault-qemu.txt); the missing-subject and
 skipped-put paths have not been.
 
 ## Termination hook
 
 | File | Exported symbols | May touch | Linked how |
 | --- | --- | --- | --- |
-| `exit_device.c` | none (all functions `static`); registers three table entries: a termination-table entry (`uk_early_initcall_prio(0, writ_exit_term, 0)`, section `.uk_inittab10`), a `POSIX_PROCESS_PPEXIT_EVENT` handler (`writ_exit_on_init_exit`), and a `UK_CRASH_EVENT` handler (`writ_exit_on_crash`) | x86 I/O port `0xf4` (one `outb`, QEMU `isa-debug-exit`); `uk_boot_shutdown_req(UK_PM_SHUTDOWN_OP_SYSHALT)` when the init process (pid 1) exits; reads `struct uk_term_ctx` (`target`, `exit_code`) and the ppexit event's `pid`. No memory, file, socket, or console access | By reference: the app `Makefile.uk` adds `$(WRIT_HOSTS_UNIKRAFT)/exit_device.c` to its `SRCS` (path into this tree, not a copy), plus `-I$(UK_PLAT_COMMON_BASE)/include` for `<uk/boot.h>` |
+| `exit_device.c` | none (all functions `static`); registers an application constructor (`writ_exit_register`, which calls musl's `atexit(writ_exit_mark)`) and three table entries: a termination-table entry (`uk_early_initcall_prio(0, writ_exit_term, 0)`, section `.uk_inittab10`), a `POSIX_PROCESS_PPEXIT_EVENT` handler (`writ_exit_on_init_exit`), and a `UK_CRASH_EVENT` handler (`writ_exit_on_crash`) | x86 I/O port `0xf4` (one `outb`, QEMU `isa-debug-exit`); `uk_boot_shutdown_req(UK_PM_SHUTDOWN_OP_SYSHALT)` when the init process (pid 1) exits; reads `struct uk_term_ctx` (`target`, `exit_code`) and the ppexit event's `pid`; writes its one static flag `writ_exit_called` (set only by the atexit function, so only when the program calls `exit()`). No other memory, file, socket, or console access | By reference: the app `Makefile.uk` adds `$(WRIT_HOSTS_UNIKRAFT)/exit_device.c` to its `SRCS` (path into this tree, not a copy), plus `-I$(UK_PLAT_COMMON_BASE)/include` for `<uk/boot.h>` |
 
 `exit_device.c` requires `CONFIG_LIBUKBOOT_MAINTHREAD=y` and
 `CONFIG_LIBPOSIX_PROCESS_MULTITHREADING=y` and fails the build (`#error`) without them.
-Values written to port `0xf4` and the QEMU status each gives (`(v << 1) | 1`):
+Values written to port `0xf4` and the QEMU status each gives (`(v << 1) | 1`). Program
+statuses are offset by 0x10 (Task 3), so no outcome of the image is QEMU 1, which QEMU
+itself returns on its own startup errors; values 0x00 to 0x07 and 0x0a to 0x0f are never
+written:
 
 | Event | Value | QEMU status |
 | --- | --- | --- |
-| halt with exit status s, 0 <= s <= 124 | s | 2s + 1 (0 -> 1, 1 -> 3) |
-| halt with exit status above 124 | 0x7f | 255 |
+| halt, program status s, 0 <= s <= 108 (main returned s, or the program called `exit(s)`: `IO.exit`, `IO.die`) | s + 0x10 | 2s + 33 (0 -> 33, 1 -> 35, 3 -> 39) |
+| halt, program status above 108 (clamp) | 0x7f | 255 |
+| halt, status 1 without `exit()`: runtime or host-layer stop (`_exit(1)`: the runtime's `err_fail`, including arena exhaustion, and `host.c`'s `writ_uk_fail`; also `main` returning 1 on a bad `+RTS` argument) | 0x08 | 17 |
+| halt, other nonzero status without `exit()`: ended by a signal (posix-process stores the signal number, or `0x80 \| SIGKILL` for an init process still running at shutdown) | 0x09 | 19 |
 | shutdown whose target is not a halt (init failure, restart request) | 0x7d | 251 |
 | Unikraft crash (`UK_CRASH_EVENT`) | 0x7e | 253 |
+
+`exit()` is told from `_exit()` by an atexit function: musl's `exit()` runs it and
+`_exit()` does not. The status alone could not separate `IO.die`'s `exit(1)` from
+`err_fail`'s `_exit(1)`. Limit: every runtime fail-stop shares 17; arena exhaustion has
+no value of its own among them (its message goes to stderr, which the hook does not read).
 
 Evidence and the cited Unikraft hook locations: `verification/unikernel-exit-codes.txt`.
 
@@ -125,7 +135,7 @@ they build or copy is written inside the repository.
 | `scripts/console.sh <run.raw>` | Extracts the program's console from a `run.sh` capture for a line-for-line diff: removes NUL, CR, terminal escapes, everything through `Booting from ROM` and its dots, and Unikraft's 7-line banner, which it requires verbatim; fails if the program's part holds a NUL, an ESC, or a CR that is not the CR of a CR LF; keeps every later line | none | reads the capture; writes stdout and three `mktemp` files (`$T`, `$T.banner`, `$T.tail`), removed on exit |
 | `scripts/check-image.sh <set> <label> <probe> <reference> <qemu_status> [pass] [timeout] [mem]` | Boots the image once through `run.sh` and checks console diff (empty), PASS count (if given), last line (if `WRIT_EXPECT_LAST_LINE`), and QEMU status; exits 1 if any expected outcome changed | reads `WRIT_EXPECT_LAST_LINE`, `WRIT_NO_BOOT=1` (check an existing capture), `WRIT_CONSOLE_SED` (sed script masking run-dependent values before the diff, printed when used) | `$W` only; two `mktemp` files (plus `<first>.m` while masking) |
 | `scripts/check-channel.sh <set> <label> <probe> <client_ref> <console_ref> <qemu_status> RECORD...` | One Writ channel run: builds `probes/client/client.c` into `$W/<set>/client`, boots the image with COM2 on the Unix socket `$W/<set>/logs/chan-<label>.sock`, sends RECORD... with the client, and checks the client's output, the console (console.sh), and QEMU's status against the references; exits 1 if any expected outcome changed, 2 on bad usage | reads `CC` (default `gcc`), `WRIT_CHANNEL_TIMEOUT` (default 120 s) | `$W` only; one `mktemp` file |
-| `scripts/check-corpus.sh <set> <label> [timeout] [mem]` | `check-image.sh` for `tests-qemu` against `verification/unikernel-corpus-linux-reference.txt`, QEMU 1, last line `ALL LIBRARY TESTS PASSED` | reads `WRIT_CORPUS_PASS` (default 782, the merged tree's corpus) | `$W` only |
+| `scripts/check-corpus.sh <set> <label> [timeout] [mem]` | `check-image.sh` for `tests-qemu` against `verification/unikernel-corpus-linux-reference.txt`, QEMU 33, last line `ALL LIBRARY TESTS PASSED` | reads `WRIT_CORPUS_PASS` (default 782, the merged tree's corpus) | `$W` only |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
 `lib/uklibid`), and `build.sh` always builds clean.

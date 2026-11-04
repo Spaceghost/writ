@@ -15,7 +15,7 @@ import ../../hosts/unikraft/effects/Unikraft.bend as Host
 #   - two Host.Unikraft.now readings around Host.Unikraft.sleep(100) are
 #     ordered (after >= before) and differ by at least min_delta_ms() and by
 #     less than max_delta_ms(). Otherwise the probe logs a FAIL line and
-#     exits with status 1 (QEMU 3 through the exit hook), so a reversed
+#     exits with status 1 (QEMU 35 through the exit hook), so a reversed
 #     clock, a short sleep, or a runaway delta changes the outcome. The
 #     readings count from boot, so a wrap between them (about 49.7 days in)
 #     is outside this probe and would be reported as a reversed clock.

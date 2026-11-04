@@ -18,9 +18,10 @@
 # run-<label>.log: the command, the console from the "Booting from ROM" line on
 # with escapes, CRs, NUL bytes and empty lines removed (a reading aid; diffs use
 # console.sh on the .raw), the QEMU (or timeout) exit status, and the wall time.
-# Exits with QEMU's (or timeout's) status. That status alone is not success: QEMU
-# also exits 1 on its own startup errors, so success is QEMU 1 together with the
-# banner-verified console check of check-image.sh. Exits 2, before starting QEMU,
+# Exits with QEMU's (or timeout's) status. That status alone is not success: success
+# is QEMU 33 (program status 0 through exit_device.c; QEMU's own startup errors
+# exit 1, which the hook never writes) together with the banner-verified console
+# check of check-image.sh. Exits 2, before starting QEMU,
 # if the image or the set's logs directory is missing. Needs bc for the wall time.
 . "$(dirname "$0")/env.sh"
 S=${1:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}

@@ -10,7 +10,7 @@
 #   1. the client's output (hex dumps and decoded replies, $W/<set>/logs/client-<label>.txt)
 #      equals <client_reference> line for line, and the client exited 0;
 #   2. console.sh's output of the boot equals <console_reference> line for line;
-#   3. QEMU's exit status equals <expected_qemu_status> (1 = status 0 through the hook).
+#   3. QEMU's exit status equals <expected_qemu_status> (33 = status 0 through the hook).
 # The boot uses run.sh's defaults otherwise ("+RTS --threads 1 --gpu off", -m 1024, the
 # exit device, -no-reboot) with timeout WRIT_CHANNEL_TIMEOUT (default 120 s).
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise;
