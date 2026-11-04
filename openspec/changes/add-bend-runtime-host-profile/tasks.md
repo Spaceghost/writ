@@ -21,7 +21,9 @@ qualify a host.
   (`add-drift-kernel-host`), and freestanding (`add-freestanding-bend-runtime`)
   changes now cite the profile in their design.md and runtime tasks. The Genode
   and unikernel changes still wait for the live `genode-base-hw` and
-  `unikraft-twins` lanes, so this box stays unchecked.
+  `unikraft-twins` lanes, so this box stays unchecked. The unikernel change
+  (`add-unikernel-library-runtime`) cites the profile in its design.md and runtime tasks;
+  unikernel cited on 2026-11-04.
 
 ## 3. Evidence
 

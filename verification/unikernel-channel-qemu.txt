@@ -1,0 +1,481 @@
+Unikraft effect-twins lane, Task 2: ingress twins over a second serial channel
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+CODE MAP NOTE (2026-11-04, Unikraft effect-twins lane Task 3): the QEMU statuses below were
+recorded under the exit hook's map at the time and are kept as recorded. The hook now
+writes program statuses as s + 0x10 (success 33, status 1 35, 2s + 33 in general), a
+runtime or host-layer _exit(1) as 17, a signal death as 19; crash 253 and non-halt 251
+are unchanged. Reruns under the new map: verification/unikernel-fault-qemu.txt (and the
+corpus rerun in verification/unikernel-corpus-qemu.txt).
+
+Every boot is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type the
+qemu-system-x86_64 default (pc), -cpu max, -m 1024, -no-reboot, the exit device
+-device isa-debug-exit,iobase=0xf4,iosize=0x04 (QEMU 1 = status 0, 3 = status 1),
+-append "+RTS --threads 1 --gpu off", timeout 120 s, and two serial ports:
+-serial mon:stdio (COM1, the console) -serial unix:<sock>,server=on,wait=off (COM2, the
+Writ channel). One lane, CPU only; not native, not GPU. Unikraft 0.21.0 (7351f8b),
+kraft 0.12.16, lib-musl, gcc 16.2.1; Bend 2.0.39 (BEND_NO_TELEMETRY=1). W is the build
+workspace, realpath ../writ-unikernel. Nothing built is in the tree.
+
+== Result ==
+
+Two runs, each one boot of the monitor image driven by the host-side client probe through
+check-channel.sh, both PASS (client output, console, and QEMU status equal to the
+references; exit 0):
+  accepted: R's report-to-summary request -> Committed, reason 0 (session_revision 7,
+            reader_balance 45, descriptor 2, frontend_revision 2), then a frame with
+            length 65 -> host.c's transport refusal (kind 3, decision 3, reason 256, before
+            Bend), version 2 -> Denied 1, S's session named by the body -> Denied 6, the
+            first request replayed -> Denied 6 (the session is Committed); fuel exhausted,
+            QEMU 1.
+  denied:   S's session named by the body under subject R first -> Denied 6 by
+            DataOS.commit_from_capability (descriptor 2 bound), refusal, Denied 1, R's
+            request -> Committed 0, replay -> Denied 6; QEMU 1.
+Every reply record equals, byte for byte, the reply MonitorCheck.bend computes on Linux for
+the same Bend records in the same order (both runs; "Cross-check" below). The reason-5
+contrast (S as the subject: Denied at the descriptor, nothing bound) is shown on Linux by
+MonitorCheck.bend, since the image's subject is fixed to R. A negative control (the
+denied order checked against the accepted references) FAILs and exits 1. check-binary.sh
+on the monitor ELF: effect rows exactly Unikraft.log, Unikraft.put, Unikraft.take, exit 1
+(outside the monitor profile, allow lists unchanged). No RPC surface: the only interface is
+the fixed 80-byte frames on COM2.
+
+SUBJECT. There is no parent route on a unikernel. The route subject word is a build-time
+constant (WRIT_CHANNEL_SUBJECT=1 -> -DWRIT_UK_CHANNEL_SUBJECT=1u for host.c), handed to
+Bend by writ_uk_take_poll beside every record and never read from the body (the body's
+claimed_subject 2 in the "other" record is logged as untrusted and not used). This is
+SCAFFOLDING for the ingress twin: whoever builds the image chooses the word, and whoever
+reaches the socket speaks as it. It is the gap UL-008's single-ingress rule and the
+appliance host must close.
+
+TRANSPORT. COM2 (0x2f8, CONFIG_LIBNS16550_COM2=y): drivers/ukconsole/ns16550/com.c
+registers it with flags 0 (com_init_port), so console output never goes to it; host.c
+reads and writes it with uk_console_in_direct/uk_console_out_direct
+(lib/ukconsole/include/uk/console.h:86, :99). Unikraft.take parks with
+io_wait_on(w, 0, 0, io_until(ms), more) and polls COM2 on each wake (Task 2: ms = 10;
+fix round 1: 10 idle, 1 while a frame is partly in): there is no COM2
+descriptor to park on (lib/posix-tty/serial.c reads every STDIN console and reports POLLIN
+statically) and com_setup leaves COM2's interrupts off. No io_work (its helper thread
+outlives main here: verification/unikernel-effects-qemu.txt R0-E1), no loop-thread block.
+Wall time per boot 4.3 to 4.4 s in the Task 2 runs. CORRECTED in fix round 1: that time
+was not spent before the first take (a boot with no second port reaches its first take
+and exits at 0.3 s). With COM2's FIFOs off the port holds one byte, so each 10 ms wake
+collected about one byte, about 0.8 s per 80-byte frame; measured 0.86 s for one accept
+round trip. Fix round 1 polls at 1 ms while a frame is partly in: 0.14 to 0.56 s per
+round trip, 0.8 to 1.8 s per boot ("Fix round 1" below).
+
+== Build ==
+
+From the repository root:
+  hosts/unikraft/scripts/mkapp.sh channel     # new app dir: the template Kraftfile now has COM2
+  bend hosts/unikraft/monitor/Monitor.bend -o $W/channel/gen/monitor.c   (67126 lines, never edited)
+  WRIT_HOST_LAYER=y WRIT_CHANNEL_SUBJECT=1 hosts/unikraft/scripts/build.sh channel monitor
+Inputs and outputs:
+  0c4da67a101229b43a91b65735e5f82c96dca578b23e5170c957f811372e1fd1  hosts/unikraft/host.c
+  8f30a9d491780efdec3fefebc33d4089981fa4734b0af8a0701216509c1839ec  hosts/unikraft/effects/Channel.md
+  359532e7c821f9d03e076e13c9d6279a712c79aa30d03ec883e0a41d78f5e950  hosts/unikraft/effects/Unikraft.bend
+  0c4d3a6ac7cb239ce556777b0f3337d1ed77af470701a7dadb3b399c940baa4e  hosts/unikraft/effects/unikraft_log.c
+  d1f336f040836743be7c21c1122d44e8dac28335577eab20626385789523ac6e  hosts/unikraft/effects/unikraft_log.js
+  fac11e40328888d084ac09fdc463e846bd3254a46128fea7a708665024f33133  hosts/unikraft/effects/unikraft_now.c
+  7db1e72086040e6a7b8b2ce7dd4bd28bf7f6a98d4193db281ca2912970c65ef8  hosts/unikraft/effects/unikraft_now.js
+  e4f7887721a559d3a72688811b50ddc0477d74342e59cb865e311230c79ac0be  hosts/unikraft/effects/unikraft_put.c
+  ac73ae4fcfe1c4a7322efd5645e194f59678f78849520c26ada0d5cb38bd65c4  hosts/unikraft/effects/unikraft_put.js
+  f0fcc89826e23692a13fad27254d34c5ff0d667c36913b0bf6fdb9aeaed82acc  hosts/unikraft/effects/unikraft_sleep.c
+  97cc457980982a581cb97162d007cb2d3825a5a03b189b4ca753a522159db4ec  hosts/unikraft/effects/unikraft_sleep.js
+  9c6970c8bfeb599aa1e3308becdaeb6a791669634c8c465a5c14ebaca41f9e01  hosts/unikraft/effects/unikraft_take.c
+  c10825b1edbda388dd152988553cf47b686998de4366727025d999145318d083  hosts/unikraft/effects/unikraft_take.js
+  095c039657837526e9fe69f6b4728f4d0e93ae3fedf57c1170ebfd52d4874ca9  hosts/unikraft/monitor/Monitor.bend
+  7343559dfccc93f91ca2b7739a26efb7f607ca9d4e513669fd3cfe26b50c2453  hosts/unikraft/monitor/MonitorCheck.bend
+  e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  hosts/unikraft/app/Config.uk
+  a44c3a97eeea51ac1443f29c3d7573942d9f541085984c067e95a610de69be88  hosts/unikraft/app/Kraftfile
+  616922f87f6b9d8352243aedcd31432c8a858c645c4702230b6a35436ba1d0ea  hosts/unikraft/app/Makefile.uk
+  9383e91c50be46a0ab3fd6f08b2019c02999613c0d0606480951a48504a33dcd  $W/channel/gen/monitor.c
+  1a3af50a9c3c7afcf8984e403a55609e545fab302d9ce5fabf13942fdb2883b8  $W/effects2/gen/probe.c
+  3fd4600975e1ce098243bedf02b3978bdca6337ce0383d3c689de1d6d6a79c19  hosts/unikraft/probes/client/client.c
+  156381b4098448a8b86e1dd311d6d19e66902aaffea9e56278f7352d1e3a864f  hosts/unikraft/scripts/check-channel.sh
+  97df995d05865f5490cdde7633da9754dd4f400566d973ecd912a2455c057996  hosts/unikraft/scripts/run.sh
+  119ffc1a19098d8816c2f96c900bb00f72da6086b39ee3de7cd183621154b433  $W/channel/images/monitor-qemu
+  46676d0a339eba3c3310fccea43bbda5c2b49d4a694f951944bc0cd39f46ad3c  $W/channel/images/monitor-qemu.dbg
+  (an earlier build of the same sources, image e048736c..., gave the trial runs from which
+  the references were captured; host.c differed from the final one in a comment only.)
+
+Build-configuration changes, each with its reason:
+  - app/Kraftfile: CONFIG_LIBNS16550_COM2: 'y'. Reason: registers QEMU's second serial port
+    as the console device "COM2" (flags 0, not a console or stdout device) for host.c. It
+    is in every image built from the template; images whose program uses no Unikraft
+    channel effect are unaffected (checked: hello and the Task 1 probe rebuilt in a fresh
+    set $W/effects2 with the new template; hello: console "hi", QEMU 1, check-image PASS, no
+    writ_uk symbol; probe: delta_ms=102, QEMU 1, check-image PASS).
+  - app/Makefile.uk: WRIT_CHANNEL_SUBJECT (nonzero decimal word, else $(error)) becomes
+    APPWRITBEND_CFLAGS -DWRIT_UK_CHANNEL_SUBJECT=<word>u. Reason: the build-time subject.
+  - scripts/build.sh exports WRIT_CHANNEL_SUBJECT (default unset).
+  - scripts/run.sh: WRIT_QEMU_SERIAL2 adds -serial mon:stdio -serial <spec> (with
+    -nographic and no -serial, QEMU's default is mon:stdio, so COM1 is unchanged).
+  - scripts/check-channel.sh: new (one channel run, exits 1 on a changed outcome).
+  - host.c now refuses to build without CONFIG_LIBNS16550_COM2.
+
+== Runs ==
+
+Commands (references under verification/):
+  hosts/unikraft/scripts/check-channel.sh channel accepted monitor \
+    verification/unikernel-channel-accepted-client.txt verification/unikernel-channel-accepted-console.txt 1 \
+    accept badlen badver other accept; echo $?
+  hosts/unikraft/scripts/check-channel.sh channel denied monitor \
+    verification/unikernel-channel-denied-client.txt verification/unikernel-channel-denied-console.txt 1 \
+    other badlen badver accept accept; echo $?
+run.sh's command line (from run-accepted.log; the socket path is $W/channel/logs/chan-<label>.sock):
+$ timeout 120 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/channel/images/monitor-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot -serial mon:stdio -serial unix:$W/channel/logs/chan-accepted.sock,server=on,wait=off </dev/null; echo $?
+
+-- run accepted: check-channel.sh output
+client: exit 0
+client diff: empty
+console diff: empty
+QEMU exit: 1
+logs: $W/channel/logs/run-accepted.log, $W/channel/logs/client-accepted.txt; result: PASS
+0
+
+-- run accepted: client (hex dumps of every frame sent and received)
+request 1 (accept)
+ sent header        : 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00
+ got  record +0x10 : 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ got  record +0x20 : 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00
+ got  record +0x30 : 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+ reply: length=64 sequence=1 kind=2 decision=1 (Committed) reason=0
+request 2 (badlen)
+ sent header        : 41 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 03 00 00 00 03 00 00 00 00 01 00 00
+ got  record +0x10 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ reply: length=64 sequence=2 kind=3 decision=3 (transport refusal (host.c, not a Writ decision)) reason=256
+request 3 (badver)
+ sent header        : 40 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 02 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00
+ got  record +0x10 : 01 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ reply: length=64 sequence=3 kind=2 decision=2 (Denied) reason=1
+request 4 (other)
+ sent header        : 40 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+ got  record +0x10 : 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+ reply: length=64 sequence=4 kind=2 decision=2 (Denied) reason=6
+request 5 (accept)
+ sent header        : 40 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+ got  record +0x10 : 01 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+ reply: length=64 sequence=5 kind=2 decision=2 (Denied) reason=6
+
+-- run accepted: console (console.sh)
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+writ_uk: channel frame refused: length=0x00000041 bad length=1
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=1 (bad record) session_revision=0 reader_balance=0 descriptor=0 frontend_revision=0
+monitor: route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: fuel exhausted, exiting
+QEMU exit: 1
+
+-- run denied: check-channel.sh output
+client: exit 0
+client diff: empty
+console diff: empty
+QEMU exit: 1
+logs: $W/channel/logs/run-denied.log, $W/channel/logs/client-denied.txt; result: PASS
+0
+
+-- run denied: client
+request 1 (other)
+ sent header        : 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+ got  record +0x10 : 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+ reply: length=64 sequence=1 kind=2 decision=2 (Denied) reason=6
+request 2 (badlen)
+ sent header        : 41 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 03 00 00 00 03 00 00 00 00 01 00 00
+ got  record +0x10 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ reply: length=64 sequence=2 kind=3 decision=3 (transport refusal (host.c, not a Writ decision)) reason=256
+request 3 (badver)
+ sent header        : 40 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 02 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00
+ got  record +0x10 : 01 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ reply: length=64 sequence=3 kind=2 decision=2 (Denied) reason=1
+request 4 (accept)
+ sent header        : 40 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 04 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00
+ got  record +0x10 : 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ got  record +0x20 : 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00
+ got  record +0x30 : 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+ reply: length=64 sequence=4 kind=2 decision=1 (Committed) reason=0
+request 5 (accept)
+ sent header        : 40 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00
+ sent record +0x00 : 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+ sent record +0x10 : 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+ sent record +0x20 : 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+ sent record +0x30 : 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  header        : 40 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x00 : 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+ got  record +0x10 : 01 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x20 : 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+ got  record +0x30 : 00 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+ reply: length=64 sequence=5 kind=2 decision=2 (Denied) reason=6
+
+-- run denied: console
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+monitor: route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+writ_uk: channel frame refused: length=0x00000041 bad length=1
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=1 (bad record) session_revision=0 reader_balance=0 descriptor=0 frontend_revision=0
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: fuel exhausted, exiting
+QEMU exit: 1
+
+-- negative control: the denied order checked against the accepted references
+  hosts/unikraft/scripts/check-channel.sh channel negative monitor \
+    verification/unikernel-channel-accepted-client.txt verification/unikernel-channel-accepted-console.txt 1 \
+    other badlen badver accept accept; echo $?
+client: exit 0
+client diff: NOT EMPTY
+console diff: NOT EMPTY
+QEMU exit: 1
+logs: $W/channel/logs/run-negative.log, $W/channel/logs/client-negative.txt; result: FAIL
+1
+
+-- no second serial port (missing-port path of host.c)
+  hosts/unikraft/scripts/run.sh channel noport monitor "+RTS --threads 1 --gpu off" 60 1024
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+writ_uk: COM2 (0x2f8) does not answer; no second -serial, image exits 1
+3
+(wall 0.3 s)
+
+== Linux check and cross-check ==
+
+  bend hosts/unikraft/monitor/MonitorCheck.bend; echo $?
+expected_session (reader session revision) = 6
+reply R subject, R session : 0100000002000000010000000000000001000000010000001400000001000000630000000300000001000000070000002d000000020000000200000000000000
+reply R subject, S session : 01000000020000000200000006000000010000000200000000000000000000000000000000000000000000000000000000000000020000000200000000000000
+reply S subject, S session : 01000000020000000200000005000000020000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+reply R subject, claims S  : 0100000002000000010000000000000001000000010000001400000001000000630000000300000001000000070000002d000000020000000200000000000000
+PASS subject R, R's session: Committed
+PASS body naming S's session under R: Denied by DataOS.commit_from_capability (reason 6, descriptor bound)
+PASS S as the subject: Denied at the descriptor step (reason 5, nothing bound)
+PASS R with a body claiming S: Committed (claim ignored)
+PASS version 2: bad record (reason 1)
+PASS subject word 3: route subject unknown (reason 2)
+PASS session 9: session unknown (reason 3)
+PASS invocation 98: plan is not the session's plan (reason 4)
+accepted reply 1: 0100000002000000010000000000000001000000010000001400000001000000630000000300000001000000070000002d000000020000000200000000000000
+accepted reply 2: 01000000020000000200000001000000010000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+accepted reply 3: 01000000020000000200000006000000010000000200000000000000000000000000000000000000000000000000000000000000020000000200000000000000
+accepted reply 4: 01000000020000000200000006000000010000000100000000000000000000000000000000000000000000000000000000000000020000000200000000000000
+denied   reply 1: 01000000020000000200000006000000010000000200000000000000000000000000000000000000000000000000000000000000020000000200000000000000
+denied   reply 2: 01000000020000000200000001000000010000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+denied   reply 3: 0100000002000000010000000000000001000000010000001400000001000000630000000300000001000000070000002d000000020000000200000000000000
+denied   reply 4: 01000000020000000200000006000000010000000100000000000000000000000000000000000000000000000000000000000000020000000200000000000000
+PASS run accepted: Committed 0, Denied 1, Denied 6, Denied 6 (replay)
+PASS run denied: Denied 6 (S's session under R), Denied 1, Committed 0, Denied 6 (replay)
+0
+  The 'reply S subject, S session' line is the reason-5 contrast: Denied 5, descriptor 0.
+
+Cross-check: the image's Bend replies (refusal frames removed) against MonitorCheck's
+lines for the same order:
+  for n in accepted denied; do
+    awk '/^ got  record/{for(i=5;i<=NF;i++) h=h $i} /^ reply:/{print h; h=""}' \
+      verification/unikernel-channel-$n-client.txt | grep -v '^0100000003000000030000000001' > $X/$n.got
+    bend hosts/unikraft/monitor/MonitorCheck.bend | grep "^$(printf %-8s $n) reply" | sed 's/.*: //' > $X/$n.mc
+    diff $X/$n.got $X/$n.mc && echo "$n: image replies == MonitorCheck replies"
+  done
+  (with X=$(mktemp -d ../writ-unikernel/xcheck.XXXXXX) first; fix round 1 moved it out of /tmp)
+accepted: image replies == MonitorCheck replies
+denied: image replies == MonitorCheck replies
+
+== Binary check (UL-003) ==
+
+  sh scripts/runtime-profile/check-binary.sh $W/channel/images/monitor-qemu.dbg; echo $?
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.put Unikraft.take
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.put
+  Unikraft.take
+result: FAIL (outside the monitor profile)
+1
+  Rows beyond the profile: exactly the three Unikraft effects the monitor uses.
+  Unikraft.now and Unikraft.sleep are absent because the monitor does not call them
+  (the check lists rows the program reaches, not every def in Unikraft.bend). host.c's
+  exports (writ_uk_*) and the twins' static helpers (unikraft_take_more) end in neither
+  _run nor _use. Static link: the host-symbol surface is not checked by this tool.
+
+== OpenSpec ==
+
+  ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+    -> Totals: 44 passed, 0 failed (44 items); exit 0 (version 1.16.0)
+  Structural validation only.
+
+== Not shown ==
+
+- The missing-subject path (image built without WRIT_CHANNEL_SUBJECT) and a skipped put.
+- A partial frame from a client that then disconnects. host.c keeps those bytes and has
+  no resynchronisation, so every later frame of the boot is read shifted; shifted frames
+  pass the same length and record checks and the subject stays the built-in word, so no
+  authority is widened.
+- A put blocked in com_write by a client that never reads (after QEMU's socket buffer
+  fills). The refusal cap keeps bad frames from reaching it; good frames are bounded by
+  fuel (4 results, 320 bytes).
+- Byte loss under flood: QEMU's behaviour when the guest reads slowly is not read from its
+  source; no byte was lost in these runs.
+
+== Fix round 1 ==
+
+Ingress cost. Before (Task 2 image, fixed 10 ms park, FIFO off): one accept round trip
+0.863878720 s, timed from starting the client to its reply with the monitor already in a
+take (scratch $W/chanfix/measure.sh: boot, sync with one bad-length frame, time one
+accept, then badver other accept; host clock, date +%s.%N). The port holds one byte, so
+a wake collected about one byte: about 100 B/s.
+
+Attempt 1, FIFO on (dropped). host.c wrote FCR 0x2fa = 0x07 once when it first found
+COM2 (one line; saved as $W/chanfix/host-fifo.c.txt, 8b2598f5...; image 94d629a1...). A
+client that connected and sent before the guest's first take hung until the timeout:
+  check-channel accepted: client sent request 1, no reply; console stopped at
+  "monitor: serving 4 records"; QEMU 124 (wall 120.0 s)
+  ($W/chanfix/run-fifo-accepted.log, client-fifo-accepted.txt)
+A client that connected after the first take got its reply (run x1: Committed, then the
+run waited for requests it was never sent, QEMU 124 at 30 s; run-fifo-late.log). Read as
+the UART flushing its receive FIFO when the FIFOs are enabled after bytes have arrived,
+so early bytes are lost and the fixed frames never align. QEMU's source was not read.
+A driver that enabled the FIFO in com_setup, before any byte, might not lose them; that
+is a Unikraft driver change and was not made.
+
+Attempt 2, adaptive park (kept). host.c's writ_uk_take_poll answers 0 (nothing), 1 (a
+record), or 2 (a frame partly in, or one just refused or dropped); unikraft_take.c parks
+1 ms on 2 and 10 ms otherwise. No port access was added. Three measure.sh runs on image
+94886b15...: accept round trip 0.148774579 s (probe and hello builds running at the same
+time), 0.296772426 s, 0.139641183 s; each QEMU 1, wall 1.0, 1.0, 0.8 s. On the final
+image (rebuilt after comment edits, below): 0.214498941 s, 0.558361924 s, 0.167700452 s;
+QEMU 1, wall 1.8, 1.7, 1.1 s (the host was busier; other builds were running). Remaining
+cost: about one byte per wake still; the gap is a descriptor or interrupt for COM2.
+
+Refusal cap. host.c answers at most WRIT_UK_REFUSAL_MAX = 8 bad-length frames per boot,
+then drops further ones with a console line and no reply, and handles at most one frame
+per poll. Host failure handling, not policy. Exercised with the scratch client
+$W/chanfix/flood (flood.c, 1999040e...): "flood SOCKET 12" sends 12 length-65 frames
+without reading, then accept, badver, other, accept, reading until each decision.
+  client: sent 12 bad-length frames; refusals received 8; decisions received 4
+          decision for seq 1: kind=2 decision=1 reason=0
+          decision for seq 2: kind=2 decision=2 reason=1
+          decision for seq 3: kind=2 decision=2 reason=6
+          decision for seq 4: kind=2 decision=2 reason=6
+  console: 8 x "writ_uk: channel frame refused: length=0x00000041 bad length=1..8",
+           4 x "writ_uk: channel frame dropped, no reply (refusal cap): length=0x00000041
+           bad length=9..12", the four monitor decision lines, "monitor: fuel exhausted,
+           exiting"; QEMU 1 (wall 1.8 s; $W/channel/logs/run-fl.log)
+
+Other fixes: WRIT_CHANNEL_SUBJECT above 4294967295 is refused by app/Makefile.uk (1 and
+4294967295 accepted; 4294967296, 4294967297, 0, abc refused) and by a _Static_assert in
+host.c; run.sh builds the second serial arguments as a quoted array; check-channel.sh
+refuses a socket path of 108 bytes or more (exit 2, seen once with a long label);
+Monitor.bend's helper list names initial_reader (comment only: the generated C from the
+previous and the current Monitor.bend, with the same twins, is byte-identical).
+monitor.c's hash changed only because the take twin it splices in changed.
+
+Rebuild and reruns (same commands as "== Build ==" and "== Runs =="). The first fix
+build (host.c a3156b64..., unikraft_take.c f03cb69d..., image 94886b15...) gave the first
+three timings and an earlier PASS set (labels f1acc, f1denied, f1neg, fl, f1probe,
+f1hello). Comments in host.c and unikraft_take.c were then revised and everything was
+rebuilt; unikraft_take.c's last change is one comment line, and the regenerated
+monitor.c differs from the previous one in that comment line only (diff). Final inputs
+and outputs:
+  41f748fb182a4e69a433e666cfa1a2465ca7fb9d6e0511bca8e19bf142dea857  hosts/unikraft/host.c
+  585a474008a800ff018184ff702f9164d5201ebefa4d595fc0c6c458ecb9ca6b  hosts/unikraft/effects/unikraft_take.c
+  cf7ae59276fc9f00c79fe4d10b382d44c9f85213ee1f4bbb530618c28d1c255c  hosts/unikraft/monitor/Monitor.bend
+  a2b009186031e819e2c416f020fd0c9acb3dfe5c29e3458705d2b896b05b3f3e  hosts/unikraft/app/Makefile.uk
+  95b553669bee057aceb8389d42686ca52e8dc393d989e0f68fabe6692c8647b6  hosts/unikraft/scripts/run.sh
+  9105c52f505bd74327121cc822738c1684bbb44990d27b4d9de5ec5e5227bcbb  hosts/unikraft/scripts/check-channel.sh
+  7361bb9cab28ca9a92a26478c3c487df43b4356ec8ebd554b74bd6c2ac7b18d6  hosts/unikraft/scripts/build.sh
+  68033f5eb9f658735c0b90c7f07ae34c5bd41491dd7ce1828846ee8d89a81bb0  $W/channel/gen/monitor.c
+  0e58682807bcf2ad7f91f315c9634c50690117339f6779b6ce7eb749e47145ff  $W/channel/images/monitor-qemu
+  3dbb32abc8c7d13abef8ccf53f613efa5044cfa73977acf7e767741a2307f98f  $W/channel/images/monitor-qemu.dbg
+  0d6f07a5313bc427b1204951330d0084ee25639c0ae80f666bc23ced0e7f144b  $W/effects2/images/probe-qemu
+  d8f23b864a023344d5165116c5ba41b5ee5c7ba21fc9f77bd4105ddd5feabae6  $W/effects2/images/hello-qemu
+  (build.sh is unchanged in this round; Task 2, 50ef05d, added WRIT_CHANNEL_SUBJECT to it
+  but its hash was missing from the Build list above.)
+  check-channel accepted (label h1acc): client diff empty, console diff empty, QEMU 1,
+    PASS, exit 0 (wall 8.5 s, host load average 48; repeated as h2acc: PASS, wall 0.9 s)
+  check-channel denied (label h1den): both diffs empty, QEMU 1, PASS, exit 0 (wall 1.1 s)
+  negative control (label h1neg, denied order against the accepted references): FAIL,
+    exit 1
+  flood (label h1fl, "flood SOCKET 12"): refusals received 8, decisions received 4;
+    console 8 refused and 4 dropped lines, "monitor: fuel exhausted, exiting", QEMU 1
+    (wall 2.2 s)
+  measure.sh (label m7): accept round trip 0.171275059 s, QEMU 1
+  cross-check (on the g1 runs of the same sources before the one-line comment change):
+    the client logs' Bend replies == MonitorCheck's lines; MonitorCheck 10 PASS, exit 0
+  probe (on 0d6f07a5...): WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' check-image.sh effects2
+    g1probe probe verification/unikernel-effects-probe-reference.txt 1 "" 60 1024: diff
+    empty, QEMU 1, PASS
+  hello (on d8f23b86...): check-image.sh effects2 g1hello hello $W/effects2/hello-ref.txt
+    1 "" 60 1024: diff empty, QEMU 1, PASS
+  binary check on the final monitor-qemu.dbg: rows Unikraft.log Unikraft.put
+    Unikraft.take, FAIL (outside the monitor profile), exit 1, as before
+  OpenSpec 1.16.0 (bunx): Totals: 44 passed, 0 failed (44 items)
+
+All runs are QEMU TCG (emulated x86_64 boots); none is native or GPU evidence.

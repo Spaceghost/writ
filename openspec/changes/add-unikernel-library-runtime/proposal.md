@@ -24,8 +24,8 @@ Bend.
   with the unikernel's toolchain against its libc, with only the libraries the
   runtime profile needs selected.
 - Rewrite the monitor-profile effects' C twins to call the unikernel's
-  primitives directly where that removes a layer: console, time, exit, and the
-  authenticated channel ingress.
+  primitives directly where that removes a layer: console, time, and the
+  authenticated channel ingress (exit is the inventoried termination host layer, UL-004).
 - Select the unikernel by a recorded evidence matrix over the runtime inventory
   rows, trying Unikraft first and OSv second; treat Nanos as the appliance's
   compat-mode candidate, not this change's.

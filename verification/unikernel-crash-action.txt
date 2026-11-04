@@ -1,6 +1,13 @@
 Unikernel port lane, Task 2: the platform action after a crash (halt versus reset)
 Recorded 2026-11-03 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
 
+CODE MAP NOTE (2026-11-04, Unikraft effect-twins lane Task 3): the QEMU statuses below were
+recorded under the exit hook's map at the time and are kept as recorded. The hook now
+writes program statuses as s + 0x10 (success 33, status 1 35, 2s + 33 in general), a
+runtime or host-layer _exit(1) as 17, a signal death as 19; crash 253 and non-halt 251
+are unchanged. Reruns under the new map: verification/unikernel-fault-qemu.txt (and the
+corpus rerun in verification/unikernel-corpus-qemu.txt).
+
 Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type the
 qemu-system-x86_64 default (pc), -cpu max, -m 4096 for Overflow (-m 1024 for Hello),
 -append "+RTS --threads 1 --gpu off", 60 s timeout, serial captured whole. CPU only.

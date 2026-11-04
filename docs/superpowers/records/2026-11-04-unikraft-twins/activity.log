@@ -1,0 +1,76 @@
+2026-11-04T15:59:11Z	controller	lane created from master 09cd9bc; Task 1 brief written
+2026-11-04T16:00:00Z	implementer	Task 1 started; reading brief, inventory, scripts, Genode twins
+2026-11-04T16:00:38Z	controller	Task 1 implementer dispatched
+2026-11-04T16:01:42Z	implementer	design: host.c (uk_console_out, ukplat_monotonic_clock, uk_sched_thread_sleep loop) + twins; report started
+2026-11-04T16:03:16Z	implementer	Makefile.uk/build.sh: WRIT_HOST_LAYER (default n) links host.c; probe.c emitted; Linux link fails, JS twin fails as designed
+2026-11-04T16:03:19Z	implementer	build started: effects/probe (WRIT_HOST_LAYER=y)
+2026-11-04T16:04:03Z	implementer	build finished: probe-qemu in 40 s
+2026-11-04T16:04:09Z	implementer	run 1: serial text OK, delta 106, PASS line; but QEMU 255 not 1 (status not representable); investigating
+2026-11-04T16:04:32Z	implementer	cause of 255: io_work helper thread outlives main, init process still RUNNING at shutdown -> exit_code 0x80|SIGKILL=137 (posix-process/shutdown.c:99-101) -> 0x7f; switching sleep to the loop thread
+2026-11-04T16:04:52Z	implementer	build started: probe with loop-thread sleep
+2026-11-04T16:05:36Z	implementer	run 2 (loop-thread sleep): serial text OK, delta 100, PASS, QEMU 1
+2026-11-04T16:05:50Z	implementer	check-image probe-3..5 PASS (deltas 100,100,101); building scratch FAIL probe (min_delta 1000)
+2026-11-04T16:06:44Z	implementer	FAIL branch: probefail QEMU 3, FAIL line, check-image rc 1
+2026-11-04T16:06:53Z	implementer	check-binary on probe/probefail/iowork .dbg: rows exactly Unikraft.log/now/sleep, FAIL(1) as expected; io_work capture check-image FAIL on QEMU 255
+2026-11-04T16:07:39Z	implementer	regression: hello built without host layer (default), check-image PASS QEMU 1, no writ_uk symbols
+2026-11-04T16:08:33Z	implementer	wrote verification/unikernel-effects-qemu.txt (E1-E7)
+2026-11-04T16:09:17Z	implementer	UL-004 amended in spec delta, rationale in tasks.md 2.1 note; openspec 1.16.0 (bunx) strict: 44 passed, 0 failed
+2026-11-04T16:10:09Z	implementer	INVENTORY, UNIKERNELS.md port status, OpenSpec record committed
+2026-11-04T16:10:23Z	implementer	Task 1 DONE_WITH_CONCERNS; report written
+2026-11-04T16:10:45Z	controller	Task 1 done; review dispatched
+2026-11-04T16:13:24Z	controller	activity log moved to .lane/unikraft-twins.log (committed per lane from now on)
+2026-11-04T16:14:31Z	implementer	fix round 1 started: sleep via io_wait_on time park; doc fixes
+2026-11-04T16:14:31Z	controller	review: needs fixes (io_wait_on sleep); fix round 1 dispatched
+2026-11-04T16:15:36Z	implementer	build started: probe with io_wait_on sleep
+2026-11-04T16:16:38Z	implementer	build finished: probe-qemu d42680ce (io_wait_on sleep)
+2026-11-04T16:16:49Z	implementer	r1 E2 run.sh delta 103 QEMU 1; E3-E5 check-image PASS deltas 102,102,102; rebuilding probefail
+2026-11-04T16:17:45Z	implementer	r1 E6 probefail QEMU 3, check-image rc 1; E7 check-binary rows exactly Unikraft.log/now/sleep, rc 1
+2026-11-04T16:18:31Z	implementer	evidence: fix round 1 section added, R0 runs relabelled
+2026-11-04T16:19:43Z	implementer	r1 docs: INVENTORY, UNIKERNELS.md gap, tasks 2.1 line+note, design.md:42, explainer 107/118/130 aligned; openspec 1.16.0 strict 44/44
+2026-11-04T16:20:03Z	implementer	fix round 1 committed c3f2050
+2026-11-04T16:20:26Z	controller	fix round 1 done; scoped re-review dispatched
+2026-11-04T16:22:38Z	controller	Task 1 complete; Task 2 (ingress twins) dispatched
+2026-11-04T16:22:52Z	implementer	Task 2 started; reading brief and Genode channel model
+2026-11-04T16:24:46Z	implementer	transport decision: QEMU second -serial unix socket = ISA COM2 0x2f8, ns16550 COM2 console (flags 0, polled, no IRQ); no device fd exists in 0.21.0 for COM2, so take parks on io_wait_on time deadline and polls COM2 per wake
+2026-11-04T16:26:41Z	implementer	host.c channel (take_poll/put/refusal), take/put twins, Kraftfile COM2=y, Makefile WRIT_CHANNEL_SUBJECT written; writing Monitor.bend
+2026-11-04T16:29:25Z	implementer	MonitorCheck PASS (12 checks); client.c built; build started: channel/monitor (subject 1)
+2026-11-04T16:29:38Z	controller	record moved to .lane/unikraft-twins/ (ledger, briefs, reports, log; committed per lane)
+2026-11-04T16:31:22Z	controller	record moved to docs/superpowers/records/2026-11-04-unikraft-twins/ (per plan, committed with the work)
+2026-11-04T16:32:06Z	implementer	Channel.md, check-channel.sh, run.sh WRIT_QEMU_SERIAL2 written; monitor build still running
+2026-11-04T16:32:31Z	implementer	build error: struct uk_console incomplete in host.c (needs uk/console/driver.h); fixed; build restarted
+2026-11-04T16:35:55Z	implementer	build finished: channel/monitor-qemu e048736c; first channel trial run
+2026-11-04T16:36:12Z	implementer	trial1 (accepted order): Committed 0, refusal 256, Denied 1, Denied 6, Denied 6; QEMU 1; hex matches MonitorCheck
+2026-11-04T16:36:27Z	implementer	trial2 (denied order) OK; references saved; image replies equal MonitorCheck replies in both orders; final rebuilds started (monitor, probe, hello)
+2026-11-04T16:40:51Z	implementer	final images built: monitor 119ffc1a, probe 9e8fddff, hello 98befb6d
+2026-11-04T16:41:30Z	implementer	check-channel accepted PASS, denied PASS, negative FAIL rc1; probe/hello regressions PASS; monitor bincheck rows Unikraft.log/put/take rc1; no-port boot exits QEMU 3
+2026-11-04T16:42:41Z	implementer	evidence verification/unikernel-channel-qemu.txt written; OpenSpec 44/44; Task 2 report written; committing
+2026-11-04T16:42:51Z	implementer	Task 2 committed 50ef05d; DONE_WITH_CONCERNS
+2026-11-04T16:43:13Z	controller	Task 2 done; review dispatched
+2026-11-04T16:51:21Z	implementer	Task 2 fix round 1 started
+2026-11-04T16:54:19Z	implementer	measured before: accept round trip 0.86 s (FIFO off, ~1 byte per 10 ms wake); now: FIFO on, refusal cap, one frame per poll
+2026-11-04T16:56:04Z	implementer	fix code: FIFO enable (FCR 0x2fa), refusal cap 8, one frame per poll, subject <= 2^32-1 (make + _Static_assert), run.sh SER array, socket length check; rebuilding monitor/probe/hello
+2026-11-04T17:07:08Z	implementer	FIFO image (94d629a1): client connecting before the first take hangs to timeout (124); connecting after take works. Cause read as the UART flushing on FIFO enable, losing early bytes. Dropping the FCR write; adaptive poll (1 ms mid-frame, 10 ms idle) instead
+2026-11-04T17:22:11Z	implementer	adaptive-poll image 94886b15: accept round trip 0.149/0.297/0.140 s (was 0.86 s), wall 0.8-1.0 s/boot; check-channel accepted PASS, denied PASS, negative FAIL rc1; flood 12 bad: 8 refused, 4 dropped, 4 decisions, fuel exhausted, QEMU 1; probe/hello PASS; bincheck rows log/put/take rc1; OpenSpec 44/44
+2026-11-04T17:36:00Z	implementer	final rebuild after comment edits (monitor 0e586828, probe 0d6f07a5, hello d8f23b86): accepted PASS, denied PASS, negative FAIL rc1, flood 8 refused/4 dropped/4 decisions QEMU 1, probe/hello PASS, bincheck rows log/put/take rc1, MonitorCheck 10 PASS; round trips 0.14-0.56 s over 7 runs (load avg 48); OpenSpec 44/44; committing
+2026-11-04T17:36:16Z	implementer	Task 2 fix round 1 committed e4cdc3d; DONE_WITH_CONCERNS
+2026-11-04T17:36:41Z	controller	fix round 1 done; scoped re-review dispatched
+2026-11-04T17:41:07Z	controller	Task 2 complete; Task 3 (fault message, exit-code map) dispatched
+2026-11-04T17:41:33Z	implementer	Task 3 started
+2026-11-04T17:47:52Z	implementer	read posix-process signal path (system_error.c, deliver.c sys_error_handler/do_deliver SA_ONSTACK); signal config fails to build in 0.21.0 (shutdown.c include order); trial with -include uk/config.h; new exit map (s+0x10, runtime stop 0x08, signal 0x09) with atexit mark; Exhaust.bend probe; building hello/die/exit/overflow/exhaust + signal overflow
+2026-11-04T17:51:09Z	implementer	signals trial (CONFIG_LIBPOSIX_PROCESS_SIGNAL=y, -include uk/config.h): 'bend: memory fault (machine stack overflow?)' printed, then posix-process 'Cannot deliver SIGSEGV' crash, QEMU 253 (twice). New map: hello 33 PASS, die 35 PASS. Corpus rebuild started (corpus3, tests.c b50856fb)
+2026-11-04T18:02:01Z	implementer	exit 39, overflow 253 (no message), exhaust 253 crash in heap_alloc_miss at -m 1024/4096/12288 (backing memory, not err_fail); channel accepted/denied 33 PASS, neg FAIL, noport 17, probe 33 PASS, split frame OK; evidence verification/unikernel-fault-qemu.txt written; corpus and examples building
+2026-11-04T18:08:54Z	implementer	committed f14b626 (map, fault trial, exhaust, docs); examples rebuilt (corpus3x): flow/transfer/example PASS 33, gpuexample first boot FAIL (Unikraft 'PM driver failed the operation: -5' line with NULs after the program, QEMU 33), two reruns PASS; negative control FAIL rc1; waiting on corpus build
+2026-11-04T19:26:48Z	implementer	still building the corpus image (set corpus3, gcc cc1 on tests.c for about 5600 s, then the assembler; the 782 build took 5498 s); examples rerun done and recorded
+2026-11-04T19:28:36Z	implementer	corpus image built (5847 s, 11b07c46); booting check-corpus at -m 4096 and -m 32
+2026-11-04T19:29:34Z	implementer	corpus3 check-corpus -m 4096 and -m 32: 782 PASS, QEMU 33, PASS; bincheck PASS; OpenSpec 44/44; Task 3 report written; committing; DONE_WITH_CONCERNS
+2026-11-04T19:30:13Z	controller	Task 3 done; review dispatched
+2026-11-04T19:37:21Z	controller	review: needs fixes (exhaustion wording); fix round 1 dispatched
+2026-11-04T19:37:22Z	implementer	Task 3 fix round 1 started
+2026-11-04T19:41:10Z	implementer	fix round 1: exit_device/INVENTORY exhaustion wording (tokens identical), 255->19 notes, musl cites, +RTS bad args 17 x2, check-fault.sh (overflow PASS, exhaust PASS, neg FAIL rc1), tasks.md 2.3 halves + 35, UNIKERNELS Open PM line; OpenSpec bunx 1.16.0 44/44; committing
+2026-11-04T19:41:31Z	controller	fix round done; re-review and final review dispatched
+2026-11-04T19:42:57Z	controller	Task 3 complete; awaiting the whole-branch review
+2026-11-04T19:49:36Z	controller	final review: needs fixes; final fix pass dispatched
+2026-11-04T19:49:39Z	implementer	final-review fixes started; merging master
+2026-11-04T19:57:10Z	implementer	final review: host-layer scope, check-fault.sh exit/stale-log fix + reruns (ovf2 PASS, exf2 PASS, negf2 FAIL rc1, nosuch FAIL rc1), docs/spec alignment, traceability UL-004/005/006, profile-hosts Unikraft+channel rows, profile cite; OpenSpec bunx 1.16.0 44/44; committing
+2026-11-04T19:57:44Z	controller	final fix pass done; scoped re-review dispatched
+2026-11-04T19:59:59Z	controller	re-review approved after a one-cell table fix; merging

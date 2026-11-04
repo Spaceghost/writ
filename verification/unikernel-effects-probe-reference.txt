@@ -1,0 +1,8 @@
+Console reference for scripts/unikernel/Probe.bend as a Unikraft image (hosts/unikraft/scripts/check-image.sh
+with WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g', which replaces every number after '=' with N; the probe's
+exit status checks the values themselves). Recorded 2026-11-04; verification/unikernel-effects-qemu.txt.
+== capture ==
+probe: hello from Bend through the Unikraft console
+probe: before=N after=N
+probe: delta_ms=N sleep_ms=N min_delta_ms=N max_delta_ms=N
+probe: PASS after >= before and min <= delta < max
