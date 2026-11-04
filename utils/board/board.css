@@ -234,6 +234,28 @@ nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { colo
 .lane .drift ul { margin: .2rem 0 .4rem; padding-left: 1.2rem; font-size: .86rem; }
 .lane .drift .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
+/* Questions: the controller's pages for the reader, and the thread of answers. */
+.side .qlink { margin-top: -.3rem; }
+.side .qlink .count { color: var(--warn); }
+.status-open { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+.status-answered { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.status-closed { background: var(--code-bg); color: var(--muted); }
+table.questions td.qlast { font-size: .84rem; color: var(--muted); max-width: 28rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr.qrow.q-open td { background: color-mix(in srgb, var(--warn-soft), var(--surface) 55%); }
+.qframe-wrap { margin: 0 0 1.2rem; }
+.qframe { width: 100%; height: min(78vh, 60rem); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: block; }
+.answers { list-style: none; margin: .4rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.answer { border: 1px solid var(--line); border-radius: 6px; padding: .5rem .8rem; background: var(--bg); }
+.answer-controller { border-left: 3px solid var(--accent); }
+.answer-reader { border-left: 3px solid var(--warn); }
+.answer-head { display: flex; gap: .6rem; align-items: baseline; margin-bottom: .25rem; }
+.answer dl { margin: 0; display: grid; gap: .25rem; }
+.answer-field { display: grid; grid-template-columns: minmax(6rem, auto) minmax(0, 1fr); gap: .6rem; }
+.answer-field dt { font-family: var(--mono); font-size: .76rem; color: var(--muted); }
+.answer-field dd { margin: 0; overflow-wrap: anywhere; }
+.answer-text { margin: 0; overflow-wrap: anywhere; }
+.qlist { list-style: none; padding: 0; display: grid; gap: .4rem; }
+body.embed .qframe { height: min(66vh, 52rem); }
 /* Quick-view panel: a right-hand drawer over the index with a board page embedded. */
 .panel-backdrop { position: fixed; inset: 0; z-index: 19; background: rgba(20, 24, 32, .35); backdrop-filter: blur(1px); cursor: pointer; }
 .panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(56rem, 70vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0, 0, 0, .18); z-index: 20; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }

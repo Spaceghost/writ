@@ -23,17 +23,17 @@
 // The board makes no claim about Writ's behavior, proofs, or verification. It
 // shows what the documents say, including checkbox counts as written.
 
-import { readdirSync, readFileSync, existsSync, lstatSync, openSync, closeSync, fstatSync, watch, constants, type FSWatcher } from "node:fs";
+import { readdirSync, readFileSync, existsSync, lstatSync, openSync, closeSync, fstatSync, watch, constants, appendFileSync, mkdirSync, type FSWatcher } from "node:fs";
 import { join, resolve, posix } from "node:path";
 import { Marked, type Tokens } from "marked";
 import * as T from "./template.ts";
 
 // ---------------------------------------------------------------- flags
 
-type Flags = { root: string; lanes: string | null; port: number; host: string };
+type Flags = { root: string; lanes: string | null; port: number; host: string; questions: string | null };
 
 function parseFlags(argv: string[]): Flags {
-  const flags: Flags = { root: ".", lanes: null, port: 4242, host: "127.0.0.1" };
+  const flags: Flags = { root: ".", lanes: null, port: 4242, host: "127.0.0.1", questions: null };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     const value = argv[i + 1];
@@ -44,6 +44,7 @@ function parseFlags(argv: string[]): Flags {
     };
     if (arg === "--root") flags.root = need();
     else if (arg === "--lanes") flags.lanes = need();
+    else if (arg === "--questions") flags.questions = need();
     else if (arg === "--port") flags.port = Number(need());
     else if (arg === "--host") flags.host = need();
     else fail(`unknown argument: ${arg}`);
@@ -280,6 +281,118 @@ function scanChanges(root: string): Change[] {
         specs: subdirs(join(dir, "specs")).filter((c) => existsSync(join(dir, "specs", c, "spec.md"))),
       };
     });
+}
+
+// ---------------------------------------------------------------- questions
+
+/**
+ * Questions the controller asks the reader: one authored HTML page per
+ * question under `docs/superpowers/records/questions/<id>.html` (served
+ * as-is in a sandboxed iframe, any form or image the author wants), plus
+ * `<id>.answers.jsonl`, one JSON object per line, appended by the board's
+ * single write route when the page's form posts to
+ * `/questions/<id>/answer`, and by the controller for its own replies.
+ * `<id>` is `q` followed by digits. The page's `<title>` is the summary;
+ * `<meta name="writ-topic">` and `<meta name="writ-status" content="open|closed">`
+ * are optional.
+ */
+export const QUESTIONS_DIR = "docs/superpowers/records/questions";
+const QUESTION_ID = /^q\d{1,6}$/;
+const QUESTION_HTML = /^(q\d{1,6})\.html$/;
+/** Largest accepted answer body, in bytes. */
+const ANSWER_LIMIT = 16 * 1024;
+
+export type Answer = { at: string; who: string; fields: Record<string, string> };
+export type Question = {
+  id: string;
+  title: string;
+  topic: string | null;
+  /** `closed` from the page's meta; else `answered` when the reader has replied after the last controller entry; else `open`. */
+  status: "open" | "answered" | "closed";
+  answers: Answer[];
+  lastAt: string | null;
+};
+
+function questionsDir(flags: Flags): string {
+  return flags.questions ?? join(flags.root, QUESTIONS_DIR);
+}
+
+/** Answers file text to entries; a malformed line is kept as a text answer so nothing is lost silently. */
+export function parseAnswers(text: string): Answer[] {
+  const out: Answer[] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (line.trim() === "") continue;
+    try {
+      const o = JSON.parse(line) as Partial<Answer>;
+      const fields: Record<string, string> = {};
+      for (const [k, v] of Object.entries(o.fields ?? {})) fields[String(k)] = String(v);
+      out.push({ at: String(o.at ?? ""), who: String(o.who ?? ""), fields });
+    } catch {
+      out.push({ at: "", who: "", fields: { text: line } });
+    }
+  }
+  return out;
+}
+
+function scanQuestions(flags: Flags): Question[] {
+  const dir = questionsDir(flags);
+  if (!existsSync(dir) || !realDir(dir)) return [];
+  return regularFiles(dir, QUESTION_HTML).map((file) => {
+    const id = file.match(QUESTION_HTML)![1];
+    const head = (readRegularText(join(dir, file)) ?? "").slice(0, 8192);
+    const title = head.match(/<title>([^<]*)<\/title>/i)?.[1]?.trim() || id;
+    const topic = head.match(/<meta\s+name="writ-topic"\s+content="([^"]*)"/i)?.[1] ?? null;
+    const closed = /<meta\s+name="writ-status"\s+content="closed"/i.test(head);
+    const answers = parseAnswers(readRegularText(join(dir, `${id}.answers.jsonl`)) ?? "");
+    const last = answers[answers.length - 1];
+    const status: Question["status"] = closed ? "closed" : last && last.who !== "controller" ? "answered" : "open";
+    return { id, title, topic, status, answers, lastAt: last?.at ?? null };
+  }).sort((a, b) => Number(b.id.slice(1)) - Number(a.id.slice(1)));
+}
+
+/** Control characters other than tab and newline are dropped; values are capped. */
+function cleanField(v: string): string {
+  return v.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").slice(0, 4000);
+}
+
+/**
+ * The board's one write: append the reader's answer to `<id>.answers.jsonl`.
+ * Accepts a form post (urlencoded or multipart) or JSON; every field becomes a
+ * string. The Host check in `handle` already refuses other sites; the Origin
+ * must be the board's own or `null` (a sandboxed question iframe has an opaque
+ * origin). Never creates the question page; a missing page is 404.
+ */
+async function recordAnswer(flags: Flags, hosts: Set<string>, id: string, req: Request): Promise<Response> {
+  if (!QUESTION_ID.test(id)) return new Response("not found\n", { status: 404 });
+  const dir = questionsDir(flags);
+  if (!existsSync(join(dir, `${id}.html`))) return new Response("not found\n", { status: 404 });
+  const origin = req.headers.get("origin");
+  if (origin !== null && origin !== "null" && !hosts.has(origin.replace(/^https?:\/\//, "").toLowerCase())) {
+    return new Response("forbidden origin\n", { status: 403 });
+  }
+  const length = Number(req.headers.get("content-length") ?? "0");
+  if (length > ANSWER_LIMIT) return new Response("answer too large\n", { status: 413 });
+  const type = req.headers.get("content-type") ?? "";
+  const fields: Record<string, string> = {};
+  if (type.includes("application/json")) {
+    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    if (body === null) return new Response("bad json\n", { status: 400 });
+    for (const [k, v] of Object.entries(body)) fields[cleanField(k).slice(0, 64)] = cleanField(typeof v === "string" ? v : JSON.stringify(v));
+  } else {
+    const form = await req.formData().catch(() => null);
+    if (form === null) return new Response("bad form\n", { status: 400 });
+    for (const [k, v] of form.entries()) {
+      if (typeof v !== "string") continue; // files are not accepted
+      const key = cleanField(k).slice(0, 64);
+      fields[key] = fields[key] === undefined ? cleanField(v) : `${fields[key]}, ${cleanField(v)}`;
+    }
+  }
+  if (Object.keys(fields).length === 0) return new Response("empty answer\n", { status: 400 });
+  const entry: Answer = { at: new Date().toISOString(), who: "josh", fields };
+  mkdirSync(dir, { recursive: true });
+  appendFileSync(join(dir, `${id}.answers.jsonl`), JSON.stringify(entry) + "\n");
+  // The page's form lands here; show the thread, which the watcher has already re-rendered for open streams.
+  return new Response("", { status: 303, headers: { location: `/questions/${id}?embed=1&answered=1` } });
 }
 
 // ---------------------------------------------------------------- lanes
@@ -784,7 +897,7 @@ function mdFile(root: string, repoPath: string): string | null {
  * One scan of the filesystem shared by every page rendered in the same flush.
  * The lanes scan (which runs git) happens only if an index page asks for it.
  */
-type Snapshot = { changes: Change[]; baselines: Baseline[]; lanes: () => Promise<LaneScan | null> };
+type Snapshot = { changes: Change[]; baselines: Baseline[]; questions: Question[]; lanes: () => Promise<LaneScan | null> };
 
 function snapshot(flags: Flags): Snapshot {
   const changes = scanChanges(flags.root);
@@ -792,6 +905,7 @@ function snapshot(flags: Flags): Snapshot {
   return {
     changes,
     baselines: scanBaselines(flags.root),
+    questions: scanQuestions(flags),
     lanes: () => (lanes ??= scanLanes(flags.root, changes, flags.lanes)),
   };
 }
@@ -804,18 +918,24 @@ function snapshot(flags: Flags): Snapshot {
 type View = { status: number; title: string; nav: string; main: string; parts: Record<string, string> };
 
 async function view(flags: Flags, page: string, snap: Snapshot): Promise<View> {
-  const { changes, baselines } = snap;
-  const nav = T.nav(changes, page);
+  const { changes, baselines, questions } = snap;
+  const nav = T.nav(changes, page, questions);
   const page1 = (status: number, title: string, main: string): View => ({ status, title, nav, main, parts: { nav, main } });
   const notFound = page1(404, "Not found", T.notFound(page));
 
   if (page === "/") {
     const scan = await snap.lanes();
-    const tables = T.indexTables(baselines, changes, scan);
+    const tables = T.indexTables(baselines, changes, scan, questions);
     const lanes = T.lanesPanel(scan);
     return { status: 200, title: "Writ board", nav, main: T.index(tables, lanes, flags.lanes !== null), parts: { nav, "index-tables": tables, lanes } };
   }
   let m: RegExpMatchArray | null;
+  if (page === "/questions") return page1(200, "Questions", T.questionsPage(questions));
+  if ((m = page.match(/^\/questions\/(q\d{1,6})$/))) {
+    const q = questions.find((x) => x.id === m![1]);
+    if (!q) return notFound;
+    return page1(200, q.title, T.questionPage(q));
+  }
   if ((m = page.match(/^\/change\/([^/]+)$/))) {
     const change = changes.find((c) => c.name === m![1]);
     if (!change) return notFound;
@@ -984,6 +1104,7 @@ class Watcher {
     const { root, lanes } = this.flags;
     add(root, ROOT_TREES);
     for (const t of ROOT_TREES) if (existsSync(join(root, t))) walk(join(root, t));
+    if (this.flags.questions !== null) add(this.flags.questions, null);
     if (lanes !== null) {
       add(lanes, null);
       for (const name of laneNames(lanes).lanes) {
@@ -1093,7 +1214,6 @@ export function allowedHosts(host: string, port: number): Set<string> {
 
 async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<Response> {
   if (!hosts.has((req.headers.get("host") ?? "").toLowerCase())) return new Response("forbidden host\n", { status: 403 });
-  if (req.method !== "GET" && req.method !== "HEAD") return new Response("read-only\n", { status: 405 });
   const url = new URL(req.url);
   let path: string;
   try {
@@ -1102,6 +1222,25 @@ async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<R
     return new Response("bad path\n", { status: 400 });
   }
   if (path.length > 1) path = path.replace(/\/+$/, "");
+  // The one route that writes: a reader's answer to a question page's form.
+  const answer = path.match(/^\/questions\/(q\d{1,6})\/answer$/);
+  if (answer) {
+    if (req.method !== "POST") return new Response("post only\n", { status: 405 });
+    return recordAnswer(flags, hosts, answer[1], req);
+  }
+  if (req.method !== "GET" && req.method !== "HEAD") return new Response("read-only\n", { status: 405 });
+  const qhtml = path.match(/^\/questions\/(q\d{1,6})\/html$/);
+  if (qhtml) {
+    // The question page, served as-is like an explainer, in the same CSP sandbox plus forms.
+    const bytes = readRegular(join(questionsDir(flags), `${qhtml[1]}.html`));
+    if (bytes === null) return new Response("not found\n", { status: 404 });
+    return new Response(bytes, {
+      headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": "sandbox allow-scripts allow-forms allow-popups" },
+    });
+  }
+  if (path === "/api/questions") {
+    return Response.json(scanQuestions(flags));
+  }
 
   if (path === "/board.css") {
     return new Response(readFileSync(CSS_PATH), { headers: { "content-type": "text/css; charset=utf-8" } });
@@ -1164,7 +1303,7 @@ if (import.meta.main) {
     fetch: (req) => handle(flags, hosts, req),
   });
   hosts = allowedHosts(flags.host, server.port);
-  console.log(`board: reading ${flags.root}${flags.lanes ? ` and lanes in ${flags.lanes}` : ""}`);
+  console.log(`board: reading ${flags.root}${flags.lanes ? ` and lanes in ${flags.lanes}` : ""}; answers are appended under ${questionsDir(flags)}`);
   console.log(`board: watching ${watcher.size} directories`);
   console.log(`board: listening on http://${server.hostname}:${server.port}/`);
 }

@@ -174,6 +174,28 @@ Below 1100px the Explainers column is hidden and each change becomes two lines
 header; below 760px the Status pill is hidden too (both are on the change page). Lane cards show the status line (dot, phase, age, changes), the activity feed,
 then the ledger tail and reports; live lanes sort first.
 
+### Questions for the reader
+
+The controller asks the reader questions as authored HTML pages under
+`docs/superpowers/records/questions/<id>.html` (`<id>` is `q` plus digits;
+the page's `<title>` is the summary, `<meta name="writ-topic">` and
+`<meta name="writ-status" content="closed">` are optional). The page is served
+as-is at `/questions/<id>/html` under the explainer's CSP sandbox plus
+`allow-forms`, inside the question's board page `/questions/<id>`, which shows
+the thread beneath it. The page's form posts to `/questions/<id>/answer`, the
+board's **only write route**: it appends one JSON line
+(`{"at","who":"josh","fields":{...}}`) to `<id>.answers.jsonl` beside the page
+and redirects back to the thread. Every field becomes a capped string with
+control characters removed; files are ignored; a body over 16 KiB, a foreign
+`Origin` (the board's own or the sandbox's `null` are accepted), a missing page,
+or any other method is refused. The controller appends its own replies to the
+same file with `"who":"controller"`. A question reads `open` until the reader's
+entry is the newest, `answered` after that, and `closed` when the page says so.
+`--questions <dir>` points the pages and answers at another directory (the
+smoke test uses a temporary one so it never writes to the repository). The
+index lists open and answered questions first with a tile count, and the nav
+links `/questions`.
+
 ## Requests
 
 Every request must carry a Host header naming the board itself, or it gets
@@ -257,7 +279,8 @@ received, as Datastar `datastar-patch-elements` outer morphs by id:
 
 | Page | Fragments |
 | --- | --- |
-| `/` | `#nav`, `#index-tables` (tiles, change and baseline tables), `#lanes` |
+| `/` | `#nav`, `#index-tables` (tiles, questions, change and baseline tables), `#lanes` |
+| `/questions`, `/questions/<id>` | `#nav`, `#main` |
 | `/change/<name>`, `/spec/<name>[/traceability]` | `#nav`, `#main` |
 
 So a report edit in a lane pushes `#lanes` to index pages (and
