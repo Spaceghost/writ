@@ -22,6 +22,7 @@ VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
 VECTOR GA-005-4 bind_open accepted alias=3;object=2
 VECTOR GA-005-5 bind_open denied SubjectMismatch
 VECTOR GA-005-6 delegate denied SubjectMismatch
+VECTOR GA-005-7 bind_open denied SubjectMismatch
 VECTOR GA-006-1 delegate denied WidenedRights
 VECTOR GA-006-2 delegate accepted alias=4;object=3
 VECTOR GA-006-3 delegate accepted alias=3;object=2

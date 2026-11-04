@@ -73,7 +73,7 @@ flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
 and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
 `examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
 library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
-binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 764 lines
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 782 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
@@ -158,7 +158,7 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **764 passing checks** and
+Each complete test run should report **782 passing checks** and
 `ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks three selected laws about guards
 and preservation of denied state; it does not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.
