@@ -53,6 +53,12 @@ that only uses `IO.print` and `IO.die` therefore links no socket, file, audio,
 or process-spawning effect code, even though the headers for those remain in
 the emitted file.
 
+In the built binary the constructor is gone: `bend -o` compiles at `-O2`, and
+clang evaluates `io_print_use` at compile time and drops it (it is present at
+`-O0`). The external `io_print_run` stays as a global text symbol, so a check
+of the binary reads effect rows from `<prefix>_run` symbols rather than from
+`_use` constructors.
+
 ## Observed on this machine
 
 | Check | Result |
@@ -86,3 +92,18 @@ upstream records.
 The inventory above is the baseline for the runtime host profile's allowlist. A
 profile that admits more host symbols than the monitor needs widens the
 trusted base for no benefit; a profile that admits fewer cannot run the corpus.
+
+The monitor profile derived from it is two allowlists,
+[`scripts/runtime-profile/monitor-symbols.txt`](../scripts/runtime-profile/monitor-symbols.txt)
+(exact import names, the inventory less the device group plus the startup,
+stdio, and string imports `nm -u` shows for Hello on glibc) and
+[`scripts/runtime-profile/monitor-effects.txt`](../scripts/runtime-profile/monitor-effects.txt)
+(`IO.print`, `IO.print_err`, `IO.now`, `IO.sleep`; the exit path is
+loop-handled, not a row). Each file records why its denied groups are denied.
+`sh scripts/runtime-profile/check-binary.sh BINARY` reads a produced, dynamically
+linked binary and exits 1 naming every import and effect outside them; it
+refuses (exit 2) a stripped or statically linked binary rather than passing it.
+[`verification/runtime-profile-binary-check.txt`](../verification/runtime-profile-binary-check.txt)
+records Hello passing and `scripts/runtime-profile/Widened.bend`, which adds
+`TCP.listen`, failing on `TCP.listen` and the socket imports. A passing check
+is one input to host qualification; it does not qualify a host by itself.

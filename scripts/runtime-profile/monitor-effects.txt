@@ -1,0 +1,33 @@
+# Monitor profile: Bend effects a Writ monitor binary may link (RH-002).
+#
+# One Bend effect name per line (Namespace.name), exact match; `#` starts a
+# comment line. scripts/runtime-profile/check-binary.sh maps each effect
+# function found in a binary to this spelling and fails on any name not here.
+
+# Standard-stream output: audit lines and refusals.
+IO.print
+IO.print_err
+
+# Monotonic time and bounded waits: expiry comparisons and retry pacing.
+IO.now
+IO.sleep
+
+# Exit path: IO.exit and IO.die are not effect rows. In Bend 2.0.39 they build
+# the Exit and Halt requests, which the IO loop handles before consulting the
+# effect table (`c == CID_Exit`, `c == CID_Halt`) and ends with `exit`. They
+# cannot be linked or omitted per program, so there is nothing to list; their
+# host calls (exit, _exit, the stream writes) are in monitor-symbols.txt.
+#
+# Denied, as RH-002 requires:
+#   Sockets: TCP.*, UDP.*, Listener.close, Socket.close. A monitor decides
+#     locally; network reach is the host's concern, not the decision path's.
+#   Files: File.*. A file effect lets a monitor read or write by name outside
+#     the inputs it is given, an ambient authority (RH-003's widening case).
+#   Process spawning: Process.run.
+#   Audio: Audio.*. Windowing: Window.*.
+#   GPU program loading has no effect row; it is the runtime device path and
+#   is denied by its symbols in monitor-symbols.txt.
+#
+# Denied by omission until a reviewed need appears: IO.args, IO.args_bytes,
+# IO.get_env, IO.write, IO.random_u32, IO.thread_count, IO.spawn, Chan.*,
+# and any effect from a foreign C import.
