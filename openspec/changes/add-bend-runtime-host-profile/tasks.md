@@ -17,6 +17,12 @@ qualify a host.
 - [x] 2.2 Verify fail-stop on a forced stack overflow and on a failed memory reservation; record the message and nonzero exit status rather than any continued execution. Evidence: `verification/runtime-profile-fault.txt`, `verification/runtime-profile-reservation.txt`.
 - [ ] 2.3 Document the profile's role in the Genode, Windows, Drift kernel, unikernel, and freestanding changes and update their runtime tasks to cite it; leave those tasks unchecked.
 
+  Note (2026-11-04): the Windows (`add-windows-host`), Drift kernel
+  (`add-drift-kernel-host`), and freestanding (`add-freestanding-bend-runtime`)
+  changes now cite the profile in their design.md and runtime tasks. The Genode
+  and unikernel changes still wait for the live `genode-base-hw` and
+  `unikraft-twins` lanes, so this box stays unchecked.
+
 ## 3. Evidence
 
 - [x] 3.1 Store per-host corpus output, lane count, GPU mode, compiler, and binary hash under verification/ and link them from the traceability table; keep review-only and executed evidence separate. Evidence: `verification/runtime-profile-hosts.md` (executed rows for Linux native one and four lanes, Linux JavaScript, Genode base-linux, and Unikraft QEMU TCG, each cell citing its source file; review-only items listed separately; Genode base-hw and the Unikraft channel are pending placeholders), linked from `openspec/traceability/bend-runtime-host-profile.md`. This stores evidence and qualifies no host.
