@@ -1,6 +1,6 @@
 # Bend runtime as a Genode component: tasks
 
-1.1, 1.2, 1.3, and 1.4 are complete. 1.2 is checked because every execution
+1.1, 1.2, and 1.4 are complete; 1.3 is complete on base-hw only (below). 1.2 is checked because every execution
 named in it was performed, while Atomics across lanes remains unverified.
 1.1 is checked because the generated C of the reference program, linked with
 the host-layer shim, prints `hi` under init on `base-linux` and exits 0
@@ -69,6 +69,29 @@ exported symbols, and sessions), but the inventory's reviewer is still
 "Not reviewed under GB-006", and that the shim holds no policy decision is
 stated by its authors, not yet shown by that review.
 
+Section 3 (Genode base-hw lane, 2026-11-04; QEMU TCG emulated boot, CPU
+only): 3.1 and 3.2 are checked. 3.1: 1.4 was repeated on x86_64 `base-hw`
+(Genode 26.08 pinned in verification/genode-pins.txt, KERNEL=hw BOARD=pc,
+boot ISO built from it): `Tests.bend` printed 782 PASS lines and its 834
+component lines, and the four examples' logs, are byte-identical to the
+Linux single-lane record (verification/genode-corpus-base-hw.txt). 2.3 was
+repeated there: R's request Committed and the body claiming S Denied by
+Bend (reason 6), with request and result records word for word as on
+`base-linux`, and all eight channel runs pass
+(verification/genode-channel-base-hw.txt). Both are recorded separately
+from `base-linux`. Two runs needed base-hw run-script conditions for host
+behaviour outside the shim (a client's buckets vanish when the monitor
+exits; the base-hw kernel drops a signal to a freed context silently),
+recorded with sources in the same file. 3.2: `check-binary.sh` was run on
+the base-hw monitor ELF and fails as on `base-linux`: its effect rows are
+exactly Genode.log, Genode.put, and Genode.take, outside the monitor
+profile, and its symbol half fails against the Linux allow list, which was
+not edited; every `!` call ran on the CPU (`--gpu off`, no device); OpenSpec
+1.16.0 strict validation passes. The check's FAIL is recorded, not
+resolved: the component is outside the current monitor profile. The Genode
+host change's confinement tasks stay unchecked; nothing here is native
+hardware, GPU, or confinement evidence.
+
 ## 1. Component build and runtime rows
 
 - [x] 1.1 Pin Genode 26.08, its toolchain, and a `base-linux` run script; compile the generated C of the `IO.print` reference program as a Genode component and show its output in the Genode log.
@@ -85,5 +108,5 @@ stated by its authors, not yet shown by that review.
 
 ## 3. base-hw and evidence
 
-- [ ] 3.1 Repeat 1.4 and 2.3 on x86_64 `base-hw` under QEMU with a pinned image; record results separately from `base-linux`.
-- [ ] 3.2 Run the runtime profile's binary check on the component, record CPU execution for device paths, and validate OpenSpec strictly; leave the Genode host's confinement tasks unchecked.
+- [x] 3.1 Repeat 1.4 and 2.3 on x86_64 `base-hw` under QEMU with a pinned image; record results separately from `base-linux`.
+- [x] 3.2 Run the runtime profile's binary check on the component, record CPU execution for device paths, and validate OpenSpec strictly; leave the Genode host's confinement tasks unchecked.

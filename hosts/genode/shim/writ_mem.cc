@@ -165,13 +165,24 @@
  * first, so a fault never blocks on the parent. A chunk attach that core
  * refuses for RM-session quota (OUT_OF_RAM or OUT_OF_CAPS) is retried
  * after a bounded session upgrade paid from the PD's own quota under the
- * same margins (see _upgrade_rm_session); a session upgrade to core is
- * answered by init without blocking (child.cc, Child::upgrade, and
- * component.cc, Env::upgrade, which blocks only on PENDING). The upgrade
- * goes through Env::upgrade, which takes the Env's session mutex, so a
- * faulter halted while holding that mutex (inside a session request)
+ * same margins (see _upgrade_rm_session); with RM routed to core through
+ * init, as in these run scripts, the upgrade is answered without blocking
+ * (child.cc, Child::upgrade, and component.cc, Env::upgrade, which blocks
+ * only on PENDING). Under a parent that serves RM itself and answers
+ * PENDING (a nested init or sandbox), Env::upgrade would block the
+ * writ_fault thread, so there a fault could block on the parent. The
+ * upgrade goes through Env::upgrade, which takes the Env's session mutex,
+ * so a faulter halted while holding that mutex (inside a session request)
  * would leave the writ_fault thread blocked and the component halted with
- * no record, as with the LOG lock below. On base-linux a refusal
+ * no record, as with the LOG lock below. That cannot fire on the
+ * single-lane runs here: Env's session, upgrade, and close code runs on
+ * Genode stacks and the Genode heap and touches no reservation memory, so
+ * the faulter would have to be the mutex holder faulting inside a
+ * reservation, which no current path does; and a fault in the PD's own
+ * areas (stack, linker, address space) inside a session request is
+ * refused before any upgrade. Upgrades sent and declined are counted in
+ * the exit report (rm upgrades) and, on base-hw, logged before a
+ * refusal. On base-linux a refusal
  * prints one line with Genode::raw, restores the default SIGSEGV action,
  * and returns; the retried access then faults again and Linux terminates
  * the process. On base-hw a refusal logs the same line through the LOG
@@ -466,6 +477,7 @@ static Reservation                  _res[MAX_RESERVATIONS];
 
 /* counters for writ_mem_report (diagnostics only) */
 static unsigned long _chunks_populated, _faults_resolved;
+static unsigned long _rm_upgrades_sent, _rm_upgrades_declined;
 static unsigned long _reserved_at_hint, _reserved_elsewhere, _released;
 
 static Mutex &_mutex() { static Mutex m { }; return m; }
@@ -561,16 +573,20 @@ static bool _upgrade_rm_session(Region_map::Attach_error a)
 	using E = Region_map::Attach_error;
 	Pd_session::Stats const st = _pd->stats();
 	if (a == E::OUT_OF_RAM) {
-		if (st.ram.avail().value < RM_UPGRADE_RAM + size_t(RAM_MARGIN)) return false;
+		if (st.ram.avail().value < RM_UPGRADE_RAM + size_t(RAM_MARGIN)) {
+			_rm_upgrades_declined++; return false; }
 		_rm_connection->upgrade_ram(RM_UPGRADE_RAM);
+		_rm_upgrades_sent++;
 		return true;
 	}
 	if (a == E::OUT_OF_CAPS) {
-		if (st.caps.avail().value < RM_UPGRADE_CAPS + size_t(CAP_MARGIN)) return false;
+		if (st.caps.avail().value < RM_UPGRADE_CAPS + size_t(CAP_MARGIN)) {
+			_rm_upgrades_declined++; return false; }
 		_rm_connection->upgrade_caps(RM_UPGRADE_CAPS);
+		_rm_upgrades_sent++;
 		return true;
 	}
-	return false;
+	return false;   /* not a quota error: no upgrade, not counted */
 }
 
 /*
@@ -767,6 +783,8 @@ static void _watch_faults(Capability<Region_map>) { }
  * faulting thread stays halted in core and is never resumed. */
 [[noreturn]] static void _refuse(char const *why, addr_t a)
 {
+	log("writ_mem: [refusal] rm upgrades sent=", _rm_upgrades_sent,
+	    " declined=", _rm_upgrades_declined);
 	log("writ_mem: unresolved fault at ", Hex(a), " (", why,
 	    "), component terminates");
 	_env->parent().exit(REFUSED_FAULT_EXIT);
@@ -1663,9 +1681,33 @@ static Signal_context_capability _channel_refuse(Channel &c, uint32_t seq)
 	return c.client_sigh;
 }
 
+/*
+ * Wake-path observation (base-hw lane, Task 3; diagnostics only). Before
+ * each down, take notes whether the semaphore was empty, so the down
+ * parks the thread (counted in _channel_take_parked, shown in the channel
+ * report as "take parked"), and the first take logs the name of the
+ * thread it runs on. Together with the log order of the delayed runs this
+ * shows what wakes the loop: the client signal ups the semaphore on the
+ * "writ_channel" entrypoint, the parked helper thread returns from
+ * writ_shim_take, and the runtime's io_help writes io_wake_fd, which wakes
+ * the loop's select. The read of cnt() is unlocked; it can only misreport
+ * a take that raced with a signal, never change what take returns.
+ */
+static unsigned long _channel_take_parked;
+static bool          _channel_take_named;
+
 extern "C" void writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)
 {
 	for (;;) {
+		bool const parks = _channel_ready().cnt() <= 0;
+		if (!_channel_take_named) {
+			_channel_take_named = true;
+			Thread const *t = Thread::myself();
+			log("writ_channel: take runs on thread '",
+			    t ? t->name : Thread::Name("unknown"), "', ",
+			    parks ? "parks in the semaphore" : "semaphore already up");
+		}
+		if (parks) _channel_take_parked++;
 		_channel_ready().down();
 
 		Signal_context_capability refused { };
@@ -1766,6 +1808,9 @@ extern "C" void writ_mem_report(char const *tag)
 	    " reserved at hint=", _reserved_at_hint,
 	    " elsewhere=", _reserved_elsewhere, " released=", _released,
 	    " timer short wakes=", _timer_short_wakes);
+	/* a line of its own: the LOG session splits lines past its string limit */
+	log("writ_mem: [", tag, "] rm upgrades sent=", _rm_upgrades_sent,
+	    " declined=", _rm_upgrades_declined);
 	if (_channel_root.constructed()) {
 		Mutex::Guard guard(_channel_mutex());
 		unsigned open = 0, closing = 0;
@@ -1780,6 +1825,7 @@ extern "C" void writ_mem_report(char const *tag)
 		    " taken=", _channel_taken, " put=", _channel_put,
 		    " put skipped=", _channel_put_skipped, " closed=", _channel_closed,
 		    " open=", open, " closing=", closing);
+		log("writ_mem: [", tag, "] channel take parked=", _channel_take_parked);
 	}
 }
 

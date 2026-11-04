@@ -50,7 +50,9 @@ QEMU_OPT += -display none -accel tcg -no-reboot; every make with MAKEFLAGS=)
   (-DWRIT_SHIM_FAULT_REGION_MAP on hw). Same emitted C and target.mk files as
   verification/genode-corpus-base-linux.txt; no flag was added for hw.
 
-  Binaries (not committed), sha256, final shim 67cc3617...:
+  Binaries (not committed), sha256, final shim 67cc3617..., of the unstripped
+  ../writ-genode/build/x86_64-hw/app/writ_bend_<name>/writ_bend_<name>
+  (not bin/, which holds the stripped copies):
     43dfb38ee8c9bec3eaff62c9d0bd3b04a1cb97568808cdb401b961b741e9c32e  writ_bend_tests
     ab35ff0279b765f890cf146ebb83898e81a5e87871b418c1a14a124ab799e989  writ_bend_example
     43a4206b5a5e6776ccc3fc7c46b7bc81e64f0c4b68bfec66a47bc6574e3cc47b  writ_bend_flow

@@ -1,0 +1,270 @@
+The Writ channel on base-hw under QEMU TCG: the eight monitor runs, the take
+wake path, the binary check, and OpenSpec (Genode base-hw lane, Task 3)
+Recorded: 2026-11-04, about 13:00 to 13:40 -06:00
+
+This is emulated-boot evidence: Genode 26.08 base-hw (KERNEL=hw, BOARD=pc,
+build directory ../writ-genode/build/x86_64-hw), booted from an ISO by
+qemu-system-x86_64 -display none -accel tcg -no-reboot -m 800. It is not
+native hardware, not KVM, not NOVA or seL4. CPU only: +RTS --threads 1
+--gpu off. The authority state the monitor decides over is SYNTHETIC
+(examples/Scenario.bend state, not an issuer), as on base-linux.
+
+RESULT
+  - All eight writ_bend_monitor scenarios pass on base-hw (rc 0, final
+    revision, logs ../writ-genode/run-hw-writ_bend_monitor_<name>-t3d.out):
+    accept, substitute, claim_ignored, routed_s, bad_length, liveness,
+    queue, dead_client. The same eight pass on base-linux with the same
+    shim and scripts (../writ-genode/run-writ_bend_monitor_<name>-t3d-linux.out).
+    With writ_bend_probe (Task 2 and again here, rc 0 on both) that is the
+    probe plus the eight channel runs.
+  - Accepted and Bend-denied round trips reproduced on base-hw with the
+    same request and result records, word for word, as base-linux (hex
+    dumps below). For accept, substitute, claim_ignored, routed_s, and
+    bad_length the component lines of monitor and clients (excluding the
+    shim's libc-address and exit-report lines) are the same multiset on
+    both kernels; substitute, claim_ignored, and routed_s are also in the
+    same order, accept and bad_length differ only in where the client's
+    "waiting N ms" line falls relative to the monitor's start-up lines.
+  - Two scenarios differ from base-linux in host behaviour outside the
+    shim; both run scripts were changed to accept the base-hw behaviour,
+    with the reason (DIFFERENCES). No shim change was needed for them.
+  - Wake path observed (WAKE PATH): Genode.take runs on the runtime's
+    io_help thread 'pthread.0', not on the main thread, and parks in the
+    shim's semaphore when no entry is queued; the client's signal (handled
+    on the "writ_channel" entrypoint) ups the semaphore and the take
+    returns; the loop then logs the decision. Same thread and same
+    behaviour on base-linux.
+  - check-binary.sh on the base-hw monitor ELF: rc 1, effect rows exactly
+    Genode.log Genode.put Genode.take (outside the monitor profile, the
+    host channel effects); the symbol half fails against the Linux allow
+    list, as on base-linux. The allow lists were not edited.
+  - No GPU-shaped path ran on a device: the monitor has no `!` call
+    (BANGS 0); the two programs with `!` calls (Tests.bend BANGS 1,
+    GpuExample.bend BANGS 3) ran on base-hw with --gpu off, so the
+    runtime's `gpu != 0 && BANGS != 0` test is false and the CPU path ran.
+  - OpenSpec 1.16.0 strict validation passes (OPENSPEC).
+
+INPUTS
+  Shim hosts/genode/shim/writ_mem.cc sha256 db8a376d5fb04248ed36343693f716643337416a9ad347e3703995c654cced5d
+  (Task 3: RM-upgrade counters, take wake-path diagnostics; see SHIM CHANGES).
+  Monitor: hosts/genode/monitor/Monitor.bend, emitted C
+  ../writ-genode/bend-c/monitor/monitor.c (unchanged since the channel lane).
+  Client probe: hosts/genode/probes/client/writ_channel_client.cc (unchanged).
+  Binaries (unstripped, ../writ-genode/build/x86_64-hw/app/<name>/<name>):
+    bae344edeb1c230e99f934ca0bca7a7fd0dc9c7405322b36f45b82f9c09d6631  writ_bend_monitor
+    b6197bcca925b0825e2f4d9249b268d049495518e4e007b4aaa424d0cb26d976  writ_channel_client
+  Boot images as run (var/run/, rebuilt by each run):
+    5c3801ae5c0b4f4383e375c102f87ce9ba510bcb83dbea57b2054f5b134a8faf  writ_bend_monitor_accept.iso
+    36ab48b9bbdf8d020fe1313ce4eef9ae9f5a0fcd297ea2c84fb82880584751fe  writ_bend_monitor_substitute.iso
+  Quota: monitor ram 256M caps 1000, clients as in the run scripts (same as
+  base-linux). "782 MiB RAM and 64536 caps assigned to init".
+  Commands: cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_bend_monitor_<name>
+
+RUN 1 ON BASE-HW: routed reader R, own session (accepted; take parked first)
+  make run/writ_bend_monitor_accept, rc 0. Component lines, verbatim
+  (shim libc-address line omitted):
+    [init -> writ_bend_monitor] writ_channel: service announced (bucket 4096 bytes, record 64 bytes, queue depth 8, channels 8)
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_client_r] client: waiting 2000 ms before writing
+    [init -> writ_bend_monitor] monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; subjects come from the route
+    [init -> writ_bend_monitor] monitor: serving 8 records
+    [init -> writ_bend_monitor] writ_channel: take runs on thread 'pthread.0', parks in the semaphore
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request written (length 64 seq 1), signalling the monitor
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: decision=Committed (1) reason=0 route_subject=1 session=1 seq=1
+    [init -> writ_client_r] client: PASS decision 1 reason 0 as expected
+  Request record words: 1 1 1 6 1 2 3 99 10 1 20 1 1 0 0 0. Result record
+  words: 1 2 1 0 1 1 20 1 99 3 1 7 45 2 2 0 (Committed, reason 0, session
+  revision 7, reader balance 45, descriptor 2, frontend revision 2). Same
+  lines on base-linux (t3d), as a multiset.
+
+RUN 2 ON BASE-HW: same route R, body claims S and names S's session (denied by Bend)
+  make run/writ_bend_monitor_substitute, rc 0. Component lines, verbatim:
+    [init -> writ_bend_monitor] writ_channel: service announced (bucket 4096 bytes, record 64 bytes, queue depth 8, channels 8)
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request written (length 64 seq 1), signalling the monitor
+    [init -> writ_bend_monitor] monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; subjects come from the route
+    [init -> writ_bend_monitor] monitor: serving 8 records
+    [init -> writ_bend_monitor] writ_channel: take runs on thread 'pthread.0', semaphore already up
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 00 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: decision=Denied (2) reason=6 route_subject=1 session=2 seq=1
+    [init -> writ_client_r] client: PASS decision 2 reason 6 as expected
+  Result record words: 1 2 2 6 1 2 0 0 0 0 0 0 0 2 2 0 (Denied, reason 6,
+  DataOS.commit_from_capability rejected). Identical lines, in the same
+  order, on base-linux (t3d).
+
+THE OTHER SIX ON BASE-HW (rc 0 each)
+  claim_ignored  R with a body claiming S: Committed, reason 0.
+  routed_s       routed as S: Denied, reason 5 (descriptor).
+  bad_length     lengths 65, 0, 0xFFFFFFFF refused by the shim before Bend
+                 (bad length count 1, 2, 3), then R's request Committed (seq 4).
+  liveness       S floods 12 requests 400 ms apart without reading; R is
+                 Committed between S's Denied (reason 5) decisions; fuel
+                 exhausted; init "exited with exit value 0" for the monitor.
+                 Shim exit report: channel signals=7 coalesced=0 ring full=0
+                 ring max=1 ... taken=7 put=7 ... closed=1; take parked=7.
+  queue          9 clients, the ninth session refused ("8 channels open or
+                 closing, session for 'writ_client_q3 -> channel' denied"),
+                 8 decisions Denied reason 5, monitor exit 0. Shim exit
+                 report: channel signals=155 coalesced=139 ring full=0 ring
+                 max=8 ... taken=8 put=8; take parked=1. On base-linux the
+                 same run gave signals=9 coalesced=0 ring max=1, take
+                 parked=6: on base-hw the flooding clients outran the loop,
+                 so the ring filled to its depth and repeated signals were
+                 coalesced, which base-linux did not reliably exercise.
+  dead_client    a client that exits before its reply, one that freed its
+                 result signal context, and R after 3000 ms: R Committed,
+                 the monitor still serving.
+
+DIFFERENCES FROM BASE-LINUX (host behaviour, not the shim)
+  1. liveness, after the monitor's exit. base-linux: writ_client_s signals
+     again and then blocks in lx_sendmsg (connection refused). base-hw:
+     the monitor's exit destroys its RAM dataspaces, which are the
+     client's buckets, so they vanish from S's address space; S's next
+     record write faults and core logs
+       Error: illegal WRITE at address 0x4010 by pager_object: pd='init -> writ_client_s' thread='ep' ip=0x100b8d1
+     addr2line -f -C -e ../writ-genode/build/x86_64-hw/app/writ_channel_client/writ_channel_client.debug 0x100b8d1
+       Writ_channel_client::Main::_write(unsigned int, unsigned int)
+       .../writ_channel_client.cc:277   (_request[HEADER_WORDS + i] = record[i])
+     i.e. the first record word at bucket offset 0x10 (bucket at 0x4000).
+     The run script ended at "flood request N signalled" after the
+     monitor's exit; on base-hw it now ends at that core line after the
+     monitor's exit (writ_bend_monitor.tcl, writ_bend_monitor_liveness_run).
+     Every monitor-side requirement is unchanged. First base-hw run with
+     the old condition: rc 2, timeout after the core line
+     (../writ-genode/run-hw-writ_bend_monitor_liveness-t3b.out).
+  2. dead_client, the freed result context. base-linux: core's signal
+     proxy warns "invalid signal-context capability"
+     (repos/base/src/core/include/signal_delivery_proxy.h:70). base-hw:
+     Signal_transmitter::submit is a kernel call, and the kernel ignores a
+     signal to an invalid capability without a message
+     (repos/base-hw/src/core/kernel/thread.cc:395-400,
+     "/* ignore invalid signal */"). The warning is required on base-linux
+     only; on base-hw the freed-context client's own decision before R's
+     decision and the monitor's continued service remain required. First
+     base-hw run: rc 1, "missing core warning for the freed context"
+     (../writ-genode/run-hw-writ_bend_monitor_dead_client-t3b.out).
+  Both changed scenarios were rerun on both kernels (t3c), and then all
+  eight on both kernels with the final tcl (t3d), rc 0.
+
+WAKE PATH (observed on both kernels, every run)
+  Instrument (shim channel section, diagnostics only): before each down
+  of _channel_ready, take notes whether the semaphore was empty (the down
+  parks the thread; counted as "take parked" in the exit report), and the
+  first take logs the thread it runs on. Observed lines:
+    accept (base-hw):  writ_channel: take runs on thread 'pthread.0', parks in the semaphore
+    substitute (hw):   writ_channel: take runs on thread 'pthread.0', semaphore already up
+  The base-linux runs log the same thread name. In accept the order on
+  base-hw is
+    [init -> writ_client_r] client: waiting 2000 ms before writing
+    [init -> writ_bend_monitor] monitor: serving 8 records
+    [init -> writ_bend_monitor] writ_channel: take runs on thread 'pthread.0', parks in the semaphore
+    [init -> writ_client_r] client: request written (length 64 seq 1), signalling the monitor
+    [init -> writ_bend_monitor] monitor: channel=1 ... decision=Committed ...
+  so the take was parked in the semaphore before the client signalled,
+  and the decision followed the signal. In liveness every one of the 7
+  takes parked (take parked=7). What wakes it, observed: the client's
+  signal reaches the monitor's "writ_channel" entrypoint, whose handler
+  ups the semaphore; the parked thread returns from writ_shim_take. That
+  thread is 'pthread.0', the first pthread the component created, not the
+  main thread; writ_shim_take is called only from genode_take_call, which
+  the runtime runs as an io_work job on an io_help thread
+  (monitor.c:70139-70151, 70524-70527). Read in the generated C, not
+  instrumented: io_help then writes the job pointer to io_wake_fd[1]
+  (monitor.c:70149), and the loop's select over io_wake_fd[0]
+  (monitor.c:70199-70207, through libc and the vfs_pipe /pipe mount)
+  returns and packs the Request (io_take). This is the same mechanism as
+  on base-linux: the helper's semaphore, then the runtime's own pipe. No
+  base-hw-specific wake path, spin, or polling was needed; the shim's
+  channel section was not changed for base-hw.
+
+BINARY CHECK (scripts/runtime-profile/check-binary.sh, unmodified)
+  sh scripts/runtime-profile/check-binary.sh \
+     ../writ-genode/build/x86_64-hw/app/writ_bend_monitor/writ_bend_monitor
+  rc 1 (FAIL), output ../writ-genode/check-binary-hw-writ_bend_monitor-t3.out:
+    undefined symbols: 158
+    effect rows: Genode.log Genode.put Genode.take
+    effects outside the monitor profile: Genode.log Genode.put Genode.take
+    undefined symbols outside the monitor profile: 117 names
+    result: FAIL (outside the monitor profile)
+  Effect rows: exactly the three Genode effects the monitor uses
+  (monitor.c registers io_eff for Genode_log, Genode_take, Genode_put at
+  70507, 70548, 70573); no IO row. Probe ELF on base-hw (for the other two):
+  effect rows Genode.log Genode.now Genode.sleep IO.print; outside the
+  profile Genode.log Genode.now Genode.sleep; 156 undefined, 115 outside.
+  Symbol half: monitor-symbols.txt is the Linux host surface, so every
+  Genode binary fails it, as on base-linux. Base-linux monitor rebuilt with
+  the same shim: 159 undefined, 118 outside. The two sets differ only by
+  the fault front end: base-hw adds Region_map_client::fault_handler and
+  Region_map_client::fault; base-linux has Genode::Raw::_output, _acquire,
+  _release (its SIGSEGV path's raw output). The allow lists were not edited.
+
+GPU-SHAPED PATHS (task 3.2)
+  #define BANGS: monitor 0, probe 0, example 0, flow 0, transfer 0,
+  overflow 0, tests 1, gpuexample 3 (../writ-genode/bend-c/*/*.c). Every
+  run passes +RTS --gpu off (writ_bend.tcl <arg> nodes); the runtime's
+  gate is `gpu != 0 && BANGS != 0 ? gpu_probe() : ""`
+  (gpuexample.c:22043), so with --gpu off no device is probed and the `!`
+  calls of Tests.bend and GpuExample.bend ran on the CPU pool, on base-hw
+  (verification/genode-corpus-base-hw.txt) and on base-linux. No device was
+  present. This is CPU execution, not GPU evidence.
+
+OPENSPEC
+  /nix/store/74ha4fybdaab2568xz7l1ix2l2ll008s-openspec-1.16.0/bin/openspec --version
+  1.16.0
+  .../bin/openspec validate --all --strict --no-interactive (from the worktree root)
+  Totals: 44 passed, 0 failed (44 items)
+  Cross-check with ~/.bun/bin/bunx @fission-ai/openspec@1.16.0: same totals.
+
+SHIM CHANGES (Task 3)
+  2ad3e416 (Task 1) -> 67cc3617 (Task 2) -> db8a376d (Task 3):
+  - RM-session upgrade counters: `writ_mem: [<tag>] rm upgrades sent=N
+    declined=M` on its own line after each report line (the LOG session's
+    232-byte string limit split a longer line: first attempt, t3a, failed
+    the hello and corpus scripts on both kernels), and on base-hw
+    `writ_mem: [refusal] rm upgrades ...` before a refusal. Overflow on
+    base-hw: sent=22 declined=0 before the guard refusal.
+  - Channel section: the take wake-path diagnostics above; the exit report
+    adds `writ_mem: [exit] channel take parked=N` on its own line.
+  - Header: the RM upgrade does not block only with RM routed to core
+    through init; why the Env-session-lock hazard cannot fire on the
+    single-lane runs here.
+  Reruns with db8a376d (t3b; the population function changed, so the
+  corpus too), all rc 0:
+    base-linux: hello, Overflow (guard at 0x7ffff7f43000), corpus (782,
+      834 lines, fc3a08aa..., diff empty), writ_bend_probe, guard probe,
+      writ_probe_fault, the eight monitor runs (t3d).
+    base-hw: hello, Overflow (`[refusal] rm upgrades sent=22 declined=0`,
+      guard at 0x2280000000, exit 139, core fault line 0), corpus (782,
+      834 lines, fc3a08aa..., diff empty), writ_bend_probe, guard probe
+      (exit 139), writ_probe_fault (ends at core's illegal WRITE line), the
+      eight monitor runs (t3d).
+  Live copies under ../writ-genode/writ-repo/ cmp-identical.
+
+LIMITS
+  Emulated boot only. One lane. The channel's authority state is
+  synthetic. The wake path's last hop (io_wake_fd through vfs_pipe to the
+  loop's select) is read from the generated C, not instrumented; the
+  instrumented part is the take's thread, its park, and the log order.
+  Nothing restarts the monitor after fuel exhaustion (GB-008's supervisor
+  restart is not shown on either kernel).

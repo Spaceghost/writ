@@ -166,3 +166,17 @@ Process: Bend programs' exit values reached init; `writ_bend_rts`:
 
 Unchanged from base-linux: atomics compile, but no two lanes ran; device
 dispatch is CPU only because every run passes `--gpu off`.
+
+## Update (base-hw lane, Task 3)
+
+The shim is now sha256 `db8a376d...` (RM-upgrade counters, and diagnostics
+for the take wake path). With it the hello, Overflow, the corpus, the probe,
+the guard probe, and `writ_probe_fault` were rerun on base-hw, and none of
+the rows above changed. The corpus is still 782 PASS lines, byte-identical.
+Overflow is still refused at the guard, now logged after
+`writ_mem: [refusal] rm upgrades sent=22 declined=0`, and the script now
+also requires that core logs no fault line. The Writ channel
+(`Genode.take`/`Genode.put`, the LOG effect) ran in all eight monitor
+scenarios on base-hw (Bend program `writ_bend_monitor`):
+`verification/genode-channel-base-hw.txt`, which also records the binary
+check and the take wake path.

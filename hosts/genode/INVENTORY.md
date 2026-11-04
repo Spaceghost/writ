@@ -90,7 +90,10 @@ run scripts source; live copy `run/writ_bend.tcl`).
   `Rm_connection::create`'s amounts) through `Connection::upgrade`, at most 4
   times per piece and only while the PD keeps its RAM and cap margins after
   the transfer; this is a session upgrade from the component's own quota
-  (init's `Child::upgrade`), not a resource request. Otherwise the error
+  (init's `Child::upgrade`), not a resource request, answered without
+  blocking when RM is routed to core through init, as in these run scripts
+  (a parent that serves RM itself and answers PENDING would block the
+  writ_fault thread). Otherwise the error
   stands as the refusal "chunk could not be attached: attach OUT_OF_RAM"
   (or `OUT_OF_CAPS`; a conflict is `REGION_CONFLICT`). Observed: Overflow's
   first base-hw run, before the upgrade, was refused with `attach
@@ -98,6 +101,13 @@ run scripts source; live copy `run/writ_bend.tcl`).
   The upgrade goes through `Env::upgrade`, which takes the Env's session
   mutex; a faulter halted while holding it would leave the writ_fault
   thread blocked and the component halted with no record (not observed).
+  It cannot fire on the single-lane runs here: Env's session, upgrade, and
+  close code runs on Genode stacks and heap and touches no reservation
+  memory, so the faulter would have to be the mutex holder faulting inside
+  a reservation, which no current path does; a fault in the PD's own areas
+  inside a session request is refused before any upgrade. Upgrades sent and
+  declined are counted (`writ_mem: [exit] rm upgrades sent=N declined=M`,
+  and on base-hw `writ_mem: [refusal] rm upgrades ...` before a refusal).
 - **Region map fault handler** (base-hw only): `Region_map_client::
   fault_handler` on each reservation's region map at creation and, at
   construct, on the PD's address space, stack area, and linker area
@@ -564,11 +574,61 @@ configured).
   `_pd` is now declared before it. sha256 `67cc3617...` (full value in
   `verification/genode-corpus-base-hw.txt`, SHIM CHANGE); base-linux and
   base-hw reruns there, including the corpus on both.
-- Run scripts: `writ_bend_overflow.run` sets QEMU guest RAM to 4096M and
-  requires exit value 139 on base-hw; seven run scripts (`writ_bend_rts`,
+- Run scripts: `writ_bend_overflow.run` sets QEMU guest RAM to 4096M on
+  base-hw (the run tool's 800M guest cannot hold the 3G child quota) and
+  requires exit value 139 there; seven run scripts (`writ_bend_rts`,
   `writ_bend_probe`, `writ_probe_reservation_live`, and the threads, clock,
   evloop, and process probes) match `\r*\n` instead of `\r?\n`, since QEMU
   serial lines end in `\r\r\n`.
+
+## Changes in base-hw lane, Task 3
+
+- Population (both cases): `_upgrade_rm_session` counts upgrades sent and
+  declined; `writ_mem_report` prints them on their own line
+  (`writ_mem: [<tag>] rm upgrades sent=N declined=M`; a longer report line
+  is split by the LOG session's 232-byte string limit), and on base-hw
+  `_refuse` logs `writ_mem: [refusal] rm upgrades ...` before the refusal
+  line. Overflow on base-hw: sent=22 declined=0.
+- Channel section, diagnostics only: before each down of `_channel_ready`,
+  `writ_shim_take` notes whether the semaphore is empty (counted, shown as
+  `writ_mem: [exit] channel take parked=N` on its own line), and the first
+  take logs the thread it runs on (`writ_channel: take runs on thread
+  'pthread.0', parks in the semaphore` or `semaphore already up`). The
+  unlocked `cnt()` read can misreport a race; it never changes what take
+  returns. No change to the channel's behaviour.
+- Header: the upgrade's no-blocking claim is scoped to RM routed to core
+  through init; why the Env-session-lock hazard cannot fire here.
+- Run scripts: `writ_bend_monitor.tcl` matches `\r*\n`; on base-hw the
+  liveness run ends at core's fault line for the flooding client after the
+  monitor's exit, and the dead-client run does not require base-linux
+  core's "invalid signal-context capability" warning (see Channel on
+  base-hw below). `writ_bend_overflow.run` fails on base-hw if core logs a
+  fault line. `writ_probe_fault.run` ends at core's `illegal` line on
+  base-hw instead of waiting out its 45-second tail.
+- sha256 `db8a376d...` (full value and reruns in
+  `verification/genode-channel-base-hw.txt`, SHIM CHANGES).
+
+## Channel on base-hw (base-hw lane, Task 3)
+
+All eight monitor runs pass on base-hw (QEMU TCG). Observed wake path, the
+same as on base-linux: take runs on the runtime's io_help thread
+`pthread.0`, parks in `_channel_ready`, and returns when the client's
+signal, handled on the "writ_channel" entrypoint, ups it; the runtime then
+writes `io_wake_fd` and the loop's `select` returns (read in the generated
+C). Host differences, outside the shim:
+
+- The buckets are the monitor's RAM dataspaces. On base-hw they are
+  destroyed with the monitor, so a client still writing faults (core:
+  `illegal WRITE at address 0x4010 ... pd='init -> writ_client_s'`, in
+  `Main::_write`). On base-linux the client instead blocks in
+  `lx_sendmsg`.
+- A signal to a freed context is ignored silently by the base-hw kernel
+  (`kernel/thread.cc:395-400`). base-linux core warns "invalid
+  signal-context capability".
+- In the queue run the flooding clients outran the loop on base-hw: ring
+  max 8 and 139 coalesced signals, where base-linux showed ring max 1 and
+  no coalescing. The ring bound held, and no entry was dropped (ring
+  full=0).
 
 ## Fault behaviour observed through a Bend program
 

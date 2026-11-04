@@ -11,8 +11,13 @@
 # through its writ_bend_boot.
 # Live copy: ../writ-genode/writ-repo/run/writ_bend_monitor.tcl (byte-identical).
 #
+# base-hw (Genode base-hw lane, Task 3): the same procedures run from a
+# KERNEL=hw BOARD=pc build directory under QEMU; every line match accepts
+# any number of carriage returns before the newline (QEMU's serial log ends
+# lines in "\r\r\n").
+#
 # writ_bend_monitor_run CLIENT SUBJECT SESSION EXPECTED CLAIMED DECISION REASON DELAY ?POLICIES?
-#   Builds and boots, under init on base-linux, the Bend monitor component
+#   Builds and boots, under init (base-linux or base-hw), the Bend monitor component
 #   writ_bend_monitor (hosts/genode/monitor/Monitor.bend linked with the
 #   shim) at 256M and the client probe writ_channel_client started under the
 #   child name CLIENT. The client's request record names monitor session
@@ -51,6 +56,10 @@
 #   S is not required to exit: on base-linux its next signal to the exited
 #   monitor fails in lx_sendmsg (-111, connection refused) and S stays
 #   blocked there (observed; host transport behaviour, not checked).
+#   On base-hw the monitor's exit destroys the buckets, so S's next record
+#   write faults and core logs "illegal WRITE ... pd='init -> writ_client_s'";
+#   that line, after init's report of the monitor's exit, ends the run there
+#   (base-hw lane, Task 3).
 #
 # writ_bend_monitor_queue_run (Task 3, GB-006 queue depth and channels)
 #   Nine clients writ_client_q1 .. writ_client_q9, each under its own
@@ -144,7 +153,7 @@ proc writ_bend_monitor_run { client subject session expected claimed decision re
 
 	run_genode_until "child \"$client\" exited with exit value .*\n" [expr {120 + $delay/1000}]
 
-	if {![regexp "child \"$client\" exited with exit value 0\r?\n" $output]} {
+	if {![regexp "child \"$client\" exited with exit value 0\r*\n" $output]} {
 		puts stderr "Error: the client $client did not exit with value 0"
 		exit 1
 	}
@@ -155,7 +164,7 @@ proc writ_bend_monitor_run { client subject session expected claimed decision re
 	foreach {re what} [list \
 		"\\\[init -> $monitor\\\] writ_mem: libc mmap="                                       "shim start line" \
 		"\\\[init -> $monitor\\\] writ_channel: service announced"                            "service announced" \
-		"\\\[init -> $monitor\\\] writ_channel: channel 1 opened for '$client -> channel' route subject $subject\r?\n" "channel opened with route subject $subject" \
+		"\\\[init -> $monitor\\\] writ_channel: channel 1 opened for '$client -> channel' route subject $subject\r*\n" "channel opened with route subject $subject" \
 		"\\\[init -> $monitor\\\] monitor: SYNTHETIC authority"                               "synthetic-authority line" \
 		"\\\[init -> $monitor\\\] monitor: channel=1 route_subject=$subject session=$session body_claimed_subject=$claimed \\(untrusted, not used\\) decision=$name reason=$reason " "Bend decision line" \
 		"\\\[init -> $client\\\] client: request record \\+0x0+: "                           "request record dump" \
@@ -188,14 +197,14 @@ proc writ_bend_monitor_bad_length_run { } {
 
 	run_genode_until "child \"$client\" exited with exit value .*\n" 122
 
-	if {![regexp "child \"$client\" exited with exit value 0\r?\n" $output]} {
+	if {![regexp "child \"$client\" exited with exit value 0\r*\n" $output]} {
 		puts stderr "Error: the client $client did not exit with value 0"
 		exit 1
 	}
 	set m "\\\[init -> $monitor\\\]"
 	set c "\\\[init -> $client\\\]"
 	writ_bend_monitor_require [list \
-		"$m writ_channel: channel 1 opened for '$client -> channel' route subject 1\r?\n" "channel opened" \
+		"$m writ_channel: channel 1 opened for '$client -> channel' route subject 1\r*\n" "channel opened" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 65 is not 64, refused before Bend \\(bad length count 1\\)" "shim refusal of length 65" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 0 is not 64, refused before Bend \\(bad length count 2\\)" "shim refusal of length 0" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 4294967295 is not 64, refused before Bend \\(bad length count 3\\)" "shim refusal of length 0xFFFFFFFF" \
@@ -226,24 +235,35 @@ proc writ_bend_monitor_liveness_run { } {
 		"[writ_bend_monitor_client $flood " | mode: flood | count: 12 | period_ms: 400 | session: 2 | expected_session: 0 | claimed_subject: 2"][writ_bend_monitor_client $served " | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 1000"]"
 
 	# Another request arrives after the fuel ran out: the end of the run.
-	run_genode_until "child \"$monitor\" exited with exit value \[0-9\]+\r?\n.*\\\[init -> $flood\\\] client: flood request \[0-9\]+ of 12 signalled" 130
+	# base-linux: the flooding client signals again. base-hw: the monitor's
+	# exit destroys the buckets (its RAM dataspaces), so the flooding
+	# client's next record write into its request bucket faults and core
+	# logs it (observed: "illegal WRITE at address 0x4010 by pager_object:
+	# pd='init -> writ_client_s'", ip in Main::_write, the record copy at
+	# bucket offset 0x10; region_map_component.cc:103).
+	if {[have_spec hw]} {
+		set after_exit "Error: illegal WRITE at address \[^\r\n\]* pd='init -> $flood'"
+	} else {
+		set after_exit "\\\[init -> $flood\\\] client: flood request \[0-9\]+ of 12 signalled"
+	}
+	run_genode_until "child \"$monitor\" exited with exit value \[0-9\]+\r*\n.*$after_exit" 130
 
 	set m "\\\[init -> $monitor\\\]"
 	set s "monitor: channel=\[0-9\]+ route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 "
 	set r "monitor: channel=\[0-9\]+ route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 "
 	writ_bend_monitor_require [list \
-		"$m writ_channel: channel \[0-9\]+ opened for '$flood -> channel' route subject 2\r?\n" "flooding channel opened" \
-		"$m writ_channel: channel \[0-9\]+ opened for '$served -> channel' route subject 1\r?\n" "served channel opened" \
+		"$m writ_channel: channel \[0-9\]+ opened for '$flood -> channel' route subject 2\r*\n" "flooding channel opened" \
+		"$m writ_channel: channel \[0-9\]+ opened for '$served -> channel' route subject 1\r*\n" "served channel opened" \
 		"$m $s.*$m $r" "a flood decision before the served client's decision" \
 		"$m $r.*$m $s" "a flood decision after the served client's decision" \
 		"\\\[init -> $served\\\] client: PASS decision 1 reason 0 as expected" "served client verdict" \
-		"child \"$served\" exited with exit value 0\r?\n" "served client exit value 0" \
+		"child \"$served\" exited with exit value 0\r*\n" "served client exit value 0" \
 		"$m monitor: channel=\[0-9\]+ closed \\(shim close event\\) bindings 1 -> 0" "close event dropping the served client's binding" \
 		"$m monitor: fuel exhausted, exiting" "fuel exhausted line" \
 		"$m writ_mem: \\\[exit\\\] ram used=\[0-9\]+ limit=\[0-9\]+ caps used=\[0-9\]+ limit=\[0-9\]+ " "monitor RAM and caps at exit" \
 		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 ring max=\[0-9\]+ bad length=0 stale=\[0-9\]+ taken=\[0-9\]+ put=\[0-9\]+ put skipped=\[0-9\]+ closed=1 open=\[0-9\]+ closing=\[0-9\]+" "shim channel counters at exit (closed=1)" \
-		"child \"$monitor\" exited with exit value 0\r?\n" "monitor exit value 0" \
-		"$m monitor: fuel exhausted, exiting.*child \"$monitor\" exited with exit value 0\r?\n.*\\\[init -> $flood\\\] client: flood request \[0-9\]+ of 12 signalled" "a flood request after the monitor's exit" ]
+		"child \"$monitor\" exited with exit value 0\r*\n" "monitor exit value 0" \
+		"$m monitor: fuel exhausted, exiting.*child \"$monitor\" exited with exit value 0\r*\n.*$after_exit" "a flood request after the monitor's exit" ]
 	puts "\n--- $flood flooded without reading; $served served Committed; monitor exited 0 at fuel 0 ---"
 }
 
@@ -270,7 +290,7 @@ proc writ_bend_monitor_queue_run { } {
 		"$m monitor: fuel exhausted, exiting" "fuel exhausted line" \
 		"$m writ_mem: \\\[exit\\\] ram used=\[0-9\]+ limit=\[0-9\]+ caps used=\[0-9\]+ limit=\[0-9\]+ " "monitor RAM and caps at exit" \
 		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 ring max=\[1-8\] bad length=0 stale=0 taken=8 put=8 put skipped=0 closed=0 open=8 closing=0" "shim channel counters at exit" \
-		"child \"$monitor\" exited with exit value 0\r?\n" "monitor exit value 0" ]
+		"child \"$monitor\" exited with exit value 0\r*\n" "monitor exit value 0" ]
 	set refused [regexp -all "$m \[^\r\n\]*Warning: writ_channel: 8 channels open or closing, session for 'writ_client_q\[0-9\] -> channel' denied" $output]
 	set opened  [regexp -all "$m writ_channel: channel \[0-9\]+ opened for 'writ_client_q\[0-9\] -> channel' route subject 2" $output]
 	set decided [regexp -all "$m monitor: channel=\[0-9\]+ route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 " $output]
@@ -291,8 +311,10 @@ proc writ_bend_monitor_queue_run { } {
 #   longer exists; writ_client_r (route subject 1) sends R's request after
 #   3000 ms and must be Committed. Fails unless the freed-context
 #   client's decision is logged before R's, core warns about the freed
-#   context, R's PASS and exit 0 are logged, and init reported no exit of
-#   the monitor (it must still be serving).
+#   context (base-linux only: base-hw's kernel drops a signal to an invalid
+#   context silently, repos/base-hw/src/core/kernel/thread.cc:395-400, so
+#   there is no line to require), R's PASS and exit 0 are logged, and init
+#   reported no exit of the monitor (it must still be serving).
 proc writ_bend_monitor_dead_client_run { } {
 	global output
 
@@ -320,9 +342,9 @@ proc writ_bend_monitor_dead_client_run { } {
 		"\\\[init -> writ_client_f\\\] client: registered a result signal context and freed it" "freed result context" \
 		"\\\[init -> writ_client_f\\\] client: request sent, staying alive with no result handler" "freed-context client sent" \
 		"$m monitor: channel=$f_channel route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 .*$m monitor: channel=\[0-9\]+ route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "R's decision after the freed-context client's decision" \
-		"Warning: invalid signal-context capability" "core warning for the freed context" \
+		[expr {[have_spec hw] ? "client: request sent, staying alive with no result handler" : "Warning: invalid signal-context capability"}] [expr {[have_spec hw] ? "freed-context client still alive (base-hw drops a signal to a freed context silently, kernel/thread.cc:395-400)" : "core warning for the freed context"}] \
 		"\\\[init -> writ_client_r\\\] client: PASS decision 1 reason 0 as expected" "R's verdict" \
-		"child \"writ_client_r\" exited with exit value 0\r?\n" "R exit value 0" ]
+		"child \"writ_client_r\" exited with exit value 0\r*\n" "R exit value 0" ]
 	if {[regexp "child \"$monitor\" exited" $output]} {
 		puts stderr "Error: the monitor exited"
 		exit 1

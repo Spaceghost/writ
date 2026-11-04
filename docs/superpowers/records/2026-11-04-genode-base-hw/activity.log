@@ -32,3 +32,9 @@
 2026-11-04T18:38:44Z	implementer	error: Overflow on base-hw at 3G/2000 caps refused at 0x2206c00000 with 'chunk could not be attached: attach OUT_OF_CAPS', init exit 139, core silent; RM session's 2 caps exhausted by piece attaches. Fix: bounded RM-session upgrade (8 KiB / 2 caps, 4 attempts per piece) paid from the PD under the margins
 2026-11-04T18:42:58Z	implementer	Overflow on base-hw with the RM-session upgrade: guard-page refusal at 0x2280000000, init exit 139, core silent. base-linux reruns with the changed shim (hello, rts, reservation live+guard, writ_bend_probe, Overflow, corpus 782 identical) all pass
 2026-11-04T18:51:29Z	implementer	base-hw final-shim reruns pass (hello, guard, nullfault, corpus 782 identical, four examples, Overflow guard exit 139); seven run-script matchers changed to \r*\n and rerun on both kernels; rows and corpus records written; box 1.3 checked (base-hw, self-reported exit); openspec 1.16.0 44/44; committing Task 2
+2026-11-04T18:52:02Z	controller	Task 2 done; review dispatched
+2026-11-04T18:57:40Z	controller	Task 2 approved; Task 3 (channel on base-hw, binary check, boxes) dispatched
+2026-11-04T18:58:08Z	implementer	Task 3 started: read brief and Task 2 review (8 minors)
+2026-11-04T19:00:49Z	implementer	shim: rm upgrade counters (report + hw refusal), take wake-path diagnostics (thread name, parked count) in the channel section, header scope/hazard sentences; Overflow requires core silent on hw; probe_fault ends at core line on hw; monitor tcl matches \r*\n; running both kernels
+2026-11-04T19:27:38Z	implementer	all eight monitor runs pass on base-hw and base-linux (t3d); liveness and dead_client scripts adjusted for base-hw host behaviour; wake path recorded; check-binary run; writing records
+2026-11-04T19:29:58Z	implementer	Task 3 records written (channel base-hw record, GENODE.md section, INVENTORY, tasks 3.1/3.2); openspec 44/44 (store path and bunx); committing
