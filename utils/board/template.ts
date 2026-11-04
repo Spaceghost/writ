@@ -90,11 +90,8 @@ export function phaseText(l: Lane): string {
 
 /** The newest activity line of a lane, or null. */
 function latestActivity(l: Lane): string | null {
-  for (const p of [...l.sdd].reverse()) {
-    const a = p.activity[p.activity.length - 1];
-    if (a) return a.text;
-  }
-  return null;
+  const a = l.activity[l.activity.length - 1];
+  return a ? a.text : null;
 }
 
 const dot = (status: LaneStatus) => `<span class="dot dot-${status}" aria-hidden="true"></span>`;
@@ -215,19 +212,20 @@ function laneCard(l: Lane): string {
   const changes = l.changes.length === 0
     ? ""
     : `<span class="lane-changes">on ${l.changes.map((c) => `<a href="/change/${href(c)}">${esc(c)}</a>`).join(", ")}</span>`;
+  const activity = l.activityNote !== null
+    ? `<p class="note-line">${esc(l.activityNote)}</p>`
+    : l.activity.length === 0
+      ? `<p class="muted small">No <code>.lane/${esc(l.name)}.log</code> yet; agents append one line per step.</p>`
+      : `<ol class="log">${l.activity.map((a) =>
+          `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
+  const feed = `<div class="activity"><div class="doc-label">.lane/*.log, last ${l.activity.length} lines</div>${activity}</div>`;
   const status = `<p class="lane-status">${dot(l.status)}<span class="lane-phase">${esc(phaseText(l))}</span><span class="muted">${esc(ago(l.signalAt))}${l.signalAt === null ? "" : " ago"}</span>${changes}</p>`;
   const sdd = l.sdd.map((p) => {
     const rel = `.superpowers/sdd/${p.plan}`;
     const ledger = p.ledger === null
       ? `<p class="note-line">${esc(p.ledgerNote ?? "no ledger")}</p>`
       : `<div class="md ledger">${p.ledger}</div>`;
-    const activity = p.activityNote !== null
-      ? `<p class="note-line">${esc(p.activityNote)}</p>`
-      : p.activity.length === 0
-        ? `<p class="muted small">No activity.log yet; agents append one line per step.</p>`
-        : `<ol class="log">${p.activity.map((a) =>
-            `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
-    const feed = `<div class="activity"><div class="doc-label">${esc(rel)}/activity.log, last ${p.activity.length} lines</div>${activity}</div>`;
+
     const reports = p.reports.length === 0
       ? `<p class="muted small">No task reports yet.</p>`
       : p.reports.map((r) => {
@@ -237,7 +235,7 @@ function laneCard(l: Lane): string {
           return `<details id="${rid}" class="report" data-preserve-attr="open"><summary><code>${esc(r.file)}</code>${status}</summary>${body}</details>`;
         }).join("");
     const more = `<details id="${id}-${slug(p.plan)}-ledger" class="more" data-preserve-attr="open"><summary>${esc(rel)}/progress.md, last 10 lines · ${p.reports.length} report${p.reports.length === 1 ? "" : "s"}</summary>${ledger}${reports}</details>`;
-    return `<div class="plan">${feed}${more}</div>`;
+    return `<div class="plan">${more}</div>`;
   }).join("");
   const diffs = l.taskDiffs.length === 0
     ? ""
@@ -249,7 +247,7 @@ function laneCard(l: Lane): string {
         `<li><code>${esc(v.path)}</code> <span class="muted">${v.kind}</span></li>`).join("")}</ul></details>`;
   return `<article id="${id}" class="lane lane-${l.status}">
 <header><h3>${esc(l.name)}</h3>${branch}</header>
-${status}${commit}${notes}${sdd}${diffs}${ver}
+${status}${commit}${notes}${feed}${sdd}${diffs}${ver}
 </article>`;
 }
 
