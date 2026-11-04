@@ -99,3 +99,60 @@ lines 38-48), not because nothing ran.
 ### Task 1 check
 
 OpenSpec 1.16.0 strict after Task 1: `Totals: 44 passed, 0 failed (44 items)`.
+
+## Task 2: traceability and checks
+
+Files touched: `openspec/traceability/bend-runtime-host-profile.md` (new; it
+did not exist), `openspec/changes/add-bend-runtime-host-profile/tasks.md`
+(box 3.2; box 3.1's evidence now names the traceability file).
+
+The traceability file follows the shape of
+`openspec/traceability/genode-bend-component.md`: header with scope and
+limits, implementation and evidence links, then one row per requirement
+RH-001 to RH-008 with executed evidence and a quoted reviewed-only gap. It
+links `verification/runtime-profile-hosts.md` in its header and in the
+RH-008 row.
+
+### The three checks (Linux x86_64, 2026-11-04, from the worktree root)
+
+Environment: `PATH` led by `~/.local/share/writ-toolchains/bend-2.0.39/bend/bin`,
+`BEND_NO_TELEMETRY=1`; `bend version` printed `bend 2.0.39`.
+
+1. `bend Tests.bend`: exit 0; 782 lines matching `^PASS[: ]`, 0 lines
+   containing `FAIL`; final lines
+   `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers`
+   and `ALL LIBRARY TESTS PASSED`. Its 834 output lines are identical to
+   `verification/tests-native.txt` (diff of the capture against it shows only
+   the shell `time` lines appended to the scratch capture). CPU only; this is
+   the default `bend` run, not a device run.
+2. `bend PROOF.bend`: exit 0; `ALL PROOFS CHECK` and
+   `Use --verdict for mathematical validity.` `--verdict` was not run (no
+   Lean kernel toolchain in this lane), so this is not the independent
+   kernel check.
+3. `~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive`:
+   `Totals: 44 passed, 0 failed (44 items)` (after Task 1 and after Task 2).
+
+`git diff --name-only c380947 -- '*.bend'` is empty: no policy source changed.
+
+### Box 2.3 left unchecked
+
+2.3 ("Document the profile's role in the Genode, Windows, Drift kernel,
+unikernel, and freestanding changes and update their runtime tasks to cite
+it") edits other changes' `tasks.md` files. The Genode base-hw and Unikraft
+lanes are editing those changes now, and this lane's Global Constraints
+forbid touching them. 2.3 waits for the host lanes to land.
+
+## Concerns
+
+- Linux single and four lanes at 782 come from different builds (the
+  single-lane reference binary b79c5fdb... in the Genode and unikernel
+  lanes; the four-lane `tests-native.txt` binary is unhashed). The outputs
+  share one sha256, but RH-005's same-binary comparison exists only for the
+  638 tree. `runtime-profile-parity.txt`'s "identical to tests-native.txt"
+  lines refer to that file's earlier 638-check content.
+- VERIFICATION.md names clang 19.1.1 in its header (lines 3-4) and line 20,
+  and clang 23.1.1 for the 2026-11-04 rerun (line 82; environment.txt line
+  3). The record cites both rather than choosing.
+- No corpus binary on any host has a binary check of its own (RH-003); the
+  recorded checks are on Hello/Widened, the Genode monitor ELF, and the
+  Unikraft ELF (effect rows only).
