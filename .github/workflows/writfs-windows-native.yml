@@ -1,0 +1,175 @@
+name: WritFS native Windows mount
+
+on:
+  push:
+    branches: [master, writfs-native-hosts-ci]
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/native-hosts/**'
+      - 'contrib/rclone/bend/Authority.bend'
+      - '.github/workflows/writfs-windows-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  policy:
+    name: Compile shared Bend mount policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.policy.outputs.artifact-id }}
+    env:
+      BEND_NO_TELEMETRY: '1'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the shared policy with verified Bend
+        shell: bash
+        run: |
+          set -euo pipefail
+          writ_bend="$RUNNER_TEMP/windows-native-bend"
+          writ_generated="$RUNNER_TEMP/windows-native-policy"
+          mkdir -p "$writ_bend" "$writ_generated"
+          curl --proto '=https' --tlsv1.2 --retry 3 -fL \
+            https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+            -o "$writ_bend/bend.tar.gz"
+          printf '%s  %s\n' 6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+            "$writ_bend/bend.tar.gz" | sha256sum -c -
+          tar -xzf "$writ_bend/bend.tar.gz" -C "$writ_bend"
+          "$writ_bend/bend/bin/bend" version
+          "$writ_bend/bend/bin/bend" writfs/Mount.bend -o "$writ_generated/mount.mjs"
+          (
+            cd "$writ_generated"
+            sha256sum mount.mjs > SHA256SUMS
+          )
+          printf '%s\n' "$GITHUB_SHA" > "$writ_generated/commit.txt"
+      - name: Retain generated policy
+        id: policy
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-native-policy-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/windows-native-policy/
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: WinFsp mount and LPAC public-canary probes
+    needs: policy
+    runs-on: windows-2025
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Download the exact generated policy artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.policy.outputs.artifact-id }}
+          path: ${{ runner.temp }}/windows-native-policy
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Install pinned native Windows Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.23.4'
+          check-latest: false
+      - name: Verify policy and record native environment
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          New-Item -ItemType Directory -Path $writLogs | Out-Null
+          if (-not $IsWindows) { throw 'Native Windows execution is required.' }
+          $principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
+          if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+            throw 'The disposable native fixture requires an elevated broker.'
+          }
+          $policyDir = Join-Path $env:RUNNER_TEMP 'windows-native-policy'
+          $expected = (Get-Content (Join-Path $policyDir 'SHA256SUMS')).Split(' ')[0]
+          $actual = (Get-FileHash (Join-Path $policyDir 'mount.mjs') -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $expected) { throw 'Generated policy digest mismatch.' }
+          if ((Get-Content (Join-Path $policyDir 'commit.txt')) -ne $env:GITHUB_SHA) { throw 'Wrong policy source commit.' }
+          $os = Get-CimInstance Win32_OperatingSystem
+          @(
+            "Commit: $env:GITHUB_SHA"
+            "OS: $($os.Caption) $($os.Version) $($os.OSArchitecture)"
+            "Image: $env:ImageOS $env:ImageVersion"
+            "Node: $((Get-Command node.exe).Source) $(& node.exe --version)"
+            "Policy SHA256: $actual"
+            'Profile: public-canary only; native WinFsp mount and separately observed LPAC probes.'
+            'No WSL. No protected-data product qualification or administrator-resistant audit claim.'
+          ) | Tee-Object -FilePath (Join-Path $writLogs 'environment.txt')
+      - name: Install pinned security-fixed WinFsp prerelease
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          $installer = Join-Path $env:RUNNER_TEMP 'winfsp-2.2.26286.msi'
+          Invoke-WebRequest -Uri 'https://github.com/winfsp/winfsp/releases/download/v2.2B5/winfsp-2.2.26286.msi' -OutFile $installer
+          if ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '293ffb9bcc0b625c85079fe85fa77f8fe98170aba51a02ac9c83d58f6c3b0e2f') {
+            throw 'WinFsp installer digest mismatch.'
+          }
+          $signature = Get-AuthenticodeSignature $installer
+          if ($signature.Status -ne 'Valid') { throw "WinFsp installer signature: $($signature.Status)" }
+          $signature | Format-List Status,StatusMessage,SignerCertificate | Out-File (Join-Path $writLogs 'winfsp-signature.txt')
+          $log = Join-Path $writLogs 'winfsp-install.txt'
+          $install = Start-Process msiexec.exe -ArgumentList "/i `"$installer`" /qn /norestart ADDLOCAL=ALL /l*v `"$log`"" -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "WinFsp install exit $($install.ExitCode); no reboot/driver fallback." }
+          $winfsp = Join-Path ${env:ProgramFiles(x86)} 'WinFsp'
+          $dll = Join-Path $winfsp 'bin\winfsp-x64.dll'
+          $version = (Get-Item $dll).VersionInfo.FileVersion
+          if (-not $version.StartsWith('2.2.26286')) { throw "Unexpected WinFsp runtime $version" }
+          @("WinFsp: $version", 'Source: 14d6e0280ae15e2550c44d6dbc476be51649727f', 'Release: v2.2B5 prerelease with published security fixes') |
+            Tee-Object -FilePath (Join-Path $writLogs 'winfsp-version.txt')
+          $env:PATH = (Join-Path $winfsp 'bin') + ';' + $env:PATH
+          (Join-Path $winfsp 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Compile native ABI and probe with MSVC
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-native-build'
+          & cmake -S contrib/native-hosts/windows -B $build -A x64 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'configure.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Native CMake configuration failed.' }
+          & cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'build.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows compilation failed.' }
+          Get-FileHash (Join-Path $build 'Release\writfs-windows.exe'),(Join-Path $build 'Release\writfs-probe.exe') -Algorithm SHA256 |
+            Format-Table -AutoSize | Out-File (Join-Path $writLogs 'native-source-artifacts.txt')
+      - name: Exercise a real native mount and actor-bound reads
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'
+          $fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'
+          [IO.File]::WriteAllBytes($fixture, [Text.Encoding]::UTF8.GetBytes("Writ public native canary`n"))
+          $node = (Get-Command node.exe -CommandType Application).Source
+          $bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path
+          $module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'
+          & (Join-Path $build 'writfs-windows.exe') --public-fixture $fixture $node $bridge $module (Join-Path $build 'writfs-probe.exe') mount 2>&1 |
+            Tee-Object -FilePath (Join-Path $writLogs 'mount.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Native mounted filesystem checks failed.' }
+      - name: Exercise LPAC, WFP, egress probes and revocation
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'
+          $fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'
+          $node = (Get-Command node.exe -CommandType Application).Source
+          $bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path
+          $module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'
+          & (Join-Path $build 'writfs-windows.exe') --public-fixture $fixture $node $bridge $module (Join-Path $build 'writfs-probe.exe') lpac 2>&1 |
+            Tee-Object -FilePath (Join-Path $writLogs 'lpac.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Native LPAC fixture checks failed; no weaker profile fallback.' }
+      - name: Retain all native evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-native-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/windows-native-logs/
+          if-no-files-found: error
+          retention-days: 14

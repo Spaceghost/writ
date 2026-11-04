@@ -3,13 +3,24 @@
 Use the pinned Bend 2.0.39 toolchain unless deliberately migrating and revalidating.
 Read `bend guide` and `bend guide shaders` before changing language or parallel code.
 
-All authored implementation, tests, examples, and proofs stay in Bend 2. Generated
+Author policy, state machines, examples, tests, and proofs in Bend 2. The two
+user-approved native boundary exceptions below are narrowly scoped. Generated
 backend C/JavaScript and native binaries belong outside the source package.
 
 The user-approved exception is `contrib/rclone/go/`: keep only the Go interface
 adapter required by rclone and its transport checks there. Policy, authority,
 protocol semantics, and reference-service behavior remain in Bend under the
 same contribution. Do not introduce a root Go module or a core dependency on it.
+
+The user also approved `contrib/native-hosts/` for native filesystem and host
+bindings: C/C++ OS ABI, resource/handle lifetimes, necessary pinned Bend runtime
+ports, a small JavaScript invocation/I/O harness, and native packaging or probes
+that Bend cannot express. Keep an explicit source and trust inventory. Windows,
+Linux, and Genode bindings may translate native facts and perform admitted effects;
+they must not implement policy, grants, label decisions, accounting, replay rules,
+or alternate release decisions. The authoritative state and decisions stay in Bend.
+No root Go module or additional policy engine is permitted. This source exception
+does not waive native acceptance tests or establish production host qualification.
 
 Run `bend Tests.bend`, native tests, and `bend PROOF.bend` after meaningful security
 changes. Use `--verdict` when the documented Lean kernel toolchain is available.
