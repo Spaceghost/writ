@@ -1124,7 +1124,8 @@ async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<R
     });
   }
   const v = await view(flags, path, snapshot(flags));
-  return new Response(T.shell(v.title, v.nav, v.main, path), {
+  // `?embed=1` renders without the header and nav, for the index's quick-view panel.
+  return new Response(T.shell(v.title, v.nav, v.main, path, url.searchParams.get("embed") === "1"), {
     status: v.status,
     headers: { "content-type": "text/html; charset=utf-8" },
   });

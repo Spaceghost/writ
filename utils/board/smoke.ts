@@ -174,6 +174,11 @@ try {
   check("GET / is 200", index.status === 200);
   check("index lists the runtime-profile change", indexHtml.includes(`/change/${expected}`));
   check("index pins Datastar v1.0.4", indexHtml.includes("datastar@v1.0.4/bundles/datastar.js"));
+  check("index delegates link clicks to the quick-view panel", indexHtml.includes(`data-signals:panel__ifmissing="''"`) && indexHtml.includes("$panel = a.pathname") && indexHtml.includes('<aside id="panel" class="panel"') && indexHtml.includes('data-attr:src="$panel'));
+  const embedded = await fetch(`${base}/change/${expected}?embed=1`);
+  const embeddedHtml = await embedded.text();
+  check("?embed=1 renders a page without the header and nav, with its own live stream", embedded.status === 200 && embeddedHtml.includes('<body class="embed"') && !embeddedHtml.includes('<nav id="nav"') && !embeddedHtml.includes('class="top"') && embeddedHtml.includes("/events?page="));
+  check("a plain page keeps the header and nav", (await (await fetch(`${base}/change/${expected}`)).text()).includes('<nav id="nav"'));
 
   const api = await fetch(`${base}/api/changes`);
   const changes = (await api.json()) as { name: string; tasks: { done: number; total: number }; html: string[] }[];

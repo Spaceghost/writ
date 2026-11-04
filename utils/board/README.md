@@ -212,6 +212,10 @@ standalone" view gets the same opaque-origin isolation as the iframe. An
 explainer that needed same-origin access would not get it by either route;
 that would be a deliberate change to both the iframe attribute and this header.
 
+Any page route also accepts `?embed=1`, which renders the page without the
+header and nav (the body carries class `embed`) for the index's quick-view
+panel; it opens its own `/events` stream, so it stays live.
+
 ## Frontend pins
 
 - Datastar **v1.0.4**, loaded from
@@ -293,6 +297,14 @@ Known gap: a file change between a connection's initial render and its
 registration for pushes is not sent until the next change.
 
 ## Layout
+
+The index is where the reader stays. A click on any same-origin page link on it
+(change names, explainers, baselines, traceability, the nav, links inside lane
+cards) opens that page in a right-hand quick-view panel (an iframe of the page
+with `?embed=1`) instead of leaving the index; the panel bar shows the path,
+an "open in full" link to the normal page, and a close button; Escape closes
+it. Links with a hash (lane anchors) keep their default. Below 760px the panel
+fills the screen.
 
 Light and dark follow `prefers-color-scheme`, with the same palette and type as
 the explainer pages. Below 760px the change list moves under the content and
