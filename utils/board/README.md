@@ -130,7 +130,10 @@ for example:
 printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" implementer "Task 3: liveness run passed, writing the evidence" >> docs/superpowers/records/2026-11-04-genode-channel/activity.log
 ```
 
-`who` is the role (`implementer`, `reviewer`, `controller`). A line without
+`who` is the role (`implementer`, `reviewer`, `controller`). While a build or
+run takes more than a few minutes, the agent appends a heartbeat line at the
+start of each wait iteration (every 10 minutes at most), so a lane that is
+building does not fall under the 30-minute idle rule below. A line without
 tabs is shown as text alone. The whole record directory is committed with the
 plan's work (`git add docs/superpowers/records/<plan>` at each acceptance
 commit), so after a merge the ledger, briefs, reports, reviews and log sit on
