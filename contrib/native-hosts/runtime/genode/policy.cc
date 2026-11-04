@@ -1,4 +1,5 @@
 #include "policy.h"
+#include "quickjs_alloc.h"
 #include <libc/component.h>
 #include <base/log.h>
 #include <string.h>
@@ -15,18 +16,24 @@ int Writ::Javascript::interrupt(JSRuntime *, void *opaque)
 Writ::Javascript::Javascript()
 {
     _runtime = JS_NewRuntime();
-    if (!_runtime) throw Failed();
+    if (!_runtime) { writ_qjs_trim(); throw Failed(); }
     JS_SetMemoryLimit(_runtime, 64U * 1024U * 1024U);
     JS_SetMaxStackSize(_runtime, 512U * 1024U);
     JS_SetInterruptHandler(_runtime, interrupt, this);
     _context = JS_NewContext(_runtime);
-    if (!_context) { JS_FreeRuntime(_runtime); _runtime = nullptr; throw Failed(); }
+    if (!_context) {
+        JS_FreeRuntime(_runtime);
+        _runtime = nullptr;
+        writ_qjs_trim();
+        throw Failed();
+    }
 }
 
 Writ::Javascript::~Javascript()
 {
     if (_context) JS_FreeContext(_context);
     if (_runtime) JS_FreeRuntime(_runtime);
+    writ_qjs_trim();
 }
 
 void Writ::Javascript::budget()

@@ -74,7 +74,8 @@ to be a general Bend C runtime port.
 | Individual native read | At most 65,536 bytes, checked before U32 conversion |
 | Packet processing | At most one protocol queue batch per dispatch |
 | Generated source ROM | At most 2 MiB per module/script |
-| Tracked QuickJS allocations | 64 MiB of requested bytes plus private allocation headers |
+| Tracked QuickJS reservations | 64 MiB, including retained cache capacity and private allocation headers |
+| Large-allocation reuse | At most two free reservations per size class; all remain charged to the same 64 MiB limit |
 | QuickJS stack limit | 512 KiB; stack checking remains enabled |
 | Component stack | 768 KiB, leaving the native stack slot's guard and metadata intact |
 | Service/test component RAM quota | 128 MiB in the supplied supervisor configs |
@@ -87,16 +88,31 @@ exception, invalid reply, sequence mismatch, or reentrant policy call makes the
 bridge permanently unhealthy; later requests fail closed.
 
 Genode libc does not expose `malloc_usable_size`. The narrow allocator wrapper
-records each allocation's exact size in an aligned header, maintains the hard
-aggregate limit, and supplies QuickJS's normal accounting. The engine's own
-memory and stack checks remain active. The wrapper assumes one serialized
-interpreter thread per component and must not be reused as a shared allocator
-without synchronization.
+records the requested length separately from its internal capacity and reports
+only the requested range to QuickJS. Reallocation preserves that range; failed
+growth leaves the original allocation and its bytes owned by the caller. Both
+the engine's ordinary memory limit and the wrapper's aggregate reservation limit
+remain active, as do stack checks.
 
-Reported `heap_peak` and `heap_live` count those tracked allocations. They do
-not measure libc's slab rounding, allocator caches, or the component's total
-resident memory. The supervisor's separate 128 MiB RAM quota bounds the native
-component; a zero tracked count after teardown is not a claim of memory erasure.
+The pinned [Genode heap](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base/src/lib/base/heap.cc)
+gives allocations of at least 64 KiB their own RAM dataspaces. Releasing and remapping a dataspace for each generated substring
+made the full boundary corpus exceed 600 seconds. The wrapper therefore reuses
+large allocations in power-of-two size classes. It charges the entire reserved
+capacity while a block is live or cached, keeps at most two free blocks per
+class, and evicts the largest cached blocks first when another allocation needs
+space. All cached reservations are released after interpreter teardown. Policy
+code and the QuickJS engine are unchanged.
+
+For these large reservations the wrapper budgets 32 bytes for the
+[pinned libc's](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/libports/src/lib/libc/malloc.cc)
+16-byte metadata and at most 15-byte alignment padding, in addition to its own
+aligned header. Smaller libc allocations still incur their own slab and native
+metadata overhead. The reported `heap_peak` counts live reservation charges;
+`reserved_peak` includes cached capacity as well. Neither metric is total
+resident memory. The separate 128 MiB component RAM quota also remains enforced.
+Zero live and reserved bytes after teardown do not establish memory erasure.
+The wrapper assumes one serialized interpreter thread per component and must
+not be reused as a shared allocator without synchronization.
 
 No QuickJS OS module, module loader, filesystem API, socket API, or process API
 is installed in the service's interpreter. The core-corpus probe uses a separate
@@ -119,9 +135,11 @@ sudo apt-get install --yes --no-install-recommends \
 WRIT_CORE_EXPECTED=764 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
 ```
 
-The script verifies downloaded archives, prepares the pinned Genode libc and
-GRUB ports, generates Bend artifacts, builds native ELF components with the
-Genode toolchain, and executes three independent base-hw x86_64 QEMU boots.
+The script first runs the allocator checks with host AddressSanitizer,
+UndefinedBehaviorSanitizer, and leak detection. It verifies downloaded archives,
+prepares the pinned Genode libc and GRUB ports, generates Bend artifacts, builds
+native ELF components with the Genode toolchain, and executes three independent
+base-hw x86_64 QEMU boots.
 Software CPU emulation is explicit; KVM access is not required. Build products,
 generated policy, sources, ISO images, configuration copies, and logs stay in
 the chosen build directory. Use a fresh directory for a clean qualification
@@ -141,7 +159,7 @@ build hashes, supervisor configurations, and serial logs.
 
 | QEMU boot | Native checks |
 | --- | --- |
-| `writ_policy` | The unchanged generated core tests (764 in the current workflow); all 69 pure mount checks, including the 64 KiB boundary; zero retained QuickJS allocation bytes after each interpreter teardown |
+| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the unchanged generated core tests (764 in the current workflow); all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
 | `writfs` | Actual filesystem RPCs and packet streams; exact contents and ranges; directory metadata; EOF; write, traversal, and malformed-name denial; malformed lengths, negative/overflowing shared-memory descriptors, and oversized file offsets; stat-only, closed, and foreign-session handles; 32-handle exhaustion; unadmitted components; forged label suffix; denied direct ROM/admin routes; revocation of retained handles |
 | `writfs_vfs` | A separate native libc consumer mounting the service through VFS; `open`, full/ranged `read`, `lseek`, `fstat`, rejected write-open, rejected unknown object, and `close` |
 
@@ -171,9 +189,10 @@ QuickJS is MIT-licensed. Those upstream licenses are not replaced by this bindin
 | `src/server/writfs/main.cc` | Native filesystem ABI, private immutable bytes, session/handle ownership, native resource bounds, exact trusted supervisor binding, and execution of Bend-admitted effects |
 | `include/writfs/control.h` | Native administrative revoke-only RPC ABI; no grant or arbitrary command method |
 | `../runtime/genode/policy.{h,cc}` | Native QuickJS lifetime and limits, unchanged generated export invocation, private state retention, strict reply validation, permanent failure state |
-| `../runtime/genode/quickjs_alloc.{h,c}` and `malloc_np.h` | Missing libc allocator-size adaptation and an exact aggregate memory bound |
+| `../runtime/genode/quickjs_alloc.{h,c}` and `malloc_np.h` | Missing libc allocator-size adaptation, bounded reservation reuse, and aggregate reservation accounting |
 | `lib/mk/writ_quickjs.mk` | Cross-builds the verified upstream engine without its OS binding library; allocator name substitutions only |
 | `src/test/writ_policy/` and `../runtime/genode/core_checks.cc` | Native corpus probes and separate diagnostic-only test adapter |
+| `../runtime/genode/allocator_checks.{h,c}` and `allocator_probe.c` | Shared native/host allocator checks and the host sanitizer entry point; no service authority |
 | `src/test/writfs/`, `src/test/writfs_vfs/` | Native diagnostic clients; never a protected worker profile |
 | `run/` | Trusted supervisor topology, fixed public fixture, explicit ROM/service routes, and native completion gates |
 | `build-and-run.sh`, workflow | Pinned inputs, cross-build packaging, fresh generated Bend artifacts, QEMU execution and evidence |

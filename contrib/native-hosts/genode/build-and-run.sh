@@ -20,6 +20,17 @@ if [[ ! ${WRIT_CORE_EXPECTED:-} =~ ^[1-9][0-9]{0,4}$ ]]; then
 fi
 export WRIT_CORE_EXPECTED
 
+(
+  cd "$writ_repo"
+  gcc -std=c11 -O1 -g -Wall -Wextra -Werror \
+    -fsanitize=address,undefined -fno-omit-frame-pointer \
+    contrib/native-hosts/runtime/genode/quickjs_alloc.c \
+    contrib/native-hosts/runtime/genode/allocator_checks.c \
+    contrib/native-hosts/runtime/genode/allocator_probe.c \
+    -o "$writ_out/allocator-probe"
+  ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=halt_on_error=1 "$writ_out/allocator-probe"
+) 2>&1 | tee "$writ_out/logs/allocator-sanitizers.log"
+
 writ_fetch() {
   local file="$1" hash="$2" url="$3"
   if [ ! -f "$file" ]; then
@@ -69,6 +80,7 @@ writ_cross="$writ_toolchain/usr/local/genode/tool/25.05/bin/genode-x86-"
   printf 'Required complete core assertions: %s\n' "$WRIT_CORE_EXPECTED"
   uname -a
   "${writ_cross}gcc" --version
+  gcc --version
   qemu-system-x86_64 --version
   expect -v
   bend version

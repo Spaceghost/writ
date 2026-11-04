@@ -22,7 +22,8 @@ config
 
 build_boot_image [build_artifacts]
 run_genode_until {WRIT POLICY NATIVE (PASS|FAIL)} 600
-if {![regexp "PASS native Genode core corpus: $expected_core" $output] ||
+if {![regexp {PASS native allocator checks: 24} $output] ||
+    ![regexp "PASS native Genode core corpus: $expected_core" $output] ||
     ![regexp {PASS native Genode mount corpus: 69} $output] ||
     ![regexp {WRIT POLICY NATIVE PASS} $output] ||
     [regexp {WRIT POLICY NATIVE FAIL} $output]} {

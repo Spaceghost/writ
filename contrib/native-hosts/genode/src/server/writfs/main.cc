@@ -333,7 +333,8 @@ struct Main {
         env.parent().announce(env.ep().manage(*control));
         log("WRITFS READY public-canary bytes=", storage.length,
             " sha256=", initialized.detail,
-            " native=genode heap_peak=", writ_qjs_peak_bytes());
+            " native=genode heap_peak=", writ_qjs_peak_bytes(),
+            " reserved_peak=", writ_qjs_peak_reserved_bytes());
     }
 };
 
