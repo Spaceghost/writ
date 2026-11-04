@@ -194,7 +194,11 @@ OpenSpec 1.16.0 strict validation passes all **44 active items**: 16 baseline
 capabilities and 28 pending change packages. The baseline has 161 requirements
 and 362 scenarios; pending deltas have 294 requirements and 555 scenarios.
 The 28 pending task files retain 238 unchecked and 15 previously completed
-tasks, unchanged from integrated master dc6ff2b2.
+tasks, unchanged from integrated master dc6ff2b2. (Those counts predate the
+Genode lanes; on the Genode channel lane's tree, counted with `grep` of
+`- [ ]` and `- [x]` lines, they are 233 unchecked and 20 checked, and
+OpenSpec 1.16.0 strict validation passes 44 of 44 items; see "Genode Bend
+component, base-linux" below.)
 
 Only the bounded native-canary change was completed and archived in this
 contribution: eight requirements, 21 scenarios and six tasks. Windows mounted
@@ -262,6 +266,39 @@ At that platform-research revision, all 34 core/example Bend files were identica
 to `5982d18dff6ef21953058423ebdfb410d1de6b11`. Its 638 library checks and
 29 example assertions per backend are historical evidence, not host-port results.
 The later HostBinding additions and 782-check regressions are recorded above. See [platform-review.txt](verification/platform-review.txt).
+
+## Genode Bend component, base-linux (channel lane)
+
+The proposed change `add-genode-bend-component` was exercised on Genode
+26.08 `base-linux` (Genode-on-Linux: core, init, and components are Linux
+processes), single lane, `--gpu off`, over the synthetic authority state of
+`examples/Scenario.bend`. `base-hw` was not attempted, and no host profile is
+qualified. The library corpus is unchanged: `writ_bend_tests` prints the 782
+PASS lines and `ALL LIBRARY TESTS PASSED`, and its 834 component lines are
+byte-identical to the Linux single-lane record (sha256
+`fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff`). The
+Linux check `hosts/genode/monitor/MonitorCheck.bend` (17 PASS lines over the
+monitor's pure decision, the channel table, close events, and reasons 1 to
+8) is host scaffolding and is not among the 782 checks.
+
+Genode runs (`make run/<name>`), with their evidence:
+
+| Run scripts | Evidence |
+| --- | --- |
+| `writ_bend_hello`, `writ_bend_rts` | [genode-bend-hello-base-linux.txt](verification/genode-bend-hello-base-linux.txt) |
+| `writ_probe_threads`, `writ_probe_clock`, `writ_probe_evloop`, `writ_probe_process`, `writ_probe_fault`, `writ_probe_reservation_live`, `writ_probe_reservation_guard` | [genode-runtime-rows-base-linux.md](verification/genode-runtime-rows-base-linux.md), [genode-reservation-probe-base-linux.txt](verification/genode-reservation-probe-base-linux.txt) |
+| `writ_bend_tests`, `writ_bend_example`, `writ_bend_flow`, `writ_bend_transfer`, `writ_bend_gpuexample`, `writ_bend_overflow` | [genode-corpus-base-linux.txt](verification/genode-corpus-base-linux.txt) |
+| `writ_bend_probe` | [genode-effects-base-linux.txt](verification/genode-effects-base-linux.txt) |
+| `writ_bend_monitor_accept`, `_substitute`, `_routed_s`, `_claim_ignored`, `_bad_length`, `_liveness`, `_queue`, `_dead_client` | [genode-channel-base-linux.txt](verification/genode-channel-base-linux.txt) |
+
+The requirement-by-requirement map, with reviewed-only gaps quoted, is the
+[traceability table](openspec/traceability/genode-bend-component.md). Open
+in that change: 1.3 (the parent records no fault), 2.2 (the shim inventory
+has no GB-006 reviewer), and section 3 (`base-hw`, the binary check task,
+OpenSpec). `scripts/runtime-profile/check-binary.sh` on the monitor ELF
+reports only Genode effect rows (`Genode.log`, `Genode.put`,
+`Genode.take`) beyond the monitor profile and fails its symbol half, as on
+every Genode binary (Linux allow list).
 
 ## Optional rclone contribution
 

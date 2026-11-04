@@ -1,11 +1,13 @@
 #
 # writ_bend.tcl - shared Genode run-script procedures (build configuration),
-# not Writ implementation. Genode host-layer lane, Task 3. Sourced by the
-# writ_bend_*.run scripts through
+# not Writ implementation. Genode host-layer lane, Task 3; optional
+# parameters added in the channel lane's Task 3 final review. Sourced by
+# the writ_bend_*.run scripts and scripts/genode/writ_bend_monitor/
+# writ_bend_monitor.tcl through
 #   source [select_from_repositories run/writ_bend.tcl]
 # Live copy: ../writ-genode/writ-repo/run/writ_bend.tcl (byte-identical).
 #
-# writ_bend_boot NAME RAM CAPS
+# writ_bend_boot NAME RAM CAPS ?STDOUT? ?START? ?CONFIG? ?CHILDREN? ?BUILDS?
 #   Builds and boots one Bend component under init on base-linux. Authority:
 #   init routes the parent's LOG, PD, CPU, ROM, and RM services and a Timer
 #   session from the sibling timer. The component's VFS holds /dev/log and a
@@ -13,7 +15,19 @@
 #   runtime's event loop); no file system, network, or block access. The
 #   runtime options +RTS --threads 1 --gpu off are <arg> nodes (argv[0]
 #   names the program); WRIT_MEM_REPORT=1 makes the shim log its RAM report
-#   at exit.
+#   at exit. Optional, all defaulting to the configuration above:
+#     STDOUT    libc's stdout, /dev/log (default) or /dev/null; with
+#               /dev/null the VFS /dev also holds a null node (written on
+#               its own lines: in the one-line form the null node would nest
+#               inside log)
+#     START     text after the component's <start> line, before its
+#               <config> (for example a <provides> node)
+#     CONFIG    text appended inside the component's <config>, after the
+#               env node (for example the <writ_channel> policies)
+#     CHILDREN  further <start> nodes of init (for example channel clients)
+#     BUILDS    further build targets
+#   The default arguments give byte-for-byte the configuration this
+#   procedure installed before the parameters existed.
 #
 # writ_bend_require_exit0 NAME
 #   Fails unless init reported exit value 0 for NAME.
@@ -31,8 +45,19 @@
 # All procedures read the global $output and exit 1 on failure.
 #
 
-proc writ_bend_boot { name ram caps } {
-	build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
+proc writ_bend_boot { name ram caps {stdout /dev/log} {start ""} {extra_config ""} {children ""} {builds ""} } {
+	build [concat [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name] $builds]
+
+	if {$stdout == "/dev/null"} {
+		set dev "
+      + dir dev
+        + log
+        + null"
+	} else {
+		set dev " | + log"
+		set dev "
+      + dir dev$dev"
+	}
 
 	create_boot_directory
 
@@ -51,19 +76,18 @@ config
 + default | caps: 200 | ram: 1M
 + start timer
   + provides | + service Timer
-+ start $name | caps: $caps | ram: $ram
++ start $name | caps: $caps | ram: $ram$start
   + config
-    + vfs
-      + dir dev | + log
+    + vfs$dev
       + dir pipe | + pipe
-    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+    + libc | stdout: $stdout | stderr: /dev/log | pipe: /pipe
     + arg | value: $name
     + arg | value: +RTS
     + arg | value: --threads
     + arg | value: 1
     + arg | value: --gpu
     + arg | value: off
-    + env | key: WRIT_MEM_REPORT | value: 1
+    + env | key: WRIT_MEM_REPORT | value: 1$extra_config$children
 -
 "
 

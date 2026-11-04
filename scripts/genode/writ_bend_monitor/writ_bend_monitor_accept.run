@@ -1,0 +1,15 @@
+#
+# writ_bend_monitor_accept.run - Genode run script (build configuration),
+# not Writ implementation. Genode channel lane, Task 2, run 1. The client
+# writ_client_r, routed by init as reader R (policy subject 1), writes the
+# report-to-summary request for R's negotiated session (monitor session 1,
+# expected revision 6) and claims its own subject in the body (1). Expected:
+# Committed (decision 1, reason 0), decided by Bend through
+# DataOS.commit_from_capability. The client first sleeps 2000 ms, so the
+# monitor's Genode.take is parked when the request signal arrives (run 2
+# sends at once). Exits nonzero when that changes.
+# The shared procedure is scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl.
+#
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+writ_bend_monitor_run writ_client_r 1 1 6 1 1 0 2000

@@ -277,8 +277,10 @@ linked with the host-layer memory shim. The one-line `IO.print` hello prints
 `hi` and exits 0, and `Tests.bend` passes all 782 checks at a 256M quota,
 with a log that matches the Linux single-lane run line for line. The open
 gaps: when a component faults it is terminated, but the parent (init)
-records nothing; only single-lane runs (`--threads 1`) have been made; and
-threads and the clock are still shown only by C probes. The per-row record, with
+records nothing; only single-lane runs (`--threads 1`) have been made;
+threads are still shown only by C probes; and the clock is shown through a
+Bend program only on the shim's Timer session (`Genode.now`/`Genode.sleep`),
+not through libc's (`IO.now`/`IO.sleep`). The per-row record, with
 commands, log lines, source citations, and whether each row came from a Bend
 program, a plain-C probe, or source reading, is
 [genode-runtime-rows-base-linux.md](../verification/genode-runtime-rows-base-linux.md);
@@ -399,3 +401,60 @@ Records: [genode-corpus-base-linux.txt](../verification/genode-corpus-base-linux
 [genode-corpus-linux-reference.txt](../verification/genode-corpus-linux-reference.txt),
 and the updated rows in
 [genode-runtime-rows-base-linux.md](../verification/genode-runtime-rows-base-linux.md).
+
+Console and time effects (channel lane, Task 1): `make run/writ_bend_probe`
+runs `hosts/genode/monitor/Probe.bend`, which calls the Bend effects
+`Genode.log`, `Genode.now`, and `Genode.sleep` from
+`hosts/genode/effects/Genode.bend`. Their `.c` twins call only the shim's
+`writ_shim_log`, `writ_shim_now_ms`, and `writ_shim_sleep_ms` (same shim
+unit, over the component's LOG session and a Timer session). With libc's
+stdout on `/dev/null`, the probe's text still reached the LOG
+(`[init -> writ_bend_probe] probe: hello from Bend through the Genode LOG
+session`), and its readings around `Genode.sleep(100)` differed by 101 to
+102 ms at 256M; the probe accepts only ordered readings with a delta in
+[100, 1100) ms, and its failure branch exits 1. A missing Timer route ends
+the component with one `writ_shim:` line and exit value 1. Current gap:
+these effects are host rows beyond the monitor profile (`check-binary.sh`
+lists exactly the three) and are not yet admitted to it. Record:
+[genode-effects-base-linux.txt](../verification/genode-effects-base-linux.txt).
+
+Writ channel (channel lane, Task 2): `make run/writ_bend_monitor_accept`
+starts the Bend monitor `hosts/genode/monitor/Monitor.bend` as the component
+`writ_bend_monitor`, which serves a `Writ_channel` session, and a client
+probe started as the child `writ_client_r`. Init routes the client's session
+to the monitor; the monitor's `<writ_channel><policy
+label_prefix="writ_client_r ->" subject="1"/>` gives that channel route
+subject 1, the Scenario's reader R. The client writes a 64-byte
+report-to-summary request into its 4 KiB request bucket and signals;
+`Genode.take` yields the record with the route subject, the monitor decides
+through `DataOS.commit_from_capability` over the synthetic
+`examples/Scenario.bend` state, and `Genode.put` writes the decision record
+to the result bucket and signals back: `decision=Committed`. In
+`make run/writ_bend_monitor_substitute` the same route sends a body that
+claims subject S and names S's session; Bend still evaluates R and the
+library rejects it (`decision=Denied reason=6`); routed as S
+(`make run/writ_bend_monitor_routed_s`) the same body is refused earlier at
+the descriptor (`reason=5`), and R with a body claiming S
+(`make run/writ_bend_monitor_claim_ignored`) is Committed. The monitor binds
+one descriptor to each channel at its first record and reuses it, and
+drops the binding when the shim reports the channel closed. The
+session type has only four capability-handover RPC functions (two buckets,
+two signals); records carry the requests and decisions (GB-011). Bounds
+and liveness (Task 3): `make run/writ_bend_monitor_bad_length` sends
+header lengths 65, 0, and 0xFFFFFFFF, which the shim counts and answers with its fixed
+transport refusal (kind 3, decision 3, reason 256, no Writ decision) before Bend, then
+a valid request that Bend commits; `make run/writ_bend_monitor_liveness`
+runs a client that floods without ever reading a reply beside one that
+sends once and is Committed, until the monitor's fuel runs out and init
+reports its exit value 0; `make run/writ_bend_monitor_dead_client` shows a
+client that exits before its reply and one that frees its result signal
+context do not stop a third client from being served; a close event costs the monitor one unit of fuel
+like a record. `make run/writ_bend_monitor_queue` opens 8 channels, refuses a ninth
+session, and serves the queued channels in ring order until the fuel runs
+out; coalescing of repeated signals is not reliably exercised. Current gap: one record per bucket, nothing
+restarts the monitor after fuel exhaustion (GB-008's supervisor restart),
+the fuel is global so any client can end the service, whether the reply
+signal can block the loop on base-linux beyond the cases run is not shown,
+and `base-hw` is not attempted. Record formats:
+[Channel.md](../hosts/genode/effects/Channel.md); evidence:
+[genode-channel-base-linux.txt](../verification/genode-channel-base-linux.txt).

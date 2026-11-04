@@ -1,10 +1,15 @@
 /*
  * writ_mem.cc - Genode host binding code for the Bend runtime's memory
- * calls. This is host binding code, not Writ policy: it makes no
- * authority, label, budget, or release decision, and nothing in it is
- * consulted by Writ's Bend verification. It is the memory part of the
- * single authored C++ unit GB-006 allows in a Bend component (the shim);
- * see hosts/genode/INVENTORY.md for its exported symbols and sessions.
+ * calls and for the Genode.* console, time, and channel effects. This is
+ * host binding code, not Writ policy: it makes no authority, label, budget,
+ * or release decision, and nothing in it is consulted by Writ's Bend
+ * verification. It is the single authored C++ unit GB-006 allows in a
+ * Bend component (the shim): the memory host layer below, then the LOG
+ * and Timer functions the effect twins in hosts/genode/effects/ call
+ * ("Console and time"), then the Writ channel service behind Genode.take
+ * and Genode.put ("Writ channel", with the session type in
+ * writ_channel_session.h). See hosts/genode/INVENTORY.md for its exported
+ * symbols, sessions, and bounds.
  *
  * What it supplies, and why. Genode 26.08's libc commits and zeroes every
  * anonymous mmap from the component's RAM quota
@@ -109,16 +114,27 @@
  */
 
 /* Genode includes */
+#include <base/attached_ram_dataspace.h>
+#include <base/entrypoint.h>
 #include <base/heap.h>
 #include <base/log.h>
 #include <base/mutex.h>
+#include <base/semaphore.h>
 #include <base/shared_object.h>
+#include <base/signal.h>
+#include <os/session_policy.h>
 #include <pd_session/client.h>
 #include <libc/component.h>
 #include <libc/args.h>
 #include <region_map/client.h>
 #include <rm_session/connection.h>
+#include <root/component.h>
+#include <timer_session/connection.h>
+#include <util/arg_string.h>
 #include <util/construct_at.h>
+
+/* the Writ channel session type (same directory) */
+#include "writ_channel_session.h"
 
 /* libc includes (FreeBSD 12.0 constants: MAP_*, PROT_*, errno values) */
 #include <errno.h>
@@ -755,6 +771,639 @@ extern "C" int mprotect(void *addr, ::size_t len, int prot)
 	return 0;
 }
 
+
+/***********************************
+ ** Console and time (Genode.*)   **
+ ***********************************/
+
+/*
+ * Host functions behind the Bend effects Genode.log, Genode.now, and
+ * Genode.sleep (hosts/genode/effects/). Each moves bytes or reads a clock;
+ * none decides anything, and the Bend program alone decides what is
+ * logged and when it waits.
+ *
+ * LOG. writ_shim_log hands the bytes to Genode::log (repos/base/include/
+ * base/log.h), which writes them to the component's own LOG session, the
+ * one init routes to the parent's LOG service. The text is printed as a
+ * Cstring of at most len bytes (repos/base/include/util/string.h:757), so
+ * it ends at the first NUL; a line longer than the LOG session's
+ * MAX_STRING_LEN (232, repos/base/include/log_session/log_session.h:48)
+ * reaches the LOG in several pieces. Nothing is added to the text: the
+ * LOG service prefixes the session label ("[init -> <name>] ").
+ *
+ * Timer. One Timer::Connection (repos/base/include/timer_session/
+ * connection.h, label "writ_shim"), opened at the first now or sleep and
+ * kept for the component's life (Kept<T>, no destructor, as the memory
+ * state). It is used in the timer-session mode only: elapsed_ms is a
+ * plain RPC, and msleep blocks the calling thread on the connection's
+ * own Signal_receiver (connection.h:390-433), so it needs no entrypoint
+ * dispatch and may run on a runtime helper thread. Invariant: the shim
+ * never calls curr_time() on _timer and never hands it to a Timeout or
+ * One_shot/Periodic timeout, so the connection never switches to the
+ * timeout-framework mode, in which msleep would log an error and return
+ * at once (connection.h:426-430). The session clock is monotone
+ * milliseconds since this session was opened (the timer component
+ * subtracts the session's creation time, repos/base/include/timer/
+ * component.h:98-100 and :202), so the first reading is near 0.
+ *
+ * writ_shim_sleep_ms returns only when that clock has advanced by at
+ * least ms, re-sleeping the remainder if msleep woke early (each early
+ * wake is counted in _timer_short_wakes and shown in writ_mem_report), so
+ * a Bend program's delta of two readings around a sleep is at least the
+ * sleep.
+ *
+ * Failure behaviour (host failure handling, not policy: no Writ decision
+ * depends on it; a component whose clock cannot be trusted stops). Every
+ * case logs one error line and ends the component with exit value 1
+ * through the parent (Parent::exit), so init records the exit instead of
+ * the component hanging:
+ *   - Timer route missing or denied. Env::session answers a DENIED session
+ *     with an error line and sleep_forever (repos/base/src/lib/base/
+ *     component.cc:200-202), so the shim first asks with Env::try_session
+ *     under a probe id (component.cc:117-149) and stops on DENIED; the
+ *     probe session is closed and Timer::Connection then opens the kept
+ *     one. Any exception from the Connection's construction stops too.
+ *   - Frozen or reversed clock: a reading after msleep that has not
+ *     advanced past the reading before it, or a first reading before the
+ *     sleep's start.
+ *   - More than MAX_SLEEP_ROUNDS msleep calls for one sleep (this also
+ *     bounds a connection that returned from msleep at once, as the
+ *     timeout-framework mode would, while the clock creeps forward).
+ */
+
+enum : unsigned {
+	MAX_SLEEP_ROUNDS = 16,            /* msleep calls per writ_shim_sleep_ms */
+	TIMER_PROBE_RAM  = 10*1024,       /* as Timer::Connection requests */
+	TIMER_PROBE_CAPS = Timer::Session::CAP_QUOTA,
+};
+
+static Kept<Timer::Connection> _timer;
+static unsigned long           _timer_short_wakes;
+
+static Mutex &_timer_mutex() { static Mutex m { }; return m; }
+
+/* Ends the component with exit value 1 after one line; does not return. */
+[[noreturn]] static void _timer_fail(char const *what)
+{
+	error("writ_shim: ", what, ", component exits 1");
+	_env->parent().exit(1);
+	sleep_forever();
+}
+
+/*
+ * Whether the parent grants a Timer session labelled "writ_shim". Only
+ * DENIED counts as no route; a quota answer means the route exists and is
+ * left to the Connection's own quota upgrades.
+ */
+static bool _timer_route_granted()
+{
+	Parent::Client client { };
+	Id_space<Parent::Client>::Element const probe(client, _env->id_space());
+	String<Parent::Session_args::MAX_SIZE> const args(
+		"label=\"writ_shim\", ram_quota=", unsigned(TIMER_PROBE_RAM),
+		", cap_quota=", unsigned(TIMER_PROBE_CAPS));
+
+	return _env->try_session(Timer::Session::service_name(), probe.id(),
+	                         Parent::Session_args(args.string()), Affinity())
+		.convert<bool>(
+			[&] (Session_capability) { _env->close(probe.id()); return true; },
+			[&] (Session_error e)    { return e != Session_error::DENIED; });
+}
+
+/* Opens the Timer session on first use; null before construct. */
+static Timer::Connection *_timer_session()
+{
+	if (!_env) return nullptr;
+	Mutex::Guard guard(_timer_mutex());
+	if (!_timer.constructed()) {
+		if (!_timer_route_granted())
+			_timer_fail("Timer session denied (no route for label writ_shim)");
+		try { _timer.construct(*_env, Timer::Connection::Label("writ_shim")); }
+		catch (...) { _timer_fail("Timer session could not be opened"); }
+	}
+	return &*_timer;
+}
+
+extern "C" void writ_shim_log(char const *text, size_t len)
+{
+	if (!text) return;
+	log(Cstring(text, len));
+}
+
+/* 0 before construct, which no effect can run before. */
+extern "C" uint64_t writ_shim_now_ms(void)
+{
+	Timer::Connection *t = _timer_session();
+	return t ? t->elapsed_ms() : 0;
+}
+
+extern "C" void writ_shim_sleep_ms(uint32_t ms)
+{
+	Timer::Connection *t = _timer_session();
+	if (!t || ms == 0) return;
+	uint64_t const start    = t->elapsed_ms();
+	uint64_t const deadline = start + ms;
+	uint64_t       last     = start;
+	for (unsigned round = 0;; round++) {
+		uint64_t const now = t->elapsed_ms();
+		if (now >= deadline) return;
+		if (now < start)
+			_timer_fail("Timer clock went backwards during a sleep");
+		if (round > 0) {
+			if (now <= last)
+				_timer_fail("Timer clock did not advance across msleep");
+			_timer_short_wakes++;  /* msleep returned before the deadline */
+		}
+		if (round == MAX_SLEEP_ROUNDS)
+			_timer_fail("sleep exceeded MAX_SLEEP_ROUNDS msleep calls");
+		last = now;
+		t->msleep(deadline - now);
+	}
+}
+
+/*************************************
+ ** Writ channel (Genode.take/put)  **
+ *************************************/
+
+/*
+ * Host transport behind the Bend effects Genode.take and Genode.put
+ * (hosts/genode/effects/, record layout in Channel.md). The shim moves
+ * records and signals and makes no decision: every request record is
+ * handed to Bend, which alone accepts or denies it, and Bend's reply record
+ * is copied back unread. The session type is Writ_channel::Session
+ * (writ_channel_session.h), whose four RPC functions only hand over
+ * capabilities (GB-011).
+ *
+ * Service. Served only when the component's config has a <writ_channel>
+ * node; otherwise nothing below runs and the component announces nothing.
+ * Each session is one channel object (GB-010): a 4 KiB request bucket and a
+ * 4 KiB result bucket (Attached_ram_dataspace, repos/base/include/base/
+ * attached_ram_dataspace.h, zeroed RAM charged to this component and
+ * covered by the client's session quota) and a request Signal_handler. The
+ * root and every channel are served by a dedicated entrypoint
+ * "writ_channel" (repos/base/include/base/entrypoint.h:135), not by the
+ * component's main entrypoint: while the Bend main is suspended in libc,
+ * libc's kernel keeps the main entrypoint in wait_and_dispatch_one_io_signal
+ * (repos/libports/src/lib/libc/internal/kernel.h:460-533), which defers RPCs
+ * and non-I/O signals (repos/base/src/lib/base/entrypoint.cc:145-199), so a
+ * session request or client signal there would wait for Bend. Base's own
+ * Root_proxy uses a separate entrypoint for the same reason
+ * (repos/base/src/lib/base/root_proxy.cc:120).
+ *
+ * Identity (GB-007). The parent prefixes every session label with the
+ * requesting child's name (repos/base/src/lib/base/child.cc:152-155), so a
+ * client cannot choose the prefix. The channel's subject word is the
+ * `subject` attribute of the <policy> under <writ_channel> that matches the
+ * label best (os/session_policy.h with_matching_policy, label/label_prefix/
+ * label_suffix scoring). Only a <policy> node with a `label` or
+ * `label_prefix` attribute binds identity: a <default-policy>, a policy
+ * matched only through `label_suffix` (the suffix is chosen by the client),
+ * no match, or subject 0 refuses the session (DENIED). The policies are
+ * read from libc's own attached config (Libc::Env::with_config,
+ * repos/libports/include/libc/component.h:36-43), a read-only view of a ROM
+ * that is never updated here, so the channel entrypoint may read it at
+ * session creation without further locking. The integrator
+ * writes that configuration; the shim only looks the word up. Bend maps
+ * the word to an identity; the record body never supplies it.
+ *
+ * Queue. A client signal runs _channel_signalled on the "writ_channel"
+ * entrypoint, which appends (channel id, subject) to a ring of
+ * CHANNEL_QUEUE_DEPTH entries and ups _channel_ready. A channel has at most
+ * one queued entry (a repeated signal is coalesced and counted), so one
+ * client cannot fill the ring; a full ring drops and counts the signal.
+ * writ_shim_take runs on a runtime io_work helper thread: it blocks in
+ * _channel_ready.down() (base/semaphore.h, a Blockade, so the thread sleeps
+ * and the loop spins nowhere), pops the entry, and copies the record out
+ * of the channel's request bucket under _channel_mutex. The runtime's own
+ * completion pipe (io_wake_fd over the component's vfs_pipe /pipe, the
+ * libc wakeup the event loop already uses for io_work) then resumes the
+ * loop, which packs the Request.
+ *
+ * Copy discipline. A bucket starts with a 16-byte header (length, sequence,
+ * two reserved words); the record follows at offset 16 (Channel.md). The
+ * shim copies exactly CHANNEL_RECORD_SIZE bytes, once, at take time; Bend
+ * only ever sees that copy, so a client rewriting its bucket after the
+ * signal cannot change what was decided. Words are copied in host
+ * order; the targets are x86_64, little-endian.
+ *
+ * Transport refusal (GB-006, Task 3). A header whose length is not exactly
+ * CHANNEL_RECORD_SIZE is never copied and never reaches Bend: take counts
+ * it and answers it at once with a fixed refusal record in the result
+ * bucket (version 1, kind CHANNEL_KIND_REFUSAL = 3, decision
+ * CHANNEL_DECISION_REFUSED = 3, which is neither Committed nor Denied,
+ * reason CHANNEL_REASON_BAD_LENGTH = 256, every other word 0, the request's
+ * sequence in the header) and signals the client. This is the one result
+ * the shim writes on its own. It carries no Writ decision: it is the same
+ * record for every channel and subject, depends only on the length word,
+ * and its kind, decision, and reason words are outside the monitor's
+ * (kind 2, decisions 1 and 2, reasons 0 to 8), so a client cannot mistake
+ * it for a decision by Bend.
+ *
+ * Close event (Task 3). When a session closes, the channel is removed from
+ * the table and its slot is held as "closing" until Bend has taken a close
+ * event for it: a ring entry marked close (an entry already queued for
+ * the channel is turned into it; the queued request is dropped and counted
+ * as stale), which take hands over as channel id with route subject 0 and
+ * all record words 0. Subject 0 is never a channel's subject (a session
+ * whose policy gives 0 is refused) and is not a record word, so a client
+ * cannot forge a close event for its own or another channel. Holding the
+ * slot keeps the bound: every ring entry belongs to a distinct slot, so the
+ * ring still holds at most MAX_CHANNELS entries.
+ *
+ * Results. writ_shim_put runs on the Bend loop: it writes the record at
+ * offset 16, the request's sequence number, and last the length (after a
+ * release fence) into the channel's result bucket, then submits the
+ * client's registered signal. A put for a channel that has closed or has
+ * no taken request is skipped and counted. The shim never waits for a
+ * client: the signal is submitted and not acknowledged, and the next reply
+ * on the channel overwrites the result bucket, so a client that never
+ * reads its replies holds at most one result (its own bucket) and one ring
+ * entry, and cannot delay another channel (GB-008) in the cases run. The
+ * submit itself is an RPC to this component's PD session in core; see
+ * hosts/genode/INVENTORY.md "Signal submit" for when that could block and
+ * which client cases are not shown. The client may map its result
+ * bucket writable (Genode RAM dataspaces carry no read-only capability);
+ * the shim never reads the result bucket, so that changes nothing here.
+ *
+ * Failure behaviour (host failure handling, not policy). Session creation
+ * answers INSUFFICIENT_RAM when the donated quota is below
+ * CHANNEL_SESSION_RAM (Root_component itself answers INSUFFICIENT_CAPS below
+ * Writ_channel::Session::CAP_QUOTA), DENIED when no policy matches or MAX_CHANNELS are
+ * open, or all slots are open or closing. A closed channel is removed
+ * from the table under the mutex before it is destroyed, so take never
+ * copies from a freed bucket.
+ */
+
+enum : unsigned {
+	CHANNEL_BUCKET_SIZE  = Writ_channel::Session::BUCKET_SIZE,   /* 4096 */
+	CHANNEL_HEADER_SIZE  = 16,
+	CHANNEL_RECORD_WORDS = 16,
+	CHANNEL_RECORD_SIZE  = CHANNEL_RECORD_WORDS*4,               /* 64   */
+	CHANNEL_QUEUE_DEPTH  = 8,
+	MAX_CHANNELS         = 8,
+	CHANNEL_EP_STACK     = 8*1024*sizeof(long),
+	CHANNEL_SESSION_RAM  = 2*CHANNEL_BUCKET_SIZE + 8*1024,
+
+	/* the shim's own refusal record (transport, not a Writ decision) */
+	CHANNEL_VERSION           = 1,
+	CHANNEL_KIND_REFUSAL      = 3,
+	CHANNEL_DECISION_REFUSED  = 3,   /* not a Writ decision word (1, 2) */
+	CHANNEL_REASON_BAD_LENGTH = 256,
+
+	/* the route subject take reports for a close event; never a channel's */
+	CHANNEL_SUBJECT_CLOSED    = 0,
+};
+
+static_assert(CHANNEL_HEADER_SIZE + CHANNEL_RECORD_SIZE <= CHANNEL_BUCKET_SIZE,
+              "a record fits its bucket");
+/*
+ * Every slot, open or closing, holds at most one ring entry, so with no
+ * more slots than ring entries the ring cannot overflow: the "ring full"
+ * count stays 0 by construction (the check in _channel_signalled is
+ * defence in depth).
+ */
+static_assert(MAX_CHANNELS <= CHANNEL_QUEUE_DEPTH, "the ring cannot overflow");
+
+static_assert(CHANNEL_SESSION_RAM <= Writ_channel::Session::RAM_QUOTA,
+              "the client's donation covers a channel");
+
+static Mutex &_channel_mutex() { static Mutex m { }; return m; }
+
+static void _channel_signalled(uint32_t id);
+
+struct Channel : Rpc_object<Writ_channel::Session>
+{
+	uint32_t      const id;
+	uint32_t      const subject;
+	Session_label const label;
+
+	Attached_ram_dataspace request_ds;
+	Attached_ram_dataspace result_ds;
+
+	Signal_handler<Channel> request_handler;
+
+	/* guarded by _channel_mutex */
+	Signal_context_capability client_sigh { };
+	bool     queued    = false;   /* an entry for this channel is in the ring */
+	bool     taken     = false;   /* a record was handed to Bend, no put yet */
+	uint32_t taken_seq = 0;
+
+	void _handle_request() { _channel_signalled(id); }
+
+	Channel(Env &env, Entrypoint &ep, uint32_t id, uint32_t subject,
+	        Session_label const &label)
+	:
+		id(id), subject(subject), label(label),
+		request_ds(env.ram(), env.rm(), CHANNEL_BUCKET_SIZE),
+		result_ds (env.ram(), env.rm(), CHANNEL_BUCKET_SIZE),
+		request_handler(ep, *this, &Channel::_handle_request)
+	{ }
+
+	Dataspace_capability request_bucket() override { return request_ds.cap(); }
+	Dataspace_capability result_bucket()  override { return result_ds.cap(); }
+	Signal_context_capability request_sigh() override { return request_handler; }
+
+	void result_sigh(Signal_context_capability cap) override
+	{
+		Mutex::Guard guard(_channel_mutex());
+		client_sigh = cap;
+	}
+};
+
+struct Channel_entry { uint32_t id, subject; bool close; };
+
+/* all guarded by _channel_mutex */
+static Channel       *_channels[MAX_CHANNELS];
+static uint32_t       _channel_closing[MAX_CHANNELS];  /* id whose close event is not yet taken */
+static Channel_entry  _channel_ring[CHANNEL_QUEUE_DEPTH];
+static unsigned       _channel_ring_head, _channel_ring_count;
+static uint32_t       _channel_next_id = 1;
+
+/* counters for writ_mem_report (diagnostics only), guarded by _channel_mutex */
+static unsigned long _channel_signals, _channel_coalesced, _channel_ring_full,
+                     _channel_bad_length, _channel_stale, _channel_taken,
+                     _channel_put, _channel_put_skipped, _channel_closed;
+static unsigned      _channel_ring_max;   /* most entries the ring has held at once */
+
+static Semaphore &_channel_ready() { static Semaphore s { 0 }; return s; }
+
+static Channel *_channel_lookup(uint32_t id)
+{
+	for (Channel *c : _channels)
+		if (c && c->id == id) return c;
+	return nullptr;
+}
+
+/* runs on the "writ_channel" entrypoint */
+static void _channel_signalled(uint32_t id)
+{
+	{
+		Mutex::Guard guard(_channel_mutex());
+		_channel_signals++;
+		Channel *c = _channel_lookup(id);
+		if (!c) return;
+		if (c->queued) { _channel_coalesced++; return; }
+		if (_channel_ring_count == CHANNEL_QUEUE_DEPTH) { _channel_ring_full++; return; }
+		_channel_ring[(_channel_ring_head + _channel_ring_count) % CHANNEL_QUEUE_DEPTH] =
+			{ c->id, c->subject, false };
+		_channel_ring_count++;
+		if (_channel_ring_count > _channel_ring_max) _channel_ring_max = _channel_ring_count;
+		c->queued = true;
+	}
+	_channel_ready().up();
+}
+
+/* libc's environment, for its already-attached config (set in _channel_init) */
+static Libc::Env *_channel_libc_env;
+
+struct Channel_root : Root_component<Channel>
+{
+	Env        &_env;
+	Entrypoint &_ep;
+
+	Channel_root(Env &env, Entrypoint &ep, Allocator &md_alloc)
+	: Root_component<Channel>(ep, md_alloc), _env(env), _ep(ep) { }
+
+	/*
+	 * The subject word of the <policy> under <writ_channel> that matches
+	 * the label best, 0 for none. Only a policy that names the label or a
+	 * label prefix counts: the parent sets the prefix, while a suffix is
+	 * the client's own choice and must not bind identity. The config is
+	 * libc's, never updated, so every session sees the same policies.
+	 */
+	uint32_t _subject(Session_label const &label)
+	{
+		uint32_t subject = 0;
+		_channel_libc_env->with_config([&] (Node const &config) {
+			config.with_optional_sub_node("writ_channel", [&] (Node const &policies) {
+				subject = with_matching_policy(label, policies,
+					[&] (Node const &policy) -> uint32_t {
+						if (!policy.has_type("policy")) return 0;   /* <default-policy> */
+						if (!policy.has_attribute("label")
+						 && !policy.has_attribute("label_prefix"))
+							return 0;                               /* suffix-only */
+						return policy.attribute_value("subject", uint32_t(0)); },
+					[&] () -> uint32_t { return 0; }); }); });
+		return subject;
+	}
+
+	Create_result _create_session(char const *args) override
+	{
+		Session_label const label = label_from_args(args);
+
+		size_t const ram = Arg_string::find_arg(args, "ram_quota").ulong_value(0);
+		if (ram < CHANNEL_SESSION_RAM) {
+			warning("writ_channel: '", label, "' donated ", ram,
+			        " bytes, a channel needs ", unsigned(CHANNEL_SESSION_RAM));
+			return Create_error::INSUFFICIENT_RAM;
+		}
+
+		/*
+		 * Caps need no check here: Local_service::budget_adjusted_args,
+		 * which Root_component calls before _create_session, already
+		 * refuses a cap_quota below Writ_channel::Session::CAP_QUOTA with
+		 * INSUFFICIENT_CAPS (repos/base/include/base/service.h:170-177),
+		 * and the args seen here are the adjusted ones.
+		 */
+
+		uint32_t const subject = _subject(label);
+		if (!subject) {
+			warning("writ_channel: no <policy> with a subject for '", label,
+			        "', session denied");
+			return Create_error::DENIED;
+		}
+
+		unsigned slot = MAX_CHANNELS;
+		uint32_t id   = 0;
+		{
+			Mutex::Guard guard(_channel_mutex());
+			for (unsigned i = 0; i < MAX_CHANNELS; i++)
+				if (!_channels[i] && !_channel_closing[i]) { slot = i; break; }
+			if (slot < MAX_CHANNELS) id = _channel_next_id++;
+		}
+		if (slot == MAX_CHANNELS) {
+			warning("writ_channel: ", unsigned(MAX_CHANNELS),
+			        " channels open or closing, session for '", label, "' denied");
+			return Create_error::DENIED;
+		}
+
+		/* only this entrypoint creates sessions, so the slot stays free */
+		Channel &c = *new (md_alloc()) Channel(_env, _ep, id, subject, label);
+		{
+			Mutex::Guard guard(_channel_mutex());
+			_channels[slot] = &c;
+		}
+		log("writ_channel: channel ", id, " opened for '", label,
+		    "' route subject ", subject);
+		return c;
+	}
+
+	/*
+	 * The slot stays closing until take has handed the close event to
+	 * Bend; a request still queued for the channel becomes that event.
+	 */
+	void _destroy_session(Channel &c) override
+	{
+		bool queued_close = false;
+		{
+			Mutex::Guard guard(_channel_mutex());
+			for (unsigned i = 0; i < MAX_CHANNELS; i++)
+				if (_channels[i] == &c) {
+					_channels[i]        = nullptr;
+					_channel_closing[i] = c.id;
+				}
+			if (c.queued) {
+				for (unsigned i = 0; i < _channel_ring_count; i++) {
+					Channel_entry &e = _channel_ring[(_channel_ring_head + i) % CHANNEL_QUEUE_DEPTH];
+					if (e.id == c.id) e.close = true;
+				}
+				_channel_stale++;
+			} else if (_channel_ring_count < CHANNEL_QUEUE_DEPTH) {
+				_channel_ring[(_channel_ring_head + _channel_ring_count) % CHANNEL_QUEUE_DEPTH] =
+					{ c.id, c.subject, true };
+				_channel_ring_count++;
+				if (_channel_ring_count > _channel_ring_max) _channel_ring_max = _channel_ring_count;
+				queued_close = true;
+			} else {
+				/* not reached (one entry per slot); then no event, slot freed */
+				_channel_ring_full++;
+				for (uint32_t &id : _channel_closing)
+					if (id == c.id) id = 0;
+			}
+		}
+		if (queued_close) _channel_ready().up();
+		log("writ_channel: channel ", c.id, " closed, close event queued for Bend");
+		Genode::destroy(md_alloc(), &c);
+	}
+};
+
+static Kept<Entrypoint>             _channel_ep;
+static Kept<Sliced_heap>            _channel_heap;
+static Kept<Channel_root>           _channel_root;
+
+/*
+ * Announces the Writ_channel service when the config has a <writ_channel>
+ * node. Called once from Libc::Component::construct before main runs.
+ */
+static void _channel_init(Libc::Env &env)
+{
+	_channel_libc_env = &env;
+	env.with_config([&] (Node const &config) {
+	config.with_optional_sub_node("writ_channel", [&] (Node const &) {
+		_channel_ep.construct(env, size_t(CHANNEL_EP_STACK), "writ_channel",
+		                      Affinity::Location());
+		_channel_heap.construct(env.ram(), env.rm());
+		_channel_root.construct(env, *_channel_ep, *_channel_heap);
+		env.parent().announce(_channel_ep->manage(*_channel_root));
+		log("writ_channel: service announced (bucket ", unsigned(CHANNEL_BUCKET_SIZE),
+		    " bytes, record ", unsigned(CHANNEL_RECORD_SIZE), " bytes, queue depth ",
+		    unsigned(CHANNEL_QUEUE_DEPTH), ", channels ", unsigned(MAX_CHANNELS), ")");
+	}); });
+}
+
+/*
+ * Writes the shim's fixed refusal record into c's result bucket (caller
+ * holds _channel_mutex) and returns the client's signal to submit after
+ * the mutex is released. Depends on nothing but the request's sequence.
+ */
+static Signal_context_capability _channel_refuse(Channel &c, uint32_t seq)
+{
+	uint32_t volatile *bucket = c.result_ds.local_addr<uint32_t volatile>();
+	uint32_t const record[CHANNEL_RECORD_WORDS] = {
+		CHANNEL_VERSION, CHANNEL_KIND_REFUSAL, CHANNEL_DECISION_REFUSED,
+		CHANNEL_REASON_BAD_LENGTH, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+		bucket[CHANNEL_HEADER_SIZE/4 + i] = record[i];
+	bucket[1] = seq;
+	__atomic_thread_fence(__ATOMIC_RELEASE);
+	bucket[0] = CHANNEL_RECORD_SIZE;
+	return c.client_sigh;
+}
+
+extern "C" void writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)
+{
+	for (;;) {
+		_channel_ready().down();
+
+		Signal_context_capability refused { };
+		{
+			Mutex::Guard guard(_channel_mutex());
+			if (!_channel_ring_count) continue;   /* not reached: one up per entry */
+			Channel_entry const e = _channel_ring[_channel_ring_head];
+			_channel_ring_head = (_channel_ring_head + 1) % CHANNEL_QUEUE_DEPTH;
+			_channel_ring_count--;
+
+			if (e.close) {
+				for (uint32_t &id : _channel_closing)
+					if (id == e.id) id = 0;   /* the slot is free again */
+				for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+					record[i] = 0;
+				_channel_closed++;
+				*channel = e.id;
+				*subject = CHANNEL_SUBJECT_CLOSED;
+				return;
+			}
+
+			Channel *c = _channel_lookup(e.id);
+			if (!c) { _channel_stale++; continue; }   /* not reached: closes convert */
+			c->queued = false;
+
+			uint32_t const volatile *bucket = c->request_ds.local_addr<uint32_t const volatile>();
+			uint32_t const length = bucket[0];
+			/*
+			 * Pairs with the client's release fence before it writes the
+			 * length: the record words read below are not read before the
+			 * length that announced them.
+			 */
+			__atomic_thread_fence(__ATOMIC_ACQUIRE);
+			uint32_t const seq    = bucket[1];
+			if (length != CHANNEL_RECORD_SIZE) {
+				_channel_bad_length++;
+				warning("writ_channel: channel ", e.id, " request length ", length,
+				        " is not ", unsigned(CHANNEL_RECORD_SIZE),
+				        ", refused before Bend (bad length count ", _channel_bad_length, ")");
+				refused = _channel_refuse(*c, seq);
+			} else {
+				for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+					record[i] = bucket[CHANNEL_HEADER_SIZE/4 + i];
+
+				c->taken     = true;
+				c->taken_seq = seq;
+				_channel_taken++;
+				*channel = e.id;
+				*subject = e.subject;
+				return;
+			}
+		}
+		/* a refusal: signal the client, then wait for the next entry */
+		if (refused.valid())
+			Signal_transmitter(refused).submit();
+	}
+}
+
+extern "C" void writ_shim_put(uint32_t channel, uint32_t const *record)
+{
+	Signal_context_capability sigh { };
+	{
+		Mutex::Guard guard(_channel_mutex());
+		Channel *c = _channel_lookup(channel);
+		if (!c || !c->taken) { _channel_put_skipped++; return; }
+
+		uint32_t volatile *bucket = c->result_ds.local_addr<uint32_t volatile>();
+		for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+			bucket[CHANNEL_HEADER_SIZE/4 + i] = record[i];
+		bucket[1] = c->taken_seq;
+		__atomic_thread_fence(__ATOMIC_RELEASE);
+		bucket[0] = CHANNEL_RECORD_SIZE;
+
+		c->taken = false;
+		_channel_put++;
+		sigh = c->client_sigh;
+	}
+	if (sigh.valid())
+		Signal_transmitter(sigh).submit();
+}
+
 extern "C" void writ_mem_report(char const *tag)
 {
 	if (!_env) return;
@@ -772,7 +1421,23 @@ extern "C" void writ_mem_report(char const *tag)
 	    " faults resolved=", _faults_resolved,
 	    " benign retries=", _benign_retries,
 	    " reserved at hint=", _reserved_at_hint,
-	    " elsewhere=", _reserved_elsewhere, " released=", _released);
+	    " elsewhere=", _reserved_elsewhere, " released=", _released,
+	    " timer short wakes=", _timer_short_wakes);
+	if (_channel_root.constructed()) {
+		Mutex::Guard guard(_channel_mutex());
+		unsigned open = 0, closing = 0;
+		for (unsigned i = 0; i < MAX_CHANNELS; i++) {
+			if (_channels[i])        open++;
+			if (_channel_closing[i]) closing++;
+		}
+		log("writ_mem: [", tag, "] channel signals=", _channel_signals,
+		    " coalesced=", _channel_coalesced, " ring full=", _channel_ring_full,
+		    " ring max=", _channel_ring_max,
+		    " bad length=", _channel_bad_length, " stale=", _channel_stale,
+		    " taken=", _channel_taken, " put=", _channel_put,
+		    " put skipped=", _channel_put_skipped, " closed=", _channel_closed,
+		    " open=", open, " closing=", closing);
+	}
 }
 
 
@@ -832,6 +1497,9 @@ void Libc::Component::construct(Libc::Env &env)
 		env.parent().exit(1);
 		return;
 	}
+
+	/* Writ channel service, only with a <writ_channel> config node */
+	_channel_init(env);
 
 	/* as repos/libports/src/lib/posix/construct.cc */
 	Libc::with_libc([&] () {

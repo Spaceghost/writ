@@ -1,0 +1,12 @@
+#
+# writ_bend_monitor_claim_ignored.run - Genode run script (build
+# configuration), not Writ implementation. Genode channel lane, Task 2 fix
+# round 1, run 4. Route subject 1 (child writ_client_r, reader R), R's own
+# session 1 with expected revision 6, but the body's claimed_subject word
+# is 2 (S). Expected: Committed (decision 1, reason 0): the body claim is
+# ignored and the route's R is evaluated. Exits nonzero when that changes.
+# The shared procedure is scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl.
+#
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+writ_bend_monitor_run writ_client_r 1 1 6 2 1 0 0

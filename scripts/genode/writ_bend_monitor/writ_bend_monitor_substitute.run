@@ -1,0 +1,15 @@
+#
+# writ_bend_monitor_substitute.run - Genode run script (build
+# configuration), not Writ implementation. Genode channel lane, Task 2,
+# run 2. The same route as run 1 (child writ_client_r, policy subject 1 =
+# reader R), but the body claims subject S (claimed_subject 2) and names
+# S's session (monitor session 2). The monitor ignores the claim and
+# evaluates R: DataOS.commit_from_capability rejects because R is not the
+# session's reader. Expected: Denied (decision 2) with reason 6, the
+# library's own rejection (not reason 5, the descriptor refusal S would
+# meet as a route subject). Exits nonzero when that changes.
+# The shared procedure is scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl.
+#
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+writ_bend_monitor_run writ_client_r 1 2 0 2 2 6 0

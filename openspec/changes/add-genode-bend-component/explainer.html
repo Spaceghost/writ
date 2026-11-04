@@ -75,9 +75,9 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
   <span class="k">import</span> "./genode_log.c"
   <span class="k">import</span> "./genode_log.js"
 
-<span class="k">def</span> Genode.accept() -&gt; IO(Request):      <span class="c"># parks until a session delivers a request</span>
-  <span class="k">import</span> "./genode_accept.c"
-  <span class="k">import</span> "./genode_accept.js"</code></pre>
+<span class="k">def</span> Genode.take() -&gt; IO(Request):        <span class="c"># blocks until a channel delivers a request</span>
+  <span class="k">import</span> "./genode_take.c"
+  <span class="k">import</span> "./genode_take.js"</code></pre>
 <pre><code><span class="c">/* the C twin: a few lines that call one shim */</span>
 Term genode_log_run(Env e, Term* f, IoWork* w) {
   uint64_t n = 0; char* text = io_cstr(e, f[0], &amp;n);
@@ -134,7 +134,7 @@ Term genode_log_run(Env e, Term* f, IoWork* w) {
   <li>Pin Genode 26.08 and a base-linux run script. Compile the generated C of the hello program as a component. See its line in the Genode log.</li>
   <li>Execute every runtime row on base-linux. Decide the fault substitute from the result.</li>
   <li>Corpus and examples as components on base-linux. Line-for-line match with the Linux single-lane record.</li>
-  <li>Log, now, sleep effects over the shim. Then accept and answer. Serve one report-to-summary request and one with a substituted subject, denied by Bend.</li>
+  <li>Log, now, sleep effects over the shim. Then take and put. Serve one report-to-summary request and one with a substituted subject, denied by Bend.</li>
   <li>Bound request size and queue depth. Prove liveness against a client that never reads.</li>
   <li>Repeat corpus and the served request on x86_64 base-hw under QEMU. Separate record.</li>
 </ol>
@@ -148,7 +148,7 @@ Term genode_log_run(Env e, Term* f, IoWork* w) {
 
 <h2 id="start">Where a subagent starts</h2>
 <p>This lane needs a Genode build environment, which is the slowest part. A subagent should begin by pinning Genode 26.08 at commit <code>d18ee9e</code>, building a base-linux run script with a trivial component, and only then substituting the generated C. The second thing it should do is execute the fault row, because the answer shapes the rest of the port. It should read <code>docs/GENODE.md</code>, <code>docs/BEND-RUNTIME.md</code>, and <code>bend guide effects</code> before writing anything.</p>
-<p>It should coordinate with lane B: <code>Genode.accept</code> constructs the binding records that lane B's model defines, and must replay lane B's vectors.</p>
+<p>It should coordinate with lane B: <code>Genode.take</code> (named <code>Genode.accept</code> in the first draft of this change and still in the capability-adoption change's explainer) constructs the binding records that lane B's model defines, and must replay lane B's vectors.</p>
 <footer>Change files: <code>openspec/changes/add-genode-bend-component/</code>. Sibling pages: <strong>Genode Capability Adoption</strong> and <strong>Library-Unikernel Runtime</strong>. Branch <code>unikernel-runtime-proposals</code>.</footer>
 </div>
 </body>

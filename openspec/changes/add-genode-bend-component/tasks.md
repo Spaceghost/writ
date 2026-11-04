@@ -19,6 +19,40 @@ is the older corpus; parity for 1.4 was checked against the current
 record). The runtime rows are in
 verification/genode-runtime-rows-base-linux.md.
 
+Section 2 (Genode channel lane, 2026-11-04; all `base-linux`): 2.1, 2.3, and
+2.4 are checked, 2.2 stays open. 2.1: the probe component's text reaches the
+Genode LOG through `Genode.log`, and two `Genode.now` readings around
+`Genode.sleep(100)` are ordered with a delta of 101 ms
+(verification/genode-effects-base-linux.txt). 2.3: through `Genode.take` and
+`Genode.put` over one channel object per session, bound to one descriptor,
+reader R's report-to-summary request is Committed by
+`DataOS.commit_from_capability`, and the same route with a body claiming S
+is Denied by Bend (reason 6); S's session is synthetic, opened and not
+negotiated (verification/genode-channel-base-linux.txt, runs 1 to 4). 2.4:
+request size is bounded at 64 bytes and lengths 65, 0, and 0xFFFFFFFF
+(above the 4 KiB bucket) are counted and answered by the shim's fixed
+transport refusal before Bend; queue depth is bounded at one entry per
+channel slot and 8 slots: with 9 clients 8 sessions opened (the ninth
+refused) and 8 decisions over channels 1-4 (1-3 in the rerun) were made
+in ring order before the fuel ran out, with at most 3 entries in the
+ring at once (timing dependent; a full ring cannot occur by construction
+and was not observed). Coalescing in the shim (a channel signalled again
+while its entry is queued, kept to one entry) was not reliably exercised:
+coalesced was 0 in every retained run, and in six burst attempts it was
+above 0 twice (3 and 1), because Genode merges repeated submits to one
+signal context before the handler runs (about 10 handler calls for 400
+submits); no burst run is kept. A client that floods without ever reading its replies does not stop a second
+client from being served, nor does a client that exits before its reply
+or one that freed its result signal context, and the loop exits with
+value 0 when its fuel runs out (same file, TASK 3 and FINAL REVIEW);
+whether the reply signal can block the loop on base-linux in cases not
+run is not shown. GB-008's restart by a supervisor with a new
+generation is not configured. 2.2 stays open: the shim, its bounded queue,
+and the trust inventory exist (hosts/genode/INVENTORY.md lists files,
+exported symbols, and sessions), but the inventory's reviewer is still
+"Not reviewed under GB-006", and that the shim holds no policy decision is
+stated by its authors, not yet shown by that review.
+
 ## 1. Component build and runtime rows
 
 - [x] 1.1 Pin Genode 26.08, its toolchain, and a `base-linux` run script; compile the generated C of the `IO.print` reference program as a Genode component and show its output in the Genode log.
@@ -28,10 +62,10 @@ verification/genode-runtime-rows-base-linux.md.
 
 ## 2. Effects and the Writ channel
 
-- [ ] 2.1 Author the `Genode.log`, `Genode.now`, and `Genode.sleep` effects in Bend with C twins over the shim; verify output and monotonic time from inside the component.
+- [x] 2.1 Author the `Genode.log`, `Genode.now`, and `Genode.sleep` effects in Bend with C twins over the shim; verify output and monotonic time from inside the component.
 - [ ] 2.2 Write the `extern "C"` shim with a bounded request queue and publish its trust inventory (files, exported symbols, sessions opened, reviewer); show it contains no policy decision.
-- [ ] 2.3 Author `Genode.take` and `Genode.put` over the per-descriptor request and result buckets; serve one report-to-summary request record through `DataOS.commit_from_capability` and one request with a substituted subject, showing the second denied by Bend.
-- [ ] 2.4 Bound and test request size, queue depth, and a client that never reads its reply; verify the loop keeps serving other sessions.
+- [x] 2.3 Author `Genode.take` and `Genode.put` over the per-descriptor request and result buckets; serve one report-to-summary request record through `DataOS.commit_from_capability` and one request with a substituted subject, showing the second denied by Bend.
+- [x] 2.4 Bound and test request size, queue depth, and a client that never reads its reply; verify the loop keeps serving other sessions.
 
 ## 3. base-hw and evidence
 
