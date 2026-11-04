@@ -1056,6 +1056,7 @@ def prune(remaining: Delegations, +cut: Cut, +aliases: Aliases, +objects: Object
 def remove_subtree(+delegations: Delegations, +aliases: Aliases, +objects: Objects, +root: Nat) -> Delegations:
   prune(delegations, CutAlias{root}, aliases, objects, delegations, False{})
 
+# Exported helper, not a release API: named so LAWS.bend can state the bump.
 def bumped(ok: Bool, object: Object) -> Object:
   match ok object:
     case True{} Object{id, generation, owner, kind, derived_from, service}:

@@ -20,7 +20,15 @@ import ./Test.bend as Test
 #   learns which object was invoked, not who invoked it, so the model cannot
 #   observe it; it is discharged by reviewed confinement evidence for each
 #   qualified profile, never by a model test.
-# - GA-009 (canonical vectors) is a later task; these checks emit no vectors.
+#
+# GA-009 canonical vectors: after the check that asserts it, each vector-backed
+# scenario prints one line `VECTOR <scenario-id> <transition> <outcome>
+# <reason-or-id>`, rendered from the transition's actual result. The id field
+# names only model ids (alias, object, or protection-domain numbers of this
+# synthetic state), never a native selector. A host port replays the same
+# inputs against its own binding and compares normalized outcomes; the inputs
+# for each id are listed in openspec/traceability/genode-capability-adoption.md.
+# verification/host-binding-vectors.txt holds the captured lines.
 
 # --- Identities ------------------------------------------------------------
 
@@ -83,8 +91,8 @@ def token() -> T.CodeId:
 
 # The caller the monitor authenticated for an invocation. Frontend re-checks
 # its subject and token against the bound handle on every use.
-def caller(subject: Nat) -> F.Caller:
-  F.Caller{subject, token()}
+def caller(caller_subject: Nat) -> F.Caller:
+  F.Caller{caller_subject, token()}
 
 def reader_caller() -> F.Caller:
   caller(subject())
@@ -114,43 +122,46 @@ def routes() -> H.Routes:
 def service_one_routes() -> H.Routes:
   H.Routes{reader_route(), H.NoRoutes{}}
 
-def account(domain: Nat, caps: Nat) -> H.Quota:
-  H.Quota{domain, 4096n, caps}
+def account(account_domain: Nat, caps: Nat) -> H.Quota:
+  H.Quota{account_domain, 4096n, caps}
 
 # Native quota accounts: the reader's capability slots are the scenario's
 # variable; the worker and helper each have five.
-def quotas(reader_caps: Nat) -> H.Quotas:
-  H.Quotas{account(reader(), reader_caps), H.Quotas{account(worker(), 5n),
+def quotas(reader_slots: Nat) -> H.Quotas:
+  H.Quotas{account(reader(), reader_slots), H.Quotas{account(worker(), 5n),
     H.Quotas{account(helper(), 5n), H.NoQuotas{}}}}
 
 # An empty binding state with the recorded routes and the given reader quota.
-def start(reader_caps: Nat) -> H.State:
-  H.State{0n, 1n, 1n, H.NoObjects{}, H.NoAliases{}, routes(), quotas(reader_caps),
+def start(reader_slots: Nat) -> H.State:
+  H.State{0n, 1n, 1n, H.NoObjects{}, H.NoAliases{}, routes(), quotas(reader_slots),
     H.NoDelegations{}, H.NoBindings{}, F.empty()}
 
 # The parent reconfigured its route table; nothing else changed.
-def with_routes(state: H.State, routes: H.Routes) -> H.State:
+def with_routes(state: H.State, new_routes: H.Routes) -> H.State:
   match state:
-    case H.State{r, o, a, objects, aliases, _, quotas, delegations, bindings, frontend}:
-      H.State{r, o, a, objects, aliases, routes, quotas, delegations, bindings, frontend}
+    case H.State{r, o, a, objects, aliases, _, kept_quotas, delegations, bindings, frontend}:
+      H.State{r, o, a, objects, aliases, new_routes, kept_quotas, delegations, bindings, frontend}
 
 # The native quota accounts changed (exhausted or topped up); nothing else did.
-def with_quotas(state: H.State, quotas: H.Quotas) -> H.State:
+def with_quotas(state: H.State, new_quotas: H.Quotas) -> H.State:
   match state:
-    case H.State{r, o, a, objects, aliases, routes, _, delegations, bindings, frontend}:
-      H.State{r, o, a, objects, aliases, routes, quotas, delegations, bindings, frontend}
+    case H.State{r, o, a, objects, aliases, kept_routes, _, delegations, bindings, frontend}:
+      H.State{r, o, a, objects, aliases, kept_routes, new_quotas, delegations, bindings, frontend}
 
 # GA-005 premise: a domain holds a reference with no delegation record behind
 # it (for example, it was passed outside the monitor). Structurally valid.
 def without_delegations(state: H.State) -> H.State:
   match state:
-    case H.State{r, o, a, objects, aliases, routes, quotas, _, bindings, frontend}:
-      H.State{r, o, a, objects, aliases, routes, quotas, H.NoDelegations{}, bindings, frontend}
+    case H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, _, bindings, frontend}:
+      H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, H.NoDelegations{}, bindings, frontend}
 
-# GA-001 premise: the reader's Session object 1 is at generation 4 after
-# earlier destructions. Alias 2 was issued at generation 3 and is stale; alias
-# 1 was reissued at generation 4 and is current. Object 1 is bound to the
-# mounted Frontend handle 1 in `frontend`.
+# GA-001 premise, using the scenario's literal generations: the reader's
+# Session object 1 is at generation 4, alias 2 records generation 3 and is
+# stale, and alias 1 records generation 4 and is current. Object 1 is bound to
+# the mounted Frontend handle 1 in `frontend`. The state is structurally valid
+# but no sequence of transitions reaches it (no transition issues an alias to
+# an existing object at a later generation); staleness made by transitions is
+# covered by GA-004 and GA-011.
 def generations_state(frontend: F.State) -> H.State:
   H.State{1n, 2n, 3n, H.Objects{H.Object{1n, 4n, subject(), H.Session{}, 0n, service()}, H.NoObjects{}},
     H.Aliases{H.Alias{2n, reader(), 1n, 3n}, H.Aliases{H.Alias{1n, reader(), 1n, 4n}, H.NoAliases{}}},
@@ -349,12 +360,12 @@ def handle_mounted(found: Maybe<&2, F.Handle>) -> Bool:
     case Some{handle}:
       F.is_mount(handle)
 
-def object_is(found: Maybe<&2, H.Object>, kind: H.ObjectKind, owner: Nat, service: Nat) -> Bool:
+def object_is(found: Maybe<&2, H.Object>, kind: H.ObjectKind, owner: Nat, wanted_service: Nat) -> Bool:
   match found:
     case None{}:
       False{}
     case Some{H.Object{_, _, got_owner, got_kind, _, got_service}}:
-      kind_equal(got_kind, kind) && Nat.is_eq(got_owner, owner) && Nat.is_eq(got_service, service)
+      kind_equal(got_kind, kind) && Nat.is_eq(got_owner, owner) && Nat.is_eq(got_service, wanted_service)
 
 def alias_is(found: Maybe<&2, H.Alias>, expected: H.Alias) -> Bool:
   match found:
@@ -387,19 +398,66 @@ def handle_count(handles: F.Handles) -> Nat:
 def frontend_handles(state: H.State) -> Nat:
   handle_count(F.handles(H.frontend(state)))
 
-# Capability slots left in `domain`'s account; 0n when it has no account.
-def caps_of(quotas: H.Quotas, +domain: Nat) -> Nat:
-  match quotas:
+# Capability slots left in `wanted_domain`'s account; 0n when it has no account.
+def caps_of(accounts: H.Quotas, +wanted_domain: Nat) -> Nat:
+  match accounts:
     case H.NoQuotas{}:
       0n
     case H.Quotas{H.Quota{owner, _, caps}, rest}:
-      H.pick_nat(Nat.is_eq(owner, domain), caps, caps_of(rest, domain))
+      H.pick_nat(Nat.is_eq(owner, wanted_domain), caps, caps_of(rest, wanted_domain))
 
 def reader_caps(state: H.State) -> Nat:
   caps_of(H.quotas(state), reader())
 
 def frontend_handle(state: H.State, id: Nat) -> Maybe<&2, F.Handle>:
   F.find_handle(F.handles(H.frontend(state)), id)
+
+# --- Canonical vectors (GA-009) ------------------------------------------------
+# Rendered from the actual Change, so a vector can only differ from a run if the
+# transition's outcome differs. Denials print the closed-type constructor name;
+# commits print the model id the change produced (see each transition's
+# documentation in HostBinding.bend for which id that is).
+
+def reason_name(reason: H.Error) -> String:
+  match reason:
+    case H.StaleGeneration{}: "StaleGeneration"
+    case H.RouteMismatch{}: "RouteMismatch"
+    case H.SubjectMismatch{}: "SubjectMismatch"
+    case H.WidenedRights{}: "WidenedRights"
+    case H.QuotaExhausted{}: "QuotaExhausted"
+    case H.UnknownObject{}: "UnknownObject"
+    case H.UnknownAlias{}: "UnknownAlias"
+    case H.FrontendRejected{}: "FrontendRejected"
+    case H.StaleRevision{}: "StaleRevision"
+
+# mount, open, attenuate, and delegate issue an alias. The object it names is
+# printed too, so a host that returns an alias to the parent object (GA-003)
+# or mints an object for a delegated copy (GA-006) disagrees with the vector.
+def alias_outcome(change: H.Change) -> String:
+  match change:
+    case H.Rejected{_, reason}:
+      "denied " ++ reason_name(reason)
+    case H.Changed{state, +id}:
+      "accepted alias=" ++ Nat.show(id) ++ ";object=" ++ Nat.show(H.alias_object_of(H.aliases(state), id))
+
+# bind_close reports the destroyed object's id.
+def close_outcome(change: H.Change) -> String:
+  match change:
+    case H.Rejected{_, reason}:
+      "denied " ++ reason_name(reason)
+    case H.Changed{_, id}:
+      "accepted object=" ++ Nat.show(id)
+
+# revoke reports the revoked protection domain's id.
+def revoke_outcome(change: H.Change) -> String:
+  match change:
+    case H.Rejected{_, reason}:
+      "denied " ++ reason_name(reason)
+    case H.Changed{_, id}:
+      "accepted domain=" ++ Nat.show(id)
+
+def vector(scenario: String, transition: String, outcome: String) -> IO(Unit):
+  IO.print("VECTOR " ++ scenario ++ " " ++ transition ++ " " ++ outcome)
 
 # --- Scenario states ------------------------------------------------------------
 # Each is a named sequence of committed transitions from initial(); later
@@ -431,6 +489,14 @@ def attenuate_change() -> H.Change:
 
 def attenuated() -> H.State:
   H.Change.state(attenuate_change())
+
+# R delegates its attenuated read-only descriptor to worker W with read: alias
+# 4 is a copy of object 3 recorded under alias 3. Revision 4.
+def attenuated_copy_change() -> H.Change:
+  H.delegate(attenuated(), 3n, 3n, reader(), worker(), read())
+
+def attenuated_shared() -> H.State:
+  H.Change.state(attenuated_copy_change())
 
 # R delegates its descriptor to worker W with read: alias 3 is a copy of
 # object 2 recorded under alias 2. Revision 3.
@@ -524,6 +590,76 @@ def derived_revoked() -> H.State:
 def forged_holder() -> H.State:
   without_delegations(shared())
 
+# --- Named transitions behind vectors --------------------------------------------
+# Each is used by exactly the check that asserts it and by its VECTOR line, so
+# the printed outcome and the asserted one come from the same inputs.
+
+def stale_open() -> H.Change:
+  H.bind_open(generations(), 1n, 2n, reader(), reader_caller(), registry(), read(), live())
+
+def current_open() -> H.Change:
+  H.bind_open(generations(), 1n, 1n, reader(), reader_caller(), registry(), read(), live())
+
+def suffix_mount() -> H.Change:
+  H.bind_mount(initial(), 0n, reader_route(), caller(other_subject()), registry(), all_rights(), live())
+
+def unrecorded_mount() -> H.Change:
+  H.bind_mount(initial(), 0n, H.Route{parent_domain(), reader(), service(), other_subject()}, caller(other_subject()), registry(), all_rights(), live())
+
+def rerouted_open() -> H.Change:
+  H.bind_open(rerouted(), 1n, 1n, reader(), reader_caller(), registry(), all_rights(), live())
+
+def guessed_open() -> H.Change:
+  H.bind_open(opened(), 2n, 99n, reader(), reader_caller(), registry(), read(), live())
+
+def shared_close() -> H.Change:
+  H.bind_close(shared(), 3n, 2n, reader(), reader_caller())
+
+def owner_after_close() -> H.Change:
+  H.delegate(shared_closed(), 4n, 2n, reader(), helper(), read())
+
+def holder_after_close() -> H.Change:
+  H.delegate(shared_closed(), 4n, 3n, worker(), helper(), read())
+
+def stale_revision_close() -> H.Change:
+  H.bind_close(shared(), 2n, 2n, reader(), reader_caller())
+
+def unrecorded_attenuate() -> H.Change:
+  H.bind_attenuate(forged_holder(), 3n, 3n, worker(), reader_caller(), registry(), read(), live())
+
+def non_holder_open() -> H.Change:
+  H.bind_open(mounted(), 1n, 1n, worker(), reader_caller(), registry(), read(), live())
+
+def widened_delegate() -> H.Change:
+  H.delegate(attenuated(), 3n, 3n, reader(), worker(), read_write())
+
+def quota_before_authority() -> H.Change:
+  H.bind_open(exhausted(), 1n, 1n, reader(), caller(other_subject()), registry(), all_rights(), live())
+
+def stale_revision_mount() -> H.Change:
+  H.bind_mount(mounted(), 0n, reader_route(), reader_caller(), registry(), all_rights(), live())
+
+def rejected_mount() -> H.Change:
+  H.bind_mount(initial(), 0n, reader_route(), reader_caller(), registry(), unknown_right(), live())
+
+def invalid_mount() -> H.Change:
+  H.bind_mount(dangling_state(), 0n, reader_route(), reader_caller(), registry(), all_rights(), live())
+
+def chain_revoke() -> H.Change:
+  H.revoke(chain(), 4n, reader())
+
+def worker_after_revoke() -> H.Change:
+  H.delegate(chain_revoked(), 5n, 3n, worker(), helper(), read())
+
+def helper_after_revoke() -> H.Change:
+  H.delegate(chain_revoked(), 5n, 4n, helper(), worker(), read())
+
+def wider_child() -> H.Change:
+  H.delegate(shared(), 3n, 3n, worker(), helper(), read_write())
+
+def derived_after_close() -> H.Change:
+  H.bind_attenuate(derived_closed(), 5n, 4n, worker(), reader_caller(), registry(), read(), live())
+
 # The equality and denial helpers must discriminate, or every denial check
 # below would pass vacuously.
 def helper_checks() -> IO(Unit):
@@ -538,10 +674,12 @@ def helper_checks() -> IO(Unit):
 def ga001_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(H.valid(generations()), "GA-001 generation fixture is a valid state")
-    Test.check(denied(H.bind_open(generations(), 1n, 2n, reader(), reader_caller(), registry(), read(), live()), generations(), H.StaleGeneration{}), "GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration")
+    Test.check(denied(stale_open(), generations(), H.StaleGeneration{}), "GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration")
+    vector("GA-001-1", "bind_open", alias_outcome(stale_open()))
     Test.check(denied(H.delegate(generations(), 1n, 2n, reader(), worker(), read()), generations(), H.StaleGeneration{}), "GA-001 stale alias cannot be delegated")
     Test.check(denied(H.bind_close(generations(), 1n, 2n, reader(), reader_caller()), generations(), H.StaleGeneration{}), "GA-001 stale alias cannot close the current object")
-    Test.check(H.Change.accepted(H.bind_open(generations(), 1n, 1n, reader(), reader_caller(), registry(), read(), live())), "GA-001 alias at current generation 4 proceeds")
+    Test.check(H.Change.accepted(current_open()), "GA-001 alias at current generation 4 proceeds")
+    vector("GA-001-2", "bind_open", alias_outcome(current_open()))
     Test.check(denied(H.bind_open(generations(), 1n, 1n, reader(), caller(other_subject()), registry(), read(), live()), generations(), H.FrontendRejected{}), "GA-001 current alias reaches the Frontend check")
 
 # GA-002 Mount binds through a parent route. The client-chosen label suffix
@@ -549,22 +687,28 @@ def ga001_checks() -> IO(Unit):
 def ga002_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(H.Change.accepted(mount_change()), "GA-002 mount on a recorded route naming the caller succeeds")
+    vector("GA-002-1", "bind_mount", alias_outcome(mount_change()))
     Test.check(issued_is(H.Change.issued(mount_change()), 1n), "GA-002 mount issues the first alias id")
     Test.check(object_is(H.find_object(H.objects(mounted()), 1n), H.Session{}, subject(), service()), "GA-002 mount mints a Session owned by the route subject on the route service")
     Test.check(H.alias_held(H.aliases(mounted()), 1n, reader()), "GA-002 the routed child domain holds the Session alias")
     Test.check(issued_is(H.find_binding(H.bindings(mounted()), 1n), 1n), "GA-002 the Session is bound to the new Frontend handle")
     Test.check(handle_mounted(frontend_handle(mounted(), 1n)) && Nat.is_eq(F.revision(H.frontend(mounted())), 1n), "GA-002 Frontend.mount was applied")
     Test.check(H.valid(mounted()), "GA-002 mount preserves binding validity")
-    Test.check(denied(H.bind_mount(initial(), 0n, reader_route(), caller(other_subject()), registry(), all_rights(), live()), initial(), H.RouteMismatch{}), "GA-002 route prefix naming R mounted for caller S denied RouteMismatch")
-    Test.check(denied(H.bind_mount(initial(), 0n, H.Route{parent_domain(), reader(), service(), other_subject()}, caller(other_subject()), registry(), all_rights(), live()), initial(), H.RouteMismatch{}), "GA-002 a presented route the parent never recorded denied RouteMismatch")
+    Test.check(denied(suffix_mount(), initial(), H.RouteMismatch{}), "GA-002 route prefix naming R mounted for caller S denied RouteMismatch")
+    vector("GA-002-2", "bind_mount", alias_outcome(suffix_mount()))
+    Test.check(denied(unrecorded_mount(), initial(), H.RouteMismatch{}), "GA-002 a presented route the parent never recorded denied RouteMismatch")
+    vector("GA-002-3", "bind_mount", alias_outcome(unrecorded_mount()))
     Test.check(denied(H.bind_mount(initial(), 0n, H.Route{parent_domain(), reader(), unrouted_service(), subject()}, reader_caller(), registry(), all_rights(), live()), initial(), H.RouteMismatch{}), "GA-002 route for an unrouted service denied RouteMismatch")
     Test.check(H.Change.accepted(H.bind_open(other_mounted(), 1n, 1n, reader(), reader_caller(), registry(), all_rights(), live())), "GA-002 Session on the second service opens under its own route")
-    Test.check(denied(H.bind_open(rerouted(), 1n, 1n, reader(), reader_caller(), registry(), all_rights(), live()), rerouted(), H.SubjectMismatch{}), "GA-002 a route on another service does not authorize the holder")
+    Test.check(H.valid(rerouted()), "GA-002 route withdrawal fixture is a valid state")
+    Test.check(denied(rerouted_open(), rerouted(), H.SubjectMismatch{}), "GA-002 a route on another service does not authorize the holder")
+    vector("GA-002-4", "bind_open", alias_outcome(rerouted_open()))
 
 # GA-003 Open and attenuate mint new objects.
 def ga003_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(H.Change.accepted(open_change()) && issued_is(H.Change.issued(open_change()), 2n), "GA-003 open from the Session issues a new alias")
+    vector("GA-003-1", "bind_open", alias_outcome(open_change()))
     Test.check(Bool.not(Nat.is_eq(H.alias_object_of(H.aliases(opened()), 2n), H.alias_object_of(H.aliases(opened()), 1n))), "GA-003 opened alias names a distinct object")
     Test.check(object_is(H.find_object(H.objects(opened()), 2n), H.Descriptor{}, subject(), service()) && Nat.is_eq(object_count(H.objects(opened())), 2n), "GA-003 open mints a Descriptor object")
     Test.check(issued_is(H.find_binding(H.bindings(opened()), 2n), 2n), "GA-003 the new object is bound to the new handle")
@@ -573,6 +717,7 @@ def ga003_checks() -> IO(Unit):
     Test.check(H.valid(opened()), "GA-003 open preserves binding validity")
     Test.check(H.Change.accepted(attenuate_change()) && issued_is(H.Change.issued(attenuate_change()), 3n), "GA-003 attenuate issues a new alias")
     Test.check(Nat.is_eq(H.alias_object_of(H.aliases(attenuated()), 3n), 3n) && issued_is(H.find_binding(H.bindings(attenuated()), 3n), 3n), "GA-003 attenuate mints a distinct object bound to a distinct handle")
+    vector("GA-003-2", "bind_attenuate", alias_outcome(attenuate_change()))
     Test.check(handle_rights_are(frontend_handle(attenuated(), 2n), all_rights()), "GA-003 attenuate leaves the parent Frontend handle rights intact")
     Test.check(handle_rights_are(frontend_handle(attenuated(), 3n), read()), "GA-003 the attenuated Frontend handle carries only read")
     Test.check(rights_are(H.resolve(attenuated(), 2n, reader()), all_rights()) && rights_are(H.resolve(attenuated(), 3n, reader()), read()), "GA-003 parent alias keeps its rights and the copy gets the narrower rights")
@@ -580,18 +725,23 @@ def ga003_checks() -> IO(Unit):
     Test.check(H.valid(attenuated()), "GA-003 attenuate preserves binding validity")
     Test.check(denied(H.bind_attenuate(mounted(), 1n, 1n, reader(), reader_caller(), registry(), read(), live()), mounted(), H.FrontendRejected{}), "GA-003 attenuating a Session alias denied FrontendRejected")
     Test.check(denied(H.bind_attenuate(opened(), 2n, 2n, reader(), reader_caller(), registry(), unknown_right(), live()), opened(), H.WidenedRights{}), "GA-003 attenuate outside the protocol rights denied WidenedRights")
-    Test.check(denied(H.bind_open(opened(), 2n, 99n, reader(), reader_caller(), registry(), read(), live()), opened(), H.UnknownAlias{}), "GA-003 open through an unknown alias denied UnknownAlias")
+    Test.check(denied(guessed_open(), opened(), H.UnknownAlias{}), "GA-003 open through an unknown alias denied UnknownAlias")
+    vector("GA-003-3", "bind_open", alias_outcome(guessed_open()))
 
 # GA-004 Close destroys and invalidates all aliases.
 def ga004_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(H.Change.accepted(H.bind_close(shared(), 3n, 2n, reader(), reader_caller())), "GA-004 owner closes a descriptor held by two domains")
-    Test.check(denied(H.delegate(shared_closed(), 4n, 2n, reader(), helper(), read()), shared_closed(), H.StaleGeneration{}), "GA-004 after close the owner's alias is stale")
-    Test.check(denied(H.delegate(shared_closed(), 4n, 3n, worker(), helper(), read()), shared_closed(), H.StaleGeneration{}), "GA-004 after close the second holder's alias is stale")
+    Test.check(H.Change.accepted(shared_close()), "GA-004 owner closes a descriptor held by two domains")
+    vector("GA-004-1", "bind_close", close_outcome(shared_close()))
+    Test.check(denied(owner_after_close(), shared_closed(), H.StaleGeneration{}), "GA-004 after close the owner's alias is stale")
+    vector("GA-004-2", "delegate", alias_outcome(owner_after_close()))
+    Test.check(denied(holder_after_close(), shared_closed(), H.StaleGeneration{}), "GA-004 after close the second holder's alias is stale")
+    vector("GA-004-3", "delegate", alias_outcome(holder_after_close()))
     Test.check(handle_closed(frontend_handle(shared_closed(), 2n)), "GA-004 close applies Frontend.close to the bound handle")
     Test.check(H.Change.accepted(H.bind_open(shared_closed(), 4n, 1n, reader(), reader_caller(), registry(), read(), live())), "GA-004 close leaves the parent Session usable")
     Test.check(H.valid(shared_closed()), "GA-004 close preserves binding validity")
-    Test.check(denied(H.bind_close(shared(), 2n, 2n, reader(), reader_caller()), shared(), H.StaleRevision{}), "GA-004 close at a stale revision destroys nothing and leaves state unchanged")
+    Test.check(denied(stale_revision_close(), shared(), H.StaleRevision{}), "GA-004 close at a stale revision destroys nothing and leaves state unchanged")
+    vector("GA-004-4", "bind_close", close_outcome(stale_revision_close()))
     Test.check(denied(H.bind_close(shared(), 3n, 2n, reader(), caller(other_subject())), shared(), H.FrontendRejected{}), "GA-004 close Frontend rejects destroys nothing")
     Test.check(denied(H.bind_close(shared(), 3n, 2n, helper(), reader_caller()), shared(), H.SubjectMismatch{}), "GA-004 a domain without the alias cannot close it")
 
@@ -599,10 +749,13 @@ def ga004_checks() -> IO(Unit):
 def ga005_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(H.valid(forged_holder()), "GA-005 holder-without-record fixture is a valid state")
-    Test.check(denied(H.bind_attenuate(forged_holder(), 3n, 3n, worker(), reader_caller(), registry(), read(), live()), forged_holder(), H.SubjectMismatch{}), "GA-005 alias held by Q with no delegation record denied SubjectMismatch")
+    Test.check(denied(unrecorded_attenuate(), forged_holder(), H.SubjectMismatch{}), "GA-005 alias held by Q with no delegation record denied SubjectMismatch")
+    vector("GA-005-1", "bind_attenuate", alias_outcome(unrecorded_attenuate()))
     Test.check(denied(H.delegate(forged_holder(), 3n, 3n, worker(), helper(), read()), forged_holder(), H.SubjectMismatch{}), "GA-005 unrecorded holder cannot delegate onward")
-    Test.check(denied(H.bind_open(mounted(), 1n, 1n, worker(), reader_caller(), registry(), read(), live()), mounted(), H.SubjectMismatch{}), "GA-005 a domain that does not hold the alias denied SubjectMismatch")
+    Test.check(denied(non_holder_open(), mounted(), H.SubjectMismatch{}), "GA-005 a domain that does not hold the alias denied SubjectMismatch")
+    vector("GA-005-2", "bind_open", alias_outcome(non_holder_open()))
     Test.check(H.Change.accepted(worker_derive_change()), "GA-005 recorded delegation to the worker is accepted")
+    vector("GA-005-3", "bind_attenuate", alias_outcome(worker_derive_change()))
     Test.check(H.Change.accepted(session_copy_change()) && H.Change.accepted(worker_open_change()), "GA-005 delegatee opens through a delegated Session")
     Test.check(H.Change.accepted(H.bind_attenuate(worker_opened(), 3n, 3n, worker(), reader_caller(), registry(), read(), live())), "GA-005 the delegatee's opened alias is usable")
     Test.check(rights_are(H.resolve(worker_opened(), 3n, worker()), read()), "GA-005 the delegatee's opened alias resolves within the record")
@@ -612,9 +765,14 @@ def ga005_checks() -> IO(Unit):
 # GA-006 Delegation cannot widen rights.
 def ga006_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(H.delegate(attenuated(), 3n, 3n, reader(), worker(), read_write()), attenuated(), H.WidenedRights{}), "GA-006 read-only descriptor delegated with read and write denied WidenedRights")
+    Test.check(denied(widened_delegate(), attenuated(), H.WidenedRights{}), "GA-006 read-only descriptor delegated with read and write denied WidenedRights")
+    vector("GA-006-1", "delegate", alias_outcome(widened_delegate()))
     Test.check(denied(H.delegate(opened(), 2n, 2n, reader(), worker(), unknown_right()), opened(), H.WidenedRights{}), "GA-006 delegation outside the protocol rights denied WidenedRights")
+    Test.check(H.Change.accepted(attenuated_copy_change()) && issued_is(H.Change.issued(attenuated_copy_change()), 4n), "GA-006 read delegation of the same read-only descriptor is recorded")
+    vector("GA-006-2", "delegate", alias_outcome(attenuated_copy_change()))
+    Test.check(rights_are(H.resolve(attenuated_shared(), 4n, worker()), read()) && Nat.is_eq(H.alias_object_of(H.aliases(attenuated_shared()), 4n), 3n), "GA-006 delegatee of the read-only descriptor shares its object and carries read only")
     Test.check(H.Change.accepted(copy_change()) && issued_is(H.Change.issued(copy_change()), 3n), "GA-006 narrower read-only delegation is recorded")
+    vector("GA-006-3", "delegate", alias_outcome(copy_change()))
     Test.check(rights_are(H.resolve(shared(), 3n, worker()), read()), "GA-006 delegatee alias carries read only")
     Test.check(rights_are(H.resolve(shared(), 2n, reader()), all_rights()), "GA-006 delegator alias keeps its rights")
     Test.check(denied(H.bind_attenuate(shared(), 3n, 3n, worker(), reader_caller(), registry(), read_write(), live()), shared(), H.WidenedRights{}), "GA-006 delegatee cannot attenuate past its delegated rights")
@@ -625,9 +783,12 @@ def ga007_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(denied(H.bind_mount(start(0n), 0n, reader_route(), reader_caller(), registry(), all_rights(), live()), start(0n), H.QuotaExhausted{}), "GA-007 mount with zero capability quota denied QuotaExhausted")
     Test.check(denied(quota_open(), exhausted(), H.QuotaExhausted{}), "GA-007 open with zero capability quota denied QuotaExhausted")
-    Test.check(Nat.is_eq(frontend_handles(H.Change.state(quota_open())), 1n) && Nat.is_eq(F.revision(H.frontend(H.Change.state(quota_open()))), 1n), "GA-007 quota denial creates no Frontend handle")
-    Test.check(denied(H.bind_open(exhausted(), 1n, 1n, reader(), caller(other_subject()), registry(), all_rights(), live()), exhausted(), H.QuotaExhausted{}), "GA-007 quota is checked before Frontend authority")
+    vector("GA-007-1", "bind_open", alias_outcome(quota_open()))
+    Test.check(Nat.is_eq(frontend_handles(H.Change.state(retry())), 1n+frontend_handles(exhausted())) && Nat.is_eq(F.revision(H.frontend(H.Change.state(retry()))), 1n+F.revision(H.frontend(exhausted()))), "GA-007 only the retried open adds a Frontend handle and advances Frontend")
+    Test.check(denied(quota_before_authority(), exhausted(), H.QuotaExhausted{}), "GA-007 quota is checked before Frontend authority")
+    vector("GA-007-2", "bind_open", alias_outcome(quota_before_authority()))
     Test.check(H.Change.accepted(retry()) && issued_is(H.Change.issued(retry()), 2n), "GA-007 after top-up the open proceeds at the same revision")
+    vector("GA-007-3", "bind_open", alias_outcome(retry()))
     Test.check(Nat.is_eq(frontend_handles(H.Change.state(retry())), 2n) && Nat.is_eq(reader_caps(H.Change.state(retry())), 0n), "GA-007 the retried open is charged and reaches Frontend")
     Test.check(Nat.is_eq(reader_caps(opened()), 3n), "GA-007 mount and open each charge one capability slot")
     Test.check(Nat.is_eq(reader_caps(H.Change.state(H.bind_close(opened(), 2n, 2n, reader(), reader_caller()))), 4n), "GA-007 destroying an object refunds its capability slot")
@@ -638,14 +799,17 @@ def ga007_checks() -> IO(Unit):
 # the revision gate and invalid input states.
 def ga008_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(H.bind_mount(mounted(), 0n, reader_route(), reader_caller(), registry(), all_rights(), live()), mounted(), H.StaleRevision{}), "GA-008 mount at a stale revision denied StaleRevision")
-    Test.check(denied(H.bind_mount(initial(), 0n, reader_route(), reader_caller(), registry(), unknown_right(), live()), initial(), H.FrontendRejected{}), "GA-008 mount Frontend rejects returns the input state")
+    Test.check(denied(stale_revision_mount(), mounted(), H.StaleRevision{}), "GA-008 mount at a stale revision denied StaleRevision")
+    vector("GA-008-1", "bind_mount", alias_outcome(stale_revision_mount()))
+    Test.check(denied(rejected_mount(), initial(), H.FrontendRejected{}), "GA-008 mount Frontend rejects returns the input state")
+    vector("GA-008-2", "bind_mount", alias_outcome(rejected_mount()))
     Test.check(denied(H.bind_open(opened(), 1n, 1n, reader(), reader_caller(), registry(), read(), live()), opened(), H.StaleRevision{}), "GA-008 open at a stale revision denied StaleRevision")
     Test.check(denied(H.bind_attenuate(opened(), 1n, 2n, reader(), reader_caller(), registry(), read(), live()), opened(), H.StaleRevision{}), "GA-008 attenuate at a stale revision denied StaleRevision")
     Test.check(denied(H.delegate(opened(), 1n, 2n, reader(), worker(), read()), opened(), H.StaleRevision{}), "GA-008 delegate at a stale revision denied StaleRevision")
     Test.check(denied(H.revoke(opened(), 1n, reader()), opened(), H.StaleRevision{}), "GA-008 revoke at a stale revision denied StaleRevision")
     Test.check(Bool.not(H.valid(dangling_state())), "GA-008 dangling alias fixture is invalid")
-    Test.check(denied(H.bind_mount(dangling_state(), 0n, reader_route(), reader_caller(), registry(), all_rights(), live()), dangling_state(), H.StaleRevision{}), "GA-008 an invalid input state is denied StaleRevision")
+    Test.check(denied(invalid_mount(), dangling_state(), H.StaleRevision{}), "GA-008 an invalid input state is denied StaleRevision")
+    vector("GA-008-3", "bind_mount", alias_outcome(invalid_mount()))
     Test.check(denied(H.revoke(dangling_state(), 0n, reader()), dangling_state(), H.StaleRevision{}), "GA-008 revoke on an invalid input state is denied")
 
 # GA-011 Delegations form a derivation tree.
@@ -653,17 +817,23 @@ def ga011_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(H.Change.accepted(chain_change()) && Nat.is_eq(delegation_count(H.delegations(chain())), 2n), "GA-011 a two-level chain R to W to H is recorded")
     Test.check(H.valid(chain()), "GA-011 the chain preserves binding validity")
-    Test.check(denied(H.delegate(chain_revoked(), 5n, 3n, worker(), helper(), read()), chain_revoked(), H.StaleGeneration{}), "GA-011 revoking R makes W's alias stale")
-    Test.check(denied(H.delegate(chain_revoked(), 5n, 4n, helper(), worker(), read()), chain_revoked(), H.StaleGeneration{}), "GA-011 revoking R makes H's alias stale")
+    Test.check(H.Change.accepted(chain_revoke()), "GA-011 revoking R's domain commits")
+    vector("GA-011-1", "revoke", revoke_outcome(chain_revoke()))
+    Test.check(denied(worker_after_revoke(), chain_revoked(), H.StaleGeneration{}), "GA-011 revoking R makes W's alias stale")
+    vector("GA-011-2", "delegate", alias_outcome(worker_after_revoke()))
+    Test.check(denied(helper_after_revoke(), chain_revoked(), H.StaleGeneration{}), "GA-011 revoking R makes H's alias stale")
+    vector("GA-011-3", "delegate", alias_outcome(helper_after_revoke()))
     Test.check(Nat.is_eq(delegation_count(H.delegations(chain_revoked())), 0n), "GA-011 revoke removes the whole subtree")
     Test.check(denied(H.delegate(chain_closed(), 5n, 3n, worker(), helper(), read()), chain_closed(), H.StaleGeneration{}), "GA-011 closing R's descriptor makes W's alias stale")
     Test.check(denied(H.delegate(chain_closed(), 5n, 4n, helper(), worker(), read()), chain_closed(), H.StaleGeneration{}), "GA-011 closing R's descriptor makes H's alias stale")
     Test.check(Nat.is_eq(delegation_count(H.delegations(chain_closed())), 0n) && H.valid(chain_closed()) && H.valid(chain_revoked()), "GA-011 close removes the whole subtree and stays valid")
     Test.check(Nat.is_eq(delegation_count(H.remove_subtree(H.delegations(chain()), H.aliases(chain()), H.objects(chain()), 3n)), 0n), "GA-011 removing W's node removes H's node with it")
     Test.check(Nat.is_eq(delegation_count(H.remove_subtree(H.delegations(chain()), H.aliases(chain()), H.objects(chain()), 4n)), 1n), "GA-011 removing H's node keeps W's node")
-    Test.check(denied(H.delegate(shared(), 3n, 3n, worker(), helper(), read_write()), shared(), H.WidenedRights{}), "GA-011 child delegation wider than its read-only parent denied and no node added")
+    Test.check(denied(wider_child(), shared(), H.WidenedRights{}), "GA-011 child delegation wider than its read-only parent denied and no node added")
+    vector("GA-011-4", "delegate", alias_outcome(wider_child()))
     Test.check(H.Change.accepted(H.delegate(derived(), 4n, 4n, worker(), helper(), read())), "GA-011 W's derived object is usable before its branch is cut")
-    Test.check(denied(H.bind_attenuate(derived_closed(), 5n, 4n, worker(), reader_caller(), registry(), read(), live()), derived_closed(), H.StaleGeneration{}), "GA-011 derived object is stale after its parent is closed")
+    Test.check(denied(derived_after_close(), derived_closed(), H.StaleGeneration{}), "GA-011 derived object is stale after its parent is closed")
+    vector("GA-011-5", "bind_attenuate", alias_outcome(derived_after_close()))
     Test.check(denied(H.bind_attenuate(derived_revoked(), 5n, 4n, worker(), reader_caller(), registry(), read(), live()), derived_revoked(), H.StaleGeneration{}), "GA-011 derived object is stale after its parent's holder is revoked")
 
 # Public entry point, run by Tests.bend. Checks are grouped per requirement and
@@ -681,4 +851,4 @@ def main() -> IO(Unit):
     ga007_checks()
     ga008_checks()
     ga011_checks()
-    IO.print("HostBinding: 98 checks passed; GA-010 is a reviewed host obligation, not a model test")
+    IO.print("HostBinding: 102 checks passed, 30 vectors emitted; GA-010 is a reviewed host obligation, not a model test")

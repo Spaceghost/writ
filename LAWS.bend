@@ -43,12 +43,12 @@ law nat_lt_successor:
   {Nat.is_lt(n, 1n+n) == True{} : Bool}
 
 # Destroying an object (`HostBinding.bumped` with a true decision) leaves its
-# generation strictly greater than before, so an alias recorded at the old
-# generation can never again equal the object's current generation. This is
-# what makes destruction stale every outstanding alias in every domain. It
-# covers the bump helper only: it does not assert that `destroy`, `bind_close`,
-# or `revoke` select the right objects, nor that generations never wrap or get
-# reset elsewhere.
+# generation strictly greater than before. This contributes to staleness: an
+# alias recorded at the old generation no longer equals the bumped one. The
+# full guarantee (such an alias never again matches) also needs that no
+# transition ever lowers a generation, which is not stated here. Nor is the
+# non-destroy branch (`bumped(False{}, o) == o`) stated, and the law does not
+# assert that `destroy`, `bind_close`, or `revoke` select the right objects.
 law generation_bump_monotone:
   for object: HostBinding.Object
   {Nat.is_lt(HostBinding.object_generation(object),
