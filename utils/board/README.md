@@ -63,10 +63,16 @@ bun utils/board/smoke.ts
     program through the board: signature verification (`log.showSignature`,
     `gpg.program`) is off in the argv, the pager is `cat`, and neither command
     runs hooks, diff drivers, textconv filters, or credential helpers;
-  - for each `<dir>/.superpowers/sdd/<plan>/`, the last ten lines of
-    `progress.md` and every `task-<n>-report.md` (in task order, each in a
-    collapsible section, its `Status:` line in the summary). This workspace is
-    git-ignored, so it is read from the filesystem, never from git. From the
+  - the committed execution records `<dir>/docs/superpowers/records/<plan>/`
+    whose ledger's `Branch:` line names the lane's branch (or, without that
+    line, whose name ends with the worktree's name): the last ten lines of
+    `progress.md` (the ledger), every `task-<n>-report.md` (in task order,
+    each in a collapsible section, its `Status:` line in the summary), every
+    `task-<n>-review.md` and `final-review.md` (reviewer reports), and
+    `activity.log` (below). Records are per plan, and a plan targets one
+    proposal; they are committed with the lane's work, so they land on master
+    at merge. A lane with no record falls back to the git-ignored
+    `.superpowers/sdd/<plan>/` workspaces, read from the filesystem. From the
     ledger the board also reads the plan's **phase** (the last line naming a
     task, a final review, or a merge, classified by its wording: dispatched,
     implemented, in review, fix round, complete, landed) and the plan file the
@@ -74,8 +80,7 @@ bun utils/board/smoke.ts
     only that directory, no traversal), whose first `openspec/changes/<name>`
     reference is the change the lane works on (task-box drift is listed
     separately and does not make a lane "on" a change);
-  - the last twelve lines across `<dir>/.lane/*.log` (see below): one file
-    per lane, named after it, committed with the lane;
+  - the last twelve lines of the records' `activity.log` (see below);
   - every change under `<dir>/openspec/changes/` whose checkbox counts differ
     from the root's, or that the root does not have;
   - files under `<dir>/verification/` that the root lacks, or that are newer
@@ -107,8 +112,9 @@ board.
 
 ### Activity log
 
-Agents working in a lane append one line per step to
-`<lane>/.lane/<lane name>.log` (create `.lane/` if absent), tab-separated:
+Agents working on a plan append one line per step to
+`docs/superpowers/records/<plan>/activity.log` in the worktree (the plan's
+record directory, created by the controller with the ledger), tab-separated:
 
 ```
 <UTC time, RFC 3339>	<who>	<what happened>
@@ -117,15 +123,17 @@ Agents working in a lane append one line per step to
 for example:
 
 ```sh
-mkdir -p .lane && printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" implementer "Task 3: liveness run passed, writing the evidence" >> .lane/genode-channel.log
+printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" implementer "Task 3: liveness run passed, writing the evidence" >> docs/superpowers/records/2026-11-04-genode-channel/activity.log
 ```
 
 `who` is the role (`implementer`, `reviewer`, `controller`). A line without
-tabs is shown as text alone. The file is committed with the lane's work, so
-after a merge the log sits on master as the record of how that lane went; a
-worktree therefore holds the logs of landed lanes too, and the board merges
-every `.lane/*.log` by timestamp. It is a few kilobytes per lane. The board
-shows the last twelve lines per lane,
+tabs is shown as text alone. The whole record directory is committed with the
+plan's work (`git add docs/superpowers/records/<plan>` at each acceptance
+commit), so after a merge the ledger, briefs, reports, reviews and log sit on
+master beside the plan as the record of how it went; a worktree therefore
+holds the records of landed plans too, and the board shows those whose
+`Branch:` line is the worktree's branch. A record is tens of kilobytes. The
+board shows the last twelve lines per lane,
 oldest first, newest emphasised, and the newest line is the tooltip on the
 lane's chip in the change table. The file is the main "being worked on"
 signal: a lane is **active** when its newest signal (last commit time,
@@ -248,7 +256,7 @@ Watched, ignoring `node_modules`, `.git`, and build directories (`build`,
 
 - `<root>/openspec`, `<root>/verification`, `<root>/docs`;
 - the `--lanes` directory itself (new or removed worktrees);
-- in each lane, `openspec`, `verification`, `docs`, `.superpowers/sdd`, and `.lane`;
+- in each lane, `openspec`, `verification`, `docs` (which holds the records), and `.superpowers/sdd`;
 - each lane's git metadata `logs/` directory, filtered to the `HEAD` reflog,
   so a commit refreshes the branch and last-commit line. **This is the one path
   the board watches outside `--root` and `--lanes`.** The path comes from the

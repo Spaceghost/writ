@@ -6,7 +6,7 @@ Spec: `openspec/changes/add-genode-capability-adoption/` (GA-005 through GA-011 
 
 - Text-only lane: no `.bend`, no `hosts/`, no `scripts/`, no `verification/` file other than what Task 2 names. Touch only `openspec/changes/add-genode-capability-adoption/` (design.md, specs, explainer.html, tasks.md), `openspec/traceability/`, and `docs/FEATURES.md` or `openspec/FEATURE-ACCEPTANCE.md` if they name the old effect. No requirement is weakened; a rename and a traceability file change no contract.
 - Validate with OpenSpec 1.16.0 strict from the flake store path (`/nix/store/74ha4fybdaab2568xz7l1ix2l2ll008s-openspec-1.16.0/bin/openspec validate --all --strict --no-interactive`) and record the count in the report. Do not regenerate the manifest; do not push; commit at each acceptance point.
-- Append one line per step to `.lane/records-alignment.log` (tab-separated time, role, text; committed with the lane).
+- Append one line per step to `docs/superpowers/records/2026-11-04-records-alignment/activity.log` (tab-separated time, role, text; committed with the lane).
 
 ### Task 1: `Genode.accept` becomes `Genode.take` in the capability-adoption change
 

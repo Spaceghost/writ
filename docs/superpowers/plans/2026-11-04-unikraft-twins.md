@@ -8,7 +8,7 @@ Spec: `openspec/changes/add-unikernel-library-runtime/` (UL-003, UL-004, UL-006;
 - UL-004: effects are Bend defs under `hosts/unikraft/effects/` with `.c` twins that call a small inventoried C host layer under `hosts/unikraft/` and nothing else, and `.js` twins that fail with a clear message. Every authored non-Bend file, its exported symbols, and what it may touch goes in `hosts/unikraft/INVENTORY.md`. Follow the `unikraft_<x>_run -> Unikraft.<x>` naming so the binary check sees the effects. No policy decision in C.
 - UL-003: monitor profile only; `check-binary.sh` on every image ELF, effect rows beyond the profile must be exactly the Unikraft effects, recorded.
 - Every run script exits nonzero when an expected outcome changes (`check-image.sh` style). Evidence under `verification/` with commands, QEMU machine type, `-m`, `-no-reboot`, timeouts. Nothing built committed. Do not push; commit at each acceptance point.
-- Append one line per step to `.lane/unikraft-twins.log` as the board README's "Activity log" section describes (tab-separated time, role, text; commit the file with each acceptance commit).
+- Append one line per step to `docs/superpowers/records/2026-11-04-unikraft-twins/activity.log` as the board README's "Activity log" section describes (tab-separated time, role, text; commit the file with each acceptance commit).
 - Time-box each task at about three hours; a recorded stall with the last error is a valid outcome.
 
 ### Task 1: Console and time twins, and the UL-004 contract

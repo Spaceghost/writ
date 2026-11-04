@@ -15,7 +15,7 @@ executes a file it reads. Its only git invocations are the fixed, read-only
 (`.superpowers/sdd/`) is git-ignored and is read from the filesystem. Lane
 files and explainers are opened with `O_NOFOLLOW`, which refuses a symlink only
 as the final path component, and must be regular files; a lane's anchor
-directories (`.superpowers`, `.superpowers/sdd`, `.lane`, `verification`, `openspec`,
+directories (`.superpowers`, `.superpowers/sdd`, `docs/superpowers/records`, `verification`, `openspec`,
 `openspec/changes`) are skipped unless `lstat` shows a real directory, and
 entries below them are listed without following symlinks. Requests whose Host
 header is not the board's own address get 403.

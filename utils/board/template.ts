@@ -251,13 +251,14 @@ function laneCard(l: Lane): string {
   const activity = l.activityNote !== null
     ? `<p class="note-line">${esc(l.activityNote)}</p>`
     : l.activity.length === 0
-      ? `<p class="muted small">No <code>.lane/${esc(l.name)}.log</code> yet; agents append one line per step.</p>`
+      ? `<p class="muted small">No activity.log in this lane's record yet; agents append one line per step.</p>`
       : `<ol class="log">${l.activity.map((a) =>
           `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
-  const feed = `<div class="activity"><div class="doc-label">.lane/*.log, last ${l.activity.length} lines</div>${activity}</div>`;
+  const logName = l.sdd.length === 1 ? `${l.sdd[0].dir}/activity.log` : `activity.log of ${l.sdd.length} records`;
+  const feed = `<div class="activity"><div class="doc-label">${esc(logName)}, last ${l.activity.length} lines</div>${activity}</div>`;
   const status = `<p class="lane-status">${dot(l.status)}<span class="lane-phase">${esc(phaseText(l))}</span><span class="muted">${esc(ago(l.signalAt))}${l.signalAt === null ? "" : " ago"}</span>${changes}</p>`;
   const sdd = l.sdd.map((p) => {
-    const rel = `.superpowers/sdd/${p.plan}`;
+    const rel = p.dir;
     const ledger = p.ledger === null
       ? `<p class="note-line">${esc(p.ledgerNote ?? "no ledger")}</p>`
       : `<div class="md ledger">${p.ledger}</div>`;
@@ -270,7 +271,12 @@ function laneCard(l: Lane): string {
           const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
           return `<details id="${rid}" class="report" data-preserve-attr="open"><summary><code>${esc(r.file)}</code>${status}</summary>${body}</details>`;
         }).join("");
-    const more = `<details id="${id}-${slug(p.plan)}-ledger" class="more" data-preserve-attr="open"><summary>${esc(rel)}/progress.md, last 10 lines · ${p.reports.length} report${p.reports.length === 1 ? "" : "s"}</summary>${ledger}${reports}</details>`;
+    const reviews = p.reviews.map((r) => {
+      const rid = `${id}-${slug(p.plan)}-${slug(r.file)}`;
+      const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
+      return `<details id="${rid}" class="report review" data-preserve-attr="open"><summary><code>${esc(r.file)}</code> <span class="report-status">reviewer</span></summary>${body}</details>`;
+    }).join("");
+    const more = `<details id="${id}-${slug(p.plan)}-ledger" class="more" data-preserve-attr="open"><summary>${esc(rel)}/progress.md, last 10 lines · ${p.reports.length} report${p.reports.length === 1 ? "" : "s"} · ${p.reviews.length} review${p.reviews.length === 1 ? "" : "s"}</summary>${ledger}${reports}${reviews}</details>`;
     return `<div class="plan">${more}</div>`;
   }).join("");
   const diffs = l.taskDiffs.length === 0

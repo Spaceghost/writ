@@ -8,7 +8,7 @@ Spec: `openspec/changes/add-genode-bend-component/` (GB-003, GB-009; tasks 3.1, 
 - GB-006: still one authored C++ unit. Platform-specific code inside it is allowed behind a clear `#if` or runtime selection with the reason in the header and in INVENTORY; a second `.cc` is not. No policy decision in the shim.
 - Evidence under `verification/` with exact commands and log lines, recorded separately from base-linux (GB-009): new files `genode-*-base-hw.txt`, and `verification/genode-runtime-rows-base-hw.md` with the same rows as the base-linux file. The base-linux evidence must remain true: rerun hello, probe, corpus, and the monitor runs on base-linux after any shim change and record them.
 - Touch only `hosts/genode/`, `scripts/genode/`, `verification/`, `docs/GENODE.md`, and the change's `tasks.md` (boxes only with evidence). No `.bend` under the root, `examples/`, `lib/`, `writfs/`. Nothing built committed. Do not push. Commit at each acceptance point.
-- Append one line per step to `.lane/genode-base-hw.log` as the board README's "Activity log" section describes (tab-separated time, role, text; commit the file with each acceptance commit).
+- Append one line per step to `docs/superpowers/records/2026-11-04-genode-base-hw/activity.log` as the board README's "Activity log" section describes (tab-separated time, role, text; commit the file with each acceptance commit).
 - Time-box each task at about three hours; a recorded stall with the exact symbol and reason is a valid outcome.
 
 ### Task 1: The Bend hello on base-hw

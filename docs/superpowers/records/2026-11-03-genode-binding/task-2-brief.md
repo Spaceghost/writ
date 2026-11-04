@@ -1,0 +1,15 @@
+### Task 2: Transitions
+
+Implement, each returning `Change`, each checking `expected_revision` against `State.revision` first (`StaleRevision` on mismatch), each advancing `revision` by one on success and returning the supplied state unchanged on any denial:
+
+- `bind_mount(state, expected_revision, route: Route, caller: F.Caller, registry: F.Registry, rights: U32, live: F.Live)`: deny `RouteMismatch` unless `route.subject` equals `F.Caller`'s subject; deny `QuotaExhausted` unless the quota for `route.child` has `caps >= 1n` (decrement on success); call `F.mount` and deny `FrontendRejected` if it rejects; on success mint a `Session` object owned by the subject, an alias held by `route.child`, and a `Binding` to the new handle id.
+- `bind_open(state, expected_revision, alias_id, holder: Nat, registry, rights, live)`: deny `UnknownAlias`; deny `StaleGeneration` if alias generation differs from its object's; deny `SubjectMismatch` unless `holder` equals the object's owner or a delegation node whose `alias` is `alias_id` names `holder` as `to_holder`; deny `WidenedRights` unless `rights` is a subset of the bound handle's rights (use `T.word_subset`); deny `QuotaExhausted` on `caps < 1n`; build an `F.Ref` from the binding's handle and the caller and call `F.open`; on success mint a new `Descriptor` object (never reuse the parent object), a new alias for `holder`, and a binding.
+- `bind_attenuate(...)`: same shape over `F.attenuate` (find its exact name and signature in `Frontend.bend`), minting a new object.
+- `delegate(state, expected_revision, alias_id, from_holder, to_holder, rights)`: deny `UnknownAlias`, `StaleGeneration`, `SubjectMismatch` (from_holder must hold the alias), `WidenedRights` (rights must be a subset of the alias's effective rights, which are the parent delegation's rights if the alias was itself delegated, else the bound handle's rights); on success add a `Delegation` node and a new alias for `to_holder` at the current generation. No Frontend call: delegation is a host-side record.
+- `bind_close(state, expected_revision, alias_id, holder, registry, live)`: deny `UnknownAlias`, `StaleGeneration`, `SubjectMismatch`; call `F.close` on the bound handle and deny `FrontendRejected` if it rejects; on success bump the object's generation by one (every alias to it, in every domain, is now stale) and remove the delegation subtree rooted at any alias of that object.
+- `revoke(state, expected_revision, domain)`: bump the generation of every object owned by `domain`'s subject? No: bump the generation of every object whose alias is held by `domain`, and remove delegation subtrees rooted at those aliases. Document in a comment why holder-based revocation is the right primitive on Genode (object destruction, not per-copy revocation).
+
+Write a `Delegation` subtree helper that removes a node and all descendants and prove by test that a two-level chain goes stale together (GA-011).
+
+Acceptance: `--check-only` passes; every transition has a denial path for each listed reason; no transition mutates state on denial.
+
