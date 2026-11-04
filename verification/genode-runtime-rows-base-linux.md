@@ -31,24 +31,73 @@ memory and fault rows must be measured again. No device was present or used.
   (`../writ-genode/genode`) or the generated `hello.c`.
 
 All runs: `cd ../writ-genode/build/x86_64 && make run/<scenario>`; full logs in
-`../writ-genode/run-*.out` (not committed). The run scripts are authored build
+`../writ-genode/run-*.out` (not committed). To regenerate a log with the
+cited file name: `make run/<x> 2>&1 | tee ../writ-genode/run-<x>-N.out`
+(for example `run-probe-clock-3.out`). The run scripts are authored build
 configuration; byte-identical copies are committed beside each probe, and
 `scripts/genode/writ_bend_hello/writ_bend_rts.run` for the Bend run.
 
+Where each file lives in the Genode `writ-repo` (`../writ-genode/writ-repo/`):
+`scripts/genode/probes/<row>/{probe_<row>.c,target.mk}` ->
+`src/app/writ_probe_<row>/`; `scripts/genode/probes/<row>/*.run` -> `run/`;
+`scripts/genode/writ_bend_hello/writ_bend_rts.run` -> `run/`.
+
+The committed copies were byte-identical to these live files (checked with
+`cmp` when this list was recorded). Since then only header comments of two
+run scripts were edited here (`writ_bend_hello.run`, `writ_probe_clock.run`),
+so those two differ from the live copy in comment lines only. sha256 of the
+live files:
+
+```text
+ba07d36cbce423676eca2fc89ef27a72ff13e2c8ca499cc08650f6e8f67e5f1d  run/writ_bend_hello.run
+daf83b182ccca2483e9b22c661157c7de2295616dde94e7b87c56ab37a9aab4e  run/writ_bend_rts.run
+1cb701bd9f1825dd5862800e80b117d1092e1eb4f1adf14418847a9a1537fb35  run/writ_hello.run
+cc41a5e66add99963730ddbb06a85558d9cc3f79031ab3b9e7eb1c644a02ce27  run/writ_probe_clock.run
+87d3226e0ed4f15b8db4ba84a90a51ed740504ff22ec89c7f1b061c50cbdfb86  run/writ_probe_evloop.run
+dbf84ce1a3d19010ebe2e8b4c5164e5bd75ea713762cc9d1c4914c7245ea3909  run/writ_probe_fault.run
+3b52a85c26094163078d85383d9a54bd484c5ef6df5966612f18d3c03a275577  run/writ_probe_process.run
+26ecdc2ad9e22442d04c1cc4fcc63b99e5f2bb6e5b543d3eb403590056d44ca8  run/writ_probe_threads.run
+8b1710425bf6aba7cbfea5769f9260a6bad865a3b01ea139383a711c01395ac8  src/app/writ_bend_hello/target.mk
+bbf48036b8f41f697c93b1b844ccd005b17434a6877632ede44629a93bdddbfb  src/app/writ_hello/main.cc
+045b387b3813cc2d005e176c9e16b34d95b7dcda7b18e0cb6cbfea5e74a952d9  src/app/writ_hello/target.mk
+e95d4f398c1366cfb75b00cefa2a9016abb8a4cb4f04ee8c32aeb4782fe52c13  src/app/writ_probe_clock/probe_clock.c
+1d9dbbd8e392b926a21b2af89743962ae0900742ada511ca27223748345fb181  src/app/writ_probe_clock/target.mk
+60742472f7437fbd030f473e549ee370f0e7b6277dac0a452ae45be35cb25f14  src/app/writ_probe_evloop/probe_evloop.c
+2a1b5a1e76f1e94979b8494c46e9beef3bcabe8b610ed8e2bf8cce54eec07f6b  src/app/writ_probe_evloop/target.mk
+54df9194e3bad3aca951408c9c3431170f7258a9ee740db76cc02a04dc1bec9c  src/app/writ_probe_fault/probe_fault.c
+a22756e087cb9f2f83ee6608933e9de693937a0e356a69a9dba8598000296f6d  src/app/writ_probe_fault/target.mk
+bdff1d1e0e488093ad27aeaa28205fa1ed5c11973d528254a7d33544986ee24b  src/app/writ_probe_process/probe_process.c
+2f3628798d2741230017d4b2e74373c4e55810e7fe20f761d22b18300c15e369  src/app/writ_probe_process/target.mk
+fd9a2350dfd05b08082fb85a0375847b4010d554ec351abebce15562bdbc285c  src/app/writ_probe_threads/probe_threads.c
+d4ac74790dfaa624ff803067b0d02419a6bf0b8a1b2d1623da015130196510e4  src/app/writ_probe_threads/target.mk
+```
+
+## Authored non-Bend files
+
+The non-Bend files authored on this lane are: `scripts/genode/writ_hello/main.cc`,
+the five `probe_*.c` files, every `target.mk`, the run scripts, and
+`build.conf.fragment`. None of them is linked into a component that holds
+Writ authority. The probes and `writ_hello` are throwaway scaffolding. The
+`writ_bend_hello` build flags (`CUSTOM_CC` set to clang 23, `-DMAP_NORESERVE=0`,
+and the code model) carry forward to any later Bend component, so they belong
+in the GB-006 trust inventory, which is deferred to task 2.2.
+
 ## Summary
 
-| Row | Value on base-linux | Established by |
-| --- | --- | --- |
-| Memory | **substituted-or-missing**, pending a host-layer `mprotect` | Bend program (Task 2 runs 2-5) + source reading |
-| Faults | **missing** for the runtime's own handler; platform termination observed, parent does not record it | Bend program (setup failure) + C probe (overflow) + source reading |
-| Threads | **supplied** | C probe |
-| Clock | **supplied**, monotonic; `nanosleep` returned short of 100 ms in 2 of 4 runs | C probe |
-| Event loop | **supplied with configuration** (vfs_pipe mount and libc `pipe` attribute required) | C probe (two runs) |
-| Process | **supplied** (`getenv`, stdout/stderr, exit status); `sysconf(_SC_NPROCESSORS_ONLN)` reports 1 | Bend program + C probe |
-| Atomics | **supplied at compile time only** | compile of the generated C (Task 2) |
-| Device dispatch | **CPU only, by construction** | source reading of hello.c + run arguments |
+| Row | Value on base-linux | Notes | Established by |
+| --- | --- | --- | --- |
+| Memory: reservation (`mmap` anon) | **substituted** | committed and zeroed RAM drawn from the quota | Bend program (Task 2 runs 2-5) + source reading |
+| Memory: guard (`mprotect`) | **missing** | weak dummy returns -1; not stubbed to a no-op | Bend program (Task 2 run 3) + source reading |
+| Memory: `munmap` | **unverified** | not traced | none |
+| Faults | **missing** for the runtime's own handler | platform termination observed, parent does not record it | Bend program (setup failure) + C probe (overflow) + source reading |
+| Threads | **supplied** | | C probe |
+| Clock | **supplied** | monotonic; `nanosleep` returned short of 100 ms in 2 of 4 runs | C probe |
+| Event loop | **supplied** | needs the vfs_pipe mount and the libc `pipe` attribute | C probe (two runs) |
+| Process | **supplied** | `getenv`, stdout/stderr, exit status; `sysconf(_SC_NPROCESSORS_ONLN)` reports 1 | Bend program + C probe |
+| Atomics | **unverified** | compiled, not executed ("header presence is not a run", GB-002) | compile of the generated C (Task 2) |
+| Device dispatch | **CPU only, by construction** | | source reading of hello.c + run arguments |
 
-## Memory - substituted-or-missing
+## Memory - reservation substituted, guard missing, munmap unverified
 
 Runtime calls: `mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON|MAP_NORESERVE, -1, 0)`
 for the term heap (`corpus_setup`, hello.c:2254-2258: size `1ull << 33`, fixed
@@ -105,10 +154,13 @@ write into the alternate signal stack and whatever lies above it.
 Candidate fix, at the host layer and outside Bend: a Genode-side `mprotect`
 that changes the attachment of the guard range in the component's region map
 (detach the 16 KiB range or re-attach it without access), delivered either
-as a libports patch to libc or as a Writ-side libc override linked into the
-component. The 8 GiB commit needs a matching host-layer change (an anonymous
-`mmap` that reserves a managed region map and backs it on demand) or a
-runtime size option; neither exists in 26.08.
+inside the GB-006 shim (the only authored C++ in the component, inventoried
+with it) or upstream as a libports patch with its own pin. The two blockers
+have different owners. The 8 GiB commit would need a matching Genode-side
+change (an anonymous `mmap` that reserves a managed region map and backs it
+on demand), which does not exist in 26.08. A runtime heap-size option for the
+fixed 8 GiB reservation would instead be a change to Bend's runtime upstream,
+not to Genode 26.08.
 
 ## Faults - missing (runtime handler); platform termination observed
 
@@ -140,7 +192,8 @@ Host kernel log for run 3 (`journalctl -k`):
 `ld.lib.so[364537]: segfault at 403bffd0 ip 0000000001000025 sp 00000000403bffd0 error 6 in writ_probe_fault.stripped[...]`.
 `ps` about 21 s after the fault (run 3, fault 21:04:31, ps 21:04:52) listed `./core`, `[Genode] init`, and
 `[Genode] init -> timer`, and no `writ_probe_fault` process. Identical in all
-three runs.
+three runs. A make exit code of 0 for the fault scenario means only "did not
+resume"; it says nothing about the parent recording the fault.
 
 Source: libc's `sigaction` (`repos/libports/src/lib/libc/signal.cc:117-130`)
 only stores the action in libc's emulated signal table, and `sigaltstack`
@@ -207,11 +260,11 @@ Example line (run 1): `[init -> writ_probe_clock] probe_clock: t0=901000 ns t1=1
 The clock was monotonic in every run (t1 > t0), with microsecond-granular
 values. In two runs a 100 ms `nanosleep` returned 0.15 ms and 0.29 ms
 earlier than `CLOCK_MONOTONIC` measures, which POSIX does not allow. The probe
-keeps its at-least-100 ms check, so the committed run script fails when this
-happens; a Bend program that compares `IO.now()` before and after
+keeps its at-least-100 ms check, so the committed run script fails in about
+half of runs on base-linux by design; a Bend program that compares `IO.now()` before and after
 `IO.sleep(100)` could see less than 100 ms on this platform.
 
-## Event loop - supplied with configuration
+## Event loop - supplied (with vfs_pipe configuration)
 
 Runtime calls (`io_loop`, hello.c:2928-2935): `signal(SIGPIPE, SIG_IGN)`,
 `pipe`, `fcntl(F_SETFL, O_NONBLOCK)`, then `select`, `read`, `write` between
@@ -289,7 +342,7 @@ an `<env>` node:
 default thread count on Genode is 1 unless `--threads` is given. Exit is
 clean in every case; nothing hung.
 
-## Atomics - supplied at compile time only
+## Atomics - unverified (compiled, not executed)
 
 The generated C includes `<stdatomic.h>` (hello.c:31) and uses C11 atomic
 loads, stores, compare-exchange, and fences. It compiled and linked against

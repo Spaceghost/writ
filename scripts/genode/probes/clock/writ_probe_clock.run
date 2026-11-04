@@ -5,7 +5,9 @@
 # (BOARD=linux KERNEL=linux): CLOCK_MONOTONIC read twice around a 100 ms nanosleep.
 # Waits up to 60 seconds for init to report the child's exit, then fails
 # unless the exit value is 0 and the probe's own success line appears.
-# A timeout also fails the run.
+# A timeout also fails the run. This script fails in about half of runs on
+# base-linux by design (the at-least-100 ms check is kept, because nanosleep
+# there can return early); see verification/genode-runtime-rows-base-linux.md.
 #
 # Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
 # Timer session from the sibling timer; the VFS holds only /dev/log, which

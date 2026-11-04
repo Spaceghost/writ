@@ -33,7 +33,7 @@
 ## (an explicit rule) takes precedence over the upstream implicit 'run/%' rule
 ## in tool/builddir/build.mk. It is otherwise identical to that rule
 ## but runs tool/run/run through a locally obtained expect interpreter.
-WRIT_EXPECT ?= /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-genode/host-tools/expect/bin/expect
+WRIT_EXPECT ?= <writ-genode>/host-tools/expect/bin/expect
 
 WRIT_RUN_SCENARIOS ?= log writ_hello writ_bend_hello writ_bend_rts writ_probe_threads writ_probe_clock writ_probe_evloop writ_probe_process writ_probe_fault
 

@@ -41,7 +41,9 @@ Genode tool chain
 Host
   OS / kernel:       Manjaro Linux, kernel 7.2.9-1-MANJARO, x86_64, GNU libc 2.44
   Host compiler:     gcc (GCC) 16.2.1 20260810 (installed; not used for the
-                     Genode components, which all build with genode-x86-g++ 14.2.0)
+                     Genode components, which all build with genode-x86-g++ 14.2.0,
+                     all except the object code of writ_bend_hello's hello.c
+                     (clang-23, below))
   GNU Make:          4.4.1
   Tcl:               /usr/bin/tclsh 8.6.16 (system; used by tool/hid and check_abi)
   Expect:            5.45.4 from nixpkgs (not installed system-wide; no root):

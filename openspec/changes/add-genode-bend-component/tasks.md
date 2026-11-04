@@ -1,6 +1,7 @@
 # Bend runtime as a Genode component: tasks
 
-Only 1.2 is complete. The generated C of the reference program builds and
+Only 1.2 is complete. It is checked because every execution named in 1.2 was
+performed, while Atomics and `munmap` remain unverified. The generated C of the reference program builds and
 loads as a component on `base-linux`, but it stops at the stack guard before
 printing (verification/genode-bend-hello-base-linux.txt), so 1.1 stays open.
 The runtime rows are in verification/genode-runtime-rows-base-linux.md; the

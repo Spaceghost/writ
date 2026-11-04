@@ -10,6 +10,10 @@
 # repos/libports/run/libc.run and the test-pthread and test-libc_getenv
 # package runtimes in Genode 26.08.
 #
+# Known state: the committed 256M default is known to time out after 240 s
+# (the 8 GiB heap request blocks), and this script has no vfs_pipe mount yet.
+# See verification/genode-runtime-rows-base-linux.md.
+#
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services plus a Timer session from the sibling timer component (libc uses
 # it for clock_gettime, nanosleep, and select timeouts). The component's VFS
