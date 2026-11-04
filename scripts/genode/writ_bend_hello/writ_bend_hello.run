@@ -10,16 +10,22 @@
 # repos/libports/run/libc.run and the test-pthread and test-libc_getenv
 # package runtimes in Genode 26.08.
 #
-# Known state: the committed 256M default is known to time out after 240 s
-# (the 8 GiB heap request blocks), and this script has no vfs_pipe mount yet.
-# See verification/genode-runtime-rows-base-linux.md.
+# Genode host-layer lane, Task 2: the component now links the shim's memory
+# unit (hosts/genode/shim/writ_mem.cc), so the runtime's 8 GiB term heap and
+# 2 GiB evaluation stack are lazily populated reservations and its stack
+# guard is a real unmapped range; 256M is the intended quota. The VFS mounts
+# a vfs_pipe file system at /pipe and libc's pipe attribute points at it,
+# because the runtime's event loop opens a pipe before the first print
+# (the event-loop row of verification/genode-runtime-rows-base-linux.md).
 #
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services plus a Timer session from the sibling timer component (libc uses
 # it for clock_gettime, nanosleep, and select timeouts). The component's VFS
-# holds only /dev/log; stdout and stderr go to its LOG session. It has no
-# file system, network, or block access. The runtime options are passed as
-# argv through <arg> nodes; argv[0] names the program.
+# holds /dev/log and /pipe; stdout and stderr go to its LOG session. /pipe is
+# a component-local pipe file system (lib/vfs_pipe) that serves only libc's
+# pipe(). It has no file system, network, or block access. The runtime
+# options are passed as argv through <arg> nodes; argv[0] names the program.
+# WRIT_MEM_REPORT=1 (libc <env>) makes the shim log its RAM report at exit.
 #
 # The component's RAM quota defaults to 256M and can be raised for a probe
 # with the environment variable WRIT_BEND_HELLO_RAM (a Genode size such as
@@ -29,7 +35,7 @@
 set ram 256M
 if {[info exists ::env(WRIT_BEND_HELLO_RAM)]} { set ram $::env(WRIT_BEND_HELLO_RAM) }
 
-build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_bend_hello }
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_hello }
 
 create_boot_directory
 
@@ -50,14 +56,17 @@ config
   + provides | + service Timer
 + start writ_bend_hello | caps: 1000 | ram: $ram
   + config
-    + vfs | + dir dev | + log
-    + libc | stdout: /dev/log | stderr: /dev/log
+    + vfs
+      + dir dev | + log
+      + dir pipe | + pipe
+    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
     + arg | value: writ_bend_hello
     + arg | value: +RTS
     + arg | value: --threads
     + arg | value: 1
     + arg | value: --gpu
     + arg | value: off
+    + env | key: WRIT_MEM_REPORT | value: 1
 -
 "
 
@@ -72,7 +81,25 @@ if {![regexp {child "writ_bend_hello" exited with exit value 0\r?\n} $output]} {
 	exit 1
 }
 
-grep_output {\[init -\> writ_bend_hello\]}
+# The shim logs one line when it has resolved libc's originals and, with
+# WRIT_MEM_REPORT=1, one RAM report from exit. Require both, then require
+# that every other line of the component is exactly "hi", once.
+foreach {re what} {
+	{\[init -> writ_bend_hello\] writ_mem: libc mmap=}                  "shim start line"
+	{\[init -> writ_bend_hello\] writ_mem: \[exit\] ram used=[0-9]+ }    "shim exit report"
+} {
+	if {![regexp $re $output]} {
+		puts stderr "Error: missing $what"
+		exit 1
+	}
+}
+
+grep_output {^\[init -> writ_bend_hello\] (?!writ_mem: )}
+
+if {[llength [split [string trim $output] "\n"]] != 1} {
+	puts stderr "Error: the component logged more than the one line 'hi'"
+	exit 1
+}
 
 compare_output_to {
 [init -> writ_bend_hello] hi

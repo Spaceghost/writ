@@ -103,7 +103,7 @@
 #include <libc/args.h>
 #include <region_map/client.h>
 #include <rm_session/connection.h>
-#include <util/reconstructible.h>
+#include <util/construct_at.h>
 
 /* libc includes (FreeBSD 12.0 constants: MAP_*, PROT_*, errno values) */
 #include <errno.h>
@@ -270,13 +270,40 @@ struct Reservation
  ** Shim state  **
  *****************/
 
+/*
+ * Shim objects that live until the process ends. Constructible<T> would be
+ * destroyed by static destruction inside exit(), while the runtime's
+ * reservations are still mapped (it never unmaps its term heap): the Heap
+ * destructor then reverts the live chunk tables ("dangling allocation"
+ * warning, seen with the Bend hello), a later fault would read freed
+ * tables, and the RM session would close under mapped memory. Kept<T>
+ * has no destructor; the component's exit releases everything at once.
+ */
+template <typename T>
+struct Kept
+{
+	alignas(T) char _bytes[sizeof(T)];
+	bool            _constructed = false;
+
+	template <typename... ARGS>
+	void construct(ARGS &&... args)
+	{
+		construct_at<T>(_bytes, args...);
+		_constructed = true;
+	}
+
+	bool constructed() const { return _constructed; }
+	T *operator -> () { return reinterpret_cast<T *>(_bytes); }
+	T &operator *  () { return *reinterpret_cast<T *>(_bytes); }
+};
+
 using Mmap_fn     = void *(*)(void *, ::size_t, int, int, int, ::off_t);
 using Munmap_fn   = int    (*)(void *, ::size_t);
 using Mprotect_fn = int    (*)(void *, ::size_t, int);
 
 static Env                         *_env;
-static Constructible<Heap>          _heap;
-static Constructible<Rm_connection> _rm_connection;
+static Kept<Heap>                   _heap;
+static Kept<Rm_connection>          _rm_connection;
 static Mmap_fn                      _libc_mmap;
 static Munmap_fn                    _libc_munmap;
 static Mprotect_fn                  _libc_mprotect;
@@ -285,6 +312,7 @@ static Reservation                  _res[MAX_RESERVATIONS];
 
 /* counters for writ_mem_report (diagnostics only) */
 static unsigned long _chunks_populated, _faults_resolved;
+static unsigned long _reserved_at_hint, _reserved_elsewhere, _released;
 
 static Mutex &_mutex() { static Mutex m { }; return m; }
 
@@ -368,7 +396,7 @@ static void _detach_pieces(Reservation &r, size_t idx)
  * Non-expanding PD client for chunk allocation: Alloc_error comes back
  * instead of becoming a blocking resource_request (see header).
  */
-static Constructible<Pd_session_client> _pd;
+static Kept<Pd_session_client> _pd;
 
 /*
  * Populate the chunk containing offset off. Returns nullptr on success,
@@ -557,8 +585,11 @@ static void *_reserve(void *hint, size_t len)
 	addr_t base = 0;
 	if (hint && (addr_t(hint) & (PAGE - 1)) == 0)
 		base = attach_at(true, addr_t(hint));
-	if (!base)
+	if (base) _reserved_at_hint++;
+	if (!base) {
 		base = attach_at(false, 0);
+		if (base) _reserved_elsewhere++;
+	}
 	if (!base) {
 		_rm_connection->destroy(rm_cap);
 		_heap->free(chunks, num_chunks*sizeof(Chunk));
@@ -583,6 +614,7 @@ static void _release(Reservation &r)
 	_rm_connection->destroy(r.rm_cap);
 	_heap->free(r.chunks, r.num_chunks*sizeof(Chunk));
 	r = { };
+	_released++;
 }
 
 
@@ -708,7 +740,9 @@ extern "C" void writ_mem_report(char const *tag)
 	    " limit=", s.caps.limit.value, " reservations=", live,
 	    " guards=", guards, " chunks populated (total)=", _chunks_populated,
 	    " faults resolved=", _faults_resolved,
-	    " benign retries=", _benign_retries);
+	    " benign retries=", _benign_retries,
+	    " reserved at hint=", _reserved_at_hint,
+	    " elsewhere=", _reserved_elsewhere, " released=", _released);
 }
 
 
@@ -727,7 +761,7 @@ extern "C" int main(int argc, char **argv, char **envp);
  */
 static bool _resolve_libc()
 {
-	static Constructible<Shared_object> libc;
+	static Kept<Shared_object> libc;
 	try {
 		libc.construct(*_env, *_heap, "libc.lib.so",
 		               Shared_object::BIND_LAZY, Shared_object::KEEP);
@@ -748,6 +782,15 @@ static bool _resolve_libc()
 	return true;
 }
 
+/*
+ * Opt-in exit report (diagnostics only): with WRIT_MEM_REPORT=1 in the
+ * component's libc environment, one writ_mem_report line is logged from
+ * libc's exit, so a run can record the RAM the component used. It reads no
+ * other configuration and changes no behaviour. A runtime exit through
+ * _exit (err_fail) skips it.
+ */
+static void _report_at_exit() { writ_mem_report("exit"); }
+
 void Libc::Component::construct(Libc::Env &env)
 {
 	_heap.construct(env.ram(), env.rm());
@@ -765,6 +808,8 @@ void Libc::Component::construct(Libc::Env &env)
 		int argc = 0; char **argv = nullptr; char **envp = nullptr;
 		populate_args_and_env(env, argc, argv, envp);
 		environ = envp;
+		if (char const *v = getenv("WRIT_MEM_REPORT"))
+			if (v[0] == '1' && v[1] == 0) atexit(_report_at_exit);
 		exit(main(argc, argv, envp));
 	});
 }

@@ -325,3 +325,249 @@ LIMITS
   - The small code model is a deviation from Genode's x86_64 default for
     this one translation unit; it loaded and ran to main on base-linux only.
   - --gpu off; no device was present or used.
+
+
+=============================================================================
+HOST-LAYER SECTION: the shim under the Bend program (Genode host-layer lane, Task 2)
+Recorded: 2026-11-03, 22:52 to 23:05 -06:00
+
+Everything below is Genode-on-Linux (base-linux) evidence: core, init, and
+the component are Linux processes. It is not native Genode execution, and no
+device was involved (--gpu off, CPU only).
+
+RESULT
+  The unmodified Bend 2.0.39 output for scripts/genode/Hello.bend, linked with
+  the shim's memory unit hosts/genode/shim/writ_mem.cc, prints "hi" under init
+  on base-linux and exits with value 0 at ram 256M. RAM used at exit:
+  8314880 bytes of the 268313180-byte PD limit (about 7.9 MiB of 256 MiB),
+  caps 35 of 963. The 8 GiB term heap and the 2 GiB evaluation stack are
+  lazily populated reservations; three 2 MiB chunks were charged in total.
+  The stack guard (mprotect PROT_NONE) succeeded and is a real unmapped
+  range. Six runs on the final or near-final source (runs 8-10 here, plus
+  the probe and rts regressions) gave the same log.
+
+INPUTS
+  hello.c       ../writ-genode/hello/hello.c, not re-emitted (unchanged on
+                disk), sha256
+                260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
+                (matches INPUTS above). Never edited.
+  Shim          hosts/genode/shim/writ_mem.cc, sha256
+                734c5c374eabec53997213611c76729e3b3b5fef9e747875f905f9c8f91d8866
+                live copy ../writ-genode/writ-repo/src/writ_shim/writ_mem.cc
+                byte-identical (cmp)
+  target.mk     scripts/genode/writ_bend_hello/target.mk, sha256
+                c5b8177f90a280aa150f95737a65f910a7293b037f532123f8c6c01cf2bee79d
+                live src/app/writ_bend_hello/target.mk byte-identical
+  Run script    scripts/genode/writ_bend_hello/writ_bend_hello.run, sha256
+                e297575fc2e56f6dd63ce617bd804e7eacceb06a0e32bb1ff9a9beb208e9f06b
+                live run/writ_bend_hello.run byte-identical
+                (writ_bend_rts.run unchanged, daf83b18...e4c2, byte-identical)
+  Binary        build/x86_64/app/writ_bend_hello/writ_bend_hello (not
+                committed), sha256
+                1cd506ea36a8deb7a0c365c0a4d506796f9062cc6b68b4339878c1f321ee7ba7
+                (the binary of runs 9 and 10; a rebuild of writ_mem.o after
+                the comment-only target.mk edit gave the same hash)
+
+CHANGES, EACH WITH THE ERROR OR REASON IT ANSWERS
+  Command for every build: cd ../writ-genode/build/x86_64 && make app/writ_bend_hello
+  Command for every run:   cd ../writ-genode/build/x86_64 && make run/writ_bend_hello
+  Logs: ../writ-genode/build-bend-hello-{7,8-no-noreserve}.out,
+        ../writ-genode/run-writ_bend_hello-{6..10}-256M.out (not committed).
+
+  H1  target.mk: SRC_CC = writ_mem.cc, LIBS = base libc (was posix),
+      vpath writ_mem.cc $(REP_DIR)/src/writ_shim.
+      Why: the shim defines Libc::Component::construct (it resolves libc's
+      originals, then runs main as repos/libports/src/lib/posix/construct.cc
+      does), so posix's construct would be a second definition.
+      Build: compile and link rc 0 at the first attempt (build-bend-hello-7).
+      The shim is compiled by genode-x86-g++ 14.2.0; hello.c by clang-23 as
+      before. Shim compile line (VERBOSE=, -I list omitted):
+        genode-x86-g++ -D__FreeBSD__=12 -fno-builtin-sin -fno-builtin-cos
+          -fno-builtin-sinf -fno-builtin-cosf -D__GENODE__ -ffunction-sections
+          -fno-strict-aliasing -nostdinc -g -m64 -march=x86-64-v2 -O2 -MMD -MP
+          -Wall -Wno-error=implicit-fallthrough -fPIC -std=gnu++20
+          -c <writ-genode>/writ-repo/src/writ_shim/writ_mem.cc -o writ_mem.o
+      Two target-wide settings also reach the shim, and neither matters:
+        - CC_MARCH (E4): the shim is compiled with the small code model
+          (Task 1's probe compiled it with -mcmodel=large); GCC emits
+          ordinary section names under both models.
+        - LIBGCC_INC_DIR (E3, clang's resource dir): global.mk expands
+          ALL_INC_DIR with := so a per-object override is not possible, but
+          writ_mem.d lists no header from that directory or GCC's; the shim
+          includes only Genode and libc headers.
+      Link line ends: hello.o writ_mem.o base.lib.a ld.lib.so libc.lib.so
+      ... libgcc.a (no posix.lib.so).
+
+  H2  How the shim's mmap/munmap/mprotect win: plain symbol interposition by
+      the program binary; no libc override mechanism was used, and Genode's
+      libc offers none for these calls (its ABI exports only mmap, mprotect,
+      munmap, with no __sys_ alias, repos/libports/lib/symbols/libc:486-490;
+      the originals are reached by lookup, third bullet).
+        - hello.o calls them through R_X86_64_PLT32; because the definitions
+          are in the same link, the static linker binds the calls directly:
+          objdump -d writ_bend_hello shows 'call 100ec90 <mmap>',
+          'call 100b000 <munmap>', 'call 1005af0 <mprotect>' (addresses of
+          the build-bend-hello-7 binary).
+        - The binary also exports all three in .dynsym (readelf --dyn-syms:
+          GLOBAL DEFAULT FUNC in section 1), so any reference resolved by
+          ld.lib.so's global lookup (for example from inside libc.lib.so)
+          finds the program's definition before libc's.
+        - libc's originals are reached with Shared_object("libc.lib.so")
+          lookup; at start the shim logged
+            writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x100ed20
+          (different addresses, so forwarding does not recurse).
+
+  H3  -DMAP_NORESERVE=0: still required. Removing it (live target.mk only,
+      restored afterwards) failed the compile again:
+        hello.c:1656:30: error: use of undeclared identifier 'MAP_NORESERVE'
+        11 warnings and 1 error generated.        (build-bend-hello-8-no-noreserve.out)
+      The shim gives reserve-now, charge-on-touch semantics to every
+      qualifying mapping regardless of that flag, but it cannot supply a
+      name FreeBSD 12.0's <sys/mman.h> lacks. With value 0 the shim never
+      sees the flag and nothing depends on it. Kept; target.mk comment
+      updated.
+
+  H4  Run script: vfs_pipe mount and libc pipe attribute (event-loop row,
+      verification/genode-runtime-rows-base-linux.md):
+        build list: lib/posix replaced by lib/vfs_pipe
+        + vfs
+          + dir dev | + log
+          + dir pipe | + pipe
+        + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+      Not run without it in this lane: the C probe's run 1 in the rows file
+      already showed pipe() failing without the mount, and io_loop calls
+      pipe before the first print. With it, no pipe error appeared.
+
+  H5  Run 6 (22:57:30, ram 256M, first run with H1-H4): "hi" and exit 0, but
+      the component also logged
+        [init -> writ_bend_hello] Warning: 1 dangling allocation at allocator destruction time
+      after the shim's exit report. Source: Allocator_avl_base::
+      _revert_allocations_and_ranges (repos/base/src/lib/base/
+      allocator_avl.cc:202-220), run from Heap::~Heap. Cause: the shim's
+      Heap was a static Constructible<Heap>, destroyed by static
+      destruction inside exit() while the runtime's two reservations (and
+      so their chunk tables in that heap) were still live; the runtime never
+      unmaps its term heap. Beyond the warning this was a real hazard: a
+      fault after that point would have read freed chunk tables, and the
+      Rm_connection would have closed under mapped memory.
+      Fix (shim): the Heap, the Rm_connection, the plain Pd_session_client,
+      and the libc Shared_object are held in Kept<T> (placement-constructed,
+      no destructor), so they live until the process ends. Run 7: warning
+      gone. The Task 1 probe never met this because it unmaps everything
+      before returning.
+
+  H6  Shim diagnostics (no behaviour change): an opt-in exit report. With
+      WRIT_MEM_REPORT=1 in the libc environment (<env> node), the shim's
+      construct registers atexit(writ_mem_report("exit")) before calling
+      main; the run script sets it so the run records RAM used. Counters
+      "reserved at hint", "elsewhere", "released" were added to the report
+      line. err_fail's _exit path skips the report.
+
+  H7  Run script checks (beyond exit value 0): require the shim's start line
+      and its exit report; then keep only component lines that do not start
+      with "writ_mem: " and require exactly one, "hi".
+
+  Also carried from Task 1's re-review and done in this task (commit
+  43a6e79): _reserve rejects len > 1 TiB and a zero rounded size with
+  ENOMEM before creating a region map; the retry-table limits are
+  documented; the probe accepts only EINVAL for the big mprotect and checks
+  the new bound. See verification/genode-reservation-probe-base-linux.txt
+  section 9.
+
+FINAL RUN SCRIPT (scripts/genode/writ_bend_hello/writ_bend_hello.run, config and checks)
+  set ram 256M
+  if {[info exists ::env(WRIT_BEND_HELLO_RAM)]} { set ram $::env(WRIT_BEND_HELLO_RAM) }
+  build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_hello }
+  ...
+  + start writ_bend_hello | caps: 1000 | ram: $ram
+    + config
+      + vfs
+        + dir dev | + log
+        + dir pipe | + pipe
+      + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+      + arg | value: writ_bend_hello
+      + arg | value: +RTS
+      + arg | value: --threads
+      + arg | value: 1
+      + arg | value: --gpu
+      + arg | value: off
+      + env | key: WRIT_MEM_REPORT | value: 1
+  run_genode_until {child "writ_bend_hello" exited with exit value .*\n} 240
+  then: exit value 0; shim start line; shim exit report; exactly one other
+  component line, "[init -> writ_bend_hello] hi".
+  WRIT_BEND_HELLO_RAM was not set in any run of this section.
+
+RUNS (ram 256M, all)
+  Run 6 (22:57:30): hi, exit 0, dangling-allocation warning, run script
+    failed on the line count (H5).
+  Run 7 (after Kept<T>): hi, exit 0, no warning, "Run script execution
+    successful."
+  Run 8 (after the report counters), run 9 (22:59:14), run 10 (after the
+  comment-only target.mk and run-script edits; final sources), identical:
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init -> writ_bend_hello] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x100ed20
+    [init -> writ_bend_hello] hi
+    [init -> writ_bend_hello] writ_mem: [exit] ram used=8314880 limit=268313180 caps used=35 limit=963 reservations=2 guards=1 chunks populated (total)=3 faults resolved=3 benign retries=0 reserved at hint=1 elsewhere=1 released=0
+    [init] child "writ_bend_hello" exited with exit value 0
+
+    Run script execution successful.
+  make rc 0; a run takes about 8 s including the incremental build.
+
+  Reading the report:
+    - reservations=2: the 8 GiB term heap and io_loop's evaluation stack
+      (pool_stack: 2 GiB + 16 KiB + 4*SIGSTKSZ). guards=1: the stack guard
+      at p + 2 GiB, which mprotect accepted (it is page-aligned inside the
+      reservation).
+    - reserved at hint=1: corpus_map's first hint, 1<<45, was honoured, so
+      the runtime's hint loop stopped at once and nothing was released
+      (released=0); elsewhere=1: the stack reservation (hint NULL). This is
+      the first execution of the shim's hint path.
+    - 3 chunks (6 MiB) charged; the other ~2 MiB is the component's libc,
+      heap, and shim metadata. Which three chunks were touched was not
+      traced.
+    - With --threads 1 no worker reservation beyond the IO loop's stack was
+      made.
+  No host kernel segfault line was logged for these runs: journalctl -k
+  since 22:50 lists only the two guard-probe deaths (22:54:24, 22:59:33,
+  writ_probe_reservation.stripped at 7ffef7f02000). /tmp/genode-1000 was
+  empty afterwards.
+
+REGRESSIONS RUN WITH THE CHANGED SHIM (same session, ram 256M)
+  make run/writ_bend_rts (run-bend-rts-3.out): rc 0; usage text and exit 0
+    for BENDRTS=--help; "bend: unknown runtime option --bogus" and exit 1
+    for --bogus. Each child also logs the shim's start line (the script
+    checks only its own lines). This script still builds lib/posix, which
+    the binary no longer links; harmless, not changed.
+  make run/writ_probe_reservation_live (run-reservation-live-6.out): rc 0,
+    exit value 0, figures as in the probe record section 9 (reserved at
+    hint=0 elsewhere=1 released=1).
+  make run/writ_probe_reservation_guard (run-reservation-guard-6.out): rc 0;
+    'writ_mem: unresolved fault at 0x7ffef7f02000 (guard page), component
+    terminates', process gone, init exit line 0.
+
+FAULTS: EXPECTED INTERACTION (recorded, not executed here)
+  The runtime registers err_trap for SIGSEGV and SIGBUS with sigaction and
+  an alternate stack with sigaltstack (pool_stack, hello.c:1674-1680). Genode's
+  libc only emulates both (repos/libports/src/lib/libc/signal.cc:117-130 and
+  234-266): nothing reaches the Linux kernel, so err_trap never runs for a
+  hardware fault on base-linux. After the first qualifying mmap the shim's
+  raw rt_sigaction handler is the only Linux SIGSEGV handler in the process.
+  A touch of the stack guard would therefore print the shim's line
+    writ_mem: unresolved fault at <addr> (guard page), component terminates
+  and not "bend: memory fault (machine stack overflow?)". No guard hit
+  through the Bend program was run in this task (Task 3 runs Overflow.bend),
+  and nothing here reproduces verification/runtime-profile-fault.txt.
+  Note also that the shim handler runs on the faulting stack (no
+  SA_ONSTACK): a machine-stack overflow, as opposed to a touch of the
+  runtime's term-stack guard, dies without the shim's line.
+
+LIMITS
+  - base-linux only. The fault front end is the shim's Linux SIGSEGV
+    handler; kernels that deliver region-map faults need another front end.
+  - Single lane (--threads 1). The signal-context PD RPC and the retry
+    table's limits (shim header, INVENTORY) are not exercised by this run.
+  - The parent-record requirement of GB-003 remains open (unchanged).
+  - hello.c compiled by host clang 23.1.1 (outside Genode's tool chain), as
+    before; the shim and everything else by GCC 14.2.0.

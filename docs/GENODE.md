@@ -298,3 +298,17 @@ SIGSEGV handler it installs itself. Kernels that deliver region-map faults
 need a separate front end, which has not been built. Second, init still
 recorded nothing when the component died, so GB-003's parent-record
 requirement stays open on base-linux.
+
+The shim is now linked into the Bend component `writ_bend_hello`, in place
+of `posix`. The unmodified generated hello C prints `hi` under init on
+base-linux and exits with value 0 at ram 256M. At exit the component had
+used about 7.9 MiB of its quota: the 8 GiB term heap and the 2 GiB
+evaluation stack are reservations, three 2 MiB chunks were charged, and the
+stack guard is a real unmapped range. The run script mounts `vfs_pipe` for
+the event loop's pipe and passes `+RTS --threads 1 --gpu off` as arguments.
+`-DMAP_NORESERVE=0` is still needed, because the libc headers lack the name.
+The runtime's own `err_trap` cannot run on base-linux, because libc only
+emulates `sigaction`. A guard touch would print the shim's refusal line
+instead of `bend: memory fault`. That case runs in Task 3 and has not run
+yet (record: the host-layer section of
+[genode-bend-hello-base-linux.txt](../verification/genode-bend-hello-base-linux.txt)).

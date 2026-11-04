@@ -11,9 +11,16 @@
 TARGET = writ_bend_hello
 SRC_C  = hello.c
 
-# posix supplies the libc component entry that calls main(argc, argv) and
-# pulls in libc itself.
-LIBS   = posix
+# Genode host-layer lane, Task 2: the shim's memory unit writ_mem.cc
+# (hosts/genode/shim/, copied byte-identically to $(REP_DIR)/src/writ_shim/)
+# is linked into the component. It supplies Libc::Component::construct, which
+# calls main(argc, argv, envp) as posix's construct.cc does, so posix is no
+# longer linked (its construct would be a duplicate definition). Its mmap,
+# munmap, and mprotect definitions in the program binary are what hello.c's
+# calls bind to; see verification/genode-bend-hello-base-linux.txt.
+SRC_CC = writ_mem.cc
+LIBS   = base libc
+vpath writ_mem.cc $(REP_DIR)/src/writ_shim
 
 # Directory holding the emitted C, outside the Genode repository.
 WRIT_BEND_HELLO_C_DIR ?= $(REP_DIR)/../hello
@@ -37,6 +44,11 @@ CUSTOM_CC = clang-23 --target=x86_64-unknown-elf
 # anonymous mapping is not reserved against swap anyway, so the flag value 0
 # keeps the FreeBSD meaning; whether Genode's mmap then backs the span with
 # RAM is a runtime question for Task 3.
+# Host-layer lane, Task 2: still required. Without it hello.c:1656 fails to
+# compile again ('use of undeclared identifier MAP_NORESERVE'): the shim
+# supplies reserve-now, charge-on-touch semantics for every qualifying
+# mapping whatever its flags, but it cannot supply a name the libc headers
+# lack. The value 0 means the shim never sees the flag; nothing depends on it.
 CC_DEF += -DMAP_NORESERVE=0
 
 # Error 3 (compile, after the clang switch): hello.c:470 and on, 'address
@@ -47,7 +59,10 @@ CC_DEF += -DMAP_NORESERVE=0
 # non-atomic temporaries. A clang compile needs clang's own freestanding
 # headers (stdatomic.h, stddef.h, stdarg.h, float.h, ...), so the compiler
 # header directory follows the compiler. Genode's libc headers still come
-# first on the include path.
+# first on the include path. The setting is target-wide (global.mk expands
+# ALL_INC_DIR immediately), so it is also on writ_mem.cc's path; the shim's
+# dependency file lists no header from it (it includes only Genode and
+# libc headers), so g++ compiles the shim with the same headers as before.
 LIBGCC_INC_DIR = $(shell clang-23 -print-resource-dir)/include
 
 # Preventive, no triggering error: prg.mk finds libgcc through $(CC), which
@@ -69,4 +84,6 @@ LD_LIBGCC = $(shell $(CROSS_DEV_PREFIX)gcc $(CC_MARCH) -print-libgcc-file-name)
 # the default small code model; calls into the shared libc go through the
 # PLT (R_X86_64_JUMP_SLOT) and data such as __stderrp through the GOT
 # (R_X86_64_GLOB_DAT), both of which Genode's x86_64 ld.lib.so implements.
+# CC_MARCH is target-wide, so the shim (g++ 14.2.0) is also compiled with the
+# small model; GCC emits ordinary section names under either model.
 CC_MARCH = -m64 -march=x86-64-v2
