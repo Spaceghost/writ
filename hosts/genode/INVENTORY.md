@@ -630,9 +630,10 @@ configured).
 - `writ_mem_report` prints fixed lines (ram/caps/reservations/guards;
   chunks through timer short wakes; rm upgrades), each under the LOG
   session's 232-byte limit for every tag in use; no line is split now.
-- Header sentences: on base-linux the upgrade would run in the SIGSEGV
-  handler on the faulting thread, so the Env-lock hazard is base-hw only by
-  construction; the take-parked counter is written without the channel
+- Header sentences: on base-linux the upgrade runs in the SIGSEGV handler
+  on the faulting thread itself, so a faulter holding the Env session mutex
+  would deadlock there too (halted, no record; unreachable on the runs here,
+  as on base-hw); the take-parked counter is written without the channel
   mutex and is diagnostics only.
 - Scripts: `writ_bend_require_refusal_exit` in `writ_bend.tcl` (init exit
   value 139 for the component and no core fault line), used by

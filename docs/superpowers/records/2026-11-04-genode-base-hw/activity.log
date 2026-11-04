@@ -47,3 +47,6 @@
 2026-11-04T19:50:20Z	implementer	heartbeat: fr reruns 11/36 done (all rc 0 so far); traceability, design, PLATFORMS, host-profile 2.3 edited
 2026-11-04T20:01:22Z	implementer	final-review fix pass: minors 1-12 and integration alignments applied; fr reruns rc 0 on both kernels; OpenSpec 44/0; committing
 2026-11-04T20:03:18Z	controller	final fix pass done; reconciling with the Unikraft merge
+2026-11-04T20:03:49Z	implementer	merged master 88f1cab as 60e732e: runtime-profile-hosts.md and profile tasks.md 2.3/3.1 reconciled; OpenSpec 44/0; git diff --check clean
+2026-11-04T20:04:10Z	controller	reconciled with master; scoped re-review dispatched
+2026-11-04T20:10:11Z	controller	re-review approved after two record-line fixes; merging

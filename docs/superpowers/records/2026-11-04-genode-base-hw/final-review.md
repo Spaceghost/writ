@@ -271,3 +271,61 @@ Before the merge commit:
 - complete the integration items: the manifest, both traceability files,
   `runtime-profile-hosts.md`, the 2.3 citation, design.md, and
   PLATFORMS.md.
+
+## Final fix pass re-review
+
+Re-reviewer, 2026-11-04. Scope: 985189f..821d20c (the fix pass) and
+60e732e (the second merge of master 88f1cab).
+
+### Minors 1-12
+
+1. ✅ dead_client: the repeated hw row is gone; on hw the script now fails if init reports `child "writ_client_f" exited` (`writ_bend_monitor.tcl:356-364`), and base-linux keeps core's warning.
+2. ✅ Queue coverage cites t3b 94/78 and t3d 155/139, ring max 8, "observed and timing-dependent", "not required by the script", ring full=0 by construction. Nit: GENODE.md:459 still reads "not reliably exercised" with no base-hw clause (the review asked for one there).
+3. ✅ The record now reads `genode-channel-base-hw.txt:170` "rc 2 (run script exit 1)".
+4. ✅ Corpus hashes: the db8a376d binaries were overwritten, so the dated notes give the delivered 9d9d32d2 build's hashes and the t3b log paths (`genode-corpus-base-hw.txt:65-80`). That is acceptable. All the hashes match the files now in `x86_64-hw/app/`.
+5. ✅ The unlocked take-parked write is disclosed (`writ_mem.cc:1698-1700`, INVENTORY final-review section).
+6. ✅ `writ_mem_report` now splits its output: a ram/caps/reservations/guards line, then a chunks-through-timer line. INVENTORY:398-402 says so. The live probe was rerun on both kernels (fr). Its longest line is 196 bytes including init's prefix, and `chunks populated` appears 5 times per run as its own line. The matchers still find `ram used=N ` on the first line.
+7. ✅ Limit 5 now names the lock-holder halt in tasks.md:26-28, `genode-bend-hello-base-hw.txt:531-533`, the rows file and INVENTORY:316-318. INVENTORY:287 is reworded (stray comma).
+8. ❌ The shim header is fixed (`writ_mem.cc:183-186`). INVENTORY.md:633-635 contradicts it: "on base-linux the upgrade would run in the SIGSEGV handler on the faulting thread, so the Env-lock hazard is base-hw only by construction". Fix: "... on the faulting thread, so a faulter holding the Env session mutex would deadlock (halted, no record; unreachable on the runs here)".
+9. ✅ INVENTORY Status (:24-30), the base-hw shim-sha files (:44-48), "On base-linux," for the stack sentence (:699), and five run-script headers are updated.
+10. ✅ `writ_bend_tests.run:62` uses `\r*$`.
+11. ✅ `writ_bend_require_refusal_exit` (`writ_bend.tcl:111-132`, proc at :119) requires exactly 139 and core silence. Overflow and the guard probe call it, and both source writ_bend.tcl.
+12. ✅ GENODE.md:517-525 now states the per-base order and says the design's "on either" order was not followed.
+
+### Integration alignments in 821d20c
+
+- ✅ genode-bend-component.md: the header, GB-002/003/004/006/008/009 and the 1.3/3.1/3.2 citations now describe base-hw. GB-003 lists six limits and keeps the base-linux and supervisor-restart scenarios unmet. GB-009 states the FAIL.
+- ❌ runtime-profile-hosts.md:58, the base-hw row. Every value matches `genode-corpus-base-hw.txt` (both the 782/834/fc3a08aa cell and the binary-hash cell). Several `ghw` line citations are off by one or more against the file at 821d20c, which the note at :61 names as the reference: `writ_bend_tests` hash "line 72" is line 73; the command "line 91" is 92; the shim exit report "line 95" is 96; QEMU "lines 81-86" are 84-86; comparison "106-113" is 107-114; the final-review note "69-71" is 70-72. Fix these citations; the `gchw` and hello citations are correct.
+- ✅ The bend-runtime-host-profile.md header and rows RH-003, RH-006 and RH-008 name the base-hw evidence.
+- ✅ The design.md ordering text records the deviation. GB-004 in spec.md is unchanged, so no requirement was weakened. The "recorded by the supervisor" text on base-hw is init's record of a self-requested exit, with no restart. The shim line numbers are anchored to sha256 9d9d32d2, a file revision rather than a commit, which is acceptable; all twelve spot-checked lines match.
+- ✅ The PLATFORMS.md:23 Genode row: Bend C now evaluates; base-hw under QEMU TCG, not native hardware.
+- ✅ The report gives a one-line rationale per item. No weakening found.
+
+### Reruns
+
+- ✅ 18 scenarios on each kernel. The live shim copy is dated 13:45:15, and every `-fr` log is newer (13:46:39-13:57:18). Each log has "Run script execution successful".
+- ✅ My own extraction gives 782 PASS and sha256 fc3a08aa on both kernels.
+- ✅ Overflow on hw: `rm upgrades sent=22 declined=0`, refused at the guard 0x2280000000, exit value 139, no core fault line. The guard probe also exits 139.
+- ✅ I reran the binary check: rc 1, rows Genode.log/put/take, 158 undefined symbols, output identical to `check-binary-hw-monitor-fr.out`.
+- ✅ I reran OpenSpec 1.16.0 via bunx: 44 passed, 0 failed.
+- ✅ The live copies of the shim, writ_bend.tcl, the edited run scripts and the target.mk files are cmp-identical.
+
+### Reconcile 60e732e
+
+- ✅ The provided diff equals `git diff 88f1cab 60e732e` on the two files. It only adds base-hw content (row, short names, line note, 782 row, emulated-boot sentence, binary-check gap). The Unikraft lane's content is untouched.
+- ✅ Profile tasks.md 2.3 is coherent: all five changes are cited, the box is still unchecked, and it is to be ticked at integration. The 3.1 note no longer calls the rows pending.
+- ✅ `git diff --check 88f1cab 60e732e` on both files is clean.
+
+### Other checks
+
+- ✅ No `.bend` file changed in 985189f..821d20c. The `.bend` files in 60e732e are master's Unikraft files.
+- ✅ No build output is committed.
+- Known for integration (not defects): bend-runtime-host-profile.md line 9 and RH-008 (Unikraft channel "pending"); the manifest.
+
+### Assessment
+
+Open: two record-only fixes, and no rerun is needed:
+- (a) INVENTORY.md:633-635: make the base-linux Env-lock sentence match `writ_mem.cc:183-186`;
+- (b) runtime-profile-hosts.md:58: correct the six off-by-one `ghw` line citations.
+
+Optional: the GENODE.md:459 clause and the INVENTORY:287 comma. With (a) and (b) applied, the branch is approved for merge.

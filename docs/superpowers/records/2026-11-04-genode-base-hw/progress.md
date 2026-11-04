@@ -20,3 +20,5 @@ Task 3: implementer DONE (f05d643): 8/8 channel runs on base-hw, wake path obser
 Task 3: complete (2c34792..f05d643; review Approved; 5 minors carried into the final fix pass: tcl:345 dead_client row label, queue-run timing wording in evidence and INVENTORY, rc 2 wording at evidence:165, Task 3 hashes in corpus evidence:53, parked counter unlocked-increment clause). Final whole-branch review dispatched (09cd9bc..f05d643).
 Final review: Approved for merge; 12 minors plus record alignments (traceability rows, runtime-profile-hosts base-hw row, the Genode citation for profile task 2.3, design.md ordering text, PLATFORMS.md row). Single final fix pass dispatched with widened paths; merge master first.
 Final fix pass DONE (985189f merge, 821d20c). Second master merge requested to reconcile runtime-profile-hosts.md and the profile 2.3 note with the Unikraft merge; scoped re-review follows.
+Reconcile merge 60e732e done. Scoped re-review of the final pass dispatched.
+Final fix re-review: all addressed except two record lines (INVENTORY Env-lock sentence; base-hw row citations), fixed at integration by the controller. Merging to master.
