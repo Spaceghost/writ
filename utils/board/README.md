@@ -137,14 +137,15 @@ otherwise. None of this is verification: it is what the lane wrote.
 The index leads with three tiles (changes being worked on, tasks done across
 every `tasks.md`, lanes live and landed), then the changes table. A change with
 a task done or a lane on it is listed; the rest collapse under one line. Each
-listed change shows a progress bar, the task ids done and open, and a chip per
+listed change shows a progress bar and a chip per
 live or idle lane on it (dot, name, phase, age); landed lanes are a muted list.
 A chevron at the start of each change row opens a full-width row beneath it
 with the change's `tasks.md`: open boxes first as cards grouped by section,
 done ones behind a nested "N done" toggle. The row is shown by a Datastar
 signal per change (`data-signals__ifmissing` on the tables section), so a
 push never closes what the reader opened and opening never resizes the
-columns. Lane cards show the status line (dot, phase, age, changes), the activity feed,
+columns. Below 760px the Status and Explainers columns are hidden (both are on
+the change page) so the row keeps the chevron, name, bar, and lane chips. Lane cards show the status line (dot, phase, age, changes), the activity feed,
 then the ledger tail and reports; live lanes sort first.
 
 ## Requests
