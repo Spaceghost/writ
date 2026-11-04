@@ -127,8 +127,11 @@
  * invalid instruction, a raw Linux system call as in E2 of
  * verification/genode-bend-hello-base-hw.txt), which base-hw's pager
  * reports as "unresolvable exception" and halts (repos/base-hw/src/core/
- * pager.cc:131-140), and a parent that registers its own handler on this
- * PD's address space (one handler per region map: the later one wins).
+ * pager.cc:131-140), a parent that registers its own handler on this
+ * PD's address space (one handler per region map: the later one wins), and
+ * a fault on the "writ_fault" thread itself (its own stack guard, or a bug
+ * in the handler): it is reflected to the handler that thread would have
+ * to run, so the component halts with no line, no exit, and no record.
  *   Why a dedicated entrypoint and not the channel's "writ_channel": that
  * one exists only with a <writ_channel> config node, while every
  * component with a reservation needs the fault handler; and a fault must
@@ -159,7 +162,16 @@
  * that answers OUT_OF_RAM and OUT_OF_CAPS with a blocking parent
  * resource_request. The plain client returns the Alloc_error, and the
  * shim also checks the PD's available RAM and caps against a margin
- * first, so a fault never blocks on the parent. On base-linux a refusal
+ * first, so a fault never blocks on the parent. A chunk attach that core
+ * refuses for RM-session quota (OUT_OF_RAM or OUT_OF_CAPS) is retried
+ * after a bounded session upgrade paid from the PD's own quota under the
+ * same margins (see _upgrade_rm_session); a session upgrade to core is
+ * answered by init without blocking (child.cc, Child::upgrade, and
+ * component.cc, Env::upgrade, which blocks only on PENDING). The upgrade
+ * goes through Env::upgrade, which takes the Env's session mutex, so a
+ * faulter halted while holding that mutex (inside a session request)
+ * would leave the writ_fault thread blocked and the component halted with
+ * no record, as with the LOG lock below. On base-linux a refusal
  * prints one line with Genode::raw, restores the default SIGSEGV action,
  * and returns; the retried access then faults again and Linux terminates
  * the process. On base-hw a refusal logs the same line through the LOG
@@ -523,10 +535,52 @@ static Region_map::Attr _piece_attr(addr_t start, addr_t end, addr_t c)
 }
 
 /*
+ * Non-expanding PD client for chunk allocation: Alloc_error comes back
+ * instead of becoming a blocking resource_request (see header).
+ */
+static Kept<Pd_session_client> _pd;
+
+/*
+ * RM-session upgrade per attach retry, the amounts Rm_connection::create
+ * uses (repos/base/include/rm_session/connection.h). Core charges the
+ * metadata of every attached piece to the RM session's own quota (64 KiB
+ * and 2 caps at session creation), and attach, unlike create, does not
+ * upgrade on demand. The upgrade is a session upgrade: init moves the
+ * amount from this component's own PD quota to core (child.cc,
+ * Child::upgrade). It is not a resource_request, and it is attempted only
+ * while the PD keeps RAM_MARGIN and CAP_MARGIN after the transfer, so a
+ * component that cannot pay still gets the named attach error.
+ */
+static constexpr size_t RM_UPGRADE_RAM      = 8*1024;
+static constexpr size_t RM_UPGRADE_CAPS     = 2;
+static constexpr size_t RM_UPGRADE_ATTEMPTS = 4;   /* per piece; bounds the retry loop */
+
+/* returns true when the upgrade was sent (affordable), false otherwise */
+static bool _upgrade_rm_session(Region_map::Attach_error a)
+{
+	using E = Region_map::Attach_error;
+	Pd_session::Stats const st = _pd->stats();
+	if (a == E::OUT_OF_RAM) {
+		if (st.ram.avail().value < RM_UPGRADE_RAM + size_t(RAM_MARGIN)) return false;
+		_rm_connection->upgrade_ram(RM_UPGRADE_RAM);
+		return true;
+	}
+	if (a == E::OUT_OF_CAPS) {
+		if (st.caps.avail().value < RM_UPGRADE_CAPS + size_t(CAP_MARGIN)) return false;
+		_rm_connection->upgrade_caps(RM_UPGRADE_CAPS);
+		return true;
+	}
+	return false;
+}
+
+/*
  * Attach chunk idx's dataspace as the pieces outside the guards. Returns
  * nullptr on success, otherwise the first attach error, named so that a
- * refusal tells RM-session quota (OUT_OF_RAM, OUT_OF_CAPS: on base-hw the
- * pieces are core metadata charged to the Rm_connection) from a conflict.
+ * refusal tells RM-session quota (OUT_OF_RAM, OUT_OF_CAPS: the pieces are
+ * core metadata charged to the Rm_connection) from a conflict. On a quota
+ * error the RM session is upgraded from the PD's own quota and the attach
+ * retried, at most RM_UPGRADE_ATTEMPTS times per piece; the error stands
+ * when the PD cannot pay or the bound is reached.
  */
 static char const *_attach_pieces(Reservation &r, size_t idx)
 {
@@ -535,14 +589,23 @@ static char const *_attach_pieces(Reservation &r, size_t idx)
 	addr_t const c = idx*CHUNK, e = r.chunk_end(idx);
 	char const *err = nullptr;
 	r.for_each_piece(c, e, [&] (addr_t s, addr_t t) {
-		rm.attach(r.chunks[idx].ds, _piece_attr(s, t, c)).with_result(
-			[&] (Region_map::Range) { },
-			[&] (E a) {
-				if (err) return;
-				err = a == E::OUT_OF_RAM      ? "chunk could not be attached: attach OUT_OF_RAM"
-				    : a == E::OUT_OF_CAPS     ? "chunk could not be attached: attach OUT_OF_CAPS"
-				    : a == E::REGION_CONFLICT ? "chunk could not be attached: attach REGION_CONFLICT"
-				    :                           "chunk could not be attached: attach INVALID_DATASPACE"; }); });
+		if (err) return;
+		for (size_t attempt = 0; ; attempt++) {
+			bool attached = false;
+			E failure = E::INVALID_DATASPACE;
+			rm.attach(r.chunks[idx].ds, _piece_attr(s, t, c)).with_result(
+				[&] (Region_map::Range) { attached = true; },
+				[&] (E a) { failure = a; });
+			if (attached) return;
+			if (attempt < RM_UPGRADE_ATTEMPTS && _upgrade_rm_session(failure))
+				continue;
+			err = failure == E::OUT_OF_RAM      ? "chunk could not be attached: attach OUT_OF_RAM"
+			    : failure == E::OUT_OF_CAPS     ? "chunk could not be attached: attach OUT_OF_CAPS"
+			    : failure == E::REGION_CONFLICT ? "chunk could not be attached: attach REGION_CONFLICT"
+			    :                                 "chunk could not be attached: attach INVALID_DATASPACE";
+			return;
+		}
+	});
 	return err;
 }
 
@@ -552,12 +615,6 @@ static void _detach_pieces(Reservation &r, size_t idx)
 	r.for_each_piece(idx*CHUNK, r.chunk_end(idx), [&] (addr_t s, addr_t) {
 		rm.detach(s); });
 }
-
-/*
- * Non-expanding PD client for chunk allocation: Alloc_error comes back
- * instead of becoming a blocking resource_request (see header).
- */
-static Kept<Pd_session_client> _pd;
 
 /*
  * Populate the chunk containing offset off. Returns nullptr on success,
@@ -735,21 +792,26 @@ struct Rm_fault_handler
 	 */
 	void _handle()
 	{
-		Mutex::Guard guard(_mutex());
-
 		/*
 		 * A fault of the component's own address space, stack area, or
 		 * linker area: an access with no region behind it outside every
 		 * reservation (a null pointer, a thread's stack guard), or one the
 		 * region's rights refuse. Nothing here can resolve it. The address
 		 * is absolute for the address space and relative to the area for
-		 * the other two (the refusal line names which).
+		 * the other two (the refusal line names which). Checked before the
+		 * shim mutex is taken: _pd_areas is written once in construct and
+		 * only read afterwards, and the refusal needs no shim state, so a
+		 * thread that faults here while holding the mutex (for example on
+		 * its stack guard inside mmap or mprotect) still gets the recorded
+		 * exit instead of a handler blocked on that mutex.
 		 */
 		for (Pd_area const &area : _pd_areas) {
 			Region_map::Fault const f = Region_map_client(area.cap).fault();
 			if (f.type != Region_map::Fault::Type::NONE)
 				_refuse(area.why, f.addr);
 		}
+
+		Mutex::Guard guard(_mutex());
 
 		for (Reservation &r : _res) {
 			if (!r.used) continue;

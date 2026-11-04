@@ -73,9 +73,9 @@ source [select_from_repositories run/writ_bend.tcl]
 writ_bend_refuse_reserve_failure
 
 foreach {re what} {
-	{child "bend_rts_help" exited with exit value 0\r?\n}          "help exit value 0"
+	{child "bend_rts_help" exited with exit value 0\r*\n}          "help exit value 0"
 	{\[init -> bend_rts_help\] usage: writ_bend_hello \[\+RTS}       "help usage line"
-	{child "bend_rts_bad" exited with exit value 1\r?\n}           "bad exit value 1"
+	{child "bend_rts_bad" exited with exit value 1\r*\n}           "bad exit value 1"
 	{\[init -> bend_rts_bad\] bend: unknown runtime option --bogus} "bad option message"
 } {
 	if {![regexp $re $output]} {

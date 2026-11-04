@@ -1,0 +1,185 @@
+Writ test corpus, the four examples, and Overflow as Genode components on
+base-hw under QEMU TCG (Genode base-hw lane, Task 2)
+Recorded: 2026-11-04, about 11:50 to 12:55 -06:00
+
+This is emulated-boot evidence: Genode 26.08 base-hw (KERNEL=hw, BOARD=pc)
+booted from an ISO by qemu-system-x86_64 with -accel tcg. It is not native
+hardware, not KVM, and not NOVA or seL4. It is CPU only: every Bend run passes
++RTS --threads 1 --gpu off, and no device was used. GpuExample's "Native GPU
+dispatch requested; CPU fallback is allowed" is a line the program prints;
+this is not GPU evidence.
+
+RESULT
+  - Tests.bend as writ_bend_tests at ram 256M, caps 1000 (the default of
+    writ_bend.tcl; first and only quota tried): 782 PASS lines and "ALL
+    LIBRARY TESTS PASSED", exit value 0. Its 834 component lines are
+    byte-identical to the Linux single-lane reference (diff empty, same
+    sha256). Run twice: before and after the RM-session upgrade below.
+  - Example.bend, examples/Flow.bend, examples/Transfer.bend, GpuExample.bend
+    at ram 256M, caps 1000 each: exit value 0, logs byte-identical to the
+    Linux captures. Run twice, as the corpus.
+  - Overflow (scripts/runtime-profile/Overflow.bend) at ram 3G, caps 2000
+    (the run script's default, as on base-linux; QEMU guest RAM raised to
+    4096M on hw because the run tool's 800M default cannot hold a 3G child):
+      first run: refused at 0x2206c00000 with "chunk could not be attached:
+        attach OUT_OF_CAPS", init "exited with exit value 139", core silent,
+        script failed (the default-quota outcome must be the guard page).
+      after the RM-session upgrade (SHIM CHANGE): refused at the guard,
+        "writ_mem: unresolved fault at 0x2280000000 (guard page), component
+        terminates", then init "[init] child "writ_bend_overflow" exited with
+        exit value 139". No result printed, no runtime fault line, core
+        printed nothing (no "illegal" or "violation" line). Script rc 0.
+
+REFERENCE
+  verification/genode-corpus-linux-reference.txt: native Linux single-lane
+  captures of this tree (782 checks), the files
+  ../writ-build/genode-host-layer/merged/tests-1.out and
+  ../writ-build/genode-host-layer/{example,flow,transfer,gpuexample}-1.out.
+  tests-native.txt was not changed since d8b1473, and a fresh emission of all
+  six programs was cmp-identical to ../writ-genode/bend-c/*/, so no
+  recapture was needed.
+
+BUILD (cd ../writ-genode/build/x86_64-hw; KERNEL ?= hw, BOARD ?= pc,
+QEMU_OPT += -display none -accel tcg -no-reboot; every make with MAKEFLAGS=)
+  MAKEFLAGS= make -j8 app/writ_bend_tests app/writ_bend_example \
+    app/writ_bend_flow app/writ_bend_transfer app/writ_bend_gpuexample \
+    app/writ_bend_overflow app/writ_bend_hello app/writ_bend_probe ...
+                                       rc 0, 44m36s wall (first hw build)
+  After each shim change only writ_mem.o recompiles and each binary relinks.
+  The shim is selected by hosts/genode/shim/writ_shim.mk
+  (-DWRIT_SHIM_FAULT_REGION_MAP on hw). Same emitted C and target.mk files as
+  verification/genode-corpus-base-linux.txt; no flag was added for hw.
+
+  Binaries (not committed), sha256, final shim 67cc3617...:
+    43dfb38ee8c9bec3eaff62c9d0bd3b04a1cb97568808cdb401b961b741e9c32e  writ_bend_tests
+    ab35ff0279b765f890cf146ebb83898e81a5e87871b418c1a14a124ab799e989  writ_bend_example
+    43a4206b5a5e6776ccc3fc7c46b7bc81e64f0c4b68bfec66a47bc6574e3cc47b  writ_bend_flow
+    a9b72881946063a41aecec6aa257da6855d520a54ecb345d0ea8a6b1337360c5  writ_bend_transfer
+    4cad7bf1a9675cf6dcf734801c8e3757d3f9d7c7533cb24510f54adfcacf28fe  writ_bend_gpuexample
+    a6edcb1bd3d9728cef5c3be401ca73a85cf1476a5d2b4c2315fd5d64faf8e032  writ_bend_overflow
+    4c07ef848a6ec932766dd4b248ec46bca044ac824f4916594081c14179941dc8  writ_bend_hello
+    132718e2f1286c19846901b7e6ff25982d2e641186cdccdd1a927c6bb9f00364  writ_bend_probe
+
+QEMU
+  Corpus and examples (run tool default guest RAM):
+    qemu-system-x86_64 -display none -accel tcg -no-reboot -serial mon:stdio
+      -m 800 -cdrom var/run/writ_bend_tests.iso -machine q35
+      -cpu Skylake-Client -net nic,model=e1000,netdev=net0 -netdev user,id=net0
+    "779 MiB RAM and 64536 caps assigned to init"
+  Overflow: the same with -m 4096 (from writ_bend_overflow.run under
+    [have_spec hw]); "4078 MiB RAM and 64536 caps assigned to init".
+
+CORPUS RUN
+  Command: cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_bend_tests
+  Logs: ../writ-genode/run-hw-writ_bend_tests-1.out (shim 3b71f36c, M1/M2),
+        ../writ-genode/run-hw-writ_bend_tests-t2b.out (final shim 67cc3617).
+  Both rc 0. Shim and init lines (identical in both runs):
+    [init -> writ_bend_tests] writ_mem: [exit] ram used=12681216 limit=268143196 caps used=50 limit=951 reservations=2 guards=1 chunks populated (total)=5 faults resolved=5 benign retries=0 reserved at hint=1 elsewhere=9 released=8 timer short wakes=0
+    [init] child "writ_bend_tests" exited with exit value 0
+    --- writ_bend_tests: 782 PASS lines, 834 component lines ---
+    Run script execution successful.
+  Quota: 12681216 bytes (about 12.1 MiB) of 256M, caps 50 of 951, five 2 MiB
+  chunks. "elsewhere=9 released=8": base-hw's user address space ends at
+  1<<38 (repos/base-hw/src/lib/hw/spec/64bit/memory_map.cc:26,
+  USER_END = 1ULL << (39 - 1)), so the
+  runtime's mmap hints from 1<<45 down to 1<<38 fail and are released
+  before one is placed; on base-linux the figure is elsewhere=1 released=0.
+
+  Comparison (from the writ-lanes directory; QEMU serial lines end in \r\r\n):
+    grep -a 'writ_bend_tests\]' writ-genode/run-hw-writ_bend_tests-t2b.out \
+      | sed 's/\r*$//' | grep -v 'writ_mem: ' | grep -v '^\[init\] ' \
+      | sed 's/^\[init -> writ_bend_tests\] //' > writ-genode/genode-tests-hw-t2b.lines
+    diff writ-build/genode-host-layer/merged/tests-1.out writ-genode/genode-tests-hw-t2b.lines
+    -> no output, rc 0
+    grep -c '^PASS' -> 782
+    sha256 of both: fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff (834 lines)
+
+EXAMPLE RUNS (ram 256M, caps 1000; logs ../writ-genode/run-hw-writ_bend_<name>-1.out
+and -t2b.out; each run script also compares against its embedded capture)
+  Same extraction; diff against writ-build/genode-host-layer/<name>-1.out:
+    example     diff rc 0, 17 lines, sha256 84fce2fc8e2ba0118ac40f334869437cd5c6e5c2d8d1c5d3ab8a04550cec137b
+    flow        diff rc 0,  5 lines, sha256 0c789cf9850005f083f23bbab2239c09976cadc4dff2395b8fb4c39732494f77
+    transfer    diff rc 0,  5 lines, sha256 5ab278338ecee2c9503689bc2cda583b52fbbf4fb603adba2a8a041a72a4fe80
+    gpuexample  diff rc 0,  7 lines, sha256 6ecd8bfd7fdcb976dc34fa65524a901a0d89f0d01e4c51e77af58b7a12f2d473
+  Shim reports at exit (identical in both runs):
+    example     ram used=8433664  caps used=41 chunks=3
+    flow        ram used=8429568  caps used=41 chunks=3
+    transfer    ram used=8429568  caps used=41 chunks=3
+    gpuexample  ram used=12652544 caps used=50 chunks=5
+  Each: reservations=2 guards=1 reserved at hint=1 elsewhere=9 released=8,
+  exit value 0.
+
+OVERFLOW RUNS (ram 3G, caps 2000; QEMU -m 4096)
+  Command: cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_bend_overflow
+  Run 1 (shim 3b71f36c), log ../writ-genode/run-hw-writ_bend_overflow-1.out, rc 2, 42 s:
+    [init -> writ_bend_overflow] writ_mem: unresolved fault at 0x2206c00000 (chunk could not be attached: attach OUT_OF_CAPS), component terminates
+    [init] child "writ_bend_overflow" exited with exit value 139
+    Error: at the default quota the expected outcome is a guard-page refusal, got: chunk could not be attached: attach OUT_OF_CAPS
+  Cause: core charges each attached piece's metadata to the RM session, which
+  core creates with 64 KiB and 2 caps (repos/base/include/rm_session/connection.h).
+  Rm_connection::create upgrades on demand (8 KiB / 2 caps per retry); attach
+  does not, so the recursion's later chunks exhausted the session. The PD
+  itself still had quota. Fixed in the shim, not in the run script (SHIM CHANGE).
+  Run 2 (shim 67cc3617), log ../writ-genode/run-hw-writ_bend_overflow-2.out, rc 0:
+    [init -> writ_bend_overflow] writ_mem: unresolved fault at 0x2280000000 (guard page), component terminates
+    [init] child "writ_bend_overflow" exited with exit value 139
+    --- writ_bend_overflow outcome (ram 3G, caps 2000) ---
+    shim refusal line:       1 (reason: guard page)
+    guard page refusal:      1
+    base-linux fault line:   0
+    runtime fault message:   0
+    result printed:          0
+    init exit line:          1 (value 139)
+    init lines naming child: 1
+    process alive:           0
+    ps control (timer):      0
+  (process alive and ps control are base-linux host checks; on hw both read
+  0 by construction.) No "illegal", "violation", or "unresolvable" line from
+  core: the fault was reflected to the shim's handler, and core omits
+  diagnostics for a reflected fault (repos/base/src/core/include/
+  region_map_component.h:430-440, "omit diagnostics").
+
+  For contrast, the C probe writ_probe_fault (no shim, so no handler on its
+  address space) on hw, log ../writ-genode/run-hw-writ_probe_fault-t2b.out:
+    Error: illegal WRITE at address 0x402beff0 by pager_object: pd='init -> writ_probe_fault' thread='ep' ip=0x1000025
+  This is core's record of an unresolvable page fault
+  (repos/base/src/core/region_map_component.cc:103, error("illegal ", ...)).
+  The thread halts, init records nothing, and the run times out (script
+  expects base-linux behaviour; rc 2). That probe is not the GB-003 case.
+
+SHIM CHANGE (population function: _attach_pieces)
+  hosts/genode/shim/writ_mem.cc 3b71f36c... (M1/M2) ->
+  67cc36171d0888ee9119245f72bd1ea4dfde1a1740f8a69d98c5b7a6e78b32ff
+  On an attach refused with OUT_OF_RAM or OUT_OF_CAPS, _upgrade_rm_session
+  upgrades the RM session by 8 KiB or 2 caps (Rm_connection::create's
+  amounts) through Connection::upgrade, at most 4 times per piece, and only
+  while the PD keeps RAM_MARGIN and CAP_MARGIN after the transfer. It is a
+  session upgrade from the component's own quota (child.cc, Child::upgrade),
+  not a resource_request; Env::upgrade blocks only on PENDING
+  (component.cc:226-232). When the PD cannot pay or the bound is reached, the
+  named attach error stands. The run script's quota was not raised.
+  Live copy ../writ-genode/writ-repo/src/writ_shim/writ_mem.cc: cmp identical.
+
+REGRESSION RUNS WITH THE FINAL SHIM (logs ../writ-genode/run-*-t2b*.out, -t2c*.out)
+  base-linux (build/x86_64), all rc 0:
+    writ_bend_hello      hi, exit 0, ram used=8335360 caps used=35
+    writ_bend_rts        bad exit 1, help exit 0
+    writ_probe_reservation_live  released=1, exit 0
+    writ_probe_reservation_guard "unresolved fault at 0x7ffef7f02000 (guard page)"
+    writ_bend_probe      delta 102 ms, PASS
+    writ_bend_overflow   "unresolved fault at 0x7ffff7f43000 (guard page)", init silent
+    writ_bend_tests      782 PASS, 834 lines, sha256 fc3a08aa... (diff empty)
+  base-hw (build/x86_64-hw), all rc 0:
+    writ_bend_hello      hi, exit 0, ram used=8429568 caps used=41
+    writ_probe_reservation_guard "unresolved fault at 0x300102000 (guard page)", exit 139
+    writ_scratch_nullfault "unresolved fault at 0x10 (outside every reservation)", exit 139
+      (scratch, not committed; run with WRIT_RUN_SCENARIOS=writ_scratch_nullfault)
+    writ_bend_tests and the four examples as above
+    writ_bend_overflow   run 2 above
+  Rows runs on base-hw are in verification/genode-runtime-rows-base-hw.md.
+
+LIMITS
+  Emulated boot (QEMU TCG) only. CPU only. One lane (--threads 1). The
+  Overflow record is the component's self-reported fault exit (see
+  verification/genode-bend-hello-base-hw.txt, GB-003 ON BASE-HW, six limits),
+  not a parent-observed fault.

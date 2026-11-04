@@ -45,7 +45,7 @@ build_boot_image [build_artifacts]
 
 run_genode_until {child "writ_probe_clock" exited with exit value .*\n} 60
 
-if {![regexp {child "writ_probe_clock" exited with exit value 0\r?\n} $output]} {
+if {![regexp {child "writ_probe_clock" exited with exit value 0\r*\n} $output]} {
 	puts stderr "Error: writ_probe_clock did not exit with value 0"
 	exit 1
 }

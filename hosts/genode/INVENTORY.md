@@ -83,12 +83,21 @@ run scripts source; live copy `run/writ_bend.tcl`).
   `create`/`destroy` of one region map per reservation. On base-linux this
   session is local to the component. On base-hw it is core's RM service:
   every chunk piece the shim attaches is core metadata charged to that
-  session's quota, which `Rm_connection::create` upgrades on demand but
-  `Region_map_client::attach` does not; an attach answered `OUT_OF_RAM` or
-  `OUT_OF_CAPS` becomes the refusal "chunk could not be attached: attach
-  OUT_OF_RAM" (or `OUT_OF_CAPS`; a conflict is `REGION_CONFLICT`, fix round
-  1 names the error). The
-  hello's three chunks fit; whether the corpus does is Task 2's question.
+  session's quota (64 KiB and 2 caps at creation), which
+  `Rm_connection::create` upgrades on demand but `Region_map_client::attach`
+  does not. Since base-hw Task 2 the shim answers an attach refused with
+  `OUT_OF_RAM` or `OUT_OF_CAPS` by upgrading the RM session (8 KiB or 2 caps,
+  `Rm_connection::create`'s amounts) through `Connection::upgrade`, at most 4
+  times per piece and only while the PD keeps its RAM and cap margins after
+  the transfer; this is a session upgrade from the component's own quota
+  (init's `Child::upgrade`), not a resource request. Otherwise the error
+  stands as the refusal "chunk could not be attached: attach OUT_OF_RAM"
+  (or `OUT_OF_CAPS`; a conflict is `REGION_CONFLICT`). Observed: Overflow's
+  first base-hw run, before the upgrade, was refused with `attach
+  OUT_OF_CAPS` at 0x2206c00000; the corpus and the examples fit without it.
+  The upgrade goes through `Env::upgrade`, which takes the Env's session
+  mutex; a faulter halted while holding it would leave the writ_fault
+  thread blocked and the component halted with no record (not observed).
 - **Region map fault handler** (base-hw only): `Region_map_client::
   fault_handler` on each reservation's region map at creation and, at
   construct, on the PD's address space, stack area, and linker area
@@ -109,7 +118,8 @@ run scripts source; live copy `run/writ_bend.tcl`).
   `resource_request` can still be issued indirectly by `Env::ram()`/`Env::pd()`
   allocations outside the fault path (the Heap below, Rm_connection session
   upgrades in `Rm_connection::create`), never from the fault handler's chunk
-  allocation.
+  allocation or its RM-session upgrade (a session upgrade, which init
+  answers from the component's quota without a resource request).
 - **Env::ram() and Env::rm() behind a Genode `Heap`**: the per-reservation chunk
   tables and the `Shared_object` metadata.
 - **Local region map** (`Env::rm()`): attach/detach of each reservation.
@@ -262,9 +272,15 @@ registered handler reflects the fault instead of reporting it ("omit
 diagnostics", `repos/base/src/core/include/region_map_component.h:430-440`).
 Not covered: an exception that is not a page fault, which base-hw's pager
 reports as `unresolvable exception` and halts (`repos/base-hw/src/core/
-pager.cc:131-140`; seen as E2 of the base-hw hello record); and a parent
+pager.cc:131-140`; seen as E2 of the base-hw hello record); a parent
 that registers its own handler on the component's address space (one
-handler per region map, the later registration wins).
+handler per region map, the later registration wins); and a fault on the
+`writ_fault` thread itself (its own stack guard, or a bug in the handler),
+which is reflected to the handler that thread would have to run, so the
+component halts with no line, no exit, and no record. The PD areas are
+checked before the shim mutex is taken (base-hw Task 2, M1), so a thread
+faulting outside every reservation while it holds that mutex still gets the
+recorded exit.
 
 GB-003 on base-hw is the profile's halting substitute, and its record is
 self-reported:
@@ -291,10 +307,12 @@ touch refused with the shim's line and init's `exited with exit value 139`
 (C probe, `../writ-genode/run-hw-reservation-guard-1.out` and the fix-round
 reruns); a null-pointer store outside every reservation refused the same
 way, with no `illegal` line from core (scratch probe, fix round 1,
-`../writ-genode/run-hw-writ_scratch_nullfault-fr1-final.out`). Not yet
-observed on base-hw: a guard hit by a Bend program (Task 2's Overflow run),
-a stack-area or linker-area fault, and concurrent faulters (single lane
-only).
+`../writ-genode/run-hw-writ_scratch_nullfault-fr1-final.out`); a guard hit
+by a Bend program (Task 2: Overflow at ram 3G, caps 2000, `unresolved fault
+at 0x2280000000 (guard page)` and init's `exited with exit value 139`, core
+silent; `verification/genode-corpus-base-hw.txt`); the corpus and the four
+examples at 256M (5 and 3 to 5 chunks). Not yet observed on base-hw: a
+stack-area or linker-area fault, and concurrent faulters (single lane only).
 
 ## Build settings carried by every Bend component
 
@@ -535,6 +553,23 @@ configured).
   lock. The guard probe's run script requires exit value 139 on base-hw.
   sha256 in `verification/genode-bend-hello-base-hw.txt` (FIX ROUND 1).
 
+## Changes in base-hw lane, Task 2
+
+- M1: the base-hw handler drains the PD's own region maps (address space,
+  stack area, linker area) before taking the shim mutex. M2: header and
+  Failure behaviour state that a fault on the writ_fault thread halts with
+  no record.
+- Population (both cases): `_attach_pieces` retries an attach refused with
+  `OUT_OF_RAM` or `OUT_OF_CAPS` after `_upgrade_rm_session` (Sessions, RM).
+  `_pd` is now declared before it. sha256 `67cc3617...` (full value in
+  `verification/genode-corpus-base-hw.txt`, SHIM CHANGE); base-linux and
+  base-hw reruns there, including the corpus on both.
+- Run scripts: `writ_bend_overflow.run` sets QEMU guest RAM to 4096M and
+  requires exit value 139 on base-hw; seven run scripts (`writ_bend_rts`,
+  `writ_bend_probe`, `writ_probe_reservation_live`, and the threads, clock,
+  evloop, and process probes) match `\r*\n` instead of `\r?\n`, since QEMU
+  serial lines end in `\r\r\n`.
+
 ## Fault behaviour observed through a Bend program
 
 `writ_bend_overflow` (`scripts/runtime-profile/Overflow.bend`): every
@@ -542,8 +577,18 @@ touched stack chunk costs RAM and one dataspace capability. At ram 256M the
 shim refused a chunk for RAM quota; at 3G with 1000 caps for cap quota; at
 3G with 2000 caps the recursion reached the runtime's guard and the shim
 logged `unresolved fault at 0x7ffff7f43000 (guard page), component
-terminates`. The process ended each time and nothing resumed. The parent
-(init) logged nothing; the shim does not and cannot report to the parent.
+terminates`. The process ended each time and nothing resumed. On
+base-linux the parent (init) logged nothing; the shim does not and cannot
+report to the parent there.
+
+On base-hw (Task 2, QEMU TCG, ram 3G, caps 2000): the first run was refused
+at 0x2206c00000 with `chunk could not be attached: attach OUT_OF_CAPS` (RM
+session quota, see Sessions); after the RM-session upgrade the recursion
+reached the guard: `writ_mem: unresolved fault at 0x2280000000 (guard
+page), component terminates`, then `[init] child "writ_bend_overflow" exited
+with exit value 139`. Core logged nothing. This is the self-reported fault
+exit with the six limits under Fault delivery; GB-003's box 1.3 is checked
+on that basis, base-hw only.
 
 ## Concurrency assumption
 

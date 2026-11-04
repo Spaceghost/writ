@@ -523,8 +523,12 @@ GB-003 ON BASE-HW: WHAT THE RECORD IS
      may run between the exit RPC and init destroying the PD. This is not
      observed and is bounded in practice only by --threads 1.
   5. Coverage: every page fault in the PD's address space, stack area,
-     linker area, and the shim's reservations (F1). Exceptions that are
-     not page faults are not covered.
+     linker area, and the shim's reservations (F1). Not covered:
+     exceptions that are not page faults; a parent that registers its own
+     handler on the component's address space, which displaces the shim's
+     (one handler per region map); and a fault on the "writ_fault" thread
+     itself (halts with no record; base-hw Task 2, M2). Stack-area and
+     linker-area faults were not exercised.
   6. All evidence is from a QEMU TCG emulated boot.
   Correction to the plan's Task 2 text: core does not report unresolvable
   faults on a region map with a registered handler. The base-hw GB-003

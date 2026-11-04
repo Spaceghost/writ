@@ -22,3 +22,13 @@
 2026-11-04T17:31:03Z	implementer	fix round 1: handler also on PD address space, stack area, linker area; attach errors named; hw scratch null-pointer probe: shim refusal line + init exit value 139, no core 'illegal'; hw guard probe (exit 139 now required) and hello pass
 2026-11-04T17:42:12Z	implementer	fix round 1: base-linux reruns with final shim all pass (hello, rts, 2 probes, writ_bend_probe, 8 monitor runs, overflow, corpus 782 PASS identical); evidence FIX ROUND 1 written
 2026-11-04T17:42:36Z	implementer	fix round 1 done; committing
+2026-11-04T17:42:58Z	controller	fix round 1 done; scoped re-review dispatched
+2026-11-04T17:46:20Z	controller	Task 1 complete; Task 2 (corpus and fault row on base-hw) dispatched
+2026-11-04T17:47:34Z	implementer	Task 2 started; Linux reference unchanged since d8b1473, no recapture needed
+2026-11-04T17:50:51Z	implementer	M1 (PD areas before mutex), M2, M3 done; base-linux reruns pass (hello, rts, 2 reservation probes, writ_bend_probe, overflow guard refusal); hw build of corpus+examples running
+2026-11-04T18:33:34Z	implementer	hw build of tests, 4 examples, overflow, hello, probes: rc 0 in 44m36s; running corpus on base-hw
+2026-11-04T18:34:28Z	implementer	corpus on base-hw at 256M: 782 PASS, 834 lines byte-identical to the Linux reference (fc3a08aa), exit 0, 39 s
+2026-11-04T18:35:11Z	implementer	four examples on base-hw at 256M: exit 0, logs byte-identical to the Linux reference; running Overflow
+2026-11-04T18:38:44Z	implementer	error: Overflow on base-hw at 3G/2000 caps refused at 0x2206c00000 with 'chunk could not be attached: attach OUT_OF_CAPS', init exit 139, core silent; RM session's 2 caps exhausted by piece attaches. Fix: bounded RM-session upgrade (8 KiB / 2 caps, 4 attempts per piece) paid from the PD under the margins
+2026-11-04T18:42:58Z	implementer	Overflow on base-hw with the RM-session upgrade: guard-page refusal at 0x2280000000, init exit 139, core silent. base-linux reruns with the changed shim (hello, rts, reservation live+guard, writ_bend_probe, Overflow, corpus 782 identical) all pass
+2026-11-04T18:51:29Z	implementer	base-hw final-shim reruns pass (hello, guard, nullfault, corpus 782 identical, four examples, Overflow guard exit 139); seven run-script matchers changed to \r*\n and rerun on both kernels; rows and corpus records written; box 1.3 checked (base-hw, self-reported exit); openspec 1.16.0 44/44; committing Task 2
