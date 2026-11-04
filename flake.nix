@@ -19,10 +19,13 @@
       # Newest released clang in the pinned nixpkgs (23.1.3 at the locked
       # revision), exported as CC for native Bend builds.
       clang = pkgs.llvmPackages_latest.clang;
+
+      writ = import ./nix/writ.nix { inherit pkgs bend openspec clang; };
     in
     {
       packages.${system} = {
         inherit bend openspec;
+        inherit (writ) tests-native examples-native;
         default = bend;
       };
 
@@ -46,7 +49,7 @@
           test "$v" = "1.16.0" || { echo "expected OpenSpec 1.16.0" >&2; exit 1; }
           touch $out
         '';
-      };
+      } // writ.checks;
 
       devShells.${system}.default = pkgs.mkShell {
         packages = [
