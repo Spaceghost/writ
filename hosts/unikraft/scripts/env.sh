@@ -5,7 +5,13 @@
 #   KRAFT the pinned kraft 0.12.16 command line (verification/unikernel-pins.txt)
 HERE=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$HERE/../../.." && pwd)
-W=${W:-$(realpath "$REPO/../writ-unikernel")}
+W=${W:-$(realpath -e "$REPO/../writ-unikernel" 2>/dev/null)}
+# A missing workspace must stop the caller, not leave W empty (paths would then
+# resolve under /).
+if [ -z "$W" ] || [ ! -d "$W" ]; then
+  echo "env.sh: build workspace W='$W' is not a directory (set W or create $REPO/../writ-unikernel)" >&2
+  exit 1
+fi
 KRAFT="$W/tools/kraftkit-0.12.16/kraft --config-dir $W/kraft-home/config \
   --manifests-dir $W/kraft-home/manifests --sources-dir $W/kraft-home/sources \
   --runtime-dir $W/kraft-home/runtime --no-check-updates --no-prompt --no-emojis \

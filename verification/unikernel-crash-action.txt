@@ -15,10 +15,10 @@ The crash is NOT followed by a reset. Observed, without -no-reboot:
 - With the Task 1 hook and the debug-exit device: QEMU exits 253 right after the crash
   screen, before any reset (one banner, one program start).
 - With the hook left out at build time (and, separately, with the hook linked but the
-  device absent): Unikraft's own crash action runs and QEMU exits 0, the action of a
-  guest ACPI power-off. The banner and 'overflow probe start' appear exactly once; no
+  device absent): Unikraft's own crash action runs and QEMU exits 0, consistent with a
+  guest ACPI power-off (with a device at 0x501 the same image exits 85, qemu_crash's code). The banner and 'overflow probe start' appear exactly once; no
   output follows the crash screen; QEMU ends on its own in 10.6 to 16.8 s, well inside
-  the 60 s timeout. That is a power-off, not a reset and not an idle halt.
+  the 60 s timeout. Not a reset and not an idle halt.
 - Control (same no-hook image, no -no-reboot): a reset injected from the QEMU monitor
   (system_reset) at about 4 s DOES re-run the image: the banner and 'overflow probe
   start' appear twice, then the second run crashes and QEMU exits 0. So a reset would
@@ -119,23 +119,40 @@ overflow probe start
 0
 (wall 16.8 s)  banners 1, starts 1, crash screens 1, lines after 0
 
-$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0x501,iosize=0x02 </dev/null > run-nohook-port501-reboot.raw 2>&1; echo $?
-85             banners 1, starts 1, crash screens 1, lines after 0
+Fix round 1 (2026-11-04): the next four observations were first recorded from .raw
+captures only; they were rerun through run.sh, which writes the command and QEMU's status
+into run-<label>.log beside the .raw, and a Hello run with the device at 0x501 was added.
+Logs under $W/crash/logs/. Images: overflow-nohook-qemu as above (d887b03a...);
+$W/crash/images/hello-qemu is a copy of Task 1's $W/exitcode/images/hello-qemu
+(abc64874ad909c71c5d05b17232e8f77fd728a7b36bcc8d57cc0fe06e05adb4d). Counts over each .raw.
 
-Control, reset injected (log run-control-system-reset.raw):
-$ ( sleep 4; printf '\001c'; sleep 1; printf 'system_reset\n'; sleep 50 ) | timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 > run-control-system-reset.raw 2>&1; echo $?
+$ WRIT_QEMU_REBOOT=1 WRIT_QEMU_DEVICE=501 hosts/unikraft/scripts/run.sh crash nohook-port501-reboot overflow-nohook "+RTS --threads 1 --gpu off" 60 4096
+  log run-nohook-port501-reboot.log, its command line:
+  timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0x501,iosize=0x02 </dev/null
+85             banners 1, starts 1, crash screens 1   (85 = (42 << 1) | 1, qemu_crash's write)
+
+Control, reset injected:
+$ WRIT_QEMU_REBOOT=1 WRIT_QEMU_FEED="sleep 4; printf '\001c'; sleep 1; printf 'system_reset\n'; sleep 50" hosts/unikraft/scripts/run.sh crash control-system-reset overflow-nohook "+RTS --threads 1 --gpu off" 60 4096
+  log run-control-system-reset.log (device at 0xf4, no -no-reboot; stdin from the feed)
                   Ijiraq 0.21.0~7351f8b
 overflow probe start
 QEMU 11.1.2 monitor - type 'help' for more information
 (qemu) system_reset            (the monitor echoes the typed command character by character)
                   Ijiraq 0.21.0~7351f8b
 overflow probe start
-[   11.553996] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[    5.662610] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
 0              banners 2, starts 2, crash screens 1
 
-Return from main, no -no-reboot ($W/exitcode/images/hello-qemu, Task 1 image, -m 1024):
-  with   -device isa-debug-exit,iobase=0xf4,iosize=0x04: QEMU 1, banners 1, 'hi' 1
-  without the device:                                   QEMU 0, banners 1, 'hi' 1
+Return from main, no -no-reboot (hello-qemu, -m 1024):
+$ WRIT_QEMU_REBOOT=1 hosts/unikraft/scripts/run.sh crash hello-device-reboot hello "+RTS --threads 1 --gpu off" 60 1024
+  device at 0xf4: QEMU 1, banners 1, 'hi' 1          (log run-hello-device-reboot.log)
+$ WRIT_QEMU_REBOOT=1 WRIT_QEMU_DEVICE=0 hosts/unikraft/scripts/run.sh crash hello-nodevice-reboot hello "+RTS --threads 1 --gpu off" 60 1024
+  no device:      QEMU 0, banners 1, 'hi' 1          (log run-hello-nodevice-reboot.log)
+$ WRIT_QEMU_REBOOT=1 WRIT_QEMU_DEVICE=501 hosts/unikraft/scripts/run.sh crash hello-port501-reboot hello "+RTS --threads 1 --gpu off" 60 1024
+  device at 0x501: QEMU 83, banners 1, 'hi' 1        (log run-hello-port501-reboot.log;
+                  83 = (41 << 1) | 1, Unikraft's qemu_exit after the hook's 0xf4 write is
+                  ignored: the halt path runs Unikraft's own shutdown, whose next step is
+                  the ACPI power-off)
 
 == Limits ==
 
@@ -144,8 +161,10 @@ Return from main, no -no-reboot ($W/exitcode/images/hello-qemu, Task 1 image, -m
   not induced; that is the case the retained -no-reboot guards.
 - LIBUKDEBUG_CRASH_ACTION_REBOOT was not built or run; by reading qemu.c it too would
   power off on this platform (sysrestart = qemu_exit).
-- QEMU 0 is the status of a guest ACPI power-off; "power-off" for the native path is
-  observed as "QEMU exited by itself with 0, no reset, no idle" plus the source reading
-  and the port-0x501 confirmation above, not as a printed message.
+- What is observed for Unikraft's own crash path (and its halt path) is "QEMU exited by
+  itself with 0, no reset, no idle", plus the 0x501 runs (85 crash, 83 halt) showing that
+  Unikraft's qemu_crash / qemu_exit ran; that their last step, the ACPI write to 0x604, is
+  what ends QEMU with 0 is read from the source, not printed. QEMU 0 is consistent with an
+  ACPI power-off.
 - abort() and signal termination were not exercised (a Bend program cannot call abort;
   see verification/unikernel-exit-codes.txt limits).

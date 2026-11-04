@@ -101,7 +101,12 @@ result: FAIL (outside the monitor profile)
 
 Rows: corpus/* are Task 3's five images (Tests.bend, Example.bend, examples/Flow.bend,
 examples/Transfer.bend, GpuExample.bend); exitcode/* Task 1's probes; crash/* Task 2's
-Overflow images (with and without the hook); bincheck/widened is the negative control,
+Overflow images (with and without the hook). The crash/overflow ELF checked is that of
+the third clean build (image d6eb58222113f5b180caebd61bb65c9b3fe8bec9d079b993bb384b2fdd8d3948,
+made after the comment-only header edit of exit_device.c), not the .dbg of the image booted
+in Task 2 (2d1301c2ffc3da82e56df24c33d47753a886cb33c9e85613b728b90356e0dd37), which each
+clean rebuild overwrote; the source and configuration are the same (comment-stripped
+tokens of the hook identical). crash/overflow-nohook is the booted build (d887b03a...); bincheck/widened is the negative control,
 scripts/runtime-profile/Widened.bend (Hello plus TCP.listen) built as a Unikraft image with
 the same template app (emitted C sha256
 04ffa7aa3671b877a7915dacf3522840389b033f098b87d361547e1a92f71163; it links: the TCP twin's
@@ -120,3 +125,14 @@ Checker exit status for each row (0 = PASS, 1 = FAIL):
   crash/overflow: 0
   crash/overflow-nohook: 0
   bincheck/widened: 1
+
+== Integration rerun, 2026-11-04: merged tree aaa6885 (master dc6ff2b), 782-check corpus ==
+
+## $W/corpustests782/images/tests-qemu.dbg
+sha256 2db2d9ebe185733dd9e9e865947930e0e0b49d3f995409efdc57bfc137a5f609; image tests-qemu 7425abfea411a7c811f1ea8f624b7e583fc36fb24be4cd60a0d6b861176e7585
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+The 764-check corpus row above (corpus/tests) is kept as history.

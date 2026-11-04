@@ -73,7 +73,7 @@ Executed 2026-11-03 under the library-unikernel lane, Tasks 1 to 3. Every cell e
 Task 1's build matrix) or
 [unikernel-matrix-osv.md](../verification/unikernel-matrix-osv.md) (`O-E<n>`). Pins are in
 [unikernel-pins.txt](../verification/unikernel-pins.txt). Every Unikraft and OSv boot run is an emulated
-boot under QEMU 11.1.2 with TCG (the one `linuxu` run was process execution); none is an accelerated boot and none is a device run. Every Unikraft QEMU run in the matrix used `-no-reboot`, so in the matrix QEMU status 0 alone cannot distinguish a guest power-off from a guest reset; the unikernel port's Task 2 then ran the crash and the return from `main` without `-no-reboot` and observed a power-off with no reset in both ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)), so "powers off" for those Unikraft paths is now observed (OSv prints "Powering off.", so its label was observed already).
+boot under QEMU 11.1.2 with TCG (the one `linuxu` run was process execution); none is an accelerated boot and none is a device run. Every Unikraft QEMU run in the matrix used `-no-reboot`, so in the matrix QEMU status 0 alone cannot distinguish a guest power-off from a guest reset; the unikernel port's Task 2 then ran the crash and the return from `main` without `-no-reboot` and observed no reset in either: QEMU ends by itself with 0, consistent with an ACPI power-off, and with a debug-exit device at Unikraft's default port 0x501 the same paths exit 85 (crash) and 83 (halt), showing that Unikraft's own `qemu_crash` and `qemu_exit`, whose last step is that power-off, ran ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)). "Powers off" for those Unikraft paths therefore rests on those runs plus the source, not on a printed message (OSv prints "Powering off.", so its label was observed already).
 
 The two columns are not the same kind of evidence. **Unikraft** is a native link: the
 emitted C is the Unikraft application, built against lib-musl into one kernel image
@@ -161,9 +161,10 @@ is unavailable there (E10).
    `-no-reboot` (unikernel port Task 2,
    [unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)): with the
    exit hook and the debug-exit device the Overflow crash exits QEMU 253 before any
-   reset; without the hook, or without the device, Unikraft's own crash action is an
-   ACPI power-off (QEMU 0, banner once, no output after the crash screen), and the
-   return from `main` likewise powers off. A monitor `system_reset` control does re-run
+   reset; without the hook, or without the device, Unikraft's own crash action ends
+   QEMU with 0 and no reset (banner once, no output after the crash screen), consistent
+   with an ACPI power-off (85 with a device at 0x501), and the return from `main` does
+   the same (83 at 0x501). A monitor `system_reset` control does re-run
    the image, so a reset would have been seen. No observed path resumes the program.
    The harness still passes `-no-reboot` on every run as a guard against any path that
    does reset (a triple fault, `LIBUKDEBUG_CRASH_ACTION_REBOOT`, another platform

@@ -31,17 +31,24 @@ pending.
   console, time, or ingress twin and no Bend effect definition has been written: the images
   use Bend 2.0.39's own `IO.print` row through lib-musl.
 - [x] 2.2 Configure a single lane with the inline IO helper; build `Tests.bend` and the four examples; capture console output under QEMU and compare line for line with the Linux single-lane record.
-  Evidence: verification/unikernel-corpus-qemu.txt. One CPU (`UKPLAT_CPU_MAXCOUNT=1`) and
-  `+RTS --threads 1 --gpu off`; Bend 2.0.39 has no separate inline-IO switch, and the only
-  effect these programs use, `IO.print`, runs on the IO loop without a helper thread. Under
-  QEMU TCG with `-no-reboot` and the exit device, `Tests.bend` prints 764 PASS lines and
-  `ALL LIBRARY TESTS PASSED` with QEMU exit 1, and `Example.bend`, `examples/Flow.bend`,
-  `examples/Transfer.bend`, and `GpuExample.bend` (CPU-fallback line, no GPU claim) match,
-  each diff empty after removing only SeaBIOS output and Unikraft's banner. The corpus is
-  compared with a fresh Linux single-lane capture of the same 764-check tree
-  (verification/unikernel-corpus-linux-reference.txt); verification/runtime-profile-parity-1.txt
-  is the older 638-check record, and the "638 count" in UL-005's scenario predates the 764
-  corpus. Emulated boots only, one lane.
+  Evidence: verification/unikernel-corpus-qemu.txt (current result: its integration rerun
+  section, tree aaa6885). One CPU (`UKPLAT_CPU_MAXCOUNT=1`) and `+RTS --threads 1 --gpu off`.
+  "With the inline IO helper" is read as "no IO helper thread runs": Bend 2.0.39 has no
+  separate inline-IO switch, and in the emitted C of all five programs `io_work`, the only
+  function that creates an IO helper thread (`pthread_create(..., io_help, ...)`), is defined
+  but never called, so `IO.print` runs on the IO loop itself (also the matrix's event-loop
+  row, verification/unikernel-matrix-unikraft.md: no monitor-profile effect uses a helper
+  thread). Under QEMU TCG with `-no-reboot` and the exit device, `Tests.bend` prints 782 PASS
+  lines and `ALL LIBRARY TESTS PASSED` with QEMU exit 1 (at `-m 4096` and `-m 32`), and
+  `Example.bend`, `examples/Flow.bend`, `examples/Transfer.bend`, and `GpuExample.bend`
+  (CPU-fallback line, no GPU claim) match, each diff empty after removing only SeaBIOS
+  output and Unikraft's banner; `hosts/unikraft/scripts/check-corpus.sh` and
+  `check-image.sh` exit nonzero if any of these outcomes changes. The corpus is compared
+  with a fresh Linux single-lane capture of the same 782-check tree
+  (verification/unikernel-corpus-linux-reference.txt); the earlier 764-check run is kept as
+  history in the evidence, verification/runtime-profile-parity-1.txt is the older 638-check
+  record, and the "638 count" in UL-005's scenario predates the current corpus. Emulated
+  boots only, one lane.
 - [ ] 2.3 Install the halting fault handler; force a stack overflow and an arena exhaustion; record the console message and distinct exit codes.
   Unchecked: the forced stack overflow yields a distinct QEMU exit (253 from the exit hook's
   crash handler; Unikraft's own action is a power-off with no reset,

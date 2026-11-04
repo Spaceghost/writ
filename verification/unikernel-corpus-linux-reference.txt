@@ -1,13 +1,14 @@
-Linux single-lane reference for the unikernel corpus diff (unikernel port, Task 3).
-Worktree lane/unikernel-port at 74f57b7 (Tests.bend and lib/ as at f371576); 764 checks.
-Supersedes, for this comparison only, verification/runtime-profile-parity-1.txt, which is
-the older 638-check record and is left unchanged.
+Linux single-lane reference for the unikernel corpus diff (unikernel port, Task 3 integration rerun, 2026-11-04).
+Tree: lane/unikernel-port at aaa6885, the merge of master dc6ff2b (Tests.bend last changed in
+8d6fe33); 782 checks. The earlier 764-check reference (lane at 74f57b7, before the merge) is
+in git history (commit 2985b2f) and in verification/unikernel-corpus-qemu.txt's first section.
+verification/runtime-profile-parity-1.txt is the older 638-check record and is left unchanged.
 Process execution on Linux x86_64 (Manjaro, kernel 7.2.9), CPU only, --gpu off; not GPU evidence.
-$ bend Tests.bend -o $W/corpus/linux/tests        # bend 2.0.39, clang 23.1.1, BEND_NO_TELEMETRY=1
-  binary sha256 8f24f4b8100e639315c101e5a4a70bde32c19edcdb5c8692f97d1f735510626e
-$ $W/corpus/linux/tests +RTS --threads 1 --gpu off > tests-1.txt 2> tests-1.err
-  exit status 0; stderr empty; capture sha256 c40dafd78b239d1129061ecd288fcc1896e9abf740eae23b51610f048bd56d3e
-  identical to verification/tests-native.txt (diff empty)
+$ bend Tests.bend -o $W/corpus782/linux/tests      # bend 2.0.39, clang 23.1.1, BEND_NO_TELEMETRY=1
+  binary sha256 b79c5fdbeb07abb8406cd5de37d3761ba59189ec89c39dafa93a4de6adf40f7c
+$ $W/corpus782/linux/tests +RTS --threads 1 --gpu off > tests-1.txt 2> tests-1.err
+  exit status 0; stderr empty; capture sha256 fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff
+  identical to verification/tests-native.txt of the merged tree (diff empty)
 The capture follows the next line verbatim; compare with: sed '1,/^== capture ==$/d' <this file>
 == capture ==
 PASS: exact 64-bit union across both words
@@ -424,6 +425,14 @@ PASS: GA-005 delegation to a domain routed as another subject on the service den
 VECTOR GA-005-6 delegate denied SubjectMismatch
 PASS: GA-005 delegation to the same subject's unrouted worker is still recorded
 PASS: GA-005 a route on another service does not bar delegation
+PASS: GA-005 delegatee rerouted after delegation fixtures are valid states
+PASS: GA-005 a delegatee later routed as another subject on the service denied SubjectMismatch at use
+VECTOR GA-005-7 bind_open denied SubjectMismatch
+PASS: GA-005 rerouting the delegatee also withdraws its derived alias
+PASS: GA-005 a rerouted delegatee cannot delegate its derived alias onward
+PASS: GA-005 a rerouted delegatee cannot close its own derived object
+PASS: GA-005 a later route for the delegatee on another service leaves its delegation usable
+PASS: GA-005 delegation to a worker already routed as another subject is still denied SubjectMismatch
 PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
 VECTOR GA-006-1 delegate denied WidenedRights
 PASS: GA-006 delegation outside the protocol rights denied WidenedRights
@@ -462,6 +471,17 @@ PASS: GA-008 dangling alias fixture is invalid
 PASS: GA-008 an invalid input state is denied StaleRevision
 VECTOR GA-008-3 bind_mount denied StaleRevision
 PASS: GA-008 revoke on an invalid input state is denied
+PASS: GA-008 rebuilding a committed binding table keeps the state valid
+PASS: GA-008 two objects bound to one Frontend handle are rejected by valid
+PASS: GA-008 a transition on a shared-handle state is denied StaleRevision
+PASS: GA-008 two uncopied aliases for one live object are rejected by valid
+PASS: GA-008 a close on a two-minter state is denied StaleRevision and refunds nothing
+PASS: GA-008 a stale uncopied alias beside a current one on a live object is rejected by valid
+PASS: GA-008 a destroyed object's stale copies without records stay valid
+PASS: GA-008 delegate, open, and minter close outputs satisfy valid
+PASS: GA-008 derived and delegatee close and revoke outputs satisfy valid
+PASS: GA-008 the three-level Session close and the three-level chain close satisfy valid
+PASS: GA-008 a three-level Session close over a delegated copy satisfies valid and refunds all three objects
 PASS: GA-011 a two-level chain R to W to H is recorded
 PASS: GA-011 the chain preserves binding validity
 PASS: GA-011 revoking R's domain commits
@@ -487,7 +507,7 @@ VECTOR GA-011-6 revoke accepted domain=8
 PASS: GA-011 revoking a delegatee destroys the delegator's object too
 VECTOR GA-011-7 delegate denied StaleGeneration
 PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
-HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
 PASS: facade links capability descriptor through complete commit
 PASS: facade preserves output provenance
 PASS: capability revocation is checked at commit

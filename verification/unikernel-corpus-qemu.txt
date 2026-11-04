@@ -11,7 +11,14 @@ reference: clang 23.1.1, bend's default dialect; UL-005 note in docs/UNIKERNELS.
 W is the build workspace, realpath of ../writ-unikernel from the repository root
 (here /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel). Nothing built is in the tree.
 
-== Result ==
+Current corpus result: the integration rerun at the end of this file (merged tree aaa6885,
+782 checks, QEMU 1, diff empty). The sections up to it are the first run (lane at 74f57b7,
+764 checks), kept as history; their corpus reference is the version of
+verification/unikernel-corpus-linux-reference.txt in commit 2985b2f
+(git show 2985b2f:verification/unikernel-corpus-linux-reference.txt), since the file now
+holds the 782-check capture.
+
+== Result (first run, 764 checks) ==
 
 | Program            | Image          | -m (first tried, works) | QEMU exit | PASS lines | console diff vs Linux |
 | ------------------ | -------------- | ----------------------- | --------- | ---------- | --------------------- |
@@ -34,7 +41,7 @@ the touched set.
 
 == Linux baselines ==
 
-Corpus: verification/unikernel-corpus-linux-reference.txt, a fresh capture of this
+Corpus (first run): verification/unikernel-corpus-linux-reference.txt as of 2985b2f, a fresh capture of this
 worktree's Tests.bend (764 checks) with +RTS --threads 1 --gpu off; the command, binary
 hash and capture hash are in its header, and its body (after the '== capture ==' line) is
 identical to verification/tests-native.txt. verification/runtime-profile-parity-1.txt is
@@ -101,7 +108,9 @@ the earlier script, alone, before any sharing.)
   hosts/unikraft/scripts/run.sh <set> <n>-m<M> <n> "+RTS --threads 1 --gpu off" <timeout> <M>
 which runs
   timeout <T> qemu-system-x86_64 -accel tcg -nographic -m <M> -cpu max -kernel $W/<set>/images/<n>-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot </dev/null; echo $?
-(timeouts: 3600 s corpus, 900 s examples; none was reached) with the serial capture in
+(timeouts, as each run-<label>.log's first line records: corpus 3600 s at -m 4096 and
+600 s at -m 1024/256/64/32; examples 900 s at -m 4096 and 300 s at -m 1024/256/64; none
+was reached) with the serial capture in
 $W/<set>/logs/run-<n>-m<M>.raw. Then
   hosts/unikraft/scripts/console.sh $W/<set>/logs/run-<n>-m<M>.raw > console-<n>.txt
   diff console-tests.txt <(sed '1,/^== capture ==$/d' verification/unikernel-corpus-linux-reference.txt)
@@ -160,3 +169,53 @@ sh scripts/runtime-profile/check-binary.sh $W/corpus/images/<n>-qemu.dbg for all
   and unikernel-crash-action.txt).
 - Compiler differs from the Linux reference (gcc -std=gnu11 vs clang); outputs still matched.
 - Image hashes are not reproducible across clean builds (embedded build time).
+
+== Integration rerun, 2026-11-04: merged tree, 782 checks ==
+
+Tree: lane/unikernel-port at aaa6885, a merge of master dc6ff2b (HostBinding changes; the
+corpus is now 782 checks; Tests.bend last changed in 8d6fe33). The merge had no conflicts.
+Same harness, Kconfig (hosts/unikraft/app/), and toolchain as above; a new app directory so
+the 764 image and its logs stay as they were.
+  hosts/unikraft/scripts/mkapp.sh corpustests782     # $W/corpustests782/gen -> $W/gen/corpus782
+  bend Tests.bend -o $W/gen/corpus782/tests.c
+    b50856fbba69f93b950cbb68d05a9d9ce876f5c5cb4f2ba83bb5c1e184bb0602  tests.c (10918962 bytes, never edited)
+  hosts/unikraft/scripts/build.sh corpustests782 tests   # 5498 s
+    7425abfea411a7c811f1ea8f624b7e583fc36fb24be4cd60a0d6b861176e7585  $W/corpustests782/images/tests-qemu
+    2db2d9ebe185733dd9e9e865947930e0e0b49d3f995409efdc57bfc137a5f609  $W/corpustests782/images/tests-qemu.dbg
+Linux reference: verification/unikernel-corpus-linux-reference.txt, recaptured from the merged
+tree (header names the tree, binary and capture hashes; body identical to the merged
+tree's verification/tests-native.txt; 782 PASS lines).
+
+Check (exits nonzero if any expected outcome changed; WRIT_CORPUS_PASS defaults to 782):
+$ hosts/unikraft/scripts/check-corpus.sh corpustests782 tests-m4096 600 4096; echo $?
+  (run-tests-m4096.log: timeout 600 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/corpustests782/images/tests-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot </dev/null; echo $?)
+diff: empty
+PASS lines: 782
+last line: ALL LIBRARY TESTS PASSED
+QEMU exit: 1
+log: $W/corpustests782/logs/run-tests-m4096.log; result: PASS
+0                                  (wall 1.7 s)
+$ hosts/unikraft/scripts/check-corpus.sh corpustests782 tests-m32 600 32; echo $?
+diff: empty
+PASS lines: 782
+last line: ALL LIBRARY TESTS PASSED
+QEMU exit: 1
+log: $W/corpustests782/logs/run-tests-m32.log; result: PASS
+0                                  (wall 1.8 s; -m 32 was the smallest size that worked for the 764 corpus)
+(The diff is console.sh's output against the reference body; console.sh now also fails if
+the program's part of the capture holds a NUL, an ESC, or a CR not followed by LF.)
+
+Examples: the four example programs' emitted C from the merged tree is byte-identical to
+the C the example images were built from (bend <file> -o, cmp), so those images stand for
+the merged tree. Rechecked with the same script family (2026-11-04):
+$ hosts/unikraft/scripts/check-image.sh corpus <n>-check-m4096 <n> $W/corpus/linux/<n>-1.txt 1 <pass> 300 4096; echo $?
+  flow       diff empty, PASS 4,  QEMU 1, exit 0
+  transfer   diff empty, PASS 4,  QEMU 1, exit 0
+  example    diff empty, PASS 16, QEMU 1, exit 0
+  gpuexample diff empty, PASS 5,  QEMU 1, exit 0
+Negative control of the checker: flow-qemu against transfer's reference
+(check-image.sh corpus flow-neg-m4096 flow $W/corpus/linux/transfer-1.txt 1 4 300 4096)
+prints 'diff: NOT EMPTY' and 'result: FAIL' and exits 1.
+
+Binary check on the new ELF: PASS, effect rows IO.print (verification/unikernel-binary-check.txt,
+integration section).

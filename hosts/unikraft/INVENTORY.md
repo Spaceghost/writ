@@ -34,16 +34,18 @@ absolute `WRIT_HOSTS_UNIKRAFT ?= /mnt/...` default of Task 1's `$W/exitcode-unik
 `<repository>/../writ-unikernel` (as `verification/unikernel-pins.txt` records). Nothing
 they build or copy is written inside the repository.
 
-| File | Role | May touch |
-| --- | --- | --- |
-| `app/Kraftfile` | Template Unikraft app (A3 libraries, `LIBUKBOOT_MAINTHREAD=y`, `UKPLAT_CPU_MAXCOUNT=1`, lib-musl, `qemu/x86_64`); its relative paths resolve inside `$W/<set>-unikraft/` | nothing (configuration) |
-| `app/Makefile.uk` | Template app makefile. No machine path: requires `WRIT_APP_C` and `WRIT_HOSTS_UNIKRAFT` from the environment (stops with `$(error ...)` otherwise); links `exit_device.c` by reference unless `WRIT_EXIT_HOOK=n`; adjustments A1 and H1 | nothing (configuration) |
-| `app/Config.uk` | Empty app Kconfig, as before | nothing |
-| `scripts/env.sh` | Sourced: sets `REPO`, `W`, and the pinned `KRAFT` command | nothing |
-| `scripts/mkapp.sh <set>` | Creates `$W/<set>-unikraft/` from `app/` and `$W/<set>/{gen,images,logs}`; refuses to overwrite a differing app file; links the compiler's own `stdatomic.h` (A1) | `$W` only |
-| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `$W/<set>-unikraft/app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | `$W` only |
-| `scripts/run.sh <set> <label> <probe> <append> [timeout] [mem]` | One TCG boot under `timeout` with `-device isa-debug-exit,iobase=0xf4,iosize=0x04` and `-no-reboot` (`WRIT_QEMU_DEVICE=0` / `WRIT_QEMU_REBOOT=1` omit them); writes `run-<label>.raw` and a cleaned `run-<label>.log` with the QEMU status | `$W` only |
-| `scripts/console.sh <run.raw>` | Extracts the program's console from a `run.sh` capture for a line-for-line diff: removes NUL, CR, terminal escapes, everything through `Booting from ROM` and its dots, and Unikraft's 7-line banner, which it requires verbatim (fails otherwise); keeps every later line | reads the capture; writes stdout and one `mktemp` file |
+| File | Role | Exported symbols / variables | May touch |
+| --- | --- | --- | --- |
+| `app/Kraftfile` | Template Unikraft app (A3 libraries, `LIBUKBOOT_MAINTHREAD=y`, `UKPLAT_CPU_MAXCOUNT=1`, lib-musl, `qemu/x86_64`); its relative paths resolve inside `$W/<set>-unikraft/` | app name `writ-bend` (image `writ-bend_qemu-x86_64`) | nothing (configuration) |
+| `app/Makefile.uk` | Template app makefile. No machine path: requires `WRIT_APP_C` and `WRIT_HOSTS_UNIKRAFT` from the environment (stops with `$(error ...)` otherwise); links `exit_device.c` by reference unless `WRIT_EXIT_HOOK=n`; adjustments A1 and H1 | library `appwritbend`; reads `WRIT_APP_C`, `WRIT_HOSTS_UNIKRAFT`, `WRIT_EXIT_HOOK` (default `y`) | nothing (configuration) |
+| `app/Config.uk` | Empty app Kconfig, as before | none | nothing |
+| `scripts/env.sh` | Sourced by every script: sets the workspace and kraft command; stops the caller if `W` is empty or not a directory | sets `HERE`, `REPO`, `W` (from the environment, else `<repository>/../writ-unikernel`), `KRAFT` | nothing |
+| `scripts/mkapp.sh <set>` | Creates `$W/<set>-unikraft/` from `app/` and `$W/<set>/{gen,images,logs}`; refuses to overwrite a differing app file; links the compiler's own `stdatomic.h` (A1) | reads `CC` (default `gcc`) | `$W` only |
+| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `$W/<set>-unikraft/app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | exports `WRIT_APP_C`, `WRIT_HOSTS_UNIKRAFT`, `WRIT_EXIT_HOOK` (default `y`) to kraft/make; sets `UK_CFLAGS=-std=gnu11` | `$W` only |
+| `scripts/run.sh <set> <label> <probe> <append> [timeout] [mem]` | One TCG boot under `timeout` with `-device isa-debug-exit,iobase=0xf4,iosize=0x04` and `-no-reboot`; writes `run-<label>.raw` and a cleaned `run-<label>.log` with the command and QEMU status; exits with QEMU's (or timeout's) status | reads `WRIT_QEMU_REBOOT=1` (omit `-no-reboot`), `WRIT_QEMU_DEVICE=0` (no device) or `=501` (device at 0x501), `WRIT_QEMU_FEED` (command fed to QEMU's stdin) | `$W` only |
+| `scripts/console.sh <run.raw>` | Extracts the program's console from a `run.sh` capture for a line-for-line diff: removes NUL, CR, terminal escapes, everything through `Booting from ROM` and its dots, and Unikraft's 7-line banner, which it requires verbatim; fails if the program's part holds a NUL, an ESC, or a CR that is not the CR of a CR LF; keeps every later line | none | reads the capture; writes stdout and three `mktemp` files (`$T`, `$T.banner`, `$T.tail`), removed on exit |
+| `scripts/check-image.sh <set> <label> <probe> <reference> <qemu_status> [pass] [timeout] [mem]` | Boots the image once through `run.sh` and checks console diff (empty), PASS count (if given), last line (if `WRIT_EXPECT_LAST_LINE`), and QEMU status; exits 1 if any expected outcome changed | reads `WRIT_EXPECT_LAST_LINE` | `$W` only; two `mktemp` files |
+| `scripts/check-corpus.sh <set> <label> [timeout] [mem]` | `check-image.sh` for `tests-qemu` against `verification/unikernel-corpus-linux-reference.txt`, QEMU 1, last line `ALL LIBRARY TESTS PASSED` | reads `WRIT_CORPUS_PASS` (default 782, the merged tree's corpus) | `$W` only |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
 `lib/uklibid`), and `build.sh` always builds clean.
