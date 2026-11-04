@@ -249,7 +249,8 @@ export function nav(changes: Change[], page: string): string {
       const current = page === path ? ` aria-current="page"` : "";
       return `<li><a href="/change/${href(c.name)}"${current}>${esc(c.name)}</a></li>`;
     }).join("");
-    return `<details open data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
+    // Archived changes start collapsed; the rest open.
+    return `<details${status === "archived" ? "" : " open"} data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
   }).join("");
   return `<nav id="nav" class="side" aria-label="Changes"><a class="home"${page === "/" ? ` aria-current="page"` : ""} href="/">Index</a>${body}</nav>`;
 }
@@ -259,7 +260,21 @@ export function nav(changes: Change[], page: string): string {
  * patched as `#index-tables`. Changes with a task done or a lane on them come
  * first; the rest collapse under one line so the live ones are visible.
  */
-export function indexTables(baselines: Baseline[], changes: Change[], scan: LaneScan | null): string {
+export function indexTables(baselines: Baseline[], allChanges: Change[], scan: LaneScan | null): string {
+  const changes = allChanges.filter((c) => !c.archived);
+  const archived = allChanges.filter((c) => c.archived).sort((a, b) => (a.archivedOn ?? "") < (b.archivedOn ?? "") ? 1 : -1);
+  const archivedRows = archived.map((c) => `<tr>
+<td class="n">${esc(c.archivedOn ?? "")}</td>
+<td><a href="/change/${href(c.name)}">${esc(c.name.replace(/^\d{4}-\d{2}-\d{2}-/, ""))}</a><div class="sub">${esc(c.title)}</div></td>
+<td>${c.specs.map((x) => `<a href="/spec/${href(x)}">${esc(x)}</a>`).join(", ") || `<span class="muted">none</span>`}</td>
+<td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
+</tr>`).join("");
+  const archivedTable = archived.length === 0 ? "" : `<h2>Archived changes</h2>
+<p class="muted small">${archived.length} change${archived.length === 1 ? "" : "s"} landed and archived; each one's spec delta is folded into the baseline capability it names.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Archived</th><th>Change</th><th>Baseline capability</th><th>Explainers</th></tr></thead>
+<tbody>${archivedRows}</tbody>
+</table></div>`;
   const lanesOf = new Map<string, Lane[]>();
   for (const l of scan?.lanes ?? []) for (const c of l.changes) lanesOf.set(c, [...(lanesOf.get(c) ?? []), l]);
   const live = (l: Lane) => l.status === "active" || l.status === "review";
@@ -315,6 +330,7 @@ ${tiles}
 <thead><tr><th class="chev-cell"></th><th>Change</th><th class="status-cell">Status</th><th class="tasks-cell">Tasks</th><th class="chips">Worked on by</th><th class="expl-cell">Explainers</th></tr></thead>
 <tbody>${shown.map(row).join("")}${restRows}</tbody>
 </table></div>
+${archivedTable}
 <h2>Baseline capabilities</h2>
 <div class="tablewrap"><table>
 <thead><tr><th>Capability</th><th>Reqs</th><th>Traceability</th></tr></thead>
@@ -461,7 +477,7 @@ export function changePage(c: Change, docs: ChangeDocs, all: Change[]): string {
 </section>`;
   }).join("");
   return `<main id="main" class="content" data-signals:tab__ifmissing="'docs'">
-<p class="eyebrow">change · ${esc(c.name)}</p>
+<p class="eyebrow">${c.archived ? `archived change · ${esc(c.archivedOn ?? "")}` : "change"} · ${esc(c.name)}</p>
 <h1>${esc(c.title)}</h1>
 <dl class="facts">
 <div><dt>Status</dt><dd>${statusTag(c.status)}</dd></div>

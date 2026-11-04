@@ -184,7 +184,18 @@ try {
   const changes = (await api.json()) as { name: string; tasks: { done: number; total: number }; html: string[] }[];
   const profile = changes.find((c) => c.name === expected);
   check("/api/changes contains " + expected, profile !== undefined, `${changes.length} changes`);
-  check("archive/ is skipped", !changes.some((c) => c.name === "archive"));
+  check("archive/ is not a change", !changes.some((c) => c.name === "archive"));
+  const arch = (changes as unknown as { name: string; dir: string; archived: boolean; status: string; archivedOn: string | null }[]).find((c) => c.archived);
+  check("archived changes are listed with their archive dir and date", arch !== undefined && arch.dir === `archive/${arch.name}` && arch.status === "archived" && /^\d{4}-\d{2}-\d{2}$/.test(arch.archivedOn ?? ""), arch?.name ?? "none");
+  if (arch) {
+    const archPage = await fetch(`${base}/change/${arch.name}`);
+    check("an archived change's page renders from its archive directory", archPage.status === 200 && (await archPage.text()).includes(`archived change · ${arch.archivedOn}`));
+    // The nav lists archived changes too (collapsed), so look inside the tables section only.
+    const pendingPart = indexHtml.slice(indexHtml.indexOf("<h2>Pending changes</h2>"), indexHtml.indexOf("<h2>Archived changes</h2>"));
+    const archivedPart = indexHtml.slice(indexHtml.indexOf("<h2>Archived changes</h2>"), indexHtml.indexOf("<h2>Baseline capabilities</h2>"));
+    check("the index lists archived changes apart from the pending table", archivedPart.includes(`/change/${arch.name}"`) && !pendingPart.includes(`/change/${arch.name}"`));
+    check("the nav's archived group starts collapsed", /<details data-preserve-attr="open"><summary>archived /.test(indexHtml));
+  }
   check("runtime-profile tasks counted", (profile?.tasks.total ?? 0) > 0, `${profile?.tasks.done}/${profile?.tasks.total}`);
   check("runtime-profile lists explainer.html", profile?.html.includes("explainer.html") === true);
 
