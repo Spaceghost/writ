@@ -42,7 +42,8 @@ const PEEK_HANDLER = "const a = evt.target.closest('a[href]'); if (a && a.origin
 
 /** The quick-view panel: a drawer showing a board page embedded (no header or nav), still live over its own /events stream. */
 function panel(): string {
-  return `<aside id="panel" class="panel" data-show="$panel != ''" data-preserve-attr="style" style="display:none" aria-label="Quick view">
+  return `<div id="panel-backdrop" class="panel-backdrop" data-show="$panel != ''" data-preserve-attr="style" style="display:none" data-on:click="$panel = ''"></div>
+<aside id="panel" class="panel" data-show="$panel != ''" data-preserve-attr="style" style="display:none" aria-label="Quick view">
 <div class="panel-bar"><span class="panel-path" data-text="$panel"></span><a class="panel-open" data-attr:href="$panel" target="_top">open in full</a><button type="button" class="panel-close" aria-label="Close the quick view" data-on:click="$panel = ''">×</button></div>
 <iframe id="panel-frame" class="panel-frame" title="Quick view" data-attr:src="$panel ? $panel + ($panel.indexOf('/html/') > 0 ? '' : '?embed=1') : 'about:blank'" sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
 </aside>`;
