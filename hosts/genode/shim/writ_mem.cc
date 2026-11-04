@@ -536,7 +536,11 @@ static void *_reserve(void *hint, size_t len)
 	 * what any quota can populate (and base-linux's region map holds at
 	 * most 4096 pieces, 8 GiB of 2 MiB chunks), so a larger request fails
 	 * with ENOMEM exactly as an exhausted address space would. The Bend
-	 * runtime's corpus_grow treats that as "cannot grow".
+	 * runtime's corpus_grow treats that as "cannot grow". The bound
+	 * therefore also caps corpus_grow, which doubles the term heap in
+	 * place by mapping a span as large as the current one at its end
+	 * (requests up to 4 TiB): growth stops after the 1 TiB request, at a
+	 * 2 TiB corpus, and the runtime then posts ERR_HEAP ("out of memory").
 	 */
 	if (len > MAX_RESERVATION) { errno = ENOMEM; return MAP_FAILED; }
 
@@ -550,6 +554,7 @@ static void *_reserve(void *hint, size_t len)
 
 	size_t const size = _page_round(len);
 	size_t const num_chunks = (size + CHUNK - 1) / CHUNK;
+	/* Unreachable after the bounds above; kept as defence in depth. */
 	if (size == 0 || num_chunks == 0) { errno = ENOMEM; return MAP_FAILED; }
 
 	Chunk *chunks = nullptr;

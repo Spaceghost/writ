@@ -1,0 +1,128 @@
+#
+# writ_bend_overflow.run - Genode run script (build configuration), not Writ
+# implementation. Genode host-layer lane, Task 3: the fault row through a
+# Bend program (the GB-003 substitute on base-linux). Starts
+# writ_bend_overflow, the unmodified C that Bend 2.0.39 emits for
+# scripts/runtime-profile/Overflow.bend (a non-tail recursion one billion
+# levels deep, which on Linux walks the 2 GiB evaluation stack into its
+# PROT_NONE guard), linked with the shim's memory unit and Genode's libc,
+# under init on base-linux, single lane, CPU only.
+#
+# Expected interaction (verification/genode-bend-hello-base-linux.txt,
+# "FAULTS: EXPECTED INTERACTION"): Genode's libc only emulates sigaction, so
+# the runtime's err_trap and its "bend: memory fault" message cannot run; the
+# shim's raw SIGSEGV handler is the only Linux handler for the reservations.
+# A touch it cannot resolve logs
+#   writ_mem: unresolved fault at <addr> (<reason>), component terminates
+# where <reason> is "guard page" for the stack guard, or a quota reason if a
+# 2 MiB chunk cannot be charged first; the default action then ends the
+# Linux process.
+#
+# The script waits up to 600 s for a shim refusal, a base-linux fault line,
+# or init's exit line, then keeps reading for 30 s, lists processes with ps,
+# and prints an outcome block. It fails if the program printed a result
+# (execution continued past the fault), if no shim refusal line appeared,
+# or if the component neither exited nonzero nor vanished. It does not
+# require init to record anything: whether the parent logs the fault is
+# what the run records (GB-003's parent-record half).
+#
+# Authority and configuration: as writ_bend_hello.run (parent LOG, PD, CPU,
+# ROM, RM; Timer from the sibling timer; VFS /dev/log and a local vfs_pipe
+# at /pipe; +RTS --threads 1 --gpu off as <arg> nodes; WRIT_MEM_REPORT=1).
+# RAM defaults to 256M; WRIT_BEND_RAM overrides it (recorded per run).
+# Caps default to 1000, as for the other components; WRIT_BEND_CAPS
+# overrides them. Each populated 2 MiB chunk is a RAM dataspace and costs
+# the component a capability, so walking the whole 2 GiB evaluation stack
+# (1024 chunks) needs more than 1000 caps (recorded per run).
+#
+
+set name writ_bend_overflow
+set ram 256M
+if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
+set caps 1000
+if {[info exists ::env(WRIT_BEND_CAPS)]} { set caps $::env(WRIT_BEND_CAPS) }
+
+build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start $name | caps: $caps | ram: $ram
+  + config
+    + vfs
+      + dir dev | + log
+      + dir pipe | + pipe
+    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+    + arg | value: $name
+    + arg | value: +RTS
+    + arg | value: --threads
+    + arg | value: 1
+    + arg | value: --gpu
+    + arg | value: off
+    + env | key: WRIT_MEM_REPORT | value: 1
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until "(writ_mem: unresolved fault|writ_mem: SIGSEGV not from|Kernel: Segmentation fault|child \"$name\" exited with exit value)\[^\n\]*\n" 600
+
+set spawn_id [output_spawn_id]
+expect -timeout 30 \
+	-re {[^\n]*\n} { append output $expect_out(0,string); exp_continue } \
+	timeout { } \
+	eof { }
+
+set ps_out ""
+catch { set ps_out [exec ps -eo pid,args] }
+set alive   [regexp "\\\[Genode\\\] init -> $name" $ps_out]
+# control: the sibling timer must still be listed, or the ps check proves nothing
+set control [regexp {\[Genode\] init -> timer} $ps_out]
+
+set reason "none"
+set refused [regexp "writ_mem: unresolved fault at \[^ \]+ \\((\[^)\]*)\\)" $output -> reason]
+set guard   [expr {$reason eq "guard page"}]
+set kernel  [regexp {Kernel: Segmentation fault} $output]
+set runtime [regexp {bend: memory fault} $output]
+set resumed [regexp "\\\[init -> $name\\\] \[0-9\]+\r?\n" $output]
+set init_exit [regexp "child \"$name\" exited with exit value (\[0-9-\]+)" $output -> exit_value]
+if {!$init_exit} { set exit_value "none" }
+set init_lines [regexp -all -line "^\\\[init\\\] .*$name" $output]
+
+puts "\n--- $name outcome (ram $ram, caps $caps) ---"
+puts "shim refusal line:       $refused (reason: $reason)"
+puts "guard page refusal:      $guard"
+puts "base-linux fault line:   $kernel"
+puts "runtime fault message:   $runtime"
+puts "result printed:          $resumed"
+puts "init exit line:          $init_exit (value $exit_value)"
+puts "init lines naming child: $init_lines"
+puts "process alive:           $alive"
+puts "ps control (timer):      $control"
+
+if {$resumed} {
+	puts stderr "Error: the program printed a result; execution continued past the fault"
+	exit 1
+}
+if {!$refused} {
+	puts stderr "Error: no shim refusal line"
+	exit 1
+}
+if {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
+	puts stderr "Error: the component neither exited nonzero nor vanished"
+	exit 1
+}

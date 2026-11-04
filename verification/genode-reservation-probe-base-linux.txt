@@ -585,3 +585,18 @@ Runs (cd ../writ-genode/build/x86_64; ram 256M):
     process alive: 0, ps control (timer): 1
   Figures unchanged from section 8 (after touches ram 12058624, after munmap
   ram 1404928).
+
+  Final shim of Task 2 (added in Task 3 from Task 2's review). The hash
+  above (8ac62225...) is the shim of commit 43a6e79. Task 2 then changed the
+  shim again (Kept<T> lifetime, the WRIT_MEM_REPORT exit report and its
+  counters; verification/genode-bend-hello-base-linux.txt, H5 and H6); the
+  shim at commit 9d3b4a3 and c96ef40 is
+        writ_mem.cc 734c5c374eabec53997213611c76729e3b3b5fef9e747875f905f9c8f91d8866
+  and both probes were run again with it (same commands, ram 256M):
+    ../writ-genode/run-reservation-live-6.out   rc 0, exit value 0, figures
+      as above; report reserved at hint=0 elsewhere=1 released=1
+    ../writ-genode/run-reservation-guard-6.out  rc 0, 'writ_mem: unresolved
+      fault at 0x7ffef7f02000 (guard page), component terminates', process
+      gone, init exit line 0
+  Task 3's comment-only shim edit and its rerun of both probes are recorded
+  in verification/genode-corpus-base-linux.txt.

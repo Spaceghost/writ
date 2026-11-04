@@ -79,6 +79,11 @@ memory (observed as a "dangling allocation" warning with the Bend hello).
 32 reservations, 4 guards per reservation, 2 MiB chunks, 1 GiB threshold,
 1 TiB maximum (a larger qualifying `mmap`, including one whose length would
 wrap when page-rounded, fails with `ENOMEM` before a region map is created).
+The 1 TiB bound also caps the runtime's `corpus_grow`, which doubles the
+term heap in place by mapping a span as large as the current corpus at its
+end (requests up to 4 TiB): growth stops after the 1 TiB request, at a 2 TiB
+corpus, and the runtime then posts its out-of-memory error. No run comes
+near it (each base-linux region map also holds at most 4096 pieces).
 A chunk is only allocated if the PD's available RAM covers it plus 64 KiB
 and at least 8 caps remain. At most 16 benign retries per page address
 (16 slots) for faults on an already populated chunk. Limits of that table:

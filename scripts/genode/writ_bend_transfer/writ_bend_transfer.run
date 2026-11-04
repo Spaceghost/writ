@@ -1,0 +1,98 @@
+#
+# writ_bend_transfer.run - Genode run script (build configuration), not Writ
+# implementation. Genode host-layer lane, Task 3. Starts writ_bend_transfer, the
+# unmodified C that Bend 2.0.39 emits for examples/Transfer.bend linked with the shim's
+# memory unit and Genode's libc, under init on base-linux (BOARD=linux
+# KERNEL=linux), single lane, CPU only (--gpu off).
+#
+# Checks (any failure exits nonzero, so a changed example outcome fails the
+# run): init reports exit value 0; the shim's start line and its exit report
+# are present; the component's own lines (shim lines removed) are exactly the
+# 5 lines below, in order. Those lines are the Linux single-lane capture
+# of the same program (bend examples/Transfer.bend -o <bin>;
+# <bin> +RTS --threads 1 --gpu off), recorded with its command in
+# verification/genode-corpus-linux-reference.txt.
+#
+# Authority and configuration: as writ_bend_hello.run. init routes the
+# parent's LOG, PD, CPU, ROM, and RM services and a Timer session from the
+# sibling timer. The VFS holds /dev/log and a component-local vfs_pipe file
+# system at /pipe for libc's pipe() (the runtime's event loop); no file
+# system, network, or block access. Runtime options come as <arg> nodes:
+# +RTS --threads 1 --gpu off. WRIT_MEM_REPORT=1 makes the shim log its RAM
+# report at exit. The RAM quota defaults to 256M; WRIT_BEND_RAM (a Genode
+# size such as 1G) overrides it, and the evidence records which was used.
+#
+
+set name writ_bend_transfer
+set expected_lines 5
+set ram 256M
+if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
+
+build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start $name | caps: 1000 | ram: $ram
+  + config
+    + vfs
+      + dir dev | + log
+      + dir pipe | + pipe
+    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+    + arg | value: $name
+    + arg | value: +RTS
+    + arg | value: --threads
+    + arg | value: 1
+    + arg | value: --gpu
+    + arg | value: off
+    + env | key: WRIT_MEM_REPORT | value: 1
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until "child \"$name\" exited with exit value .*\n" 240
+
+if {![regexp "child \"$name\" exited with exit value 0\r?\n" $output]} {
+	puts stderr "Error: $name did not exit with value 0"
+	exit 1
+}
+
+foreach {re what} [list \
+	"\\\[init -> $name\\\] writ_mem: libc mmap="               "shim start line" \
+	"\\\[init -> $name\\\] writ_mem: \\\[exit\\\] ram used=\[0-9\]+ " "shim exit report" ] {
+	if {![regexp $re $output]} {
+		puts stderr "Error: missing $what"
+		exit 1
+	}
+}
+
+grep_output "^\\\[init -> $name\\\] (?!writ_mem: )"
+
+set got [llength [split [string trim $output] "\n"]]
+if {$got != $expected_lines} {
+	puts stderr "Error: $name logged $got lines, expected $expected_lines"
+	exit 1
+}
+
+compare_output_to {
+[init -> writ_bend_transfer] Transfer: a source read and destination write must approve the same plan.
+[init -> writ_bend_transfer] PASS paired transfer keeps exact plan: True
+[init -> writ_bend_transfer] PASS summary retains full origin policy: True
+[init -> writ_bend_transfer] PASS write grant alone denied with Read reason: True
+[init -> writ_bend_transfer] PASS read grant alone denied with Write reason: True
+}

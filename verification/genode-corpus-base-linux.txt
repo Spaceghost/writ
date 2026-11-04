@@ -1,0 +1,233 @@
+Writ test corpus, examples, and the fault row as Genode components on base-linux
+(Genode host-layer lane, Task 3)
+Recorded: 2026-11-03 23:11 to 2026-11-04 00:10 -06:00
+
+Everything here is Genode-on-Linux (base-linux) evidence: core, init, and
+each component are Linux processes. It is not native Genode execution on any
+kernel, and it is CPU only: every run passes +RTS --threads 1 --gpu off, and
+no device was present or used. GpuExample's "Native GPU dispatch requested;
+CPU fallback is allowed" is a line the program prints; with --gpu off the
+runtime's `gpu != 0 && BANGS != 0` test is false and no device path runs.
+This is not GPU evidence.
+
+RESULT
+  - Tests.bend as the component writ_bend_tests, ram 256M: 764 PASS lines
+    and "ALL LIBRARY TESTS PASSED", exit value 0. Its 815 component lines
+    are byte-identical to the Linux single-lane reference (diff empty, same
+    sha256).
+  - Example.bend, examples/Flow.bend, examples/Transfer.bend, GpuExample.bend
+    as components, ram 256M each: exit value 0, logs byte-identical to the
+    Linux single-lane captures.
+  - scripts/runtime-profile/Overflow.bend as writ_bend_overflow: the
+    component is terminated by the shim's fault path with no resumption, at
+    the runtime's stack guard once the quota covers the 2 GiB evaluation
+    stack (ram 3G, caps 2000). init logs nothing about the child: the parent
+    does not record the fault. The runtime's own "bend: memory fault" line
+    does not appear (expected on base-linux, see FAULT ROW).
+  - No quota increase was needed for the corpus or the examples; 256M is the
+    first (and only) size tried and it worked.
+
+REFERENCE
+  verification/genode-corpus-linux-reference.txt: fresh native Linux
+  single-lane captures of this worktree's Tests.bend (764 checks) and the four
+  examples, with commands and hashes. verification/runtime-profile-parity-1.txt
+  is the older record of the 638-check corpus; it is stale for this tree and
+  was neither used nor modified.
+
+INPUTS
+  Bend 2.0.39 ($HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin),
+  BEND_NO_TELEMETRY=1. Emission (rc 0 each, from the worktree root; the
+  files live outside the repository, are never edited, and are not committed):
+    bend Tests.bend -o ../writ-genode/bend-c/tests/tests.c
+    bend Example.bend -o ../writ-genode/bend-c/example/example.c
+    bend examples/Flow.bend -o ../writ-genode/bend-c/flow/flow.c
+    bend examples/Transfer.bend -o ../writ-genode/bend-c/transfer/transfer.c
+    bend GpuExample.bend -o ../writ-genode/bend-c/gpuexample/gpuexample.c
+    bend scripts/runtime-profile/Overflow.bend -o ../writ-genode/bend-c/overflow/overflow.c
+  sha256 of the emitted C:
+    89be022ae22d1f1e0fc1e153cd187d4a8c761abcca1a2d9a2a9c0f59590880d4  tests.c       (328740 lines, BANGS 1)
+    5fd1f6c3cae4718c219dde40db6be75acb455abdf255f882c1a6672c364386a1  example.c     (63763 lines, BANGS 0)
+    be7c2e8a444e3e7bce51a45eca09981b5040e2e9593f139a30c13c0a798e9c8d  flow.c        (8867 lines, BANGS 0)
+    15f10d93dcc939183ec946c40a81f96bf7b16fb442c2962a534464d02a1e7d8c  transfer.c    (14119 lines, BANGS 0)
+    2723bf5a0aa2110b31c616683e5df7b437914ca8d82a9d591b5224b0d47999c4  gpuexample.c  (22052 lines, BANGS 3)
+    b541df4e337f08e22a07854eb38f43aa09e72ba8ad17972e798cab858eefee22  overflow.c    (3265 lines, BANGS 0)
+  Genode 26.08 d18ee9e9..., build dir ../writ-genode/build/x86_64
+  (BOARD=linux KERNEL=linux), as verification/genode-pins.txt records.
+
+BUILD CONFIGURATION (committed copies byte-identical to the live files, cmp)
+  scripts/genode/writ_bend_<name>/target.mk -> ../writ-genode/writ-repo/src/app/writ_bend_<name>/target.mk
+  scripts/genode/writ_bend_<name>/writ_bend_<name>.run -> ../writ-genode/writ-repo/run/
+  for name in tests example flow transfer gpuexample overflow.
+  Each target.mk is the writ_bend_hello pattern with only TARGET, SRC_C, and
+  the emitted-C directory changed: SRC_CC = writ_mem.cc, LIBS = base libc,
+  CUSTOM_CC = clang-23 --target=x86_64-unknown-elf, -DMAP_NORESERVE=0,
+  clang's resource include dir, the Genode libgcc, and the small code model
+  (E1-E4, H1, H3 in verification/genode-bend-hello-base-linux.txt).
+  Each run script: as writ_bend_hello.run (parent LOG, PD, CPU, ROM, RM;
+  Timer from a sibling; VFS /dev/log plus vfs_pipe at /pipe; libc pipe
+  attribute; <arg> nodes +RTS --threads 1 --gpu off; WRIT_MEM_REPORT=1);
+  ram 256M unless WRIT_BEND_RAM is set; overflow also takes WRIT_BEND_CAPS.
+  etc/build.conf: the six scenario names appended to WRIT_RUN_SCENARIOS
+  (scripts/genode/writ_hello/build.conf.fragment updated to match).
+
+  Build commands (cd ../writ-genode/build/x86_64):
+    make app/writ_bend_tests           rc 0, 39m55s wall (16m user, 22m sys)
+      clang -Wall printed 655837 warnings (2.76 GB of log written to the
+      media volume, which accounts for the system time); none is an error.
+      Log kept truncated as ../writ-genode/build-bend-tests-1.trunc.out.
+    make app/writ_bend_example app/writ_bend_flow app/writ_bend_transfer \
+         app/writ_bend_gpuexample app/writ_bend_overflow 2>&1 \
+      | grep -aE 'error|Error|LINK|COMPILE|warnings? generated'
+                                       rc 0, 3m09s; no error lines
+      (warnings: example 73374, flow 3176, transfer 7632, gpuexample 17602,
+      overflow 73). The tests binary was relinked (writ_mem.o only) after the
+      comment-only shim edit below, before any run.
+  No build error occurred; no flag beyond the hello pattern was needed.
+
+  Binaries (not committed), sha256:
+    f3806f422dde408dbf1e4e53d9d0503251b9a54dfc6fb4c80c0a0d4e3b4665c2  writ_bend_tests
+    88a590a3abd43467dfc7f7b95d2184f79073e4eb4a5bb3bcfe712da55946a15d  writ_bend_example
+    c02dc6282a29c532ccffba3399aa3363b8aa35ca2ce0dae8ece271745adc0e66  writ_bend_flow
+    8aa862d9d386639ad71d93e1630b52831766e33a526c3e1696b3bd17d54b5bcb  writ_bend_transfer
+    bb73e01abaf1a179a95c404e1530c592df7e8e7453b89cb636a72c2591b2658b  writ_bend_gpuexample
+    d59dc7493a4c9f6b5a36e3f1e6ed5540855345dfd8dffc06f8082b06608c7375  writ_bend_overflow
+    b3cb568700dba0da51f8855329e4abeb186c947d1c23dabaca29f2c83efd6bc9  writ_bend_hello (relinked with the edited shim)
+
+SHIM EDIT (comments only)
+  hosts/genode/shim/writ_mem.cc 734c5c37...8866 -> 8ba108f2240aebb161f12ca85cf48cfae79968a5e80b772abfb9acdd03ef4774
+  Two comments in _reserve (the 1 TiB bound also caps corpus_grow; the
+  zero-size check is defence in depth). Token comparison with the previous
+  revision (comments stripped, whitespace collapsed):
+    gcc -fpreprocessed -dD -E -P -x c++ <file> | tr -s ' \t\n' ' ' | sha256sum
+    c96ef40 version: 4ff5da1f667d15f624a743c7ecbe50250402bcaf4a12eae5ffa5252f9ed694be
+    this version:    4ff5da1f667d15f624a743c7ecbe50250402bcaf4a12eae5ffa5252f9ed694be
+  Live copy ../writ-genode/writ-repo/src/writ_shim/writ_mem.cc byte-identical.
+  No shim change was needed for the corpus.
+
+CORPUS RUN
+  Command: cd ../writ-genode/build/x86_64 && make run/writ_bend_tests
+           (log ../writ-genode/run-writ_bend_tests-1-256M.out), rc 0, 20 s
+  Shim and init lines:
+    [init -> writ_bend_tests] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x12fb360
+    [init -> writ_bend_tests] writ_mem: [exit] ram used=12537856 limit=268302940 caps used=40 limit=961 reservations=2 guards=1 chunks populated (total)=5 faults resolved=5 benign retries=0 reserved at hint=1 elsewhere=1 released=0
+    [init] child "writ_bend_tests" exited with exit value 0
+    --- writ_bend_tests: 764 PASS lines, 815 component lines ---
+    Run script execution successful.
+  Last component lines:
+    [init -> writ_bend_tests] HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+    [init -> writ_bend_tests] Facade: 10 checks passed
+    [init -> writ_bend_tests] Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+    [init -> writ_bend_tests] ALL LIBRARY TESTS PASSED
+  RAM used at exit: 12537856 bytes (about 12.0 MiB) of 256M; caps 40 of 961;
+  five 2 MiB chunks charged. No "Warning" or "Error" line in the run log.
+
+  Comparison (from the writ-lanes directory):
+    grep -a 'writ_bend_tests\]' writ-genode/run-writ_bend_tests-1-256M.out \
+      | grep -v 'writ_mem: ' | sed 's/^\[init -> writ_bend_tests\] //; s/\r$//' \
+      > writ-genode/genode-tests-1.lines
+    diff writ-build/genode-host-layer/tests-1.out writ-genode/genode-tests-1.lines
+    -> no output, rc 0
+    sha256 of both: c40dafd78b239d1129061ecd288fcc1896e9abf740eae23b51610f048bd56d3e (815 lines)
+
+EXAMPLE RUNS (ram 256M each; log ../writ-genode/run-writ_bend_<name>-1-256M.out)
+  Each run script embeds the Linux capture and fails on a different line
+  count or any differing line (compare_output_to). All four: rc 0, exit
+  value 0, "Run script execution successful." Offline diff, same method:
+    example     diff rc 0, 17 lines, sha256 84fce2fc8e2ba011...
+    flow        diff rc 0,  5 lines, sha256 0c789cf9850005f0...
+    transfer    diff rc 0,  5 lines, sha256 5ab278338ecee2c9...
+    gpuexample  diff rc 0,  7 lines, sha256 6ecd8bfd7fdcb976...
+  (the sha256 prefixes equal the Linux captures' in
+  verification/genode-corpus-linux-reference.txt.)
+  Shim exit reports:
+    example     ram used=8318976  caps used=35 chunks=3
+    flow        ram used=8314880  caps used=35 chunks=3
+    transfer    ram used=8314880  caps used=35 chunks=3
+    gpuexample  ram used=12513280 caps used=40 chunks=5
+  Each: reservations=2 guards=1 reserved at hint=1 elsewhere=1 released=0.
+
+FAULT ROW: Overflow.bend through the Bend program (GB-003 substitute)
+  Expected interaction (verification/genode-bend-hello-base-linux.txt,
+  "FAULTS: EXPECTED INTERACTION"): Genode's libc only emulates sigaction and
+  sigaltstack, so the runtime's err_trap cannot run and its line
+  "bend: memory fault (machine stack overflow?)" cannot appear on base-linux.
+  The shim's raw Linux SIGSEGV handler is the only handler; it prints with
+  Genode::raw (shown with core's "Kernel: " prefix), restores SIG_DFL, and
+  returns, so Linux kills the process.
+
+  Command: cd ../writ-genode/build/x86_64 && ( ulimit -c 0;
+           [WRIT_BEND_RAM=..] [WRIT_BEND_CAPS=..] make run/writ_bend_overflow )
+  The script waits for the first shim refusal / fault / exit line, reads
+  30 s more, then checks ps.
+
+  Run 1 (00:02:30, ram 256M, caps 1000; run-writ_bend_overflow-1-256M.out), rc 0:
+    [init -> writ_bend_overflow] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x100f560
+    Kernel: writ_mem: unresolved fault at 0x7fff87743000 (chunk could not be charged: RAM quota), component terminates
+    shim refusal line: 1 (reason: chunk could not be charged: RAM quota)
+    guard page refusal: 0, base-linux fault line: 0, runtime fault message: 0,
+    result printed: 0, init exit line: 0, init lines naming child: 0,
+    process alive: 0, ps control (timer): 1
+    host kernel: ld.lib.so[4028388]: segfault at 7fff87743000 ip 0000000001002560 sp 00000000403fda60 error 6 in writ_bend_overflow.stripped
+  Run 2 (00:03:11, ram 3G, caps 1000; run-writ_bend_overflow-2-3G.out), rc 0:
+    Kernel: writ_mem: unresolved fault at 0x7fffe4143000 (chunk could not be charged: cap quota), component terminates
+    guard page refusal: 0, init exit line: 0, init lines naming child: 0,
+    process alive: 0, ps control: 1
+    host kernel: segfault at 7fffe4143000 ip 0000000001002560 sp 00000000403fda60
+    Why: every populated chunk is one RAM dataspace capability; 2 GiB of
+    stack is 1024 chunks, more than the 1000-cap quota allows. Change: the
+    overflow run script takes WRIT_BEND_CAPS (default 1000).
+  Run 3 (00:04:00, ram 3G, caps 2000; run-writ_bend_overflow-3-3G-caps2000.out), rc 0:
+    [init -> writ_bend_overflow] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x100f560
+    Kernel: writ_mem: unresolved fault at 0x7ffff7f43000 (guard page), component terminates
+
+    --- writ_bend_overflow outcome (ram 3G, caps 2000) ---
+    shim refusal line:       1 (reason: guard page)
+    guard page refusal:      1
+    base-linux fault line:   0
+    runtime fault message:   0
+    result printed:          0
+    init exit line:          0 (value none)
+    init lines naming child: 0
+    process alive:           0
+    ps control (timer):      1
+
+    Run script execution successful.
+    host kernel: ld.lib.so[4039033]: segfault at 7ffff7f43000 ip 0000000001002560 sp 00000000403fda60 error 6 in writ_bend_overflow.stripped
+  Run 4 (ram 3G, caps 2000; run-writ_bend_overflow-4-3G-caps2000.out): identical
+    refusal line and outcome (guard page, process gone, init silent).
+
+  Reading: the three fault addresses lie in the evaluation-stack
+  reservation (the one placed "elsewhere"; the term heap is at 1<<45). The
+  guard is 0x7ffff7f43000, so the stack starts at 0x7fff77f43000 and run 1
+  died 248 MiB in, run 2 at about 1.6 GiB, run 3 and 4 at the guard. The
+  faulting sp (0x403fda60) is the machine stack, not the faulting address,
+  so this is the runtime's term-stack guard, not a machine-stack overflow.
+  The component is terminated and does not resume (no count printed) in
+  every case; at no point does init log an exit, a fault, or anything else
+  naming the child within the 30 s tail.
+
+  GB-003 against the observation: the halting substitute (the host layer's
+  fault path ends the component, no resumption) is now executed through a
+  Bend program and reaches the runtime's real guard page. The parent-record
+  half is NOT met on base-linux: init records nothing; the only fault lines
+  are the dying process's own raw() line and the host kernel log.
+
+REGRESSIONS WITH THE EDITED SHIM (ram 256M; logs ../writ-genode/run-<scenario>-task3.out)
+  make run/writ_bend_hello              rc 0: hi, exit value 0, report as in Task 2
+                                        (ram used=8314880 caps used=35)
+  make run/writ_bend_rts                rc 0 (now without lib/posix in its build list):
+                                        usage text exit 0; "bend: unknown runtime option --bogus" exit 1
+  make run/writ_probe_reservation_live  rc 0, exit value 0, after munmap ram used=1404928
+  make run/writ_probe_reservation_guard rc 0, 'writ_mem: unresolved fault at 0x7ffef7f02000
+                                        (guard page), component terminates', process gone
+
+LIMITS
+  - base-linux only. Nothing here measures base-hw, NOVA, or seL4.
+  - Single lane (--threads 1). The shim's concurrency assumptions and the
+    retry table's limits are not exercised.
+  - CPU only. No device path ran; GpuExample's dispatch line is program text.
+  - The generated C is compiled by host clang 23.1.1, outside Genode's tool
+    chain, as for the hello.
+  - The parent-record requirement of GB-003 remains open on base-linux.
+  - The Overflow guard run needs ram 3G and caps 2000 because every touched
+    stack chunk is charged; the minimum was not searched.

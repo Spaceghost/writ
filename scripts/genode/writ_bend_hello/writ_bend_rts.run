@@ -19,8 +19,15 @@
 # Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
 # Timer session from the sibling timer; the VFS holds only /dev/log.
 #
+# Genode host-layer lane, Task 3: updated to the shim pattern, not deleted
+# (it is still the process row's Bend-program run). The binary links the
+# shim's memory unit and no longer links posix (writ_bend_hello target.mk),
+# so lib/posix is dropped from the build list. Both cases return before the
+# event loop opens its pipe, so no vfs_pipe mount is needed. Each child also
+# logs the shim's start line; the checks below look only for their own lines.
+#
 
-build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_bend_hello }
+build { core init timer lib/ld lib/libc lib/libm lib/vfs app/writ_bend_hello }
 
 create_boot_directory
 

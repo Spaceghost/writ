@@ -5,8 +5,9 @@
 # Genode's libc, under init on base-linux (BOARD=linux KERNEL=linux). It
 # waits up to 240 seconds for init to report the child's exit with any value
 # (so a runtime error message is captured instead of a bare timeout), then
-# fails unless that exit value is 0, and fails unless the component's only
-# log line is "hi". A timeout also fails the run. Pattern:
+# fails unless that exit value is 0, unless the shim's start line and its
+# exit report are present, and unless the component's only other log line
+# is "hi". A timeout also fails the run. Pattern:
 # repos/libports/run/libc.run and the test-pthread and test-libc_getenv
 # package runtimes in Genode 26.08.
 #
