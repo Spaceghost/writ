@@ -1,7 +1,8 @@
 # Verification record
 
 Verified on 2026-11-03 using **Bend 2.0.39**, Linux x86_64, and **clang 19.1.1**.
-The core and examples contain 34 authored `.bend` files. Their implementation,
+The core and examples contain 36 authored `.bend` files (34 originally verified,
+plus `HostBinding.bend` and `HostBindingTests.bend`). Their implementation,
 test drivers, and proof declarations are Bend 2. The optional rclone contribution
 adds 14 Bend files and a separate minimal Go adapter, with its own evidence below.
 
@@ -9,7 +10,9 @@ adds 14 Bend files and a separate minimal Go adapter, with its own evidence belo
 
 The final combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
 the emitted JavaScript backend under Node and a native Bend executable using
-four CPU threads with GPU execution explicitly disabled.
+four CPU threads with GPU execution explicitly disabled. The suite was last
+rerun on 2026-11-03 for the HostBinding model with Bend 2.0.39, clang 23.1.1
+(the C compiler Bend invokes), and Node v26.10.0.
 
 | Suite | Checks | Main coverage |
 | --- | ---: | --- |
@@ -21,8 +24,9 @@ four CPU threads with GPU execution explicitly disabled.
 | Backplane | 40 | Combined checks, late revocation, metadata tampering, actual effects, combined labels, exact output types, artifact identity, duplicate-binding denial |
 | Frontend | 70 | Mount/open/dup/attenuate/close protocol, subject/token/plan binding, all token words, current grants, descriptor revocation, malformed registries |
 | Facade | 10 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
+| HostBinding | 102 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, holder versus subject, non-widening delegation trees, quota before authority, exact state preservation on every denial |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
-| **Total per backend** | **638** | **Both complete runs passed** |
+| **Total per backend** | **740** | **Both complete runs passed** |
 
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
@@ -34,7 +38,7 @@ proof for arbitrary graph sizes.
 
 Evidence is in `verification/tests-js.txt` and `verification/tests-native.txt`.
 The transfer test driver prints `PASS ` while other drivers print `PASS:`;
-counting both forms yields 638 per file.
+counting both forms yields 740 per file. The two files are byte-identical.
 
 Reproduction:
 
@@ -45,6 +49,27 @@ node ../writ-build/tests.js
 bend Tests.bend -o ../writ-build/tests-native
 ../writ-build/tests-native +RTS --threads 4 --gpu off
 ```
+
+### HostBinding vectors
+
+`HostBindingTests.bend` prints 30 canonical `VECTOR <scenario-id> <transition>
+<outcome> <reason-or-id>` lines, each rendered from the transition's actual
+result after the check that asserts it, using model ids only. They were
+captured from the JavaScript runner, regenerated, and compared:
+
+```bash
+set -o pipefail
+bend Tests.bend | grep '^VECTOR ' > verification/host-binding-vectors.txt
+bend Tests.bend | grep '^VECTOR ' > ../writ-build/vectors-run2.txt
+cmp verification/host-binding-vectors.txt ../writ-build/vectors-run2.txt
+```
+
+`cmp` reported no difference (SHA-256
+`5b1918a531cd76b4936b3cf73a6f1b32aa1c8d94e31d7ea7149bb38708cce4ba` for both),
+and the `VECTOR` lines of the native run are identical too. The inputs behind
+each vector id and the requirement mapping are in the
+[traceability table](openspec/traceability/genode-capability-adoption.md). No
+host port replays these vectors yet.
 
 A native compiler arity limit encountered in a large test driver was resolved by
 moving large cached fixtures into small helper functions. The final source and
@@ -108,11 +133,17 @@ can fall back to CPU execution; success does not establish the physical backend.
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for three declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for six declared laws:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
 3. A denied ledger result preserves the original ledger state.
+4. `binding_denied_preserves_state`: a rejected HostBinding change carries the
+   supplied state. It holds by computation of the accessor and documents the
+   denial contract; it does not prove a transition chose the right denial.
+5. `nat_lt_successor`: every natural number is below its successor (auxiliary).
+6. `generation_bump_monotone`: the destroy bump strictly raises an object's
+   generation. That no transition lowers a generation is not stated.
 
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
@@ -125,13 +156,25 @@ before kernel compilation with `error: failed to locate application`. Supported
 path settings did not resolve that startup problem. No checker, compiler, or law
 was changed to bypass it. See `verification/kernel-verdict.txt` and `proofs.txt`.
 
+After the three HostBinding laws were added, `bend PROOF.bend --verdict` was
+attempted again and exited 1 with:
+
+```text
+Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
+```
+
+No Lean-kernel verdict exists for any of the six laws. `kernel-verdict.txt`
+still describes the earlier three-law attempt.
+
 ## OpenSpec suite
 
 The repository includes 14 baseline capability specs and 22 pending change
 packages. OpenSpec 1.16.0 strict validation passed all 36 items with no errors or
 warnings. Baseline specifications contain 143 requirements and 314 scenarios;
 pending deltas contain 237 requirements and 441 scenarios. All 197 implementation
-tasks in those pending packages remain unchecked. The bounded rclone reference
+tasks in those pending packages remain unchecked. Since then, tasks 1.1 to 1.4 and 2.1 to 2.3 of
+`add-genode-capability-adoption` have been checked against the HostBinding
+evidence above; its section 3 remains unchecked. The bounded rclone reference
 change is implemented and archived with eight completed tasks; it does not
 complete a production adapter. See `verification/openspec-validation.txt`.
 

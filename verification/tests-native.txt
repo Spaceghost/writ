@@ -309,6 +309,139 @@ PASS: another token cannot close descriptor
 PASS: closing one descriptor preserves independently duplicated descriptor
 PASS: new open never reuses tombstoned descriptor ID
 Frontend: 70 checks passed
+PASS: binding fixture state is valid
+PASS: state equality separates a committed change from its input
+PASS: state equality sees a single quota field
+PASS: state equality sees the embedded Frontend state
+PASS: denial checks assert the exact reason
+PASS: GA-001 generation fixture is a valid state
+PASS: GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration
+VECTOR GA-001-1 bind_open denied StaleGeneration
+PASS: GA-001 stale alias cannot be delegated
+PASS: GA-001 stale alias cannot close the current object
+PASS: GA-001 alias at current generation 4 proceeds
+VECTOR GA-001-2 bind_open accepted alias=3;object=2
+PASS: GA-001 current alias reaches the Frontend check
+PASS: GA-002 mount on a recorded route naming the caller succeeds
+VECTOR GA-002-1 bind_mount accepted alias=1;object=1
+PASS: GA-002 mount issues the first alias id
+PASS: GA-002 mount mints a Session owned by the route subject on the route service
+PASS: GA-002 the routed child domain holds the Session alias
+PASS: GA-002 the Session is bound to the new Frontend handle
+PASS: GA-002 Frontend.mount was applied
+PASS: GA-002 mount preserves binding validity
+PASS: GA-002 route prefix naming R mounted for caller S denied RouteMismatch
+VECTOR GA-002-2 bind_mount denied RouteMismatch
+PASS: GA-002 a presented route the parent never recorded denied RouteMismatch
+VECTOR GA-002-3 bind_mount denied RouteMismatch
+PASS: GA-002 route for an unrouted service denied RouteMismatch
+PASS: GA-002 Session on the second service opens under its own route
+PASS: GA-002 route withdrawal fixture is a valid state
+PASS: GA-002 a route on another service does not authorize the holder
+VECTOR GA-002-4 bind_open denied SubjectMismatch
+PASS: GA-003 open from the Session issues a new alias
+VECTOR GA-003-1 bind_open accepted alias=2;object=2
+PASS: GA-003 opened alias names a distinct object
+PASS: GA-003 open mints a Descriptor object
+PASS: GA-003 the new object is bound to the new handle
+PASS: GA-003 the Session alias is unaffected by open
+PASS: GA-003 the Session alias still opens after open
+PASS: GA-003 open preserves binding validity
+PASS: GA-003 attenuate issues a new alias
+PASS: GA-003 attenuate mints a distinct object bound to a distinct handle
+VECTOR GA-003-2 bind_attenuate accepted alias=3;object=3
+PASS: GA-003 attenuate leaves the parent Frontend handle rights intact
+PASS: GA-003 the attenuated Frontend handle carries only read
+PASS: GA-003 parent alias keeps its rights and the copy gets the narrower rights
+PASS: GA-003 the parent descriptor alias is unaffected by attenuate
+PASS: GA-003 attenuate preserves binding validity
+PASS: GA-003 attenuating a Session alias denied FrontendRejected
+PASS: GA-003 attenuate outside the protocol rights denied WidenedRights
+PASS: GA-003 open through an unknown alias denied UnknownAlias
+VECTOR GA-003-3 bind_open denied UnknownAlias
+PASS: GA-004 owner closes a descriptor held by two domains
+VECTOR GA-004-1 bind_close accepted object=2
+PASS: GA-004 after close the owner's alias is stale
+VECTOR GA-004-2 delegate denied StaleGeneration
+PASS: GA-004 after close the second holder's alias is stale
+VECTOR GA-004-3 delegate denied StaleGeneration
+PASS: GA-004 close applies Frontend.close to the bound handle
+PASS: GA-004 close leaves the parent Session usable
+PASS: GA-004 close preserves binding validity
+PASS: GA-004 close at a stale revision destroys nothing and leaves state unchanged
+VECTOR GA-004-4 bind_close denied StaleRevision
+PASS: GA-004 close Frontend rejects destroys nothing
+PASS: GA-004 a domain without the alias cannot close it
+PASS: GA-005 holder-without-record fixture is a valid state
+PASS: GA-005 alias held by Q with no delegation record denied SubjectMismatch
+VECTOR GA-005-1 bind_attenuate denied SubjectMismatch
+PASS: GA-005 unrecorded holder cannot delegate onward
+PASS: GA-005 a domain that does not hold the alias denied SubjectMismatch
+VECTOR GA-005-2 bind_open denied SubjectMismatch
+PASS: GA-005 recorded delegation to the worker is accepted
+VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
+PASS: GA-005 delegatee opens through a delegated Session
+PASS: GA-005 the delegatee's opened alias is usable
+PASS: GA-005 the delegatee's opened alias resolves within the record
+PASS: GA-005 the delegatee is accepted only within the delegated scope
+PASS: GA-005 delegatee derivations preserve binding validity
+PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
+VECTOR GA-006-1 delegate denied WidenedRights
+PASS: GA-006 delegation outside the protocol rights denied WidenedRights
+PASS: GA-006 read delegation of the same read-only descriptor is recorded
+VECTOR GA-006-2 delegate accepted alias=4;object=3
+PASS: GA-006 delegatee of the read-only descriptor shares its object and carries read only
+PASS: GA-006 narrower read-only delegation is recorded
+VECTOR GA-006-3 delegate accepted alias=3;object=2
+PASS: GA-006 delegatee alias carries read only
+PASS: GA-006 delegator alias keeps its rights
+PASS: GA-006 delegatee cannot attenuate past its delegated rights
+PASS: GA-006 delegation preserves binding validity
+PASS: GA-007 mount with zero capability quota denied QuotaExhausted
+PASS: GA-007 open with zero capability quota denied QuotaExhausted
+VECTOR GA-007-1 bind_open denied QuotaExhausted
+PASS: GA-007 only the retried open adds a Frontend handle and advances Frontend
+PASS: GA-007 quota is checked before Frontend authority
+VECTOR GA-007-2 bind_open denied QuotaExhausted
+PASS: GA-007 after top-up the open proceeds at the same revision
+VECTOR GA-007-3 bind_open accepted alias=2;object=2
+PASS: GA-007 the retried open is charged and reaches Frontend
+PASS: GA-007 mount and open each charge one capability slot
+PASS: GA-007 destroying an object refunds its capability slot
+PASS: GA-007 destroying a Session refunds its derived objects too
+PASS: GA-008 mount at a stale revision denied StaleRevision
+VECTOR GA-008-1 bind_mount denied StaleRevision
+PASS: GA-008 mount Frontend rejects returns the input state
+VECTOR GA-008-2 bind_mount denied FrontendRejected
+PASS: GA-008 open at a stale revision denied StaleRevision
+PASS: GA-008 attenuate at a stale revision denied StaleRevision
+PASS: GA-008 delegate at a stale revision denied StaleRevision
+PASS: GA-008 revoke at a stale revision denied StaleRevision
+PASS: GA-008 dangling alias fixture is invalid
+PASS: GA-008 an invalid input state is denied StaleRevision
+VECTOR GA-008-3 bind_mount denied StaleRevision
+PASS: GA-008 revoke on an invalid input state is denied
+PASS: GA-011 a two-level chain R to W to H is recorded
+PASS: GA-011 the chain preserves binding validity
+PASS: GA-011 revoking R's domain commits
+VECTOR GA-011-1 revoke accepted domain=7
+PASS: GA-011 revoking R makes W's alias stale
+VECTOR GA-011-2 delegate denied StaleGeneration
+PASS: GA-011 revoking R makes H's alias stale
+VECTOR GA-011-3 delegate denied StaleGeneration
+PASS: GA-011 revoke removes the whole subtree
+PASS: GA-011 closing R's descriptor makes W's alias stale
+PASS: GA-011 closing R's descriptor makes H's alias stale
+PASS: GA-011 close removes the whole subtree and stays valid
+PASS: GA-011 removing W's node removes H's node with it
+PASS: GA-011 removing H's node keeps W's node
+PASS: GA-011 child delegation wider than its read-only parent denied and no node added
+VECTOR GA-011-4 delegate denied WidenedRights
+PASS: GA-011 W's derived object is usable before its branch is cut
+PASS: GA-011 derived object is stale after its parent is closed
+VECTOR GA-011-5 bind_attenuate denied StaleGeneration
+PASS: GA-011 derived object is stale after its parent's holder is revoked
+HostBinding: 102 checks passed, 30 vectors emitted; GA-010 is a reviewed host obligation, not a model test
 PASS: facade links capability descriptor through complete commit
 PASS: facade preserves output provenance
 PASS: capability revocation is checked at commit
