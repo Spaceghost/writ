@@ -1,0 +1,67 @@
+#
+# writ_bend_hello.run - Genode run script (build configuration), not Writ
+# implementation. Starts the writ_bend_hello component, the unmodified C
+# that Bend 2.0.39 emits for scripts/genode/Hello.bend linked against
+# Genode's libc, under init on base-linux (BOARD=linux KERNEL=linux), and
+# succeeds only if the line "hi" appears in its log and it exits 0 within
+# 240 seconds. Pattern: repos/libports/run/libc.run and the test-pthread and
+# test-libc_getenv package runtimes in Genode 26.08.
+#
+# Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
+# services plus a Timer session from the sibling timer component (libc uses
+# it for clock_gettime, nanosleep, and select timeouts). The component's VFS
+# holds only /dev/log; stdout and stderr go to its LOG session. It has no
+# file system, network, or block access. The runtime options are passed as
+# argv through <arg> nodes; argv[0] names the program.
+#
+# The component's RAM quota defaults to 256M and can be raised for a probe
+# with the environment variable WRIT_BEND_HELLO_RAM (a Genode size such as
+# 11G); the evidence file records which quota each run used.
+#
+
+set ram 256M
+if {[info exists ::env(WRIT_BEND_HELLO_RAM)]} { set ram $::env(WRIT_BEND_HELLO_RAM) }
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_bend_hello }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_bend_hello | caps: 1000 | ram: $ram
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_bend_hello
+    + arg | value: +RTS
+    + arg | value: --threads
+    + arg | value: 1
+    + arg | value: --gpu
+    + arg | value: off
+-
+"
+
+build_boot_image [build_artifacts]
+
+append qemu_args "-nographic "
+
+run_genode_until {child "writ_bend_hello" exited with exit value .*\n} 240
+
+grep_output {\[init -\> writ_bend_hello\]}
+
+compare_output_to {
+[init -> writ_bend_hello] hi
+}

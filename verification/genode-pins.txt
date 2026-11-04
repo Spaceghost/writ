@@ -49,7 +49,20 @@ Host
                        -> /nix/store/qzbnkhkzm2hixbpib3mwsjrr6knqah1s-expect-5.45.4
                      nixpkgs registry at fetch time: nixpkgs-26.11pre1107593.ea9e3ef341e1
                      (rev ea9e3ef341e11c193537f674f821a99f9f436729); Nix 2.35.2
+  rpcgen:            rpcsvc-proto 1.4.4 from nixpkgs (Task 2; needed by the libc port's
+                     check_tool list; no root):
+                       nix build nixpkgs#rpcsvc-proto --out-link ../writ-genode/host-tools/rpcsvc-proto
+                       -> /nix/store/dl3ics0jh1kr1rgy0434a9sy1bj2cfji-rpcsvc-proto-1.4.4
+  clang:             clang 23.1.1 (Manjaro package clang 23.1.1-1), /usr/bin/clang-23.
+                     Task 2 compiles only the Bend-generated hello.c of
+                     writ_bend_hello with it (--target=x86_64-unknown-elf); see
+                     verification/genode-bend-hello-base-linux.txt, E1. Not part of
+                     the Genode-prescribed tool chain.
   QEMU:              qemu-system-x86_64 11.1.2 installed; not used (base-linux needs none)
+
+Genode ports (Task 2)
+  libc:              tool/ports/prepare_port libc -> genode/contrib/libc-d6a3665f0d2778ce8928c66302f1694cdc0d8480
+                     (FreeBSD 12.0 src.txz, SHA256 0da393ac...a889b checked by the port tool)
 
 Build directory
   Created with:      ../writ-genode/genode/tool/create_builddir x86_64 BUILD_DIR=../writ-genode/build/x86_64

@@ -1,0 +1,277 @@
+Bend generated C as a Genode component on base-linux (Genode component lane, Task 2)
+Recorded: 2026-11-03, 20:28 to 20:45 -06:00
+
+Everything here is Genode-on-Linux (base-linux: core, init, and components are
+Linux processes) evidence. It is not native Genode execution on any kernel and
+no device was involved (--gpu off).
+
+RESULT
+  The unmodified Bend 2.0.39 output for scripts/genode/Hello.bend compiles and
+  links as the Genode component writ_bend_hello against Genode 26.08's libc
+  after four build-configuration changes (E1-E4 below). Under init it does NOT
+  print "hi". The first blocking error depends on the RAM quota:
+    ram 256M (committed default): the component blocks at startup with
+      [init] child "writ_bend_hello" requests resources: ram_quota=8589950976
+      and never prints or exits (run times out, exit 254).
+    ram 11G (probe): it gets past the 8 GiB corpus reservation and fails with
+      [init -> writ_bend_hello] Warning: mprotect: mprotect not implemented
+      [init -> writ_bend_hello] bend: stack guard failed
+      [init] child "writ_bend_hello" exited with exit value 1
+  The mprotect failure cannot be passed by a build-configuration change that
+  keeps the runtime's behavior: see "BLOCKING ERROR" below. Per the task rules
+  work stopped there and the outcome is reported as DONE_WITH_CONCERNS.
+
+INPUTS
+  Bend:        $HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+               (BEND_NO_TELEMETRY=1)
+  Program:     scripts/genode/Hello.bend (created for this task; four lines):
+                 import Base
+                 def main() -> IO(Unit):
+                   do IO<Unit>: IO.print("hi")
+  Emit:        bend scripts/genode/Hello.bend -o ../writ-genode/hello/hello.c
+               rc 0; 3074 lines; sha256
+               260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
+               The file was never edited. It is read in place by the build
+               (vpath in target.mk) and is not committed.
+  Genode:      26.08, d18ee9e917200b059549e21f2dd9a55bfe61a0eb (see genode-pins.txt)
+  Build dir:   ../writ-genode/build/x86_64 (BOARD=linux KERNEL=linux)
+  Component:   ../writ-genode/writ-repo/src/app/writ_bend_hello/target.mk
+  Run script:  ../writ-genode/writ-repo/run/writ_bend_hello.run
+  Copies:      scripts/genode/writ_bend_hello/{target.mk,writ_bend_hello.run}
+               (byte-identical to the live files; header comments included)
+
+PREPARATION (build configuration, outside the repository)
+  P1  libports repository. Genode's libc, libm, posix, and vfs libraries live
+      in repos/libports, which the x86_64 build.conf template leaves commented
+      out. Change: uncommented 'REPOSITORIES += $(GENODE_DIR)/repos/libports'
+      in etc/build.conf; added writ_bend_hello to WRIT_RUN_SCENARIOS (the
+      local-expect run rule from Task 1). scripts/genode/writ_hello/
+      build.conf.fragment is updated to match the live build.conf.
+  P2  libc port. The libc library needs the FreeBSD 12.0 sources fetched by
+      Genode's port tool. Its check_tool list needs flex, bison, and rpcgen; the
+      host has no rpcgen. Obtained without root from nixpkgs:
+        nix build nixpkgs#rpcsvc-proto --out-link ../writ-genode/host-tools/rpcsvc-proto
+        -> /nix/store/dl3ics0jh1kr1rgy0434a9sy1bj2cfji-rpcsvc-proto-1.4.4
+      Then, with the Genode tree (not the worktree) as current directory:
+        cd ../writ-genode/genode
+        PATH=../host-tools/rpcsvc-proto/bin:$PATH ./tool/ports/prepare_port libc
+      rc 0 in 2m16s. Download:
+        http://ftp-archive.freebsd.org/pub/FreeBSD-Archive/old-releases/amd64/12.0-RELEASE/src.txz
+      checked by the port tool against libc.port's SHA(libc)
+        0da393ac2174168a71c1c527d1453e07372295187d05c288250800cb152a889b
+      (install.mk runs sha256sum -c and fails the port otherwise). Port
+      directory: genode/contrib/libc-d6a3665f0d2778ce8928c66302f1694cdc0d8480
+      (matches repos/libports/ports/libc.hash).
+
+target.mk BASELINE
+  TARGET = writ_bend_hello, SRC_C = hello.c, LIBS = posix (posix provides the
+  libc component entry that calls main(argc, argv) and pulls in libc),
+  vpath hello.c $(REP_DIR)/../hello, CC_CXX_WARN_STRICT = (empty, as the
+  upstream libc tests do).
+
+COMPILE, LINK, AND LOAD ERRORS (in order; each fixed by a target.mk change)
+  Command for every build:  cd ../writ-genode/build/x86_64 && make app/writ_bend_hello
+
+  E1  musttail statement attribute (compiler, not libc)
+      Error (genode-x86-gcc 14.2.0):
+        hello.c:124:46: error: expected identifier or '(' before 'return'
+          124 | #define WL_DYN(F)  __attribute__((musttail)) return wl_tab[F](WL_ALL)
+        (also WL_JMP at hello.c:123, via WL_RETN at hello.c:1308 and others)
+      What differs: the generated C is written for clang. It uses the
+        statement attribute musttail (in GCC only from GCC 15), '#pragma clang
+        fp contract(off)' (ignored by GCC with a warning), and preserve_none/
+        preserve_most (guarded by __has_attribute). Genode 26.08 prescribes the
+        25.05 tool chain, GCC 14.2.0. Removing musttail would change the
+        evaluator's guaranteed tail calls, so it was not an option.
+      Change: CUSTOM_CC = clang --target=x86_64-unknown-elf for this target
+        only. Host clang 23.1.1 (Manjaro package clang 23.1.1-1), the compiler
+        family the generated C targets. The bare-ELF target, like
+        genode-x86-gcc, defines neither __linux__ nor __unix__, so the
+        runtime's Linux-only blocks (sched_getaffinity, cgroup cpu.max reads,
+        the Linux window fill) are compiled out exactly as with the Genode
+        tool chain. Linking still uses genode-x86-g++ (prg.mk LD_CMD = $(CXX)).
+
+  E2  MAP_NORESERVE (libc header)
+      Error: hello.c:1656:30: error: 'MAP_NORESERVE' undeclared
+               1656 |     MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
+      What Genode's libc lacks: its <sys/mman.h> is FreeBSD 12.0's, which
+        retired the flag: 'MAP_RESERVED0040 0x0040 /* previously unimplemented
+        MAP_NORESERVE */'.
+      Change: CC_DEF += -DMAP_NORESERVE=0. On FreeBSD's ABI the flag had no
+        effect, so 0 is that libc's meaning. It does not make the Genode
+        mapping lazy: Genode's libc commits and zeroes anonymous memory
+        (see RUN, below). This is a flag, not an edit of hello.c.
+
+  E3  stdatomic.h from GCC's internal headers (after E1)
+      Error (clang):
+        hello.c:470:20: error: address argument to atomic operation must be a
+        pointer to a trivially-copyable type ('_Atomic(u32) *' invalid)
+        ... toolchain/25.05/lib/gcc/x86_64-pc-elf/14.2.0/include/stdatomic.h:146:5:
+        note: expanded from macro 'atomic_load_explicit'
+        (20 errors, then clang stopped)
+      What differs: Genode's build passes -nostdinc and adds GCC 14.2.0's
+        internal include directory (LIBGCC_INC_DIR, exported by
+        tool/builddir/build.mk). GCC's stdatomic.h uses GCC-only builtin
+        forms; Genode's libc ships no stdatomic.h of its own.
+      Change: LIBGCC_INC_DIR = $(shell clang -print-resource-dir)/include
+        (/usr/lib/clang/23/include): the compiler-header directory follows the
+        compiler. Genode libc headers stay ahead of it on the include path.
+        Also LD_LIBGCC = $(shell $(CROSS_DEV_PREFIX)gcc $(CC_MARCH)
+        -print-libgcc-file-name), so the link keeps the Genode tool chain's
+        libgcc instead of asking clang.
+      Result: compile and link rc 0. 38 clang warnings (24 -Wunused-function,
+        8 -Wuninitialized, 3 -Wsometimes-uninitialized, plus notes); none
+        concerns a host call.
+
+  E4  large-model section names (load-time, first run)
+      Log (run 1, ram 256M, before this change):
+        [init -> writ_bend_hello] Error: _reserve_local: lx_mmap failed (addr_in=0x0,addr_out=0x7fffe2000000/140736985038848)
+        [init -> writ_bend_hello] Error: failed to locally attach linker area
+        [init -> writ_bend_hello] Error: failed to allocate region within linker area
+        Kernel: Segmentation fault (signum=11), see Linux kernel log for details
+        Error: Test execution timed out   (exit 254)
+      Cause: Genode builds x86_64 code with -mcmodel=large
+        (repos/base/mk/spec/x86_64.mk CC_MARCH). Under that model clang 23
+        emits .ltext.*, .ldata, .lbss, and .lrodata.* sections, which
+        repos/base/src/ld/genode.ld does not name. readelf showed the first
+        LOAD segment at VirtAddr 0x0 instead of the program base 0x1000000,
+        so ld.lib.so could not reserve its linker area. GCC keeps ordinary
+        section names under the large model, so upstream never meets this.
+        -mlarge-data-threshold moves data back but not text (checked on a
+        three-line probe file).
+      Change: CC_MARCH = -m64 -march=x86-64-v2 (default small code model) for
+        this target. Result: LOAD segments at 0x1000000 and 0x1005000;
+        relocations are 45 R_X86_64_JUMP_SLOT and 2 R_X86_64_GLOB_DAT, which
+        Genode's x86_64 ld.lib.so implements.
+
+  Final compile command (make VERBOSE= after removing hello.o; <writ-genode>
+  is ../writ-genode). -D__FreeBSD__=12 and -D__GENODE__ come from Genode's libc
+  import; hello.c tests neither. Rebuilt binary hash matched the run binary.
+    clang --target=x86_64-unknown-elf -DMAP_NORESERVE=0 -D__FreeBSD__=12
+      -fno-builtin-sin -fno-builtin-cos -fno-builtin-sinf -fno-builtin-cosf
+      -D__GENODE__ -ffunction-sections -fno-strict-aliasing -nostdinc  -g
+      -m64 -march=x86-64-v2 -O2 -MMD -MP -MT 'hello.o hello.d' -Wall
+      -Wno-error=implicit-fallthrough  -fPIC -I. -I<writ-genode>/genode/cont
+      rib/libc-d6a3665f0d2778ce8928c66302f1694cdc0d8480/include/libc -I<writ
+      -genode>/genode/contrib/libc-d6a3665f0d2778ce8928c66302f1694cdc0d8480/
+      include/spec/x86_64/libc -I<writ-genode>/genode/contrib/libc-d6a3665f0
+      d2778ce8928c66302f1694cdc0d8480/include/spec/x86/libc
+      -I<writ-genode>/genode/repos/libports/include/libc-genode
+      -I<writ-genode>/genode/repos/base/include/spec/x86
+      -I<writ-genode>/genode/repos/base/include/spec/x86_64
+      -I<writ-genode>/genode/repos/os/include/spec/x86_64
+      -I<writ-genode>/genode/repos/libports/include/spec/x86_64
+      -I<writ-genode>/genode/repos/base/include/spec/64bit
+      -I<writ-genode>/genode/repos/libports/include/spec/64bit
+      -I<writ-genode>/genode/repos/base-linux/include
+      -I<writ-genode>/genode/repos/base/include
+      -I<writ-genode>/genode/repos/os/include
+      -I<writ-genode>/genode/repos/demo/include
+      -I<writ-genode>/genode/repos/libports/include
+      -I/usr/lib/clang/23/include -c
+      <writ-genode>/writ-repo/../hello/hello.c
+
+  Link-time symbol check: Genode links programs against ABI stubs, so a
+  missing libc symbol would surface only at load. The 47 undefined symbols of
+  the final binary were compared with repos/libports/lib/symbols/{libc,posix,
+  libm} and repos/base/lib/symbols/ld: all 47 are exported. They are:
+    calloc clock_gettime __error _exit exit fcntl fflush fprintf free
+    ftrylockfile fwrite getenv malloc memcpy memset mmap mprotect munmap
+    nanosleep pipe printf pthread_cond_broadcast pthread_cond_signal
+    pthread_cond_wait pthread_create pthread_mutex_lock pthread_mutex_unlock
+    pthread_self raise read realloc sched_yield select sigaction sigaltstack
+    signal __stderrp __stdoutp strcmp strdup strlen strspn strtod strtok
+    strtol sysconf write
+  "Exported" is not "implemented": mprotect is exported by libc's dummies.cc.
+  Final binary sha256 (not committed):
+    e5f62ed01c632ff56afcbb9c303ded7473faf2707260670d1f2b6ef7db31a427
+
+RUN UNDER init
+  Command: cd ../writ-genode/build/x86_64 && make run/writ_bend_hello
+           (WRIT_BEND_HELLO_RAM=11G in the environment for the probe)
+  init config (see run script): timer started as a sibling providing Timer;
+  writ_bend_hello with caps 1000, ram $ram, <vfs> holding only /dev/log,
+  <libc stdout="/dev/log" stderr="/dev/log"/>, and <arg> nodes
+  writ_bend_hello +RTS --threads 1 --gpu off.
+  Expected line: [init -> writ_bend_hello] hi, then exit value 0.
+
+  Run 2 (ram 256M, after E4, 20:37):
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init] child "writ_bend_hello" requests resources: ram_quota=8589950976
+    Error: Test execution timed out
+    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 254
+  Analysis: main() parsed the RTS arguments (no 'unknown runtime option'
+    message) and reached corpus_setup, which asks for a 1<<33 byte (8 GiB)
+    term heap; the size is fixed in the generated C for --gpu off. Genode's
+    libc mmap for MAP_ANON (repos/libports/src/lib/libc/file_operations.cc)
+    rejects MAP_FIXED, ignores the address hint, allocates the whole length
+    from its heap, and bzero()s it. The heap therefore requested 8 GiB plus
+    16 KiB of RAM quota from init. init does not answer resource requests, so
+    the libc blocks: the runtime's own "reservation failed" path (MAP_FAILED)
+    is never taken and the component neither prints nor exits.
+
+  Run 4 (ram 256M, final committed run script, 20:40:55 to 20:45:07):
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init] child "writ_bend_hello" requests resources: ram_quota=8589950976
+    Error: Test execution timed out
+    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 254
+  Same as run 2 with the final run script (240 s wait): the block is stable.
+
+  Run 3 (probe, ram 11G, 20:40:01 to 20:40:41):
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init -> writ_bend_hello] Warning: mprotect: mprotect not implemented
+    [init -> writ_bend_hello] bend: stack guard failed
+    [init] child "writ_bend_hello" exited with exit value 1
+
+    Line 0 of output is unexpected
+     expected: '[init -> writ_bend_hello] hi'
+     got:      '[init -> writ_bend_hello] Warning: mprotect: mprotect not implemented'
+    Error: Test failed, 1 unexpected lines of output
+    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 255
+  Analysis: with enough quota the 8 GiB corpus mapping succeeds (corpus_map
+    walks its hints from 1<<45 down; every libc result differs from the hint,
+    so each is presumably unmapped and the final pool_mmap(size) is kept;
+    the per-call sequence was not traced). On base-linux
+    RAM dataspaces are files in /tmp/genode-<uid> (tmpfs), and the bzero
+    touched them: host "shared" memory rose by about 10 GiB during the run
+    and was released at exit; /tmp/genode-1000 was empty afterward.
+    pool_stack() then maps 2 GiB + 16 KiB + 4*SIGSTKSZ for the evaluation
+    stack and calls mprotect(p + 2 GiB, 16384, PROT_NONE) for the guard
+    page. Genode's libc defines mprotect in dummies.cc as a weak DUMMY that
+    logs "not implemented" and returns -1, so err_fail("stack guard
+    failed") ends the component with exit value 1 before the first print.
+
+BLOCKING ERROR
+  Symbol: mprotect (called from pool_stack in hello.c, stack guard page).
+  Genode 26.08 libc: weak dummy, returns -1 (repos/libports/src/lib/libc/dummies.cc:126).
+  Why no build-configuration fix: the only flag-level route would be a
+  -D macro that turns mprotect into a no-op returning 0. That removes the
+  guard page between the evaluation stack and the alternate signal stack,
+  i.e. it silently drops the runtime's stack-overflow fail-stop. It edits the
+  evaluator's behavior by preprocessor instead of by text, so it is outside
+  the task's rules, and it would hide exactly the fault row Task 3 must
+  measure. Not done. (E2's MAP_NORESERVE=0 differs: it restores the meaning
+  the flag has on the libc's own ABI and drops no check the runtime makes.)
+  For Task 3: memory row: the 8 GiB reservation is committed and zeroed, not
+  reserved (needs 8 GiB + 16 KiB quota; at 256M the libc blocks rather than
+  failing); faults row: mprotect is missing, the guard page cannot be made,
+  and startup stops there; event loop, threads, clock, process rows: not
+  reached beyond main's argument parsing, sysconf(_SC_NPROCESSORS_ONLN)
+  (cpu_count, called first in main), getenv("BENDRTS"), and _exit(1) from
+  err_fail (the component exited with value 1; it did not hang).
+
+LIMITS
+  - base-linux only (Genode-on-Linux). Nothing here says anything about NOVA,
+    seL4, or base-hw, where the RAM and mprotect behavior must be rechecked.
+  - The component's object code was compiled by host clang 23.1.1, outside
+    the Genode-prescribed tool chain; that compiler is not pinned by Genode.
+    The link, ld.lib.so, libc, and all other components use GCC 14.2.0.
+  - The small code model is a deviation from Genode's x86_64 default for
+    this one translation unit; it loaded and ran to main on base-linux only.
+  - --gpu off; no device was present or used.
