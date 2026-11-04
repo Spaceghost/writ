@@ -140,6 +140,11 @@ received, as Datastar `datastar-patch-elements` outer morphs by id:
 | `/` | `#nav`, `#index-tables` (change and baseline tables), `#lanes` |
 | `/change/<name>`, `/spec/<name>[/traceability]` | `#nav`, `#main` |
 
+Browsers and `curl` receive each push at once. Bun 1.1.8's own `fetch` reader
+does not: the server sends a chunk's closing CRLF only with its next write, and
+that reader holds the chunk until then (up to the 5 s keepalive), so
+`smoke.ts` reads the stream over a plain socket instead.
+
 So a report edit in a lane pushes only `#lanes` to index pages, and a
 `tasks.md` edit pushes the tables, the nav, and that change's page. The morph
 keeps what the reader changed in the browser: open report sections, nav

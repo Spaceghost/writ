@@ -102,10 +102,14 @@ nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { colo
 .lane .commit { margin: .35rem 0 .2rem; font-size: .9rem; overflow-wrap: anywhere; }
 .lane .plan { margin-top: .5rem; }
 .lane .ledger { font-size: .86rem; border-left: 3px solid var(--line); padding: 0 0 0 .8rem; margin: .3rem 0 .6rem; }
-.lane .ledger p { margin: .25rem 0; overflow-wrap: anywhere; }
+.lane .md { overflow-wrap: anywhere; }
+.lane .ledger p { margin: .25rem 0; }
+.lane .ledger :is(h1, h2, h3, h4) { font-family: var(--body); font-size: .95rem; margin: .3rem 0; }
 .lane details.report { border-top: 1px solid var(--line); }
 .lane details.report > summary { cursor: pointer; padding: .35rem 0; font-size: .9rem; }
 .lane details.report > .md { font-size: .9rem; padding: 0 0 .6rem; }
+.lane details.report > .md h1 { font-size: 1.25rem; }
+.lane details.report > .md h2 { font-size: 1.08rem; }
 .lane .report-status { font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-left: .4rem; }
 .lane .drift ul { margin: .2rem 0 .4rem; padding-left: 1.2rem; font-size: .88rem; }
 .lane .drift .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }

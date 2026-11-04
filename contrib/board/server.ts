@@ -321,7 +321,7 @@ function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
         const text = readRegularText(ledgerPath);
         if (text === null) ledgerNote = "progress.md could not be read (not a regular file, or removed mid-scan)";
         else if (text.trim() === "") ledgerNote = "progress.md is empty (possibly mid-write)";
-        else ledger = renderMarkdown(ledgerTail(text), `${rel}/progress.md`);
+        else ledger = renderMarkdown(ledgerTail(text), `${rel}/progress.md`, { lineBreaks: true });
       }
       const reports = regularFiles(planDir, REPORT_FILE)
         .sort((x, y) => Number(x.match(REPORT_FILE)![1]) - Number(y.match(REPORT_FILE)![1]))
@@ -418,10 +418,11 @@ async function scanLanes(root: string, rootChanges: Change[], lanes: string | nu
  * Renders repository markdown. Raw HTML in the source is escaped, not passed
  * through, so a document cannot inject script into the board. Relative links
  * that point at OpenSpec documents are rewritten to the matching board route;
- * other relative links are left as written.
+ * other relative links are left as written. `lineBreaks` keeps single
+ * newlines as breaks, for line-oriented files such as an SDD ledger.
  */
-function renderMarkdown(source: string, repoPath: string): string {
-  const md = new Marked({ gfm: true });
+function renderMarkdown(source: string, repoPath: string, opts: { lineBreaks?: boolean } = {}): string {
+  const md = new Marked({ gfm: true, breaks: opts.lineBreaks === true });
   md.use({
     renderer: {
       html({ text }: Tokens.HTML | Tokens.Tag) {

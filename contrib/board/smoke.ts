@@ -13,6 +13,7 @@
 import { join, resolve } from "node:path";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { connect } from "node:net";
 
 const root = resolve(join(import.meta.dir, "..", ".."));
 const lanesDir = mkdtempSync(join(tmpdir(), "writ-board-smoke-"));
@@ -51,6 +52,65 @@ async function baseUrl(): Promise<string> {
     if (m) return m[1];
   }
   throw new Error(`server did not report a URL: ${text}`);
+}
+
+/**
+ * Opens an SSE stream over a plain TCP socket, decodes HTTP/1.1 chunked
+ * transfer encoding, and returns `waitFor(needle, ms)`, which resolves with the
+ * first complete `datastar-patch-elements` event containing `needle`, skipping
+ * others, or `ok: false` after `ms`.
+ */
+function openStream(base: string, path: string) {
+  const { hostname, port } = new URL(base);
+  const sock = connect(Number(port), hostname);
+  sock.write(`GET ${path} HTTP/1.1\r\nHost: ${hostname}\r\nAccept: text/event-stream\r\n\r\n`);
+  let raw = Buffer.alloc(0);
+  let headersDone = false;
+  let body = "";
+  let wake: (() => void) | null = null;
+  const decoder = new TextDecoder();
+  sock.on("data", (d: Buffer) => {
+    raw = Buffer.concat([raw, d]);
+    if (!headersDone) {
+      const end = raw.indexOf("\r\n\r\n");
+      if (end < 0) return;
+      raw = raw.subarray(end + 4);
+      headersDone = true;
+    }
+    // Chunked framing: "<hex size>\r\n<bytes>\r\n", repeated. Bun 1.1.8 sends
+    // a chunk's closing CRLF only with the next write, so a chunk's bytes are
+    // consumed as soon as they arrive and its CRLF is dropped when it does.
+    while (true) {
+      if (raw.length >= 2 && raw[0] === 13 && raw[1] === 10) raw = raw.subarray(2);
+      const eol = raw.indexOf("\r\n");
+      if (eol < 0) break;
+      const size = parseInt(raw.subarray(0, eol).toString("latin1"), 16);
+      if (Number.isNaN(size) || raw.length < eol + 2 + size) break;
+      body += decoder.decode(raw.subarray(eol + 2, eol + 2 + size), { stream: true });
+      raw = raw.subarray(eol + 2 + size);
+    }
+    wake?.();
+  });
+  sock.on("error", () => wake?.());
+  async function waitFor(needle: string, ms: number): Promise<{ ok: boolean; after: number; text: string }> {
+    const t0 = Date.now();
+    while (Date.now() - t0 < ms) {
+      const i = body.indexOf("\n\n");
+      if (i >= 0) {
+        const ev = body.slice(0, i);
+        body = body.slice(i + 2);
+        if (ev.startsWith("event: datastar-patch-elements") && ev.includes(needle)) return { ok: true, after: Date.now() - t0, text: ev };
+        continue;
+      }
+      await new Promise<void>((r) => {
+        wake = r;
+        setTimeout(r, Math.max(1, ms - (Date.now() - t0)));
+      });
+      wake = null;
+    }
+    return { ok: false, after: Date.now() - t0, text: "" };
+  }
+  return { waitFor, close: () => sock.destroy() };
 }
 
 try {
@@ -104,42 +164,18 @@ try {
   check("report raw HTML is escaped", lanesHtml.includes("&lt;script&gt;") && !lanesHtml.includes("<script>alert"));
   check("unsafe link schemes become #", !/href="[^"]*(javascript|&#106;)/i.test(lanesHtml) && lanesHtml.includes('href="https://example.org/"'));
 
-  const ac = new AbortController();
-  const events = await fetch(`${base}/events?page=${encodeURIComponent(`/change/${expected}`)}`, { signal: ac.signal });
-  const reader = events.body!.getReader();
-  const first = new TextDecoder().decode((await reader.read()).value);
-  check("/events sends a datastar-patch-elements full render", first.startsWith("event: datastar-patch-elements\n") && first.includes('id="main"'));
-  ac.abort();
+  const changeStream = openStream(base, `/events?page=${encodeURIComponent(`/change/${expected}`)}`);
+  const first = await changeStream.waitFor('id="main"', 2000);
+  check("/events sends a datastar-patch-elements full render", first.ok && first.text.includes(`change · ${expected}`));
+  changeStream.close();
 
-  // Live updates: an index stream must receive a lanes push after a change on disk.
-  const live = new AbortController();
-  const stream = (await fetch(`${base}/events?page=%2F`, { signal: live.signal })).body!.getReader();
-  const decoder = new TextDecoder();
-  let buffered = "";
-  /** Reads events until one contains `needle`, or gives up after `ms`. */
-  async function waitFor(needle: string, ms: number): Promise<{ ok: boolean; after: number; text: string }> {
-    const t0 = Date.now();
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<null>((r) => (timer = setTimeout(() => r(null), ms)));
-    while (true) {
-      const i = buffered.indexOf("\n\n");
-      if (i >= 0) {
-        const ev = buffered.slice(0, i);
-        buffered = buffered.slice(i + 2);
-        if (ev.startsWith("event: datastar-patch-elements") && ev.includes(needle)) {
-          clearTimeout(timer);
-          return { ok: true, after: Date.now() - t0, text: ev };
-        }
-        continue;
-      }
-      const chunk = await Promise.race([stream.read(), timeout]);
-      if (chunk === null || chunk.done) {
-        clearTimeout(timer);
-        return { ok: false, after: Date.now() - t0, text: "" };
-      }
-      buffered += decoder.decode(chunk.value, { stream: true });
-    }
-  }
+  // Live updates: an index stream must receive a lanes push after a change on
+  // disk. The stream is read over a raw socket: Bun 1.1.8's server sends a
+  // chunk's closing CRLF only with its next write, and Bun's own fetch reader
+  // then holds the chunk back until that write (up to the 5 s keepalive),
+  // which would time a correct push out. Browsers and curl deliver it at once.
+  const live = openStream(base, "/events?page=%2F");
+  const waitFor = live.waitFor;
   const initial = await waitFor('id="main"', 2000);
   check("index stream starts with a full render", initial.ok);
 
@@ -155,7 +191,7 @@ try {
   writeFileSync(join(plan, "task-2-report.md"), "# Second\n\nStatus: NEW\n");
   const added = await waitFor("task-2-report.md", 2000);
   check("a new report file is pushed within 2 s", added.ok, `${added.after} ms`);
-  live.abort();
+  live.close();
 } catch (err) {
   check("smoke run completed", false, String(err));
 } finally {
