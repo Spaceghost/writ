@@ -463,7 +463,6 @@ export function questionPage(q: Question): string {
 <p class="eyebrow">question · ${esc(q.id)}${q.topic ? ` · ${esc(q.topic)}` : ""} · <span class="status status-${q.status}">${QSTATUS[q.status]}</span></p>
 <h1>${esc(q.title)}</h1>
 <section class="qframe-wrap">
-<p class="frame-bar"><span>the question page, served as-is; its form posts to the board</span><a href="/questions/${esc(q.id)}/html" target="_blank" rel="noopener">open standalone</a></p>
 <iframe id="qframe-${esc(q.id)}" class="qframe" src="/questions/${esc(q.id)}/html" title="${esc(q.title)}" sandbox="allow-scripts allow-forms allow-popups"></iframe>
 </section>
 <section class="doc"><div class="doc-label">${esc(q.id)}.answers.jsonl, ${q.answers.length} entr${q.answers.length === 1 ? "y" : "ies"}</div>${answersList(q)}</section>
