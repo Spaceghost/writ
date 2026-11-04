@@ -13,7 +13,7 @@
 let
   inherit (pkgs) lib;
   fs = lib.fileset;
-  root = ../.;
+  root = ../../.;
 
   # Every authored .bend file at the root and under examples/. contrib/ has its
   # own Bend tree and is not imported by the library; docs, specifications,
@@ -24,13 +24,13 @@ let
     fileset = fs.difference
       (fs.fileFilter (file: file.hasExt "bend") root)
       (fs.unions (map fs.maybeMissing [
-        ../contrib
-        ../docs
-        ../openspec
-        ../verification
-        ../scripts
-        ../.superpowers
-        ../nix
+        ../../contrib
+        ../../docs
+        ../../openspec
+        ../../verification
+        ../../scripts
+        ../../.superpowers
+        ../../nix
       ]));
   };
 
@@ -38,7 +38,7 @@ let
   # working directory.
   specSource = fs.toSource {
     inherit root;
-    fileset = ../openspec;
+    fileset = ../../openspec;
   };
 
   # The compiler may write a cache under $HOME; the sandbox HOME is not

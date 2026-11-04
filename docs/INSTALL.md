@@ -50,7 +50,7 @@ openspec --version
 The shell provides Bend 2.0.39 (the official release tarball above, fetched by
 its recorded SHA-256 and patched only to use the Nix store's dynamic loader),
 OpenSpec 1.16.0 (built from the npm registry tarball with a committed
-`nix/openspec/package-lock.json`), the newest clang in the locked nixpkgs as
+`utils/nix/openspec/package-lock.json`), the newest clang in the locked nixpkgs as
 `CC`, Node.js 22, Bun, Python 3, QEMU, git, gh, and make. It exports
 `BEND_NO_TELEMETRY=1` and `OPENSPEC_TELEMETRY=0`, and prints the tool versions
 on entry. `flake.lock` pins nixpkgs to one nixos-unstable revision. Run

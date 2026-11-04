@@ -3,7 +3,7 @@
 This directory is development tooling, not part of Writ. It follows the
 `contrib/rclone/` precedent for non-Bend code that the core never depends on:
 Writ's authored implementation, tests, examples, and proofs stay in Bend 2, and
-nothing outside `contrib/board/` may import, build, or require this board.
+nothing outside `utils/board/` may import, build, or require this board.
 
 The board is read-only. It reads the repository given by `--root` and the
 sibling git worktrees under `--lanes`. It never writes to either and never
@@ -33,4 +33,4 @@ Keep it small: `server.ts` (scanning, routes, SSE), `template.ts` (page and
 fragments), `board.css`, and `smoke.ts`. Datastar is the only frontend library
 and is loaded from the pinned CDN URL in `template.ts`; `marked` is the only npm
 dependency and is pinned with the committed `bun.lockb`. Update README.md when
-either pin, a flag, or a route changes, and run `bun contrib/board/smoke.ts`.
+either pin, a flag, or a route changes, and run `bun utils/board/smoke.ts`.

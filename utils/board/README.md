@@ -14,12 +14,12 @@ verification. Task counts are checkbox counts as written in `tasks.md`.
 Requires [Bun](https://bun.sh) (tested with 1.1.8).
 
 ```sh
-cd contrib/board && bun install --frozen-lockfile && cd ../..
-bun contrib/board/server.ts --root .
+cd utils/board && bun install --frozen-lockfile && cd ../..
+bun utils/board/server.ts --root .
 # board: listening on http://127.0.0.1:4242/
 
 # with the lane worktrees (sibling directory of this checkout)
-bun contrib/board/server.ts --root . --lanes ../writ-lanes
+bun utils/board/server.ts --root . --lanes ../writ-lanes
 ```
 
 | Flag | Default | Meaning |
@@ -42,7 +42,7 @@ each arrive as an SSE push within two seconds; removes the temporary directory;
 exits nonzero on failure):
 
 ```sh
-bun contrib/board/smoke.ts
+bun utils/board/smoke.ts
 ```
 
 ## What it reads

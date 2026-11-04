@@ -77,3 +77,13 @@ derivation monotone. A future release view must retain original policy/provenanc
 and a separately authenticated effective-policy transition; never clear labels
 or strip a release chain to fit a legacy record. Confidentiality authority cannot
 waive integrity, payment, operation, or sink-effect obligations.
+
+## Development tooling under `utils/`
+
+`utils/board/` (a Bun and Datastar dev board that reads specs, explainer
+pages, and lane worktrees read-only) and `utils/nix/` with the root
+`flake.nix` (the pinned toolchain, reproducible builds, and checks) are
+development tooling, not Writ implementation. The core never depends on
+them, they make no authority or verification claim, and the contribution
+rules above still apply to anything they touch. Keep them out of the
+library's source set and the test suite.

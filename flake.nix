@@ -13,14 +13,14 @@
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
 
-      bend = pkgs.callPackage ./nix/bend.nix { };
-      openspec = pkgs.callPackage ./nix/openspec { };
+      bend = pkgs.callPackage ./utils/nix/bend.nix { };
+      openspec = pkgs.callPackage ./utils/nix/openspec { };
 
       # Newest released clang in the pinned nixpkgs (23.1.3 at the locked
       # revision), exported as CC for native Bend builds.
       clang = pkgs.llvmPackages_latest.clang;
 
-      writ = import ./nix/writ.nix { inherit pkgs bend openspec clang; };
+      writ = import ./utils/nix/writ.nix { inherit pkgs bend openspec clang; };
     in
     {
       packages.${system} = {

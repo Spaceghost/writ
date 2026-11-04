@@ -1,6 +1,6 @@
 // Writ dev board: a read-only viewer for the OpenSpec suite.
 //
-// Public entry point: `bun contrib/board/server.ts --root <repo> [--lanes <dir>]
+// Public entry point: `bun utils/board/server.ts --root <repo> [--lanes <dir>]
 // [--port 4242] [--host 127.0.0.1]`. Everything else in this file is an
 // implementation helper.
 //

@@ -7,4 +7,4 @@
 /*.js
 *.o
 /result*
-/contrib/board/node_modules/
+/utils/board/node_modules/
