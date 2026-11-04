@@ -36,6 +36,39 @@ The Linux release targets glibc; a musl-only Alpine installation needs a compati
 environment or a separately validated toolchain. The package's recorded run was
 on Linux x86_64; other platforms are not claimed as tested here.
 
+## Nix
+
+The repository's `flake.nix` packages the same pinned toolchain. From the
+repository root, on Linux x86_64 with Nix installed:
+
+```sh
+nix develop
+bend version
+openspec --version
+```
+
+The shell provides Bend 2.0.39 (the official release tarball above, fetched by
+its recorded SHA-256 and patched only to use the Nix store's dynamic loader),
+OpenSpec 1.16.0 (built from the npm registry tarball with a committed
+`nix/openspec/package-lock.json`), the newest clang in the locked nixpkgs as
+`CC`, Node.js 22, Bun, Python 3, QEMU, git, gh, and make. It exports
+`BEND_NO_TELEMETRY=1` and `OPENSPEC_TELEMETRY=0`, and prints the tool versions
+on entry. `flake.lock` pins nixpkgs to one nixos-unstable revision. Run
+`nix flake check` to confirm the packaged Bend and OpenSpec report the pinned
+versions. The recorded commands and outputs are in
+[verification/nix-shell.txt](../verification/nix-shell.txt).
+
+These commands need flakes. If your Nix configuration does not enable them, add
+`--extra-experimental-features 'nix-command flakes'` to each command, or add
+`experimental-features = nix-command flakes` to `~/.config/nix/nix.conf`.
+
+The manual instructions above remain valid and install the same pinned
+versions; Nix is a convenience for obtaining them, not a requirement. The
+native-build examples below name `clang-19`; inside the Nix shell use `$CC`
+instead. The shell's clang (23.1.3 at the locked revision) is newer than the
+clang 19.1.1 used for the recorded native run, so a native result from the shell
+is a separate run, not a reproduction of that record.
+
 ## Run the examples
 
 ```sh
