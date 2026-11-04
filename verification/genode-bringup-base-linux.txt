@@ -1,0 +1,45 @@
+Genode bring-up on base-linux (Genode component lane, Task 1)
+Recorded: 2026-11-03
+
+Platform: Genode-on-Linux (base-linux, x86_64). Components run as ordinary Linux
+processes spawned by core-linux; this is not a native Genode kernel and not
+qualification of any Writ host profile. No QEMU is involved. Pins, tool chain,
+and host versions: verification/genode-pins.txt.
+
+== 1. Upstream scenario: repos/base/run/log.run ==
+
+Scenario:  genode/repos/base/run/log.run at d18ee9e917200b059549e21f2dd9a55bfe61a0eb
+           (builds core init lib/ld test/log; starts test-log under init;
+            run_genode_until "Test done.*\n" 20; compare_output_to the expected
+            [init -> test-log] lines). No depot or ports preparation needed.
+Command:   cd ../writ-genode/build/x86_64 && make run/log
+           (run/log dispatched to the authored build.conf rule, i.e.
+            host-tools/expect/bin/expect genode/tool/run/run --name log
+            --board linux --include genode/repos/base/run/log.run ...)
+Duration:  real 0m50.418s (clean build of core-linux, init, ld.lib.so, test-log)
+Exit:      0, "Run script execution successful." (compare_output_to passed)
+
+Log after "genode build completed" (verbatim, ANSI colour codes stripped):
+genode build completed
+spawn ./core
+Genode 26.08
+17592186044415 MiB RAM and 19000 caps assigned to init
+[init -> test-log] hex range:          [0e00,1680)
+[init -> test-log] empty hex range:    [0abc0000,0abc0000) (empty!)
+[init -> test-log] hex range to limit: [f8,ff]
+[init -> test-log] invalid hex range:  [f8,08) (overflow!)
+[init -> test-log] negative hex char:  0xfe
+[init -> test-log] positive hex char:  0x02
+[init -> test-log] Alloc_error value:  OUT_OF_RAM
+[init -> test-log] floating point:     1.70
+[init -> test-log] multiarg string:    "parent -> child.7"
+[init -> test-log] String(Hex(3)):     0x3
+[init -> test-log] Very long messages:
+[init -> test-log -> log] 1.....................................................................................................................................................................................................................................2
+[init -> test-log] 3.....................................................................................................................................................................................................................................4
+[init -> test-log] 5.....................................................................................................................................................................................................................................6
+[init -> test-log] 
+[init -> test-log] Test done.
+
+Run script execution successful.
+

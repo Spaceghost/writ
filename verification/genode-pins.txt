@@ -1,0 +1,60 @@
+Genode bring-up pins (Genode component lane, Task 1)
+Recorded: 2026-11-03
+
+All downloaded and built material lives outside the repository in
+../writ-genode/ (a sibling of the worktree root):
+  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-genode
+Nothing listed here is committed.
+
+Genode source
+  Upstream:          https://codeberg.org/genodelabs/genode.git
+  Check performed:   git ls-remote https://codeberg.org/genodelabs/genode.git
+                       3d75dc71b1bea0c03ec0151912ef320e3d64fb92  refs/tags/26.08     (annotated tag object)
+                       d18ee9e917200b059549e21f2dd9a55bfe61a0eb  refs/tags/26.08^{}  (commit)
+                     docs/GENODE.md records d18ee9e917200b059549e21f2dd9a55bfe61a0eb; matches.
+  Fetch:             git clone --depth 1 --branch 26.08 https://codeberg.org/genodelabs/genode.git genode
+  Checked out:       d18ee9e917200b059549e21f2dd9a55bfe61a0eb
+                     (git rev-parse HEAD; commit date 2026-08-25 13:49:59 +0200,
+                      subject "depot: update recipe hashes"; VERSION file: 26.08)
+  Location:          ../writ-genode/genode/  (unmodified)
+
+Genode tool chain
+  Prescribed by:     genode/doc/tool_chain.txt at the pinned commit (pre-compiled
+                     archive or tool/tool_chain); tool/tool_chain sets
+                     TOOL_CHAIN_VERSION = 25.05, GCC_VERSION = 14.2.0,
+                     BINUTILS_VERSION = 2.44. 26.08 still uses the 25.05 tool chain.
+  Choice:            pre-compiled archive (not built from source)
+  Archive:           https://codeberg.org/genodelabs/genode/releases/download/25.05/genode-toolchain-25.05-ubuntu-24.04.tar.xz
+  SHA256 (computed): 6cab8e5f4490399a296a73b01695d5fb055a40f6ac04d61a3f7a7344003eb739
+  SHA256 (doc):      6cab8e5f4490399a296a73b01695d5fb055a40f6ac04d61a3f7a7344003eb739 (Ubuntu); match
+  Install:           no root, so not at /usr/local/genode/tool/25.05. Member paths were
+                     listed first (all under /usr/local/genode/tool/, no '..'), then
+                     extracted with
+                       tar xf genode-toolchain-25.05-ubuntu-24.04.tar.xz -C toolchain \
+                           --strip-components=4 /usr/local/genode/tool/25.05
+                     to ../writ-genode/toolchain/25.05/, and selected through the
+                     build directory's etc/tools.conf:
+                       CROSS_DEV_PREFIX = /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-genode/toolchain/25.05/bin/genode-x86-
+  Versions:          genode-x86-g++ (GCC) 14.2.0
+                     GNU ld (GNU Binutils) 2.44
+
+Host
+  OS / kernel:       Manjaro Linux, kernel 7.2.9-1-MANJARO, x86_64, GNU libc 2.44
+  Host compiler:     gcc (GCC) 16.2.1 20260810 (installed; not used for the
+                     Genode components, which all build with genode-x86-g++ 14.2.0)
+  GNU Make:          4.4.1
+  Tcl:               /usr/bin/tclsh 8.6.16 (system; used by tool/hid and check_abi)
+  Expect:            5.45.4 from nixpkgs (not installed system-wide; no root):
+                       nix build nixpkgs#expect --out-link ../writ-genode/host-tools/expect
+                       -> /nix/store/qzbnkhkzm2hixbpib3mwsjrr6knqah1s-expect-5.45.4
+                     nixpkgs registry at fetch time: nixpkgs-26.11pre1107593.ea9e3ef341e1
+                     (rev ea9e3ef341e11c193537f674f821a99f9f436729); Nix 2.35.2
+  QEMU:              qemu-system-x86_64 11.1.2 installed; not used (base-linux needs none)
+
+Build directory
+  Created with:      ../writ-genode/genode/tool/create_builddir x86_64 BUILD_DIR=../writ-genode/build/x86_64
+  etc/build.conf:    BOARD ?= linux, KERNEL ?= linux (selects repos/base-linux,
+                     power_on/linux, log/linux, boot_dir/linux), MAKE += -j16,
+                     plus an authored run/% override for the listed scenarios that runs
+                     tool/run/run through the local expect (upstream hardcodes
+                     #!/usr/bin/expect). Copy: scripts/genode/writ_hello/build.conf.fragment
