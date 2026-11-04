@@ -63,6 +63,31 @@ initial state, transition, expected result. The Genode component replays the
 same vectors against real sessions and compares normalized outcomes, as PH-012
 requires. Native selector values are not in the vectors.
 
+### Delegations are a derivation tree
+
+Borrowed from seL4's capability derivation tree, as data rather than as a
+kernel feature: each recorded delegation is a node under the delegating alias
+with rights no wider than its parent, and revoking an alias revokes its
+subtree. This makes "narrow only, never widen" checkable across a chain and
+gives `revoke` a precise meaning for explicit delegations.
+
+### What the running host can and cannot see
+
+Genode RPC dispatch identifies the invoked object, not the invoking domain.
+The model's holder field is therefore observable in the model and in the
+confinement inventory, never at the server at call time. GA-005 is a model
+rule; GA-010 is the matching topology obligation: a per-subject object is
+handed only to domains with no capability-carrying channel outside their
+delegation record. Object granularity is identity granularity, so the Genode
+component mints one RPC object per descriptor.
+
+### Capabilities are references, records are authority
+
+No plan, rights mask, epoch, or expiry is ever encoded in a native object. A
+native capability is an unforgeable reference to a monitor-owned record that
+the monitor re-resolves on every use. A port that encodes Writ scope in a
+kernel object is wrong even if it replays the vectors.
+
 ### What this change does not claim
 
 It does not make Bend records unforgeable. The model describes what a correct

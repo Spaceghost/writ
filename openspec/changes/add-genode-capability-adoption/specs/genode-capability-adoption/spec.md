@@ -73,21 +73,53 @@ The binding model SHALL represent each native object with an identity and a gene
 - **WHEN** `bind_close` runs
 - **THEN** no object is destroyed and the state is unchanged.
 
-### Requirement: GA-005 Possession is not the subject
+### Requirement: GA-005 Possession is not the subject in the model
 
-The model SHALL deny any transition whose alias holder differs from the subject recorded in the binding, regardless of the alias being valid.
+In the model, a transition whose alias holder differs from the binding's subject SHALL be denied with a subject-mismatch reason unless a recorded delegation covers that holder; the model SHALL NOT claim a running host can observe the holder.
 
 #### Scenario: Delegated descriptor used by another domain
 
-- **GIVEN** reader R's descriptor alias was delegated to domain Q
-- **WHEN** Q attempts an operational request on it
-- **THEN** the request is denied with a subject-mismatch reason.
+- **GIVEN** reader R's descriptor alias is recorded as held by domain Q with no delegation record
+- **WHEN** the model evaluates Q's operational request
+- **THEN** it is denied with a subject-mismatch reason.
 
-#### Scenario: Delegation to the same subject's worker is explicit
+#### Scenario: Delegation to the same subject's worker is recorded
 
-- **GIVEN** the host contract records an explicit delegation for R's own worker domain
+- **GIVEN** a delegation record covers R's own worker domain
 - **WHEN** that domain uses the alias within the delegated scope
-- **THEN** the model accepts it under the recorded delegation only.
+- **THEN** the model accepts it under that record only.
+
+### Requirement: GA-010 Subject binding is enforced by topology at runtime
+
+Because a Genode server learns which object was invoked and not who invoked it, a host SHALL enforce GA-005 by topology: a domain holding a per-subject object SHALL have no capability-carrying channel to any domain outside its delegation record, and confinement evidence SHALL show it.
+
+#### Scenario: Worker has no outbound capability channel
+
+- **GIVEN** R's worker holds a descriptor object and its only sessions are the approved input and private result channels
+- **WHEN** the confinement inventory is reviewed
+- **THEN** no session the worker holds can carry a capability to another domain, and GA-005 holds by construction.
+
+#### Scenario: A logging session can carry capabilities
+
+- **GIVEN** the worker is routed a session whose interface accepts capability arguments
+- **WHEN** the inventory is reviewed
+- **THEN** the profile is not qualified until that route is removed or shown unable to carry capabilities.
+
+### Requirement: GA-011 Delegations form a derivation tree
+
+Every recorded delegation SHALL be a node under the delegating alias, SHALL carry rights no wider than its parent, and revoking an alias SHALL revoke its entire subtree.
+
+#### Scenario: Chain of two delegations
+
+- **GIVEN** R delegates to worker W with read, and W delegates to helper H with read
+- **WHEN** R's alias is revoked
+- **THEN** both W's and H's aliases are stale.
+
+#### Scenario: Child wider than parent
+
+- **GIVEN** W holds read only
+- **WHEN** W records a delegation to H with read and write
+- **THEN** it is denied with a widened-rights reason and no node is added.
 
 ### Requirement: GA-006 Delegation cannot widen rights
 

@@ -136,6 +136,22 @@ The monitor loop SHALL process one request at a time under fuel and SHALL keep s
 - **WHEN** another request arrives
 - **THEN** the monitor exits cleanly and the supervisor restarts it with a new generation.
 
+### Requirement: GB-010 One RPC object per descriptor, never a sink
+
+The shim SHALL mint one RPC object per Writ descriptor, SHALL NOT multiplex descriptors over a shared session object, and SHALL NOT expose any object whose invocation performs a sink effect directly; every object resolves to a monitor record that Bend re-checks.
+
+#### Scenario: Two descriptors for one reader
+
+- **GIVEN** reader R opens two descriptors
+- **WHEN** the shim's objects are listed
+- **THEN** two distinct RPC objects exist and closing one leaves the other invocable.
+
+#### Scenario: Object points at a publisher
+
+- **GIVEN** a proposed object whose method writes to a destination without passing through `DataOS.commit_from_capability`
+- **WHEN** it is reviewed
+- **THEN** it is rejected under this capability.
+
 ### Requirement: GB-009 Evidence is per base and names CPU execution
 
 Qualification SHALL record `base-linux` and `base-hw` results separately, with build hashes, run scripts, and CPU execution for device-requesting paths.

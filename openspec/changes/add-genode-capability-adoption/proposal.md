@@ -65,4 +65,4 @@ Consumed by [Bend runtime as a Genode component](../add-genode-bend-component/pr
 
 ## Explainer
 
-[explainer.html](explainer.html) is a standalone reading page for this change. [capability-shape.html](capability-shape.html) evaluates whether Genode's capability shape fits Writ and proposes amendments to GA-005 that are not yet applied.
+[explainer.html](explainer.html) is a standalone reading page for this change. [capability-shape.html](capability-shape.html) evaluates whether Genode's capability shape fits Writ and led to GA-005 being reworded and GA-010, GA-011, and GB-010 being added.
