@@ -15,11 +15,11 @@ fault, so 1.3 stays open.
 - [ ] 1.3 Select the fault substitute if signal delivery does not reach the handler; force a stack overflow and show the component terminates and the parent records it, with no resumption.
 - [ ] 1.4 Compile and run `Tests.bend` and the four examples as components on `base-linux`; capture the log and compare line for line with the Linux single-lane record.
 
-## 2. Effects and the Writ session
+## 2. Effects and the Writ channel
 
 - [ ] 2.1 Author the `Genode.log`, `Genode.now`, and `Genode.sleep` effects in Bend with C twins over the shim; verify output and monotonic time from inside the component.
 - [ ] 2.2 Write the `extern "C"` shim with a bounded request queue and publish its trust inventory (files, exported symbols, sessions opened, reviewer); show it contains no policy decision.
-- [ ] 2.3 Author `Genode.accept` and `Genode.answer`; serve one report-to-summary request through `DataOS.commit_from_capability` and one request with a substituted subject, showing the second denied by Bend.
+- [ ] 2.3 Author `Genode.take` and `Genode.put` over the per-descriptor request and result buckets; serve one report-to-summary request record through `DataOS.commit_from_capability` and one request with a substituted subject, showing the second denied by Bend.
 - [ ] 2.4 Bound and test request size, queue depth, and a client that never reads its reply; verify the loop keeps serving other sessions.
 
 ## 3. base-hw and evidence
