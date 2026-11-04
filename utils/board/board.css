@@ -68,17 +68,20 @@ td .sub { color: var(--muted); font-size: .84rem; }
 .progress { display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
 table.changes .progress .bar { width: 7rem; }
 .tasknums { font-family: var(--mono); font-size: .74rem; margin-top: .15rem; }
-details.tasklist { margin-top: .25rem; }
-details.tasklist > summary { cursor: pointer; font-family: var(--mono); font-size: .72rem; color: var(--accent); list-style: none; }
-details.tasklist > summary::before { content: "▸ "; } details.tasklist[open] > summary::before { content: "▾ "; }
-details.tasklist > ul { list-style: none; margin: .3rem 0 .2rem; padding: 0; display: grid; gap: .15rem; font-size: .84rem; min-width: 22rem; }
-details.tasklist li.task { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: .4rem; align-items: baseline; }
-details.tasklist li.task-section { font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: .3rem; }
-details.tasklist .box { color: var(--accent); }
-details.tasklist li.task-open .box { color: var(--muted); }
-details.tasklist .task-id { font-family: var(--mono); font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-details.tasklist li.task-done .task-text { color: var(--muted); }
-details.tasklist .task-text { overflow-wrap: anywhere; }
+details.tasklist { margin-top: .3rem; }
+details.tasklist > summary, details.donelist > summary { cursor: pointer; font-family: var(--mono); font-size: .72rem; color: var(--accent); list-style: none; }
+details.tasklist > summary::before, details.donelist > summary::before { content: "▸ "; }
+details.tasklist[open] > summary::before, details.donelist[open] > summary::before { content: "▾ "; }
+ul.tasks { list-style: none; margin: .35rem 0 .3rem; padding: 0; display: grid; gap: .3rem; font-size: .86rem; min-width: 22rem; }
+ul.tasks li.task { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); gap: .5rem; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .35rem .55rem; }
+ul.tasks li.task-section { font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .3rem; }
+ul.tasks .task-id { font-family: var(--mono); font-size: .74rem; font-variant-numeric: tabular-nums; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: .05rem .3rem; text-align: center; }
+ul.tasks li.task-done { border-style: dashed; background: transparent; }
+ul.tasks li.task-done .task-id { color: var(--muted); background: var(--code-bg); text-decoration: line-through; }
+ul.tasks li.task-done .task-text { color: var(--muted); }
+ul.tasks .task-text { overflow-wrap: anywhere; line-height: 1.4; }
+details.donelist { margin-top: .2rem; }
+details.donelist > summary { color: var(--muted); }
 tr.row-live td { background: var(--accent-soft); }
 tr.rest > td { padding: .4rem .6rem; }
 tr.rest summary { cursor: pointer; color: var(--muted); font-size: .9rem; }

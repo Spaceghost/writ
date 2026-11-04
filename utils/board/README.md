@@ -138,8 +138,9 @@ The index leads with three tiles (changes being worked on, tasks done across
 every `tasks.md`, lanes live and landed), then the changes table. A change with
 a task done or a lane on it is listed; the rest collapse under one line. Each
 listed change shows a progress bar, the task ids done and open, a collapsed
-"tasks" list (every box of its `tasks.md` with its section, open state kept
-across pushes), and a chip per
+"N to do" list (the open boxes of its `tasks.md` grouped by section, the done
+ones behind a nested "N done" toggle; both open states kept across pushes),
+and a chip per
 live or idle lane on it (dot, name, phase, age); landed lanes are a muted list.
 Lane cards show the status line (dot, phase, age, changes), the activity feed,
 then the ledger tail and reports; live lanes sort first.
