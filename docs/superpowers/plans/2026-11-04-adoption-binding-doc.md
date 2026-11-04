@@ -1,0 +1,21 @@
+# Plan: Capability adoption, binding records through `Genode.take`
+
+Spec: `openspec/changes/add-genode-capability-adoption/` (tasks 3.1, 3.2) and the implemented channel in `openspec/changes/add-genode-bend-component/` (GB-007, GB-010). The adoption change's model is `HostBinding.bend` (Route, Binding, Alias records; `holder_authorized`, `acts_for_owner`; 144 checks, 41 vectors in `verification/host-binding-vectors.txt`). The implemented ingress effect is `Genode.take` (`hosts/genode/effects/Genode.bend`, `hosts/genode/effects/Channel.md`), which hands Bend a request record plus the route subject the parent set; `hosts/genode/monitor/Monitor.bend` binds one descriptor per channel from that subject. Task 3.1 asks for the document that joins the two: how a binding record is constructed from the parent route and the object identity, and which HostBinding vectors a Genode run must replay.
+
+## Global Constraints
+
+- Text-only lane. Touch only `openspec/changes/add-genode-bend-component/design.md` (a new section), `openspec/changes/add-genode-capability-adoption/tasks.md` (boxes 3.1 and 3.2 with evidence), `openspec/traceability/genode-capability-adoption.md` and `genode-bend-component.md` (rows that cite the new section). No `.bend`, no `hosts/`, no `scripts/`, no `verification/`. No requirement text changes; the Genode component change's tasks stay unchecked (3.1's own words).
+- Validate with `~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive` from the worktree root and record the count in the report. Do not regenerate the manifest; do not push; one commit per task.
+- Append one line per step to `docs/superpowers/records/2026-11-04-adoption-binding-doc/activity.log` (tab-separated time, role, text); write the report at `docs/superpowers/records/2026-11-04-adoption-binding-doc/task-1-report.md`; `git add -A docs/superpowers/records/2026-11-04-adoption-binding-doc` with each commit.
+
+### Task 1: The binding-records section
+
+Add a section "Binding records from `Genode.take`" to `openspec/changes/add-genode-bend-component/design.md`, after "The channel is served from the event loop". It must state, with file and line citations into the current tree: (1) the two identity sources at take time, the route subject from the session label's `<policy>` (writ_mem.cc `_subject`, `Channel::subject`, the ring entry) and the channel id as the object identity, and that no record word contributes to either (GB-007); (2) how that pair maps onto `HostBinding.bend`'s records: which fields of `Route` and `Binding` are filled from the subject and channel id, which from the monitor's descriptor open (`Monitor.bend` `with_opened`, the bindings table), and which (service, generation, epochs) are constants or gaps today; (3) the list of HostBinding vectors a Genode run must replay to claim GA-005 and GA-008 on the host, by name from `HostBindingTests.bend`/the vectors file (at least: holder authorized through the route, delegatee routed as another subject denied at use, unique handle per binding, single minted alias), each with the monitor run that would exercise it and whether such a run exists today (`verification/genode-channel-base-linux.txt` runs 1 to 4 and the Task 3 runs) or is a gap; (4) a short "not yet" list: delegation, revocation at route change, and generation turnover are not reachable through the channel yet. Keep it under two pages; cite paths, not prose from memory.
+
+Acceptance: the section exists with citations that resolve to real lines; OpenSpec strict passes; box 3.1 checked with the section named; the Genode component change's boxes untouched.
+
+### Task 2: Traceability and the validation box
+
+Add a row or sentence to `openspec/traceability/genode-capability-adoption.md` (GA-005, GA-008 rows: "documented for Genode in <section>; replay not yet run on the host") and to `genode-bend-component.md` (GB-007 row cites the section). Run OpenSpec strict and `bend Tests.bend` on Linux (`export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1`), record both results in the report (782 checks expected, unchanged), and check box 3.2 citing them.
+
+Acceptance: both traceability files cite the section; the strict run and the suite result are in the report; box 3.2 checked.

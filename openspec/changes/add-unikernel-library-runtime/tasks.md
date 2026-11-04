@@ -1,5 +1,7 @@
 # Library-unikernel Bend runtime: tasks
 
+The requirement-to-evidence mapping, with the open tasks quoted as gaps, is in openspec/traceability/unikernel-library-runtime.md.
+
 Selection (1.1, 1.2) is recorded in docs/UNIKERNELS.md ("Selection matrix, 2026-11"),
 verification/unikernel-matrix-unikraft.md, verification/unikernel-matrix-osv.md, and
 verification/unikernel-pins.txt. Unikraft 0.21.0 is a native link; OSv 0.57.0 is a

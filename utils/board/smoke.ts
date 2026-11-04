@@ -150,7 +150,17 @@ try {
     + Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
   mkdirSync(join(lane, "docs", "superpowers", "plans"), { recursive: true });
   writeFileSync(join(lane, "docs", "superpowers", "plans", "smoke.md"), `# Plan: smoke\n\nSpec: \`openspec/changes/${expected}/\` (synthetic).\n`);
-  writeFileSync(join(plan, "activity.log"), "2026-11-04T10:00:00Z\timplementer\tread the brief\n2026-11-04T10:05:00Z\timplementer\tstarted the probe build\n");
+  // The committed record: keyed by the plan; its ledger's Branch line cannot
+  // match (the synthetic lane has no readable branch), so the name suffix does.
+  const rec = join(lane, "docs", "superpowers", "records", "2026-11-04-smoke-lane");
+  mkdirSync(rec, { recursive: true });
+  writeFileSync(join(rec, "activity.log"), "2026-11-04T10:00:00Z\timplementer\tread the brief\n2026-11-04T10:05:00Z\timplementer\tstarted the probe build\n");
+  writeFileSync(join(rec, "progress.md"),
+    "# SDD ledger — plan: docs/superpowers/plans/smoke.md\nTask 1: review Needs fixes. Fix round 1 dispatched (base 0000000).\n"
+    + Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
+  writeFileSync(join(rec, "task-1-report.md"),
+    "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
+  writeFileSync(join(rec, "task-1-review.md"), "# Review\n\nAssessment: Approved (smoke)\n");
   writeFileSync(join(plan, "task-1-report.md"),
     "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
   mkdirSync(join(lanesDir, "not-a-worktree"));
@@ -164,12 +174,30 @@ try {
   check("GET / is 200", index.status === 200);
   check("index lists the runtime-profile change", indexHtml.includes(`/change/${expected}`));
   check("index pins Datastar v1.0.4", indexHtml.includes("datastar@v1.0.4/bundles/datastar.js"));
+  check("index delegates link clicks to the quick-view panel", indexHtml.includes(`data-signals:panel__ifmissing="''"`) && indexHtml.includes("$panel = a.pathname") && indexHtml.includes('<aside id="panel" class="panel"') && indexHtml.includes('<div id="panel-backdrop" class="panel-backdrop"') && indexHtml.includes(`data-on:click="$panel = ''"`) && indexHtml.includes('data-attr:src="$panel'));
+  const embedded = await fetch(`${base}/change/${expected}?embed=1`);
+  const embeddedHtml = await embedded.text();
+  check("?embed=1 renders a page without the header and nav, with its own live stream", embedded.status === 200 && embeddedHtml.includes('<body class="embed"') && !embeddedHtml.includes('<nav id="nav"') && !embeddedHtml.includes('class="top"') && embeddedHtml.includes("/events?page="));
+  check("a plain page keeps the header and nav", (await (await fetch(`${base}/change/${expected}`)).text()).includes('<nav id="nav"'));
 
   const api = await fetch(`${base}/api/changes`);
   const changes = (await api.json()) as { name: string; tasks: { done: number; total: number }; html: string[] }[];
   const profile = changes.find((c) => c.name === expected);
   check("/api/changes contains " + expected, profile !== undefined, `${changes.length} changes`);
-  check("archive/ is skipped", !changes.some((c) => c.name === "archive"));
+  check("archive/ is not a change", !changes.some((c) => c.name === "archive"));
+  const arch = (changes as unknown as { name: string; dir: string; archived: boolean; status: string; archivedOn: string | null }[]).find((c) => c.archived);
+  check("archived changes are listed with their archive dir and date", arch !== undefined && arch.dir === `archive/${arch.name}` && arch.status === "archived" && /^\d{4}-\d{2}-\d{2}$/.test(arch.archivedOn ?? ""), arch?.name ?? "none");
+  if (arch) {
+    const archPage = await fetch(`${base}/change/${arch.name}`);
+    check("an archived change's page renders from its archive directory", archPage.status === 200 && (await archPage.text()).includes(`archived ${arch.archivedOn} · `));
+    const archRowAt = indexHtml.indexOf(`<td><a href="/change/${arch.name}">`, indexHtml.indexOf("<h2>Archived changes</h2>"));
+    check("archived changes are listed by title, not by date and name", archRowAt > 0 && !indexHtml.slice(archRowAt, archRowAt + 120).includes(`>${arch.name}<`));
+    // The nav lists archived changes too (collapsed), so look inside the tables section only.
+    const pendingPart = indexHtml.slice(indexHtml.indexOf("<h2>Pending changes</h2>"), indexHtml.indexOf("<h2>Archived changes</h2>"));
+    const archivedPart = indexHtml.slice(indexHtml.indexOf("<h2>Archived changes</h2>"), indexHtml.indexOf("<h2>Baseline capabilities</h2>"));
+    check("the index lists archived changes apart from the pending table", archivedPart.includes(`/change/${arch.name}"`) && !pendingPart.includes(`/change/${arch.name}"`));
+    check("the nav's archived group starts collapsed", /<details data-preserve-attr="open"><summary>archived /.test(indexHtml));
+  }
   check("runtime-profile tasks counted", (profile?.tasks.total ?? 0) > 0, `${profile?.tasks.done}/${profile?.tasks.total}`);
   check("runtime-profile lists explainer.html", profile?.html.includes("explainer.html") === true);
 
@@ -218,14 +246,32 @@ try {
   const tablesStart = indexHtml.indexOf('id="index-tables"');
   const tables = indexHtml.slice(tablesStart, indexHtml.indexOf("</section>", tablesStart));
   check("index shows summary tiles", tables.includes('class="tiles"') && tables.includes("Being worked on"));
-  const rowStart = tables.indexOf(`/change/${expected}"`);
+  // The row starts with the chevron cell, before the change link.
+  const linkAt = tables.indexOf(`/change/${expected}"`);
+  const rowStart = tables.lastIndexOf("<tr", linkAt);
   const row = tables.slice(rowStart, tables.indexOf("</tr>", rowStart));
   check("the change the lane's plan names carries the lane's chip", row.includes('class="chip chip-active"') && row.includes("#lane-smoke-lane"));
   check("the chip shows the ledger phase and an age", row.includes("Task 1 · fix round") && /chip-age">\d+ (s|min)</.test(row));
-  check("task numbers are listed under the progress bar", /tasknums">[\d. ]+ done/.test(row));
+  const sig = `t_${expected.replace(/-/g, "_")}`;
+  check("the change row starts with a chevron that flips its task signal", row.includes(`<button type="button" class="chev" aria-label="Show the task list" aria-controls="tasks-${expected}" data-on:click="$${sig} = !$${sig}"`) && row.includes(`data-class:open="$${sig}"`));
+  const taskRowStart = tables.indexOf(`<tr id="tasks-${expected}" class="taskrow"`);
+  const taskRowHtml = tables.slice(taskRowStart, tables.indexOf("</tr>", taskRowStart));
+  check("the task row follows the change row, spans the table, and is shown by the signal", taskRowStart > rowStart && taskRowHtml.includes(`data-show="$${sig}"`) && taskRowHtml.includes('data-preserve-attr="style"') && taskRowHtml.includes('<td colspan="6">'));
+  check("open tasks come first, done ones behind a nested toggle", taskRowHtml.indexOf('class="task task-open"') < taskRowHtml.indexOf('class="task task-done"') && taskRowHtml.includes(`<details id="done-${expected}" class="donelist" data-preserve-attr="open"><summary>`));
+  check("the table declares one signal per change with a task list", tables.includes(`data-signals__ifmissing=`) && tables.includes(`&quot;${sig}&quot;:false`));
+  const asig = `a_${expected.replace(/-/g, "_")}`;
+  check("the change row carries an activity icon with the last lines as its tooltip", row.includes(`class="act" aria-label="Show recent activity" aria-controls="activity-${expected}"`) && row.includes("started the probe build") && row.includes(`data-on:click="$${asig} = !$${asig}"`));
+  const tickStart = tables.indexOf(`<tr class="tickerrow">`, rowStart);
+  const tick = tables.slice(tickStart, tables.indexOf("</tr>", tickStart));
+  check("a ticker row under the change shows its newest activity line with a content-keyed id", tickStart > rowStart && /<p id="tick-add-bend-runtime-host-profile-[a-z0-9]+" class="ticker">/.test(tick) && tick.includes("started the probe build") && !tick.includes("read the brief"));
+  const actStart = tables.indexOf(`<tr id="activity-${expected}" class="taskrow activityrow"`);
+  const actRow = tables.slice(actStart, tables.indexOf("</tr>", actStart));
+  check("the activity row follows the change row and lists the lane's lines newest-first in a reversed list", actStart > rowStart && actRow.includes(`data-show="$${asig}"`) && actRow.includes('<ol class="log" reversed>') && actRow.indexOf("started the probe build") < actRow.indexOf("read the brief") && actRow.includes("smoke-lane · implementer"));
   check("changes with no task and no lane are collapsed", tables.includes('id="rest-changes"') && /\d+ more changes with no task done and no lane/.test(tables));
   check("lane card shows its status line and the change it is on", lanesHtml.includes('class="lane-phase">Task 1 · fix round') && lanesHtml.includes(`lane-changes">on <a href="/change/${expected}"`));
-  check("lane card shows the activity log, oldest first", lanesHtml.indexOf("read the brief") < lanesHtml.indexOf("started the probe build") && lanesHtml.includes('log-who">implementer'));
+  check("lane card's activity feed is newest-first in the DOM inside a reversed list (rendered oldest to newest, scrolled to the end)", lanesHtml.includes('<ol class="log" reversed>') && lanesHtml.indexOf("started the probe build") < lanesHtml.indexOf("read the brief") && lanesHtml.includes('log-who">implementer'));
+  check("the committed records/<plan>/ record is read instead of the sdd workspace", lanesHtml.includes("docs/superpowers/records/2026-11-04-smoke-lane/progress.md") && !lanesHtml.includes(".superpowers/sdd/smoke-plan/progress.md"));
+  check("reviewer reports are listed after task reports", /<details id="lane-smoke-lane-[^"]*task-1-review-md" class="report review"/.test(lanesHtml) && lanesHtml.includes("Approved (smoke)"));
   check("/api/lanes carries the parsed activity and phase", (await (await fetch(`${base}/api/lanes`)).text()).includes('"label":"fix"'));
 
   const changeStream = openStream(base, `/events?page=${encodeURIComponent(`/change/${expected}`)}`);
@@ -250,19 +296,20 @@ try {
   check("touching a lane verification/ file pushes #lanes within 2 s", touched.ok && touched.text.includes('data: elements <section id="lanes"'), `${touched.after} ms`);
   check("lane push does not resend unchanged fragments", !touched.text.includes('id="index-tables"') && !touched.text.includes('id="nav"'));
 
-  writeFileSync(join(plan, "task-1-report.md"), "# Smoke report\n\nStatus: EDITED\n\nedited body\n");
+  writeFileSync(join(rec, "task-1-report.md"), "# Smoke report\n\nStatus: EDITED\n\nedited body\n");
   const edited = await waitFor("edited body", 2000);
   check("editing a report pushes the new text within 2 s", edited.ok && edited.text.includes("EDITED"), `${edited.after} ms`);
 
-  appendFileSync(join(plan, "activity.log"), "2026-11-04T10:09:00Z\timplementer\tprobe printed hi, writing the evidence\n");
+  appendFileSync(join(rec, "activity.log"), "2026-11-04T10:09:00Z\timplementer\tprobe printed hi, writing the evidence\n");
   // The chip tooltip on the index tables and the lane's feed both carry the
   // line; the tables fragment is sent first, then the lanes panel.
   const appendedTables = await waitFor("writing the evidence", 2000);
   const appendedLanes = await waitFor("writing the evidence", 2000);
-  check("appending to activity.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
-  check("appending to activity.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
+  check("appending to the record's activity.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
+  check("the pushed tables carry the new line as a new ticker element", /<p id="tick-add-bend-runtime-host-profile-[a-z0-9]+" class="ticker"><span class="log-at">10:09:00<\/span>/.test(appendedTables.text) && appendedTables.text.includes("writing the evidence"));
+  check("appending to the record's activity.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
 
-  writeFileSync(join(plan, "task-2-report.md"), "# Second\n\nStatus: NEW\n");
+  writeFileSync(join(rec, "task-2-report.md"), "# Second\n\nStatus: NEW\n");
   const added = await waitFor("task-2-report.md", 2000);
   check("a new report file is pushed within 2 s", added.ok, `${added.after} ms`);
   live.close();

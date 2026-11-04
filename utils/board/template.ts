@@ -8,7 +8,7 @@
 // <details>, and the `style`/`aria-selected` that the explainer tabs set.
 // Nested elements a morph should match keep stable ids for the same reason.
 
-import type { Baseline, Change, Lane, LaneScan, LaneStatus, Phase } from "./server.ts";
+import type { ActivityLine, Baseline, Change, Lane, LaneScan, LaneStatus, Phase, TaskItem } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
@@ -32,9 +32,49 @@ const href = (name: string) => encodeURIComponent(name);
 /** An id-safe slug: Datastar and CSS selectors need no escaping for it. */
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 
-/** Full document. `page` is the board path whose fragments /events re-renders. */
-export function shell(title: string, nav: string, main: string, page: string): string {
+/**
+ * On the index, a click on any same-origin page link opens that page in the
+ * quick-view panel instead of leaving the index: the handler is delegated
+ * from the shell, so links in pushed fragments need nothing extra. Links with
+ * a hash (lane anchors), a target, or to the index itself keep their default.
+ */
+const PEEK_HANDLER = "const a = evt.target.closest('a[href]'); if (a && a.origin == location.origin && !a.hash && !a.target && a.pathname != '/') { evt.preventDefault(); $panel = a.pathname; }";
+
+/** The quick-view panel: a drawer showing a board page embedded (no header or nav), still live over its own /events stream. */
+function panel(): string {
+  return `<div id="panel-backdrop" class="panel-backdrop" data-show="$panel != ''" data-preserve-attr="style" style="display:none" data-on:click="$panel = ''"></div>
+<aside id="panel" class="panel" data-show="$panel != ''" data-preserve-attr="style" style="display:none" aria-label="Quick view">
+<div class="panel-bar"><span class="panel-path" data-text="$panel"></span><a class="panel-open" data-attr:href="$panel" target="_top">open in full</a><button type="button" class="panel-close" aria-label="Close the quick view" data-on:click="$panel = ''">×</button></div>
+<iframe id="panel-frame" class="panel-frame" title="Quick view" data-attr:src="$panel ? $panel + ($panel.indexOf('/html/') > 0 ? '' : '?embed=1') : 'about:blank'" sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
+</aside>`;
+}
+
+/**
+ * Full document. `page` is the board path whose fragments /events re-renders.
+ * `embed` renders the page without the header and nav, for the quick-view
+ * panel (`?embed=1`); it keeps its own live stream.
+ */
+export function shell(title: string, nav: string, main: string, page: string, embed = false): string {
   const init = esc(`@get('/events?page=' + ${JSON.stringify(encodeURIComponent(page))})`);
+  if (embed) {
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${esc(title)} · Writ board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/board.css">
+<script type="module" src="${DATASTAR_URL}" integrity="${DATASTAR_SRI}" crossorigin="anonymous"></script>
+</head>
+<body class="embed" data-init="${init}">
+${main}
+</body>
+</html>
+`;
+  }
+  const onIndex = page === "/";
+  const shellAttrs = onIndex ? ` data-signals:panel__ifmissing="''" data-on:click="${esc(PEEK_HANDLER)}" data-on:keydown__window="evt.key == 'Escape' &amp;&amp; ($panel = '')"` : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -47,10 +87,11 @@ export function shell(title: string, nav: string, main: string, page: string): s
 </head>
 <body data-init="${init}">
 <header class="top"><a class="brand" href="/">Writ board</a><span class="note">read-only view of openspec/; makes no verification claim</span></header>
-<div class="shell">
+<div class="shell"${shellAttrs}>
 ${nav}
 ${main}
 </div>
+${onIndex ? panel() : ""}
 </body>
 </html>
 `;
@@ -90,30 +131,113 @@ export function phaseText(l: Lane): string {
 
 /** The newest activity line of a lane, or null. */
 function latestActivity(l: Lane): string | null {
-  for (const p of [...l.sdd].reverse()) {
-    const a = p.activity[p.activity.length - 1];
-    if (a) return a.text;
-  }
-  return null;
+  const a = l.activity[l.activity.length - 1];
+  return a ? a.text : null;
 }
 
 const dot = (status: LaneStatus) => `<span class="dot dot-${status}" aria-hidden="true"></span>`;
 
-/** A lane chip for a change row: dot, lane name, phase, age. */
+/**
+ * A lane chip for a change row: dot, lane name, phase, age, on one line. The
+ * phase is the part that gives way (ellipsis) on a narrow row, so it carries
+ * its full text as a tooltip; the age never truncates.
+ */
 function laneChip(l: Lane): string {
   const latest = latestActivity(l);
   const title = latest === null ? "" : ` title="${esc(latest)}"`;
-  return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase">${esc(phaseText(l))}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
+  const phase = esc(phaseText(l));
+  return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase" title="${phase}">${phase}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
 }
 
-/** Task numbers a tasks.md marks done and open, for the line under a progress bar. */
-function taskNumbers(c: Change): string {
-  if (c.taskIds.done.length === 0 && c.taskIds.open.length === 0) return "";
-  const list = (ids: string[]) => ids.map(esc).join(" ");
-  const done = c.taskIds.done.length === 0 ? "" : `${list(c.taskIds.done)} done`;
-  const open = c.taskIds.open.length === 0 ? "" : `${list(c.taskIds.open)} open`;
-  return `<div class="sub tasknums">${[done, open].filter(Boolean).join(" · ")}</div>`;
+/** Datastar signal name for a change's task row: slugs are not identifiers, so hyphens become underscores. */
+const taskSignal = (c: Change) => `t_${slug(c.name).replace(/-/g, "_")}`;
+
+/**
+ * The task row under a change: open tasks first as cards grouped by section,
+ * done tasks behind a nested toggle. Shown by a Datastar signal the chevron
+ * at the start of the change row flips; the row spans the table so opening
+ * it never resizes the columns. `style` is preserved across morphs so the
+ * reader's open rows stay open.
+ */
+function taskRow(c: Change, columns: number): string {
+  if (c.taskList.length === 0) return "";
+  const group = (items: TaskItem[]) => {
+    let section: string | null = null;
+    const out: string[] = [];
+    for (const t of items) {
+      if (t.section !== section) {
+        section = t.section;
+        if (section !== null) out.push(`<li class="task-section">${esc(section)}</li>`);
+      }
+      out.push(`<li class="task ${t.done ? "task-done" : "task-open"}"><span class="task-id">${t.id === null ? "·" : esc(t.id)}</span><span class="task-text">${esc(t.text)}</span></li>`);
+    }
+    return out.join("");
+  };
+  const open = c.taskList.filter((t) => !t.done);
+  const done = c.taskList.filter((t) => t.done);
+  const openList = open.length === 0
+    ? `<p class="muted small">Every box is checked.</p>`
+    : `<ul class="tasks">${group(open)}</ul>`;
+  const doneList = done.length === 0
+    ? ""
+    : `<details id="done-${slug(c.name)}" class="donelist" data-preserve-attr="open"><summary>${done.length} done</summary><ul class="tasks">${group(done)}</ul></details>`;
+  return `<tr id="tasks-${slug(c.name)}" class="taskrow" data-show="$${taskSignal(c)}" data-preserve-attr="style" style="display:none"><td colspan="${columns}"><div class="taskrow-inner"><div class="doc-label">openspec/changes/${esc(c.name)}/tasks.md · ${open.length} to do · ${done.length} done</div>${openList}${doneList}</div></td></tr>`;
 }
+
+/** Datastar signal for a change's activity row. */
+const activitySignal = (c: Change) => `a_${slug(c.name).replace(/-/g, "_")}`;
+
+/** The newest activity lines across the lanes on a change, oldest first. */
+function changeActivity(lanes: Lane[]): (ActivityLine & { lane: string })[] {
+  const all = lanes.flatMap((l) => l.activity.map((a) => ({ ...a, lane: l.name })));
+  return all.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)).slice(-ACTIVITY_ROW_LINES);
+}
+const ACTIVITY_ROW_LINES = 10;
+
+/** The time part of an ISO timestamp, as the feeds show it. */
+const clock = (at: string) => at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, "");
+
+/**
+ * The activity icon on a change row: hover shows the last three lines as a
+ * tooltip, click opens a full-width row with the last ten lines across the
+ * lanes on the change (same reversed list as the lane feeds, newest at the
+ * end and in view).
+ */
+function activityIcon(c: Change, lines: (ActivityLine & { lane: string })[]): string {
+  if (lines.length === 0) return "";
+  const sig = activitySignal(c);
+  const tip = lines.slice(-3).map((a) => `${clock(a.at)} ${a.lane}: ${a.text}`).join("\n");
+  return `<button type="button" class="act" aria-label="Show recent activity" aria-controls="activity-${slug(c.name)}" title="${esc(tip)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-class:open="$${sig}" data-preserve-attr="aria-expanded class"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1 8h3l2-5 3 10 2-5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></button>`;
+}
+
+/**
+ * The ticker under a change row: its newest activity line. The line's id
+ * carries a hash of its content, so a new line is a new element to the morph
+ * and the CSS enter animation plays; an unchanged line is left alone.
+ */
+function tickerRow(c: Change, lines: (ActivityLine & { lane: string })[], columns: number): string {
+  const a = lines[lines.length - 1];
+  if (!a) return "";
+  let h = 0;
+  for (const ch of `${a.at}${a.lane}${a.who}${a.text}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  // One line; the text gives way with an ellipsis and keeps its full wording as a tooltip.
+  return `<tr class="tickerrow"><td colspan="${columns}"><p id="tick-${slug(c.name)}-${h.toString(36)}" class="ticker"><span class="log-at">${esc(clock(a.at))}</span><span class="log-who">${esc(a.lane)}${a.who ? `<span class="log-role"> · ${esc(a.who)}</span>` : ""}</span><span class="log-text" title="${esc(a.text)}">${esc(a.text)}</span></p></td></tr>`;
+}
+
+function activityRow(c: Change, lines: (ActivityLine & { lane: string })[], columns: number): string {
+  if (lines.length === 0) return "";
+  const items = [...lines].reverse().map((a) =>
+    `<li><span class="log-at">${esc(clock(a.at))}</span><span class="log-who">${esc(a.lane)}${a.who ? ` · ${esc(a.who)}` : ""}</span><span class="log-text">${esc(a.text)}</span></li>`).join("");
+  return `<tr id="activity-${slug(c.name)}" class="taskrow activityrow" data-show="$${activitySignal(c)}" data-preserve-attr="style" style="display:none"><td colspan="${columns}"><div class="taskrow-inner"><div class="doc-label">recent activity on ${esc(c.name)}, last ${lines.length} lines across ${new Set(lines.map((a) => a.lane)).size} lane(s)</div><ol class="log" reversed>${items}</ol></div></td></tr>`;
+}
+
+/** The chevron that opens a change's task row; a real button so it is keyboard-reachable. */
+function chevron(c: Change): string {
+  if (c.taskList.length === 0) return `<td class="chev-cell"></td>`;
+  const sig = taskSignal(c);
+  return `<td class="chev-cell"><button type="button" class="chev" aria-label="Show the task list" aria-controls="tasks-${slug(c.name)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-class:open="$${sig}" data-preserve-attr="aria-expanded class"></button></td>`;
+}
+
 
 /** Left list of changes grouped by status, then a link per baseline section. */
 export function nav(changes: Change[], page: string): string {
@@ -123,9 +247,10 @@ export function nav(changes: Change[], page: string): string {
     const items = groups.get(status)!.map((c) => {
       const path = `/change/${c.name}`;
       const current = page === path ? ` aria-current="page"` : "";
-      return `<li><a href="/change/${href(c.name)}"${current}>${esc(c.name)}</a></li>`;
+      return `<li><a href="/change/${href(c.name)}"${current}>${esc(c.archived ? c.title : c.name)}</a></li>`;
     }).join("");
-    return `<details open data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
+    // Archived changes start collapsed; the rest open.
+    return `<details${status === "archived" ? "" : " open"} data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
   }).join("");
   return `<nav id="nav" class="side" aria-label="Changes"><a class="home"${page === "/" ? ` aria-current="page"` : ""} href="/">Index</a>${body}</nav>`;
 }
@@ -135,7 +260,21 @@ export function nav(changes: Change[], page: string): string {
  * patched as `#index-tables`. Changes with a task done or a lane on them come
  * first; the rest collapse under one line so the live ones are visible.
  */
-export function indexTables(baselines: Baseline[], changes: Change[], scan: LaneScan | null): string {
+export function indexTables(baselines: Baseline[], allChanges: Change[], scan: LaneScan | null): string {
+  const changes = allChanges.filter((c) => !c.archived);
+  const archived = allChanges.filter((c) => c.archived).sort((a, b) => (a.archivedOn ?? "") < (b.archivedOn ?? "") ? 1 : -1);
+  const archivedRows = archived.map((c) => `<tr>
+<td class="n">${esc(c.archivedOn ?? "")}</td>
+<td><a href="/change/${href(c.name)}">${esc(c.title)}</a><div class="sub">${esc(c.name.replace(/^\d{4}-\d{2}-\d{2}-/, ""))}</div></td>
+<td>${c.specs.map((x) => `<a href="/spec/${href(x)}">${esc(x)}</a>`).join(", ") || `<span class="muted">none</span>`}</td>
+<td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
+</tr>`).join("");
+  const archivedTable = archived.length === 0 ? "" : `<h2>Archived changes</h2>
+<p class="muted small">${archived.length} change${archived.length === 1 ? "" : "s"} landed and archived; each one's spec delta is folded into the baseline capability it names.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Archived</th><th>Change</th><th>Baseline capability</th><th>Explainers</th></tr></thead>
+<tbody>${archivedRows}</tbody>
+</table></div>`;
   const lanesOf = new Map<string, Lane[]>();
   for (const l of scan?.lanes ?? []) for (const c of l.changes) lanesOf.set(c, [...(lanesOf.get(c) ?? []), l]);
   const live = (l: Lane) => l.status === "active" || l.status === "review";
@@ -158,30 +297,40 @@ export function indexTables(baselines: Baseline[], changes: Change[], scan: Lane
   const row = (c: Change) => {
     const on = lanesOf.get(c.name) ?? [];
     const landedOn = on.filter((l) => l.status === "landed");
-    const chips = on.filter((l) => l.status !== "landed").map(laneChip).join("")
-      + (landedOn.length === 0 ? "" : `<span class="muted small landed-list">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
+    const lines = changeActivity(on);
+    // Icon in its own column, then one chip per line and the landed lanes as a single muted line.
+    const icon = activityIcon(c, lines);
+    const list = on.filter((l) => l.status !== "landed").map(laneChip).join("")
+      + (landedOn.length === 0 ? "" : `<span class="muted landed-list" title="landed: ${esc(landedOn.map((l) => l.name).join(", "))}">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
+    const chips = icon === "" && list === "" ? "" : `<div class="workers">${icon}<div class="worker-list">${list}</div></div>`;
     const deps = c.dependsOn.length === 0 ? "" : ` · depends on ${c.dependsOn.length}`;
-    return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
-<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
-<td>${statusTag(c.status)}</td>
-<td>${progress(c.tasks)}${taskNumbers(c)}</td>
+    return `<tr class="change-row${(lanesOf.get(c.name) ?? []).some(live) ? " row-live" : ""}">
+${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
+<td class="status-cell">${statusTag(c.status)}</td>
+<td class="tasks-cell">${progress(c.tasks)}</td>
 <td class="chips">${chips || `<span class="muted">none</span>`}</td>
-<td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
-</tr>`;
+<td class="expl-cell">${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
+</tr>${tickerRow(c, lines, 6)}${taskRow(c, 6)}${activityRow(c, lines, 6)}`;
   };
+  // One signal per change for its task row and one for its activity row, false unless the reader already flipped it.
+  const signals = JSON.stringify(Object.fromEntries([
+    ...changes.filter((c) => c.taskList.length > 0).map((c) => [taskSignal(c), false]),
+    ...changes.filter((c) => (lanesOf.get(c.name) ?? []).some((l) => l.activity.length > 0)).map((c) => [activitySignal(c), false]),
+  ]));
   const shown = changes.filter((c) => c.tasks.done > 0 || (lanesOf.get(c.name) ?? []).length > 0);
   const rest = changes.filter((c) => !shown.includes(c));
   const restBoxes = rest.reduce((n, c) => n + c.tasks.total, 0);
-  const restRows = rest.length === 0 ? "" : `<tr class="rest"><td colspan="5"><details id="rest-changes" data-preserve-attr="open"><summary>${rest.length} more change${rest.length === 1 ? "" : "s"} with no task done and no lane (0 of ${restBoxes} boxes)</summary>
-<div class="tablewrap"><table><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
-  return `<section id="index-tables">
+  const restRows = rest.length === 0 ? "" : `<tr class="rest"><td colspan="6"><details id="rest-changes" data-preserve-attr="open"><summary>${rest.length} more change${rest.length === 1 ? "" : "s"} with no task done and no lane (0 of ${restBoxes} boxes)</summary>
+<div class="tablewrap"><table class="changes"><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
+  return `<section id="index-tables" data-signals__ifmissing="${esc(signals)}">
 ${tiles}
 <p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence; a lane chip is what that lane's ledger and activity log say.</p>
 <h2>Pending changes</h2>
 <div class="tablewrap"><table class="changes">
-<thead><tr><th>Change</th><th>Status</th><th>Tasks</th><th>Worked on by</th><th>Explainers</th></tr></thead>
+<thead><tr><th class="chev-cell"></th><th>Change</th><th class="status-cell">Status</th><th class="tasks-cell">Tasks</th><th class="chips">Worked on by</th><th class="expl-cell">Explainers</th></tr></thead>
 <tbody>${shown.map(row).join("")}${restRows}</tbody>
 </table></div>
+${archivedTable}
 <h2>Baseline capabilities</h2>
 <div class="tablewrap"><table>
 <thead><tr><th>Capability</th><th>Reqs</th><th>Traceability</th></tr></thead>
@@ -215,19 +364,23 @@ function laneCard(l: Lane): string {
   const changes = l.changes.length === 0
     ? ""
     : `<span class="lane-changes">on ${l.changes.map((c) => `<a href="/change/${href(c)}">${esc(c)}</a>`).join(", ")}</span>`;
+  const activity = l.activityNote !== null
+    ? `<p class="note-line">${esc(l.activityNote)}</p>`
+    : l.activity.length === 0
+      ? `<p class="muted small">No activity.log in this lane's record yet; agents append one line per step.</p>`
+      // Newest first in the DOM; the list is a column-reverse flex box, so it
+      // reads oldest to newest and opens scrolled to the newest line.
+      : `<ol class="log" reversed>${[...l.activity].reverse().map((a) =>
+          `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
+  const logName = l.sdd.length === 1 ? `${l.sdd[0].dir}/activity.log` : `activity.log of ${l.sdd.length} records`;
+  const feed = `<div class="activity"><div class="doc-label">${esc(logName)}, last ${l.activity.length} lines</div>${activity}</div>`;
   const status = `<p class="lane-status">${dot(l.status)}<span class="lane-phase">${esc(phaseText(l))}</span><span class="muted">${esc(ago(l.signalAt))}${l.signalAt === null ? "" : " ago"}</span>${changes}</p>`;
   const sdd = l.sdd.map((p) => {
-    const rel = `.superpowers/sdd/${p.plan}`;
+    const rel = p.dir;
     const ledger = p.ledger === null
       ? `<p class="note-line">${esc(p.ledgerNote ?? "no ledger")}</p>`
       : `<div class="md ledger">${p.ledger}</div>`;
-    const activity = p.activityNote !== null
-      ? `<p class="note-line">${esc(p.activityNote)}</p>`
-      : p.activity.length === 0
-        ? `<p class="muted small">No activity.log yet; agents append one line per step.</p>`
-        : `<ol class="log">${p.activity.map((a) =>
-            `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
-    const feed = `<div class="activity"><div class="doc-label">${esc(rel)}/activity.log, last ${p.activity.length} lines</div>${activity}</div>`;
+
     const reports = p.reports.length === 0
       ? `<p class="muted small">No task reports yet.</p>`
       : p.reports.map((r) => {
@@ -236,8 +389,13 @@ function laneCard(l: Lane): string {
           const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
           return `<details id="${rid}" class="report" data-preserve-attr="open"><summary><code>${esc(r.file)}</code>${status}</summary>${body}</details>`;
         }).join("");
-    const more = `<details id="${id}-${slug(p.plan)}-ledger" class="more" data-preserve-attr="open"><summary>${esc(rel)}/progress.md, last 10 lines · ${p.reports.length} report${p.reports.length === 1 ? "" : "s"}</summary>${ledger}${reports}</details>`;
-    return `<div class="plan">${feed}${more}</div>`;
+    const reviews = p.reviews.map((r) => {
+      const rid = `${id}-${slug(p.plan)}-${slug(r.file)}`;
+      const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
+      return `<details id="${rid}" class="report review" data-preserve-attr="open"><summary><code>${esc(r.file)}</code> <span class="report-status">reviewer</span></summary>${body}</details>`;
+    }).join("");
+    const more = `<details id="${id}-${slug(p.plan)}-ledger" class="more" data-preserve-attr="open"><summary>${esc(rel)}/progress.md, last 10 lines · ${p.reports.length} report${p.reports.length === 1 ? "" : "s"} · ${p.reviews.length} review${p.reviews.length === 1 ? "" : "s"}</summary>${ledger}${reports}${reviews}</details>`;
+    return `<div class="plan">${more}</div>`;
   }).join("");
   const diffs = l.taskDiffs.length === 0
     ? ""
@@ -249,7 +407,7 @@ function laneCard(l: Lane): string {
         `<li><code>${esc(v.path)}</code> <span class="muted">${v.kind}</span></li>`).join("")}</ul></details>`;
   return `<article id="${id}" class="lane lane-${l.status}">
 <header><h3>${esc(l.name)}</h3>${branch}</header>
-${status}${commit}${notes}${sdd}${diffs}${ver}
+${status}${commit}${notes}${feed}${sdd}${diffs}${ver}
 </article>`;
 }
 
@@ -319,7 +477,7 @@ export function changePage(c: Change, docs: ChangeDocs, all: Change[]): string {
 </section>`;
   }).join("");
   return `<main id="main" class="content" data-signals:tab__ifmissing="'docs'">
-<p class="eyebrow">change · ${esc(c.name)}</p>
+<p class="eyebrow">${c.archived ? `archived ${esc(c.archivedOn ?? "")} · ${esc(c.name.replace(/^\d{4}-\d{2}-\d{2}-/, ""))}` : `change · ${esc(c.name)}`}</p>
 <h1>${esc(c.title)}</h1>
 <dl class="facts">
 <div><dt>Status</dt><dd>${statusTag(c.status)}</dd></div>

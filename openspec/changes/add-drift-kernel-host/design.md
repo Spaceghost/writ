@@ -81,6 +81,17 @@ makes payload, inherited policy, and accepted state visible, or uses its approve
 recovery/outbox equivalent. Explicit device flush does not replace transaction
 identity, idempotence, or recovery after an interrupted commit.
 
+### The runtime host profile bounds the ported runtime
+
+The ported Bend runtime is held to the runtime host profile. The monitor
+profile's allow lists in `scripts/runtime-profile/` are the contract for what
+the kernel-hosted monitor binary may link and call; Drift supplies drivers and
+bring-up code beneath it, not the authority boundary, so a driver symbol never
+widens the allow lists. `scripts/runtime-profile/check-binary.sh` is the check,
+and the kernel run belongs in `verification/runtime-profile-hosts.md`. See
+[docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md). The freestanding runtime
+change supplies the host layer this port would reuse.
+
 ## Conformance and evidence
 
 Run the shared policy and host traces with real authenticated peers on a booted

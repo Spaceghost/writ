@@ -66,8 +66,66 @@ td .sub { color: var(--muted); font-size: .84rem; }
 .status-proposed { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
 .status-implemented, .status-done { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .progress { display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
-table.changes .progress .bar { width: 7rem; }
-.tasknums { font-family: var(--mono); font-size: .74rem; margin-top: .15rem; }
+table.changes .progress .bar { width: 3.6rem; }
+table.changes th.tasks-cell, table.changes td.tasks-cell { width: 7rem; white-space: nowrap; }
+table.changes th.status-cell, table.changes td.status-cell { width: 5.2rem; }
+table.changes th.expl-cell, table.changes td.expl-cell { width: 9.5rem; }
+/* Change rows: every cell sits on the first line's baseline (name, pill, count,
+   first chip), so rows of one, two, or three lanes share one rhythm. */
+table.changes tr.change-row > td { vertical-align: baseline; padding: .4rem .6rem; }
+table.changes tr.change-row > td.chev-cell { vertical-align: top; padding: .4rem 0 0 .3rem; }
+/* Fixed layout: the one-line chips, landed run, and ticker clip with an
+   ellipsis instead of widening the table past its container. */
+table.changes { table-layout: fixed; }
+table.changes .chips { width: 35%; }
+table.changes td.expl-cell { font-size: .84rem; line-height: 1.4; overflow-wrap: anywhere; }
+table.changes td .sub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .8rem; line-height: 1.35; }
+table.changes .status { vertical-align: baseline; }
+.progress .num { align-self: baseline; }
+/* The icon keeps its own narrow column so the chips start on the first line and
+   stack one per line beside it; the landed lanes close the stack as one line. */
+.workers { display: flex; align-items: flex-start; gap: .35rem; min-width: 0; }
+.worker-list { display: flex; flex-direction: column; align-items: flex-start; gap: .2rem; min-width: 0; flex: 1 1 auto; align-self: baseline; }
+.landed-list { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .76rem; line-height: 1.4; }
+.landed-list a { color: inherit; text-decoration-color: var(--line); }
+.landed-list a:hover { color: var(--accent); }
+@media (max-width: 1100px) {
+  /* Too narrow for a one-line chip in its own column: each change becomes a
+     two-line grid (chevron, name, status, bar; then the lanes under the name).
+     The header goes with the columns it labelled. */
+  table.changes, table.changes > tbody { display: block; }
+  table.changes > thead { display: none; }
+  table.changes tr.change-row { display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto auto; align-items: baseline; column-gap: .6rem; padding: .4rem .6rem .4rem .3rem; border-bottom: 1px solid var(--line); }
+  table.changes tr.change-row > td, table.changes tr.change-row > td.chev-cell { display: block; padding: 0; border: 0; width: auto; min-width: 0; background: none; }
+  table.changes tr.change-row > td.chev-cell { align-self: start; }
+  table.changes tr.change-row > td.chips { grid-column: 2 / -1; padding-top: .15rem; }
+  table.changes tr.change-row > td.expl-cell { display: none; }
+  table.changes tr.row-live { background: var(--accent-soft); }
+  table.changes tr.tickerrow, table.changes tr.taskrow, table.changes tr.rest { display: block; }
+  table.changes tr.tickerrow > td, table.changes tr.taskrow > td, table.changes tr.rest > td { display: block; }
+  table.changes td .sub { display: none; }
+  table.changes tr.change-row:has(+ tr.tickerrow) { border-bottom: 0; padding-bottom: .15rem; }
+}
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+td.chev-cell, th.chev-cell { width: 1.7rem; padding-left: .3rem; padding-right: 0; }
+.chev { position: relative; background: none; border: 0; border-radius: 4px; width: 1.4rem; height: 1.4rem; cursor: pointer; padding: 0; color: var(--muted); }
+.chev::before { content: ""; position: absolute; left: .45rem; top: .35rem; width: .38rem; height: .38rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform .15s; }
+.chev.open::before { transform: rotate(45deg); top: .3rem; }
+.chev:hover { color: var(--accent); background: var(--accent-soft); }
+@media (prefers-reduced-motion: reduce) { .chev::before { transition: none; } }
+tr.taskrow > td { padding: 0 .6rem .8rem 2.2rem; background: var(--bg); border-bottom: 1px solid var(--line); }
+.taskrow-inner { border-left: 3px solid var(--accent-soft); padding: .1rem 0 .2rem .9rem; }
+ul.tasks { list-style: none; margin: .35rem 0 .3rem; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(26rem, 1fr)); gap: .4rem; font-size: .86rem; }
+ul.tasks li.task { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); gap: .5rem; align-items: start; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .4rem .6rem; }
+ul.tasks li.task-section { grid-column: 1 / -1; font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-top: .35rem; }
+ul.tasks .task-id { font-family: var(--mono); font-size: .74rem; font-variant-numeric: tabular-nums; color: var(--accent); background: var(--accent-soft); border-radius: 4px; padding: .05rem .3rem; text-align: center; }
+ul.tasks li.task-done { border-style: dashed; background: transparent; }
+ul.tasks li.task-done .task-id { color: var(--muted); background: var(--code-bg); text-decoration: line-through; }
+ul.tasks li.task-done .task-text { color: var(--muted); }
+ul.tasks .task-text { overflow-wrap: anywhere; line-height: 1.4; }
+details.donelist { margin-top: .3rem; }
+details.donelist > summary { cursor: pointer; font-family: var(--mono); font-size: .72rem; color: var(--muted); list-style: none; }
+details.donelist > summary::before { content: "▸ "; } details.donelist[open] > summary::before { content: "▾ "; }
 tr.row-live td { background: var(--accent-soft); }
 tr.rest > td { padding: .4rem .6rem; }
 tr.rest summary { cursor: pointer; color: var(--muted); font-size: .9rem; }
@@ -82,9 +140,29 @@ tr.rest .tablewrap { margin: .5rem 0 0; }
 .dot-review { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
 .dot-idle { background: var(--muted); opacity: .55; }
 .dot-landed { background: var(--line); }
-td.chips { min-width: 14rem; }
-.chip { display: inline-flex; align-items: center; gap: .4rem; font-size: .82rem; padding: .12rem .55rem .12rem .45rem; border-radius: 999px; background: var(--code-bg); border: 1px solid var(--line); margin: 0 .3rem .25rem 0; max-width: 100%; }
-.chip a { font-family: var(--mono); font-size: .78rem; text-decoration: none; color: var(--fg); }
+.act { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; height: 1.4rem; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
+.act:hover, .act.open { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+tr.activityrow .log { max-height: 16rem; }
+/* The ticker belongs to the row above: no rule between them, the row's colour
+   darkened slightly, the rule under it between changes. */
+tr.change-row:has(+ tr.tickerrow) > td { border-bottom: 0; padding-bottom: .2rem; }
+tr.tickerrow > td { padding: .35rem .6rem .4rem 2.2rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface), #000 6%); }
+tr.row-live + tr.tickerrow > td { background: color-mix(in srgb, var(--accent-soft), #000 6%); }
+.ticker { margin: 0; display: flex; align-items: baseline; gap: .55rem; font-size: .76rem; line-height: 1.4; color: var(--muted); white-space: nowrap; overflow: hidden; width: 0; min-width: 100%; animation: tick-in .45s ease-out; }
+.ticker > span { flex: none; }
+.ticker .log-at { font-size: .7rem; }
+.ticker .log-who { font-family: var(--body); font-size: inherit; color: var(--muted); font-weight: 600; overflow-wrap: normal; }
+.ticker .log-role { font-weight: 400; }
+@keyframes tick-in { from { opacity: 0; transform: translateY(.5rem); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ticker { animation: none; } }
+.ticker .log-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+/* One line per chip: only the phase gives way (ellipsis); the dot, the name,
+   and the age never shrink. */
+.chip { display: inline-flex; align-items: baseline; gap: .4rem; font-size: .8rem; line-height: 1.35; padding: .05rem .55rem .05rem .45rem; border-radius: 999px; background: var(--code-bg); border: 1px solid var(--line); max-width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; }
+.chip .dot { align-self: center; }
+.chip a { font-family: var(--mono); font-size: .76rem; text-decoration: none; color: var(--fg); flex: none; }
+.chip-phase { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.chip-age { flex: none; }
 .chip-active { background: var(--accent-soft); border-color: transparent; }
 .chip-review { background: var(--warn-soft); border-color: transparent; }
 .chip-phase { color: var(--fg); }
@@ -94,12 +172,15 @@ td.chips { min-width: 14rem; }
 .lane-changes { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .lane-landed { opacity: .8; }
 .lane .activity { margin: .5rem 0 .2rem; }
-.log { list-style: none; margin: .3rem 0 .2rem; padding: .4rem .6rem; background: var(--code-bg); border-radius: 6px; font-size: .8rem; max-height: 11rem; overflow-y: auto; display: flex; flex-direction: column; gap: .15rem; }
+/* Items are newest-first in the DOM and laid out column-reverse: the feed reads
+   oldest to newest top-down and the scroll box starts at its end, so the newest
+   line is visible and a push that appends keeps the view at the end. */
+.log { list-style: none; margin: .3rem 0 .2rem; padding: .4rem .6rem; background: var(--code-bg); border-radius: 6px; font-size: .8rem; max-height: 11rem; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: .15rem; }
 .log li { display: grid; grid-template-columns: 4.6rem 5.4rem minmax(0, 1fr); gap: .5rem; align-items: baseline; }
 .log-at { font-family: var(--mono); font-size: .74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .log-who { font-family: var(--mono); font-size: .74rem; color: var(--accent); overflow-wrap: anywhere; }
 .log-text { overflow-wrap: anywhere; }
-.log li:last-child .log-text { font-weight: 600; }
+.log li:first-child .log-text { font-weight: 600; }
 .progress .bar { width: 4rem; height: .4rem; background: var(--code-bg); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .progress .bar > span { display: block; height: 100%; background: var(--accent); }
 .progress .num { font-family: var(--mono); font-size: .8rem; font-variant-numeric: tabular-nums; }
@@ -153,7 +234,19 @@ nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { colo
 .lane .drift ul { margin: .2rem 0 .4rem; padding-left: 1.2rem; font-size: .86rem; }
 .lane .drift .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
+/* Quick-view panel: a right-hand drawer over the index with a board page embedded. */
+.panel-backdrop { position: fixed; inset: 0; z-index: 19; background: rgba(20, 24, 32, .35); backdrop-filter: blur(1px); cursor: pointer; }
+.panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(56rem, 70vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0, 0, 0, .18); z-index: 20; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.panel-bar { display: flex; align-items: center; gap: .8rem; padding: .45rem .8rem .45rem 1rem; border-bottom: 1px solid var(--line); background: var(--bg); font-size: .85rem; }
+.panel-path { font-family: var(--mono); font-size: .78rem; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-open { white-space: nowrap; }
+.panel-close { font: inherit; font-size: 1.3rem; line-height: 1; background: none; border: 1px solid transparent; border-radius: 4px; color: var(--muted); width: 1.8rem; height: 1.8rem; cursor: pointer; }
+.panel-close:hover { color: var(--fg); background: var(--accent-soft); }
+.panel-frame { flex: 1; width: 100%; border: 0; background: var(--bg); }
+body.embed .content { max-width: none; padding: 1rem max(16px, 2vw) 3rem; }
+body.embed h1 { font-size: 1.6rem; }
 @media (max-width: 760px) {
+  .panel { width: 100vw; border-left: 0; }
   .shell { grid-template-columns: minmax(0, 1fr); }
   .side { order: 2; position: static; max-height: none; border-right: none; border-top: 1px solid var(--line); padding: 1rem 16px 2rem; }
   .content { order: 1; padding: 1.1rem 16px 2.5rem; }
@@ -161,5 +254,12 @@ nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { colo
   .lanes-grid { grid-template-columns: minmax(0, 1fr); }
   .explainer iframe { height: 75vh; }
   td .sub { display: none; }
+  table.changes tr.change-row { grid-template-columns: 1.4rem minmax(0, 1fr) auto; }
+  table.changes tr.change-row > td.status-cell { display: none; }
+  table.changes .progress .bar { width: 2.6rem; }
+  tr.activityrow .log li { grid-template-columns: 1fr; }
+  .ticker .log-role { display: none; }
   .log li { grid-template-columns: 1fr; gap: 0; }
+  ul.tasks { grid-template-columns: minmax(0, 1fr); }
+  tr.taskrow > td { padding-left: .6rem; }
 }

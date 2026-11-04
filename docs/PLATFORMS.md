@@ -231,7 +231,7 @@ that links the monitor natively into an existing unikernel
 for the later kernel. A unikernel's single address space hosts the monitor; it
 is not a worker confinement boundary. For Genode, the
 [Bend component](../openspec/changes/add-genode-bend-component/proposal.md) and
-[capability adoption](../openspec/changes/add-genode-capability-adoption/proposal.md)
+[capability adoption](../openspec/changes/archive/2026-11-04-add-genode-capability-adoption/proposal.md)
 changes supply the runtime, effects, and binding model the reference host's
 tasks assume. POSIX remains the first file-style interface, followed by S3. This
 interface ordering does not make a Linux character device the foundation of the

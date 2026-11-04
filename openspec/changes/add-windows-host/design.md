@@ -109,6 +109,17 @@ bytes and published with its terms and the committed state under the shared
 durable-publication protocol. A filesystem rename, pipe completion, or Job Object
 exit is not evidence that the full commit persisted atomically.
 
+### The runtime host profile gates the worker runtime
+
+The WinFsp and authenticated-broker product runs the generated Bend runtime as
+the monitor, so the runtime host profile applies to the Windows build. The
+monitor profile's allow lists in `scripts/runtime-profile/` are the contract for
+what a Windows monitor binary may link and call, and the Win32 bindings must
+supply only those rows. `scripts/runtime-profile/check-binary.sh` is the check,
+and the Windows corpus run belongs in `verification/runtime-profile-hosts.md`.
+See [docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md). The profile qualifies
+no Windows host; confinement evidence stays separate.
+
 ### Qualify the native target
 
 Run common Bend vectors and then native negative tests: inherited handles,
