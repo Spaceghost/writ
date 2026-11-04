@@ -1,18 +1,22 @@
 # Genode shim trust inventory (GB-006)
 
-Status: started in the Genode host-layer lane, Task 1 (2026-11-03). Since
-Task 2 the shim is linked into the Bend component `writ_bend_hello`, which
-prints `hi` under init on base-linux at 256M
-(`verification/genode-bend-hello-base-linux.txt`, host-layer section). Task 3
-completes this inventory. This file lists
-host binding code only; none of it is Writ policy, and no authority, label,
-budget, or release decision is made here.
+Status: started in the Genode host-layer lane, Task 1 (2026-11-03); completed
+for the memory host layer in Task 3 (2026-11-04). The shim is linked into the
+Bend components `writ_bend_hello`, `writ_bend_tests`, `writ_bend_example`,
+`writ_bend_flow`, `writ_bend_transfer`, `writ_bend_gpuexample`, and
+`writ_bend_overflow`. Under init on base-linux at 256M the corpus prints 764
+PASS lines and `ALL LIBRARY TESTS PASSED`, and the corpus and examples match
+the Linux single-lane reference line for line
+(`verification/genode-corpus-base-linux.txt`). This file lists host binding
+code only; none of it is Writ policy, and no authority, label, budget, or
+release decision is made here. The request queue and effects of task 2.2 are
+not part of this shim yet.
 
 ## Files
 
 | File | Role | Linked into |
 | --- | --- | --- |
-| `hosts/genode/shim/writ_mem.cc` | memory host layer: lazily populated anonymous reservations, guard pages, component entry | `writ_probe_reservation` (C probe, Task 1); `writ_bend_hello` (Bend program, Task 2; `scripts/genode/writ_bend_hello/target.mk`, `LIBS = base libc`, posix no longer linked) |
+| `hosts/genode/shim/writ_mem.cc` | memory host layer: lazily populated anonymous reservations, guard pages, component entry | `writ_probe_reservation` (C probe, Task 1); `writ_bend_hello` (Bend program, Task 2; `scripts/genode/writ_bend_hello/target.mk`, `LIBS = base libc`, posix no longer linked); `writ_bend_{tests,example,flow,transfer,gpuexample,overflow}` (Bend programs, Task 3; `scripts/genode/writ_bend_<name>/target.mk`, same pattern) |
 
 Live copy for the Genode build: `../writ-genode/writ-repo/src/writ_shim/writ_mem.cc`,
 byte-identical; its sha256 is recorded with each run in
@@ -92,6 +96,26 @@ the whole run is refused (component dies); and with more than 16 addresses
 stuck at once the slots evict each other before any reaches the bound, so an
 unresolvable fault among them livelocks instead of terminating.
 
+## Changes in Task 3
+
+- Comments only, implementation tokens unchanged (compared with the c96ef40
+  revision; `verification/genode-corpus-base-linux.txt`, "SHIM EDIT"): the
+  1 TiB bound's note on `corpus_grow`, and the defence-in-depth note on the
+  unreachable zero-size check. sha256 now
+  `8ba108f2240aebb161f12ca85cf48cfae79968a5e80b772abfb9acdd03ef4774`.
+- No functional change was needed for the corpus, the examples, or the
+  fault run.
+
+## Fault behaviour observed through a Bend program
+
+`writ_bend_overflow` (`scripts/runtime-profile/Overflow.bend`): every
+touched stack chunk costs RAM and one dataspace capability. At ram 256M the
+shim refused a chunk for RAM quota; at 3G with 1000 caps for cap quota; at
+3G with 2000 caps the recursion reached the runtime's guard and the shim
+logged `unresolved fault at 0x7ffff7f43000 (guard page), component
+terminates`. The process ended each time and nothing resumed. The parent
+(init) logged nothing; the shim does not and cannot report to the parent.
+
 ## Concurrency assumption
 
 Only single-lane use has been run. One mutex guards all shim state and is
@@ -104,4 +128,6 @@ dies without the shim's line.
 
 ## Reviewer
 
-Not yet reviewed. To be named when the shim is linked into the Bend component.
+Not yet reviewed. The shim is now linked into the Bend components; the
+reviewer is to be named by the lane's review of Task 3, and this line updated
+with the name and the reviewed sha256.
