@@ -1,1 +1,3 @@
 {"at": "2026-11-04T20:58:24Z", "who": "controller", "fields": {"text": "Asked on the board; the form above records your answer here."}}
+{"at":"2026-11-04T21:14:30.763Z","who":"josh","fields":{"linuxu":"chase","text":""}}
+{"at":"2026-11-04T21:16:31Z","who":"controller","fields":{"text":"Got it: chasing 0.16.3 linuxu in a time-boxed lane (unikraft-linuxu). The pinned 0.21.0 has no linuxu, so the lane pins 0.16.3 beside it, tries a smaller reservation first, and records a stall honestly if the platform cannot map the runtime."}}
