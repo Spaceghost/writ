@@ -74,6 +74,10 @@ def observed_identity(observation: Native.Observation, identity: Native.Identity
     case Native.Observation{p, _, l, o, r, f, t, m, c, x, v}:
       Native.Observation{p, identity, l, o, r, f, t, m, c, x, v}
 
+def btrfs_source_generation(generation: String) -> Native.Observation:
+  observed_identity(source_observation(Native.Btrfs{}),
+    Native.BtrfsId{fsid(), source_uuid(), "256", generation, "4294967296"})
+
 def observed_locator(observation: Native.Observation, locator: String) -> Native.Observation:
   match observation:
     case Native.Observation{p, i, _, o, r, f, t, m, c, x, v}:
@@ -312,6 +316,176 @@ def preserved_policy(intent: Backplane.WriteIntent, policy: Transfer.OutputPolic
 def denied_creation(auth: Native.Authorized, +provider: Native.Provider, created: Native.Observation) -> Bool:
   absent(Native.Receipt, Native.complete(auth, source_observation(provider), created))
 
+# Each assertion consumes its own full authority fixture. Keeping multiple wide
+# authority/receipt records alive across IO continuations exceeds the pinned
+# native compiler's argument limit; independent fixtures also prevent one case
+# from quietly depending on a mutation performed by an earlier case.
+type GateMutation is Data:
+  Unchanged{}
+  Public{}
+  Revoked{}
+  StaleSession{}
+  StaleLedger{}
+  StaleFrontend{}
+  WrongSubject{}
+  WrongArtifact{}
+  WrongInvocation{}
+  Network{}
+
+def mutate_gate(gate: Native.Gate, artifact: Backplane.ArtifactId, mutation: GateMutation) -> Native.Gate:
+  match mutation:
+    case StaleSession{}:
+      stale_session(gate)
+    case StaleLedger{}:
+      stale_ledger(gate)
+    case StaleFrontend{}:
+      stale_frontend(gate)
+    case WrongSubject{}:
+      wrong_subject(gate)
+    case WrongArtifact{}:
+      binding(gate, Backplane.Storage{}, changed_artifact(artifact), False{})
+    case Network{}:
+      binding(gate, Backplane.Network{}, artifact, True{})
+    case _:
+      gate
+
+def changed_spec(+spec: Native.Spec, mutation: GateMutation) -> Native.Spec:
+  match mutation:
+    case WrongInvocation{}:
+      with_plan(spec, invocation(plan_of(spec), 3n))
+    case _:
+      spec
+
+def is_public(mutation: GateMutation) -> Bool:
+  match mutation:
+    case Public{}:
+      True{}
+    case _:
+      False{}
+
+def is_revoked(mutation: GateMutation) -> Bool:
+  match mutation:
+    case Revoked{}:
+      True{}
+    case _:
+      False{}
+
+def fixture_gate(+spec: Native.Spec, +mutation: GateMutation) -> Maybe<&2, Native.Gate>:
+  do Maybe<&2, Native.Gate>:
+    gate : Native.Gate <- Example.gate(spec, is_public(mutation), is_revoked(mutation))
+    return mutate_gate(gate, artifact_of(spec), mutation)
+
+def attempt(+mutation: GateMutation) -> Maybe<&2, Native.Authorized>:
+  do Maybe<&2, Native.Authorized>:
+    +spec : Native.Spec <- fixture(Native.Btrfs{})
+    gate : Native.Gate <- fixture_gate(spec, mutation)
+    Native.authorize(changed_spec(spec, mutation), gate)
+
+def accepted_gate(value: Maybe<&2, Native.Gate>) -> Bool:
+  match value:
+    case Some{gate}:
+      Backplane.accepted(commit(gate))
+    case None{}:
+      False{}
+
+def generic_fixture(mutation: GateMutation, value: Maybe<&2, Native.Spec>) -> Bool:
+  match value:
+    case Some{spec}:
+      accepted_gate(fixture_gate(spec, mutation))
+    case None{}:
+      False{}
+
+def generic_accepts(mutation: GateMutation) -> Bool:
+  generic_fixture(mutation, fixture(Native.Btrfs{}))
+
+def fixture_authorized(provider: Native.Provider) -> Maybe<&2, Native.Authorized>:
+  do Maybe<&2, Native.Authorized>:
+    spec : Native.Spec <- fixture(provider)
+    Example.authorize(spec, False{}, False{})
+
+def checked_fixture(provider: Native.Provider) -> Maybe<&2, Native.Command>:
+  do Maybe<&2, Native.Command>:
+    authorization : Native.Authorized <- fixture_authorized(provider)
+    Native.checked_command(authorization)
+
+def completed_fixture(provider: Native.Provider, source_now: Native.Observation,
+    created: Native.Observation) -> Maybe<&2, Native.Receipt>:
+  do Maybe<&2, Native.Receipt>:
+    authorization : Native.Authorized <- fixture_authorized(provider)
+    Native.complete(authorization, source_now, created)
+
+def denied_fixture(+provider: Native.Provider, created: Native.Observation) -> Bool:
+  absent(Native.Receipt, completed_fixture(provider, source_observation(provider), created))
+
+def fixture_intent(provider: Native.Provider) -> Maybe<&2, Backplane.WriteIntent>:
+  do Maybe<&2, Backplane.WriteIntent>:
+    authorization : Native.Authorized <- fixture_authorized(provider)
+    return auth_intent(authorization)
+
+def receipt_preserves(intent: Maybe<&2, Backplane.WriteIntent>, receipt: Maybe<&2, Native.Receipt>) -> Bool:
+  match intent receipt:
+    case Some{intent} Some{receipt}:
+      intent_equal(intent, Native.Receipt.intent(receipt))
+    case _ _:
+      False{}
+
+def preserved_fixture(+provider: Native.Provider) -> Bool:
+  receipt_preserves(fixture_intent(provider), completed_fixture(provider,
+    source_observation(provider), created_observation(provider)))
+
+def optional_policy_preserved(value: Maybe<&2, Backplane.WriteIntent>, policy: Transfer.OutputPolicy) -> Bool:
+  match value:
+    case Some{intent}:
+      preserved_policy(intent, policy)
+    case None{}:
+      False{}
+
+def fixture_policy_preserved(+provider: Native.Provider) -> Bool:
+  optional_policy_preserved(fixture_intent(provider), Example.policy(Native.operation_code(provider)))
+
+def optional_committed(value: Maybe<&2, Native.Authorized>) -> Bool:
+  match value:
+    case Some{authorization}:
+      Negotiation.Session.is(auth_session(authorization), Negotiation.Committed{})
+    case None{}:
+      False{}
+
+def fixture_committed() -> Bool:
+  optional_committed(fixture_authorized(Native.Btrfs{}))
+
+def replay_from(authorization: Native.Authorized, terminal: Bool) -> Maybe<&2, Native.Authorized>:
+  match authorization terminal:
+    case Native.Authorized{+spec, _, _, session, ledger} True{}:
+      do Maybe<&2, Native.Authorized>:
+        gate : Native.Gate <- Example.gate(spec, False{}, False{})
+        Native.authorize(spec, current_state(gate, session, ledger))
+    case Native.Authorized{+spec, _, _, _, ledger} False{}:
+      do Maybe<&2, Native.Authorized>:
+        gate : Native.Gate <- Example.gate(spec, False{}, False{})
+        Native.authorize(spec, current_ledger(gate, ledger))
+
+def replay_fixture(terminal: Bool) -> Maybe<&2, Native.Authorized>:
+  do Maybe<&2, Native.Authorized>:
+    authorization : Native.Authorized <- fixture_authorized(Native.Btrfs{})
+    replay_from(authorization, terminal)
+
+def changed_fixture_command() -> Maybe<&2, Native.Command>:
+  do Maybe<&2, Native.Command>:
+    authorization : Native.Authorized <- fixture_authorized(Native.Btrfs{})
+    Native.checked_command(changed_command(authorization))
+
+def changed_fixture_completion() -> Maybe<&2, Native.Receipt>:
+  do Maybe<&2, Native.Receipt>:
+    authorization : Native.Authorized <- fixture_authorized(Native.Btrfs{})
+    Native.complete(changed_command(authorization), source_observation(Native.Btrfs{}),
+      created_observation(Native.Btrfs{}))
+
+def reconciled_fixture(+provider: Native.Provider, source_now: Native.Observation,
+    created: Native.Observation) -> Maybe<&2, Native.Receipt>:
+  do Maybe<&2, Native.Receipt>:
+    receipt : Native.Receipt <- completed_fixture(provider, source_observation(provider), created_observation(provider))
+    Native.reconcile(receipt, source_now, created)
+
 def validation_tests() -> IO(Unit):
   do IO<Unit>:
     Test.check(Native.uuid(fsid()), "canonical lowercase UUID accepted")
@@ -387,104 +561,117 @@ def preview_tests() -> IO(Unit):
 
 def authority_tests() -> IO(Unit):
   do IO<Unit>:
-    +btrfs : Native.Spec <- need(Native.Spec, fixture(Native.Btrfs{}))
-    +gate : Native.Gate <- need(Native.Gate, Example.gate(btrfs, False{}, False{}))
-    +authorized : Native.Authorized <- need(Native.Authorized, Native.authorize(btrfs, gate))
-    Test.check(Maybe.is_some(&2, Native.Command, Native.checked_command(authorized)), "Btrfs action traverses complete Writ commit facade")
-    Test.check(absent(Native.Authorized, Example.authorize(btrfs, True{}, False{})), "restricted source cannot target public clearance")
-    Test.check(absent(Native.Authorized, Example.authorize(btrfs, False{}, True{})), "descriptor revocation is checked at final gate")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, stale_session(gate))), "stale session revision denied")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, stale_ledger(gate))), "stale ledger revision denied")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, stale_frontend(gate))), "stale frontend revision denied")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, wrong_subject(gate))), "another subject cannot reuse descriptor")
-    +wrong_artifact : Native.Gate = binding(gate, Backplane.Storage{}, changed_artifact(artifact_of(btrfs)), False{})
-    Test.check(Backplane.accepted(commit(wrong_artifact)), "synthetic alternate artifact is valid at generic core boundary")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, wrong_artifact)), "native gate additionally binds exact native source seal")
-    Test.check(absent(Native.Authorized, Native.authorize(with_plan(btrfs, invocation(plan_of(btrfs), 3n)), gate)),
+    Test.check(Maybe.is_some(&2, Native.Command, checked_fixture(Native.Btrfs{})), "Btrfs action traverses complete Writ commit facade")
+    Test.check(absent(Native.Authorized, attempt(Public{})), "restricted source cannot target public clearance")
+    Test.check(absent(Native.Authorized, attempt(Revoked{})), "descriptor revocation is checked at final gate")
+    Test.check(absent(Native.Authorized, attempt(StaleSession{})), "stale session revision denied")
+    Test.check(absent(Native.Authorized, attempt(StaleLedger{})), "stale ledger revision denied")
+    Test.check(absent(Native.Authorized, attempt(StaleFrontend{})), "stale frontend revision denied")
+    Test.check(absent(Native.Authorized, attempt(WrongSubject{})), "another subject cannot reuse descriptor")
+    Test.check(generic_accepts(WrongArtifact{}), "synthetic alternate artifact is valid at generic core boundary")
+    Test.check(absent(Native.Authorized, attempt(WrongArtifact{})), "native gate additionally binds exact native source seal")
+    Test.check(absent(Native.Authorized, attempt(WrongInvocation{})),
       "accepted intent for another invocation cannot authorize command")
-    +network : Native.Gate = binding(gate, Backplane.Network{}, artifact_of(btrfs), True{})
-    Test.check(Backplane.accepted(commit(network)), "synthetic network intent passes its own full core gate")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, network)), "native backend requires Storage intent")
-    Test.check(preserved_policy(auth_intent(authorized), Example.policy(Native.operation_code(Native.Btrfs{}))),
+    Test.check(generic_accepts(Network{}), "synthetic network intent passes its own full core gate")
+    Test.check(absent(Native.Authorized, attempt(Network{})), "native backend requires Storage intent")
+    Test.check(fixture_policy_preserved(Native.Btrfs{}),
       "native authorization preserves full origin and operation restrictions")
-    Test.check(Negotiation.Session.is(auth_session(authorized), Negotiation.Committed{}), "returned session records committed model transition")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, current_state(gate,
-      auth_session(authorized), auth_ledger(authorized)))), "terminal session cannot authorize another effect")
-    Test.check(absent(Native.Authorized, Native.authorize(btrfs, current_ledger(gate, auth_ledger(authorized)))),
+    Test.check(fixture_committed(), "returned session records committed model transition")
+    Test.check(absent(Native.Authorized, replay_fixture(True{})), "terminal session cannot authorize another effect")
+    Test.check(absent(Native.Authorized, replay_fixture(False{})),
       "consumed current reservation cannot be replayed from old session")
 
 
 def btrfs_result_tests() -> IO(Unit):
   do IO<Unit>:
-    +btrfs : Native.Spec <- need(Native.Spec, fixture(Native.Btrfs{}))
-    +authorized : Native.Authorized <- need(Native.Authorized, Example.authorize(btrfs, False{}, False{}))
-    +receipt : Native.Receipt <- need(Native.Receipt, Native.complete(authorized,
-      source_observation(Native.Btrfs{}), created_observation(Native.Btrfs{})))
-    Test.check(intent_equal(Native.Receipt.intent(receipt), auth_intent(authorized)),
+    Test.check(preserved_fixture(Native.Btrfs{}),
       "stage receipt retains exact plan policy DLM label backend and artifact")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_flags(created_observation(Native.Btrfs{}),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_flags(created_observation(Native.Btrfs{}),
       False{}, True{}, True{})), "writable native result denied")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_flags(created_observation(Native.Btrfs{}),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_flags(created_observation(Native.Btrfs{}),
       True{}, False{}, True{})), "nested native result denied")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_flags(created_observation(Native.Btrfs{}),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_flags(created_observation(Native.Btrfs{}),
       True{}, True{}, False{})), "nonroot native result denied")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_origin(created_observation(Native.Btrfs{}), fsid())),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_origin(created_observation(Native.Btrfs{}), fsid())),
       "Btrfs result must identify exact source parent UUID")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_identity(created_observation(Native.Btrfs{}),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_identity(created_observation(Native.Btrfs{}),
       Native.BtrfsId{fsid(), source_uuid(), "257", "4294967298", "4294967298"})), "source UUID cannot masquerade as created copy")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_identity(created_observation(Native.Btrfs{}),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_identity(created_observation(Native.Btrfs{}),
       Native.BtrfsId{fsid(), created_uuid(), "256", "4294967298", "4294967298"})), "source rootid cannot masquerade as created copy")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_identity(created_observation(Native.Btrfs{}),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_identity(created_observation(Native.Btrfs{}),
       Native.BtrfsId{source_uuid(), created_uuid(), "257", "4294967298", "4294967298"})), "created snapshot must remain in registered filesystem")
-    Test.check(denied_creation(authorized, Native.Btrfs{}, observed_locator(created_observation(Native.Btrfs{}), "/pool/other/copy")),
+    Test.check(denied_fixture(Native.Btrfs{}, observed_locator(created_observation(Native.Btrfs{}), "/pool/other/copy")),
       "native result cannot be redirected to another locator")
-    Test.check(absent(Native.Receipt, Native.complete(authorized, observed_identity(source_observation(Native.Btrfs{}),
+    Test.check(absent(Native.Receipt, completed_fixture(Native.Btrfs{}, observed_identity(source_observation(Native.Btrfs{}),
       Native.BtrfsId{fsid(), source_uuid(), "256", "1", "4294967296"}), created_observation(Native.Btrfs{}))),
-      "source generation change during native effect denied without uint32 truncation")
-    Test.check(absent(Native.Command, Native.checked_command(changed_command(authorized))), "post-authorization argv substitution denied")
-    Test.check(absent(Native.Receipt, Native.complete(changed_command(authorized),
-      source_observation(Native.Btrfs{}), created_observation(Native.Btrfs{}))), "altered native action cannot mint receipt")
-    Test.check(Maybe.is_some(&2, Native.Receipt, Native.reconcile(receipt,
+      "source generation rollback during native effect denied without uint32 truncation")
+    Test.check(absent(Native.Command, changed_fixture_command()), "post-authorization argv substitution denied")
+    Test.check(absent(Native.Receipt, changed_fixture_completion()), "altered native action cannot mint receipt")
+    Test.check(Maybe.is_some(&2, Native.Receipt, reconciled_fixture(Native.Btrfs{},
       source_observation(Native.Btrfs{}), created_observation(Native.Btrfs{}))), "reconciliation accepts exact recorded native identity")
-    Test.check(absent(Native.Receipt, Native.reconcile(receipt, source_observation(Native.Btrfs{}),
+    Test.check(absent(Native.Receipt, reconciled_fixture(Native.Btrfs{}, source_observation(Native.Btrfs{}),
       observed_identity(created_observation(Native.Btrfs{}), Native.BtrfsId{fsid(),
         "44444444-4444-4444-4444-444444444444", "258", "4294967298", "4294967298"}))),
       "same pathname and parent do not reconcile a different native object")
 
 
+def btrfs_transaction_tests() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Native.decimal_less("9", "10") &&
+      Native.decimal_less("18446744073709551614", "18446744073709551615") &&
+      Bool.not(Native.decimal_less("10", "9")) && Bool.not(Native.decimal_less("01", "2")),
+      "canonical generation comparison retains numeric order across widths and uint64 high bits")
+    Test.check(receipt_preserves(fixture_intent(Native.Btrfs{}), completed_fixture(Native.Btrfs{},
+      btrfs_source_generation("4294967298"), created_observation(Native.Btrfs{}))),
+      "snapshot transaction source advance retains exact original authorized intent and seal")
+    Test.check(Bool.not(Native.same_source(source_observation(Native.Btrfs{}),
+      btrfs_source_generation("4294967298"))), "preflight still rejects any source generation change")
+    Test.check(absent(Native.Receipt, completed_fixture(Native.Btrfs{},
+      btrfs_source_generation("4294967299"), created_observation(Native.Btrfs{}))),
+      "post-source generation must equal the created snapshot transaction")
+    Test.check(absent(Native.Receipt, completed_fixture(Native.Btrfs{}, observed_identity(
+      btrfs_source_generation("4294967298"), Native.BtrfsId{fsid(), created_uuid(), "256",
+        "4294967298", "4294967296"}), created_observation(Native.Btrfs{}))),
+      "valid snapshot generation cannot excuse a changed source UUID")
+    Test.check(absent(Native.Receipt, completed_fixture(Native.Btrfs{},
+      btrfs_source_generation("4294967298"), observed_identity(created_observation(Native.Btrfs{}),
+        Native.BtrfsId{fsid(), created_uuid(), "257", "4294967299", "4294967298"}))),
+      "created snapshot generation and creation transaction must agree for source advance")
+    Test.check(Maybe.is_some(&2, Native.Receipt, reconciled_fixture(Native.Btrfs{},
+      btrfs_source_generation("4294967298"), created_observation(Native.Btrfs{}))),
+      "reconciliation admits only the recorded snapshot source transaction")
+    Test.check(absent(Native.Receipt, reconciled_fixture(Native.Btrfs{},
+      btrfs_source_generation("4294967299"), created_observation(Native.Btrfs{}))),
+      "future source generation cannot reconcile an earlier snapshot receipt")
+
+
 def zfs_result_tests() -> IO(Unit):
   do IO<Unit>:
-    +zfs : Native.Spec <- need(Native.Spec, fixture(Native.ZfsFilesystem{}))
-    +zauthorized : Native.Authorized <- need(Native.Authorized, Example.authorize(zfs, False{}, False{}))
-    Test.check(Maybe.is_some(&2, Native.Command, Native.checked_command(zauthorized)), "ZFS filesystem action traverses complete Writ commit facade")
-    Test.check(Maybe.is_some(&2, Native.Receipt, Native.complete(zauthorized,
+    Test.check(Maybe.is_some(&2, Native.Command, checked_fixture(Native.ZfsFilesystem{})), "ZFS filesystem action traverses complete Writ commit facade")
+    Test.check(Maybe.is_some(&2, Native.Receipt, completed_fixture(Native.ZfsFilesystem{},
       source_observation(Native.ZfsFilesystem{}), created_observation(Native.ZfsFilesystem{}))),
       "observed readonly unmounted filesystem clone accepted")
-    Test.check(denied_creation(zauthorized, Native.ZfsFilesystem{}, observed_origin(created_observation(Native.ZfsFilesystem{}),
+    Test.check(denied_fixture(Native.ZfsFilesystem{}, observed_origin(created_observation(Native.ZfsFilesystem{}),
       "tank/source@other")), "ZFS clone must retain exact origin snapshot")
-    Test.check(denied_creation(zauthorized, Native.ZfsFilesystem{}, observed_identity(created_observation(Native.ZfsFilesystem{}),
+    Test.check(denied_fixture(Native.ZfsFilesystem{}, observed_identity(created_observation(Native.ZfsFilesystem{}),
       Native.ZfsId{"4294967295", "4294967299", "4294967300"})), "pool GUID high bits are not discarded")
-    Test.check(denied_creation(zauthorized, Native.ZfsFilesystem{}, observed_controls(created_observation(Native.ZfsFilesystem{}),
+    Test.check(denied_fixture(Native.ZfsFilesystem{}, observed_controls(created_observation(Native.ZfsFilesystem{}),
       True{}, "off", "none", "-")), "mounted filesystem clone denied")
-    Test.check(denied_creation(zauthorized, Native.ZfsFilesystem{}, observed_controls(created_observation(Native.ZfsFilesystem{}),
+    Test.check(denied_fixture(Native.ZfsFilesystem{}, observed_controls(created_observation(Native.ZfsFilesystem{}),
       False{}, "on", "none", "-")), "mountable filesystem clone denied")
-    Test.check(denied_creation(zauthorized, Native.ZfsFilesystem{}, observed_controls(created_observation(Native.ZfsFilesystem{}),
+    Test.check(denied_fixture(Native.ZfsFilesystem{}, observed_controls(created_observation(Native.ZfsFilesystem{}),
       False{}, "off", "/public", "-")), "filesystem mountpoint exposure denied")
 
 
 def zvol_result_tests() -> IO(Unit):
   do IO<Unit>:
-    +zvol : Native.Spec <- need(Native.Spec, fixture(Native.ZfsVolume{}))
-    +vauthorized : Native.Authorized <- need(Native.Authorized, Example.authorize(zvol, False{}, False{}))
-    Test.check(Maybe.is_some(&2, Native.Command, Native.checked_command(vauthorized)), "ZFS volume action traverses complete Writ commit facade")
-    +vreceipt : Native.Receipt <- need(Native.Receipt, Native.complete(vauthorized,
-      source_observation(Native.ZfsVolume{}), created_observation(Native.ZfsVolume{})))
-    Test.check(intent_equal(Native.Receipt.intent(vreceipt), auth_intent(vauthorized)), "observed hidden readonly zvol retains exact intent")
-    Test.check(denied_creation(vauthorized, Native.ZfsVolume{}, observed_controls(created_observation(Native.ZfsVolume{}),
+    Test.check(Maybe.is_some(&2, Native.Command, checked_fixture(Native.ZfsVolume{})), "ZFS volume action traverses complete Writ commit facade")
+    Test.check(preserved_fixture(Native.ZfsVolume{}), "observed hidden readonly zvol retains exact intent")
+    Test.check(denied_fixture(Native.ZfsVolume{}, observed_controls(created_observation(Native.ZfsVolume{}),
       False{}, "-", "-", "dev")), "visible zvol device mode denied")
-    Test.check(denied_creation(vauthorized, Native.ZfsVolume{}, created_observation(Native.ZfsFilesystem{})),
+    Test.check(denied_fixture(Native.ZfsVolume{}, created_observation(Native.ZfsFilesystem{})),
       "created dataset kind cannot replace authorized volume kind")
-    Test.check(absent(Native.Receipt, Native.reconcile(vreceipt, source_observation(Native.ZfsVolume{}),
+    Test.check(absent(Native.Receipt, reconciled_fixture(Native.ZfsVolume{}, source_observation(Native.ZfsVolume{}),
       observed_identity(created_observation(Native.ZfsVolume{}), Native.ZfsId{pool_guid(), "4294967299", "4294967301"}))),
       "reconciliation checks creation transaction as well as GUID")
 
@@ -494,6 +681,7 @@ def main() -> IO(Unit):
     preview_tests()
     authority_tests()
     btrfs_result_tests()
+    btrfs_transaction_tests()
     zfs_result_tests()
     zvol_result_tests()
     IO.print("ALL NATIVE MODEL TESTS PASSED")

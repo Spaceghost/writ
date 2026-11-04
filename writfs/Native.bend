@@ -153,6 +153,17 @@ def decimal64(+s: String) -> Bool:
 def positive64(+s: String) -> Bool:
   decimal64(s) && Bool.not(String.eq(s, "0"))
 
+def decimal_less_counts(a: String, b: String, ac: Maybe<&2, U32>, bc: Maybe<&2, U32>) -> Bool:
+  match ac bc:
+    case Some{+ac} Some{+bc}:
+      U32.is_lt(ac, bc) || (U32.is_eq(ac, bc) && Cmp.is_lt(String.order(a, b)))
+    case _ _:
+      False{}
+
+def decimal_less(+a: String, +b: String) -> Bool:
+  decimal64(a) && decimal64(b) &&
+    decimal_less_counts(a, b, decimal_scan(a, Some{0}), decimal_scan(b, Some{0}))
+
 def hex_char(c: Char) -> Bool:
   +n = Char.to_u32(c)
   (U32.is_ge(n, 48) && U32.is_le(n, 57)) || (U32.is_ge(n, 97) && U32.is_le(n, 102))
@@ -511,6 +522,25 @@ def same_source(a: Observation, b: Observation) -> Bool:
         bool_equal(ar, br) && bool_equal(af, bf) && bool_equal(at, bt) && bool_equal(am, bm) &&
         String.eq(ac, bc) && String.eq(ax, bx) && String.eq(av, bv)
 
+# Creating a Btrfs snapshot can COW the read-only source root in the snapshot's
+# transaction. Only that observed generation advance is admitted after effect:
+# every other source fact stays exact, and both creation/generation fields of
+# the new snapshot must identify that same transaction. The original source
+# seal and authorization remain unchanged. Preflight still uses same_source.
+def snapshot_source_transition(before: Observation, +now: Observation, created: Observation) -> Bool:
+  match before now created:
+    case Observation{Btrfs{}, BtrfsId{fsid, id, rootid, old, creation}, l, o, r, f, t, m, c, x, v}
+      Observation{Btrfs{}, BtrfsId{_, _, _, +new, _}, _, _, _, _, _, _, _, _, _}
+      Observation{Btrfs{}, BtrfsId{_, _, _, generation, transaction}, _, _, _, _, _, _, _, _, _}:
+      same_source(Observation{Btrfs{}, BtrfsId{fsid, id, rootid, new, creation},
+        l, o, r, f, t, m, c, x, v}, now) &&
+        decimal_less(old, new) && String.eq(new, generation) && String.eq(new, transaction)
+    case _ _ _:
+      False{}
+
+def source_after_copy(+before: Observation, +now: Observation, created: Observation) -> Bool:
+  same_source(before, now) || snapshot_source_transition(before, now, created)
+
 def output_controls(provider: Provider, mounted: Bool, canmount: String,
     mountpoint: String, volmode: String) -> Bool:
   match provider:
@@ -550,7 +580,7 @@ def complete(+authorization: Authorized, source_now: Observation,
   Authorized{+spec, _, _, _, _} = authorization
   do Maybe<&2, Receipt>:
     _ : Command <- checked_command(authorization)
-    _ : Unit <- require(same_source(spec_source(spec), source_now))
+    _ : Unit <- require(source_after_copy(spec_source(spec), source_now, created))
     _ : Unit <- require(created_matches(spec, created))
     return Receipt{authorization, created}
 
