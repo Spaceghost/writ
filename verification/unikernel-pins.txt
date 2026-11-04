@@ -129,3 +129,31 @@ Inputs: Task 2's $W/gen/{hello,clock,overflow,lanes,exit,exit0}.c, hashes above.
 $W/calib/overflow-1e{6,8,9}.bend from scripts/unikernel/Overflow.bend by sed; overflow-1e9.c is
 byte-identical to $W/gen/overflow.c. $W/calib/{clock,lanes,exit}.c re-emitted from the in-tree
 probes; clock.c, lanes.c and exit.c are byte-identical to the $W/gen copies.
+
+== Unikraft 0.16.3 linuxu tree (unikraft-linuxu lane, 2026-11-04; evidence verification/unikernel-linuxu.txt) ==
+A second, separate copy of the 0.16.3 secondary pin, used only for the linuxu process runs and
+kept under $W/linuxu/ so that it never shares a directory with the 0.21.0 tree or its apps.
+Same tag and commits as the secondary pin above, fresh clones:
+  mkdir -p $W/linuxu/src-0.16.3/libs && cd $W/linuxu/src-0.16.3
+  git clone --depth 1 --branch RELEASE-0.16.3 https://github.com/unikraft/unikraft.git unikraft
+  git clone --depth 1 --branch RELEASE-0.16.3 https://github.com/unikraft/lib-musl.git libs/musl
+  $ git -C $W/linuxu/src-0.16.3/unikraft rev-parse HEAD
+  e453b74a2e78a0de98563d75d8e0a97e668088e6
+  $ git -C $W/linuxu/src-0.16.3/libs/musl rev-parse HEAD
+  fd1abc9257b40a74c69b3a40467a453bf8892439
+GitHub tag archives (observed only; GitHub publishes no checksum for them, and archive bytes
+are not guaranteed stable), downloaded to $W/linuxu/downloads/:
+  curl -sSL -o unikraft-RELEASE-0.16.3.tar.gz https://github.com/unikraft/unikraft/archive/refs/tags/RELEASE-0.16.3.tar.gz
+  curl -sSL -o lib-musl-RELEASE-0.16.3.tar.gz https://github.com/unikraft/lib-musl/archive/refs/tags/RELEASE-0.16.3.tar.gz
+  2106663779d214cf8e8836b7903609ee567f7f84b0cb6c102f1fd13aa54269dc  unikraft-RELEASE-0.16.3.tar.gz
+  0bab74613d0f89613fdda756310bf6b4ec5d030782e5056362ce6adfbe9cdebd  lib-musl-RELEASE-0.16.3.tar.gz
+  The unikraft archive, extracted, is file-for-file identical to the clone (`diff -rq -x .git`, no output).
+musl 1.2.3 fetched by lib-musl's build: same sha256 as above (7d5b0b60...cfd4a4).
+Unikraft sources were not patched. kraft 0.12.16 as above; gdb (GDB) 18.1 and
+util-linux script 2.42.4 from the host for the run harness.
+App directories (written by hand, not by kraft init, and not copied from hosts/unikraft/app/):
+  $W/linuxu/hello-linuxu           CONFIG_LINUXU_DEFAULT_HEAPMB 4 (the 0.16.3 default)
+  $W/linuxu/hello-linuxu-heap4095  CONFIG_LINUXU_DEFAULT_HEAPMB 4095
+  $W/linuxu/hello-linuxu-heap8196  CONFIG_LINUXU_DEFAULT_HEAPMB 8196
+Input: scripts/unikernel/Hello.bend emitted with `bend scripts/unikernel/Hello.bend -o $W/linuxu/gen/hello.c`
+  (3074 lines, sha256 260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf, the same bytes as $W/hello/hello.c).
