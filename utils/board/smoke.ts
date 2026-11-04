@@ -189,7 +189,9 @@ try {
   check("archived changes are listed with their archive dir and date", arch !== undefined && arch.dir === `archive/${arch.name}` && arch.status === "archived" && /^\d{4}-\d{2}-\d{2}$/.test(arch.archivedOn ?? ""), arch?.name ?? "none");
   if (arch) {
     const archPage = await fetch(`${base}/change/${arch.name}`);
-    check("an archived change's page renders from its archive directory", archPage.status === 200 && (await archPage.text()).includes(`archived change · ${arch.archivedOn}`));
+    check("an archived change's page renders from its archive directory", archPage.status === 200 && (await archPage.text()).includes(`archived ${arch.archivedOn} · `));
+    const archRowAt = indexHtml.indexOf(`<td><a href="/change/${arch.name}">`, indexHtml.indexOf("<h2>Archived changes</h2>"));
+    check("archived changes are listed by title, not by date and name", archRowAt > 0 && !indexHtml.slice(archRowAt, archRowAt + 120).includes(`>${arch.name}<`));
     // The nav lists archived changes too (collapsed), so look inside the tables section only.
     const pendingPart = indexHtml.slice(indexHtml.indexOf("<h2>Pending changes</h2>"), indexHtml.indexOf("<h2>Archived changes</h2>"));
     const archivedPart = indexHtml.slice(indexHtml.indexOf("<h2>Archived changes</h2>"), indexHtml.indexOf("<h2>Baseline capabilities</h2>"));
