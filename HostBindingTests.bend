@@ -173,24 +173,43 @@ def with_quotas(state: H.State, new_quotas: H.Quotas) -> H.State:
     case H.State{r, o, a, objects, aliases, kept_routes, _, delegations, bindings, frontend}:
       H.State{r, o, a, objects, aliases, kept_routes, new_quotas, delegations, bindings, frontend}
 
-# GA-005 premise: a domain holds a reference with no delegation record behind
-# it (for example, it was passed outside the monitor). Structurally valid.
+# Every delegation record dropped; nothing else changed. Dropping a copy's
+# record leaves two uncopied aliases on its object, which `valid` rejects
+# (see unrecorded_copy); forged_holder also drops the delegator's alias.
 def without_delegations(state: H.State) -> H.State:
   match state:
     case H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, _, bindings, frontend}:
       H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, H.NoDelegations{}, bindings, frontend}
 
+# The alias table replaced; nothing else changed.
+def with_aliases(state: H.State, new_aliases: H.Aliases) -> H.State:
+  match state:
+    case H.State{r, o, a, objects, _, kept_routes, kept_quotas, delegations, bindings, frontend}:
+      H.State{r, o, a, objects, new_aliases, kept_routes, kept_quotas, delegations, bindings, frontend}
+
+# The binding table replaced; nothing else changed.
+def with_bindings(state: H.State, new_bindings: H.Bindings) -> H.State:
+  match state:
+    case H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, delegations, _, frontend}:
+      H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, delegations, new_bindings, frontend}
+
+# The node recording generations_state's stale alias 2 as a copy of alias 1.
+def generations_copy() -> H.Delegations:
+  H.Delegations{H.Delegation{1n, reader(), read(), 2n}, H.NoDelegations{}}
+
 # GA-001 premise, using the scenario's literal generations: the reader's
 # Session object 1 is at generation 4, alias 2 records generation 3 and is
-# stale, and alias 1 records generation 4 and is current. Object 1 is bound to
-# the mounted Frontend handle 1 in `frontend`. The state is structurally valid
-# but no sequence of transitions reaches it (no transition issues an alias to
-# an existing object at a later generation); staleness made by transitions is
-# covered by GA-004 and GA-011.
+# stale, and alias 1 records generation 4 and is current. Alias 2 is recorded
+# as a read copy of alias 1, since a second reference to an existing object
+# arises only by delegation and `valid` admits one uncopied alias per live
+# object. Object 1 is bound to the mounted Frontend handle 1 in `frontend`.
+# The state is structurally valid but no sequence of transitions reaches it
+# (no transition issues an alias to an existing object at a later
+# generation); staleness made by transitions is covered by GA-004 and GA-011.
 def generations_state(frontend: F.State) -> H.State:
   H.State{1n, 2n, 3n, H.Objects{H.Object{1n, 4n, subject(), H.Session{}, 0n, service()}, H.NoObjects{}},
     H.Aliases{H.Alias{2n, reader(), 1n, 3n}, H.Aliases{H.Alias{1n, reader(), 1n, 4n}, H.NoAliases{}}},
-    routes(), quotas(5n), H.NoDelegations{}, H.Bindings{H.Binding{1n, 1n}, H.NoBindings{}}, frontend}
+    routes(), quotas(5n), generations_copy(), H.Bindings{H.Binding{1n, 1n}, H.NoBindings{}}, frontend}
 
 # A state the monitor never committed: its only alias names a missing object.
 def dangling_state() -> H.State:
@@ -614,9 +633,30 @@ def derived_closed() -> H.State:
 def derived_revoked() -> H.State:
   H.Change.state(H.revoke(derived(), 4n, reader()))
 
-# W holds alias 3 with its delegation record removed (GA-005 premise).
+# GA-005 premise: W holds a reference with no delegation record behind it
+# (for example, R passed its reference outside the monitor). Built from
+# shared() by dropping W's delegation node and R's alias 2, so W's alias 3 is
+# the only reference to R's descriptor object 2. Structurally valid: object 2
+# keeps exactly one uncopied alias.
 def forged_holder() -> H.State:
+  with_aliases(without_delegations(shared()),
+    H.Aliases{H.Alias{3n, worker(), 2n, 0n}, H.Aliases{H.Alias{1n, reader(), 1n, 0n}, H.NoAliases{}}})
+
+# A state the monitor never committed: shared() with W's delegation node
+# dropped but R's alias 2 kept, so object 2 has two uncopied aliases. The
+# refund and close rules would take W, the list head, as the minter.
+def unrecorded_copy() -> H.State:
   without_delegations(shared())
+
+# A state the monitor never committed: opened() with descriptor object 2 bound
+# to the Session's Frontend handle 1 instead of its own handle 2.
+def shared_handle() -> H.State:
+  with_bindings(opened(), H.Bindings{H.Binding{2n, 1n}, H.Bindings{H.Binding{1n, 1n}, H.NoBindings{}}})
+
+# generations_state without the node that records alias 2 as a copy: a stale
+# uncopied alias beside the current one on live object 1.
+def unrecorded_generations() -> H.State:
+  without_delegations(generations())
 
 # R delegated its Session to W (and W opened through it); the parent then
 # withdrew R's service() route. Nothing else changed.
@@ -766,6 +806,12 @@ def rerouted_delegatee_open() -> H.Change:
 
 def delegator_after_delegatee_revoke() -> H.Change:
   H.delegate(delegatee_revoked(), 4n, 2n, reader(), helper(), read())
+
+# R closes its Session in attenuated_shared(): three levels of objects
+# (Session 1, descriptor 2, attenuated descriptor 3) with W's copy of object 3
+# below R's alias 3. Revision 5.
+def shared_session_close() -> H.Change:
+  H.bind_close(attenuated_shared(), 4n, 1n, reader(), reader_caller())
 
 # The equality and denial helpers must discriminate, or every denial check
 # below would pass vacuously.
@@ -938,7 +984,10 @@ def ga007_checks() -> IO(Unit):
 
 # GA-008 Denials preserve state and name a reason. Every denial check in this
 # module compares the returned state structurally with its input; these add
-# the revision gate and invalid input states.
+# the revision gate and invalid input states, including the two structural
+# shapes `valid` excludes (one handle bound to two objects, two uncopied
+# aliases for one live object), and confirm that success outputs not checked
+# elsewhere satisfy `valid`.
 def ga008_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(denied(stale_revision_mount(), mounted(), H.StaleRevision{}), "GA-008 mount at a stale revision denied StaleRevision")
@@ -953,6 +1002,17 @@ def ga008_checks() -> IO(Unit):
     Test.check(denied(invalid_mount(), dangling_state(), H.StaleRevision{}), "GA-008 an invalid input state is denied StaleRevision")
     vector("GA-008-3", "bind_mount", alias_outcome(invalid_mount()))
     Test.check(denied(H.revoke(dangling_state(), 0n, reader()), dangling_state(), H.StaleRevision{}), "GA-008 revoke on an invalid input state is denied")
+    Test.check(H.valid(with_bindings(opened(), H.Bindings{H.Binding{2n, 2n}, H.Bindings{H.Binding{1n, 1n}, H.NoBindings{}}})), "GA-008 rebuilding a committed binding table keeps the state valid")
+    Test.check(Bool.not(H.valid(shared_handle())), "GA-008 two objects bound to one Frontend handle are rejected by valid")
+    Test.check(denied(H.bind_open(shared_handle(), 2n, 1n, reader(), reader_caller(), registry(), read(), live()), shared_handle(), H.StaleRevision{}), "GA-008 a transition on a shared-handle state is denied StaleRevision")
+    Test.check(Bool.not(H.valid(unrecorded_copy())), "GA-008 two uncopied aliases for one live object are rejected by valid")
+    Test.check(denied(H.bind_close(unrecorded_copy(), 3n, 2n, reader(), reader_caller()), unrecorded_copy(), H.StaleRevision{}), "GA-008 a close on a two-minter state is denied StaleRevision and refunds nothing")
+    Test.check(Bool.not(H.valid(unrecorded_generations())), "GA-008 a stale uncopied alias beside a current one on a live object is rejected by valid")
+    Test.check(Nat.is_eq(delegation_count(H.delegations(shared_closed())), 0n) && H.valid(shared_closed()), "GA-008 a destroyed object's stale copies without records stay valid")
+    Test.check(H.valid(attenuated_shared()) && H.valid(H.Change.state(current_open())) && H.valid(H.Change.state(retry())) && H.valid(H.Change.state(minter_close())), "GA-008 delegate, open, and minter close outputs satisfy valid")
+    Test.check(H.valid(derived_closed()) && H.valid(derived_revoked()) && H.valid(delegatee_revoked()), "GA-008 derived and delegatee close and revoke outputs satisfy valid")
+    Test.check(H.valid(session_closed()) && H.valid(chain_closed()), "GA-008 the three-level Session close and the three-level chain close satisfy valid")
+    Test.check(H.Change.accepted(shared_session_close()) && H.valid(H.Change.state(shared_session_close())) && Nat.is_eq(delegation_count(H.delegations(H.Change.state(shared_session_close()))), 0n) && Nat.is_eq(reader_caps(H.Change.state(shared_session_close())), 5n), "GA-008 a three-level Session close over a delegated copy satisfies valid and refunds all three objects")
 
 # GA-011 Delegations form a derivation tree.
 def ga011_checks() -> IO(Unit):
@@ -998,4 +1058,4 @@ def main() -> IO(Unit):
     ga007_checks()
     ga008_checks()
     ga011_checks()
-    IO.print("HostBinding: 131 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
+    IO.print("HostBinding: 142 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")

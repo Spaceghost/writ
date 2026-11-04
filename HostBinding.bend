@@ -254,6 +254,14 @@ def bound_object_exists(bindings: Bindings, +wanted: Nat) -> Bool:
     case Bindings{Binding{object, _}, rest}:
       Nat.is_eq(object, wanted) || bound_object_exists(rest, wanted)
 
+# Whether some binding links Frontend handle `wanted` to an object.
+def bound_handle_exists(bindings: Bindings, +wanted: Nat) -> Bool:
+  match bindings:
+    case NoBindings{}:
+      False{}
+    case Bindings{Binding{_, handle}, rest}:
+      Nat.is_eq(handle, wanted) || bound_handle_exists(rest, wanted)
+
 # Whether alias `wanted` exists and is held by protection domain `holder`.
 def alias_held(aliases: Aliases, +wanted: Nat, +holder: Nat) -> Bool:
   match aliases:
@@ -350,14 +358,20 @@ def aliases_valid(aliases: Aliases, +objects: Objects, +next: Nat) -> Bool:
 # Every binding links an existing native object to a handle that exists in the
 # embedded Frontend state, so every invocation reaches a real Writ check. An
 # object has at most one binding: two would let list order pick its authority.
+# A handle is bound to at most one object: two objects on one handle would let
+# a reference to either exercise the same Writ grant under the other object's
+# owner, kind, and delegation records, and closing either would close the
+# grant behind both (close_doomed closes the bound handle of every destroyed
+# object). A forged state that shares a handle is denied as a whole.
 # A binding may name a closed handle; invocation still denies through Frontend.
 def bindings_valid(bindings: Bindings, +objects: Objects, +handles: F.Handles) -> Bool:
   match bindings:
     case NoBindings{}:
       True{}
-    case Bindings{Binding{+object, handle}, +rest}:
+    case Bindings{Binding{+object, +handle}, +rest}:
       object_exists(objects, object) && F.handle_exists(handles, handle)
-        && Bool.not(bound_object_exists(rest, object)) && bindings_valid(rest, objects, handles)
+        && Bool.not(bound_object_exists(rest, object)) && Bool.not(bound_handle_exists(rest, handle))
+        && bindings_valid(rest, objects, handles)
 
 # Every delegation node joins two existing aliases, so revoking a subtree never
 # follows a dangling edge. Tree shape: each child alias has at most one parent
@@ -394,6 +408,89 @@ def quotas_valid(quotas: Quotas) -> Bool:
     case Quotas{+quota, +rest}:
       Bool.not(quota_exists(rest, quota_domain(quota))) && quotas_valid(rest)
 
+# Whether object `object` still has a current alias, i.e. is live. Only a
+# live object's destruction releases anything; destroying a stale object again
+# releases nothing.
+def current_alias_exists(aliases: Aliases, +object: Nat, +generation: Nat) -> Bool:
+  match aliases:
+    case NoAliases{}:
+      False{}
+    case Aliases{Alias{_, _, named, current}, rest}:
+      (Nat.is_eq(named, object) && Nat.is_eq(current, generation))
+        || current_alias_exists(rest, object, generation)
+
+# Whether alias `wanted` was made by copying another alias to the same object.
+# A copy was never charged a capability slot; a minted or derived alias was.
+def copied(delegations: Delegations, +aliases: Aliases, +wanted: Nat, +object: Nat) -> Bool:
+  match delegations:
+    case NoDelegations{}:
+      False{}
+    case Delegations{Delegation{from_alias, _, _, alias}, rest}:
+      (Nat.is_eq(alias, wanted) && alias_names(aliases, from_alias, object))
+        || copied(rest, aliases, wanted, object)
+
+def choose_holder(ok: Bool, holder: Nat, rest: Maybe<&2, Nat>) -> Maybe<&2, Nat>:
+  match ok:
+    case True{}:
+      Some{holder}
+    case False{}:
+      rest
+
+# The domain charged when `object` was minted: the holder of its alias that
+# is not a copy. commit_mint creates exactly one such alias per object, and
+# `valid` admits at most one for a live object (see mints_valid), so neither
+# the refund nor close authority depends on list order.
+def minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Maybe<&2, Nat>:
+  match aliases:
+    case NoAliases{}:
+      None{}
+    case Aliases{Alias{id, holder, named, _}, rest}:
+      choose_holder(Nat.is_eq(named, object) && Bool.not(copied(delegations, all, id, object)), holder,
+        minter(rest, delegations, all, object))
+
+def minter_absent(found: Maybe<&2, Nat>) -> Bool:
+  match found:
+    case None{}:
+      True{}
+    case Some{_}:
+      False{}
+
+# Whether at most one alias in `aliases` is an uncopied alias to `object`.
+# Each alias is judged by `minter` itself (on a one-alias list), and the rest
+# by `minter` on the tail, so this clause and the refund rule read one
+# definition of "not a copy" and cannot drift apart. `all` is the complete
+# alias list against which copy edges are resolved.
+def single_minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Bool:
+  match aliases:
+    case NoAliases{}:
+      True{}
+    case Aliases{+alias, +rest}:
+      (minter_absent(minter(Aliases{alias, NoAliases{}}, delegations, all, object))
+          || minter_absent(minter(rest, delegations, all, object)))
+        && single_minter(rest, delegations, all, object)
+
+# Every live object (one with an alias at its current generation) has at most
+# one alias that no delegation node records as a copy of the same object. That
+# alias names the domain `minter` returns: the one refunded when the object is
+# destroyed and the one close_authorized lets destroy it. A second uncopied
+# alias (a reference recorded outside delegation, or a stale alias left beside
+# a current one) would let list order choose which domain is refunded and
+# which may close the object, so the whole state is denied. Every alias to the
+# object counts, whatever its generation, because `minter` reads them all. A
+# destroyed object is exempt: destruction prunes its copies' delegation nodes
+# and leaves their aliases stale, so its copies read as uncopied, and neither
+# refund (gated on current_alias_exists) nor close (which resolves a current
+# alias first) consults `minter` for it. A derived object's first alias is
+# uncopied even when a node records it, because the node's parent names
+# another object.
+def mints_valid(objects: Objects, +aliases: Aliases, +delegations: Delegations) -> Bool:
+  match objects:
+    case NoObjects{}:
+      True{}
+    case Objects{Object{+id, +generation, _, _, _, _}, rest}:
+      (Bool.not(current_alias_exists(aliases, id, generation)) || single_minter(aliases, delegations, aliases, id))
+        && mints_valid(rest, aliases, delegations)
+
 # Public entry point: the structural invariant every transition requires of
 # its input and preserves on success. It is total and checks shape only; it
 # does not authenticate the state, the routes, or who holds which alias.
@@ -403,21 +500,24 @@ def quotas_valid(quotas: Quotas) -> Bool:
 # - object and alias ids are unique and were allocated by their counters, and
 #   every derivation edge names an earlier existing object on the same service;
 # - every alias and every binding names an existing object, and every binding
-#   names an existing Frontend handle, with at most one binding per object;
+#   names an existing Frontend handle, with at most one binding per object and
+#   at most one object per handle;
 # - every delegation joins existing aliases in a parent-before-child tree,
 #   names the child's holder, and stays on the parent's object or on an
 #   object derived from it;
+# - every live object has at most one uncopied alias, the minter's;
 # - each domain has at most one quota account.
 # Routes carry no ids; a mount transition must check the route's subject
 # against the authenticated caller.
 def valid(state: State) -> Bool:
   match state:
     case State{_, +next_object, +next_alias, +objects, +aliases, _, quotas,
-        delegations, bindings, +frontend}:
+        +delegations, bindings, +frontend}:
       Nat.is_gt(next_object, 0n) && Nat.is_gt(next_alias, 0n) && F.valid(frontend)
         && objects_valid(objects, objects, next_object) && aliases_valid(aliases, objects, next_alias)
         && bindings_valid(bindings, objects, F.handles(frontend))
-        && delegations_valid(delegations, aliases, objects) && quotas_valid(quotas)
+        && delegations_valid(delegations, aliases, objects) && mints_valid(objects, aliases, delegations)
+        && quotas_valid(quotas)
 
 # ---------------------------------------------------------------------------
 # Transitions.
@@ -1170,44 +1270,6 @@ def destroy(objects: Objects, +cut: Cut, +aliases: Aliases, +all: Objects) -> Ob
     case Objects{+object, rest}:
       Objects{bumped(doomed(object_id(object), cut, aliases, all, object_id(object)), object),
         destroy(rest, cut, aliases, all)}
-
-# Whether object `object` still has a current alias, i.e. is live. Only a
-# live object's destruction releases anything; destroying a stale object again
-# releases nothing.
-def current_alias_exists(aliases: Aliases, +object: Nat, +generation: Nat) -> Bool:
-  match aliases:
-    case NoAliases{}:
-      False{}
-    case Aliases{Alias{_, _, named, current}, rest}:
-      (Nat.is_eq(named, object) && Nat.is_eq(current, generation))
-        || current_alias_exists(rest, object, generation)
-
-# Whether alias `wanted` was made by copying another alias to the same object.
-# A copy was never charged a capability slot; a minted or derived alias was.
-def copied(delegations: Delegations, +aliases: Aliases, +wanted: Nat, +object: Nat) -> Bool:
-  match delegations:
-    case NoDelegations{}:
-      False{}
-    case Delegations{Delegation{from_alias, _, _, alias}, rest}:
-      (Nat.is_eq(alias, wanted) && alias_names(aliases, from_alias, object))
-        || copied(rest, aliases, wanted, object)
-
-def choose_holder(ok: Bool, holder: Nat, rest: Maybe<&2, Nat>) -> Maybe<&2, Nat>:
-  match ok:
-    case True{}:
-      Some{holder}
-    case False{}:
-      rest
-
-# The domain charged when `object` was minted: the holder of its alias that
-# is not a copy. commit_mint creates exactly one such alias per object.
-def minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Maybe<&2, Nat>:
-  match aliases:
-    case NoAliases{}:
-      None{}
-    case Aliases{Alias{id, holder, named, _}, rest}:
-      choose_holder(Nat.is_eq(named, object) && Bool.not(copied(delegations, all, id, object)), holder,
-        minter(rest, delegations, all, object))
 
 def add_one(ok: Bool, quota: Quota) -> Quota:
   match ok quota:
