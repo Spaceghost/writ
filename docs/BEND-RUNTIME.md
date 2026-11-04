@@ -109,3 +109,22 @@ host-symbol surface; it refuses (exit 2) a stripped binary rather than passing i
 records Hello passing and `scripts/runtime-profile/Widened.bend`, which adds
 `TCP.listen`, failing on `TCP.listen` and the socket imports. A passing check
 is one input to host qualification; it does not qualify a host by itself.
+
+Lane parity and fail-stop were checked by execution on this Linux host, CPU
+only with `--gpu off`.
+[`verification/runtime-profile-parity.txt`](../verification/runtime-profile-parity.txt)
+records `Tests.bend` and the four examples built natively and run with
+`--threads 1` and `--threads 4`: 638 corpus PASS lines and 29 example PASS
+lines at both lane counts, with no difference between the captures or from the
+existing four-thread records.
+[`scripts/runtime-profile/Overflow.bend`](../scripts/runtime-profile/Overflow.bend)
+recurses without a tail call; at one billion levels it reaches the guard above
+the 2 GiB evaluation stack, and
+[`verification/runtime-profile-fault.txt`](../verification/runtime-profile-fault.txt)
+shows the handler's `bend: memory fault (machine stack overflow?)`, no further
+output, and exit status 139 from the re-raised `SIGSEGV`.
+[`verification/runtime-profile-reservation.txt`](../verification/runtime-profile-reservation.txt)
+shows Hello under `ulimit -v` failing the corpus or the stack reservation with
+`bend: reservation failed` and exit 1, despite `MAP_NORESERVE`. These records
+cover one host; they do not show that another host delivers the fault or
+enforces the limit.

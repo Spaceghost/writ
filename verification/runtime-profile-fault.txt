@@ -72,7 +72,7 @@ signal is stopped before delivery; the runs above, without gdb, show the handler
 
 ## Result
 Depths of 10^6, 10^7 and 10^8 return and print their count. At 10^9 the recursion reaches the
-guard page (located below): the runtime prints its own message "bend: memory fault (machine stack overflow?)" on
+guard page (see the gdb section above): the runtime prints its own message "bend: memory fault (machine stack overflow?)" on
 stderr, stdout is empty (the count was never printed, so execution did not continue past the
 fault), and the process ends with status 139 (SIGSEGV re-raised under SIG_DFL), which is nonzero.
 The fault took well under the one-minute bound. This is CPU execution on one Linux host; it says
