@@ -234,7 +234,18 @@ nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { colo
 .lane .drift ul { margin: .2rem 0 .4rem; padding-left: 1.2rem; font-size: .86rem; }
 .lane .drift .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
+/* Quick-view panel: a right-hand drawer over the index with a board page embedded. */
+.panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(56rem, 70vw); background: var(--surface); border-left: 1px solid var(--line); box-shadow: -12px 0 32px rgba(0, 0, 0, .18); z-index: 20; display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); }
+.panel-bar { display: flex; align-items: center; gap: .8rem; padding: .45rem .8rem .45rem 1rem; border-bottom: 1px solid var(--line); background: var(--bg); font-size: .85rem; }
+.panel-path { font-family: var(--mono); font-size: .78rem; color: var(--muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-open { white-space: nowrap; }
+.panel-close { font: inherit; font-size: 1.3rem; line-height: 1; background: none; border: 1px solid transparent; border-radius: 4px; color: var(--muted); width: 1.8rem; height: 1.8rem; cursor: pointer; }
+.panel-close:hover { color: var(--fg); background: var(--accent-soft); }
+.panel-frame { flex: 1; width: 100%; border: 0; background: var(--bg); }
+body.embed .content { max-width: none; padding: 1rem max(16px, 2vw) 3rem; }
+body.embed h1 { font-size: 1.6rem; }
 @media (max-width: 760px) {
+  .panel { width: 100vw; border-left: 0; }
   .shell { grid-template-columns: minmax(0, 1fr); }
   .side { order: 2; position: static; max-height: none; border-right: none; border-top: 1px solid var(--line); padding: 1rem 16px 2rem; }
   .content { order: 1; padding: 1.1rem 16px 2.5rem; }

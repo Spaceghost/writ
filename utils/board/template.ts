@@ -32,9 +32,48 @@ const href = (name: string) => encodeURIComponent(name);
 /** An id-safe slug: Datastar and CSS selectors need no escaping for it. */
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 
-/** Full document. `page` is the board path whose fragments /events re-renders. */
-export function shell(title: string, nav: string, main: string, page: string): string {
+/**
+ * On the index, a click on any same-origin page link opens that page in the
+ * quick-view panel instead of leaving the index: the handler is delegated
+ * from the shell, so links in pushed fragments need nothing extra. Links with
+ * a hash (lane anchors), a target, or to the index itself keep their default.
+ */
+const PEEK_HANDLER = "const a = evt.target.closest('a[href]'); if (a && a.origin == location.origin && !a.hash && !a.target && a.pathname != '/') { evt.preventDefault(); $panel = a.pathname; }";
+
+/** The quick-view panel: a drawer showing a board page embedded (no header or nav), still live over its own /events stream. */
+function panel(): string {
+  return `<aside id="panel" class="panel" data-show="$panel != ''" data-preserve-attr="style" style="display:none" aria-label="Quick view">
+<div class="panel-bar"><span class="panel-path" data-text="$panel"></span><a class="panel-open" data-attr:href="$panel" target="_top">open in full</a><button type="button" class="panel-close" aria-label="Close the quick view" data-on:click="$panel = ''">×</button></div>
+<iframe id="panel-frame" class="panel-frame" title="Quick view" data-attr:src="$panel ? $panel + ($panel.indexOf('/html/') > 0 ? '' : '?embed=1') : 'about:blank'" sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
+</aside>`;
+}
+
+/**
+ * Full document. `page` is the board path whose fragments /events re-renders.
+ * `embed` renders the page without the header and nav, for the quick-view
+ * panel (`?embed=1`); it keeps its own live stream.
+ */
+export function shell(title: string, nav: string, main: string, page: string, embed = false): string {
   const init = esc(`@get('/events?page=' + ${JSON.stringify(encodeURIComponent(page))})`);
+  if (embed) {
+    return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>${esc(title)} · Writ board</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="/board.css">
+<script type="module" src="${DATASTAR_URL}" integrity="${DATASTAR_SRI}" crossorigin="anonymous"></script>
+</head>
+<body class="embed" data-init="${init}">
+${main}
+</body>
+</html>
+`;
+  }
+  const onIndex = page === "/";
+  const shellAttrs = onIndex ? ` data-signals:panel__ifmissing="''" data-on:click="${esc(PEEK_HANDLER)}" data-on:keydown__window="evt.key == 'Escape' &amp;&amp; ($panel = '')"` : "";
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -47,10 +86,11 @@ export function shell(title: string, nav: string, main: string, page: string): s
 </head>
 <body data-init="${init}">
 <header class="top"><a class="brand" href="/">Writ board</a><span class="note">read-only view of openspec/; makes no verification claim</span></header>
-<div class="shell">
+<div class="shell"${shellAttrs}>
 ${nav}
 ${main}
 </div>
+${onIndex ? panel() : ""}
 </body>
 </html>
 `;
