@@ -143,20 +143,19 @@ tr.rest .tablewrap { margin: .5rem 0 0; }
 .act { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.4rem; height: 1.4rem; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); color: var(--muted); cursor: pointer; }
 .act:hover, .act.open { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 tr.activityrow .log { max-height: 16rem; }
-/* The ticker belongs to the row above: no rule between them, the same
-   background, a smaller muted line indented to the change name. */
+/* The ticker belongs to the row above: no rule between them, the row's colour
+   darkened slightly, the rule under it between changes. */
 tr.change-row:has(+ tr.tickerrow) > td { border-bottom: 0; padding-bottom: .2rem; }
-tr.tickerrow > td { padding: 0 .6rem .35rem 2.3rem; border-bottom: 1px solid var(--line); }
-tr.row-live + tr.tickerrow, tr.row-live + tr.tickerrow > td { background: var(--accent-soft); }
+tr.tickerrow > td { padding: .35rem .6rem .4rem 2.2rem; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--surface), #000 6%); }
+tr.row-live + tr.tickerrow > td { background: color-mix(in srgb, var(--accent-soft), #000 6%); }
 .ticker { margin: 0; display: flex; align-items: baseline; gap: .55rem; font-size: .76rem; line-height: 1.4; color: var(--muted); white-space: nowrap; overflow: hidden; width: 0; min-width: 100%; animation: tick-in .45s ease-out; }
 .ticker > span { flex: none; }
 .ticker .log-at { font-size: .7rem; }
 .ticker .log-who { font-family: var(--body); font-size: inherit; color: var(--muted); font-weight: 600; overflow-wrap: normal; }
 .ticker .log-role { font-weight: 400; }
-.ticker .log-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
-@keyframes tick-in { from { opacity: 0; transform: translateY(.5rem); background: var(--accent-soft); } to { opacity: 1; transform: none; } }
+@keyframes tick-in { from { opacity: 0; transform: translateY(.5rem); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ticker { animation: none; } }
-tr.activityrow .log li { grid-template-columns: 4.6rem 12rem minmax(0, 1fr); }
+.ticker .log-text { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
 /* One line per chip: only the phase gives way (ellipsis); the dot, the name,
    and the age never shrink. */
 .chip { display: inline-flex; align-items: baseline; gap: .4rem; font-size: .8rem; line-height: 1.35; padding: .05rem .55rem .05rem .45rem; border-radius: 999px; background: var(--code-bg); border: 1px solid var(--line); max-width: 100%; min-width: 0; white-space: nowrap; overflow: hidden; }

@@ -1,0 +1,6 @@
+### Task 1: The per-host record
+
+Write `verification/runtime-profile-hosts.md`: a table with one row per executed host configuration (Linux native single-lane, Linux native four-lane, Linux JavaScript backend, Genode base-linux single-lane, Unikraft QEMU TCG single-lane; add the Genode base-hw and the Unikraft channel rows only as "pending: lane in flight" placeholders with no numbers) and columns: corpus output file, PASS count and final line, lane count, GPU mode (every row is CPU; say "GPU off, CPU fallback" where the record says so), compiler and version (clang-23 for the Genode generated C, gcc for Unikraft, Bend's own native pipeline for Linux; cite where each is recorded), binary or image hash with the note that Unikraft clean builds embed the build time, the exact harness line (QEMU machine, `-m`, `-no-reboot`, or the Genode run script and quota), and the evidence section it comes from. Below the table: a "Review-only" list for rows read from source rather than executed (for example the Genode base-linux `munmap` row credited to the C probe, OSv entries), each with its citation. State the 638 → 764 → 782 corpus history once and which rows ran at which count.
+
+Acceptance: every cell cites a file that contains that value; executed and review-only rows are separated; box 3.1 checked with the file named.
+
