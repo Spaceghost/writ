@@ -1,0 +1,86 @@
+Runtime profile fail-stop on stack overflow (RH-006)
+Bend version: bend 2.0.39 (from `bend version`)
+Compiler: clang version 23.1.1 (`bend -o` builds at -O2)
+Host: Linux 7.2.9-1-MANJARO x86_64, glibc 2.44
+Date: 2026-11-03 (CST)
+Environment: BEND_NO_TELEMETRY=1; commands run from the repository root
+Lanes: --threads 1. GPU mode: --gpu off; CPU execution only, not GPU evidence.
+Source: scripts/runtime-profile/Overflow.bend (sha256 2053b29f53f3384567c8c923147e53bfeccccf523b0c34ee91e40ed5eaba50e0)
+
+Runtime handler under test (Bend 2.0.39 emitted C): pool_stack() maps a 2 GiB stack plus a 16 KiB
+PROT_NONE guard and installs err_trap for SIGSEGV and SIGBUS on an alternate signal stack;
+err_trap writes "bend: memory fault (machine stack overflow?)" to fd 2, restores SIG_DFL, and
+re-raises the signal, so the process ends by SIGSEGV (shell status 128 + 11 = 139).
+
+## Depth attempts
+Each attempt is Overflow.bend with only the overflow_depth literal changed (the committed file
+uses 1000000000n); stdout and stderr are captured separately.
+
+### depth 1000000
+$ sed 's/^  1000000000n$/  1000000n/' scripts/runtime-profile/Overflow.bend > ../writ-build/runtime-profile/overflow/Overflow-1000000.bend
+$ bend ../writ-build/runtime-profile/overflow/Overflow-1000000.bend -o ../writ-build/runtime-profile/overflow/overflow-1000000
+[exit status: 0]
+$ ../writ-build/runtime-profile/overflow/overflow-1000000 +RTS --threads 1 --gpu off > ../writ-build/runtime-profile/overflow/out-1000000 2> ../writ-build/runtime-profile/overflow/err-1000000
+[exit status: 0; wall time 0.00660s]
+stdout (8 bytes): 1000000
+stderr (0 bytes): 
+
+### depth 10000000
+$ sed 's/^  1000000000n$/  10000000n/' scripts/runtime-profile/Overflow.bend > ../writ-build/runtime-profile/overflow/Overflow-10000000.bend
+$ bend ../writ-build/runtime-profile/overflow/Overflow-10000000.bend -o ../writ-build/runtime-profile/overflow/overflow-10000000
+[exit status: 0]
+$ ../writ-build/runtime-profile/overflow/overflow-10000000 +RTS --threads 1 --gpu off > ../writ-build/runtime-profile/overflow/out-10000000 2> ../writ-build/runtime-profile/overflow/err-10000000
+[exit status: 0; wall time 0.02949s]
+stdout (9 bytes): 10000000
+stderr (0 bytes): 
+
+### depth 100000000
+$ sed 's/^  1000000000n$/  100000000n/' scripts/runtime-profile/Overflow.bend > ../writ-build/runtime-profile/overflow/Overflow-100000000.bend
+$ bend ../writ-build/runtime-profile/overflow/Overflow-100000000.bend -o ../writ-build/runtime-profile/overflow/overflow-100000000
+[exit status: 0]
+$ ../writ-build/runtime-profile/overflow/overflow-100000000 +RTS --threads 1 --gpu off > ../writ-build/runtime-profile/overflow/out-100000000 2> ../writ-build/runtime-profile/overflow/err-100000000
+[exit status: 0; wall time 0.53874s]
+stdout (10 bytes): 100000000
+stderr (0 bytes): 
+
+### depth 1000000000
+$ bend scripts/runtime-profile/Overflow.bend -o ../writ-build/runtime-profile/overflow/overflow-1000000000
+[exit status: 0]
+$ ../writ-build/runtime-profile/overflow/overflow-1000000000 +RTS --threads 1 --gpu off > ../writ-build/runtime-profile/overflow/out-1000000000 2> ../writ-build/runtime-profile/overflow/err-1000000000
+(invoking shell, not the program: "Segmentation fault (core dumped)" for the re-raised signal)
+[exit status: 139 = 128 + 11, signal SIGSEGV; wall time 7.48719s]
+stdout (0 bytes): 
+stderr (45 bytes): bend: memory fault (machine stack overflow?)
+
+## Where the fault lands (gdb, depth 10^9)
+$ gdb -q -batch -ex 'handle SIGSEGV stop nopass' -ex 'run +RTS --threads 1 --gpu off' \
+    -ex 'p $_siginfo._sifields._sigfault.si_addr' -ex 'bt 3' -ex 'info proc mappings' \
+    ../writ-build/runtime-profile/overflow/overflow-1000000000
+Excerpt of the output:
+Program received signal SIGSEGV, Segmentation fault.
+0x00005555555594b8 in WL_FID_climb ()
+$1 = (void *) 0x7ffff79ee000
+#0  0x00005555555594b8 in WL_FID_climb ()
+#1  0x000055555555912d in work_loop ()
+#2  0x0000555555556b8a in corpus_eval ()
+0x00007fff779ee000 0x00007ffff79ee000 0x80000000         0x0                rw-p
+0x00007ffff79ee000 0x00007ffff79f2000 0x4000             0x0                ---p
+The faulting address is the first byte of the 16 KiB PROT_NONE guard directly above the 2 GiB
+(0x80000000) read-write evaluation stack, raised from climb's work-loop case. So the fault is the
+evaluation stack walking into pool_stack's guard, not an unrelated bad access. (Under gdb the
+signal is stopped before delivery; the runs above, without gdb, show the handler's behaviour.)
+
+## Result
+Depths of 10^6, 10^7 and 10^8 return and print their count. At 10^9 the recursion reaches the
+guard page (located below): the runtime prints its own message "bend: memory fault (machine stack overflow?)" on
+stderr, stdout is empty (the count was never printed, so execution did not continue past the
+fault), and the process ends with status 139 (SIGSEGV re-raised under SIG_DFL), which is nonzero.
+The fault took well under the one-minute bound. This is CPU execution on one Linux host; it says
+nothing about whether another host delivers the signal (RH-006's second scenario is not tested).
+
+## Aside: `bend FILE` without -o
+Running the source directly, not a native binary, overflows much earlier; recorded for context only:
+$ bend ../writ-build/runtime-profile/overflow/Overflow-1000000.bend
+[exit status: 1]
+stdout (0 bytes): 
+stderr: bend: memory fault (machine stack overflow?)
