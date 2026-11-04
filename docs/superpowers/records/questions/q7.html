@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 1 of 9: what the file claims to be, and how the component starts</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 1 of 9: what the file claims to be, and how the component starts</h1>
+<p>This first pass reads the file's own description of itself, its compile-time bounds, and the component entry. Some Genode vocabulary first. A <em>session</em> is a connection one component opens to a service another component (or the kernel-side <em>core</em>) provides; the <em>parent</em> (here, <code>init</code>) routes each session request according to its configuration. A <em>capability</em> is an unforgeable reference to an object in another component: holding it lets you call that object, nothing more. A <em>quota</em> is the RAM and capability count a component was given by its parent; opening a session donates part of it. The <em>Pd_session</em> (protection domain) is the component's own session to core for its address space, RAM, and caps. An <em>Entrypoint</em> is a thread that receives RPCs and signals for objects it manages. The shim is linked into each Bend program, replaces libc's <code>mmap</code>/<code>munmap</code>/<code>mprotect</code>, and supplies the C functions behind the <code>Genode.log/now/sleep/take/put</code> effects. Lines 1-239 are one long comment; read 1-74 now and keep the rest for later pages. Lines 438-486 hold the shim's state for the life of the process: <code>Kept&lt;T&gt;</code> never runs a destructor, so nothing is torn down under mapped memory at exit (<code>INVENTORY.md:360-367</code>).</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:1-74</code>, <code>writ_mem.cc:241-302</code>, <code>writ_mem.cc:438-486</code>, <code>writ_mem.cc:1845-1919</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:1890-1919</code> (tabs shown as four spaces):</p>
+<pre><code>void Libc::Component::construct(Libc::Env &amp;env)
+{
+    _heap.construct(env.ram(), env.rm());
+    _pd.construct(env.pd_session_cap());
+
+    _env = &amp;env;   /* lookup helpers need it; entry points stay ENOSYS until resolved */
+    if (!_resolve_libc()) {
+        _libc_mmap = nullptr; _libc_munmap = nullptr; _libc_mprotect = nullptr;
+        env.parent().exit(1);
+        return;
+    }
+
+#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+    /* the "writ_fault" entrypoint (header, "Fault delivery", case 2) */
+    _install_fault_handler();
+#endif
+
+    /* Writ channel service, only with a &lt;writ_channel&gt; config node */
+    _channel_init(env);
+
+    /* as repos/libports/src/lib/posix/construct.cc */
+    Libc::with_libc([&amp;] () {
+        int argc = 0; char **argv = nullptr; char **envp = nullptr;
+        populate_args_and_env(env, argc, argv, envp);
+        environ = envp;
+        if (char const *v = getenv("WRIT_MEM_REPORT"))
+            if (v[0] == '1' &amp;&amp; v[1] == 0) atexit(_report_at_exit);
+        exit(main(argc, argv, envp));
+    });
+}</code></pre>
+<p class="note"><strong>Limit or policy?</strong> The bounds at 286-297 (1 GiB threshold, 1 TiB cap, 32 reservations, 4 guards, 16 retries, 64 KiB/8 cap margins) are compile-time constants. Nothing reads them from config, the environment, or Bend, so they cannot vary by caller. Whether each one is merely mechanical is judged on the page that uses it. The front-end choice is made at build time on purpose (header 62-74) so an integrator cannot pick it in config.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li>Exactly one fault front end is compiled: a build defining both or neither of <code>WRIT_SHIM_FAULT_LINUX_SIGSEGV</code> and <code>WRIT_SHIM_FAULT_REGION_MAP</code> fails at <code>writ_mem.cc:241-243</code>; no runtime attribute selects it (header <code>writ_mem.cc:62-74</code>).</li>
+<li>Every bound in the static enum <code>writ_mem.cc:286-297</code> and the base-hw constants <code>writ_mem.cc:299-302</code> is an enum literal; none is derived from config, the environment, a caller's argument, or Bend.</li>
+<li><code>construct</code> <code>writ_mem.cc:1890-1919</code> does only this, in order: builds the Heap and a plain PD client (1892-1893), resolves libc's originals and exits 1 if that fails (1896-1900), on base-hw starts the fault entrypoint (1902-1905), starts the channel service only if config has <code>&lt;writ_channel&gt;</code> (1908, then 1653-1667), and runs <code>main</code>. The one environment variable it reads, <code>WRIT_MEM_REPORT</code> (1915-1916), only registers the diagnostic report at 1888.</li>
+<li><code>_resolve_libc</code> <code>writ_mem.cc:1858-1879</code> refuses to start if the lookup returns the shim's own functions (1869-1874), and until it succeeds the three entry points return <code>ENOSYS</code> (1044, 1055, 1075).</li>
+</ol>
+<form method="post" action="/questions/q7/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>
