@@ -2,8 +2,9 @@
 
 Sections 1 and 2 are complete with the evidence named in
 [VERIFICATION.md](../../../VERIFICATION.md) and the
-[traceability table](../../traceability/genode-capability-adoption.md); section 3
-remains pending. This is pure Bend work that can proceed without a Genode build.
+[traceability table](../../traceability/genode-capability-adoption.md); in
+section 3, 3.1 is checked and 3.2 remains pending. This is pure Bend work that
+can proceed without a Genode build.
 
 ## 1. Model
 
@@ -20,5 +21,5 @@ remains pending. This is pure Bend work that can proceed without a Genode build.
 
 ## 3. Handoff
 
-- [ ] 3.1 Document in the Genode component change how `Genode.take` constructs binding records from the parent route and object identity, and which vectors it must replay; leave that change's tasks unchecked.
+- [x] 3.1 Document in the Genode component change how `Genode.take` constructs binding records from the parent route and object identity, and which vectors it must replay; leave that change's tasks unchecked. Evidence: section "Binding records from `Genode.take`" in [add-genode-bend-component/design.md](../add-genode-bend-component/design.md) (identity sources, field mapping with constants and gaps, the GA-005 and GA-008 vectors with the Genode run or gap for each, and what is not yet reachable); that change's tasks are untouched. No vector is replayed on the host yet.
 - [ ] 3.2 Validate OpenSpec strictly.
