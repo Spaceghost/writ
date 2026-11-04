@@ -4,6 +4,7 @@ import ../Backplane.bend as Backplane
 import ../Transfer.bend as Transfer
 import ./Native.bend as Native
 import ./Host.bend as Host
+import ./Main.bend as Cli
 import ./examples/Authority.bend as Example
 
 # Native fixtures contain only this public string. The CI launcher supplies a
@@ -156,11 +157,47 @@ def verified_creation(+result: Native.Receipt) -> IO(Native.Receipt):
     reconciled_creation(result)
     return result
 
-def create_stage(authorization: Native.Authorized) -> IO(Native.Receipt):
+def diagnostic_observation(label: String,
+  found: Result<&2, &2, String, Native.Observation>) -> IO(Unit):
+  match found:
+    case Done{value}:
+      IO.print(label ++ Cli.describe(value))
+    case Fail{reason}:
+      IO.print(label ++ "inspection failed: " ++ reason)
+
+# These identities describe only fresh public fixtures. Production Host errors
+# remain redacted; diagnostics do not adopt, repeat, or change an unknown effect.
+def diagnostic_sources(+expected: Native.Observation, destination_provider: Native.Provider,
+  destination_locator: String) -> IO(Unit):
+  Native.Observation{source_provider, _, source_locator, _, _, _, _, _, _, _, _} = expected
+  do IO<Unit>:
+    IO.print("Expected source: " ++ Cli.describe(expected))
+    source : Result<&2, &2, String, Native.Observation> <- Host.observe(source_provider, source_locator)
+    diagnostic_observation("Current source: ", source)
+    created : Result<&2, &2, String, Native.Observation> <- Host.observe(destination_provider, destination_locator)
+    diagnostic_observation("Created stage: ", created)
+
+def diagnostic_stage(spec: Native.Spec) -> IO(Unit):
+  Native.Spec{Native.Source{_, expected},
+    Native.Destination{destination_provider, _, destination_locator, _}, _, _} = spec
+  diagnostic_sources(expected, destination_provider, destination_locator)
+
+def stage_outcome(spec: Native.Spec, outcome: Host.Outcome) -> IO(Native.Receipt):
+  match outcome:
+    case Host.Staged{result}:
+      verified_creation(result)
+    case Host.Refused{reason}:
+      IO.die(Native.Receipt, 1, "FAIL native action refused: " ++ reason)
+    case Host.Unknown{reason}:
+      do IO<Native.Receipt>:
+        diagnostic_stage(spec)
+        IO.die(Native.Receipt, 1, "FAIL native action uncertain: " ++ reason)
+
+def create_stage(+authorization: Native.Authorized) -> IO(Native.Receipt):
+  Native.Authorized{spec, _, _, _, _} = authorization
   do IO<Native.Receipt>:
     outcome : Host.Outcome <- Host.execute(authorization)
-    result : Native.Receipt <- receipt(outcome)
-    verified_creation(result)
+    stage_outcome(spec, outcome)
 
 def stage(backend: Native.Provider, source: String, container: String,
   name: String) -> IO(Native.Receipt):
@@ -233,7 +270,7 @@ def zfs_volume(+pool: String, +staging: String) -> IO(Unit):
     +device : String = "/dev/zvol/" ++ volume
     command(["zfs", "create", "-V", "8M", "-o", "refreservation=none",
       "-o", "volmode=dev", "-o", "snapdev=hidden", volume], "create fresh public zvol")
-    command(["udevadm", "settle", "--timeout=10"], "wait for the owned zvol device")
+    command(["udevadm", "wait", "--timeout=15", device], "wait for the owned zvol device")
     command(["test", "-b", device], "require the newly created block device")
     write(device, "w", payload())
     command(["blockdev", "--flushbufs", device], "flush public fixture block writes")
@@ -244,7 +281,7 @@ def zfs_volume(+pool: String, +staging: String) -> IO(Unit):
     Test.check(True{}, "native zvol clone remains unexposed with volmode=none")
     # Only the test harness changes this property, for public fixture inspection.
     command(["zfs", "set", "volmode=dev", staging ++ "/volume-copy"], "expose public test zvol")
-    command(["udevadm", "settle", "--timeout=10"], "wait for public clone device")
+    command(["udevadm", "wait", "--timeout=15", copy_device], "wait for public clone device")
     command(["test", "-b", copy_device], "require the owned cloned block device")
     contents : String <- read(copy_device, U32.from_nat(String.length(payload())))
     Test.check(String.eq(contents, payload()), "native zvol clone preserves the actual block payload")
