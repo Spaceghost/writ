@@ -4,3 +4,4 @@ Base: 9835bd7
 Preflight: single-lane work on a separate 0.16.3 tree; touches hosts/unikraft scripts and INVENTORY, scripts/unikernel, verification, docs/UNIKERNELS.md, the unikernel tasks.md box 1.3. No other lane is open.
 Task 1: dispatched (base 9835bd7).
 Task 1: stalled (recorded) — bend: reservation failed; three attempts in verification/unikernel-linuxu.txt.
+Task 2: stall branch — UNIKERNELS.md paragraph, tasks.md 1.3 note, box unchecked.

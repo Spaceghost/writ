@@ -169,8 +169,20 @@ built here).
 | Rebuild-stable image (not UL-008 reproducibility) | (matrix, before the port; see [unikernel-crash-action.txt](../verification/unikernel-crash-action.txt), Images) **incremental** rebuilds on one host and path gave identical image hashes (unikernel-matrix-unikraft.md, "Build and run harness (outside the tree)", image hash table), but **clean builds are not hash-stable**: Unikraft embeds the build time (`HOSTUTC`, `lib/uklibid`), and two clean builds differ in those bytes | **rebuild-stable on one host and path**: the probes image rebuilt to the same hash (unikernel-matrix-osv.md, "Image and executable hashes", rebuild line) |
 
 `linuxu` is not a column: the pinned 0.21.0 has no `linuxu` platform, and the 0.16.3 run
-(process execution, not a boot) stops at `bend: reservation failed` because `posix-mmap`
-is unavailable there (E10).
+(process execution, not a boot) stops at `bend: reservation failed` (E10). The
+unikraft-linuxu lane (2026-11-04, [unikernel-linuxu.txt](../verification/unikernel-linuxu.txt))
+traced the stop and recorded it as a stall: the failing reservation is the runtime's first one,
+the fixed 8 GiB CPU heap (`corpus_map`, 13 `mmap` requests of `0x200000000` bytes with
+`MAP_NORESERVE`), each answered `-ENOMEM` by Unikraft's own `lib/ukmmap`, which serves `mmap` as a
+zeroed `uk_memalign` from the platform heap; `posix-mmap` cannot be configured there because it
+needs `ukvmem`, which selects paging, and `linuxu` depends on `!HAVE_PAGING`. Of the three
+attempts, no runtime option shrinks the heap or the 2 GiB stack (the generated C accepts only
+`--threads`, `--gpu`, `--gpu-build` and `--help`); raising `CONFIG_LINUXU_DEFAULT_HEAPMB` came
+closest, but the heap length is a 32-bit byte count, so 4095 MiB is the most the platform can map
+(granted by the host, still under half of one 8 GiB request; 8196 wraps to 4 MiB); and `ukmmap`
+has no lazily backed or reserving path for `MAP_NORESERVE`. The reference program therefore has
+not run under `linuxu`, and getting further would need the generated C, the runtime, or Unikraft
+changed, which the lane does not do. After the failure the process does not exit (killed, 124).
 
 ### Chosen kernel for the native-link lane: Unikraft 0.21.0
 

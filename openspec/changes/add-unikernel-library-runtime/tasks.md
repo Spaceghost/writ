@@ -21,6 +21,12 @@ pending.
   was run and recorded as process execution, but it stops at `bend: reservation failed`
   before the program's first output (unikernel-matrix-unikraft.md, E10), so the reference
   program has not run under `linuxu`.
+  Stopping point (unikraft-linuxu lane, verification/unikernel-linuxu.txt): the stop is the
+  runtime's 8 GiB CPU heap reservation, refused with `-ENOMEM` by `lib/ukmmap`, the only `mmap`
+  linuxu can link (`posix-mmap` needs paging, which linuxu excludes). No runtime option shrinks it;
+  raising `CONFIG_LINUXU_DEFAULT_HEAPMB` came closest but caps at 4095 MiB (a 32-bit length); and
+  `ukmmap` has no `MAP_NORESERVE` reservation path. Still process execution, not a boot; the box
+  stays unchecked.
 
 ## 2. Port
 
