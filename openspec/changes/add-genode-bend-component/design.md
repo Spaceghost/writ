@@ -150,7 +150,7 @@ channel delivers.
 in `HostBindingTests.bend`; two required properties are `valid` checks with no
 vector line. "Analogue" means a Genode run exercises the corresponding monitor
 path; none feeds the vector's inputs or compares its normalized outcome.
-GA-009 (`openspec/changes/add-genode-capability-adoption/specs/genode-capability-adoption/spec.md:174`)
+GA-009 (`openspec/specs/genode-capability-adoption/spec.md` (archived from the change on 2026-11-04; line 174 of the change's delta))
 requires a host port to replay all 41 vectors in
 `verification/host-binding-vectors.txt`. Inclusion rule for this table: every
 GA-005 and GA-008 vector and `valid` check, plus the GA-002 route vectors

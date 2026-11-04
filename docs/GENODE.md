@@ -224,7 +224,7 @@ The broader native C runtime port and ingress are specified in
 [add-genode-bend-component](../openspec/changes/add-genode-bend-component/proposal.md):
 Bend-authored effects with C twins over one inventoried `extern "C"` shim. The
 binding between Genode objects and Writ handles is modeled in Bend by
-[add-genode-capability-adoption](../openspec/changes/add-genode-capability-adoption/proposal.md).
+[add-genode-capability-adoption](../openspec/changes/archive/2026-11-04-add-genode-capability-adoption/proposal.md).
 The inspected runtime surface is in [BEND-RUNTIME.md](BEND-RUNTIME.md).
 
 Genode has a GPU session interface for buffers, mappings, submission, and

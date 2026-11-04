@@ -89,7 +89,7 @@ Bend.
 | Change | Required evidence |
 | --- | --- |
 | [Bend runtime as a Genode component](changes/add-genode-bend-component/proposal.md) | Generated C compiled in the Genode build on `base-linux` then `base-hw`; per-row runtime outcomes; Bend-authored effects over LOG, Timer, and a Writ session; one inventoried `extern "C"` shim with no policy |
-| [Genode capability adoption](changes/add-genode-capability-adoption/proposal.md) | A Bend host-binding model composed with `Frontend`: generations, routes, delegation edges, quotas; adopted and rejected Genode semantics as tests, laws, and replayable vectors |
+| [Genode capability adoption](changes/archive/2026-11-04-add-genode-capability-adoption/proposal.md) (archived 2026-11-04; baseline [genode-capability-adoption](specs/genode-capability-adoption/spec.md)) | A Bend host-binding model composed with `Frontend`: generations, routes, delegation edges, quotas; adopted and rejected Genode semantics as tests, laws, and replayable vectors |
 
 Neither completes the Genode host's confinement, sealing, or revocation tasks.
 

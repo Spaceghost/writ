@@ -1,6 +1,6 @@
 # Genode capability adoption traceability
 
-Proposed change: [add-genode-capability-adoption](../changes/add-genode-capability-adoption/specs/genode-capability-adoption/spec.md).
+Proposed change: [add-genode-capability-adoption](../changes/archive/2026-11-04-add-genode-capability-adoption/specs/genode-capability-adoption/spec.md), archived 2026-11-04 into the baseline [genode-capability-adoption](../specs/genode-capability-adoption/spec.md).
 Related host requirements: [add-genode-host](../changes/add-genode-host/specs/genode-host/spec.md)
 (GN-*) and [add-portable-host-contract](../changes/add-portable-host-contract/specs/portable-host-contract/spec.md)
 (PH-*). These are proposed changes; nothing here marks a host adapter or a host

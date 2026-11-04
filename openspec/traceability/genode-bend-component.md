@@ -45,7 +45,7 @@ Evidence files: [genode-bend-hello-base-linux.txt](../../verification/genode-ben
 | GB-011 records in channels | every `writ_bend_monitor_*` run (requests and decisions only as records; four capability-handover RPC functions); MonitorCheck: "record with version 2 refused: bad record (reason 1)", "session 9 refused: session unknown (reason 3)", "invocation 98 refused: plan is not the session's plan (reason 4)" | "A method surface is proposed": review only |
 
 Cross-change coordination point: the capability-adoption change
-([add-genode-capability-adoption](../changes/add-genode-capability-adoption/))
+([add-genode-capability-adoption](../changes/archive/2026-11-04-add-genode-capability-adoption/, archived 2026-11-04))
 explainer now names the request effect `Genode.take` (formerly
 `Genode.accept`), matching this change; its spec and tasks never named
 `accept`. The adoption binding records and vectors are not yet replayed
