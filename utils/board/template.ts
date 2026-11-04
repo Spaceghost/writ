@@ -247,7 +247,7 @@ export function nav(changes: Change[], page: string): string {
     const items = groups.get(status)!.map((c) => {
       const path = `/change/${c.name}`;
       const current = page === path ? ` aria-current="page"` : "";
-      return `<li><a href="/change/${href(c.name)}"${current}>${esc(c.name)}</a></li>`;
+      return `<li><a href="/change/${href(c.name)}"${current}>${esc(c.archived ? c.title : c.name)}</a></li>`;
     }).join("");
     // Archived changes start collapsed; the rest open.
     return `<details${status === "archived" ? "" : " open"} data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
@@ -265,7 +265,7 @@ export function indexTables(baselines: Baseline[], allChanges: Change[], scan: L
   const archived = allChanges.filter((c) => c.archived).sort((a, b) => (a.archivedOn ?? "") < (b.archivedOn ?? "") ? 1 : -1);
   const archivedRows = archived.map((c) => `<tr>
 <td class="n">${esc(c.archivedOn ?? "")}</td>
-<td><a href="/change/${href(c.name)}">${esc(c.name.replace(/^\d{4}-\d{2}-\d{2}-/, ""))}</a><div class="sub">${esc(c.title)}</div></td>
+<td><a href="/change/${href(c.name)}">${esc(c.title)}</a><div class="sub">${esc(c.name.replace(/^\d{4}-\d{2}-\d{2}-/, ""))}</div></td>
 <td>${c.specs.map((x) => `<a href="/spec/${href(x)}">${esc(x)}</a>`).join(", ") || `<span class="muted">none</span>`}</td>
 <td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
 </tr>`).join("");
@@ -477,7 +477,7 @@ export function changePage(c: Change, docs: ChangeDocs, all: Change[]): string {
 </section>`;
   }).join("");
   return `<main id="main" class="content" data-signals:tab__ifmissing="'docs'">
-<p class="eyebrow">${c.archived ? `archived change · ${esc(c.archivedOn ?? "")}` : "change"} · ${esc(c.name)}</p>
+<p class="eyebrow">${c.archived ? `archived ${esc(c.archivedOn ?? "")} · ${esc(c.name.replace(/^\d{4}-\d{2}-\d{2}-/, ""))}` : `change · ${esc(c.name)}`}</p>
 <h1>${esc(c.title)}</h1>
 <dl class="facts">
 <div><dt>Status</dt><dd>${statusTag(c.status)}</dd></div>
