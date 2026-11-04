@@ -1,0 +1,18 @@
+PASS: native identity decimals preserve all 64 bits and reject aliases/overflow
+PASS: filesystem UUIDs require complete canonical lowercase encoding
+PASS: native selectors reject traversal ambiguous components and command-looking names
+PASS: single-valued native responses require exactly one complete line
+PASS: Btrfs native observation retains filesystem UUID object UUID and full generations
+PASS: Btrfs missing or duplicated identity fields fail closed
+PASS: ordinary Btrfs directories are not subvolume roots
+PASS: ZFS tabular metadata rejects wrong object duplicate properties and truncation
+PASS: ZFS snapshots preserve pool GUID snapshot GUID creation TXG and native type
+PASS: native clone observations check sharing and zvol snapshot-device controls
+PASS: destination filesystem identity stays separate from its private parent locator
+PASS: Btrfs staging requires current ownership private mode same filesystem and absence
+PASS: ZFS staging checks actual pool GUID and authoritative child enumeration
+PASS: native utility failures never forward raw stdout stderr or timeout details
+PASS: native utilities use fixed clean environment and literal argv
+PASS: native subprocess accepts exact output limit
+PASS: native subprocess overflow is failure never truncated success
+ALL WRITFS HOST CHECKS PASSED

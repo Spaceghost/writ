@@ -4,7 +4,11 @@ Verified on Linux x86_64 with **Bend 2.0.39**, **clang 19.1.1**, **Go 1.26.0**,
 and the pinned **rclone v1.75.2** module. Native Bend runs used four CPU threads
 and `--gpu off`. Generated code, binaries, and module caches remain outside the
 repository. The contribution contains 14 Bend source files and a separate Go
-module; no root library implementation was changed.
+module. Its SHA-256 implementation is now shared through `lib/Sha256.bend`;
+`bend/Digest.bend` retains the contribution API as a forwarding wrapper. The
+algorithm is unchanged. The 25 digest checks and 74 model checks were rerun on
+both CPU backends after extraction; see the [WritFS regression
+record](../../writfs/VERIFICATION.md). No pre-existing core implementation changed.
 
 ## Executable results
 

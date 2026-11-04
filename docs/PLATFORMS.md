@@ -1,7 +1,8 @@
-# Genode first, one Writ policy model
+# One Writ policy model, three native hosts
 
-**Decision:** Genode is Writ's reference capability platform. Linux and Windows
-are additional host targets. A later kernel using
+**Decision:** Windows is the first product target. Genode remains Writ's reference
+capability platform, and Linux is a native host target. All three require their
+own native filesystem and enforcement evidence. A later kernel using
 [Spaceghost/Drift](https://github.com/Spaceghost/drift) must satisfy the same host
 contract. Writ's policy, verification, and state transitions remain authored in
 Bend 2 on every target.
@@ -18,8 +19,8 @@ the library, not the missing host enforcement.
 | --- | --- | --- | --- |
 | Genode on Linux | First component/runtime bring-up with rapid debugging | Genode sessions, capability-mediated IPC, restricted components; host bridges explicitly trusted | Architecture and proposed acceptance scenarios |
 | Native Genode | Reference isolation deployment; initially Genode 26.08 x86_64/base-hw under QEMU | Protection domains, routed services, dataspaces, resource quotas, kernel-backed object capabilities | Architecture and proposed acceptance scenarios |
-| Direct Linux | Native Linux service deployment | Authenticated broker, confined worker processes, scoped descriptors, required kernel controls | Bend JS/native CPU library tests only |
-| Native Windows | Native Windows service deployment | Authenticated broker, AppContainer/LPAC worker profile, explicit handles and process lifetime controls | Architecture and proposed acceptance scenarios; native runtime port pending |
+| Direct Linux | Native Linux service deployment | Authenticated broker, confined worker processes, scoped descriptors, required kernel controls | Bend CPU library tests and a separate private native-storage primitive; complete host qualification pending |
+| Native Windows | First filesystem product target | WinFsp, authenticated broker, LPAC worker profile, explicit handles and WFP | 638 core + 78 model checks as generated Bend JavaScript on Windows Server; filesystem/runtime bindings and confinement pending |
 | Future kernel with Drift | Own-kernel deployment after its protection mechanisms exist | Kernel capabilities, isolated drivers, IRQ/DMA/memory mediation, durable storage | Drift source review; no Writ kernel port |
 
 Genode supports multiple base kernels, and its documentation explicitly makes
@@ -174,10 +175,16 @@ conformance evidence; Drift alone does not satisfy either path.
 
 ## Build order and specifications
 
-First pin the common host contract and prove the Genode runtime/session boundary
-using public test data. Then bring up the complete protected report-to-summary
-vertical slice on Genode-on-Linux and a selected native Genode base. Direct Linux
-and Windows adapters can develop concurrently against the shared contract.
+Keep one common host contract and prioritize the Windows filesystem/broker and
+confined-reader product slice. Develop the Linux FUSE and native Genode
+filesystem-session paths against the same Bend decisions. Genode-on-Linux is a
+separate runtime/session bring-up aid; native base-hw qualification remains
+required for a native Genode claim. See the [product plan](WRITFS-PRODUCT.md).
+The [WritFS native storage backend](../writfs/README.md) is one such isolated
+Linux primitive: it creates private Btrfs snapshots and ZFS filesystem/zvol
+clones using the same Bend commit gate. Its native storage evidence does not
+qualify the complete Linux host or complete any confinement, durable publication,
+authentication, or revocation milestone.
 The later kernel follows after its memory, capability, IPC, and device mechanisms
 have their own evidence.
 

@@ -1,0 +1,663 @@
+Writ core policy verification on native Windows Node
+
+Commit: b709bd833cd71eb51d8dbf4ed0c60974a2b5e073
+Tree: 01c7cde493297e918a517f6b041c6f7d9c85ae5d
+Workflow: https://github.com/Spaceghost/writ/actions/runs/41750878613
+Windows job: https://github.com/Spaceghost/writ/actions/runs/41750878613/job/126315488128
+Result: success; 638 passing checks; Node exit status 0.
+Backend: Bend 2.0.39 generated JavaScript, native Windows Node v22.23.4.
+
+The following assertion, suite-summary, and exit-status lines are extracted
+verbatim from the Windows job log, with line endings normalized to LF.
+Both "PASS:" and "PASS " count as checks. See windows-policy-environment.txt
+for the exact environment, artifact hashes, and qualification limits.
+
+2026-11-04T01:00:04.8899452Z PASS: exact 64-bit union across both words
+2026-11-04T01:00:04.8900755Z PASS: exact 64-bit intersection
+2026-11-04T01:00:04.8901758Z PASS: bit 63 cannot be satisfied by low word
+2026-11-04T01:00:04.8902706Z PASS: valid graph admitted
+2026-11-04T01:00:04.8903603Z PASS: CPU Jacobi propagation and final stability sweep
+2026-11-04T01:00:04.8904595Z PASS: Bend parallel producer matches sequential producer
+2026-11-04T01:00:04.8905526Z PASS: independent verifier checks original graph
+2026-11-04T01:00:04.8906437Z PASS: summary cannot escape source confidentiality
+2026-11-04T01:00:04.8907333Z PASS: covered destination and actual effect succeed
+2026-11-04T01:00:04.8908395Z PASS: untrusted provenance is checked separately
+2026-11-04T01:00:04.8909591Z PASS: actual network effect needs a live grant
+2026-11-04T01:00:04.8910538Z PASS: callee effect requires grant even when requested mask is zero
+2026-11-04T01:00:04.8911185Z PASS: sink index never wraps
+2026-11-04T01:00:04.8912087Z PASS: list lookup rejects maximal U32 index
+2026-11-04T01:00:04.8913710Z PASS: source secrecy omission rejected
+2026-11-04T01:00:04.8915817Z PASS: source provenance omission rejected
+2026-11-04T01:00:04.8916878Z PASS: source effect omission rejected
+2026-11-04T01:00:04.8917764Z PASS: derived secrecy omission rejected
+2026-11-04T01:00:04.8918468Z PASS: derived provenance omission rejected
+2026-11-04T01:00:04.8919402Z PASS: callee effect omission rejected
+2026-11-04T01:00:04.8920335Z PASS: static equality cannot keep a larger domain
+2026-11-04T01:00:04.8921237Z PASS: empty candidate domain rejected
+2026-11-04T01:00:04.8922036Z PASS: unsupported candidate domain rejected
+2026-11-04T01:00:04.8922705Z PASS: missing candidate nodes rejected
+2026-11-04T01:00:04.8923829Z PASS: extra candidate nodes rejected
+2026-11-04T01:00:04.8924601Z PASS: conservative extra restrictions remain valid
+2026-11-04T01:00:04.8925352Z PASS: extra restrictions still constrain the sink
+2026-11-04T01:00:04.8926114Z PASS: changed graph generation denies
+2026-11-04T01:00:04.8926910Z PASS: changed policy generation denies
+2026-11-04T01:00:04.8928596Z PASS: authority epoch high word is checked
+2026-11-04T01:00:04.8929227Z PASS: candidate stamp must match live snapshot
+2026-11-04T01:00:04.8930531Z PASS: one-sweep budget fails closed
+2026-11-04T01:00:04.8931399Z PASS: final convergence check consumes fuel
+2026-11-04T01:00:04.9579452Z PASS: exact convergence budget succeeds
+2026-11-04T01:00:04.9582038Z PASS: parallel budget fails closed
+2026-11-04T01:00:04.9582461Z PASS: missing flow endpoint rejected before solving
+2026-11-04T01:00:04.9582799Z PASS: parallel producer receives only validated graph
+2026-11-04T01:00:04.9583124Z PASS: missing equality endpoint rejected
+2026-11-04T01:00:04.9583380Z PASS: missing call endpoint rejected
+2026-11-04T01:00:04.9583671Z PASS: empty seed type domain rejected
+2026-11-04T01:00:04.9585197Z PASS: unsupported seed type domain rejected
+2026-11-04T01:00:04.9590231Z PASS: incompatible static types conflict
+2026-11-04T01:00:04.9590659Z PASS: parallel producer preserves type conflict
+2026-11-04T01:00:04.9590961Z PASS: cyclic flow reaches verified fixed point
+2026-11-04T01:00:04.9591234Z PASS: parallel cycle agrees with CPU
+2026-11-04T01:00:04.9591971Z PASS: empty graph succeeds in zero rounds
+2026-11-04T01:00:04.9592680Z PASS: empty parallel graph needs no dispatch
+2026-11-04T01:00:04.9593498Z PASS: bit 63 propagates in all three restriction domains
+2026-11-04T01:00:04.9594334Z PASS: parallel propagation retains high bits
+2026-11-04T01:00:04.9595108Z PASS: high-word restrictions can be explicitly covered
+2026-11-04T01:00:04.9595803Z PASS: high-word required effect cannot be dropped
+2026-11-04T01:00:04.9598476Z PASS: stable forged producer output fails independent verification
+2026-11-04T01:00:04.9599037Z Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+2026-11-04T01:00:04.9610023Z PASS valid paired admission
+2026-11-04T01:00:04.9612919Z PASS summary retains origin and labels
+2026-11-04T01:00:04.9615306Z PASS read required
+2026-11-04T01:00:04.9617281Z PASS write required
+2026-11-04T01:00:04.9620343Z PASS read domain distinct
+2026-11-04T01:00:04.9621692Z PASS write domain distinct
+2026-11-04T01:00:04.9624401Z PASS read object version exact
+2026-11-04T01:00:04.9627089Z PASS write object exact
+2026-11-04T01:00:04.9630110Z PASS graph epoch current
+2026-11-04T01:00:04.9632684Z PASS policy epoch current
+2026-11-04T01:00:04.9634844Z PASS authority epoch current
+2026-11-04T01:00:04.9638482Z PASS expiry exclusive
+2026-11-04T01:00:04.9640054Z PASS all 256 code bits bound
+2026-11-04T01:00:04.9641585Z PASS invocation bound
+2026-11-04T01:00:04.9644165Z PASS read grant stamp bound
+2026-11-04T01:00:04.9652441Z PASS fresh writer cannot redirect old read destination
+2026-11-04T01:00:04.9655107Z PASS fresh writer cannot redirect old read write-domain
+2026-11-04T01:00:04.9656738Z PASS operation kind approved
+2026-11-04T01:00:04.9658187Z PASS operation code approved
+2026-11-04T01:00:04.9660598Z PASS origin code pin required
+2026-11-04T01:00:04.9662439Z PASS origin transform restrictions retained
+2026-11-04T01:00:05.0191428Z PASS empty origins rejected
+2026-11-04T01:00:05.0192033Z PASS unknown kind bits rejected
+2026-11-04T01:00:05.0192879Z PASS derived source cannot widen origin rights
+2026-11-04T01:00:05.0193616Z PASS source cannot erase origin secrecy
+2026-11-04T01:00:05.0194655Z PASS payment required
+2026-11-04T01:00:05.0195518Z PASS payment origin version
+2026-11-04T01:00:05.0196318Z PASS payment invocation
+2026-11-04T01:00:05.0197124Z PASS payment code
+2026-11-04T01:00:05.0197886Z PASS payment kind
+2026-11-04T01:00:05.0198734Z PASS payment destination
+2026-11-04T01:00:05.0199568Z PASS payment quote
+2026-11-04T01:00:05.0200415Z PASS payment expiry
+2026-11-04T01:00:05.0201426Z PASS ROT13 or summary cannot clear confidentiality
+2026-11-04T01:00:05.0203114Z PASS integrity independently enforced
+2026-11-04T01:00:05.0204375Z PASS own bucket only narrows output operations
+2026-11-04T01:00:05.0207153Z PASS multiple origins union labels including bit63
+2026-11-04T01:00:05.0208232Z PASS old read cannot approve expanded source manifest
+2026-11-04T01:00:05.0209920Z PASS every source read required
+2026-11-04T01:00:05.0211035Z PASS every original payment required
+2026-11-04T01:00:05.0213121Z PASS copy preserves schema and remains protected
+2026-11-04T01:00:05.0215215Z PASS parallel batch admission
+2026-11-04T01:00:05.0215990Z PASS parallel batch retains denial
+2026-11-04T01:00:05.0218985Z PASS preflight collects every inherited origin in order
+2026-11-04T01:00:05.0219941Z PASS origin discovery is independent of later grants and payment
+2026-11-04T01:00:05.0220680Z PASS preflight rejects stale authority
+2026-11-04T01:00:05.0221532Z PASS preflight source version exact
+2026-11-04T01:00:05.0223924Z PASS preflight rejects malformed source schema
+2026-11-04T01:00:05.0224688Z PASS preflight refuses missing provenance
+2026-11-04T01:00:05.0226307Z PASS preflight rejects source erasing origin labels
+2026-11-04T01:00:05.0226658Z PASS preflight rejects amplified origin rights
+2026-11-04T01:00:05.0227324Z PASS ambiguous runtime source schema denied
+2026-11-04T01:00:05.0228139Z PASS unknown payment operation bits denied
+2026-11-04T01:00:05.0228874Z Transfer: 53 checks passed
+2026-11-04T01:00:05.0233446Z PASS: DLM exact finite closure validates
+2026-11-04T01:00:05.0234896Z PASS: DLM transitive delegation closure validates
+2026-11-04T01:00:05.0236640Z PASS: delegation direction and transitivity
+2026-11-04T01:00:05.0237494Z PASS: delegation does not reverse
+2026-11-04T01:00:05.0238591Z PASS: Top acts for every registered principal
+2026-11-04T01:00:05.0239277Z PASS: every registered principal acts for Bottom
+2026-11-04T01:00:05.0240120Z PASS: ordinary principal has no implicit Top authority
+2026-11-04T01:00:05.0240856Z PASS: unregistered principal denies even for Top
+2026-11-04T01:00:05.0241626Z PASS: unsupported composite principal denies
+2026-11-04T01:00:05.0242335Z PASS: authority epoch mismatch denies
+2026-11-04T01:00:05.0243196Z PASS: invented closure authority denies
+2026-11-04T01:00:05.0243927Z PASS: omitted delegation edge in closure denies
+2026-11-04T01:00:05.0244605Z PASS: malformed relation shape denies
+2026-11-04T01:00:05.0245269Z PASS: out-of-universe relation bit denies
+2026-11-04T01:00:05.0246167Z PASS: unknown delegation endpoint denies preparation
+2026-11-04T01:00:05.0246978Z PASS: oversized principal universe denies
+2026-11-04T01:00:05.0247686Z PASS: unsupported delegation denies preparation
+2026-11-04T01:00:05.0248559Z PASS: empty name registry retains Top and Bottom
+2026-11-04T01:00:05.0252649Z PASS: highest supported principal uses bit 31 correctly
+2026-11-04T01:00:05.0468939Z PASS: preparation computes transitive authority
+2026-11-04T01:00:05.0469680Z PASS: owner-sensitive readers include owner and delegate
+2026-11-04T01:00:05.0470729Z PASS: untrusted owner imposes no policy on observer
+2026-11-04T01:00:05.0472682Z PASS: confidentiality join intersects readers
+2026-11-04T01:00:05.0473631Z PASS: confidentiality meet unions readers
+2026-11-04T01:00:05.0475510Z PASS: integrity join unions possible writers
+2026-11-04T01:00:05.0476600Z PASS: integrity meet intersects possible writers
+2026-11-04T01:00:05.0478031Z PASS: uncredited integrity owner gives unknown provenance
+2026-11-04T01:00:05.0480387Z PASS: public information may acquire secrecy restrictions
+2026-11-04T01:00:05.0483110Z PASS: protected information cannot flow to public
+2026-11-04T01:00:05.0483984Z PASS: narrowing the reader set is allowed
+2026-11-04T01:00:05.0485333Z PASS: widening the reader set requires separate authority
+2026-11-04T01:00:05.0487462Z PASS: trusted information may lose integrity
+2026-11-04T01:00:05.0487781Z PASS: untrusted information cannot endorse itself
+2026-11-04T01:00:05.0490061Z PASS: integrity ordering follows possible writer inclusion
+2026-11-04T01:00:05.0490783Z PASS: removing possible writers requires endorsement
+2026-11-04T01:00:05.0492002Z PASS: maximal restriction is a valid information-flow sink
+2026-11-04T01:00:05.0492805Z PASS: unknown policy principal denies reflexive-looking query
+2026-11-04T01:00:05.0493796Z PASS: unsupported policy principal denies
+2026-11-04T01:00:05.0494455Z PASS: stale flow query denies
+2026-11-04T01:00:05.0495391Z PASS: secret control dependency survives an otherwise-public result
+2026-11-04T01:00:05.0496216Z PASS: dependency joins retain untrusted influence
+2026-11-04T01:00:05.0497312Z PASS: join is an upper bound
+2026-11-04T01:00:05.0499254Z PASS: meet is a lower bound
+2026-11-04T01:00:05.0502957Z PASS: parallel batch agrees with four independent semantic outcomes
+2026-11-04T01:00:05.0505151Z PASS: complete CPU replay accepts correct batch results
+2026-11-04T01:00:05.0507068Z PASS: complete CPU replay rejects fabricated allows
+2026-11-04T01:00:05.0508934Z PASS: complete CPU replay rejects truncated result shape
+2026-11-04T01:00:05.0510472Z DLM: 47 checks passed
+2026-11-04T01:00:05.0516069Z PASS: ledger reserves reader expense
+2026-11-04T01:00:05.0516778Z PASS: reservation removes available funds
+2026-11-04T01:00:05.0519333Z PASS: stale revision denies
+2026-11-04T01:00:05.0520956Z PASS: overdraft denies
+2026-11-04T01:00:05.0521531Z PASS: one live reservation per invocation
+2026-11-04T01:00:05.0522494Z PASS: receipt cannot switch invocation
+2026-11-04T01:00:05.0523849Z PASS: receipt cannot switch payer
+2026-11-04T01:00:05.0525437Z PASS: receipt cannot switch amount
+2026-11-04T01:00:05.0526376Z PASS: scoped commit succeeds
+2026-11-04T01:00:05.0527248Z PASS: commit replay denies
+2026-11-04T01:00:05.0527952Z PASS: cancellation refunds hold
+2026-11-04T01:00:05.0528868Z PASS: cancelled receipt cannot replay
+2026-11-04T01:00:05.0530088Z PASS: expired hold cannot commit
+2026-11-04T01:00:05.0530961Z PASS: expiration refunds hold
+2026-11-04T01:00:05.0531947Z PASS: unexpired hold cannot be reaped
+2026-11-04T01:00:05.0532813Z PASS: duplicate payer registry denies
+2026-11-04T01:00:05.0533669Z Ledger: 16 checks passed
+2026-11-04T01:00:05.0548116Z PASS: negotiation reaches running in guarded order
+2026-11-04T01:00:05.0552298Z PASS: every stage retains immutable request
+2026-11-04T01:00:05.0553200Z PASS: candidate identity cannot change
+2026-11-04T01:00:05.0554049Z PASS: stale session revision denies
+2026-11-04T01:00:05.0554961Z PASS: challenge requires pinned candidate
+2026-11-04T01:00:05.0555713Z PASS: future challenge not yet usable
+2026-11-04T01:00:05.0558211Z PASS: protected sample has pre-execution gate
+2026-11-04T01:00:05.0560324Z PASS: sample cannot read without paired source grant
+2026-11-04T01:00:05.0562709Z PASS: old nonce cannot pair with fresh duplicate ID
+2026-11-04T01:00:05.0564541Z PASS: failed sample denies transition
+2026-11-04T01:00:05.0566268Z PASS: wrong sample nonce denies
+2026-11-04T01:00:05.0568545Z PASS: passing sample does not replace owner approval
+2026-11-04T01:00:05.0570500Z PASS: sample cannot skip negotiation
+2026-11-04T01:00:05.0572291Z PASS: every contributing origin must approve
+2026-11-04T01:00:05.0646510Z PASS: all contributing origins permit negotiation
+2026-11-04T01:00:05.0648466Z PASS: owner approval binds exact destination
+2026-11-04T01:00:05.0649551Z PASS: reader-funded reservation succeeds
+2026-11-04T01:00:05.0650462Z PASS: negotiation reserves reader balance
+2026-11-04T01:00:05.0651406Z PASS: reservation must name reader as payer
+2026-11-04T01:00:05.0654067Z PASS: quote substitution denies
+2026-11-04T01:00:05.0654939Z PASS: revoked budget denies start despite live hold
+2026-11-04T01:00:05.0656019Z PASS: revoked read grant denies execution
+2026-11-04T01:00:05.0656895Z PASS: revoked origin approval denies execution
+2026-11-04T01:00:05.0657943Z PASS: expiry is exclusive at deadline
+2026-11-04T01:00:05.0658798Z PASS: cannot execute before negotiation
+2026-11-04T01:00:05.0660673Z PASS: authority epoch drift denies start
+2026-11-04T01:00:05.0661572Z Negotiation: 26 checks passed
+2026-11-04T01:00:05.0673284Z PASS: backplane commits fully verified transaction
+2026-11-04T01:00:05.0678489Z PASS: write intent retains origins, types, restrictions and DLM label
+2026-11-04T01:00:05.0699448Z PASS: committed session is terminal
+2026-11-04T01:00:05.0703513Z PASS: commit advances ledger revision
+2026-11-04T01:00:05.0707165Z PASS: commit spends reserved amount once
+2026-11-04T01:00:05.0792805Z PASS: old running session cannot replay spent receipt
+2026-11-04T01:00:05.0800672Z PASS: terminal session cannot commit twice
+2026-11-04T01:00:05.0804217Z PASS: commit rejects stale session revision
+2026-11-04T01:00:05.0885530Z PASS: commit rejects stale ledger revision
+2026-11-04T01:00:05.0888475Z PASS: forged solver labels cannot authorize output
+2026-11-04T01:00:05.0890977Z PASS: passing sample cannot commit
+2026-11-04T01:00:05.0894973Z PASS: late owner revocation denies commit
+2026-11-04T01:00:05.0991403Z PASS: denied commit does not consume hold
+2026-11-04T01:00:05.0997150Z PASS: denied commit preserves original session
+2026-11-04T01:00:05.1003765Z PASS: late budget revocation denies commit
+2026-11-04T01:00:05.1007797Z PASS: late read revocation denies commit
+2026-11-04T01:00:05.1140881Z PASS: late write revocation denies commit
+2026-11-04T01:00:05.1145706Z PASS: missing origin payment witness denies commit
+2026-11-04T01:00:05.1150993Z PASS: transfer authority epoch drift denies commit
+2026-11-04T01:00:05.1155523Z PASS: DLM authority epoch drift denies commit
+2026-11-04T01:00:05.1161929Z PASS: graph policy epoch drift denies commit
+2026-11-04T01:00:05.1167495Z PASS: DLM blocks secret-to-public release
+2026-11-04T01:00:05.1173406Z PASS: network backend adds actual network effect
+2026-11-04T01:00:05.1225047Z PASS: storage backend adds actual write effect
+2026-11-04T01:00:05.1231194Z PASS: combined control label rechecked against actual destination
+2026-11-04T01:00:05.1231975Z PASS: oracle fixture has valid static narrowing
+2026-11-04T01:00:05.1237667Z PASS: static narrowing cannot change declared output schema
+2026-11-04T01:00:05.1242131Z PASS: binding includes reader and immutable negotiation terms
+2026-11-04T01:00:05.1249089Z PASS: exclusive deadline denies final commit
+2026-11-04T01:00:05.1251310Z PASS: stamp bridge preserves high word
+2026-11-04T01:00:05.1252013Z PASS: stamp bridge cannot truncate high word
+2026-11-04T01:00:05.1252473Z PASS: bit63 epoch mismatch cannot alias low epoch
+2026-11-04T01:00:05.1255348Z PASS: identical duplicate bindings deny closed
+2026-11-04T01:00:05.1259382Z PASS: conflicting bindings deny with permissive entry first
+2026-11-04T01:00:05.1263363Z PASS: conflicting bindings deny with restrictive entry first
+2026-11-04T01:00:05.1269578Z PASS: duplicate registry rejection preserves reservation
+2026-11-04T01:00:05.1275030Z PASS: write intent preserves all 256 artifact identity bits
+2026-11-04T01:00:05.1280027Z PASS: artifact identity differs in final word
+2026-11-04T01:00:05.1285358Z PASS: artifact identity comes from authoritative binding
+2026-11-04T01:00:05.1292471Z PASS: distinct full requests are separate binding keys
+2026-11-04T01:00:05.1295407Z Backplane: 40 checks passed
+2026-11-04T01:00:05.1306065Z PASS: frontend fixture has a valid paired read/write contract
+2026-11-04T01:00:05.1308637Z PASS: empty frontend state is valid
+2026-11-04T01:00:05.1309342Z PASS: unique capability registry validates
+2026-11-04T01:00:05.1314860Z PASS: capability mounts as a protocol handle
+2026-11-04T01:00:05.1316228Z PASS: mount allocates first monotonic ID
+2026-11-04T01:00:05.1320527Z PASS: mounted capability opens a descriptor record
+2026-11-04T01:00:05.1322451Z PASS: open allocates next descriptor ID
+2026-11-04T01:00:05.1324074Z PASS: open preserves frontend structural validity
+2026-11-04T01:00:05.1326674Z PASS: read request resolves exact immutable plan
+2026-11-04T01:00:05.1328846Z PASS: write request resolves same exact plan
+2026-11-04T01:00:05.1331224Z PASS: execute resolves exact plan with all rights
+2026-11-04T01:00:05.1333875Z PASS: mount handle itself cannot perform an operation
+2026-11-04T01:00:05.1336569Z PASS: descriptor cannot cross authenticated subjects
+2026-11-04T01:00:05.1338819Z PASS: descriptor cannot switch capability token
+2026-11-04T01:00:05.1340499Z PASS: all 256 token bits participate in lookup
+2026-11-04T01:00:05.1342274Z PASS: token possession does not change bound subject
+2026-11-04T01:00:05.1343764Z PASS: unknown rights bit denies mount
+2026-11-04T01:00:05.1345188Z PASS: mount cannot amplify registry rights
+2026-11-04T01:00:05.1346779Z PASS: open cannot amplify mounted rights
+2026-11-04T01:00:05.1348264Z PASS: descriptor is not a mount alias
+2026-11-04T01:00:05.1350115Z PASS: mount is not a duplicable operational descriptor
+2026-11-04T01:00:05.1352912Z PASS: descriptor duplication succeeds under live authority
+2026-11-04T01:00:05.1355426Z PASS: dup allocates a distinct descriptor ID
+2026-11-04T01:00:05.1357508Z PASS: dup preserves exact token and plan scope
+2026-11-04T01:00:05.1359203Z PASS: descriptor rights may be attenuated in current state
+2026-11-04T01:00:05.1360133Z PASS: attenuated read right remains usable
+2026-11-04T01:00:05.1362625Z PASS: attenuation removes write right
+2026-11-04T01:00:05.1364920Z PASS: attenuation removes execute right
+2026-11-04T01:00:05.1367219Z PASS: attenuation cannot restore removed rights
+2026-11-04T01:00:05.1369433Z PASS: duplication preserves attenuation
+2026-11-04T01:00:05.1371725Z PASS: zero-right descriptor authorizes no read
+2026-11-04T01:00:05.1373964Z PASS: zero-right descriptor authorizes no write
+2026-11-04T01:00:05.1376066Z PASS: zero-right descriptor authorizes no execution
+2026-11-04T01:00:05.1377597Z PASS: removing registry capability revokes existing descriptor
+2026-11-04T01:00:05.1379661Z PASS: revoked descriptor cannot duplicate itself
+2026-11-04T01:00:05.1381348Z PASS: registry rights reduction invalidates wider existing descriptor
+2026-11-04T01:00:05.1383141Z PASS: registry replacement cannot redirect existing descriptor plan
+2026-11-04T01:00:05.1384825Z PASS: altered descriptor plan disagrees with trusted registry
+2026-11-04T01:00:05.1386372Z PASS: read request still requires destination write approval
+2026-11-04T01:00:05.1387885Z PASS: write request still requires exact source read approval
+2026-11-04T01:00:05.1389437Z PASS: capability cannot bypass inherited payment requirement
+2026-11-04T01:00:05.1390281Z PASS: stale revision cannot resolve operation
+2026-11-04T01:00:05.1390927Z PASS: stale revision cannot duplicate descriptor
+2026-11-04T01:00:05.1391408Z PASS: rejected mutation leaves revision unchanged
+2026-11-04T01:00:05.1391787Z PASS: authority epoch change invalidates open descriptor
+2026-11-04T01:00:05.1392092Z PASS: stale capability cannot mount in new epoch
+2026-11-04T01:00:05.1392471Z PASS: stale mounted capability cannot open
+2026-11-04T01:00:05.1392722Z PASS: expiry is exclusive at exact deadline
+2026-11-04T01:00:05.1392991Z PASS: expired descriptor cannot duplicate itself
+2026-11-04T01:00:05.1393805Z PASS: expired capability cannot mount
+2026-11-04T01:00:05.1395406Z PASS: shortening registry expiry invalidates older broader handle
+2026-11-04T01:00:05.1396356Z PASS: duplicate capability token is ambiguous and invalid
+2026-11-04T01:00:05.1397910Z PASS: malformed registry denies mount
+2026-11-04T01:00:05.1398764Z PASS: malformed registry denies resolution
+2026-11-04T01:00:05.1399874Z PASS: malformed registry rights deny
+2026-11-04T01:00:05.1400727Z PASS: capability epoch must match immutable plan epoch
+2026-11-04T01:00:05.1401631Z PASS: duplicate descriptor IDs invalidate state
+2026-11-04T01:00:05.1402510Z PASS: ambiguous descriptor state denies resolution
+2026-11-04T01:00:05.1404256Z PASS: next descriptor ID must exceed every allocated ID
+2026-11-04T01:00:05.1405077Z PASS: unallocated zero descriptor denies
+2026-11-04T01:00:05.1406009Z PASS: unknown descriptor denies
+2026-11-04T01:00:05.1408180Z PASS: closing descriptor records tombstone
+2026-11-04T01:00:05.1409196Z PASS: closed descriptor cannot resolve
+2026-11-04T01:00:05.1412360Z PASS: closed descriptor cannot duplicate
+2026-11-04T01:00:05.1414719Z PASS: closed descriptor cannot be reactivated by attenuation
+2026-11-04T01:00:05.1416225Z PASS: close replay denies
+2026-11-04T01:00:05.1418647Z PASS: another subject cannot close descriptor
+2026-11-04T01:00:05.1419679Z PASS: another token cannot close descriptor
+2026-11-04T01:00:05.1421476Z PASS: closing one descriptor preserves independently duplicated descriptor
+2026-11-04T01:00:05.1422991Z PASS: new open never reuses tombstoned descriptor ID
+2026-11-04T01:00:05.1423975Z Frontend: 70 checks passed
+2026-11-04T01:00:05.1425106Z PASS: facade links capability descriptor through complete commit
+2026-11-04T01:00:05.1426124Z PASS: facade preserves output provenance
+2026-11-04T01:00:05.1427651Z PASS: capability revocation is checked at commit
+2026-11-04T01:00:05.1428658Z PASS: revoked capability spends no reservation
+2026-11-04T01:00:05.1429641Z PASS: authenticated caller must own descriptor
+2026-11-04T01:00:05.1431120Z PASS: authenticated subject must be negotiated reader
+2026-11-04T01:00:05.1433016Z PASS: execution requires execute right as well as read and write
+2026-11-04T01:00:05.1437521Z PASS: closed descriptor cannot commit
+2026-11-04T01:00:05.1441340Z PASS: stale frontend revision cannot commit
+2026-11-04T01:00:05.1446460Z PASS: capability possession cannot override label denial
+2026-11-04T01:00:05.1447516Z Facade: 10 checks passed
+2026-11-04T01:00:05.1448781Z PASS: oracle fixture: disconnected vertices
+2026-11-04T01:00:05.1449591Z PASS: oracle fixture: directed chain
+2026-11-04T01:00:05.1450500Z PASS: oracle fixture: directed cycle
+2026-11-04T01:00:05.1451897Z PASS: oracle fixture: undirected component
+2026-11-04T01:00:05.1459570Z PASS: reachable-seed oracle, topology 0
+2026-11-04T01:00:05.1505633Z PASS: reachable-seed oracle, topology 1
+2026-11-04T01:00:05.1506824Z PASS: reachable-seed oracle, topology 2
+2026-11-04T01:00:05.1508039Z PASS: reachable-seed oracle, topology 3
+2026-11-04T01:00:05.1510817Z PASS: reachable-seed oracle, topology 4
+2026-11-04T01:00:05.1512344Z PASS: reachable-seed oracle, topology 5
+2026-11-04T01:00:05.1515810Z PASS: reachable-seed oracle, topology 6
+2026-11-04T01:00:05.1516660Z PASS: reachable-seed oracle, topology 7
+2026-11-04T01:00:05.1519655Z PASS: reachable-seed oracle, topology 8
+2026-11-04T01:00:05.1520578Z PASS: reachable-seed oracle, topology 9
+2026-11-04T01:00:05.1522195Z PASS: reachable-seed oracle, topology 10
+2026-11-04T01:00:05.1523412Z PASS: reachable-seed oracle, topology 11
+2026-11-04T01:00:05.1524707Z PASS: reachable-seed oracle, topology 12
+2026-11-04T01:00:05.1526569Z PASS: reachable-seed oracle, topology 13
+2026-11-04T01:00:05.1527790Z PASS: reachable-seed oracle, topology 14
+2026-11-04T01:00:05.1530069Z PASS: reachable-seed oracle, topology 15
+2026-11-04T01:00:05.1531305Z PASS: reachable-seed oracle, topology 16
+2026-11-04T01:00:05.1532298Z PASS: reachable-seed oracle, topology 17
+2026-11-04T01:00:05.1533866Z PASS: reachable-seed oracle, topology 18
+2026-11-04T01:00:05.1534929Z PASS: reachable-seed oracle, topology 19
+2026-11-04T01:00:05.1536129Z PASS: reachable-seed oracle, topology 20
+2026-11-04T01:00:05.1537336Z PASS: reachable-seed oracle, topology 21
+2026-11-04T01:00:05.1538611Z PASS: reachable-seed oracle, topology 22
+2026-11-04T01:00:05.1676122Z PASS: reachable-seed oracle, topology 23
+2026-11-04T01:00:05.1677058Z PASS: reachable-seed oracle, topology 24
+2026-11-04T01:00:05.1678752Z PASS: reachable-seed oracle, topology 25
+2026-11-04T01:00:05.1679874Z PASS: reachable-seed oracle, topology 26
+2026-11-04T01:00:05.1681528Z PASS: reachable-seed oracle, topology 27
+2026-11-04T01:00:05.1683192Z PASS: reachable-seed oracle, topology 28
+2026-11-04T01:00:05.1685279Z PASS: reachable-seed oracle, topology 29
+2026-11-04T01:00:05.1686200Z PASS: reachable-seed oracle, topology 30
+2026-11-04T01:00:05.1687477Z PASS: reachable-seed oracle, topology 31
+2026-11-04T01:00:05.1687920Z PASS: reachable-seed oracle, topology 32
+2026-11-04T01:00:05.1689114Z PASS: reachable-seed oracle, topology 33
+2026-11-04T01:00:05.1689827Z PASS: reachable-seed oracle, topology 34
+2026-11-04T01:00:05.1690719Z PASS: reachable-seed oracle, topology 35
+2026-11-04T01:00:05.1691602Z PASS: reachable-seed oracle, topology 36
+2026-11-04T01:00:05.1692414Z PASS: reachable-seed oracle, topology 37
+2026-11-04T01:00:05.1693239Z PASS: reachable-seed oracle, topology 38
+2026-11-04T01:00:05.1694471Z PASS: reachable-seed oracle, topology 39
+2026-11-04T01:00:05.1695348Z PASS: reachable-seed oracle, topology 40
+2026-11-04T01:00:05.1695995Z PASS: reachable-seed oracle, topology 41
+2026-11-04T01:00:05.1696629Z PASS: reachable-seed oracle, topology 42
+2026-11-04T01:00:05.1697318Z PASS: reachable-seed oracle, topology 43
+2026-11-04T01:00:05.1697972Z PASS: reachable-seed oracle, topology 44
+2026-11-04T01:00:05.1698622Z PASS: reachable-seed oracle, topology 45
+2026-11-04T01:00:05.1699309Z PASS: reachable-seed oracle, topology 46
+2026-11-04T01:00:05.1699977Z PASS: reachable-seed oracle, topology 47
+2026-11-04T01:00:05.1700893Z PASS: reachable-seed oracle, topology 48
+2026-11-04T01:00:05.1701280Z PASS: reachable-seed oracle, topology 49
+2026-11-04T01:00:05.1702137Z PASS: reachable-seed oracle, topology 50
+2026-11-04T01:00:05.1703260Z PASS: reachable-seed oracle, topology 51
+2026-11-04T01:00:05.1703985Z PASS: reachable-seed oracle, topology 52
+2026-11-04T01:00:05.1704672Z PASS: reachable-seed oracle, topology 53
+2026-11-04T01:00:05.1705368Z PASS: reachable-seed oracle, topology 54
+2026-11-04T01:00:05.1706235Z PASS: reachable-seed oracle, topology 55
+2026-11-04T01:00:05.1706844Z PASS: reachable-seed oracle, topology 56
+2026-11-04T01:00:05.1707599Z PASS: reachable-seed oracle, topology 57
+2026-11-04T01:00:05.1708412Z PASS: reachable-seed oracle, topology 58
+2026-11-04T01:00:05.1709185Z PASS: reachable-seed oracle, topology 59
+2026-11-04T01:00:05.1710074Z PASS: reachable-seed oracle, topology 60
+2026-11-04T01:00:05.1710996Z PASS: reachable-seed oracle, topology 61
+2026-11-04T01:00:05.1711727Z PASS: reachable-seed oracle, topology 62
+2026-11-04T01:00:05.1712369Z PASS: reachable-seed oracle, topology 63
+2026-11-04T01:00:05.1713076Z PASS: reachable-seed oracle, topology 64
+2026-11-04T01:00:05.1713726Z PASS: reachable-seed oracle, topology 65
+2026-11-04T01:00:05.1714408Z PASS: reachable-seed oracle, topology 66
+2026-11-04T01:00:05.1715067Z PASS: reachable-seed oracle, topology 67
+2026-11-04T01:00:05.1715707Z PASS: reachable-seed oracle, topology 68
+2026-11-04T01:00:05.1716366Z PASS: reachable-seed oracle, topology 69
+2026-11-04T01:00:05.1717025Z PASS: reachable-seed oracle, topology 70
+2026-11-04T01:00:05.1717682Z PASS: reachable-seed oracle, topology 71
+2026-11-04T01:00:05.1718345Z PASS: reachable-seed oracle, topology 72
+2026-11-04T01:00:05.1719014Z PASS: reachable-seed oracle, topology 73
+2026-11-04T01:00:05.1719681Z PASS: reachable-seed oracle, topology 74
+2026-11-04T01:00:05.1720350Z PASS: reachable-seed oracle, topology 75
+2026-11-04T01:00:05.1721054Z PASS: reachable-seed oracle, topology 76
+2026-11-04T01:00:05.1721695Z PASS: reachable-seed oracle, topology 77
+2026-11-04T01:00:05.1722982Z PASS: reachable-seed oracle, topology 78
+2026-11-04T01:00:05.1723758Z PASS: reachable-seed oracle, topology 79
+2026-11-04T01:00:05.1724517Z PASS: reachable-seed oracle, topology 80
+2026-11-04T01:00:05.1725232Z PASS: reachable-seed oracle, topology 81
+2026-11-04T01:00:05.1725913Z PASS: reachable-seed oracle, topology 82
+2026-11-04T01:00:05.1726592Z PASS: reachable-seed oracle, topology 83
+2026-11-04T01:00:05.1727393Z PASS: reachable-seed oracle, topology 84
+2026-11-04T01:00:05.1728029Z PASS: reachable-seed oracle, topology 85
+2026-11-04T01:00:05.1728660Z PASS: reachable-seed oracle, topology 86
+2026-11-04T01:00:05.1729357Z PASS: reachable-seed oracle, topology 87
+2026-11-04T01:00:05.1729972Z PASS: reachable-seed oracle, topology 88
+2026-11-04T01:00:05.1730645Z PASS: reachable-seed oracle, topology 89
+2026-11-04T01:00:05.1731343Z PASS: reachable-seed oracle, topology 90
+2026-11-04T01:00:05.1732025Z PASS: reachable-seed oracle, topology 91
+2026-11-04T01:00:05.1732720Z PASS: reachable-seed oracle, topology 92
+2026-11-04T01:00:05.1733379Z PASS: reachable-seed oracle, topology 93
+2026-11-04T01:00:05.1734025Z PASS: reachable-seed oracle, topology 94
+2026-11-04T01:00:05.1734696Z PASS: reachable-seed oracle, topology 95
+2026-11-04T01:00:05.1735352Z PASS: reachable-seed oracle, topology 96
+2026-11-04T01:00:05.1735988Z PASS: reachable-seed oracle, topology 97
+2026-11-04T01:00:05.1736641Z PASS: reachable-seed oracle, topology 98
+2026-11-04T01:00:05.1737289Z PASS: reachable-seed oracle, topology 99
+2026-11-04T01:00:05.1737935Z PASS: reachable-seed oracle, topology 100
+2026-11-04T01:00:05.1738570Z PASS: reachable-seed oracle, topology 101
+2026-11-04T01:00:05.1739179Z PASS: reachable-seed oracle, topology 102
+2026-11-04T01:00:05.1739833Z PASS: reachable-seed oracle, topology 103
+2026-11-04T01:00:05.1740446Z PASS: reachable-seed oracle, topology 104
+2026-11-04T01:00:05.1741277Z PASS: reachable-seed oracle, topology 105
+2026-11-04T01:00:05.1741807Z PASS: reachable-seed oracle, topology 106
+2026-11-04T01:00:05.1742591Z PASS: reachable-seed oracle, topology 107
+2026-11-04T01:00:05.1743234Z PASS: reachable-seed oracle, topology 108
+2026-11-04T01:00:05.1743891Z PASS: reachable-seed oracle, topology 109
+2026-11-04T01:00:05.1744531Z PASS: reachable-seed oracle, topology 110
+2026-11-04T01:00:05.1745145Z PASS: reachable-seed oracle, topology 111
+2026-11-04T01:00:05.1745796Z PASS: reachable-seed oracle, topology 112
+2026-11-04T01:00:05.1746447Z PASS: reachable-seed oracle, topology 113
+2026-11-04T01:00:05.1747029Z PASS: reachable-seed oracle, topology 114
+2026-11-04T01:00:05.1747779Z PASS: reachable-seed oracle, topology 115
+2026-11-04T01:00:05.1748547Z PASS: reachable-seed oracle, topology 116
+2026-11-04T01:00:05.1749202Z PASS: reachable-seed oracle, topology 117
+2026-11-04T01:00:05.1749870Z PASS: reachable-seed oracle, topology 118
+2026-11-04T01:00:05.1750463Z PASS: reachable-seed oracle, topology 119
+2026-11-04T01:00:05.1751182Z PASS: reachable-seed oracle, topology 120
+2026-11-04T01:00:05.1751838Z PASS: reachable-seed oracle, topology 121
+2026-11-04T01:00:05.1752465Z PASS: reachable-seed oracle, topology 122
+2026-11-04T01:00:05.1753106Z PASS: reachable-seed oracle, topology 123
+2026-11-04T01:00:05.1753718Z PASS: reachable-seed oracle, topology 124
+2026-11-04T01:00:05.1754365Z PASS: reachable-seed oracle, topology 125
+2026-11-04T01:00:05.1754982Z PASS: reachable-seed oracle, topology 126
+2026-11-04T01:00:05.1755621Z PASS: reachable-seed oracle, topology 127
+2026-11-04T01:00:05.1756271Z PASS: reachable-seed oracle, topology 128
+2026-11-04T01:00:05.2092478Z PASS: reachable-seed oracle, topology 129
+2026-11-04T01:00:05.2093678Z PASS: reachable-seed oracle, topology 130
+2026-11-04T01:00:05.2094257Z PASS: reachable-seed oracle, topology 131
+2026-11-04T01:00:05.2094643Z PASS: reachable-seed oracle, topology 132
+2026-11-04T01:00:05.2095664Z PASS: reachable-seed oracle, topology 133
+2026-11-04T01:00:05.2097009Z PASS: reachable-seed oracle, topology 134
+2026-11-04T01:00:05.2097606Z PASS: reachable-seed oracle, topology 135
+2026-11-04T01:00:05.2098392Z PASS: reachable-seed oracle, topology 136
+2026-11-04T01:00:05.2099334Z PASS: reachable-seed oracle, topology 137
+2026-11-04T01:00:05.2101087Z PASS: reachable-seed oracle, topology 138
+2026-11-04T01:00:05.2102392Z PASS: reachable-seed oracle, topology 139
+2026-11-04T01:00:05.2103767Z PASS: reachable-seed oracle, topology 140
+2026-11-04T01:00:05.2104991Z PASS: reachable-seed oracle, topology 141
+2026-11-04T01:00:05.2106873Z PASS: reachable-seed oracle, topology 142
+2026-11-04T01:00:05.2108043Z PASS: reachable-seed oracle, topology 143
+2026-11-04T01:00:05.2109399Z PASS: reachable-seed oracle, topology 144
+2026-11-04T01:00:05.2110641Z PASS: reachable-seed oracle, topology 145
+2026-11-04T01:00:05.2112015Z PASS: reachable-seed oracle, topology 146
+2026-11-04T01:00:05.2113253Z PASS: reachable-seed oracle, topology 147
+2026-11-04T01:00:05.2115700Z PASS: reachable-seed oracle, topology 148
+2026-11-04T01:00:05.2116646Z PASS: reachable-seed oracle, topology 149
+2026-11-04T01:00:05.2119034Z PASS: reachable-seed oracle, topology 150
+2026-11-04T01:00:05.2119902Z PASS: reachable-seed oracle, topology 151
+2026-11-04T01:00:05.2121430Z PASS: reachable-seed oracle, topology 152
+2026-11-04T01:00:05.2122909Z PASS: reachable-seed oracle, topology 153
+2026-11-04T01:00:05.2124560Z PASS: reachable-seed oracle, topology 154
+2026-11-04T01:00:05.2125976Z PASS: reachable-seed oracle, topology 155
+2026-11-04T01:00:05.2127725Z PASS: reachable-seed oracle, topology 156
+2026-11-04T01:00:05.2128697Z PASS: reachable-seed oracle, topology 157
+2026-11-04T01:00:05.2130663Z PASS: reachable-seed oracle, topology 158
+2026-11-04T01:00:05.2132112Z PASS: reachable-seed oracle, topology 159
+2026-11-04T01:00:05.2132913Z PASS: reachable-seed oracle, topology 160
+2026-11-04T01:00:05.2133881Z PASS: reachable-seed oracle, topology 161
+2026-11-04T01:00:05.2135828Z PASS: reachable-seed oracle, topology 162
+2026-11-04T01:00:05.2138533Z PASS: reachable-seed oracle, topology 163
+2026-11-04T01:00:05.2139277Z PASS: reachable-seed oracle, topology 164
+2026-11-04T01:00:05.2140226Z PASS: reachable-seed oracle, topology 165
+2026-11-04T01:00:05.2141320Z PASS: reachable-seed oracle, topology 166
+2026-11-04T01:00:05.2142574Z PASS: reachable-seed oracle, topology 167
+2026-11-04T01:00:05.2143885Z PASS: reachable-seed oracle, topology 168
+2026-11-04T01:00:05.2144923Z PASS: reachable-seed oracle, topology 169
+2026-11-04T01:00:05.2146747Z PASS: reachable-seed oracle, topology 170
+2026-11-04T01:00:05.2148411Z PASS: reachable-seed oracle, topology 171
+2026-11-04T01:00:05.2149365Z PASS: reachable-seed oracle, topology 172
+2026-11-04T01:00:05.2150665Z PASS: reachable-seed oracle, topology 173
+2026-11-04T01:00:05.2152399Z PASS: reachable-seed oracle, topology 174
+2026-11-04T01:00:05.2154116Z PASS: reachable-seed oracle, topology 175
+2026-11-04T01:00:05.2154936Z PASS: reachable-seed oracle, topology 176
+2026-11-04T01:00:05.2155762Z PASS: reachable-seed oracle, topology 177
+2026-11-04T01:00:05.2157117Z PASS: reachable-seed oracle, topology 178
+2026-11-04T01:00:05.2158606Z PASS: reachable-seed oracle, topology 179
+2026-11-04T01:00:05.2159941Z PASS: reachable-seed oracle, topology 180
+2026-11-04T01:00:05.2161073Z PASS: reachable-seed oracle, topology 181
+2026-11-04T01:00:05.2162805Z PASS: reachable-seed oracle, topology 182
+2026-11-04T01:00:05.2164340Z PASS: reachable-seed oracle, topology 183
+2026-11-04T01:00:05.2165890Z PASS: reachable-seed oracle, topology 184
+2026-11-04T01:00:05.2167229Z PASS: reachable-seed oracle, topology 185
+2026-11-04T01:00:05.2170284Z PASS: reachable-seed oracle, topology 186
+2026-11-04T01:00:05.2172043Z PASS: reachable-seed oracle, topology 187
+2026-11-04T01:00:05.2174135Z PASS: reachable-seed oracle, topology 188
+2026-11-04T01:00:05.2175125Z PASS: reachable-seed oracle, topology 189
+2026-11-04T01:00:05.2177038Z PASS: reachable-seed oracle, topology 190
+2026-11-04T01:00:05.2178709Z PASS: reachable-seed oracle, topology 191
+2026-11-04T01:00:05.2179617Z PASS: reachable-seed oracle, topology 192
+2026-11-04T01:00:05.2180517Z PASS: reachable-seed oracle, topology 193
+2026-11-04T01:00:05.2183310Z PASS: reachable-seed oracle, topology 194
+2026-11-04T01:00:05.2184643Z PASS: reachable-seed oracle, topology 195
+2026-11-04T01:00:05.2185700Z PASS: reachable-seed oracle, topology 196
+2026-11-04T01:00:05.2186829Z PASS: reachable-seed oracle, topology 197
+2026-11-04T01:00:05.2188438Z PASS: reachable-seed oracle, topology 198
+2026-11-04T01:00:05.2190198Z PASS: reachable-seed oracle, topology 199
+2026-11-04T01:00:05.2191149Z PASS: reachable-seed oracle, topology 200
+2026-11-04T01:00:05.2192254Z PASS: reachable-seed oracle, topology 201
+2026-11-04T01:00:05.2193730Z PASS: reachable-seed oracle, topology 202
+2026-11-04T01:00:05.2195193Z PASS: reachable-seed oracle, topology 203
+2026-11-04T01:00:05.2196848Z PASS: reachable-seed oracle, topology 204
+2026-11-04T01:00:05.2197759Z PASS: reachable-seed oracle, topology 205
+2026-11-04T01:00:05.2199865Z PASS: reachable-seed oracle, topology 206
+2026-11-04T01:00:05.2201475Z PASS: reachable-seed oracle, topology 207
+2026-11-04T01:00:05.2202463Z PASS: reachable-seed oracle, topology 208
+2026-11-04T01:00:05.2203556Z PASS: reachable-seed oracle, topology 209
+2026-11-04T01:00:05.2205264Z PASS: reachable-seed oracle, topology 210
+2026-11-04T01:00:05.2206884Z PASS: reachable-seed oracle, topology 211
+2026-11-04T01:00:05.2208345Z PASS: reachable-seed oracle, topology 212
+2026-11-04T01:00:05.2209397Z PASS: reachable-seed oracle, topology 213
+2026-11-04T01:00:05.2211388Z PASS: reachable-seed oracle, topology 214
+2026-11-04T01:00:05.2213024Z PASS: reachable-seed oracle, topology 215
+2026-11-04T01:00:05.2214570Z PASS: reachable-seed oracle, topology 216
+2026-11-04T01:00:05.2216052Z PASS: reachable-seed oracle, topology 217
+2026-11-04T01:00:05.2217555Z PASS: reachable-seed oracle, topology 218
+2026-11-04T01:00:05.2219879Z PASS: reachable-seed oracle, topology 219
+2026-11-04T01:00:05.2220753Z PASS: reachable-seed oracle, topology 220
+2026-11-04T01:00:05.2222752Z PASS: reachable-seed oracle, topology 221
+2026-11-04T01:00:05.2224326Z PASS: reachable-seed oracle, topology 222
+2026-11-04T01:00:05.2227099Z PASS: reachable-seed oracle, topology 223
+2026-11-04T01:00:05.2250516Z PASS: reachable-seed oracle, topology 224
+2026-11-04T01:00:05.2251250Z PASS: reachable-seed oracle, topology 225
+2026-11-04T01:00:05.2252230Z PASS: reachable-seed oracle, topology 226
+2026-11-04T01:00:05.2252497Z PASS: reachable-seed oracle, topology 227
+2026-11-04T01:00:05.2252731Z PASS: reachable-seed oracle, topology 228
+2026-11-04T01:00:05.2253300Z PASS: reachable-seed oracle, topology 229
+2026-11-04T01:00:05.2253520Z PASS: reachable-seed oracle, topology 230
+2026-11-04T01:00:05.2253741Z PASS: reachable-seed oracle, topology 231
+2026-11-04T01:00:05.2253955Z PASS: reachable-seed oracle, topology 232
+2026-11-04T01:00:05.2254378Z PASS: reachable-seed oracle, topology 233
+2026-11-04T01:00:05.2254661Z PASS: reachable-seed oracle, topology 234
+2026-11-04T01:00:05.2254916Z PASS: reachable-seed oracle, topology 235
+2026-11-04T01:00:05.2255168Z PASS: reachable-seed oracle, topology 236
+2026-11-04T01:00:05.2255395Z PASS: reachable-seed oracle, topology 237
+2026-11-04T01:00:05.2255621Z PASS: reachable-seed oracle, topology 238
+2026-11-04T01:00:05.2256754Z PASS: reachable-seed oracle, topology 239
+2026-11-04T01:00:05.2258178Z PASS: reachable-seed oracle, topology 240
+2026-11-04T01:00:05.2259871Z PASS: reachable-seed oracle, topology 241
+2026-11-04T01:00:05.2260176Z PASS: reachable-seed oracle, topology 242
+2026-11-04T01:00:05.2261021Z PASS: reachable-seed oracle, topology 243
+2026-11-04T01:00:05.2262086Z PASS: reachable-seed oracle, topology 244
+2026-11-04T01:00:05.2263083Z PASS: reachable-seed oracle, topology 245
+2026-11-04T01:00:05.2264653Z PASS: reachable-seed oracle, topology 246
+2026-11-04T01:00:05.2265979Z PASS: reachable-seed oracle, topology 247
+2026-11-04T01:00:05.2267102Z PASS: reachable-seed oracle, topology 248
+2026-11-04T01:00:05.2268730Z PASS: reachable-seed oracle, topology 249
+2026-11-04T01:00:05.2271315Z PASS: reachable-seed oracle, topology 250
+2026-11-04T01:00:05.2273394Z PASS: reachable-seed oracle, topology 251
+2026-11-04T01:00:05.2274551Z PASS: reachable-seed oracle, topology 252
+2026-11-04T01:00:05.2275711Z PASS: reachable-seed oracle, topology 253
+2026-11-04T01:00:05.2277285Z PASS: reachable-seed oracle, topology 254
+2026-11-04T01:00:05.2278797Z PASS: reachable-seed oracle, topology 255
+2026-11-04T01:00:05.2280803Z PASS: equality-conflict oracle, topology 0
+2026-11-04T01:00:05.2281611Z PASS: equality-conflict oracle, topology 1
+2026-11-04T01:00:05.2282492Z PASS: equality-conflict oracle, topology 2
+2026-11-04T01:00:05.2283417Z PASS: equality-conflict oracle, topology 3
+2026-11-04T01:00:05.2284343Z PASS: equality-conflict oracle, topology 4
+2026-11-04T01:00:05.2285186Z PASS: equality-conflict oracle, topology 5
+2026-11-04T01:00:05.2285971Z PASS: equality-conflict oracle, topology 6
+2026-11-04T01:00:05.2287442Z PASS: equality-conflict oracle, topology 7
+2026-11-04T01:00:05.2288436Z PASS: equality-conflict oracle, topology 8
+2026-11-04T01:00:05.2288971Z PASS: equality-conflict oracle, topology 9
+2026-11-04T01:00:05.2289841Z PASS: equality-conflict oracle, topology 10
+2026-11-04T01:00:05.2290796Z PASS: equality-conflict oracle, topology 11
+2026-11-04T01:00:05.2291459Z PASS: equality-conflict oracle, topology 12
+2026-11-04T01:00:05.2292369Z PASS: equality-conflict oracle, topology 13
+2026-11-04T01:00:05.2293060Z PASS: equality-conflict oracle, topology 14
+2026-11-04T01:00:05.2293960Z PASS: equality-conflict oracle, topology 15
+2026-11-04T01:00:05.2294632Z PASS: equality-conflict oracle, topology 16
+2026-11-04T01:00:05.2295488Z PASS: equality-conflict oracle, topology 17
+2026-11-04T01:00:05.2296219Z PASS: equality-conflict oracle, topology 18
+2026-11-04T01:00:05.2297083Z PASS: equality-conflict oracle, topology 19
+2026-11-04T01:00:05.2298196Z PASS: equality-conflict oracle, topology 20
+2026-11-04T01:00:05.2298800Z PASS: equality-conflict oracle, topology 21
+2026-11-04T01:00:05.2299588Z PASS: equality-conflict oracle, topology 22
+2026-11-04T01:00:05.2300370Z PASS: equality-conflict oracle, topology 23
+2026-11-04T01:00:05.2301205Z PASS: equality-conflict oracle, topology 24
+2026-11-04T01:00:05.2302482Z PASS: equality-conflict oracle, topology 25
+2026-11-04T01:00:05.2303414Z PASS: equality-conflict oracle, topology 26
+2026-11-04T01:00:05.2304325Z PASS: equality-conflict oracle, topology 27
+2026-11-04T01:00:05.2305515Z PASS: equality-conflict oracle, topology 28
+2026-11-04T01:00:05.2306743Z PASS: equality-conflict oracle, topology 29
+2026-11-04T01:00:05.2307489Z PASS: equality-conflict oracle, topology 30
+2026-11-04T01:00:05.2308538Z PASS: equality-conflict oracle, topology 31
+2026-11-04T01:00:05.2309100Z PASS: equality-conflict oracle, topology 32
+2026-11-04T01:00:05.2309958Z PASS: equality-conflict oracle, topology 33
+2026-11-04T01:00:05.2310912Z PASS: equality-conflict oracle, topology 34
+2026-11-04T01:00:05.2311660Z PASS: equality-conflict oracle, topology 35
+2026-11-04T01:00:05.2312542Z PASS: equality-conflict oracle, topology 36
+2026-11-04T01:00:05.2313418Z PASS: equality-conflict oracle, topology 37
+2026-11-04T01:00:05.2314251Z PASS: equality-conflict oracle, topology 38
+2026-11-04T01:00:05.2315469Z PASS: equality-conflict oracle, topology 39
+2026-11-04T01:00:05.2316378Z PASS: equality-conflict oracle, topology 40
+2026-11-04T01:00:05.2317346Z PASS: equality-conflict oracle, topology 41
+2026-11-04T01:00:05.2317976Z PASS: equality-conflict oracle, topology 42
+2026-11-04T01:00:05.2319157Z PASS: equality-conflict oracle, topology 43
+2026-11-04T01:00:05.2319909Z PASS: equality-conflict oracle, topology 44
+2026-11-04T01:00:05.2320519Z PASS: equality-conflict oracle, topology 45
+2026-11-04T01:00:05.2321170Z PASS: equality-conflict oracle, topology 46
+2026-11-04T01:00:05.2321795Z PASS: equality-conflict oracle, topology 47
+2026-11-04T01:00:05.2322407Z PASS: equality-conflict oracle, topology 48
+2026-11-04T01:00:05.2323021Z PASS: equality-conflict oracle, topology 49
+2026-11-04T01:00:05.2323635Z PASS: equality-conflict oracle, topology 50
+2026-11-04T01:00:05.2324262Z PASS: equality-conflict oracle, topology 51
+2026-11-04T01:00:05.2324871Z PASS: equality-conflict oracle, topology 52
+2026-11-04T01:00:05.2325493Z PASS: equality-conflict oracle, topology 53
+2026-11-04T01:00:05.2326752Z PASS: equality-conflict oracle, topology 54
+2026-11-04T01:00:05.2327819Z PASS: equality-conflict oracle, topology 55
+2026-11-04T01:00:05.2328639Z PASS: equality-conflict oracle, topology 56
+2026-11-04T01:00:05.2329303Z PASS: equality-conflict oracle, topology 57
+2026-11-04T01:00:05.2330047Z PASS: equality-conflict oracle, topology 58
+2026-11-04T01:00:05.2330690Z PASS: equality-conflict oracle, topology 59
+2026-11-04T01:00:05.2331318Z PASS: equality-conflict oracle, topology 60
+2026-11-04T01:00:05.2331968Z PASS: equality-conflict oracle, topology 61
+2026-11-04T01:00:05.2332624Z PASS: equality-conflict oracle, topology 62
+2026-11-04T01:00:05.2333263Z PASS: equality-conflict oracle, topology 63
+2026-11-04T01:00:05.2334013Z Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+2026-11-04T01:00:05.2334536Z ALL LIBRARY TESTS PASSED
+2026-11-04T01:00:05.5008237Z Node exit status: 0

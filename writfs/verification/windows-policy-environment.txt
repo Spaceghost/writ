@@ -1,0 +1,57 @@
+Writ policy execution on native Windows Node
+
+Recorded from the actual successful GitHub Actions run on 2026-11-04 UTC.
+Scope: existing Bend-authored policy and model tests, compiled to JavaScript on
+Linux and executed by native Windows Node. WSL was not used. This does not
+qualify a Windows filesystem mount, native machine-code Bend runtime, protected
+worker, actor attribution, durable publication, GPU execution, or kernel port.
+
+Commit: b709bd833cd71eb51d8dbf4ed0c60974a2b5e073
+Tree: 01c7cde493297e918a517f6b041c6f7d9c85ae5d
+Workflow: https://github.com/Spaceghost/writ/actions/runs/41750878613
+Windows job: https://github.com/Spaceghost/writ/actions/runs/41750878613/job/126315488128
+Build job: https://github.com/Spaceghost/writ/actions/runs/41750878613/job/126315386883
+Run attempt: 1
+Workflow conclusion: success
+Windows suite execution: 2026-11-04 01:00:04-01:00:05 UTC
+
+Build environment:
+Runner label: ubuntu-24.04
+Runner image: ubuntu24 20261018.96.1
+Operating system: Ubuntu 24.04.5 LTS
+Kernel: 7.0.0-1014-aws, #14~24.04.1-Ubuntu SMP PREEMPT, x86_64
+Actions runner: 2.338.2
+Bend: 2.0.39
+Bend archive SHA-256: 6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab
+Archive hash verification and exact compiler version check succeeded.
+Generated artifacts remained outside the source checkout.
+
+Windows execution environment:
+Runner label: windows-2025
+Actual runner image: windows-2025-vs2026 / win25-vs2026 20261030.294.1
+Operating system: Microsoft Windows Server 2025 Datacenter
+Reported OS version: 10.0.26100; build 26100; 64-bit
+Actions runner: 2.338.2
+PowerShell: 7.6.9
+Node: v22.23.4
+Node executable: C:\Program Files\nodejs\node.exe
+
+Generated script SHA-256 values, identical in build and Windows job logs:
+63e06f1caee7ae094a0926be8c0b043d40c763d749b974a778b31c2535d627a8  library-tests.js
+1de89b8f099f9ac471e36e6f944f2caef52424e52e21219621ce0b7ebca38c4e  writfs-model-tests.js
+Generated artifact SHA-256, identical at upload and download:
+064bfef4f160bf5f6c159c26bc29db98d7abde72f55f0f01c6b695b520b28cc1
+The Windows job downloaded the exact build-job artifact ID and rejected digest
+mismatch. It ran both generated scripts and preserved their native Node exit codes.
+
+Root Tests.bend: SUCCESS; 638 passing checks; ALL LIBRARY TESTS PASSED; exit 0.
+The root transfer suite uses "PASS " while other suites use "PASS:"; counting
+both forms gives 638 (585 plus 53). See windows-policy-core.txt.
+
+writfs/Tests.bend: SUCCESS; 78 passing model checks;
+ALL NATIVE MODEL TESTS PASSED; exit 0. The existing marker names the native-storage
+model, not native filesystem execution in this lane. See windows-policy-model.txt.
+
+The run retained generated scripts, build logs, and Windows execution logs as
+GitHub Actions artifacts. The following checked-in extracts preserve all
+assertions and suite summaries, with timestamps and source/run identity.

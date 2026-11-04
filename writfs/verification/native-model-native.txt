@@ -1,0 +1,79 @@
+PASS: canonical lowercase UUID accepted
+PASS: uppercase UUID alias denied
+PASS: zero native UUID denied
+PASS: full uint64 maximum retained as canonical string
+PASS: uint64 overflow denied
+PASS: decimal aliases denied
+PASS: native identifiers above uint32 remain valid
+PASS: canonical absolute native locator accepted
+PASS: native path aliases denied
+PASS: option-like and whitespace components denied
+PASS: ZFS source must name one snapshot
+PASS: ZFS snapshot grammar is unambiguous
+PASS: native locator cap is exact
+PASS: writable Btrfs source cannot be sealed
+PASS: nested subvolumes cannot masquerade as a complete source
+PASS: ordinary subdirectory cannot authorize whole-subvolume copy
+PASS: live readonly ZFS dataset is not an immutable snapshot
+PASS: Btrfs preview contains only literal readonly snapshot argv
+PASS: filesystem clone cannot auto-mount or inherit sharing
+PASS: volume clone cannot expose a block device
+PASS: different filesystem container denied
+PASS: cross-provider native copy denied
+PASS: logical source version must match full plan
+PASS: logical destination version must match full plan
+PASS: source generation high word is bound into artifact seal
+PASS: artifact substitution including final word denied
+PASS: provider-specific executor identity cannot be exchanged
+PASS: native Copy requires exactly one source occurrence
+PASS: Btrfs action traverses complete Writ commit facade
+PASS: restricted source cannot target public clearance
+PASS: descriptor revocation is checked at final gate
+PASS: stale session revision denied
+PASS: stale ledger revision denied
+PASS: stale frontend revision denied
+PASS: another subject cannot reuse descriptor
+PASS: synthetic alternate artifact is valid at generic core boundary
+PASS: native gate additionally binds exact native source seal
+PASS: accepted intent for another invocation cannot authorize command
+PASS: synthetic network intent passes its own full core gate
+PASS: native backend requires Storage intent
+PASS: native authorization preserves full origin and operation restrictions
+PASS: returned session records committed model transition
+PASS: terminal session cannot authorize another effect
+PASS: consumed current reservation cannot be replayed from old session
+PASS: stage receipt retains exact plan policy DLM label backend and artifact
+PASS: writable native result denied
+PASS: nested native result denied
+PASS: nonroot native result denied
+PASS: Btrfs result must identify exact source parent UUID
+PASS: source UUID cannot masquerade as created copy
+PASS: source rootid cannot masquerade as created copy
+PASS: created snapshot must remain in registered filesystem
+PASS: native result cannot be redirected to another locator
+PASS: source generation rollback during native effect denied without uint32 truncation
+PASS: post-authorization argv substitution denied
+PASS: altered native action cannot mint receipt
+PASS: reconciliation accepts exact recorded native identity
+PASS: same pathname and parent do not reconcile a different native object
+PASS: canonical generation comparison retains numeric order across widths and uint64 high bits
+PASS: snapshot transaction source advance retains exact original authorized intent and seal
+PASS: preflight still rejects any source generation change
+PASS: post-source generation must equal the created snapshot transaction
+PASS: valid snapshot generation cannot excuse a changed source UUID
+PASS: created snapshot generation and creation transaction must agree for source advance
+PASS: reconciliation admits only the recorded snapshot source transaction
+PASS: future source generation cannot reconcile an earlier snapshot receipt
+PASS: ZFS filesystem action traverses complete Writ commit facade
+PASS: observed readonly unmounted filesystem clone accepted
+PASS: ZFS clone must retain exact origin snapshot
+PASS: pool GUID high bits are not discarded
+PASS: mounted filesystem clone denied
+PASS: mountable filesystem clone denied
+PASS: filesystem mountpoint exposure denied
+PASS: ZFS volume action traverses complete Writ commit facade
+PASS: observed hidden readonly zvol retains exact intent
+PASS: visible zvol device mode denied
+PASS: created dataset kind cannot replace authorized volume kind
+PASS: reconciliation checks creation transaction as well as GUID
+ALL NATIVE MODEL TESTS PASSED

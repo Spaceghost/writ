@@ -67,16 +67,33 @@ the functions that enforce them.
 
 ## Platforms
 
-**Genode is the reference capability platform.** Writ adds data-flow and
+**Windows is the first product target; Genode is the reference capability platform.** Writ adds data-flow and
 operation policy above native capability/session enforcement. The same Bend
 decision core is intended for direct Linux, native Windows, and a later kernel
 using [Drift](https://github.com/Spaceghost/drift) for portable drivers.
 
 Start with [the platform architecture](docs/PLATFORMS.md): it maps native authority,
 delegation, worker isolation, sealed artifacts, and publication to one host
-contract. Genode-on-Linux bring-up precedes native Genode qualification; direct
-Linux and Windows adapters can develop against the shared contract. These host
-ports remain proposed. The current execution evidence is for the Bend library.
+contract. The [native filesystem product plan](docs/WRITFS-PRODUCT.md) prioritizes
+Windows while retaining separate Linux and native Genode acceptance. Complete host
+ports remain proposed. The native storage backend below is a separate Linux
+integration with a deliberately narrower trust boundary.
+
+## Native storage
+
+[WritFS](writfs/README.md) adds native Btrfs subvolume snapshots, ZFS filesystem
+clones, and ZFS **zvol block-volume clones**. Bend authorizes the exact operation
+through the existing capability-to-commit gate, checks full native identities,
+and retains the complete output policy in a verified private-stage receipt.
+The filesystem performs the payload operation; there is no file-by-file copy
+or FUSE data proxy.
+
+The initial backend creates private, read-only stages under a trusted
+administrative monitor. It includes an inspection/public-fixture CLI and
+disposable native filesystem tests. A mounted POSIX view, device export,
+durable logical publication, and complete worker confinement remain separate
+host work. See the [backend guide](writfs/README.md) and its
+[verification record](writfs/VERIFICATION.md).
 
 ## Status
 
@@ -86,7 +103,7 @@ backends**. Physical GPU execution and independent Lean kernel verification have
 not been established.
 
 This is an executable security library and protocol model. Real POSIX devices,
-worker confinement, authenticated grant issuance, durable storage, payment
+worker confinement, authenticated grant issuance, durable authorized publication, payment
 settlement, and hosted-language execution remain integration work. S3 follows the
 POSIX adapter. The current DLM supports up to 30 named principals plus top/bottom.
 

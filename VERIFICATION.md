@@ -1,14 +1,15 @@
 # Verification record
 
-The original record was verified using **Bend 2.0.39**, Linux x86_64, and
-**Ubuntu clang 19.1.1**. The HostBinding reruns on 2026-11-03, including the
-final-review fix wave recorded here, used Bend 2.0.39, **clang 23.1.1**, and
-Node v26.10.0. Evidence retained from the original record (examples, GPU
-codegen, rclone) was produced with clang 19.1.1 and was not rerun.
+Core regression rerun on 2026-11-04 using **Bend 2.0.39**, Linux x86_64, and
+**clang 19.1.1**. Earlier example/platform evidence is scoped below. The
+HostBinding suite and its final-review fix wave were rerun on 2026-11-03 with
+Bend 2.0.39, **clang 23.1.1**, and Node v26.10.0, as recorded in the HostBinding
+rows below.
 The core and examples contain 36 authored `.bend` files (34 originally verified,
 plus `HostBinding.bend` and `HostBindingTests.bend`). Their implementation,
 test drivers, and proof declarations are Bend 2. The optional rclone contribution
-adds 14 Bend files and a separate minimal Go adapter, with its own evidence below.
+adds 14 Bend files and a separate minimal Go adapter. WritFS adds seven Bend
+files and a shared Bend SHA-256 module, with separate native-storage evidence.
 
 ## Executable checks
 
@@ -180,19 +181,20 @@ Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
 ## OpenSpec suite
 
-The repository includes 14 baseline capability specs and 22 pending change
-packages. OpenSpec 1.16.0 strict validation passed all 36 items with no errors or
-warnings. Baseline specifications contain 143 requirements and 314 scenarios;
+The repository includes 15 baseline capability specs and 22 pending change
+packages. OpenSpec 1.16.0 strict validation passed all 37 items with no errors or
+warnings. Baseline specifications contain 153 requirements and 341 scenarios;
 pending deltas contain 237 requirements and 441 scenarios. All 197 implementation
 tasks in those pending packages remain unchecked. Since then, tasks 1.1 to 1.4 and 2.1 to 2.3 of
 `add-genode-capability-adoption` have been checked against the HostBinding
 evidence above; its section 3 remains unchecked. After the HostBinding
 final-review fix wave edited that change's `tasks.md` (task 2.1 wording) and
 its traceability table, `bunx @fission-ai/openspec@1.16.0 validate --all
---strict --no-interactive` passed 42 of 42 items with 0 failed (the active
-item count has grown since the 36-item record). The bounded rclone reference
-change is implemented and archived with eight completed tasks; it does not
-complete a production adapter. See `verification/openspec-validation.txt`.
+--strict --no-interactive` passed with 0 failed (the active item count has
+grown since the 36-item record). The bounded rclone reference change is
+implemented and archived with eight completed tasks. Native snapshot staging is
+implemented and archived with ten completed tasks. Neither completes a
+production host adapter. See `verification/openspec-validation.txt`.
 
 This is specification validation, not execution of every acceptance scenario.
 Traceability tables distinguish named executable tests from source review and
@@ -209,7 +211,9 @@ The [feature guide](docs/FEATURES.md) and
 cross-feature gates. The source and documentation-style review is recorded in
 [feature sources](docs/FEATURE-SOURCES.md).
 
-Strict OpenSpec validation passes all 36 active items with no issues. Review
+The specification-only revision `876e6171b24b6ee8970ce58529c5abeb224474ab`
+passed strict OpenSpec validation for its 36 active items. The combined tree
+passes all 37 items, including native snapshot staging. The feature review
 also checked relative Markdown targets, the 22-change dependency graph, scenario
 clauses, requirement lengths, and implementation/baseline preservation.
 Cross-review covered hidden match verdicts through status and disposition,
@@ -217,12 +221,14 @@ visibility-filtered event numbering, original versus effective release policy,
 prior disclosure accounting, new-use versus durable-recovery authority, and
 publication replay after retirement.
 
-All 48 Bend files, four Go files, both Go module files, and 14 baseline specs are
-byte-identical to revision `06522bdce860ff720f16a8c331061f46627bb422`. Existing core
-and contribution execution evidence retains that exact source scope; runtime
-tests were not rerun for this specification-only update. None of the new native
-features, cryptographic matching, or disposal guarantees was executed. See
-[feature-spec-review.txt](verification/feature-spec-review.txt).
+That specification-only revision preserved all 48 Bend files, four Go files,
+both Go module files, and 14 baseline specs from revision
+`06522bdce860ff720f16a8c331061f46627bb422`. Its historical review remains in
+[feature-spec-review.txt](verification/feature-spec-review.txt). The combined
+tree additionally contains the shared SHA module and native storage work
+described below, with separate execution evidence. All 22 pending task files
+remain unchanged. Mounted WritFS, cryptographic matching, and disposal guarantees
+remain proposed; native private staging does not complete those features.
 
 ## Host platform research
 
@@ -245,8 +251,9 @@ host-port results. See [platform-review.txt](verification/platform-review.txt).
 
 ## Optional rclone contribution
 
-The [rclone reference remote](contrib/rclone/README.md) lives entirely under
-`contrib/rclone/`, apart from documentation and its specification. Bend owns its
+The [rclone reference remote](contrib/rclone/README.md) keeps its adapter and
+service under `contrib/rclone/`, with SHA-256 shared through `lib/Sha256.bend`.
+Bend owns its
 loopback service, canonical protocol, SHA-256, immutable object model, metadata,
 and policy/commit behavior. A separate Go module adapts rclone interfaces and
 bounded TCP transport. The root library has no new implementation dependency.
@@ -261,6 +268,33 @@ This is a memory-only, single-principal reference with a fixed standing profile.
 It does not qualify the proposed native host ports or implement external grant
 issuance, durable publication, arbitrary worker confinement, or a revocation feed.
 
+## Native WritFS storage
+
+The [WritFS backend](writfs/README.md) passes **95 model/parser/runtime checks
+on each CPU backend**, plus **11 real Btrfs checks** and **18 real ZFS
+filesystem/zvol checks** on disposable native Linux VMs. The native lanes
+verify real payloads, read-only behavior, private presentation controls, exact
+receipts, collision refusal, and the supported Btrfs snapshot transaction
+transition. Both jobs cleaned up their owned fixtures successfully.
+
+The SHA-256 extraction passed 25 digest and 74 rclone model regressions per
+backend; the original algorithm and all 34 core/example files are unchanged.
+The 638-check root suites and ordinary checks for the same three laws were
+rerun successfully. See the [detailed WritFS record](writfs/VERIFICATION.md)
+for source comparisons, exact native versions, logs, and fixes established by
+real native execution.
+
+An additional Windows Server 2025 lane passed **638 core and 78 WritFS model
+checks** using Bend-generated JavaScript under native Windows Node 22.23.4,
+without WSL. This is policy/model execution evidence, separate from a Windows
+filesystem, native machine-code runtime, or host-confinement result.
+
+The backend is a trusted administrative private-staging operation. It does not
+provide a mounted Writ filesystem, authenticated storage service, durable
+logical publication, handle revocation, or arbitrary-worker confinement.
+Its native manifest seal is not a payload content hash. It adds no Go/C authored
+implementation and does not replace the rclone contribution's memory-only store.
+
 ## Model boundaries
 
 Passing tests does not authenticate a caller-supplied Context, Session, Capability,
@@ -274,8 +308,9 @@ ingress/copy operation; that specific association does not establish arbitrary
 worker execution provenance or complete source extraction.
 
 The character-device interface is a pure protocol model. Durable atomic state
-updates, real payload writes, syscall/process/device confinement, actual payments,
-and external-language execution remain adapter work. The write adapter must expose
+updates, general payload publication, syscall/process/device confinement, actual
+payments, and external-language execution remain adapter work. WritFS performs
+the narrow private native-copy effects documented separately. A publishing adapter must expose
 only the sealed artifact identified in the accepted intent.
 
 ## Toolchain and package facts

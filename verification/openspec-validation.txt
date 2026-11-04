@@ -1,58 +1,38 @@
-Writ OpenSpec validation
-Date: 2026-11-03 (America/Los_Angeles)
-OpenSpec: 1.16.0
-Node.js: v24.22.1
-Command: openspec validate --all --strict --json --no-interactive
-Result: PASS; 36 items, 0 errors, 0 warnings
-
-Baseline: 14 capabilities, 143 requirements, 314 scenarios
-Pending: 22 changes/capabilities, 237 requirements, 441 scenarios
-Pending implementation tasks: 197; none marked complete
-New feature scope: 7 changes, 96 requirements, 200 scenarios, 64 unchecked tasks
-
-Per-item validation:
-PASS change add-addressable-views
-PASS change add-authenticated-grant-issuance
-PASS change add-capability-posix-adapter
-PASS change add-confined-transform-execution
-PASS change add-controlled-disclosure
-PASS change add-cooperative-retirement
-PASS change add-drift-kernel-host
-PASS change add-durable-publication
-PASS change add-executor-rendezvous
-PASS change add-external-planner-adapters
-PASS change add-genode-host
-PASS change add-linux-host
-PASS change add-locality-aware-execution
-PASS change add-metered-sample-execution
-PASS change add-origin-transform-stages
-PASS change add-policy-aware-audit
-PASS change add-portable-host-contract
-PASS change add-s3-adapter
-PASS change add-scoped-private-matching
-PASS change add-windows-host
-PASS change add-writfs-namespace
-PASS spec authority-boundary
-PASS spec candidate-verification
-PASS spec capability-frontend
-PASS spec commit-backplane
-PASS spec constraint-solving
-PASS spec data-model
-PASS spec decentralized-labels
-PASS spec parallel-execution
-PASS spec provenance-preservation
-PASS spec rclone-contrib-remote
-PASS spec reservation-ledger
-PASS spec transfer-admission
-PASS spec transformation-negotiation
-PASS change validate-physical-gpu-execution
-PASS spec verification-evidence
-
-This is structural specification validation, not execution of acceptance scenarios.
-All 48 Bend files, 4 Go files, 2 Go module files, and 14 baseline specs match
-revision 06522bdce860ff720f16a8c331061f46627bb422 exactly.
-Prior core/contribution execution evidence is retained for identical sources;
-runtime tests were not rerun for this specification-only update.
-Native feature execution, cryptographic private matching, physical GPU execution,
-and independent Lean kernel verification remain unverified.
-The archived bounded rclone contribution keeps its own completed scope.
+✓ change/add-addressable-views
+✓ change/add-authenticated-grant-issuance
+✓ change/add-capability-posix-adapter
+✓ change/add-confined-transform-execution
+✓ change/add-controlled-disclosure
+✓ change/add-cooperative-retirement
+✓ change/add-drift-kernel-host
+✓ change/add-durable-publication
+✓ change/add-executor-rendezvous
+✓ change/add-external-planner-adapters
+✓ change/add-genode-host
+✓ change/add-linux-host
+✓ change/add-locality-aware-execution
+✓ change/add-metered-sample-execution
+✓ change/add-origin-transform-stages
+✓ change/add-policy-aware-audit
+✓ change/add-portable-host-contract
+✓ change/add-s3-adapter
+✓ change/add-scoped-private-matching
+✓ change/add-windows-host
+✓ change/add-writfs-namespace
+✓ spec/authority-boundary
+✓ spec/candidate-verification
+✓ spec/capability-frontend
+✓ spec/commit-backplane
+✓ spec/constraint-solving
+✓ spec/data-model
+✓ spec/decentralized-labels
+✓ spec/native-snapshot-staging
+✓ spec/parallel-execution
+✓ spec/provenance-preservation
+✓ spec/rclone-contrib-remote
+✓ spec/reservation-ledger
+✓ spec/transfer-admission
+✓ spec/transformation-negotiation
+✓ change/validate-physical-gpu-execution
+✓ spec/verification-evidence
+Totals: 37 passed, 0 failed (37 items)

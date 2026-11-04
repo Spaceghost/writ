@@ -1,0 +1,11 @@
+Native WritFS CLI smoke checks; Bend 2.0.39 / clang 19.1.1; CPU only.
+args=[]
+exit=2
+Usage: writfs inspect btrfs|zfs|zvol SOURCE
+       writfs example-copy btrfs|zfs|zvol SOURCE PRIVATE-STAGING NAME
+args=['inspect', 'unknown', 'fixture']
+exit=2
+writfs: backend is btrfs, zfs, or zvol
+args=['inspect', 'btrfs', '/bad/../path']
+exit=1
+writfs: INVALID_LOCATOR

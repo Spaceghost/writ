@@ -180,6 +180,11 @@ The feature contracts are proposed. Current executable evidence remains in
 [rclone contribution](../contrib/rclone/README.md) is a bounded reference service
 with a separate scope. Neither establishes these new native features.
 
+The [native storage backend](../writfs/README.md) separately implements private
+Btrfs/ZFS snapshot staging. The [filesystem product design](WRITFS-PRODUCT.md)
+sets out the Windows-first mount and confinement work for all three native
+targets; that design remains proposed.
+
 For the source reasoning and documentation conventions used here, see
 [feature sources](FEATURE-SOURCES.md). For what must be demonstrated before a
 feature is called implemented, use the

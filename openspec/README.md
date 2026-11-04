@@ -59,6 +59,7 @@ it cannot be converted to a legacy source by erasing labels.
 | [Authority boundary](specs/authority-boundary/spec.md) | Trusted-input and host-integration preconditions | [Traceability](traceability/authority-boundary.md) |
 | [Verification evidence](specs/verification-evidence/spec.md) | Source, backend, tests, proof scope, and honest reporting | [Traceability](traceability/verification-evidence.md) |
 | [Optional rclone remote](specs/rclone-contrib-remote/spec.md) | Bounded memory-only integration with Bend authority and a minimal Go client adapter | [Traceability](traceability/rclone-contrib-remote.md) |
+| [Native snapshot staging](specs/native-snapshot-staging/spec.md) | Private Btrfs snapshots and ZFS filesystem/zvol clones through the common Bend gate | [Traceability](traceability/native-snapshot-staging.md) |
 
 The authority-boundary spec records obligations of an enforcing integration.
 It does not claim those host services already exist. GPU-directed source is
@@ -68,6 +69,12 @@ and public record constructors are not unforgeable capabilities.
 The [rclone contribution](../contrib/rclone/README.md) is executable within its
 explicit local reference profile. It does not qualify a native host platform or
 complete the pending issuer, confinement, or durable-publication changes.
+
+The [WritFS native backend](../writfs/README.md) adds an administrative native
+storage primitive with real Btrfs/ZFS fixture evidence. Its private stages,
+public-record trust contract, and native source-manifest seals are explicitly
+scoped. A mounted frontend, complete Linux host, and durable logical publication
+remain separate pending work.
 
 ## Validate and inspect
 
