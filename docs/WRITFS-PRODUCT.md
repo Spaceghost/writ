@@ -216,16 +216,16 @@ composition is proposed and unimplemented. The binding must return facts and
 errors, perform only accepted effects, and expose no general shell, arbitrary
 native call or alternate release endpoint. [W1] [W5] [W7] [W9] [W11]
 
-### Minimal proposed source exception, for review
+### Approved native source boundary
 
-Current [AGENTS.md](../AGENTS.md) permits authored Go only for the existing
-`contrib/rclone/go/` interface/transport contribution. It does **not** authorize
-new Windows bindings. This document changes no rule and grants no exception.
+The user approved the native binding exception in [AGENTS.md](../AGENTS.md).
+The existing `contrib/rclone/go/` exception remains limited to its rclone
+interface/transport contribution.
 
-The proposed exception is a separately reviewed `contrib/native-hosts/` tree
-limited to the following mechanical native boundaries:
+The additional `contrib/native-hosts/` tree is limited to the following
+mechanical native boundaries:
 
-| Proposed path | Permitted binding work |
+| Path | Permitted binding work |
 | --- | --- |
 | `windows/` | C/C++ WinFsp/Win32/WFP ABI bindings, generated Bend module invocation, and a small JavaScript I/O harness if the initial Windows runtime requires it |
 | `linux/` | C libfuse connection, callback, buffer and descriptor-lifetime bindings |
@@ -239,10 +239,10 @@ label decisions, accounting, replay rules or release decisions may move into
 these packages. Policy and state machines stay authored in Bend; generated
 outputs stay build artifacts.
 
-Without that approval, the current boundary permits Bend implementation,
-generated-code execution checks and source review. These must not be presented
-as a native enforcing filesystem. Each proposed host binding requires its own
-source inventory and actual native acceptance, even under this narrow exception.
+Each binding requires its own source inventory and actual native acceptance.
+Approval to write a binding is not host qualification. The shared mounted-view
+state machine and authority path stay in Bend; the bindings own native resources
+and translate observed facts and admitted effects.
 
 Genode needs a substantive runtime adaptation: the pinned Bend CPU runtime
 reserves a 2 GiB guarded stack and an initial 8 GiB sparse heap. Genode 26.08
