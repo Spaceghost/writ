@@ -16,3 +16,4 @@ Task 1: complete (09cd9bc..5e43f8e; re-review: all addressed except comment-only
 Task 2: implementer DONE_WITH_CONCERNS (50ef05d, bc4c0b0): accepted and Bend-denied round trips over the second serial port; bad length refused in host.c; MonitorCheck 10 checks. Finding: no device descriptor for the port, take polls every 10 ms on the runtime timer (no thread, no spin). Subject is a build-time word (recorded gap). Review dispatched.
 Task 2: fix round 1 DONE (e4cdc3d): 1 ms wait while a frame arrives, refusal cap 8, FIFO attempt recorded and dropped, inventory fixed. Scoped re-review dispatched.
 Task 2: complete (5e43f8e..e4cdc3d; re-review approved). Carried into Task 3: host.c:6-7 helper list comment; 1 ms park persists after a partial frame (note or back off). Task 3 dispatched (base e4cdc3d).
+Task 3: dispatched (base f14b626); in progress.

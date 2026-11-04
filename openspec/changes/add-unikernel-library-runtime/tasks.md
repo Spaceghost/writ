@@ -83,7 +83,7 @@ pending.
   but never called, so `IO.print` runs on the IO loop itself (also the matrix's event-loop
   row, verification/unikernel-matrix-unikraft.md: no monitor-profile effect uses a helper
   thread). Under QEMU TCG with `-no-reboot` and the exit device, `Tests.bend` prints 782 PASS
-  lines and `ALL LIBRARY TESTS PASSED` with QEMU exit 1 (at `-m 4096` and `-m 32`), and
+  lines and `ALL LIBRARY TESTS PASSED` with QEMU exit 1 (at `-m 4096` and `-m 32`; QEMU 33 under the current exit map, effect-twins lane Task 3), and
   `Example.bend`, `examples/Flow.bend`, `examples/Transfer.bend`, and `GpuExample.bend`
   (CPU-fallback line, no GPU claim) match, each diff empty after removing only SeaBIOS
   output and Unikraft's banner; `hosts/unikraft/scripts/check-corpus.sh` and

@@ -245,3 +245,50 @@ run.sh: no image .../corpus/images/nosuch-qemu or no directory .../corpus/logs
 2
 QEMU 1 is counted as success only with the console check: QEMU itself exits 1 on its own
 startup errors, which leave no Unikraft banner, so console.sh fails on them.
+
+== Task 3 rerun, 2026-11-04: exit-code map s + 0x10 (Unikraft effect-twins lane) ==
+
+hosts/unikraft/exit_device.c now writes program statuses as s + 0x10, so a passing run is
+QEMU 33 (verification/unikernel-fault-qemu.txt has the map); check-corpus.sh expects 33.
+exit_device.c 88098cb925d49219eb87d0ae99c8738466be85216119371a05a37b8feb8cdcc1. The
+emitted C is unchanged (bend <file> -o, cmp: tests.c b50856fb... as above; example, flow,
+transfer, gpuexample byte-identical to $W/gen/corpus/). All boots QEMU TCG, -m 4096.
+
+Old capture against the new expectation (the capture no longer applies, so this must fail):
+$ WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-corpus.sh corpustests782 tests-m4096
+QEMU exit: 1, expected 33 / result: FAIL
+
+Examples (new set corpus3x, built with build.sh, then booted):
+  13df9fdfd5e38137996c368c0cf8103bf915c9db3cb61d014e7cc90a76314755  $W/corpus3x/images/flow-qemu
+  e97fd7d68f3955e3bfca02bdde7da5ba2e742c9bbbee00b5a190d87247cc3282  $W/corpus3x/images/transfer-qemu
+  3ac1652ace5b81ca0357b48e34b8742ce73530663d57bb8be4b1efca89f79051  $W/corpus3x/images/example-qemu
+  befc3c9e181e1fafde5646bd6874a7556ada8a60ad967df5cbfaedebb1ac0951  $W/corpus3x/images/gpuexample-qemu
+$ hosts/unikraft/scripts/check-image.sh corpus3x <n>-m4096 <n> $W/corpus/linux/<n>-1.txt 33 <pass> 300 4096
+  flow       diff empty, PASS 4,  QEMU 33, PASS
+  transfer   diff empty, PASS 4,  QEMU 33, PASS
+  example    diff empty, PASS 16, QEMU 33, PASS
+  gpuexample (first boot, label gpuexample-m4096): FAIL. The five PASS lines and QEMU 33
+    were there, but after the program's last line the capture holds
+    "ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy
+    loop..." with two NUL bytes, so console.sh refused it (NUL=2) and the diff and PASS
+    count failed. That line is lib/ukpm/pm.c:67-69, reached from uk_pm_shutdown after the
+    termination functions (lib/ukboot/boot.c:450-452), i.e. after exit_device.c's port
+    write; on this boot the guest ran on past the write long enough to print it before
+    QEMU exited. Not seen in any other capture in $W (grep); cause not determined.
+  gpuexample (reruns gpuexample2-m4096, gpuexample3-m4096): diff empty, PASS 5, QEMU 33, PASS
+Negative control: flow-qemu against transfer's reference (corpus3x flow-neg-m4096): exit 1.
+
+Corpus image (rebuilt once, new set corpus3; same tests.c b50856fb...):
+  hosts/unikraft/scripts/mkapp.sh corpus3
+  bend Tests.bend -o $W/corpus3/gen/tests.c        (cmp-identical hash b50856fb...)
+  hosts/unikraft/scripts/build.sh corpus3 tests    # 5847 s
+    11b07c4641b32bb9d20b1d4670298d81b77b6e4d2d91f0ca90d71071bcab5d3a  $W/corpus3/images/tests-qemu
+    d72fad88d79fd8e8c2878d1de7a5160f4a7b58c2b6e3fdb9c6cfd7a1b8dd4bd8  $W/corpus3/images/tests-qemu.dbg
+$ hosts/unikraft/scripts/check-corpus.sh corpus3 tests-m4096 600 4096; echo $?
+diff: empty / PASS lines: 782 / last line: ALL LIBRARY TESTS PASSED / QEMU exit: 33 / result: PASS
+0   (wall 8.7 s; host load average about 48)
+$ hosts/unikraft/scripts/check-corpus.sh corpus3 tests-m32 600 32; echo $?
+diff: empty / PASS lines: 782 / last line: ALL LIBRARY TESTS PASSED / QEMU exit: 33 / result: PASS
+0   (wall 8.2 s)
+$ WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-corpus.sh corpus3 tests-m4096   -> result: PASS
+Binary check on the new tests-qemu.dbg: effect rows IO.print, PASS (as before).

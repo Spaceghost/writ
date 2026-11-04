@@ -71,7 +71,7 @@ The matrix below records the kernels **before** the port; where a cell has since
 it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one lane:
 
 - **Corpus parity:** `Tests.bend` (782 checks, merged tree aaa6885) prints 782 PASS lines
-  and `ALL LIBRARY TESTS PASSED` with QEMU exit 1, its console identical line for line to a
+  and `ALL LIBRARY TESTS PASSED` with QEMU exit 33 (1 under the first exit map), its console identical line for line to a
   Linux `--threads 1 --gpu off` capture after removing only SeaBIOS output and Unikraft's
   banner; the four examples match likewise ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt)). Checked by
   `hosts/unikraft/scripts/check-corpus.sh` and `check-image.sh`, which exit nonzero when an
