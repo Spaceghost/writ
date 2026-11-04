@@ -23,6 +23,32 @@ ifeq ($(WRIT_EXIT_HOOK),y)
 APPWRITBEND_SRCS-y += $(WRIT_HOSTS_UNIKRAFT)/exit_device.c
 endif
 
+# WRIT_HOST_LAYER=y links the host layer the Unikraft.* effect twins call
+# (hosts/unikraft/host.c, by reference). Images whose program uses no
+# Unikraft.* effect build without it (the default n), so their link and
+# symbol tables stay as recorded before the twins existed; a program that
+# uses a Unikraft.* effect without it fails to link (writ_uk_* undefined).
+WRIT_HOST_LAYER ?= n
+ifeq ($(WRIT_HOST_LAYER),y)
+APPWRITBEND_SRCS-y += $(WRIT_HOSTS_UNIKRAFT)/host.c
+endif
+
+# WRIT_CHANNEL_SUBJECT: the route subject word of the image's one Writ
+# channel, fixed at build time because a unikernel has no parent route
+# (hosts/unikraft/effects/Channel.md, "Subject"). Only a decimal word is
+# accepted. Unset, host.c builds without a subject and the first
+# Unikraft.take or Unikraft.put ends the image. A value above 4294967295
+# is refused rather than wrapped to another subject (host.c also asserts it).
+ifneq ($(WRIT_CHANNEL_SUBJECT),)
+ifneq ($(shell echo '$(WRIT_CHANNEL_SUBJECT)' | grep -Ex '[1-9][0-9]{0,9}'),$(WRIT_CHANNEL_SUBJECT))
+$(error WRIT_CHANNEL_SUBJECT must be a nonzero decimal word)
+endif
+ifneq ($(shell [ '$(WRIT_CHANNEL_SUBJECT)' -le 4294967295 ] && echo ok),ok)
+$(error WRIT_CHANNEL_SUBJECT must be at most 4294967295)
+endif
+APPWRITBEND_CFLAGS-y += -DWRIT_UK_CHANNEL_SUBJECT=$(WRIT_CHANNEL_SUBJECT)u
+endif
+
 # Adjustment 1: Unikraft builds with -nostdinc and musl ships no <stdatomic.h>;
 # expose only the compiler's own stdatomic.h (a freestanding compiler header).
 APPWRITBEND_CINCLUDES-y += -I$(APPWRITBEND_BASE)/compiler-include

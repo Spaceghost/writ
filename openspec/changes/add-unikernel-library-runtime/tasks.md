@@ -24,22 +24,64 @@ pending.
 
 ## 2. Port
 
-- [ ] 2.1 Author the console, time, exit, and ingress effect twins for the chosen kernel; publish their trust inventory; run the runtime profile's binary check on the image.
-  Unchecked: only the exit part exists. `hosts/unikraft/exit_device.c` (a C termination
-  and crash hook, not a Bend effect twin) gives QEMU 1 / 3 / 253 for success, `IO.die`, and
-  a fault (verification/unikernel-exit-codes.txt); `hosts/unikraft/INVENTORY.md` lists it
-  and the build scripts; the binary check ran on every image ELF and fails a `TCP.listen`
-  image (verification/unikernel-binary-check.txt; static link, so effect rows only). No
-  console, time, or ingress twin and no Bend effect definition has been written: the images
-  use Bend 2.0.39's own `IO.print` row through lib-musl.
-  UL-004 says the effect twins SHALL be the only kernel-specific code, but `exit_device.c`,
-  the Kraftfile, and the Makefile.uk are kernel-specific and are not twins, and the crash
-  handler cannot be one (no Bend effect runs on a crash). 2.1 must either subsume the hook
-  under the twins or amend UL-004 with an explicit rationale, as AGENTS.md requires for a
-  contract change; the spec is not amended here. The exit twin should also move success
-  off QEMU 1 (for example by writing s + 0x10), since QEMU itself exits 1 on its own
-  startup errors; until then QEMU 1 counts as success only with the console check.
+- [ ] 2.1 Author the console, time, and ingress effect twins for the chosen kernel (exit is the inventoried termination host layer); publish their trust inventory; run the runtime profile's binary check on the image.
+  Unchecked: the ingress twins exist only as scaffolding (below; the subject is a
+  build-time word, not an authenticated route). Exit: `hosts/unikraft/exit_device.c` (a C
+  termination and crash hook, not a Bend effect twin) gives QEMU 33 / 35 / 253 for success,
+  `IO.die`, and a fault (verification/unikernel-fault-qemu.txt; 1 / 3 / 253 before the
+  effect-twins lane's Task 3, verification/unikernel-exit-codes.txt). Console and time:
+  `hosts/unikraft/effects/Unikraft.bend` (`Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`)
+  with `.c` twins over `hosts/unikraft/host.c` (the twins' C side: console, clock, channel,
+  and the COM2 scratch-register probe; part of the twins, not of the boot and termination
+  host layer, which is `exit_device.c` alone) and `.js` twins that fail; the probe
+  `scripts/unikernel/Probe.bend` puts its text on serial through `Unikraft.log`, measures
+  102 to 103 ms around a 100 ms sleep, shows its FAIL branch once (QEMU 3, first map), and
+  check-binary.sh sees exactly the three effects as rows beyond the profile
+  (verification/unikernel-effects-qemu.txt, fix round 1; static link, so effect rows only).
+  The sleep parks on the runtime's own timer (`io_wait_on`, as `IO.sleep` does), so the loop
+  stays live; `io_work` is out because its helper thread outlives `main` on this
+  configuration and turned success into QEMU 255 under the first exit map (that file,
+  R0-E1; 19, a signal death, under the current map, not rerun). The ingress twin parks on
+  the runtime timer the same way, since COM2 has no descriptor here (below). The re-park and clock-failure paths
+  have not been exercised. The images still send `IO.print` through lib-musl; only
+  `Unikraft.log` uses a twin, so the "Console effect" scenario (a twin for `IO.print`) is
+  a gap.
+  Ingress: `Unikraft.take` and `Unikraft.put` (same file, `.c` twins over `host.c`) carry
+  the Genode channel's 64-byte records in fixed 80-byte frames over QEMU's second serial
+  port (ISA COM2, `CONFIG_LIBNS16550_COM2`, a Unix socket on the host;
+  `hosts/unikraft/effects/Channel.md`); `take` parks on the runtime timer between polls
+  of COM2 (10 ms idle, 1 ms while a frame is arriving), since COM2 has no descriptor or
+  interrupt in this configuration. The
+  monitor `hosts/unikraft/monitor/Monitor.bend` (fuel 4, SYNTHETIC Scenario state) answered
+  the host-side client probe with Committed (reason 0) and, for S's session named by the
+  body under the R subject, Denied by `DataOS.commit_from_capability` (reason 6); a
+  wrong-length frame got host.c's transport refusal (kind 3, reason 256) before Bend; the
+  reason-5 contrast (S as the subject) is shown on Linux by `MonitorCheck.bend`
+  (verification/unikernel-channel-qemu.txt). The subject is a build-time word
+  (`WRIT_CHANNEL_SUBJECT`): there is no parent route on a unikernel, so this is
+  SCAFFOLDING for the ingress twin and the gap UL-008's single-ingress rule and the
+  appliance host must close; it is never read from the record body.
+  `hosts/unikraft/INVENTORY.md` lists every file, exported symbol, and what it may touch.
+  UL-004 amended (unikraft effect-twins lane, Task 1), as AGENTS.md requires a rationale for
+  a contract change. The old text made the effect twins the only kernel-specific code, but
+  the termination and crash hook cannot be a twin: a twin is a Bend effect the program
+  calls, and no Bend code runs on a Unikraft crash or after `main` has returned, which is
+  exactly when the hook reports how the image ended; moving that reporting into a twin would
+  lose the crash and exit outcomes, and dropping the hook would hide them. The requirement
+  now reads "the effect twins and the inventoried boot and termination host layer SHALL be
+  the only kernel-specific code", and the trust inventory must name each such file, its
+  exported symbols, and what it may touch, so the hook is reviewed as strictly as a twin; it
+  still decides no authority question. "Exit" moves from the twins' primitives to that host
+  layer, and the inventory sentence (each file, its exported symbols, what it may touch) is
+  added to the requirement. The Kraftfile and Makefile.uk remain build configuration,
+  listed in the inventory.
+  Done in the effect-twins lane's Task 3: the exit hook writes s + 0x10, so success is
+  QEMU 33 and no outcome is QEMU 1, which QEMU itself returns on its own startup errors.
+  Still unchecked for the gaps above: the ingress subject is scaffolding, and `IO.print`
+  has no twin (the "Console effect" scenario).
 - [x] 2.2 Configure a single lane with the inline IO helper; build `Tests.bend` and the four examples; capture console output under QEMU and compare line for line with the Linux single-lane record.
+  Runtime host profile: the runs cite `scripts/runtime-profile/` (check-binary.sh) and are
+  recorded in `verification/runtime-profile-hosts.md` (Unikraft corpus and channel rows).
   Evidence: verification/unikernel-corpus-qemu.txt (current result: its integration rerun
   section, tree aaa6885). One CPU (`UKPLAT_CPU_MAXCOUNT=1`) and `+RTS --threads 1 --gpu off`.
   "With the inline IO helper" is read as "no IO helper thread runs": Bend 2.0.39 has no
@@ -48,7 +90,7 @@ pending.
   but never called, so `IO.print` runs on the IO loop itself (also the matrix's event-loop
   row, verification/unikernel-matrix-unikraft.md: no monitor-profile effect uses a helper
   thread). Under QEMU TCG with `-no-reboot` and the exit device, `Tests.bend` prints 782 PASS
-  lines and `ALL LIBRARY TESTS PASSED` with QEMU exit 1 (at `-m 4096` and `-m 32`), and
+  lines and `ALL LIBRARY TESTS PASSED` with QEMU exit 1 (at `-m 4096` and `-m 32`; QEMU 33 under the current exit map, effect-twins lane Task 3), and
   `Example.bend`, `examples/Flow.bend`, `examples/Transfer.bend`, and `GpuExample.bend`
   (CPU-fallback line, no GPU claim) match, each diff empty after removing only SeaBIOS
   output and Unikraft's banner; `hosts/unikraft/scripts/check-corpus.sh` and
@@ -59,12 +101,22 @@ pending.
   record, and the "638 count" in UL-005's scenario predates the current corpus. Emulated
   boots only, one lane.
 - [ ] 2.3 Install the halting fault handler; force a stack overflow and an arena exhaustion; record the console message and distinct exit codes.
-  Unchecked: the forced stack overflow yields a distinct QEMU exit (253 from the exit hook's
-  crash handler; Unikraft's own action is a power-off with no reset,
-  verification/unikernel-crash-action.txt), but no halting handler prints the runtime's
-  fault message (the console shows only Unikraft's crash screen, matrix E4), and arena
-  exhaustion was not forced; by reading the emitted C it would exit with status 1 and share
-  QEMU 3 with `IO.die`, so it has no distinct code.
+  Unchecked (effect-twins lane, Task 3, verification/unikernel-fault-qemu.txt). Fault
+  message: in the delivered configuration the forced stack overflow is a Unikraft crash
+  with QEMU 253 and no runtime message. Unikraft 0.21.0's posix-process can deliver SIGSEGV
+  to a handler on an alternate stack (lib/posix-process/signal/system_error.c,
+  deliver.c), and with `CONFIG_LIBPOSIX_PROCESS_SIGNAL=y` the runtime's handler does print
+  `bend: memory fault (machine stack overflow?)`, after which the image crashes (QEMU 253,
+  no resume); that library is experimental and needs `-include uk/config.h` to compile, so
+  it was a trial, not adopted. Codes: the exit hook now writes program statuses as s + 0x10
+  (success 33, `IO.die` 35) and a runtime or host-layer `_exit(1)` as 17, told from
+  `exit()` by an atexit mark. Arena exhaustion, forced with `scripts/unikernel/Exhaust.bend`
+  at three memory sizes, is a Unikraft crash (253) when the guest runs out of memory to back
+  the arena, before the runtime's own bound; it therefore has no code distinct from a fault,
+  which UL-006 requires. Corpus failure (`Test.bend` `check` ends a failing test with
+  `IO.die(Unit, 1, ...)`) is QEMU 35, distinct from both. The UL-006 gap has two independent halves: enabling the
+  signal library would close only the message half; arena exhaustion would still share
+  253 with a fault. The scenario states no number, so the spec is unchanged.
 - [ ] 2.4 Enable additional lanes behind the kernel's thread library; show the corpus still matches and record the lane count.
 
 ## 3. Boots and deployment rules

@@ -1,0 +1,8 @@
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+monitor: route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+writ_uk: channel frame refused: length=0x00000041 bad length=1
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=1 (bad record) session_revision=0 reader_balance=0 descriptor=0 frontend_revision=0
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: fuel exhausted, exiting

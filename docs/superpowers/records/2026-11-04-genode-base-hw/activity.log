@@ -46,3 +46,4 @@
 2026-11-04T19:48:04Z	implementer	heartbeat: final-review reruns in progress on both kernels; editing records meanwhile
 2026-11-04T19:50:20Z	implementer	heartbeat: fr reruns 11/36 done (all rc 0 so far); traceability, design, PLATFORMS, host-profile 2.3 edited
 2026-11-04T20:01:22Z	implementer	final-review fix pass: minors 1-12 and integration alignments applied; fr reruns rc 0 on both kernels; OpenSpec 44/0; committing
+2026-11-04T20:03:18Z	controller	final fix pass done; reconciling with the Unikraft merge
