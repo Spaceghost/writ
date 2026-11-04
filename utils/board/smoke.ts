@@ -179,6 +179,17 @@ try {
   mkdirSync(join(lanesDir, "questions"));
   writeFileSync(join(lanesDir, "questions", "q1.html"), `<!doctype html><title>Which kernel first?</title><meta name="writ-topic" content="smoke">\n<form method="post" action="/questions/q1/answer"><label><input type="radio" name="kernel" value="base-hw">base-hw</label><textarea name="text"></textarea><button>Send</button></form>`);
   writeFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), JSON.stringify({ at: "2026-11-04T19:00:00Z", who: "controller", fields: { text: "Asked on the board." } }) + "\n");
+  writeFileSync(join(lanesDir, "questions", "q2.html"), `<!doctype html><title>Already answered</title><form method="post" action="/questions/q2/answer"><textarea name="text"></textarea><button>Send</button></form>`);
+  writeFileSync(join(lanesDir, "questions", "q2.answers.jsonl"), [
+    { at: "2026-11-04T19:00:00Z", who: "controller", fields: { text: "Asked." } },
+    { at: "2026-11-04T19:05:00Z", who: "josh", fields: { text: "Yes." } },
+    { at: "2026-11-04T19:06:00Z", who: "controller", kind: "note", fields: { text: "Thanks, acting on it." } },
+  ].map((o) => JSON.stringify(o)).join("\n") + "\n");
+  writeFileSync(join(lanesDir, "questions", "q3.html"), `<!doctype html><title>Reopened</title><form method="post" action="/questions/q3/answer"><textarea name="text"></textarea><button>Send</button></form>`);
+  writeFileSync(join(lanesDir, "questions", "q3.answers.jsonl"), [
+    { at: "2026-11-04T19:00:00Z", who: "josh", fields: { text: "Yes." } },
+    { at: "2026-11-04T19:06:00Z", who: "controller", kind: "ask", fields: { text: "One more thing?" } },
+  ].map((o) => JSON.stringify(o)).join("\n") + "\n");
   proc = spawnServer(lanesDir);
 
   const base = await baseUrl();
@@ -290,7 +301,9 @@ try {
 
   // Questions: listed on the index, served sandboxed, and the one write route appends an answer.
   check("index lists the open question with its title and status", indexHtml.includes("<h2>Questions for you</h2>") && indexHtml.includes('href="/questions/q1">Which kernel first?</a>') && indexHtml.includes("needs an answer"));
-  check("index tile counts open questions", /Questions for you<\/span><span class="tile-value">1 open/.test(indexHtml));
+  check("index tile counts open questions (q1 and the reopened q3; q2's controller note keeps it answered)", /Questions for you<\/span><span class="tile-value">2 open/.test(indexHtml));
+  const qapi = (await (await fetch(`${base}/api/questions`)).json()) as { id: string; status: string }[];
+  check("a controller note after the reader's answer does not reopen; an ask does", qapi.find((q) => q.id === "q2")?.status === "answered" && qapi.find((q) => q.id === "q3")?.status === "open");
   const qpage = await (await fetch(`${base}/questions/q1`)).text();
   check("question page embeds the authored HTML sandboxed with forms allowed and shows the thread", qpage.includes('<iframe id="qframe-q1" class="qframe" src="/questions/q1/html"') && qpage.includes('sandbox="allow-scripts allow-forms allow-popups"') && qpage.includes("Asked on the board."));
   const qhtml = await fetch(`${base}/questions/q1/html`);

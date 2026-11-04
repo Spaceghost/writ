@@ -191,8 +191,11 @@ over its live stream. The quick-view drawer's iframe allows forms for this. Ever
 control characters removed; files are ignored; a body over 16 KiB, a foreign
 `Origin` (the board's own or the sandbox's `null` are accepted), a missing page,
 or any other method is refused. The controller appends its own replies to the
-same file with `"who":"controller"`. A question reads `open` until the reader's
-entry is the newest, `answered` after that, and `closed` when the page says so.
+same file with `"who":"controller"` and a `kind`: `note` (default) replies
+without reopening, `ask` reopens the question, `close` closes it. A question
+reads `open` until the reader answers (or after the controller's last `ask`),
+`answered` otherwise, and `closed` when the page's meta or a `close` entry
+says so.
 `--questions <dir>` points the pages and answers at another directory (the
 smoke test uses a temporary one so it never writes to the repository). The
 index lists open and answered questions first with a tile count, and the nav
