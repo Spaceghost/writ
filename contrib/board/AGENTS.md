@@ -5,17 +5,22 @@ This directory is development tooling, not part of Writ. It follows the
 Writ's authored implementation, tests, examples, and proofs stay in Bend 2, and
 nothing outside `contrib/board/` may import, build, or require this board.
 
-The board is read-only. It reads the repository given by `--root` and, from
-Task 2, the sibling git worktrees under `--lanes`. It never writes to either,
-never runs a mutating `git` command, and never executes a file it reads.
-Markdown is rendered with raw HTML escaped; explainer pages are served as-is
+The board is read-only. It reads the repository given by `--root` and the
+sibling git worktrees under `--lanes`. It never writes to either and never
+executes a file it reads. Its only git invocations are the fixed, read-only
+`git -C <lane> rev-parse --abbrev-ref HEAD` and
+`git -C <lane> log -1 --format=%h%x09%s%x09%cr`; do not add others. The SDD
+workspace (`.superpowers/sdd/`) is git-ignored and is read from the filesystem.
+Lane files and explainers are read without following symlinks.
+Markdown (documents, ledgers, reports) is rendered with raw HTML escaped and
+link schemes other than http, https, and mailto replaced by `#`; explainer pages are served as-is
 only when their name appears in a scanned change directory. Keep request paths
 matched against scanned names rather than joined into filesystem paths.
 
 The board makes no authority, behavior, or verification claim about Writ. It
 shows what the documents say. A checked task box is a count of text, not
-evidence; do not present a board view as a test, proof, or host qualification
-result. Keep its wording consistent with that.
+evidence, and a lane's ledger or report is what that lane wrote; do not present
+a board view as a test, proof, or host qualification result. Keep its wording consistent with that.
 
 Keep it small: `server.ts` (scanning, routes, SSE), `template.ts` (page and
 fragments), `board.css`, and `smoke.ts`. Datastar is the only frontend library

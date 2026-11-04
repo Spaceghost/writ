@@ -1,8 +1,14 @@
 // Page template and HTML fragments for the dev board. Every fragment that the
-// SSE stream may replace carries a stable id (`nav`, `main`) so a Datastar
-// outer morph lands on the same element the first render produced.
+// SSE stream may replace carries a stable id (`nav`, `main`, and on the index
+// `index-tables` and `lanes`) so a Datastar outer morph lands on the same
+// element the first render produced.
+//
+// Morphs copy the server's attributes onto the live element, so state the
+// reader changes in the browser is listed in `data-preserve-attr`: `open` on
+// <details>, and the `style`/`aria-selected` that the explainer tabs set.
+// Nested elements a morph should match keep stable ids for the same reason.
 
-import type { Baseline, Change } from "./server.ts";
+import type { Baseline, Change, Lane, LaneScan } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
@@ -12,6 +18,9 @@ export function esc(s: string): string {
 }
 
 const href = (name: string) => encodeURIComponent(name);
+
+/** An id-safe slug: Datastar and CSS selectors need no escaping for it. */
+const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9-]+/g, "-");
 
 /** Full document. `page` is the board path whose fragments /events re-renders. */
 export function shell(title: string, nav: string, main: string, page: string): string {
@@ -54,12 +63,13 @@ export function nav(changes: Change[], page: string): string {
       const current = page === path ? ` aria-current="page"` : "";
       return `<li><a href="/change/${href(c.name)}"${current}>${esc(c.name)}</a></li>`;
     }).join("");
-    return `<details open><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
+    return `<details open data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
   }).join("");
   return `<nav id="nav" class="side" aria-label="Changes"><a class="home"${page === "/" ? ` aria-current="page"` : ""} href="/">Index</a>${body}</nav>`;
 }
 
-export function index(baselines: Baseline[], changes: Change[], lanesDir: string | null, lanes: string[]): string {
+/** Index tables (changes, then baselines); patched as `#index-tables`. */
+export function indexTables(baselines: Baseline[], changes: Change[]): string {
   const baseRows = baselines.map((b) => `<tr>
 <td><a href="/spec/${href(b.name)}">${esc(b.name)}</a><div class="sub">${esc(b.title)}</div></td>
 <td class="n">${b.requirements}</td>
@@ -72,13 +82,7 @@ export function index(baselines: Baseline[], changes: Change[], lanesDir: string
 <td class="n" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${c.dependsOn.length}</td>
 <td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
 </tr>`).join("");
-  const lanePanel = lanesDir === null
-    ? `<p class="muted">No <code>--lanes</code> directory given.</p>`
-    : lanes.length === 0
-      ? `<p class="muted">No git worktrees found in <code>${esc(lanesDir)}</code>.</p>`
-      : `<ul class="lanes">${lanes.map((l) => `<li><code>${esc(l)}</code></li>`).join("")}</ul>`;
-  return `<main id="main" class="content">
-<h1>Writ OpenSpec board</h1>
+  return `<section id="index-tables">
 <p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence.</p>
 <h2>Pending changes</h2>
 <div class="tablewrap"><table>
@@ -90,8 +94,73 @@ export function index(baselines: Baseline[], changes: Change[], lanesDir: string
 <thead><tr><th>Capability</th><th>Reqs</th><th>Evidence</th></tr></thead>
 <tbody>${baseRows}</tbody>
 </table></div>
-<section id="lanes" class="lanes-panel"><h2>Lanes</h2>${lanePanel}</section>
+</section>`;
+}
+
+/**
+ * Index content. With --lanes the lanes panel comes first, because the board
+ * is then a coordination view; without it the panel is a one-line note last.
+ */
+export function index(tables: string, lanes: string, lanesFirst: boolean): string {
+  return `<main id="main" class="content">
+<h1>Writ OpenSpec board</h1>
+${lanesFirst ? `${lanes}\n${tables}` : `${tables}\n${lanes}`}
 </main>`;
+}
+
+const count = (t: { done: number; total: number } | null) => (t === null ? "absent" : `${t.done}/${t.total}`);
+
+/** One lane worktree: identity line, then ledger, reports, task drift, verification. */
+function laneCard(l: Lane): string {
+  const id = `lane-${slug(l.name)}`;
+  const branch = l.branch === null ? "" : `<span class="branch">${esc(l.branch)}</span>`;
+  const commit = l.commit === null
+    ? ""
+    : `<p class="commit"><code>${esc(l.commit.hash)}</code> ${esc(l.commit.subject)} <span class="muted">${esc(l.commit.when)}</span></p>`;
+  const notes = l.notes.map((n) => `<p class="note-line">${esc(n)}</p>`).join("");
+  const sdd = l.sdd.map((p) => {
+    const rel = `.superpowers/sdd/${p.plan}`;
+    const ledger = p.ledger === null
+      ? `<p class="note-line">${esc(p.ledgerNote ?? "no ledger")}</p>`
+      : `<div class="md ledger">${p.ledger}</div>`;
+    const reports = p.reports.length === 0
+      ? `<p class="muted small">No task reports yet.</p>`
+      : p.reports.map((r) => {
+          const rid = `${id}-${slug(p.plan)}-${slug(r.file)}`;
+          const status = r.status === null ? "" : ` <span class="report-status">${esc(r.status)}</span>`;
+          const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
+          return `<details id="${rid}" class="report" data-preserve-attr="open"><summary><code>${esc(r.file)}</code>${status}</summary>${body}</details>`;
+        }).join("");
+    return `<div class="plan"><div class="doc-label">${esc(rel)}/progress.md, last 10 lines</div>${ledger}${reports}</div>`;
+  }).join("");
+  const diffs = l.taskDiffs.length === 0
+    ? ""
+    : `<div class="drift"><div class="doc-label">Task boxes differing from the root</div><ul>${l.taskDiffs.map((d) =>
+        `<li><a href="/change/${href(d.name)}">${esc(d.name)}</a> <span class="num">${count(d.lane)}</span> <span class="muted">here, root ${count(d.root)}</span></li>`).join("")}</ul></div>`;
+  const ver = l.verification === null || l.verification.length === 0
+    ? ""
+    : `<div class="drift"><div class="doc-label">verification/ files new or changed relative to the root</div><ul>${l.verification.map((v) =>
+        `<li><code>${esc(v.path)}</code> <span class="muted">${v.kind}</span></li>`).join("")}</ul></div>`;
+  return `<article id="${id}" class="lane">
+<header><h3>${esc(l.name)}</h3>${branch}</header>
+${commit}${notes}${sdd}${diffs}${ver}
+</article>`;
+}
+
+/** The lanes panel, patched as `#lanes`. `scan` is null when --lanes is absent. */
+export function lanesPanel(scan: LaneScan | null): string {
+  let body: string;
+  if (scan === null) body = `<p class="muted">No <code>--lanes</code> directory given.</p>`;
+  else if (!scan.readable) body = `<p class="note-line">Lanes directory <code>${esc(scan.dir)}</code> could not be read.</p>`;
+  else if (scan.lanes.length === 0) body = `<p class="muted">No git worktrees found in <code>${esc(scan.dir)}</code>.</p>`;
+  else body = scan.lanes.map(laneCard).join("\n");
+  const skipped = scan && scan.skipped.length > 0
+    ? `<p class="muted small">Not git worktrees, skipped: ${scan.skipped.map((s) => `<code>${esc(s)}</code>`).join(", ")}</p>`
+    : "";
+  const lede = scan && scan.lanes.length > 0
+    ? `<p class="muted small">${scan.lanes.length} worktrees in <code>${esc(scan.dir)}</code>. Ledgers and reports are what each lane wrote; they are not verification.</p>`
+    : "";
+  return `<section id="lanes" class="lanes-panel"><h2>Lanes</h2>${lede}${body}${skipped}</section>`;
 }
 
 type ChangeDocs = {
@@ -128,13 +197,15 @@ export function changePage(c: Change, docs: ChangeDocs, all: Change[]): string {
   ].join("");
   // Explainer names match /^[A-Za-z0-9._-]+\.html$/, so they are safe inside a quoted JS string.
   const tab = (key: string, label: string) =>
-    `<button type="button" role="tab" data-on:click="$tab = '${key}'" data-attr:aria-selected="$tab == '${key}' ? 'true' : 'false'">${esc(label)}</button>`;
+    `<button type="button" role="tab" data-preserve-attr="aria-selected" data-on:click="$tab = '${key}'" data-attr:aria-selected="$tab == '${key}' ? 'true' : 'false'">${esc(label)}</button>`;
   const tabs = c.html.length === 0 ? "" : `<div class="tabs" role="tablist">${tab("docs", "Documents")}${c.html.map((f) => tab(f, f)).join("")}</div>`;
   const frames = c.html.map((f) => {
     const src = `/change/${href(c.name)}/html/${href(f)}`;
-    return `<section class="explainer" data-show="$tab == '${f}'" style="display:none">
+    // Sandboxed without allow-same-origin: explainers run their own scripts but
+    // cannot read the board's origin, storage, or cookies.
+    return `<section id="explainer-${slug(f)}" class="explainer" data-show="$tab == '${f}'" data-preserve-attr="style" style="display:none">
 <p class="frame-bar"><span>${esc(f)}, served as-is</span><a href="${src}" target="_blank" rel="noopener">open standalone</a></p>
-<iframe src="${src}" title="${esc(f)} for ${esc(c.name)}" loading="lazy"></iframe>
+<iframe id="frame-${slug(f)}" src="${src}" title="${esc(f)} for ${esc(c.name)}" loading="lazy" sandbox="allow-scripts allow-popups"></iframe>
 </section>`;
   }).join("");
   return `<main id="main" class="content" data-signals:tab__ifmissing="'docs'">
@@ -146,7 +217,7 @@ export function changePage(c: Change, docs: ChangeDocs, all: Change[]): string {
 <div><dt>Depends on</dt><dd>${deps}</dd></div>
 </dl>
 ${tabs}
-<div class="docs" data-show="$tab == 'docs'">
+<div class="docs" data-show="$tab == 'docs'" data-preserve-attr="style">
 <nav class="toc" aria-label="Sections">${toc}</nav>
 ${docsHtml}
 </div>

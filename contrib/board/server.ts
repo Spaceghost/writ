@@ -5,16 +5,21 @@
 // implementation helper.
 //
 // Read-only contract: the server only reads files below --root and --lanes. It
-// never writes, never runs a mutating git command, and never executes a file it
-// reads. Markdown is rendered with raw HTML escaped; explainer pages are served
-// byte-for-byte as text/html only when their name appears in the scanned change
-// directory. Request paths are matched against scanned names, never joined into
-// a filesystem path unchecked, so a request cannot reach outside the scan.
+// never writes, never executes a file it reads, and runs exactly two read-only
+// git commands per lane (`rev-parse --abbrev-ref HEAD` and `log -1`), which read
+// the worktree's gitdir. The watcher also watches that gitdir's `logs/`
+// directory for HEAD's reflog name only (never reading it) so a commit refreshes
+// the panel. Markdown is rendered with raw HTML escaped and unsafe link schemes
+// replaced by `#`; explainer pages are served byte-for-byte as text/html only
+// when their name appears in the scanned change directory as a regular file
+// (not a symlink). Request paths are matched against scanned names, never
+// joined into a filesystem path unchecked, so a request cannot reach outside
+// the scan.
 //
 // The board makes no claim about Writ's behavior, proofs, or verification. It
 // shows what the documents say, including checkbox counts as written.
 
-import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";
+import { readdirSync, readFileSync, existsSync, lstatSync, openSync, closeSync, fstatSync, watch, constants, type FSWatcher } from "node:fs";
 import { join, resolve, posix } from "node:path";
 import { Marked, type Tokens } from "marked";
 import * as T from "./template.ts";
@@ -80,6 +85,40 @@ function readText(path: string): string | null {
     return readFileSync(path, "utf8");
   } catch {
     return null;
+  }
+}
+
+/**
+ * Reads a regular file without following a symlink at the last component
+ * (O_NOFOLLOW), and refuses anything that is not a regular file. Used for lane
+ * files and explainers, where the scan promised a regular file.
+ */
+function readRegular(path: string): Buffer | null {
+  let fd: number | undefined;
+  try {
+    fd = openSync(path, constants.O_RDONLY | constants.O_NOFOLLOW);
+    if (!fstatSync(fd).isFile()) return null;
+    return readFileSync(fd);
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+function readRegularText(path: string): string | null {
+  return readRegular(path)?.toString("utf8") ?? null;
+}
+
+/** Regular files (Dirent.isFile, so symlinks excluded) in `dir` matching `pattern`. */
+function regularFiles(dir: string, pattern: RegExp): string[] {
+  try {
+    return readdirSync(dir, { withFileTypes: true })
+      .filter((d) => d.isFile() && pattern.test(d.name))
+      .map((d) => d.name)
+      .sort();
+  } catch {
+    return [];
   }
 }
 
@@ -162,10 +201,8 @@ function scanChanges(root: string): Change[] {
     .map((name) => {
       const dir = join(changes, name);
       const meta = parseMeta(readText(join(dir, ".openspec.yaml")));
-      let html: string[] = [];
-      try {
-        html = readdirSync(dir).filter((f) => SAFE_HTML.test(f) && statSync(join(dir, f)).isFile()).sort();
-      } catch {}
+      // Dirent.isFile is false for a symlink, so a linked explainer is never listed.
+      const html = regularFiles(dir, SAFE_HTML);
       return {
         name,
         title: firstHeading(readText(join(dir, "proposal.md")), name),
@@ -179,10 +216,200 @@ function scanChanges(root: string): Change[] {
     });
 }
 
-/** Task 1 lists lane worktree names only; Task 2 fills in branch and reports. */
-function scanLanes(lanes: string | null): string[] {
-  if (lanes === null) return [];
-  return subdirs(lanes).filter((d) => existsSync(join(lanes, d, ".git")));
+// ---------------------------------------------------------------- lanes
+
+/** Directory names never walked or watched: dependencies, git internals, build output. */
+const IGNORED_DIRS = new Set(["node_modules", ".git", "build", "dist", "out", "target", "result", "zig-out", ".zig-cache", ".cache"]);
+
+/** Lines of `progress.md` shown in the panel. */
+const LEDGER_TAIL = 10;
+const REPORT_FILE = /^task-(\d+)-report\.md$/;
+const GIT_TIMEOUT_MS = 3000;
+
+export type LaneSdd = {
+  plan: string;
+  /** Rendered tail of progress.md, or null with `ledgerNote` saying why. */
+  ledger: string | null;
+  ledgerNote: string | null;
+  reports: { file: string; status: string | null; html: string | null }[];
+};
+
+export type Lane = {
+  name: string;
+  branch: string | null;
+  commit: { hash: string; subject: string; when: string } | null;
+  /** Each entry says what could not be read for this lane. */
+  notes: string[];
+  sdd: LaneSdd[];
+  /** Changes whose checkbox counts differ from the root's (root null: not in root). */
+  taskDiffs: { name: string; lane: { done: number; total: number }; root: { done: number; total: number } | null }[];
+  /** Files under verification/ that are new or newer-and-different than the root's copy; null if absent. */
+  verification: { path: string; kind: "new" | "changed" }[] | null;
+};
+
+export type LaneScan = { dir: string; readable: boolean; lanes: Lane[]; skipped: string[] };
+
+/**
+ * The only two git commands the board runs. Both are read-only; the argument
+ * vectors are fixed so no request or file content can reach git's argv.
+ */
+const GIT_BRANCH = ["rev-parse", "--abbrev-ref", "HEAD"] as const;
+const GIT_LAST = ["log", "-1", "--format=%h%x09%s%x09%cr"] as const;
+
+async function git(dir: string, args: typeof GIT_BRANCH | typeof GIT_LAST): Promise<string | null> {
+  try {
+    const proc = Bun.spawn(["git", "-C", dir, ...args], {
+      stdin: "ignore",
+      stdout: "pipe",
+      stderr: "ignore",
+      // No optional index locks, no pager, no credential prompt.
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", GIT_TERMINAL_PROMPT: "0", GIT_PAGER: "cat", PAGER: "cat" },
+    });
+    const timer = setTimeout(() => proc.kill(), GIT_TIMEOUT_MS);
+    const out = await new Response(proc.stdout).text();
+    const code = await proc.exited;
+    clearTimeout(timer);
+    return code === 0 ? out.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Lane candidates: subdirectories of --lanes that hold a `.git` file or directory. */
+function laneNames(lanes: string): { lanes: string[]; skipped: string[] } {
+  const all = subdirs(lanes);
+  const isLane = (d: string) => existsSync(join(lanes, d, ".git"));
+  return { lanes: all.filter(isLane), skipped: all.filter((d) => !isLane(d)) };
+}
+
+/**
+ * The gitdir of a worktree: `<dir>/.git` itself when it is a directory, or the
+ * path named by its `gitdir:` line when it is a file (a linked worktree).
+ */
+function gitDirOf(dir: string): string | null {
+  const dotGit = join(dir, ".git");
+  try {
+    if (lstatSync(dotGit).isDirectory()) return dotGit;
+  } catch {
+    return null;
+  }
+  const m = readRegularText(dotGit)?.match(/^gitdir:\s*(.+?)\s*$/m);
+  return m ? resolve(dir, m[1]) : null;
+}
+
+function ledgerTail(text: string): string {
+  const lines = text.split(/\r?\n/);
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "") lines.pop();
+  return lines.slice(-LEDGER_TAIL).join("\n");
+}
+
+function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
+  const base = join(dir, ".superpowers", "sdd");
+  if (!existsSync(base)) return { sdd: [], note: null };
+  const plans = subdirs(base);
+  if (plans.length === 0) return { sdd: [], note: "no plan directories under .superpowers/sdd/" };
+  return {
+    note: null,
+    sdd: plans.map((plan) => {
+      const planDir = join(base, plan);
+      const rel = `.superpowers/sdd/${plan}`;
+      const ledgerPath = join(planDir, "progress.md");
+      let ledger: string | null = null;
+      let ledgerNote: string | null = null;
+      if (!existsSync(ledgerPath)) ledgerNote = "no progress.md yet";
+      else {
+        const text = readRegularText(ledgerPath);
+        if (text === null) ledgerNote = "progress.md could not be read (not a regular file, or removed mid-scan)";
+        else if (text.trim() === "") ledgerNote = "progress.md is empty (possibly mid-write)";
+        else ledger = renderMarkdown(ledgerTail(text), `${rel}/progress.md`);
+      }
+      const reports = regularFiles(planDir, REPORT_FILE)
+        .sort((x, y) => Number(x.match(REPORT_FILE)![1]) - Number(y.match(REPORT_FILE)![1]))
+        .map((file) => {
+          const text = readRegularText(join(planDir, file));
+          const status = text?.match(/^Status:\s*(.+?)\s*$/m)?.[1] ?? null;
+          return { file, status, html: text === null ? null : renderMarkdown(text, `${rel}/${file}`) };
+        });
+      return { plan, ledger, ledgerNote, reports };
+    }),
+  };
+}
+
+/** Files below `dir` (relative paths), regular files only, ignored directories skipped. */
+function walkFiles(dir: string, prefix = "", depth = 0): string[] {
+  if (depth > 6) return [];
+  let entries;
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  return entries.flatMap((d) => {
+    const rel = prefix ? `${prefix}/${d.name}` : d.name;
+    if (d.isFile()) return [rel];
+    if (d.isDirectory() && !IGNORED_DIRS.has(d.name)) return walkFiles(join(dir, d.name), rel, depth + 1);
+    return [];
+  }).sort();
+}
+
+/**
+ * Verification files a lane has that the root lacks, or that are newer than the
+ * root's copy and differ in content. The content check matters because a fresh
+ * worktree checkout gives every file a newer mtime than the root's copy.
+ */
+function newerVerification(root: string, dir: string): Lane["verification"] {
+  const laneVer = join(dir, "verification");
+  if (!existsSync(laneVer)) return null;
+  const rootVer = join(root, "verification");
+  return walkFiles(laneVer).flatMap((rel) => {
+    let laneMtime: number;
+    let rootMtime: number;
+    try {
+      laneMtime = lstatSync(join(laneVer, rel)).mtimeMs;
+    } catch {
+      return []; // removed since the walk
+    }
+    try {
+      rootMtime = lstatSync(join(rootVer, rel)).mtimeMs;
+    } catch {
+      return [{ path: rel, kind: "new" as const }];
+    }
+    if (laneMtime <= rootMtime) return [];
+    const a = readRegular(join(laneVer, rel));
+    const b = readRegular(join(rootVer, rel));
+    return a !== null && b !== null && a.equals(b) ? [] : [{ path: rel, kind: "changed" as const }];
+  });
+}
+
+async function scanLane(root: string, rootChanges: Change[], lanes: string, name: string): Promise<Lane> {
+  const dir = join(lanes, name);
+  const notes: string[] = [];
+  const [branch, last] = await Promise.all([git(dir, GIT_BRANCH), git(dir, GIT_LAST)]);
+  if (branch === null) notes.push("branch could not be read (git rev-parse failed)");
+  let commit: Lane["commit"] = null;
+  if (last === null) notes.push("last commit could not be read (git log failed)");
+  else {
+    const [hash, subject = "", when = ""] = last.split("\t");
+    commit = { hash, subject, when };
+  }
+  const { sdd, note } = scanSdd(dir);
+  if (note) notes.push(note);
+  const byName = new Map(rootChanges.map((c) => [c.name, c.tasks]));
+  const taskDiffs = existsSync(join(dir, "openspec", "changes"))
+    ? scanChanges(dir).flatMap((c) => {
+        const r = byName.get(c.name) ?? null;
+        return r !== null && r.done === c.tasks.done && r.total === c.tasks.total ? [] : [{ name: c.name, lane: c.tasks, root: r }];
+      })
+    : [];
+  if (!existsSync(dir)) notes.push("directory could not be read (removed?)");
+  return { name, branch, commit, notes, sdd, taskDiffs, verification: newerVerification(root, dir) };
+}
+
+async function scanLanes(root: string, rootChanges: Change[], lanes: string | null): Promise<LaneScan | null> {
+  if (lanes === null) return null;
+  const readable = existsSync(lanes);
+  const { lanes: names, skipped } = laneNames(lanes);
+  return { dir: lanes, readable, skipped, lanes: await Promise.all(names.map((n) => scanLane(root, rootChanges, lanes, n))) };
 }
 
 // ---------------------------------------------------------------- markdown
@@ -202,14 +429,47 @@ function renderMarkdown(source: string, repoPath: string): string {
       },
     },
     walkTokens(token) {
-      if (token.type === "link") (token as Tokens.Link).href = boardHref((token as Tokens.Link).href, repoPath);
+      if (token.type === "link" || token.type === "image") {
+        const t = token as Tokens.Link | Tokens.Image;
+        t.href = boardHref(t.href, repoPath);
+      }
     },
   });
   return md.parse(source, { async: false }) as string;
 }
 
+/** Schemes a rendered link may keep; any other scheme becomes `#`. */
+const SAFE_SCHEME = /^(https?|mailto):/i;
+
+/**
+ * Decodes the character references a browser would decode inside an href
+ * attribute, so the scheme check sees what the browser will see. marked keeps
+ * `&#106;` and similar references in the href and does not re-escape them.
+ */
+function decodeRefs(s: string): string {
+  return s
+    .replace(/&#x([0-9a-f]+);?/gi, (_, h) => String.fromCodePoint(Math.min(parseInt(h, 16), 0x10ffff)))
+    .replace(/&#(\d+);?/g, (_, d) => String.fromCodePoint(Math.min(Number(d), 0x10ffff)))
+    .replace(/&(colon|tab|newline|amp|sol|num|quest|period);/gi, (_, n) =>
+      ({ colon: ":", tab: "\t", newline: "\n", amp: "&", sol: "/", num: "#", quest: "?", period: "." })[n.toLowerCase() as "colon"]);
+}
+
+/**
+ * Filters and rewrites one markdown link target. Kept: http:, https:, mailto:,
+ * fragment links, and same-origin relative paths. Rewritten: relative links to
+ * OpenSpec documents become the matching board route. Everything else
+ * (javascript:, data:, file:, protocol-relative `//host`, or a scheme hidden
+ * behind character references or control characters) becomes `#`.
+ */
 export function boardHref(href: string, repoPath: string): string {
-  if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(href)) return href;
+  // Browsers drop ASCII tab/newline anywhere and C0/space at the ends; strip all
+  // of them so the probe is never more permissive than the browser.
+  const probe = decodeRefs(href).replace(/[\u0000-\u0020\u007f]/g, "");
+  const head = probe.split(/[/?#]/, 1)[0];
+  if (head.includes(":")) return SAFE_SCHEME.test(probe) ? href : "#";
+  if (head.includes("&")) return "#"; // an undecoded reference where a scheme could sit
+  if (/^[/\\]{2}/.test(probe)) return "#"; // protocol-relative: another host, not a board route
+  if (probe.startsWith("#") || probe.startsWith("/")) return href;
   const [pathPart, hash = ""] = href.split("#", 2);
   const target = posix.normalize(posix.join(posix.dirname(repoPath), pathPart));
   const frag = hash ? `#${hash}` : "";
@@ -229,17 +489,39 @@ function mdFile(root: string, repoPath: string): string | null {
 
 // ---------------------------------------------------------------- views
 
-/** One rendered page: its title and the two fragments the SSE stream patches. */
-type View = { status: number; title: string; nav: string; main: string };
+/**
+ * One scan of the filesystem shared by every page rendered in the same flush.
+ * The lanes scan (which runs git) happens only if an index page asks for it.
+ */
+type Snapshot = { changes: Change[]; baselines: Baseline[]; lanes: () => Promise<LaneScan | null> };
 
-function view(flags: Flags, page: string): View {
+function snapshot(flags: Flags): Snapshot {
   const changes = scanChanges(flags.root);
-  const baselines = scanBaselines(flags.root);
+  let lanes: Promise<LaneScan | null> | undefined;
+  return {
+    changes,
+    baselines: scanBaselines(flags.root),
+    lanes: () => (lanes ??= scanLanes(flags.root, changes, flags.lanes)),
+  };
+}
+
+/**
+ * One rendered page. `main` is the full content element for the first render;
+ * `parts` are the id-carrying fragments that updates may replace individually
+ * (always including `nav`). For the index, `main` is built from its parts.
+ */
+type View = { status: number; title: string; nav: string; main: string; parts: Record<string, string> };
+
+async function view(flags: Flags, page: string, snap: Snapshot): Promise<View> {
+  const { changes, baselines } = snap;
   const nav = T.nav(changes, page);
-  const notFound: View = { status: 404, title: "Not found", nav, main: T.notFound(page) };
+  const page1 = (status: number, title: string, main: string): View => ({ status, title, nav, main, parts: { nav, main } });
+  const notFound = page1(404, "Not found", T.notFound(page));
 
   if (page === "/") {
-    return { status: 200, title: "Writ board", nav, main: T.index(baselines, changes, flags.lanes, scanLanes(flags.lanes)) };
+    const tables = T.indexTables(baselines, changes);
+    const lanes = T.lanesPanel(await snap.lanes());
+    return { status: 200, title: "Writ board", nav, main: T.index(tables, lanes, flags.lanes !== null), parts: { nav, "index-tables": tables, lanes } };
   }
   let m: RegExpMatchArray | null;
   if ((m = page.match(/^\/change\/([^/]+)$/))) {
@@ -252,7 +534,7 @@ function view(flags: Flags, page: string): View {
       tasks: mdFile(flags.root, `${base}/tasks.md`),
       specs: change.specs.map((c) => ({ capability: c, html: mdFile(flags.root, `${base}/specs/${c}/spec.md`) ?? "" })),
     };
-    return { status: 200, title: change.title, nav, main: T.changePage(change, docs, changes) };
+    return page1(200, change.title, T.changePage(change, docs, changes));
   }
   if ((m = page.match(/^\/spec\/([^/]+)(\/traceability)?$/))) {
     const baseline = baselines.find((b) => b.name === m![1]);
@@ -262,7 +544,7 @@ function view(flags: Flags, page: string): View {
     const repoPath = trace ? `openspec/traceability/${baseline.name}.md` : `openspec/specs/${baseline.name}/spec.md`;
     const html = mdFile(flags.root, repoPath);
     if (html === null) return notFound;
-    return { status: 200, title: baseline.title, nav, main: T.specPage(baseline, html, trace, repoPath) };
+    return page1(200, baseline.title, T.specPage(baseline, html, trace, repoPath));
   }
   return notFound;
 }
@@ -277,28 +559,39 @@ export function patchElements(html: string): string {
   return `event: datastar-patch-elements\n${lines}\n\n`;
 }
 
+/** An open /events connection and the fragments it was last sent, by id. */
+type Client = { page: string; last: Map<string, string>; send: (text: string) => boolean };
+
+const clients = new Set<Client>();
+
 /**
  * One SSE connection per client. On connect it sends the full render of the
- * client's page (so a reconnect always resynchronizes) and then holds the
- * connection with comment heartbeats. Task 2 adds file watching and pushes.
+ * client's page (so a reconnect always resynchronizes); afterwards `flush`
+ * pushes only fragments whose HTML changed. Comment keepalives hold the stream.
  */
 function events(flags: Flags, page: string): Response {
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let client: Client | undefined;
   const stream = new ReadableStream({
-    start(controller) {
-      const v = view(flags, page);
-      controller.enqueue(encoder.encode(patchElements(v.nav) + patchElements(v.main)));
-      // Comments keep proxies and Bun's idle timeout from closing a quiet stream.
-      timer = setInterval(() => {
-        try {
-          controller.enqueue(encoder.encode(": keepalive\n\n"));
-        } catch {
-          clearInterval(timer);
-        }
-      }, 5000);
+    async start(controller) {
+      const v = await view(flags, page, snapshot(flags));
+      const c: Client = {
+        page,
+        last: new Map(Object.entries(v.parts)),
+        send(text) {
+          try {
+            controller.enqueue(encoder.encode(text));
+            return true;
+          } catch {
+            clients.delete(c);
+            return false;
+          }
+        },
+      };
+      client = c;
+      if (c.send(patchElements(v.nav) + patchElements(v.main))) clients.add(c);
     },
     cancel() {
-      clearInterval(timer);
+      if (client) clients.delete(client);
     },
   });
   return new Response(stream, {
@@ -306,11 +599,177 @@ function events(flags: Flags, page: string): Response {
   });
 }
 
+// Comments keep proxies and Bun's 10 s idle timeout from closing a quiet stream.
+setInterval(() => {
+  for (const c of clients) c.send(": keepalive\n\n");
+}, 5000).unref?.();
+
+/**
+ * Re-renders the pages open on /events and sends each client only the
+ * fragments that differ from what it last received. Pages are rendered once per
+ * flush however many clients show them. Returns the number of events sent.
+ */
+async function pushChanges(flags: Flags): Promise<number> {
+  if (clients.size === 0) return 0;
+  const snap = snapshot(flags);
+  const views = new Map<string, Promise<View>>();
+  let sent = 0;
+  for (const c of [...clients]) {
+    if (!views.has(c.page)) views.set(c.page, view(flags, c.page, snap));
+    const v = await views.get(c.page)!;
+    let out = "";
+    for (const [id, html] of Object.entries(v.parts)) {
+      if (c.last.get(id) === html) continue;
+      out += patchElements(html);
+      c.last.set(id, html);
+      sent++;
+    }
+    if (out) c.send(out);
+  }
+  return sent;
+}
+
+// ---------------------------------------------------------------- watching
+
+const DEBOUNCE_MS = 200;
+const WALK_DEPTH = 12;
+/** Subtrees watched in the root and in every lane. */
+const ROOT_TREES = ["openspec", "verification", "docs"];
+const LANE_TREES = [...ROOT_TREES, ".superpowers/sdd"];
+
+/**
+ * Watches the board's inputs with one non-recursive fs.watch per directory.
+ * Bun 1.1.8's `recursive: true` on Linux misses modifications to existing
+ * files in subdirectories and anything in directories created after the watch
+ * starts, so the directory set is walked and re-synced after every flush.
+ *
+ * Each watched directory may carry a name filter: anchor directories (the
+ * root, each lane, `.superpowers`, a gitdir's `logs/`) only report entries that
+ * lead to a watched subtree, so unrelated edits in a worktree do not re-render.
+ */
+class Watcher {
+  private watchers = new Map<string, FSWatcher>();
+  private filters = new Map<string, Set<string> | null>();
+  private timer: ReturnType<typeof setTimeout> | undefined;
+  private running = false;
+  private again = false;
+
+  constructor(private flags: Flags, private onFlush: (events: number) => void = () => {}) {}
+
+  start(): void {
+    this.sync();
+  }
+
+  /** Directories to watch, each with its name filter (null: any entry). */
+  private desired(): Map<string, Set<string> | null> {
+    const want = new Map<string, Set<string> | null>();
+    const add = (dir: string, filter: string[] | null) => {
+      if (!existsSync(dir)) return;
+      const prev = want.get(dir);
+      if (prev === null || filter === null) want.set(dir, null);
+      else want.set(dir, new Set([...(prev ?? []), ...filter]));
+    };
+    const walk = (dir: string, depth = 0) => {
+      add(dir, null);
+      if (depth >= WALK_DEPTH) return;
+      try {
+        for (const d of readdirSync(dir, { withFileTypes: true })) {
+          if (d.isDirectory() && !IGNORED_DIRS.has(d.name)) walk(join(dir, d.name), depth + 1);
+        }
+      } catch {}
+    };
+    const { root, lanes } = this.flags;
+    add(root, ROOT_TREES);
+    for (const t of ROOT_TREES) if (existsSync(join(root, t))) walk(join(root, t));
+    if (lanes !== null) {
+      add(lanes, null);
+      for (const name of laneNames(lanes).lanes) {
+        const dir = join(lanes, name);
+        add(dir, [...ROOT_TREES, ".superpowers", ".git"]);
+        add(join(dir, ".superpowers"), ["sdd"]);
+        for (const t of LANE_TREES) if (existsSync(join(dir, t))) walk(join(dir, t));
+        // A commit appends to the gitdir's logs/HEAD; watch that name only.
+        const gitDir = gitDirOf(dir);
+        if (gitDir) add(join(gitDir, "logs"), ["HEAD"]);
+      }
+    }
+    return want;
+  }
+
+  /** Adds watchers for new directories and closes those for vanished ones. */
+  sync(): void {
+    const want = this.desired();
+    for (const [dir, w] of this.watchers) {
+      if (!want.has(dir)) {
+        w.close();
+        this.watchers.delete(dir);
+        this.filters.delete(dir);
+      }
+    }
+    for (const [dir, filter] of want) {
+      this.filters.set(dir, filter);
+      if (this.watchers.has(dir)) continue;
+      try {
+        const w = watch(dir, (_event, name) => this.onEvent(dir, name === null ? null : String(name)));
+        w.on("error", () => {
+          w.close();
+          this.watchers.delete(dir);
+          this.schedule();
+        });
+        this.watchers.set(dir, w);
+      } catch {
+        // Vanished between the walk and the watch; the next sync retries.
+      }
+    }
+  }
+
+  get size(): number {
+    return this.watchers.size;
+  }
+
+  private onEvent(dir: string, name: string | null): void {
+    const filter = this.filters.get(dir);
+    if (name !== null) {
+      // Anchors report only entries leading to a watched subtree; inside a
+      // subtree everything counts except ignored directory names.
+      const top = name.split("/")[0];
+      if (filter ? !filter.has(top) : IGNORED_DIRS.has(top)) return;
+    }
+    this.schedule();
+  }
+
+  /** Coalesces a burst of events into one flush about DEBOUNCE_MS after the first. */
+  private schedule(): void {
+    if (this.running) {
+      this.again = true;
+      return;
+    }
+    this.timer ??= setTimeout(() => this.flush(), DEBOUNCE_MS);
+  }
+
+  private async flush(): Promise<void> {
+    this.timer = undefined;
+    this.running = true;
+    try {
+      this.sync();
+      this.onFlush(await pushChanges(this.flags));
+    } catch (err) {
+      console.error(`board: update failed: ${err}`);
+    } finally {
+      this.running = false;
+      if (this.again) {
+        this.again = false;
+        this.schedule();
+      }
+    }
+  }
+}
+
 // ---------------------------------------------------------------- routes
 
 const CSS_PATH = join(import.meta.dir, "board.css");
 
-function handle(flags: Flags, req: Request): Response {
+async function handle(flags: Flags, req: Request): Promise<Response> {
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("read-only\n", { status: 405 });
   const url = new URL(req.url);
   let path: string;
@@ -330,18 +789,25 @@ function handle(flags: Flags, req: Request): Response {
   if (path === "/api/baselines") {
     return Response.json(scanBaselines(flags.root));
   }
+  if (path === "/api/lanes") {
+    return Response.json(await scanLanes(flags.root, scanChanges(flags.root), flags.lanes));
+  }
   if (path === "/events") {
     return events(flags, url.searchParams.get("page") ?? "/");
   }
   const explainer = path.match(/^\/change\/([^/]+)\/html\/([^/]+)$/);
   if (explainer) {
     // Served as-is: the explainers are standalone pages with their own styles.
+    // The name must be a regular file in the scan; the read refuses a symlink
+    // and returns 404 if the file was replaced or removed after the scan.
+    const notFound = new Response("not found\n", { status: 404 });
     const change = scanChanges(flags.root).find((c) => c.name === explainer[1]);
-    if (!change || !change.html.includes(explainer[2])) return new Response("not found\n", { status: 404 });
-    const file = join(flags.root, "openspec", "changes", change.name, explainer[2]);
-    return new Response(readFileSync(file), { headers: { "content-type": "text/html; charset=utf-8" } });
+    if (!change || !change.html.includes(explainer[2])) return notFound;
+    const bytes = readRegular(join(flags.root, "openspec", "changes", change.name, explainer[2]));
+    if (bytes === null) return notFound;
+    return new Response(bytes, { headers: { "content-type": "text/html; charset=utf-8" } });
   }
-  const v = view(flags, path);
+  const v = await view(flags, path, snapshot(flags));
   return new Response(T.shell(v.title, v.nav, v.main, path), {
     status: v.status,
     headers: { "content-type": "text/html; charset=utf-8" },
@@ -350,11 +816,17 @@ function handle(flags: Flags, req: Request): Response {
 
 if (import.meta.main) {
   const flags = parseFlags(process.argv.slice(2));
+  const verbose = process.env.BOARD_VERBOSE === "1";
+  const watcher = new Watcher(flags, (n) => {
+    if (verbose && n > 0) console.log(`board: pushed ${n} fragment(s)`);
+  });
+  watcher.start();
   const server = Bun.serve({
     hostname: flags.host,
     port: flags.port,
     fetch: (req) => handle(flags, req),
   });
   console.log(`board: reading ${flags.root}${flags.lanes ? ` and lanes in ${flags.lanes}` : ""}`);
+  console.log(`board: watching ${watcher.size} directories`);
   console.log(`board: listening on http://${server.hostname}:${server.port}/`);
 }

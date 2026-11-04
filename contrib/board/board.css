@@ -93,13 +93,28 @@ nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { colo
 .explainer .frame-bar { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .3rem 1rem; font-size: .82rem; color: var(--muted); margin: 0 0 .5rem; }
 .explainer iframe { width: 100%; height: 82vh; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); display: block; }
 
-.lanes-panel ul.lanes { list-style: none; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+.small { font-size: .85rem; }
+.note-line { color: var(--warn); background: var(--warn-soft); border-radius: 4px; padding: .2rem .55rem; font-size: .85rem; margin: .3rem 0; }
+.lane { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .7rem 1.1rem .9rem; margin: 0 0 1rem; min-width: 0; }
+.lane header { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .8rem; }
+.lane h3 { font-family: var(--mono); font-size: 1rem; margin: 0; overflow-wrap: anywhere; }
+.lane .branch { font-family: var(--mono); font-size: .76rem; color: var(--accent); background: var(--accent-soft); padding: .05rem .5rem; border-radius: 999px; overflow-wrap: anywhere; }
+.lane .commit { margin: .35rem 0 .2rem; font-size: .9rem; overflow-wrap: anywhere; }
+.lane .plan { margin-top: .5rem; }
+.lane .ledger { font-size: .86rem; border-left: 3px solid var(--line); padding: 0 0 0 .8rem; margin: .3rem 0 .6rem; }
+.lane .ledger p { margin: .25rem 0; overflow-wrap: anywhere; }
+.lane details.report { border-top: 1px solid var(--line); }
+.lane details.report > summary { cursor: pointer; padding: .35rem 0; font-size: .9rem; }
+.lane details.report > .md { font-size: .9rem; padding: 0 0 .6rem; }
+.lane .report-status { font-family: var(--mono); font-size: .72rem; color: var(--muted); margin-left: .4rem; }
+.lane .drift ul { margin: .2rem 0 .4rem; padding-left: 1.2rem; font-size: .88rem; }
+.lane .drift .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
 @media (max-width: 760px) {
   .shell { grid-template-columns: minmax(0, 1fr); }
   .side { order: 2; position: static; max-height: none; border-right: none; border-top: 1px solid var(--line); padding: 1rem 16px 2rem; }
   .content { order: 1; padding: 1.1rem 16px 2.5rem; }
-  .doc { padding: .3rem .8rem .8rem; }
+  .doc, .lane { padding: .3rem .8rem .8rem; }
   .explainer iframe { height: 75vh; }
   td .sub { display: none; }
 }
