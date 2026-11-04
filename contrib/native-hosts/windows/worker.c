@@ -33,6 +33,41 @@ static BOOL capture_user(HANDLE token, BYTE *sid)
     return CopySid(SECURITY_MAX_SID_SIZE, sid, user->User.Sid);
 }
 
+static BOOL reduced_primary(HANDLE *result, BYTE *user)
+{
+    HANDLE source = NULL, reduced = NULL;
+    BYTE admin[SECURITY_MAX_SID_SIZE];
+    DWORD size = sizeof(admin), elevation = 1, error = ERROR_ACCESS_DENIED;
+    PSID medium = NULL;
+    BOOL ok = FALSE;
+    *result = NULL;
+    if (!CreateWellKnownSid(WinBuiltinAdministratorsSid, NULL, admin, &size) ||
+        !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE |
+            TOKEN_ASSIGN_PRIMARY | TOKEN_ADJUST_DEFAULT, &source) || !capture_user(source, user)) goto failed;
+    SID_AND_ATTRIBUTES disabled = { admin, 0 };
+    /* Reduce the primary token before asking Windows to construct its LPAC.
+       AppContainer membership alone does not remove an elevated broker's rights. */
+    if (!CreateRestrictedToken(source, DISABLE_MAX_PRIVILEGE | LUA_TOKEN, 1, &disabled,
+        0, NULL, 0, NULL, &reduced) || !ConvertStringSidToSidW(L"S-1-16-8192", &medium)) goto failed;
+    TOKEN_MANDATORY_LABEL label = { { medium, SE_GROUP_INTEGRITY } };
+    if (!SetTokenInformation(reduced, TokenIntegrityLevel, &label, sizeof(label) + GetLengthSid(medium)) ||
+        !token_blob(reduced, TokenElevation, &elevation, sizeof(elevation))) goto failed;
+    SetLastError(ERROR_ACCESS_DENIED);
+    if (elevation || !writ_ordinary_token(reduced, user)) {
+        fprintf(stderr, "FAIL reduced LPAC primary token elevated=%lu error=%lu\n", elevation, GetLastError());
+        goto failed;
+    }
+    *result = reduced; reduced = NULL; ok = TRUE;
+    goto done;
+failed:
+    error = GetLastError();
+done:
+    close_handle(&source); close_handle(&reduced);
+    if (medium) LocalFree(medium);
+    if (!ok) SetLastError(error ? error : ERROR_ACCESS_DENIED);
+    return ok;
+}
+
 static BOOL lpac_access_check(HANDLE token, PSID expected, PSID user, BOOL diagnostic)
 {
     HANDLE duplicate = NULL, checked = token;
@@ -228,7 +263,7 @@ done:
 static BOOL private_image(WRIT_WORKER *worker)
 {
     wchar_t temporary[MAX_PATH], sddl[1024];
-    LPWSTR app_sid = NULL;
+    LPWSTR app_sid = NULL, user_sid = NULL;
     PSECURITY_DESCRIPTOR descriptor = NULL;
     SECURITY_ATTRIBUTES security = { sizeof(security), NULL, FALSE };
     HANDLE output = INVALID_HANDLE_VALUE;
@@ -240,12 +275,14 @@ static BOOL private_image(WRIT_WORKER *worker)
     DWORD temporary_length = GetTempPathW(ARRAYSIZE(temporary), temporary);
     if (!temporary_length || temporary_length >= ARRAYSIZE(temporary) ||
         !ConvertSidToStringSidW(worker->app_sid, &app_sid) ||
+        !ConvertSidToStringSidW(worker->user_sid, &user_sid) ||
         FAILED(StringCchPrintfW(worker->private_directory, ARRAYSIZE(worker->private_directory),
             L"%s%s", temporary, worker->profile)) ||
         FAILED(StringCchPrintfW(worker->private_image, ARRAYSIZE(worker->private_image),
             L"%s\\reader.exe", worker->private_directory)) ||
         FAILED(StringCchPrintfW(sddl, ARRAYSIZE(sddl),
-            L"O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;GRGX;;;%s)", app_sid)) ||
+            L"O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;GRGX;;;%s)(A;OICI;GRGX;;;%s)",
+            user_sid, app_sid)) ||
         !ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1,
             &descriptor, NULL)) goto done;
     security.lpSecurityDescriptor = descriptor;
@@ -276,6 +313,7 @@ done:
     close_handle(&output);
     if (descriptor) LocalFree(descriptor);
     if (app_sid) LocalFree(app_sid);
+    if (user_sid) LocalFree(user_sid);
     SecureZeroMemory(buffer, sizeof(buffer));
     return ok;
 }
@@ -291,7 +329,7 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     SECURITY_ATTRIBUTES process_sa = { sizeof(process_sa), NULL, FALSE };
     SIZE_T attribute_size = 0;
     BOOL attributes_initialized = FALSE, ok = FALSE;
-    HANDLE token = NULL;
+    HANDLE token = NULL, launch_token = NULL;
     LPWSTR app_sid_string = NULL, app_folder = NULL;
     DWORD opt_out = PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT;
     DWORD child_policy = PROCESS_CREATION_CHILD_PROCESS_RESTRICTED;
@@ -304,6 +342,8 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     if (!inherited_count || inherited_count > 3 || wcschr(image, L'"') || !image_identity(worker, image))
         goto failed;
     if (lpac) {
+        stage = "reduced-primary-token";
+        if (!reduced_primary(&launch_token, worker->user_sid)) goto failed;
         stage = "appcontainer-profile";
         BYTE nonce[16];
         if (BCryptGenRandom(NULL, nonce, sizeof(nonce), BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0)
@@ -376,10 +416,14 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     if (!writ_child_environment(system_root, ARRAYSIZE(system_root), environment,
         ARRAYSIZE(environment), app_folder)) goto failed;
     stage = "create-process";
-    if (!CreateProcessW(worker->image_path, command, &process_sa, &process_sa, TRUE,
-        EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS |
-        CREATE_UNICODE_ENVIRONMENT, environment, system_root, &startup.StartupInfo, &process))
-        goto failed;
+    DWORD creation_flags = EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED |
+        DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT;
+    BOOL created = lpac ?
+        CreateProcessAsUserW(launch_token, worker->image_path, command, &process_sa, &process_sa, TRUE,
+            creation_flags, environment, system_root, &startup.StartupInfo, &process) :
+        CreateProcessW(worker->image_path, command, &process_sa, &process_sa, TRUE,
+            creation_flags, environment, system_root, &startup.StartupInfo, &process);
+    if (!created) goto failed;
     worker->process = process.hProcess; worker->thread = process.hThread; worker->pid = process.dwProcessId;
     stage = "native-lifetime";
     FILETIME exited, kernel, user;
@@ -413,9 +457,12 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
         if (!actual_system_calls.DisallowWin32kSystemCalls) { error = ERROR_ACCESS_DENIED; goto done; }
     }
     stage = "native-token";
+    BYTE actual_user[SECURITY_MAX_SID_SIZE];
     if (!OpenProcessToken(worker->process, TOKEN_QUERY | TOKEN_DUPLICATE, &token) ||
-        !capture_user(token, worker->user_sid) ||
+        !capture_user(token, actual_user) ||
         !token_blob(token, TokenStatistics, &worker->token, sizeof(worker->token))) goto failed;
+    if (lpac && !EqualSid(actual_user, worker->user_sid)) { error = ERROR_ACCESS_DENIED; goto done; }
+    if (!CopySid(sizeof(worker->user_sid), worker->user_sid, actual_user)) goto failed;
     stage = "lpac-token";
     if (lpac && !lpac_token(token, worker->app_sid, TRUE)) goto failed;
     if (lpac) printf("NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny\n");
@@ -429,6 +476,7 @@ failed:
 done:
     if (!ok) fprintf(stderr, "FAIL worker setup stage=%s error=%lu\n", stage, error);
     close_handle(&token);
+    close_handle(&launch_token);
     if (attributes_initialized) DeleteProcThreadAttributeList(startup.lpAttributeList);
     if (startup.lpAttributeList) HeapFree(GetProcessHeap(), 0, startup.lpAttributeList);
     if (process_sa.lpSecurityDescriptor) LocalFree(process_sa.lpSecurityDescriptor);
