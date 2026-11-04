@@ -22,7 +22,7 @@ pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto
 <p>These are the public POSIX entry points the Bend runtime calls. The program binary's definitions shadow libc's by ordinary symbol interposition (<code>INVENTORY.md:50-55</code>, "How the entry points win"). The shim takes over only one shape of request: an anonymous, private, read-write mapping of at least 1 GiB. That is how the Bend runtime reserves its 8 GiB term heap and its 2 GiB per-lane stacks. Everything else goes to libc unchanged. The question for this page: does any refusal here depend on who is asking or what the memory is for, or only on whether the shim can carry the request out exactly? The inventory's "Exported symbols" table (<code>INVENTORY.md:73-88</code>) states the behaviour you are checking.</p>
 <p><strong>Open:</strong> <code>writ_mem.cc:907-914</code>, <code>writ_mem.cc:1031-1137</code></p>
 <p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
-<form method="post" action="/questions/__ID__/answer">
+<form method="post" action="/questions/q8/answer">
 <h2>Claim 1</h2>
 <p><code>_qualifies</code> tests only the request's shape (length, prot, flags, fd, offset); a non-qualifying call is forwarded unchanged to libc.</p>
 <pre><code>907	static bool _qualifies(size_t len, int prot, int flags, int fd, ::off_t offset)
