@@ -23,6 +23,16 @@ ifeq ($(WRIT_EXIT_HOOK),y)
 APPWRITBEND_SRCS-y += $(WRIT_HOSTS_UNIKRAFT)/exit_device.c
 endif
 
+# WRIT_HOST_LAYER=y links the host layer the Unikraft.* effect twins call
+# (hosts/unikraft/host.c, by reference). Images whose program uses no
+# Unikraft.* effect build without it (the default n), so their link and
+# symbol tables stay as recorded before the twins existed; a program that
+# uses a Unikraft.* effect without it fails to link (writ_uk_* undefined).
+WRIT_HOST_LAYER ?= n
+ifeq ($(WRIT_HOST_LAYER),y)
+APPWRITBEND_SRCS-y += $(WRIT_HOSTS_UNIKRAFT)/host.c
+endif
+
 # Adjustment 1: Unikraft builds with -nostdinc and musl ships no <stdatomic.h>;
 # expose only the compiler's own stdatomic.h (a freestanding compiler header).
 APPWRITBEND_CINCLUDES-y += -I$(APPWRITBEND_BASE)/compiler-include
