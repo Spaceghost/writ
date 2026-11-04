@@ -1,6 +1,6 @@
 {
   "compiler": "Bend 2.0.39",
-  "native_compiler": "Ubuntu clang 19.1.1",
+  "native_compiler": "clang 23.1.1 (this rerun; original record: Ubuntu clang 19.1.1)",
   "platform": "Linux x86_64",
   "native_threads": 4,
   "gpu_test_mode": "CPU fallback with --gpu off; no hardware device validation",
@@ -9,12 +9,12 @@
     "nvidia0": false,
     "dri": false
   },
-  "bend_source_files": 34,
-  "bend_source_lines": 5562,
-  "javascript_checks": 638,
+  "bend_source_files": 36,
+  "bend_source_lines": 7964,
+  "javascript_checks": 764,
   "bend_release_archive_sha256": "6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab",
-  "native_checks": 638,
-  "node": "v24.22.1",
+  "native_checks": 764,
+  "node": "v26.10.0",
   "example_assertions_per_backend": 29,
   "example_programs": 4
 }
