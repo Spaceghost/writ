@@ -302,12 +302,13 @@ const QUESTION_HTML = /^(q\d{1,6})\.html$/;
 /** Largest accepted answer body, in bytes. */
 const ANSWER_LIMIT = 16 * 1024;
 
-export type Answer = { at: string; who: string; fields: Record<string, string> };
+/** `kind` is set by the controller: `note` (default) replies without reopening, `ask` reopens, `close` closes. */
+export type Answer = { at: string; who: string; kind: "note" | "ask" | "close" | null; fields: Record<string, string> };
 export type Question = {
   id: string;
   title: string;
   topic: string | null;
-  /** `closed` from the page's meta; else `answered` when the reader has replied after the last controller entry; else `open`. */
+  /** `closed` from the page's meta or a controller `close` entry; `open` when the reader has not answered since the question or the controller's last `ask`; else `answered`. */
   status: "open" | "answered" | "closed";
   answers: Answer[];
   lastAt: string | null;
@@ -326,9 +327,10 @@ export function parseAnswers(text: string): Answer[] {
       const o = JSON.parse(line) as Partial<Answer>;
       const fields: Record<string, string> = {};
       for (const [k, v] of Object.entries(o.fields ?? {})) fields[String(k)] = String(v);
-      out.push({ at: String(o.at ?? ""), who: String(o.who ?? ""), fields });
+      const k = o.kind === "ask" || o.kind === "close" || o.kind === "note" ? o.kind : null;
+      out.push({ at: String(o.at ?? ""), who: String(o.who ?? ""), kind: k, fields });
     } catch {
-      out.push({ at: "", who: "", fields: { text: line } });
+      out.push({ at: "", who: "", kind: null, fields: { text: line } });
     }
   }
   return out;
@@ -345,7 +347,13 @@ function scanQuestions(flags: Flags): Question[] {
     const closed = /<meta\s+name="writ-status"\s+content="closed"/i.test(head);
     const answers = parseAnswers(readRegularText(join(dir, `${id}.answers.jsonl`)) ?? "");
     const last = answers[answers.length - 1];
-    const status: Question["status"] = closed ? "closed" : last && last.who !== "controller" ? "answered" : "open";
+    // Open until the reader answers; a controller "ask" after the reader's last entry reopens; a note does not.
+    let status: Question["status"] = "open";
+    for (const a of answers) {
+      if (a.who === "controller") { if (a.kind === "ask") status = "open"; }
+      else status = "answered";
+    }
+    if (closed || answers.some((a) => a.who === "controller" && a.kind === "close")) status = "closed";
     return { id, title, topic, status, answers, lastAt: last?.at ?? null };
   }).sort((a, b) => Number(b.id.slice(1)) - Number(a.id.slice(1)));
 }
@@ -388,7 +396,7 @@ async function recordAnswer(flags: Flags, hosts: Set<string>, id: string, req: R
     }
   }
   if (Object.keys(fields).length === 0) return new Response("empty answer\n", { status: 400 });
-  const entry: Answer = { at: new Date().toISOString(), who: "josh", fields };
+  const entry: Answer = { at: new Date().toISOString(), who: "josh", kind: null, fields };
   mkdirSync(dir, { recursive: true });
   appendFileSync(join(dir, `${id}.answers.jsonl`), JSON.stringify(entry) + "\n");
   // The form lands on a small confirmation inside its own frame; the board page's
