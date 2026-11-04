@@ -1,6 +1,6 @@
 # Task 2 report: ingress twins over a second serial channel
 
-Status: DONE_WITH_CONCERNS
+Status: DONE_WITH_CONCERNS (commit 50ef05d)
 
 Summary: accepted round trip yes (Committed 0); Bend-denied round trip yes (S's session
 named by the body under subject R: Denied 6 by DataOS.commit_from_capability); binary check
