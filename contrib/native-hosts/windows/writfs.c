@@ -231,6 +231,24 @@ static NTSTATUS open_file(FSP_FILE_SYSTEM *filesystem, PWSTR name, UINT32 option
     return status;
 }
 
+/* WinFsp's Create dispatcher requires all three entry points even for an
+   existing-file open. This volume has no creation or overwrite operation. */
+static NTSTATUS reject_create(FSP_FILE_SYSTEM *filesystem, PWSTR name, UINT32 options,
+    UINT32 access, UINT32 attributes, PSECURITY_DESCRIPTOR descriptor, UINT64 allocation,
+    PVOID *context, FSP_FSCTL_FILE_INFO *information)
+{
+    (void)filesystem; (void)name; (void)options; (void)access; (void)attributes;
+    (void)descriptor; (void)allocation; (void)context; (void)information;
+    return STATUS_ACCESS_DENIED;
+}
+
+static NTSTATUS reject_overwrite(FSP_FILE_SYSTEM *filesystem, PVOID context,
+    UINT32 attributes, BOOLEAN replace, UINT64 allocation, FSP_FSCTL_FILE_INFO *information)
+{
+    (void)filesystem; (void)context; (void)attributes; (void)replace; (void)allocation; (void)information;
+    return STATUS_ACCESS_DENIED;
+}
+
 static NTSTATUS read_file(FSP_FILE_SYSTEM *filesystem, PVOID context, PVOID buffer,
     UINT64 offset, ULONG length, PULONG transferred)
 {
@@ -404,7 +422,9 @@ static BOOL mount_filesystem(WRIT_HOST *host, wchar_t *mount)
     wcscpy_s(parameters.FileSystemName, ARRAYSIZE(parameters.FileSystemName), L"WritFS1");
     interface.GetVolumeInfo = get_volume_info;
     interface.GetSecurityByName = get_security_by_name;
+    interface.Create = reject_create;
     interface.Open = open_file;
+    interface.Overwrite = reject_overwrite;
     interface.Close = close_file;
     interface.Read = read_file;
     interface.GetFileInfo = get_file_info;

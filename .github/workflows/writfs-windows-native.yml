@@ -157,6 +157,7 @@ jobs:
           $env:PATH = (Join-Path $winfsp 'bin') + ';' + $env:PATH
           (Join-Path $winfsp 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Compile native ABI and probe with MSVC
+        id: native
         run: |
           $ErrorActionPreference = 'Stop'
           $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
@@ -184,11 +185,13 @@ jobs:
             Tee-Object -FilePath (Join-Path $writLogs 'mount.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Native mounted filesystem checks failed.' }
       - name: Exercise LPAC, WFP, egress probes and revocation
+        if: ${{ always() && !cancelled() && steps.native.outcome == 'success' }}
         run: |
           $ErrorActionPreference = 'Stop'
           $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
           $build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'
           $fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'
+          [IO.File]::WriteAllBytes($fixture, [Text.Encoding]::UTF8.GetBytes("Writ public native canary`n"))
           $node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source
           $bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path
           $module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'
