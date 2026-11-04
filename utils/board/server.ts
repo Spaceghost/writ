@@ -296,7 +296,10 @@ export type Phase = {
 };
 
 export type LaneSdd = {
+  /** The record directory name (the plan's), under docs/superpowers/records or .superpowers/sdd. */
   plan: string;
+  /** Where the files live, relative to the lane. */
+  dir: string;
   /** Rendered tail of progress.md, or null with `ledgerNote` saying why. */
   ledger: string | null;
   ledgerNote: string | null;
@@ -304,6 +307,8 @@ export type LaneSdd = {
   planFile: string | null;
   phase: Phase | null;
   reports: { file: string; status: string | null; html: string | null }[];
+  /** Reviewer reports (`task-<n>-review.md`, then `final-review.md`), rendered. */
+  reviews: { file: string; html: string | null }[];
 };
 
 /** How a lane is shown: by its newest phase, then by how recently anything in it was written. */
@@ -401,12 +406,20 @@ function ledgerTail(text: string): string {
 /** Lines of activity.log shown per lane. */
 const ACTIVITY_TAIL = 12;
 /**
- * Directory under a lane (and, after merges, under the root) holding the
- * activity logs: `.lane/<lane name>.log`, one per lane, committed with the
- * lane so the record lands on master. Every `*.log` in it is read.
+ * Committed execution records, one directory per plan (and so per proposal):
+ * `docs/superpowers/records/<plan>/` with `progress.md` (the ledger, whose
+ * first line names the plan file and whose `Branch:` line names the lane
+ * branch that ran it), `activity.log`, `task-<n>-brief.md`,
+ * `task-<n>-report.md`, `task-<n>-review.md`, and `final-review.md`. They
+ * are committed with the lane's work, so a worktree also carries the records
+ * of plans that already landed; a lane card shows the records whose
+ * `Branch:` line is its branch, or failing that whose name ends with the
+ * worktree's name.
  */
-export const ACTIVITY_DIR = ".lane";
-const ACTIVITY_FILE = /^[A-Za-z0-9._-]+\.log$/;
+export const RECORDS_DIR = "docs/superpowers/records";
+const LEDGER_BRANCH = /^Branch:\s*(\S+)/m;
+const REVIEW_FILE = /^task-(\d+)-review\.md$/;
+const FINAL_REVIEW = "final-review.md";
 /** A signal younger than this makes a lane "active". */
 export const ACTIVE_MS = 30 * 60 * 1000;
 /** A ledger saying "review" counts as live only this long; reviews are quiet on disk but not for hours. */
@@ -481,17 +494,37 @@ function mtimeMs(path: string): number | null {
   }
 }
 
-function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
+/**
+ * A lane's records: the committed `docs/superpowers/records/<plan>/`
+ * directories whose ledger names this lane's branch (or whose name ends with
+ * the worktree's name when the ledger has no `Branch:` line), else the
+ * git-ignored `.superpowers/sdd/<plan>/` workspaces (older lanes), so nothing
+ * already shown disappears.
+ */
+function scanSdd(dir: string, name: string, branch: string | null): { sdd: LaneSdd[]; note: string | null } {
+  const recordsDir = join(dir, RECORDS_DIR);
+  const parts = RECORDS_DIR.split("/");
+  if (parts.every((_, k) => existsSync(join(dir, ...parts.slice(0, k + 1))))) {
+    if (!parts.every((_, k) => realDir(join(dir, ...parts.slice(0, k + 1))))) return { sdd: [], note: `${RECORDS_DIR} is not a real directory (symlink?); skipped` };
+    const mine = subdirs(recordsDir).filter((plan) => {
+      const ledger = readRegularText(join(recordsDir, plan, "progress.md"));
+      const b = ledger?.match(LEDGER_BRANCH)?.[1] ?? null;
+      return b !== null ? b === branch : plan.endsWith(`-${name}`) || plan === name;
+    });
+    if (mine.length > 0) return { note: null, sdd: mine.map((plan) => scanRecord(join(recordsDir, plan), plan, `${RECORDS_DIR}/${plan}`)) };
+  }
   const base = join(dir, ".superpowers", "sdd");
   if (!existsSync(base)) return { sdd: [], note: null };
   if (!realDir(join(dir, ".superpowers")) || !realDir(base)) return { sdd: [], note: ".superpowers/sdd is not a real directory (symlink?); skipped" };
   const plans = subdirs(base);
   if (plans.length === 0) return { sdd: [], note: "no plan directories under .superpowers/sdd/" };
-  return {
-    note: null,
-    sdd: plans.map((plan) => {
-      const planDir = join(base, plan);
-      const rel = `.superpowers/sdd/${plan}`;
+  return { note: null, sdd: plans.map((plan) => scanRecord(join(base, plan), plan, `.superpowers/sdd/${plan}`)) };
+}
+
+/** One record directory: ledger, phase, plan file, task reports, reviewer reports. */
+function scanRecord(planDir: string, plan: string, rel: string): LaneSdd {
+  {
+    {
       const ledgerPath = join(planDir, "progress.md");
       let ledger: string | null = null;
       let ledgerNote: string | null = null;
@@ -516,9 +549,16 @@ function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
           const status = text?.match(/^Status:\s*(.+?)\s*$/m)?.[1] ?? null;
           return { file, status, html: text === null ? null : renderMarkdown(text, `${rel}/${file}`) };
         });
-      return { plan, ledger, ledgerNote, planFile, phase, reports };
-    }),
-  };
+      const reviews = [
+        ...regularFiles(planDir, REVIEW_FILE).sort((x, y) => Number(x.match(REVIEW_FILE)![1]) - Number(y.match(REVIEW_FILE)![1])),
+        ...(regularFiles(planDir, /^final-review\.md$/).length > 0 ? [FINAL_REVIEW] : []),
+      ].map((file) => {
+        const text = readRegularText(join(planDir, file));
+        return { file, html: text === null ? null : renderMarkdown(text, `${rel}/${file}`) };
+      });
+      return { plan, dir: rel, ledger, ledgerNote, planFile, phase, reports, reviews };
+    }
+  }
 }
 
 /** Files below `dir` (relative paths), regular files only, ignored directories skipped. */
@@ -579,7 +619,7 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
     const at = /^\d+$/.test(ct) ? Number(ct) * 1000 : null;
     commit = { hash, subject, when, at };
   }
-  const { sdd, note } = scanSdd(dir);
+  const { sdd, note } = scanSdd(dir, name, branch);
   if (note) notes.push(note);
   const byName = new Map(rootChanges.map((c) => [c.name, c.tasks]));
   const taskDiffs = realDir(join(dir, "openspec")) && realDir(join(dir, "openspec", "changes"))
@@ -600,22 +640,19 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
     const primary = planChanges(text).find((c) => known.has(c));
     if (primary !== undefined && !changes.includes(primary)) changes.push(primary);
   }
-  // The lane's activity logs: every `.lane/*.log`, merged by timestamp (ISO
-  // times sort as text), newest ACTIVITY_TAIL kept. Logs of lanes that already
-  // landed are in the directory too after a merge; the lane's own file is
-  // named after it, and all are shown.
-  const activityDir = join(dir, ACTIVITY_DIR);
+  // The activity logs of this lane's records, merged by timestamp (ISO times sort as text).
   let activity: ActivityLine[] = [];
   let activityNote: string | null = null;
   const times: number[] = [];
-  if (existsSync(activityDir) && !realDir(activityDir)) activityNote = `${ACTIVITY_DIR} is not a real directory (symlink?); skipped`;
-  else if (existsSync(activityDir)) {
+  {
     const all: ActivityLine[] = [];
-    for (const f of regularFiles(activityDir, ACTIVITY_FILE)) {
-      const text = readRegularText(join(activityDir, f));
-      if (text === null) activityNote = `${f} could not be read (not a regular file, or removed mid-scan)`;
+    for (const p of sdd) {
+      const f = join(dir, p.dir, "activity.log");
+      if (!existsSync(f)) continue;
+      const text = readRegularText(f);
+      if (text === null) activityNote = `${p.dir}/activity.log could not be read (not a regular file, or removed mid-scan)`;
       else all.push(...parseActivity(text));
-      const t = mtimeMs(join(activityDir, f));
+      const t = mtimeMs(f);
       if (t !== null) times.push(t);
     }
     activity = all.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)).slice(-ACTIVITY_TAIL);
@@ -623,8 +660,8 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
   // The newest write anywhere the lane records progress, or its last commit.
   if (commit?.at != null) times.push(commit.at);
   for (const p of sdd) {
-    const planDir = join(dir, ".superpowers", "sdd", p.plan);
-    for (const f of ["progress.md", ...p.reports.map((r) => r.file)]) {
+    const planDir = join(dir, p.dir);
+    for (const f of ["progress.md", ...p.reports.map((r) => r.file), ...p.reviews.map((r) => r.file)]) {
       const t = mtimeMs(join(planDir, f));
       if (t !== null) times.push(t);
     }
@@ -890,7 +927,7 @@ const DEBOUNCE_MS = 200;
 const WALK_DEPTH = 12;
 /** Subtrees watched in the root and in every lane. */
 const ROOT_TREES = ["openspec", "verification", "docs"];
-const LANE_TREES = [...ROOT_TREES, ".superpowers/sdd", ACTIVITY_DIR];
+const LANE_TREES = [...ROOT_TREES, ".superpowers/sdd"];
 
 /**
  * Watches the board's inputs with one non-recursive fs.watch per directory.
@@ -940,7 +977,7 @@ class Watcher {
       add(lanes, null);
       for (const name of laneNames(lanes).lanes) {
         const dir = join(lanes, name);
-        add(dir, [...ROOT_TREES, ".superpowers", ACTIVITY_DIR, ".git"]);
+        add(dir, [...ROOT_TREES, ".superpowers", ".git"]);
         // Anchors that are symlinks are neither walked nor watched (see realDir).
         if (realDir(join(dir, ".superpowers"))) add(join(dir, ".superpowers"), ["sdd"]);
         for (const t of LANE_TREES) {
