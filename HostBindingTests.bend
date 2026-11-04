@@ -949,6 +949,8 @@ def ga005_checks() -> IO(Unit):
     Test.check(denied(rerouted_delegatee_open(), worker_rerouted(), H.SubjectMismatch{}), "GA-005 a delegatee later routed as another subject on the service denied SubjectMismatch at use")
     vector("GA-005-7", "bind_open", alias_outcome(rerouted_delegatee_open()))
     Test.check(denied(H.bind_attenuate(worker_opened_rerouted(), 3n, 3n, worker(), reader_caller(), registry(), read(), live()), worker_opened_rerouted(), H.SubjectMismatch{}), "GA-005 rerouting the delegatee also withdraws its derived alias")
+    Test.check(denied(H.delegate(worker_opened_rerouted(), 3n, 3n, worker(), helper(), read()), worker_opened_rerouted(), H.SubjectMismatch{}), "GA-005 a rerouted delegatee cannot delegate its derived alias onward")
+    Test.check(denied(H.bind_close(worker_opened_rerouted(), 3n, 3n, worker(), reader_caller()), worker_opened_rerouted(), H.SubjectMismatch{}), "GA-005 a rerouted delegatee cannot close its own derived object")
     Test.check(H.Change.accepted(H.bind_open(worker_other_routed(), 2n, 2n, worker(), reader_caller(), registry(), read(), live())), "GA-005 a later route for the delegatee on another service leaves its delegation usable")
     Test.check(denied(H.delegate(mounted_worker_rerouted(), 1n, 1n, reader(), worker(), read()), mounted_worker_rerouted(), H.SubjectMismatch{}), "GA-005 delegation to a worker already routed as another subject is still denied SubjectMismatch")
 
@@ -1062,4 +1064,4 @@ def main() -> IO(Unit):
     ga007_checks()
     ga008_checks()
     ga011_checks()
-    IO.print("HostBinding: 142 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
+    IO.print("HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")

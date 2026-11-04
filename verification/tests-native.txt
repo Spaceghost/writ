@@ -416,6 +416,8 @@ PASS: GA-005 delegatee rerouted after delegation fixtures are valid states
 PASS: GA-005 a delegatee later routed as another subject on the service denied SubjectMismatch at use
 VECTOR GA-005-7 bind_open denied SubjectMismatch
 PASS: GA-005 rerouting the delegatee also withdraws its derived alias
+PASS: GA-005 a rerouted delegatee cannot delegate its derived alias onward
+PASS: GA-005 a rerouted delegatee cannot close its own derived object
 PASS: GA-005 a later route for the delegatee on another service leaves its delegation usable
 PASS: GA-005 delegation to a worker already routed as another subject is still denied SubjectMismatch
 PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
@@ -492,7 +494,7 @@ VECTOR GA-011-6 revoke accepted domain=8
 PASS: GA-011 revoking a delegatee destroys the delegator's object too
 VECTOR GA-011-7 delegate denied StaleGeneration
 PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
-HostBinding: 142 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
 PASS: facade links capability descriptor through complete commit
 PASS: facade preserves output provenance
 PASS: capability revocation is checked at commit

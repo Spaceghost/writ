@@ -459,9 +459,13 @@ def minter_absent(found: Maybe<&2, Nat>) -> Bool:
 # Each alias is judged by `minter` itself (on a one-alias list), and the rest
 # by `minter` on the tail, so this clause and the refund rule read one
 # definition of "not a copy" and cannot drift apart. `all` is the complete
-# alias list against which copy edges are resolved. The rescan of `all` per
-# alias is quadratic; that cost was accepted to keep one shared definition of
-# minted/copied rather than a second, separately maintained counter.
+# alias list against which copy edges are resolved. Each alias rescans the
+# rest of the list through `minter`, and each `minter` step looks up copy
+# edges in `delegations` against `all`, so the cost per object is roughly
+# cubic in the number of aliases times the delegation lookups, and `valid`
+# runs it for every live object at every transition. That cost was accepted
+# to keep one shared definition of minted/copied rather than a second,
+# separately maintained counter.
 def single_minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Bool:
   match aliases:
     case NoAliases{}:
@@ -761,6 +765,14 @@ def routed_otherwise(routes: Routes, +child: Nat, +subject: Nat, +service: Nat) 
       (Nat.is_eq(routed, child) && Nat.is_eq(served, service) && Bool.not(Nat.is_eq(named, subject)))
         || routed_otherwise(rest, child, subject, service)
 
+# Whether `domain` may act for `object`'s owner as a delegated holder: the
+# parent does not route it as another subject on the object's service. The
+# delegate-time check on a delegatee (delegate_resolved) and the use-time
+# check on a delegated holder (holder_authorized) share this helper, so the
+# two cannot drift apart. A domain with no route on that service passes.
+def acts_for_owner(+routes: Routes, +domain: Nat, +object: Object) -> Bool:
+  Bool.not(routed_otherwise(routes, domain, object_owner(object), object_service(object)))
+
 # The parent alias of `wanted` in the delegation tree, or 0n for a root. Id 0
 # is never allocated, so a root's parent can never match a cut.
 def parent_of(delegations: Delegations, +wanted: Nat) -> Nat:
@@ -806,10 +818,12 @@ def alias_routed(aliases: Aliases, +routes: Routes, +wanted: Nat, +subject: Nat,
 # other subject on the service, so keeping this subject's authority would merge
 # the two; the denial is SubjectMismatch, reported like any other unauthorized
 # holder. A route for the holder on a different service changes nothing here.
-# On Genode this models a parent reconfiguration that the monitor observes
-# through its own recorded routes, not through the invoking domain. The running
-# host cannot observe the invoking domain; this rule is enforced there by
-# topology (GA-010).
+# The delegate-time and use-time checks share acts_for_owner. No transition
+# records route changes, so this model sees a reroute only in a route table
+# the host supplies. That is a HOST OBLIGATION, not something this model
+# discharges: a host must update the route record and withdraw the rerouted
+# domain's delegated endpoints at reconfiguration, since it cannot attribute
+# later invocations (GA-010).
 def holder_authorized(+routes: Routes, +delegations: Delegations, +aliases: Aliases, +alias: Alias,
     +object: Object, +holder: Nat) -> Bool:
   Nat.is_eq(alias_holder(alias), holder)
@@ -817,7 +831,7 @@ def holder_authorized(+routes: Routes, +delegations: Delegations, +aliases: Alia
       || (delegated_to(delegations, alias_id(alias), holder)
         && alias_routed(aliases, routes, chain_root(alias_id(alias), delegations, alias_id(alias)),
           object_owner(object), object_service(object))
-        && Bool.not(routed_otherwise(routes, holder, object_owner(object), object_service(object)))))
+        && acts_for_owner(routes, holder, object)))
 
 def is_delegated(found: Maybe<&2, U32>) -> Bool:
   match found:
@@ -1136,14 +1150,15 @@ def delegate_target(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +ef
 # service acts for that other subject there; handing it this subject's object
 # would merge two subjects' authority, so it is SubjectMismatch. A delegatee
 # with no route on that service (the same subject's worker) is admitted.
-# holder_authorized repeats this check on every later use of the delegation.
+# holder_authorized repeats this check, through the same acts_for_owner
+# helper, on every later use of the delegation.
 def delegate_resolved(found: Resolved, +state: State, +to_holder: Nat, +rights: U32) -> Change:
   match found:
     case Unresolved{reason}:
       Rejected{state, reason}
     case Resolved{alias, +object, _, +effective, _}:
-      delegate_target(Bool.not(routed_otherwise(routes(state), to_holder, object_owner(object),
-          object_service(object))), state, alias, to_holder, effective, rights)
+      delegate_target(acts_for_owner(routes(state), to_holder, object), state, alias, to_holder,
+        effective, rights)
 
 def delegate_checked(ok: Bool, +state: State, +alias_id: Nat, +from_holder: Nat, +to_holder: Nat,
     +rights: U32) -> Change:
