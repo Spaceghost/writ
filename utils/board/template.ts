@@ -241,7 +241,7 @@ function chevron(c: Change): string {
 
 /** Left list of changes grouped by status, then a link per baseline section. */
 export function nav(changes: Change[], page: string, questions: Question[] = []): string {
-  const open = questions.filter((q) => q.status !== "closed").length;
+  const open = questions.filter((q) => q.status === "open").length;
   const qlink = `<a class="home qlink"${page === "/questions" ? ` aria-current="page"` : ""} href="/questions">Questions${open > 0 ? ` <span class="count">${open}</span>` : ""}</a>`;
   const groups = new Map<string, Change[]>();
   for (const c of changes) groups.set(c.status, [...(groups.get(c.status) ?? []), c]);
@@ -418,11 +418,11 @@ ${status}${commit}${notes}${feed}${sdd}${diffs}${ver}
 
 const QSTATUS: Record<Question["status"], string> = { open: "needs an answer", answered: "answered", closed: "closed" };
 
-/** Index section: the controller's questions, newest first; each row opens the question in the drawer. */
+/** Index section: only the questions still waiting on the reader, newest first; answered and closed ones live on /questions. Empty when nothing is open. */
 function questionsSummary(questions: Question[]): string {
-  if (questions.length === 0) return "";
-  const live = questions.filter((q) => q.status !== "closed");
-  const rows = (live.length > 0 ? live : questions.slice(0, 3)).map((q) => {
+  const live = questions.filter((q) => q.status === "open");
+  if (live.length === 0) return "";
+  const rows = live.map((q) => {
     const last = q.answers[q.answers.length - 1];
     const lastText = last ? `${esc(last.who)} · ${esc(clock(last.at))}: ${esc(Object.values(last.fields).join(" · ").slice(0, 90))}` : "no answer yet";
     return `<tr class="qrow q-${q.status}">
@@ -433,7 +433,7 @@ function questionsSummary(questions: Question[]): string {
 </tr>`;
   }).join("");
   return `<h2>Questions for you</h2>
-<p class="muted small">Asked by the controller; answer in the drawer (the form on each page writes to its answers file). ${live.length} open or answered, ${questions.length - live.length} closed.</p>
+<p class="muted small">Waiting on you: ${live.length}. Answer in the drawer; answered questions move to the <a href="/questions">questions page</a>.</p>
 <div class="tablewrap"><table class="questions">
 <thead><tr><th class="chev-cell"></th><th>Question</th><th>Status</th><th>Latest</th></tr></thead>
 <tbody>${rows}</tbody>

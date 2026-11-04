@@ -301,6 +301,7 @@ try {
 
   // Questions: listed on the index, served sandboxed, and the one write route appends an answer.
   check("index lists the open question with its title and status", indexHtml.includes("<h2>Questions for you</h2>") && indexHtml.includes('href="/questions/q1">Which kernel first?</a>') && indexHtml.includes("needs an answer"));
+  check("index hides the answered question (it stays on /questions)", !indexHtml.includes('href="/questions/q2">') && (await (await fetch(`${base}/questions`)).text()).includes('href="/questions/q2">'));
   check("index tile counts open questions (q1 and the reopened q3; q2's controller note keeps it answered)", /Questions for you<\/span><span class="tile-value">2 open/.test(indexHtml));
   const qapi = (await (await fetch(`${base}/api/questions`)).json()) as { id: string; status: string }[];
   check("a controller note after the reader's answer does not reopen; an ask does", qapi.find((q) => q.id === "q2")?.status === "answered" && qapi.find((q) => q.id === "q3")?.status === "open");
