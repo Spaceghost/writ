@@ -23,8 +23,9 @@ IO.sleep
 #     locally; network reach is the host's concern, not the decision path's.
 #   Files: File.*. A file effect lets a monitor read or write by name outside
 #     the inputs it is given, an ambient authority (RH-003's widening case).
-#   Process spawning: Process.run.
-#   Audio: Audio.*. Windowing: Window.*.
+#   Process spawning: Process.run. Audio: Audio.*. Windowing: Window.*.
+#     A monitor has no business starting processes or touching devices; each
+#     is an egress or ambient-authority path outside the decision's inputs.
 #   GPU program loading has no effect row; it is the runtime device path and
 #   is denied by its symbols in monitor-symbols.txt.
 #

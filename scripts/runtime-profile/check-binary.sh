@@ -17,27 +17,40 @@
 #        }
 #      At the -O2 that `bend -o BINARY` uses, clang evaluates the constructor
 #      at compile time and drops it, so `io_<name>_use` is absent from the
-#      binary (it is present at -O0). The `<prefix>_run` function is external
-#      and stays as a global text symbol (nm type T). The check therefore takes
-#      every global `T <prefix>_run` and every `<prefix>_use`, and maps
-#      <prefix> to the Bend effect name by this rule:
+#      binary (it is present at -O0). The `<prefix>_run` function stays in the
+#      symbol table: as a global text symbol (nm type T) in a plain build, and
+#      as a local one (type t) when link-time optimization internalizes it
+#      (`clang -flto -fuse-ld=lld`, `gcc -flto`). The check therefore takes
+#      every `T` or `t` `<prefix>_run` and every `<prefix>_use`, drops the
+#      names in NOT_EFFECTS below, and maps <prefix> to the Bend effect name by
+#      this rule:
 #        split <prefix> at its first `_` into <ns> and <rest>;
 #        <ns> io, tcp, udp becomes IO, TCP, UDP; any other <ns> gets an upper
 #        case first letter (file -> File, process -> Process);
 #        the effect is <NS>.<rest>.
 #      Examples: io_print -> IO.print, io_print_err -> IO.print_err,
 #      tcp_listen -> TCP.listen, process_run -> Process.run. The rule matches
-#      all 57 io_eff registrations in the Bend 2.0.39 Base effect sources.
-#      Runtime helpers that end in _run (cube_run, gpu_run) are static, so
-#      they are not global T symbols. A name the rule maps to an effect that is
-#      not allowlisted, including any foreign C import, fails the check.
+#      all 58 io_eff registrations in the Bend 2.0.39 Base effect sources,
+#      counted with
+#        grep -c 'io_eff(CID(' \
+#          "$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/"*.c \
+#          | awk -F: '{ s += $2 } END { print s }'
+#      A name the rule maps to an effect that is not allowlisted, including
+#      any foreign C import, fails the check.
 #      IO.exit and IO.die are handled by the IO loop and have no row.
 #      Both the `_run` detection and this mapping rule depend on the C that
-#      Bend 2.0.39 emits and the way `bend -o` compiles it; re-validate them
-#      against the emitted C and the Base effect sources on any toolchain change.
-#      In a static binary, libc's own symbols share the table; they begin with
-#      `_` or are not `_run`/`_use` names in glibc 2.44, and any lower-case
-#      `<x>_run` that did collide would be denied, not admitted.
+#      Bend 2.0.39 emits and the way it is compiled; re-validate them against
+#      the emitted C and the Base effect sources on any toolchain change.
+#
+#      Known non-effect `_run` names (NOT_EFFECTS). The runtime's own static
+#      helpers cube_run and gpu_run appear as type t when the compiler keeps
+#      them out of line (gcc -flto keeps cube_run). In a static binary libc's
+#      symbols share the table, and static glibc 2.44 defines the local
+#      dlerror_run (its _dlerror_run begins with `_` and is not matched).
+#      These three are dropped by exact name. Any other lower-case `<x>_run`
+#      or `<x>_use` is mapped and, unless allowlisted, denied, not admitted;
+#      a new libc or runtime local that collides makes the check fail, and is
+#      reviewed here before it is added to NOT_EFFECTS.
 #
 # Static links: a binary with no (NEEDED) dynamic entries resolves libc inside
 # itself, so it has no imports to compare. The symbol comparison is skipped and
@@ -45,9 +58,12 @@
 # table and still fails on a denied effect. A static PASS therefore confirms
 # the effect rows only, not the host-symbol surface.
 #
-# Fails closed: a missing symbol table or a binary without the runtime effect
-# table symbol `io_runs` (stripped, or not a Bend 2.0.39 binary) is refused
-# rather than passed.
+# Fails closed: a missing symbol table, a binary without the runtime effect
+# table symbol `io_eff_rows` (stripped, not a Bend 2.0.39 binary, or a build
+# whose optimizer removed the table), and a binary in which no effect row is
+# found are refused (exit 2) rather than passed. Every Bend program that
+# prints links at least IO.print, so an empty row list means the `_run`
+# detection did not see this binary's rows, not that it has none.
 #
 # Exit status: 0 when no symbol and no effect is outside the profile; 1 when
 # any is, after printing each offending name; 2 when the binary cannot be
@@ -81,8 +97,11 @@ LINK=dynamic
 readelf -d "$BIN" 2>/dev/null | grep -q '(NEEDED)' || LINK=static
 
 ALL=$(nm "$BIN" 2>/dev/null) || die "$BIN: nm could not read a symbol table"
-echo "$ALL" | grep -qE ' [bBdD] io_runs$' \
-  || die "$BIN: no io_runs effect table symbol (stripped, or not a Bend 2.0.39 binary)"
+echo "$ALL" | grep -qE ' [bBdDrR] io_eff_rows$' \
+  || die "$BIN: no io_eff_rows effect table symbol (stripped, table optimized away, or not a Bend 2.0.39 binary)"
+
+# Local `_run` functions that are not effects (see the header). Exact names.
+NOT_EFFECTS='cube_run gpu_run dlerror_run'
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -101,8 +120,10 @@ else
   : > "$TMP/symbols"
 fi
 
-echo "$ALL" | awk '
-  $2 == "T" && $3 ~ /^[a-z][a-z0-9_]*_run$/ { sub(/_run$/, "", $3); print $3 }
+echo "$ALL" | awk -v skip="$NOT_EFFECTS" '
+  BEGIN { n = split(skip, s, " "); for (i = 1; i <= n; i++) deny[s[i]] = 1 }
+  $3 in deny { next }
+  ($2 == "T" || $2 == "t") && $3 ~ /^[a-z][a-z0-9_]*_run$/ { sub(/_run$/, "", $3); print $3 }
   $3 ~ /^[a-z][a-z0-9_]*_use$/              { sub(/_use$/, "", $3); print $3 }
 ' | sort -u | awk '
   {
@@ -114,6 +135,9 @@ echo "$ALL" | awk '
     print ns "." rest
   }
 ' | sort -u > "$TMP/effects"
+
+[ -s "$TMP/effects" ] \
+  || die "$BIN: no effect row found; every printing Bend program has one, so the binary cannot be checked"
 
 comm -23 "$TMP/symbols" "$TMP/allowed-symbols" > "$TMP/bad-symbols"
 comm -23 "$TMP/effects" "$TMP/allowed-effects" > "$TMP/bad-effects"

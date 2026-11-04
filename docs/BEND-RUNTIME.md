@@ -104,11 +104,23 @@ loop-handled, not a row). Each file records why its denied groups are denied.
 linked binary and exits 1 naming every import and effect outside them. For a
 statically linked binary it checks the linked effect rows only and reports the
 import comparison as not applicable, so a static pass says nothing about the
-host-symbol surface; it refuses (exit 2) a stripped binary rather than passing it.
+host-symbol surface. It finds effect rows by their `<prefix>_run` functions,
+global or, after link-time optimization, local, and drops by exact name the
+non-effect locals that match the same pattern (the runtime's `cube_run` and
+`gpu_run`, and static glibc 2.44's `dlerror_run`); any other matching name is
+mapped and denied unless allowlisted. It refuses (exit 2) a stripped binary, one
+whose `io_eff_rows` table symbol is absent, and one in which no effect row is
+found, rather than passing it; clang link-time optimization removes Hello's
+`io_eff_rows`, so an LTO-built monitor is refused, not passed.
 [`verification/runtime-profile-binary-check.txt`](../verification/runtime-profile-binary-check.txt)
 records Hello passing and `scripts/runtime-profile/Widened.bend`, which adds
-`TCP.listen`, failing on `TCP.listen` and the socket imports. A passing check
+`TCP.listen`, failing on `TCP.listen` and the socket imports, dynamically, with
+a plain static link, and with a static link-time-optimized link. A passing check
 is one input to host qualification; it does not qualify a host by itself.
+Reviewed-only gap: the check does not enforce the Bend version pin (RH-001
+scenario 2). Its `_run` detection and effect-name mapping follow the C that
+Bend 2.0.39 emits, so it must be re-validated for each toolchain before a
+result is reused.
 
 Lane parity and fail-stop were checked by execution on this Linux host, CPU
 only with `--gpu off`.

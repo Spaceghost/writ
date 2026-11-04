@@ -68,8 +68,8 @@ With 64 MiB, 8 GiB, and 10 GiB of address space the runtime stops before the Ben
 it prints its own "bend: reservation failed", writes nothing to stdout ("hi" is never printed),
 and exits 1.
 At 8 GiB err_fail is reached with no corpus mapping present, so the 8 GiB corpus reservation is
-the one that failed; at 10 GiB the corpus at 0x200000000 is mapped and the failing reservation is
-the 2 GiB evaluation stack (pool_stack is the only other caller of pool_mmap). With 11 GiB, and
+the one that failed; at 10 GiB the 0x200000000-byte (8 GiB) corpus at 0x0000200000000000 is
+mapped and the failing reservation is the 2 GiB evaluation stack (pool_stack is the only other caller of pool_mmap). With 11 GiB, and
 with no limit, Hello prints "hi" and exits 0, so the failures above come from the limit, not from
 the binary. The success threshold lies between 10 GiB (fails) and 11 GiB (succeeds); it was
 bracketed by these two runs, not bisected further. This is CPU execution on one Linux host; a

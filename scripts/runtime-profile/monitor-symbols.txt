@@ -60,11 +60,14 @@ __sched_cpucount  # glibc-only: CPU_COUNT helper (observed with glibc 2.44)
 
 # Cgroup CPU quota: on Linux, main reads cpu.max (or the cgroup v1 quota and
 # period files) at every startup to size the thread pool. These are not GPU
-# calls. They open a fixed read-only path chosen by the runtime, not by the
-# program; a Bend file effect would appear as File.* in the effect check.
-# glibc redirects fscanf to __isoc23_fscanf under C23 headers.
+# calls. That they open only a fixed read-only path chosen by the runtime, not
+# by the program, is reviewed in the runtime source; the symbol check admits
+# the names and cannot see the path. A Bend file effect would appear as File.*
+# in the effect check.
+# glibc redirects fscanf to __isoc23_fscanf under C23 headers, so Hello does
+# not import fscanf itself; it stays allowed as the inventory's spelling.
 fopen
-fscanf
+fscanf  # named by the inventory; not observed in Hello's imports (__isoc23_fscanf is)
 __isoc23_fscanf  # glibc-only: C23 fscanf redirect (glibc 2.38 and later; observed 2.44)
 fclose
 
@@ -74,7 +77,7 @@ calloc
 realloc
 free
 strdup
-snprintf
+snprintf  # named by the inventory; not observed in Hello's imports (the compiler lowers it)
 
 # Not in the inventory; observed with `nm -u` on the dynamic Hello build.
 # C startup and toolchain hooks that every clang/glibc executable imports.

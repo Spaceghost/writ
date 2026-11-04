@@ -103,6 +103,17 @@ EFFECTS=$(grep -oE 'io_eff\(CID_[A-Za-z0-9_]+,' "$C_FILE" \
 LOOP=$(grep -oE 'c == CID_[A-Za-z0-9_]+' "$C_FILE" \
   | sed -E 's/^c == CID_//' | sort -u)
 
+# Hello prints, so its C must register IO_print and name host calls. A renamed
+# io_eff or a changed emission would otherwise leave a section silently empty.
+if ! printf '%s\n' "$EFFECTS" | grep -qx 'IO_print'; then
+  echo "inventory.sh: no io_eff(CID_IO_print, ...) in $C_FILE; the emitted C changed" >&2
+  exit 2
+fi
+if [ -z "$CALLS" ]; then
+  echo "inventory.sh: no host calls matched in $C_FILE; the emitted C changed" >&2
+  exit 2
+fi
+
 {
   echo "Bend runtime host inventory"
   echo "Bend version: $VERSION_LINE (from \`bend version\`)"
