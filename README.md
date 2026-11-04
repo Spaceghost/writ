@@ -103,3 +103,4 @@ the core library does not depend on it.
 - [OpenSpec suite, state machines, and implementation roadmap](openspec/README.md)
 - [Library APIs](LIBRARY.md)
 - [Verification record and captured results](VERIFICATION.md)
+- [Dev board: read-only view of OpenSpec changes and lane worktrees](contrib/board/README.md)
