@@ -1,0 +1,1760 @@
+Linux single-lane reference for the Genode corpus runs (Genode host-layer lane, Task 3)
+Recorded: 2026-11-03, 23:12 -06:00
+Bend version: bend 2.0.39 (from `bend version`), BEND_NO_TELEMETRY=1
+Compiler: clang version 23.1.1 (`bend -o` builds at -O2)
+Host: Linux 7.2.9-1-MANJARO x86_64, glibc 2.44, 32 online CPUs
+Worktree: lane/genode-host-layer at c96ef40 (first sections) and d8b1473 (merged-tree section at the end); commands run from the worktree root
+Execution: native Linux, CPU only, --threads 1 --gpu off. Not Genode, not GPU evidence.
+
+Why a fresh record: verification/runtime-profile-parity-1.txt is the older
+record of the 638-check corpus and is stale for this tree; it is not
+modified. At c96ef40 this worktree's Tests.bend had 764 checks; after the
+merge of master (d8b1473) it has 782 (last section). The captures below are
+the reference the Genode component logs are compared with, line for line
+(verification/genode-corpus-base-linux.txt).
+
+## Build
+$ bend Tests.bend -o ../writ-build/genode-host-layer/tests
+[exit status: 0; 1m37.8s]
+$ bend Example.bend -o ../writ-build/genode-host-layer/example
+$ bend examples/Flow.bend -o ../writ-build/genode-host-layer/flow
+$ bend examples/Transfer.bend -o ../writ-build/genode-host-layer/transfer
+$ bend GpuExample.bend -o ../writ-build/genode-host-layer/gpuexample
+[exit status: 0 each]
+binary sha256:
+  8f24f4b8100e639315c101e5a4a70bde32c19edcdb5c8692f97d1f735510626e  tests
+  e122f11d08fe2907ae2fd8e67f1a5cc4248aaf0a2909a85c49b1c52bd2974d8b  example
+  bee4bab6649d4ff8096277c3054ba0ed4e6659da6d98f7cb19c14ca1de2c2818  flow
+  47bf0e80379f93f653c96fff9099937645e1177f5f67c35a2d310e91fa6452d0  transfer
+  baf028675a65297247a7da71b5fef7e44297305d65005ad5182c731e87c7a90e  gpuexample
+
+## Runs
+Each: ../writ-build/genode-host-layer/<bin> +RTS --threads 1 --gpu off > <bin>-1.out 2> <bin>-1.err
+  tests: exit status 0; stdout 815 lines, sha256 c40dafd78b239d1129061ecd288fcc1896e9abf740eae23b51610f048bd56d3e; stderr 0 bytes
+  example: exit status 0; stdout 17 lines, sha256 84fce2fc8e2ba0118ac40f334869437cd5c6e5c2d8d1c5d3ab8a04550cec137b; stderr 0 bytes
+  flow: exit status 0; stdout 5 lines, sha256 0c789cf9850005f083f23bbab2239c09976cadc4dff2395b8fb4c39732494f77; stderr 0 bytes
+  transfer: exit status 0; stdout 5 lines, sha256 5ab278338ecee2c9503689bc2cda583b52fbbf4fb603adba2a8a041a72a4fe80; stderr 0 bytes
+  gpuexample: exit status 0; stdout 7 lines, sha256 6ecd8bfd7fdcb976dc34fa65524a901a0d89f0d01e4c51e77af58b7a12f2d473; stderr 0 bytes
+
+PASS lines (pattern ^PASS[: ]):
+  tests: 764
+  example: 16
+  flow: 4
+  transfer: 4
+  gpuexample: 5
+
+## tests stdout (verbatim)
+PASS: exact 64-bit union across both words
+PASS: exact 64-bit intersection
+PASS: bit 63 cannot be satisfied by low word
+PASS: valid graph admitted
+PASS: CPU Jacobi propagation and final stability sweep
+PASS: Bend parallel producer matches sequential producer
+PASS: independent verifier checks original graph
+PASS: summary cannot escape source confidentiality
+PASS: covered destination and actual effect succeed
+PASS: untrusted provenance is checked separately
+PASS: actual network effect needs a live grant
+PASS: callee effect requires grant even when requested mask is zero
+PASS: sink index never wraps
+PASS: list lookup rejects maximal U32 index
+PASS: source secrecy omission rejected
+PASS: source provenance omission rejected
+PASS: source effect omission rejected
+PASS: derived secrecy omission rejected
+PASS: derived provenance omission rejected
+PASS: callee effect omission rejected
+PASS: static equality cannot keep a larger domain
+PASS: empty candidate domain rejected
+PASS: unsupported candidate domain rejected
+PASS: missing candidate nodes rejected
+PASS: extra candidate nodes rejected
+PASS: conservative extra restrictions remain valid
+PASS: extra restrictions still constrain the sink
+PASS: changed graph generation denies
+PASS: changed policy generation denies
+PASS: authority epoch high word is checked
+PASS: candidate stamp must match live snapshot
+PASS: one-sweep budget fails closed
+PASS: final convergence check consumes fuel
+PASS: exact convergence budget succeeds
+PASS: parallel budget fails closed
+PASS: missing flow endpoint rejected before solving
+PASS: parallel producer receives only validated graph
+PASS: missing equality endpoint rejected
+PASS: missing call endpoint rejected
+PASS: empty seed type domain rejected
+PASS: unsupported seed type domain rejected
+PASS: incompatible static types conflict
+PASS: parallel producer preserves type conflict
+PASS: cyclic flow reaches verified fixed point
+PASS: parallel cycle agrees with CPU
+PASS: empty graph succeeds in zero rounds
+PASS: empty parallel graph needs no dispatch
+PASS: bit 63 propagates in all three restriction domains
+PASS: parallel propagation retains high bits
+PASS: high-word restrictions can be explicitly covered
+PASS: high-word required effect cannot be dropped
+PASS: stable forged producer output fails independent verification
+Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+PASS valid paired admission
+PASS summary retains origin and labels
+PASS read required
+PASS write required
+PASS read domain distinct
+PASS write domain distinct
+PASS read object version exact
+PASS write object exact
+PASS graph epoch current
+PASS policy epoch current
+PASS authority epoch current
+PASS expiry exclusive
+PASS all 256 code bits bound
+PASS invocation bound
+PASS read grant stamp bound
+PASS fresh writer cannot redirect old read destination
+PASS fresh writer cannot redirect old read write-domain
+PASS operation kind approved
+PASS operation code approved
+PASS origin code pin required
+PASS origin transform restrictions retained
+PASS empty origins rejected
+PASS unknown kind bits rejected
+PASS derived source cannot widen origin rights
+PASS source cannot erase origin secrecy
+PASS payment required
+PASS payment origin version
+PASS payment invocation
+PASS payment code
+PASS payment kind
+PASS payment destination
+PASS payment quote
+PASS payment expiry
+PASS ROT13 or summary cannot clear confidentiality
+PASS integrity independently enforced
+PASS own bucket only narrows output operations
+PASS multiple origins union labels including bit63
+PASS old read cannot approve expanded source manifest
+PASS every source read required
+PASS every original payment required
+PASS copy preserves schema and remains protected
+PASS parallel batch admission
+PASS parallel batch retains denial
+PASS preflight collects every inherited origin in order
+PASS origin discovery is independent of later grants and payment
+PASS preflight rejects stale authority
+PASS preflight source version exact
+PASS preflight rejects malformed source schema
+PASS preflight refuses missing provenance
+PASS preflight rejects source erasing origin labels
+PASS preflight rejects amplified origin rights
+PASS ambiguous runtime source schema denied
+PASS unknown payment operation bits denied
+Transfer: 53 checks passed
+PASS: DLM exact finite closure validates
+PASS: DLM transitive delegation closure validates
+PASS: delegation direction and transitivity
+PASS: delegation does not reverse
+PASS: Top acts for every registered principal
+PASS: every registered principal acts for Bottom
+PASS: ordinary principal has no implicit Top authority
+PASS: unregistered principal denies even for Top
+PASS: unsupported composite principal denies
+PASS: authority epoch mismatch denies
+PASS: invented closure authority denies
+PASS: omitted delegation edge in closure denies
+PASS: malformed relation shape denies
+PASS: out-of-universe relation bit denies
+PASS: unknown delegation endpoint denies preparation
+PASS: oversized principal universe denies
+PASS: unsupported delegation denies preparation
+PASS: empty name registry retains Top and Bottom
+PASS: highest supported principal uses bit 31 correctly
+PASS: preparation computes transitive authority
+PASS: owner-sensitive readers include owner and delegate
+PASS: untrusted owner imposes no policy on observer
+PASS: confidentiality join intersects readers
+PASS: confidentiality meet unions readers
+PASS: integrity join unions possible writers
+PASS: integrity meet intersects possible writers
+PASS: uncredited integrity owner gives unknown provenance
+PASS: public information may acquire secrecy restrictions
+PASS: protected information cannot flow to public
+PASS: narrowing the reader set is allowed
+PASS: widening the reader set requires separate authority
+PASS: trusted information may lose integrity
+PASS: untrusted information cannot endorse itself
+PASS: integrity ordering follows possible writer inclusion
+PASS: removing possible writers requires endorsement
+PASS: maximal restriction is a valid information-flow sink
+PASS: unknown policy principal denies reflexive-looking query
+PASS: unsupported policy principal denies
+PASS: stale flow query denies
+PASS: secret control dependency survives an otherwise-public result
+PASS: dependency joins retain untrusted influence
+PASS: join is an upper bound
+PASS: meet is a lower bound
+PASS: parallel batch agrees with four independent semantic outcomes
+PASS: complete CPU replay accepts correct batch results
+PASS: complete CPU replay rejects fabricated allows
+PASS: complete CPU replay rejects truncated result shape
+DLM: 47 checks passed
+PASS: ledger reserves reader expense
+PASS: reservation removes available funds
+PASS: stale revision denies
+PASS: overdraft denies
+PASS: one live reservation per invocation
+PASS: receipt cannot switch invocation
+PASS: receipt cannot switch payer
+PASS: receipt cannot switch amount
+PASS: scoped commit succeeds
+PASS: commit replay denies
+PASS: cancellation refunds hold
+PASS: cancelled receipt cannot replay
+PASS: expired hold cannot commit
+PASS: expiration refunds hold
+PASS: unexpired hold cannot be reaped
+PASS: duplicate payer registry denies
+Ledger: 16 checks passed
+PASS: negotiation reaches running in guarded order
+PASS: every stage retains immutable request
+PASS: candidate identity cannot change
+PASS: stale session revision denies
+PASS: challenge requires pinned candidate
+PASS: future challenge not yet usable
+PASS: protected sample has pre-execution gate
+PASS: sample cannot read without paired source grant
+PASS: old nonce cannot pair with fresh duplicate ID
+PASS: failed sample denies transition
+PASS: wrong sample nonce denies
+PASS: passing sample does not replace owner approval
+PASS: sample cannot skip negotiation
+PASS: every contributing origin must approve
+PASS: all contributing origins permit negotiation
+PASS: owner approval binds exact destination
+PASS: reader-funded reservation succeeds
+PASS: negotiation reserves reader balance
+PASS: reservation must name reader as payer
+PASS: quote substitution denies
+PASS: revoked budget denies start despite live hold
+PASS: revoked read grant denies execution
+PASS: revoked origin approval denies execution
+PASS: expiry is exclusive at deadline
+PASS: cannot execute before negotiation
+PASS: authority epoch drift denies start
+Negotiation: 26 checks passed
+PASS: backplane commits fully verified transaction
+PASS: write intent retains origins, types, restrictions and DLM label
+PASS: committed session is terminal
+PASS: commit advances ledger revision
+PASS: commit spends reserved amount once
+PASS: old running session cannot replay spent receipt
+PASS: terminal session cannot commit twice
+PASS: commit rejects stale session revision
+PASS: commit rejects stale ledger revision
+PASS: forged solver labels cannot authorize output
+PASS: passing sample cannot commit
+PASS: late owner revocation denies commit
+PASS: denied commit does not consume hold
+PASS: denied commit preserves original session
+PASS: late budget revocation denies commit
+PASS: late read revocation denies commit
+PASS: late write revocation denies commit
+PASS: missing origin payment witness denies commit
+PASS: transfer authority epoch drift denies commit
+PASS: DLM authority epoch drift denies commit
+PASS: graph policy epoch drift denies commit
+PASS: DLM blocks secret-to-public release
+PASS: network backend adds actual network effect
+PASS: storage backend adds actual write effect
+PASS: combined control label rechecked against actual destination
+PASS: oracle fixture has valid static narrowing
+PASS: static narrowing cannot change declared output schema
+PASS: binding includes reader and immutable negotiation terms
+PASS: exclusive deadline denies final commit
+PASS: stamp bridge preserves high word
+PASS: stamp bridge cannot truncate high word
+PASS: bit63 epoch mismatch cannot alias low epoch
+PASS: identical duplicate bindings deny closed
+PASS: conflicting bindings deny with permissive entry first
+PASS: conflicting bindings deny with restrictive entry first
+PASS: duplicate registry rejection preserves reservation
+PASS: write intent preserves all 256 artifact identity bits
+PASS: artifact identity differs in final word
+PASS: artifact identity comes from authoritative binding
+PASS: distinct full requests are separate binding keys
+Backplane: 40 checks passed
+PASS: frontend fixture has a valid paired read/write contract
+PASS: empty frontend state is valid
+PASS: unique capability registry validates
+PASS: capability mounts as a protocol handle
+PASS: mount allocates first monotonic ID
+PASS: mounted capability opens a descriptor record
+PASS: open allocates next descriptor ID
+PASS: open preserves frontend structural validity
+PASS: read request resolves exact immutable plan
+PASS: write request resolves same exact plan
+PASS: execute resolves exact plan with all rights
+PASS: mount handle itself cannot perform an operation
+PASS: descriptor cannot cross authenticated subjects
+PASS: descriptor cannot switch capability token
+PASS: all 256 token bits participate in lookup
+PASS: token possession does not change bound subject
+PASS: unknown rights bit denies mount
+PASS: mount cannot amplify registry rights
+PASS: open cannot amplify mounted rights
+PASS: descriptor is not a mount alias
+PASS: mount is not a duplicable operational descriptor
+PASS: descriptor duplication succeeds under live authority
+PASS: dup allocates a distinct descriptor ID
+PASS: dup preserves exact token and plan scope
+PASS: descriptor rights may be attenuated in current state
+PASS: attenuated read right remains usable
+PASS: attenuation removes write right
+PASS: attenuation removes execute right
+PASS: attenuation cannot restore removed rights
+PASS: duplication preserves attenuation
+PASS: zero-right descriptor authorizes no read
+PASS: zero-right descriptor authorizes no write
+PASS: zero-right descriptor authorizes no execution
+PASS: removing registry capability revokes existing descriptor
+PASS: revoked descriptor cannot duplicate itself
+PASS: registry rights reduction invalidates wider existing descriptor
+PASS: registry replacement cannot redirect existing descriptor plan
+PASS: altered descriptor plan disagrees with trusted registry
+PASS: read request still requires destination write approval
+PASS: write request still requires exact source read approval
+PASS: capability cannot bypass inherited payment requirement
+PASS: stale revision cannot resolve operation
+PASS: stale revision cannot duplicate descriptor
+PASS: rejected mutation leaves revision unchanged
+PASS: authority epoch change invalidates open descriptor
+PASS: stale capability cannot mount in new epoch
+PASS: stale mounted capability cannot open
+PASS: expiry is exclusive at exact deadline
+PASS: expired descriptor cannot duplicate itself
+PASS: expired capability cannot mount
+PASS: shortening registry expiry invalidates older broader handle
+PASS: duplicate capability token is ambiguous and invalid
+PASS: malformed registry denies mount
+PASS: malformed registry denies resolution
+PASS: malformed registry rights deny
+PASS: capability epoch must match immutable plan epoch
+PASS: duplicate descriptor IDs invalidate state
+PASS: ambiguous descriptor state denies resolution
+PASS: next descriptor ID must exceed every allocated ID
+PASS: unallocated zero descriptor denies
+PASS: unknown descriptor denies
+PASS: closing descriptor records tombstone
+PASS: closed descriptor cannot resolve
+PASS: closed descriptor cannot duplicate
+PASS: closed descriptor cannot be reactivated by attenuation
+PASS: close replay denies
+PASS: another subject cannot close descriptor
+PASS: another token cannot close descriptor
+PASS: closing one descriptor preserves independently duplicated descriptor
+PASS: new open never reuses tombstoned descriptor ID
+Frontend: 70 checks passed
+PASS: binding fixture state is valid
+PASS: state equality separates a committed change from its input
+PASS: state equality sees a single quota field
+PASS: state equality sees the embedded Frontend state
+PASS: denial checks assert the exact reason
+PASS: GA-001 generation fixture is a valid state
+PASS: GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration
+VECTOR GA-001-1 bind_open denied StaleGeneration
+PASS: GA-001 stale alias cannot be delegated
+PASS: GA-001 stale alias cannot close the current object
+PASS: GA-001 alias at current generation 4 proceeds
+VECTOR GA-001-2 bind_open accepted alias=3;object=2
+PASS: GA-001 current alias reaches the Frontend check
+PASS: GA-002 mount on a recorded route naming the caller succeeds
+VECTOR GA-002-1 bind_mount accepted alias=1;object=1
+PASS: GA-002 mount issues the first alias id
+PASS: GA-002 mount mints a Session owned by the route subject on the route service
+PASS: GA-002 the routed child domain holds the Session alias
+PASS: GA-002 the Session is bound to the new Frontend handle
+PASS: GA-002 Frontend.mount was applied
+PASS: GA-002 mount preserves binding validity
+PASS: GA-002 route prefix naming R mounted for caller S denied RouteMismatch
+VECTOR GA-002-2 bind_mount denied RouteMismatch
+PASS: GA-002 a presented route the parent never recorded denied RouteMismatch
+VECTOR GA-002-3 bind_mount denied RouteMismatch
+PASS: GA-002 route for an unrouted service denied RouteMismatch
+PASS: GA-002 Session on the second service opens under its own route
+PASS: GA-002 route withdrawal fixture is a valid state
+PASS: GA-002 a route on another service does not authorize the holder
+VECTOR GA-002-4 bind_open denied SubjectMismatch
+PASS: GA-003 open from the Session issues a new alias
+VECTOR GA-003-1 bind_open accepted alias=2;object=2
+PASS: GA-003 opened alias names a distinct object
+PASS: GA-003 open mints a Descriptor object
+PASS: GA-003 the new object is bound to the new handle
+PASS: GA-003 the Session alias is unaffected by open
+PASS: GA-003 the Session alias still opens after open
+PASS: GA-003 open preserves binding validity
+PASS: GA-003 attenuate issues a new alias
+PASS: GA-003 attenuate mints a distinct object bound to a distinct handle
+VECTOR GA-003-2 bind_attenuate accepted alias=3;object=3
+PASS: GA-003 attenuate leaves the parent Frontend handle rights intact
+PASS: GA-003 the attenuated Frontend handle carries only read
+PASS: GA-003 parent alias keeps its rights and the copy gets the narrower rights
+PASS: GA-003 the parent descriptor alias is unaffected by attenuate
+PASS: GA-003 attenuate preserves binding validity
+PASS: GA-003 attenuating a Session alias denied FrontendRejected
+PASS: GA-003 attenuate outside the protocol rights denied WidenedRights
+PASS: GA-003 open through an unknown alias denied UnknownAlias
+VECTOR GA-003-3 bind_open denied UnknownAlias
+PASS: GA-003 open through a Descriptor alias denied FrontendRejected
+VECTOR GA-003-4 bind_open denied FrontendRejected
+PASS: GA-004 owner closes a descriptor held by two domains
+VECTOR GA-004-1 bind_close accepted object=2
+PASS: GA-004 after close the owner's alias is stale
+VECTOR GA-004-2 delegate denied StaleGeneration
+PASS: GA-004 after close the second holder's alias is stale
+VECTOR GA-004-3 delegate denied StaleGeneration
+PASS: GA-004 close applies Frontend.close to the bound handle
+PASS: GA-004 close leaves the parent Session usable
+PASS: GA-004 close preserves binding validity
+PASS: GA-004 close at a stale revision destroys nothing and leaves state unchanged
+VECTOR GA-004-4 bind_close denied StaleRevision
+PASS: GA-004 close Frontend rejects destroys nothing
+PASS: GA-004 a domain without the alias cannot close it and is told UnknownAlias
+PASS: GA-004 a non-holder of a destroyed alias is told UnknownAlias, not StaleGeneration
+PASS: GA-004 a delegatee holding a read copy of the Session cannot destroy it
+VECTOR GA-004-5 bind_close denied SubjectMismatch
+PASS: GA-004 a delegatee holding a copy of a descriptor cannot destroy it
+PASS: GA-004 a delegatee may close the descriptor it opened itself
+VECTOR GA-004-6 bind_close accepted object=2
+PASS: GA-004 closing a Session with a two-level derivation below it commits
+VECTOR GA-004-7 bind_close accepted object=1
+PASS: GA-004 closing a Session closes every derived descriptor's Frontend handle
+PASS: GA-004 after a Session close the Session alias is stale
+PASS: GA-004 after a Session close the opened descriptor alias is stale
+PASS: GA-004 after a Session close the attenuated descriptor alias is stale
+VECTOR GA-004-8 delegate denied StaleGeneration
+PASS: GA-004 a Session close stays valid and refunds all three objects
+PASS: GA-004 a Session close skips a derived handle that was already closed
+PASS: GA-005 holder-without-record fixture is a valid state
+PASS: GA-005 alias held by Q with no delegation record denied SubjectMismatch
+VECTOR GA-005-1 bind_attenuate denied SubjectMismatch
+PASS: GA-005 unrecorded holder cannot delegate onward
+PASS: GA-005 a domain that does not hold the alias denied UnknownAlias
+VECTOR GA-005-2 bind_open denied UnknownAlias
+PASS: GA-005 recorded delegation to the worker is accepted
+VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
+PASS: GA-005 delegatee opens through a delegated Session
+PASS: GA-005 the delegatee's opened alias is usable
+PASS: GA-005 the delegatee's opened alias resolves within the record
+PASS: GA-005 the delegatee is accepted only within the delegated scope
+PASS: GA-005 delegatee derivations preserve binding validity
+PASS: GA-005 while R's route stands the delegatee opens through the delegated Session
+VECTOR GA-005-4 bind_open accepted alias=3;object=2
+PASS: GA-005 route withdrawal after delegation fixture is a valid state
+PASS: GA-005 withdrawing the delegator's route withdraws the delegatee's authority
+VECTOR GA-005-5 bind_open denied SubjectMismatch
+PASS: GA-005 route withdrawal also withdraws the delegatee's derived alias
+PASS: GA-005 delegation to a domain routed as another subject on the service denied SubjectMismatch
+VECTOR GA-005-6 delegate denied SubjectMismatch
+PASS: GA-005 delegation to the same subject's unrouted worker is still recorded
+PASS: GA-005 a route on another service does not bar delegation
+PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
+VECTOR GA-006-1 delegate denied WidenedRights
+PASS: GA-006 delegation outside the protocol rights denied WidenedRights
+PASS: GA-006 read delegation of the same read-only descriptor is recorded
+VECTOR GA-006-2 delegate accepted alias=4;object=3
+PASS: GA-006 delegatee of the read-only descriptor shares its object and carries read only
+PASS: GA-006 narrower read-only delegation is recorded
+VECTOR GA-006-3 delegate accepted alias=3;object=2
+PASS: GA-006 delegatee alias carries read only
+PASS: GA-006 delegator alias keeps its rights
+PASS: GA-006 delegatee cannot attenuate past its delegated rights
+PASS: GA-006 delegation preserves binding validity
+PASS: GA-007 mount with zero capability quota denied QuotaExhausted
+PASS: GA-007 open with zero capability quota denied QuotaExhausted
+VECTOR GA-007-1 bind_open denied QuotaExhausted
+PASS: GA-007 only the retried open adds a Frontend handle and advances Frontend
+PASS: GA-007 quota is checked before Frontend authority
+VECTOR GA-007-2 bind_open denied QuotaExhausted
+PASS: GA-007 after top-up the open proceeds at the same revision
+VECTOR GA-007-3 bind_open accepted alias=2;object=2
+PASS: GA-007 the retried open is charged and reaches Frontend
+PASS: GA-007 mount and open each charge one capability slot
+PASS: GA-007 destroying an object refunds its capability slot
+PASS: GA-007 destroying a Session refunds its derived objects too
+PASS: GA-007 revoking a domain refunds the slots of its live objects
+PASS: GA-007 revoke refunds each destroyed object to the domain charged for it
+PASS: GA-008 mount at a stale revision denied StaleRevision
+VECTOR GA-008-1 bind_mount denied StaleRevision
+PASS: GA-008 mount Frontend rejects returns the input state
+VECTOR GA-008-2 bind_mount denied FrontendRejected
+PASS: GA-008 open at a stale revision denied StaleRevision
+PASS: GA-008 attenuate at a stale revision denied StaleRevision
+PASS: GA-008 delegate at a stale revision denied StaleRevision
+PASS: GA-008 revoke at a stale revision denied StaleRevision
+PASS: GA-008 dangling alias fixture is invalid
+PASS: GA-008 an invalid input state is denied StaleRevision
+VECTOR GA-008-3 bind_mount denied StaleRevision
+PASS: GA-008 revoke on an invalid input state is denied
+PASS: GA-011 a two-level chain R to W to H is recorded
+PASS: GA-011 the chain preserves binding validity
+PASS: GA-011 revoking R's domain commits
+VECTOR GA-011-1 revoke accepted domain=7
+PASS: GA-011 revoking R makes W's alias stale
+VECTOR GA-011-2 delegate denied StaleGeneration
+PASS: GA-011 revoking R makes H's alias stale
+VECTOR GA-011-3 delegate denied StaleGeneration
+PASS: GA-011 revoke removes the whole subtree
+PASS: GA-011 closing R's descriptor makes W's alias stale
+PASS: GA-011 closing R's descriptor makes H's alias stale
+PASS: GA-011 close removes the whole subtree and stays valid
+PASS: GA-011 removing W's node removes H's node with it
+PASS: GA-011 removing H's node keeps W's node
+PASS: GA-011 child delegation wider than its read-only parent denied and no node added
+VECTOR GA-011-4 delegate denied WidenedRights
+PASS: GA-011 W's derived object is usable before its branch is cut
+PASS: GA-011 derived object is stale after its parent is closed
+VECTOR GA-011-5 bind_attenuate denied StaleGeneration
+PASS: GA-011 derived object is stale after its parent's holder is revoked
+PASS: GA-011 revoking the delegatee's domain commits
+VECTOR GA-011-6 revoke accepted domain=8
+PASS: GA-011 revoking a delegatee destroys the delegator's object too
+VECTOR GA-011-7 delegate denied StaleGeneration
+PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
+HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+PASS: facade links capability descriptor through complete commit
+PASS: facade preserves output provenance
+PASS: capability revocation is checked at commit
+PASS: revoked capability spends no reservation
+PASS: authenticated caller must own descriptor
+PASS: authenticated subject must be negotiated reader
+PASS: execution requires execute right as well as read and write
+PASS: closed descriptor cannot commit
+PASS: stale frontend revision cannot commit
+PASS: capability possession cannot override label denial
+Facade: 10 checks passed
+PASS: oracle fixture: disconnected vertices
+PASS: oracle fixture: directed chain
+PASS: oracle fixture: directed cycle
+PASS: oracle fixture: undirected component
+PASS: reachable-seed oracle, topology 0
+PASS: reachable-seed oracle, topology 1
+PASS: reachable-seed oracle, topology 2
+PASS: reachable-seed oracle, topology 3
+PASS: reachable-seed oracle, topology 4
+PASS: reachable-seed oracle, topology 5
+PASS: reachable-seed oracle, topology 6
+PASS: reachable-seed oracle, topology 7
+PASS: reachable-seed oracle, topology 8
+PASS: reachable-seed oracle, topology 9
+PASS: reachable-seed oracle, topology 10
+PASS: reachable-seed oracle, topology 11
+PASS: reachable-seed oracle, topology 12
+PASS: reachable-seed oracle, topology 13
+PASS: reachable-seed oracle, topology 14
+PASS: reachable-seed oracle, topology 15
+PASS: reachable-seed oracle, topology 16
+PASS: reachable-seed oracle, topology 17
+PASS: reachable-seed oracle, topology 18
+PASS: reachable-seed oracle, topology 19
+PASS: reachable-seed oracle, topology 20
+PASS: reachable-seed oracle, topology 21
+PASS: reachable-seed oracle, topology 22
+PASS: reachable-seed oracle, topology 23
+PASS: reachable-seed oracle, topology 24
+PASS: reachable-seed oracle, topology 25
+PASS: reachable-seed oracle, topology 26
+PASS: reachable-seed oracle, topology 27
+PASS: reachable-seed oracle, topology 28
+PASS: reachable-seed oracle, topology 29
+PASS: reachable-seed oracle, topology 30
+PASS: reachable-seed oracle, topology 31
+PASS: reachable-seed oracle, topology 32
+PASS: reachable-seed oracle, topology 33
+PASS: reachable-seed oracle, topology 34
+PASS: reachable-seed oracle, topology 35
+PASS: reachable-seed oracle, topology 36
+PASS: reachable-seed oracle, topology 37
+PASS: reachable-seed oracle, topology 38
+PASS: reachable-seed oracle, topology 39
+PASS: reachable-seed oracle, topology 40
+PASS: reachable-seed oracle, topology 41
+PASS: reachable-seed oracle, topology 42
+PASS: reachable-seed oracle, topology 43
+PASS: reachable-seed oracle, topology 44
+PASS: reachable-seed oracle, topology 45
+PASS: reachable-seed oracle, topology 46
+PASS: reachable-seed oracle, topology 47
+PASS: reachable-seed oracle, topology 48
+PASS: reachable-seed oracle, topology 49
+PASS: reachable-seed oracle, topology 50
+PASS: reachable-seed oracle, topology 51
+PASS: reachable-seed oracle, topology 52
+PASS: reachable-seed oracle, topology 53
+PASS: reachable-seed oracle, topology 54
+PASS: reachable-seed oracle, topology 55
+PASS: reachable-seed oracle, topology 56
+PASS: reachable-seed oracle, topology 57
+PASS: reachable-seed oracle, topology 58
+PASS: reachable-seed oracle, topology 59
+PASS: reachable-seed oracle, topology 60
+PASS: reachable-seed oracle, topology 61
+PASS: reachable-seed oracle, topology 62
+PASS: reachable-seed oracle, topology 63
+PASS: reachable-seed oracle, topology 64
+PASS: reachable-seed oracle, topology 65
+PASS: reachable-seed oracle, topology 66
+PASS: reachable-seed oracle, topology 67
+PASS: reachable-seed oracle, topology 68
+PASS: reachable-seed oracle, topology 69
+PASS: reachable-seed oracle, topology 70
+PASS: reachable-seed oracle, topology 71
+PASS: reachable-seed oracle, topology 72
+PASS: reachable-seed oracle, topology 73
+PASS: reachable-seed oracle, topology 74
+PASS: reachable-seed oracle, topology 75
+PASS: reachable-seed oracle, topology 76
+PASS: reachable-seed oracle, topology 77
+PASS: reachable-seed oracle, topology 78
+PASS: reachable-seed oracle, topology 79
+PASS: reachable-seed oracle, topology 80
+PASS: reachable-seed oracle, topology 81
+PASS: reachable-seed oracle, topology 82
+PASS: reachable-seed oracle, topology 83
+PASS: reachable-seed oracle, topology 84
+PASS: reachable-seed oracle, topology 85
+PASS: reachable-seed oracle, topology 86
+PASS: reachable-seed oracle, topology 87
+PASS: reachable-seed oracle, topology 88
+PASS: reachable-seed oracle, topology 89
+PASS: reachable-seed oracle, topology 90
+PASS: reachable-seed oracle, topology 91
+PASS: reachable-seed oracle, topology 92
+PASS: reachable-seed oracle, topology 93
+PASS: reachable-seed oracle, topology 94
+PASS: reachable-seed oracle, topology 95
+PASS: reachable-seed oracle, topology 96
+PASS: reachable-seed oracle, topology 97
+PASS: reachable-seed oracle, topology 98
+PASS: reachable-seed oracle, topology 99
+PASS: reachable-seed oracle, topology 100
+PASS: reachable-seed oracle, topology 101
+PASS: reachable-seed oracle, topology 102
+PASS: reachable-seed oracle, topology 103
+PASS: reachable-seed oracle, topology 104
+PASS: reachable-seed oracle, topology 105
+PASS: reachable-seed oracle, topology 106
+PASS: reachable-seed oracle, topology 107
+PASS: reachable-seed oracle, topology 108
+PASS: reachable-seed oracle, topology 109
+PASS: reachable-seed oracle, topology 110
+PASS: reachable-seed oracle, topology 111
+PASS: reachable-seed oracle, topology 112
+PASS: reachable-seed oracle, topology 113
+PASS: reachable-seed oracle, topology 114
+PASS: reachable-seed oracle, topology 115
+PASS: reachable-seed oracle, topology 116
+PASS: reachable-seed oracle, topology 117
+PASS: reachable-seed oracle, topology 118
+PASS: reachable-seed oracle, topology 119
+PASS: reachable-seed oracle, topology 120
+PASS: reachable-seed oracle, topology 121
+PASS: reachable-seed oracle, topology 122
+PASS: reachable-seed oracle, topology 123
+PASS: reachable-seed oracle, topology 124
+PASS: reachable-seed oracle, topology 125
+PASS: reachable-seed oracle, topology 126
+PASS: reachable-seed oracle, topology 127
+PASS: reachable-seed oracle, topology 128
+PASS: reachable-seed oracle, topology 129
+PASS: reachable-seed oracle, topology 130
+PASS: reachable-seed oracle, topology 131
+PASS: reachable-seed oracle, topology 132
+PASS: reachable-seed oracle, topology 133
+PASS: reachable-seed oracle, topology 134
+PASS: reachable-seed oracle, topology 135
+PASS: reachable-seed oracle, topology 136
+PASS: reachable-seed oracle, topology 137
+PASS: reachable-seed oracle, topology 138
+PASS: reachable-seed oracle, topology 139
+PASS: reachable-seed oracle, topology 140
+PASS: reachable-seed oracle, topology 141
+PASS: reachable-seed oracle, topology 142
+PASS: reachable-seed oracle, topology 143
+PASS: reachable-seed oracle, topology 144
+PASS: reachable-seed oracle, topology 145
+PASS: reachable-seed oracle, topology 146
+PASS: reachable-seed oracle, topology 147
+PASS: reachable-seed oracle, topology 148
+PASS: reachable-seed oracle, topology 149
+PASS: reachable-seed oracle, topology 150
+PASS: reachable-seed oracle, topology 151
+PASS: reachable-seed oracle, topology 152
+PASS: reachable-seed oracle, topology 153
+PASS: reachable-seed oracle, topology 154
+PASS: reachable-seed oracle, topology 155
+PASS: reachable-seed oracle, topology 156
+PASS: reachable-seed oracle, topology 157
+PASS: reachable-seed oracle, topology 158
+PASS: reachable-seed oracle, topology 159
+PASS: reachable-seed oracle, topology 160
+PASS: reachable-seed oracle, topology 161
+PASS: reachable-seed oracle, topology 162
+PASS: reachable-seed oracle, topology 163
+PASS: reachable-seed oracle, topology 164
+PASS: reachable-seed oracle, topology 165
+PASS: reachable-seed oracle, topology 166
+PASS: reachable-seed oracle, topology 167
+PASS: reachable-seed oracle, topology 168
+PASS: reachable-seed oracle, topology 169
+PASS: reachable-seed oracle, topology 170
+PASS: reachable-seed oracle, topology 171
+PASS: reachable-seed oracle, topology 172
+PASS: reachable-seed oracle, topology 173
+PASS: reachable-seed oracle, topology 174
+PASS: reachable-seed oracle, topology 175
+PASS: reachable-seed oracle, topology 176
+PASS: reachable-seed oracle, topology 177
+PASS: reachable-seed oracle, topology 178
+PASS: reachable-seed oracle, topology 179
+PASS: reachable-seed oracle, topology 180
+PASS: reachable-seed oracle, topology 181
+PASS: reachable-seed oracle, topology 182
+PASS: reachable-seed oracle, topology 183
+PASS: reachable-seed oracle, topology 184
+PASS: reachable-seed oracle, topology 185
+PASS: reachable-seed oracle, topology 186
+PASS: reachable-seed oracle, topology 187
+PASS: reachable-seed oracle, topology 188
+PASS: reachable-seed oracle, topology 189
+PASS: reachable-seed oracle, topology 190
+PASS: reachable-seed oracle, topology 191
+PASS: reachable-seed oracle, topology 192
+PASS: reachable-seed oracle, topology 193
+PASS: reachable-seed oracle, topology 194
+PASS: reachable-seed oracle, topology 195
+PASS: reachable-seed oracle, topology 196
+PASS: reachable-seed oracle, topology 197
+PASS: reachable-seed oracle, topology 198
+PASS: reachable-seed oracle, topology 199
+PASS: reachable-seed oracle, topology 200
+PASS: reachable-seed oracle, topology 201
+PASS: reachable-seed oracle, topology 202
+PASS: reachable-seed oracle, topology 203
+PASS: reachable-seed oracle, topology 204
+PASS: reachable-seed oracle, topology 205
+PASS: reachable-seed oracle, topology 206
+PASS: reachable-seed oracle, topology 207
+PASS: reachable-seed oracle, topology 208
+PASS: reachable-seed oracle, topology 209
+PASS: reachable-seed oracle, topology 210
+PASS: reachable-seed oracle, topology 211
+PASS: reachable-seed oracle, topology 212
+PASS: reachable-seed oracle, topology 213
+PASS: reachable-seed oracle, topology 214
+PASS: reachable-seed oracle, topology 215
+PASS: reachable-seed oracle, topology 216
+PASS: reachable-seed oracle, topology 217
+PASS: reachable-seed oracle, topology 218
+PASS: reachable-seed oracle, topology 219
+PASS: reachable-seed oracle, topology 220
+PASS: reachable-seed oracle, topology 221
+PASS: reachable-seed oracle, topology 222
+PASS: reachable-seed oracle, topology 223
+PASS: reachable-seed oracle, topology 224
+PASS: reachable-seed oracle, topology 225
+PASS: reachable-seed oracle, topology 226
+PASS: reachable-seed oracle, topology 227
+PASS: reachable-seed oracle, topology 228
+PASS: reachable-seed oracle, topology 229
+PASS: reachable-seed oracle, topology 230
+PASS: reachable-seed oracle, topology 231
+PASS: reachable-seed oracle, topology 232
+PASS: reachable-seed oracle, topology 233
+PASS: reachable-seed oracle, topology 234
+PASS: reachable-seed oracle, topology 235
+PASS: reachable-seed oracle, topology 236
+PASS: reachable-seed oracle, topology 237
+PASS: reachable-seed oracle, topology 238
+PASS: reachable-seed oracle, topology 239
+PASS: reachable-seed oracle, topology 240
+PASS: reachable-seed oracle, topology 241
+PASS: reachable-seed oracle, topology 242
+PASS: reachable-seed oracle, topology 243
+PASS: reachable-seed oracle, topology 244
+PASS: reachable-seed oracle, topology 245
+PASS: reachable-seed oracle, topology 246
+PASS: reachable-seed oracle, topology 247
+PASS: reachable-seed oracle, topology 248
+PASS: reachable-seed oracle, topology 249
+PASS: reachable-seed oracle, topology 250
+PASS: reachable-seed oracle, topology 251
+PASS: reachable-seed oracle, topology 252
+PASS: reachable-seed oracle, topology 253
+PASS: reachable-seed oracle, topology 254
+PASS: reachable-seed oracle, topology 255
+PASS: equality-conflict oracle, topology 0
+PASS: equality-conflict oracle, topology 1
+PASS: equality-conflict oracle, topology 2
+PASS: equality-conflict oracle, topology 3
+PASS: equality-conflict oracle, topology 4
+PASS: equality-conflict oracle, topology 5
+PASS: equality-conflict oracle, topology 6
+PASS: equality-conflict oracle, topology 7
+PASS: equality-conflict oracle, topology 8
+PASS: equality-conflict oracle, topology 9
+PASS: equality-conflict oracle, topology 10
+PASS: equality-conflict oracle, topology 11
+PASS: equality-conflict oracle, topology 12
+PASS: equality-conflict oracle, topology 13
+PASS: equality-conflict oracle, topology 14
+PASS: equality-conflict oracle, topology 15
+PASS: equality-conflict oracle, topology 16
+PASS: equality-conflict oracle, topology 17
+PASS: equality-conflict oracle, topology 18
+PASS: equality-conflict oracle, topology 19
+PASS: equality-conflict oracle, topology 20
+PASS: equality-conflict oracle, topology 21
+PASS: equality-conflict oracle, topology 22
+PASS: equality-conflict oracle, topology 23
+PASS: equality-conflict oracle, topology 24
+PASS: equality-conflict oracle, topology 25
+PASS: equality-conflict oracle, topology 26
+PASS: equality-conflict oracle, topology 27
+PASS: equality-conflict oracle, topology 28
+PASS: equality-conflict oracle, topology 29
+PASS: equality-conflict oracle, topology 30
+PASS: equality-conflict oracle, topology 31
+PASS: equality-conflict oracle, topology 32
+PASS: equality-conflict oracle, topology 33
+PASS: equality-conflict oracle, topology 34
+PASS: equality-conflict oracle, topology 35
+PASS: equality-conflict oracle, topology 36
+PASS: equality-conflict oracle, topology 37
+PASS: equality-conflict oracle, topology 38
+PASS: equality-conflict oracle, topology 39
+PASS: equality-conflict oracle, topology 40
+PASS: equality-conflict oracle, topology 41
+PASS: equality-conflict oracle, topology 42
+PASS: equality-conflict oracle, topology 43
+PASS: equality-conflict oracle, topology 44
+PASS: equality-conflict oracle, topology 45
+PASS: equality-conflict oracle, topology 46
+PASS: equality-conflict oracle, topology 47
+PASS: equality-conflict oracle, topology 48
+PASS: equality-conflict oracle, topology 49
+PASS: equality-conflict oracle, topology 50
+PASS: equality-conflict oracle, topology 51
+PASS: equality-conflict oracle, topology 52
+PASS: equality-conflict oracle, topology 53
+PASS: equality-conflict oracle, topology 54
+PASS: equality-conflict oracle, topology 55
+PASS: equality-conflict oracle, topology 56
+PASS: equality-conflict oracle, topology 57
+PASS: equality-conflict oracle, topology 58
+PASS: equality-conflict oracle, topology 59
+PASS: equality-conflict oracle, topology 60
+PASS: equality-conflict oracle, topology 61
+PASS: equality-conflict oracle, topology 62
+PASS: equality-conflict oracle, topology 63
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+
+## example stdout (verbatim)
+Commit: negotiate, mount a capability, and recheck authority at release.
+PASS candidate identity pinned: True
+PASS fresh challenge accepted after pin: True
+PASS paired grants permit protected sampling: True
+PASS registered sample accepted: True
+PASS origin owner approved exact plan: True
+PASS reader execution units reserved: True
+PASS negotiation started: True
+PASS capability mounted in protocol model: True
+PASS descriptor opened in protocol model: True
+PASS authorized commit accepted: True
+PASS write intent retains origin policy and artifact: True
+PASS session reached Committed: True
+PASS reader available units after one reservation: 45
+PASS revoked capability committed: False
+PASS revoked attempt preserves exact held ledger: True
+PASS revoked attempt preserves exact running session: True
+
+## flow stdout (verbatim)
+Flow: a summary keeps its report's restrictions.
+PASS constraint candidate verified: True
+PASS internal summary write allowed: True
+PASS public summary write denied for confidentiality: True
+PASS stripped-label candidate rejected: True
+
+## transfer stdout (verbatim)
+Transfer: a source read and destination write must approve the same plan.
+PASS paired transfer keeps exact plan: True
+PASS summary retains full origin policy: True
+PASS write grant alone denied with Read reason: True
+PASS read grant alone denied with Write reason: True
+
+## gpuexample stdout (verbatim)
+Parallel: solver, DLM labels, and paired-transfer batch paths.
+Native GPU dispatch requested; CPU fallback is allowed. No device attestation.
+PASS solver path passes original-graph verifier: True
+PASS label path allows internal and denies public: True
+PASS label path matches complete host replay: True
+PASS transfer path admits paired grants and denies missing read: True
+PASS host transfer replay preserves both outcomes and provenance: True
+
+
+=============================================================================
+MERGED TREE (782 checks), recorded 2026-11-04 00:35 -06:00
+The sections above are the reference for the 764-check tree (caf13ca and
+before); they are kept as history. After `git merge master` (master dc6ff2b;
+merge commit d8b1473, which changed HostBinding.bend and
+HostBindingTests.bend), the corpus has 782 checks. The four examples'
+emitted C is byte-identical before and after the merge (cmp of a fresh
+emission against ../writ-genode/bend-c/<name>/<name>.c), so their
+captures above still apply.
+
+## Build
+$ bend Tests.bend -o ../writ-build/genode-host-layer/merged/tests
+[exit status: 0; 1m36.7s]
+binary sha256: b79c5fdbeb07abb8406cd5de37d3761ba59189ec89c39dafa93a4de6adf40f7c
+
+## Run
+$ ../writ-build/genode-host-layer/merged/tests +RTS --threads 1 --gpu off > tests-1.out 2> tests-1.err
+  exit status 0; stdout 834 lines, sha256 fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff; stderr 0 bytes
+  PASS lines (pattern ^PASS[: ]): 782
+
+## tests stdout (verbatim, merged tree)
+PASS: exact 64-bit union across both words
+PASS: exact 64-bit intersection
+PASS: bit 63 cannot be satisfied by low word
+PASS: valid graph admitted
+PASS: CPU Jacobi propagation and final stability sweep
+PASS: Bend parallel producer matches sequential producer
+PASS: independent verifier checks original graph
+PASS: summary cannot escape source confidentiality
+PASS: covered destination and actual effect succeed
+PASS: untrusted provenance is checked separately
+PASS: actual network effect needs a live grant
+PASS: callee effect requires grant even when requested mask is zero
+PASS: sink index never wraps
+PASS: list lookup rejects maximal U32 index
+PASS: source secrecy omission rejected
+PASS: source provenance omission rejected
+PASS: source effect omission rejected
+PASS: derived secrecy omission rejected
+PASS: derived provenance omission rejected
+PASS: callee effect omission rejected
+PASS: static equality cannot keep a larger domain
+PASS: empty candidate domain rejected
+PASS: unsupported candidate domain rejected
+PASS: missing candidate nodes rejected
+PASS: extra candidate nodes rejected
+PASS: conservative extra restrictions remain valid
+PASS: extra restrictions still constrain the sink
+PASS: changed graph generation denies
+PASS: changed policy generation denies
+PASS: authority epoch high word is checked
+PASS: candidate stamp must match live snapshot
+PASS: one-sweep budget fails closed
+PASS: final convergence check consumes fuel
+PASS: exact convergence budget succeeds
+PASS: parallel budget fails closed
+PASS: missing flow endpoint rejected before solving
+PASS: parallel producer receives only validated graph
+PASS: missing equality endpoint rejected
+PASS: missing call endpoint rejected
+PASS: empty seed type domain rejected
+PASS: unsupported seed type domain rejected
+PASS: incompatible static types conflict
+PASS: parallel producer preserves type conflict
+PASS: cyclic flow reaches verified fixed point
+PASS: parallel cycle agrees with CPU
+PASS: empty graph succeeds in zero rounds
+PASS: empty parallel graph needs no dispatch
+PASS: bit 63 propagates in all three restriction domains
+PASS: parallel propagation retains high bits
+PASS: high-word restrictions can be explicitly covered
+PASS: high-word required effect cannot be dropped
+PASS: stable forged producer output fails independent verification
+Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+PASS valid paired admission
+PASS summary retains origin and labels
+PASS read required
+PASS write required
+PASS read domain distinct
+PASS write domain distinct
+PASS read object version exact
+PASS write object exact
+PASS graph epoch current
+PASS policy epoch current
+PASS authority epoch current
+PASS expiry exclusive
+PASS all 256 code bits bound
+PASS invocation bound
+PASS read grant stamp bound
+PASS fresh writer cannot redirect old read destination
+PASS fresh writer cannot redirect old read write-domain
+PASS operation kind approved
+PASS operation code approved
+PASS origin code pin required
+PASS origin transform restrictions retained
+PASS empty origins rejected
+PASS unknown kind bits rejected
+PASS derived source cannot widen origin rights
+PASS source cannot erase origin secrecy
+PASS payment required
+PASS payment origin version
+PASS payment invocation
+PASS payment code
+PASS payment kind
+PASS payment destination
+PASS payment quote
+PASS payment expiry
+PASS ROT13 or summary cannot clear confidentiality
+PASS integrity independently enforced
+PASS own bucket only narrows output operations
+PASS multiple origins union labels including bit63
+PASS old read cannot approve expanded source manifest
+PASS every source read required
+PASS every original payment required
+PASS copy preserves schema and remains protected
+PASS parallel batch admission
+PASS parallel batch retains denial
+PASS preflight collects every inherited origin in order
+PASS origin discovery is independent of later grants and payment
+PASS preflight rejects stale authority
+PASS preflight source version exact
+PASS preflight rejects malformed source schema
+PASS preflight refuses missing provenance
+PASS preflight rejects source erasing origin labels
+PASS preflight rejects amplified origin rights
+PASS ambiguous runtime source schema denied
+PASS unknown payment operation bits denied
+Transfer: 53 checks passed
+PASS: DLM exact finite closure validates
+PASS: DLM transitive delegation closure validates
+PASS: delegation direction and transitivity
+PASS: delegation does not reverse
+PASS: Top acts for every registered principal
+PASS: every registered principal acts for Bottom
+PASS: ordinary principal has no implicit Top authority
+PASS: unregistered principal denies even for Top
+PASS: unsupported composite principal denies
+PASS: authority epoch mismatch denies
+PASS: invented closure authority denies
+PASS: omitted delegation edge in closure denies
+PASS: malformed relation shape denies
+PASS: out-of-universe relation bit denies
+PASS: unknown delegation endpoint denies preparation
+PASS: oversized principal universe denies
+PASS: unsupported delegation denies preparation
+PASS: empty name registry retains Top and Bottom
+PASS: highest supported principal uses bit 31 correctly
+PASS: preparation computes transitive authority
+PASS: owner-sensitive readers include owner and delegate
+PASS: untrusted owner imposes no policy on observer
+PASS: confidentiality join intersects readers
+PASS: confidentiality meet unions readers
+PASS: integrity join unions possible writers
+PASS: integrity meet intersects possible writers
+PASS: uncredited integrity owner gives unknown provenance
+PASS: public information may acquire secrecy restrictions
+PASS: protected information cannot flow to public
+PASS: narrowing the reader set is allowed
+PASS: widening the reader set requires separate authority
+PASS: trusted information may lose integrity
+PASS: untrusted information cannot endorse itself
+PASS: integrity ordering follows possible writer inclusion
+PASS: removing possible writers requires endorsement
+PASS: maximal restriction is a valid information-flow sink
+PASS: unknown policy principal denies reflexive-looking query
+PASS: unsupported policy principal denies
+PASS: stale flow query denies
+PASS: secret control dependency survives an otherwise-public result
+PASS: dependency joins retain untrusted influence
+PASS: join is an upper bound
+PASS: meet is a lower bound
+PASS: parallel batch agrees with four independent semantic outcomes
+PASS: complete CPU replay accepts correct batch results
+PASS: complete CPU replay rejects fabricated allows
+PASS: complete CPU replay rejects truncated result shape
+DLM: 47 checks passed
+PASS: ledger reserves reader expense
+PASS: reservation removes available funds
+PASS: stale revision denies
+PASS: overdraft denies
+PASS: one live reservation per invocation
+PASS: receipt cannot switch invocation
+PASS: receipt cannot switch payer
+PASS: receipt cannot switch amount
+PASS: scoped commit succeeds
+PASS: commit replay denies
+PASS: cancellation refunds hold
+PASS: cancelled receipt cannot replay
+PASS: expired hold cannot commit
+PASS: expiration refunds hold
+PASS: unexpired hold cannot be reaped
+PASS: duplicate payer registry denies
+Ledger: 16 checks passed
+PASS: negotiation reaches running in guarded order
+PASS: every stage retains immutable request
+PASS: candidate identity cannot change
+PASS: stale session revision denies
+PASS: challenge requires pinned candidate
+PASS: future challenge not yet usable
+PASS: protected sample has pre-execution gate
+PASS: sample cannot read without paired source grant
+PASS: old nonce cannot pair with fresh duplicate ID
+PASS: failed sample denies transition
+PASS: wrong sample nonce denies
+PASS: passing sample does not replace owner approval
+PASS: sample cannot skip negotiation
+PASS: every contributing origin must approve
+PASS: all contributing origins permit negotiation
+PASS: owner approval binds exact destination
+PASS: reader-funded reservation succeeds
+PASS: negotiation reserves reader balance
+PASS: reservation must name reader as payer
+PASS: quote substitution denies
+PASS: revoked budget denies start despite live hold
+PASS: revoked read grant denies execution
+PASS: revoked origin approval denies execution
+PASS: expiry is exclusive at deadline
+PASS: cannot execute before negotiation
+PASS: authority epoch drift denies start
+Negotiation: 26 checks passed
+PASS: backplane commits fully verified transaction
+PASS: write intent retains origins, types, restrictions and DLM label
+PASS: committed session is terminal
+PASS: commit advances ledger revision
+PASS: commit spends reserved amount once
+PASS: old running session cannot replay spent receipt
+PASS: terminal session cannot commit twice
+PASS: commit rejects stale session revision
+PASS: commit rejects stale ledger revision
+PASS: forged solver labels cannot authorize output
+PASS: passing sample cannot commit
+PASS: late owner revocation denies commit
+PASS: denied commit does not consume hold
+PASS: denied commit preserves original session
+PASS: late budget revocation denies commit
+PASS: late read revocation denies commit
+PASS: late write revocation denies commit
+PASS: missing origin payment witness denies commit
+PASS: transfer authority epoch drift denies commit
+PASS: DLM authority epoch drift denies commit
+PASS: graph policy epoch drift denies commit
+PASS: DLM blocks secret-to-public release
+PASS: network backend adds actual network effect
+PASS: storage backend adds actual write effect
+PASS: combined control label rechecked against actual destination
+PASS: oracle fixture has valid static narrowing
+PASS: static narrowing cannot change declared output schema
+PASS: binding includes reader and immutable negotiation terms
+PASS: exclusive deadline denies final commit
+PASS: stamp bridge preserves high word
+PASS: stamp bridge cannot truncate high word
+PASS: bit63 epoch mismatch cannot alias low epoch
+PASS: identical duplicate bindings deny closed
+PASS: conflicting bindings deny with permissive entry first
+PASS: conflicting bindings deny with restrictive entry first
+PASS: duplicate registry rejection preserves reservation
+PASS: write intent preserves all 256 artifact identity bits
+PASS: artifact identity differs in final word
+PASS: artifact identity comes from authoritative binding
+PASS: distinct full requests are separate binding keys
+Backplane: 40 checks passed
+PASS: frontend fixture has a valid paired read/write contract
+PASS: empty frontend state is valid
+PASS: unique capability registry validates
+PASS: capability mounts as a protocol handle
+PASS: mount allocates first monotonic ID
+PASS: mounted capability opens a descriptor record
+PASS: open allocates next descriptor ID
+PASS: open preserves frontend structural validity
+PASS: read request resolves exact immutable plan
+PASS: write request resolves same exact plan
+PASS: execute resolves exact plan with all rights
+PASS: mount handle itself cannot perform an operation
+PASS: descriptor cannot cross authenticated subjects
+PASS: descriptor cannot switch capability token
+PASS: all 256 token bits participate in lookup
+PASS: token possession does not change bound subject
+PASS: unknown rights bit denies mount
+PASS: mount cannot amplify registry rights
+PASS: open cannot amplify mounted rights
+PASS: descriptor is not a mount alias
+PASS: mount is not a duplicable operational descriptor
+PASS: descriptor duplication succeeds under live authority
+PASS: dup allocates a distinct descriptor ID
+PASS: dup preserves exact token and plan scope
+PASS: descriptor rights may be attenuated in current state
+PASS: attenuated read right remains usable
+PASS: attenuation removes write right
+PASS: attenuation removes execute right
+PASS: attenuation cannot restore removed rights
+PASS: duplication preserves attenuation
+PASS: zero-right descriptor authorizes no read
+PASS: zero-right descriptor authorizes no write
+PASS: zero-right descriptor authorizes no execution
+PASS: removing registry capability revokes existing descriptor
+PASS: revoked descriptor cannot duplicate itself
+PASS: registry rights reduction invalidates wider existing descriptor
+PASS: registry replacement cannot redirect existing descriptor plan
+PASS: altered descriptor plan disagrees with trusted registry
+PASS: read request still requires destination write approval
+PASS: write request still requires exact source read approval
+PASS: capability cannot bypass inherited payment requirement
+PASS: stale revision cannot resolve operation
+PASS: stale revision cannot duplicate descriptor
+PASS: rejected mutation leaves revision unchanged
+PASS: authority epoch change invalidates open descriptor
+PASS: stale capability cannot mount in new epoch
+PASS: stale mounted capability cannot open
+PASS: expiry is exclusive at exact deadline
+PASS: expired descriptor cannot duplicate itself
+PASS: expired capability cannot mount
+PASS: shortening registry expiry invalidates older broader handle
+PASS: duplicate capability token is ambiguous and invalid
+PASS: malformed registry denies mount
+PASS: malformed registry denies resolution
+PASS: malformed registry rights deny
+PASS: capability epoch must match immutable plan epoch
+PASS: duplicate descriptor IDs invalidate state
+PASS: ambiguous descriptor state denies resolution
+PASS: next descriptor ID must exceed every allocated ID
+PASS: unallocated zero descriptor denies
+PASS: unknown descriptor denies
+PASS: closing descriptor records tombstone
+PASS: closed descriptor cannot resolve
+PASS: closed descriptor cannot duplicate
+PASS: closed descriptor cannot be reactivated by attenuation
+PASS: close replay denies
+PASS: another subject cannot close descriptor
+PASS: another token cannot close descriptor
+PASS: closing one descriptor preserves independently duplicated descriptor
+PASS: new open never reuses tombstoned descriptor ID
+Frontend: 70 checks passed
+PASS: binding fixture state is valid
+PASS: state equality separates a committed change from its input
+PASS: state equality sees a single quota field
+PASS: state equality sees the embedded Frontend state
+PASS: denial checks assert the exact reason
+PASS: GA-001 generation fixture is a valid state
+PASS: GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration
+VECTOR GA-001-1 bind_open denied StaleGeneration
+PASS: GA-001 stale alias cannot be delegated
+PASS: GA-001 stale alias cannot close the current object
+PASS: GA-001 alias at current generation 4 proceeds
+VECTOR GA-001-2 bind_open accepted alias=3;object=2
+PASS: GA-001 current alias reaches the Frontend check
+PASS: GA-002 mount on a recorded route naming the caller succeeds
+VECTOR GA-002-1 bind_mount accepted alias=1;object=1
+PASS: GA-002 mount issues the first alias id
+PASS: GA-002 mount mints a Session owned by the route subject on the route service
+PASS: GA-002 the routed child domain holds the Session alias
+PASS: GA-002 the Session is bound to the new Frontend handle
+PASS: GA-002 Frontend.mount was applied
+PASS: GA-002 mount preserves binding validity
+PASS: GA-002 route prefix naming R mounted for caller S denied RouteMismatch
+VECTOR GA-002-2 bind_mount denied RouteMismatch
+PASS: GA-002 a presented route the parent never recorded denied RouteMismatch
+VECTOR GA-002-3 bind_mount denied RouteMismatch
+PASS: GA-002 route for an unrouted service denied RouteMismatch
+PASS: GA-002 Session on the second service opens under its own route
+PASS: GA-002 route withdrawal fixture is a valid state
+PASS: GA-002 a route on another service does not authorize the holder
+VECTOR GA-002-4 bind_open denied SubjectMismatch
+PASS: GA-003 open from the Session issues a new alias
+VECTOR GA-003-1 bind_open accepted alias=2;object=2
+PASS: GA-003 opened alias names a distinct object
+PASS: GA-003 open mints a Descriptor object
+PASS: GA-003 the new object is bound to the new handle
+PASS: GA-003 the Session alias is unaffected by open
+PASS: GA-003 the Session alias still opens after open
+PASS: GA-003 open preserves binding validity
+PASS: GA-003 attenuate issues a new alias
+PASS: GA-003 attenuate mints a distinct object bound to a distinct handle
+VECTOR GA-003-2 bind_attenuate accepted alias=3;object=3
+PASS: GA-003 attenuate leaves the parent Frontend handle rights intact
+PASS: GA-003 the attenuated Frontend handle carries only read
+PASS: GA-003 parent alias keeps its rights and the copy gets the narrower rights
+PASS: GA-003 the parent descriptor alias is unaffected by attenuate
+PASS: GA-003 attenuate preserves binding validity
+PASS: GA-003 attenuating a Session alias denied FrontendRejected
+PASS: GA-003 attenuate outside the protocol rights denied WidenedRights
+PASS: GA-003 open through an unknown alias denied UnknownAlias
+VECTOR GA-003-3 bind_open denied UnknownAlias
+PASS: GA-003 open through a Descriptor alias denied FrontendRejected
+VECTOR GA-003-4 bind_open denied FrontendRejected
+PASS: GA-004 owner closes a descriptor held by two domains
+VECTOR GA-004-1 bind_close accepted object=2
+PASS: GA-004 after close the owner's alias is stale
+VECTOR GA-004-2 delegate denied StaleGeneration
+PASS: GA-004 after close the second holder's alias is stale
+VECTOR GA-004-3 delegate denied StaleGeneration
+PASS: GA-004 close applies Frontend.close to the bound handle
+PASS: GA-004 close leaves the parent Session usable
+PASS: GA-004 close preserves binding validity
+PASS: GA-004 close at a stale revision destroys nothing and leaves state unchanged
+VECTOR GA-004-4 bind_close denied StaleRevision
+PASS: GA-004 close Frontend rejects destroys nothing
+PASS: GA-004 a domain without the alias cannot close it and is told UnknownAlias
+PASS: GA-004 a non-holder of a destroyed alias is told UnknownAlias, not StaleGeneration
+PASS: GA-004 a delegatee holding a read copy of the Session cannot destroy it
+VECTOR GA-004-5 bind_close denied SubjectMismatch
+PASS: GA-004 a delegatee holding a copy of a descriptor cannot destroy it
+PASS: GA-004 a delegatee may close the descriptor it opened itself
+VECTOR GA-004-6 bind_close accepted object=2
+PASS: GA-004 closing a Session with a two-level derivation below it commits
+VECTOR GA-004-7 bind_close accepted object=1
+PASS: GA-004 closing a Session closes every derived descriptor's Frontend handle
+PASS: GA-004 after a Session close the Session alias is stale
+PASS: GA-004 after a Session close the opened descriptor alias is stale
+PASS: GA-004 after a Session close the attenuated descriptor alias is stale
+VECTOR GA-004-8 delegate denied StaleGeneration
+PASS: GA-004 a Session close stays valid and refunds all three objects
+PASS: GA-004 a Session close skips a derived handle that was already closed
+PASS: GA-005 holder-without-record fixture is a valid state
+PASS: GA-005 alias held by Q with no delegation record denied SubjectMismatch
+VECTOR GA-005-1 bind_attenuate denied SubjectMismatch
+PASS: GA-005 unrecorded holder cannot delegate onward
+PASS: GA-005 a domain that does not hold the alias denied UnknownAlias
+VECTOR GA-005-2 bind_open denied UnknownAlias
+PASS: GA-005 recorded delegation to the worker is accepted
+VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
+PASS: GA-005 delegatee opens through a delegated Session
+PASS: GA-005 the delegatee's opened alias is usable
+PASS: GA-005 the delegatee's opened alias resolves within the record
+PASS: GA-005 the delegatee is accepted only within the delegated scope
+PASS: GA-005 delegatee derivations preserve binding validity
+PASS: GA-005 while R's route stands the delegatee opens through the delegated Session
+VECTOR GA-005-4 bind_open accepted alias=3;object=2
+PASS: GA-005 route withdrawal after delegation fixture is a valid state
+PASS: GA-005 withdrawing the delegator's route withdraws the delegatee's authority
+VECTOR GA-005-5 bind_open denied SubjectMismatch
+PASS: GA-005 route withdrawal also withdraws the delegatee's derived alias
+PASS: GA-005 delegation to a domain routed as another subject on the service denied SubjectMismatch
+VECTOR GA-005-6 delegate denied SubjectMismatch
+PASS: GA-005 delegation to the same subject's unrouted worker is still recorded
+PASS: GA-005 a route on another service does not bar delegation
+PASS: GA-005 delegatee rerouted after delegation fixtures are valid states
+PASS: GA-005 a delegatee later routed as another subject on the service denied SubjectMismatch at use
+VECTOR GA-005-7 bind_open denied SubjectMismatch
+PASS: GA-005 rerouting the delegatee also withdraws its derived alias
+PASS: GA-005 a rerouted delegatee cannot delegate its derived alias onward
+PASS: GA-005 a rerouted delegatee cannot close its own derived object
+PASS: GA-005 a later route for the delegatee on another service leaves its delegation usable
+PASS: GA-005 delegation to a worker already routed as another subject is still denied SubjectMismatch
+PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
+VECTOR GA-006-1 delegate denied WidenedRights
+PASS: GA-006 delegation outside the protocol rights denied WidenedRights
+PASS: GA-006 read delegation of the same read-only descriptor is recorded
+VECTOR GA-006-2 delegate accepted alias=4;object=3
+PASS: GA-006 delegatee of the read-only descriptor shares its object and carries read only
+PASS: GA-006 narrower read-only delegation is recorded
+VECTOR GA-006-3 delegate accepted alias=3;object=2
+PASS: GA-006 delegatee alias carries read only
+PASS: GA-006 delegator alias keeps its rights
+PASS: GA-006 delegatee cannot attenuate past its delegated rights
+PASS: GA-006 delegation preserves binding validity
+PASS: GA-007 mount with zero capability quota denied QuotaExhausted
+PASS: GA-007 open with zero capability quota denied QuotaExhausted
+VECTOR GA-007-1 bind_open denied QuotaExhausted
+PASS: GA-007 only the retried open adds a Frontend handle and advances Frontend
+PASS: GA-007 quota is checked before Frontend authority
+VECTOR GA-007-2 bind_open denied QuotaExhausted
+PASS: GA-007 after top-up the open proceeds at the same revision
+VECTOR GA-007-3 bind_open accepted alias=2;object=2
+PASS: GA-007 the retried open is charged and reaches Frontend
+PASS: GA-007 mount and open each charge one capability slot
+PASS: GA-007 destroying an object refunds its capability slot
+PASS: GA-007 destroying a Session refunds its derived objects too
+PASS: GA-007 revoking a domain refunds the slots of its live objects
+PASS: GA-007 revoke refunds each destroyed object to the domain charged for it
+PASS: GA-008 mount at a stale revision denied StaleRevision
+VECTOR GA-008-1 bind_mount denied StaleRevision
+PASS: GA-008 mount Frontend rejects returns the input state
+VECTOR GA-008-2 bind_mount denied FrontendRejected
+PASS: GA-008 open at a stale revision denied StaleRevision
+PASS: GA-008 attenuate at a stale revision denied StaleRevision
+PASS: GA-008 delegate at a stale revision denied StaleRevision
+PASS: GA-008 revoke at a stale revision denied StaleRevision
+PASS: GA-008 dangling alias fixture is invalid
+PASS: GA-008 an invalid input state is denied StaleRevision
+VECTOR GA-008-3 bind_mount denied StaleRevision
+PASS: GA-008 revoke on an invalid input state is denied
+PASS: GA-008 rebuilding a committed binding table keeps the state valid
+PASS: GA-008 two objects bound to one Frontend handle are rejected by valid
+PASS: GA-008 a transition on a shared-handle state is denied StaleRevision
+PASS: GA-008 two uncopied aliases for one live object are rejected by valid
+PASS: GA-008 a close on a two-minter state is denied StaleRevision and refunds nothing
+PASS: GA-008 a stale uncopied alias beside a current one on a live object is rejected by valid
+PASS: GA-008 a destroyed object's stale copies without records stay valid
+PASS: GA-008 delegate, open, and minter close outputs satisfy valid
+PASS: GA-008 derived and delegatee close and revoke outputs satisfy valid
+PASS: GA-008 the three-level Session close and the three-level chain close satisfy valid
+PASS: GA-008 a three-level Session close over a delegated copy satisfies valid and refunds all three objects
+PASS: GA-011 a two-level chain R to W to H is recorded
+PASS: GA-011 the chain preserves binding validity
+PASS: GA-011 revoking R's domain commits
+VECTOR GA-011-1 revoke accepted domain=7
+PASS: GA-011 revoking R makes W's alias stale
+VECTOR GA-011-2 delegate denied StaleGeneration
+PASS: GA-011 revoking R makes H's alias stale
+VECTOR GA-011-3 delegate denied StaleGeneration
+PASS: GA-011 revoke removes the whole subtree
+PASS: GA-011 closing R's descriptor makes W's alias stale
+PASS: GA-011 closing R's descriptor makes H's alias stale
+PASS: GA-011 close removes the whole subtree and stays valid
+PASS: GA-011 removing W's node removes H's node with it
+PASS: GA-011 removing H's node keeps W's node
+PASS: GA-011 child delegation wider than its read-only parent denied and no node added
+VECTOR GA-011-4 delegate denied WidenedRights
+PASS: GA-011 W's derived object is usable before its branch is cut
+PASS: GA-011 derived object is stale after its parent is closed
+VECTOR GA-011-5 bind_attenuate denied StaleGeneration
+PASS: GA-011 derived object is stale after its parent's holder is revoked
+PASS: GA-011 revoking the delegatee's domain commits
+VECTOR GA-011-6 revoke accepted domain=8
+PASS: GA-011 revoking a delegatee destroys the delegator's object too
+VECTOR GA-011-7 delegate denied StaleGeneration
+PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
+HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+PASS: facade links capability descriptor through complete commit
+PASS: facade preserves output provenance
+PASS: capability revocation is checked at commit
+PASS: revoked capability spends no reservation
+PASS: authenticated caller must own descriptor
+PASS: authenticated subject must be negotiated reader
+PASS: execution requires execute right as well as read and write
+PASS: closed descriptor cannot commit
+PASS: stale frontend revision cannot commit
+PASS: capability possession cannot override label denial
+Facade: 10 checks passed
+PASS: oracle fixture: disconnected vertices
+PASS: oracle fixture: directed chain
+PASS: oracle fixture: directed cycle
+PASS: oracle fixture: undirected component
+PASS: reachable-seed oracle, topology 0
+PASS: reachable-seed oracle, topology 1
+PASS: reachable-seed oracle, topology 2
+PASS: reachable-seed oracle, topology 3
+PASS: reachable-seed oracle, topology 4
+PASS: reachable-seed oracle, topology 5
+PASS: reachable-seed oracle, topology 6
+PASS: reachable-seed oracle, topology 7
+PASS: reachable-seed oracle, topology 8
+PASS: reachable-seed oracle, topology 9
+PASS: reachable-seed oracle, topology 10
+PASS: reachable-seed oracle, topology 11
+PASS: reachable-seed oracle, topology 12
+PASS: reachable-seed oracle, topology 13
+PASS: reachable-seed oracle, topology 14
+PASS: reachable-seed oracle, topology 15
+PASS: reachable-seed oracle, topology 16
+PASS: reachable-seed oracle, topology 17
+PASS: reachable-seed oracle, topology 18
+PASS: reachable-seed oracle, topology 19
+PASS: reachable-seed oracle, topology 20
+PASS: reachable-seed oracle, topology 21
+PASS: reachable-seed oracle, topology 22
+PASS: reachable-seed oracle, topology 23
+PASS: reachable-seed oracle, topology 24
+PASS: reachable-seed oracle, topology 25
+PASS: reachable-seed oracle, topology 26
+PASS: reachable-seed oracle, topology 27
+PASS: reachable-seed oracle, topology 28
+PASS: reachable-seed oracle, topology 29
+PASS: reachable-seed oracle, topology 30
+PASS: reachable-seed oracle, topology 31
+PASS: reachable-seed oracle, topology 32
+PASS: reachable-seed oracle, topology 33
+PASS: reachable-seed oracle, topology 34
+PASS: reachable-seed oracle, topology 35
+PASS: reachable-seed oracle, topology 36
+PASS: reachable-seed oracle, topology 37
+PASS: reachable-seed oracle, topology 38
+PASS: reachable-seed oracle, topology 39
+PASS: reachable-seed oracle, topology 40
+PASS: reachable-seed oracle, topology 41
+PASS: reachable-seed oracle, topology 42
+PASS: reachable-seed oracle, topology 43
+PASS: reachable-seed oracle, topology 44
+PASS: reachable-seed oracle, topology 45
+PASS: reachable-seed oracle, topology 46
+PASS: reachable-seed oracle, topology 47
+PASS: reachable-seed oracle, topology 48
+PASS: reachable-seed oracle, topology 49
+PASS: reachable-seed oracle, topology 50
+PASS: reachable-seed oracle, topology 51
+PASS: reachable-seed oracle, topology 52
+PASS: reachable-seed oracle, topology 53
+PASS: reachable-seed oracle, topology 54
+PASS: reachable-seed oracle, topology 55
+PASS: reachable-seed oracle, topology 56
+PASS: reachable-seed oracle, topology 57
+PASS: reachable-seed oracle, topology 58
+PASS: reachable-seed oracle, topology 59
+PASS: reachable-seed oracle, topology 60
+PASS: reachable-seed oracle, topology 61
+PASS: reachable-seed oracle, topology 62
+PASS: reachable-seed oracle, topology 63
+PASS: reachable-seed oracle, topology 64
+PASS: reachable-seed oracle, topology 65
+PASS: reachable-seed oracle, topology 66
+PASS: reachable-seed oracle, topology 67
+PASS: reachable-seed oracle, topology 68
+PASS: reachable-seed oracle, topology 69
+PASS: reachable-seed oracle, topology 70
+PASS: reachable-seed oracle, topology 71
+PASS: reachable-seed oracle, topology 72
+PASS: reachable-seed oracle, topology 73
+PASS: reachable-seed oracle, topology 74
+PASS: reachable-seed oracle, topology 75
+PASS: reachable-seed oracle, topology 76
+PASS: reachable-seed oracle, topology 77
+PASS: reachable-seed oracle, topology 78
+PASS: reachable-seed oracle, topology 79
+PASS: reachable-seed oracle, topology 80
+PASS: reachable-seed oracle, topology 81
+PASS: reachable-seed oracle, topology 82
+PASS: reachable-seed oracle, topology 83
+PASS: reachable-seed oracle, topology 84
+PASS: reachable-seed oracle, topology 85
+PASS: reachable-seed oracle, topology 86
+PASS: reachable-seed oracle, topology 87
+PASS: reachable-seed oracle, topology 88
+PASS: reachable-seed oracle, topology 89
+PASS: reachable-seed oracle, topology 90
+PASS: reachable-seed oracle, topology 91
+PASS: reachable-seed oracle, topology 92
+PASS: reachable-seed oracle, topology 93
+PASS: reachable-seed oracle, topology 94
+PASS: reachable-seed oracle, topology 95
+PASS: reachable-seed oracle, topology 96
+PASS: reachable-seed oracle, topology 97
+PASS: reachable-seed oracle, topology 98
+PASS: reachable-seed oracle, topology 99
+PASS: reachable-seed oracle, topology 100
+PASS: reachable-seed oracle, topology 101
+PASS: reachable-seed oracle, topology 102
+PASS: reachable-seed oracle, topology 103
+PASS: reachable-seed oracle, topology 104
+PASS: reachable-seed oracle, topology 105
+PASS: reachable-seed oracle, topology 106
+PASS: reachable-seed oracle, topology 107
+PASS: reachable-seed oracle, topology 108
+PASS: reachable-seed oracle, topology 109
+PASS: reachable-seed oracle, topology 110
+PASS: reachable-seed oracle, topology 111
+PASS: reachable-seed oracle, topology 112
+PASS: reachable-seed oracle, topology 113
+PASS: reachable-seed oracle, topology 114
+PASS: reachable-seed oracle, topology 115
+PASS: reachable-seed oracle, topology 116
+PASS: reachable-seed oracle, topology 117
+PASS: reachable-seed oracle, topology 118
+PASS: reachable-seed oracle, topology 119
+PASS: reachable-seed oracle, topology 120
+PASS: reachable-seed oracle, topology 121
+PASS: reachable-seed oracle, topology 122
+PASS: reachable-seed oracle, topology 123
+PASS: reachable-seed oracle, topology 124
+PASS: reachable-seed oracle, topology 125
+PASS: reachable-seed oracle, topology 126
+PASS: reachable-seed oracle, topology 127
+PASS: reachable-seed oracle, topology 128
+PASS: reachable-seed oracle, topology 129
+PASS: reachable-seed oracle, topology 130
+PASS: reachable-seed oracle, topology 131
+PASS: reachable-seed oracle, topology 132
+PASS: reachable-seed oracle, topology 133
+PASS: reachable-seed oracle, topology 134
+PASS: reachable-seed oracle, topology 135
+PASS: reachable-seed oracle, topology 136
+PASS: reachable-seed oracle, topology 137
+PASS: reachable-seed oracle, topology 138
+PASS: reachable-seed oracle, topology 139
+PASS: reachable-seed oracle, topology 140
+PASS: reachable-seed oracle, topology 141
+PASS: reachable-seed oracle, topology 142
+PASS: reachable-seed oracle, topology 143
+PASS: reachable-seed oracle, topology 144
+PASS: reachable-seed oracle, topology 145
+PASS: reachable-seed oracle, topology 146
+PASS: reachable-seed oracle, topology 147
+PASS: reachable-seed oracle, topology 148
+PASS: reachable-seed oracle, topology 149
+PASS: reachable-seed oracle, topology 150
+PASS: reachable-seed oracle, topology 151
+PASS: reachable-seed oracle, topology 152
+PASS: reachable-seed oracle, topology 153
+PASS: reachable-seed oracle, topology 154
+PASS: reachable-seed oracle, topology 155
+PASS: reachable-seed oracle, topology 156
+PASS: reachable-seed oracle, topology 157
+PASS: reachable-seed oracle, topology 158
+PASS: reachable-seed oracle, topology 159
+PASS: reachable-seed oracle, topology 160
+PASS: reachable-seed oracle, topology 161
+PASS: reachable-seed oracle, topology 162
+PASS: reachable-seed oracle, topology 163
+PASS: reachable-seed oracle, topology 164
+PASS: reachable-seed oracle, topology 165
+PASS: reachable-seed oracle, topology 166
+PASS: reachable-seed oracle, topology 167
+PASS: reachable-seed oracle, topology 168
+PASS: reachable-seed oracle, topology 169
+PASS: reachable-seed oracle, topology 170
+PASS: reachable-seed oracle, topology 171
+PASS: reachable-seed oracle, topology 172
+PASS: reachable-seed oracle, topology 173
+PASS: reachable-seed oracle, topology 174
+PASS: reachable-seed oracle, topology 175
+PASS: reachable-seed oracle, topology 176
+PASS: reachable-seed oracle, topology 177
+PASS: reachable-seed oracle, topology 178
+PASS: reachable-seed oracle, topology 179
+PASS: reachable-seed oracle, topology 180
+PASS: reachable-seed oracle, topology 181
+PASS: reachable-seed oracle, topology 182
+PASS: reachable-seed oracle, topology 183
+PASS: reachable-seed oracle, topology 184
+PASS: reachable-seed oracle, topology 185
+PASS: reachable-seed oracle, topology 186
+PASS: reachable-seed oracle, topology 187
+PASS: reachable-seed oracle, topology 188
+PASS: reachable-seed oracle, topology 189
+PASS: reachable-seed oracle, topology 190
+PASS: reachable-seed oracle, topology 191
+PASS: reachable-seed oracle, topology 192
+PASS: reachable-seed oracle, topology 193
+PASS: reachable-seed oracle, topology 194
+PASS: reachable-seed oracle, topology 195
+PASS: reachable-seed oracle, topology 196
+PASS: reachable-seed oracle, topology 197
+PASS: reachable-seed oracle, topology 198
+PASS: reachable-seed oracle, topology 199
+PASS: reachable-seed oracle, topology 200
+PASS: reachable-seed oracle, topology 201
+PASS: reachable-seed oracle, topology 202
+PASS: reachable-seed oracle, topology 203
+PASS: reachable-seed oracle, topology 204
+PASS: reachable-seed oracle, topology 205
+PASS: reachable-seed oracle, topology 206
+PASS: reachable-seed oracle, topology 207
+PASS: reachable-seed oracle, topology 208
+PASS: reachable-seed oracle, topology 209
+PASS: reachable-seed oracle, topology 210
+PASS: reachable-seed oracle, topology 211
+PASS: reachable-seed oracle, topology 212
+PASS: reachable-seed oracle, topology 213
+PASS: reachable-seed oracle, topology 214
+PASS: reachable-seed oracle, topology 215
+PASS: reachable-seed oracle, topology 216
+PASS: reachable-seed oracle, topology 217
+PASS: reachable-seed oracle, topology 218
+PASS: reachable-seed oracle, topology 219
+PASS: reachable-seed oracle, topology 220
+PASS: reachable-seed oracle, topology 221
+PASS: reachable-seed oracle, topology 222
+PASS: reachable-seed oracle, topology 223
+PASS: reachable-seed oracle, topology 224
+PASS: reachable-seed oracle, topology 225
+PASS: reachable-seed oracle, topology 226
+PASS: reachable-seed oracle, topology 227
+PASS: reachable-seed oracle, topology 228
+PASS: reachable-seed oracle, topology 229
+PASS: reachable-seed oracle, topology 230
+PASS: reachable-seed oracle, topology 231
+PASS: reachable-seed oracle, topology 232
+PASS: reachable-seed oracle, topology 233
+PASS: reachable-seed oracle, topology 234
+PASS: reachable-seed oracle, topology 235
+PASS: reachable-seed oracle, topology 236
+PASS: reachable-seed oracle, topology 237
+PASS: reachable-seed oracle, topology 238
+PASS: reachable-seed oracle, topology 239
+PASS: reachable-seed oracle, topology 240
+PASS: reachable-seed oracle, topology 241
+PASS: reachable-seed oracle, topology 242
+PASS: reachable-seed oracle, topology 243
+PASS: reachable-seed oracle, topology 244
+PASS: reachable-seed oracle, topology 245
+PASS: reachable-seed oracle, topology 246
+PASS: reachable-seed oracle, topology 247
+PASS: reachable-seed oracle, topology 248
+PASS: reachable-seed oracle, topology 249
+PASS: reachable-seed oracle, topology 250
+PASS: reachable-seed oracle, topology 251
+PASS: reachable-seed oracle, topology 252
+PASS: reachable-seed oracle, topology 253
+PASS: reachable-seed oracle, topology 254
+PASS: reachable-seed oracle, topology 255
+PASS: equality-conflict oracle, topology 0
+PASS: equality-conflict oracle, topology 1
+PASS: equality-conflict oracle, topology 2
+PASS: equality-conflict oracle, topology 3
+PASS: equality-conflict oracle, topology 4
+PASS: equality-conflict oracle, topology 5
+PASS: equality-conflict oracle, topology 6
+PASS: equality-conflict oracle, topology 7
+PASS: equality-conflict oracle, topology 8
+PASS: equality-conflict oracle, topology 9
+PASS: equality-conflict oracle, topology 10
+PASS: equality-conflict oracle, topology 11
+PASS: equality-conflict oracle, topology 12
+PASS: equality-conflict oracle, topology 13
+PASS: equality-conflict oracle, topology 14
+PASS: equality-conflict oracle, topology 15
+PASS: equality-conflict oracle, topology 16
+PASS: equality-conflict oracle, topology 17
+PASS: equality-conflict oracle, topology 18
+PASS: equality-conflict oracle, topology 19
+PASS: equality-conflict oracle, topology 20
+PASS: equality-conflict oracle, topology 21
+PASS: equality-conflict oracle, topology 22
+PASS: equality-conflict oracle, topology 23
+PASS: equality-conflict oracle, topology 24
+PASS: equality-conflict oracle, topology 25
+PASS: equality-conflict oracle, topology 26
+PASS: equality-conflict oracle, topology 27
+PASS: equality-conflict oracle, topology 28
+PASS: equality-conflict oracle, topology 29
+PASS: equality-conflict oracle, topology 30
+PASS: equality-conflict oracle, topology 31
+PASS: equality-conflict oracle, topology 32
+PASS: equality-conflict oracle, topology 33
+PASS: equality-conflict oracle, topology 34
+PASS: equality-conflict oracle, topology 35
+PASS: equality-conflict oracle, topology 36
+PASS: equality-conflict oracle, topology 37
+PASS: equality-conflict oracle, topology 38
+PASS: equality-conflict oracle, topology 39
+PASS: equality-conflict oracle, topology 40
+PASS: equality-conflict oracle, topology 41
+PASS: equality-conflict oracle, topology 42
+PASS: equality-conflict oracle, topology 43
+PASS: equality-conflict oracle, topology 44
+PASS: equality-conflict oracle, topology 45
+PASS: equality-conflict oracle, topology 46
+PASS: equality-conflict oracle, topology 47
+PASS: equality-conflict oracle, topology 48
+PASS: equality-conflict oracle, topology 49
+PASS: equality-conflict oracle, topology 50
+PASS: equality-conflict oracle, topology 51
+PASS: equality-conflict oracle, topology 52
+PASS: equality-conflict oracle, topology 53
+PASS: equality-conflict oracle, topology 54
+PASS: equality-conflict oracle, topology 55
+PASS: equality-conflict oracle, topology 56
+PASS: equality-conflict oracle, topology 57
+PASS: equality-conflict oracle, topology 58
+PASS: equality-conflict oracle, topology 59
+PASS: equality-conflict oracle, topology 60
+PASS: equality-conflict oracle, topology 61
+PASS: equality-conflict oracle, topology 62
+PASS: equality-conflict oracle, topology 63
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED

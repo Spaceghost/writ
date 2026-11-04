@@ -5,21 +5,31 @@
 # Genode's libc, under init on base-linux (BOARD=linux KERNEL=linux). It
 # waits up to 240 seconds for init to report the child's exit with any value
 # (so a runtime error message is captured instead of a bare timeout), then
-# fails unless that exit value is 0, and fails unless the component's only
-# log line is "hi". A timeout also fails the run. Pattern:
+# fails unless that exit value is 0, unless the shim's start line and its
+# exit report are present, and unless the component's only other log line
+# is "hi". A timeout also fails the run. Pattern:
 # repos/libports/run/libc.run and the test-pthread and test-libc_getenv
 # package runtimes in Genode 26.08.
 #
-# Known state: the committed 256M default is known to time out after 240 s
-# (the 8 GiB heap request blocks), and this script has no vfs_pipe mount yet.
-# See verification/genode-runtime-rows-base-linux.md.
+# Genode host-layer lane, Task 2: the component now links the shim's memory
+# unit (hosts/genode/shim/writ_mem.cc), so the runtime's 8 GiB term heap and
+# 2 GiB evaluation stack are lazily populated reservations and its stack
+# guard is a real unmapped range; 256M is the intended quota. The VFS mounts
+# a vfs_pipe file system at /pipe and libc's pipe attribute points at it,
+# because the runtime's event loop opens a pipe before the first print
+# (the event-loop row of verification/genode-runtime-rows-base-linux.md).
+#
+# The boot configuration and the shared checks are in writ_bend.tcl (sourced
+# below), shared with the other writ_bend_*.run scripts.
 #
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services plus a Timer session from the sibling timer component (libc uses
 # it for clock_gettime, nanosleep, and select timeouts). The component's VFS
-# holds only /dev/log; stdout and stderr go to its LOG session. It has no
-# file system, network, or block access. The runtime options are passed as
-# argv through <arg> nodes; argv[0] names the program.
+# holds /dev/log and /pipe; stdout and stderr go to its LOG session. /pipe is
+# a component-local pipe file system (lib/vfs_pipe) that serves only libc's
+# pipe(). It has no file system, network, or block access. The runtime
+# options are passed as argv through <arg> nodes; argv[0] names the program.
+# WRIT_MEM_REPORT=1 (libc <env>) makes the shim log its RAM report at exit.
 #
 # The component's RAM quota defaults to 256M and can be raised for a probe
 # with the environment variable WRIT_BEND_HELLO_RAM (a Genode size such as
@@ -29,50 +39,27 @@
 set ram 256M
 if {[info exists ::env(WRIT_BEND_HELLO_RAM)]} { set ram $::env(WRIT_BEND_HELLO_RAM) }
 
-build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_bend_hello }
+source [select_from_repositories run/writ_bend.tcl]
 
-create_boot_directory
-
-install_config "
-config
-+ parent-provides
-  + service LOG
-  + service PD
-  + service CPU
-  + service ROM
-  + service RM
-+ default-route
-  + any-service
-    + parent
-    + any-child
-+ default | caps: 200 | ram: 1M
-+ start timer
-  + provides | + service Timer
-+ start writ_bend_hello | caps: 1000 | ram: $ram
-  + config
-    + vfs | + dir dev | + log
-    + libc | stdout: /dev/log | stderr: /dev/log
-    + arg | value: writ_bend_hello
-    + arg | value: +RTS
-    + arg | value: --threads
-    + arg | value: 1
-    + arg | value: --gpu
-    + arg | value: off
--
-"
-
-build_boot_image [build_artifacts]
+writ_bend_boot writ_bend_hello $ram 1000
 
 run_genode_until {child "writ_bend_hello" exited with exit value .*\n} 240
 
-# run_genode_until accepts any exit value; require 0 before grep_output
-# narrows $output to the component's own lines.
-if {![regexp {child "writ_bend_hello" exited with exit value 0\r?\n} $output]} {
-	puts stderr "Error: writ_bend_hello did not exit with value 0"
+# run_genode_until accepts any exit value; require 0, the shim's start
+# line and exit report, and no failed re-reservation before grep_output
+# narrows $output to the component's own lines (writ_bend.tcl).
+writ_bend_require_exit0 writ_bend_hello
+writ_bend_require_shim_lines writ_bend_hello
+writ_bend_refuse_reserve_failure
+
+# Then require that every component line other than the shim's is exactly
+# "hi", once.
+grep_output {^\[init -> writ_bend_hello\] (?!writ_mem: )}
+
+if {[llength [split [string trim $output] "\n"]] != 1} {
+	puts stderr "Error: the component logged more than the one line 'hi'"
 	exit 1
 }
-
-grep_output {\[init -\> writ_bend_hello\]}
 
 compare_output_to {
 [init -> writ_bend_hello] hi

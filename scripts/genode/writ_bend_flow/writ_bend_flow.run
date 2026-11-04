@@ -1,0 +1,56 @@
+#
+# writ_bend_flow.run - Genode run script (build configuration), not Writ
+# implementation. Genode host-layer lane, Task 3. Starts writ_bend_flow, the
+# unmodified C that Bend 2.0.39 emits for examples/Flow.bend linked with the shim's
+# memory unit and Genode's libc, under init on base-linux (BOARD=linux
+# KERNEL=linux), single lane, CPU only (--gpu off).
+#
+# Checks (any failure exits nonzero, so a changed example outcome fails the
+# run): init reports exit value 0; the shim's start line and its exit report
+# are present; the component's own lines (shim lines removed) are exactly the
+# 5 lines below, in order. Those lines are the Linux single-lane capture
+# of the same program (bend examples/Flow.bend -o <bin>;
+# <bin> +RTS --threads 1 --gpu off), recorded with its command in
+# verification/genode-corpus-linux-reference.txt.
+#
+# Authority and configuration (writ_bend.tcl, sourced below): as
+# writ_bend_hello.run. init routes the
+# parent's LOG, PD, CPU, ROM, and RM services and a Timer session from the
+# sibling timer. The VFS holds /dev/log and a component-local vfs_pipe file
+# system at /pipe for libc's pipe() (the runtime's event loop); no file
+# system, network, or block access. Runtime options come as <arg> nodes:
+# +RTS --threads 1 --gpu off. WRIT_MEM_REPORT=1 makes the shim log its RAM
+# report at exit. The RAM quota defaults to 256M; WRIT_BEND_RAM (a Genode
+# size such as 1G) overrides it, and the evidence records which was used.
+#
+
+set name writ_bend_flow
+set expected_lines 5
+set ram 256M
+if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
+
+source [select_from_repositories run/writ_bend.tcl]
+
+writ_bend_boot $name $ram 1000
+
+run_genode_until "child \"$name\" exited with exit value .*\n" 240
+
+writ_bend_require_exit0 $name
+writ_bend_require_shim_lines $name
+writ_bend_refuse_reserve_failure
+
+grep_output "^\\\[init -> $name\\\] (?!writ_mem: )"
+
+set got [llength [split [string trim $output] "\n"]]
+if {$got != $expected_lines} {
+	puts stderr "Error: $name logged $got lines, expected $expected_lines"
+	exit 1
+}
+
+compare_output_to {
+[init -> writ_bend_flow] Flow: a summary keeps its report's restrictions.
+[init -> writ_bend_flow] PASS constraint candidate verified: True
+[init -> writ_bend_flow] PASS internal summary write allowed: True
+[init -> writ_bend_flow] PASS public summary write denied for confidentiality: True
+[init -> writ_bend_flow] PASS stripped-label candidate rejected: True
+}

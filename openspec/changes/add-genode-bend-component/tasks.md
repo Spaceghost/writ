@@ -1,19 +1,30 @@
 # Bend runtime as a Genode component: tasks
 
-Only 1.2 is complete. It is checked because every execution named in 1.2 was
-performed, while Atomics and `munmap` remain unverified. The generated C of the reference program builds and
-loads as a component on `base-linux`, but it stops at the stack guard before
-printing (verification/genode-bend-hello-base-linux.txt), so 1.1 stays open.
-The runtime rows are in verification/genode-runtime-rows-base-linux.md; the
-fault outcome there comes from a C probe, and the parent does not record the
-fault, so 1.3 stays open.
+1.1, 1.2, and 1.4 are complete. 1.2 is checked because every execution
+named in it was performed, while Atomics across lanes remains unverified.
+1.1 is checked because the generated C of the reference program, linked with
+the host-layer shim, prints `hi` under init on `base-linux` and exits 0
+(verification/genode-bend-hello-base-linux.txt, host-layer section). 1.4 is
+checked because `Tests.bend` (782 PASS lines and `ALL LIBRARY TESTS PASSED`
+on the tree merged with master at d8b1473; 764 on the earlier tree caf13ca)
+and the four examples ran as components on `base-linux` and each log is
+byte-identical to a fresh Linux single-lane record of the same tree
+(verification/genode-corpus-base-linux.txt and
+verification/genode-corpus-linux-reference.txt). 1.3 stays open: a stack
+overflow was forced through a Bend program (`Overflow.bend`), and the
+component terminated at the runtime's guard page with no resumption, but the
+parent (init) recorded nothing. The GB-004 scenario's count of 638 checks
+is the older corpus; parity for 1.4 was checked against the current
+782-check record of this tree (and before the merge against the 764-check
+record). The runtime rows are in
+verification/genode-runtime-rows-base-linux.md.
 
 ## 1. Component build and runtime rows
 
-- [ ] 1.1 Pin Genode 26.08, its toolchain, and a `base-linux` run script; compile the generated C of the `IO.print` reference program as a Genode component and show its output in the Genode log.
+- [x] 1.1 Pin Genode 26.08, its toolchain, and a `base-linux` run script; compile the generated C of the `IO.print` reference program as a Genode component and show its output in the Genode log.
 - [x] 1.2 Check each runtime inventory row against the pinned libc source and record supplied, substituted, or missing; verify `mmap` with `MAP_NORESERVE`, `mprotect`, pthreads, `pipe`/`select`, and the fault path by executing each, not by reading headers.
 - [ ] 1.3 Select the fault substitute if signal delivery does not reach the handler; force a stack overflow and show the component terminates and the parent records it, with no resumption.
-- [ ] 1.4 Compile and run `Tests.bend` and the four examples as components on `base-linux`; capture the log and compare line for line with the Linux single-lane record.
+- [x] 1.4 Compile and run `Tests.bend` and the four examples as components on `base-linux`; capture the log and compare line for line with the Linux single-lane record.
 
 ## 2. Effects and the Writ channel
 

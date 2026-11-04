@@ -1,0 +1,63 @@
+#
+# writ_bend_tests.run - Genode run script (build configuration), not Writ
+# implementation. Genode host-layer lane, Task 3. Starts writ_bend_tests,
+# the unmodified C that Bend 2.0.39 emits for Tests.bend linked with the
+# shim's memory unit and Genode's libc, under init on base-linux
+# (BOARD=linux KERNEL=linux), single lane, CPU only.
+#
+# Checks (any failure exits nonzero): init reports exit value 0; the shim's
+# start line and its exit report are present; base-linux logged no
+# "_reserve_local unexpectedly failed"; the component's own lines (shim
+# lines removed) contain exactly expected_pass PASS lines (default 782;
+# the pattern ^PASS[: ] matches both forms the corpus prints) and end with
+# "ALL LIBRARY TESTS PASSED". The line-for-line comparison with the Linux
+# single-lane reference (verification/genode-corpus-linux-reference.txt) is
+# made on the saved log, as recorded in
+# verification/genode-corpus-base-linux.txt.
+#
+# Authority and configuration (writ_bend.tcl, sourced below): as
+# writ_bend_hello.run. init routes the
+# parent's LOG, PD, CPU, ROM, and RM services and a Timer session from the
+# sibling timer. The VFS holds /dev/log and a component-local vfs_pipe file
+# system at /pipe for libc's pipe() (the runtime's event loop); no file
+# system, network, or block access. Runtime options come as <arg> nodes:
+# +RTS --threads 1 --gpu off. WRIT_MEM_REPORT=1 makes the shim log its RAM
+# report at exit. The RAM quota defaults to 256M; WRIT_BEND_RAM (a Genode
+# size such as 1G) overrides it, and the evidence records which was used.
+#
+
+set name writ_bend_tests
+# The corpus size is a deliberate constant: 782 checks for the tree merged
+# at d8b1473. WRIT_BEND_EXPECT_PASS overrides it for a deliberate change.
+set expected_pass 782
+if {[info exists ::env(WRIT_BEND_EXPECT_PASS)]} { set expected_pass $::env(WRIT_BEND_EXPECT_PASS) }
+set ram 256M
+if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
+
+source [select_from_repositories run/writ_bend.tcl]
+
+writ_bend_boot $name $ram 1000
+
+run_genode_until "child \"$name\" exited with exit value .*\n" 600
+
+writ_bend_require_exit0 $name
+writ_bend_require_shim_lines $name
+writ_bend_refuse_reserve_failure
+
+grep_output "^\\\[init -> $name\\\] (?!writ_mem: )"
+
+set lines [split [string trim $output] "\n"]
+set pass 0
+foreach l $lines {
+	if {[regexp "^\\\[init -> $name\\\] PASS\[: \]" $l]} { incr pass }
+}
+puts "\n--- $name: $pass PASS lines, [llength $lines] component lines ---"
+
+if {$pass != $expected_pass} {
+	puts stderr "Error: expected $expected_pass PASS lines, got $pass"
+	exit 1
+}
+if {![regexp "\\\[init -> $name\\\] ALL LIBRARY TESTS PASSED\r?$" [lindex $lines end]]} {
+	puts stderr "Error: the last component line is not ALL LIBRARY TESTS PASSED"
+	exit 1
+}
