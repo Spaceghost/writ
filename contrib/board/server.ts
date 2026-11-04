@@ -6,9 +6,9 @@
 //
 // Read-only contract: the server only reads files below --root and --lanes. It
 // never writes, never executes a file it reads, and runs exactly two read-only
-// git commands per lane (`rev-parse --abbrev-ref HEAD` and `log -1`), which read
-// the worktree's gitdir. One path outside --root and --lanes is watched: the
-// lane's git metadata `logs/` directory, located from the `gitdir:` line of the
+// git commands per lane (`rev-parse --abbrev-ref HEAD` and `log -1
+// --no-show-signature`), which read the worktree's gitdir. One path outside
+// --root and --lanes is watched: the lane's git metadata `logs/` directory, located from the `gitdir:` line of the
 // lane's `.git` file (standard layout: <main repo>/.git/worktrees/<lane>/logs;
 // the board follows whatever gitdir says). That watch is notify-only, filtered
 // to HEAD's reflog name, and nothing there is ever opened or read; it exists so
@@ -17,7 +17,8 @@
 // when their name appears in the scanned change directory as a regular file
 // (not a symlink). Request paths are matched against scanned names, never
 // joined into a filesystem path unchecked, so a request cannot reach outside
-// the scan.
+// the scan. Requests whose Host header is not the board's own address are
+// refused (403), so a DNS-rebinding page cannot read the board's routes.
 //
 // The board makes no claim about Writ's behavior, proofs, or verification. It
 // shows what the documents say, including checkbox counts as written.
@@ -111,6 +112,20 @@ function readRegular(path: string): Buffer | null {
 
 function readRegularText(path: string): string | null {
   return readRegular(path)?.toString("utf8") ?? null;
+}
+
+/**
+ * True only for a real directory (lstat, so a symlink is false). Lane anchor
+ * directories (`.superpowers`, `.superpowers/sdd`, `verification`, `openspec`,
+ * `openspec/changes`) are checked with this before they are read or watched,
+ * so a lane cannot point the board at a tree outside the lane through them.
+ */
+function realDir(path: string): boolean {
+  try {
+    return lstatSync(path).isDirectory();
+  } catch {
+    return false;
+  }
 }
 
 /** Regular files (Dirent.isFile, so symlinks excluded) in `dir` matching `pattern`. */
@@ -257,7 +272,19 @@ export type LaneScan = { dir: string; readable: boolean; lanes: Lane[]; skipped:
  * vectors are fixed so no request or file content can reach git's argv.
  */
 const GIT_BRANCH = ["rev-parse", "--abbrev-ref", "HEAD"] as const;
-const GIT_LAST = ["log", "-1", "--format=%h%x09%s%x09%cr"] as const;
+const GIT_LAST = ["log", "-1", "--no-show-signature", "--format=%h%x09%s%x09%cr"] as const;
+
+/**
+ * Environment for git. Variables that would redirect git to another
+ * repository, work tree, or index are removed so `-C <lane>` decides; system
+ * config is skipped; signature checks are off in the argv, so lane or user
+ * config cannot make these commands run gpg, a pager, or a credential helper.
+ */
+function gitEnv(): Record<string, string | undefined> {
+  const env: Record<string, string | undefined> = { ...process.env };
+  for (const k of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"]) delete env[k];
+  return { ...env, GIT_CONFIG_NOSYSTEM: "1", GIT_OPTIONAL_LOCKS: "0", GIT_TERMINAL_PROMPT: "0", GIT_PAGER: "cat", PAGER: "cat" };
+}
 
 async function git(dir: string, args: typeof GIT_BRANCH | typeof GIT_LAST): Promise<string | null> {
   try {
@@ -265,8 +292,8 @@ async function git(dir: string, args: typeof GIT_BRANCH | typeof GIT_LAST): Prom
       stdin: "ignore",
       stdout: "pipe",
       stderr: "ignore",
-      // No optional index locks, no pager, no credential prompt.
-      env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", GIT_TERMINAL_PROMPT: "0", GIT_PAGER: "cat", PAGER: "cat" },
+      // No optional index locks, no pager, no credential prompt, no system config.
+      env: gitEnv(),
     });
     const timer = setTimeout(() => proc.kill(), GIT_TIMEOUT_MS);
     const out = await new Response(proc.stdout).text();
@@ -309,6 +336,7 @@ function ledgerTail(text: string): string {
 function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
   const base = join(dir, ".superpowers", "sdd");
   if (!existsSync(base)) return { sdd: [], note: null };
+  if (!realDir(join(dir, ".superpowers")) || !realDir(base)) return { sdd: [], note: ".superpowers/sdd is not a real directory (symlink?); skipped" };
   const plans = subdirs(base);
   if (plans.length === 0) return { sdd: [], note: "no plan directories under .superpowers/sdd/" };
   return {
@@ -362,7 +390,7 @@ function walkFiles(dir: string, prefix = "", depth = 0): string[] {
  */
 function newerVerification(root: string, dir: string): Lane["verification"] {
   const laneVer = join(dir, "verification");
-  if (!existsSync(laneVer)) return null;
+  if (!realDir(laneVer)) return null;
   const rootVer = join(root, "verification");
   return walkFiles(laneVer).flatMap((rel) => {
     let laneMtime: number;
@@ -398,7 +426,7 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
   const { sdd, note } = scanSdd(dir);
   if (note) notes.push(note);
   const byName = new Map(rootChanges.map((c) => [c.name, c.tasks]));
-  const taskDiffs = existsSync(join(dir, "openspec", "changes"))
+  const taskDiffs = realDir(join(dir, "openspec")) && realDir(join(dir, "openspec", "changes"))
     ? scanChanges(dir).flatMap((c) => {
         const r = byName.get(c.name) ?? null;
         return r !== null && r.done === c.tasks.done && r.total === c.tasks.total ? [] : [{ name: c.name, lane: c.tasks, root: r }];
@@ -559,7 +587,9 @@ const encoder = new TextEncoder();
 
 /** Formats one Datastar `datastar-patch-elements` event (outer morph by id). */
 export function patchElements(html: string): string {
-  const lines = html.split("\n").map((l) => `data: elements ${l}`).join("\n");
+  // SSE ends a line at CRLF, CR, or LF; split on all three so no fragment text
+  // can end a data line early and start a field of its own.
+  const lines = html.split(/\r\n|\r|\n/).map((l) => `data: elements ${l}`).join("\n");
   return `event: datastar-patch-elements\n${lines}\n\n`;
 }
 
@@ -699,8 +729,12 @@ class Watcher {
       for (const name of laneNames(lanes).lanes) {
         const dir = join(lanes, name);
         add(dir, [...ROOT_TREES, ".superpowers", ".git"]);
-        add(join(dir, ".superpowers"), ["sdd"]);
-        for (const t of LANE_TREES) if (existsSync(join(dir, t))) walk(join(dir, t));
+        // Anchors that are symlinks are neither walked nor watched (see realDir).
+        if (realDir(join(dir, ".superpowers"))) add(join(dir, ".superpowers"), ["sdd"]);
+        for (const t of LANE_TREES) {
+          const parts = t.split("/");
+          if (parts.every((_, k) => realDir(join(dir, ...parts.slice(0, k + 1))))) walk(join(dir, t));
+        }
         // A commit appends to the gitdir's logs/HEAD; watch that name only.
         const gitDir = gitDirOf(dir);
         if (gitDir) add(join(gitDir, "logs"), ["HEAD"]);
@@ -782,7 +816,23 @@ class Watcher {
 
 const CSS_PATH = join(import.meta.dir, "board.css");
 
-async function handle(flags: Flags, req: Request): Promise<Response> {
+/** Loopback names a browser may send as Host for a loopback-bound board. */
+const LOOPBACK_HOSTS = ["127.0.0.1", "localhost", "::1", "[::1]"];
+
+/**
+ * Host header values the board answers. Bound to a loopback address it accepts
+ * exactly `127.0.0.1:<port>`, `localhost:<port>`, and `[::1]:<port>`;
+ * otherwise exactly `<--host>:<port>`. Any other Host (a rebinding page's own
+ * name) gets 403, so another site in the reader's browser cannot read routes.
+ */
+export function allowedHosts(host: string, port: number): Set<string> {
+  const h = host.toLowerCase();
+  if (LOOPBACK_HOSTS.includes(h)) return new Set([`127.0.0.1:${port}`, `localhost:${port}`, `[::1]:${port}`]);
+  return new Set([`${h.includes(":") && !h.startsWith("[") ? `[${h}]` : h}:${port}`]);
+}
+
+async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<Response> {
+  if (!hosts.has((req.headers.get("host") ?? "").toLowerCase())) return new Response("forbidden host\n", { status: 403 });
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("read-only\n", { status: 405 });
   const url = new URL(req.url);
   let path: string;
@@ -838,11 +888,21 @@ if (import.meta.main) {
     if (verbose && n > 0) console.log(`board: pushed ${n} fragment(s)`);
   });
   watcher.start();
+  // The allowed Host set needs the bound port, which `--port 0` only fixes
+  // after the listen; until then every request is refused.
+  let hosts = new Set<string>();
   const server = Bun.serve({
     hostname: flags.host,
     port: flags.port,
-    fetch: (req) => handle(flags, req),
+    // Never serve Bun's development error page (stack and source).
+    development: false,
+    error(err) {
+      console.error(`board: request failed: ${err}`);
+      return new Response("internal error\n", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
+    },
+    fetch: (req) => handle(flags, hosts, req),
   });
+  hosts = allowedHosts(flags.host, server.port);
   console.log(`board: reading ${flags.root}${flags.lanes ? ` and lanes in ${flags.lanes}` : ""}`);
   console.log(`board: watching ${watcher.size} directories`);
   console.log(`board: listening on http://${server.hostname}:${server.port}/`);

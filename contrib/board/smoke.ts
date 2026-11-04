@@ -3,7 +3,9 @@
 // and baseline JSON, one change page with its sandboxed explainer, the
 // explainer bytes, a baseline page, the first SSE event, the lanes panel, and
 // that file changes under the lanes directory arrive as SSE pushes within two
-// seconds. Exits nonzero on any failed expectation.
+// seconds. It also checks that a forged Host header is refused and that a
+// carriage return in a lane file name never reaches the SSE stream raw. Exits
+// nonzero on any failed expectation.
 //
 // It never writes to the repository. The only files it writes are the
 // synthetic lane under a fresh temporary directory, removed on exit. That lane
@@ -16,16 +18,16 @@ import { tmpdir } from "node:os";
 import { connect } from "node:net";
 
 const root = resolve(join(import.meta.dir, "..", ".."));
-const lanesDir = mkdtempSync(join(tmpdir(), "writ-board-smoke-"));
-const lane = join(lanesDir, "smoke-lane");
-const plan = join(lane, ".superpowers", "sdd", "smoke-plan");
-mkdirSync(plan, { recursive: true });
-mkdirSync(join(lane, "verification"));
-writeFileSync(join(lane, ".git"), `gitdir: ${join(lanesDir, "no-such-gitdir")}\n`);
-writeFileSync(join(plan, "progress.md"), Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
-writeFileSync(join(plan, "task-1-report.md"),
-  "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
-mkdirSync(join(lanesDir, "not-a-worktree"));
+// Created inside the try below so that a failure while building the fixture or
+// spawning the server still reaches the cleanup in `finally`.
+let lanesDir: string | undefined;
+let proc: ReturnType<typeof spawnServer> | undefined;
+/**
+ * Synthetic verification file name with a carriage return followed by text
+ * shaped like an SSE field. If the CR reached the stream raw it would end the
+ * data line and start a `data: elements` line of its own.
+ */
+const CR_NAME = 'cr-probe\rdata: elements <b id="nav">x.txt';
 const expected = "add-bend-runtime-host-profile";
 let failures = 0;
 
@@ -34,13 +36,15 @@ function check(label: string, ok: boolean, detail = ""): void {
   if (!ok) failures++;
 }
 
-const proc = Bun.spawn([process.execPath, join(import.meta.dir, "server.ts"), "--root", root, "--lanes", lanesDir, "--port", "0"], {
-  stdout: "pipe",
-  stderr: "inherit",
-});
+function spawnServer(lanes: string) {
+  return Bun.spawn([process.execPath, join(import.meta.dir, "server.ts"), "--root", root, "--lanes", lanes, "--port", "0"], {
+    stdout: "pipe",
+    stderr: "inherit",
+  });
+}
 
 async function baseUrl(): Promise<string> {
-  const reader = proc.stdout.getReader();
+  const reader = proc!.stdout.getReader();
   const decoder = new TextDecoder();
   let text = "";
   const deadline = Date.now() + 5000;
@@ -63,7 +67,7 @@ async function baseUrl(): Promise<string> {
 function openStream(base: string, path: string) {
   const { hostname, port } = new URL(base);
   const sock = connect(Number(port), hostname);
-  sock.write(`GET ${path} HTTP/1.1\r\nHost: ${hostname}\r\nAccept: text/event-stream\r\n\r\n`);
+  sock.write(`GET ${path} HTTP/1.1\r\nHost: ${hostname}:${port}\r\nAccept: text/event-stream\r\n\r\n`);
   let raw = Buffer.alloc(0);
   let headersDone = false;
   let body = "";
@@ -113,7 +117,40 @@ function openStream(base: string, path: string) {
   return { waitFor, close: () => sock.destroy() };
 }
 
+/** Status code of a GET sent over a raw socket with exactly the given Host header. */
+function statusWithHost(base: string, path: string, host: string): Promise<number> {
+  const { hostname, port } = new URL(base);
+  return new Promise((done) => {
+    const sock = connect(Number(port), hostname);
+    let text = "";
+    const finish = () => {
+      sock.destroy();
+      done(Number(text.match(/^HTTP\/1\.1 (\d{3})/)?.[1] ?? 0));
+    };
+    sock.write(`GET ${path} HTTP/1.1\r\nHost: ${host}\r\nConnection: close\r\n\r\n`);
+    sock.on("data", (d: Buffer) => {
+      text += d.toString("latin1");
+      if (text.includes("\r\n")) finish();
+    });
+    sock.on("error", finish);
+    setTimeout(finish, 2000);
+  });
+}
+
 try {
+  lanesDir = mkdtempSync(join(tmpdir(), "writ-board-smoke-"));
+  const lane = join(lanesDir, "smoke-lane");
+  const plan = join(lane, ".superpowers", "sdd", "smoke-plan");
+  mkdirSync(plan, { recursive: true });
+  mkdirSync(join(lane, "verification"));
+  writeFileSync(join(lane, ".git"), `gitdir: ${join(lanesDir, "no-such-gitdir")}\n`);
+  writeFileSync(join(lane, "verification", CR_NAME), "synthetic test data\n");
+  writeFileSync(join(plan, "progress.md"), Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
+  writeFileSync(join(plan, "task-1-report.md"),
+    "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
+  mkdirSync(join(lanesDir, "not-a-worktree"));
+  proc = spawnServer(lanesDir);
+
   const base = await baseUrl();
   check("server binds to loopback", base.startsWith("http://127.0.0.1:"), base);
 
@@ -146,6 +183,13 @@ try {
 
   check("traversal is not served", (await fetch(`${base}/change/${expected}/html/..%2Fproposal.md`)).status === 404);
   check("POST is refused", (await fetch(`${base}/`, { method: "POST" })).status === 405);
+  const { port } = new URL(base);
+  const forged = await statusWithHost(base, "/api/lanes", "evil.example");
+  const forgedPort = await statusWithHost(base, "/", `evil.example:${port}`);
+  const real = await statusWithHost(base, "/", `127.0.0.1:${port}`);
+  const localhost = await statusWithHost(base, "/", `localhost:${port}`);
+  check("forged Host header is refused with 403", forged === 403 && forgedPort === 403, `${forged}, ${forgedPort}`);
+  check("loopback Host header is served with 200", real === 200 && localhost === 200, `${real}, ${localhost}`);
 
   const baselines = (await (await fetch(`${base}/api/baselines`)).json()) as { name: string; traceability: boolean }[];
   const traced = baselines.find((b) => b.traceability);
@@ -179,6 +223,8 @@ try {
   const waitFor = live.waitFor;
   const initial = await waitFor('id="main"', 2000);
   check("index stream starts with a full render", initial.ok);
+  check("a CR in a lane file name never reaches the stream raw",
+    initial.text.includes("cr-probe") && !initial.text.includes("\r") && !initial.text.includes('\ndata: elements <b id="nav">'));
 
   writeFileSync(join(lane, "verification", "smoke-touch.txt"), "touched\n");
   const touched = await waitFor("smoke-touch.txt", 2000);
@@ -196,8 +242,8 @@ try {
 } catch (err) {
   check("smoke run completed", false, String(err));
 } finally {
-  proc.kill();
-  rmSync(lanesDir, { recursive: true, force: true });
+  proc?.kill();
+  if (lanesDir !== undefined) rmSync(lanesDir, { recursive: true, force: true });
 }
 
 console.log(failures === 0 ? "smoke: all checks passed" : `smoke: ${failures} check(s) failed`);

@@ -34,7 +34,9 @@ Set `BOARD_VERBOSE=1` to log how many fragments each update pushed.
 Smoke test (starts the server on a free port against this checkout with a
 synthetic `--lanes` directory in a fresh temporary directory; checks the index,
 `/api/changes`, `/api/baselines`, a change page and its sandboxed explainer, a
-baseline page, the lanes panel including escaping and link filtering, and that
+baseline page, the lanes panel including escaping and link filtering, that a
+forged Host header gets 403 and the loopback one 200, that a carriage return
+in a lane file name never reaches the SSE stream raw, and that
 touching a lane's `verification/` file, editing a report, and adding a report
 each arrive as an SSE push within two seconds; removes the temporary directory;
 exits nonzero on failure):
@@ -54,7 +56,13 @@ bun contrib/board/smoke.ts
   (others are listed as skipped):
   - branch and last commit, from the only two git commands the board runs,
     both read-only: `git -C <dir> rev-parse --abbrev-ref HEAD` and
-    `git -C <dir> log -1 --format=%h%x09%s%x09%cr`;
+    `git -C <dir> log -1 --no-show-signature --format=%h%x09%s%x09%cr`. They
+    run with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and `GIT_COMMON_DIR`
+    removed from the environment, `GIT_CONFIG_NOSYSTEM=1`, and no pager or
+    terminal prompt. Git config in a lane cannot make these commands run a
+    program through the board: signature verification (`log.showSignature`,
+    `gpg.program`) is off in the argv, the pager is `cat`, and neither command
+    runs hooks, diff drivers, textconv filters, or credential helpers;
   - for each `<dir>/.superpowers/sdd/<plan>/`, the last ten lines of
     `progress.md` and every `task-<n>-report.md` (in task order, each in a
     collapsible section, its `Status:` line in the summary). This workspace is
@@ -71,8 +79,15 @@ bun contrib/board/smoke.ts
 
 It never writes to the repository or a lane, never runs any other `git`
 command, and never executes what it reads. Lane files and explainers are opened
-with `O_NOFOLLOW`, so a symlink as the final path component is refused (symlinked
-parent directories are not checked), and must be regular files. Markdown (documents, ledgers, reports) goes through
+with `O_NOFOLLOW`, so a symlink as the final path component is refused, and
+must be regular files. A lane's anchor directories (`.superpowers`,
+`.superpowers/sdd`, `verification`, `openspec`, `openspec/changes`) are read
+and watched only if `lstat` shows a real directory, and directory listings
+below them skip symlinks; other symlinked parent directories are not checked.
+Text shown from lanes and documents has C0 control characters other than tab
+and newline replaced by U+FFFD, and SSE data lines are split on CR, LF, and
+CRLF, so a carriage return in a commit subject or file name cannot start an
+SSE field of its own. Markdown (documents, ledgers, reports) goes through
 one pipeline: raw HTML is shown escaped, and a link keeps its target only if it
 is `http:`, `https:`, `mailto:`, a fragment, or a same-origin relative path;
 any other scheme (including one hidden behind character references or control
@@ -80,6 +95,17 @@ characters) and protocol-relative `//host` links become `#`. Relative links
 between OpenSpec documents are rewritten to board routes; other relative links
 (for example to `.bend` sources) are left as written and do not resolve on the
 board.
+
+## Requests
+
+Every request must carry a Host header naming the board itself, or it gets
+`403`. Bound to a loopback address (the default), the accepted values are
+exactly `127.0.0.1:<port>`, `localhost:<port>`, and `[::1]:<port>`; with a
+non-loopback `--host`, only `<host>:<port>`. This stops a DNS-rebinding page in
+the reader's browser from reading the board's routes, `/api/lanes` included.
+Only `GET` and `HEAD` are answered (`405` otherwise). The server runs with
+Bun's `development: false` and a plain-text `500` error handler, so a failure
+never serves a stack trace or source.
 
 ## Routes
 
@@ -123,6 +149,12 @@ that would be a deliberate change to both the iframe attribute and this header.
   <https://github.com/starfederation/datastar/releases> (v1.0.4, published
   2026-09-21, marked latest and not a prerelease), and confirmed against the
   CDN URL shown on <https://data-star.dev/guide/getting_started>.
+  The script tag carries `integrity="sha384-twbOvafhSBQ0rJDNPzJdUw6DRvthVgAVfSIG1BQVmCiNO7Qh2zeVn7T5qstgjJ9q"`
+  and `crossorigin="anonymous"` (`DATASTAR_SRI` in `template.ts`), computed on
+  2026-11-03 from the pinned file (33553 bytes, first line `// Datastar v1.0.4`),
+  fetched twice with the same result:
+  `curl -sSfL https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js | openssl dgst -sha384 -binary | openssl base64 -A`.
+  Changing the pin means recomputing it the same way.
   Datastar 1.0 names the fragment-merge event `datastar-patch-elements`; the
   board sends outer morphs of the `#nav` and `#main` elements.
 - `marked` **18.1.3** for markdown, pinned exactly in `package.json` with the

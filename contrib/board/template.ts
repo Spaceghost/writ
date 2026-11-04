@@ -12,9 +12,19 @@ import type { Baseline, Change, Lane, LaneScan } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
+/** Subresource Integrity hash of DATASTAR_URL; README.md records how it was computed. */
+export const DATASTAR_SRI = "sha384-twbOvafhSBQ0rJDNPzJdUw6DRvthVgAVfSIG1BQVmCiNO7Qh2zeVn7T5qstgjJ9q";
 
+/**
+ * HTML-escapes text, and replaces C0 control characters other than tab and
+ * newline (and DEL) with U+FFFD. A carriage return from lane content (a commit
+ * subject, a file name) would otherwise end an SSE data line; the visible
+ * replacement shows that something was there.
+ */
 export function esc(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return s
+    .replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "\ufffd")
+    .replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 }
 
 const href = (name: string) => encodeURIComponent(name);
@@ -33,7 +43,7 @@ export function shell(title: string, nav: string, main: string, page: string): s
 <title>${esc(title)} · Writ board</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="/board.css">
-<script type="module" src="${DATASTAR_URL}"></script>
+<script type="module" src="${DATASTAR_URL}" integrity="${DATASTAR_SRI}" crossorigin="anonymous"></script>
 </head>
 <body data-init="${init}">
 <header class="top"><a class="brand" href="/">Writ board</a><span class="note">read-only view of openspec/; makes no verification claim</span></header>
@@ -91,7 +101,7 @@ export function indexTables(baselines: Baseline[], changes: Change[]): string {
 </table></div>
 <h2>Baseline capabilities</h2>
 <div class="tablewrap"><table>
-<thead><tr><th>Capability</th><th>Reqs</th><th>Evidence</th></tr></thead>
+<thead><tr><th>Capability</th><th>Reqs</th><th>Traceability</th></tr></thead>
 <tbody>${baseRows}</tbody>
 </table></div>
 </section>`;
@@ -136,7 +146,7 @@ function laneCard(l: Lane): string {
   const diffs = l.taskDiffs.length === 0
     ? ""
     : `<div class="drift"><div class="doc-label">Task boxes differing from the root</div><ul>${l.taskDiffs.map((d) =>
-        `<li><a href="/change/${href(d.name)}">${esc(d.name)}</a> <span class="num">${count(d.lane)}</span> <span class="muted">here, root ${count(d.root)}</span></li>`).join("")}</ul></div>`;
+        `<li>${d.root === null ? `<code>${esc(d.name)}</code>` : `<a href="/change/${href(d.name)}">${esc(d.name)}</a>`} <span class="num">${count(d.lane)}</span> <span class="muted">here, root ${count(d.root)}</span></li>`).join("")}</ul></div>`;
   const ver = l.verification === null || l.verification.length === 0
     ? ""
     : `<div class="drift"><div class="doc-label">verification/ files new or changed relative to the root</div><ul>${l.verification.map((v) =>
