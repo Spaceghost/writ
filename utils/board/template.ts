@@ -96,11 +96,16 @@ function latestActivity(l: Lane): string | null {
 
 const dot = (status: LaneStatus) => `<span class="dot dot-${status}" aria-hidden="true"></span>`;
 
-/** A lane chip for a change row: dot, lane name, phase, age. */
+/**
+ * A lane chip for a change row: dot, lane name, phase, age, on one line. The
+ * phase is the part that gives way (ellipsis) on a narrow row, so it carries
+ * its full text as a tooltip; the age never truncates.
+ */
 function laneChip(l: Lane): string {
   const latest = latestActivity(l);
   const title = latest === null ? "" : ` title="${esc(latest)}"`;
-  return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase">${esc(phaseText(l))}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
+  const phase = esc(phaseText(l));
+  return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase" title="${phase}">${phase}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
 }
 
 /** Datastar signal name for a change's task row: slugs are not identifiers, so hyphens become underscores. */
@@ -174,7 +179,8 @@ function tickerRow(c: Change, lines: (ActivityLine & { lane: string })[], column
   if (!a) return "";
   let h = 0;
   for (const ch of `${a.at}${a.lane}${a.who}${a.text}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return `<tr class="tickerrow"><td colspan="${columns}"><p id="tick-${slug(c.name)}-${h.toString(36)}" class="ticker"><span class="log-at">${esc(clock(a.at))}</span><span class="log-who">${esc(a.lane)}${a.who ? ` · ${esc(a.who)}` : ""}</span><span class="log-text">${esc(a.text)}</span></p></td></tr>`;
+  // One line; the text gives way with an ellipsis and keeps its full wording as a tooltip.
+  return `<tr class="tickerrow"><td colspan="${columns}"><p id="tick-${slug(c.name)}-${h.toString(36)}" class="ticker"><span class="log-at">${esc(clock(a.at))}</span><span class="log-who">${esc(a.lane)}${a.who ? `<span class="log-role"> · ${esc(a.who)}</span>` : ""}</span><span class="log-text" title="${esc(a.text)}">${esc(a.text)}</span></p></td></tr>`;
 }
 
 function activityRow(c: Change, lines: (ActivityLine & { lane: string })[], columns: number): string {
@@ -236,10 +242,13 @@ export function indexTables(baselines: Baseline[], changes: Change[], scan: Lane
     const on = lanesOf.get(c.name) ?? [];
     const landedOn = on.filter((l) => l.status === "landed");
     const lines = changeActivity(on);
-    const chips = activityIcon(c, lines) + on.filter((l) => l.status !== "landed").map(laneChip).join("")
-      + (landedOn.length === 0 ? "" : `<span class="muted small landed-list">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
+    // Icon in its own column, then one chip per line and the landed lanes as a single muted line.
+    const icon = activityIcon(c, lines);
+    const list = on.filter((l) => l.status !== "landed").map(laneChip).join("")
+      + (landedOn.length === 0 ? "" : `<span class="muted landed-list" title="landed: ${esc(landedOn.map((l) => l.name).join(", "))}">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
+    const chips = icon === "" && list === "" ? "" : `<div class="workers">${icon}<div class="worker-list">${list}</div></div>`;
     const deps = c.dependsOn.length === 0 ? "" : ` · depends on ${c.dependsOn.length}`;
-    return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
+    return `<tr class="change-row${(lanesOf.get(c.name) ?? []).some(live) ? " row-live" : ""}">
 ${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
 <td class="status-cell">${statusTag(c.status)}</td>
 <td class="tasks-cell">${progress(c.tasks)}</td>
@@ -256,13 +265,13 @@ ${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class=
   const rest = changes.filter((c) => !shown.includes(c));
   const restBoxes = rest.reduce((n, c) => n + c.tasks.total, 0);
   const restRows = rest.length === 0 ? "" : `<tr class="rest"><td colspan="6"><details id="rest-changes" data-preserve-attr="open"><summary>${rest.length} more change${rest.length === 1 ? "" : "s"} with no task done and no lane (0 of ${restBoxes} boxes)</summary>
-<div class="tablewrap"><table><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
+<div class="tablewrap"><table class="changes"><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
   return `<section id="index-tables" data-signals__ifmissing="${esc(signals)}">
 ${tiles}
 <p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence; a lane chip is what that lane's ledger and activity log say.</p>
 <h2>Pending changes</h2>
 <div class="tablewrap"><table class="changes">
-<thead><tr><th class="chev-cell"></th><th>Change</th><th class="status-cell">Status</th><th class="tasks-cell">Tasks</th><th>Worked on by</th><th class="expl-cell">Explainers</th></tr></thead>
+<thead><tr><th class="chev-cell"></th><th>Change</th><th class="status-cell">Status</th><th class="tasks-cell">Tasks</th><th class="chips">Worked on by</th><th class="expl-cell">Explainers</th></tr></thead>
 <tbody>${shown.map(row).join("")}${restRows}</tbody>
 </table></div>
 <h2>Baseline capabilities</h2>
