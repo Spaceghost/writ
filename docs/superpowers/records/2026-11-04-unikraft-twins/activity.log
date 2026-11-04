@@ -45,3 +45,10 @@
 2026-11-04T16:41:30Z	implementer	check-channel accepted PASS, denied PASS, negative FAIL rc1; probe/hello regressions PASS; monitor bincheck rows Unikraft.log/put/take rc1; no-port boot exits QEMU 3
 2026-11-04T16:42:41Z	implementer	evidence verification/unikernel-channel-qemu.txt written; OpenSpec 44/44; Task 2 report written; committing
 2026-11-04T16:42:51Z	implementer	Task 2 committed 50ef05d; DONE_WITH_CONCERNS
+2026-11-04T16:43:13Z	controller	Task 2 done; review dispatched
+2026-11-04T16:51:21Z	implementer	Task 2 fix round 1 started
+2026-11-04T16:54:19Z	implementer	measured before: accept round trip 0.86 s (FIFO off, ~1 byte per 10 ms wake); now: FIFO on, refusal cap, one frame per poll
+2026-11-04T16:56:04Z	implementer	fix code: FIFO enable (FCR 0x2fa), refusal cap 8, one frame per poll, subject <= 2^32-1 (make + _Static_assert), run.sh SER array, socket length check; rebuilding monitor/probe/hello
+2026-11-04T17:07:08Z	implementer	FIFO image (94d629a1): client connecting before the first take hangs to timeout (124); connecting after take works. Cause read as the UART flushing on FIFO enable, losing early bytes. Dropping the FCR write; adaptive poll (1 ms mid-frame, 10 ms idle) instead
+2026-11-04T17:22:11Z	implementer	adaptive-poll image 94886b15: accept round trip 0.149/0.297/0.140 s (was 0.86 s), wall 0.8-1.0 s/boot; check-channel accepted PASS, denied PASS, negative FAIL rc1; flood 12 bad: 8 refused, 4 dropped, 4 decisions, fuel exhausted, QEMU 1; probe/hello PASS; bincheck rows log/put/take rc1; OpenSpec 44/44
+2026-11-04T17:36:00Z	implementer	final rebuild after comment edits (monitor 0e586828, probe 0d6f07a5, hello d8f23b86): accepted PASS, denied PASS, negative FAIL rc1, flood 8 refused/4 dropped/4 decisions QEMU 1, probe/hello PASS, bincheck rows log/put/take rc1, MonitorCheck 10 PASS; round trips 0.14-0.56 s over 7 runs (load avg 48); OpenSpec 44/44; committing

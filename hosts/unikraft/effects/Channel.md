@@ -30,22 +30,43 @@ and writes it with `uk_console_in_direct`/`uk_console_out_direct`; `com_in` and 
 move bytes unchanged (no CR or echo processing, unlike `lib/posix-tty`'s serial file).
 
 How `Unikraft.take` waits: the twin parks on the runtime's own timer
-(`io_wait_on(w, 0, 0, io_tick() + 10 ms, more)`) and polls COM2 on each wake. It does not
-park on a descriptor because this configuration has none for COM2: `lib/posix-tty`'s
-serial file reads every STDIN console (not COM2) and reports POLLIN statically
+(`io_wait_on(w, 0, 0, io_until(ms), more)`) and polls COM2 on each wake. It does not park
+on a descriptor because this configuration has none for COM2: `lib/posix-tty`'s serial
+file reads every STDIN console (not COM2) and reports POLLIN statically
 (`lib/posix-tty/serial.c`, `serial_state`), and `com_setup` disables the port's
 interrupts, so nothing would make a descriptor readable. It does not use `io_work` (its
 helper thread outlives `main` and turns success into QEMU 255,
 `verification/unikernel-effects-qemu.txt` R0-E1) and does not block the loop thread.
-Between wakes the CPU halts in the idle thread; nothing spins. An interrupt-driven
-descriptor (COM2's IRQ 3 feeding a pipe) would remove the 10 ms poll; it is not built.
+Between wakes the CPU halts in the idle thread; nothing spins.
 
-Flow control: `host.c` holds one partial frame and no queue, and reads only while a take
-is outstanding. Unread bytes wait in QEMU's emulated UART and, behind it, in QEMU's
-chardev (`com_setup` writes no FIFO control register, so the guest does not enable the
-16550A FIFO). That QEMU then stops reading the socket rather than dropping bytes is
-QEMU's serial device behaviour as understood here, not read from its source; the runs
-lost no byte (`verification/unikernel-channel-qemu.txt`). A client that floods only waits.
+Cost: `com_setup` never writes the FIFO control register, so the port's 16550A FIFOs are
+off and it holds one received byte; a wake collects about one byte, however long the
+park. With a fixed 10 ms park that was about 100 B/s, 0.8 s per 80-byte frame (measured:
+0.86 s from starting the client to its reply, one accept, the monitor already in a take).
+The twin now parks 10 ms while nothing has arrived and 1 ms while a frame is partly in
+(`host.c` answers BUSY): 0.14 to 0.56 s per accept round trip in seven runs, wall time per
+boot 0.8 to 1.8 s (was 4.3 to 4.4 s; the spread follows host load). Enabling the FIFOs
+from `host.c` (FCR 0x2fa = 0x07) was tried and dropped: a client that had connected and
+sent before the first take then hung to the timeout, read as the UART flushing its
+receive FIFO when the FIFOs are enabled after bytes arrived
+(`verification/unikernel-channel-qemu.txt`, "Fix round 1"). An interrupt-driven
+descriptor (COM2's IRQ 3 feeding a pipe) or a driver that enables the FIFO at setup would
+remove the poll; neither is built.
+
+Flow control: `host.c` holds one partial frame and no queue, reads only while a take is
+outstanding, and handles at most one whole frame per poll, so the loop always returns to
+a park. Unread bytes wait in QEMU's emulated UART and, behind it, in QEMU's chardev. That
+QEMU then stops reading the socket rather than dropping bytes is QEMU's serial device
+behaviour as understood here, not read from its source; the runs lost no byte. Output
+can block: `com_write` busy-waits on the transmit register, so once a client stops
+reading and QEMU's socket buffer fills, a put or refusal waits in the loop thread until
+the client reads (the image is then stuck; the harness timeout bounds it). `host.c`
+bounds its own output so that bad frames alone cannot reach that point: it answers at
+most `WRIT_UK_REFUSAL_MAX` (8) bad-length frames per boot, then drops further ones with
+a console line and no reply. This is host failure handling, not policy: the cap makes no
+Writ decision, and dropped frames never reach Bend. A client that sends only good
+frames gets one 80-byte result per request and the monitor's fuel (4) bounds them; the
+size of buffer at which a non-reading client blocks `com_write` was not tested.
 
 ## Frames
 
@@ -62,8 +83,16 @@ frame is always 80 bytes: a 16-byte header, then a 64-byte record.
 The frame size is fixed, so a frame with a wrong length word still occupies 80 bytes and
 the stream stays aligned: `host.c` reads all 80, counts it (`bad length=` in its console
 line `writ_uk: channel frame refused: length=0x... bad length=N`), and answers the
-transport refusal before any Bend parsing; Bend never sees it and the monitor spends no
-fuel on it. A client that sends a partial frame leaves `host.c` waiting for the rest.
+transport refusal before any Bend parsing (after the eighth, it is dropped with
+`writ_uk: channel frame dropped, no reply (refusal cap): ...` instead); Bend never sees it
+and the monitor spends no fuel on it.
+
+There is no resynchronisation: frames are counted from the first byte of the boot. A
+client that sends part of a frame and disconnects leaves those bytes in `host.c`'s
+buffer, and the next client's frames are read shifted by that many bytes; they then
+fail the length check or decode as other words. This widens no authority: every frame,
+however aligned, is checked as any other (length word, then the monitor's record checks),
+and the subject is the built-in word either way. Not exercised.
 
 ## Transport refusal (kind 3, written by host.c)
 

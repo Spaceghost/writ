@@ -12,13 +12,23 @@
 // host layer. The twin marshals words: it makes no decision and does not
 // look at any field.
 //
+// Cost: the port holds one received byte at a time (its FIFOs stay off), so
+// a wake collects about one byte. The twin parks 10 ms while nothing is
+// arriving and 1 ms while a frame is partly in (host.c answers BUSY): one
+// request round trip measured 0.14 to 0.56 s under QEMU TCG, against 0.86 s
+// with a fixed 10 ms park (verification/unikernel-channel-qemu.txt,
+// "Fix round 1").
+//
 // w->data holds UNIKRAFT_TAKE_WORDS words: [0] route subject, [1..16] the
 // 16 record words in order (Channel.md). Allocated here, freed when the
 // Request is built.
 
 #define UNIKRAFT_TAKE_WORDS   17
-#define UNIKRAFT_TAKE_POLL_MS 10
+#define UNIKRAFT_TAKE_IDLE_MS 10
+#define UNIKRAFT_TAKE_BUSY_MS 1
 
+// Answers 0 (nothing received), 1 (a record in record/subject), or 2 (bytes
+// arriving or a frame just refused or dropped).
 uint32_t writ_uk_take_poll(uint32_t* record, uint32_t* subject);
 
 // A Request{..} constructor of UNIKRAFT_TAKE_WORDS U32 fields, laid out as
@@ -33,13 +43,15 @@ static Term unikraft_take_pack(Env e, uint32_t* v) {
 }
 
 static Term unikraft_take_more(Env e, IoWork* w) {
-  uint32_t* v = (uint32_t*)w->data;
-  if (writ_uk_take_poll(v + 1, v + 0)) {
+  uint32_t* v  = (uint32_t*)w->data;
+  uint32_t  rc = writ_uk_take_poll(v + 1, v + 0);
+  if (rc == 1) {
     Term r = unikraft_take_pack(e, v);
     free(w->data);
     return r;
   }
-  return io_wait_on(w, 0, 0, io_until(UNIKRAFT_TAKE_POLL_MS), unikraft_take_more);
+  return io_wait_on(w, 0, 0, io_until(rc == 2 ? UNIKRAFT_TAKE_BUSY_MS : UNIKRAFT_TAKE_IDLE_MS),
+    unikraft_take_more);
 }
 
 Term unikraft_take_run(Env e, Term* f, IoWork* w) {

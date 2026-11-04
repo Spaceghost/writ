@@ -59,3 +59,47 @@ Evidence: verification/unikernel-channel-qemu.txt.
 3. COM2 is now in every template image's config (flags 0; regressions show no output change).
 4. Unexercised: missing-subject path, skipped put, partial frame then disconnect; QEMU's
    no-loss behaviour under a slow guest is not read from QEMU's source.
+
+## Fix round 1
+
+Status: DONE_WITH_CONCERNS. Evidence: verification/unikernel-channel-qemu.txt, "Fix round 1".
+
+1. Poll cost (Important 1). Measured before: 0.86 s per accept round trip (FIFO off, about
+   one byte per 10 ms wake); the earlier "most of it before the first take" claim is
+   corrected in the evidence (a no-port boot reaches its first take at 0.3 s). Enabling
+   the FIFO from host.c (FCR 0x2fa = 0x07, one line) was tried and dropped: a client that
+   sent before the first take hung to the timeout (QEMU 124), read as the UART flushing on
+   FIFO enable. Kept instead: an adaptive park (host.c answers 2 while a frame is partly
+   in; the take twin parks 1 ms then, 10 ms idle). Measured 0.14 to 0.56 s per round trip
+   in seven runs, 0.8 to 1.8 s per boot. Remaining gap: still about one byte per wake; a
+   COM2 descriptor/interrupt or driver-side FIFO setup would remove it. Stated in
+   Channel.md ("Cost"), INVENTORY (take row), docs/UNIKERNELS.md, and both C comments.
+2. Refusal cap (Important 2). host.c answers at most 8 bad-length frames per boot
+   (WRIT_UK_REFUSAL_MAX), then drops later ones with a console line and no reply; at most
+   one frame is handled per poll, so the loop always returns to a park. Commented as host
+   failure handling, not policy. Channel.md, the host.c header, and INVENTORY now say that
+   input never waits but output can: com_write busy-waits once a non-reading client fills
+   QEMU's socket buffer (a put to such a client is not covered by the cap; not tested).
+   Exercised: 12 bad frames without reading, then 4 requests: 8 refusals, 4 drops,
+   4 decisions, "fuel exhausted", QEMU 1.
+3. INVENTORY (Important 3): Unikraft.bend row lists take, put, Request/Reply; helper list
+   refreshed; build.sh row lists WRIT_CHANNEL_SUBJECT; build.sh hash in the evidence.
+4. Evidence says now/sleep are absent from the binary rows because the monitor does not call them.
+5. Partial-frame-then-disconnect misalignment (no resync; authority not widened) recorded
+   in Channel.md, INVENTORY, and the evidence "Not shown".
+6. Makefile.uk refuses WRIT_CHANNEL_SUBJECT above 4294967295 (tested 1, 4294967295 pass;
+   4294967296, 4294967297, 0, abc refused); host.c also has a _Static_assert.
+7. Monitor.bend helper list names initial_reader (comment only; generated C from the old
+   and new Monitor.bend is byte-identical).
+8. run.sh quotes the second serial spec (array). check-channel.sh also refuses socket
+   paths of 108 bytes or more (hit once with a long label, exit 2 before booting).
+9. Cross-check recipe writes under mktemp -d ../writ-unikernel/xcheck.XXXXXX.
+
+Reruns on the final rebuilt images: check-channel accepted PASS, denied PASS, negative
+control FAIL (exit 1), cross-check equal to MonitorCheck, probe PASS, hello PASS, binary
+check rows log/put/take (exit 1, as before). OpenSpec 1.16.0 via bunx: 44 passed, 0 failed.
+All QEMU TCG emulated boots; not native or GPU evidence.
+
+Concerns: the ingress rate is still poll-bound (no COM2 descriptor); a reply to a client
+that never reads can still block com_write; the misalignment and that blocking are
+recorded, not exercised; the subject remains a build-time word.

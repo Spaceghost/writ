@@ -37,7 +37,8 @@ import ../../../examples/Commit.bend as Commit
 # as such and never used to build a caller.
 #
 # Public entry point: main. Everything else is an implementation helper
-# (decide, reply_of, state_of, initial_state are used by MonitorCheck.bend).
+# (decide, reply_of, state_of, initial_state, initial_reader are used by
+# MonitorCheck.bend).
 
 # Records processed before the monitor exits with status 0 (the loop is
 # fuel-bounded). Every take counts; a frame host.c refuses never reaches

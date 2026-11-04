@@ -100,8 +100,12 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   the same plan naming S's session is Denied by `DataOS.commit_from_capability` (reason 6)
   ([unikernel-channel-qemu.txt](../verification/unikernel-channel-qemu.txt)). Gap: the
   subject is a build-time word, not a route; whoever reaches the socket speaks as it
-  (UL-008 and the appliance host must close this). `take` polls COM2 every 10 ms on the
-  runtime timer because COM2 has no descriptor or interrupt here.
+  (UL-008 and the appliance host must close this). `take` polls COM2 on the runtime timer
+  (10 ms idle, 1 ms while a frame is arriving) because COM2 has no descriptor or interrupt
+  here, and its FIFO is off, so each wake collects about one byte: 0.14 to 0.56 s per
+  request round trip under QEMU TCG (0.86 s with a fixed 10 ms poll). `host.c` answers at
+  most 8 bad-length frames per boot and drops later ones; a client that never reads can
+  still block a reply in `com_write`.
 - **UL-004 amended:** the effect twins and the inventoried boot and termination host layer
   are the only kernel-specific code (the crash hook cannot be a twin; rationale in the
   change's tasks.md 2.1).

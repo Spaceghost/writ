@@ -8,8 +8,12 @@
  * call only the Unikraft and musl interfaces cited below. Nothing here
  * decides an authority question or interprets a Writ value: it moves bytes
  * to the console and to the Writ channel's serial port, reads a clock, and
- * answers a wrong-length frame with a fixed transport refusal. It never
- * waits: the twins park on the runtime's own timer. It is linked into the
+ * answers a wrong-length frame with a fixed transport refusal. It does not
+ * wait for input: the twins park on the runtime's own timer. Output can
+ * wait: a channel write busy-waits in the ns16550 driver (com.c, com_write)
+ * until the port can take the next byte, which lasts as long as QEMU cannot
+ * pass bytes to a host that never reads the socket; host.c bounds its own
+ * output to that host (Channel.md, "Flow control"). It is linked into the
  * Unikraft application by the app's Makefile.uk (WRIT_HOST_LAYER=y) and is
  * never imported by the Bend library or the test suite. See
  * hosts/unikraft/INVENTORY.md and hosts/unikraft/effects/Channel.md.
@@ -22,12 +26,14 @@
  *   writ_uk_sleep_left(start, deadline,        Unikraft.sleep: on each wake, the
  *                      &last, round)           nanoseconds still to wait (0: done)
  *   writ_uk_take_poll(record, &subject)        Unikraft.take: on each wake, 1 and
- *                                              a request record, or 0 (none yet)
+ *                                              a request record, 2 (a frame is
+ *                                              arriving), or 0 (nothing yet)
  *   writ_uk_put(record)                        Unikraft.put: one result frame
- * All are called on the event loop's thread. host.c does not wait: the sleep
- * twin parks on the runtime's own timer (io_wait_on with a deadline and no
- * descriptor, as Bend 2.0.39's IO.sleep does) and asks writ_uk_sleep_left on
- * each wake whether the deadline has passed on this clock.
+ * All are called on the event loop's thread. Apart from com_write above,
+ * host.c does not wait: the sleep twin parks on the runtime's own timer
+ * (io_wait_on with a deadline and no descriptor, as Bend 2.0.39's IO.sleep
+ * does) and asks writ_uk_sleep_left on each wake whether the deadline has
+ * passed on this clock.
  *
  * Unikraft interfaces used (paths under the Unikraft 0.21.0 tree):
  *   - Console: lib/ukconsole/include/uk/console.h, uk_console_out(buf,
@@ -48,7 +54,13 @@
  *     never waits, com.c com_in). QEMU's second -serial is that ISA port
  *     (0x2f8). Presence is checked once through the port's scratch register
  *     (0x2ff), since an absent port reads 0xff and would look like an
- *     endless stream. Channel.md has the frame layout.
+ *     endless stream; that write and read are the only port accesses host.c
+ *     makes itself. The port's FIFOs stay off as com_setup leaves them, so
+ *     it holds one received byte at a time: enabling them was tried and
+ *     lost the bytes a client had sent before the first take (read as the
+ *     UART flushing its FIFOs when they are enabled; a client connected
+ *     early then hung, verification/unikernel-channel-qemu.txt, "Fix round
+ *     1"). Channel.md has the frame layout.
  *   - Clock: include/uk/plat/time.h, ukplat_monotonic_clock(): nanoseconds
  *     since boot, monotone. It is also the clock behind the runtime's park
  *     deadlines: io_tick() reads clock_gettime(CLOCK_MONOTONIC), which
@@ -64,8 +76,15 @@
  *   - Channel: frames are fixed at 80 bytes (16-byte header, 64-byte
  *     record); host.c holds one partial frame and no queue. One request is
  *     outstanding at a time: the next frame is not read until Bend takes
- *     again. Bytes beyond that wait in QEMU's emulated UART and chardev
- *     (Channel.md, "Flow control").
+ *     again, and one frame at most is handled per poll. Bytes beyond that
+ *     wait in QEMU's emulated UART and chardev (Channel.md, "Flow control").
+ *   - WRIT_UK_REFUSAL_MAX: at most 8 transport refusals per boot; later
+ *     wrong-length frames are dropped without a reply and counted.
+ *   - Output to the channel: at most one reply per take (fuel-bounded by the
+ *     monitor) plus 8 refusals. A host that never reads the socket can still
+ *     make a write busy-wait in com_write once QEMU's socket buffer is full;
+ *     with this bound that needs a buffer smaller than about 1 KiB per boot
+ *     for the monitor's fuel of 4, which was not tested.
  *
  * Failure behaviour (host failure handling, not policy: no Writ decision
  * depends on it; an image whose clock cannot be trusted stops). Each case
@@ -77,6 +96,8 @@
  *   - a 17th park without reaching the deadline;
  *   - a take or put when no channel subject was built in, COM2 does not
  *     answer (no second -serial), or no COM2 console device is registered.
+ * The refusal cap below is host failure handling too, not policy: it limits
+ * how much host.c writes on its own to a client, whatever the client sends.
  * A clock that stops completely never reaches the park deadline, so the
  * runtime never wakes the twin and nothing here runs: that case is bounded
  * only by the harness timeout (run.sh, 60 s by default, status 124).
@@ -111,6 +132,8 @@
  */
 #ifdef WRIT_UK_CHANNEL_SUBJECT
 #define WRIT_UK_SUBJECT_SET 1
+_Static_assert(WRIT_UK_CHANNEL_SUBJECT >= 1u && WRIT_UK_CHANNEL_SUBJECT <= 0xffffffffull,
+	       "WRIT_UK_CHANNEL_SUBJECT must be a nonzero 32-bit word");
 #else
 #define WRIT_UK_SUBJECT_SET 0
 #define WRIT_UK_CHANNEL_SUBJECT 0
@@ -124,6 +147,11 @@
 /* Channel frames (Channel.md): a 16-byte header, then the 64-byte record. */
 #define WRIT_UK_COM2_NAME     "COM2"
 #define WRIT_UK_COM2_SCRATCH  0x2ff
+/* Transport refusals answered per boot. Later wrong-length frames are read,
+ * counted, and dropped without a reply, so a client sending only bad frames
+ * gets a bounded amount of output (8 x 80 bytes) from host.c.
+ */
+#define WRIT_UK_REFUSAL_MAX   8u
 #define WRIT_UK_HEADER_WORDS  4u
 #define WRIT_UK_RECORD_WORDS  16u
 #define WRIT_UK_RECORD_BYTES  64u
@@ -139,6 +167,9 @@ uint64_t writ_uk_clock_ns(void);
 uint64_t writ_uk_sleep_left(uint64_t start, uint64_t deadline, uint64_t *last,
 			    uint32_t round);
 uint32_t writ_uk_take_poll(uint32_t *record, uint32_t *subject);
+#define WRIT_UK_TAKE_IDLE     0u /* nothing received: park long */
+#define WRIT_UK_TAKE_RECORD   1u /* a request record was copied out */
+#define WRIT_UK_TAKE_BUSY     2u /* bytes are arriving: park short */
 void writ_uk_put(const uint32_t *record);
 
 static void writ_uk_out(const char *s, size_t n)
@@ -213,6 +244,7 @@ static uint32_t writ_uk_fill;
 static uint32_t writ_uk_sequence;
 static int writ_uk_pending;
 static unsigned long writ_uk_bad_length;
+static unsigned long writ_uk_bad_dropped;
 static unsigned long writ_uk_put_skipped;
 
 static uint32_t writ_uk_word(const unsigned char *p)
@@ -286,18 +318,25 @@ static void writ_uk_refuse(struct uk_console *dev, uint32_t sequence)
 	writ_uk_send(dev, sequence, r);
 }
 
-/* "writ_uk: channel frame refused: length=<hex> bad length=<count>". */
-static void writ_uk_refusal_line(uint32_t length)
+/* "writ_uk: channel frame refused: length=<hex> bad length=<count>", or with
+ * "dropped" when the refusal cap has been reached and no reply was written.
+ */
+static void writ_uk_refusal_line(uint32_t length, int dropped)
 {
 	static const char hex[] = "0123456789abcdef";
-	char line[96];
+	char line[128];
 	char *p = line;
 	unsigned long n = writ_uk_bad_length;
 	char digits[24];
 	int d = 0, i;
 
-	memcpy(p, "writ_uk: channel frame refused: length=0x", 41);
-	p += 41;
+	if (dropped) {
+		memcpy(p, "writ_uk: channel frame dropped, no reply (refusal cap): length=0x", 65);
+		p += 65;
+	} else {
+		memcpy(p, "writ_uk: channel frame refused: length=0x", 41);
+		p += 41;
+	}
 	for (i = 7; i >= 0; i--)
 		*p++ = hex[(length >> (4 * i)) & 0xf];
 	memcpy(p, " bad length=", 12);
@@ -313,11 +352,19 @@ static void writ_uk_refusal_line(uint32_t length)
 }
 
 /* Called by the take twin at the start and on every wake of its park. Reads
- * what COM2's receive buffer holds into the current frame (never waits).
- * When a whole frame has arrived: a length word other than 64 is counted and
- * answered with the transport refusal, and reception continues; a length of
- * 64 copies the 16 record words to record, the built-in route subject to
- * *subject, and answers 1. Otherwise answers 0, and the twin parks again.
+ * what COM2 holds into the current frame (never waits for input), and
+ * handles at most one whole frame per call, so the twin always returns to a
+ * park between frames however fast a client sends. A frame whose length word
+ * is not 64 is counted and answered with the transport refusal while fewer
+ * than WRIT_UK_REFUSAL_MAX have been answered, else dropped without a reply;
+ * either way the call answers WRIT_UK_TAKE_BUSY. A length of 64 copies the
+ * 16 record words to record, the built-in route subject to *subject, and
+ * answers WRIT_UK_TAKE_RECORD. Otherwise it answers WRIT_UK_TAKE_BUSY while
+ * a frame is partly received, WRIT_UK_TAKE_IDLE when nothing is; the twin
+ * parks 1 ms or 10 ms accordingly (the port holds one byte at a time).
+ * There is no resynchronisation: frames are counted from the boot's first
+ * byte, so a client that leaves a partial frame shifts every later frame
+ * (Channel.md, "Frames").
  */
 uint32_t writ_uk_take_poll(uint32_t *record, uint32_t *subject)
 {
@@ -330,7 +377,7 @@ uint32_t writ_uk_take_poll(uint32_t *record, uint32_t *subject)
 		uint32_t length, sequence, i;
 
 		if (got <= 0)
-			return 0;
+			return writ_uk_fill ? WRIT_UK_TAKE_BUSY : WRIT_UK_TAKE_IDLE;
 		writ_uk_fill += (uint32_t)got;
 		if (writ_uk_fill < WRIT_UK_FRAME_BYTES)
 			continue;
@@ -339,16 +386,21 @@ uint32_t writ_uk_take_poll(uint32_t *record, uint32_t *subject)
 		sequence = writ_uk_word(writ_uk_frame + 4);
 		if (length != WRIT_UK_RECORD_BYTES) {
 			writ_uk_bad_length++;
-			writ_uk_refuse(dev, sequence);
-			writ_uk_refusal_line(length);
-			continue;
+			if (writ_uk_bad_length <= WRIT_UK_REFUSAL_MAX) {
+				writ_uk_refuse(dev, sequence);
+				writ_uk_refusal_line(length, 0);
+			} else {
+				writ_uk_bad_dropped++;
+				writ_uk_refusal_line(length, 1);
+			}
+			return WRIT_UK_TAKE_BUSY;
 		}
 		for (i = 0; i < WRIT_UK_RECORD_WORDS; i++)
 			record[i] = writ_uk_word(writ_uk_frame + 16 + 4 * i);
 		*subject = WRIT_UK_CHANNEL_SUBJECT;
 		writ_uk_sequence = sequence;
 		writ_uk_pending = 1;
-		return 1;
+		return WRIT_UK_TAKE_RECORD;
 	}
 }
 

@@ -37,10 +37,14 @@ endif
 # channel, fixed at build time because a unikernel has no parent route
 # (hosts/unikraft/effects/Channel.md, "Subject"). Only a decimal word is
 # accepted. Unset, host.c builds without a subject and the first
-# Unikraft.take or Unikraft.put ends the image.
+# Unikraft.take or Unikraft.put ends the image. A value above 4294967295
+# is refused rather than wrapped to another subject (host.c also asserts it).
 ifneq ($(WRIT_CHANNEL_SUBJECT),)
 ifneq ($(shell echo '$(WRIT_CHANNEL_SUBJECT)' | grep -Ex '[1-9][0-9]{0,9}'),$(WRIT_CHANNEL_SUBJECT))
 $(error WRIT_CHANNEL_SUBJECT must be a nonzero decimal word)
+endif
+ifneq ($(shell [ '$(WRIT_CHANNEL_SUBJECT)' -le 4294967295 ] && echo ok),ok)
+$(error WRIT_CHANNEL_SUBJECT must be at most 4294967295)
 endif
 APPWRITBEND_CFLAGS-y += -DWRIT_UK_CHANNEL_SUBJECT=$(WRIT_CHANNEL_SUBJECT)u
 endif

@@ -37,18 +37,19 @@ case "${WRIT_QEMU_DEVICE:-1}" in
   *) DEV="-device isa-debug-exit,iobase=0xf4,iosize=0x04" ;;
 esac
 NR="-no-reboot"; [ "${WRIT_QEMU_REBOOT:-0}" = 1 ] && NR=""
-SER=""; [ -n "$WRIT_QEMU_SERIAL2" ] && SER="-serial mon:stdio -serial $WRIT_QEMU_SERIAL2"
+# Two serial ports as an array, so a chardev spec is passed as one argument.
+SER=(); [ -n "$WRIT_QEMU_SERIAL2" ] && SER=(-serial mon:stdio -serial "$WRIT_QEMU_SERIAL2")
 L="$W/$S/logs/run-$LB.log"; R="$W/$S/logs/run-$LB.raw"
 IN="</dev/null"; [ -n "$WRIT_QEMU_FEED" ] && IN="(stdin: $WRIT_QEMU_FEED)"
-echo "\$ timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M -cpu max -kernel \$W/$S/images/$P-qemu -append \"$AP\" $DEV $NR $SER $IN; echo \$?" > "$L"
+echo "\$ timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M -cpu max -kernel \$W/$S/images/$P-qemu -append \"$AP\" $DEV $NR ${SER[*]} $IN; echo \$?" > "$L"
 B=$(date +%s.%N)
 if [ -n "$WRIT_QEMU_FEED" ]; then
   bash -c "$WRIT_QEMU_FEED" | timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" -cpu max \
-    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR $SER > "$R" 2>&1
+    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR "${SER[@]}" > "$R" 2>&1
   RC=${PIPESTATUS[1]}
 else
   timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" -cpu max \
-    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR $SER </dev/null > "$R" 2>&1
+    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR "${SER[@]}" </dev/null > "$R" 2>&1
   RC=$?
 fi
 E=$(date +%s.%N)

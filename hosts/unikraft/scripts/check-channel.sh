@@ -14,7 +14,8 @@
 # The boot uses run.sh's defaults otherwise ("+RTS --threads 1 --gpu off", -m 1024, the
 # exit device, -no-reboot) with timeout WRIT_CHANNEL_TIMEOUT (default 120 s).
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise;
-# exits 2 before booting on bad usage, a failed client build, or a missing reference.
+# exits 2 before booting on bad usage, a failed client build, a missing reference, or a
+# socket path of 108 bytes or more (QEMU refuses it).
 . "$(dirname "$0")/env.sh"
 S=${1:?usage}; LB=${2:?usage}; P=${3:?usage}; CREF=${4:?usage}; KREF=${5:?usage}; XQ=${6:?usage}
 shift 6
@@ -25,6 +26,8 @@ CL="$W/$S/client"
 ${CC:-gcc} -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Werror -O2 \
   -o "$CL" "$REPO/hosts/unikraft/probes/client/client.c" || { echo "check-channel.sh: client build failed" >&2; exit 2; }
 SOCK="$W/$S/logs/chan-$LB.sock"; OUT="$W/$S/logs/client-$LB.txt"
+# A Unix socket path must be shorter than 108 bytes; QEMU refuses a longer one.
+[ ${#SOCK} -lt 108 ] || { echo "check-channel.sh: socket path too long: $SOCK" >&2; exit 2; }
 rm -f "$SOCK"
 WRIT_QEMU_SERIAL2="unix:$SOCK,server=on,wait=off" \
   "$HERE/run.sh" "$S" "$LB" "$P" "+RTS --threads 1 --gpu off" "$T" 1024 > /dev/null &

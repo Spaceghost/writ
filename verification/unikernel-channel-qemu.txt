@@ -45,12 +45,17 @@ TRANSPORT. COM2 (0x2f8, CONFIG_LIBNS16550_COM2=y): drivers/ukconsole/ns16550/com
 registers it with flags 0 (com_init_port), so console output never goes to it; host.c
 reads and writes it with uk_console_in_direct/uk_console_out_direct
 (lib/ukconsole/include/uk/console.h:86, :99). Unikraft.take parks with
-io_wait_on(w, 0, 0, io_until(10), more) and polls COM2 on each wake: there is no COM2
+io_wait_on(w, 0, 0, io_until(ms), more) and polls COM2 on each wake (Task 2: ms = 10;
+fix round 1: 10 idle, 1 while a frame is partly in): there is no COM2
 descriptor to park on (lib/posix-tty/serial.c reads every STDIN console and reports POLLIN
 statically) and com_setup leaves COM2's interrupts off. No io_work (its helper thread
 outlives main here: verification/unikernel-effects-qemu.txt R0-E1), no loop-thread block.
-Wall time per boot 4.3 to 4.4 s, most of it before the first take (solver; the Linux JS
-runner check takes 0.4 s).
+Wall time per boot 4.3 to 4.4 s in the Task 2 runs. CORRECTED in fix round 1: that time
+was not spent before the first take (a boot with no second port reaches its first take
+and exits at 0.3 s). With COM2's FIFOs off the port holds one byte, so each 10 ms wake
+collected about one byte, about 0.8 s per 80-byte frame; measured 0.86 s for one accept
+round trip. Fix round 1 polls at 1 ms while a frame is partly in: 0.14 to 0.56 s per
+round trip, 0.8 to 1.8 s per boot ("Fix round 1" below).
 
 == Build ==
 
@@ -328,10 +333,11 @@ Cross-check: the image's Bend replies (refusal frames removed) against MonitorCh
 lines for the same order:
   for n in accepted denied; do
     awk '/^ got  record/{for(i=5;i<=NF;i++) h=h $i} /^ reply:/{print h; h=""}' \
-      verification/unikernel-channel-$n-client.txt | grep -v '^0100000003000000030000000001' > /tmp/$n.got
-    bend hosts/unikraft/monitor/MonitorCheck.bend | grep "^$(printf %-8s $n) reply" | sed 's/.*: //' > /tmp/$n.mc
-    diff /tmp/$n.got /tmp/$n.mc && echo "$n: image replies == MonitorCheck replies"
+      verification/unikernel-channel-$n-client.txt | grep -v '^0100000003000000030000000001' > $X/$n.got
+    bend hosts/unikraft/monitor/MonitorCheck.bend | grep "^$(printf %-8s $n) reply" | sed 's/.*: //' > $X/$n.mc
+    diff $X/$n.got $X/$n.mc && echo "$n: image replies == MonitorCheck replies"
   done
+  (with X=$(mktemp -d ../writ-unikernel/xcheck.XXXXXX) first; fix round 1 moved it out of /tmp)
 accepted: image replies == MonitorCheck replies
 denied: image replies == MonitorCheck replies
 
@@ -346,7 +352,9 @@ effects outside the monitor profile:
   Unikraft.take
 result: FAIL (outside the monitor profile)
 1
-  Rows beyond the profile: exactly the three Unikraft effects the monitor uses. host.c's
+  Rows beyond the profile: exactly the three Unikraft effects the monitor uses.
+  Unikraft.now and Unikraft.sleep are absent because the monitor does not call them
+  (the check lists rows the program reaches, not every def in Unikraft.bend). host.c's
   exports (writ_uk_*) and the twins' static helpers (unikraft_take_more) end in neither
   _run nor _use. Static link: the host-symbol surface is not checked by this tool.
 
@@ -359,7 +367,108 @@ result: FAIL (outside the monitor profile)
 == Not shown ==
 
 - The missing-subject path (image built without WRIT_CHANNEL_SUBJECT) and a skipped put.
-- A partial frame from a client that then disconnects (host.c would keep waiting for the
-  rest; the harness timeout bounds it).
+- A partial frame from a client that then disconnects. host.c keeps those bytes and has
+  no resynchronisation, so every later frame of the boot is read shifted; shifted frames
+  pass the same length and record checks and the subject stays the built-in word, so no
+  authority is widened.
+- A put blocked in com_write by a client that never reads (after QEMU's socket buffer
+  fills). The refusal cap keeps bad frames from reaching it; good frames are bounded by
+  fuel (4 results, 320 bytes).
 - Byte loss under flood: QEMU's behaviour when the guest reads slowly is not read from its
   source; no byte was lost in these runs.
+
+== Fix round 1 ==
+
+Ingress cost. Before (Task 2 image, fixed 10 ms park, FIFO off): one accept round trip
+0.863878720 s, timed from starting the client to its reply with the monitor already in a
+take (scratch $W/chanfix/measure.sh: boot, sync with one bad-length frame, time one
+accept, then badver other accept; host clock, date +%s.%N). The port holds one byte, so
+a wake collected about one byte: about 100 B/s.
+
+Attempt 1, FIFO on (dropped). host.c wrote FCR 0x2fa = 0x07 once when it first found
+COM2 (one line; saved as $W/chanfix/host-fifo.c.txt, 8b2598f5...; image 94d629a1...). A
+client that connected and sent before the guest's first take hung until the timeout:
+  check-channel accepted: client sent request 1, no reply; console stopped at
+  "monitor: serving 4 records"; QEMU 124 (wall 120.0 s)
+  ($W/chanfix/run-fifo-accepted.log, client-fifo-accepted.txt)
+A client that connected after the first take got its reply (run x1: Committed, then the
+run waited for requests it was never sent, QEMU 124 at 30 s; run-fifo-late.log). Read as
+the UART flushing its receive FIFO when the FIFOs are enabled after bytes have arrived,
+so early bytes are lost and the fixed frames never align. QEMU's source was not read.
+A driver that enabled the FIFO in com_setup, before any byte, might not lose them; that
+is a Unikraft driver change and was not made.
+
+Attempt 2, adaptive park (kept). host.c's writ_uk_take_poll answers 0 (nothing), 1 (a
+record), or 2 (a frame partly in, or one just refused or dropped); unikraft_take.c parks
+1 ms on 2 and 10 ms otherwise. No port access was added. Three measure.sh runs on image
+94886b15...: accept round trip 0.148774579 s (probe and hello builds running at the same
+time), 0.296772426 s, 0.139641183 s; each QEMU 1, wall 1.0, 1.0, 0.8 s. On the final
+image (rebuilt after comment edits, below): 0.214498941 s, 0.558361924 s, 0.167700452 s;
+QEMU 1, wall 1.8, 1.7, 1.1 s (the host was busier; other builds were running). Remaining
+cost: about one byte per wake still; the gap is a descriptor or interrupt for COM2.
+
+Refusal cap. host.c answers at most WRIT_UK_REFUSAL_MAX = 8 bad-length frames per boot,
+then drops further ones with a console line and no reply, and handles at most one frame
+per poll. Host failure handling, not policy. Exercised with the scratch client
+$W/chanfix/flood (flood.c, 1999040e...): "flood SOCKET 12" sends 12 length-65 frames
+without reading, then accept, badver, other, accept, reading until each decision.
+  client: sent 12 bad-length frames; refusals received 8; decisions received 4
+          decision for seq 1: kind=2 decision=1 reason=0
+          decision for seq 2: kind=2 decision=2 reason=1
+          decision for seq 3: kind=2 decision=2 reason=6
+          decision for seq 4: kind=2 decision=2 reason=6
+  console: 8 x "writ_uk: channel frame refused: length=0x00000041 bad length=1..8",
+           4 x "writ_uk: channel frame dropped, no reply (refusal cap): length=0x00000041
+           bad length=9..12", the four monitor decision lines, "monitor: fuel exhausted,
+           exiting"; QEMU 1 (wall 1.8 s; $W/channel/logs/run-fl.log)
+
+Other fixes: WRIT_CHANNEL_SUBJECT above 4294967295 is refused by app/Makefile.uk (1 and
+4294967295 accepted; 4294967296, 4294967297, 0, abc refused) and by a _Static_assert in
+host.c; run.sh builds the second serial arguments as a quoted array; check-channel.sh
+refuses a socket path of 108 bytes or more (exit 2, seen once with a long label);
+Monitor.bend's helper list names initial_reader (comment only: the generated C from the
+previous and the current Monitor.bend, with the same twins, is byte-identical).
+monitor.c's hash changed only because the take twin it splices in changed.
+
+Rebuild and reruns (same commands as "== Build ==" and "== Runs =="). The first fix
+build (host.c a3156b64..., unikraft_take.c f03cb69d..., image 94886b15...) gave the first
+three timings and an earlier PASS set (labels f1acc, f1denied, f1neg, fl, f1probe,
+f1hello). Comments in host.c and unikraft_take.c were then revised and everything was
+rebuilt; unikraft_take.c's last change is one comment line, and the regenerated
+monitor.c differs from the previous one in that comment line only (diff). Final inputs
+and outputs:
+  41f748fb182a4e69a433e666cfa1a2465ca7fb9d6e0511bca8e19bf142dea857  hosts/unikraft/host.c
+  585a474008a800ff018184ff702f9164d5201ebefa4d595fc0c6c458ecb9ca6b  hosts/unikraft/effects/unikraft_take.c
+  cf7ae59276fc9f00c79fe4d10b382d44c9f85213ee1f4bbb530618c28d1c255c  hosts/unikraft/monitor/Monitor.bend
+  a2b009186031e819e2c416f020fd0c9acb3dfe5c29e3458705d2b896b05b3f3e  hosts/unikraft/app/Makefile.uk
+  95b553669bee057aceb8389d42686ca52e8dc393d989e0f68fabe6692c8647b6  hosts/unikraft/scripts/run.sh
+  9105c52f505bd74327121cc822738c1684bbb44990d27b4d9de5ec5e5227bcbb  hosts/unikraft/scripts/check-channel.sh
+  7361bb9cab28ca9a92a26478c3c487df43b4356ec8ebd554b74bd6c2ac7b18d6  hosts/unikraft/scripts/build.sh
+  68033f5eb9f658735c0b90c7f07ae34c5bd41491dd7ce1828846ee8d89a81bb0  $W/channel/gen/monitor.c
+  0e58682807bcf2ad7f91f315c9634c50690117339f6779b6ce7eb749e47145ff  $W/channel/images/monitor-qemu
+  3dbb32abc8c7d13abef8ccf53f613efa5044cfa73977acf7e767741a2307f98f  $W/channel/images/monitor-qemu.dbg
+  0d6f07a5313bc427b1204951330d0084ee25639c0ae80f666bc23ced0e7f144b  $W/effects2/images/probe-qemu
+  d8f23b864a023344d5165116c5ba41b5ee5c7ba21fc9f77bd4105ddd5feabae6  $W/effects2/images/hello-qemu
+  (build.sh is unchanged in this round; Task 2, 50ef05d, added WRIT_CHANNEL_SUBJECT to it
+  but its hash was missing from the Build list above.)
+  check-channel accepted (label h1acc): client diff empty, console diff empty, QEMU 1,
+    PASS, exit 0 (wall 8.5 s, host load average 48; repeated as h2acc: PASS, wall 0.9 s)
+  check-channel denied (label h1den): both diffs empty, QEMU 1, PASS, exit 0 (wall 1.1 s)
+  negative control (label h1neg, denied order against the accepted references): FAIL,
+    exit 1
+  flood (label h1fl, "flood SOCKET 12"): refusals received 8, decisions received 4;
+    console 8 refused and 4 dropped lines, "monitor: fuel exhausted, exiting", QEMU 1
+    (wall 2.2 s)
+  measure.sh (label m7): accept round trip 0.171275059 s, QEMU 1
+  cross-check (on the g1 runs of the same sources before the one-line comment change):
+    the client logs' Bend replies == MonitorCheck's lines; MonitorCheck 10 PASS, exit 0
+  probe (on 0d6f07a5...): WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' check-image.sh effects2
+    g1probe probe verification/unikernel-effects-probe-reference.txt 1 "" 60 1024: diff
+    empty, QEMU 1, PASS
+  hello (on d8f23b86...): check-image.sh effects2 g1hello hello $W/effects2/hello-ref.txt
+    1 "" 60 1024: diff empty, QEMU 1, PASS
+  binary check on the final monitor-qemu.dbg: rows Unikraft.log Unikraft.put
+    Unikraft.take, FAIL (outside the monitor profile), exit 1, as before
+  OpenSpec 1.16.0 (bunx): Totals: 44 passed, 0 failed (44 items)
+
+All runs are QEMU TCG (emulated x86_64 boots); none is native or GPU evidence.
