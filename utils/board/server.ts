@@ -257,7 +257,7 @@ const LEDGER_TAIL = 10;
 const REPORT_FILE = /^task-(\d+)-report\.md$/;
 const GIT_TIMEOUT_MS = 3000;
 
-/** One line of a plan's `activity.log`: `<ISO time>\t<who>\t<text>`; a line without tabs is all text. */
+/** One line of a lane's `.lane/activity.log`: `<ISO time>\t<who>\t<text>`; a line without tabs is all text. */
 export type ActivityLine = { at: string; who: string; text: string };
 
 /**
@@ -279,9 +279,6 @@ export type LaneSdd = {
   /** The plan file the ledger's first line names, relative to the lane, or null. */
   planFile: string | null;
   phase: Phase | null;
-  /** Last lines of activity.log, oldest first; empty when the file is absent. */
-  activity: ActivityLine[];
-  activityNote: string | null;
   reports: { file: string; status: string | null; html: string | null }[];
 };
 
@@ -297,6 +294,9 @@ export type Lane = {
   /** Epoch ms of the newest signal (commit, ledger, activity log, report), or null. */
   signalAt: number | null;
   status: LaneStatus;
+  /** Last lines across `<lane>/.lane/*.log`, oldest first by timestamp; empty when absent. */
+  activity: ActivityLine[];
+  activityNote: string | null;
   /** Each entry says what could not be read for this lane. */
   notes: string[];
   sdd: LaneSdd[];
@@ -374,8 +374,15 @@ function ledgerTail(text: string): string {
   return lines.slice(-LEDGER_TAIL).join("\n");
 }
 
-/** Lines of activity.log shown per plan. */
+/** Lines of activity.log shown per lane. */
 const ACTIVITY_TAIL = 12;
+/**
+ * Directory under a lane (and, after merges, under the root) holding the
+ * activity logs: `.lane/<lane name>.log`, one per lane, committed with the
+ * lane so the record lands on master. Every `*.log` in it is read.
+ */
+export const ACTIVITY_DIR = ".lane";
+const ACTIVITY_FILE = /^[A-Za-z0-9._-]+\.log$/;
 /** A signal younger than this makes a lane "active". */
 export const ACTIVE_MS = 30 * 60 * 1000;
 /** A ledger saying "review" counts as live only this long; reviews are quiet on disk but not for hours. */
@@ -383,10 +390,10 @@ export const REVIEW_MS = 3 * 60 * 60 * 1000;
 const LEDGER_PLAN = /^#\s*SDD ledger\s*[—-]+\s*plan:\s*(\S+)/;
 const CHANGE_REF = /openspec\/changes\/([A-Za-z0-9._-]+)/g;
 
-/** Parses activity.log text into its last ACTIVITY_TAIL lines. */
+/** Parses activity-log text into lines (all of them; callers take the tail). */
 export function parseActivity(text: string): ActivityLine[] {
   const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
-  return lines.slice(-ACTIVITY_TAIL).map((line) => {
+  return lines.map((line) => {
     const parts = line.split("\t");
     if (parts.length >= 3) return { at: parts[0], who: parts[1], text: parts.slice(2).join("\t") };
     if (parts.length === 2) return { at: parts[0], who: "", text: parts[1] };
@@ -477,14 +484,7 @@ function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
           phase = parsePhase(text);
         }
       }
-      const activityPath = join(planDir, "activity.log");
-      let activity: ActivityLine[] = [];
-      let activityNote: string | null = null;
-      if (existsSync(activityPath)) {
-        const text = readRegularText(activityPath);
-        if (text === null) activityNote = "activity.log could not be read (not a regular file, or removed mid-scan)";
-        else activity = parseActivity(text);
-      }
+
       const reports = regularFiles(planDir, REPORT_FILE)
         .sort((x, y) => Number(x.match(REPORT_FILE)![1]) - Number(y.match(REPORT_FILE)![1]))
         .map((file) => {
@@ -492,7 +492,7 @@ function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
           const status = text?.match(/^Status:\s*(.+?)\s*$/m)?.[1] ?? null;
           return { file, status, html: text === null ? null : renderMarkdown(text, `${rel}/${file}`) };
         });
-      return { plan, ledger, ledgerNote, planFile, phase, activity, activityNote, reports };
+      return { plan, ledger, ledgerNote, planFile, phase, reports };
     }),
   };
 }
@@ -576,18 +576,37 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
     const primary = planChanges(text).find((c) => known.has(c));
     if (primary !== undefined && !changes.includes(primary)) changes.push(primary);
   }
-  // The newest write anywhere the lane records progress, or its last commit.
+  // The lane's activity logs: every `.lane/*.log`, merged by timestamp (ISO
+  // times sort as text), newest ACTIVITY_TAIL kept. Logs of lanes that already
+  // landed are in the directory too after a merge; the lane's own file is
+  // named after it, and all are shown.
+  const activityDir = join(dir, ACTIVITY_DIR);
+  let activity: ActivityLine[] = [];
+  let activityNote: string | null = null;
   const times: number[] = [];
+  if (existsSync(activityDir) && !realDir(activityDir)) activityNote = `${ACTIVITY_DIR} is not a real directory (symlink?); skipped`;
+  else if (existsSync(activityDir)) {
+    const all: ActivityLine[] = [];
+    for (const f of regularFiles(activityDir, ACTIVITY_FILE)) {
+      const text = readRegularText(join(activityDir, f));
+      if (text === null) activityNote = `${f} could not be read (not a regular file, or removed mid-scan)`;
+      else all.push(...parseActivity(text));
+      const t = mtimeMs(join(activityDir, f));
+      if (t !== null) times.push(t);
+    }
+    activity = all.sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : 0)).slice(-ACTIVITY_TAIL);
+  }
+  // The newest write anywhere the lane records progress, or its last commit.
   if (commit?.at != null) times.push(commit.at);
   for (const p of sdd) {
     const planDir = join(dir, ".superpowers", "sdd", p.plan);
-    for (const f of ["progress.md", "activity.log", ...p.reports.map((r) => r.file)]) {
+    for (const f of ["progress.md", ...p.reports.map((r) => r.file)]) {
       const t = mtimeMs(join(planDir, f));
       if (t !== null) times.push(t);
     }
   }
   const signalAt = times.length === 0 ? null : Math.max(...times);
-  return { name, branch, commit, changes, signalAt, status: laneStatus(sdd, signalAt), notes, sdd, taskDiffs, verification: newerVerification(root, dir) };
+  return { name, branch, commit, changes, signalAt, status: laneStatus(sdd, signalAt), activity, activityNote, notes, sdd, taskDiffs, verification: newerVerification(root, dir) };
 }
 
 /**
@@ -847,7 +866,7 @@ const DEBOUNCE_MS = 200;
 const WALK_DEPTH = 12;
 /** Subtrees watched in the root and in every lane. */
 const ROOT_TREES = ["openspec", "verification", "docs"];
-const LANE_TREES = [...ROOT_TREES, ".superpowers/sdd"];
+const LANE_TREES = [...ROOT_TREES, ".superpowers/sdd", ACTIVITY_DIR];
 
 /**
  * Watches the board's inputs with one non-recursive fs.watch per directory.
@@ -897,7 +916,7 @@ class Watcher {
       add(lanes, null);
       for (const name of laneNames(lanes).lanes) {
         const dir = join(lanes, name);
-        add(dir, [...ROOT_TREES, ".superpowers", ".git"]);
+        add(dir, [...ROOT_TREES, ".superpowers", ACTIVITY_DIR, ".git"]);
         // Anchors that are symlinks are neither walked nor watched (see realDir).
         if (realDir(join(dir, ".superpowers"))) add(join(dir, ".superpowers"), ["sdd"]);
         for (const t of LANE_TREES) {

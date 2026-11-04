@@ -150,7 +150,8 @@ try {
     + Array.from({ length: 14 }, (_, i) => `- entry-${String(i + 1).padStart(2, "0")}`).join("\n") + "\n");
   mkdirSync(join(lane, "docs", "superpowers", "plans"), { recursive: true });
   writeFileSync(join(lane, "docs", "superpowers", "plans", "smoke.md"), `# Plan: smoke\n\nSpec: \`openspec/changes/${expected}/\` (synthetic).\n`);
-  writeFileSync(join(plan, "activity.log"), "2026-11-04T10:00:00Z\timplementer\tread the brief\n2026-11-04T10:05:00Z\timplementer\tstarted the probe build\n");
+  mkdirSync(join(lane, ".lane"));
+  writeFileSync(join(lane, ".lane", "smoke-lane.log"), "2026-11-04T10:00:00Z\timplementer\tread the brief\n2026-11-04T10:05:00Z\timplementer\tstarted the probe build\n");
   writeFileSync(join(plan, "task-1-report.md"),
     "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
   mkdirSync(join(lanesDir, "not-a-worktree"));
@@ -254,13 +255,13 @@ try {
   const edited = await waitFor("edited body", 2000);
   check("editing a report pushes the new text within 2 s", edited.ok && edited.text.includes("EDITED"), `${edited.after} ms`);
 
-  appendFileSync(join(plan, "activity.log"), "2026-11-04T10:09:00Z\timplementer\tprobe printed hi, writing the evidence\n");
+  appendFileSync(join(lane, ".lane", "smoke-lane.log"), "2026-11-04T10:09:00Z\timplementer\tprobe printed hi, writing the evidence\n");
   // The chip tooltip on the index tables and the lane's feed both carry the
   // line; the tables fragment is sent first, then the lanes panel.
   const appendedTables = await waitFor("writing the evidence", 2000);
   const appendedLanes = await waitFor("writing the evidence", 2000);
-  check("appending to activity.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
-  check("appending to activity.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
+  check("appending to .lane/<lane>.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
+  check("appending to .lane/<lane>.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
 
   writeFileSync(join(plan, "task-2-report.md"), "# Second\n\nStatus: NEW\n");
   const added = await waitFor("task-2-report.md", 2000);
