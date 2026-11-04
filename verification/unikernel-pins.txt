@@ -1,0 +1,60 @@
+Unikernel tooling pins for the library-unikernel runtime lane
+Recorded 2026-11-03 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+Workspace: ../writ-unikernel/ (sibling of the repository root; nothing below is in the tree).
+Downloads are treated as untrusted data: each source tree is a fresh clone in its own
+directory and no script from a downloaded tree was run with the repository as cwd.
+
+== Host toolchain used by the Unikraft build (not downloaded) ==
+gcc (GCC) 16.2.1 20260810          (kraft's default CC; clang 23.1.1 not used for Task 1)
+GNU ld (GNU Binutils) 2.47
+GNU Make 4.4.1
+QEMU emulator version 11.1.2
+bend 2.0.39 at $HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin, BEND_NO_TELEMETRY=1
+
+== kraft (KraftKit CLI) ==
+Version: kraft 0.12.16 (b5dd63da1644808ab47dda72963d7cf90935808c) go1.26.5 2026-09-09T09:51:15Z
+Install (user-local, under the workspace):
+  W=../writ-unikernel
+  mkdir -p $W/downloads/kraftkit-0.12.16 $W/tools/kraftkit-0.12.16
+  cd $W/downloads/kraftkit-0.12.16
+  curl -sSLO https://github.com/unikraft/kraftkit/releases/download/v0.12.16/kraft_0.12.16_linux_amd64.tar.gz
+  curl -sSLO https://github.com/unikraft/kraftkit/releases/download/v0.12.16/kraftkit_0.12.16_checksums.txt
+  grep kraft_0.12.16_linux_amd64.tar.gz kraftkit_0.12.16_checksums.txt   # published sha256
+  sha256sum kraft_0.12.16_linux_amd64.tar.gz                             # must match
+  tar -xzf kraft_0.12.16_linux_amd64.tar.gz -C $W/tools/kraftkit-0.12.16
+  $W/tools/kraftkit-0.12.16/kraft version
+Tarball sha256 (published and observed, equal):
+  1d415320c5fe8e733cd695e220375bbc99972da02d059a326f81039275d6587a  kraft_0.12.16_linux_amd64.tar.gz
+Binary sha256:
+  cd7ffa22655c788bda2abc3aacd01e2ec9246ed88fe6cde19e059d66f15106c7  kraft
+Signature (.sig) was not verified; only the checksum file from the same release was compared.
+kraft state is kept out of $HOME by passing on every call:
+  --config-dir $W/kraft-home/config --manifests-dir $W/kraft-home/manifests
+  --sources-dir $W/kraft-home/sources --runtime-dir $W/kraft-home/runtime
+  --no-check-updates --no-prompt --no-emojis --no-color --log-type basic
+and building with `--no-update` from local sources (no package-index pull).
+
+== Unikraft core, primary pin ==
+Tag RELEASE-0.21.0 (codename Ijiraq), commit 7351f8b563c9e6773da9fdd5bacde6ac91e32112
+  git clone --depth 1 --branch RELEASE-0.21.0 https://github.com/unikraft/unikraft.git $W/src/unikraft
+lib-musl RELEASE-0.21.0, commit 5fed64ecd7f8abb29df444c73df6d797d4efa18f
+  git clone --depth 1 --branch RELEASE-0.21.0 https://github.com/unikraft/lib-musl.git $W/src/libs/musl
+  musl upstream fetched by lib-musl's build: https://www.musl-libc.org/releases/musl-1.2.3.tar.gz
+  observed sha256 7d5b0b6062521e4627e099e4c9dc8248d32a30285e959b7eecaa780cf8cfd4a4
+Platforms present in 0.21.0 plat/: common kvm native xen  (no linuxu)
+posix-mmap, posix-process, posix-fdtab, posix-sysinfo all present in lib/.
+
+== Unikraft core, secondary pin (linuxu only) ==
+linuxu was removed from the core tree after the 0.16 series (plat/ listing via the GitHub
+contents API: 0.16.0 has linuxu; 0.17.0, 0.18.0, 0.19.x, 0.20.0, 0.21.0 do not).
+To attempt the linuxu target at all, the last release carrying it was pinned separately:
+Tag RELEASE-0.16.3 (codename Telesto), commit e453b74a2e78a0de98563d75d8e0a97e668088e6
+  git clone --depth 1 --branch RELEASE-0.16.3 https://github.com/unikraft/unikraft.git $W/src-0.16.3/unikraft
+lib-musl RELEASE-0.16.3, commit fd1abc9257b40a74c69b3a40467a453bf8892439
+  git clone --depth 1 --branch RELEASE-0.16.3 https://github.com/unikraft/lib-musl.git $W/src-0.16.3/libs/musl
+  musl 1.2.3, same tarball sha256 as above.
+
+== Bend input ==
+scripts/unikernel/Hello.bend (in tree), emitted with:
+  bend scripts/unikernel/Hello.bend -o ../writ-unikernel/hello/hello.c
+  hello.c: 3074 lines, sha256 260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
