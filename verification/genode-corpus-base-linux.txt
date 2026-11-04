@@ -257,3 +257,95 @@ FIX ROUND 1 (2026-11-04, after review)
     process alive: 0
   Run 5 happened after the journal file above was saved, so its kernel line
   is not in that file.
+
+
+=============================================================================
+FINAL-REVIEW SECTION: merged tree (782 checks), final shim, shared build files
+Recorded: 2026-11-04 00:30 to 01:20 -06:00
+
+Everything above is kept as history: the 764-check run is the evidence for
+tree caf13ca. This section is the evidence for the tree after
+`git merge master` (master dc6ff2b; merge commit d8b1473, a clean merge that
+changed HostBinding.bend and HostBindingTests.bend). Base-linux only, CPU
+only, --threads 1 --gpu off, as above.
+
+RESULT
+  writ_bend_tests at ram 256M: 782 PASS lines and "ALL LIBRARY TESTS PASSED",
+  exit value 0; its 834 component lines are byte-identical to the merged
+  tree's Linux single-lane reference (verification/genode-corpus-linux-
+  reference.txt, merged-tree section). The four examples, the hello, rts,
+  both reservation probes, and the Overflow default run all pass again with
+  the final shim and the shared build files.
+
+INPUTS
+  tests.c re-emitted from the merged tree:
+    bend Tests.bend -o ../writ-genode/bend-c/tests/tests.c   rc 0
+    b50856fbba69f93b950cbb68d05a9d9ce876f5c5cb4f2ba83bb5c1e184bb0602  tests.c (335596 lines)
+  The other programs' emitted C is unchanged by the merge (a fresh emission
+  of Example, Flow, Transfer, GpuExample, Overflow, and Hello into a scratch
+  directory was cmp-identical to the files used above).
+  Shim: hosts/genode/shim/writ_mem.cc
+    df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42
+    One token change: _release clears the retry-table entries whose page lies
+    in the released reservation. The rest is comments (the guard's base-linux
+    PROT_NONE dependency, the EFAULT limit, the retry limits' wording).
+  Shared build files (new): scripts/genode/writ_bend.inc, included by every
+  writ_bend_<name>/target.mk (live: src/app/writ_bend.inc), and
+  scripts/genode/writ_bend.tcl, sourced by every writ_bend_*.run script and
+  by the reservation probe scripts (live: run/writ_bend.tcl). Genode's build
+  and run tools accepted both: `include $(REP_DIR)/src/app/writ_bend.inc` in
+  target.mk, and `source [select_from_repositories run/writ_bend.tcl]` in
+  the run scripts. The rebuilt hello's clang command line was checked
+  (make VERBOSE=) and has the same flags as recorded in
+  verification/genode-bend-hello-base-linux.txt, including
+  -I/usr/lib/clang/23/include.
+  Run-script changes: every script that links the shim fails on base-linux's
+  "_reserve_local unexpectedly failed" line; writ_bend_tests.run takes the
+  expected PASS count as expected_pass (default 782, override
+  WRIT_BEND_EXPECT_PASS); writ_bend_overflow.run requires the guard-page
+  outcome when neither WRIT_BEND_RAM nor WRIT_BEND_CAPS is set.
+
+BUILD
+  cd ../writ-genode/build/x86_64
+  make app/writ_bend_tests 2>&1 | grep -aE 'error|Error|LINK|COMPILE|warnings? generated'
+    rc 0, 29m06s wall (27m user, 26m sys); 688231 warnings, no error
+    (log ../writ-genode/build-bend-tests-2.out)
+  The other components were rebuilt by their make run/ invocations.
+  Binaries (not committed), sha256:
+    903128fa1b2387d39d5f4ddbea2be8d5f6d48ba3416e146c350b7ef90df27d60  writ_bend_tests
+    990840e09bced3c2bca02652ba37dfa5ee3a5cfccd3d6ab6f2da48b0f1474dd4  writ_bend_hello
+    e07c14802ac9e9671ae9e1d23a895d988592fccf65caef524441be936121115a  writ_bend_example
+    64276588f8c7fad7ff7a6b349040b1015cdb2c5bcc4b75e1d726ea1f6aa25097  writ_bend_flow
+    b4d095b58593b4eac03e995894354b0fd6669bd813608d7c41a92c291fb39df4  writ_bend_transfer
+    9ada7bc6535a767c168cad9a727e22d09304ae14eb1b56564504fbc4e3835e29  writ_bend_gpuexample
+    36c08105ab6c62d0583b9f35e84222c4eb644b4bb2e9eabd4d849f7e92d91cb4  writ_bend_overflow
+
+CORPUS RUN (merged tree)
+  make run/writ_bend_tests   (log ../writ-genode/run-writ_bend_tests-2-merged-256M.out), rc 0
+    [init -> writ_bend_tests] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1308e00
+    [init -> writ_bend_tests] writ_mem: [exit] ram used=12537856 limit=268302940 caps used=40 limit=961 reservations=2 guards=1 chunks populated (total)=5 faults resolved=5 benign retries=0 reserved at hint=1 elsewhere=1 released=0
+    [init] child "writ_bend_tests" exited with exit value 0
+    --- writ_bend_tests: 782 PASS lines, 834 component lines ---
+    Run script execution successful.
+  Comparison (from the writ-lanes directory):
+    grep -a 'writ_bend_tests\]' writ-genode/run-writ_bend_tests-2-merged-256M.out \
+      | grep -v 'writ_mem: ' | sed 's/^\[init -> writ_bend_tests\] //; s/\r$//' \
+      > writ-genode/genode-tests-2.lines
+    diff writ-build/genode-host-layer/merged/tests-1.out writ-genode/genode-tests-2.lines
+    -> no output, rc 0
+    sha256 of both: fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff (834 lines)
+
+REGRESSIONS AND OTHER RUNS (final shim, shared files; logs ../writ-genode/run-<scenario>-final.out)
+  writ_bend_hello              rc 0: hi, exit value 0, ram used=8314880 caps used=35
+                               (first attempt rc 2: a script edit had left a bare
+                               grep_output line; fixed, rerun rc 0)
+  writ_bend_rts                rc 0: usage exit 0; "bend: unknown runtime option --bogus" exit 1
+  writ_probe_reservation_live  rc 0, exit value 0, after munmap ram used=1404928 released=1
+  writ_probe_reservation_guard rc 0, 'writ_mem: unresolved fault at 0x7ffef7f02000
+                               (guard page), component terminates', process gone
+  writ_bend_example/flow/transfer/gpuexample  rc 0 each (embedded comparison
+                               passed); ram used 8318976 / 8314880 / 8314880 / 12513280
+  writ_bend_overflow (defaults 3G/2000; log run-writ_bend_overflow-6-final.out) rc 0:
+    Kernel: writ_mem: unresolved fault at 0x7ffff7f43000 (guard page), component terminates
+    guard page refusal: 1, init exit line: 0, init lines naming child: 0, process alive: 0
+  No run logged "_reserve_local unexpectedly failed".

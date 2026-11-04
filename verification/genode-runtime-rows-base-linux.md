@@ -60,37 +60,41 @@ Where each file lives in the Genode `writ-repo` (`../writ-genode/writ-repo/`):
 `scripts/genode/writ_bend_hello/writ_bend_rts.run` -> `run/`.
 
 The committed copies are byte-identical to these live files (checked with
-`cmp` on 2026-11-04 when this list was refreshed), except
-`run/writ_probe_clock.run`, whose committed copy differs in header comment
-lines only. The shim's live copy is `src/writ_shim/writ_mem.cc`; the
-reservation probe's files are under `hosts/genode/probes/reservation/`, the
-Bend components' under `scripts/genode/writ_bend_<name>/`. sha256 of the live
-files:
+`cmp` on 2026-11-04 after the final review; the live `run/writ_probe_clock.run`
+was then replaced by the committed copy, which had differed in header
+comment lines only). The shim's live copy is `src/writ_shim/writ_mem.cc`;
+the shared build and run files are `src/app/writ_bend.inc` and
+`run/writ_bend.tcl` (committed as `scripts/genode/writ_bend.inc` and
+`scripts/genode/writ_bend.tcl`); the reservation probe's files are under
+`hosts/genode/probes/reservation/`, the Bend components' under
+`scripts/genode/writ_bend_<name>/`. sha256 of the live files:
 
 ```text
-00fb548566a9547cdbac550e3687df5f07689c25841129f64731c5db95233ef1  run/writ_bend_example.run
-17556719b92cdfa5cf71a9d71e2d7f7504cb010047d4b2ecac62d38e89c20af9  run/writ_bend_flow.run
-09ca0c30b04f2eb221b561ba19653cd5915cdf0e519df91ba5e79348094aede2  run/writ_bend_gpuexample.run
-2283d9482d5ac2545bb0d05954f5f4b1cd3094689da2c3b78ebb42240e47b16f  run/writ_bend_hello.run
-dd8998619abfc8e25e188dd270f344b079705ca7b4251c604c856a099c096cc2  run/writ_bend_overflow.run
-0148be571265e9e7e536d77b56b8a6ec5d6b175e6196e0abbab3bb929deecc0f  run/writ_bend_rts.run
-b70cc84ce4e5247ba7fc1f2e0f175c9e0926400307e7d20817f0f0a6be152972  run/writ_bend_tests.run
-18139c56991b87d42af033e485c6c4e305e6761977441b56944db972e990c0d8  run/writ_bend_transfer.run
+09ea895363f34de9ca8d6873d4bd310d573dd419c1754039d264b178aaef3343  run/writ_bend_example.run
+3224b9aa62328799a6243502a61b15081deab5e526fe3c4b8bff300060ecdf77  run/writ_bend_flow.run
+92fddcacccd06e30545ada83606dc960d081200366599049bf77d8db67db1846  run/writ_bend_gpuexample.run
+836482f88770e507d7dc9d4a2afbe31ece9085255193e7a5993672a45e7b5d35  run/writ_bend_hello.run
+37687fe801182740094f614f06e4d2ff4eb63602ae62df7fe8aedbb2746b1f11  run/writ_bend_overflow.run
+fdaa28a76a2a0686dc198234b08bc5fa0a60d3a7b3d41a319bba6a3100240283  run/writ_bend_rts.run
+5db756a649db3b2607ea8868828f83fc51a1b62771bdb659916cc45d52b7a161  run/writ_bend.tcl
+74439c72e91cd411a0819e4a637d786d268bb637e268ddc0ba102ce8bf425350  run/writ_bend_tests.run
+98d45e66e9710b112f203e6179cfc07baf5f75e6b4555ad41f28cdb279fa9911  run/writ_bend_transfer.run
 1cb701bd9f1825dd5862800e80b117d1092e1eb4f1adf14418847a9a1537fb35  run/writ_hello.run
-cc41a5e66add99963730ddbb06a85558d9cc3f79031ab3b9e7eb1c644a02ce27  run/writ_probe_clock.run
+f8db412c48e80ad996ae1d59b09642be8a74e8683fedf82273df330a894f5950  run/writ_probe_clock.run
 87d3226e0ed4f15b8db4ba84a90a51ed740504ff22ec89c7f1b061c50cbdfb86  run/writ_probe_evloop.run
 dbf84ce1a3d19010ebe2e8b4c5164e5bd75ea713762cc9d1c4914c7245ea3909  run/writ_probe_fault.run
 3b52a85c26094163078d85383d9a54bd484c5ef6df5966612f18d3c03a275577  run/writ_probe_process.run
-c54a476f90dfabae853c281e898845592d4c65271c007bcf7ea9d0e1ec6a5d99  run/writ_probe_reservation_guard.run
-18ce2570ea2e9f4e95325d318ea814d21b2dce272431d131ffcdac2a4fdeba99  run/writ_probe_reservation_live.run
+8ca3ba409f7aa7089b238417adbf24945a1f77f92592ba02650ce425914627b6  run/writ_probe_reservation_guard.run
+8f465b45ba0752d0c4986c05f845b2b7b2b7be77278d2334f766cb0236ad1f36  run/writ_probe_reservation_live.run
 26ecdc2ad9e22442d04c1cc4fcc63b99e5f2bb6e5b543d3eb403590056d44ca8  run/writ_probe_threads.run
-844e40c855f9d71fb7539ed428b45e23f3f2a18202818b0bdec451763a48f677  src/app/writ_bend_example/target.mk
-5b6eab24ca1969ab2388efdf6b45be68abe632fa67a036dc821a079ee7defb20  src/app/writ_bend_flow/target.mk
-2bb211e4a5a266e1eaa3861b25e0ae5ba41b5dc162b09f5dbf3e2f9612056051  src/app/writ_bend_gpuexample/target.mk
-c62f23eaf78632a1ceb158f6995e6bf0ecf093fcc50f4935daaf4621af55a721  src/app/writ_bend_hello/target.mk
-ab6e411bbdfaa37d41c1a13e73b4ec0d795713f55844475c5cb2ed877d55c43c  src/app/writ_bend_overflow/target.mk
-6a388d12b6865ea1e77c67e77df6b3f2795b0e399fa40908757727a986ee72f2  src/app/writ_bend_tests/target.mk
-df4ddf34f3df77f03bbd182fe136ed9ea7dc1b7a59ae1e23d1814e7dcfbd8956  src/app/writ_bend_transfer/target.mk
+c5e6dcf3ad8495f7ed3dbfb7d63d7f4170ea38d396e54a75c2c24239e74adf70  src/app/writ_bend_example/target.mk
+e54d7ea0b187f5d7d195ee4242601c93b20f18c6d4f845e769d2dc4479555bcd  src/app/writ_bend_flow/target.mk
+f18ed1ce65ad452a8ae3bf23c1f3bbd1c7ed251c909caa00bde87810e2ab7b39  src/app/writ_bend_gpuexample/target.mk
+2bdeee659cc1c04ab544d876db3c71dcff55691215d630c37b092c752ed6b4eb  src/app/writ_bend_hello/target.mk
+f5150891fd912d58e278b1a0469e3115a94744987f5717b6d27bc9923dd3a9da  src/app/writ_bend.inc
+0ffbaa8e934ff9ae88fa0cc7847bbf9e1b79740642cc03798b3a79f782b14c62  src/app/writ_bend_overflow/target.mk
+0f674ca0b0151a6afc7084890fc69cf4d3c671bc63820bcea58fe96019c6ea65  src/app/writ_bend_tests/target.mk
+7a49ff59befa5f69547d0931fc0ff8f3bed4e4fe6cd6e7bbd43fbaffd366342a  src/app/writ_bend_transfer/target.mk
 bbf48036b8f41f697c93b1b844ccd005b17434a6877632ede44629a93bdddbfb  src/app/writ_hello/main.cc
 045b387b3813cc2d005e176c9e16b34d95b7dcda7b18e0cb6cbfea5e74a952d9  src/app/writ_hello/target.mk
 e95d4f398c1366cfb75b00cefa2a9016abb8a4cb4f04ee8c32aeb4782fe52c13  src/app/writ_probe_clock/probe_clock.c
@@ -105,18 +109,21 @@ bdff1d1e0e488093ad27aeaa28205fa1ed5c11973d528254a7d33544986ee24b  src/app/writ_p
 1d0e82ff5e7743beac5974d58ff61e847ccb918e81ab8755cda237f6420c6529  src/app/writ_probe_reservation/target.mk
 fd9a2350dfd05b08082fb85a0375847b4010d554ec351abebce15562bdbc285c  src/app/writ_probe_threads/probe_threads.c
 d4ac74790dfaa624ff803067b0d02419a6bf0b8a1b2d1623da015130196510e4  src/app/writ_probe_threads/target.mk
-8ba108f2240aebb161f12ca85cf48cfae79968a5e80b772abfb9acdd03ef4774  src/writ_shim/writ_mem.cc
+df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42  src/writ_shim/writ_mem.cc
 ```
 
 ## Authored non-Bend files
 
 The non-Bend files authored on this lane are: `scripts/genode/writ_hello/main.cc`,
-the five `probe_*.c` files, every `target.mk`, the run scripts, and
-`build.conf.fragment`. None of them is linked into a component that holds
+the six `probe_*.c` files (five row probes and the host layer's
+`hosts/genode/probes/reservation/probe_reservation.c`), every `target.mk`,
+`scripts/genode/writ_bend.inc`, the run scripts and `scripts/genode/writ_bend.tcl`,
+and `build.conf.fragment`. None of them is linked into a component that holds
 Writ authority. The probes and `writ_hello` are throwaway scaffolding. The
-`writ_bend_hello` build flags (`CUSTOM_CC` set to clang 23, `-DMAP_NORESERVE=0`,
-and the code model) carry forward to any later Bend component, so they belong
-in the GB-006 trust inventory, which is deferred to task 2.2.
+build settings every Bend component carries (`CUSTOM_CC` set to clang 23,
+`-DMAP_NORESERVE=0`, clang's include directory, and the code model) are
+listed in `hosts/genode/INVENTORY.md`, "Build settings carried by every Bend
+component".
 
 Since the host-layer lane the shim's memory unit `hosts/genode/shim/writ_mem.cc`
 is linked into every Bend component listed under Provenance kinds. It is the
@@ -131,8 +138,8 @@ C, with the shim, under init on base-linux.
 
 | Row | Value on base-linux | Notes | Established by |
 | --- | --- | --- | --- |
-| Memory: reservation (`mmap` anon) | **supplied (host layer)** | the shim reserves the 8 GiB term heap and the 2 GiB evaluation stack as region maps and charges 2 MiB chunks on touch; corpus run used 12.0 MiB of 256M | Bend program (host layer): tests, four examples, hello |
-| Memory: guard (`mprotect`) | **supplied (host layer)** | the shim makes the stack guard an unmapped range; Overflow's touch of it is refused | Bend program (host layer): `writ_bend_overflow` runs 3-4 |
+| Memory: reservation (`mmap` anon) | **supplied (host layer)** | the shim reserves the 8 GiB term heap and the 2 GiB evaluation stack as region maps and charges 2 MiB chunks on touch; corpus run (782 checks) used 12.0 MiB of 256M | Bend program (host layer): tests, four examples, hello |
+| Memory: guard (`mprotect`) | **supplied (host layer)** | the shim makes the stack guard a range with no dataspace (on base-linux a PROT_NONE reservation left by `Region_map_mmap::detach`); Overflow's touch of it is refused | Bend program (host layer): `writ_bend_overflow` runs 3-4 |
 | Memory: `munmap` | **supplied (host layer)** | whole-reservation release; no Bend program here calls it (corpus placed at its first hint, `released=0`) | C probe (`writ_probe_reservation_live`) |
 | Faults | **substituted** (termination only) | the host layer's fault path kills the component, no resumption; the runtime's own handler cannot run (libc emulates `sigaction`); **the parent does not record the fault** | Bend program (host layer): `writ_bend_overflow` runs 1-4 |
 | Threads | **supplied** | single-lane Bend runs open no worker; `--threads 2` not run through a Bend program | C probe |
@@ -144,8 +151,8 @@ C, with the shim, under init on base-linux.
 
 ## Host-layer update (host-layer lane, Task 3)
 
-Memory (Bend program, host layer). `writ_bend_tests` at ram 256M printed 764
-PASS lines and `ALL LIBRARY TESTS PASSED` and exited 0; its shim report at
+Memory (Bend program, host layer). `writ_bend_tests` at ram 256M printed 782
+PASS lines (764 before the merge of master at d8b1473, same shim report) and `ALL LIBRARY TESTS PASSED` and exited 0; its shim report at
 exit was `ram used=12537856 limit=268302940 caps used=40 limit=961
 reservations=2 guards=1 chunks populated (total)=5 ... reserved at hint=1
 elsewhere=1 released=0`. The four examples and the hello ran at 256M as well

@@ -598,5 +598,7 @@ Runs (cd ../writ-genode/build/x86_64; ram 256M):
     ../writ-genode/run-reservation-guard-6.out  rc 0, 'writ_mem: unresolved
       fault at 0x7ffef7f02000 (guard page), component terminates', process
       gone, init exit line 0
-  Task 3's comment-only shim edit and its rerun of both probes are recorded
-  in verification/genode-corpus-base-linux.txt.
+  Task 3's comment-only shim edit (8ba108f2...4774) and the final-review
+  shim (df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42:
+  _release clears the retry entries of its pages), with their reruns of
+  both probes, are recorded in verification/genode-corpus-base-linux.txt.

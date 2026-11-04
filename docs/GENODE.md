@@ -225,7 +225,7 @@ All source links below refer to the inspected Genode 26.08 revision.
 - **G7 — VFS reconfiguration:** [Genode 26.08 release notes](https://genode.org/documentation/release-notes/26.08).
 - **G8 — Memory and quotas:** [core services](https://genode.org/documentation/genode-foundations/26.05/architecture/Core_-_the_root_of_the_component_tree.html).
 - **G9 — Linux implementation:** [IPC](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/src/lib/base/ipc.cc), [startup filter](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/src/lib/base/runtime.cc), [filter generator](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/tool/seccomp/seccomp_bpf_compiler.h), and [hybrid build](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/lib/mk/lx_hybrid.mk).
-- **G10 — Pinned Bend and current evidence:** [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39) and [Writ verification record](../VERIFICATION.md); the generated native output has since been compiled for `base-linux` and, with the host-layer shim, runs the hello, the 764-check corpus, and the four examples there (see the base-linux runtime-row section below, which also lists the open gaps).
+- **G10 — Pinned Bend and current evidence:** [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39) and [Writ verification record](../VERIFICATION.md); the generated native output has since been compiled for `base-linux` and, with the host-layer shim, runs the hello, the 782-check corpus, and the four examples there (see the base-linux runtime-row section below, which also lists the open gaps).
 - **G11 — GPU API:** [gpu_session.h](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/os/include/gpu_session/gpu_session.h).
 
 ## Runtime rows on base-linux, 2026-11
@@ -233,7 +233,7 @@ All source links below refer to the inspected Genode 26.08 revision.
 The unmodified C that Bend 2.0.39 emits for Bend programs now runs as Genode
 26.08 components on `base-linux` (Genode-on-Linux, not a native kernel),
 linked with the host-layer memory shim. The one-line `IO.print` hello prints
-`hi` and exits 0, and `Tests.bend` passes all 764 checks at a 256M quota,
+`hi` and exits 0, and `Tests.bend` passes all 782 checks at a 256M quota,
 with a log that matches the Linux single-lane run line for line. The open
 gaps: when a component faults it is terminated, but the parent (init)
 records nothing; only single-lane runs (`--threads 1`) have been made; and
@@ -284,8 +284,8 @@ stand in for the Bend program.
 ### Host-layer memory probe (base-linux, 2026-11)
 
 The memory half of the next step now exists as host binding code in
-[hosts/genode/shim/writ_mem.cc](../hosts/genode/shim/writ_mem.cc) and has
-run with a plain-C probe, not yet with the Bend program. A qualifying anonymous
+[hosts/genode/shim/writ_mem.cc](../hosts/genode/shim/writ_mem.cc). It first
+ran with a plain-C probe (below), then with the Bend hello and corpus. A qualifying anonymous
 `mmap` (at least 1 GiB, read-write, private) becomes a region map from an RM
 session attached into the component. Nothing is backed until a touch. Then a
 2 MiB RAM dataspace from the component's own PD is attached at the touched
@@ -310,7 +310,12 @@ of `posix`. The unmodified generated hello C prints `hi` under init on
 base-linux and exits with value 0 at ram 256M. At exit the component had
 used about 7.9 MiB of its quota: the 8 GiB term heap and the 2 GiB
 evaluation stack are reservations, three 2 MiB chunks were charged, and the
-stack guard is a real unmapped range. The run script mounts `vfs_pipe` for
+stack guard has no dataspace behind it. On base-linux the guard is a
+PROT_NONE Linux reservation that base-linux leaves when a piece is detached
+(`Region_map_mmap::detach` calls `_reserve_local`,
+`repos/base-linux/src/lib/base/region_map_mmap.cc:401-405`), not an
+unmapped hole; a touch faults either way, and every run script fails if
+base-linux logs `_reserve_local unexpectedly failed`. The run script mounts `vfs_pipe` for
 the event loop's pipe and passes `+RTS --threads 1 --gpu off` as arguments.
 `-DMAP_NORESERVE=0` is still needed, because the libc headers lack the name.
 The runtime's own `err_trap` cannot run on base-linux, because libc only
@@ -323,13 +328,17 @@ the guard touch through a Bend program is in the next subsection.
 
 Example: `make run/writ_bend_tests` in the Genode build directory starts the
 unmodified generated C of `Tests.bend`, linked with the shim, under init on
-base-linux at ram 256M with `+RTS --threads 1 --gpu off`. It logs 764 PASS
+base-linux at ram 256M with `+RTS --threads 1 --gpu off`. It logs 782 PASS
 lines and `ALL LIBRARY TESTS PASSED` and exits with value 0, having used
-about 12 MiB of its quota. Its 815 lines are byte-identical to a fresh Linux
-single-lane run of the same tree. The four examples (`Example.bend`,
+about 12 MiB of its quota. Its 834 lines are byte-identical to a fresh Linux
+single-lane run of the same tree (merged with master at d8b1473; the earlier
+764-check tree matched the same way). The four examples (`Example.bend`,
 `examples/Flow.bend`, `examples/Transfer.bend`, `GpuExample.bend`) also run
-at 256M, and each log matches its Linux capture line for line. Each run
-script embeds that capture and fails if a line changes. All of this is CPU
+at 256M, and each log matches its Linux capture line for line. Each of the
+four example run scripts embeds its capture and fails if a line changes; the
+corpus script checks the PASS count and the final line, and the full
+comparison is in
+[genode-corpus-base-linux.txt](../verification/genode-corpus-base-linux.txt). All of this is CPU
 only. GpuExample's dispatch line is text the program prints, not device
 evidence.
 

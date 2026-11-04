@@ -5,7 +5,8 @@ named in it was performed, while Atomics across lanes remains unverified.
 1.1 is checked because the generated C of the reference program, linked with
 the host-layer shim, prints `hi` under init on `base-linux` and exits 0
 (verification/genode-bend-hello-base-linux.txt, host-layer section). 1.4 is
-checked because `Tests.bend` (764 PASS lines and `ALL LIBRARY TESTS PASSED`)
+checked because `Tests.bend` (782 PASS lines and `ALL LIBRARY TESTS PASSED`
+on the tree merged with master at d8b1473; 764 on the earlier tree caf13ca)
 and the four examples ran as components on `base-linux` and each log is
 byte-identical to a fresh Linux single-lane record of the same tree
 (verification/genode-corpus-base-linux.txt and
@@ -14,7 +15,8 @@ overflow was forced through a Bend program (`Overflow.bend`), and the
 component terminated at the runtime's guard page with no resumption, but the
 parent (init) recorded nothing. The GB-004 scenario's count of 638 checks
 is the older corpus; parity for 1.4 was checked against the current
-764-check record of this tree. The runtime rows are in
+782-check record of this tree (and before the merge against the 764-check
+record). The runtime rows are in
 verification/genode-runtime-rows-base-linux.md.
 
 ## 1. Component build and runtime rows

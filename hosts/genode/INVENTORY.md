@@ -4,8 +4,8 @@ Status: started in the Genode host-layer lane, Task 1 (2026-11-03); completed
 for the memory host layer in Task 3 (2026-11-04). The shim is linked into the
 Bend components `writ_bend_hello`, `writ_bend_tests`, `writ_bend_example`,
 `writ_bend_flow`, `writ_bend_transfer`, `writ_bend_gpuexample`, and
-`writ_bend_overflow`. Under init on base-linux at 256M the corpus prints 764
-PASS lines and `ALL LIBRARY TESTS PASSED`, and the corpus and examples match
+`writ_bend_overflow`. Under init on base-linux at 256M the corpus prints 782
+PASS lines (764 before the merge of master at d8b1473) and `ALL LIBRARY TESTS PASSED`, and the corpus and examples match
 the Linux single-lane reference line for line
 (`verification/genode-corpus-base-linux.txt`). This file lists host binding
 code only; none of it is Writ policy, and no authority, label, budget, or
@@ -32,6 +32,16 @@ offers none for these calls); libc's originals are reached by
 
 Probe scaffolding (not part of the shim, holds no authority):
 `hosts/genode/probes/reservation/` (`probe_reservation.c`, `target.mk`, two run scripts).
+The reservation probe lives under `hosts/genode/probes/` because it tests the
+host layer itself and is kept with the shim as its source of record; the
+earlier component-lane probes (`scripts/genode/probes/<row>/`) measured
+Genode's libc rows without the shim and stay with the other run scaffolding.
+
+Shared run and build configuration (not part of the shim):
+`scripts/genode/writ_bend.inc` (the settings every Bend component's
+`target.mk` includes; live copy `src/app/writ_bend.inc`) and
+`scripts/genode/writ_bend.tcl` (the boot configuration and shared checks the
+run scripts source; live copy `run/writ_bend.tcl`).
 
 ## Exported symbols (`writ_mem.cc`)
 
@@ -69,6 +79,34 @@ Probe scaffolding (not part of the shim, holds no authority):
   `tgkill` system calls for SIGSEGV (the region-map fault signal is never
   delivered on base-linux). Kernels
   that deliver region-map faults need a different front end, not built.
+- **base-linux only, guard dependency**: a guard is not an unmapped hole. When
+  the shim detaches a piece, base-linux's `Region_map_mmap::detach` munmaps
+  the range and re-reserves it with `_reserve_local`, a PROT_NONE Linux
+  mapping (`repos/base-linux/src/lib/base/region_map_mmap.cc:401-405`); the
+  guard's fault comes from that reservation. If the re-reservation fails,
+  base-linux logs `_reserve_local unexpectedly failed` and the range is free
+  address space that a later mapping could take. Every run script that links
+  the shim fails on that line (`writ_bend_refuse_reserve_failure` in
+  `scripts/genode/writ_bend.tcl`).
+
+## Build settings carried by every Bend component
+
+Every Bend component's `target.mk` includes `scripts/genode/writ_bend.inc`,
+first written as `scripts/genode/writ_bend_hello/target.mk`; each setting is
+recorded with the error it answers in
+`verification/genode-bend-hello-base-linux.txt` (E1-E4, H1, H3):
+
+- `SRC_CC = writ_mem.cc`, `LIBS = base libc` (the shim replaces posix's
+  component entry).
+- `CUSTOM_CC = clang-23 --target=x86_64-unknown-elf` for the generated C
+  (musttail and preserve_none need clang); the generated unit is compiled
+  outside Genode's tool chain, the shim and the link by GCC 14.2.0.
+- `-DMAP_NORESERVE=0` (FreeBSD 12.0 headers lack the name; the shim never
+  depends on the flag).
+- `LIBGCC_INC_DIR` set to clang's resource include directory (clang's
+  `stdatomic.h`), and `LD_LIBGCC` kept at the Genode tool chain's libgcc.
+- `CC_MARCH = -m64 -march=x86-64-v2`: the small code model instead of
+  Genode's large model, so clang emits section names `genode.ld` places.
 
 ## Lifetime
 
@@ -88,11 +126,17 @@ term heap in place by mapping a span as large as the current corpus at its
 end (requests up to 4 TiB): growth stops after the 1 TiB request, at a 2 TiB
 corpus, and the runtime then posts its out-of-memory error. No run comes
 near it (each base-linux region map also holds at most 4096 pieces).
+The 32 reservation slots also bound the lane count: the runtime holds one
+term-heap reservation, one evaluation-stack reservation per lane (the IO
+loop's included), and one more per `corpus_grow` span, so with `--threads N`
+a qualifying `mmap` fails with `ENOMEM` once these exceed 32, at roughly 30
+lanes. Only single-lane runs have been made (see Concurrency assumption).
 A chunk is only allocated if the PD's available RAM covers it plus 64 KiB
 and at least 8 caps remain. At most 16 benign retries per page address
 (16 slots) for faults on an already populated chunk. Limits of that table:
-counts never decay, so a page that races benignly more than 16 times over
-the whole run is refused (component dies); and with more than 16 addresses
+counts never decay while the reservation lives (`munmap` clears the entries
+of its pages, since Task 3's final review), so a page that races benignly
+more than 16 times over a reservation's life is refused (component dies); and with more than 16 addresses
 stuck at once the slots evict each other before any reaches the bound, so an
 unresolvable fault among them livelocks instead of terminating.
 
@@ -105,6 +149,13 @@ unresolvable fault among them livelocks instead of terminating.
   `8ba108f2240aebb161f12ca85cf48cfae79968a5e80b772abfb9acdd03ef4774`.
 - No functional change was needed for the corpus, the examples, or the
   fault run.
+- Final review (one token change): `_release` clears the retry-table
+  entries whose page lies in the released reservation, so counts do not
+  outlive `munmap`; header comments now state the guard's base-linux
+  dependency and the EFAULT limit. sha256 now
+  `df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42`; the
+  hello, rts, and both reservation probe runs were repeated with it
+  (`verification/genode-corpus-base-linux.txt`, final-review section).
 
 ## Fault behaviour observed through a Bend program
 
@@ -126,8 +177,16 @@ lock the handler needs would deadlock. The handler runs on the faulting
 stack (no SA_ONSTACK, see the source header), so a machine-stack overflow
 dies without the shim's line.
 
+## System calls do not populate
+
+A system call that reads or writes an untouched chunk of a reservation (for
+example `write(2)` from, or `read(2)` into, a buffer never touched by user
+code) gets `EFAULT` from Linux instead of a SIGSEGV, so lazy population does
+not happen on that path (`verification/genode-reservation-probe-base-linux.txt`,
+section 7). Buffers handed to I/O must have been touched first. Not
+exercised; no run here showed an `EFAULT`.
+
 ## Reviewer
 
-Not yet reviewed. The shim is now linked into the Bend components; the
-reviewer is to be named by the lane's review of Task 3, and this line updated
-with the name and the reviewed sha256.
+Not reviewed under GB-006. Lane reviews are recorded in the SDD ledger; the
+GB-006 reviewer and reviewed sha256 are to be named at task 2.2.
