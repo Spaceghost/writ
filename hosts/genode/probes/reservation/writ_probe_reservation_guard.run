@@ -17,6 +17,10 @@
 # did not resume, no FAIL line appeared, and either init reported a
 # nonzero exit or the component's process is gone while the timer's is
 # still listed.
+# From a KERNEL=hw build directory (base-hw under QEMU) the last condition
+# is instead: init reported exit value 139, the shim's base-hw refusal
+# (hosts/genode/shim/writ_mem.cc, "Failure behaviour"); the process-list
+# checks are printed but do not count there.
 #
 # Variants (Task 1 fix pass), selected by environment variables:
 #   WRIT_RESERVATION_MODE  guard-touch (default), straddle-touch, or exhaust
@@ -109,7 +113,15 @@ if {$resumed || $failed || !$refused} {
 	puts stderr "Error: $mode did not end in the expected refused fault"
 	exit 1
 }
-if {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
+# base-hw (Genode base-hw lane, Task 1, fix round 1): the shim refuses by
+# Parent::exit(139) and the host's process list says nothing about a QEMU
+# guest, so only init's report of exactly exit value 139 counts.
+if {[have_spec hw]} {
+	if {!$init_exit || $exit_value != 139} {
+		puts stderr "Error: on base-hw init must report exit value 139 (got $exit_value)"
+		exit 1
+	}
+} elseif {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
 	puts stderr "Error: the component neither exited nonzero nor vanished"
 	exit 1
 }

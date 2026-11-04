@@ -17,3 +17,8 @@
 2026-11-04T16:32:06Z	implementer	switched to docs/superpowers/records/2026-11-04-genode-base-hw for log and report; note: b123e10 contains .lane/genode-base-hw.log (committed under the earlier instruction), its removal goes into the next commit
 2026-11-04T17:17:36Z	implementer	base-linux corpus with changed shim: 782 PASS, 834 lines byte-identical to the merged-tree reference (sha fc3a08aa...), exit 0, 60m31s
 2026-11-04T17:18:03Z	implementer	Task 1 done: report written; committing corpus record
+2026-11-04T17:18:39Z	controller	Task 1 done; review dispatched
+2026-11-04T17:25:58Z	controller	review: needs fixes (reruns, inventory, fault coverage); fix round 1 dispatched
+2026-11-04T17:31:03Z	implementer	fix round 1: handler also on PD address space, stack area, linker area; attach errors named; hw scratch null-pointer probe: shim refusal line + init exit value 139, no core 'illegal'; hw guard probe (exit 139 now required) and hello pass
+2026-11-04T17:42:12Z	implementer	fix round 1: base-linux reruns with final shim all pass (hello, rts, 2 probes, writ_bend_probe, 8 monitor runs, overflow, corpus 782 PASS identical); evidence FIX ROUND 1 written
+2026-11-04T17:42:36Z	implementer	fix round 1 done; committing

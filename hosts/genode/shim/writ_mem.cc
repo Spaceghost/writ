@@ -114,6 +114,21 @@
  * the access, which core now resolves from the attached chunk. Signals to
  * one context coalesce, which is why the handler drains every queued
  * faulter of every reservation per signal rather than one.
+ *   Coverage. The same handler is also registered, at construct, on the
+ * PD's own address space and on its stack and linker areas
+ * (Pd_session::address_space, stack_area, linker_area, repos/base/include/
+ * pd_session/pd_session.h:235-248). Every fault this unit cannot resolve
+ * anywhere in the component (a null pointer, a thread's stack guard, a
+ * write to read-only code) is therefore reflected here and refused; core
+ * does not log its own "illegal ..." line for it, because a region map
+ * with a registered handler reflects instead of reporting ("omit
+ * diagnostics", repos/base/src/core/include/region_map_component.h:
+ * 430-440). Not covered: an exception that is not a page fault (an
+ * invalid instruction, a raw Linux system call as in E2 of
+ * verification/genode-bend-hello-base-hw.txt), which base-hw's pager
+ * reports as "unresolvable exception" and halts (repos/base-hw/src/core/
+ * pager.cc:131-140), and a parent that registers its own handler on this
+ * PD's address space (one handler per region map: the later one wins).
  *   Why a dedicated entrypoint and not the channel's "writ_channel": that
  * one exists only with a <writ_channel> config node, while every
  * component with a reservation needs the fault handler; and a fault must
@@ -133,8 +148,9 @@
  * cannot be resolved by this unit, and is refused like a guard touch.
  *
  * Failure behaviour. Every refusal kills the component: a fault on a
- * guard, outside every reservation, a fault whose chunk cannot be
- * charged, or (base-linux) a fault on an already populated chunk that
+ * guard, outside every reservation (on base-hw also inside the stack or
+ * linker area), a fault whose chunk cannot be charged or attached (the
+ * attach error is named), or (base-linux) a fault on an already populated chunk that
  * keeps recurring at the same address (more than MAX_RETRIES times), or
  * (base-hw) any reflected fault on a populated chunk. A chunk is charged
  * through a plain Pd_session_client on Env::pd_session_cap(), not through
@@ -155,7 +171,17 @@
  * init records the exit and destroys the protection domain. Until init
  * has done so, threads other than the faulting one may still run; with
  * --threads 1 nothing else evaluates Bend terms. The refusal is taken on
- * the "writ_fault" entrypoint, never on the faulting thread.
+ * the "writ_fault" entrypoint, never on the faulting thread. The line is
+ * logged before the exit so that it reaches the LOG before init destroys
+ * the PD; if the halted faulter holds the LOG client's lock (it faulted
+ * inside Genode::log, for example on a text buffer in writ_shim_log), the
+ * refusal blocks on that lock and the component stays halted with no exit
+ * and no record (fails closed: nothing resumes; not observed).
+ *   On base-hw this is GB-003's halting substitute, and its record is
+ * self-reported: the shim, inside the component, requests the exit; init
+ * records an exit value, not a fault (139 is a convention, told apart from
+ * a voluntary exit 139 only by the shim's preceding line, itself written by
+ * the component); core records nothing.
  *
  * Concurrency. The shim's state is guarded by one mutex, which the fault
  * handler also takes (on base-hw the "writ_fault" entrypoint holds it
@@ -496,16 +522,28 @@ static Region_map::Attr _piece_attr(addr_t start, addr_t end, addr_t c)
 	         .at = start, .executable = false, .writeable = true };
 }
 
-/* Attach chunk idx's dataspace as the pieces outside the guards. */
-static bool _attach_pieces(Reservation &r, size_t idx)
+/*
+ * Attach chunk idx's dataspace as the pieces outside the guards. Returns
+ * nullptr on success, otherwise the first attach error, named so that a
+ * refusal tells RM-session quota (OUT_OF_RAM, OUT_OF_CAPS: on base-hw the
+ * pieces are core metadata charged to the Rm_connection) from a conflict.
+ */
+static char const *_attach_pieces(Reservation &r, size_t idx)
 {
+	using E = Region_map::Attach_error;
 	Region_map_client rm(r.rm_cap);
 	addr_t const c = idx*CHUNK, e = r.chunk_end(idx);
-	bool ok = true;
+	char const *err = nullptr;
 	r.for_each_piece(c, e, [&] (addr_t s, addr_t t) {
-		if (rm.attach(r.chunks[idx].ds, _piece_attr(s, t, c)).failed())
-			ok = false; });
-	return ok;
+		rm.attach(r.chunks[idx].ds, _piece_attr(s, t, c)).with_result(
+			[&] (Region_map::Range) { },
+			[&] (E a) {
+				if (err) return;
+				err = a == E::OUT_OF_RAM      ? "chunk could not be attached: attach OUT_OF_RAM"
+				    : a == E::OUT_OF_CAPS     ? "chunk could not be attached: attach OUT_OF_CAPS"
+				    : a == E::REGION_CONFLICT ? "chunk could not be attached: attach REGION_CONFLICT"
+				    :                           "chunk could not be attached: attach INVALID_DATASPACE"; }); });
+	return err;
 }
 
 static void _detach_pieces(Reservation &r, size_t idx)
@@ -547,11 +585,11 @@ static char const *_populate(Reservation &r, addr_t off)
 	if (!ds.valid()) return err ? err : "chunk could not be charged: invalid dataspace";
 
 	r.chunks[idx] = { ds, true };
-	if (!_attach_pieces(r, idx)) {
+	if (char const *why = _attach_pieces(r, idx)) {
 		_detach_pieces(r, idx);
 		_pd->free_ram(ds);
 		r.chunks[idx] = { { }, false };
-		return "chunk could not be attached";
+		return why;
 	}
 	_chunks_populated++;
 	return nullptr;
@@ -678,6 +716,10 @@ static void _watch_faults(Capability<Region_map>) { }
 	sleep_forever();
 }
 
+/* the PD's own region maps the handler also watches (_install_fault_handler) */
+struct Pd_area { Capability<Region_map> cap { }; char const *why = nullptr; };
+static Pd_area _pd_areas[3];
+
 struct Rm_fault_handler
 {
 	Signal_handler<Rm_fault_handler> sigh;
@@ -694,6 +736,21 @@ struct Rm_fault_handler
 	void _handle()
 	{
 		Mutex::Guard guard(_mutex());
+
+		/*
+		 * A fault of the component's own address space, stack area, or
+		 * linker area: an access with no region behind it outside every
+		 * reservation (a null pointer, a thread's stack guard), or one the
+		 * region's rights refuse. Nothing here can resolve it. The address
+		 * is absolute for the address space and relative to the area for
+		 * the other two (the refusal line names which).
+		 */
+		for (Pd_area const &area : _pd_areas) {
+			Region_map::Fault const f = Region_map_client(area.cap).fault();
+			if (f.type != Region_map::Fault::Type::NONE)
+				_refuse(area.why, f.addr);
+		}
+
 		for (Reservation &r : _res) {
 			if (!r.used) continue;
 			Region_map_client rm(r.rm_cap);
@@ -725,6 +782,27 @@ static void _install_fault_handler()
 	_fault_ep.construct(*_env, size_t(FAULT_EP_STACK), "writ_fault",
 	                    Affinity::Location());
 	_rm_fault_handler.construct(*_fault_ep);
+
+	/*
+	 * The same handler on the PD's own region maps: its address space
+	 * (Pd_session::address_space, repos/base/include/pd_session/
+	 * pd_session.h:235-238, as repos/os/src/test/fault_detection/
+	 * main.cc:119-121 does for a child) and the stack and linker areas
+	 * nested in it (pd_session.h:243-248; core's Region_map_components,
+	 * repos/base/src/core/include/pd_session_component.h:77-78). A fault
+	 * outside every reservation is then reflected here and refused, instead
+	 * of core's "illegal ..." line and a halted thread with no exit
+	 * (repos/base/src/core/region_map_component.cc:102-104). Registered
+	 * before main runs. Only one handler per region map exists, so a
+	 * parent that registers its own on this PD's address space (as the
+	 * fault_detection test does) replaces this one, or is replaced by it.
+	 */
+	Pd_session &pd = _env->pd();
+	_pd_areas[0] = { pd.address_space(), "outside every reservation" };
+	_pd_areas[1] = { pd.stack_area(),    "stack area, offset in the area" };
+	_pd_areas[2] = { pd.linker_area(),   "linker area, offset in the area" };
+	for (Pd_area const &area : _pd_areas)
+		Region_map_client(area.cap).fault_handler(_rm_fault_handler->sigh);
 	_fault_handler_installed = true;
 }
 
@@ -772,7 +850,15 @@ static void *_reserve(void *hint, size_t len)
 		if (!cand.used) { r = &cand; break; }
 	if (!r) { errno = ENOMEM; return MAP_FAILED; }
 
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
+	/* base-linux installs the SIGSEGV handler at the first reservation */
 	if (!_fault_handler_installed) _install_fault_handler();
+#endif
+	/*
+	 * On base-hw construct has started the "writ_fault" entrypoint before
+	 * main; it is never constructed here, from libc's context. Without it
+	 * no reservation is made.
+	 */
 	if (!_fault_handler_installed) { errno = ENOMEM; return MAP_FAILED; }
 
 	size_t const size = _page_round(len);
@@ -953,7 +1039,7 @@ extern "C" int mprotect(void *addr, ::size_t len, int prot)
 	/* re-attach the same dataspaces around the guard: data is kept */
 	bool ok = true;
 	for (size_t i = first; i <= last; i++)
-		if (r->chunks[i].populated && !_attach_pieces(*r, i)) ok = false;
+		if (r->chunks[i].populated && _attach_pieces(*r, i)) ok = false;
 
 	if (!ok) {
 		/*

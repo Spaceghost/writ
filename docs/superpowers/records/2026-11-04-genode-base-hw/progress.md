@@ -9,3 +9,5 @@ Preflight scan:
 | cross-lane | unikraft-twins and records-alignment touch no hosts/genode, scripts/genode, or Genode evidence file; records-alignment edits add-genode-capability-adoption only | disjoint |
 Ruling: contrib/native-hosts/genode is read for conventions only, never modified or depended on.
 Task 1: dispatched (base 09cd9bc).
+Task 1: implementer DONE (b123e10, 4f7c0e3): hi on base-hw via Region_map fault handler, 3 chunks, exit 0; base-linux reruns byte-identical (shared population function, code change). Finding: on a guard refusal core logs nothing and halts the thread; the shim calls Parent::exit(139) and init records it. Ruling pending review: self-reported exit as the GB-003 substitute. Review dispatched.
+Task 1: review Needs fixes (base-linux monitor/Overflow reruns missing; INVENTORY contradicts the guard observation; fault coverage overstated). Ruling: bounded attempt at a whole-address-space fault handler; GB-003 substitute on base-hw = the component's self-reported exit 139 recorded by init, with the six limits stated; box 1.3 is Task 2's with that wording. Fix round 1 dispatched (base 4f7c0e3).

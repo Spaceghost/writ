@@ -26,7 +26,13 @@ RESULT
   Not shown by the hello (it never touches a guard): the refusal path. The
   reservation guard probe was also run on base-hw (GUARD PROBE below): the
   shim's refusal line and init's "exited with exit value 139" are logged.
-  The Bend program's own guard hit (Overflow) is Task 2.
+  The Bend program's own guard hit (Overflow) is Task 2. Correction to
+  the plan's Task 2 text ("on base-hw core reports unresolvable page
+  faults"): core does not report a fault on a region map that has a
+  registered handler; it reflects it and omits its diagnostics
+  (repos/base/src/core/include/region_map_component.h:430-440). The
+  base-hw GB-003 record is the component's self-reported fault exit,
+  recorded by init, with the limits listed in FIX ROUND 1.
 
 INPUTS
   hello.c       ../writ-genode/hello/hello.c, not re-emitted, sha256
@@ -185,7 +191,8 @@ ERRORS AND FIXES (in order)
       exit line: "... v a l u e   0 \r \r \n"), while writ_bend_require_exit0
       in writ_bend.tcl matched "exit value 0\r?\n". Fix: the pattern is now
       "exit value 0\r*\n" (still matches base-linux's "\r\n"; comment in
-      writ_bend.tcl). Run 3 (10:13) and run 4 (final, committed sources):
+      writ_bend.tcl). Run 3 (10:13), run 4, and run 5 (the first with the
+      sources committed in b123e10/4f7c0e3, shim 0590e6dc):
       "Run script execution successful.", rc 0.
 
 SHIM CHANGE (hosts/genode/shim/writ_mem.cc; one C++ unit, GB-006)
@@ -228,7 +235,10 @@ SHIM CHANGE (hosts/genode/shim/writ_mem.cc; one C++ unit, GB-006)
       resumed), Parent::exit(139). Without a registered handler core would
       instead log "illegal <fault> by pager_object: ..." and halt the thread
       (region_map_component.cc:102-104), with no exit and so no record by
-      init; the shim always registers one.
+      init. In b123e10/4f7c0e3 the handler was registered only on each
+      reservation's region map, so that was still the outcome for a fault
+      outside every reservation; fix round 1 also registers it on the PD's
+      address space, stack area, and linker area (FIX ROUND 1).
     - Retry table: not used on base-hw (header, "Retry table"): core
       resolves touches of attached ranges itself, so a reflected fault on a
       populated chunk is refused. "benign retries" stays 0.
@@ -240,15 +250,19 @@ SHIM CHANGE (hosts/genode/shim/writ_mem.cc; one C++ unit, GB-006)
   which is why the base-linux runs were repeated (BASE-LINUX RERUNS).
   Console, time, and channel sections: unchanged.
 
-RUNS ON BASE-HW (ram 256M, caps 1000; logs ../writ-genode/run-hw-hello-{1..4}.out)
+RUNS ON BASE-HW (ram 256M, caps 1000; logs ../writ-genode/run-hw-hello-{1..5}.out;
+fix-round runs in FIX ROUND 1)
   Run 1  unchanged shim: E2.
   Run 2  split shim: hi, exit 0; script failed on the line end (E4).
   Run 3  after the writ_bend.tcl fix: script successful.
-  Run 5  after the comment-only citation fix in writ_mem.cc (0590e6dc...):
-         writ_mem.o rebuilt, same binary sha256 87fd2dfa...a151, the same
-         log as run 4 line for line, "Run script execution successful."
   Run 4  final run script (hello.run header comment updated after run 3),
-         11 s, rc 0:
+         shim 742e4753, 11 s, rc 0 (log below).
+  Run 5  the committed sources of b123e10/4f7c0e3 (shim 0590e6dc, a
+         comment-only citation fix of 742e4753): writ_mem.o rebuilt, same
+         binary sha256 87fd2dfa...a151, the same log as run 4 line for line,
+         "Run script execution successful." This is the committed-source
+         run of the first submission.
+  Run 4 log:
     spawn qemu-system-x86_64 -display none -accel tcg -no-reboot -serial mon:stdio -m 800 -cdrom var/run/writ_bend_hello.iso -machine q35 -cpu Skylake-Client -net nic,model=e1000,netdev=net0 -netdev user,id=net0
     Bender Version 0.9-beta7-51-g28ba2ad-dirty
     Patching BDA with I/O port 0x3f8.
@@ -366,3 +380,158 @@ LIMITS
     charged to the Rm_connection's quota, which attach does not upgrade. The
     hello needed 3 chunks, the probe 5; the corpus's need is Task 2's.
   - The hello's guard is never touched; the Bend-level fault row is Task 2.
+
+
+=============================================================================
+FIX ROUND 1 (review: docs/superpowers/records/2026-11-04-genode-base-hw/task-1-review.md)
+Recorded: 2026-11-04, 11:20 to 11:45 -06:00
+
+SHIM CHANGES (writ_mem.cc 0590e6dc... -> 2ad3e4160c1500583aead78d486713ec19fd155a1171363a45ba2e31487bbf6a)
+  F1  Coverage on base-hw (review Important 3). In the first submission the
+      handler was registered only on each reservation's region map. A fault
+      outside every reservation therefore found a region map with no
+      handler (region_map_component.h:430-432), and core logged
+      "illegal ..." and halted the thread, with no exit and no record by init.
+      The shim now also registers the same Signal_handler at construct on
+      the PD's address space and on its stack and linker areas
+      (Pd_session::address_space/stack_area/linker_area,
+      repos/base/include/pd_session/pd_session.h:235-248; core's
+      Region_map_components, repos/base/src/core/include/
+      pd_session_component.h:77-78). Env::rm() is a Local_rm
+      (Constrained_region_map, repos/base/include/base/env.h:28-42), which
+      has no fault_handler, so the registration goes through
+      Region_map_client(pd.address_space()). This follows the pattern of
+      repos/os/src/test/fault_detection/main.cc:119-121 and
+      region_map.h:79-87. The handler drains those three region maps first
+      and refuses any fault there with "outside every reservation" (the
+      absolute address), or "stack area, offset in the area" / "linker
+      area, offset in the area". Core's own "illegal" line no longer
+      appears for these faults, because a region map with a registered
+      handler reflects the fault instead of reporting it ("omit
+      diagnostics", region_map_component.h:430-440). Still not covered: an
+      exception that is not a page fault (pager.cc:131-140; E2), and a
+      parent that registers its own handler on the component's address
+      space, since a region map has only one handler and the later
+      registration wins.
+      First build: the reservation probe's target (strict warnings) failed
+        writ_mem.cc:694:8: error: 'Pd_area::cap' should be initialized in the member initialization list [-Werror=effc++]
+      Fixed with default member initializers.
+  F2  _attach_pieces returns the first Region_map::Attach_error, and a
+      refusal names it: "chunk could not be attached: attach OUT_OF_RAM",
+      "... OUT_OF_CAPS", "... REGION_CONFLICT", or "... INVALID_DATASPACE"
+      (review Minor 5). This applies to both cases, and mprotect's
+      re-attach uses the same function. The population path changed, so
+      the corpus was rerun.
+  F3  _reserve installs the SIGSEGV handler lazily on base-linux only. On
+      base-hw it relies on construct and fails with ENOMEM if the
+      entrypoint is missing, so no Entrypoint is ever constructed from
+      libc's context (review Minor 4).
+  F4  Header text: the coverage above; the self-reported record and its
+      limits; the LOG-lock limit (review Minor 3). The line is logged
+      before the exit so that it reaches the LOG before init destroys the
+      PD. If the halted faulter held the LOG client's lock, the refusal
+      would block, and the component would stay halted with no exit and no
+      record. That fails closed but is not observed.
+  The fix-round runs before the final header edit used revision 36033520...
+  (../writ-genode/shim-revisions/writ_mem.fr1-run.cc). The committed
+  2ad3e416 differs from it in comments only. Token comparison with the
+  command in HASHES gives
+  b63bd39502a3e59e6f6108f988d10a0f99be884c245277fb7743846918a66d89 for
+  both. Every run listed below as "final" used 2ad3e416: the live copy's
+  mtime is 11:31:36, before every one of those runs. The earlier revisions
+  are kept outside the repository for re-checking (review Minor 2):
+  ../writ-genode/shim-revisions/writ_mem.run.cc (742e4753..., the shim of
+  hw runs 2-4) and writ_mem.0590e6dc.cc.
+  writ_probe_reservation_guard.run (8ca3ba40... ->
+  2b534e5612b25edbb9efa0be03783e3e2540f8a2b041774f64f75105019d8ec6): on
+  base-hw ([have_spec hw]) it now requires init's exit value 139
+  specifically. The process-list checks only apply on base-linux (review
+  Minor 7).
+
+BASE-HW RUNS (final; logs ../writ-genode/run-hw-<name>-fr1-final.out)
+  Build: cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make app/writ_bend_hello app/writ_probe_reservation
+  writ_bend_hello (binary be73d1ddabd23dc939d01d3a690c997c375006166affac28ff97cbf1c74968a1), rc 0:
+    [init -> writ_bend_hello] hi
+    [init -> writ_bend_hello] writ_mem: [exit] ram used=8429568 limit=268153436 caps used=41 limit=953 reservations=2 guards=1 chunks populated (total)=3 faults resolved=3 benign retries=0 reserved at hint=1 elsewhere=9 released=8 timer short wakes=0
+    [init] child "writ_bend_hello" exited with exit value 0
+    Run script execution successful.
+    (The figures are unchanged from run 5. The three extra fault_handler
+    registrations cost no caps.)
+  writ_probe_reservation_guard (probe binary 3694f66feb63e221f0b0b5421d03d017dfa6e3020a772e6f5e896680b99a73b9), rc 0:
+    [init -> writ_probe_reservation] probe_reservation: writing inside the guard window at 0x300102000
+    [init -> writ_probe_reservation] writ_mem: unresolved fault at 0x300102000 (guard page), component terminates
+    [init] child "writ_probe_reservation" exited with exit value 139
+    init exit line:     1 (value 139)
+    Run script execution successful.   (now requires value 139)
+  writ_scratch_nullfault: a scratch probe, not committed. Its sources are
+  ../writ-genode/writ-repo/src/app/writ_scratch_nullfault/{main.c,target.mk}
+  and run/writ_scratch_nullfault.run, under init with caps 300 and ram 64M.
+  main.c prints "nullfault: writing to address 0x10", stores 0x55 through
+  (volatile int *)0x10, and would print "resumed" afterwards. It links
+  writ_mem.cc with writ_shim.mk, as the components do.
+    cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_scratch_nullfault \
+      WRIT_RUN_SCENARIOS="writ_bend_hello writ_probe_reservation_guard writ_scratch_nullfault"
+    rc 0:
+    [init -> writ_scratch_nullfault] nullfault: writing to address 0x10
+    [init -> writ_scratch_nullfault] writ_mem: unresolved fault at 0x10 (outside every reservation), component terminates
+    [init] child "writ_scratch_nullfault" exited with exit value 139
+    No "illegal" line from core, and no "resumed" line. The same outcome
+    occurred with revision 36033520 (run-hw-scratch-nullfault-1.out). A
+    run of this probe against the first submission's shim was not made.
+    The "illegal ..." outcome for that shim is read from core's source
+    (region_map_component.cc:102-104), not observed.
+  Not run on base-hw: a stack-area or linker-area fault.
+
+BASE-LINUX RERUNS (final shim 2ad3e416, rebuilt from the committed source;
+logs ../writ-genode/run-<name>-fr1-linux.out; status ../writ-genode/fr1-linux.status)
+  Every run below ended with "Run script execution successful." and make rc 0:
+    writ_bend_hello                 16 s  hi; exit 0; ram used=8335360 limit=268313180 caps used=35 limit=963 ... (binary e2b0d2288c88eabdeb7b359b74c2cb0bc9584cc5ae439d4958c33abf378ddcea)
+    writ_bend_rts                    7 s  --help exit 0; --bogus "unknown runtime option" exit 1
+    writ_probe_reservation_live     15 s  exit 0
+    writ_probe_reservation_guard    34 s  "Kernel: writ_mem: unresolved fault at 0x7ffef7f02000 (guard page), component terminates"
+    writ_bend_probe                 15 s  PASS, exit 0
+    writ_bend_monitor_accept       325 s  (the monitor's first build after the shim change)
+    writ_bend_monitor_substitute     7 s
+    writ_bend_monitor_routed_s       6 s
+    writ_bend_monitor_claim_ignored  7 s
+    writ_bend_monitor_bad_length    10 s
+    writ_bend_monitor_liveness       8 s
+    writ_bend_monitor_queue         13 s  (the ninth client's "parent denied Writ_channel-session" line, as before)
+    writ_bend_monitor_dead_client   16 s
+    writ_bend_overflow              45 s  defaults 3G/2000: "Kernel: writ_mem: unresolved fault at 0x7ffff7f43000 (guard page), component terminates", as in run-writ_bend_overflow-6-final.out
+    writ_bend_tests                 30 s  (writ_mem.o and the link only; tests.c unchanged)
+      writ_mem: [exit] ram used=12558336 ... chunks populated (total)=5 faults resolved=5 ...
+      [init] child "writ_bend_tests" exited with exit value 0
+      --- writ_bend_tests: 782 PASS lines, 834 component lines ---
+      lines extracted as in CORPUS ON BASE-LINUX to
+      ../writ-genode/genode-tests-fr1-linux.lines; diff against
+      writ-build/genode-host-layer/merged/tests-1.out: no output, rc 0;
+      sha256 fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff
+  The base-linux binaries of the first submission predated its committed
+  comment-only shim edit (review Minor 2). These are rebuilt from the
+  committed 2ad3e416.
+
+GB-003 ON BASE-HW: WHAT THE RECORD IS
+  This is the profile's halting substitute, with a self-reported record:
+  1. The termination is self-requested: the shim calls Parent::exit(139)
+     from its "writ_fault" entrypoint.
+  2. init records an exit value, not a fault. 139 is a convention. The
+     only thing that tells it apart from a voluntary exit 139 is the shim's
+     preceding labelled line, which the component also writes.
+  3. Core records nothing (region_map_component.h:430-440).
+  4. The faulting thread stays halted and is never resumed. Other threads
+     may run between the exit RPC and init destroying the PD. This is not
+     observed and is bounded in practice only by --threads 1.
+  5. Coverage: every page fault in the PD's address space, stack area,
+     linker area, and the shim's reservations (F1). Exceptions that are
+     not page faults are not covered.
+  6. All evidence is from a QEMU TCG emulated boot.
+  Correction to the plan's Task 2 text: core does not report unresolvable
+  faults on a region map with a registered handler. The base-hw GB-003
+  substitute is the component's self-reported fault exit, recorded by init.
+  Box 1.3 is Task 2's to check, worded "parent records the component's
+  self-reported fault exit".
+  Possible later route to a parent-observed record, not done: a
+  supervising parent that holds the child's PD can register its own
+  handler on the child's address space, as fault_detection does. That
+  handler would replace the shim's.

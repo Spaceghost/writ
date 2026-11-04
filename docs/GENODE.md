@@ -343,8 +343,10 @@ with a refusal line instead of hanging on a resource request (record:
 
 Two base-linux facts limit this result. First, Genode does not deliver
 region-map fault signals on Linux, so the shim fills chunks from a Linux
-SIGSEGV handler it installs itself. Kernels that deliver region-map faults
-need a separate front end, which has not been built. Second, init still
+SIGSEGV handler it installs itself. The base-hw lane (Task 1) built the
+region-map front end for base-hw beside it, selected at build time
+([base-hw hello record](../verification/genode-bend-hello-base-hw.txt));
+NOVA and seL4 have none. Second, init still
 recorded nothing when the component died, so GB-003's parent-record
 requirement stays open on base-linux.
 

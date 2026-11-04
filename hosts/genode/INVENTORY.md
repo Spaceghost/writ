@@ -85,16 +85,20 @@ run scripts source; live copy `run/writ_bend.tcl`).
   every chunk piece the shim attaches is core metadata charged to that
   session's quota, which `Rm_connection::create` upgrades on demand but
   `Region_map_client::attach` does not; an attach answered `OUT_OF_RAM` or
-  `OUT_OF_CAPS` becomes the refusal "chunk could not be attached". The
+  `OUT_OF_CAPS` becomes the refusal "chunk could not be attached: attach
+  OUT_OF_RAM" (or `OUT_OF_CAPS`; a conflict is `REGION_CONFLICT`, fix round
+  1 names the error). The
   hello's three chunks fit; whether the corpus does is Task 2's question.
 - **Region map fault handler** (base-hw only): `Region_map_client::
-  fault_handler` on each reservation's region map at creation, and
+  fault_handler` on each reservation's region map at creation and, at
+  construct, on the PD's address space, stack area, and linker area
+  (`Pd_session::address_space`, `stack_area`, `linker_area`); and
   `Region_map_client::fault` from the handler (see Fault delivery).
 - **Entrypoint `writ_fault`** (base-hw only): one `Genode::Entrypoint`
   (its own thread, stack `FAULT_EP_STACK` = 64 KiB), started in
   `Libc::Component::construct` before `main` in every component that links
   the shim, carrying the one `Signal_handler` registered on every
-  reservation's region map.
+  reservation's region map and on the PD's three own region maps.
 - **Parent** (base-hw refusals only): `exit(139)` after a refused fault.
 - **PD** (the component's own), through a plain `Pd_session_client` on
   `Env::pd_session_cap()`: `alloc_ram`/`free_ram` for 2 MiB chunks and
@@ -238,7 +242,7 @@ be able to select it.
 | Case | Build | Front end | Resolved fault | Refused fault |
 | --- | --- | --- | --- | --- |
 | 1, base-linux | `../writ-genode/build/x86_64` (`KERNEL ?= linux`), `-DWRIT_SHIM_FAULT_LINUX_SIGSEGV` | raw Linux SIGSEGV handler, installed at the first qualifying `mmap`, runs on the faulting thread (`region_map.h:82-83`: the region-map signal is never delivered on Linux) | chunk attached; returning from the handler retries the access; a fault on an already populated chunk is a benign race, retried up to `MAX_RETRIES` per page (retry table) | `raw` line `writ_mem: unresolved fault at <addr> (<why>), component terminates`, default SIGSEGV action restored, the retried access kills the process; init logs nothing |
-| 2, base-hw | `../writ-genode/build/x86_64-hw` (`KERNEL ?= hw`, `BOARD ?= pc`), `-DWRIT_SHIM_FAULT_REGION_MAP` | `Region_map::fault_handler` on every reservation's region map, one `Signal_handler` on the `writ_fault` entrypoint; core halts the faulter and submits the signal (`repos/base/src/core/region_map_component.cc:476-486`) | the handler drains `Region_map_client::fault()` of every live reservation until `Type::NONE`; the populating attach wakes every faulter in its range (`region_map_component.cc:272-278`) and the thread resumes | the same line through `Genode::log` (so labelled by init), the faulter left halted (never resumed), then `Parent::exit(139)` (128 + SIGSEGV); init records the exit. A reflected fault on a populated chunk is refused: the retry table does not apply, because core resolves touches of attached ranges itself and the attach already woke every faulter in range |
+| 2, base-hw | `../writ-genode/build/x86_64-hw` (`KERNEL ?= hw`, `BOARD ?= pc`), `-DWRIT_SHIM_FAULT_REGION_MAP` | `Region_map::fault_handler` on every reservation's region map and on the PD's address space, stack area, and linker area, one `Signal_handler` on the `writ_fault` entrypoint; core halts the faulter and submits the signal (`repos/base/src/core/region_map_component.cc:476-486`) | the handler drains `Region_map_client::fault()` of every live reservation until `Type::NONE`; the populating attach wakes every faulter in its range (`region_map_component.cc:272-278`) and the thread resumes | the same line through `Genode::log` (so labelled by init), the faulter left halted (never resumed), then `Parent::exit(139)` (128 + SIGSEGV); init records the exit. A reflected fault on a populated chunk is refused: the retry table does not apply, because core resolves touches of attached ranges itself and the attach already woke every faulter in range |
 
 Why a dedicated `writ_fault` entrypoint and not the channel's `writ_channel`:
 the channel entrypoint exists only with a `<writ_channel>` config node,
@@ -248,10 +252,49 @@ entrypoint, which libc keeps in `wait_and_dispatch_one_io_signal` while Bend
 runs); and its thread touches only the chunk tables, never reservation
 memory, so it cannot fault into its own handler.
 
-Observed: base-hw resolved faults (the hello, 3 chunks,
-`verification/genode-bend-hello-base-hw.txt`). Not yet observed on
-base-hw: a guard touch, a refusal, `Parent::exit(139)` and init's record of
-it (Task 2's Overflow run), and concurrent faulters (single lane only).
+Coverage on base-hw. Because the handler is also registered on the PD's
+address space, stack area, and linker area, every page fault the shim cannot
+resolve anywhere in the component (inside a reservation, or outside every
+reservation: a null pointer, a thread's stack guard, a write to read-only
+code) ends in the refusal line and `Parent::exit(139)`. Core does not log
+its own `illegal ...` line for such a fault: a region map with a
+registered handler reflects the fault instead of reporting it ("omit
+diagnostics", `repos/base/src/core/include/region_map_component.h:430-440`).
+Not covered: an exception that is not a page fault, which base-hw's pager
+reports as `unresolvable exception` and halts (`repos/base-hw/src/core/
+pager.cc:131-140`; seen as E2 of the base-hw hello record); and a parent
+that registers its own handler on the component's address space (one
+handler per region map, the later registration wins).
+
+GB-003 on base-hw is the profile's halting substitute, and its record is
+self-reported:
+1. the termination is self-requested: the shim calls `Parent::exit(139)`
+   from its `writ_fault` entrypoint;
+2. init records an exit value, not a fault; 139 is a convention, told
+   apart from a voluntary exit 139 only by the shim's preceding labelled
+   line, which the component also writes;
+3. core records nothing (`region_map_component.h:430-440`);
+4. the faulting thread stays halted and is never resumed, but other threads
+   may run between the exit RPC and init destroying the PD (not observed;
+   bounded in practice only by `--threads 1`);
+5. coverage is the scope above;
+6. all evidence is from a QEMU TCG emulated boot.
+A refusal logs before it exits, so the line reaches the LOG before init
+destroys the PD. If the halted faulter holds the LOG client's lock (it
+faulted inside `Genode::log`, for example on a text buffer of
+`writ_shim_log`), the refusal blocks on that lock and the component stays
+halted with no exit and no record: fail closed, not observed.
+
+Observed on base-hw (`verification/genode-bend-hello-base-hw.txt`): resolved
+faults (the hello, 3 chunks; the reservation guard probe, 5 chunks); a guard
+touch refused with the shim's line and init's `exited with exit value 139`
+(C probe, `../writ-genode/run-hw-reservation-guard-1.out` and the fix-round
+reruns); a null-pointer store outside every reservation refused the same
+way, with no `illegal` line from core (scratch probe, fix round 1,
+`../writ-genode/run-hw-writ_scratch_nullfault-fr1-final.out`). Not yet
+observed on base-hw: a guard hit by a Bend program (Task 2's Overflow run),
+a stack-area or linker-area fault, and concurrent faulters (single lane
+only).
 
 ## Build settings carried by every Bend component
 
@@ -483,6 +526,14 @@ configured).
   base-linux only. New build file `writ_shim.mk`. sha256 of `writ_mem.cc`
   recorded in `verification/genode-bend-hello-base-hw.txt` (HASHES), with
   the base-linux reruns.
+- Fix round 1: the base-hw handler is also registered on the PD's address
+  space, stack area, and linker area (Coverage above); `_attach_pieces`
+  returns the first attach error and the refusal names it (both cases);
+  `_reserve` installs the SIGSEGV handler lazily on base-linux only, and on
+  base-hw relies on construct (no Entrypoint is constructed from libc's
+  context); header text on coverage, the self-reported record, and the LOG
+  lock. The guard probe's run script requires exit value 139 on base-hw.
+  sha256 in `verification/genode-bend-hello-base-hw.txt` (FIX ROUND 1).
 
 ## Fault behaviour observed through a Bend program
 
@@ -498,8 +549,12 @@ terminates`. The process ended each time and nothing resumed. The parent
 
 Only single-lane use has been run. One mutex guards all shim state and is
 also taken by the SIGSEGV handler (base-linux) or by the `writ_fault`
-entrypoint's handler (base-hw), which holds it across its RPCs to core. Two lanes faulting on the same chunk, or
-a touch while mprotect re-pieces a chunk, are handled by a bounded retry
+entrypoint's handler (base-hw), which holds it across its RPCs to core. On
+base-linux two lanes faulting on the same chunk, or a touch while mprotect
+re-pieces a chunk, are handled by a bounded retry (not exercised). On
+base-hw neither needs a retry: the attach that populates or re-pieces a
+chunk wakes every faulter in its range, and a faulter left queued on a
+populated chunk (a failed re-attach, or a rights violation) is refused
 (not exercised). A fault taken while the faulting thread holds a Genode
 lock the handler needs would deadlock. The handler runs on the faulting
 stack (no SA_ONSTACK, see the source header), so a machine-stack overflow
