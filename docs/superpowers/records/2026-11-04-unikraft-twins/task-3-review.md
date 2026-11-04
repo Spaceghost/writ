@@ -139,3 +139,52 @@ because only comments change. Compare implementation tokens before and after as 
 asks, and record the new hash. Once it is fixed (Minor 1 is worth taking at the same
 time), I would approve. The map, the atexit discrimination, the evidence, the trial
 record and the box states are sound and match what is on disk.
+
+## Fix round 1 re-review
+
+Scope: 005f560..08123e4 (HEAD 08123e4). Checked against files and logs on disk; the
+three check-fault.sh results were re-run from the existing logs (WRIT_NO_BOOT=1), not
+re-booted.
+
+1. ✅ exit_device.c and INVENTORY say exhaustion is a crash (253) and the runtime's own
+   out-of-memory stop would be 17 if reached. Token compare (`gcc -fpreprocessed -dD -E
+   -P`, whitespace squeezed) of 005f560 and now: 39158e3e both. The evidence records
+   c4012e46... (matches the file) and that the images came from the token-identical
+   88098cb9... revision.
+2. ✅ INVENTORY:~113 cites fault, corpus and exit-codes evidence. Channel.md and
+   unikraft_sleep.c say 255 when observed, 19 now, not rerun. unikraft_sleep.c tokens
+   c92e0284 before and after; evidence hash f9ccb6cf... matches.
+3. ✅ musl 1.2.3 is present under writ-unikernel/corpus-unikraft/.unikraft/build/libmusl.
+   exit.c:27-33 is `exit()` calling `__funcs_on_exit` then `_Exit`; _exit.c:4-7 is `_exit()`
+   calling `_Exit` only.
+4. ✅ run-rtsbogus.log and run-rtsthreads0.log (codesa/logs): "bend: unknown runtime option
+   --bogus" and "bend: expected a thread count of 1 or more after --threads", each
+   followed by 17.
+5. ✅ tasks.md 2.3 gives both halves of the UL-006 gap (the signal library closes only the
+   message half; exhaustion still shares 253) and corpus failure QEMU 35 via
+   `Test.bend` `check` -> `IO.die(Unit, 1, ...)`.
+6. ✅ check-fault.sh: Overflow PASS 253, Exhaust PASS 253, negative control (Hello vs the
+   overflow reference) FAIL with exit 1, signals-trial capture PASS against sig-ref.txt.
+   The script sets BAD on a program-line diff, a missing crash screen (when 253 is
+   expected) or a wrong QEMU status, and exits $BAD. It reads run.sh's cleaned log and
+   never calls console.sh, so the NUL rejection does not matter. INVENTORY lists it
+   with both references.
+7. ✅ docs/UNIKERNELS.md Open list has the gpuexample "PM driver failed the operation: -5"
+   line, with the evidence link.
+8. ✅ The report and the evidence both record OpenSpec 1.16.0 via bunx as 44 passed, 0
+   failed. I did not re-run it.
+
+Also: no .bend file changed in the round; no image, binary or build output is tracked;
+the review and record files are committed in 08123e4 (activity.log and progress.md carry
+uncommitted working-tree edits, which are the controller's, not part of this fix). No
+absolute path under hosts/ other than the `/mnt/...` text at INVENTORY.md:124, which
+quotes a recorded out-of-tree default and is not a path the tree uses.
+
+New defect (Minor, record accuracy only): the report's item 4 command line and the
+evidence use the label `rtsrtsbogus` and `rtsrtsthreads0`, but the logs on disk are
+`run-rtsbogus.log` and `run-rtsthreads0.log` (verification/unikernel-fault-qemu.txt, the
+"Fix round 1" `run.sh codesa ...` lines). Fix: correct the two labels in the evidence
+and report so a reader can find the logs.
+
+Verdict: Open: the label typo above (documentation only; no behavior or evidence is
+affected). Everything else is addressed.

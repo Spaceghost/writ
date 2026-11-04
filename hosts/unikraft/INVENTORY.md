@@ -4,8 +4,11 @@ Every authored non-Bend file under `hosts/unikraft/` (UL-004), including this fi
 (`INVENTORY.md`, documentation only: it is not linked or run), and the Bend effect
 definitions they serve. UL-004 (as amended in the effect-twins lane, Task 1) allows two
 kinds of kernel-specific code: the effect twins, and the inventoried boot and termination
-host layer (`exit_device.c`, which cannot be a twin because no Bend code runs on a crash or
-after `main` returns, and `host.c`, the functions the twins call). These files are host
+host layer. The boot and termination host layer is `exit_device.c` alone: it cannot be a
+twin because no Bend code runs on a crash or after `main` returns. `host.c` is not part of
+that layer: it is the C side of the effect twins (console, clock, channel, and the COM2
+scratch-register probe), the functions the twins' `.c` files call, and is inventoried with
+them. These files are host
 binding code for the Unikraft 0.21.0 target, not Writ policy: they move console bytes
 and channel frames, read a clock, answer a wrong-length frame with a fixed transport
 refusal, and carry how an image ended out to the harness, and decide no authority
@@ -154,7 +157,7 @@ Monitor and client (scaffolding, not Writ code):
 | `probes/client/client.c` | Host-side C client (scaffolding header): connects to the channel's Unix socket, writes `accept`, `other`, `badver`, `badlen` frames, prints sent and received frames as hex and the decoded reply; exits 1 on a socket error, short read, or sequence mismatch | `main` | the socket named on its command line; stdout, stderr |
 
 Probe scaffolding outside this directory: `scripts/unikernel/*.bend` (Hello, Die, Exit,
-Overflow, Clock, Lanes, Probe) are small Bend programs that only exercise the image (a
+Overflow, Exhaust, Clock, Lanes, Probe) are small Bend programs that only exercise the image (a
 print, a status, a fault, a clock read, lanes, the Unikraft effects); they define no
 effect, policy, or authority and are not imported by the library or the test suite.
 `Probe.bend` imports `effects/Unikraft.bend` and is built with `WRIT_HOST_LAYER=y`; its

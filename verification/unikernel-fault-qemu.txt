@@ -253,10 +253,10 @@ Comment-only source changes, implementation tokens compared with the previous re
     is byte-identical (cmp).
 
 The runtime's own _exit(1) and main's return 1 (17), Hello image 8f751440...:
-$ hosts/unikraft/scripts/run.sh codesa rtsrtsbogus hello "+RTS --bogus" 60 1024
+$ hosts/unikraft/scripts/run.sh codesa rtsbogus hello "+RTS --bogus" 60 1024
 bend: unknown runtime option --bogus          (main returns 1)
 17
-$ hosts/unikraft/scripts/run.sh codesa rtsrtsthreads0 hello "+RTS --threads 0" 60 1024
+$ hosts/unikraft/scripts/run.sh codesa rtsthreads0 hello "+RTS --threads 0" 60 1024
 bend: expected a thread count of 1 or more after --threads     (err_fail, _exit(1))
 17
 
@@ -282,3 +282,25 @@ $ WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-fault.sh fault sig1 overflow $W/fa
 
 OpenSpec 1.16.0: ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
   -> Totals: 44 passed, 0 failed (44 items)
+
+Final-review fixes (2026-11-04)
+-------------------------------
+check-fault.sh (sha256 ee57039a9351901d26f87e74ef8fbfc06866553645071d0ab2905ea93973b71c)
+now deletes the run's log and raw capture before it boots, captures run.sh's exit status
+and fails when it differs from the expected QEMU code ("run.sh exit: RC, expected XQ"),
+and fails with "log: missing" when no log was written, so a stale log can no longer pass.
+Reruns under QEMU TCG (emulated boot, not native):
+$ hosts/unikraft/scripts/check-fault.sh codesb ovf2 overflow verification/unikernel-overflow-reference.txt 253 60 4096
+  -> QEMU exit: 253; result: PASS; script exit 0
+     $W/codesb/logs/run-ovf2.log sha256 0c46418b7aae7bacef5cc8a4c285cfd8a2bacfeae0f735e975de7e9669e0c0f1
+$ hosts/unikraft/scripts/check-fault.sh codesa exf2 exhaust verification/unikernel-exhaust-reference.txt 253 120 1024
+  -> QEMU exit: 253; result: PASS; script exit 0
+     $W/codesa/logs/run-exf2.log sha256 5110aa8f6c37e8be70c05331e65056fe14c5573482fc4bdc721b92c4310bf6b4
+Negative control (Hello image against the overflow reference and code):
+$ hosts/unikraft/scripts/check-fault.sh codesa negf2 hello verification/unikernel-overflow-reference.txt 253 60 1024
+  -> run.sh exit: 33, expected 253; program lines: DIFFER; crash screen: MISSING;
+     result: FAIL; script exit 1
+     $W/codesa/logs/run-negf2.log sha256 08c88c4189811f23d5666cf9ba9526aa68b29dd21cfbb1abf09f0cb6d780566a
+Missing image (no boot possible, no log left behind):
+$ hosts/unikraft/scripts/check-fault.sh codesa nosuch nosuch verification/unikernel-overflow-reference.txt 253
+  -> run.sh exit: 2, expected 253; log: missing; result: FAIL; script exit 1

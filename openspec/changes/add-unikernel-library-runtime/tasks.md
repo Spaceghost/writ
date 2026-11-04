@@ -31,15 +31,18 @@ pending.
   `IO.die`, and a fault (verification/unikernel-fault-qemu.txt; 1 / 3 / 253 before the
   effect-twins lane's Task 3, verification/unikernel-exit-codes.txt). Console and time:
   `hosts/unikraft/effects/Unikraft.bend` (`Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`)
-  with `.c` twins over `hosts/unikraft/host.c` and `.js` twins that fail; the probe
+  with `.c` twins over `hosts/unikraft/host.c` (the twins' C side: console, clock, channel,
+  and the COM2 scratch-register probe; part of the twins, not of the boot and termination
+  host layer, which is `exit_device.c` alone) and `.js` twins that fail; the probe
   `scripts/unikernel/Probe.bend` puts its text on serial through `Unikraft.log`, measures
   102 to 103 ms around a 100 ms sleep, shows its FAIL branch once (QEMU 3, first map), and
   check-binary.sh sees exactly the three effects as rows beyond the profile
   (verification/unikernel-effects-qemu.txt, fix round 1; static link, so effect rows only).
   The sleep parks on the runtime's own timer (`io_wait_on`, as `IO.sleep` does), so the loop
   stays live; `io_work` is out because its helper thread outlives `main` on this
-  configuration and turns success into QEMU 255 (that file, R0-E1), and the ingress twin
-  must park on its device descriptor the same way. The re-park and clock-failure paths
+  configuration and turned success into QEMU 255 under the first exit map (that file,
+  R0-E1; 19, a signal death, under the current map, not rerun). The ingress twin parks on
+  the runtime timer the same way, since COM2 has no descriptor here (below). The re-park and clock-failure paths
   have not been exercised. The images still send `IO.print` through lib-musl; only
   `Unikraft.log` uses a twin, so the "Console effect" scenario (a twin for `IO.print`) is
   a gap.
@@ -77,6 +80,8 @@ pending.
   Still unchecked for the gaps above: the ingress subject is scaffolding, and `IO.print`
   has no twin (the "Console effect" scenario).
 - [x] 2.2 Configure a single lane with the inline IO helper; build `Tests.bend` and the four examples; capture console output under QEMU and compare line for line with the Linux single-lane record.
+  Runtime host profile: the runs cite `scripts/runtime-profile/` (check-binary.sh) and are
+  recorded in `verification/runtime-profile-hosts.md` (Unikraft corpus and channel rows).
   Evidence: verification/unikernel-corpus-qemu.txt (current result: its integration rerun
   section, tree aaa6885). One CPU (`UKPLAT_CPU_MAXCOUNT=1`) and `+RTS --threads 1 --gpu off`.
   "With the inline IO helper" is read as "no IO helper thread runs": Bend 2.0.39 has no

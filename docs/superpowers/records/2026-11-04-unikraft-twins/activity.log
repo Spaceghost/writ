@@ -67,3 +67,8 @@
 2026-11-04T19:37:21Z	controller	review: needs fixes (exhaustion wording); fix round 1 dispatched
 2026-11-04T19:37:22Z	implementer	Task 3 fix round 1 started
 2026-11-04T19:41:10Z	implementer	fix round 1: exit_device/INVENTORY exhaustion wording (tokens identical), 255->19 notes, musl cites, +RTS bad args 17 x2, check-fault.sh (overflow PASS, exhaust PASS, neg FAIL rc1), tasks.md 2.3 halves + 35, UNIKERNELS Open PM line; OpenSpec bunx 1.16.0 44/44; committing
+2026-11-04T19:41:31Z	controller	fix round done; re-review and final review dispatched
+2026-11-04T19:42:57Z	controller	Task 3 complete; awaiting the whole-branch review
+2026-11-04T19:49:36Z	controller	final review: needs fixes; final fix pass dispatched
+2026-11-04T19:49:39Z	implementer	final-review fixes started; merging master
+2026-11-04T19:57:10Z	implementer	final review: host-layer scope, check-fault.sh exit/stale-log fix + reruns (ovf2 PASS, exf2 PASS, negf2 FAIL rc1, nosuch FAIL rc1), docs/spec alignment, traceability UL-004/005/006, profile-hosts Unikraft+channel rows, profile cite; OpenSpec bunx 1.16.0 44/44; committing

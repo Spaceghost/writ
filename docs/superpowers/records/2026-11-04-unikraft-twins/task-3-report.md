@@ -123,3 +123,56 @@ Status: DONE. Evidence: verification/unikernel-fault-qemu.txt, "Fix round 1".
    runs used the same bunx form, also 44/44.)
 
 Boxes unchanged: 2.1, 2.3, 2.4, section 3 unchecked. No long build in this round.
+
+## Final-review fixes
+
+Review: `final-review.md` in this directory. Master merged first (7433b20, clean, no
+manifest conflict). No requirement weakened; no generated C, runtime, or Unikraft source
+touched; no C changed in this round.
+
+1. Important 1, host-layer scope: `hosts/unikraft/INVENTORY.md` intro and tasks.md 2.1 now
+   say the boot and termination host layer is `exit_device.c` alone; `host.c` is the C side
+   of the effect twins (console, clock, channel, COM2 scratch-register probe). Rationale:
+   description alignment with the delivered files. UL-004 not reworded.
+2. Important 2, `check-fault.sh`: deletes the log and raw capture before booting, captures
+   run.sh's exit status and fails on a mismatch, and fails when no log exists. Reruns
+   (QEMU TCG, emulated): Overflow ovf2 PASS 253; Exhaust exf2 (-m 1024) PASS 253; negative
+   control negf2 (Hello vs. the overflow reference) FAIL, "run.sh exit: 33, expected 253",
+   script exit 1; missing image FAIL, "log: missing", exit 1. Recorded at the end of
+   `verification/unikernel-fault-qemu.txt` ("Final-review fixes").
+3. Minor 3: tasks.md 2.1's "must park on its device descriptor" now says the ingress parks
+   on the runtime timer since COM2 has no descriptor; "QEMU 255" qualified as the first map
+   (19 under the current one, not rerun), here and in docs/UNIKERNELS.md. Its Open list gains
+   the `IO.print` twin, the unresynchronised partial frame, and the untraced back-off.
+   Rationale: description alignment.
+4. Minor 4: Channel.md states the partial-frame-plus-cap silent death until the harness
+   timeout and the unbounded console line per dropped frame. Rationale: records a limit.
+5. Minor 5: design.md's networking/virtio sentence now says the channel's transport is the
+   host layer's choice and the record is the contract (COM2 to a Unix socket today; an
+   authenticated ingress over any transport stays open, UL-008). Rationale: description
+   alignment; the transport is the host layer's choice, the record is the contract.
+6. Minor 6: INVENTORY.md probe list includes Exhaust.bend.
+7. Minor 7: `unikernel-fault-qemu.txt` labels are rtsbogus/rtsthreads0 (the log names on
+   disk). This report had no such labels to fix. `unikernel-corpus-qemu.txt` line 9 now
+   names its own "Task 3 rerun" section instead of another file.
+8. Traceability (`openspec/traceability/unikernel-library-runtime.md`): Implementation and
+   evidence lists cover effects/, monitor/, check-channel.sh, check-fault.sh and the
+   effects/channel/fault records; UL-004 and UL-006 rows rewritten to the current codes
+   (33/35/17/253), the amendment, and the gaps (IO.print twin, scaffolding subject, no fault
+   message in the delivered configuration, exhaustion at 253); UL-005 gives QEMU 1 under the
+   first map and 33 under the current one. Rationale: record alignment.
+9. `verification/runtime-profile-hosts.md` (Unikraft rows and the channel row only): the
+   782 Unikraft row adds the Task 3 rerun (33; uqemu lines 280-294); the pending channel row
+   is filled from ufault/uchan; uqemu citations shifted +7 for the code-map note (also in the
+   764/782 summary rows, where only the uqemu numbers changed) and UNIKERNELS.md 109/111 ->
+   156/158; one new paragraph defines ufault/uchan and the line-number revision. No other
+   line touched. Rationale: record alignment.
+10. Runtime profile citation: design.md gains "The runtime host profile gates the image"
+    (scripts/runtime-profile/, check-binary.sh, runtime-profile-hosts.md, BEND-RUNTIME.md;
+    qualifies no host) and tasks.md 2.2 cites the profile; the host-profile tasks.md 2.3 note
+    gains one sentence ("unikernel cited on 2026-11-04"); its box stays unchecked.
+    Rationale: description alignment, so that sentence is true.
+11. OpenSpec 1.16.0 (`~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict
+    --no-interactive`): Totals: 44 passed, 0 failed (44 items).
+
+Boxes unchanged.

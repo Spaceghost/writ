@@ -37,14 +37,28 @@ the answer.
 
 The monitor-profile effects are authored in Bend with C twins. On the chosen
 kernel the twins call its console and time primitives directly instead of
-going through libc emulation of Linux syscalls. The authenticated channel
-ingress uses the kernel's networking or a virtio transport chosen by the host
-contract's channel change. Exit and crash reporting cannot be a twin, since no
+going through libc emulation of Linux syscalls. The channel ingress's
+transport is the host layer's choice; the record format is the contract. The
+current scaffolding carries the Genode channel's records over QEMU's second
+serial port (ISA COM2) to a Unix socket on the host
+(`hosts/unikraft/effects/Channel.md`); an authenticated ingress, whatever its
+transport (networking, virtio, or another device), remains open (UL-008).
+Exit and crash reporting cannot be a twin, since no
 Bend code runs on a crash or after `main` returns; it is a boot and termination
 host layer. The effect twins and that inventoried host layer are the only
 kernel-specific code, and each file is listed in a trust inventory as authored
 binding code with its exported symbols and what it may touch (UL-004, amended
 with its rationale in tasks.md 2.1).
+
+### The runtime host profile gates the image
+
+The image runs the generated Bend runtime as its monitor, so the runtime host
+profile applies to it. The monitor profile's allow lists in
+`scripts/runtime-profile/` are the contract for what the image's program may
+call, `scripts/runtime-profile/check-binary.sh` is the check (UL-003), and the
+image's corpus and channel runs belong in `verification/runtime-profile-hosts.md`.
+See [docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md). The profile qualifies
+no unikernel host; the boot environments stay separate (UL-007).
 
 ### Lanes and memory follow the profile
 

@@ -121,7 +121,11 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   are the only kernel-specific code (the crash hook cannot be a twin; rationale in the
   change's tasks.md 2.1).
 - **Host code:** listed in [hosts/unikraft/INVENTORY.md](../hosts/unikraft/INVENTORY.md).
-- **Open:** an authenticated ingress subject (task 2.1, UL-008); the runtime's fault
+- **Open:** an authenticated ingress subject (task 2.1, UL-008); a twin for `IO.print`
+  (the "Console effect" scenario, 2.1); no resynchronisation of the channel after a
+  partial frame (later frames are read shifted; with the refusal cap reached, the channel
+  goes silent until the harness timeout); the take twin's busy-poll back-off is not traced;
+  the runtime's fault
   message in the delivered configuration (2.3: shown only with posix signals enabled);
   arena exhaustion shares the crash code 253 with a fault (no code of its own); statuses
   above 108 share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU codes of
@@ -155,7 +159,7 @@ built here).
 | Guest RAM exhaustion (stack growth) | **substituted**: the same Unikraft crash; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred); arena exhaustion not induced (E4, `-m 1024`, Overflow) | **substituted**: OSv kernel `Aborted` in its page pool; halts without power-off, killed (O-E4, `-m 1024`) |
 | Threads | **substituted** by a single lane: `pthread_create` returns 0, `pool_work` was not entered before shutdown in a non-yielding program (E6); behaviour when the main lane yields not tried; one CPU, cooperative (E5, E6) | **supplied**: second lane runs on one and on two vCPUs, correct results (O-E5, O-E6); but shutdown with an open pool **missing**: guest idles after `main` returns (O-E6) |
 | Clock | **supplied** (E7) | **supplied** (O-E7) |
-| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was exercised later and works, but the never-ending helper thread turns success into QEMU 255 at shutdown ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1) | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
+| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was exercised later and works, but the never-ending helper thread turned success into QEMU 255 at shutdown under the first exit map (19, a signal death, under the current map; not rerun) ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1) | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
 | Process: argv | **supplied** via `-append` (E3) | **supplied** via the kernel command line (O-E3) |
 | Process: `BENDRTS` | **substituted**: build-time only, compiled into the environment (E8) | **supplied** at boot with `--env=` (O-E8) |
 | Process: exit status | (matrix, before the port; see [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)) **missing**: return from `main` ends the run with QEMU 0 whatever it returned (power-off inferred; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred)); `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |

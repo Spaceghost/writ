@@ -65,8 +65,10 @@ reading and QEMU's socket buffer fills, a put or refusal waits in the loop threa
 the client reads (the image is then stuck; the harness timeout bounds it). `host.c`
 bounds its own output so that bad frames alone cannot reach that point: it answers at
 most `WRIT_UK_REFUSAL_MAX` (8) bad-length frames per boot, then drops further ones with
-a console line and no reply. This is host failure handling, not policy: the cap makes no
-Writ decision, and dropped frames never reach Bend. A client that sends only good
+a console line and no reply. Each dropped frame still writes its console line, so the
+console output under a flood is unbounded (the console is COM1, not the channel). This is
+host failure handling, not policy: the cap makes no Writ decision, and dropped frames
+never reach Bend. A client that sends only good
 frames gets one 80-byte result per request and the monitor's fuel (4) bounds them; the
 size of buffer at which a non-reading client blocks `com_write` was not tested.
 
@@ -94,7 +96,10 @@ client that sends part of a frame and disconnects leaves those bytes in `host.c`
 buffer, and the next client's frames are read shifted by that many bytes; they then
 fail the length check or decode as other words. This widens no authority: every frame,
 however aligned, is checked as any other (length word, then the monitor's record checks),
-and the subject is the built-in word either way. Not exercised.
+and the subject is the built-in word either way. Once the refusal cap is reached, shifted
+frames that fail the length check are dropped without a reply, so a partial frame
+followed by the cap leaves the channel silently dead (every later frame dropped, nothing
+answered) until the harness timeout ends the image. Not exercised.
 
 ## Transport refusal (kind 3, written by host.c)
 

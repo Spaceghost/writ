@@ -6,7 +6,7 @@ recorded under the exit hook's map at the time and are kept as recorded. The hoo
 writes program statuses as s + 0x10 (success 33, status 1 35, 2s + 33 in general), a
 runtime or host-layer _exit(1) as 17, a signal death as 19; crash 253 and non-halt 251
 are unchanged. Reruns under the new map: verification/unikernel-fault-qemu.txt (and the
-corpus rerun in verification/unikernel-corpus-qemu.txt).
+corpus rerun at the end of this file, "Task 3 rerun").
 
 Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type the
 qemu-system-x86_64 default (pc), -cpu max, -no-reboot, the exit device
