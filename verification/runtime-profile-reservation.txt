@@ -1,0 +1,76 @@
+Runtime profile fail-stop on a failed memory reservation (RH-006, task 2.2)
+Bend version: bend 2.0.39 (from `bend version`)
+Compiler: clang version 23.1.1 (`bend -o` builds at -O2)
+Host: Linux 7.2.9-1-MANJARO x86_64, glibc 2.44
+Date: 2026-11-03 (CST)
+Environment: BEND_NO_TELEMETRY=1; commands run from the repository root
+Lanes: --threads 1. GPU mode: --gpu off; CPU execution only, not GPU evidence.
+Binary: ../writ-build/runtime-profile/hello, built by Task 2 with `bend scripts/runtime-profile/Hello.bend -o ../writ-build/runtime-profile/hello`
+binary sha256: 6d74494364506dc35de5e0c59f24a845a66c190b74c48081ed29641899566711 (matches verification/runtime-profile-binary-check.txt)
+
+Runtime path under test (Bend 2.0.39 emitted C): pool_mmap() calls mmap(PROT_READ|PROT_WRITE,
+MAP_PRIVATE|MAP_ANON|MAP_NORESERVE) and, on MAP_FAILED, err_fail("reservation failed"), which
+prints "bend: reservation failed" to stderr and calls _exit(1). Two reservations reach it at
+startup: the 8 GiB CPU corpus (corpus_map tries hinted addresses, then falls back to pool_mmap)
+and each lane's 2 GiB evaluation stack plus guard and alternate signal stack (pool_stack).
+MAP_NORESERVE does not exempt a mapping from RLIMIT_AS, so ulimit -v makes both fail.
+
+## Runs (each in a subshell so the limit does not leak; limits in KiB)
+
+$ ( ulimit -v 65536; ../writ-build/runtime-profile/hello +RTS --threads 1 --gpu off )
+[exit status: 1]
+stdout (0 bytes): 
+stderr (25 bytes): bend: reservation failed
+
+$ ( ulimit -v 8388608; ../writ-build/runtime-profile/hello +RTS --threads 1 --gpu off )
+[exit status: 1]
+stdout (0 bytes): 
+stderr (25 bytes): bend: reservation failed
+
+$ ( ulimit -v 10485760; ../writ-build/runtime-profile/hello +RTS --threads 1 --gpu off )
+[exit status: 1]
+stdout (0 bytes): 
+stderr (25 bytes): bend: reservation failed
+
+$ ( ulimit -v 11534336; ../writ-build/runtime-profile/hello +RTS --threads 1 --gpu off )
+[exit status: 0]
+stdout (3 bytes): hi
+stderr (0 bytes): 
+
+$ ( ulimit -v unlimited; ../writ-build/runtime-profile/hello +RTS --threads 1 --gpu off )
+[exit status: 0]
+stdout (3 bytes): hi
+stderr (0 bytes): 
+
+## Which reservation failed (gdb, breakpoint on err_fail, then the process mappings)
+
+$ ( ulimit -v 8388608; gdb -q -batch -ex 'break err_fail' -ex 'run +RTS --threads 1 --gpu off' \
+    -ex 'p (char*)$rdi' -ex 'info proc mappings' ../writ-build/runtime-profile/hello )   # filtered to the message and 8 GiB corpus
+$1 = 0x55555555a4e3 "reservation failed"
+The corpus filter printed nothing. Rerun with `ulimit -c 0` added and the whole gdb output saved to
+../writ-build/runtime-profile/resv/gdb8.txt:
+$ grep -c '^ *0x0000200000000000 ' ../writ-build/runtime-profile/resv/gdb8.txt
+0
+Every anonymous rw-p mapping in that output (none is 8 GiB, 0x200000000):
+0x000055555555e000 0x0000555555576000 0x18000 0x0 rw-p
+0x00007ffff7c1b000 0x00007ffff7c23000 0x8000 0x0 rw-p
+0x00007ffff7dfd000 0x00007ffff7e00000 0x3000 0x0 rw-p
+0x00007ffff7f37000 0x00007ffff7f39000 0x2000 0x0 rw-p
+0x00007ffff7ffe000 0x00007ffff7fff000 0x1000 0x0 rw-p
+
+$ ( ulimit -v 10485760; gdb -q -batch -ex 'break err_fail' -ex 'run +RTS --threads 1 --gpu off' \
+    -ex 'p (char*)$rdi' -ex 'info proc mappings' ../writ-build/runtime-profile/hello )   # filtered to the message and 8 GiB corpus
+$1 = 0x55555555a4e3 "reservation failed"
+0x0000200000000000 0x0000200200000000 0x200000000 0x0 rw-p 
+
+## Result
+With 64 MiB, 8 GiB, and 10 GiB of address space the runtime stops before the Bend program runs:
+it prints its own "bend: reservation failed", writes nothing to stdout ("hi" is never printed),
+and exits 1.
+At 8 GiB err_fail is reached with no corpus mapping present, so the 8 GiB corpus reservation is
+the one that failed; at 10 GiB the 0x200000000-byte (8 GiB) corpus at 0x0000200000000000 is
+mapped and the failing reservation is the 2 GiB evaluation stack (pool_stack is the only other caller of pool_mmap). With 11 GiB, and
+with no limit, Hello prints "hi" and exits 0, so the failures above come from the limit, not from
+the binary. The success threshold lies between 10 GiB (fails) and 11 GiB (succeeds); it was
+bracketed by these two runs, not bisected further. This is CPU execution on one Linux host; a
+host that overcommits or ignores the limit is not covered by this record.

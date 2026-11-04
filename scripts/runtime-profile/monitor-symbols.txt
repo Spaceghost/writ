@@ -1,0 +1,125 @@
+# Monitor profile: undefined symbols a Writ monitor binary may import (RH-002).
+#
+# One exact name per line; no patterns. `#` starts a comment line. Version
+# suffixes (`@GLIBC_2.34`) are stripped before comparison. Any import not
+# listed here fails scripts/runtime-profile/check-binary.sh.
+#
+# Derived for Bend 2.0.39 from verification/runtime-inventory-bend-2.0.39.txt
+# (the host calls the emitted runtime can name) minus the device group, plus
+# the imports `nm -u` reports for a dynamic build of
+# scripts/runtime-profile/Hello.bend that the inventory does not name. This
+# list covers glibc on Linux x86-64; another libc or host needs its own review.
+
+# Memory: the runtime reserves its heap and stacks with anonymous mappings and
+# guard pages; a failed reservation is a fail-stop.
+mmap
+mprotect
+munmap
+
+# Faults: the alternate signal stack and handlers that turn a stack overflow or
+# bad access into a fail-stop message, then restore the default and re-raise.
+sigaction
+sigaltstack
+signal
+raise
+
+# Threads: worker lanes, their lock and wakeup, and the error-claim owner.
+# pthread_detach is named by the inventory even though the Hello build does
+# not import it; it stays allowed because it only releases a lane's handle.
+pthread_cond_broadcast
+pthread_cond_signal
+pthread_cond_wait
+pthread_create
+pthread_detach
+pthread_mutex_lock
+pthread_mutex_unlock
+pthread_self
+sched_yield
+
+# Clock: monotonic time for IO.now and timeouts, and sleeps for IO.sleep and
+# the error-claim wait.
+clock_gettime
+nanosleep
+
+# Event loop: the self-pipe wakeup and the readiness wait over descriptors the
+# runtime already holds (standard streams and its own pipe).
+pipe
+fcntl
+select
+read
+write
+
+# Process: runtime options (BENDRTS), exit status for IO.exit and IO.die, and
+# the default thread count.
+getenv
+exit
+_exit
+sysconf
+sched_getaffinity
+__sched_cpucount  # glibc-only: CPU_COUNT helper (observed with glibc 2.44)
+
+# Cgroup CPU quota: on Linux, main reads cpu.max (or the cgroup v1 quota and
+# period files) at every startup to size the thread pool. These are not GPU
+# calls. That they open only a fixed read-only path chosen by the runtime, not
+# by the program, is reviewed in the runtime source; the symbol check admits
+# the names and cannot see the path. A Bend file effect would appear as File.*
+# in the effect check.
+# glibc redirects fscanf to __isoc23_fscanf under C23 headers, so Hello does
+# not import fscanf itself; it stays allowed as the inventory's spelling.
+fopen
+fscanf  # named by the inventory; not observed in Hello's imports (__isoc23_fscanf is)
+__isoc23_fscanf  # glibc-only: C23 fscanf redirect (glibc 2.38 and later; observed 2.44)
+fclose
+
+# Allocation and text: runtime buffers, the effect table, and messages.
+malloc
+calloc
+realloc
+free
+strdup
+snprintf  # named by the inventory; not observed in Hello's imports (the compiler lowers it)
+
+# Not in the inventory; observed with `nm -u` on the dynamic Hello build.
+# C startup and toolchain hooks that every clang/glibc executable imports.
+__libc_start_main
+__cxa_finalize
+__gmon_start__
+_ITM_deregisterTMCloneTable
+_ITM_registerTMCloneTable
+__stack_chk_fail
+__errno_location
+
+# Not in the inventory; observed with `nm -u`. Standard-stream output for
+# IO.print, IO.print_err, and runtime error messages.
+stdout
+stderr
+fwrite
+fflush
+fprintf
+printf
+ftrylockfile
+
+# Not in the inventory; observed with `nm -u`. Memory and string helpers used
+# by the runtime and by BENDRTS option parsing.
+memcpy
+memset
+strcmp
+strlen
+strspn
+strtok
+strtod
+__isoc23_strtol  # glibc-only: C23 strtol redirect (glibc 2.38 and later; observed 2.44)
+
+# Atomics (atomic_* and __atomic_* in the inventory) compile to instructions
+# with clang on x86-64 and are not imports. If a build ever imports them from
+# libatomic, the check fails and the import needs review here.
+#
+# Denied: the device group. CUDA (cu*), NVRTC (nvrtc*), the `open` of device
+# program files under BEND_CUDA, and Metal (MTL*) load and run GPU programs,
+# which RH-002 denies for a monitor. Hello built on this machine imports none
+# of them even though /opt/cuda is installed.
+#
+# Denied by omission: socket, file-descriptor, process-spawning, audio, and
+# windowing imports (for example socket, bind, listen, connect, inet_pton,
+# setsockopt, close, open, fork, execve, posix_spawn, dlopen). They enter a
+# binary only through denied Base effects; see monitor-effects.txt.
