@@ -26,10 +26,10 @@ CC_CXX_WARN_STRICT =
 # The statement attribute musttail first appeared in GCC 15; Genode 26.08's
 # prescribed tool chain is GCC 14.2.0. The generated C is written for clang
 # (it also uses '#pragma clang' and preserve_none/preserve_most), so this one
-# translation unit is compiled by the host clang for a bare x86_64 ELF
-# target, which, like genode-x86-gcc, predefines neither __linux__ nor
-# __unix__. Linking still uses the Genode tool chain (LD_CMD is $(CXX)).
-CUSTOM_CC = clang --target=x86_64-unknown-elf
+# translation unit is compiled by the host clang-23 (23.1.1, /usr/bin/clang-23)
+# for a bare x86_64 ELF target, which, like genode-x86-gcc, predefines
+# neither __linux__ nor __unix__. Linking still uses the Genode tool chain (LD_CMD is $(CXX)).
+CUSTOM_CC = clang-23 --target=x86_64-unknown-elf
 
 # Error 2 (compile): hello.c:1656 'MAP_NORESERVE undeclared'. Genode's libc
 # is FreeBSD 12.0's, whose <sys/mman.h> retired the flag (bit 0x0040 is now
@@ -48,10 +48,11 @@ CC_DEF += -DMAP_NORESERVE=0
 # headers (stdatomic.h, stddef.h, stdarg.h, float.h, ...), so the compiler
 # header directory follows the compiler. Genode's libc headers still come
 # first on the include path.
-LIBGCC_INC_DIR = $(shell clang -print-resource-dir)/include
+LIBGCC_INC_DIR = $(shell clang-23 -print-resource-dir)/include
 
-# Programs link libgcc found through $(CC); keep that the Genode tool
-# chain's libgcc so the clang switch stays confined to compiling hello.c.
+# Preventive, no triggering error: prg.mk finds libgcc through $(CC), which
+# would now ask clang. Keep the Genode tool chain's libgcc so the clang
+# switch stays confined to compiling hello.c.
 LD_LIBGCC = $(shell $(CROSS_DEV_PREFIX)gcc $(CC_MARCH) -print-libgcc-file-name)
 
 # Error 4 (load, first run): ld.lib.so logged '_reserve_local: lx_mmap

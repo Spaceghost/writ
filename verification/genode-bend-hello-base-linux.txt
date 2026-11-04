@@ -1,5 +1,5 @@
 Bend generated C as a Genode component on base-linux (Genode component lane, Task 2)
-Recorded: 2026-11-03, 20:28 to 20:45 -06:00
+Recorded: 2026-11-03, 20:28 to 20:53 -06:00 (review fixes from 20:48)
 
 Everything here is Genode-on-Linux (base-linux: core, init, and components are
 Linux processes) evidence. It is not native Genode execution on any kernel and
@@ -123,13 +123,9 @@ COMPILE, LINK, AND LOAD ERRORS (in order; each fixed by a target.mk change)
         8 -Wuninitialized, 3 -Wsometimes-uninitialized, plus notes); none
         concerns a host call.
 
-  E4  large-model section names (load-time, first run)
-      Log (run 1, ram 256M, before this change):
-        [init -> writ_bend_hello] Error: _reserve_local: lx_mmap failed (addr_in=0x0,addr_out=0x7fffe2000000/140736985038848)
-        [init -> writ_bend_hello] Error: failed to locally attach linker area
-        [init -> writ_bend_hello] Error: failed to allocate region within linker area
-        Kernel: Segmentation fault (signum=11), see Linux kernel log for details
-        Error: Test execution timed out   (exit 254)
+  E4  large-model section names (load-time; Run 1 under RUN UNDER init)
+      Log: ld.lib.so 'failed to locally attach linker area', then a
+        segmentation fault (verbatim under Run 1 below).
       Cause: Genode builds x86_64 code with -mcmodel=large
         (repos/base/mk/spec/x86_64.mk CC_MARCH). Under that model clang 23
         emits .ltext.*, .ldata, .lbss, and .lrodata.* sections, which
@@ -137,8 +133,17 @@ COMPILE, LINK, AND LOAD ERRORS (in order; each fixed by a target.mk change)
         LOAD segment at VirtAddr 0x0 instead of the program base 0x1000000,
         so ld.lib.so could not reserve its linker area. GCC keeps ordinary
         section names under the large model, so upstream never meets this.
-        -mlarge-data-threshold moves data back but not text (checked on a
-        three-line probe file).
+        -mlarge-data-threshold moves data back but not text. Probe (scratch
+        directory, t.c = 'int g[100]; static const char s[]="abc";
+        int f(void){return g[1]+s[0];}'):
+          clang --target=x86_64-unknown-elf -mcmodel=large [OPT] \
+            -ffunction-sections -fdata-sections -O2 -c t.c -o t.o
+          readelf -SW t.o | grep -o '\.l\?\(text\|data\|bss\|rodata\)[^ ]*'
+        OPT empty:                              .text .ltext.f .ltext.f .lbss.g
+        OPT -mlarge-data-threshold=4294967295:  .text .ltext.f .ltext.f .bss.g
+        (-mcmodel=large -fno-function-sections: .text .ltext .ltext .lbss;
+         -mcmodel=small -ffunction-sections:    .text .text.f .text.f .bss)
+        The probe ran with the 'clang' name, which resolves to /usr/bin/clang-23.
       Change: CC_MARCH = -m64 -march=x86-64-v2 (default small code model) for
         this target. Result: LOAD segments at 0x1000000 and 0x1005000;
         relocations are 45 R_X86_64_JUMP_SLOT and 2 R_X86_64_GLOB_DAT, which
@@ -147,7 +152,10 @@ COMPILE, LINK, AND LOAD ERRORS (in order; each fixed by a target.mk change)
   Final compile command (make VERBOSE= after removing hello.o; <writ-genode>
   is ../writ-genode). -D__FreeBSD__=12 and -D__GENODE__ come from Genode's libc
   import; hello.c tests neither. Rebuilt binary hash matched the run binary.
-    clang --target=x86_64-unknown-elf -DMAP_NORESERVE=0 -D__FreeBSD__=12
+  Builds before the review fix invoked 'clang' (symlink /usr/bin/clang ->
+  clang-23); target.mk now names clang-23 and the rebuild produced the same
+  binary hash, e5f62ed0...a427.
+    clang-23 --target=x86_64-unknown-elf -DMAP_NORESERVE=0 -D__FreeBSD__=12
       -fno-builtin-sin -fno-builtin-cos -fno-builtin-sinf -fno-builtin-cosf
       -D__GENODE__ -ffunction-sections -fno-strict-aliasing -nostdinc  -g
       -m64 -march=x86-64-v2 -O2 -MMD -MP -MT 'hello.o hello.d' -Wall
@@ -194,8 +202,29 @@ RUN UNDER init
   <libc stdout="/dev/log" stderr="/dev/log"/>, and <arg> nodes
   writ_bend_hello +RTS --threads 1 --gpu off.
   Expected line: [init -> writ_bend_hello] hi, then exit value 0.
+  Run script revisions (only the last is committed now):
+    1  ram fixed at 256M, 60 s wait, any exit value accepted (runs 1, 2).
+    2  ram from WRIT_BEND_HELLO_RAM (default 256M), 240 s wait, any exit value
+       accepted; the header claimed an exit-0 check it did not make (runs 3,
+       4; commit 0e63ea3).
+    3  as 2, plus an explicit 'exited with exit value 0' check before
+       grep_output, header reworded to what is checked, and the unused
+       qemu_args line removed (base-linux starts no QEMU) (run 5).
+  Runs are numbered in the order they were made.
 
-  Run 2 (ram 256M, after E4, 20:37):
+  Run 1 (ram 256M, before E4, run script revision 1, 20:34:24):
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init -> writ_bend_hello] Error: _reserve_local: lx_mmap failed (addr_in=0x0,addr_out=0x7fffe2000000/140736985038848)
+    [init -> writ_bend_hello] Error: failed to locally attach linker area
+    [init -> writ_bend_hello] Error: failed to allocate region within linker area
+    Kernel: Segmentation fault (signum=11), see Linux kernel log for details
+    Error: Test execution timed out
+    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 254
+  Analysis: see E4. The component never reached main().
+
+  Run 2 (ram 256M, after E4, run script revision 1, 20:37:41):
     spawn ./core
     Genode 26.08
     17592186044415 MiB RAM and 19000 caps assigned to init
@@ -212,16 +241,7 @@ RUN UNDER init
     the libc blocks: the runtime's own "reservation failed" path (MAP_FAILED)
     is never taken and the component neither prints nor exits.
 
-  Run 4 (ram 256M, final committed run script, 20:40:55 to 20:45:07):
-    spawn ./core
-    Genode 26.08
-    17592186044415 MiB RAM and 19000 caps assigned to init
-    [init] child "writ_bend_hello" requests resources: ram_quota=8589950976
-    Error: Test execution timed out
-    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 254
-  Same as run 2 with the final run script (240 s wait): the block is stable.
-
-  Run 3 (probe, ram 11G, 20:40:01 to 20:40:41):
+  Run 3 (probe, ram 11G, run script revision 2, 20:40:01 to 20:40:41):
     spawn ./core
     Genode 26.08
     17592186044415 MiB RAM and 19000 caps assigned to init
@@ -239,13 +259,43 @@ RUN UNDER init
     so each is presumably unmapped and the final pool_mmap(size) is kept;
     the per-call sequence was not traced). On base-linux
     RAM dataspaces are files in /tmp/genode-<uid> (tmpfs), and the bzero
-    touched them: host "shared" memory rose by about 10 GiB during the run
-    and was released at exit; /tmp/genode-1000 was empty afterward.
+    touches them.
+    Host-memory observation (not a measurement of the component): 'free -g'
+    run just before and just after the make command, on a host with other
+    work running:
+      20:40:01 before:  used 61  free 22  shared  3  buff/cache 46
+      20:40:41 after:   used 72  free 17  shared 13  buff/cache 50
+    and at 20:48:13 'shared' was 2. 'ls -la /tmp/genode-1000' right after
+    the run listed no files. The rise of about 10 GiB in 'shared' fits the
+    tmpfs-backed quota; the exact release time was not observed.
     pool_stack() then maps 2 GiB + 16 KiB + 4*SIGSTKSZ for the evaluation
     stack and calls mprotect(p + 2 GiB, 16384, PROT_NONE) for the guard
     page. Genode's libc defines mprotect in dummies.cc as a weak DUMMY that
     logs "not implemented" and returns -1, so err_fail("stack guard
     failed") ends the component with exit value 1 before the first print.
+
+  Run 4 (ram 256M, run script revision 2 as in commit 0e63ea3, 20:40:55 to 20:45:07):
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init] child "writ_bend_hello" requests resources: ram_quota=8589950976
+    Error: Test execution timed out
+    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 254
+  Same as run 2 with the 240 s wait: the block is stable.
+
+  Run 5 (ram 256M, run script revision 3, committed, 20:48:37 to 20:52:52):
+    spawn ./core
+    Genode 26.08
+    17592186044415 MiB RAM and 19000 caps assigned to init
+    [init] child "writ_bend_hello" requests resources: ram_quota=8589950976
+    Error: Test execution timed out
+    make: *** [etc/build.conf:155: run/writ_bend_hello] Error 254
+  Same outcome as runs 2 and 4 after the review fixes, with the binary built
+  by clang-23 (sha256 unchanged). The run timed out before the new exit-value
+  check, so that check was not exercised; it would apply to a run like 3.
+  Its regexp was checked in tclsh: it matches "exit value 0\r\n" and not
+  "exit value 1\r\n"; "info complete" accepts the whole script. A
+  comment-only reflow of the script header followed run 5.
 
 BLOCKING ERROR
   Symbol: mprotect (called from pool_stack in hello.c, stack guard page).
