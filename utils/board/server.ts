@@ -75,6 +75,12 @@ export type Baseline = {
 
 export type Change = {
   name: string;
+  /** Directory under openspec/changes: the name, or `archive/<name>` once archived. */
+  dir: string;
+  /** Archived changes (openspec/changes/archive/<date>-<name>) are listed apart; their specs are folded into the baseline. */
+  archived: boolean;
+  /** The date prefix of an archived change's directory, or null. */
+  archivedOn: string | null;
   title: string;
   status: string;
   dependsOn: string[];
@@ -249,17 +255,22 @@ function scanBaselines(root: string): Baseline[] {
 
 function scanChanges(root: string): Change[] {
   const changes = join(root, "openspec", "changes");
-  return subdirs(changes)
-    .filter((name) => name !== "archive")
-    .map((name) => {
-      const dir = join(changes, name);
+  const live = subdirs(changes).filter((name) => name !== "archive").map((name) => ({ name, rel: name, archived: false }));
+  const archived = realDir(join(changes, "archive"))
+    ? subdirs(join(changes, "archive")).map((name) => ({ name, rel: `archive/${name}`, archived: true }))
+    : [];
+  return [...live, ...archived].map(({ name, rel, archived }) => {
+      const dir = join(changes, rel);
       const meta = parseMeta(readText(join(dir, ".openspec.yaml")));
       // Dirent.isFile is false for a symlink, so a linked explainer is never listed.
       const html = regularFiles(dir, SAFE_HTML);
       return {
         name,
+        dir: rel,
+        archived,
+        archivedOn: archived ? (name.match(/^(\d{4}-\d{2}-\d{2})-/)?.[1] ?? null) : null,
         title: firstHeading(readText(join(dir, "proposal.md")), name),
-        status: meta.status,
+        status: archived ? "archived" : meta.status,
         dependsOn: meta.dependsOn,
         tasks: countTasks(readText(join(dir, "tasks.md"))),
         taskIds: taskIds(readText(join(dir, "tasks.md"))),
@@ -808,7 +819,7 @@ async function view(flags: Flags, page: string, snap: Snapshot): Promise<View> {
   if ((m = page.match(/^\/change\/([^/]+)$/))) {
     const change = changes.find((c) => c.name === m![1]);
     if (!change) return notFound;
-    const base = `openspec/changes/${change.name}`;
+    const base = `openspec/changes/${change.dir}`;
     const docs = {
       proposal: mdFile(flags.root, `${base}/proposal.md`),
       design: mdFile(flags.root, `${base}/design.md`),
@@ -1115,7 +1126,7 @@ async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<R
     const notFound = new Response("not found\n", { status: 404 });
     const change = scanChanges(flags.root).find((c) => c.name === explainer[1]);
     if (!change || !change.html.includes(explainer[2])) return notFound;
-    const bytes = readRegular(join(flags.root, "openspec", "changes", change.name, explainer[2]));
+    const bytes = readRegular(join(flags.root, "openspec", "changes", ...change.dir.split("/"), explainer[2]));
     if (bytes === null) return notFound;
     // The CSP sandbox gives the standalone view the same opaque-origin
     // isolation as the board's sandboxed iframe.

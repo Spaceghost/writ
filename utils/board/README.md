@@ -49,6 +49,10 @@ bun utils/board/smoke.ts
 
 - `openspec/specs/*/spec.md`: baseline capabilities (first heading, count of
   `### Requirement:` headings) and `openspec/traceability/<name>.md` if present.
+- `openspec/changes/archive/*/`: archived changes, listed on the index apart
+  from the pending ones with their archive date and the baseline capability
+  their spec delta was folded into; their pages and explainers are served from
+  the archive directory.
 - `openspec/changes/*/` except `archive/`: `.openspec.yaml` (`x-status`,
   `x-depends-on` only), `proposal.md` (first heading is the title), `design.md`,
   `tasks.md` (counts `- [ ]` and `- [x]`), `specs/*/spec.md`, and `*.html`.
