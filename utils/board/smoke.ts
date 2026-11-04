@@ -28,7 +28,18 @@ let proc: ReturnType<typeof spawnServer> | undefined;
  * data line and start a `data: elements` line of its own.
  */
 const CR_NAME = 'cr-probe\rdata: elements <b id="nav">x.txt';
-const expected = "add-bend-runtime-host-profile";
+/** A live (unarchived) change with an explainer, a design, and tasks: picked at run time, since changes get archived. */
+const expected = (() => {
+  const dir = join(root, "openspec", "changes");
+  const { readdirSync: ls, existsSync: has } = require("node:fs") as typeof import("node:fs");
+  const pick = ls(dir, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && d.name !== "archive")
+    .map((d) => d.name)
+    .sort()
+    .find((n) => ["explainer.html", "design.md", "tasks.md", "proposal.md"].every((f) => has(join(dir, n, f))));
+  if (!pick) throw new Error("no live change with explainer.html, design.md, tasks.md, proposal.md");
+  return pick;
+})();
 let failures = 0;
 
 function check(label: string, ok: boolean, detail = ""): void {
@@ -37,7 +48,8 @@ function check(label: string, ok: boolean, detail = ""): void {
 }
 
 function spawnServer(lanes: string) {
-  return Bun.spawn([process.execPath, join(import.meta.dir, "server.ts"), "--root", root, "--lanes", lanes, "--port", "0"], {
+  // Questions live in a temporary directory so the one write route never touches the repository.
+  return Bun.spawn([process.execPath, join(import.meta.dir, "server.ts"), "--root", root, "--lanes", lanes, "--port", "0", "--questions", join(lanes, "questions")], {
     stdout: "pipe",
     stderr: "inherit",
   });
@@ -164,6 +176,9 @@ try {
   writeFileSync(join(plan, "task-1-report.md"),
     "# Smoke report\n\nStatus: SMOKE\n\n<script>alert(1)</script>\n\n[bad](javascript:alert(1)) [ref](&#106;avascript:alert(1)) [ok](https://example.org/)\n");
   mkdirSync(join(lanesDir, "not-a-worktree"));
+  mkdirSync(join(lanesDir, "questions"));
+  writeFileSync(join(lanesDir, "questions", "q1.html"), `<!doctype html><title>Which kernel first?</title><meta name="writ-topic" content="smoke">\n<form method="post" action="/questions/q1/answer"><label><input type="radio" name="kernel" value="base-hw">base-hw</label><textarea name="text"></textarea><button>Send</button></form>`);
+  writeFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), JSON.stringify({ at: "2026-11-04T19:00:00Z", who: "controller", fields: { text: "Asked on the board." } }) + "\n");
   proc = spawnServer(lanesDir);
 
   const base = await baseUrl();
@@ -172,7 +187,7 @@ try {
   const index = await fetch(`${base}/`);
   const indexHtml = await index.text();
   check("GET / is 200", index.status === 200);
-  check("index lists the runtime-profile change", indexHtml.includes(`/change/${expected}`));
+  check("index lists the reference change", indexHtml.includes(`/change/${expected}`));
   check("index pins Datastar v1.0.4", indexHtml.includes("datastar@v1.0.4/bundles/datastar.js"));
   check("index delegates link clicks to the quick-view panel", indexHtml.includes(`data-signals:panel__ifmissing="''"`) && indexHtml.includes("$panel = a.pathname") && indexHtml.includes('<aside id="panel" class="panel"') && indexHtml.includes('<div id="panel-backdrop" class="panel-backdrop"') && indexHtml.includes(`data-on:click="$panel = ''"`) && indexHtml.includes('data-attr:src="$panel'));
   const embedded = await fetch(`${base}/change/${expected}?embed=1`);
@@ -198,13 +213,13 @@ try {
     check("the index lists archived changes apart from the pending table", archivedPart.includes(`/change/${arch.name}"`) && !pendingPart.includes(`/change/${arch.name}"`));
     check("the nav's archived group starts collapsed", /<details data-preserve-attr="open"><summary>archived /.test(indexHtml));
   }
-  check("runtime-profile tasks counted", (profile?.tasks.total ?? 0) > 0, `${profile?.tasks.done}/${profile?.tasks.total}`);
-  check("runtime-profile lists explainer.html", profile?.html.includes("explainer.html") === true);
+  check("reference change tasks counted", (profile?.tasks.total ?? 0) > 0, `${profile?.tasks.done}/${profile?.tasks.total}`);
+  check("reference change lists explainer.html", profile?.html.includes("explainer.html") === true);
 
   const page = await (await fetch(`${base}/change/${expected}`)).text();
   const order = ["id=\"proposal\"", "id=\"design\"", "id=\"tasks\"", "id=\"spec-"].map((s) => page.indexOf(s));
   check("change page renders proposal, design, tasks, specs in order", order.every((i, k) => i >= 0 && (k === 0 || i > order[k - 1])), order.join(","));
-  check("change page shows the proposal title", page.includes("Bend runtime host profile"));
+  check("change page shows the proposal title", page.includes(profile?.title ?? "\u0000"));
   const frame = page.match(/<iframe [^>]*src="\/change\/[^"]+\/html\/explainer\.html"[^>]*>/)?.[0] ?? "";
   check("change page embeds the explainer in an iframe", frame !== "");
   check("explainer iframe is sandboxed without same-origin", frame.includes('sandbox="allow-scripts allow-popups"') && !frame.includes("allow-same-origin"));
@@ -215,7 +230,6 @@ try {
   check("standalone explainer carries the CSP sandbox", explainer.headers.get("content-security-policy") === "sandbox allow-scripts allow-popups");
 
   check("traversal is not served", (await fetch(`${base}/change/${expected}/html/..%2Fproposal.md`)).status === 404);
-  check("POST is refused", (await fetch(`${base}/`, { method: "POST" })).status === 405);
   const { port } = new URL(base);
   const forged = await statusWithHost(base, "/api/lanes", "evil.example");
   const forgedPort = await statusWithHost(base, "/", `evil.example:${port}`);
@@ -263,7 +277,7 @@ try {
   check("the change row carries an activity icon with the last lines as its tooltip", row.includes(`class="act" aria-label="Show recent activity" aria-controls="activity-${expected}"`) && row.includes("started the probe build") && row.includes(`data-on:click="$${asig} = !$${asig}"`));
   const tickStart = tables.indexOf(`<tr class="tickerrow">`, rowStart);
   const tick = tables.slice(tickStart, tables.indexOf("</tr>", tickStart));
-  check("a ticker row under the change shows its newest activity line with a content-keyed id", tickStart > rowStart && /<p id="tick-add-bend-runtime-host-profile-[a-z0-9]+" class="ticker">/.test(tick) && tick.includes("started the probe build") && !tick.includes("read the brief"));
+  check("a ticker row under the change shows its newest activity line with a content-keyed id", tickStart > rowStart && new RegExp(`<p id="tick-${expected}-[a-z0-9]+" class="ticker">`).test(tick) && tick.includes("started the probe build") && !tick.includes("read the brief"));
   const actStart = tables.indexOf(`<tr id="activity-${expected}" class="taskrow activityrow"`);
   const actRow = tables.slice(actStart, tables.indexOf("</tr>", actStart));
   check("the activity row follows the change row and lists the lane's lines newest-first in a reversed list", actStart > rowStart && actRow.includes(`data-show="$${asig}"`) && actRow.includes('<ol class="log" reversed>') && actRow.indexOf("started the probe build") < actRow.indexOf("read the brief") && actRow.includes("smoke-lane · implementer"));
@@ -273,6 +287,24 @@ try {
   check("the committed records/<plan>/ record is read instead of the sdd workspace", lanesHtml.includes("docs/superpowers/records/2026-11-04-smoke-lane/progress.md") && !lanesHtml.includes(".superpowers/sdd/smoke-plan/progress.md"));
   check("reviewer reports are listed after task reports", /<details id="lane-smoke-lane-[^"]*task-1-review-md" class="report review"/.test(lanesHtml) && lanesHtml.includes("Approved (smoke)"));
   check("/api/lanes carries the parsed activity and phase", (await (await fetch(`${base}/api/lanes`)).text()).includes('"label":"fix"'));
+
+  // Questions: listed on the index, served sandboxed, and the one write route appends an answer.
+  check("index lists the open question with its title and status", indexHtml.includes("<h2>Questions for you</h2>") && indexHtml.includes('href="/questions/q1">Which kernel first?</a>') && indexHtml.includes("needs an answer"));
+  check("index tile counts open questions", /Questions for you<\/span><span class="tile-value">1 open/.test(indexHtml));
+  const qpage = await (await fetch(`${base}/questions/q1`)).text();
+  check("question page embeds the authored HTML sandboxed with forms allowed and shows the thread", qpage.includes('<iframe id="qframe-q1" class="qframe" src="/questions/q1/html"') && qpage.includes('sandbox="allow-scripts allow-forms allow-popups"') && qpage.includes("Asked on the board."));
+  const qhtml = await fetch(`${base}/questions/q1/html`);
+  check("question HTML is served as-is under a CSP sandbox with forms", qhtml.headers.get("content-security-policy") === "sandbox allow-scripts allow-forms allow-popups" && (await qhtml.text()).includes("Which kernel first?"));
+  const posted = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: "kernel=base-hw&text=base-hw+first%2C+then+linux" });
+  const answersFile = readFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), "utf8");
+  check("posting the form appends one JSON line with the fields and redirects to the thread", posted.status === 303 && (posted.headers.get("location") ?? "").startsWith("/questions/q1?embed=1") && answersFile.split("\n").filter(Boolean).length === 2 && answersFile.includes('"kernel":"base-hw"') && answersFile.includes('"who":"josh"'));
+  const after = await (await fetch(`${base}/questions/q1`)).text();
+  check("the thread shows the reader's answer and the question reads answered", after.includes("base-hw first, then linux") && after.includes("answered"));
+  const forgedOrigin = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://evil.example" }, body: "text=x" });
+  check("a foreign Origin cannot post an answer", forgedOrigin.status === 403 && readFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), "utf8").split("\n").filter(Boolean).length === 2);
+  check("posting to a question that does not exist is 404", (await fetch(`${base}/questions/q9/answer`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "text=x" })).status === 404);
+  check("GET on the answer route is refused", (await fetch(`${base}/questions/q1/answer`)).status === 405);
+  check("POST elsewhere is still refused", (await fetch(`${base}/`, { method: "POST" })).status === 405);
 
   const changeStream = openStream(base, `/events?page=${encodeURIComponent(`/change/${expected}`)}`);
   const first = await changeStream.waitFor('id="main"', 2000);
@@ -306,7 +338,7 @@ try {
   const appendedTables = await waitFor("writing the evidence", 2000);
   const appendedLanes = await waitFor("writing the evidence", 2000);
   check("appending to the record's activity.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
-  check("the pushed tables carry the new line as a new ticker element", /<p id="tick-add-bend-runtime-host-profile-[a-z0-9]+" class="ticker"><span class="log-at">10:09:00<\/span>/.test(appendedTables.text) && appendedTables.text.includes("writing the evidence"));
+  check("the pushed tables carry the new line as a new ticker element", new RegExp(`<p id="tick-${expected}-[a-z0-9]+" class="ticker"><span class="log-at">10:09:00</span>`).test(appendedTables.text) && appendedTables.text.includes("writing the evidence"));
   check("appending to the record's activity.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
 
   writeFileSync(join(rec, "task-2-report.md"), "# Second\n\nStatus: NEW\n");

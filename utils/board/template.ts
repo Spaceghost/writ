@@ -8,7 +8,7 @@
 // <details>, and the `style`/`aria-selected` that the explainer tabs set.
 // Nested elements a morph should match keep stable ids for the same reason.
 
-import type { ActivityLine, Baseline, Change, Lane, LaneScan, LaneStatus, Phase, TaskItem } from "./server.ts";
+import type { ActivityLine, Baseline, Change, Lane, LaneScan, LaneStatus, Phase, Question, TaskItem } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
@@ -240,7 +240,9 @@ function chevron(c: Change): string {
 
 
 /** Left list of changes grouped by status, then a link per baseline section. */
-export function nav(changes: Change[], page: string): string {
+export function nav(changes: Change[], page: string, questions: Question[] = []): string {
+  const open = questions.filter((q) => q.status !== "closed").length;
+  const qlink = `<a class="home qlink"${page === "/questions" ? ` aria-current="page"` : ""} href="/questions">Questions${open > 0 ? ` <span class="count">${open}</span>` : ""}</a>`;
   const groups = new Map<string, Change[]>();
   for (const c of changes) groups.set(c.status, [...(groups.get(c.status) ?? []), c]);
   const body = [...groups.keys()].sort().map((status) => {
@@ -252,7 +254,7 @@ export function nav(changes: Change[], page: string): string {
     // Archived changes start collapsed; the rest open.
     return `<details${status === "archived" ? "" : " open"} data-preserve-attr="open"><summary>${esc(status)} <span class="count">${groups.get(status)!.length}</span></summary><ul>${items}</ul></details>`;
   }).join("");
-  return `<nav id="nav" class="side" aria-label="Changes"><a class="home"${page === "/" ? ` aria-current="page"` : ""} href="/">Index</a>${body}</nav>`;
+  return `<nav id="nav" class="side" aria-label="Changes"><a class="home"${page === "/" ? ` aria-current="page"` : ""} href="/">Index</a>${qlink}${body}</nav>`;
 }
 
 /**
@@ -260,7 +262,8 @@ export function nav(changes: Change[], page: string): string {
  * patched as `#index-tables`. Changes with a task done or a lane on them come
  * first; the rest collapse under one line so the live ones are visible.
  */
-export function indexTables(baselines: Baseline[], allChanges: Change[], scan: LaneScan | null): string {
+export function indexTables(baselines: Baseline[], allChanges: Change[], scan: LaneScan | null, questions: Question[] = []): string {
+  const questionsSection = questionsSummary(questions);
   const changes = allChanges.filter((c) => !c.archived);
   const archived = allChanges.filter((c) => c.archived).sort((a, b) => (a.archivedOn ?? "") < (b.archivedOn ?? "") ? 1 : -1);
   const archivedRows = archived.map((c) => `<tr>
@@ -287,6 +290,7 @@ export function indexTables(baselines: Baseline[], allChanges: Change[], scan: L
   const tiles = scan === null ? "" : `<div class="tiles">
 <div class="tile"><span class="tile-label">Being worked on</span><span class="tile-value">${workedOn.length} change${workedOn.length === 1 ? "" : "s"}</span><span class="tile-sub">${workedOn.map((c) => esc(c.name)).join(" · ") || "no lane with a signal in the last 30 min"}</span></div>
 <div class="tile"><span class="tile-label">Tasks done</span><span class="tile-value">${done} of ${total}</span><span class="tile-sub">checkbox counts across every tasks.md</span></div>
+<div class="tile"><span class="tile-label">Questions for you</span><span class="tile-value">${questions.filter((q) => q.status === "open").length} open</span><span class="tile-sub">${questions.filter((q) => q.status === "answered").length} answered · ${questions.filter((q) => q.status === "closed").length} closed</span></div>
 <div class="tile"><span class="tile-label">Lanes</span><span class="tile-value">${liveLanes.length} live · ${landed.length} landed</span><span class="tile-sub">${lanes.length} worktrees; a lane is live when its ledger says review or anything in it was written in the last 30 min</span></div>
 </div>`;
   const baseRows = baselines.map((b) => `<tr>
@@ -324,6 +328,7 @@ ${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class=
 <div class="tablewrap"><table class="changes"><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
   return `<section id="index-tables" data-signals__ifmissing="${esc(signals)}">
 ${tiles}
+${questionsSection}
 <p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence; a lane chip is what that lane's ledger and activity log say.</p>
 <h2>Pending changes</h2>
 <div class="tablewrap"><table class="changes">
@@ -409,6 +414,70 @@ function laneCard(l: Lane): string {
 <header><h3>${esc(l.name)}</h3>${branch}</header>
 ${status}${commit}${notes}${feed}${sdd}${diffs}${ver}
 </article>`;
+}
+
+const QSTATUS: Record<Question["status"], string> = { open: "needs an answer", answered: "answered", closed: "closed" };
+
+/** Index section: the controller's questions, newest first; each row opens the question in the drawer. */
+function questionsSummary(questions: Question[]): string {
+  if (questions.length === 0) return "";
+  const live = questions.filter((q) => q.status !== "closed");
+  const rows = (live.length > 0 ? live : questions.slice(0, 3)).map((q) => {
+    const last = q.answers[q.answers.length - 1];
+    const lastText = last ? `${esc(last.who)} · ${esc(clock(last.at))}: ${esc(Object.values(last.fields).join(" · ").slice(0, 90))}` : "no answer yet";
+    return `<tr class="qrow q-${q.status}">
+<td><span class="dot dot-${q.status === "open" ? "review" : q.status === "answered" ? "active" : "landed"}" aria-hidden="true"></span></td>
+<td><a href="/questions/${esc(q.id)}">${esc(q.title)}</a>${q.topic ? `<div class="sub">${esc(q.topic)}</div>` : ""}</td>
+<td><span class="status status-${q.status}">${QSTATUS[q.status]}</span></td>
+<td class="qlast">${lastText}</td>
+</tr>`;
+  }).join("");
+  return `<h2>Questions for you</h2>
+<p class="muted small">Asked by the controller; answer in the drawer (the form on each page writes to its answers file). ${live.length} open or answered, ${questions.length - live.length} closed.</p>
+<div class="tablewrap"><table class="questions">
+<thead><tr><th class="chev-cell"></th><th>Question</th><th>Status</th><th>Latest</th></tr></thead>
+<tbody>${rows}</tbody>
+</table></div>`;
+}
+
+/** One answer entry: who, when, and each field as a label/value pair; `text` fields read as prose. */
+function answerBlock(a: { at: string; who: string; fields: Record<string, string> }): string {
+  const who = a.who === "controller" ? "me" : a.who || "reply";
+  const pairs = Object.entries(a.fields).map(([k, v]) =>
+    k === "text" || k === "answer" || k === "note"
+      ? `<p class="answer-text">${esc(v).replace(/\n/g, "<br>")}</p>`
+      : `<div class="answer-field"><dt>${esc(k)}</dt><dd>${esc(v).replace(/\n/g, "<br>")}</dd></div>`).join("");
+  const stamp = a.at.replace("T", " ").replace(/\.\d{1,3}Z$/, "Z");
+  return `<li class="answer answer-${a.who === "controller" ? "controller" : "reader"}"><div class="answer-head"><span class="log-who">${esc(who)}</span><span class="log-at">${esc(stamp)}</span></div><dl>${pairs}</dl></li>`;
+}
+
+/** The thread under a question page: every entry so far, oldest first. */
+function answersList(q: Question): string {
+  if (q.answers.length === 0) return `<p class="muted small">No answer yet.</p>`;
+  return `<ol class="answers">${q.answers.map(answerBlock).join("")}</ol>`;
+}
+
+/** A question page: its authored HTML in a sandboxed iframe (forms allowed), then the thread. */
+export function questionPage(q: Question): string {
+  return `<main id="main" class="content">
+<p class="eyebrow">question · ${esc(q.id)}${q.topic ? ` · ${esc(q.topic)}` : ""} · <span class="status status-${q.status}">${QSTATUS[q.status]}</span></p>
+<h1>${esc(q.title)}</h1>
+<section class="qframe-wrap">
+<p class="frame-bar"><span>the question page, served as-is; its form posts to the board</span><a href="/questions/${esc(q.id)}/html" target="_blank" rel="noopener">open standalone</a></p>
+<iframe id="qframe-${esc(q.id)}" class="qframe" src="/questions/${esc(q.id)}/html" title="${esc(q.title)}" sandbox="allow-scripts allow-forms allow-popups"></iframe>
+</section>
+<section class="doc"><div class="doc-label">${esc(q.id)}.answers.jsonl, ${q.answers.length} entr${q.answers.length === 1 ? "y" : "ies"}</div>${answersList(q)}</section>
+</main>`;
+}
+
+/** All questions, newest first, each linking to its page. */
+export function questionsPage(questions: Question[]): string {
+  const items = questions.map((q) => `<li><a href="/questions/${esc(q.id)}">${esc(q.title)}</a> <span class="status status-${q.status}">${QSTATUS[q.status]}</span>${q.lastAt ? ` <span class="muted small">last ${esc(clock(q.lastAt))}</span>` : ""}</li>`).join("");
+  return `<main id="main" class="content">
+<h1>Questions</h1>
+<p class="lede">${questions.length} question${questions.length === 1 ? "" : "s"} from the controller. Each one is its own page with its own form; your answers are appended to that question's file and shown under it.</p>
+${questions.length === 0 ? `<p class="muted">None yet.</p>` : `<ul class="qlist">${items}</ul>`}
+</main>`;
 }
 
 /** The lanes panel, patched as `#lanes`. `scan` is null when --lanes is absent. */

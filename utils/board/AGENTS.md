@@ -5,9 +5,14 @@ This directory is development tooling, not part of Writ. It follows the
 Writ's authored implementation, tests, examples, and proofs stay in Bend 2, and
 nothing outside `utils/board/` may import, build, or require this board.
 
-The board is read-only. It reads the repository given by `--root` and the
-sibling git worktrees under `--lanes`. It never writes to either and never
-executes a file it reads. Its only git invocations are the fixed, read-only
+The board is read-only with one exception. It reads the repository given by
+`--root` and the sibling git worktrees under `--lanes`, never executes a file
+it reads, and writes exactly one kind of file: a reader's answer to a question
+page, appended as one JSON line to
+`docs/superpowers/records/questions/<id>.answers.jsonl` by `POST
+/questions/<id>/answer` (Host and Origin checked, size capped, control
+characters stripped, files ignored, 404 unless the question page exists). Do
+not add another write route; keep that one append-only. Its only git invocations are the fixed, read-only
 `git -C <lane> rev-parse --abbrev-ref HEAD` and
 `git -C <lane> log -1 --no-show-signature --format=%h%x09%s%x09%cr%x09%ct`, run with
 `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and `GIT_COMMON_DIR` removed and
