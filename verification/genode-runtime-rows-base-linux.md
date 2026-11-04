@@ -1,6 +1,6 @@
 # Bend runtime rows on Genode base-linux (Genode component lane, Task 3)
 
-Recorded 2026-11-03, 20:58 to about 21:30 -06:00. Genode 26.08
+Recorded 2026-11-03, 20:58 to 21:10 -06:00. Genode 26.08
 (`d18ee9e917200b059549e21f2dd9a55bfe61a0eb`), build directory
 `../writ-genode/build/x86_64` (BOARD=linux KERNEL=linux), pins in
 `verification/genode-pins.txt`.
