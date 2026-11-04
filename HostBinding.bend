@@ -119,7 +119,11 @@ type Error is Data:
   StaleRevision{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
-# state and the id of the alias or object it produced.
+# state and one id. Alias ids, object ids, and protection-domain ids are three
+# separate number spaces, and which one `id` belongs to depends on the
+# transition: bind_mount, bind_open, bind_attenuate, and delegate return the
+# new alias id; bind_close returns the destroyed object id; revoke returns the
+# revoked protection-domain id (an input, not an allocation).
 type Change is Data:
   Rejected{state: State, reason: Error}
   Changed{state: State, id: Nat}
@@ -423,7 +427,7 @@ def valid(state: State) -> Bool:
 # committed, so it is denied as StaleRevision rather than read. Denials then
 # follow a fixed order per transition and return the supplied `state` value
 # itself, never a rebuilt copy. A success advances `revision` exactly once.
-# The embedded Frontend state is changed only through F.mount, F.open,
+# The embedded Frontend state is changed only through F.mount, F.open, F.dup,
 # F.attenuate, and F.close, called at its own current revision because the
 # binding revision already serializes commits.
 
@@ -643,15 +647,65 @@ def route_maps(routes: Routes, +child: Nat, +subject: Nat, +service: Nat) -> Boo
       (Nat.is_eq(routed, child) && Nat.is_eq(named, subject) && Nat.is_eq(served, service))
         || route_maps(rest, child, subject, service)
 
+# Whether the parent routes protection domain `child` for `service` as some
+# subject other than `subject`. Such a domain acts for a different subject on
+# that service, so it is not "the same subject's worker" GA-005 admits as a
+# delegatee. A domain with no route on `service` is not routed otherwise.
+def routed_otherwise(routes: Routes, +child: Nat, +subject: Nat, +service: Nat) -> Bool:
+  match routes:
+    case NoRoutes{}:
+      False{}
+    case Routes{Route{_, routed, served, named}, rest}:
+      (Nat.is_eq(routed, child) && Nat.is_eq(served, service) && Bool.not(Nat.is_eq(named, subject)))
+        || routed_otherwise(rest, child, subject, service)
+
+# The parent alias of `wanted` in the delegation tree, or 0n for a root. Id 0
+# is never allocated, so a root's parent can never match a cut.
+def parent_of(delegations: Delegations, +wanted: Nat) -> Nat:
+  match delegations:
+    case NoDelegations{}:
+      0n
+    case Delegations{Delegation{from_alias, _, _, alias}, rest}:
+      pick_nat(Nat.is_eq(alias, wanted), from_alias, parent_of(rest, wanted))
+
+# The root of the delegation chain through alias `alias`: the first alias,
+# walking parent edges upward, that has no parent node. `valid` makes every
+# parent id strictly smaller than its child's and positive, so fuel equal to
+# the alias id reaches the root before it runs out (as in under_cut).
+def chain_root(fuel: Nat, +delegations: Delegations, +alias: Nat) -> Nat:
+  match fuel:
+    case 0n:
+      alias
+    case 1n+rest:
+      pick_nat(Nat.is_eq(parent_of(delegations, alias), 0n), alias,
+        chain_root(rest, delegations, parent_of(delegations, alias)))
+
+# Whether alias `wanted` exists and its holder is routed by its parent as
+# `subject` for `service`. Used on a chain root: the delegator's own route is
+# what a delegated alias draws its authority from.
+def alias_routed(aliases: Aliases, +routes: Routes, +wanted: Nat, +subject: Nat, +service: Nat) -> Bool:
+  match aliases:
+    case NoAliases{}:
+      False{}
+    case Aliases{Alias{id, owner, _, _}, rest}:
+      (Nat.is_eq(id, wanted) && route_maps(routes, owner, subject, service))
+        || alias_routed(rest, routes, wanted, subject, service)
+
 # Model rule GA-005: possession is not the subject. `holder` must hold the
 # alias, and must either be routed by its parent as the subject the object was
-# minted for on the object's service, or be the domain a recorded delegation node gave this exact
-# alias to. The running host cannot observe the invoking domain; this rule is
-# enforced there by topology.
-def holder_authorized(+routes: Routes, +delegations: Delegations, +alias: Alias, +object: Object,
-    +holder: Nat) -> Bool:
+# minted for on the object's service, or be the domain a recorded delegation
+# node gave this exact alias to. A delegated alias stays authorized only while
+# the root of its delegation chain is still held by a domain the parent routes
+# as that subject on that service: withdrawing the delegator's route withdraws
+# every delegation drawn from it. The running host cannot observe the invoking
+# domain; this rule is enforced there by topology (GA-010).
+def holder_authorized(+routes: Routes, +delegations: Delegations, +aliases: Aliases, +alias: Alias,
+    +object: Object, +holder: Nat) -> Bool:
   Nat.is_eq(alias_holder(alias), holder)
-    && (route_maps(routes, holder, object_owner(object), object_service(object)) || delegated_to(delegations, alias_id(alias), holder))
+    && (route_maps(routes, holder, object_owner(object), object_service(object))
+      || (delegated_to(delegations, alias_id(alias), holder)
+        && alias_routed(aliases, routes, chain_root(alias_id(alias), delegations, alias_id(alias)),
+          object_owner(object), object_service(object))))
 
 def is_delegated(found: Maybe<&2, U32>) -> Bool:
   match found:
@@ -695,15 +749,16 @@ def resolve_subject(ok: Bool, +alias: Alias, +object: Object, +state: State) -> 
       resolve_binding(find_binding(bindings(state), object_id(object)), alias, object, state)
 
 # A generation mismatch means the object was destroyed after this alias was
-# issued. It is stale, not a lesser right, and is reported before the holder
-# is considered so a destroyed reference never reveals delegation records.
+# issued. It is stale, not a lesser right. It is reported only to a domain
+# that holds the alias (see resolve_alias) and before route and delegation
+# records are consulted, so a destroyed reference never reveals them.
 def resolve_current(ok: Bool, +alias: Alias, +object: Object, +state: State, +holder: Nat) -> Resolved:
   match ok:
     case False{}:
       Unresolved{StaleGeneration{}}
     case True{}:
-      resolve_subject(holder_authorized(routes(state), delegations(state), alias, object, holder),
-        alias, object, state)
+      resolve_subject(holder_authorized(routes(state), delegations(state), aliases(state), alias,
+        object, holder), alias, object, state)
 
 def resolve_object(found: Maybe<&2, Object>, +alias: Alias, +state: State, +holder: Nat) -> Resolved:
   match found:
@@ -720,12 +775,24 @@ def resolve_alias(found: Maybe<&2, Alias>, +state: State, +holder: Nat) -> Resol
     case Some{+alias}:
       resolve_object(find_object(objects(state), alias_object(alias)), alias, state, holder)
 
+# The alias `wanted` if, and only if, protection domain `holder` holds it.
+# A domain that does not hold the alias is answered exactly as if the alias
+# did not exist, so it learns neither that the alias exists nor whether its
+# object was destroyed.
+def find_held_alias(aliases: Aliases, +wanted: Nat, +holder: Nat) -> Maybe<&2, Alias>:
+  match aliases:
+    case NoAliases{}:
+      None{}
+    case Aliases{+alias, rest}:
+      choose_alias(Nat.is_eq(alias_id(alias), wanted) && Nat.is_eq(alias_holder(alias), holder), alias,
+        find_held_alias(rest, wanted, holder))
+
 # Exported helper: the single authority path every alias-taking transition
-# uses. Denial order: UnknownAlias, StaleGeneration, SubjectMismatch; an
-# object or binding missing from a valid state is UnknownObject. It reads the
-# state and never changes it.
+# uses. Denial order: UnknownAlias (no such alias, or `holder` does not hold
+# it), StaleGeneration, SubjectMismatch; an object or binding missing from a
+# valid state is UnknownObject. It reads the state and never changes it.
 def resolve(+state: State, +alias_id: Nat, +holder: Nat) -> Resolved:
-  resolve_alias(find_alias(aliases(state), alias_id), state, holder)
+  resolve_alias(find_held_alias(aliases(state), alias_id, holder), state, holder)
 
 def link_node(ok: Bool, node: Delegation, rest: Delegations) -> Delegations:
   match ok:
@@ -734,14 +801,17 @@ def link_node(ok: Bool, node: Delegation, rest: Delegations) -> Delegations:
     case False{}:
       rest
 
-# Mint a fresh native object owned by `owner` on `service` and derived from
-# `parent` (0n for a root), one current alias to it held by `holder`, and its binding to
-# Frontend handle `handle`, charging `holder` one capability slot. When the
-# alias used was delegated, a node from `used_alias` to the new alias with
-# `recorded` rights keeps the result inside the delegator's subtree, so
-# revoking that branch prunes it too. Ids come from the monotonic counters, so
-# a destroyed object or alias id is never handed out again. Returns the new
-# alias id.
+# Exported implementation helper, not an entry point: it performs no check.
+# Only bind_mount, bind_open, and bind_attenuate call it, after every denial
+# gate has passed; calling it directly bypasses route, holder, rights, and
+# quota checks. Mint a fresh native object owned by `owner` on `service` and
+# derived from `parent` (0n for a root), one current alias to it held by
+# `holder`, and its binding to Frontend handle `handle`, charging `holder` one
+# capability slot. When the alias used was delegated, a node from
+# `used_alias` to the new alias with `recorded` rights keeps the result inside
+# the delegator's subtree, so revoking that branch prunes it too. Ids come
+# from the monotonic counters, so a destroyed object or alias id is never
+# handed out again. Returns the new alias id.
 def commit_mint(state: State, +next_frontend: F.State, +handle: Nat, +holder: Nat, +owner: Nat,
     kind: ObjectKind, +parent: Nat, +service: Nat, +delegated: Bool, +used_alias: Nat,
     +recorded: U32) -> Change:
@@ -796,9 +866,8 @@ def mount_checked(ok: Bool, +state: State, +route: Route, +caller: F.Caller, +re
 # slot (QuotaExhausted, checked before Frontend is consulted). F.mount then
 # applies every Writ check (FrontendRejected). On success the child holds the
 # only alias to a root Session owned by the route subject on the route's
-# service; the change id is
-# that alias. Denial order: StaleRevision, RouteMismatch, QuotaExhausted,
-# FrontendRejected.
+# service; the change id is that alias. Denial order: StaleRevision,
+# RouteMismatch, QuotaExhausted, FrontendRejected.
 def bind_mount(+state: State, expected_revision: Nat, +route: Route, +caller: F.Caller,
     +registry: F.Registry, +rights: U32, +live: F.Live) -> Change:
   mount_checked(valid(state) && Nat.is_eq(revision(state), expected_revision),
@@ -896,12 +965,15 @@ def derive_checked(ok: Bool, step: Derivation, +state: State, expected_alias: Na
 # `rights` must lie within the alias's effective rights (a delegatee cannot
 # open past its delegation), and `holder` needs a capability slot before
 # F.open is consulted. A delegatee's result is recorded under its delegation
-# node. The monitor authenticates `caller` as the subject acting for
-# `holder`; HostBinding does not link the two, and Frontend checks `caller`
-# against the bound handle. The change id is the new alias.
-# Denial order: StaleRevision, UnknownAlias, StaleGeneration, SubjectMismatch,
-# WidenedRights, QuotaExhausted, FrontendRejected (UnknownObject only for an
-# unbound object).
+# node. The monitor cannot observe which domain invoked the object (GA-010);
+# it authenticates `caller`, the subject on whose behalf the request arrives.
+# `holder` is the domain the model records as acting, HostBinding does not
+# link the two, and Frontend checks `caller` against the bound handle. The
+# change id is the new alias.
+# Denial order: StaleRevision, UnknownAlias (no such alias, or `holder` does
+# not hold it), StaleGeneration, SubjectMismatch, WidenedRights,
+# QuotaExhausted, FrontendRejected (UnknownObject only for an unbound object).
+# A Descriptor alias is FrontendRejected: F.open opens only from a mount.
 def bind_open(+state: State, expected_revision: Nat, +alias_id: Nat, +holder: Nat,
     +caller: F.Caller, +registry: F.Registry, +rights: U32, +live: F.Live) -> Change:
   derive_checked(valid(state) && Nat.is_eq(revision(state), expected_revision), Opening{}, state,
@@ -913,12 +985,14 @@ def bind_open(+state: State, expected_revision: Nat, +alias_id: Nat, +holder: Na
 # and every alias to the parent object are unchanged. A Session alias is
 # FrontendRejected (see derive_frontend). If either Frontend step rejects, the
 # supplied state is returned unchanged. Same checks, caller assumption, and
-# denial order as bind_open.
+# denial order as bind_open, including UnknownAlias for a non-holder.
 def bind_attenuate(+state: State, expected_revision: Nat, +alias_id: Nat, +holder: Nat,
     +caller: F.Caller, +registry: F.Registry, +rights: U32, +live: F.Live) -> Change:
   derive_checked(valid(state) && Nat.is_eq(revision(state), expected_revision), Attenuating{}, state,
     alias_id, holder, caller, registry, rights, live)
 
+# Exported implementation helper, not an entry point: it performs no check
+# and is called only by `delegate` after every denial gate has passed.
 # Record that `from_alias` gave `to_holder` a new alias to the same object at
 # its current generation. The node is the child's only parent record.
 def commit_delegate(state: State, +from_alias: Alias, +to_holder: Nat, +rights: U32) -> Change:
@@ -937,13 +1011,26 @@ def delegate_rights(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +ri
     case True{}:
       commit_delegate(state, alias, to_holder, rights)
 
+def delegate_target(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +effective: U32,
+    +rights: U32) -> Change:
+  match ok:
+    case False{}:
+      Rejected{state, SubjectMismatch{}}
+    case True{}:
+      delegate_rights(F.rights_valid(rights) && T.word_subset(rights, effective), state, alias,
+        to_holder, rights)
+
+# A delegatee the parent routes as a different subject on the object's
+# service acts for that other subject there; handing it this subject's object
+# would merge two subjects' authority, so it is SubjectMismatch. A delegatee
+# with no route on that service (the same subject's worker) is admitted.
 def delegate_resolved(found: Resolved, +state: State, +to_holder: Nat, +rights: U32) -> Change:
   match found:
     case Unresolved{reason}:
       Rejected{state, reason}
-    case Resolved{alias, _, _, +effective, _}:
-      delegate_rights(F.rights_valid(rights) && T.word_subset(rights, effective), state, alias,
-        to_holder, rights)
+    case Resolved{alias, +object, _, +effective, _}:
+      delegate_target(Bool.not(routed_otherwise(routes(state), to_holder, object_owner(object),
+          object_service(object))), state, alias, to_holder, effective, rights)
 
 def delegate_checked(ok: Bool, +state: State, +alias_id: Nat, +from_holder: Nat, +to_holder: Nat,
     +rights: U32) -> Change:
@@ -957,9 +1044,12 @@ def delegate_checked(ok: Bool, +state: State, +alias_id: Nat, +from_holder: Nat,
 # `to_holder`. This is a host-side record, not a Frontend grant: the delegatee
 # still reaches Writ only through the bound handle, re-checked on every use.
 # `from_holder` must hold the alias and be authorized for it under GA-005, and
-# `rights` must lie within the alias's effective rights, so a chain can only
-# narrow (GA-006, GA-011). The change id is the delegatee's new alias.
-# Denial order: StaleRevision, UnknownAlias, StaleGeneration, SubjectMismatch,
+# `to_holder` must not be routed by its parent as a different subject on the
+# object's service, and `rights` must lie within the alias's effective rights,
+# so a chain can only narrow (GA-006, GA-011). The change id is the
+# delegatee's new alias. Denial order: StaleRevision, UnknownAlias (no such
+# alias, or `from_holder` does not hold it), StaleGeneration, SubjectMismatch
+# (`from_holder` unauthorized, then `to_holder` routed as another subject),
 # WidenedRights (UnknownObject only for an unbound object).
 def delegate(+state: State, expected_revision: Nat, +alias_id: Nat, +from_holder: Nat,
     +to_holder: Nat, +rights: U32) -> Change:
@@ -991,15 +1081,6 @@ def cut_object(cut: Cut, +aliases: Aliases, +object: Nat) -> Bool:
       Nat.is_eq(object, wanted)
     case CutHolder{holder}:
       holds_object(aliases, holder, object)
-
-# The parent alias of `wanted` in the delegation tree, or 0n for a root. Id 0
-# is never allocated, so a root's parent can never match a cut.
-def parent_of(delegations: Delegations, +wanted: Nat) -> Nat:
-  match delegations:
-    case NoDelegations{}:
-      0n
-    case Delegations{Delegation{from_alias, _, _, alias}, rest}:
-      pick_nat(Nat.is_eq(alias, wanted), from_alias, parent_of(rest, wanted))
 
 # Whether `alias` or one of its ancestors is cut. `valid` makes every parent
 # id strictly smaller than its child's, so starting with fuel equal to the
@@ -1049,10 +1130,14 @@ def prune(remaining: Delegations, +cut: Cut, +aliases: Aliases, +objects: Object
           || (whole && doomed_alias(cut, aliases, objects, delegation_alias(node)))),
         node, prune(rest, cut, aliases, objects, tree, whole))
 
-# Exported helper: remove the delegation node of alias `root` and all its
-# descendants, and nothing else. Copies in the subtree name the root's object
-# and derived children name objects derived from it, so destroying that
-# object (with its derivations) stales every removed alias at once.
+# Exported implementation helper, not an entry point and not a revocation:
+# remove the delegation node of alias `root` and all its descendants, and
+# nothing else. HAZARD: it drops nodes without bumping any generation, so the
+# removed aliases stay current; their holders lose only the delegation basis
+# for authority, and any copy or derived object stays reachable to a domain
+# that is otherwise authorized. No transition calls it; revocation must go
+# through commit_destroy, which destroys the objects and so stales every
+# removed alias at once.
 def remove_subtree(+delegations: Delegations, +aliases: Aliases, +objects: Objects, +root: Nat) -> Delegations:
   prune(delegations, CutAlias{root}, aliases, objects, delegations, False{})
 
@@ -1147,13 +1232,13 @@ def refund(objects: Objects, +cut: Cut, +aliases: Aliases, +all: Objects, +deleg
             && current_alias_exists(aliases, object_id(object), object_generation(object)),
           minter(aliases, delegations, aliases, object_id(object)), quotas))
 
-# Destroy the cut objects and everything derived from them, release their
-# capability charges, drop their delegation records, and install the Frontend
-# state that accompanies the destruction. Only a directly closed handle goes
-# through F.close: the monitor holds no authenticated Caller for derived or
-# revoked handles, so their Frontend handles stay as they are. No binding can
-# reach them through a destroyed object, and Frontend still re-checks any
-# other route to them. Returns `id`.
+# Exported implementation helper, not an entry point: it performs no check
+# and is called only by bind_close (after F.close accepted the caller) and by
+# revoke (after the revision gate). Destroy the cut objects and everything
+# derived from them, release their capability charges, drop their delegation
+# records, and install `next_frontend`, the Frontend state that accompanies
+# the destruction (see close_doomed and revoke for which handles it closes).
+# Returns `id`.
 def commit_destroy(state: State, +next_frontend: F.State, +cut: Cut, +id: Nat) -> Change:
   match state:
     case State{revision, next_object, next_alias, +objects, +aliases, routes, quotas,
@@ -1162,37 +1247,112 @@ def commit_destroy(state: State, +next_frontend: F.State, +cut: Cut, +id: Nat) -
         routes, refund(objects, cut, aliases, objects, delegations, quotas),
         prune(delegations, cut, aliases, objects, delegations, True{}), bindings, next_frontend}, id}
 
-def close_frontend(change: F.Change, +state: State, +object: Nat) -> Change:
+def handle_open(found: Maybe<&2, F.Handle>) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{F.Handle{_, _, _, _, _, _, _, _, closed}}:
+      Bool.not(closed)
+
+# A rejected close of a derived handle keeps the Frontend state it was given.
+def close_kept(change: F.Change, +kept: F.State) -> F.State:
+  match change:
+    case F.Rejected{_}:
+      kept
+    case F.Changed{next, _}:
+      next
+
+def close_bound(ok: Bool, +current: F.State, +caller: F.Caller, +handle: Nat) -> F.State:
+  match ok:
+    case False{}:
+      current
+    case True{}:
+      close_kept(F.close(current, F.revision(current), F.Ref{caller, handle}), current)
+
+# Close, through F.close with the authenticated caller, the Frontend handle
+# bound to every object `cut` dooms that is still open. F.open and F.dup copy
+# the parent handle's subject and token into each derived handle, so the
+# caller that closed the directly bound handle matches every handle derived
+# from it. A handle that is already closed (including the directly bound one,
+# closed just before) is skipped, and a rejected F.close leaves that handle
+# as it was rather than turning the whole close into a denial: destruction
+# has already been authorized, and no binding reaches a handle through a
+# destroyed object. Folds left to right over the binding list, each F.close
+# at the Frontend revision the previous one produced.
+def close_doomed(bindings: Bindings, +cut: Cut, +aliases: Aliases, +objects: Objects, +caller: F.Caller,
+    +current: F.State) -> F.State:
+  match bindings:
+    case NoBindings{}:
+      current
+    case Bindings{Binding{+object, +handle}, rest}:
+      close_doomed(rest, cut, aliases, objects, caller,
+        close_bound(doomed(object, cut, aliases, objects, object)
+            && handle_open(F.find_handle(F.handles(current), handle)), current, caller, handle))
+
+def close_frontend(change: F.Change, +state: State, +object: Nat, +caller: F.Caller) -> Change:
   match change:
     case F.Rejected{_}:
       Rejected{state, FrontendRejected{}}
     case F.Changed{next_frontend, _}:
-      commit_destroy(state, next_frontend, CutObject{object}, object)
+      commit_destroy(state,
+        close_doomed(bindings(state), CutObject{object}, aliases(state), objects(state), caller,
+          next_frontend),
+        CutObject{object}, object)
 
-def close_resolved(found: Resolved, +state: State, +caller: F.Caller) -> Change:
+def minted_by(found: Maybe<&2, Nat>, +holder: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{minted}:
+      Nat.is_eq(minted, holder)
+
+# Destroying an object is not an operation a delegated copy confers. `holder`
+# may close the object only if its parent routes it as the object's subject on
+# the object's service, or it is the domain charged when the object was minted
+# (a delegatee may close a Descriptor it opened or attenuated itself). A
+# domain whose only basis is a delegation node over a copy of the object can
+# use the object within its delegated rights but cannot destroy it.
+def close_authorized(+state: State, +object: Object, +holder: Nat) -> Bool:
+  route_maps(routes(state), holder, object_owner(object), object_service(object))
+    || minted_by(minter(aliases(state), delegations(state), aliases(state), object_id(object)), holder)
+
+def close_gate(ok: Bool, +state: State, +object: Object, +handle: F.Handle, +caller: F.Caller) -> Change:
+  match ok:
+    case False{}:
+      Rejected{state, SubjectMismatch{}}
+    case True{}:
+      close_frontend(
+        F.close(frontend(state), F.revision(frontend(state)), F.Ref{caller, F.handle_id(handle)}),
+        state, object_id(object), caller)
+
+def close_resolved(found: Resolved, +state: State, +holder: Nat, +caller: F.Caller) -> Change:
   match found:
     case Unresolved{reason}:
       Rejected{state, reason}
-    case Resolved{_, +object, handle, _, _}:
-      close_frontend(F.close(frontend(state), F.revision(frontend(state)), F.Ref{caller, F.handle_id(handle)}),
-        state, object_id(object))
+    case Resolved{_, +object, +handle, _, _}:
+      close_gate(close_authorized(state, object, holder), state, object, handle, caller)
 
 def close_checked(ok: Bool, +state: State, +alias_id: Nat, +holder: Nat, +caller: F.Caller) -> Change:
   match ok:
     case False{}:
       Rejected{state, StaleRevision{}}
     case True{}:
-      close_resolved(resolve(state, alias_id, holder), state, caller)
+      close_resolved(resolve(state, alias_id, holder), state, holder, caller)
 
 # Public entry point: close the handle bound behind `alias_id` and destroy its
-# native object. F.close must accept the authenticated caller for the bound
-# handle (FrontendRejected otherwise, with nothing destroyed). On success the
-# object's generation advances, so every alias to it in every domain is stale
-# on next use. Every object derived from it, transitively, is destroyed with
-# it (their Frontend handles stay, see commit_destroy), each live object's
-# capability charge is returned, and every delegation node on those objects
-# is removed. The change id is the destroyed object's id. Denial order: StaleRevision,
-# UnknownAlias, StaleGeneration, SubjectMismatch, FrontendRejected
+# native object. `holder` must hold the alias and pass GA-005 resolution, and
+# must also be authorized to destroy (see close_authorized): routed as the
+# object's subject on its service, or the object's minter; a delegated copy
+# alone is SubjectMismatch. F.close must accept the authenticated caller for
+# the bound handle (FrontendRejected otherwise, with nothing destroyed). On
+# success the object's generation advances, so every alias to it in every
+# domain is stale on next use. Every object derived from it, transitively, is
+# destroyed with it and its still-open Frontend handle is closed with the
+# same caller (see close_doomed); each live object's capability charge is
+# returned, and every delegation node on those objects is removed. The change
+# id is the destroyed object's id. Denial order: StaleRevision, UnknownAlias
+# (no such alias, or `holder` does not hold it), StaleGeneration,
+# SubjectMismatch (resolution, then destroy authority), FrontendRejected
 # (UnknownObject only for an unbound object).
 def bind_close(+state: State, expected_revision: Nat, +alias_id: Nat, +holder: Nat,
     +caller: F.Caller) -> Change:
@@ -1214,9 +1374,14 @@ def revoke_checked(ok: Bool, +state: State, +domain: Nat) -> Change:
 # holds an alias to, and every object derived from one, has its generation
 # advanced; the delegation subtrees rooted at `domain`'s aliases and every
 # node on a destroyed object are removed, and live objects' capability
-# charges are returned. Other domains' aliases to those objects go stale too;
-# that is the native semantics, not a side effect to hide. Frontend handles
-# are left as they are: no binding reaches them through a destroyed object. This is a monitor action with no caller authority to
-# check; its only denial is StaleRevision. The change id is `domain`.
+# charges are returned. Other domains' aliases to those objects go stale too,
+# including a delegator's object revoked through its delegatee's copy; that
+# is the native semantics, not a side effect to hide. Frontend handles are
+# left as they are: revoke has no authenticated Caller, and F.close requires
+# one. No binding reaches those handles through a destroyed object, but
+# closing or quarantining them at the Frontend layer (or revoking the
+# registry grant behind them) is a HOST OBLIGATION, not something this model
+# discharges. This is a monitor action with no caller authority to check; its
+# only denial is StaleRevision. The change id is `domain`.
 def revoke(+state: State, expected_revision: Nat, +domain: Nat) -> Change:
   revoke_checked(valid(state) && Nat.is_eq(revision(state), expected_revision), state, domain)

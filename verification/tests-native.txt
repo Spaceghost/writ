@@ -359,6 +359,8 @@ PASS: GA-003 attenuating a Session alias denied FrontendRejected
 PASS: GA-003 attenuate outside the protocol rights denied WidenedRights
 PASS: GA-003 open through an unknown alias denied UnknownAlias
 VECTOR GA-003-3 bind_open denied UnknownAlias
+PASS: GA-003 open through a Descriptor alias denied FrontendRejected
+VECTOR GA-003-4 bind_open denied FrontendRejected
 PASS: GA-004 owner closes a descriptor held by two domains
 VECTOR GA-004-1 bind_close accepted object=2
 PASS: GA-004 after close the owner's alias is stale
@@ -371,13 +373,28 @@ PASS: GA-004 close preserves binding validity
 PASS: GA-004 close at a stale revision destroys nothing and leaves state unchanged
 VECTOR GA-004-4 bind_close denied StaleRevision
 PASS: GA-004 close Frontend rejects destroys nothing
-PASS: GA-004 a domain without the alias cannot close it
+PASS: GA-004 a domain without the alias cannot close it and is told UnknownAlias
+PASS: GA-004 a non-holder of a destroyed alias is told UnknownAlias, not StaleGeneration
+PASS: GA-004 a delegatee holding a read copy of the Session cannot destroy it
+VECTOR GA-004-5 bind_close denied SubjectMismatch
+PASS: GA-004 a delegatee holding a copy of a descriptor cannot destroy it
+PASS: GA-004 a delegatee may close the descriptor it opened itself
+VECTOR GA-004-6 bind_close accepted object=2
+PASS: GA-004 closing a Session with a two-level derivation below it commits
+VECTOR GA-004-7 bind_close accepted object=1
+PASS: GA-004 closing a Session closes every derived descriptor's Frontend handle
+PASS: GA-004 after a Session close the Session alias is stale
+PASS: GA-004 after a Session close the opened descriptor alias is stale
+PASS: GA-004 after a Session close the attenuated descriptor alias is stale
+VECTOR GA-004-8 delegate denied StaleGeneration
+PASS: GA-004 a Session close stays valid and refunds all three objects
+PASS: GA-004 a Session close skips a derived handle that was already closed
 PASS: GA-005 holder-without-record fixture is a valid state
 PASS: GA-005 alias held by Q with no delegation record denied SubjectMismatch
 VECTOR GA-005-1 bind_attenuate denied SubjectMismatch
 PASS: GA-005 unrecorded holder cannot delegate onward
-PASS: GA-005 a domain that does not hold the alias denied SubjectMismatch
-VECTOR GA-005-2 bind_open denied SubjectMismatch
+PASS: GA-005 a domain that does not hold the alias denied UnknownAlias
+VECTOR GA-005-2 bind_open denied UnknownAlias
 PASS: GA-005 recorded delegation to the worker is accepted
 VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
 PASS: GA-005 delegatee opens through a delegated Session
@@ -385,6 +402,16 @@ PASS: GA-005 the delegatee's opened alias is usable
 PASS: GA-005 the delegatee's opened alias resolves within the record
 PASS: GA-005 the delegatee is accepted only within the delegated scope
 PASS: GA-005 delegatee derivations preserve binding validity
+PASS: GA-005 while R's route stands the delegatee opens through the delegated Session
+VECTOR GA-005-4 bind_open accepted alias=3;object=2
+PASS: GA-005 route withdrawal after delegation fixture is a valid state
+PASS: GA-005 withdrawing the delegator's route withdraws the delegatee's authority
+VECTOR GA-005-5 bind_open denied SubjectMismatch
+PASS: GA-005 route withdrawal also withdraws the delegatee's derived alias
+PASS: GA-005 delegation to a domain routed as another subject on the service denied SubjectMismatch
+VECTOR GA-005-6 delegate denied SubjectMismatch
+PASS: GA-005 delegation to the same subject's unrouted worker is still recorded
+PASS: GA-005 a route on another service does not bar delegation
 PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
 VECTOR GA-006-1 delegate denied WidenedRights
 PASS: GA-006 delegation outside the protocol rights denied WidenedRights
@@ -409,6 +436,8 @@ PASS: GA-007 the retried open is charged and reaches Frontend
 PASS: GA-007 mount and open each charge one capability slot
 PASS: GA-007 destroying an object refunds its capability slot
 PASS: GA-007 destroying a Session refunds its derived objects too
+PASS: GA-007 revoking a domain refunds the slots of its live objects
+PASS: GA-007 revoke refunds each destroyed object to the domain charged for it
 PASS: GA-008 mount at a stale revision denied StaleRevision
 VECTOR GA-008-1 bind_mount denied StaleRevision
 PASS: GA-008 mount Frontend rejects returns the input state
@@ -441,7 +470,12 @@ PASS: GA-011 W's derived object is usable before its branch is cut
 PASS: GA-011 derived object is stale after its parent is closed
 VECTOR GA-011-5 bind_attenuate denied StaleGeneration
 PASS: GA-011 derived object is stale after its parent's holder is revoked
-HostBinding: 102 checks passed, 30 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+PASS: GA-011 revoking the delegatee's domain commits
+VECTOR GA-011-6 revoke accepted domain=8
+PASS: GA-011 revoking a delegatee destroys the delegator's object too
+VECTOR GA-011-7 delegate denied StaleGeneration
+PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
+HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test
 PASS: facade links capability descriptor through complete commit
 PASS: facade preserves output provenance
 PASS: capability revocation is checked at commit

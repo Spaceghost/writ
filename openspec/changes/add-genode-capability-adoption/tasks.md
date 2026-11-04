@@ -14,7 +14,7 @@ remains pending. This is pure Bend work that can proceed without a Genode build.
 
 ## 2. Vectors and mapping
 
-- [x] 2.1 Make each test emit a canonical vector (state, transition, expected outcome) without native selector values; check the vectors in under `verification/` with the generating test named.
+- [x] 2.1 Make each test emit a canonical vector without native selector values; check the vectors in under `verification/` with the generating test named. Each vector line carries the transition and the outcome with its model ids (reason or produced id); the inputs behind each vector (fixture state and transition arguments) live in the traceability table.
 - [x] 2.2 Write the mapping from GN-003, GN-004, GN-005, GN-009, GN-010, GN-011 and PH-002 through PH-005, PH-010 to the vectors; mark any requirement without a vector reviewed-only.
 - [x] 2.3 Add the module to `Tests.bend`, update `VERIFICATION.md` and the source manifest, and run the full suite on both backends.
 

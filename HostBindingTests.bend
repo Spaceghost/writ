@@ -50,6 +50,11 @@ def worker() -> Nat:
 def helper() -> Nat:
   9n
 
+# Domain S: the parent routes it as other_subject() on service(), so on that
+# service it acts for a different subject than the reader's objects belong to.
+def stranger() -> Nat:
+  10n
+
 # The Writ subject the parent's label prefix names for the reader.
 def subject() -> Nat:
   7n
@@ -121,6 +126,15 @@ def routes() -> H.Routes:
 # A route table in which the parent routes the reader only for service().
 def service_one_routes() -> H.Routes:
   H.Routes{reader_route(), H.NoRoutes{}}
+
+# A route table in which the parent has withdrawn the reader's service()
+# route and keeps only its other_service() route.
+def service_two_routes() -> H.Routes:
+  H.Routes{reader_other_route(), H.NoRoutes{}}
+
+# The recorded table plus S routed as other_subject() on service().
+def stranger_routes() -> H.Routes:
+  H.Routes{H.Route{parent_domain(), stranger(), service(), other_subject()}, routes()}
 
 def account(account_domain: Nat, caps: Nat) -> H.Quota:
   H.Quota{account_domain, 4096n, caps}
@@ -409,6 +423,9 @@ def caps_of(accounts: H.Quotas, +wanted_domain: Nat) -> Nat:
 def reader_caps(state: H.State) -> Nat:
   caps_of(H.quotas(state), reader())
 
+def worker_caps(state: H.State) -> Nat:
+  caps_of(H.quotas(state), worker())
+
 def frontend_handle(state: H.State, id: Nat) -> Maybe<&2, F.Handle>:
   F.find_handle(F.handles(H.frontend(state)), id)
 
@@ -590,6 +607,37 @@ def derived_revoked() -> H.State:
 def forged_holder() -> H.State:
   without_delegations(shared())
 
+# R delegated its Session to W (and W opened through it); the parent then
+# withdrew R's service() route. Nothing else changed.
+def session_unrouted() -> H.State:
+  with_routes(session_shared(), service_two_routes())
+
+def worker_opened_unrouted() -> H.State:
+  with_routes(worker_opened(), service_two_routes())
+
+# R's descriptor and Session states with S routed as another subject.
+def stranger_opened() -> H.State:
+  with_routes(opened(), stranger_routes())
+
+def stranger_other_mounted() -> H.State:
+  with_routes(other_mounted(), stranger_routes())
+
+# R closes its Session in attenuated(): Session 1, descriptor 2 opened from it,
+# and descriptor 3 attenuated from descriptor 2. Revision 4.
+def session_close() -> H.Change:
+  H.bind_close(attenuated(), 3n, 1n, reader(), reader_caller())
+
+def session_closed() -> H.State:
+  H.Change.state(session_close())
+
+# The monitor revokes W's domain in shared(), where W holds only a copy of
+# R's descriptor object 2. Revision 4.
+def delegatee_revoke() -> H.Change:
+  H.revoke(shared(), 3n, worker())
+
+def delegatee_revoked() -> H.State:
+  H.Change.state(delegatee_revoke())
+
 # --- Named transitions behind vectors --------------------------------------------
 # Each is used by exactly the check that asserts it and by its VECTOR line, so
 # the printed outcome and the asserted one come from the same inputs.
@@ -660,6 +708,31 @@ def wider_child() -> H.Change:
 def derived_after_close() -> H.Change:
   H.bind_attenuate(derived_closed(), 5n, 4n, worker(), reader_caller(), registry(), read(), live())
 
+# F.open opens only from a mount, so opening from a Descriptor alias passes
+# every binding gate and is refused by Frontend.
+def descriptor_open() -> H.Change:
+  H.bind_open(opened(), 2n, 2n, reader(), reader_caller(), registry(), read(), live())
+
+# W holds a read copy of R's Session alias and tries to destroy the Session.
+def delegatee_close() -> H.Change:
+  H.bind_close(session_shared(), 2n, 2n, worker(), reader_caller())
+
+# W closes the descriptor it opened itself through the delegated Session.
+def minter_close() -> H.Change:
+  H.bind_close(worker_opened(), 3n, 3n, worker(), reader_caller())
+
+def session_stale_descriptor() -> H.Change:
+  H.delegate(session_closed(), 4n, 3n, reader(), worker(), read())
+
+def withdrawn_open() -> H.Change:
+  H.bind_open(session_unrouted(), 2n, 2n, worker(), reader_caller(), registry(), read(), live())
+
+def stranger_delegate() -> H.Change:
+  H.delegate(stranger_opened(), 2n, 2n, reader(), stranger(), read())
+
+def delegator_after_delegatee_revoke() -> H.Change:
+  H.delegate(delegatee_revoked(), 4n, 2n, reader(), helper(), read())
+
 # The equality and denial helpers must discriminate, or every denial check
 # below would pass vacuously.
 def helper_checks() -> IO(Unit):
@@ -727,6 +800,8 @@ def ga003_checks() -> IO(Unit):
     Test.check(denied(H.bind_attenuate(opened(), 2n, 2n, reader(), reader_caller(), registry(), unknown_right(), live()), opened(), H.WidenedRights{}), "GA-003 attenuate outside the protocol rights denied WidenedRights")
     Test.check(denied(guessed_open(), opened(), H.UnknownAlias{}), "GA-003 open through an unknown alias denied UnknownAlias")
     vector("GA-003-3", "bind_open", alias_outcome(guessed_open()))
+    Test.check(denied(descriptor_open(), opened(), H.FrontendRejected{}), "GA-003 open through a Descriptor alias denied FrontendRejected")
+    vector("GA-003-4", "bind_open", alias_outcome(descriptor_open()))
 
 # GA-004 Close destroys and invalidates all aliases.
 def ga004_checks() -> IO(Unit):
@@ -743,7 +818,22 @@ def ga004_checks() -> IO(Unit):
     Test.check(denied(stale_revision_close(), shared(), H.StaleRevision{}), "GA-004 close at a stale revision destroys nothing and leaves state unchanged")
     vector("GA-004-4", "bind_close", close_outcome(stale_revision_close()))
     Test.check(denied(H.bind_close(shared(), 3n, 2n, reader(), caller(other_subject())), shared(), H.FrontendRejected{}), "GA-004 close Frontend rejects destroys nothing")
-    Test.check(denied(H.bind_close(shared(), 3n, 2n, helper(), reader_caller()), shared(), H.SubjectMismatch{}), "GA-004 a domain without the alias cannot close it")
+    Test.check(denied(H.bind_close(shared(), 3n, 2n, helper(), reader_caller()), shared(), H.UnknownAlias{}), "GA-004 a domain without the alias cannot close it and is told UnknownAlias")
+    Test.check(denied(H.bind_close(shared_closed(), 4n, 3n, helper(), reader_caller()), shared_closed(), H.UnknownAlias{}), "GA-004 a non-holder of a destroyed alias is told UnknownAlias, not StaleGeneration")
+    Test.check(denied(delegatee_close(), session_shared(), H.SubjectMismatch{}), "GA-004 a delegatee holding a read copy of the Session cannot destroy it")
+    vector("GA-004-5", "bind_close", close_outcome(delegatee_close()))
+    Test.check(denied(H.bind_close(shared(), 3n, 3n, worker(), reader_caller()), shared(), H.SubjectMismatch{}), "GA-004 a delegatee holding a copy of a descriptor cannot destroy it")
+    Test.check(H.Change.accepted(minter_close()) && issued_is(H.Change.issued(minter_close()), 2n), "GA-004 a delegatee may close the descriptor it opened itself")
+    vector("GA-004-6", "bind_close", close_outcome(minter_close()))
+    Test.check(H.Change.accepted(session_close()) && issued_is(H.Change.issued(session_close()), 1n), "GA-004 closing a Session with a two-level derivation below it commits")
+    vector("GA-004-7", "bind_close", close_outcome(session_close()))
+    Test.check(handle_closed(frontend_handle(session_closed(), 1n)) && handle_closed(frontend_handle(session_closed(), 2n)) && handle_closed(frontend_handle(session_closed(), 3n)), "GA-004 closing a Session closes every derived descriptor's Frontend handle")
+    Test.check(denied(H.delegate(session_closed(), 4n, 1n, reader(), worker(), read()), session_closed(), H.StaleGeneration{}), "GA-004 after a Session close the Session alias is stale")
+    Test.check(denied(H.delegate(session_closed(), 4n, 2n, reader(), worker(), read()), session_closed(), H.StaleGeneration{}), "GA-004 after a Session close the opened descriptor alias is stale")
+    Test.check(denied(session_stale_descriptor(), session_closed(), H.StaleGeneration{}), "GA-004 after a Session close the attenuated descriptor alias is stale")
+    vector("GA-004-8", "delegate", alias_outcome(session_stale_descriptor()))
+    Test.check(H.valid(session_closed()) && Nat.is_eq(reader_caps(session_closed()), 5n), "GA-004 a Session close stays valid and refunds all three objects")
+    Test.check(H.Change.accepted(H.bind_close(shared_closed(), 4n, 1n, reader(), reader_caller())) && handle_closed(frontend_handle(H.Change.state(H.bind_close(shared_closed(), 4n, 1n, reader(), reader_caller())), 1n)), "GA-004 a Session close skips a derived handle that was already closed")
 
 # GA-005 Possession is not the subject in the model.
 def ga005_checks() -> IO(Unit):
@@ -752,7 +842,7 @@ def ga005_checks() -> IO(Unit):
     Test.check(denied(unrecorded_attenuate(), forged_holder(), H.SubjectMismatch{}), "GA-005 alias held by Q with no delegation record denied SubjectMismatch")
     vector("GA-005-1", "bind_attenuate", alias_outcome(unrecorded_attenuate()))
     Test.check(denied(H.delegate(forged_holder(), 3n, 3n, worker(), helper(), read()), forged_holder(), H.SubjectMismatch{}), "GA-005 unrecorded holder cannot delegate onward")
-    Test.check(denied(non_holder_open(), mounted(), H.SubjectMismatch{}), "GA-005 a domain that does not hold the alias denied SubjectMismatch")
+    Test.check(denied(non_holder_open(), mounted(), H.UnknownAlias{}), "GA-005 a domain that does not hold the alias denied UnknownAlias")
     vector("GA-005-2", "bind_open", alias_outcome(non_holder_open()))
     Test.check(H.Change.accepted(worker_derive_change()), "GA-005 recorded delegation to the worker is accepted")
     vector("GA-005-3", "bind_attenuate", alias_outcome(worker_derive_change()))
@@ -761,6 +851,16 @@ def ga005_checks() -> IO(Unit):
     Test.check(rights_are(H.resolve(worker_opened(), 3n, worker()), read()), "GA-005 the delegatee's opened alias resolves within the record")
     Test.check(denied(H.bind_open(session_shared(), 2n, 2n, worker(), reader_caller(), registry(), read_write(), live()), session_shared(), H.WidenedRights{}), "GA-005 the delegatee is accepted only within the delegated scope")
     Test.check(H.valid(worker_opened()) && H.valid(derived()), "GA-005 delegatee derivations preserve binding validity")
+    Test.check(H.Change.accepted(worker_open_change()), "GA-005 while R's route stands the delegatee opens through the delegated Session")
+    vector("GA-005-4", "bind_open", alias_outcome(worker_open_change()))
+    Test.check(H.valid(session_unrouted()), "GA-005 route withdrawal after delegation fixture is a valid state")
+    Test.check(denied(withdrawn_open(), session_unrouted(), H.SubjectMismatch{}), "GA-005 withdrawing the delegator's route withdraws the delegatee's authority")
+    vector("GA-005-5", "bind_open", alias_outcome(withdrawn_open()))
+    Test.check(denied(H.bind_attenuate(worker_opened_unrouted(), 3n, 3n, worker(), reader_caller(), registry(), read(), live()), worker_opened_unrouted(), H.SubjectMismatch{}), "GA-005 route withdrawal also withdraws the delegatee's derived alias")
+    Test.check(denied(stranger_delegate(), stranger_opened(), H.SubjectMismatch{}), "GA-005 delegation to a domain routed as another subject on the service denied SubjectMismatch")
+    vector("GA-005-6", "delegate", alias_outcome(stranger_delegate()))
+    Test.check(H.Change.accepted(H.delegate(stranger_opened(), 2n, 2n, reader(), worker(), read())), "GA-005 delegation to the same subject's unrouted worker is still recorded")
+    Test.check(H.Change.accepted(H.delegate(stranger_other_mounted(), 1n, 1n, reader(), stranger(), read())), "GA-005 a route on another service does not bar delegation")
 
 # GA-006 Delegation cannot widen rights.
 def ga006_checks() -> IO(Unit):
@@ -793,6 +893,8 @@ def ga007_checks() -> IO(Unit):
     Test.check(Nat.is_eq(reader_caps(opened()), 3n), "GA-007 mount and open each charge one capability slot")
     Test.check(Nat.is_eq(reader_caps(H.Change.state(H.bind_close(opened(), 2n, 2n, reader(), reader_caller()))), 4n), "GA-007 destroying an object refunds its capability slot")
     Test.check(Nat.is_eq(reader_caps(H.Change.state(H.bind_close(opened(), 2n, 1n, reader(), reader_caller()))), 5n), "GA-007 destroying a Session refunds its derived objects too")
+    Test.check(Nat.is_eq(reader_caps(H.Change.state(H.revoke(opened(), 2n, reader()))), 5n), "GA-007 revoking a domain refunds the slots of its live objects")
+    Test.check(Nat.is_eq(worker_caps(derived()), 4n) && Nat.is_eq(worker_caps(derived_revoked()), 5n) && Nat.is_eq(reader_caps(derived_revoked()), 5n), "GA-007 revoke refunds each destroyed object to the domain charged for it")
 
 # GA-008 Denials preserve state and name a reason. Every denial check in this
 # module compares the returned state structurally with its input; these add
@@ -835,6 +937,11 @@ def ga011_checks() -> IO(Unit):
     Test.check(denied(derived_after_close(), derived_closed(), H.StaleGeneration{}), "GA-011 derived object is stale after its parent is closed")
     vector("GA-011-5", "bind_attenuate", alias_outcome(derived_after_close()))
     Test.check(denied(H.bind_attenuate(derived_revoked(), 5n, 4n, worker(), reader_caller(), registry(), read(), live()), derived_revoked(), H.StaleGeneration{}), "GA-011 derived object is stale after its parent's holder is revoked")
+    Test.check(H.Change.accepted(delegatee_revoke()), "GA-011 revoking the delegatee's domain commits")
+    vector("GA-011-6", "revoke", revoke_outcome(delegatee_revoke()))
+    Test.check(denied(delegator_after_delegatee_revoke(), delegatee_revoked(), H.StaleGeneration{}), "GA-011 revoking a delegatee destroys the delegator's object too")
+    vector("GA-011-7", "delegate", alias_outcome(delegator_after_delegatee_revoke()))
+    Test.check(H.Change.accepted(H.bind_open(delegatee_revoked(), 4n, 1n, reader(), reader_caller(), registry(), read(), live())) && Nat.is_eq(reader_caps(delegatee_revoked()), 4n), "GA-011 the delegator's Session survives and its descriptor slot is refunded")
 
 # Public entry point, run by Tests.bend. Checks are grouped per requirement and
 # fixtures are named functions rather than shared locals: one flat main with
@@ -851,4 +958,4 @@ def main() -> IO(Unit):
     ga007_checks()
     ga008_checks()
     ga011_checks()
-    IO.print("HostBinding: 102 checks passed, 30 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
+    IO.print("HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
