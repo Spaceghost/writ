@@ -42,8 +42,11 @@ coalesced was 0 in every retained run, and in six burst attempts it was
 above 0 twice (3 and 1), because Genode merges repeated submits to one
 signal context before the handler runs (about 10 handler calls for 400
 submits); no burst run is kept. A client that floods without ever reading its replies does not stop a second
-client from being served, and the loop exits with value 0 when its fuel
-runs out (same file, TASK 3). GB-008's restart by a supervisor with a new
+client from being served, nor does a client that exits before its reply
+or one that freed its result signal context, and the loop exits with
+value 0 when its fuel runs out (same file, TASK 3 and FINAL REVIEW);
+whether the reply signal can block the loop on base-linux in cases not
+run is not shown. GB-008's restart by a supervisor with a new
 generation is not configured. 2.2 stays open: the shim, its bounded queue,
 and the trust inventory exist (hosts/genode/INVENTORY.md lists files,
 exported symbols, and sessions), but the inventory's reviewer is still

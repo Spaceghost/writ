@@ -25,6 +25,13 @@ def request(channel: U32, route: U32, session: U32, expected: U32, claimed: U32)
   Host.Request{channel, route, 1, 1, session, expected, Scenario.graph_epoch(),
     Scenario.policy_epoch(), Scenario.authority_epoch(), 99, 10, 1, 20, 1, claimed, 0, 0, 0}
 
+# A request with chosen version and invocation words (for the record-level
+# reasons 1 and 4).
+def request_with(channel: U32, route: U32, session: U32, expected: U32, version: U32,
+  invocation: U32) -> Host.Request:
+  Host.Request{channel, route, version, 1, session, expected, Scenario.graph_epoch(),
+    Scenario.policy_epoch(), Scenario.authority_epoch(), invocation, 10, 1, 20, 1, 1, 0, 0, 0}
+
 def show(reply: Host.Reply) -> String:
   match reply:
     case Host.Reply{a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p}:
@@ -109,6 +116,27 @@ def close_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Uni
       Bool.not(U32.is_eq(descriptor(ninth), 0)),
       "after channel 3 closed a ninth channel is bound and served (not reason 7)")
 
+# Reasons 1 to 4 (final review): each refused before the commit, with no
+# binding made for 1 to 2 and the descriptor bound for 3 and 4.
+def reason_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
+  +bad = once(request_with(1, 1, 1, expected_session_reader(), 2, 99), Monitor.initial_state(),
+    candidate, principals)
+  +unknown_subject = once(request(1, 3, 1, expected_session_reader(), 1), Monitor.initial_state(),
+    candidate, principals)
+  +unknown_session = once(request(1, 1, 9, expected_session_reader(), 1), Monitor.initial_state(),
+    candidate, principals)
+  +mismatch = once(request_with(1, 1, 1, expected_session_reader(), 1, 98), Monitor.initial_state(),
+    candidate, principals)
+  do IO<Unit>:
+    IO.print("reply version 2          : " ++ show(bad))
+    IO.print("reply route subject 3    : " ++ show(unknown_subject))
+    IO.print("reply session 9          : " ++ show(unknown_session))
+    IO.print("reply invocation 98      : " ++ show(mismatch))
+    verdict(outcome_is(bad, 2, 1), "record with version 2 refused: bad record (reason 1)")
+    verdict(outcome_is(unknown_subject, 2, 2), "route subject 3 refused: route subject unknown (reason 2)")
+    verdict(outcome_is(unknown_session, 2, 3), "session 9 refused: session unknown (reason 3)")
+    verdict(outcome_is(mismatch, 2, 4), "invocation 98 refused: plan is not the session's plan (reason 4)")
+
 def channel_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
   +first = after(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
     candidate, principals)
@@ -135,6 +163,7 @@ def channel_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(U
       "bound channel 3 still served with a full table")
     verdict(outcome_is(moved, 2, 8), "channel 1 arriving with another subject refused")
     close_cases(candidate, principals)
+    reason_cases(candidate, principals)
 
 def run(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
   +own = once(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),

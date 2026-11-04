@@ -833,3 +833,71 @@ HASHES (sha256, fix round 1)
   Run scripts unchanged from TASK 3. Live copies cmp-identical (shim,
   session header, client, both target.mk, the shared Tcl, the seven
   monitor run scripts; no burst script in either tree).
+
+==========================================================================
+TASK 3 FINAL REVIEW (2026-11-04)
+==========================================================================
+
+Transport refusal decision word. The shim's refusal record is now
+version 1, kind 3, decision 3, reason 256, the rest 0. Decision 3 is
+neither Committed (1) nor Denied (2), so the refusal cannot be read as
+a Writ decision; kind and reason are also outside the monitor's words.
+The client checks r[2] == 3 and logs "kind=3 decision=3 (transport
+refusal) reason=256 (bad length)". writ_mem.cc 0c9d3616...f740.
+
+Signal submit (I1). Signal_transmitter::submit is an RPC to the
+submitter's own PD session in core
+(repos/base/src/lib/base/signal_transmitter.cc:31-44); core delivers in
+Signal_delivery_proxy_component::_deliver_from_ep and warns "invalid
+signal-context capability" for an unknown context
+(repos/base/src/core/include/signal_delivery_proxy.h:64-72). On
+base-linux a failed lx_sendmsg in lx_call ends in sleep_forever
+(repos/base-linux/src/lib/base/ipc.cc:325-330), so the never-blocks
+claim holds only while core answers the shim's own PD RPC; it is
+narrowed in INVENTORY.md, Channel.md and docs/GENODE.md to the cases
+run.
+
+writ_bend_monitor_dead_client (new; run script b10b7d22...398c):
+writ_client_d sends and exits before any reply; writ_client_f registers
+a scoped result signal handler, destroys it, then sends; writ_client_r
+sends after 3000 ms and expects Committed 0. Required and observed:
+S decisions Denied 5 before R's Committed, the core warning "invalid
+signal-context capability" for the freed context, R's PASS and exit 0,
+no monitor exit. The dead client's put is skipped when its channel
+closed first; in one earlier run its queued entry became the close
+event and only one S decision appeared (both shapes accepted). Not
+shown: a client whose process is gone while its session stays open
+(listed as a gap).
+  run-writ_bend_monitor_dead_client-t3-fr.out, -t3-fr-2.out,
+  -t3-fr-final.out: rc 0.
+
+writ_bend_boot refactor. writ_bend_boot takes optional start, extra
+config, children and builds; the probe run and writ_bend_monitor_boot
+are thin callers. Generated configs are byte-identical before and
+after for hello, probe, accept and liveness.
+  writ_bend.tcl 5db756a6... -> 9c7f5b0c...a732
+  writ_bend_probe.run 82f9fa23... -> 9d7a4376...62b1
+  writ_bend_monitor.tcl 1df9ac3b...e959
+
+MonitorCheck: reason cases 1-4 added (version 2 -> 1, route 3 -> 2,
+session 9 -> 3, invocation 98 -> 4); 17 PASS, rc 0. Host scaffolding,
+outside the 782-check corpus. MonitorCheck.bend 3fe2b06c...d8e4,
+Monitor.bend d2b9c05e...d9e1. Genode.bend e1cfa50d...ded5 (comment
+only; emitted monitor.c and probe.c cmp-identical).
+
+Runs on this tree (t3-finalrev-runs.log, then t3-finalrev-runs2.log
+after the client comment change), all rc 0: hello (ram 8335360, caps
+35), rts, probe (delta 101), accept, substitute, routed_s,
+claim_ignored, bad_length, liveness, queue, dead_client. Corpus after
+the shim change: 834 lines cmp-identical to genode-tests-2.lines,
+ALL LIBRARY TESTS PASSED.
+
+OpenSpec 1.16.0 (/nix/store/74ha4fybdaab2568xz7l1ix2l2ll008s-openspec-1.16.0):
+validate --all --strict --no-interactive, 44 passed.
+
+Client writ_channel_client.cc 310f5a8c...0320. Runtime-rows live hash
+table regenerated (55 files); every live file under writ-repo run/ and
+src/ is byte-identical to a committed file.
+
+Limits: CPU base-linux only; no GPU, no Lean kernel verdict, no
+hardware kernel. Task 2.2 and section 3 remain open.

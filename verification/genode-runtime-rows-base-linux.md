@@ -69,17 +69,37 @@ the shared build and run files are `src/app/writ_bend.inc` and
 `run/writ_bend.tcl` (committed as `scripts/genode/writ_bend.inc` and
 `scripts/genode/writ_bend.tcl`); the reservation probe's files are under
 `hosts/genode/probes/reservation/`, the Bend components' under
-`scripts/genode/writ_bend_<name>/`. sha256 of the live files:
+`scripts/genode/writ_bend_<name>/`. Since the Genode channel lane the live
+tree also holds the session header `src/writ_shim/writ_channel_session.h`,
+the monitor's `src/app/writ_bend_monitor/target.mk`, the client probe
+`src/app/writ_channel_client/`, the shared `run/writ_bend_monitor.tcl`, and
+the eight `run/writ_bend_monitor_*.run` scripts (committed under
+`hosts/genode/shim/`, `hosts/genode/probes/client/`, and
+`scripts/genode/writ_bend_monitor/`; see
+`verification/genode-channel-base-linux.txt`, HASHES). sha256 of every live
+file under `run/` and `src/`, regenerated on 2026-11-04 at the channel
+lane's Task 3 final review (the shim is no longer the Task 1 file
+`6664b650...dfca`; every live copy was checked byte-identical to its
+committed file with `cmp`):
 
 ```text
 09ea895363f34de9ca8d6873d4bd310d573dd419c1754039d264b178aaef3343  run/writ_bend_example.run
 3224b9aa62328799a6243502a61b15081deab5e526fe3c4b8bff300060ecdf77  run/writ_bend_flow.run
 92fddcacccd06e30545ada83606dc960d081200366599049bf77d8db67db1846  run/writ_bend_gpuexample.run
 836482f88770e507d7dc9d4a2afbe31ece9085255193e7a5993672a45e7b5d35  run/writ_bend_hello.run
+635979541c8e5569cd7f44b732f043941338a210ce8882740d01f2f967ec5d4c  run/writ_bend_monitor_accept.run
+991270f982644dea0439b47d683398d393ae7026ef21ddfc2644c68ef3ad2ed4  run/writ_bend_monitor_bad_length.run
+9ae540f2a3060b9646e843189540f8c087d65754c965e8ee4f3c894f4714b4c0  run/writ_bend_monitor_claim_ignored.run
+b10b7d22b12cff1874cab9a0626179bae6350ff44a7c48a69faaef0b92d5398c  run/writ_bend_monitor_dead_client.run
+08200e9a4b0c32ff4adbe907f420365600163966e68555e6e413b1b8b2501424  run/writ_bend_monitor_liveness.run
+6788c041d48badf3c259640c18139422ce43cc9279682efb85de919ec37a3648  run/writ_bend_monitor_queue.run
+a25eb8370ffc2097121b6f7b7000ba98cfcd95e1cff4f23bcb09ae30d1cbbb15  run/writ_bend_monitor_routed_s.run
+0b092119230f3a3865aca2ad7d06766cc31944a70c5483d26797179fdac0a84e  run/writ_bend_monitor_substitute.run
+1df9ac3b4415bcf1aecf7ca50e0f374b92750f70e68e85d1f713379ca945e959  run/writ_bend_monitor.tcl
 37687fe801182740094f614f06e4d2ff4eb63602ae62df7fe8aedbb2746b1f11  run/writ_bend_overflow.run
-82f9fa2303ac6f341602f41d69170bc15de17661f726daac87fa770f2dcad464  run/writ_bend_probe.run
+9d7a437626ebbe8f13b275fd24c1ae7e0d27e8267c09aad3e99402fa71d662b1  run/writ_bend_probe.run
 fdaa28a76a2a0686dc198234b08bc5fa0a60d3a7b3d41a319bba6a3100240283  run/writ_bend_rts.run
-5db756a649db3b2607ea8868828f83fc51a1b62771bdb659916cc45d52b7a161  run/writ_bend.tcl
+9c7f5b0c6507210ccb3b73a6a4900bdbb2d0e94963c3b61e20dbf5032471a732  run/writ_bend.tcl
 74439c72e91cd411a0819e4a637d786d268bb637e268ddc0ba102ce8bf425350  run/writ_bend_tests.run
 98d45e66e9710b112f203e6179cfc07baf5f75e6b4555ad41f28cdb279fa9911  run/writ_bend_transfer.run
 1cb701bd9f1825dd5862800e80b117d1092e1eb4f1adf14418847a9a1537fb35  run/writ_hello.run
@@ -95,10 +115,13 @@ e54d7ea0b187f5d7d195ee4242601c93b20f18c6d4f845e769d2dc4479555bcd  src/app/writ_b
 f18ed1ce65ad452a8ae3bf23c1f3bbd1c7ed251c909caa00bde87810e2ab7b39  src/app/writ_bend_gpuexample/target.mk
 2bdeee659cc1c04ab544d876db3c71dcff55691215d630c37b092c752ed6b4eb  src/app/writ_bend_hello/target.mk
 f5150891fd912d58e278b1a0469e3115a94744987f5717b6d27bc9923dd3a9da  src/app/writ_bend.inc
+fbc19db604be1d2519f6dec4db2947cd55ff3cd980ba6641f2168da8772ef1f3  src/app/writ_bend_monitor/target.mk
 0ffbaa8e934ff9ae88fa0cc7847bbf9e1b79740642cc03798b3a79f782b14c62  src/app/writ_bend_overflow/target.mk
 99f2a1546031b2b7aac819a67ba098ff356e8d5da3a51b0cb8e7791cbaa846d7  src/app/writ_bend_probe/target.mk
 0f674ca0b0151a6afc7084890fc69cf4d3c671bc63820bcea58fe96019c6ea65  src/app/writ_bend_tests/target.mk
 7a49ff59befa5f69547d0931fc0ff8f3bed4e4fe6cd6e7bbd43fbaffd366342a  src/app/writ_bend_transfer/target.mk
+0f035e645137248ad91c53fb0f1e9883929c0dd483a8c8c578d0f1f24e1b37ed  src/app/writ_channel_client/target.mk
+310f5a8c99439e4dc8e27483a7cf283098d0e3ebad8831a2c6981f352cdb0320  src/app/writ_channel_client/writ_channel_client.cc
 bbf48036b8f41f697c93b1b844ccd005b17434a6877632ede44629a93bdddbfb  src/app/writ_hello/main.cc
 045b387b3813cc2d005e176c9e16b34d95b7dcda7b18e0cb6cbfea5e74a952d9  src/app/writ_hello/target.mk
 e95d4f398c1366cfb75b00cefa2a9016abb8a4cb4f04ee8c32aeb4782fe52c13  src/app/writ_probe_clock/probe_clock.c
@@ -113,7 +136,8 @@ bdff1d1e0e488093ad27aeaa28205fa1ed5c11973d528254a7d33544986ee24b  src/app/writ_p
 1d0e82ff5e7743beac5974d58ff61e847ccb918e81ab8755cda237f6420c6529  src/app/writ_probe_reservation/target.mk
 fd9a2350dfd05b08082fb85a0375847b4010d554ec351abebce15562bdbc285c  src/app/writ_probe_threads/probe_threads.c
 d4ac74790dfaa624ff803067b0d02419a6bf0b8a1b2d1623da015130196510e4  src/app/writ_probe_threads/target.mk
-6664b650369086615111400f2ac59ee1c20a921db3134c5be8ac10040fffdfca  src/writ_shim/writ_mem.cc
+c8a963cf6a51b3b3b34397db71c976ad4b29bf6fc10bf4c476721f92f97cbceb  src/writ_shim/writ_channel_session.h
+0c9d3616a7748356721c805970a96fc025156077492d567702e5c70aa3d7f740  src/writ_shim/writ_mem.cc
 ```
 
 ## Authored non-Bend files

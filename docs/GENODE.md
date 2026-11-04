@@ -442,15 +442,19 @@ session type has only four capability-handover RPC functions (two buckets,
 two signals); records carry the requests and decisions (GB-011). Bounds
 and liveness (Task 3): `make run/writ_bend_monitor_bad_length` sends
 header lengths 65, 0, and 0xFFFFFFFF, which the shim counts and answers with its fixed
-transport refusal (kind 3, reason 256, no Writ decision) before Bend, then
+transport refusal (kind 3, decision 3, reason 256, no Writ decision) before Bend, then
 a valid request that Bend commits; `make run/writ_bend_monitor_liveness`
 runs a client that floods without ever reading a reply beside one that
 sends once and is Committed, until the monitor's fuel runs out and init
-reports its exit value 0; a close event costs the monitor one unit of fuel
+reports its exit value 0; `make run/writ_bend_monitor_dead_client` shows a
+client that exits before its reply and one that frees its result signal
+context do not stop a third client from being served; a close event costs the monitor one unit of fuel
 like a record. `make run/writ_bend_monitor_queue` opens 8 channels, refuses a ninth
 session, and serves the queued channels in ring order until the fuel runs
 out; coalescing of repeated signals is not reliably exercised. Current gap: one record per bucket, nothing
 restarts the monitor after fuel exhaustion (GB-008's supervisor restart),
-and `base-hw` is not attempted. Records formats:
+the fuel is global so any client can end the service, whether the reply
+signal can block the loop on base-linux beyond the cases run is not shown,
+and `base-hw` is not attempted. Record formats:
 [Channel.md](../hosts/genode/effects/Channel.md); evidence:
 [genode-channel-base-linux.txt](../verification/genode-channel-base-linux.txt).

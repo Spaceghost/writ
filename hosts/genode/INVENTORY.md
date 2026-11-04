@@ -27,7 +27,7 @@ event (see Writ channel bounds).
 
 | File | Role | Linked into |
 | --- | --- | --- |
-| `hosts/genode/shim/writ_mem.cc` | memory host layer: lazily populated anonymous reservations, guard pages, component entry; console and time functions for the `Genode.*` effects (channel lane, Task 1) | `writ_probe_reservation` (C probe, Task 1); `writ_bend_hello` (Bend program, Task 2; `scripts/genode/writ_bend_hello/target.mk`, `LIBS = base libc`, posix no longer linked); `writ_bend_{tests,example,flow,transfer,gpuexample,overflow}` (Bend programs, Task 3; `scripts/genode/writ_bend_<name>/target.mk`, same pattern); `writ_bend_probe` (Bend program `hosts/genode/monitor/Probe.bend`, channel lane Task 1; `scripts/genode/writ_bend_probe/target.mk`) |
+| `hosts/genode/shim/writ_mem.cc` | memory host layer: lazily populated anonymous reservations, guard pages, component entry; console and time functions for the `Genode.*` effects (channel lane, Task 1); the Writ channel service behind `Genode.take`/`Genode.put` (channel lane, Tasks 2 and 3) | `writ_probe_reservation` (C probe, Task 1); `writ_bend_hello` (Bend program, Task 2; `scripts/genode/writ_bend_hello/target.mk`, `LIBS = base libc`, posix no longer linked); `writ_bend_{tests,example,flow,transfer,gpuexample,overflow}` (Bend programs, Task 3; `scripts/genode/writ_bend_<name>/target.mk`, same pattern); `writ_bend_probe` (Bend program `hosts/genode/monitor/Probe.bend`, channel lane Task 1; `scripts/genode/writ_bend_probe/target.mk`); `writ_bend_monitor` (Bend program `hosts/genode/monitor/Monitor.bend`, channel lane Task 2; `scripts/genode/writ_bend_monitor/target.mk`) |
 | `hosts/genode/shim/writ_channel_session.h` | the `Writ_channel::Session` type (four capability-handover RPC functions), its `Session_client` and `Connection`; included by `writ_mem.cc` (same translation unit, not a second `.cc`) and by the client probe | `writ_mem.cc` (every component above); `writ_channel_client` |
 | `hosts/genode/effects/Genode.bend` and `genode_{log,now,sleep,take,put}.{c,js}` | Bend effect defs and their twins (`bend guide effects`); the `.c` twins are spliced into the generated C by the Bend compiler and call only `writ_shim_log`, `writ_shim_now_ms`, `writ_shim_sleep_ms`, `writ_shim_take`, `writ_shim_put`; the `.js` twins stop the run (JavaScript is not a Genode target). `Genode.bend` also declares the `Request` and `Reply` records (`hosts/genode/effects/Channel.md`). Not C++ and not a second shim unit | every Bend program that imports `Genode.bend` (`writ_bend_probe`, `writ_bend_monitor`) |
 
@@ -67,14 +67,14 @@ run scripts source; live copy `run/writ_bend.tcl`).
 | `munmap` | public entry point, shadows libc | whole reservation only (partial or overflowing length: -1 `EINVAL`); other ranges go to libc |
 | `mprotect` | public entry point, shadows libc | `PROT_NONE` on a page-aligned range in a reservation makes a guard; `PROT_READ\|PROT_WRITE` on a guard-free range in a reservation returns 0 (it already is); lifting a guard or any other prot: -1 `ENOTSUP`; len 0, len larger than the reservation, or a range not contained in it: -1 `EINVAL`; outside reservations: libc (-1 `ENOSYS`) |
 | (all three above) | | fail with `ENOSYS` before `Libc::Component::construct` has resolved libc's originals |
-| `Libc::Component::construct` | component entry | stores the Env, resolves libc's originals, opens the config ROM and, only if it has a `<writ_channel>` node, starts the channel service (see Writ channel), then runs `main` as `posix`'s construct.cc does (so `posix` is not linked); if the libc environment has `WRIT_MEM_REPORT=1` it registers an `atexit` report first (diagnostics only, reads no other configuration) |
+| `Libc::Component::construct` | component entry | stores the Env, resolves libc's originals, reads libc's config through `Libc::Env::with_config` (no ROM session of its own) and, only if it has a `<writ_channel>` node, starts the channel service (see Writ channel), then runs `main` as `posix`'s construct.cc does (so `posix` is not linked); if the libc environment has `WRIT_MEM_REPORT=1` it registers an `atexit` report first (diagnostics only, reads no other configuration) |
 | `writ_mem_report` | diagnostics helper | logs PD RAM used/limit, caps, and reservation counters (populated chunks, faults resolved, benign retries, reservations placed at the hint or elsewhere, released, and the Timer early-wake count); when the channel service runs, a second line with the channel counters (signals, coalesced, ring full, ring high-water mark, bad length, stale, taken, put, put skipped, closed) and the number of open and closing channel slots; called by the probes, and from `exit` when `WRIT_MEM_REPORT=1` |
 | `writ_mem_restore_rt` | local (not global) asm symbol | `rt_sigreturn` restorer for the SIGSEGV handler |
 | `writ_shim_log(char const *text, size_t len)` | effect host function (`Genode.log`) | `Genode::log` of at most `len` bytes as one `Cstring` (ends at the first NUL); nothing added; a null `text` does nothing |
 | `writ_shim_now_ms(void) -> uint64_t` | effect host function (`Genode.now`) | `elapsed_ms()` of the shim's Timer session (ms since the session was opened); 0 before `construct`; the twin truncates to U32 |
 | `writ_shim_sleep_ms(uint32_t ms)` | effect host function (`Genode.sleep`) | `msleep` on the shim's Timer session until its clock has advanced by at least `ms` (re-sleeps the remainder after an early wake and counts it, at most `MAX_SLEEP_ROUNDS` = 16 `msleep` calls); `ms == 0` or before `construct` returns at once; called from a runtime helper thread (`io_work`); stops the component (exit value 1) on a frozen or reversed clock or past the round cap (see Timer failure outcomes) |
-| `writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)` | effect host function (`Genode.take`) | blocks (`Semaphore::down`) until a channel's request signal has queued an entry, then copies that channel's 16 record words (after an acquire fence that pairs with the client's release fence before its length write) from its request bucket into `record` and stores the channel id and the route subject. A header length other than 64 is never copied: it is counted (bad length, one warning line with the count), answered at once with the shim's fixed transport refusal record (version 1, kind 3, decision 2, reason 256, the rest 0; `Channel.md`) and the client's signal, and take waits for the next entry. A close event (a session closed) frees the channel's held slot and is returned as the channel id with route subject 0 and all record words 0. Called from a runtime helper thread (`io_work`); never decides: the refusal depends only on the length word and is the same for every channel and subject |
-| `writ_shim_put(uint32_t channel, uint32_t const *record)` | effect host function (`Genode.put`) | copies 16 words into the channel's result bucket at offset 16, then the request's sequence number and, after a release fence, the length 64; submits the client's registered signal; a channel that is closed or has no taken request is skipped and counted; runs on the Bend loop, does not block; never decides |
+| `writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)` | effect host function (`Genode.take`) | blocks (`Semaphore::down`) until a channel's request signal has queued an entry, then copies that channel's 16 record words (after an acquire fence that pairs with the client's release fence before its length write) from its request bucket into `record` and stores the channel id and the route subject. A header length other than 64 is never copied: it is counted (bad length, one warning line with the count), answered at once with the shim's fixed transport refusal record (version 1, kind 3, decision 3, reason 256, the rest 0; `Channel.md`) and the client's signal, and take waits for the next entry. A close event (a session closed) frees the channel's held slot and is returned as the channel id with route subject 0 and all record words 0. Called from a runtime helper thread (`io_work`); never decides: the refusal depends only on the length word and is the same for every channel and subject |
+| `writ_shim_put(uint32_t channel, uint32_t const *record)` | effect host function (`Genode.put`) | copies 16 words into the channel's result bucket at offset 16, then the request's sequence number and, after a release fence, the length 64; submits the client's registered signal; a channel that is closed or has no taken request is skipped and counted; runs on the Bend loop and does not wait for the client (the submit is an RPC to the component's own PD session in core, `repos/base/src/lib/base/signal_transmitter.cc:31-44`; see "Signal submit" under Writ channel bounds for what is and is not shown); never decides |
 
 ## Sessions and kernel interfaces used
 
@@ -152,8 +152,9 @@ run scripts source; live copy `run/writ_bend.tcl`).
 - **Transport refusal** (channel lane, Task 3): the one result record the
   shim writes on its own. It carries no Writ decision (GB-005/GB-006): a
   fixed record for a request whose header length is not 64, before any
-  Bend parsing, with kind 3 and reason 256, outside the monitor's kind 2
-  and reasons 0 to 8, so it cannot be mistaken for a decision by Bend.
+  Bend parsing, with kind 3, decision 3, and reason 256, outside the
+  monitor's kind 2, decisions 1 and 2, and reasons 0 to 8, so it cannot be
+  mistaken for a decision by Bend.
 - **Close event** (channel lane, Task 3): `_destroy_session` removes the
   channel, holds its slot as closing, and queues a close entry (a request
   still queued for the channel is turned into it and counted stale);
@@ -291,9 +292,26 @@ exit counters are exercised by `writ_bend_monitor_liveness`; nine clients
 channels 1-4 (1-3 in the rerun) in ring order before the fuel ran out; `ring max=` the ring's
 high-water mark) by `writ_bend_monitor_queue` (`verification/genode-channel-base-linux.txt`,
 TASK 3). The shim never
-blocks on a client: a reply overwrites the channel's result bucket and
-submits the signal without waiting, so an unresponsive client holds one
-result bucket and at most one ring entry. Not reliably exercised:
+waits for a client's acknowledgement: a reply overwrites the channel's
+result bucket and submits the signal, so an unresponsive client holds one
+result bucket and at most one ring entry. Signal submit: the submit is an
+RPC to the component's own PD session in core
+(`repos/base/src/lib/base/signal_transmitter.cc:31-44`); core delivers it
+through `Signal_delivery_proxy_component::_deliver_from_ep`, which only
+warns for a context it no longer knows
+(`repos/base/src/core/include/signal_delivery_proxy.h:64-72`). Shown by
+`writ_bend_monitor_dead_client`: a reply to a client that freed its result
+context logs core's `invalid signal-context capability` warning and the
+monitor serves the next client; a client that exits before its reply
+closes its channel first, so that put is skipped. Not shown: a client whose
+process is gone while its session stays open (init closes a child's
+sessions when it exits, so this is not reachable under init). On base-linux
+any RPC whose `lx_sendmsg` fails ends in `sleep_forever`
+(`repos/base-linux/src/lib/base/ipc.cc:325-330`), and a client was seen
+blocked that way when it submitted after the monitor had exited
+(`writ_bend_monitor_liveness`); whether the shim's submit can reach that
+path is not shown, so "the loop never blocks on a client" is claimed only
+for the cases above (GB-008 gap). Not reliably exercised:
 coalescing (0 in every retained run; above 0 in two of six burst attempts
 that were not kept, because Genode merges repeated submits to one signal
 context before the shim's handler runs). Not exercised: stale entries,
@@ -307,8 +325,18 @@ a ninth channel while 8 are bound is denied (reason 7), a subject change on
 a bound channel too (reason 8). A binding is made at a channel's first
 record even when that record is then denied, and removed at the
 channel's close event (Task 3); before Task 3 bindings were never
-removed and reason 7 counted channels over the component's life. Gap:
-subject S's session is synthetic, opened and not negotiated.
+removed and reason 7 counted channels over the component's life. Gaps:
+subject S's session is synthetic, opened and not negotiated; GB-010's
+"two descriptors for one reader, closing one leaves the other usable" is
+not run on Genode (each run gives a reader one channel; the Linux check
+binds and closes channels independently); a cached binding is not
+revalidated against a changed registry or epoch at bind time beyond what
+`DataOS.commit_from_capability` re-resolves at each commit, and no run
+changes the registry or an epoch (all synthetic state is static); the
+monitor's fuel (8 takes) is global, so any client, by sending records or
+opening and closing sessions, can end the service for all, and nothing
+restarts it (GB-008's supervisor restart with a new generation is not
+configured).
 
 ## Changes in Task 3
 

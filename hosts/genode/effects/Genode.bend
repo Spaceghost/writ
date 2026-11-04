@@ -73,7 +73,9 @@ type Reply is Data:
 # route subject (writ_shim_take). The wait runs on a runtime helper thread
 # (io_work), so the event loop is parked, not spinning. A request whose
 # bucket header does not declare exactly one 64-byte record never reaches
-# Bend: the shim drops and counts it.
+# Bend: the shim counts it and answers it with its fixed transport refusal
+# (kind 3, decision 3, reason 256; Channel.md), which carries no Writ
+# decision. A take may also report a closed channel (route subject 0).
 def Genode.take() -> IO(Request):
   import "./genode_take.c"
   import "./genode_take.js"

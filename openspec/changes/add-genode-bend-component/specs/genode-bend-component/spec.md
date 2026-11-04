@@ -102,11 +102,11 @@ The `extern "C"` shim SHALL be the only authored C++ in the component, SHALL hav
 
 - **GIVEN** a client sends a request beyond the declared size bound
 - **WHEN** the shim receives it
-- **THEN** it is dropped and counted before any Bend parsing.
+- **THEN** it is dropped, counted, and answered with a fixed transport refusal before any Bend parsing.
 
 ### Requirement: GB-007 Requests reach Bend with trusted route identity
 
-Each request delivered to `Genode.accept` SHALL carry the session identity established by the parent route, and a subject claimed in the request body SHALL NOT replace it.
+Each request delivered to `Genode.take` SHALL carry the session identity established by the parent route, and a subject claimed in the request body SHALL NOT replace it.
 
 #### Scenario: Authorized reader request
 

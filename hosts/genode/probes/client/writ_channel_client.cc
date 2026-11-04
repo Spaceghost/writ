@@ -24,18 +24,26 @@
  * mode (Task 3) selects the exercise:
  *   "single" (default) the steps above, one request.
  *   "bad_length" requests whose header lengths are 65, 0, and 0xFFFFFFFF
- *     (above the 4 KiB bucket) in turn (GB-006: the shim must answer each with its fixed
- *     refusal record, kind 3, decision 2, reason 256, every other word 0,
+ *     (above the 4 KiB bucket) in turn (GB-006: the shim must answer each
+ *     with its fixed refusal record, kind 3, decision 3 (transport
+ *     refusal, not a Writ decision), reason 256, every other word 0,
  *     and the request's sequence), then the valid request, whose decision
  *     must be the expected one. Any other answer exits 1.
  *   "flood" (GB-008, the unresponsive client) sends the valid request
  *     `count` times, `period_ms` apart (sequence 1, 2, ...), from the
  *     constructor, so its entrypoint never dispatches the result signal: it
  *     never reads a reply. With period_ms 0 the signals are submitted back
- *     to back (the burst run). Then it exits 0. It checks nothing. On
+ *     to back. Then it exits 0. It checks nothing. On
  *     base-linux a signal submitted after the monitor has exited fails in
  *     lx_sendmsg (connection refused) and the client stays blocked there
  *     instead of exiting (observed in writ_bend_monitor_liveness).
+ *   "exit_after_signal" (GB-008, a client that dies) sends the valid
+ *     request once and exits 0 at once, before any reply can arrive.
+ *   "freed_sigh" (GB-008, a bogus result signal) registers a result signal
+ *     context, frees it again (the Signal_handler is destroyed, so core
+ *     releases the context), sends the valid request once, and then stays
+ *     alive without a handler: the monitor's reply signal goes to a context
+ *     that no longer exists.
  * delay_ms (default 0) makes the client sleep on a Timer session before it
  * writes, so the monitor's Genode.take is already parked when the signal
  * arrives; with 0 the request is usually queued before Bend first takes.
@@ -99,14 +107,16 @@ struct Writ_channel_client::Main
 	uint32_t const _expect_decision = _word("expect_decision");
 	uint32_t const _expect_reason   = _word("expect_reason");
 
-	enum class Mode { SINGLE, BAD_LENGTH, FLOOD };
+	enum class Mode { SINGLE, BAD_LENGTH, FLOOD, EXIT_AFTER_SIGNAL, FREED_SIGH };
 
 	Mode _mode_from_config()
 	{
-		using Name = String<16>;
+		using Name = String<32>;
 		Name const m = _config.node().attribute_value("mode", Name("single"));
 		if (m == "bad_length") return Mode::BAD_LENGTH;
 		if (m == "flood")      return Mode::FLOOD;
+		if (m == "exit_after_signal") return Mode::EXIT_AFTER_SIGNAL;
+		if (m == "freed_sigh") return Mode::FREED_SIGH;
 		return Mode::SINGLE;
 	}
 
@@ -138,13 +148,13 @@ struct Writ_channel_client::Main
 
 	/*
 	 * The shim's transport refusal (Channel.md, "Transport refusal"): exactly
-	 * version 1, kind 3, decision 2, reason 256, the rest 0, for sequence seq.
+	 * version 1, kind 3, decision 3, reason 256, the rest 0, for sequence seq.
 	 */
 	bool _is_refusal(uint32_t seq) const
 	{
 		uint32_t const volatile *r = _result + HEADER_WORDS;
 		if (_result[1] != seq) return false;
-		if (r[0] != 1 || r[1] != 3 || r[2] != 2 || r[3] != 256) return false;
+		if (r[0] != 1 || r[1] != 3 || r[2] != 3 || r[3] != 256) return false;
 		for (unsigned i = 4; i < RECORD_WORDS; i++)
 			if (r[i] != 0) return false;
 		return true;
@@ -167,7 +177,7 @@ struct Writ_channel_client::Main
 				_exit(1);
 			}
 			log("client: refusal for request length ", length, " seq ", seq,
-			    ": kind=3 (transport refusal) decision=Denied (2) reason=256 (bad length)");
+			    ": kind=3 decision=3 (transport refusal) reason=256 (bad length)");
 			_step++;
 			if (_step < NUM_BAD) _send(BAD_LENGTHS[_step], _step + 1);
 			else                 _send(RECORD_SIZE, _step + 1);
@@ -202,6 +212,16 @@ struct Writ_channel_client::Main
 			error("client: could not attach the channel's buckets");
 			_exit(1);
 		}
+		if (_mode == Mode::FREED_SIGH) {
+			{
+				Signal_handler<Main> freed { _env.ep(), *this, &Main::_handle_result };
+				_channel.result_sigh(freed);
+			}   /* destroyed here: core frees the context the monitor will signal */
+			log("client: registered a result signal context and freed it");
+			_send(RECORD_SIZE, 1);
+			log("client: request sent, staying alive with no result handler");
+			return;
+		}
 		_channel.result_sigh(_result_handler);
 
 		if (uint32_t const delay = _word("delay_ms")) {
@@ -222,6 +242,12 @@ struct Writ_channel_client::Main
 				if (period) timer.msleep(period);
 			}
 			log("client: flood done, ", count, " requests sent, no reply read");
+			_exit(0);
+		}
+
+		if (_mode == Mode::EXIT_AFTER_SIGNAL) {
+			_send(RECORD_SIZE, 1);
+			log("client: request sent, exiting before any reply");
 			_exit(0);
 		}
 

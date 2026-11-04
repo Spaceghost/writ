@@ -3,9 +3,12 @@
 # channel runs (build configuration), not Writ implementation. Genode
 # channel lane, Tasks 2 and 3. Sourced by writ_bend_monitor_accept.run,
 # writ_bend_monitor_substitute.run, writ_bend_monitor_routed_s.run,
-# writ_bend_monitor_claim_ignored.run, writ_bend_monitor_bad_length.run, and
-# writ_bend_monitor_liveness.run, and writ_bend_monitor_queue.run through
+# writ_bend_monitor_claim_ignored.run, writ_bend_monitor_bad_length.run,
+# writ_bend_monitor_liveness.run, writ_bend_monitor_queue.run, and
+# writ_bend_monitor_dead_client.run through
 #   source [select_from_repositories run/writ_bend_monitor.tcl]
+# It sources scripts/genode/writ_bend.tcl (run/writ_bend.tcl) and boots
+# through its writ_bend_boot.
 # Live copy: ../writ-genode/writ-repo/run/writ_bend_monitor.tcl (byte-identical).
 #
 # writ_bend_monitor_run CLIENT SUBJECT SESSION EXPECTED CLAIMED DECISION REASON DELAY ?POLICIES?
@@ -50,8 +53,9 @@
 #   blocked there (observed; host transport behaviour, not checked).
 #
 # writ_bend_monitor_queue_run (Task 3, GB-006 queue depth and channels)
-#   Nine clients writ_client_q1 .. writ_client_q9 under one policy
-#   (label_prefix "writ_client_q", route subject 2). The shim admits 8
+#   Nine clients writ_client_q1 .. writ_client_q9, each under its own
+#   policy label_prefix "writ_client_qN ->" (route subject 2; the trailing
+#   " ->" keeps a prefix from matching a longer child name). The shim admits 8
 #   channels (MAX_CHANNELS) and refuses the ninth session. After 2000 ms
 #   each admitted client floods S's request (500 times, 2 ms apart, never
 #   reading a reply), so requests from several channels arrive while the
@@ -104,51 +108,15 @@ proc writ_bend_monitor_client { client config } {
   + config$config"
 }
 
-# Builds, installs the configuration (the monitor with POLICIES and the
-# client start nodes CLIENTS), and builds the boot image.
+source [select_from_repositories run/writ_bend.tcl]
+
+# Boots the monitor through writ_bend_boot: it provides Writ_channel, its
+# <config> holds the <writ_channel> POLICIES, and CLIENTS are further
+# children of init.
 proc writ_bend_monitor_boot { policies clients } {
-	set monitor writ_bend_monitor
-	set ram 256M
-
-	build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe \
-	            app/$monitor app/writ_channel_client]
-
-	create_boot_directory
-
-	install_config "
-config
-+ parent-provides
-  + service LOG
-  + service PD
-  + service CPU
-  + service ROM
-  + service RM
-+ default-route
-  + any-service
-    + parent
-    + any-child
-+ default | caps: 200 | ram: 1M
-+ start timer
-  + provides | + service Timer
-+ start $monitor | caps: 1000 | ram: $ram
-  + provides | + service Writ_channel
-  + config
-    + vfs
-      + dir dev | + log
-      + dir pipe | + pipe
-    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
-    + arg | value: $monitor
-    + arg | value: +RTS
-    + arg | value: --threads
-    + arg | value: 1
-    + arg | value: --gpu
-    + arg | value: off
-    + env | key: WRIT_MEM_REPORT | value: 1
-    + writ_channel$policies$clients
--
-"
-
-	build_boot_image [build_artifacts]
+	writ_bend_boot writ_bend_monitor 256M 1000 /dev/log "
+  + provides | + service Writ_channel" "
+    + writ_channel$policies" $clients [list app/writ_channel_client]
 }
 
 # Fails the run unless every regular expression in the list RES (pairs of
@@ -161,10 +129,7 @@ proc writ_bend_monitor_require { res } {
 			exit 1
 		}
 	}
-	if {[regexp {_reserve_local unexpectedly failed} $output]} {
-		puts stderr "Error: base-linux could not re-reserve a detached range"
-		exit 1
-	}
+	writ_bend_refuse_reserve_failure
 }
 
 proc writ_bend_monitor_run { client subject session expected claimed decision reason delay {policies ""} } {
@@ -183,10 +148,7 @@ proc writ_bend_monitor_run { client subject session expected claimed decision re
 		puts stderr "Error: the client $client did not exit with value 0"
 		exit 1
 	}
-	if {[regexp {_reserve_local unexpectedly failed} $output]} {
-		puts stderr "Error: base-linux could not re-reserve a detached range"
-		exit 1
-	}
+	writ_bend_refuse_reserve_failure
 
 	set names [dict create 1 Committed 2 Denied]
 	set name [dict get $names $decision]
@@ -237,9 +199,9 @@ proc writ_bend_monitor_bad_length_run { } {
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 65 is not 64, refused before Bend \\(bad length count 1\\)" "shim refusal of length 65" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 0 is not 64, refused before Bend \\(bad length count 2\\)" "shim refusal of length 0" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 4294967295 is not 64, refused before Bend \\(bad length count 3\\)" "shim refusal of length 0xFFFFFFFF" \
-		"$c client: refusal for request length 65 seq 1: kind=3 \\(transport refusal\\) decision=Denied \\(2\\) reason=256 \\(bad length\\)" "client refusal line for 65" \
-		"$c client: refusal for request length 0 seq 2: kind=3 \\(transport refusal\\) decision=Denied \\(2\\) reason=256 \\(bad length\\)" "client refusal line for 0" \
-		"$c client: refusal for request length 4294967295 seq 3: kind=3 \\(transport refusal\\) decision=Denied \\(2\\) reason=256 \\(bad length\\)" "client refusal line for 0xFFFFFFFF" \
+		"$c client: refusal for request length 65 seq 1: kind=3 decision=3 \\(transport refusal\\) reason=256 \\(bad length\\)" "client refusal line for 65" \
+		"$c client: refusal for request length 0 seq 2: kind=3 decision=3 \\(transport refusal\\) reason=256 \\(bad length\\)" "client refusal line for 0" \
+		"$c client: refusal for request length 4294967295 seq 3: kind=3 decision=3 \\(transport refusal\\) reason=256 \\(bad length\\)" "client refusal line for 0xFFFFFFFF" \
 		"$m monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "Bend decision line for the valid request" \
 		"$c client: decision=Committed \\(1\\) reason=0 route_subject=1 session=1 seq=4" "client decision for seq 4" \
 		"$c client: PASS decision 1 reason 0 as expected" "client verdict" ]
@@ -276,9 +238,10 @@ proc writ_bend_monitor_liveness_run { } {
 		"$m $r.*$m $s" "a flood decision after the served client's decision" \
 		"\\\[init -> $served\\\] client: PASS decision 1 reason 0 as expected" "served client verdict" \
 		"child \"$served\" exited with exit value 0\r?\n" "served client exit value 0" \
+		"$m monitor: channel=\[0-9\]+ closed \\(shim close event\\) bindings 1 -> 0" "close event dropping the served client's binding" \
 		"$m monitor: fuel exhausted, exiting" "fuel exhausted line" \
 		"$m writ_mem: \\\[exit\\\] ram used=\[0-9\]+ limit=\[0-9\]+ caps used=\[0-9\]+ limit=\[0-9\]+ " "monitor RAM and caps at exit" \
-		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 ring max=\[0-9\]+ bad length=0 stale=\[0-9\]+ taken=\[0-9\]+ put=\[0-9\]+ put skipped=\[0-9\]+ closed=\[0-9\]+ open=\[0-9\]+ closing=\[0-9\]+" "shim channel counters at exit" \
+		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 ring max=\[0-9\]+ bad length=0 stale=\[0-9\]+ taken=\[0-9\]+ put=\[0-9\]+ put skipped=\[0-9\]+ closed=1 open=\[0-9\]+ closing=\[0-9\]+" "shim channel counters at exit (closed=1)" \
 		"child \"$monitor\" exited with exit value 0\r?\n" "monitor exit value 0" \
 		"$m monitor: fuel exhausted, exiting.*child \"$monitor\" exited with exit value 0\r?\n.*\\\[init -> $flood\\\] client: flood request \[0-9\]+ of 12 signalled" "a flood request after the monitor's exit" ]
 	puts "\n--- $flood flooded without reading; $served served Committed; monitor exited 0 at fuel 0 ---"
@@ -293,8 +256,12 @@ proc writ_bend_monitor_queue_run { } {
 		append clients [writ_bend_monitor_client writ_client_q$i \
 			" | mode: flood | count: 500 | period_ms: 2 | session: 2 | expected_session: 0 | claimed_subject: 2 | delay_ms: 2000"]
 	}
-	writ_bend_monitor_boot {
-      + policy | label_prefix: writ_client_q | subject: 2} $clients
+	set policies ""
+	for {set i 1} {$i <= 9} {incr i} {
+		append policies "
+      + policy | label_prefix: writ_client_q$i -> | subject: 2"
+	}
+	writ_bend_monitor_boot $policies $clients
 
 	run_genode_until "child \"$monitor\" exited with exit value .*\n" 130
 
@@ -314,4 +281,41 @@ proc writ_bend_monitor_queue_run { } {
 	regexp {ring max=([0-9]+)} $output -> ring_max
 	regexp {coalesced=([0-9]+)} $output -> coalesced
 	puts "\n--- 8 channels, the ninth session refused; ring max=$ring_max of 8, coalesced=$coalesced; monitor exited 0 ---"
+}
+
+# writ_bend_monitor_dead_client_run (Task 3 final review, GB-008)
+#   Three clients: writ_client_d (route subject 2) sends S's request and
+#   exits at once, before any reply; writ_client_f (route subject 2)
+#   registers a result signal context, frees it, sends S's request, and
+#   stays alive, so the monitor's reply signal goes to a context that no
+#   longer exists; writ_client_r (route subject 1) sends R's request after
+#   3000 ms and must be Committed. Fails unless R's decision and PASS are
+#   logged after both other requests were sent, R exited 0, and init
+#   reported no exit of the monitor (it must still be serving).
+proc writ_bend_monitor_dead_client_run { } {
+	global output
+
+	set monitor writ_bend_monitor
+	set policies {
+      + policy | label_prefix: writ_client_r -> | subject: 1
+      + policy | label_prefix: writ_client_d -> | subject: 2
+      + policy | label_prefix: writ_client_f -> | subject: 2}
+	writ_bend_monitor_boot $policies "[writ_bend_monitor_client writ_client_d " | mode: exit_after_signal | session: 2 | expected_session: 0 | claimed_subject: 2"][writ_bend_monitor_client writ_client_f " | mode: freed_sigh | session: 2 | expected_session: 0 | claimed_subject: 2"][writ_bend_monitor_client writ_client_r " | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 3000"]"
+
+	run_genode_until "child \"writ_client_r\" exited with exit value .*\n" 130
+
+	set m "\\\[init -> $monitor\\\]"
+	writ_bend_monitor_require [list \
+		"\\\[init -> writ_client_d\\\] client: request sent, exiting before any reply" "dead client sent and exited" \
+		"\\\[init -> writ_client_f\\\] client: registered a result signal context and freed it" "freed result context" \
+		"\\\[init -> writ_client_f\\\] client: request sent, staying alive with no result handler" "freed-context client sent" \
+		"$m monitor: channel=\[0-9\]+ route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 .*$m monitor: channel=\[0-9\]+ route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "R's decision after a decision for a dead or freed-context client" \
+		"\\\[init -> writ_client_r\\\] client: PASS decision 1 reason 0 as expected" "R's verdict" \
+		"child \"writ_client_r\" exited with exit value 0\r?\n" "R exit value 0" ]
+	if {[regexp "child \"$monitor\" exited" $output]} {
+		puts stderr "Error: the monitor exited"
+		exit 1
+	}
+	set decided [regexp -all "$m monitor: channel=\[0-9\]+ route_subject=2 session=2 " $output]
+	puts "\n--- dead and freed-context clients: $decided S decisions; writ_client_r served Committed; monitor still serving ---"
 }

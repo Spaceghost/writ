@@ -989,13 +989,15 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
  * Transport refusal (GB-006, Task 3). A header whose length is not exactly
  * CHANNEL_RECORD_SIZE is never copied and never reaches Bend: take counts
  * it and answers it at once with a fixed refusal record in the result
- * bucket (version 1, kind CHANNEL_KIND_REFUSAL = 3, decision 2 Denied,
+ * bucket (version 1, kind CHANNEL_KIND_REFUSAL = 3, decision
+ * CHANNEL_DECISION_REFUSED = 3, which is neither Committed nor Denied,
  * reason CHANNEL_REASON_BAD_LENGTH = 256, every other word 0, the request's
  * sequence in the header) and signals the client. This is the one result
  * the shim writes on its own. It carries no Writ decision: it is the same
  * record for every channel and subject, depends only on the length word,
- * and its kind and reason words are outside the monitor's (kind 2, reasons
- * 0 to 8), so a client cannot mistake it for a decision by Bend.
+ * and its kind, decision, and reason words are outside the monitor's
+ * (kind 2, decisions 1 and 2, reasons 0 to 8), so a client cannot mistake
+ * it for a decision by Bend.
  *
  * Close event (Task 3). When a session closes, the channel is removed from
  * the table and its slot is held as "closing" until Bend has taken a close
@@ -1042,7 +1044,7 @@ enum : unsigned {
 	/* the shim's own refusal record (transport, not a Writ decision) */
 	CHANNEL_VERSION           = 1,
 	CHANNEL_KIND_REFUSAL      = 3,
-	CHANNEL_DECISION_DENIED   = 2,
+	CHANNEL_DECISION_REFUSED  = 3,   /* not a Writ decision word (1, 2) */
 	CHANNEL_REASON_BAD_LENGTH = 256,
 
 	/* the route subject take reports for a close event; never a channel's */
@@ -1305,7 +1307,7 @@ static Signal_context_capability _channel_refuse(Channel &c, uint32_t seq)
 {
 	uint32_t volatile *bucket = c.result_ds.local_addr<uint32_t volatile>();
 	uint32_t const record[CHANNEL_RECORD_WORDS] = {
-		CHANNEL_VERSION, CHANNEL_KIND_REFUSAL, CHANNEL_DECISION_DENIED,
+		CHANNEL_VERSION, CHANNEL_KIND_REFUSAL, CHANNEL_DECISION_REFUSED,
 		CHANNEL_REASON_BAD_LENGTH, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
 		bucket[CHANNEL_HEADER_SIZE/4 + i] = record[i];

@@ -17,6 +17,9 @@ client that floods gets no priority but also no bound on how often it is
 served beyond the ring's order (each of its records costs the monitor one
 unit of fuel); the monitor exits at fuel 0 and nothing restarts it
 (GB-008's supervisor restart with a new generation is not configured);
+the reply signal is an RPC to core that returns for a freed client context
+(`writ_bend_monitor_dead_client`), but whether it can block the loop on
+base-linux in other cases is not shown (INVENTORY, "Signal submit");
 subject S's session is opened, not negotiated (synthetic).
 
 ## Encoding
@@ -58,14 +61,15 @@ is answered with the transport refusal below before any Bend parsing.
 The one result record the shim writes on its own (GB-006). It carries no
 Writ decision: it is a fixed record that depends only on the request's
 length word being wrong, the same for every channel and route subject, and
-Bend never sees the request. Its kind and reason words are outside the
-monitor's (kind 2, reasons 0 to 8).
+Bend never sees the request. Its kind, decision, and reason words are
+outside the monitor's (kind 2, decisions 1 Committed and 2 Denied, reasons
+0 to 8), so it is not shaped like a Writ decision.
 
 | Word | Value |
 | --- | --- |
 | 0 version | 1 |
 | 1 kind | 3: transport refusal |
-| 2 decision | 2 (Denied) |
+| 2 decision | 3: transport refusal (neither Committed nor Denied; not a Writ decision) |
 | 3 reason | 256: bad length (the header length was not 64) |
 | 4 to 15 | 0 |
 
@@ -169,6 +173,11 @@ maps label prefixes to subject words:
 
 Only a `<policy>` with a `label` or `label_prefix` attribute binds identity:
 the prefix is set by the parent, while a suffix is the client's own choice.
+An integrator's `label_prefix` should end in `" ->"` (the child name and
+the parent's separator): `label_prefix="writ_client_q"` would also match a
+child named `writ_client_qx`. A policy with both `label_prefix` and
+`label_suffix` lets a client choose, by its own label suffix, among the
+subjects granted to its own prefix; it cannot reach another child's.
 The shim looks the word up at session creation (no match, a
 `<default-policy>`, a policy matched only by `label_suffix`, or subject 0
 refuses the session) and hands it to Bend

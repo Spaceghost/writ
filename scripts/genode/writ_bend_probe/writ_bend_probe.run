@@ -8,18 +8,17 @@
 # Genode.sleep(100) are ordered and differ by at least 100 ms and by less
 # than 1100 ms.
 #
-# The configuration is writ_bend.tcl's writ_bend_boot with one change, so it
-# is written out here instead of calling that procedure: libc's stdout goes
-# to /dev/null (a <null/> node in /dev, on its own line: in the one-line form
-# '+ dir dev | + log | + null' the null node nests inside log, libc cannot
-# stat /dev/null, and the runtime stops on its first stdout write; run 1 in
-# verification/genode-effects-base-linux.txt) instead of /dev/log. The probe's
-# control line, printed with IO.print to stdout, therefore must not appear in
-# the LOG, and every "probe:" line that does appear came through
-# Genode.log -> writ_shim_log -> Genode::log, not through libc's stdout.
-# stderr stays on /dev/log, so a runtime error is still captured.
-# The duplication of writ_bend_boot is known and left for the channel lane's
-# Task 2 (a stdout parameter there would remove it).
+# The configuration is writ_bend.tcl's writ_bend_boot with STDOUT /dev/null
+# (since the channel lane's Task 3 final review; before, it was written out
+# here): libc's stdout goes to /dev/null instead of /dev/log (the null node
+# on its own line; in the one-line form '+ dir dev | + log | + null' the null
+# node nests inside log, libc cannot stat /dev/null, and the runtime stops
+# on its first stdout write; run 1 in verification/genode-effects-base-
+# linux.txt). The probe's control line, printed with IO.print to stdout,
+# therefore must not appear in the LOG, and every "probe:" line that does
+# appear came through Genode.log -> writ_shim_log -> Genode::log, not
+# through libc's stdout. stderr stays on /dev/log, so a runtime error is
+# still captured.
 #
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services plus a Timer session from the sibling timer component (the
@@ -37,44 +36,7 @@ set ram 256M
 
 source [select_from_repositories run/writ_bend.tcl]
 
-build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
-
-create_boot_directory
-
-install_config "
-config
-+ parent-provides
-  + service LOG
-  + service PD
-  + service CPU
-  + service ROM
-  + service RM
-+ default-route
-  + any-service
-    + parent
-    + any-child
-+ default | caps: 200 | ram: 1M
-+ start timer
-  + provides | + service Timer
-+ start $name | caps: 1000 | ram: $ram
-  + config
-    + vfs
-      + dir dev
-        + log
-        + null
-      + dir pipe | + pipe
-    + libc | stdout: /dev/null | stderr: /dev/log | pipe: /pipe
-    + arg | value: $name
-    + arg | value: +RTS
-    + arg | value: --threads
-    + arg | value: 1
-    + arg | value: --gpu
-    + arg | value: off
-    + env | key: WRIT_MEM_REPORT | value: 1
--
-"
-
-build_boot_image [build_artifacts]
+writ_bend_boot $name $ram 1000 /dev/null
 
 run_genode_until "child \"$name\" exited with exit value .*\n" 120
 
