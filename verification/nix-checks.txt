@@ -1,0 +1,1416 @@
+# Nix flake check evidence (Task 2 of the Nix flake lane)
+# Date: 2026-11-04T02:38:59Z
+# Host: Linux 7.2.9-1-MANJARO x86_64; nix (Nix) 2.35.2; sandbox = true
+# Binding: at clean HEAD the derivation paths listed in this file evaluate identically (verified
+#   by the final reviewer with nix eval), so this evidence is bound to the committed derivations.
+# Flake revision: 4a1b43b plus uncommitted docs/INSTALL.md and verification/ files, which are
+#   outside every filtered build source (hence the 'dirty' warning; no derivation changes).
+# nixpkgs: github:NixOS/nixpkgs/0bb2eedc20e4739f29e8045034f2828ad7054f8f
+# Toolchain: Bend 2.0.39, OpenSpec 1.16.0, clang 23.1.3. Network: none beyond fixed-output fetches.
+# Before this run every check output was removed with nix store delete so that all six
+# checks executed. packages.tests-native was already built (see nix-determinism.txt).
+# What the checks establish:
+#   tests-js      bend Tests.bend on the bundled JS runner; 638 '^PASS' lines + final line
+#   tests-native  packages.tests-native +RTS --threads 4 --gpu off; same assertion; a CPU run, not a GPU test
+#   proofs        bend PROOF.bend prints ALL PROOFS CHECK; Bend's checker only, not --verdict
+#   openspec      openspec validate --all --strict --no-interactive; structural validation only
+# stdout and stderr merged, verbatim.
+
+$ nix flake check -L
+warning: Git tree '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/nix-flake' is dirty
+evaluating flake...
+checking flake output 'packages'...
+checking derivation packages.x86_64-linux.bend...
+derivation evaluated to /nix/store/v7xnlqlj7aja9z1pxspbpl8g6m1pzs9m-bend-2.0.39.drv
+checking derivation packages.x86_64-linux.openspec...
+derivation evaluated to /nix/store/ljxr6mgji2nd886ajxjxi6yc3s16vv83-openspec-1.16.0.drv
+checking derivation packages.x86_64-linux.tests-native...
+derivation evaluated to /nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv
+checking derivation packages.x86_64-linux.examples-native...
+derivation evaluated to /nix/store/x88wr8k74wcc8w7fhv9sy6w15qmhy2y0-writ-examples-native.drv
+checking derivation packages.x86_64-linux.default...
+derivation evaluated to /nix/store/v7xnlqlj7aja9z1pxspbpl8g6m1pzs9m-bend-2.0.39.drv
+checking flake output 'checks'...
+checking derivation checks.x86_64-linux.openspec...
+derivation evaluated to /nix/store/x6q8ms812xcrlkswjqbb7nx9rki153ph-writ-openspec.drv
+checking derivation checks.x86_64-linux.tests-native...
+derivation evaluated to /nix/store/0bngz95xsw8ij75fpvj64n9h4c1y35wk-writ-tests-native-run.drv
+checking derivation checks.x86_64-linux.bend-version...
+derivation evaluated to /nix/store/b195pp910hlnvpynfz12npk4dgdg4rr6-bend-version-check.drv
+checking derivation checks.x86_64-linux.openspec-version...
+derivation evaluated to /nix/store/4jnhazbgaqwxsqhn5938hs67ry57k8g8-openspec-version-check.drv
+checking derivation checks.x86_64-linux.tests-js...
+derivation evaluated to /nix/store/6zzpn9kf06l52nzpi3s7fz9mrz8grp14-writ-tests-js.drv
+checking derivation checks.x86_64-linux.proofs...
+derivation evaluated to /nix/store/fpsjc0c72fmixlv7lq7g17v7md44920w-writ-proofs.drv
+checking flake output 'devShells'...
+checking derivation devShells.x86_64-linux.default...
+derivation evaluated to /nix/store/n67dn5d09g7dhrn1pdja1gfl08jxqhag-nix-shell.drv
+checking flake output 'formatter'...
+checking derivation formatter.x86_64-linux...
+derivation evaluated to /nix/store/695d6anmn296cyf8f9f0xn4cda6ig984-nixpkgs-fmt-1.3.0.drv
+running 6 flake checks...
+building '/nix/store/b195pp910hlnvpynfz12npk4dgdg4rr6-bend-version-check.drv'...
+bend-version-check> bend 2.0.39
+building '/nix/store/6zzpn9kf06l52nzpi3s7fz9mrz8grp14-writ-tests-js.drv'...
+writ-tests-js> PASS: exact 64-bit union across both words
+writ-tests-js> PASS: exact 64-bit intersection
+writ-tests-js> PASS: bit 63 cannot be satisfied by low word
+writ-tests-js> PASS: valid graph admitted
+writ-tests-js> PASS: CPU Jacobi propagation and final stability sweep
+writ-tests-js> PASS: Bend parallel producer matches sequential producer
+writ-tests-js> PASS: independent verifier checks original graph
+writ-tests-js> PASS: summary cannot escape source confidentiality
+writ-tests-js> PASS: covered destination and actual effect succeed
+writ-tests-js> PASS: untrusted provenance is checked separately
+writ-tests-js> PASS: actual network effect needs a live grant
+writ-tests-js> PASS: callee effect requires grant even when requested mask is zero
+writ-tests-js> PASS: sink index never wraps
+writ-tests-js> PASS: list lookup rejects maximal U32 index
+writ-tests-js> PASS: source secrecy omission rejected
+writ-tests-js> PASS: source provenance omission rejected
+writ-tests-js> PASS: source effect omission rejected
+writ-tests-js> PASS: derived secrecy omission rejected
+writ-tests-js> PASS: derived provenance omission rejected
+writ-tests-js> PASS: callee effect omission rejected
+writ-tests-js> PASS: static equality cannot keep a larger domain
+writ-tests-js> PASS: empty candidate domain rejected
+writ-tests-js> PASS: unsupported candidate domain rejected
+writ-tests-js> PASS: missing candidate nodes rejected
+writ-tests-js> PASS: extra candidate nodes rejected
+writ-tests-js> PASS: conservative extra restrictions remain valid
+writ-tests-js> PASS: extra restrictions still constrain the sink
+writ-tests-js> PASS: changed graph generation denies
+writ-tests-js> PASS: changed policy generation denies
+writ-tests-js> PASS: authority epoch high word is checked
+writ-tests-js> PASS: candidate stamp must match live snapshot
+writ-tests-js> PASS: one-sweep budget fails closed
+writ-tests-js> PASS: final convergence check consumes fuel
+writ-tests-js> PASS: exact convergence budget succeeds
+writ-tests-js> PASS: parallel budget fails closed
+writ-tests-js> PASS: missing flow endpoint rejected before solving
+writ-tests-js> PASS: parallel producer receives only validated graph
+writ-tests-js> PASS: missing equality endpoint rejected
+writ-tests-js> PASS: missing call endpoint rejected
+writ-tests-js> PASS: empty seed type domain rejected
+writ-tests-js> PASS: unsupported seed type domain rejected
+writ-tests-js> PASS: incompatible static types conflict
+writ-tests-js> PASS: parallel producer preserves type conflict
+writ-tests-js> PASS: cyclic flow reaches verified fixed point
+writ-tests-js> PASS: parallel cycle agrees with CPU
+writ-tests-js> PASS: empty graph succeeds in zero rounds
+writ-tests-js> PASS: empty parallel graph needs no dispatch
+writ-tests-js> PASS: bit 63 propagates in all three restriction domains
+writ-tests-js> PASS: parallel propagation retains high bits
+writ-tests-js> PASS: high-word restrictions can be explicitly covered
+writ-tests-js> PASS: high-word required effect cannot be dropped
+writ-tests-js> PASS: stable forged producer output fails independent verification
+writ-tests-js> Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+writ-tests-js> PASS valid paired admission
+writ-tests-js> PASS summary retains origin and labels
+writ-tests-js> PASS read required
+writ-tests-js> PASS write required
+writ-tests-js> PASS read domain distinct
+writ-tests-js> PASS write domain distinct
+writ-tests-js> PASS read object version exact
+writ-tests-js> PASS write object exact
+writ-tests-js> PASS graph epoch current
+writ-tests-js> PASS policy epoch current
+writ-tests-js> PASS authority epoch current
+writ-tests-js> PASS expiry exclusive
+writ-tests-js> PASS all 256 code bits bound
+writ-tests-js> PASS invocation bound
+writ-tests-js> PASS read grant stamp bound
+writ-tests-js> PASS fresh writer cannot redirect old read destination
+writ-tests-js> PASS fresh writer cannot redirect old read write-domain
+writ-tests-js> PASS operation kind approved
+writ-tests-js> PASS operation code approved
+writ-tests-js> PASS origin code pin required
+writ-tests-js> PASS origin transform restrictions retained
+writ-tests-js> PASS empty origins rejected
+writ-tests-js> PASS unknown kind bits rejected
+writ-tests-js> PASS derived source cannot widen origin rights
+writ-tests-js> PASS source cannot erase origin secrecy
+writ-tests-js> PASS payment required
+writ-tests-js> PASS payment origin version
+writ-tests-js> PASS payment invocation
+writ-tests-js> PASS payment code
+writ-tests-js> PASS payment kind
+writ-tests-js> PASS payment destination
+writ-tests-js> PASS payment quote
+writ-tests-js> PASS payment expiry
+writ-tests-js> PASS ROT13 or summary cannot clear confidentiality
+writ-tests-js> PASS integrity independently enforced
+writ-tests-js> PASS own bucket only narrows output operations
+writ-tests-js> PASS multiple origins union labels including bit63
+writ-tests-js> PASS old read cannot approve expanded source manifest
+writ-tests-js> PASS every source read required
+writ-tests-js> PASS every original payment required
+writ-tests-js> PASS copy preserves schema and remains protected
+writ-tests-js> PASS parallel batch admission
+writ-tests-js> PASS parallel batch retains denial
+writ-tests-js> PASS preflight collects every inherited origin in order
+writ-tests-js> PASS origin discovery is independent of later grants and payment
+writ-tests-js> PASS preflight rejects stale authority
+writ-tests-js> PASS preflight source version exact
+writ-tests-js> PASS preflight rejects malformed source schema
+writ-tests-js> PASS preflight refuses missing provenance
+writ-tests-js> PASS preflight rejects source erasing origin labels
+writ-tests-js> PASS preflight rejects amplified origin rights
+writ-tests-js> PASS ambiguous runtime source schema denied
+writ-tests-js> PASS unknown payment operation bits denied
+writ-tests-js> Transfer: 53 checks passed
+writ-tests-js> PASS: DLM exact finite closure validates
+writ-tests-js> PASS: DLM transitive delegation closure validates
+writ-tests-js> PASS: delegation direction and transitivity
+writ-tests-js> PASS: delegation does not reverse
+writ-tests-js> PASS: Top acts for every registered principal
+writ-tests-js> PASS: every registered principal acts for Bottom
+writ-tests-js> PASS: ordinary principal has no implicit Top authority
+writ-tests-js> PASS: unregistered principal denies even for Top
+writ-tests-js> PASS: unsupported composite principal denies
+writ-tests-js> PASS: authority epoch mismatch denies
+writ-tests-js> PASS: invented closure authority denies
+writ-tests-js> PASS: omitted delegation edge in closure denies
+writ-tests-js> PASS: malformed relation shape denies
+writ-tests-js> PASS: out-of-universe relation bit denies
+writ-tests-js> PASS: unknown delegation endpoint denies preparation
+writ-tests-js> PASS: oversized principal universe denies
+writ-tests-js> PASS: unsupported delegation denies preparation
+writ-tests-js> PASS: empty name registry retains Top and Bottom
+writ-tests-js> PASS: highest supported principal uses bit 31 correctly
+writ-tests-js> PASS: preparation computes transitive authority
+writ-tests-js> PASS: owner-sensitive readers include owner and delegate
+writ-tests-js> PASS: untrusted owner imposes no policy on observer
+writ-tests-js> PASS: confidentiality join intersects readers
+writ-tests-js> PASS: confidentiality meet unions readers
+writ-tests-js> PASS: integrity join unions possible writers
+writ-tests-js> PASS: integrity meet intersects possible writers
+writ-tests-js> PASS: uncredited integrity owner gives unknown provenance
+writ-tests-js> PASS: public information may acquire secrecy restrictions
+writ-tests-js> PASS: protected information cannot flow to public
+writ-tests-js> PASS: narrowing the reader set is allowed
+writ-tests-js> PASS: widening the reader set requires separate authority
+writ-tests-js> PASS: trusted information may lose integrity
+writ-tests-js> PASS: untrusted information cannot endorse itself
+writ-tests-js> PASS: integrity ordering follows possible writer inclusion
+writ-tests-js> PASS: removing possible writers requires endorsement
+writ-tests-js> PASS: maximal restriction is a valid information-flow sink
+writ-tests-js> PASS: unknown policy principal denies reflexive-looking query
+writ-tests-js> PASS: unsupported policy principal denies
+writ-tests-js> PASS: stale flow query denies
+writ-tests-js> PASS: secret control dependency survives an otherwise-public result
+writ-tests-js> PASS: dependency joins retain untrusted influence
+writ-tests-js> PASS: join is an upper bound
+writ-tests-js> PASS: meet is a lower bound
+writ-tests-js> PASS: parallel batch agrees with four independent semantic outcomes
+writ-tests-js> PASS: complete CPU replay accepts correct batch results
+writ-tests-js> PASS: complete CPU replay rejects fabricated allows
+writ-tests-js> PASS: complete CPU replay rejects truncated result shape
+writ-tests-js> DLM: 47 checks passed
+writ-tests-js> PASS: ledger reserves reader expense
+writ-tests-js> PASS: reservation removes available funds
+writ-tests-js> PASS: stale revision denies
+writ-tests-js> PASS: overdraft denies
+writ-tests-js> PASS: one live reservation per invocation
+writ-tests-js> PASS: receipt cannot switch invocation
+writ-tests-js> PASS: receipt cannot switch payer
+writ-tests-js> PASS: receipt cannot switch amount
+writ-tests-js> PASS: scoped commit succeeds
+writ-tests-js> PASS: commit replay denies
+writ-tests-js> PASS: cancellation refunds hold
+writ-tests-js> PASS: cancelled receipt cannot replay
+writ-tests-js> PASS: expired hold cannot commit
+writ-tests-js> PASS: expiration refunds hold
+writ-tests-js> PASS: unexpired hold cannot be reaped
+writ-tests-js> PASS: duplicate payer registry denies
+writ-tests-js> Ledger: 16 checks passed
+writ-tests-js> PASS: negotiation reaches running in guarded order
+writ-tests-js> PASS: every stage retains immutable request
+writ-tests-js> PASS: candidate identity cannot change
+writ-tests-js> PASS: stale session revision denies
+writ-tests-js> PASS: challenge requires pinned candidate
+writ-tests-js> PASS: future challenge not yet usable
+writ-tests-js> PASS: protected sample has pre-execution gate
+writ-tests-js> PASS: sample cannot read without paired source grant
+writ-tests-js> PASS: old nonce cannot pair with fresh duplicate ID
+writ-tests-js> PASS: failed sample denies transition
+writ-tests-js> PASS: wrong sample nonce denies
+writ-tests-js> PASS: passing sample does not replace owner approval
+writ-tests-js> PASS: sample cannot skip negotiation
+writ-tests-js> PASS: every contributing origin must approve
+writ-tests-js> PASS: all contributing origins permit negotiation
+writ-tests-js> PASS: owner approval binds exact destination
+writ-tests-js> PASS: reader-funded reservation succeeds
+writ-tests-js> PASS: negotiation reserves reader balance
+writ-tests-js> PASS: reservation must name reader as payer
+writ-tests-js> PASS: quote substitution denies
+writ-tests-js> PASS: revoked budget denies start despite live hold
+writ-tests-js> PASS: revoked read grant denies execution
+writ-tests-js> PASS: revoked origin approval denies execution
+writ-tests-js> PASS: expiry is exclusive at deadline
+writ-tests-js> PASS: cannot execute before negotiation
+writ-tests-js> PASS: authority epoch drift denies start
+writ-tests-js> Negotiation: 26 checks passed
+writ-tests-js> PASS: backplane commits fully verified transaction
+writ-tests-js> PASS: write intent retains origins, types, restrictions and DLM label
+writ-tests-js> PASS: committed session is terminal
+writ-tests-js> PASS: commit advances ledger revision
+writ-tests-js> PASS: commit spends reserved amount once
+writ-tests-js> PASS: old running session cannot replay spent receipt
+writ-tests-js> PASS: terminal session cannot commit twice
+writ-tests-js> PASS: commit rejects stale session revision
+writ-tests-js> PASS: commit rejects stale ledger revision
+writ-tests-js> PASS: forged solver labels cannot authorize output
+writ-tests-js> PASS: passing sample cannot commit
+writ-tests-js> PASS: late owner revocation denies commit
+writ-tests-js> PASS: denied commit does not consume hold
+writ-tests-js> PASS: denied commit preserves original session
+writ-tests-js> PASS: late budget revocation denies commit
+writ-tests-js> PASS: late read revocation denies commit
+writ-tests-js> PASS: late write revocation denies commit
+writ-tests-js> PASS: missing origin payment witness denies commit
+writ-tests-js> PASS: transfer authority epoch drift denies commit
+writ-tests-js> PASS: DLM authority epoch drift denies commit
+writ-tests-js> PASS: graph policy epoch drift denies commit
+writ-tests-js> PASS: DLM blocks secret-to-public release
+writ-tests-js> PASS: network backend adds actual network effect
+writ-tests-js> PASS: storage backend adds actual write effect
+writ-tests-js> PASS: combined control label rechecked against actual destination
+writ-tests-js> PASS: oracle fixture has valid static narrowing
+writ-tests-js> PASS: static narrowing cannot change declared output schema
+writ-tests-js> PASS: binding includes reader and immutable negotiation terms
+writ-tests-js> PASS: exclusive deadline denies final commit
+writ-tests-js> PASS: stamp bridge preserves high word
+writ-tests-js> PASS: stamp bridge cannot truncate high word
+writ-tests-js> PASS: bit63 epoch mismatch cannot alias low epoch
+writ-tests-js> PASS: identical duplicate bindings deny closed
+writ-tests-js> PASS: conflicting bindings deny with permissive entry first
+writ-tests-js> PASS: conflicting bindings deny with restrictive entry first
+writ-tests-js> PASS: duplicate registry rejection preserves reservation
+writ-tests-js> PASS: write intent preserves all 256 artifact identity bits
+writ-tests-js> PASS: artifact identity differs in final word
+writ-tests-js> PASS: artifact identity comes from authoritative binding
+writ-tests-js> PASS: distinct full requests are separate binding keys
+writ-tests-js> Backplane: 40 checks passed
+writ-tests-js> PASS: frontend fixture has a valid paired read/write contract
+writ-tests-js> PASS: empty frontend state is valid
+writ-tests-js> PASS: unique capability registry validates
+writ-tests-js> PASS: capability mounts as a protocol handle
+writ-tests-js> PASS: mount allocates first monotonic ID
+writ-tests-js> PASS: mounted capability opens a descriptor record
+writ-tests-js> PASS: open allocates next descriptor ID
+writ-tests-js> PASS: open preserves frontend structural validity
+writ-tests-js> PASS: read request resolves exact immutable plan
+writ-tests-js> PASS: write request resolves same exact plan
+writ-tests-js> PASS: execute resolves exact plan with all rights
+writ-tests-js> PASS: mount handle itself cannot perform an operation
+writ-tests-js> PASS: descriptor cannot cross authenticated subjects
+writ-tests-js> PASS: descriptor cannot switch capability token
+writ-tests-js> PASS: all 256 token bits participate in lookup
+writ-tests-js> PASS: token possession does not change bound subject
+writ-tests-js> PASS: unknown rights bit denies mount
+writ-tests-js> PASS: mount cannot amplify registry rights
+writ-tests-js> PASS: open cannot amplify mounted rights
+writ-tests-js> PASS: descriptor is not a mount alias
+writ-tests-js> PASS: mount is not a duplicable operational descriptor
+writ-tests-js> PASS: descriptor duplication succeeds under live authority
+writ-tests-js> PASS: dup allocates a distinct descriptor ID
+writ-tests-js> PASS: dup preserves exact token and plan scope
+writ-tests-js> PASS: descriptor rights may be attenuated in current state
+writ-tests-js> PASS: attenuated read right remains usable
+writ-tests-js> PASS: attenuation removes write right
+writ-tests-js> PASS: attenuation removes execute right
+writ-tests-js> PASS: attenuation cannot restore removed rights
+writ-tests-js> PASS: duplication preserves attenuation
+writ-tests-js> PASS: zero-right descriptor authorizes no read
+writ-tests-js> PASS: zero-right descriptor authorizes no write
+writ-tests-js> PASS: zero-right descriptor authorizes no execution
+writ-tests-js> PASS: removing registry capability revokes existing descriptor
+writ-tests-js> PASS: revoked descriptor cannot duplicate itself
+writ-tests-js> PASS: registry rights reduction invalidates wider existing descriptor
+writ-tests-js> PASS: registry replacement cannot redirect existing descriptor plan
+writ-tests-js> PASS: altered descriptor plan disagrees with trusted registry
+writ-tests-js> PASS: read request still requires destination write approval
+writ-tests-js> PASS: write request still requires exact source read approval
+writ-tests-js> PASS: capability cannot bypass inherited payment requirement
+writ-tests-js> PASS: stale revision cannot resolve operation
+writ-tests-js> PASS: stale revision cannot duplicate descriptor
+writ-tests-js> PASS: rejected mutation leaves revision unchanged
+writ-tests-js> PASS: authority epoch change invalidates open descriptor
+writ-tests-js> PASS: stale capability cannot mount in new epoch
+writ-tests-js> PASS: stale mounted capability cannot open
+writ-tests-js> PASS: expiry is exclusive at exact deadline
+writ-tests-js> PASS: expired descriptor cannot duplicate itself
+writ-tests-js> PASS: expired capability cannot mount
+writ-tests-js> PASS: shortening registry expiry invalidates older broader handle
+writ-tests-js> PASS: duplicate capability token is ambiguous and invalid
+writ-tests-js> PASS: malformed registry denies mount
+writ-tests-js> PASS: malformed registry denies resolution
+writ-tests-js> PASS: malformed registry rights deny
+writ-tests-js> PASS: capability epoch must match immutable plan epoch
+writ-tests-js> PASS: duplicate descriptor IDs invalidate state
+writ-tests-js> PASS: ambiguous descriptor state denies resolution
+writ-tests-js> PASS: next descriptor ID must exceed every allocated ID
+writ-tests-js> PASS: unallocated zero descriptor denies
+writ-tests-js> PASS: unknown descriptor denies
+writ-tests-js> PASS: closing descriptor records tombstone
+writ-tests-js> PASS: closed descriptor cannot resolve
+writ-tests-js> PASS: closed descriptor cannot duplicate
+writ-tests-js> PASS: closed descriptor cannot be reactivated by attenuation
+writ-tests-js> PASS: close replay denies
+writ-tests-js> PASS: another subject cannot close descriptor
+writ-tests-js> PASS: another token cannot close descriptor
+writ-tests-js> PASS: closing one descriptor preserves independently duplicated descriptor
+writ-tests-js> PASS: new open never reuses tombstoned descriptor ID
+writ-tests-js> Frontend: 70 checks passed
+writ-tests-js> PASS: facade links capability descriptor through complete commit
+writ-tests-js> PASS: facade preserves output provenance
+writ-tests-js> PASS: capability revocation is checked at commit
+writ-tests-js> PASS: revoked capability spends no reservation
+writ-tests-js> PASS: authenticated caller must own descriptor
+writ-tests-js> PASS: authenticated subject must be negotiated reader
+writ-tests-js> PASS: execution requires execute right as well as read and write
+writ-tests-js> PASS: closed descriptor cannot commit
+writ-tests-js> PASS: stale frontend revision cannot commit
+writ-tests-js> PASS: capability possession cannot override label denial
+writ-tests-js> Facade: 10 checks passed
+writ-tests-js> PASS: oracle fixture: disconnected vertices
+writ-tests-js> PASS: oracle fixture: directed chain
+writ-tests-js> PASS: oracle fixture: directed cycle
+writ-tests-js> PASS: oracle fixture: undirected component
+writ-tests-js> PASS: reachable-seed oracle, topology 0
+writ-tests-js> PASS: reachable-seed oracle, topology 1
+writ-tests-js> PASS: reachable-seed oracle, topology 2
+writ-tests-js> PASS: reachable-seed oracle, topology 3
+writ-tests-js> PASS: reachable-seed oracle, topology 4
+writ-tests-js> PASS: reachable-seed oracle, topology 5
+writ-tests-js> PASS: reachable-seed oracle, topology 6
+writ-tests-js> PASS: reachable-seed oracle, topology 7
+writ-tests-js> PASS: reachable-seed oracle, topology 8
+writ-tests-js> PASS: reachable-seed oracle, topology 9
+writ-tests-js> PASS: reachable-seed oracle, topology 10
+writ-tests-js> PASS: reachable-seed oracle, topology 11
+writ-tests-js> PASS: reachable-seed oracle, topology 12
+writ-tests-js> PASS: reachable-seed oracle, topology 13
+writ-tests-js> PASS: reachable-seed oracle, topology 14
+writ-tests-js> PASS: reachable-seed oracle, topology 15
+writ-tests-js> PASS: reachable-seed oracle, topology 16
+writ-tests-js> PASS: reachable-seed oracle, topology 17
+writ-tests-js> PASS: reachable-seed oracle, topology 18
+writ-tests-js> PASS: reachable-seed oracle, topology 19
+writ-tests-js> PASS: reachable-seed oracle, topology 20
+writ-tests-js> PASS: reachable-seed oracle, topology 21
+writ-tests-js> PASS: reachable-seed oracle, topology 22
+writ-tests-js> PASS: reachable-seed oracle, topology 23
+writ-tests-js> PASS: reachable-seed oracle, topology 24
+writ-tests-js> PASS: reachable-seed oracle, topology 25
+writ-tests-js> PASS: reachable-seed oracle, topology 26
+writ-tests-js> PASS: reachable-seed oracle, topology 27
+writ-tests-js> PASS: reachable-seed oracle, topology 28
+writ-tests-js> PASS: reachable-seed oracle, topology 29
+writ-tests-js> PASS: reachable-seed oracle, topology 30
+writ-tests-js> PASS: reachable-seed oracle, topology 31
+writ-tests-js> PASS: reachable-seed oracle, topology 32
+writ-tests-js> PASS: reachable-seed oracle, topology 33
+writ-tests-js> PASS: reachable-seed oracle, topology 34
+writ-tests-js> PASS: reachable-seed oracle, topology 35
+writ-tests-js> PASS: reachable-seed oracle, topology 36
+writ-tests-js> PASS: reachable-seed oracle, topology 37
+writ-tests-js> PASS: reachable-seed oracle, topology 38
+writ-tests-js> PASS: reachable-seed oracle, topology 39
+writ-tests-js> PASS: reachable-seed oracle, topology 40
+writ-tests-js> PASS: reachable-seed oracle, topology 41
+writ-tests-js> PASS: reachable-seed oracle, topology 42
+writ-tests-js> PASS: reachable-seed oracle, topology 43
+writ-tests-js> PASS: reachable-seed oracle, topology 44
+writ-tests-js> PASS: reachable-seed oracle, topology 45
+writ-tests-js> PASS: reachable-seed oracle, topology 46
+writ-tests-js> PASS: reachable-seed oracle, topology 47
+writ-tests-js> PASS: reachable-seed oracle, topology 48
+writ-tests-js> PASS: reachable-seed oracle, topology 49
+writ-tests-js> PASS: reachable-seed oracle, topology 50
+writ-tests-js> PASS: reachable-seed oracle, topology 51
+writ-tests-js> PASS: reachable-seed oracle, topology 52
+writ-tests-js> PASS: reachable-seed oracle, topology 53
+writ-tests-js> PASS: reachable-seed oracle, topology 54
+writ-tests-js> PASS: reachable-seed oracle, topology 55
+writ-tests-js> PASS: reachable-seed oracle, topology 56
+writ-tests-js> PASS: reachable-seed oracle, topology 57
+writ-tests-js> PASS: reachable-seed oracle, topology 58
+writ-tests-js> PASS: reachable-seed oracle, topology 59
+writ-tests-js> PASS: reachable-seed oracle, topology 60
+writ-tests-js> PASS: reachable-seed oracle, topology 61
+writ-tests-js> PASS: reachable-seed oracle, topology 62
+writ-tests-js> PASS: reachable-seed oracle, topology 63
+writ-tests-js> PASS: reachable-seed oracle, topology 64
+writ-tests-js> PASS: reachable-seed oracle, topology 65
+writ-tests-js> PASS: reachable-seed oracle, topology 66
+writ-tests-js> PASS: reachable-seed oracle, topology 67
+writ-tests-js> PASS: reachable-seed oracle, topology 68
+writ-tests-js> PASS: reachable-seed oracle, topology 69
+writ-tests-js> PASS: reachable-seed oracle, topology 70
+writ-tests-js> PASS: reachable-seed oracle, topology 71
+writ-tests-js> PASS: reachable-seed oracle, topology 72
+writ-tests-js> PASS: reachable-seed oracle, topology 73
+writ-tests-js> PASS: reachable-seed oracle, topology 74
+writ-tests-js> PASS: reachable-seed oracle, topology 75
+writ-tests-js> PASS: reachable-seed oracle, topology 76
+writ-tests-js> PASS: reachable-seed oracle, topology 77
+writ-tests-js> PASS: reachable-seed oracle, topology 78
+writ-tests-js> PASS: reachable-seed oracle, topology 79
+writ-tests-js> PASS: reachable-seed oracle, topology 80
+writ-tests-js> PASS: reachable-seed oracle, topology 81
+writ-tests-js> PASS: reachable-seed oracle, topology 82
+writ-tests-js> PASS: reachable-seed oracle, topology 83
+writ-tests-js> PASS: reachable-seed oracle, topology 84
+writ-tests-js> PASS: reachable-seed oracle, topology 85
+writ-tests-js> PASS: reachable-seed oracle, topology 86
+writ-tests-js> PASS: reachable-seed oracle, topology 87
+writ-tests-js> PASS: reachable-seed oracle, topology 88
+writ-tests-js> PASS: reachable-seed oracle, topology 89
+writ-tests-js> PASS: reachable-seed oracle, topology 90
+writ-tests-js> PASS: reachable-seed oracle, topology 91
+writ-tests-js> PASS: reachable-seed oracle, topology 92
+writ-tests-js> PASS: reachable-seed oracle, topology 93
+writ-tests-js> PASS: reachable-seed oracle, topology 94
+writ-tests-js> PASS: reachable-seed oracle, topology 95
+writ-tests-js> PASS: reachable-seed oracle, topology 96
+writ-tests-js> PASS: reachable-seed oracle, topology 97
+writ-tests-js> PASS: reachable-seed oracle, topology 98
+writ-tests-js> PASS: reachable-seed oracle, topology 99
+writ-tests-js> PASS: reachable-seed oracle, topology 100
+writ-tests-js> PASS: reachable-seed oracle, topology 101
+writ-tests-js> PASS: reachable-seed oracle, topology 102
+writ-tests-js> PASS: reachable-seed oracle, topology 103
+writ-tests-js> PASS: reachable-seed oracle, topology 104
+writ-tests-js> PASS: reachable-seed oracle, topology 105
+writ-tests-js> PASS: reachable-seed oracle, topology 106
+writ-tests-js> PASS: reachable-seed oracle, topology 107
+writ-tests-js> PASS: reachable-seed oracle, topology 108
+writ-tests-js> PASS: reachable-seed oracle, topology 109
+writ-tests-js> PASS: reachable-seed oracle, topology 110
+writ-tests-js> PASS: reachable-seed oracle, topology 111
+writ-tests-js> PASS: reachable-seed oracle, topology 112
+writ-tests-js> PASS: reachable-seed oracle, topology 113
+writ-tests-js> PASS: reachable-seed oracle, topology 114
+writ-tests-js> PASS: reachable-seed oracle, topology 115
+writ-tests-js> PASS: reachable-seed oracle, topology 116
+writ-tests-js> PASS: reachable-seed oracle, topology 117
+writ-tests-js> PASS: reachable-seed oracle, topology 118
+writ-tests-js> PASS: reachable-seed oracle, topology 119
+writ-tests-js> PASS: reachable-seed oracle, topology 120
+writ-tests-js> PASS: reachable-seed oracle, topology 121
+writ-tests-js> PASS: reachable-seed oracle, topology 122
+writ-tests-js> PASS: reachable-seed oracle, topology 123
+writ-tests-js> PASS: reachable-seed oracle, topology 124
+writ-tests-js> PASS: reachable-seed oracle, topology 125
+writ-tests-js> PASS: reachable-seed oracle, topology 126
+writ-tests-js> PASS: reachable-seed oracle, topology 127
+writ-tests-js> PASS: reachable-seed oracle, topology 128
+writ-tests-js> PASS: reachable-seed oracle, topology 129
+writ-tests-js> PASS: reachable-seed oracle, topology 130
+writ-tests-js> PASS: reachable-seed oracle, topology 131
+writ-tests-js> PASS: reachable-seed oracle, topology 132
+writ-tests-js> PASS: reachable-seed oracle, topology 133
+writ-tests-js> PASS: reachable-seed oracle, topology 134
+writ-tests-js> PASS: reachable-seed oracle, topology 135
+writ-tests-js> PASS: reachable-seed oracle, topology 136
+writ-tests-js> PASS: reachable-seed oracle, topology 137
+writ-tests-js> PASS: reachable-seed oracle, topology 138
+writ-tests-js> PASS: reachable-seed oracle, topology 139
+writ-tests-js> PASS: reachable-seed oracle, topology 140
+writ-tests-js> PASS: reachable-seed oracle, topology 141
+writ-tests-js> PASS: reachable-seed oracle, topology 142
+writ-tests-js> PASS: reachable-seed oracle, topology 143
+writ-tests-js> PASS: reachable-seed oracle, topology 144
+writ-tests-js> PASS: reachable-seed oracle, topology 145
+writ-tests-js> PASS: reachable-seed oracle, topology 146
+writ-tests-js> PASS: reachable-seed oracle, topology 147
+writ-tests-js> PASS: reachable-seed oracle, topology 148
+writ-tests-js> PASS: reachable-seed oracle, topology 149
+writ-tests-js> PASS: reachable-seed oracle, topology 150
+writ-tests-js> PASS: reachable-seed oracle, topology 151
+writ-tests-js> PASS: reachable-seed oracle, topology 152
+writ-tests-js> PASS: reachable-seed oracle, topology 153
+writ-tests-js> PASS: reachable-seed oracle, topology 154
+writ-tests-js> PASS: reachable-seed oracle, topology 155
+writ-tests-js> PASS: reachable-seed oracle, topology 156
+writ-tests-js> PASS: reachable-seed oracle, topology 157
+writ-tests-js> PASS: reachable-seed oracle, topology 158
+writ-tests-js> PASS: reachable-seed oracle, topology 159
+writ-tests-js> PASS: reachable-seed oracle, topology 160
+writ-tests-js> PASS: reachable-seed oracle, topology 161
+writ-tests-js> PASS: reachable-seed oracle, topology 162
+writ-tests-js> PASS: reachable-seed oracle, topology 163
+writ-tests-js> PASS: reachable-seed oracle, topology 164
+writ-tests-js> PASS: reachable-seed oracle, topology 165
+writ-tests-js> PASS: reachable-seed oracle, topology 166
+writ-tests-js> PASS: reachable-seed oracle, topology 167
+writ-tests-js> PASS: reachable-seed oracle, topology 168
+writ-tests-js> PASS: reachable-seed oracle, topology 169
+writ-tests-js> PASS: reachable-seed oracle, topology 170
+writ-tests-js> PASS: reachable-seed oracle, topology 171
+writ-tests-js> PASS: reachable-seed oracle, topology 172
+writ-tests-js> PASS: reachable-seed oracle, topology 173
+writ-tests-js> PASS: reachable-seed oracle, topology 174
+writ-tests-js> PASS: reachable-seed oracle, topology 175
+writ-tests-js> PASS: reachable-seed oracle, topology 176
+writ-tests-js> PASS: reachable-seed oracle, topology 177
+writ-tests-js> PASS: reachable-seed oracle, topology 178
+writ-tests-js> PASS: reachable-seed oracle, topology 179
+writ-tests-js> PASS: reachable-seed oracle, topology 180
+writ-tests-js> PASS: reachable-seed oracle, topology 181
+writ-tests-js> PASS: reachable-seed oracle, topology 182
+writ-tests-js> PASS: reachable-seed oracle, topology 183
+writ-tests-js> PASS: reachable-seed oracle, topology 184
+writ-tests-js> PASS: reachable-seed oracle, topology 185
+writ-tests-js> PASS: reachable-seed oracle, topology 186
+writ-tests-js> PASS: reachable-seed oracle, topology 187
+writ-tests-js> PASS: reachable-seed oracle, topology 188
+writ-tests-js> PASS: reachable-seed oracle, topology 189
+writ-tests-js> PASS: reachable-seed oracle, topology 190
+writ-tests-js> PASS: reachable-seed oracle, topology 191
+writ-tests-js> PASS: reachable-seed oracle, topology 192
+writ-tests-js> PASS: reachable-seed oracle, topology 193
+writ-tests-js> PASS: reachable-seed oracle, topology 194
+writ-tests-js> PASS: reachable-seed oracle, topology 195
+writ-tests-js> PASS: reachable-seed oracle, topology 196
+writ-tests-js> PASS: reachable-seed oracle, topology 197
+writ-tests-js> PASS: reachable-seed oracle, topology 198
+writ-tests-js> PASS: reachable-seed oracle, topology 199
+writ-tests-js> PASS: reachable-seed oracle, topology 200
+writ-tests-js> PASS: reachable-seed oracle, topology 201
+writ-tests-js> PASS: reachable-seed oracle, topology 202
+writ-tests-js> PASS: reachable-seed oracle, topology 203
+writ-tests-js> PASS: reachable-seed oracle, topology 204
+writ-tests-js> PASS: reachable-seed oracle, topology 205
+writ-tests-js> PASS: reachable-seed oracle, topology 206
+writ-tests-js> PASS: reachable-seed oracle, topology 207
+writ-tests-js> PASS: reachable-seed oracle, topology 208
+writ-tests-js> PASS: reachable-seed oracle, topology 209
+writ-tests-js> PASS: reachable-seed oracle, topology 210
+writ-tests-js> PASS: reachable-seed oracle, topology 211
+writ-tests-js> PASS: reachable-seed oracle, topology 212
+writ-tests-js> PASS: reachable-seed oracle, topology 213
+writ-tests-js> PASS: reachable-seed oracle, topology 214
+writ-tests-js> PASS: reachable-seed oracle, topology 215
+writ-tests-js> PASS: reachable-seed oracle, topology 216
+writ-tests-js> PASS: reachable-seed oracle, topology 217
+writ-tests-js> PASS: reachable-seed oracle, topology 218
+writ-tests-js> PASS: reachable-seed oracle, topology 219
+writ-tests-js> PASS: reachable-seed oracle, topology 220
+writ-tests-js> PASS: reachable-seed oracle, topology 221
+writ-tests-js> PASS: reachable-seed oracle, topology 222
+writ-tests-js> PASS: reachable-seed oracle, topology 223
+writ-tests-js> PASS: reachable-seed oracle, topology 224
+writ-tests-js> PASS: reachable-seed oracle, topology 225
+writ-tests-js> PASS: reachable-seed oracle, topology 226
+writ-tests-js> PASS: reachable-seed oracle, topology 227
+writ-tests-js> PASS: reachable-seed oracle, topology 228
+writ-tests-js> PASS: reachable-seed oracle, topology 229
+writ-tests-js> PASS: reachable-seed oracle, topology 230
+writ-tests-js> PASS: reachable-seed oracle, topology 231
+writ-tests-js> PASS: reachable-seed oracle, topology 232
+writ-tests-js> PASS: reachable-seed oracle, topology 233
+writ-tests-js> PASS: reachable-seed oracle, topology 234
+writ-tests-js> PASS: reachable-seed oracle, topology 235
+writ-tests-js> PASS: reachable-seed oracle, topology 236
+writ-tests-js> PASS: reachable-seed oracle, topology 237
+writ-tests-js> PASS: reachable-seed oracle, topology 238
+writ-tests-js> PASS: reachable-seed oracle, topology 239
+writ-tests-js> PASS: reachable-seed oracle, topology 240
+writ-tests-js> PASS: reachable-seed oracle, topology 241
+writ-tests-js> PASS: reachable-seed oracle, topology 242
+writ-tests-js> PASS: reachable-seed oracle, topology 243
+writ-tests-js> PASS: reachable-seed oracle, topology 244
+writ-tests-js> PASS: reachable-seed oracle, topology 245
+writ-tests-js> PASS: reachable-seed oracle, topology 246
+writ-tests-js> PASS: reachable-seed oracle, topology 247
+writ-tests-js> PASS: reachable-seed oracle, topology 248
+writ-tests-js> PASS: reachable-seed oracle, topology 249
+writ-tests-js> PASS: reachable-seed oracle, topology 250
+writ-tests-js> PASS: reachable-seed oracle, topology 251
+writ-tests-js> PASS: reachable-seed oracle, topology 252
+writ-tests-js> PASS: reachable-seed oracle, topology 253
+writ-tests-js> PASS: reachable-seed oracle, topology 254
+writ-tests-js> PASS: reachable-seed oracle, topology 255
+writ-tests-js> PASS: equality-conflict oracle, topology 0
+writ-tests-js> PASS: equality-conflict oracle, topology 1
+writ-tests-js> PASS: equality-conflict oracle, topology 2
+writ-tests-js> PASS: equality-conflict oracle, topology 3
+writ-tests-js> PASS: equality-conflict oracle, topology 4
+writ-tests-js> PASS: equality-conflict oracle, topology 5
+writ-tests-js> PASS: equality-conflict oracle, topology 6
+writ-tests-js> PASS: equality-conflict oracle, topology 7
+writ-tests-js> PASS: equality-conflict oracle, topology 8
+writ-tests-js> PASS: equality-conflict oracle, topology 9
+writ-tests-js> PASS: equality-conflict oracle, topology 10
+writ-tests-js> PASS: equality-conflict oracle, topology 11
+writ-tests-js> PASS: equality-conflict oracle, topology 12
+writ-tests-js> PASS: equality-conflict oracle, topology 13
+writ-tests-js> PASS: equality-conflict oracle, topology 14
+writ-tests-js> PASS: equality-conflict oracle, topology 15
+writ-tests-js> PASS: equality-conflict oracle, topology 16
+writ-tests-js> PASS: equality-conflict oracle, topology 17
+writ-tests-js> PASS: equality-conflict oracle, topology 18
+writ-tests-js> PASS: equality-conflict oracle, topology 19
+writ-tests-js> PASS: equality-conflict oracle, topology 20
+writ-tests-js> PASS: equality-conflict oracle, topology 21
+writ-tests-js> PASS: equality-conflict oracle, topology 22
+writ-tests-js> PASS: equality-conflict oracle, topology 23
+writ-tests-js> PASS: equality-conflict oracle, topology 24
+writ-tests-js> PASS: equality-conflict oracle, topology 25
+writ-tests-js> PASS: equality-conflict oracle, topology 26
+writ-tests-js> PASS: equality-conflict oracle, topology 27
+writ-tests-js> PASS: equality-conflict oracle, topology 28
+writ-tests-js> PASS: equality-conflict oracle, topology 29
+writ-tests-js> PASS: equality-conflict oracle, topology 30
+writ-tests-js> PASS: equality-conflict oracle, topology 31
+writ-tests-js> PASS: equality-conflict oracle, topology 32
+writ-tests-js> PASS: equality-conflict oracle, topology 33
+writ-tests-js> PASS: equality-conflict oracle, topology 34
+writ-tests-js> PASS: equality-conflict oracle, topology 35
+writ-tests-js> PASS: equality-conflict oracle, topology 36
+writ-tests-js> PASS: equality-conflict oracle, topology 37
+writ-tests-js> PASS: equality-conflict oracle, topology 38
+writ-tests-js> PASS: equality-conflict oracle, topology 39
+writ-tests-js> PASS: equality-conflict oracle, topology 40
+writ-tests-js> PASS: equality-conflict oracle, topology 41
+writ-tests-js> PASS: equality-conflict oracle, topology 42
+writ-tests-js> PASS: equality-conflict oracle, topology 43
+writ-tests-js> PASS: equality-conflict oracle, topology 44
+writ-tests-js> PASS: equality-conflict oracle, topology 45
+writ-tests-js> PASS: equality-conflict oracle, topology 46
+writ-tests-js> PASS: equality-conflict oracle, topology 47
+writ-tests-js> PASS: equality-conflict oracle, topology 48
+writ-tests-js> PASS: equality-conflict oracle, topology 49
+writ-tests-js> PASS: equality-conflict oracle, topology 50
+writ-tests-js> PASS: equality-conflict oracle, topology 51
+writ-tests-js> PASS: equality-conflict oracle, topology 52
+writ-tests-js> PASS: equality-conflict oracle, topology 53
+writ-tests-js> PASS: equality-conflict oracle, topology 54
+writ-tests-js> PASS: equality-conflict oracle, topology 55
+writ-tests-js> PASS: equality-conflict oracle, topology 56
+writ-tests-js> PASS: equality-conflict oracle, topology 57
+writ-tests-js> PASS: equality-conflict oracle, topology 58
+writ-tests-js> PASS: equality-conflict oracle, topology 59
+writ-tests-js> PASS: equality-conflict oracle, topology 60
+writ-tests-js> PASS: equality-conflict oracle, topology 61
+writ-tests-js> PASS: equality-conflict oracle, topology 62
+writ-tests-js> PASS: equality-conflict oracle, topology 63
+writ-tests-js> Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+writ-tests-js> ALL LIBRARY TESTS PASSED
+writ-tests-js> final line: ALL LIBRARY TESTS PASSED
+writ-tests-js> PASS lines: 638
+building '/nix/store/0bngz95xsw8ij75fpvj64n9h4c1y35wk-writ-tests-native-run.drv'...
+writ-tests-native-run> PASS: exact 64-bit union across both words
+writ-tests-native-run> PASS: exact 64-bit intersection
+writ-tests-native-run> PASS: bit 63 cannot be satisfied by low word
+writ-tests-native-run> PASS: valid graph admitted
+writ-tests-native-run> PASS: CPU Jacobi propagation and final stability sweep
+writ-tests-native-run> PASS: Bend parallel producer matches sequential producer
+writ-tests-native-run> PASS: independent verifier checks original graph
+writ-tests-native-run> PASS: summary cannot escape source confidentiality
+writ-tests-native-run> PASS: covered destination and actual effect succeed
+writ-tests-native-run> PASS: untrusted provenance is checked separately
+writ-tests-native-run> PASS: actual network effect needs a live grant
+writ-tests-native-run> PASS: callee effect requires grant even when requested mask is zero
+writ-tests-native-run> PASS: sink index never wraps
+writ-tests-native-run> PASS: list lookup rejects maximal U32 index
+writ-tests-native-run> PASS: source secrecy omission rejected
+writ-tests-native-run> PASS: source provenance omission rejected
+writ-tests-native-run> PASS: source effect omission rejected
+writ-tests-native-run> PASS: derived secrecy omission rejected
+writ-tests-native-run> PASS: derived provenance omission rejected
+writ-tests-native-run> PASS: callee effect omission rejected
+writ-tests-native-run> PASS: static equality cannot keep a larger domain
+writ-tests-native-run> PASS: empty candidate domain rejected
+writ-tests-native-run> PASS: unsupported candidate domain rejected
+writ-tests-native-run> PASS: missing candidate nodes rejected
+writ-tests-native-run> PASS: extra candidate nodes rejected
+writ-tests-native-run> PASS: conservative extra restrictions remain valid
+writ-tests-native-run> PASS: extra restrictions still constrain the sink
+writ-tests-native-run> PASS: changed graph generation denies
+writ-tests-native-run> PASS: changed policy generation denies
+writ-tests-native-run> PASS: authority epoch high word is checked
+writ-tests-native-run> PASS: candidate stamp must match live snapshot
+writ-tests-native-run> PASS: one-sweep budget fails closed
+writ-tests-native-run> PASS: final convergence check consumes fuel
+writ-tests-native-run> PASS: exact convergence budget succeeds
+writ-tests-native-run> PASS: parallel budget fails closed
+writ-tests-native-run> PASS: missing flow endpoint rejected before solving
+writ-tests-native-run> PASS: parallel producer receives only validated graph
+writ-tests-native-run> PASS: missing equality endpoint rejected
+writ-tests-native-run> PASS: missing call endpoint rejected
+writ-tests-native-run> PASS: empty seed type domain rejected
+writ-tests-native-run> PASS: unsupported seed type domain rejected
+writ-tests-native-run> PASS: incompatible static types conflict
+writ-tests-native-run> PASS: parallel producer preserves type conflict
+writ-tests-native-run> PASS: cyclic flow reaches verified fixed point
+writ-tests-native-run> PASS: parallel cycle agrees with CPU
+writ-tests-native-run> PASS: empty graph succeeds in zero rounds
+writ-tests-native-run> PASS: empty parallel graph needs no dispatch
+writ-tests-native-run> PASS: bit 63 propagates in all three restriction domains
+writ-tests-native-run> PASS: parallel propagation retains high bits
+writ-tests-native-run> PASS: high-word restrictions can be explicitly covered
+writ-tests-native-run> PASS: high-word required effect cannot be dropped
+writ-tests-native-run> PASS: stable forged producer output fails independent verification
+writ-tests-native-run> Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+writ-tests-native-run> PASS valid paired admission
+writ-tests-native-run> PASS summary retains origin and labels
+writ-tests-native-run> PASS read required
+writ-tests-native-run> PASS write required
+writ-tests-native-run> PASS read domain distinct
+writ-tests-native-run> PASS write domain distinct
+writ-tests-native-run> PASS read object version exact
+writ-tests-native-run> PASS write object exact
+writ-tests-native-run> PASS graph epoch current
+writ-tests-native-run> PASS policy epoch current
+writ-tests-native-run> PASS authority epoch current
+writ-tests-native-run> PASS expiry exclusive
+writ-tests-native-run> PASS all 256 code bits bound
+writ-tests-native-run> PASS invocation bound
+writ-tests-native-run> PASS read grant stamp bound
+writ-tests-native-run> PASS fresh writer cannot redirect old read destination
+writ-tests-native-run> PASS fresh writer cannot redirect old read write-domain
+writ-tests-native-run> PASS operation kind approved
+writ-tests-native-run> PASS operation code approved
+writ-tests-native-run> PASS origin code pin required
+writ-tests-native-run> PASS origin transform restrictions retained
+writ-tests-native-run> PASS empty origins rejected
+writ-tests-native-run> PASS unknown kind bits rejected
+writ-tests-native-run> PASS derived source cannot widen origin rights
+writ-tests-native-run> PASS source cannot erase origin secrecy
+writ-tests-native-run> PASS payment required
+writ-tests-native-run> PASS payment origin version
+writ-tests-native-run> PASS payment invocation
+writ-tests-native-run> PASS payment code
+writ-tests-native-run> PASS payment kind
+writ-tests-native-run> PASS payment destination
+writ-tests-native-run> PASS payment quote
+writ-tests-native-run> PASS payment expiry
+writ-tests-native-run> PASS ROT13 or summary cannot clear confidentiality
+writ-tests-native-run> PASS integrity independently enforced
+writ-tests-native-run> PASS own bucket only narrows output operations
+writ-tests-native-run> PASS multiple origins union labels including bit63
+writ-tests-native-run> PASS old read cannot approve expanded source manifest
+writ-tests-native-run> PASS every source read required
+writ-tests-native-run> PASS every original payment required
+writ-tests-native-run> PASS copy preserves schema and remains protected
+writ-tests-native-run> PASS parallel batch admission
+writ-tests-native-run> PASS parallel batch retains denial
+writ-tests-native-run> PASS preflight collects every inherited origin in order
+writ-tests-native-run> PASS origin discovery is independent of later grants and payment
+writ-tests-native-run> PASS preflight rejects stale authority
+writ-tests-native-run> PASS preflight source version exact
+writ-tests-native-run> PASS preflight rejects malformed source schema
+writ-tests-native-run> PASS preflight refuses missing provenance
+writ-tests-native-run> PASS preflight rejects source erasing origin labels
+writ-tests-native-run> PASS preflight rejects amplified origin rights
+writ-tests-native-run> PASS ambiguous runtime source schema denied
+writ-tests-native-run> PASS unknown payment operation bits denied
+writ-tests-native-run> Transfer: 53 checks passed
+writ-tests-native-run> PASS: DLM exact finite closure validates
+writ-tests-native-run> PASS: DLM transitive delegation closure validates
+writ-tests-native-run> PASS: delegation direction and transitivity
+writ-tests-native-run> PASS: delegation does not reverse
+writ-tests-native-run> PASS: Top acts for every registered principal
+writ-tests-native-run> PASS: every registered principal acts for Bottom
+writ-tests-native-run> PASS: ordinary principal has no implicit Top authority
+writ-tests-native-run> PASS: unregistered principal denies even for Top
+writ-tests-native-run> PASS: unsupported composite principal denies
+writ-tests-native-run> PASS: authority epoch mismatch denies
+writ-tests-native-run> PASS: invented closure authority denies
+writ-tests-native-run> PASS: omitted delegation edge in closure denies
+writ-tests-native-run> PASS: malformed relation shape denies
+writ-tests-native-run> PASS: out-of-universe relation bit denies
+writ-tests-native-run> PASS: unknown delegation endpoint denies preparation
+writ-tests-native-run> PASS: oversized principal universe denies
+writ-tests-native-run> PASS: unsupported delegation denies preparation
+writ-tests-native-run> PASS: empty name registry retains Top and Bottom
+writ-tests-native-run> PASS: highest supported principal uses bit 31 correctly
+writ-tests-native-run> PASS: preparation computes transitive authority
+writ-tests-native-run> PASS: owner-sensitive readers include owner and delegate
+writ-tests-native-run> PASS: untrusted owner imposes no policy on observer
+writ-tests-native-run> PASS: confidentiality join intersects readers
+writ-tests-native-run> PASS: confidentiality meet unions readers
+writ-tests-native-run> PASS: integrity join unions possible writers
+writ-tests-native-run> PASS: integrity meet intersects possible writers
+writ-tests-native-run> PASS: uncredited integrity owner gives unknown provenance
+writ-tests-native-run> PASS: public information may acquire secrecy restrictions
+writ-tests-native-run> PASS: protected information cannot flow to public
+writ-tests-native-run> PASS: narrowing the reader set is allowed
+writ-tests-native-run> PASS: widening the reader set requires separate authority
+writ-tests-native-run> PASS: trusted information may lose integrity
+writ-tests-native-run> PASS: untrusted information cannot endorse itself
+writ-tests-native-run> PASS: integrity ordering follows possible writer inclusion
+writ-tests-native-run> PASS: removing possible writers requires endorsement
+writ-tests-native-run> PASS: maximal restriction is a valid information-flow sink
+writ-tests-native-run> PASS: unknown policy principal denies reflexive-looking query
+writ-tests-native-run> PASS: unsupported policy principal denies
+writ-tests-native-run> PASS: stale flow query denies
+writ-tests-native-run> PASS: secret control dependency survives an otherwise-public result
+writ-tests-native-run> PASS: dependency joins retain untrusted influence
+writ-tests-native-run> PASS: join is an upper bound
+writ-tests-native-run> PASS: meet is a lower bound
+writ-tests-native-run> PASS: parallel batch agrees with four independent semantic outcomes
+writ-tests-native-run> PASS: complete CPU replay accepts correct batch results
+writ-tests-native-run> PASS: complete CPU replay rejects fabricated allows
+writ-tests-native-run> PASS: complete CPU replay rejects truncated result shape
+writ-tests-native-run> DLM: 47 checks passed
+writ-tests-native-run> PASS: ledger reserves reader expense
+writ-tests-native-run> PASS: reservation removes available funds
+writ-tests-native-run> PASS: stale revision denies
+writ-tests-native-run> PASS: overdraft denies
+writ-tests-native-run> PASS: one live reservation per invocation
+writ-tests-native-run> PASS: receipt cannot switch invocation
+writ-tests-native-run> PASS: receipt cannot switch payer
+writ-tests-native-run> PASS: receipt cannot switch amount
+writ-tests-native-run> PASS: scoped commit succeeds
+writ-tests-native-run> PASS: commit replay denies
+writ-tests-native-run> PASS: cancellation refunds hold
+writ-tests-native-run> PASS: cancelled receipt cannot replay
+writ-tests-native-run> PASS: expired hold cannot commit
+writ-tests-native-run> PASS: expiration refunds hold
+writ-tests-native-run> PASS: unexpired hold cannot be reaped
+writ-tests-native-run> PASS: duplicate payer registry denies
+writ-tests-native-run> Ledger: 16 checks passed
+writ-tests-native-run> PASS: negotiation reaches running in guarded order
+writ-tests-native-run> PASS: every stage retains immutable request
+writ-tests-native-run> PASS: candidate identity cannot change
+writ-tests-native-run> PASS: stale session revision denies
+writ-tests-native-run> PASS: challenge requires pinned candidate
+writ-tests-native-run> PASS: future challenge not yet usable
+writ-tests-native-run> PASS: protected sample has pre-execution gate
+writ-tests-native-run> PASS: sample cannot read without paired source grant
+writ-tests-native-run> PASS: old nonce cannot pair with fresh duplicate ID
+writ-tests-native-run> PASS: failed sample denies transition
+writ-tests-native-run> PASS: wrong sample nonce denies
+writ-tests-native-run> PASS: passing sample does not replace owner approval
+writ-tests-native-run> PASS: sample cannot skip negotiation
+writ-tests-native-run> PASS: every contributing origin must approve
+writ-tests-native-run> PASS: all contributing origins permit negotiation
+writ-tests-native-run> PASS: owner approval binds exact destination
+writ-tests-native-run> PASS: reader-funded reservation succeeds
+writ-tests-native-run> PASS: negotiation reserves reader balance
+writ-tests-native-run> PASS: reservation must name reader as payer
+writ-tests-native-run> PASS: quote substitution denies
+writ-tests-native-run> PASS: revoked budget denies start despite live hold
+writ-tests-native-run> PASS: revoked read grant denies execution
+writ-tests-native-run> PASS: revoked origin approval denies execution
+writ-tests-native-run> PASS: expiry is exclusive at deadline
+writ-tests-native-run> PASS: cannot execute before negotiation
+writ-tests-native-run> PASS: authority epoch drift denies start
+writ-tests-native-run> Negotiation: 26 checks passed
+writ-tests-native-run> PASS: backplane commits fully verified transaction
+writ-tests-native-run> PASS: write intent retains origins, types, restrictions and DLM label
+writ-tests-native-run> PASS: committed session is terminal
+writ-tests-native-run> PASS: commit advances ledger revision
+writ-tests-native-run> PASS: commit spends reserved amount once
+writ-tests-native-run> PASS: old running session cannot replay spent receipt
+writ-tests-native-run> PASS: terminal session cannot commit twice
+writ-tests-native-run> PASS: commit rejects stale session revision
+writ-tests-native-run> PASS: commit rejects stale ledger revision
+writ-tests-native-run> PASS: forged solver labels cannot authorize output
+writ-tests-native-run> PASS: passing sample cannot commit
+writ-tests-native-run> PASS: late owner revocation denies commit
+writ-tests-native-run> PASS: denied commit does not consume hold
+writ-tests-native-run> PASS: denied commit preserves original session
+writ-tests-native-run> PASS: late budget revocation denies commit
+writ-tests-native-run> PASS: late read revocation denies commit
+writ-tests-native-run> PASS: late write revocation denies commit
+writ-tests-native-run> PASS: missing origin payment witness denies commit
+writ-tests-native-run> PASS: transfer authority epoch drift denies commit
+writ-tests-native-run> PASS: DLM authority epoch drift denies commit
+writ-tests-native-run> PASS: graph policy epoch drift denies commit
+writ-tests-native-run> PASS: DLM blocks secret-to-public release
+writ-tests-native-run> PASS: network backend adds actual network effect
+writ-tests-native-run> PASS: storage backend adds actual write effect
+writ-tests-native-run> PASS: combined control label rechecked against actual destination
+writ-tests-native-run> PASS: oracle fixture has valid static narrowing
+writ-tests-native-run> PASS: static narrowing cannot change declared output schema
+writ-tests-native-run> PASS: binding includes reader and immutable negotiation terms
+writ-tests-native-run> PASS: exclusive deadline denies final commit
+writ-tests-native-run> PASS: stamp bridge preserves high word
+writ-tests-native-run> PASS: stamp bridge cannot truncate high word
+writ-tests-native-run> PASS: bit63 epoch mismatch cannot alias low epoch
+writ-tests-native-run> PASS: identical duplicate bindings deny closed
+writ-tests-native-run> PASS: conflicting bindings deny with permissive entry first
+writ-tests-native-run> PASS: conflicting bindings deny with restrictive entry first
+writ-tests-native-run> PASS: duplicate registry rejection preserves reservation
+writ-tests-native-run> PASS: write intent preserves all 256 artifact identity bits
+writ-tests-native-run> PASS: artifact identity differs in final word
+writ-tests-native-run> PASS: artifact identity comes from authoritative binding
+writ-tests-native-run> PASS: distinct full requests are separate binding keys
+writ-tests-native-run> Backplane: 40 checks passed
+writ-tests-native-run> PASS: frontend fixture has a valid paired read/write contract
+writ-tests-native-run> PASS: empty frontend state is valid
+writ-tests-native-run> PASS: unique capability registry validates
+writ-tests-native-run> PASS: capability mounts as a protocol handle
+writ-tests-native-run> PASS: mount allocates first monotonic ID
+writ-tests-native-run> PASS: mounted capability opens a descriptor record
+writ-tests-native-run> PASS: open allocates next descriptor ID
+writ-tests-native-run> PASS: open preserves frontend structural validity
+writ-tests-native-run> PASS: read request resolves exact immutable plan
+writ-tests-native-run> PASS: write request resolves same exact plan
+writ-tests-native-run> PASS: execute resolves exact plan with all rights
+writ-tests-native-run> PASS: mount handle itself cannot perform an operation
+writ-tests-native-run> PASS: descriptor cannot cross authenticated subjects
+writ-tests-native-run> PASS: descriptor cannot switch capability token
+writ-tests-native-run> PASS: all 256 token bits participate in lookup
+writ-tests-native-run> PASS: token possession does not change bound subject
+writ-tests-native-run> PASS: unknown rights bit denies mount
+writ-tests-native-run> PASS: mount cannot amplify registry rights
+writ-tests-native-run> PASS: open cannot amplify mounted rights
+writ-tests-native-run> PASS: descriptor is not a mount alias
+writ-tests-native-run> PASS: mount is not a duplicable operational descriptor
+writ-tests-native-run> PASS: descriptor duplication succeeds under live authority
+writ-tests-native-run> PASS: dup allocates a distinct descriptor ID
+writ-tests-native-run> PASS: dup preserves exact token and plan scope
+writ-tests-native-run> PASS: descriptor rights may be attenuated in current state
+writ-tests-native-run> PASS: attenuated read right remains usable
+writ-tests-native-run> PASS: attenuation removes write right
+writ-tests-native-run> PASS: attenuation removes execute right
+writ-tests-native-run> PASS: attenuation cannot restore removed rights
+writ-tests-native-run> PASS: duplication preserves attenuation
+writ-tests-native-run> PASS: zero-right descriptor authorizes no read
+writ-tests-native-run> PASS: zero-right descriptor authorizes no write
+writ-tests-native-run> PASS: zero-right descriptor authorizes no execution
+writ-tests-native-run> PASS: removing registry capability revokes existing descriptor
+writ-tests-native-run> PASS: revoked descriptor cannot duplicate itself
+writ-tests-native-run> PASS: registry rights reduction invalidates wider existing descriptor
+writ-tests-native-run> PASS: registry replacement cannot redirect existing descriptor plan
+writ-tests-native-run> PASS: altered descriptor plan disagrees with trusted registry
+writ-tests-native-run> PASS: read request still requires destination write approval
+writ-tests-native-run> PASS: write request still requires exact source read approval
+writ-tests-native-run> PASS: capability cannot bypass inherited payment requirement
+writ-tests-native-run> PASS: stale revision cannot resolve operation
+writ-tests-native-run> PASS: stale revision cannot duplicate descriptor
+writ-tests-native-run> PASS: rejected mutation leaves revision unchanged
+writ-tests-native-run> PASS: authority epoch change invalidates open descriptor
+writ-tests-native-run> PASS: stale capability cannot mount in new epoch
+writ-tests-native-run> PASS: stale mounted capability cannot open
+writ-tests-native-run> PASS: expiry is exclusive at exact deadline
+writ-tests-native-run> PASS: expired descriptor cannot duplicate itself
+writ-tests-native-run> PASS: expired capability cannot mount
+writ-tests-native-run> PASS: shortening registry expiry invalidates older broader handle
+writ-tests-native-run> PASS: duplicate capability token is ambiguous and invalid
+writ-tests-native-run> PASS: malformed registry denies mount
+writ-tests-native-run> PASS: malformed registry denies resolution
+writ-tests-native-run> PASS: malformed registry rights deny
+writ-tests-native-run> PASS: capability epoch must match immutable plan epoch
+writ-tests-native-run> PASS: duplicate descriptor IDs invalidate state
+writ-tests-native-run> PASS: ambiguous descriptor state denies resolution
+writ-tests-native-run> PASS: next descriptor ID must exceed every allocated ID
+writ-tests-native-run> PASS: unallocated zero descriptor denies
+writ-tests-native-run> PASS: unknown descriptor denies
+writ-tests-native-run> PASS: closing descriptor records tombstone
+writ-tests-native-run> PASS: closed descriptor cannot resolve
+writ-tests-native-run> PASS: closed descriptor cannot duplicate
+writ-tests-native-run> PASS: closed descriptor cannot be reactivated by attenuation
+writ-tests-native-run> PASS: close replay denies
+writ-tests-native-run> PASS: another subject cannot close descriptor
+writ-tests-native-run> PASS: another token cannot close descriptor
+writ-tests-native-run> PASS: closing one descriptor preserves independently duplicated descriptor
+writ-tests-native-run> PASS: new open never reuses tombstoned descriptor ID
+writ-tests-native-run> Frontend: 70 checks passed
+writ-tests-native-run> PASS: facade links capability descriptor through complete commit
+writ-tests-native-run> PASS: facade preserves output provenance
+writ-tests-native-run> PASS: capability revocation is checked at commit
+writ-tests-native-run> PASS: revoked capability spends no reservation
+writ-tests-native-run> PASS: authenticated caller must own descriptor
+writ-tests-native-run> PASS: authenticated subject must be negotiated reader
+writ-tests-native-run> PASS: execution requires execute right as well as read and write
+writ-tests-native-run> PASS: closed descriptor cannot commit
+writ-tests-native-run> PASS: stale frontend revision cannot commit
+writ-tests-native-run> PASS: capability possession cannot override label denial
+writ-tests-native-run> Facade: 10 checks passed
+writ-tests-native-run> PASS: oracle fixture: disconnected vertices
+writ-tests-native-run> PASS: oracle fixture: directed chain
+writ-tests-native-run> PASS: oracle fixture: directed cycle
+writ-tests-native-run> PASS: oracle fixture: undirected component
+writ-tests-native-run> PASS: reachable-seed oracle, topology 0
+writ-tests-native-run> PASS: reachable-seed oracle, topology 1
+writ-tests-native-run> PASS: reachable-seed oracle, topology 2
+writ-tests-native-run> PASS: reachable-seed oracle, topology 3
+writ-tests-native-run> PASS: reachable-seed oracle, topology 4
+writ-tests-native-run> PASS: reachable-seed oracle, topology 5
+writ-tests-native-run> PASS: reachable-seed oracle, topology 6
+writ-tests-native-run> PASS: reachable-seed oracle, topology 7
+writ-tests-native-run> PASS: reachable-seed oracle, topology 8
+writ-tests-native-run> PASS: reachable-seed oracle, topology 9
+writ-tests-native-run> PASS: reachable-seed oracle, topology 10
+writ-tests-native-run> PASS: reachable-seed oracle, topology 11
+writ-tests-native-run> PASS: reachable-seed oracle, topology 12
+writ-tests-native-run> PASS: reachable-seed oracle, topology 13
+writ-tests-native-run> PASS: reachable-seed oracle, topology 14
+writ-tests-native-run> PASS: reachable-seed oracle, topology 15
+writ-tests-native-run> PASS: reachable-seed oracle, topology 16
+writ-tests-native-run> PASS: reachable-seed oracle, topology 17
+writ-tests-native-run> PASS: reachable-seed oracle, topology 18
+writ-tests-native-run> PASS: reachable-seed oracle, topology 19
+writ-tests-native-run> PASS: reachable-seed oracle, topology 20
+writ-tests-native-run> PASS: reachable-seed oracle, topology 21
+writ-tests-native-run> PASS: reachable-seed oracle, topology 22
+writ-tests-native-run> PASS: reachable-seed oracle, topology 23
+writ-tests-native-run> PASS: reachable-seed oracle, topology 24
+writ-tests-native-run> PASS: reachable-seed oracle, topology 25
+writ-tests-native-run> PASS: reachable-seed oracle, topology 26
+writ-tests-native-run> PASS: reachable-seed oracle, topology 27
+writ-tests-native-run> PASS: reachable-seed oracle, topology 28
+writ-tests-native-run> PASS: reachable-seed oracle, topology 29
+writ-tests-native-run> PASS: reachable-seed oracle, topology 30
+writ-tests-native-run> PASS: reachable-seed oracle, topology 31
+writ-tests-native-run> PASS: reachable-seed oracle, topology 32
+writ-tests-native-run> PASS: reachable-seed oracle, topology 33
+writ-tests-native-run> PASS: reachable-seed oracle, topology 34
+writ-tests-native-run> PASS: reachable-seed oracle, topology 35
+writ-tests-native-run> PASS: reachable-seed oracle, topology 36
+writ-tests-native-run> PASS: reachable-seed oracle, topology 37
+writ-tests-native-run> PASS: reachable-seed oracle, topology 38
+writ-tests-native-run> PASS: reachable-seed oracle, topology 39
+writ-tests-native-run> PASS: reachable-seed oracle, topology 40
+writ-tests-native-run> PASS: reachable-seed oracle, topology 41
+writ-tests-native-run> PASS: reachable-seed oracle, topology 42
+writ-tests-native-run> PASS: reachable-seed oracle, topology 43
+writ-tests-native-run> PASS: reachable-seed oracle, topology 44
+writ-tests-native-run> PASS: reachable-seed oracle, topology 45
+writ-tests-native-run> PASS: reachable-seed oracle, topology 46
+writ-tests-native-run> PASS: reachable-seed oracle, topology 47
+writ-tests-native-run> PASS: reachable-seed oracle, topology 48
+writ-tests-native-run> PASS: reachable-seed oracle, topology 49
+writ-tests-native-run> PASS: reachable-seed oracle, topology 50
+writ-tests-native-run> PASS: reachable-seed oracle, topology 51
+writ-tests-native-run> PASS: reachable-seed oracle, topology 52
+writ-tests-native-run> PASS: reachable-seed oracle, topology 53
+writ-tests-native-run> PASS: reachable-seed oracle, topology 54
+writ-tests-native-run> PASS: reachable-seed oracle, topology 55
+writ-tests-native-run> PASS: reachable-seed oracle, topology 56
+writ-tests-native-run> PASS: reachable-seed oracle, topology 57
+writ-tests-native-run> PASS: reachable-seed oracle, topology 58
+writ-tests-native-run> PASS: reachable-seed oracle, topology 59
+writ-tests-native-run> PASS: reachable-seed oracle, topology 60
+writ-tests-native-run> PASS: reachable-seed oracle, topology 61
+writ-tests-native-run> PASS: reachable-seed oracle, topology 62
+writ-tests-native-run> PASS: reachable-seed oracle, topology 63
+writ-tests-native-run> PASS: reachable-seed oracle, topology 64
+writ-tests-native-run> PASS: reachable-seed oracle, topology 65
+writ-tests-native-run> PASS: reachable-seed oracle, topology 66
+writ-tests-native-run> PASS: reachable-seed oracle, topology 67
+writ-tests-native-run> PASS: reachable-seed oracle, topology 68
+writ-tests-native-run> PASS: reachable-seed oracle, topology 69
+writ-tests-native-run> PASS: reachable-seed oracle, topology 70
+writ-tests-native-run> PASS: reachable-seed oracle, topology 71
+writ-tests-native-run> PASS: reachable-seed oracle, topology 72
+writ-tests-native-run> PASS: reachable-seed oracle, topology 73
+writ-tests-native-run> PASS: reachable-seed oracle, topology 74
+writ-tests-native-run> PASS: reachable-seed oracle, topology 75
+writ-tests-native-run> PASS: reachable-seed oracle, topology 76
+writ-tests-native-run> PASS: reachable-seed oracle, topology 77
+writ-tests-native-run> PASS: reachable-seed oracle, topology 78
+writ-tests-native-run> PASS: reachable-seed oracle, topology 79
+writ-tests-native-run> PASS: reachable-seed oracle, topology 80
+writ-tests-native-run> PASS: reachable-seed oracle, topology 81
+writ-tests-native-run> PASS: reachable-seed oracle, topology 82
+writ-tests-native-run> PASS: reachable-seed oracle, topology 83
+writ-tests-native-run> PASS: reachable-seed oracle, topology 84
+writ-tests-native-run> PASS: reachable-seed oracle, topology 85
+writ-tests-native-run> PASS: reachable-seed oracle, topology 86
+writ-tests-native-run> PASS: reachable-seed oracle, topology 87
+writ-tests-native-run> PASS: reachable-seed oracle, topology 88
+writ-tests-native-run> PASS: reachable-seed oracle, topology 89
+writ-tests-native-run> PASS: reachable-seed oracle, topology 90
+writ-tests-native-run> PASS: reachable-seed oracle, topology 91
+writ-tests-native-run> PASS: reachable-seed oracle, topology 92
+writ-tests-native-run> PASS: reachable-seed oracle, topology 93
+writ-tests-native-run> PASS: reachable-seed oracle, topology 94
+writ-tests-native-run> PASS: reachable-seed oracle, topology 95
+writ-tests-native-run> PASS: reachable-seed oracle, topology 96
+writ-tests-native-run> PASS: reachable-seed oracle, topology 97
+writ-tests-native-run> PASS: reachable-seed oracle, topology 98
+writ-tests-native-run> PASS: reachable-seed oracle, topology 99
+writ-tests-native-run> PASS: reachable-seed oracle, topology 100
+writ-tests-native-run> PASS: reachable-seed oracle, topology 101
+writ-tests-native-run> PASS: reachable-seed oracle, topology 102
+writ-tests-native-run> PASS: reachable-seed oracle, topology 103
+writ-tests-native-run> PASS: reachable-seed oracle, topology 104
+writ-tests-native-run> PASS: reachable-seed oracle, topology 105
+writ-tests-native-run> PASS: reachable-seed oracle, topology 106
+writ-tests-native-run> PASS: reachable-seed oracle, topology 107
+writ-tests-native-run> PASS: reachable-seed oracle, topology 108
+writ-tests-native-run> PASS: reachable-seed oracle, topology 109
+writ-tests-native-run> PASS: reachable-seed oracle, topology 110
+writ-tests-native-run> PASS: reachable-seed oracle, topology 111
+writ-tests-native-run> PASS: reachable-seed oracle, topology 112
+writ-tests-native-run> PASS: reachable-seed oracle, topology 113
+writ-tests-native-run> PASS: reachable-seed oracle, topology 114
+writ-tests-native-run> PASS: reachable-seed oracle, topology 115
+writ-tests-native-run> PASS: reachable-seed oracle, topology 116
+writ-tests-native-run> PASS: reachable-seed oracle, topology 117
+writ-tests-native-run> PASS: reachable-seed oracle, topology 118
+writ-tests-native-run> PASS: reachable-seed oracle, topology 119
+writ-tests-native-run> PASS: reachable-seed oracle, topology 120
+writ-tests-native-run> PASS: reachable-seed oracle, topology 121
+writ-tests-native-run> PASS: reachable-seed oracle, topology 122
+writ-tests-native-run> PASS: reachable-seed oracle, topology 123
+writ-tests-native-run> PASS: reachable-seed oracle, topology 124
+writ-tests-native-run> PASS: reachable-seed oracle, topology 125
+writ-tests-native-run> PASS: reachable-seed oracle, topology 126
+writ-tests-native-run> PASS: reachable-seed oracle, topology 127
+writ-tests-native-run> PASS: reachable-seed oracle, topology 128
+writ-tests-native-run> PASS: reachable-seed oracle, topology 129
+writ-tests-native-run> PASS: reachable-seed oracle, topology 130
+writ-tests-native-run> PASS: reachable-seed oracle, topology 131
+writ-tests-native-run> PASS: reachable-seed oracle, topology 132
+writ-tests-native-run> PASS: reachable-seed oracle, topology 133
+writ-tests-native-run> PASS: reachable-seed oracle, topology 134
+writ-tests-native-run> PASS: reachable-seed oracle, topology 135
+writ-tests-native-run> PASS: reachable-seed oracle, topology 136
+writ-tests-native-run> PASS: reachable-seed oracle, topology 137
+writ-tests-native-run> PASS: reachable-seed oracle, topology 138
+writ-tests-native-run> PASS: reachable-seed oracle, topology 139
+writ-tests-native-run> PASS: reachable-seed oracle, topology 140
+writ-tests-native-run> PASS: reachable-seed oracle, topology 141
+writ-tests-native-run> PASS: reachable-seed oracle, topology 142
+writ-tests-native-run> PASS: reachable-seed oracle, topology 143
+writ-tests-native-run> PASS: reachable-seed oracle, topology 144
+writ-tests-native-run> PASS: reachable-seed oracle, topology 145
+writ-tests-native-run> PASS: reachable-seed oracle, topology 146
+writ-tests-native-run> PASS: reachable-seed oracle, topology 147
+writ-tests-native-run> PASS: reachable-seed oracle, topology 148
+writ-tests-native-run> PASS: reachable-seed oracle, topology 149
+writ-tests-native-run> PASS: reachable-seed oracle, topology 150
+writ-tests-native-run> PASS: reachable-seed oracle, topology 151
+writ-tests-native-run> PASS: reachable-seed oracle, topology 152
+writ-tests-native-run> PASS: reachable-seed oracle, topology 153
+writ-tests-native-run> PASS: reachable-seed oracle, topology 154
+writ-tests-native-run> PASS: reachable-seed oracle, topology 155
+writ-tests-native-run> PASS: reachable-seed oracle, topology 156
+writ-tests-native-run> PASS: reachable-seed oracle, topology 157
+writ-tests-native-run> PASS: reachable-seed oracle, topology 158
+writ-tests-native-run> PASS: reachable-seed oracle, topology 159
+writ-tests-native-run> PASS: reachable-seed oracle, topology 160
+writ-tests-native-run> PASS: reachable-seed oracle, topology 161
+writ-tests-native-run> PASS: reachable-seed oracle, topology 162
+writ-tests-native-run> PASS: reachable-seed oracle, topology 163
+writ-tests-native-run> PASS: reachable-seed oracle, topology 164
+writ-tests-native-run> PASS: reachable-seed oracle, topology 165
+writ-tests-native-run> PASS: reachable-seed oracle, topology 166
+writ-tests-native-run> PASS: reachable-seed oracle, topology 167
+writ-tests-native-run> PASS: reachable-seed oracle, topology 168
+writ-tests-native-run> PASS: reachable-seed oracle, topology 169
+writ-tests-native-run> PASS: reachable-seed oracle, topology 170
+writ-tests-native-run> PASS: reachable-seed oracle, topology 171
+writ-tests-native-run> PASS: reachable-seed oracle, topology 172
+writ-tests-native-run> PASS: reachable-seed oracle, topology 173
+writ-tests-native-run> PASS: reachable-seed oracle, topology 174
+writ-tests-native-run> PASS: reachable-seed oracle, topology 175
+writ-tests-native-run> PASS: reachable-seed oracle, topology 176
+writ-tests-native-run> PASS: reachable-seed oracle, topology 177
+writ-tests-native-run> PASS: reachable-seed oracle, topology 178
+writ-tests-native-run> PASS: reachable-seed oracle, topology 179
+writ-tests-native-run> PASS: reachable-seed oracle, topology 180
+writ-tests-native-run> PASS: reachable-seed oracle, topology 181
+writ-tests-native-run> PASS: reachable-seed oracle, topology 182
+writ-tests-native-run> PASS: reachable-seed oracle, topology 183
+writ-tests-native-run> PASS: reachable-seed oracle, topology 184
+writ-tests-native-run> PASS: reachable-seed oracle, topology 185
+writ-tests-native-run> PASS: reachable-seed oracle, topology 186
+writ-tests-native-run> PASS: reachable-seed oracle, topology 187
+writ-tests-native-run> PASS: reachable-seed oracle, topology 188
+writ-tests-native-run> PASS: reachable-seed oracle, topology 189
+writ-tests-native-run> PASS: reachable-seed oracle, topology 190
+writ-tests-native-run> PASS: reachable-seed oracle, topology 191
+writ-tests-native-run> PASS: reachable-seed oracle, topology 192
+writ-tests-native-run> PASS: reachable-seed oracle, topology 193
+writ-tests-native-run> PASS: reachable-seed oracle, topology 194
+writ-tests-native-run> PASS: reachable-seed oracle, topology 195
+writ-tests-native-run> PASS: reachable-seed oracle, topology 196
+writ-tests-native-run> PASS: reachable-seed oracle, topology 197
+writ-tests-native-run> PASS: reachable-seed oracle, topology 198
+writ-tests-native-run> PASS: reachable-seed oracle, topology 199
+writ-tests-native-run> PASS: reachable-seed oracle, topology 200
+writ-tests-native-run> PASS: reachable-seed oracle, topology 201
+writ-tests-native-run> PASS: reachable-seed oracle, topology 202
+writ-tests-native-run> PASS: reachable-seed oracle, topology 203
+writ-tests-native-run> PASS: reachable-seed oracle, topology 204
+writ-tests-native-run> PASS: reachable-seed oracle, topology 205
+writ-tests-native-run> PASS: reachable-seed oracle, topology 206
+writ-tests-native-run> PASS: reachable-seed oracle, topology 207
+writ-tests-native-run> PASS: reachable-seed oracle, topology 208
+writ-tests-native-run> PASS: reachable-seed oracle, topology 209
+writ-tests-native-run> PASS: reachable-seed oracle, topology 210
+writ-tests-native-run> PASS: reachable-seed oracle, topology 211
+writ-tests-native-run> PASS: reachable-seed oracle, topology 212
+writ-tests-native-run> PASS: reachable-seed oracle, topology 213
+writ-tests-native-run> PASS: reachable-seed oracle, topology 214
+writ-tests-native-run> PASS: reachable-seed oracle, topology 215
+writ-tests-native-run> PASS: reachable-seed oracle, topology 216
+writ-tests-native-run> PASS: reachable-seed oracle, topology 217
+writ-tests-native-run> PASS: reachable-seed oracle, topology 218
+writ-tests-native-run> PASS: reachable-seed oracle, topology 219
+writ-tests-native-run> PASS: reachable-seed oracle, topology 220
+writ-tests-native-run> PASS: reachable-seed oracle, topology 221
+writ-tests-native-run> PASS: reachable-seed oracle, topology 222
+writ-tests-native-run> PASS: reachable-seed oracle, topology 223
+writ-tests-native-run> PASS: reachable-seed oracle, topology 224
+writ-tests-native-run> PASS: reachable-seed oracle, topology 225
+writ-tests-native-run> PASS: reachable-seed oracle, topology 226
+writ-tests-native-run> PASS: reachable-seed oracle, topology 227
+writ-tests-native-run> PASS: reachable-seed oracle, topology 228
+writ-tests-native-run> PASS: reachable-seed oracle, topology 229
+writ-tests-native-run> PASS: reachable-seed oracle, topology 230
+writ-tests-native-run> PASS: reachable-seed oracle, topology 231
+writ-tests-native-run> PASS: reachable-seed oracle, topology 232
+writ-tests-native-run> PASS: reachable-seed oracle, topology 233
+writ-tests-native-run> PASS: reachable-seed oracle, topology 234
+writ-tests-native-run> PASS: reachable-seed oracle, topology 235
+writ-tests-native-run> PASS: reachable-seed oracle, topology 236
+writ-tests-native-run> PASS: reachable-seed oracle, topology 237
+writ-tests-native-run> PASS: reachable-seed oracle, topology 238
+writ-tests-native-run> PASS: reachable-seed oracle, topology 239
+writ-tests-native-run> PASS: reachable-seed oracle, topology 240
+writ-tests-native-run> PASS: reachable-seed oracle, topology 241
+writ-tests-native-run> PASS: reachable-seed oracle, topology 242
+writ-tests-native-run> PASS: reachable-seed oracle, topology 243
+writ-tests-native-run> PASS: reachable-seed oracle, topology 244
+writ-tests-native-run> PASS: reachable-seed oracle, topology 245
+writ-tests-native-run> PASS: reachable-seed oracle, topology 246
+writ-tests-native-run> PASS: reachable-seed oracle, topology 247
+writ-tests-native-run> PASS: reachable-seed oracle, topology 248
+writ-tests-native-run> PASS: reachable-seed oracle, topology 249
+writ-tests-native-run> PASS: reachable-seed oracle, topology 250
+writ-tests-native-run> PASS: reachable-seed oracle, topology 251
+writ-tests-native-run> PASS: reachable-seed oracle, topology 252
+writ-tests-native-run> PASS: reachable-seed oracle, topology 253
+writ-tests-native-run> PASS: reachable-seed oracle, topology 254
+writ-tests-native-run> PASS: reachable-seed oracle, topology 255
+writ-tests-native-run> PASS: equality-conflict oracle, topology 0
+writ-tests-native-run> PASS: equality-conflict oracle, topology 1
+writ-tests-native-run> PASS: equality-conflict oracle, topology 2
+writ-tests-native-run> PASS: equality-conflict oracle, topology 3
+writ-tests-native-run> PASS: equality-conflict oracle, topology 4
+writ-tests-native-run> PASS: equality-conflict oracle, topology 5
+writ-tests-native-run> PASS: equality-conflict oracle, topology 6
+writ-tests-native-run> PASS: equality-conflict oracle, topology 7
+writ-tests-native-run> PASS: equality-conflict oracle, topology 8
+writ-tests-native-run> PASS: equality-conflict oracle, topology 9
+writ-tests-native-run> PASS: equality-conflict oracle, topology 10
+writ-tests-native-run> PASS: equality-conflict oracle, topology 11
+writ-tests-native-run> PASS: equality-conflict oracle, topology 12
+writ-tests-native-run> PASS: equality-conflict oracle, topology 13
+writ-tests-native-run> PASS: equality-conflict oracle, topology 14
+writ-tests-native-run> PASS: equality-conflict oracle, topology 15
+writ-tests-native-run> PASS: equality-conflict oracle, topology 16
+writ-tests-native-run> PASS: equality-conflict oracle, topology 17
+writ-tests-native-run> PASS: equality-conflict oracle, topology 18
+writ-tests-native-run> PASS: equality-conflict oracle, topology 19
+writ-tests-native-run> PASS: equality-conflict oracle, topology 20
+writ-tests-native-run> PASS: equality-conflict oracle, topology 21
+writ-tests-native-run> PASS: equality-conflict oracle, topology 22
+writ-tests-native-run> PASS: equality-conflict oracle, topology 23
+writ-tests-native-run> PASS: equality-conflict oracle, topology 24
+writ-tests-native-run> PASS: equality-conflict oracle, topology 25
+writ-tests-native-run> PASS: equality-conflict oracle, topology 26
+writ-tests-native-run> PASS: equality-conflict oracle, topology 27
+writ-tests-native-run> PASS: equality-conflict oracle, topology 28
+writ-tests-native-run> PASS: equality-conflict oracle, topology 29
+writ-tests-native-run> PASS: equality-conflict oracle, topology 30
+writ-tests-native-run> PASS: equality-conflict oracle, topology 31
+writ-tests-native-run> PASS: equality-conflict oracle, topology 32
+writ-tests-native-run> PASS: equality-conflict oracle, topology 33
+writ-tests-native-run> PASS: equality-conflict oracle, topology 34
+writ-tests-native-run> PASS: equality-conflict oracle, topology 35
+writ-tests-native-run> PASS: equality-conflict oracle, topology 36
+writ-tests-native-run> PASS: equality-conflict oracle, topology 37
+writ-tests-native-run> PASS: equality-conflict oracle, topology 38
+writ-tests-native-run> PASS: equality-conflict oracle, topology 39
+writ-tests-native-run> PASS: equality-conflict oracle, topology 40
+writ-tests-native-run> PASS: equality-conflict oracle, topology 41
+writ-tests-native-run> PASS: equality-conflict oracle, topology 42
+writ-tests-native-run> PASS: equality-conflict oracle, topology 43
+writ-tests-native-run> PASS: equality-conflict oracle, topology 44
+writ-tests-native-run> PASS: equality-conflict oracle, topology 45
+writ-tests-native-run> PASS: equality-conflict oracle, topology 46
+writ-tests-native-run> PASS: equality-conflict oracle, topology 47
+writ-tests-native-run> PASS: equality-conflict oracle, topology 48
+writ-tests-native-run> PASS: equality-conflict oracle, topology 49
+writ-tests-native-run> PASS: equality-conflict oracle, topology 50
+writ-tests-native-run> PASS: equality-conflict oracle, topology 51
+writ-tests-native-run> PASS: equality-conflict oracle, topology 52
+writ-tests-native-run> PASS: equality-conflict oracle, topology 53
+writ-tests-native-run> PASS: equality-conflict oracle, topology 54
+writ-tests-native-run> PASS: equality-conflict oracle, topology 55
+writ-tests-native-run> PASS: equality-conflict oracle, topology 56
+writ-tests-native-run> PASS: equality-conflict oracle, topology 57
+writ-tests-native-run> PASS: equality-conflict oracle, topology 58
+writ-tests-native-run> PASS: equality-conflict oracle, topology 59
+writ-tests-native-run> PASS: equality-conflict oracle, topology 60
+writ-tests-native-run> PASS: equality-conflict oracle, topology 61
+writ-tests-native-run> PASS: equality-conflict oracle, topology 62
+writ-tests-native-run> PASS: equality-conflict oracle, topology 63
+writ-tests-native-run> Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+writ-tests-native-run> ALL LIBRARY TESTS PASSED
+writ-tests-native-run> final line: ALL LIBRARY TESTS PASSED
+writ-tests-native-run> PASS lines: 638
+building '/nix/store/x6q8ms812xcrlkswjqbb7nx9rki153ph-writ-openspec.drv'...
+writ-openspec> ✓ change/add-addressable-views
+writ-openspec> ✓ change/add-authenticated-grant-issuance
+writ-openspec> ✓ change/add-bend-runtime-host-profile
+writ-openspec> ✓ change/add-capability-posix-adapter
+writ-openspec> ✓ change/add-confined-transform-execution
+writ-openspec> ✓ change/add-controlled-disclosure
+writ-openspec> ✓ change/add-cooperative-retirement
+writ-openspec> ✓ change/add-drift-kernel-host
+writ-openspec> ✓ change/add-durable-publication
+writ-openspec> ✓ change/add-executor-rendezvous
+writ-openspec> ✓ change/add-external-planner-adapters
+writ-openspec> ✓ change/add-freestanding-bend-runtime
+writ-openspec> ✓ change/add-genode-bend-component
+writ-openspec> ✓ change/add-genode-capability-adoption
+writ-openspec> ✓ change/add-genode-host
+writ-openspec> ✓ change/add-linux-host
+writ-openspec> ✓ change/add-locality-aware-execution
+writ-openspec> ✓ change/add-metered-sample-execution
+writ-openspec> ✓ change/add-origin-transform-stages
+writ-openspec> ✓ change/add-policy-aware-audit
+writ-openspec> ✓ change/add-portable-host-contract
+writ-openspec> ✓ change/add-s3-adapter
+writ-openspec> ✓ change/add-scoped-private-matching
+writ-openspec> ✓ change/add-unikernel-appliance-host
+writ-openspec> ✓ change/add-unikernel-library-runtime
+writ-openspec> ✓ change/add-windows-host
+writ-openspec> ✓ change/add-writfs-namespace
+writ-openspec> ✓ spec/authority-boundary
+writ-openspec> ✓ spec/candidate-verification
+writ-openspec> ✓ spec/capability-frontend
+writ-openspec> ✓ spec/commit-backplane
+writ-openspec> ✓ spec/constraint-solving
+writ-openspec> ✓ spec/data-model
+writ-openspec> ✓ spec/decentralized-labels
+writ-openspec> ✓ spec/parallel-execution
+writ-openspec> ✓ spec/provenance-preservation
+writ-openspec> ✓ spec/rclone-contrib-remote
+writ-openspec> ✓ spec/reservation-ledger
+writ-openspec> ✓ spec/transfer-admission
+writ-openspec> ✓ spec/transformation-negotiation
+writ-openspec> ✓ change/validate-physical-gpu-execution
+writ-openspec> ✓ spec/verification-evidence
+writ-openspec> Totals: 42 passed, 0 failed (42 items)
+building '/nix/store/fpsjc0c72fmixlv7lq7g17v7md44920w-writ-proofs.drv'...
+writ-proofs> ALL PROOFS CHECK
+writ-proofs> Use --verdict for mathematical validity.
+building '/nix/store/4jnhazbgaqwxsqhn5938hs67ry57k8g8-openspec-version-check.drv'...
+openspec-version-check> 1.16.0
+all checks passed!
+exit 0
+
+== Fix wave (2026-11-04) ==
+$ nix flake check
+running 4 flake checks...
+building bend-version-check.drv, openspec-1.16.0.drv, openspec-version-check.drv, writ-openspec.drv
+all checks passed!
+$ nixpkgs-fmt --check flake.nix nix/bend.nix nix/openspec/default.nix nix/writ.nix
+(nixpkgs-fmt 1.3.0 from the flake's formatter output; it is not in the dev shell)
+0 / 4 would have been reformatted
