@@ -435,8 +435,8 @@ export function parsePhase(ledger: string): Phase | null {
   const lines = ledger.split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== "");
   for (let i = lines.length - 1; i >= 0; i--) {
     const line = lines[i];
-    const task = line.match(/^Task\s+(\d+(?:\s*(?:,|and|-)\s*\d+)*)\s*:/i)?.[1] ?? null;
-    const isFinal = /^(final|whole-branch|merged|pushed|fix round)/i.test(line);
+    const task = line.match(/^Tasks?\s+(\d+(?:\s*(?:,|and|-)\s*\d+)*)\s*:/i)?.[1] ?? null;
+    const isFinal = /^(final|whole-branch|merged|pushed|fix round|review)/i.test(line) || /merged to master|pushed master/i.test(line);
     if (task === null && !isFinal) continue;
     const text = line.length > 160 ? `${line.slice(0, 157)}...` : line;
     let label: Phase["label"] = "unknown";

@@ -8,7 +8,7 @@
 // <details>, and the `style`/`aria-selected` that the explainer tabs set.
 // Nested elements a morph should match keep stable ids for the same reason.
 
-import type { Baseline, Change, Lane, LaneScan, LaneStatus, Phase } from "./server.ts";
+import type { Baseline, Change, Lane, LaneScan, LaneStatus, Phase, TaskItem } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
@@ -103,19 +103,34 @@ function laneChip(l: Lane): string {
   return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase">${esc(phaseText(l))}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
 }
 
-/** The expandable task list under a change row: every box, grouped by section, open state kept. */
+/**
+ * The expandable task list under a change row: open tasks first, grouped by
+ * section, each with its id badge; done tasks behind a nested "N done"
+ * toggle. Both open states are kept across pushes.
+ */
 function taskDetails(c: Change): string {
   if (c.taskList.length === 0) return "";
-  let section: string | null = null;
-  const items: string[] = [];
-  for (const t of c.taskList) {
-    if (t.section !== section) {
-      section = t.section;
-      if (section !== null) items.push(`<li class="task-section">${esc(section)}</li>`);
+  const group = (items: TaskItem[]) => {
+    let section: string | null = null;
+    const out: string[] = [];
+    for (const t of items) {
+      if (t.section !== section) {
+        section = t.section;
+        if (section !== null) out.push(`<li class="task-section">${esc(section)}</li>`);
+      }
+      out.push(`<li class="task ${t.done ? "task-done" : "task-open"}"><span class="task-id">${t.id === null ? "·" : esc(t.id)}</span><span class="task-text">${esc(t.text)}</span></li>`);
     }
-    items.push(`<li class="task ${t.done ? "task-done" : "task-open"}"><span class="box" aria-hidden="true">${t.done ? "☑" : "☐"}</span>${t.id === null ? "" : `<span class="task-id">${esc(t.id)}</span>`}<span class="task-text">${esc(t.text)}</span></li>`);
-  }
-  return `<details id="tasks-${slug(c.name)}" class="tasklist" data-preserve-attr="open"><summary>tasks</summary><ul>${items.join("")}</ul></details>`;
+    return out.join("");
+  };
+  const open = c.taskList.filter((t) => !t.done);
+  const done = c.taskList.filter((t) => t.done);
+  const openList = open.length === 0
+    ? `<p class="muted small">Every box is checked.</p>`
+    : `<ul class="tasks">${group(open)}</ul>`;
+  const doneList = done.length === 0
+    ? ""
+    : `<details id="done-${slug(c.name)}" class="donelist" data-preserve-attr="open"><summary>${done.length} done</summary><ul class="tasks">${group(done)}</ul></details>`;
+  return `<details id="tasks-${slug(c.name)}" class="tasklist" data-preserve-attr="open"><summary>${open.length} to do</summary>${openList}${doneList}</details>`;
 }
 
 /** Task numbers a tasks.md marks done and open, for the line under a progress bar. */
