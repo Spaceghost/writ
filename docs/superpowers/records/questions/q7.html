@@ -15,69 +15,136 @@ button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0
 code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
 table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
 .note{color:var(--muted);font-size:.9rem}
-pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
 </style>
 </head><body>
 <h1>Shim review 1 of 9: what the file claims to be, and how the component starts</h1>
 <p>This first pass reads the file's own description of itself, its compile-time bounds, and the component entry. Some Genode vocabulary first. A <em>session</em> is a connection one component opens to a service another component (or the kernel-side <em>core</em>) provides; the <em>parent</em> (here, <code>init</code>) routes each session request according to its configuration. A <em>capability</em> is an unforgeable reference to an object in another component: holding it lets you call that object, nothing more. A <em>quota</em> is the RAM and capability count a component was given by its parent; opening a session donates part of it. The <em>Pd_session</em> (protection domain) is the component's own session to core for its address space, RAM, and caps. An <em>Entrypoint</em> is a thread that receives RPCs and signals for objects it manages. The shim is linked into each Bend program, replaces libc's <code>mmap</code>/<code>munmap</code>/<code>mprotect</code>, and supplies the C functions behind the <code>Genode.log/now/sleep/take/put</code> effects. Lines 1-239 are one long comment; read 1-74 now and keep the rest for later pages. Lines 438-486 hold the shim's state for the life of the process: <code>Kept&lt;T&gt;</code> never runs a destructor, so nothing is torn down under mapped memory at exit (<code>INVENTORY.md:360-367</code>).</p>
 <p><strong>Open:</strong> <code>writ_mem.cc:1-74</code>, <code>writ_mem.cc:241-302</code>, <code>writ_mem.cc:438-486</code>, <code>writ_mem.cc:1845-1919</code></p>
-<p class="note">Excerpt, <code>writ_mem.cc:1890-1919</code> (tabs shown as four spaces):</p>
-<pre><code>void Libc::Component::construct(Libc::Env &amp;env)
-{
-    _heap.construct(env.ram(), env.rm());
-    _pd.construct(env.pd_session_cap());
-
-    _env = &amp;env;   /* lookup helpers need it; entry points stay ENOSYS until resolved */
-    if (!_resolve_libc()) {
-        _libc_mmap = nullptr; _libc_munmap = nullptr; _libc_mprotect = nullptr;
-        env.parent().exit(1);
-        return;
-    }
-
-#if defined(WRIT_SHIM_FAULT_REGION_MAP)
-    /* the "writ_fault" entrypoint (header, "Fault delivery", case 2) */
-    _install_fault_handler();
-#endif
-
-    /* Writ channel service, only with a &lt;writ_channel&gt; config node */
-    _channel_init(env);
-
-    /* as repos/libports/src/lib/posix/construct.cc */
-    Libc::with_libc([&amp;] () {
-        int argc = 0; char **argv = nullptr; char **envp = nullptr;
-        populate_args_and_env(env, argc, argv, envp);
-        environ = envp;
-        if (char const *v = getenv("WRIT_MEM_REPORT"))
-            if (v[0] == '1' &amp;&amp; v[1] == 0) atexit(_report_at_exit);
-        exit(main(argc, argv, envp));
-    });
-}</code></pre>
-<p class="note"><strong>Limit or policy?</strong> The bounds at 286-297 (1 GiB threshold, 1 TiB cap, 32 reservations, 4 guards, 16 retries, 64 KiB/8 cap margins) are compile-time constants. Nothing reads them from config, the environment, or Bend, so they cannot vary by caller. Whether each one is merely mechanical is judged on the page that uses it. The front-end choice is made at build time on purpose (header 62-74) so an integrator cannot pick it in config.</p>
-<p><strong>Confirm by reading:</strong></p>
-<ol>
-<li>Exactly one fault front end is compiled: a build defining both or neither of <code>WRIT_SHIM_FAULT_LINUX_SIGSEGV</code> and <code>WRIT_SHIM_FAULT_REGION_MAP</code> fails at <code>writ_mem.cc:241-243</code>; no runtime attribute selects it (header <code>writ_mem.cc:62-74</code>).</li>
-<li>Every bound in the static enum <code>writ_mem.cc:286-297</code> and the base-hw constants <code>writ_mem.cc:299-302</code> is an enum literal; none is derived from config, the environment, a caller's argument, or Bend.</li>
-<li><code>construct</code> <code>writ_mem.cc:1890-1919</code> does only this, in order: builds the Heap and a plain PD client (1892-1893), resolves libc's originals and exits 1 if that fails (1896-1900), on base-hw starts the fault entrypoint (1902-1905), starts the channel service only if config has <code>&lt;writ_channel&gt;</code> (1908, then 1653-1667), and runs <code>main</code>. The one environment variable it reads, <code>WRIT_MEM_REPORT</code> (1915-1916), only registers the diagnostic report at 1888.</li>
-<li><code>_resolve_libc</code> <code>writ_mem.cc:1858-1879</code> refuses to start if the lookup returns the shim's own functions (1869-1874), and until it succeeds the three entry points return <code>ENOSYS</code> (1044, 1055, 1075).</li>
-</ol>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
 <form method="post" action="/questions/q7/answer">
+<h2>Claim 1</h2>
+<p>Exactly one fault front end is compiled. A build that defines both or neither of <code>WRIT_SHIM_FAULT_LINUX_SIGSEGV</code> and <code>WRIT_SHIM_FAULT_REGION_MAP</code> fails, and no runtime attribute selects it.</p>
+<pre><code>241	#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV) == defined(WRIT_SHIM_FAULT_REGION_MAP)
+242	#error "define exactly one of WRIT_SHIM_FAULT_LINUX_SIGSEGV (base-linux) and WRIT_SHIM_FAULT_REGION_MAP (base-hw); see hosts/genode/shim/writ_shim.mk"
+243	#endif</code></pre>
+<pre><code>62	 * Fault delivery. Two front ends feed the same population path
+63	 * (_resolve_fault: the same chunk table, guards, bounds, and counters);
+64	 * exactly one is compiled, chosen at build time by the macro that
+65	 * hosts/genode/shim/writ_shim.mk sets from the build directory's KERNEL
+66	 * (WRIT_SHIM_FAULT_LINUX_SIGSEGV for KERNEL=linux,
+67	 * WRIT_SHIM_FAULT_REGION_MAP for KERNEL=hw; any other kernel, or a build
+68	 * without either macro, fails to compile). Build time rather than a config
+69	 * attribute, because the base-linux front end issues raw Linux system
+70	 * calls that are an unresolvable exception on base-hw (seen as
+71	 * "unresolvable exception: pd='init -&gt; writ_bend_hello', thread='ep'" on
+72	 * the first base-hw run, verification/genode-bend-hello-base-hw.txt), so
+73	 * a binary must not contain the wrong one, and a config attribute would
+74	 * let the integrator select it.</code></pre>
+<p><strong>What I see.</strong> Line 241 compares whether each macro is defined, and the <code>#error</code> fires unless exactly one is. The header gives the reason it is a build-time choice: the base-linux path issues raw Linux system calls that are an unresolvable exception on base-hw, and a config attribute would hand the choice to the integrator. This constrains what goes into the binary; it decides nothing about any request.</p>
+<p><strong>Recommendation: Confirmed</strong>, the guard and the stated reason match.</p>
 <fieldset><legend>Claim 1</legend>
-<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
+<h2>Claim 2</h2>
+<p>Every bound in the static enum and the base-hw constants is a literal; none is derived from config, the environment, a caller's argument, or Bend.</p>
+<pre><code>286	enum : size_t {
+287	    MIN_QUALIFYING = 1ul &lt;&lt; 30,   /* 1 GiB: smaller requests go to libc */
+288	    MAX_RESERVATION = 1ul &lt;&lt; 40,  /* 1 TiB: larger qualifying requests fail */
+289	    CHUNK          = 2ul &lt;&lt; 20,   /* populate granularity, 2 MiB       */
+290	    PAGE           = 4096,
+291	    MAX_RESERVATIONS = 32,
+292	    MAX_GUARDS       = 4,
+293	    MAX_RETRIES      = 16,          /* benign retries per faulting address */
+294	    RETRY_SLOTS      = 16,
+295	    RAM_MARGIN       = 64*1024,     /* kept free in the PD after a chunk  */
+296	    CAP_MARGIN       = 8,           /* caps kept free in the PD           */
+297	};
+298	
+299	#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+300	enum : int { REFUSED_FAULT_EXIT = 139 };  /* 128 + SIGSEGV, see the header */
+301	enum : size_t { FAULT_EP_STACK = 8*1024*sizeof(long) };
+302	#endif</code></pre>
+<p><strong>What I see.</strong> All values are enum constants fixed at compile time, so no caller, label, or Bend value can move them. They are capacity bounds (table sizes, a size threshold, a 2 MiB granularity, quota margins, a retry cap) and an exit-code convention. Whether each one's effect is mechanical is judged where it is used (pages 3 to 6); at this point they are plainly not inputs anyone controls at run time.</p>
+<p><strong>Recommendation: Confirmed</strong>, they are literals and nothing assigns them.</p>
 <fieldset><legend>Claim 2</legend>
-<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
+<h2>Claim 3</h2>
+<p><code>construct</code> builds the Heap and a plain PD client, resolves libc's originals (exit 1 on failure), starts the fault entrypoint on base-hw, starts the channel service only if config has <code>&lt;writ_channel&gt;</code>, and runs <code>main</code>. The only environment variable it reads, <code>WRIT_MEM_REPORT</code>, only registers a diagnostic report.</p>
+<pre><code>1890	void Libc::Component::construct(Libc::Env &amp;env)
+1891	{
+1892	    _heap.construct(env.ram(), env.rm());
+1893	    _pd.construct(env.pd_session_cap());
+1894	
+1895	    _env = &amp;env;   /* lookup helpers need it; entry points stay ENOSYS until resolved */
+1896	    if (!_resolve_libc()) {
+1897	        _libc_mmap = nullptr; _libc_munmap = nullptr; _libc_mprotect = nullptr;
+1898	        env.parent().exit(1);
+1899	        return;
+1900	    }
+1901	
+1902	#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+1903	    /* the "writ_fault" entrypoint (header, "Fault delivery", case 2) */
+1904	    _install_fault_handler();
+1905	#endif
+1906	
+1907	    /* Writ channel service, only with a &lt;writ_channel&gt; config node */
+1908	    _channel_init(env);</code></pre>
+<pre><code>1909	
+1910	    /* as repos/libports/src/lib/posix/construct.cc */
+1911	    Libc::with_libc([&amp;] () {
+1912	        int argc = 0; char **argv = nullptr; char **envp = nullptr;
+1913	        populate_args_and_env(env, argc, argv, envp);
+1914	        environ = envp;
+1915	        if (char const *v = getenv("WRIT_MEM_REPORT"))
+1916	            if (v[0] == '1' &amp;&amp; v[1] == 0) atexit(_report_at_exit);
+1917	        exit(main(argc, argv, envp));
+1918	    });
+1919	}</code></pre>
+<p><strong>What I see.</strong> The sequence is exactly as stated, and the exit at 1898 is the only early stop. <code>WRIT_MEM_REPORT</code> is compared with the literal string <code>"1"</code> and only registers <code>_report_at_exit</code> (1888), which logs counters. Everything opened here (PD client, the libc ROM through <code>Shared_object</code>, <code>writ_fault</code>, the channel service) is listed under Sessions in <code>INVENTORY.md:90-231</code>.</p>
+<p><strong>Recommendation: Confirmed</strong>, the order, the single env read, and the sessions match the inventory.</p>
 <fieldset><legend>Claim 3</legend>
-<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
+<h2>Claim 4</h2>
+<p><code>_resolve_libc</code> refuses to start if the lookup returns the shim's own functions, and until it succeeds the entry points return <code>ENOSYS</code>.</p>
+<pre><code>1858	static bool _resolve_libc()
+1859	{
+1860	    static Kept&lt;Shared_object&gt; libc;
+1861	    try {
+1862	        libc.construct(*_env, *_heap, "libc.lib.so",
+1863	                       Shared_object::BIND_LAZY, Shared_object::KEEP);
+1864	        _libc_mmap     = libc-&gt;lookup&lt;Mmap_fn&gt;("mmap");
+1865	        _libc_munmap   = libc-&gt;lookup&lt;Munmap_fn&gt;("munmap");
+1866	        _libc_mprotect = libc-&gt;lookup&lt;Mprotect_fn&gt;("mprotect");
+1867	    } catch (...) { error("writ_mem: libc.lib.so lookup failed"); return false; }
+1868	
+1869	    if ((void *)_libc_mmap == (void *)&amp;mmap
+1870	     || (void *)_libc_munmap == (void *)&amp;munmap
+1871	     || (void *)_libc_mprotect == (void *)&amp;mprotect) {
+1872	        error("writ_mem: libc lookup returned the shim's own symbols");
+1873	        return false;
+1874	    }
+1875	    log("writ_mem: libc mmap=", (void *)_libc_mmap,
+1876	        " munmap=", (void *)_libc_munmap, " mprotect=", (void *)_libc_mprotect,
+1877	        " shim mmap=", (void *)&amp;mmap);
+1878	    return true;
+1879	}</code></pre>
+<pre><code>1041	extern "C" void *mmap(void *addr, ::size_t len, int prot, int flags,
+1042	                      int fd, ::off_t offset)
+1043	{
+1044	    if (!_env || !_libc_mmap) { errno = ENOSYS; return MAP_FAILED; }  /* before construct */</code></pre>
+<p><strong>What I see.</strong> The self-check at 1869-1874 prevents forwarding from recursing into the shim. On failure <code>construct</code> clears the three pointers (1897), so the <code>ENOSYS</code> guard at 1044 (and 1055, 1075) still applies. This is a start-up integrity check with a fixed outcome, not a choice.</p>
+<p><strong>Recommendation: Confirmed</strong>, the check and the ENOSYS guards are both present.</p>
 <fieldset><legend>Claim 4</legend>
-<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>

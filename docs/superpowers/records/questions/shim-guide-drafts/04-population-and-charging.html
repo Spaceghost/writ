@@ -15,70 +15,140 @@ button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0
 code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
 table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
 .note{color:var(--muted);font-size:.9rem}
-pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
 </style>
 </head><body>
 <h1>Shim review 4 of 9: charging a chunk on first touch</h1>
 <p>When the program first touches an untouched 2 MiB chunk of a reservation, the fault path (pages 5 and 6) calls <code>_populate</code>. It allocates a 2 MiB RAM dataspace from the component's own PD, which charges the component's RAM quota, and attaches it into the reservation's region map in "pieces" that skip any guard range. Two details matter for GB-006. Allocation goes through a plain <code>Pd_session_client</code> (557, built at 1893 on <code>pd_session_cap()</code>), not <code>Env::pd()</code>. The <code>Env::pd()</code> client turns an out-of-quota error into a blocking request to the parent for more resources. So a fault either succeeds from the quota the component already has, or is refused. On base-hw, attaching a piece costs metadata in core that is charged to the RM session's own small quota, so the shim may <em>upgrade</em> that session. An upgrade moves some of the component's own quota into the session; it is not a request for more. Header 153-189 explains this; <code>INVENTORY.md:92-120</code> (RM) and <code>:132-136</code> (PD) list it.</p>
 <p><strong>Open:</strong> <code>writ_mem.cc:153-189</code>, <code>writ_mem.cc:543-673</code></p>
-<p class="note">Excerpt, <code>writ_mem.cc:643-673</code> (tabs shown as four spaces):</p>
-<pre><code>static char const *_populate(Reservation &amp;r, addr_t off)
-{
-    size_t const idx = off / CHUNK;
-    size_t const len = _page_round(r.chunk_end(idx) - idx*CHUNK);
-
-    Pd_session::Stats const st = _pd-&gt;stats();
-    if (st.ram.avail().value &lt; len + RAM_MARGIN)
-        return "chunk could not be charged: RAM quota";
-    if (st.caps.avail().value &lt; CAP_MARGIN)
-        return "chunk could not be charged: cap quota";
-
-    Ram_dataspace_capability ds { };
-    char const *err = nullptr;
-    _pd-&gt;alloc_ram(len, CACHED).with_result(
-        [&amp;] (Ram_dataspace_capability cap) { ds = cap; },
-        [&amp;] (Alloc_error e) {
-            err = e == Alloc_error::OUT_OF_CAPS ? "chunk could not be charged: alloc_ram OUT_OF_CAPS"
-                : e == Alloc_error::OUT_OF_RAM  ? "chunk could not be charged: alloc_ram OUT_OF_RAM"
-                :                                 "chunk could not be charged: alloc_ram DENIED"; });
-    if (!ds.valid()) return err ? err : "chunk could not be charged: invalid dataspace";
-
-    r.chunks[idx] = { ds, true };
-    if (char const *why = _attach_pieces(r, idx)) {
-        _detach_pieces(r, idx);
-        _pd-&gt;free_ram(ds);
-        r.chunks[idx] = { { }, false };
-        return why;
-    }
-    _chunks_populated++;
-    return nullptr;
-}</code></pre>
-<p class="note"><strong>Limit or policy?</strong> This page is "accounting" in the Genode sense, not the Writ sense. It checks the component's quota against fixed margins (649-652: chunk + 64 KiB RAM, 8 caps) and spends quota on at most four fixed-size RM upgrades per piece (570-572, 620). Those are bounded, mechanical rules, and every caller gets the same ones. No Writ budget, payment, or label is consulted. A reviewer could still call "keep 64 KiB back" or "spend own quota on an upgrade" a resource policy. If you do, note that it is host resource policy, decided at compile time. Also note the documented exception: under a parent that answers an upgrade with PENDING, the upgrade could block (171-173).</p>
-<p><strong>Confirm by reading:</strong></p>
-<ol>
-<li><code>_populate</code> refuses with a named reason, before allocating, when the PD's available RAM is below the chunk plus <code>RAM_MARGIN</code> or caps are below <code>CAP_MARGIN</code> <code>writ_mem.cc:648-652</code>; it never calls the parent or <code>Env::pd()</code>.</li>
-<li>If any piece fails to attach, <code>_populate</code> detaches the pieces, frees the RAM, and clears the chunk entry <code>writ_mem.cc:665-669</code>; no half-populated chunk remains.</li>
-<li><code>_upgrade_rm_session</code> <code>writ_mem.cc:575-594</code> acts only on <code>OUT_OF_RAM</code>/<code>OUT_OF_CAPS</code>, only if the PD keeps its margins after the transfer, with the fixed amounts at 570-571, and <code>_attach_pieces</code> stops after <code>RM_UPGRADE_ATTEMPTS</code> tries per piece (620); every upgrade sent or declined is counted.</li>
-<li>Pieces never cover a guard range and are mapped non-executable and writeable: <code>for_each_piece</code> <code>writ_mem.cc:414-432</code> and <code>_piece_attr</code> <code>writ_mem.cc:547-551</code>.</li>
-</ol>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
 <form method="post" action="/questions/__ID__/answer">
+<h2>Claim 1</h2>
+<p><code>_populate</code> refuses with a named reason, before allocating, when the PD's available RAM is below the chunk plus <code>RAM_MARGIN</code> or its caps are below <code>CAP_MARGIN</code>. The allocation goes through the plain <code>_pd</code> client, not <code>Env::pd()</code>.</p>
+<pre><code>553	/*
+554	 * Non-expanding PD client for chunk allocation: Alloc_error comes back
+555	 * instead of becoming a blocking resource_request (see header).
+556	 */
+557	static Kept&lt;Pd_session_client&gt; _pd;</code></pre>
+<pre><code>643	static char const *_populate(Reservation &amp;r, addr_t off)
+644	{
+645	    size_t const idx = off / CHUNK;
+646	    size_t const len = _page_round(r.chunk_end(idx) - idx*CHUNK);
+647	
+648	    Pd_session::Stats const st = _pd-&gt;stats();
+649	    if (st.ram.avail().value &lt; len + RAM_MARGIN)
+650	        return "chunk could not be charged: RAM quota";
+651	    if (st.caps.avail().value &lt; CAP_MARGIN)
+652	        return "chunk could not be charged: cap quota";
+653	
+654	    Ram_dataspace_capability ds { };
+655	    char const *err = nullptr;
+656	    _pd-&gt;alloc_ram(len, CACHED).with_result(
+657	        [&amp;] (Ram_dataspace_capability cap) { ds = cap; },
+658	        [&amp;] (Alloc_error e) {
+659	            err = e == Alloc_error::OUT_OF_CAPS ? "chunk could not be charged: alloc_ram OUT_OF_CAPS"
+660	                : e == Alloc_error::OUT_OF_RAM  ? "chunk could not be charged: alloc_ram OUT_OF_RAM"
+661	                :                                 "chunk could not be charged: alloc_ram DENIED"; });
+662	    if (!ds.valid()) return err ? err : "chunk could not be charged: invalid dataspace";</code></pre>
+<p><strong>What I see.</strong> The margin checks (648-652) come before <code>alloc_ram</code> (656), and every error is named. <code>_pd</code> is a plain <code>Pd_session_client</code> (557, built on <code>pd_session_cap()</code> at 1893), so an out-of-quota allocation returns an error and never becomes a blocking resource request. The margins are fixed Genode quota bookkeeping (keep 64 KiB and 8 caps free for the rest of the component), not Writ budget accounting. A reviewer could still call "keep 64 KiB back" a host resource rule; it is compile-time and the same for every fault.</p>
+<p><strong>Recommendation: Confirmed</strong>, the checks precede the allocation and use the plain client.</p>
 <fieldset><legend>Claim 1</legend>
-<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
+<h2>Claim 2</h2>
+<p>If any piece fails to attach, <code>_populate</code> detaches the pieces, frees the RAM, and clears the chunk entry; no half-populated chunk remains.</p>
+<pre><code>664	    r.chunks[idx] = { ds, true };
+665	    if (char const *why = _attach_pieces(r, idx)) {
+666	        _detach_pieces(r, idx);
+667	        _pd-&gt;free_ram(ds);
+668	        r.chunks[idx] = { { }, false };
+669	        return why;
+670	    }
+671	    _chunks_populated++;
+672	    return nullptr;
+673	}</code></pre>
+<p><strong>What I see.</strong> The chunk is marked populated before attaching (664) so the pieces can be computed, and the failure path undoes all three steps. <code>_detach_pieces</code> also detaches pieces that never attached, which I take to be a no-op on an empty range; I did not check whether core logs a warning for it. The refusal reason from the attach is returned unchanged.</p>
+<p><strong>Recommendation: Confirmed</strong>, the failure path undoes every step.</p>
 <fieldset><legend>Claim 2</legend>
-<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
+<h2>Claim 3</h2>
+<p><code>_upgrade_rm_session</code> acts only on <code>OUT_OF_RAM</code>/<code>OUT_OF_CAPS</code>, only if the PD keeps its margins after the transfer, with fixed amounts; <code>_attach_pieces</code> allows at most <code>RM_UPGRADE_ATTEMPTS</code> (4) upgrades per piece, and every upgrade sent or declined is counted.</p>
+<pre><code>570	static constexpr size_t RM_UPGRADE_RAM      = 8*1024;
+571	static constexpr size_t RM_UPGRADE_CAPS     = 2;
+572	static constexpr size_t RM_UPGRADE_ATTEMPTS = 4;   /* per piece; bounds the retry loop */
+573	
+574	/* returns true when the upgrade was sent (affordable), false otherwise */
+575	static bool _upgrade_rm_session(Region_map::Attach_error a)
+576	{
+577	    using E = Region_map::Attach_error;
+578	    Pd_session::Stats const st = _pd-&gt;stats();
+579	    if (a == E::OUT_OF_RAM) {
+580	        if (st.ram.avail().value &lt; RM_UPGRADE_RAM + size_t(RAM_MARGIN)) {
+581	            _rm_upgrades_declined++; return false; }
+582	        _rm_connection-&gt;upgrade_ram(RM_UPGRADE_RAM);
+583	        _rm_upgrades_sent++;
+584	        return true;
+585	    }
+586	    if (a == E::OUT_OF_CAPS) {
+587	        if (st.caps.avail().value &lt; RM_UPGRADE_CAPS + size_t(CAP_MARGIN)) {
+588	            _rm_upgrades_declined++; return false; }
+589	        _rm_connection-&gt;upgrade_caps(RM_UPGRADE_CAPS);
+590	        _rm_upgrades_sent++;
+591	        return true;
+592	    }
+593	    return false;   /* not a quota error: no upgrade, not counted */
+594	}</code></pre>
+<pre><code>613	        for (size_t attempt = 0; ; attempt++) {
+614	            bool attached = false;
+615	            E failure = E::INVALID_DATASPACE;
+616	            rm.attach(r.chunks[idx].ds, _piece_attr(s, t, c)).with_result(
+617	                [&amp;] (Region_map::Range) { attached = true; },
+618	                [&amp;] (E a) { failure = a; });
+619	            if (attached) return;
+620	            if (attempt &lt; RM_UPGRADE_ATTEMPTS &amp;&amp; _upgrade_rm_session(failure))
+621	                continue;</code></pre>
+<p><strong>What I see.</strong> As stated: fixed amounts (8 KiB or 2 caps), the margin test, and the counters. With <code>attempt &lt; 4</code> a piece gets at most 4 upgrades, so 5 attach tries. The upgrade is a session upgrade sent to the parent (<code>Env::upgrade</code>, header 166-174) and paid from the component's own quota, so it does not ask for more resources. It is a bounded mechanical retry, with one documented exposure: a parent that answers PENDING could block it (171-173).</p>
+<p><strong>Recommendation: Confirmed</strong>, the bound, the margins, and the counters are all in these lines.</p>
 <fieldset><legend>Claim 3</legend>
-<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
+<h2>Claim 4</h2>
+<p>Pieces never cover a guard range and are mapped non-executable and writeable.</p>
+<pre><code>414	    void for_each_piece(addr_t c, addr_t e, auto const &amp;fn) const
+415	    {
+416	        addr_t pos = c;
+417	        while (pos &lt; e) {
+418	            bool skipped = false;
+419	            for (unsigned i = 0; i &lt; num_guards; i++) {
+420	                Guard const &amp;g = guards[i];
+421	                if (pos &gt;= g.off &amp;&amp; pos - g.off &lt; g.len) {
+422	                    pos = g.off + g.len; skipped = true; break; }
+423	            }
+424	            if (skipped) continue;
+425	            addr_t next = e;
+426	            for (unsigned i = 0; i &lt; num_guards; i++)
+427	                if (guards[i].off &gt; pos &amp;&amp; guards[i].off &lt; next)
+428	                    next = guards[i].off;
+429	            fn(pos, next);
+430	            pos = next;
+431	        }
+432	    }</code></pre>
+<pre><code>547	static Region_map::Attr _piece_attr(addr_t start, addr_t end, addr_t c)
+548	{
+549	    return { .size = end - start, .offset = start - c, .use_at = true,
+550	             .at = start, .executable = false, .writeable = true };
+551	}</code></pre>
+<p><strong>What I see.</strong> <code>for_each_piece</code> skips any position inside a guard and stops each piece at the next guard's start, so no piece overlaps a guard. <code>_piece_attr</code> fixes <code>executable = false</code>, <code>writeable = true</code> for every piece. No caller influences either.</p>
+<p><strong>Recommendation: Confirmed</strong>, the loop skips guards and the attributes are fixed.</p>
 <fieldset><legend>Claim 4</legend>
-<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
 <label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
 <label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
 </fieldset>
