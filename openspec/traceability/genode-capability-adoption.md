@@ -131,6 +131,17 @@ is reviewed-only here and stays unimplemented in its own change.
 | PH-005 | Delegation and attenuation only narrow rights; the older broad alias stays live (`GA-006 delegator alias keeps its rights`, `GA-003 attenuate leaves the parent Frontend handle rights intact`). | GA-006-1, GA-006-2, GA-006-3, GA-011-4, GA-003-2 | Destination or plan change by a delegated holder (Frontend CF-008 covers plan exactness); lifetime narrowing; new authorization for a changed effective subject. |
 | PH-010 | Derived objects go stale with their parent, so a late use with the old generation is refused (`GA-011 derived object is stale after its parent is closed`, `GA-011 derived object is stale after its parent's holder is revoked`). | GA-011-2, GA-011-3, GA-011-5 | Device and worker quiescence; asynchronous completions; the fact that revocation does not erase earlier plaintext copies. |
 
+## Parked items
+
+Both items parked by the 2026-11-03 re-review are closed. The use-time
+rerouted-delegatee finding is closed by `GA-005 a delegatee later routed as
+another subject on the service denied SubjectMismatch at use` (with vector
+GA-005-7) and its companion checks in the GA-005 row. The structural-invariant
+item is closed by `GA-008 two objects bound to one Frontend handle are rejected
+by valid` and `GA-008 two uncopied aliases for one live object are rejected by
+valid`, with `GA-008 a stale uncopied alias beside a current one on a live
+object is rejected by valid`.
+
 ## Scope limits
 
 Every fixture is synthetic monitor state. Constructing a `Route`, `Quota`,

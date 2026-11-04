@@ -194,6 +194,8 @@ def with_bindings(state: H.State, new_bindings: H.Bindings) -> H.State:
       H.State{r, o, a, objects, aliases, kept_routes, kept_quotas, delegations, new_bindings, frontend}
 
 # The node recording generations_state's stale alias 2 as a copy of alias 1.
+# The copy's earlier generation is part of what makes the resulting state
+# unreachable by any committed transition.
 def generations_copy() -> H.Delegations:
   H.Delegations{H.Delegation{1n, reader(), read(), 2n}, H.NoDelegations{}}
 
@@ -637,7 +639,9 @@ def derived_revoked() -> H.State:
 # (for example, R passed its reference outside the monitor). Built from
 # shared() by dropping W's delegation node and R's alias 2, so W's alias 3 is
 # the only reference to R's descriptor object 2. Structurally valid: object 2
-# keeps exactly one uncopied alias.
+# keeps exactly one uncopied alias. In this forged state `minter` names W
+# (the only alias), so GA-005 asserts only the resolution and delegation
+# denials on it, not refund or close outcomes.
 def forged_holder() -> H.State:
   with_aliases(without_delegations(shared()),
     H.Aliases{H.Alias{3n, worker(), 2n, 0n}, H.Aliases{H.Alias{1n, reader(), 1n, 0n}, H.NoAliases{}}})

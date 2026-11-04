@@ -29,9 +29,9 @@ rerun on 2026-11-03 after the HostBinding final-review fix wave with Bend
 | Backplane | 40 | Combined checks, late revocation, metadata tampering, actual effects, combined labels, exact output types, artifact identity, duplicate-binding denial |
 | Frontend | 70 | Mount/open/dup/attenuate/close protocol, subject/token/plan binding, all token words, current grants, descriptor revocation, malformed registries |
 | Facade | 10 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
-| HostBinding | 126 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, destroy authority (no close through a delegated copy), derived Frontend handles closed with their Session, holder versus subject, non-holders told UnknownAlias, delegation withdrawn with the delegator's route, no delegation to another subject's domain, non-widening delegation trees, quota before authority and refunds on close and revoke, exact state preservation on every denial |
+| HostBinding | 142 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, destroy authority (no close through a delegated copy), derived Frontend handles closed with their Session, holder versus subject, non-holders told UnknownAlias, delegation withdrawn with the delegator's route, no delegation to another subject's domain, non-widening delegation trees, quota before authority and refunds on close and revoke, exact state preservation on every denial |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
-| **Total per backend** | **764** | **Both complete runs passed** |
+| **Total per backend** | **780** | **Both complete runs passed** |
 
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
@@ -43,7 +43,7 @@ proof for arbitrary graph sizes.
 
 Evidence is in `verification/tests-js.txt` and `verification/tests-native.txt`.
 The transfer test driver prints `PASS ` while other drivers print `PASS:`;
-counting both forms yields 764 per file. The two files are byte-identical.
+counting both forms yields 780 per file. The two files are byte-identical.
 
 Reproduction:
 
@@ -57,7 +57,7 @@ bend Tests.bend -o ../writ-build/tests-native
 
 ### HostBinding vectors
 
-`HostBindingTests.bend` prints 40 canonical `VECTOR <scenario-id> <transition>
+`HostBindingTests.bend` prints 41 canonical `VECTOR <scenario-id> <transition>
 <outcome> <reason-or-id>` lines, each rendered from the transition's actual
 result after the check that asserts it, using model ids only. They were
 captured with `bend Tests.bend`, which runs `main` on the JavaScript backend
@@ -75,6 +75,9 @@ cmp verification/host-binding-vectors.txt ../writ-build/genode-binding/ff-vector
 `cmp` reported no difference (SHA-256
 `2cb375ae47af6eb7f07ce92b2dd95041efd625eab4a13ad549993515749a4fb4` for both),
 and the `VECTOR` lines of the native run (`tests-native.txt`) are identical too.
+The earlier hash and the 40-vector count above predate the parked-gaps lane, which added GA-005-7 (the 41st vector).
+On 2026-11-04 the suite was rerun with Bend 2.0.39, clang 23.1.1, and Node v26.10.0 (CPU only, `--threads 4 --gpu off`; no GPU was used): 41 vectors, two JavaScript runs `cmp`-identical, native `VECTOR` lines identical, SHA-256 of `verification/host-binding-vectors.txt` now
+`1842e96673fe3b24eaff99ca820065d9dab05817c153132f6dd2b5d0ff9430ff`. `bend PROOF.bend` printed `ALL PROOFS CHECK`; `bend PROOF.bend --verdict` could not run here and printed: `Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel`.
 The fix wave changed one earlier vector: GA-005-2 is now `denied UnknownAlias`
 (was `denied SubjectMismatch`), because an alias the acting domain does not
 hold is reported as unknown before any generation or subject check. The inputs behind
@@ -190,7 +193,7 @@ tasks in those pending packages remain unchecked. Since then, tasks 1.1 to 1.4 a
 evidence above; its section 3 remains unchecked. After the HostBinding
 final-review fix wave edited that change's `tasks.md` (task 2.1 wording) and
 its traceability table, `bunx @fission-ai/openspec@1.16.0 validate --all
---strict --no-interactive` passed with 0 failed (the active item count has
+--strict --no-interactive` passed with 0 failed (rerun 2026-11-04 after the parked-gaps lane: `Totals: 43 passed, 0 failed (43 items)`) (the active item count has
 grown since the 36-item record). The bounded rclone reference change is
 implemented and archived with eight completed tasks. Native snapshot staging is
 implemented and archived with ten completed tasks. Neither completes a

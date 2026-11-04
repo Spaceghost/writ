@@ -459,7 +459,9 @@ def minter_absent(found: Maybe<&2, Nat>) -> Bool:
 # Each alias is judged by `minter` itself (on a one-alias list), and the rest
 # by `minter` on the tail, so this clause and the refund rule read one
 # definition of "not a copy" and cannot drift apart. `all` is the complete
-# alias list against which copy edges are resolved.
+# alias list against which copy edges are resolved. The rescan of `all` per
+# alias is quadratic; that cost was accepted to keep one shared definition of
+# minted/copied rather than a second, separately maintained counter.
 def single_minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Bool:
   match aliases:
     case NoAliases{}:
