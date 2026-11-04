@@ -50,3 +50,4 @@
 2026-11-04T20:03:49Z	implementer	merged master 88f1cab as 60e732e: runtime-profile-hosts.md and profile tasks.md 2.3/3.1 reconciled; OpenSpec 44/0; git diff --check clean
 2026-11-04T20:04:10Z	controller	reconciled with master; scoped re-review dispatched
 2026-11-04T20:10:11Z	controller	re-review approved after two record-line fixes; merging
+2026-11-04T20:11:16Z	controller	merged to master as e7ff576 and pushed

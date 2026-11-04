@@ -266,9 +266,9 @@ f42a2245dfe005e81cd17c1ce986d7c5e324c6875785ae1218caf755a3b7c101  docs/superpowe
 841a8bb43fcaaa2f2481369d2445a6b17054bab3a8a99a5ce83744f7574b39f7  docs/superpowers/records/2026-11-04-binding-gaps/task-2-report.md
 814208f6d4967da7c489e11f0ee12112757abd5f9f86322c8af686a1a3e5f1ff  docs/superpowers/records/2026-11-04-binding-gaps/task-3-brief.md
 333e6df2d9356b1ac19e222ebfa8ae33424997b79707ed5dd43d424b22de953a  docs/superpowers/records/2026-11-04-binding-gaps/task-3-report.md
-20bec31a20cc9bca4f043f51313bf64e514949339abca5b4d9a56c7db8972a15  docs/superpowers/records/2026-11-04-genode-base-hw/activity.log
+568dc1540c855636d97358997f693cec86b7511d13b326a26be8f3b81c2c1bcd  docs/superpowers/records/2026-11-04-genode-base-hw/activity.log
 2e06c84b34f4105686f97944fd559f0e5bd118b6b4dff5046c263e1fcf80e4bd  docs/superpowers/records/2026-11-04-genode-base-hw/final-review.md
-8351a869a1cbed481a985694b1e18e11457617e0cf4ecc608242b8a9cf53b1d6  docs/superpowers/records/2026-11-04-genode-base-hw/progress.md
+1e4a157cd3021036cba9eac56a7a34daf62dde28f2286f2f42ab348c91564770  docs/superpowers/records/2026-11-04-genode-base-hw/progress.md
 aa7df1ce9133e50d364494fa5b5cb1f01203cf94f21d7f3cccec92a0e5d47541  docs/superpowers/records/2026-11-04-genode-base-hw/task-1-brief.md
 fc978e82d5358aa67fa2c6df39daf61cc4fafee7ea0243c39c1da05040adec1b  docs/superpowers/records/2026-11-04-genode-base-hw/task-1-report.md
 9a4d0ebd080f52af4136dddd5597495f5aac1e02bdef5b1d53a9603193df9a75  docs/superpowers/records/2026-11-04-genode-base-hw/task-1-review.md
