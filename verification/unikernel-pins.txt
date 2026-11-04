@@ -1,6 +1,9 @@
 Unikernel tooling pins for the library-unikernel runtime lane
 Recorded 2026-11-03 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
 Workspace: ../writ-unikernel/ (sibling of the repository root; nothing below is in the tree).
+Every command below sets W to the workspace's absolute path first, from the repository root:
+  W=$(realpath ../writ-unikernel)
+  # on this machine: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel
 Downloads are treated as untrusted data: each source tree is a fresh clone in its own
 directory and no script from a downloaded tree was run with the repository as cwd.
 
@@ -13,8 +16,7 @@ bend 2.0.39 at $HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin, BEND_NO_
 
 == kraft (KraftKit CLI) ==
 Version: kraft 0.12.16 (b5dd63da1644808ab47dda72963d7cf90935808c) go1.26.5 2026-09-09T09:51:15Z
-Install (user-local, under the workspace):
-  W=../writ-unikernel
+Install (user-local, under the workspace; W absolute as above):
   mkdir -p $W/downloads/kraftkit-0.12.16 $W/tools/kraftkit-0.12.16
   cd $W/downloads/kraftkit-0.12.16
   curl -sSLO https://github.com/unikraft/kraftkit/releases/download/v0.12.16/kraft_0.12.16_linux_amd64.tar.gz
@@ -39,6 +41,11 @@ Tag RELEASE-0.21.0 (codename Ijiraq), commit 7351f8b563c9e6773da9fdd5bacde6ac91e
   git clone --depth 1 --branch RELEASE-0.21.0 https://github.com/unikraft/unikraft.git $W/src/unikraft
 lib-musl RELEASE-0.21.0, commit 5fed64ecd7f8abb29df444c73df6d797d4efa18f
   git clone --depth 1 --branch RELEASE-0.21.0 https://github.com/unikraft/lib-musl.git $W/src/libs/musl
+Checked out commits, confirmed 2026-11-03:
+  $ git -C $W/src/unikraft rev-parse HEAD
+  7351f8b563c9e6773da9fdd5bacde6ac91e32112
+  $ git -C $W/src/libs/musl rev-parse HEAD
+  5fed64ecd7f8abb29df444c73df6d797d4efa18f
   musl upstream fetched by lib-musl's build: https://www.musl-libc.org/releases/musl-1.2.3.tar.gz
   observed sha256 7d5b0b6062521e4627e099e4c9dc8248d32a30285e959b7eecaa780cf8cfd4a4
 Platforms present in 0.21.0 plat/: common kvm native xen  (no linuxu)
@@ -52,9 +59,20 @@ Tag RELEASE-0.16.3 (codename Telesto), commit e453b74a2e78a0de98563d75d8e0a97e66
   git clone --depth 1 --branch RELEASE-0.16.3 https://github.com/unikraft/unikraft.git $W/src-0.16.3/unikraft
 lib-musl RELEASE-0.16.3, commit fd1abc9257b40a74c69b3a40467a453bf8892439
   git clone --depth 1 --branch RELEASE-0.16.3 https://github.com/unikraft/lib-musl.git $W/src-0.16.3/libs/musl
+Checked out commits, confirmed 2026-11-03:
+  $ git -C $W/src-0.16.3/unikraft rev-parse HEAD
+  e453b74a2e78a0de98563d75d8e0a97e668088e6
+  $ git -C $W/src-0.16.3/libs/musl rev-parse HEAD
+  fd1abc9257b40a74c69b3a40467a453bf8892439
   musl 1.2.3, same tarball sha256 as above.
 
 == Bend input ==
 scripts/unikernel/Hello.bend (in tree), emitted with:
-  bend scripts/unikernel/Hello.bend -o ../writ-unikernel/hello/hello.c
+  bend scripts/unikernel/Hello.bend -o $W/hello/hello.c
   hello.c: 3074 lines, sha256 260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
+Task 2 probes (in tree), emitted with `bend scripts/unikernel/<P>.bend -o $W/gen/<p>.c`:
+  gen/hello.c     260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf  (same as hello/hello.c)
+  gen/clock.c     3fece708ec9d3147f1c4fec98e9df547a5f6030df6184297395ffe1192387af6
+  gen/overflow.c  1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc
+  gen/lanes.c     26d9873efaced5e45f828389384c65637a3872a61062cad7b2f1ef177ffc8fb1
+  gen/exit.c      7b1b4c4386200758c1f77000328364f038fd96a09f3a46c179699e2d1bf14883
