@@ -24,3 +24,4 @@ Task 3: complete (e4cdc3d..08123e4; re-review all addressed; carried into the fi
 Final review: Needs fixes (Important: host.c miscategorised under UL-004's termination layer; check-fault.sh can pass on a stale log; minors and record alignments). Single final fix pass dispatched with widened paths; merge master first. Conflict watch: runtime-profile-hosts.md and the profile change's 2.3 note are edited by both final passes; resolve at the second merge.
 Final fix pass DONE (7433b20 merge master, 89ee5d5). Scoped re-review dispatched.
 Final fix re-review: all addressed except one table cell (runtime-profile-hosts.md:55), fixed at integration by the controller. Merging to master.
+Merged to master as 88f1cab and pushed (gate: suite 782, proofs, MonitorCheck 10, OpenSpec 44/44, flake check).
