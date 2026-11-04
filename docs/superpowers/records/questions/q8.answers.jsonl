@@ -1,1 +1,3 @@
 {"at":"2026-11-04T22:28:32Z","who":"controller","kind":"ask","fields":{"text":"Reading guide page 2 of 10: the three POSIX entry points the shim replaces (mmap, munmap, mprotect), the request-shape filter, forwarding to libc, and guard creation. The claim to weigh: a refusal here means the shim cannot do this exactly, never that this caller may not. About 15 minutes."}}
+{"at":"2026-11-04T23:31:14.689Z","who":"josh","kind":null,"fields":{"c1":"confirmed","c2":"confirmed","c3":"confirmed","c4":"confirmed","text":""}}
+{"at":"2026-11-04T23:31:23Z","who":"controller","kind":"note","fields":{"text":"Page 2: all four claims confirmed. Page 3 is posted as q9 (reservations)."}}

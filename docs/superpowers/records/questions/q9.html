@@ -22,7 +22,7 @@ pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto
 <p>A qualifying <code>mmap</code> becomes a <em>reservation</em>: address space that is set aside but has no memory behind it yet. Genode terms: a <em>dataspace</em> is a piece of memory (or address space) that can be referenced by capability and attached into an address space. A <em>Region_map</em> is an address-space layout: a set of dataspaces attached at offsets. A region map can itself be exported as a dataspace (a "managed dataspace") and attached into another region map. An <em>Rm_connection</em> is a session to the RM service that creates such region maps. So <code>_reserve</code> asks the RM session for an empty region map of the requested size, attaches it into the component's own address space (<code>Env::rm()</code>), and records it in a fixed table of 32 slots. Nothing is populated, so no RAM is charged here. Read the table struct first (378-435), then <code>_reserve</code> and <code>_release</code>.</p>
 <p><strong>Open:</strong> <code>writ_mem.cc:378-435</code>, <code>writ_mem.cc:916-1028</code></p>
 <p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
-<form method="post" action="/questions/__ID__/answer">
+<form method="post" action="/questions/q9/answer">
 <h2>Claim 1</h2>
 <p>Every refusal in <code>_reserve</code> sets <code>errno = ENOMEM</code>, undoes what it already built, and returns <code>MAP_FAILED</code>.</p>
 <pre><code>930	    if (len &gt; MAX_RESERVATION) { errno = ENOMEM; return MAP_FAILED; }
