@@ -1,0 +1,69 @@
+#
+# writ_probe_fault.run - Genode run script (build configuration for
+# runtime-row qualification), not Writ implementation. Genode component
+# lane, Task 3. Starts the plain-C probe writ_probe_fault under init on
+# base-linux (BOARD=linux KERNEL=linux). The probe installs a SIGSEGV and
+# SIGBUS handler the way the Bend runtime does and then overflows its
+# machine stack.
+#
+# The script waits up to 60 seconds for the first of: the probe's handler
+# line, init's report of the child's exit, or base-linux's own fault line
+# ("Segmentation fault" / "Bad memory access" from thread_env.cc). It then
+# keeps collecting the log for 45 more seconds to see whether init reports
+# the child afterwards, prints what it saw, and fails if the probe's
+# "resumed" line appears (execution continued past the fault). The
+# outcome is recorded, not asserted: which outcome the profile accepts is
+# decided in verification/genode-runtime-rows-base-linux.md.
+#
+# Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
+# Timer session from the sibling timer; the VFS holds only /dev/log.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_probe_fault }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_probe_fault | caps: 300 | ram: 16M
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_probe_fault
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {(probe_fault: handler reached|child "writ_probe_fault" exited with exit value|Segmentation fault|Bad memory access)[^\n]*\n} 60
+
+# Keep reading for a further 45 seconds; a timeout here is expected.
+set spawn_id [output_spawn_id]
+expect -timeout 45 \
+	-re {[^\n]*\n} { append output $expect_out(0,string); exp_continue } \
+	timeout { } \
+	eof { }
+
+puts "\n--- writ_probe_fault outcome ---"
+puts "handler line:    [regexp {probe_fault: handler reached} $output]"
+puts "init exit line:  [regexp {child \"writ_probe_fault\" exited with exit value} $output]"
+puts "platform fault:  [regexp {Segmentation fault|Bad memory access} $output]"
+puts "resumed line:    [regexp {probe_fault: resumed} $output]"
+
+if {[regexp {probe_fault: resumed} $output]} {
+	puts stderr "Error: execution resumed past the fault"
+	exit 1
+}

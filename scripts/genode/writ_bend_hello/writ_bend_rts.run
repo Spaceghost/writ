@@ -1,0 +1,73 @@
+#
+# writ_bend_rts.run - Genode run script (build configuration for runtime-row
+# qualification), not Writ implementation. Genode component lane, Task 3.
+# Runs the unchanged writ_bend_hello binary (Bend 2.0.39's generated C for
+# scripts/genode/Hello.bend) twice under init on base-linux (BOARD=linux
+# KERNEL=linux), with runtime options supplied only through the BENDRTS
+# environment variable (libc <env> node) and no +RTS arguments:
+#
+#   bend_rts_help  BENDRTS=--help    expects the runtime's usage text on
+#                                    stdout and exit value 0
+#   bend_rts_bad   BENDRTS=--bogus   expects "bend: unknown runtime option
+#                                    --bogus" on stderr and exit value 1
+#
+# Both cases return from main during option parsing, before the 8 GiB term
+# heap and the stack guard, so they run in 256M and exercise getenv, stdio,
+# and the exit status through the Bend program itself. The script waits up
+# to 60 seconds for both exits and fails on any other outcome.
+#
+# Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
+# Timer session from the sibling timer; the VFS holds only /dev/log.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_bend_hello }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start bend_rts_help | caps: 1000 | ram: 256M
+  + binary writ_bend_hello
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_bend_hello
+    + env | key: BENDRTS | value: --help
++ start bend_rts_bad | caps: 1000 | ram: 256M
+  + binary writ_bend_hello
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_bend_hello
+    + env | key: BENDRTS | value: --bogus
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {exited with exit value[^\n]*\n.*exited with exit value[^\n]*\n} 60
+
+foreach {re what} {
+	{child "bend_rts_help" exited with exit value 0\r?\n}          "help exit value 0"
+	{\[init -> bend_rts_help\] usage: writ_bend_hello \[\+RTS}       "help usage line"
+	{child "bend_rts_bad" exited with exit value 1\r?\n}           "bad exit value 1"
+	{\[init -> bend_rts_bad\] bend: unknown runtime option --bogus} "bad option message"
+} {
+	if {![regexp $re $output]} {
+		puts stderr "Error: missing $what"
+		exit 1
+	}
+}

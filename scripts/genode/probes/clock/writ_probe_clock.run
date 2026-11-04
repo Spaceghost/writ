@@ -1,0 +1,53 @@
+#
+# writ_probe_clock.run - Genode run script (build configuration for runtime-row
+# qualification), not Writ implementation. Genode component lane, Task 3.
+# Starts the plain-C probe writ_probe_clock under init on base-linux
+# (BOARD=linux KERNEL=linux): CLOCK_MONOTONIC read twice around a 100 ms nanosleep.
+# Waits up to 60 seconds for init to report the child's exit, then fails
+# unless the exit value is 0 and the probe's own success line appears.
+# A timeout also fails the run.
+#
+# Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
+# Timer session from the sibling timer; the VFS holds only /dev/log, which
+# carries stdout and stderr. No file system, network, or block access.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_probe_clock }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_probe_clock | caps: 300 | ram: 16M
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_probe_clock
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {child "writ_probe_clock" exited with exit value .*\n} 60
+
+if {![regexp {child "writ_probe_clock" exited with exit value 0\r?\n} $output]} {
+	puts stderr "Error: writ_probe_clock did not exit with value 0"
+	exit 1
+}
+if {![regexp {probe_clock: monotonic, slept at least 100 ms} $output]} {
+	puts stderr "Error: writ_probe_clock success line missing"
+	exit 1
+}

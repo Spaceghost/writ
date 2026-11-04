@@ -1,0 +1,53 @@
+#
+# writ_probe_threads.run - Genode run script (build configuration for runtime-row
+# qualification), not Writ implementation. Genode component lane, Task 3.
+# Starts the plain-C probe writ_probe_threads under init on base-linux
+# (BOARD=linux KERNEL=linux): two lanes over pthread_create, a mutex, and condvars.
+# Waits up to 60 seconds for init to report the child's exit, then fails
+# unless the exit value is 0 and the probe's own success line appears.
+# A timeout also fails the run.
+#
+# Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
+# Timer session from the sibling timer; the VFS holds only /dev/log, which
+# carries stdout and stderr. No file system, network, or block access.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix app/writ_probe_threads }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_probe_threads | caps: 300 | ram: 16M
+  + config
+    + vfs | + dir dev | + log
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + arg | value: writ_probe_threads
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {child "writ_probe_threads" exited with exit value .*\n} 60
+
+if {![regexp {child "writ_probe_threads" exited with exit value 0\r?\n} $output]} {
+	puts stderr "Error: writ_probe_threads did not exit with value 0"
+	exit 1
+}
+if {![regexp {probe_threads: both lanes woke by broadcast} $output]} {
+	puts stderr "Error: writ_probe_threads success line missing"
+	exit 1
+}

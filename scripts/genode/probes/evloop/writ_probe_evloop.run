@@ -1,0 +1,59 @@
+#
+# writ_probe_evloop.run - Genode run script (build configuration for runtime-row
+# qualification), not Writ implementation. Genode component lane, Task 3.
+# Starts the plain-C probe writ_probe_evloop under init on base-linux
+# (BOARD=linux KERNEL=linux): the runtime's wake pipe with O_NONBLOCK and select.
+# Waits up to 60 seconds for init to report the child's exit, then fails
+# unless the exit value is 0 and the probe's own success line appears.
+# A timeout also fails the run.
+#
+# Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
+# Timer session from the sibling timer. The VFS holds /dev/log, which
+# carries stdout and stderr, and a component-local pipe file system at
+# /pipe (vfs_pipe from repos/gems), which libc's pipe() requires: without
+# the 'pipe' libc attribute and that mount, pipe() fails with "failed to
+# create pipe at /new" (first probe run). No file system, network, or
+# block access beyond that.
+#
+
+build { core init timer lib/ld lib/libc lib/libm lib/vfs lib/posix lib/vfs_pipe app/writ_probe_evloop }
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_probe_evloop | caps: 300 | ram: 16M
+  + config
+    + vfs
+      + dir dev | + log
+      + dir pipe | + pipe
+    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+    + arg | value: writ_probe_evloop
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until {child "writ_probe_evloop" exited with exit value .*\n} 60
+
+if {![regexp {child "writ_probe_evloop" exited with exit value 0\r?\n} $output]} {
+	puts stderr "Error: writ_probe_evloop did not exit with value 0"
+	exit 1
+}
+if {![regexp {probe_evloop: select woke on the helper} $output]} {
+	puts stderr "Error: writ_probe_evloop success line missing"
+	exit 1
+}
