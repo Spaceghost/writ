@@ -1,0 +1,280 @@
+Unikernel port lane, Task 1: a harness-visible exit code for Bend images on Unikraft
+Recorded 2026-11-03 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run below is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type
+the qemu-system-x86_64 default (pc), -cpu max, -no-reboot on every run, -m 1024 unless
+stated (Overflow: -m 4096). CPU-only; no accelerator device. Versions and install
+commands: verification/unikernel-pins.txt. W is the workspace, set from the repository
+root with W=$(realpath ../writ-unikernel)
+(on this machine /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel). Nothing built is in the tree.
+
+== Result ==
+
+| Program                   | Outcome                     | Guest value on 0xf4 | QEMU exit |
+| ------------------------- | --------------------------- | ------------------- | --------- |
+| scripts/unikernel/Hello.bend    | main returns 0 (success)    | 0x00               | 1         |
+| scripts/unikernel/Die.bend      | IO.die(Unit, 1, "die") -> exit(1) | 0x01         | 3         |
+| scripts/unikernel/Overflow.bend | page fault on the stack guard -> Unikraft crash | 0x7e | 253 |
+
+Three distinct codes. Before this task all three ended with QEMU 0 (Hello, Overflow) or
+idled until killed (exit paths, matrix E9). Supplementary rows (same hook):
+
+| Program / append                     | Path                          | QEMU exit |
+| ------------------------------------ | ----------------------------- | --------- |
+| Exit.bend (IO.exit(3))               | exit(3)                       | 7         |
+| Hello, -append "+RTS --threads 0"    | runtime err_fail -> _exit(1)  | 3         |
+| Hello, -append "+RTS --bogus -RTS"   | main returns 1                | 3         |
+| Hello, harness WITHOUT the device    | main returns 0                | 0         |
+
+== Mechanism (Unikraft 0.21.0, commit 7351f8b563c9e6773da9fdd5bacde6ac91e32112) ==
+
+Hook source: hosts/unikraft/exit_device.c (sha256
+b1dc08bbf14f88a998c22fa64da37e56113c08142d742559a419ee338e1bc51e at Task 1; Task 2 edited
+only its header comment, adding boot.c:447/452 and crash.c:129/132 citations, comment-
+stripped tokens identical, then bf796eed8f6d9715e25c2fb74eb76cb712a04767ffd1d29bac7c3bbfc8ab5c8c; the final review
+edited only comments again, tokens identical, now
+752a215e521c099cef5350208718866597b977e6b21782c11bfd9b7c4fc80833), inventoried in
+hosts/unikraft/INVENTORY.md. It is linked by REFERENCE (not copied): the app Makefile.uk
+names its path in this worktree. Paths below are under $W/src/unikraft.
+
+1. Termination table. include/uk/init.h:67 (struct uk_term_ctx { target; exit_code; }),
+   :78 (uk_term_func_t), :118 (uk_early_initcall_prio). lib/ukboot/boot.c:426 the init
+   thread waits on the shutdown barrier; :447 calls every term function in reverse table
+   order with &tctx; :452 uk_pm_shutdown(tctx.target). exit_code is main's return
+   (boot.c:533) or, after exit()/_exit(), the init process's stored status
+   (lib/posix-process/exit.c:203 'exit_status & 0xff'; copied into the context by
+   lib/posix-process/shutdown.c:103, a late-class term registered at :127 that runs
+   before ours). The hook registers class 1 priority 0 (inittab section .uk_inittab10),
+   so it is the last term function, immediately before uk_pm_shutdown.
+   Written value: the status if 0..0x7c; 0x7f if the status is above 0x7c ("not
+   representable"); 0x7d if tctx.target is not SYSHALT (an init failure or a restart
+   request). QEMU then exits (v << 1) | 1.
+2. Process exit event. lib/posix-process/include/uk/process/events.h:287
+   (POSIX_PROCESS_PPEXIT_HANDLER), raised at lib/posix-process/exit.c:213 after the status
+   is stored. On the init process (pid 1, lib/posix-process/process.h:36 UK_PID_INIT) the
+   handler calls uk_boot_shutdown_req(UK_PM_SHUTDOWN_OP_SYSHALT)
+   (lib/ukboot/include/uk/boot.h:57), which releases the barrier in step 1.
+3. Crash event. lib/ukdebug/include/uk/crash.h:106 (UK_CRASH_EVENT), raised at
+   lib/ukdebug/crash.c:129 after the crash screen and before crash_shutdown() (:132; with
+   the default LIBUKDEBUG_CRASH_ACTION_HALT, lib/ukdebug/Config.uk:48, that is
+   uk_pm_syscrash() at crash.c:79). The handler writes 0x7e, so QEMU exits 253 before
+   Unikraft's own crash action runs. The crash event is the supported crash hook; no
+   Kconfig change was needed. Without the device the crash action is Unikraft's own
+   (Task 2 observes halt versus reset).
+
+gdb confirmation of steps 2 and 1 on the Die image ($W/exitcode/logs/gdb-die-shutdown.log,
+command file $W/exitcode/gdb-die4.cmd: hbreak uk_boot_shutdown_req, hbreak writ_exit_term):
+  #0 uk_boot_shutdown_req (target=UK_PM_SHUTDOWN_OP_SYSHALT) at lib/ukboot/shutdown_req.c:29
+  #1 writ_exit_on_init_exit (...) at hosts/unikraft/exit_device.c:111
+  #2 uk_raise_event_ptr (e=<uk_event_POSIX_PROCESS_PPEXIT_EVENT>, ...)
+  #4 pprocess_exit (..., exit_status=1) at lib/posix-process/exit.c:213
+  then: writ_exit_term (tctx=...) at exit_device.c:93, called from uk_boot_entry boot.c:447
+  [Inferior 1 (process 1) exited with code 03]; qemu rc 3
+  (gdb and build-log line numbers in exit_device.c are from the revision before a
+  comment-only edit that added 6 comment lines: :111, :93 and :59 are now :117, :99 and
+  :65. The rebuilt images have the same sha256 as before the edit.)
+
+== Build configuration changes (recorded with the need) ==
+
+App directory $W/exitcode-unikraft/, made like $W/rows-unikraft/ (empty Config.uk,
+compiler-include/stdatomic.h symlink to the gcc header), A3 Kraftfile plus H2 below.
+
+Kraftfile (sha256 6a65d2098642eed65d0247247ac9569e57c557050e89f7c24bb9750fae467696):
+  spec: v0.6
+  name: exitcode-bend
+  unikraft:
+    source: ../src/unikraft
+    kconfig:
+      CONFIG_LIBUKVMEM: 'y'
+      CONFIG_LIBPOSIX_MMAP: 'y'
+      CONFIG_LIBPOSIX_PROCESS: 'y'
+      CONFIG_LIBPOSIX_FDTAB: 'y'
+      CONFIG_LIBPOSIX_SYSINFO: 'y'
+      CONFIG_LIBPOSIX_PIPE: 'y'
+      CONFIG_LIBPOSIX_POLL: 'y'
+      CONFIG_LIBUKBOOT_MAINTHREAD: 'y'       # H2
+      CONFIG_UKPLAT_CPU_MAXCOUNT: 1          # declared, was a resolved default
+  libraries:
+    musl:
+      source: ../src/libs/musl
+  targets:
+    - qemu/x86_64
+
+Makefile.uk (sha256 37f086aae95be146bcc43ec7f256140dab4898a5fdc47d07425172a395d1faa4):
+  $(eval $(call addlib,appexitcodebend))
+  APPEXITCODEBEND_SRCS-y += $(APPEXITCODEBEND_BASE)/../exitcode/gen/app.c
+  WRIT_HOSTS_UNIKRAFT ?= /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/unikernel-port/hosts/unikraft
+  APPEXITCODEBEND_SRCS-y += $(WRIT_HOSTS_UNIKRAFT)/exit_device.c
+  APPEXITCODEBEND_CINCLUDES-y += -I$(APPEXITCODEBEND_BASE)/compiler-include     # A1
+  APPEXITCODEBEND_CINCLUDES-y += -I$(UK_PLAT_COMMON_BASE)/include               # H1
+
+H1: the first build failed compiling the hook:
+  lib/ukboot/include/uk/boot.h:11:10: fatal error: uk/plat/common/bootinfo.h: No such file or directory
+  (log $W/exitcode/logs/build-die.log of that attempt, overwritten by the next build;
+  the line is quoted from it). lib/ukboot and lib/posix-process add the same directory
+  for themselves (their Makefile.uk).
+H2: with the resolved default (LIBUKBOOT_MAINTHREAD not set) the Die image built but idled
+  until killed (timeout 124, console 'die probe start' / 'die'). gdb showed pprocess_exit
+  and the hook's ppexit handler running, but uk_boot_shutdown_req was not a symbol: without
+  MAINTHREAD it is a macro returning -ENOTSUP (lib/ukboot/include/uk/boot.h:59), and main
+  runs on the init thread, so exit() ends the thread that would run the termination
+  path. That is the cause of matrix E9. The hook now refuses to build without
+  CONFIG_LIBUKBOOT_MAINTHREAD (#error); confirmed: $W/exitcode/logs/build-die-nomainthread.log
+  'exit_device.c:59:2: error: #error "exit_device.c needs CONFIG_LIBUKBOOT_MAINTHREAD=y"'.
+  .config after H2: CONFIG_LIBUKBOOT_MAINTHREAD=y, LIBUKBOOT_MAINTHREAD_NOHALT not set,
+  CONFIG_LIBPOSIX_PROCESS_MULTITHREADING=y, CONFIG_UKPLAT_CPU_MAXCOUNT=1.
+
+== Build commands ==
+
+(Task 1 used the out-of-tree $W/exitcode-build.sh / $W/exitcode-run.sh and the app
+directory $W/exitcode-unikraft quoted here, whose Makefile.uk carries an absolute default
+for WRIT_HOSTS_UNIKRAFT. From Task 2 on they are superseded by the in-tree
+hosts/unikraft/scripts/ (mkapp.sh, build.sh, run.sh, parameterised on $W) and the
+template hosts/unikraft/app/ (Makefile.uk with no machine path: build.sh exports
+WRIT_HOSTS_UNIKRAFT and WRIT_APP_C); see hosts/unikraft/INVENTORY.md. The Task 1 images
+were not rebuilt with the new scripts.)
+
+From the repository root (Bend 2.0.39, BEND_NO_TELEMETRY=1):
+  mkdir -p $W/exitcode/gen
+  bend scripts/unikernel/Hello.bend    -o $W/exitcode/gen/hello.c
+  bend scripts/unikernel/Die.bend      -o $W/exitcode/gen/die.c
+  bend scripts/unikernel/Overflow.bend -o $W/exitcode/gen/overflow.c
+  bend scripts/unikernel/Exit.bend     -o $W/exitcode/gen/exit.c
+Emitted C sha256 (never edited):
+  260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf  hello.c     (= pins)
+  94048ae7ceff0958375091de3d00bb300f885dc826df52ccb086ee3d480356d1  die.c       (new, 3188 lines)
+  1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc  overflow.c  (= pins)
+  7b1b4c4386200758c1f77000328364f038fd96a09f3a46c179699e2d1bf14883  exit.c      (= pins)
+IO.die in die.c: CID_Halt in io_step prints the message and calls exit((int)status)
+(die.c:3023-3027); the runtime's own failures call err_fail -> _exit(1) (die.c:530-533).
+
+Image build: $W/exitcode-build.sh <p>, which copies $W/exitcode/gen/<p>.c to
+$W/exitcode/gen/app.c and runs, in $W/exitcode-unikraft,
+  UK_CFLAGS=-std=gnu11 $KRAFT build --no-update --target qemu/x86_64 -j 16 .
+($KRAFT is the pinned kraft 0.12.16 prefix in verification/unikernel-pins.txt), then
+copies .unikraft/build/exitcode-bend_qemu-x86_64[.dbg] to $W/exitcode/images/<p>-qemu[.dbg].
+Image sha256 (two builds, before and after a comment-only edit of the hook, identical):
+  abc64874ad909c71c5d05b17232e8f77fd728a7b36bcc8d57cc0fe06e05adb4d  hello-qemu
+  7dd672e5a1c66b6f291b453a24cfa58beb021599271e38468937e35003e07a02  die-qemu
+  57a1eac43242ac3a918af6d5fc2955ab5e738851c8bcba4658509abd1036964c  overflow-qemu
+  3d3ff2cf04d68a0708e147bf15370930c39e6f5743316eca7892be5640df6893  exit-qemu
+Hook symbols in each .dbg (nm): writ_exit_term, writ_exit_on_init_exit, writ_exit_on_crash,
+__uk_inittab10_0_writ_exit_term, _uk_event_POSIX_PROCESS_PPEXIT_EVENT_9_writ_exit_on_init_exit,
+_uk_event_uk_crash_event_9_writ_exit_on_crash.
+
+== Harness ==
+
+$W/exitcode-run.sh <label> <p> "<append>" [timeout] [mem] runs
+  timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M -cpu max \
+    -kernel $W/exitcode/images/<p>-qemu -append "<append>" \
+    -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot </dev/null; echo $?
+and keeps the console from the 'Booting from ROM' line on (escapes and CRs removed) in
+$W/exitcode/logs/run-<label>.log. The crash screen carries NUL bytes on the serial line
+(in the .raw capture); they are removed below. Below, the Unikraft banner is shortened to its last
+line; the last two lines are the QEMU exit status and the wall time.
+
+== Runs (console tail and QEMU exit) ==
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/exitcode/images/hello-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+hi
+1
+(wall 0.3 s)
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/exitcode/images/die-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+die probe start
+die
+3
+(wall 0.4 s)
+
+$ timeout 300 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/exitcode/images/overflow-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+[   11.657504] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[   11.658575] CRIT:     _
+[   11.658659] CRIT:   cx xo
+[   11.658742] CRIT:   (|O|)/V
+[   11.658823] CRIT: 
+[   11.658913] CRIT: Registers:
+[   11.659052] CRIT:  rip: 0008:0000000000111da4
+[   11.659211] CRIT:  rsp: 0010:00000010000645f0 eflags: 00010206 orig_rax: 0000000000000002
+[   11.659449] CRIT:  rax: 0000000000112930 rbx: 0000200000000000 rcx:0000000000000003
+[   11.659649] CRIT:  rdx: 0000001000069030 rsi: 000000000021d280 rdi:0000200000000000
+[   11.659878] CRIT:  rbp: 0000001000064630 r08: 0000001080069000 r09:000000002b9aca05
+[   11.660081] CRIT:  r10: 0000001000069028 r11: 0000000000000003 r12:0000200000000000
+[   11.661012] CRIT:  r13: 0000000400053020 r14: 05000d0003109200 r15:000000ffffffffff
+
+253
+(wall 12.1 s)
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/exitcode/images/exit-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+exiting with 3
+7
+(wall 0.3 s)
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/exitcode/images/hello-qemu -append "+RTS --threads 0" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+bend: expected a thread count of 1 or more after --threads
+3
+(wall 0.3 s)
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/exitcode/images/hello-qemu -append "+RTS --bogus -RTS" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+bend: unknown runtime option --bogus
+3
+(wall 0.3 s)
+
+Without the device (same hello-qemu image; shows the hook is inert when the port is
+unmapped and the image still ends by Unikraft's own halt):
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/exitcode/images/hello-qemu -append "+RTS --threads 1 --gpu off" -no-reboot; echo $?
+                  Ijiraq 0.21.0~7351f8b
+hi
+0
+
+== Binary profile check (UL-003) ==
+
+sh scripts/runtime-profile/check-binary.sh $W/exitcode/images/<p>-qemu.dbg, for p in
+hello die overflow (static, not stripped, with debug_info), each:
+  undefined symbols: not applicable (static link)
+  effect rows: IO.print
+  result: PASS (effect rows within the monitor profile; static link, so
+    the host-symbol surface was not checked)
+  exit status 0
+
+== Limits ==
+
+- QEMU's exit status is (v << 1) | 1 truncated to 8 bits: always odd, 128 values. The
+  hook passes program statuses 0..124 through (QEMU 1..249) and maps 125..255 to 0x7f
+  (QEMU 255), so those statuses are not distinguished from one another. 0x7d (QEMU 251,
+  non-halt shutdown) and 0x7e (QEMU 253, crash) are written only by the hook, never for
+  a program status.
+- IO.die(Unit, 1, "die") and a runtime failure (err_fail -> _exit(1), e.g. '+RTS --threads 0';
+  arena exhaustion would take the same path by reading the emitted C, not induced) both
+  give status 1, QEMU 3. They are distinguished only by the console text, which is
+  diagnostic, not a status. A distinct runtime-failure code needs a runtime change or a
+  host twin, outside this task.
+- The crash value says only "Unikraft crash". The runtime's own fault message
+  ('bend: memory fault ...') still does not appear (matrix E4); the stack-guard page
+  fault, guest-RAM exhaustion by stack growth, and any other unhandled trap all give 253.
+- QEMU 0 or 124 is now never success. QEMU 1 is success only together with a
+  banner-verified console check (hosts/unikraft/scripts/check-image.sh): QEMU itself
+  exits 1 on its own startup errors (a bad option, a missing kernel file). A harness
+  without the device sees the old behavior (0 for return from main; crash action per
+  verification/unikernel-crash-action.txt).
+- timeout(1) exits 124 on expiry, 125 if it fails itself, and 127 if QEMU cannot be run;
+  124 is even and never a QEMU debug-exit code, but 125 and 127 equal the codes of program
+  statuses 62 and 63. Moving success off 1 (writing s + 0x10, for example) would separate
+  success from QEMU's own error 1 and is left to task 2.1 (the exit twin).
+- One CPU, cooperative scheduler, +RTS --threads 1. Exit from a second lane, and exit
+  while other posix threads are running, were not tried.
+- Whether LIBUKBOOT_MAINTHREAD's own main_thread_dtor would end an exit() run without
+  the ppexit handler was not tested; gdb shows the handler's request comes first.
+- -no-reboot was used on every run; reset versus halt after a crash without the device
+  is Task 2's observation (verification/unikernel-crash-action.txt: a power-off, QEMU 0,
+  no reset).
+- abort() and signal termination (SIGABRT, a raised or unhandled signal) were not
+  tested. A Bend program cannot call abort(), and the runtime's own failures go through
+  err_fail -> _exit(1); whether an abort() in C reaches the ppexit handler (and so the
+  status path) or Unikraft's crash path is unknown.

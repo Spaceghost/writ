@@ -1,0 +1,58 @@
+OpenSpec structural validation for the unikernel port lane (Tasks 2-4, fix round 1, integration rerun)
+Recorded 2026-11-04 on the lane/unikernel-port tree (after merge aaa6885, with this commit's document changes).
+Structural validation only; separate from the Bend tests and proof checks.
+OpenSpec: /nix/store/74ha4fybdaab2568xz7l1ix2l2ll008s-openspec-1.16.0/bin/openspec (1.16.0), the pinned 1.16.0 from the flake.
+
+$ openspec validate --all --strict --no-interactive; echo $?
+✓ change/add-addressable-views
+✓ change/add-authenticated-grant-issuance
+✓ change/add-bend-runtime-host-profile
+✓ change/add-capability-posix-adapter
+✓ change/add-confined-transform-execution
+✓ change/add-controlled-disclosure
+✓ change/add-cooperative-retirement
+✓ change/add-drift-kernel-host
+✓ change/add-durable-publication
+✓ change/add-executor-rendezvous
+✓ change/add-external-planner-adapters
+✓ change/add-freestanding-bend-runtime
+✓ change/add-genode-bend-component
+✓ change/add-genode-capability-adoption
+✓ change/add-genode-host
+✓ change/add-linux-host
+✓ change/add-locality-aware-execution
+✓ change/add-metered-sample-execution
+✓ change/add-origin-transform-stages
+✓ change/add-policy-aware-audit
+✓ change/add-portable-host-contract
+✓ change/add-s3-adapter
+✓ change/add-scoped-private-matching
+✓ change/add-unikernel-appliance-host
+✓ change/add-unikernel-library-runtime
+✓ change/add-windows-host
+✓ change/add-writfs-namespace
+✓ spec/authority-boundary
+✓ spec/candidate-verification
+✓ spec/capability-frontend
+✓ spec/commit-backplane
+✓ spec/constraint-solving
+✓ spec/data-model
+✓ spec/decentralized-labels
+✓ spec/native-snapshot-staging
+✓ spec/parallel-execution
+✓ spec/provenance-preservation
+✓ spec/rclone-contrib-remote
+✓ spec/reservation-ledger
+✓ spec/transfer-admission
+✓ spec/transformation-negotiation
+✓ change/validate-physical-gpu-execution
+✓ spec/verification-evidence
+Totals: 43 passed, 0 failed (43 items)
+0
+
+Earlier in Task 4 the installed OpenSpec 1.11.0 (~/.bun/bin/openspec) was used, with the same totals (43 passed, 0 failed).
+
+Rerun after the final-review fixes (2026-11-04), same binary:
+$ openspec validate --all --strict --no-interactive; echo $?
+Totals: 43 passed, 0 failed (43 items)
+0
