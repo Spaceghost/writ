@@ -49,13 +49,32 @@
  * (repos/base-linux/src/lib/base/region_map_mmap.cc:401-405). A touch
  * therefore still faults. If that re-reservation fails, base-linux logs
  * "_reserve_local unexpectedly failed" and the range is free address
- * space; the run scripts fail on that line. The fault handler never
+ * space; the run scripts fail on that line. On base-hw a detached range
+ * of a managed dataspace has no region in core's region map, so a touch
+ * there is a region-map fault reflected to this unit's handler
+ * (repos/base/src/core/include/region_map_component.h:427-440, the
+ * NO_REGION case of _with_region_at_fault). The fault handler never
  * populates a guard range: a touch there is refused and the component
  * dies. mprotect
  * is never a no-op: a request this unit cannot carry out exactly fails
  * with -1.
  *
- * Fault delivery (base-linux only). On base-linux the Region_map fault
+ * Fault delivery. Two front ends feed the same population path
+ * (_resolve_fault: the same chunk table, guards, bounds, and counters);
+ * exactly one is compiled, chosen at build time by the macro that
+ * hosts/genode/shim/writ_shim.mk sets from the build directory's KERNEL
+ * (WRIT_SHIM_FAULT_LINUX_SIGSEGV for KERNEL=linux,
+ * WRIT_SHIM_FAULT_REGION_MAP for KERNEL=hw; any other kernel, or a build
+ * without either macro, fails to compile). Build time rather than a config
+ * attribute, because the base-linux front end issues raw Linux system
+ * calls that are an unresolvable exception on base-hw (seen as
+ * "unresolvable exception: pd='init -> writ_bend_hello', thread='ep'" on
+ * the first base-hw run, verification/genode-bend-hello-base-hw.txt), so
+ * a binary must not contain the wrong one, and a config attribute would
+ * let the integrator select it.
+ *
+ * Case 1, base-linux (WRIT_SHIM_FAULT_LINUX_SIGSEGV). On base-linux the
+ * Region_map fault
  * signal is never delivered: region_map.h documents it ("On Linux, this
  * signal is never delivered because page-fault handling is performed by
  * the Linux kernel"), Region_map_client::fault_handler is an empty body
@@ -71,28 +90,77 @@
  * thread, which makes a PD RPC from signal context; that is acceptable
  * for the probe, and is recorded as a limit. Only kernel-generated
  * faults (si_code > 0) are handled; a SIGSEGV queued or sent with kill
- * gets the default action and is re-raised on the thread. On kernels where Genode
- * delivers region-map faults (base-hw, NOVA, seL4) the front end must be
- * the Region_map fault signal handled on a separate entrypoint instead;
- * that front end is not built here and nothing in this file claims it.
+ * gets the default action and is re-raised on the thread.
+ *
+ * Case 2, base-hw (WRIT_SHIM_FAULT_REGION_MAP). Core is the pager of every
+ * thread. A touch of an unpopulated part of a reservation finds no region
+ * in the reservation's region map; because a fault handler is registered
+ * there (Region_map::fault_handler, repos/base/include/region_map/
+ * region_map.h:79-87), core records the faulter, submits the handler's
+ * signal (Region_map_component::fault, repos/base/src/core/
+ * region_map_component.cc:476-486), and leaves the faulting thread halted
+ * (the pager returns STOP, region_map_component.cc:72-113; base-hw's
+ * Pager_entrypoint then calls fault_resolved(cap, false),
+ * repos/base-hw/src/core/pager.cc:145-148). The signal is handled on the
+ * dedicated entrypoint "writ_fault", started in construct before main. Its
+ * handler takes the shim mutex, reads each live reservation's fault state
+ * with Region_map_client::fault (repos/base/include/region_map/client.h:47;
+ * the address is relative to the region map, the Fault/Type of
+ * region_map.h:38-44) until it reports Type::NONE, and populates the chunk
+ * at each faulting offset. The attach that populates it wakes every
+ * faulter whose address lies in the attached range
+ * (region_map_component.cc:272-278, Rm_faulter::continue_after_resolved_fault
+ * -> Pager_object::wake_up), so the faulting thread resumes and repeats
+ * the access, which core now resolves from the attached chunk. Signals to
+ * one context coalesce, which is why the handler drains every queued
+ * faulter of every reservation per signal rather than one.
+ *   Why a dedicated entrypoint and not the channel's "writ_channel": that
+ * one exists only with a <writ_channel> config node, while every
+ * component with a reservation needs the fault handler; and a fault must
+ * not wait behind session creation or a client signal (or behind libc's
+ * main entrypoint, which libc keeps in wait_and_dispatch_one_io_signal
+ * while Bend runs, the reason the channel has its own). The "writ_fault"
+ * thread itself never touches reservation memory (only the chunk tables
+ * in the shim Heap), so it cannot fault into its own handler.
+ *   Retry table: not used on base-hw. On base-linux a fault on a populated
+ * chunk is the benign result of a race and the access is retried by
+ * returning from the signal handler; on base-hw core resolves a touch of
+ * an attached range itself and never reflects it, and the attach that
+ * populated or re-pieced a chunk has already woken every faulter in its
+ * range. A reflected fault that still names a populated chunk outside
+ * every guard (for example an execute or write access that the
+ * attachment's rights refuse, region_map_component.h:465-473) therefore
+ * cannot be resolved by this unit, and is refused like a guard touch.
  *
  * Failure behaviour. Every refusal kills the component: a fault on a
  * guard, outside every reservation, a fault whose chunk cannot be
- * charged, or a fault on an already populated chunk that keeps recurring
- * at the same address (more than MAX_RETRIES times). A chunk is charged
+ * charged, or (base-linux) a fault on an already populated chunk that
+ * keeps recurring at the same address (more than MAX_RETRIES times), or
+ * (base-hw) any reflected fault on a populated chunk. A chunk is charged
  * through a plain Pd_session_client on Env::pd_session_cap(), not through
  * Env::pd(): the latter is an Expanding_pd_session_client
  * (repos/base/src/include/base/internal/expanding_pd_session_client.h)
  * that answers OUT_OF_RAM and OUT_OF_CAPS with a blocking parent
  * resource_request. The plain client returns the Alloc_error, and the
  * shim also checks the PD's available RAM and caps against a margin
- * first, so a fault never blocks on the parent. A refusal prints one line
- * with Genode::raw, restores the default SIGSEGV action, and returns;
- * the retried access then faults again and Linux terminates the process.
+ * first, so a fault never blocks on the parent. On base-linux a refusal
+ * prints one line with Genode::raw, restores the default SIGSEGV action,
+ * and returns; the retried access then faults again and Linux terminates
+ * the process. On base-hw a refusal logs the same line through the LOG
+ * session (so init prefixes the component's label), leaves the faulting
+ * thread halted in core (it is never woken, so it never resumes), and
+ * ends the component through the parent with Parent::exit
+ * (REFUSED_FAULT_EXIT, 139 = 128 + SIGSEGV, as a POSIX shell reports a
+ * process killed by SIGSEGV; distinct from the runtime's own exit 1), so
+ * init records the exit and destroys the protection domain. Until init
+ * has done so, threads other than the faulting one may still run; with
+ * --threads 1 nothing else evaluates Bend terms. The refusal is taken on
+ * the "writ_fault" entrypoint, never on the faulting thread.
  *
  * Concurrency. The shim's state is guarded by one mutex, which the fault
- * handler also takes. A fault on a chunk that is populated and outside
- * every guard is the benign result of a race: another thread populated
+ * handler also takes (on base-hw the "writ_fault" entrypoint holds it
+ * across its RPCs to core). On base-linux, a fault on a chunk that is
+ * populated and outside every guard is the benign result of a race: another thread populated
  * the chunk first, or mprotect had its pieces detached while splitting it
  * around a guard. The handler then just returns and the access is
  * retried. The bound on such retries per address is what still kills a
@@ -102,16 +170,24 @@
  * addresses evict each other and can livelock, and a page that races
  * benignly more than 16 times over the reservation's life is refused.
  *
- * System calls do not populate. A system call that reads or writes an
+ * System calls do not populate (base-linux). A system call that reads or writes an
  * untouched chunk of a reservation (for example write(2) from, or read(2)
  * into, a buffer never touched by user code) gets EFAULT from Linux
  * instead of a SIGSEGV, so the chunk is not populated on that path.
  * Buffers handed to I/O must have been touched first. Not exercised.
+ * On base-hw a component's libc does its I/O through RPC and shared
+ * buffers in user space, so a buffer in a reservation is touched by the
+ * component's own threads and faults normally; not exercised either.
  * Only single-lane use has been run
- * (verification/genode-reservation-probe-base-linux.txt); a fault taken
+ * (verification/genode-reservation-probe-base-linux.txt and, for base-hw,
+ * verification/genode-bend-hello-base-hw.txt); a fault taken
  * while the faulting thread itself holds a Genode lock the handler needs
  * (this mutex, an RPC or region-map lock) would deadlock.
  */
+
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV) == defined(WRIT_SHIM_FAULT_REGION_MAP)
+#error "define exactly one of WRIT_SHIM_FAULT_LINUX_SIGSEGV (base-linux) and WRIT_SHIM_FAULT_REGION_MAP (base-hw); see hosts/genode/shim/writ_shim.mk"
+#endif
 
 /* Genode includes */
 #include <base/attached_ram_dataspace.h>
@@ -167,10 +243,17 @@ enum : size_t {
 	CAP_MARGIN       = 8,           /* caps kept free in the PD           */
 };
 
+#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+enum : int { REFUSED_FAULT_EXIT = 139 };  /* 128 + SIGSEGV, see the header */
+enum : size_t { FAULT_EP_STACK = 8*1024*sizeof(long) };
+#endif
+
 
 /*****************************************
  ** Linux ABI pieces (base-linux only)  **
  *****************************************/
+
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
 
 /*
  * Genode's libc headers are FreeBSD's, so the Linux values are spelled out
@@ -235,6 +318,8 @@ static long lx_rt_sigaction(unsigned long sig, Lx_sigaction const *act)
 	              : "rcx", "r11", "memory");
 	return ret;
 }
+
+#endif /* WRIT_SHIM_FAULT_LINUX_SIGSEGV */
 
 
 /************************
@@ -361,10 +446,12 @@ static Mutex &_mutex() { static Mutex m { }; return m; }
  * page that races legitimately more than MAX_RETRIES times in total is
  * refused and the component dies.
  */
+static unsigned long _benign_retries;   /* stays 0 on base-hw (header) */
+
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
 struct Retry { addr_t page; unsigned count; };
 static Retry    _retries[RETRY_SLOTS];
 static unsigned _retry_next;
-static unsigned long _benign_retries;
 
 static bool _retry_allowed(addr_t a)
 {
@@ -376,6 +463,7 @@ static bool _retry_allowed(addr_t a)
 	_retry_next = (_retry_next + 1) % RETRY_SLOTS;
 	return true;
 }
+#endif /* WRIT_SHIM_FAULT_LINUX_SIGSEGV */
 
 /*
  * Do [a, a+n) and [b, b+s) overlap? Written without a + n, so a length
@@ -386,12 +474,16 @@ static bool _overlaps(addr_t a, size_t n, addr_t b, size_t s)
 	return a >= b ? a - b < s : b - a < n;
 }
 
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
+/* the reservation holding a faulting address (base-hw's handler is given
+ * the region map, so it needs no lookup) */
 static Reservation *_lookup(addr_t a)
 {
 	for (Reservation &r : _res)
 		if (r.contains(a)) return &r;
 	return nullptr;
 }
+#endif
 
 
 /*****************************
@@ -470,6 +562,28 @@ static char const *_populate(Reservation &r, addr_t off)
  ** Fault front end  **
  **********************/
 
+/*
+ * The population decision both front ends share (caller holds _mutex).
+ * off is the faulting offset inside r. Returns the refusal reason, or
+ * nullptr when the fault is resolved: either the chunk at off was
+ * populated now (counted in _faults_resolved) or it was already populated
+ * (populated set, nothing done; each front end decides what that means,
+ * see "Retry table" in the header).
+ */
+static char const *_resolve_fault(Reservation &r, addr_t off, bool &populated)
+{
+	if (off >= r.size)  return "outside every reservation";
+	if (r.in_guard(off)) return "guard page";
+	if (r.chunks[off/CHUNK].populated) { populated = true; return nullptr; }
+	if (char const *why = _populate(r, off)) return why;
+	_faults_resolved++;
+	return nullptr;
+}
+
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
+
+/* Case 1 of "Fault delivery": the raw Linux SIGSEGV handler. */
+
 static void _refuse(char const *why, addr_t a)
 {
 	raw("writ_mem: unresolved fault at ", Hex(a), " (", why,
@@ -501,21 +615,19 @@ static void _segv_handler(int, Lx_siginfo *info, void *)
 	Mutex::Guard guard(_mutex());
 
 	Reservation *r = _lookup(a);
-	if (!r)               { _refuse("outside every reservation", a); return; }
-	addr_t const off = a - r->base;
-	if (r->in_guard(off)) { _refuse("guard page", a); return; }
+	if (!r) { _refuse("outside every reservation", a); return; }
 
-	if (r->chunks[off/CHUNK].populated) {
+	bool populated = false;
+	if (char const *why = _resolve_fault(*r, a - r->base, populated)) {
+		_refuse(why, a); return; }
+
+	if (populated) {
 		/* benign race (see header): retry, but not without bound */
 		if (!_retry_allowed(a)) {
 			_refuse("populated chunk, fault keeps recurring", a); return; }
 		_benign_retries++;
 		return;
 	}
-
-	if (char const *why = _populate(*r, off)) { _refuse(why, a); return; }
-
-	_faults_resolved++;
 	/* returning retries the access, which now hits the attached chunk */
 }
 
@@ -544,6 +656,86 @@ static void _install_fault_handler()
 	}
 	_fault_handler_installed = true;
 }
+
+/* The SIGSEGV handler covers every reservation; nothing to register. */
+static void _watch_faults(Capability<Region_map>) { }
+
+#elif defined(WRIT_SHIM_FAULT_REGION_MAP)
+
+/*
+ * Case 2 of "Fault delivery": the Region_map fault signal, handled on the
+ * dedicated "writ_fault" entrypoint. Started once from construct, before
+ * main, so it exists before the first qualifying mmap.
+ */
+
+/* Logs the refusal and ends the component through the parent; the
+ * faulting thread stays halted in core and is never resumed. */
+[[noreturn]] static void _refuse(char const *why, addr_t a)
+{
+	log("writ_mem: unresolved fault at ", Hex(a), " (", why,
+	    "), component terminates");
+	_env->parent().exit(REFUSED_FAULT_EXIT);
+	sleep_forever();
+}
+
+struct Rm_fault_handler
+{
+	Signal_handler<Rm_fault_handler> sigh;
+
+	/*
+	 * Drains every queued faulter of every live reservation: signals to
+	 * one context coalesce, and Region_map::fault reports only the first
+	 * faulter of a region map. Each resolved fault's attach wakes its
+	 * faulter and removes it from core's queue, so the next fault() call
+	 * reports the next one or Type::NONE. A faulter still queued at a
+	 * populated chunk is refused (header, "Retry table"), which also ends
+	 * the loop.
+	 */
+	void _handle()
+	{
+		Mutex::Guard guard(_mutex());
+		for (Reservation &r : _res) {
+			if (!r.used) continue;
+			Region_map_client rm(r.rm_cap);
+			for (;;) {
+				Region_map::Fault const f = rm.fault();
+				if (f.type == Region_map::Fault::Type::NONE) break;
+
+				addr_t const off = f.addr;   /* relative to the region map */
+				bool populated = false;
+				if (char const *why = _resolve_fault(r, off, populated))
+					_refuse(why, r.base + off);
+				if (populated)
+					_refuse("populated chunk, fault reflected", r.base + off);
+			}
+		}
+	}
+
+	Rm_fault_handler(Entrypoint &ep)
+	: sigh(ep, *this, &Rm_fault_handler::_handle) { }
+};
+
+static Kept<Entrypoint>       _fault_ep;
+static Kept<Rm_fault_handler> _rm_fault_handler;
+
+/* Called from construct, outside libc's context, as the channel's is. */
+static void _install_fault_handler()
+{
+	if (_fault_handler_installed) return;
+	_fault_ep.construct(*_env, size_t(FAULT_EP_STACK), "writ_fault",
+	                    Affinity::Location());
+	_rm_fault_handler.construct(*_fault_ep);
+	_fault_handler_installed = true;
+}
+
+/* Registers the handler on a new reservation's region map before its
+ * first touch can happen (the reservation is not yet returned). */
+static void _watch_faults(Capability<Region_map> rm_cap)
+{
+	Region_map_client(rm_cap).fault_handler(_rm_fault_handler->sigh);
+}
+
+#endif /* WRIT_SHIM_FAULT_REGION_MAP */
 
 
 /********************************
@@ -602,6 +794,7 @@ static void *_reserve(void *hint, size_t len)
 		_heap->free(chunks, num_chunks*sizeof(Chunk));
 		errno = ENOMEM; return MAP_FAILED;
 	}
+	_watch_faults(rm_cap);
 
 	/*
 	 * Linux treats the address as a hint: try it, then let the local
@@ -650,6 +843,7 @@ static void _release(Reservation &r)
 	_rm_connection->destroy(r.rm_cap);
 	_heap->free(r.chunks, r.num_chunks*sizeof(Chunk));
 
+#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
 	/*
 	 * Forget benign-retry counts for pages of this reservation, so a later
 	 * reservation at the same addresses does not inherit them.
@@ -657,6 +851,7 @@ static void _release(Reservation &r)
 	for (Retry &e : _retries)
 		if (e.count && _overlaps(e.page, PAGE, r.base, r.size))
 			e = { 0, 0 };
+#endif
 
 	r = { };
 	_released++;
@@ -1497,6 +1692,11 @@ void Libc::Component::construct(Libc::Env &env)
 		env.parent().exit(1);
 		return;
 	}
+
+#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+	/* the "writ_fault" entrypoint (header, "Fault delivery", case 2) */
+	_install_fault_handler();
+#endif
 
 	/* Writ channel service, only with a <writ_channel> config node */
 	_channel_init(env);

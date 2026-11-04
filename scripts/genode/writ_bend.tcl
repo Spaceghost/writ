@@ -8,7 +8,10 @@
 # Live copy: ../writ-genode/writ-repo/run/writ_bend.tcl (byte-identical).
 #
 # writ_bend_boot NAME RAM CAPS ?STDOUT? ?START? ?CONFIG? ?CHILDREN? ?BUILDS?
-#   Builds and boots one Bend component under init on base-linux. Authority:
+#   Builds and boots one Bend component under init, on base-linux or, from
+#   a KERNEL=hw BOARD=pc build directory, on base-hw under QEMU (the run
+#   tool's boot_dir/hw and power_on/qemu; the boot configuration is the
+#   same; Genode base-hw lane, Task 1). Authority:
 #   init routes the parent's LOG, PD, CPU, ROM, and RM services and a Timer
 #   session from the sibling timer. The component's VFS holds /dev/log and a
 #   component-local vfs_pipe file system at /pipe for libc's pipe() (the
@@ -30,7 +33,10 @@
 #   procedure installed before the parameters existed.
 #
 # writ_bend_require_exit0 NAME
-#   Fails unless init reported exit value 0 for NAME.
+#   Fails unless init reported exit value 0 for NAME. The line may end in
+#   any number of carriage returns: base-linux's log ends it in "\r\n",
+#   the QEMU serial log of base-hw in "\r\r\n" (Genode base-hw lane,
+#   Task 1, verification/genode-bend-hello-base-hw.txt).
 #
 # writ_bend_require_shim_lines NAME
 #   Fails unless the shim's start line and its exit report are present.
@@ -96,7 +102,7 @@ config
 
 proc writ_bend_require_exit0 { name } {
 	global output
-	if {![regexp "child \"$name\" exited with exit value 0\r?\n" $output]} {
+	if {![regexp "child \"$name\" exited with exit value 0\r*\n" $output]} {
 		puts stderr "Error: $name did not exit with value 0"
 		exit 1
 	}

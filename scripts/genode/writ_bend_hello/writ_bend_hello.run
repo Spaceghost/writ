@@ -2,7 +2,9 @@
 # writ_bend_hello.run - Genode run script (build configuration), not Writ
 # implementation. Starts the writ_bend_hello component, the unmodified C
 # that Bend 2.0.39 emits for scripts/genode/Hello.bend linked against
-# Genode's libc, under init on base-linux (BOARD=linux KERNEL=linux). It
+# Genode's libc, under init on base-linux (BOARD=linux KERNEL=linux), or,
+# from the base-hw build directory (KERNEL=hw BOARD=pc; Genode base-hw lane,
+# Task 1), on base-hw under QEMU with the same configuration. It
 # waits up to 240 seconds for init to report the child's exit with any value
 # (so a runtime error message is captured instead of a bare timeout), then
 # fails unless that exit value is 0, unless the shim's start line and its

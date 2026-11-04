@@ -24,6 +24,12 @@ SRC_CC = writ_mem.cc
 LIBS   = base libc
 vpath writ_mem.cc $(REP_DIR)/src/writ_shim
 
+# Genode base-hw lane, Task 1: the shim's fault front end follows the build
+# directory's KERNEL (base-linux: the SIGSEGV handler; base-hw: the
+# Region_map fault handler); see hosts/genode/shim/writ_shim.mk (live:
+# $(REP_DIR)/src/writ_shim/writ_shim.mk) and the shim's "Fault delivery".
+include $(REP_DIR)/src/writ_shim/writ_shim.mk
+
 # The errors below were met building the hello; line numbers refer to its
 # hello.c. The same settings apply to every generated unit.
 CC_CXX_WARN_STRICT =

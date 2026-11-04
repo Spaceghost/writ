@@ -1,0 +1,342 @@
+Bend generated C as a Genode component on base-hw under QEMU (Genode base-hw lane, Task 1)
+Recorded: 2026-11-04, 10:01 to (see BASE-LINUX RERUNS) -06:00
+
+Everything here is base-hw evidence: Genode's own kernel (core-hw-pc,
+bootstrap/hw) booted from an ISO image in QEMU 11.1.2 with TCG software CPU
+emulation (-accel tcg, no KVM). It is an emulated boot, not native hardware,
+and no device was used (--gpu off, CPU only). It is recorded separately from
+the base-linux evidence (GB-009); base-linux reruns with the changed shim are
+at the end.
+
+RESULT
+  The unmodified Bend 2.0.39 output for scripts/genode/Hello.bend, linked
+  with the shim hosts/genode/shim/writ_mem.cc built with its base-hw fault
+  front end, prints "hi" under init on base-hw and exits with value 0 at
+  ram 256M (caps 1000). The 8 GiB term heap and the 2 GiB evaluation stack
+  are lazily populated reservations: three 2 MiB chunks were populated, each
+  through the Region_map fault handler on the shim's "writ_fault" entrypoint
+  (the base-hw binary contains no SIGSEGV front end; "faults resolved=3" is
+  counted only by that path). The run script's checks (exit value 0, shim
+  start line and exit report, the only other component line is "hi") pass.
+  Report line:
+    writ_mem: [exit] ram used=8429568 limit=268153436 caps used=41 limit=953
+      reservations=2 guards=1 chunks populated (total)=3 faults resolved=3
+      benign retries=0 reserved at hint=1 elsewhere=9 released=8
+      timer short wakes=0
+  Not shown by the hello (it never touches a guard): the refusal path. The
+  reservation guard probe was also run on base-hw (GUARD PROBE below): the
+  shim's refusal line and init's "exited with exit value 139" are logged.
+  The Bend program's own guard hit (Overflow) is Task 2.
+
+INPUTS
+  hello.c       ../writ-genode/hello/hello.c, not re-emitted, sha256
+                260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
+                (as in genode-bend-hello-base-linux.txt). Never edited.
+  Genode        26.08, d18ee9e917200b059549e21f2dd9a55bfe61a0eb (genode-pins.txt)
+  Tool chain    the pinned 25.05 (genode-x86-g++ 14.2.0) for everything except
+                hello.c (clang-23, writ_bend.inc E1), as on base-linux
+  QEMU          qemu-system-x86_64 11.1.2 (/usr/bin, Manjaro package; the
+                version genode-pins.txt records), TCG
+  grub2 port    tool/ports/prepare_port grub2 (P2 below)
+
+HASHES (committed sources; live copies under ../writ-genode/writ-repo
+byte-identical, cmp)
+  hosts/genode/shim/writ_mem.cc                 0590e6dc7be2788ad6d458eaa95f59068fdf56fed69932687add8bc1066d3de9
+    (master 09cd9bc: d97a98de71818168751ab648b00a64bcefddac80b36b21b27c8786e95f1922e3;
+     hw runs 2-4, the hw guard probe, and the base-linux short reruns used
+     742e4753055700b9325f024b40576f088f55028cd630239924d5f6cf69c573bc; the
+     final version differs from it only in two line-number citations in
+     comments, implementation tokens identical:
+       gcc -fpreprocessed -dD -E -P -x c++ <file> | tr -s ' \t\n' ' ' | sha256sum
+       -> eb1332cfb1b729d2e3b305989e057480192ebd6adb0a07bb9461af999d1e1345 for both)
+  hosts/genode/shim/writ_shim.mk (new)          2c88c926bfc100d3f665dada7a0e5eef987f5a04f00e7eb37f897fdfdf015cc6
+  hosts/genode/probes/reservation/target.mk     794d9a84d740ba8f6a5ac73496dfc42f14e893779d817e70f34762875868dfea
+  scripts/genode/writ_bend.inc                  20a11d37917ea7e6cde82b955198c5f81c05deda66fd4b13b6ddb79ffdc0e7a2
+  scripts/genode/writ_bend.tcl                  2effb65562c47237b242c297ca6f09efacc0d16b96563bd109f3dce5a1b56907
+  scripts/genode/writ_bend_hello/writ_bend_hello.run  8e1eaa8c4af01ef1a6e60e649388a621f1c2bf451a894e344a4922542b67ac6d
+  scripts/genode/writ_bend_hello/target.mk (unchanged) 2bdeee659cc1c04ab544d876db3c71dcff55691215d630c37b092c752ed6b4eb
+  Binaries (not committed):
+    build/x86_64-hw/app/writ_bend_hello/writ_bend_hello
+      87fd2dfa0d489f4fef5e74829505b35c5786a66af28693b87c2dc4118a74a151 (runs 2-4)
+    build/x86_64-hw/app/writ_probe_reservation/writ_probe_reservation
+      f48adf1c3026914289af50be7b42379fa45f2c3cf81f633718e470c3e0fa250a
+    build/x86_64/app/writ_bend_hello/writ_bend_hello (base-linux, changed shim)
+      c91ec3d59b67e76f7266cbede55fc4855b93767cd872494dc872d8a5205ac339
+  The ISO image differs per run (it is rebuilt each time); not recorded.
+
+PREPARATION (outside the repository)
+  P1  Build directory, beside the base-linux one (which is unchanged):
+        cd ../writ-genode
+        MAKEFLAGS= make -j1 -f genode/tool/create_builddir x86_64 \
+          BUILD_DIR=$PWD/build/x86_64-hw
+      tool/create_builddir x86_64 selects the x86_64 templates
+      (tool/builddir/build.conf/run_x86_64: "BOARD ?= pc", KERNEL commented
+      "#KERNEL ?= nova", "kernel to use (nova, hw, sel4, linux, or foc)");
+      tool/builddir/build.mk:74-75 exports BOARD and KERNEL to every target
+      build and the run tool. The KERNEL=hw BOARD=pc form is the one the
+      release notes use for base-hw (doc/release_notes/23-08.txt:691,
+      "make run/sculpt_image KERNEL=hw BOARD=mnt_reform2"); 26.08's base-hw
+      section is doc/release_notes/26-08.txt:378 ("Execution on bare
+      hardware (base-hw)"). Spaceghost's contrib/native-hosts/genode/
+      build-and-run.sh:104-120 (read for conventions only, not used) makes
+      the same choice: create_builddir x86_64, then KERNEL := hw, BOARD :=
+      pc, and runs with --include boot_dir/hw --include power_on/qemu
+      --include log/qemu --include image/iso, with -accel tcg
+      (run/writ_common.inc).
+      E0 below: the first create_builddir attempt failed.
+      etc/build.conf: the base-linux build.conf (P1 of
+      genode-bend-hello-base-linux.txt, repositories libports, gems, and
+      writ-repo, the local-expect run/% rule and WRIT_RUN_SCENARIOS) with
+      exactly these differences (diff build/x86_64/etc/build.conf
+      build/x86_64-hw/etc/build.conf):
+        23,24c23,24
+        < BOARD ?= linux
+        < KERNEL ?= linux
+        ---
+        > BOARD ?= pc
+        > KERNEL ?= hw
+        44,45c44,46
+        < # use time-tested graphics backend
+        < QEMU_OPT += -display sdl
+        ---
+        > # Writ base-hw lane (authored): no display, software CPU emulation only
+        > # (TCG, never KVM), and no reboot loop after a triple fault.
+        > QEMU_OPT += -display none -accel tcg -no-reboot
+      etc/tools.conf copied from build/x86_64 (CROSS_DEV_PREFIX of the pinned
+      25.05 tool chain). etc/specs.conf: "SPECS += x86_64" (template).
+      The build.conf template's BOARD_RUN_OPT(pc) = --include power_on/qemu
+      --include log/qemu --include image/iso, plus --include boot_dir/hw
+      from KERNEL, are kept as the template has them.
+  P2  grub2 port (image/iso's bootloader, tool/run/image/iso, get_grub2_dir):
+        cd ../writ-genode/genode && MAKEFLAGS= ./tool/ports/prepare_port grub2
+      rc 0; contrib/grub2-eb7172dee270fbd9f1bc862d46725fd1fb21d1ea
+      (repos/base/ports/grub2.port: https://github.com/alex-ab/g2fg.git
+      rev 1bc67dc9593e40e74fb7f54bcdb999a520eaeace). xorriso 1.5.8 from the
+      host (/usr/bin/xorriso). Done before the first run because image/iso
+      needs it; no error was met.
+  No vfs, vfs_pipe, or libc configuration change was needed on base-hw: the
+  boot configuration is byte-for-byte the base-linux one (writ_bend_boot in
+  writ_bend.tcl; var/run/writ_bend_hello.config shows the same <vfs> with
+  /dev/log and /pipe, libc pipe="/pipe", the same <arg> and <env> nodes).
+
+COMMANDS
+  Build:  cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make core init timer \
+            lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_hello
+          (first full build 1m27s; MAKEFLAGS cleared because the session's
+          environment carries MAKEFLAGS=-j32, see E0)
+  Run:    cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_bend_hello
+          (KERNEL=hw BOARD=pc come from etc/build.conf; the same form with
+          "make run/writ_bend_hello KERNEL=hw BOARD=pc" on the command line is
+          equivalent, since build.conf uses ?=). About 11 s per run including
+          the incremental build, ISO creation, and the TCG boot.
+  The run tool used: boot_dir/hw ("using 'hw_timer' as 'timer'", "using
+  'ld-hw.lib.so' as 'ld.lib.so'", "core link address is
+  0xffffffc000000000"), image/iso, and spawned:
+    qemu-system-x86_64 -display none -accel tcg -no-reboot -serial mon:stdio
+      -m 800 -cdrom var/run/writ_bend_hello.iso -machine q35
+      -cpu Skylake-Client -net nic,model=e1000,netdev=net0
+      -netdev user,id=net0
+  (-serial mon:stdio and -m 800 from tool/run/power_on/qemu:67-108; -machine,
+  -cpu, and the e1000 nic from repos/base/board/pc/qemu_args). QEMU warns
+  that TCG lacks pcid, tsc-deadline, hle, invpcid, rtm, and xsavec of the
+  Skylake-Client model; the boot is unaffected. 782 MiB RAM and 64536 caps
+  are assigned to init; the component's quota is the run script's 256M.
+
+ERRORS AND FIXES (in order)
+  E0  create_builddir failed (host environment, not Genode):
+        ln: failed to create symbolic link '.../build/x86_64-hw/Makefile': No such file or directory
+        make: *** [genode/tool/create_builddir:111: .../x86_64-hw/Makefile] Error 1
+      Cause: the session's environment has MAKEFLAGS=-j32, so
+      create_builddir's rules ran in parallel and the Makefile link raced
+      the directory creation. Fix: removed the partial directory (only
+      etc/ had been created) and reran with MAKEFLAGS= make -j1 -f
+      genode/tool/create_builddir ... (P1). Every later make in this lane
+      clears MAKEFLAGS.
+
+  E1  (none at build) The unchanged shim compiled and linked for base-hw at
+      the first attempt (rc 0, build-hw-hello-1.out): its raw Linux system
+      calls are inline assembly, which any x86_64 compiler accepts.
+
+  E2  Run 1 (unchanged shim, master's writ_mem.cc d97a98de..., 10:06):
+        [init -> writ_bend_hello] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x101a000
+        Warning: unresolvable exception: pd='init -> writ_bend_hello', thread='ep', ip=0x1019af3
+      and nothing further (stopped by hand). addr2line on that binary:
+      ip 0x1019af3 is _reserve, writ_mem.cc:231, the inline "syscall" of
+      lx_rt_sigaction: the first qualifying mmap installed the base-linux
+      SIGSEGV front end with a raw Linux rt_sigaction, which on base-hw is
+      not a system call; base-hw's pager reports it as an unresolvable
+      exception (repos/base-hw/src/core/pager.cc:131-140) and the thread
+      stays halted. This is the platform-specific part the task ports.
+      Fix: the shim's fault front end is selected at build time (SHIM
+      CHANGE below); the base-hw build compiles the Region_map front end
+      and none of the Linux ABI pieces.
+
+  E3  First build with the split (build-hw-hello-2.out), warning only:
+        writ_mem.cc:477:21: warning: 'Reservation* _lookup(Genode::addr_t)' defined but not used [-Wunused-function]
+      _lookup serves only the SIGSEGV handler (the base-hw handler is given
+      the region map). Fix: compiled for base-linux only. Rebuild
+      (build-hw-hello-3.out): no shim warning.
+
+  E4  Run 2 (10:11): "hi", the exit report, and
+        [init] child "writ_bend_hello" exited with exit value 0
+      but the run script failed:
+        Error: writ_bend_hello did not exit with value 0
+      Cause: on the QEMU serial log each line ends in "\r\r\n" (od -c of the
+      exit line: "... v a l u e   0 \r \r \n"), while writ_bend_require_exit0
+      in writ_bend.tcl matched "exit value 0\r?\n". Fix: the pattern is now
+      "exit value 0\r*\n" (still matches base-linux's "\r\n"; comment in
+      writ_bend.tcl). Run 3 (10:13) and run 4 (final, committed sources):
+      "Run script execution successful.", rc 0.
+
+SHIM CHANGE (hosts/genode/shim/writ_mem.cc; one C++ unit, GB-006)
+  Selection: build time. hosts/genode/shim/writ_shim.mk (new build file,
+  included by writ_bend.inc and by the reservation probe's target.mk) adds
+  -DWRIT_SHIM_FAULT_LINUX_SIGSEGV for KERNEL=linux and
+  -DWRIT_SHIM_FAULT_REGION_MAP for KERNEL=hw to CC_CXX_OPT (C++ only; the
+  generated C's compile line is unchanged), and stops the build for any other
+  kernel; writ_mem.cc has an #error unless exactly one is defined. Recorded
+  per build dir: build/x86_64 (KERNEL ?= linux) -> WRIT_SHIM_FAULT_LINUX_SIGSEGV;
+  build/x86_64-hw (KERNEL ?= hw) -> WRIT_SHIM_FAULT_REGION_MAP. Why not a
+  config attribute: E2 shows the wrong front end is a fatal exception, so a
+  binary must not carry it, and the integrator must not choose it.
+  Shared: _resolve_fault (guard check, populated check, _populate with its
+  RAM/cap margins, the faults-resolved counter), used by both front ends.
+  base-hw front end (case 2 of the header's "Fault delivery"):
+    - "writ_fault" Genode::Entrypoint (stack 64 KiB), started in
+      Libc::Component::construct before main (outside libc's context, as the
+      channel's entrypoint), with one Signal_handler (Rm_fault_handler).
+      Added rather than reusing "writ_channel": that entrypoint exists only
+      with a <writ_channel> node, and a fault must not queue behind session
+      requests or client signals. Its thread touches only the chunk tables.
+    - _reserve registers that handler on each new reservation's region map
+      (Region_map_client::fault_handler, repos/base/include/region_map/
+      region_map.h:79-87, client.h:46) before returning the reservation.
+    - The handler takes the shim mutex and, for every live reservation,
+      calls Region_map_client::fault() (client.h:47; Fault/Type,
+      region_map.h:38-44; the address is relative to the region map) until
+      Type::NONE, resolving each fault through _resolve_fault. The
+      populating attach wakes the faulter (repos/base/src/core/
+      region_map_component.cc:272-278, Rm_faulter::
+      continue_after_resolved_fault -> Pager_object::wake_up,
+      repos/base-hw/src/core/pager.cc:68-72). Signals coalesce, hence the
+      drain. Core's side: a fault with no region in the reservation's
+      region map is reflected to the registered handler
+      (region_map_component.h:427-440) and the faulter is halted
+      (region_map_component.cc:63-113, pager.cc:145-148).
+    - Refusal: log "writ_mem: unresolved fault at <addr> (<why>), component
+      terminates" through the LOG session, leave the faulter halted (never
+      resumed), Parent::exit(139). Without a registered handler core would
+      instead log "illegal <fault> by pager_object: ..." and halt the thread
+      (region_map_component.cc:102-104), with no exit and so no record by
+      init; the shim always registers one.
+    - Retry table: not used on base-hw (header, "Retry table"): core
+      resolves touches of attached ranges itself, so a reflected fault on a
+      populated chunk is refused. "benign retries" stays 0.
+  base-linux front end: unchanged in behaviour; its decision now goes
+  through _resolve_fault (same order: outside, guard, populated -> retry
+  table, populate). The Linux ABI pieces, the retry table, and _lookup are
+  compiled only with WRIT_SHIM_FAULT_LINUX_SIGSEGV. Implementation tokens
+  of the base-linux path therefore changed (a refactor, not comments only),
+  which is why the base-linux runs were repeated (BASE-LINUX RERUNS).
+  Console, time, and channel sections: unchanged.
+
+RUNS ON BASE-HW (ram 256M, caps 1000; logs ../writ-genode/run-hw-hello-{1..4}.out)
+  Run 1  unchanged shim: E2.
+  Run 2  split shim: hi, exit 0; script failed on the line end (E4).
+  Run 3  after the writ_bend.tcl fix: script successful.
+  Run 4  final committed sources (hello.run header comment updated after
+         run 3), 11 s, rc 0:
+    spawn qemu-system-x86_64 -display none -accel tcg -no-reboot -serial mon:stdio -m 800 -cdrom var/run/writ_bend_hello.iso -machine q35 -cpu Skylake-Client -net nic,model=e1000,netdev=net0 -netdev user,id=net0
+    Bender Version 0.9-beta7-51-g28ba2ad-dirty
+    Patching BDA with I/O port 0x3f8.
+    Bender: Hello World.
+    hwp config: eeo=na irq=na hwp=na epp=na epb=na
+    Cpu apic_id=0x0 [0:0:0:0:0:0]
+    kernel initialized
+    Genode 26.08
+    782 MiB RAM and 64536 caps assigned to init
+    [init -> writ_bend_hello] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x101a200
+    [init -> writ_bend_hello] hi
+    [init -> writ_bend_hello] writ_mem: [exit] ram used=8429568 limit=268153436 caps used=41 limit=953 reservations=2 guards=1 chunks populated (total)=3 faults resolved=3 benign retries=0 reserved at hint=1 elsewhere=9 released=8 timer short wakes=0
+    [init] child "writ_bend_hello" exited with exit value 0
+
+    Run script execution successful.
+
+  Reading the report, compared with base-linux (run with the same shim,
+  BASE-LINUX RERUNS: ram used=8335360 limit=268313180 caps used=35
+  limit=963 ... reserved at hint=1 elsewhere=1 released=0):
+    - Memory: 8429568 bytes used of 268153436 (about 8.0 MiB of 256 MiB),
+      94208 more than base-linux; 3 chunks (6 MiB) on both. The PD limit is
+      159744 lower (core and the kernel take their share differently).
+    - Caps: 41 used of 953, 6 more than base-linux (35 of 963). The
+      "writ_fault" entrypoint's thread and signal handler, and the RM
+      session living in core instead of locally, are candidates; the split
+      was not measured.
+    - Hints: corpus_map (hello.c:2213-2219) tries hints 1<<45 down while
+      hint > size and keeps the first mapping placed at its hint. base-hw's
+      user address space ends at 1<<38 (repos/base-hw/src/lib/hw/spec/
+      64bit/memory_map.cc:26, USER_END = 1ULL << (39 - 1)), so the hints
+      1<<45 ... 1<<38 (eight) cannot be honoured: the shim reserved
+      elsewhere and the runtime unmapped each misplaced mapping
+      (released=8); 1<<37 was honoured (reserved at hint=1). elsewhere=9 is
+      those eight plus the evaluation stack (hint NULL). On base-linux the
+      first hint is honoured. Each failed probe costs a region-map create
+      and destroy in core; no quota trouble was seen.
+    - guards=1: the evaluation-stack guard (mprotect PROT_NONE at
+      p + 2 GiB), accepted as on base-linux.
+
+GUARD PROBE ON BASE-HW (refusal path; ../writ-genode/run-hw-reservation-guard-1.out)
+  Command: cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_probe_reservation_guard
+  (hosts/genode/probes/reservation/, mode guard-touch, caps 300, ram 256M;
+  same QEMU command with writ_probe_reservation_guard.iso). Log:
+    [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x200000000
+    [init -> writ_probe_reservation] writ_mem: [after touches] ram used=12328960 limit=268159580 caps used=39 limit=256 reservations=1 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0 reserved at hint=0 elsewhere=1 released=0 timer short wakes=0
+    [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+    [init -> writ_probe_reservation] probe_reservation: mprotect(+0x17fffe000, 16384, PROT_NONE) = 0 (straddles the 6 GiB chunk boundary)
+    [init -> writ_probe_reservation] probe_reservation: bytes around both guards kept after the splits
+    [init -> writ_probe_reservation] probe_reservation: writing inside the guard window at 0x300102000
+    [init -> writ_probe_reservation] writ_mem: unresolved fault at 0x300102000 (guard page), component terminates
+    [init] child "writ_probe_reservation" exited with exit value 139
+  So on base-hw: five faults resolved through the region-map handler
+  (including both sides of both guard windows and the last page), two
+  guards split populated chunks with the bytes around them kept, and the
+  touch inside a guard was refused, the faulting thread was not resumed
+  ("probe_reservation: resumed" absent), and the parent (init) recorded the
+  exit with value 139. The run script's outcome block printed "guard refusal
+  line: 1, resumed line: 0, FAIL line: 0, init exit line: 1 (value 139)"
+  and "Run script execution successful."; its "process alive" and "ps
+  control" checks read the host's process list, which on base-hw (QEMU)
+  says nothing about the component, so only the log lines above are
+  evidence. This is the probe, not a Bend program: GB-003's Bend case
+  (Overflow) is Task 2.
+
+BASE-LINUX RERUNS WITH THE CHANGED SHIM (build/x86_64, KERNEL=linux)
+  Build: cd ../writ-genode/build/x86_64 && MAKEFLAGS= make app/writ_bend_hello app/writ_probe_reservation
+    rc 0, no shim warning (build-linux-hello-basehw-t1.out).
+  Runs (logs ../writ-genode/run-<name>-basehw-t1-linux.out), all rc 0,
+  "Run script execution successful.":
+    writ_bend_hello:  hi; exit value 0;
+      writ_mem: [exit] ram used=8335360 limit=268313180 caps used=35 limit=963 reservations=2 guards=1 chunks populated (total)=3 faults resolved=3 benign retries=0 reserved at hint=1 elsewhere=1 released=0 timer short wakes=0
+      (ram used identical to the channel lane's figure, 8335360)
+    writ_bend_rts:    usage text and exit 0 for --help; "bend: unknown
+      runtime option --bogus" and exit 1 for --bogus
+    writ_probe_reservation_live: as before (8 GiB at 0x7ffdf7e00000, 5
+      chunks, two guards, the bound checks, released=1, exit value 0)
+    writ_probe_reservation_guard: "Kernel: writ_mem: unresolved fault at
+      0x7ffef7f02000 (guard page), component terminates" (the raw line, via
+      the Linux kernel log path as before), no resumption
+    writ_bend_probe:  PASS line, delta_ms=102 for sleep_ms=100, exit 0
+  Corpus (writ_bend_tests, 782 checks): see CORPUS ON BASE-LINUX below.
+
+LIMITS
+  - QEMU TCG emulated boot; not native hardware; --gpu off, CPU only.
+  - Single lane (--threads 1). Concurrent faulters, coalesced signals with
+    several queued faulters, and a fault while mprotect re-pieces a chunk
+    were not exercised on base-hw.
+  - On base-hw a refused fault ends the component with Parent::exit(139)
+    from the "writ_fault" entrypoint; until init has destroyed the PD,
+    threads other than the faulter may run (not observable with one lane).
+  - On base-hw the RM session is core's: each chunk piece is core metadata
+    charged to the Rm_connection's quota, which attach does not upgrade. The
+    hello needed 3 chunks, the probe 5; the corpus's need is Task 2's.
+  - The hello's guard is never touched; the Bend-level fault row is Task 2.

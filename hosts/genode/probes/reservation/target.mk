@@ -16,3 +16,7 @@ SRC_CC = writ_mem.cc
 LIBS   = base libc
 
 vpath writ_mem.cc $(REP_DIR)/src/writ_shim
+
+# Genode base-hw lane, Task 1: the shim's fault front end follows KERNEL
+# (hosts/genode/shim/writ_shim.mk, live beside writ_mem.cc).
+include $(REP_DIR)/src/writ_shim/writ_shim.mk

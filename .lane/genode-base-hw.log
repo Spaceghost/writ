@@ -1,0 +1,12 @@
+2026-11-04T15:59:11Z	controller	lane created from master 09cd9bc; Task 1 brief written
+2026-11-04T16:00:38Z	controller	Task 1 implementer dispatched
+2026-11-04T16:01:14Z	implementer	Task 1 started: read brief, shim, INVENTORY, scripts, base-linux evidence
+2026-11-04T16:04:12Z	implementer	base-hw build dir ../writ-genode/build/x86_64-hw created (KERNEL=hw BOARD=pc); grub2 port prepared
+2026-11-04T16:09:04Z	implementer	baseline hw run 1 (unchanged shim): 'unresolvable exception ... thread=ep ip=0x1019af3' at the raw rt_sigaction syscall, as expected
+2026-11-04T16:11:57Z	implementer	shim: Region_map fault front end on 'writ_fault' entrypoint behind WRIT_SHIM_FAULT_REGION_MAP (writ_shim.mk by KERNEL); hw build rc 0
+2026-11-04T16:12:34Z	implementer	hw run 2: hi and exit value 0 under QEMU; run script check failed on \r\r\n line end; writ_bend.tcl now accepts \r*\n
+2026-11-04T16:13:07Z	implementer	hw run 3: hi, exit value 0, run script successful; report ram used=8429568 caps used=41 faults resolved=3 (Region_map handler)
+2026-11-04T16:13:24Z	controller	activity log moved to .lane/genode-base-hw.log (committed per lane from now on)
+2026-11-04T16:14:15Z	implementer	INVENTORY: Fault delivery section with the two cases; base-linux reruns (hello, rts, reservation live) rc 0 so far
+2026-11-04T16:15:33Z	implementer	base-linux reruns pass: hello (ram 8335360, caps 35), rts, reservation live, guard, writ_bend_probe; hw guard probe: shim refusal line and init 'exited with exit value 139'; base-linux corpus build+run started
+2026-11-04T16:18:32Z	implementer	acceptance: hi + exit 0 on base-hw; evidence verification/genode-bend-hello-base-hw.txt written; committing (base-linux corpus still compiling)
