@@ -1,0 +1,75 @@
+Runtime profile lane parity (RH-005)
+Bend version: bend 2.0.39 (from `bend version`)
+Compiler: clang version 23.1.1 (`bend -o` builds at -O2)
+Host: Linux 7.2.9-1-MANJARO x86_64, glibc 2.44, 32 online CPUs
+Date: 2026-11-03 (CST)
+Environment: BEND_NO_TELEMETRY=1; commands run from the repository root
+Execution: CPU only. Every run passes --gpu off; no device code executed and nothing here is GPU evidence.
+Lanes compared: --threads 1 and --threads 4 on the same host and the same binaries
+
+## Build
+$ bend Tests.bend -o ../writ-build/runtime-profile/tests-native
+[exit status: 0]
+binary sha256: a98cf24e5398128ea17cc09b7113ad1b98d874c7854f259bab7265c1f6644e79
+
+## Library corpus
+$ ../writ-build/runtime-profile/tests-native +RTS --threads 1 --gpu off > verification/runtime-profile-parity-1.txt
+[exit status: 0; stderr empty]
+$ ../writ-build/runtime-profile/tests-native +RTS --threads 4 --gpu off > verification/runtime-profile-parity-4.txt
+[exit status: 0; stderr empty]
+
+PASS lines counted with: grep -cE '^PASS[: ]' FILE (matches both "PASS:" and "PASS ")
+  verification/runtime-profile-parity-1.txt: 638
+  verification/runtime-profile-parity-4.txt: 638
+
+$ diff verification/runtime-profile-parity-1.txt verification/runtime-profile-parity-4.txt
+[exit status: 0; no output, the captures are identical]
+
+Comparison with the existing four-thread record:
+$ diff verification/tests-native.txt verification/runtime-profile-parity-4.txt
+[exit status: 0; no output]
+$ diff verification/tests-native.txt verification/runtime-profile-parity-1.txt
+[exit status: 0; no output]
+
+Final line of each capture:
+  verification/runtime-profile-parity-1.txt: ALL LIBRARY TESTS PASSED
+  verification/runtime-profile-parity-4.txt: ALL LIBRARY TESTS PASSED
+
+## Examples (task 2.1 also names the four examples)
+$ bend examples/Flow.bend -o ../writ-build/runtime-profile/examples/Flow
+[exit status: 0]
+binary sha256 (Flow): aab9116bda360de6957ad1b03a0c4443e1784896ac38023c5ea370243428727f
+$ bend examples/Transfer.bend -o ../writ-build/runtime-profile/examples/Transfer
+[exit status: 0]
+binary sha256 (Transfer): d5c50761326063212892d1c31da46ce219383b42b6e3f531bad2d3b35cff2030
+$ bend examples/Commit.bend -o ../writ-build/runtime-profile/examples/Commit
+[exit status: 0]
+binary sha256 (Commit): 2a5b8a384b97ab4d07e9e715c431685e6ee105101ca4bcb586c05ad1b4d9bdb5
+$ bend examples/Parallel.bend -o ../writ-build/runtime-profile/examples/Parallel
+[exit status: 0]
+binary sha256 (Parallel): d8ca3bb026c834ba41d47cb3341133e37d9b4556e9f634664bb1e7c7be980ca5
+Each binary run once per lane count, in order Flow, Transfer, Commit, Parallel, stdout and stderr appended
+with its exit status:
+  ../writ-build/runtime-profile/examples/<Name> +RTS --threads 1 --gpu off >> verification/runtime-profile-parity-examples-1.txt 2>&1
+  ../writ-build/runtime-profile/examples/<Name> +RTS --threads 4 --gpu off >> verification/runtime-profile-parity-examples-4.txt 2>&1
+
+PASS lines (same pattern):
+  verification/runtime-profile-parity-examples-1.txt: 29
+  verification/runtime-profile-parity-examples-4.txt: 29
+Exit statuses: 4 of 4 zero at one lane; 4 of 4 zero at four lanes
+Parallel prints its own line "Native GPU dispatch requested; CPU fallback is allowed. No device
+attestation."; with --gpu off these runs are CPU execution.
+
+$ diff verification/runtime-profile-parity-examples-1.txt verification/runtime-profile-parity-examples-4.txt
+[exit status: 0; no output]
+
+Comparison with verification/examples-native.txt (its three header lines and its Total line
+dropped; exit-status lines dropped from the new capture):
+$ diff <(sed -n '4,$p' verification/examples-native.txt | grep -v '^Total') <(grep -v 'exit status' verification/runtime-profile-parity-examples-4.txt)
+[exit status: 0; no output]
+
+## Result
+The corpus gives 638 PASS lines and ALL LIBRARY TESTS PASSED at one and four lanes, byte-identical
+to each other and to verification/tests-native.txt. The four examples give 29 PASS lines and
+exit 0 at both lane counts, identical to each other and to verification/examples-native.txt.
+This is CPU execution on one Linux host; it qualifies no other host.
