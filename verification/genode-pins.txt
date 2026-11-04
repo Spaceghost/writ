@@ -71,3 +71,10 @@ Build directory
                      plus an authored run/% override for the listed scenarios that runs
                      tool/run/run through the local expect (upstream hardcodes
                      #!/usr/bin/expect). Copy: scripts/genode/writ_hello/build.conf.fragment
+
+Task 3 additions (runtime rows)
+  Repositories:      repos/gems enabled in etc/build.conf for lib/vfs_pipe
+                     (libc's pipe() needs a mounted pipe file system); same
+                     Genode commit, no new download.
+  Probe compiler:    the plain-C probes under scripts/genode/probes/ use the
+                     Genode tool chain (genode-x86-gcc 14.2.0), not clang.
