@@ -1,0 +1,162 @@
+Unikernel port lane, Task 3: the corpus and the four examples as single-lane Unikraft images
+Recorded 2026-11-03/04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type the
+qemu-system-x86_64 default (pc), -cpu max, -no-reboot, the exit device
+-device isa-debug-exit,iobase=0xf4,iosize=0x04 (Task 1 hook: QEMU 1 = status 0),
+-append "+RTS --threads 1 --gpu off". CPU only: no accelerator device, no '!' device
+dispatch; the GPU example prints its CPU-fallback line, which is not GPU evidence.
+Unikraft 0.21.0 (7351f8b), kraft 0.12.16, lib-musl, gcc 16.2.1 with -std=gnu11 (Linux
+reference: clang 23.1.1, bend's default dialect; UL-005 note in docs/UNIKERNELS.md).
+W is the build workspace, realpath of ../writ-unikernel from the repository root
+(here /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel). Nothing built is in the tree.
+
+== Result ==
+
+| Program            | Image          | -m (first tried, works) | QEMU exit | PASS lines | console diff vs Linux |
+| ------------------ | -------------- | ----------------------- | --------- | ---------- | --------------------- |
+| Tests.bend         | tests-qemu     | 4096                    | 1         | 764        | empty                 |
+| Example.bend       | example-qemu   | 4096                    | 1         | 16         | empty                 |
+| examples/Flow.bend | flow-qemu      | 4096                    | 1         | 4          | empty                 |
+| examples/Transfer.bend | transfer-qemu | 4096                 | 1         | 4          | empty                 |
+| GpuExample.bend    | gpuexample-qemu | 4096                   | 1         | 5          | empty                 |
+
+The corpus console ends with 'ALL LIBRARY TESTS PASSED'. GpuExample prints
+'Native GPU dispatch requested; CPU fallback is allowed. No device attestation.' exactly
+as the Linux record does; no GPU claim. Wall time per boot: corpus 1.5 to 1.7 s, each
+example 0.3 to 0.4 s (Linux native corpus, --threads 1: 0.08 s).
+
+-m: 4096 was the first size tried and works for all five. Supplementary (same images, same
+diff, all empty and QEMU 1): the corpus at -m 1024, 256, 64 and 32; each example at -m
+1024, 256 and 64. Smaller sizes were not tried. The runtime's 8 GiB heap and 2 GiB stack
+reservations are virtual (matrix E2) and are backed only on touch, so guest RAM need is
+the touched set.
+
+== Linux baselines ==
+
+Corpus: verification/unikernel-corpus-linux-reference.txt, a fresh capture of this
+worktree's Tests.bend (764 checks) with +RTS --threads 1 --gpu off; the command, binary
+hash and capture hash are in its header, and its body (after the '== capture ==' line) is
+identical to verification/tests-native.txt. verification/runtime-profile-parity-1.txt is
+the older 638-check record (before the integration that brought the corpus to 764): the
+Unikraft console has 167 more lines than it and none fewer; that file is not modified.
+Examples: fresh Linux captures of the same five programs ($W/corpus/linux/<n>-1.txt,
++RTS --threads 1 --gpu off, exit 0, stderr empty). Each equals the corresponding section
+of verification/runtime-profile-parity-examples-1.txt (Example.bend runs
+examples/Commit.bend, GpuExample.bend runs examples/Parallel.bend), checked with
+  awk -v h=examples/<X>.bend '$0==h{f=1;next} f&&/^\[exit status/{exit} f' verification/runtime-profile-parity-examples-1.txt | diff - $W/corpus/linux/<n>-1.txt
+(empty for Flow, Transfer, Commit/example, Parallel/gpuexample).
+Linux reference binaries (bend <file> -o $W/corpus/linux/<n>):
+  8f24f4b8100e639315c101e5a4a70bde32c19edcdb5c8692f97d1f735510626e  tests
+  e122f11d08fe2907ae2fd8e67f1a5cc4248aaf0a2909a85c49b1c52bd2974d8b  example
+  bee4bab6649d4ff8096277c3054ba0ed4e6659da6d98f7cb19c14ca1de2c2818  flow
+  47bf0e80379f93f653c96fff9099937645e1177f5f67c35a2d310e91fa6452d0  transfer
+  baf028675a65297247a7da71b5fef7e44297305d65005ad5182c731e87c7a90e  gpuexample
+
+== Build ==
+
+From the repository root (Bend 2.0.39, BEND_NO_TELEMETRY=1):
+  hosts/unikraft/scripts/mkapp.sh corpus        # $W/corpus-unikraft from hosts/unikraft/app/
+  hosts/unikraft/scripts/mkapp.sh corpustests   # a second app dir so the corpus built in parallel
+  ($W/corpus/gen and $W/corpustests/gen are symlinks to $W/gen/corpus)
+  bend Tests.bend             -o $W/gen/corpus/tests.c
+  bend Example.bend           -o $W/gen/corpus/example.c
+  bend examples/Flow.bend     -o $W/gen/corpus/flow.c
+  bend examples/Transfer.bend -o $W/gen/corpus/transfer.c
+  bend GpuExample.bend        -o $W/gen/corpus/gpuexample.c
+  hosts/unikraft/scripts/build.sh corpus <n>    # n = flow transfer example gpuexample
+  hosts/unikraft/scripts/build.sh corpustests tests ; cp $W/corpustests/images/tests-qemu* $W/corpus/images/
+Emitted C (never edited):
+  89be022ae22d1f1e0fc1e153cd187d4a8c761abcca1a2d9a2a9c0f59590880d4  tests.c
+  5fd1f6c3cae4718c219dde40db6be75acb455abdf255f882c1a6672c364386a1  example.c
+  be7c2e8a444e3e7bce51a45eca09981b5040e2e9593f139a30c13c0a798e9c8d  flow.c
+  15f10d93dcc939183ec946c40a81f96bf7b16fb442c2962a534464d02a1e7d8c  transfer.c
+  2723bf5a0aa2110b31c616683e5df7b437914ca8d82a9d591b5224b0d47999c4  gpuexample.c
+Kconfig: hosts/unikraft/app/Kraftfile (A3 libraries, LIBUKBOOT_MAINTHREAD=y,
+UKPLAT_CPU_MAXCOUNT=1); resolved .config: CONFIG_UKPLAT_CPU_MAXCOUNT=1,
+CONFIG_LIBUKBOOT_MAINTHREAD=y, CONFIG_OPTIMIZE_PERF=y. The two app dirs' .config files
+differ only in CONFIG_UK_APP (the app directory path). No configuration change was needed
+beyond Task 1's; the corpus needed nothing extra.
+Build time: examples 51 to 232 s; the corpus 5737 s (95 min, nearly all in cc1 on the
+10.6 MB tests.c at -O2), so a corpus rebuild is the slow step of this harness.
+Images (hashes are per build: Unikraft embeds the build time, see unikernel-crash-action.txt):
+  713c6f495f6e225121a0cbc6a0655e9e13337debf78a61eef603df30f7792dee  tests-qemu
+  204d0fd9de3539d0500128e4f5c2a399b598a287bb8c72c451b6b5b9437137b6  example-qemu
+  1c1616513b46096744adddfc52e6ab04c9dd741aabac3aaf6511378f8607ffaa  flow-qemu
+  8e244782e4c49cab8a9f49831e027820cc749d582408aedf9d519d8e2f7be55e  transfer-qemu
+  be185988352252b79617ebc89740a1cec7956e1cc2d5178c1bf31112b7d61de9  gpuexample-qemu
+ELF (.dbg, static, not stripped, with debug_info):
+  5909e37f45e5d18453549968f47a9fa0b685d307473b68f0136bd6195d6b5797  tests-qemu.dbg
+  2360ef0f4961b48ed153d845227c9fb759fb1dfdf1c207999600e5276b8e6aea  example-qemu.dbg
+  64c598b20465b430e8bc665950b1beb24d26d78fab606ffc60579e5723b71263  flow-qemu.dbg
+  0bddc6db458e33ea4142b4bd8beedc851c50807903766dd7a9c6a26a541355e4  transfer-qemu.dbg
+  b90989735b7a6dbe65f62fad745145c5e1da03e85b37909bb7febbd8eda80d98  gpuexample-qemu.dbg
+An earlier build.sh copied app.c into the (shared) gen directory; two builds sharing it
+raced, so those builds were killed and every image above was rebuilt after build.sh was
+changed to copy app.c into its own app directory. (The Task 2 crash images were built with
+the earlier script, alone, before any sharing.)
+
+== Harness ==
+
+  hosts/unikraft/scripts/run.sh <set> <n>-m<M> <n> "+RTS --threads 1 --gpu off" <timeout> <M>
+which runs
+  timeout <T> qemu-system-x86_64 -accel tcg -nographic -m <M> -cpu max -kernel $W/<set>/images/<n>-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot </dev/null; echo $?
+(timeouts: 3600 s corpus, 900 s examples; none was reached) with the serial capture in
+$W/<set>/logs/run-<n>-m<M>.raw. Then
+  hosts/unikraft/scripts/console.sh $W/<set>/logs/run-<n>-m<M>.raw > console-<n>.txt
+  diff console-tests.txt <(sed '1,/^== capture ==$/d' verification/unikernel-corpus-linux-reference.txt)
+  diff console-<n>.txt $W/corpus/linux/<n>-1.txt
+  grep -cE '^PASS[: ]' console-<n>.txt
+
+Stripped by console.sh, and nothing else (the Linux captures contain no CR, NUL, ESC or
+empty line, checked):
+  - NUL bytes, CR characters (the serial line ends lines CR LF), and terminal escapes
+    matching ESC '[' [0-9;?]* letter and ESC 'c' (SeaBIOS and the console);
+  - all bytes before the first 'Booting from ROM' (SeaBIOS, iPXE), that text, and the run of
+    two or more dots after it (one example capture at -m 1024 had three dots and a line
+    break before the banner);
+  - Unikraft's banner, required verbatim as the next 7 lines (the script fails otherwise):
+      ^Powered by$
+      ^o\.   \.o       _ _               __ _$
+      ^Oo   Oo  ___ (_) | __ __  __ _ ' _) :_$
+      ^oO   oO ' _ `| | |/ /  _)' _` | |_|  _)$
+      ^oOo oOO| | | | |   (| | | (_) |  _) :_$
+      ^ OoOoO \._, \._:_:_,\\_\._,  \.__,_:_, \\___)$
+      ^ {18}Ijiraq 0\.21\.0~7351f8b$
+Every line after the banner is kept. Unikraft printed nothing after the program's last line.
+
+== Diff output and counts ==
+
+$ diff console-tests.txt <(sed '1,/^== capture ==$/d' verification/unikernel-corpus-linux-reference.txt); echo $?
+0                                    (no output)
+$ grep -cE '^PASS[: ]' console-tests.txt
+764
+$ tail -1 console-tests.txt
+ALL LIBRARY TESTS PASSED
+QEMU exit: 1 (wall 1.7 s, -m 4096)
+$ diff console-example.txt $W/corpus/linux/example-1.txt; echo $?        -> 0, no output; PASS 16; QEMU 1
+$ diff console-flow.txt $W/corpus/linux/flow-1.txt; echo $?              -> 0, no output; PASS 4;  QEMU 1
+$ diff console-transfer.txt $W/corpus/linux/transfer-1.txt; echo $?      -> 0, no output; PASS 4;  QEMU 1
+$ diff console-gpuexample.txt $W/corpus/linux/gpuexample-1.txt; echo $?  -> 0, no output; PASS 5;  QEMU 1
+No bisection was needed: nothing stalled or failed to fit.
+
+== Binary profile check (UL-003) ==
+
+sh scripts/runtime-profile/check-binary.sh $W/corpus/images/<n>-qemu.dbg for all five: each
+  undefined symbols: not applicable (static link)
+  effect rows: IO.print
+  result: PASS (effect rows within the monitor profile; static link, so the host-symbol surface was not checked)
+  exit status 0
+(Full output per image: verification/unikernel-binary-check.txt.)
+
+== Limits ==
+
+- Emulated boots (TCG) only; no KVM or Firecracker boot (task 3.1). One CPU, one lane,
+  cooperative scheduler; no multi-lane run (task 2.4).
+- The corpus's 'Bend parallel producer' checks run on one lane with --gpu off here, as on
+  the Linux single-lane reference; no device code ran.
+- A matching console and QEMU 1 show the programs' printed outcomes and status; they do
+  not exercise the runtime's fault or arena-exhaustion messages (see unikernel-exit-codes.txt
+  and unikernel-crash-action.txt).
+- Compiler differs from the Linux reference (gcc -std=gnu11 vs clang); outputs still matched.
+- Image hashes are not reproducible across clean builds (embedded build time).

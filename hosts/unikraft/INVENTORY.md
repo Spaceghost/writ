@@ -38,7 +38,7 @@ they build or copy is written inside the repository.
 | `app/Config.uk` | Empty app Kconfig, as before | nothing |
 | `scripts/env.sh` | Sourced: sets `REPO`, `W`, and the pinned `KRAFT` command | nothing |
 | `scripts/mkapp.sh <set>` | Creates `$W/<set>-unikraft/` from `app/` and `$W/<set>/{gen,images,logs}`; refuses to overwrite a differing app file; links the compiler's own `stdatomic.h` (A1) | `$W` only |
-| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | `$W` only |
+| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `$W/<set>-unikraft/app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | `$W` only |
 | `scripts/run.sh <set> <label> <probe> <append> [timeout] [mem]` | One TCG boot under `timeout` with `-device isa-debug-exit,iobase=0xf4,iosize=0x04` and `-no-reboot` (`WRIT_QEMU_DEVICE=0` / `WRIT_QEMU_REBOOT=1` omit them); writes `run-<label>.raw` and a cleaned `run-<label>.log` with the QEMU status | `$W` only |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
