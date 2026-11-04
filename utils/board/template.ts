@@ -191,13 +191,14 @@ ${tiles}
 }
 
 /**
- * Index content. With --lanes the lanes panel comes first, because the board
- * is then a coordination view; without it the panel is a one-line note last.
+ * Index content: tiles and the change table first (the lane chips there are
+ * the coordination view), the lane cards after. The index uses the full width.
  */
-export function index(tables: string, lanes: string, lanesFirst: boolean): string {
-  return `<main id="main" class="content">
+export function index(tables: string, lanes: string, _lanesFirst: boolean): string {
+  return `<main id="main" class="content wide">
 <h1>Writ OpenSpec board</h1>
-${lanesFirst ? `${lanes}\n${tables}` : `${tables}\n${lanes}`}
+${tables}
+${lanes}
 </main>`;
 }
 
@@ -214,7 +215,7 @@ function laneCard(l: Lane): string {
   const changes = l.changes.length === 0
     ? ""
     : `<span class="lane-changes">on ${l.changes.map((c) => `<a href="/change/${href(c)}">${esc(c)}</a>`).join(", ")}</span>`;
-  const status = `<p class="lane-status">${dot(l.status)}<span class="lane-phase">${esc(phaseText(l))}</span><span class="muted">signal ${esc(ago(l.signalAt))} ago</span>${changes}</p>`;
+  const status = `<p class="lane-status">${dot(l.status)}<span class="lane-phase">${esc(phaseText(l))}</span><span class="muted">${esc(ago(l.signalAt))}${l.signalAt === null ? "" : " ago"}</span>${changes}</p>`;
   const sdd = l.sdd.map((p) => {
     const rel = `.superpowers/sdd/${p.plan}`;
     const ledger = p.ledger === null
@@ -235,16 +236,17 @@ function laneCard(l: Lane): string {
           const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
           return `<details id="${rid}" class="report" data-preserve-attr="open"><summary><code>${esc(r.file)}</code>${status}</summary>${body}</details>`;
         }).join("");
-    return `<div class="plan">${feed}<div class="doc-label">${esc(rel)}/progress.md, last 10 lines</div>${ledger}${reports}</div>`;
+    const more = `<details id="${id}-${slug(p.plan)}-ledger" class="more" data-preserve-attr="open"><summary>${esc(rel)}/progress.md, last 10 lines · ${p.reports.length} report${p.reports.length === 1 ? "" : "s"}</summary>${ledger}${reports}</details>`;
+    return `<div class="plan">${feed}${more}</div>`;
   }).join("");
   const diffs = l.taskDiffs.length === 0
     ? ""
-    : `<div class="drift"><div class="doc-label">Task boxes differing from the root</div><ul>${l.taskDiffs.map((d) =>
-        `<li>${d.root === null ? `<code>${esc(d.name)}</code>` : `<a href="/change/${href(d.name)}">${esc(d.name)}</a>`} <span class="num">${count(d.lane)}</span> <span class="muted">here, root ${count(d.root)}</span></li>`).join("")}</ul></div>`;
+    : `<details id="${id}-drift" class="more drift" data-preserve-attr="open"><summary>Task boxes differing from the root · ${l.taskDiffs.length}</summary><ul>${l.taskDiffs.map((d) =>
+        `<li>${d.root === null ? `<code>${esc(d.name)}</code>` : `<a href="/change/${href(d.name)}">${esc(d.name)}</a>`} <span class="num">${count(d.lane)}</span> <span class="muted">here, root ${count(d.root)}</span></li>`).join("")}</ul></details>`;
   const ver = l.verification === null || l.verification.length === 0
     ? ""
-    : `<div class="drift"><div class="doc-label">verification/ files new or changed relative to the root</div><ul>${l.verification.map((v) =>
-        `<li><code>${esc(v.path)}</code> <span class="muted">${v.kind}</span></li>`).join("")}</ul></div>`;
+    : `<details id="${id}-verification" class="more drift" data-preserve-attr="open"><summary>verification/ files new or changed relative to the root · ${l.verification.length}</summary><ul>${l.verification.map((v) =>
+        `<li><code>${esc(v.path)}</code> <span class="muted">${v.kind}</span></li>`).join("")}</ul></details>`;
   return `<article id="${id}" class="lane lane-${l.status}">
 <header><h3>${esc(l.name)}</h3>${branch}</header>
 ${status}${commit}${notes}${sdd}${diffs}${ver}
@@ -260,7 +262,7 @@ export function lanesPanel(scan: LaneScan | null): string {
   else {
     // Live lanes first, then landed last; stable otherwise.
     const rank: Record<LaneStatus, number> = { active: 0, review: 0, idle: 1, landed: 2 };
-    body = [...scan.lanes].sort((a, b) => rank[a.status] - rank[b.status]).map(laneCard).join("\n");
+    body = `<div class="lanes-grid">${[...scan.lanes].sort((a, b) => rank[a.status] - rank[b.status]).map(laneCard).join("\n")}</div>`;
   }
   const skipped = scan && scan.skipped.length > 0
     ? `<p class="muted small">Not git worktrees, skipped: ${scan.skipped.map((s) => `<code>${esc(s)}</code>`).join(", ")}</p>`
