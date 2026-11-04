@@ -72,3 +72,5 @@
 2026-11-04T19:49:36Z	controller	final review: needs fixes; final fix pass dispatched
 2026-11-04T19:49:39Z	implementer	final-review fixes started; merging master
 2026-11-04T19:57:10Z	implementer	final review: host-layer scope, check-fault.sh exit/stale-log fix + reruns (ovf2 PASS, exf2 PASS, negf2 FAIL rc1, nosuch FAIL rc1), docs/spec alignment, traceability UL-004/005/006, profile-hosts Unikraft+channel rows, profile cite; OpenSpec bunx 1.16.0 44/44; committing
+2026-11-04T19:57:44Z	controller	final fix pass done; scoped re-review dispatched
+2026-11-04T19:59:59Z	controller	re-review approved after a one-cell table fix; merging

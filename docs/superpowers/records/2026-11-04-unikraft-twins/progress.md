@@ -22,3 +22,5 @@ Task 3: review Needs fixes (Important: exhaustion wrongly mapped to 17 in header
 Task 3: fix round 1 DONE (08123e4): exhaustion wording, check-fault.sh with references, +RTS paths booted to 17, musl cited. Scoped re-review and final whole-branch review dispatched in parallel.
 Task 3: complete (e4cdc3d..08123e4; re-review all addressed; carried into the final pass: evidence labels rtsrtsbogus/rtsrtsthreads0 -> rtsbogus/rtsthreads0 at unikernel-fault-qemu.txt:256,259 and the report).
 Final review: Needs fixes (Important: host.c miscategorised under UL-004's termination layer; check-fault.sh can pass on a stale log; minors and record alignments). Single final fix pass dispatched with widened paths; merge master first. Conflict watch: runtime-profile-hosts.md and the profile change's 2.3 note are edited by both final passes; resolve at the second merge.
+Final fix pass DONE (7433b20 merge master, 89ee5d5). Scoped re-review dispatched.
+Final fix re-review: all addressed except one table cell (runtime-profile-hosts.md:55), fixed at integration by the controller. Merging to master.

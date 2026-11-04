@@ -195,3 +195,58 @@ Important 1 is a records fix: name host.c's UL-004 category in tasks.md 2.1 and
 INVENTORY. Important 2 is a three-line script fix. Minors 1, 2, 7 and 9 are cheap and
 worth doing in the same round. I found no correctness or authority defect in host.c,
 exit_device.c or the twins.
+
+## Final fix pass re-review
+
+Scope: 7433b20..89ee5d5 (fix commit 89ee5d5 on a clean master merge). Read-only except this
+section.
+
+- ✅ I1: INVENTORY.md:5-11 and tasks.md 2.1 (lines 34-36) name `exit_device.c` alone as the
+  boot and termination host layer and `host.c` as the twins' C side; no spec file and no
+  UL-004 rationale line (tasks.md 60-72) changed.
+- ✅ I2: check-fault.sh removes `.log`/`.raw` before booting, fails on `RC != XQ`, and exits 1
+  on a missing log. Logs on disk match the recorded sha256 (ovf2, exf2 end `253`; negf2
+  ends `33`); no `run-nosuch*` log exists; script sha256 `ee57039a...` matches the record.
+  Reading the script: no stale or absent result passes in boot mode. `WRIT_NO_BOOT=1`
+  still reads the existing log by design, and the usage header says so.
+- ✅ M1/M3: tasks.md:39-41 now says the twin parks on the runtime timer, and the 255 is
+  qualified (first map, 19 now, not rerun).
+- ✅ M2/M3: UNIKERNELS.md Event loop cell is qualified the same way. The Open list adds the
+  `IO.print` twin, the unresynchronised partial frame (with the cap silence) and the
+  untraced back-off.
+- ✅ M4: Channel.md states the unbounded console lines under a flood, and the partial frame
+  plus the cap leaving the channel silently dead until the harness timeout. INVENTORY
+  ~77-84 has the no-resync text but not the silent death (nit, not requested here).
+- ✅ M5: design.md now says the transport is the host layer's choice, the record format is
+  the contract, and COM2 to a Unix socket is the current scaffolding, with UL-008 open. The
+  rationale is in report item 5. No requirement is weakened.
+- ✅ M6: Exhaust.bend is in the probe list.
+- ✅ M7: fault record labels are `rtsbogus`/`rtsthreads0` and match the logs on disk. Only
+  the historical review and progress text still quote the old labels.
+- ✅ M8: unikernel-corpus-qemu.txt:9 names its own "Task 3 rerun" section.
+- ✅ Traceability: UL-004/005/006 carry 33/35/17/253, the amendment, the host-layer split,
+  and the gaps (IO.print twin, scaffolding subject, no message, exhaustion at 253).
+- ✅ runtime-profile-hosts.md citations checked: uqemu 13 (hook), 196-204 (check-corpus),
+  280-294 (corpus3 rerun, binary check at 294), and ufault 206-209, 213-219, 225-226 all
+  hit the cited content. UNIKERNELS.md 156/158 are the native-link and fault cells. The
+  short-names paragraph is present, and the base-hw row appears only as diff context.
+- ❌ **New defect (minor), verification/runtime-profile-hosts.md:55**: the Unikraft 782 row
+  ends `... "Integration rerun" |; uqemu "Task 3 rerun, 2026-11-04"`. The new citation sits
+  after the closing pipe, as an 11th cell, so GFM drops it and the row's Evidence cell
+  omits the 33 rerun. Fix: move `; uqemu "Task 3 rerun, 2026-11-04"` in front of the final
+  ` |`.
+- ✅ Profile change tasks.md 2.3: one sentence added and the box is unchecked. Nit: the
+  sentence before it still says "The Genode and unikernel changes still wait", and the
+  added "unikernel cited on 2026-11-04" repeats the new sentence. Reword at the second
+  merge (already on the conflict watch).
+- ✅ Unikernel design.md: "The runtime host profile gates the image" is added and says the
+  profile qualifies no unikernel host. tasks.md 2.2 gains the citation. No checkbox line
+  appears in the diff.
+- ✅ OpenSpec: 44/44 recorded; rerun here with bunx 1.16.0, 44 passed, 0 failed.
+- ✅ Hygiene: the diff stat has no `.bend`, `.c`/`.h`, generated, runtime or Unikraft file.
+  Nothing built is committed (`.superpowers/` is ignored). final-review.md and
+  task-3-review.md are committed. `git diff --check 7433b20..89ee5d5` is clean. The
+  uncommitted activity.log/progress.md lines are the controller's post-commit entries.
+
+Open: runtime-profile-hosts.md:55 trailing citation outside the table row (one-line move).
+Otherwise all addressed; approved for merge once that line is fixed.
