@@ -1,0 +1,4 @@
+2026-11-04T16:38:57Z	controller	lane created from master c380947; Tasks 1-2 dispatched together
+2026-11-04T16:40:55Z	implementer	read plan, briefs, change spec/tasks, and the Linux, Genode base-linux, and Unikraft QEMU evidence files
+2026-11-04T16:42:20Z	implementer	Task 1: wrote verification/runtime-profile-hosts.md (7 executed rows, 2 pending placeholders, review-only list) and checked box 3.1
+2026-11-04T16:42:58Z	implementer	Task 1: OpenSpec strict 44 passed; wrote report Task 1 section; committing

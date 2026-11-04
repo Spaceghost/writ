@@ -19,5 +19,5 @@ qualify a host.
 
 ## 3. Evidence
 
-- [ ] 3.1 Store per-host corpus output, lane count, GPU mode, compiler, and binary hash under verification/ and link them from the traceability table; keep review-only and executed evidence separate.
+- [x] 3.1 Store per-host corpus output, lane count, GPU mode, compiler, and binary hash under verification/ and link them from the traceability table; keep review-only and executed evidence separate. Evidence: `verification/runtime-profile-hosts.md` (executed rows for Linux native one and four lanes, Linux JavaScript, Genode base-linux, and Unikraft QEMU TCG, each cell citing its source file; review-only items listed separately; Genode base-hw and the Unikraft channel are pending placeholders). This stores evidence and qualifies no host.
 - [ ] 3.2 Validate OpenSpec strictly and run the ordinary Bend test and proof checks to confirm no policy source changed.
