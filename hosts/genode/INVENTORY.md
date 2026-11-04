@@ -57,10 +57,16 @@ Probe scaffolding (not part of the shim, holds no authority):
 
 ## Bounds
 
-32 reservations, 4 guards per reservation, 2 MiB chunks, 1 GiB threshold.
+32 reservations, 4 guards per reservation, 2 MiB chunks, 1 GiB threshold,
+1 TiB maximum (a larger qualifying `mmap`, including one whose length would
+wrap when page-rounded, fails with `ENOMEM` before a region map is created).
 A chunk is only allocated if the PD's available RAM covers it plus 64 KiB
 and at least 8 caps remain. At most 16 benign retries per page address
-(16 slots) for faults on an already populated chunk.
+(16 slots) for faults on an already populated chunk. Limits of that table:
+counts never decay, so a page that races benignly more than 16 times over
+the whole run is refused (component dies); and with more than 16 addresses
+stuck at once the slots evict each other before any reaches the bound, so an
+unresolvable fault among them livelocks instead of terminating.
 
 ## Concurrency assumption
 

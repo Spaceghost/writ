@@ -83,7 +83,11 @@
  * the chunk first, or mprotect had its pieces detached while splitting it
  * around a guard. The handler then just returns and the access is
  * retried. The bound on such retries per address is what still kills a
- * truly unresolvable fault. Only single-lane use has been run
+ * truly unresolvable fault. That bound has two limits: the table has
+ * 16 slots and its counts never decay, so more than 16 concurrently
+ * stuck addresses evict each other and can livelock, and a page that
+ * races benignly more than 16 times over the whole run is refused.
+ * Only single-lane use has been run
  * (verification/genode-reservation-probe-base-linux.txt); a fault taken
  * while the faulting thread itself holds a Genode lock the handler needs
  * (this mutex, an RPC or region-map lock) would deadlock.
@@ -121,6 +125,7 @@ using namespace Genode;
  */
 enum : size_t {
 	MIN_QUALIFYING = 1ul << 30,   /* 1 GiB: smaller requests go to libc */
+	MAX_RESERVATION = 1ul << 40,  /* 1 TiB: larger qualifying requests fail */
 	CHUNK          = 2ul << 20,   /* populate granularity, 2 MiB       */
 	PAGE           = 4096,
 	MAX_RESERVATIONS = 32,
@@ -287,6 +292,15 @@ static Mutex &_mutex() { static Mutex m { }; return m; }
  * Benign-retry accounting for faults on populated chunks, keyed by page
  * address. Entries are reused round-robin; an address that exceeds
  * MAX_RETRIES is treated as unresolvable.
+ *
+ * Limits (see the header): the table has RETRY_SLOTS entries and counts
+ * never decay. More than RETRY_SLOTS addresses faulting on populated
+ * chunks at once evict each other's entries before any reaches
+ * MAX_RETRIES, so a truly unresolvable fault among them is retried
+ * without bound (livelock instead of termination). And an address whose
+ * entry survives accumulates benign retries over the whole run, so a
+ * page that races legitimately more than MAX_RETRIES times in total is
+ * refused and the component dies.
  */
 struct Retry { addr_t page; unsigned count; };
 static Retry    _retries[RETRY_SLOTS];
@@ -488,6 +502,16 @@ static bool _qualifies(size_t len, int prot, int flags, int fd, ::off_t offset)
 
 static void *_reserve(void *hint, size_t len)
 {
+	/*
+	 * Bound len before any rounding: a len above SIZE_MAX - 4095 would
+	 * page-round to 0 and create an empty region map. 1 TiB is far above
+	 * what any quota can populate (and base-linux's region map holds at
+	 * most 4096 pieces, 8 GiB of 2 MiB chunks), so a larger request fails
+	 * with ENOMEM exactly as an exhausted address space would. The Bend
+	 * runtime's corpus_grow treats that as "cannot grow".
+	 */
+	if (len > MAX_RESERVATION) { errno = ENOMEM; return MAP_FAILED; }
+
 	Reservation *r = nullptr;
 	for (Reservation &cand : _res)
 		if (!cand.used) { r = &cand; break; }
@@ -498,6 +522,7 @@ static void *_reserve(void *hint, size_t len)
 
 	size_t const size = _page_round(len);
 	size_t const num_chunks = (size + CHUNK - 1) / CHUNK;
+	if (size == 0 || num_chunks == 0) { errno = ENOMEM; return MAP_FAILED; }
 
 	Chunk *chunks = nullptr;
 	if (_heap->try_alloc(num_chunks*sizeof(Chunk)).convert<bool>(

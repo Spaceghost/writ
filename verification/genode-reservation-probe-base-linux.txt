@@ -550,3 +550,38 @@ Figures:
     < 2 MiB + 64 KiB). RAM runs out before caps at this quota.
   Init logged nothing about the child in any death case (parent record
   still open on base-linux, as section 5).
+
+9. Length bound on a qualifying mmap (Genode host-layer lane, Task 2, 2026-11-03)
+
+Carried from the re-review of Task 1: _reserve had no upper bound on len, so
+a qualifying mmap with len > SIZE_MAX - 4095 page-rounded to size 0 and
+created an empty region map. Fix in writ_mem.cc: _reserve refuses
+len > MAX_RESERVATION (1 TiB) and a zero rounded size or chunk count with
+-1/MAP_FAILED errno ENOMEM before any region map exists. The source header
+and INVENTORY now also state the retry table's limits (16 slots, counts
+never decay: more than 16 concurrently stuck addresses can evict each other
+and livelock; a page that races benignly more than 16 times over the run is
+refused).
+
+Probe changes: the big mprotect check accepts only EINVAL (it also accepted
+ENOTSUP before); a new no-touch case calls mmap(NULL, SIZE_MAX-1) and
+mmap(NULL, 2 TiB), both qualifying, and requires MAP_FAILED with ENOMEM.
+
+Hashes: writ_mem.cc 8ac62225f154f186166367816a7c95e4c2124ccc18b3ea76a4a6fdbab5b85705
+        probe_reservation.c 7a35d1e93d6138073e2c0b7ec298e92fc26b9c86c6ad03c65e737e874cea5eef
+        (live copies in ../writ-genode/writ-repo byte-identical, cmp)
+
+Runs (cd ../writ-genode/build/x86_64; ram 256M):
+  make run/writ_probe_reservation_live   (log ../writ-genode/run-reservation-live-5.out)
+    [init -> writ_probe_reservation] probe_reservation: mprotect(len SIZE_MAX-1) = -1 (errno 22); mprotect(len 0) = -1 (errno 22); munmap(len SIZE_MAX-1) = -1 (errno 22)
+    [init -> writ_probe_reservation] probe_reservation: mmap(len SIZE_MAX-1) = MAP_FAILED (errno 12); mmap(len 2 TiB) = MAP_FAILED (errno 12)
+    ...
+    [init -> writ_probe_reservation] probe_reservation: done, exiting 0
+    [init] child "writ_probe_reservation" exited with exit value 0
+    Run script execution successful.
+  make run/writ_probe_reservation_guard  (log ../writ-genode/run-reservation-guard-5.out)
+    Kernel: writ_mem: unresolved fault at 0x7ffef7f02000 (guard page), component terminates
+    guard refusal line: 1, resumed line: 0, FAIL line: 0, init exit line: 0,
+    process alive: 0, ps control (timer): 1
+  Figures unchanged from section 8 (after touches ram 12058624, after munmap
+  ram 1404928).

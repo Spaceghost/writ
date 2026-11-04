@@ -145,12 +145,28 @@ int main(int argc, char **argv)
 	int const big_unmap_errno = errno;
 	printf("probe_reservation: mprotect(len SIZE_MAX-1) = %d (errno %d); mprotect(len 0) = %d (errno %d); munmap(len SIZE_MAX-1) = %d (errno %d)\n",
 	       big, big_errno, zero, zero_errno, big_unmap, big_unmap_errno);
-	if (big != -1 || (big_errno != EINVAL && big_errno != ENOTSUP))
+	if (big != -1 || big_errno != EINVAL)
 		return fail("mprotect with an overflowing length was not rejected");
 	if (zero != -1 || zero_errno != EINVAL)
 		return fail("mprotect with length 0 was not rejected");
 	if (big_unmap != -1 || big_unmap_errno != EINVAL)
 		return fail("munmap with an overflowing length was not rejected");
+	/* no-touch: an oversized qualifying mmap must fail, not wrap to size 0 */
+	errno = 0;
+	void *const huge = mmap(NULL, SIZE_MAX - 1, PROT_READ | PROT_WRITE,
+	                        MAP_PRIVATE | MAP_ANON, -1, 0);
+	int const huge_errno = errno;
+	errno = 0;
+	void *const over = mmap(NULL, (size_t)2 << 40, PROT_READ | PROT_WRITE,
+	                        MAP_PRIVATE | MAP_ANON, -1, 0);
+	int const over_errno = errno;
+	printf("probe_reservation: mmap(len SIZE_MAX-1) = %s (errno %d); mmap(len 2 TiB) = %s (errno %d)\n",
+	       huge == MAP_FAILED ? "MAP_FAILED" : "mapped", huge_errno,
+	       over == MAP_FAILED ? "MAP_FAILED" : "mapped", over_errno);
+	if (huge != MAP_FAILED || huge_errno != ENOMEM)
+		return fail("mmap with a wrapping length was not rejected with ENOMEM");
+	if (over != MAP_FAILED || over_errno != ENOMEM)
+		return fail("mmap above the 1 TiB bound was not rejected with ENOMEM");
 	*first = 0xa3;   /* page 1 still unguarded and the reservation intact */
 	if (*first != 0xa3 || *last != 0xa2) return fail("reservation changed by rejected calls");
 
