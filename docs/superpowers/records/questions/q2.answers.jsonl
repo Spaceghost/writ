@@ -1,2 +1,3 @@
 {"at": "2026-11-04T20:58:24Z", "who": "controller", "fields": {"text": "Asked on the board; the form above records your answer here."}}
 {"at":"2026-11-04T21:16:13.531Z","who":"josh","fields":{"signals":"adopt","text":""}}
+{"at":"2026-11-04T21:23:58Z","who":"controller","kind":"note","fields":{"text":"Recorded: adopt the experimental signal library. I am writing the lane plan now (build flag, shutdown change, 95-minute corpus rebuild); the lane will show on the board as unikraft-signals."}}
