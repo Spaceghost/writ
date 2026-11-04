@@ -1,0 +1,356 @@
+Writ channel on base-linux: request and result records through buckets and signals (Genode channel lane, Task 2)
+Recorded: 2026-11-04, about 01:40 to 03:20 -06:00.
+
+Everything here is Genode-on-Linux (base-linux: core, init, and components are
+Linux processes) evidence. It is not native Genode execution on any kernel,
+no device was involved (--gpu off), only single-lane runs were made, and
+base-hw was not attempted. The authority state is SYNTHETIC
+(examples/Scenario.bend and examples/Commit.bend's replay of the negotiation
+over it): no issuer, no authentication service, and no write is performed.
+
+RESULT
+  Accepted round trip: yes. The client probe started by init as the child
+  writ_client_r, whose Writ_channel session init routed to the monitor
+  component writ_bend_monitor, wrote one 64-byte report-to-summary request
+  into its 4 KiB request bucket and submitted the request signal. The
+  shim's channel entrypoint queued (channel 1, route subject 1);
+  Genode.take, parked on an io_work helper thread, yielded the record with
+  that subject; Monitor.bend called DataOS.commit_from_capability and
+  answered decision=Committed (1), reason 0, write intent summary 20 v1,
+  invocation 99, artifact 3, backend Storage, session revision 7, reader
+  balance 45; Genode.put wrote the result record and signalled the client,
+  which printed it and exited 0 (run 1).
+  Substituted subject denied by Bend: yes. Same route (writ_client_r, route
+  subject 1 = reader R); the body claims subject S (claimed_subject 2) and
+  names S's session (session 2). The monitor evaluated R, not S, and
+  DataOS.commit_from_capability returned Rejected (R is not the session's
+  reader): decision=Denied (2), reason 6 (run 2). Reason 6 is the library's
+  own rejection; had the body's S been used as the caller, the monitor
+  would have refused one step earlier at the descriptor (reason 5, S holds
+  no capability), as the Linux check below shows.
+  The session type has four RPC functions, all capability handover
+  (request_bucket, result_bucket, request_sigh, result_sigh); the request
+  and the decision travelled only as records in the buckets (GB-011).
+  Both run scripts exit nonzero when the expected outcome changes
+  (exercised once with a flipped expectation: client FAIL, exit value 1,
+  run refused).
+
+INPUTS
+  Bend:        $HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+               (BEND_NO_TELEMETRY=1)
+  Genode:      26.08, d18ee9e917200b059549e21f2dd9a55bfe61a0eb (genode-pins.txt)
+  Build dir:   ../writ-genode/build/x86_64 (BOARD=linux KERNEL=linux)
+  Compilers:   generated C: clang version 23.1.1 (CUSTOM_CC in writ_bend.inc);
+               shim, client, and links: genode-x86-g++ (GCC) 14.2.0
+  Program:     hosts/genode/monitor/Monitor.bend, importing
+               hosts/genode/effects/Genode.bend as Host, the library modules,
+               examples/Scenario.bend and examples/Commit.bend (imported,
+               not copied)
+  Emit:        bend hosts/genode/monitor/Monitor.bend -o ../writ-genode/bend-c/monitor/monitor.c
+               rc 0; 65603 lines; sha256
+               85ae9c825c2eb638f4673f7327efbea5eec855a61d9c0974ad3746853a101a07
+               Re-emitted from the final tree: byte-identical (cmp). Never
+               edited; read in place by the build (vpath), not committed.
+  Check:       bend hosts/genode/monitor/Monitor.bend --check-only:
+               "SOME PROOFS FAIL ... 10 defs rely on unsafe or foreign code:
+               defs that depend on foreign effects: Genode.log, Genode.now,
+               Genode.sleep, Genode.take, Genode.put, emit, answer, serve,
+               start, main". Expected: an effect def is foreign code, and
+               only the IO loop depends on it; the decision (decide and
+               everything below it) is not in the list. No other error.
+
+DESIGN POINTS CHECKED IN THE GENODE SOURCE
+  - Libc keeps the main entrypoint busy while the Bend main is suspended:
+    Libc::Kernel::run loops on _env.ep().wait_and_dispatch_one_io_signal()
+    while the application is suspended
+    (repos/libports/src/lib/libc/internal/kernel.h:460-533), and that call
+    defers non-I/O signals and serves no RPCs
+    (repos/base/src/lib/base/entrypoint.cc:145-199). Session requests reach
+    a component through base's Root_proxy on its own "root" entrypoint
+    (repos/base/src/lib/base/root_proxy.cc:110-150), which then calls the
+    announced root by RPC. The shim therefore serves the Writ_channel root
+    and every channel (RPCs and the request Signal_handler) on a dedicated
+    Genode::Entrypoint "writ_channel" (repos/base/include/base/
+    entrypoint.h:135). Not tried on the main entrypoint (it would not be
+    dispatched while Bend waits).
+  - Server side: Root_component<Channel> (repos/base/include/root/
+    component.h:100-340, _create_session/_destroy_session), session objects
+    as Rpc_object<Writ_channel::Session>, modelled on Report::Session
+    (repos/os/include/report_session/report_session.h, client.h,
+    connection.h) and repos/os/src/server/terminal_log/main.cc (root +
+    announce). Buckets: Attached_ram_dataspace (repos/base/include/base/
+    attached_ram_dataspace.h:112). Signals: Signal_handler on the channel
+    entrypoint (its capability is what request_sigh returns) and
+    Signal_transmitter to the client's registered context (base/signal.h).
+  - Labels: the parent prefixes every session label with the requesting
+    child's name (repos/base/src/lib/base/child.cc:152-155), so the server
+    sees "writ_client_r -> channel" and the client cannot change the
+    prefix. Policy matching: os/session_policy.h with_matching_policy
+    (repos/os/include/os/session_policy.h:36-200; label, label_prefix,
+    label_suffix scoring, falls back to <default-policy>, which the shim
+    refuses). Run-config syntax for policy labels: repos/gems/run/
+    depot_deploy.run:96; routes to a child: repos/os/run/ahci_block.run:54.
+  - Wakeup: writ_shim_take blocks in Genode::Semaphore::down
+    (repos/base/include/base/semaphore.h) on the Bend runtime's io_work
+    helper thread; the request Signal_handler ups it. The loop itself is
+    woken by the runtime's own completion pipe (io_take reading io_wake_fd,
+    monitor.c, over the component's vfs_pipe /pipe), the libc wakeup the
+    event loop already uses. This is the "condition the signal handler
+    signals" option; a second libc pipe written from the channel
+    entrypoint was not used (that entrypoint is not a libc context).
+
+BEND RECORDS AND TWINS
+  Genode.bend adds type Request (18 U32 fields: channel, subject, then the
+  16 record words) and type Reply (16 U32 fields), and the effect defs
+  Genode.take() -> IO(Request) and Genode.put(channel: U32, reply: Reply)
+  -> IO(Unit). In monitor.c the constructors have arity 18 and 16 and are
+  not hot (CID_T entries {18,0,0} and {16,0,0}); the compiler stores U32
+  fields as raw words at the node's location in declaration order (e.g. a
+  Reply built with heap_alloc(e, cls_fit(16)) and e.mem[l + i] = field i).
+  genode_take.c packs a Request the same way (io_seal per field, a no-op
+  for a cold constructor); genode_put.c reads the Reply with ctr_take and
+  frees it with spare_free, as io_cbuf reads a String cell. Twins:
+    io_eff(CID____effects_Genode_Genode_take, genode_take_run);
+    io_eff(CID____effects_Genode_Genode_put, genode_put_run);
+  named genode_<x>_run so scripts/runtime-profile/check-binary.sh maps them
+  to Genode.take / Genode.put (the check itself is Task 3).
+
+LINUX CHECK OF THE BEND DECISION (no Genode, no shim, no effects)
+  Command: bend hosts/genode/monitor/MonitorCheck.bend (rc 0)
+    expected_session (reader session revision) = 6
+    reply R route, R session : 1 2 1 0 1 1 20 1 99 3 1 7 45 0 0 0
+    reply R route, S claimed : 1 2 2 6 1 2 0 0 0 0 0 0 0 0 0 0
+    PASS routed reader R committed
+    PASS body claiming S denied by DataOS.commit_from_capability
+    reply S route, S session : 1 2 2 5 2 2 0 0 0 0 0 0 0 0 0 0
+    reply R replay           : 1 2 2 6 1 1 0 0 0 0 0 0 0 0 0 0
+    PASS S as route subject denied at the descriptor step
+    PASS replayed request denied by DataOS.commit_from_capability
+  The first two replies are word-for-word the result records of runs 1
+  and 2 below. The contrast cases run only here: S as the route subject is
+  refused at the descriptor (reason 5), and a replay of R's request
+  against the state after the first commit is refused by the library
+  (reason 6; the monitor keeps the committed session and ledger).
+
+BUILDS
+  make app/writ_bend_monitor (build-bend-monitor-1.out): COMPILE monitor.o,
+  COMPILE writ_mem.o, LINK writ_bend_monitor; rc 0 at the first attempt (the
+  generated C's usual unused-function warnings only).
+  make app/writ_channel_client: three attempts. 1 and 2 failed to compile
+  ("Local_rm does not name a type": the alias lives in Genode::Env and the
+  Attached_* classes, repos/base/include/base/env.h:28; and -Weffc++ on a
+  class with pointer members); fixed with a local alias
+  Genode::Local::Constrained_region_map and deleted copy operations. 3 and
+  (after the delay_ms option) 4: rc 0.
+
+RUN CONFIGURATION (installed var/run/writ_bend_monitor_accept/genode/config, run 1)
+  
+  config
+  + parent-provides
+    + service LOG
+    + service PD
+    + service CPU
+    + service ROM
+    + service RM
+  + default-route
+    + any-service
+      + parent
+      + any-child
+  + default | caps: 200 | ram: 1M
+  + start timer
+    + provides | + service Timer
+  + start writ_bend_monitor | caps: 1000 | ram: 256M
+    + provides | + service Writ_channel
+    + config
+      + vfs
+        + dir dev | + log
+        + dir pipe | + pipe
+      + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+      + arg | value: writ_bend_monitor
+      + arg | value: +RTS
+      + arg | value: --threads
+      + arg | value: 1
+      + arg | value: --gpu
+      + arg | value: off
+      + env | key: WRIT_MEM_REPORT | value: 1
+      + writ_channel
+        + policy | label_prefix: writ_client_r -> | subject: 1
+  + start writ_client_r | caps: 200 | ram: 2M
+    + binary writ_channel_client
+    + route
+      + service Writ_channel | + child writ_bend_monitor
+      + any-service
+        + parent
+        + any-child
+    + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 2000
+  -
+  
+  Run 2 differs only in the client's config: session 2, expected_session 0,
+  claimed_subject 2, expect_decision 2, expect_reason 6, delay_ms 0.
+  RAM: init's children are timer (1M default), writ_bend_monitor 256M (as
+  every Bend component in these lanes), writ_client_r 2M (1M was not tried;
+  the session donates 32 KiB). Caps: monitor 1000, client 200. Shim report
+  for the monitor is not printed: the monitor never exits in these runs
+  (fuel 4, one record each); its RAM is therefore not recorded.
+
+RUN 1: routed reader R, own session (accepted; the take was parked first)
+  Command: cd ../writ-genode/build/x86_64 && make run/writ_bend_monitor_accept
+  rc 0 (run-writ_bend_monitor_accept-5.out; runs -2, -3, -4 the same
+  decision; -2 without the delay option). LOG, verbatim:
+    [init -> writ_bend_monitor] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x10ab400
+    [init -> writ_bend_monitor] writ_channel: service announced (bucket 4096 bytes, record 64 bytes, queue depth 8, channels 8)
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_bend_monitor] monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; subjects come from the route
+    [init -> writ_client_r] client: waiting 2000 ms before writing
+    [init -> writ_bend_monitor] monitor: serving 4 records
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request written, signalling the monitor
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000030: 2d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: decision=Committed (1) reason=0 route_subject=1 session=1 seq=1
+    [init -> writ_client_r] client: PASS decision 1 reason 0 as expected
+    [init] child "writ_client_r" exited with exit value 0
+  Request record (bucket offset 0x10..0x4f), words: 1 1 1 6 1 2 3 99 10 1 20
+  1 1 0 0 0 = version 1, kind 1, session 1, expected revision 6, epochs
+  1/2/3, invocation 99, report 10 v1, summary 20 v1, claimed subject 1.
+  Result record, words: 1 2 1 0 1 1 20 1 99 3 1 7 45 0 0 0 = version 1,
+  kind 2, Committed, reason 0, route subject 1, session 1, intent summary 20
+  v1, invocation 99, artifact word 3, backend 1 (Storage), session revision
+  7, reader balance 45 (50 starting units minus the 5 reserved).
+  Ordering: the monitor logged "serving 4 records" before the client wrote
+  (client delay 2000 ms; the run script requires that order when a delay
+  is set), so Genode.take was waiting when the signal arrived and woke on
+  it. Spin check (coarse): during the delay, 4 samples of
+  `ps -eLo lwp,stat,cputimes` over about 1.5 s showed all 8 threads of the
+  "[Genode] init -> writ_bend_monitor" process in state S with 0 s of CPU
+  time each; a thread spinning through the window would have shown R and
+  at least 1 s. Second resolution only; not a profile.
+
+RUN 2: same route R, body claims S and names S's session (denied by Bend)
+  Command: cd ../writ-genode/build/x86_64 && make run/writ_bend_monitor_substitute
+  rc 0 (run-writ_bend_monitor_substitute-2.out; run -1 the same). The
+  request was written at once (delay 0) and queued before Bend's first
+  take. LOG, verbatim:
+    [init -> writ_bend_monitor] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x10ab400
+    [init -> writ_bend_monitor] writ_channel: service announced (bucket 4096 bytes, record 64 bytes, queue depth 8, channels 8)
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00 
+    [init -> writ_client_r] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request written, signalling the monitor
+    [init -> writ_bend_monitor] monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; subjects come from the route
+    [init -> writ_bend_monitor] monitor: serving 4 records
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result record +0x00000030: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: decision=Denied (2) reason=6 route_subject=1 session=2 seq=1
+    [init -> writ_client_r] client: PASS decision 2 reason 6 as expected
+    [init] child "writ_client_r" exited with exit value 0
+  Request record, words: 1 1 2 0 1 2 3 99 10 1 20 1 2 0 0 0 = session 2 (S's
+  session), claimed subject 2 (S). Result record, words: 1 2 2 6 1 2 0 0 0 0
+  0 0 0 0 0 0 = Denied, reason 6 (DataOS.commit_from_capability returned
+  Rejected), decided for route subject 1 (R), not for the claimed 2.
+  Why the library refuses: DataOS.commit_resolved requires the resolved
+  plan to equal the session's plan (it does: S's session is on the
+  Scenario's plan) and the caller, R = 7, to be the session's reader, S = 8
+  (DataOS.bend:52-61). S's session is synthetic (Monitor.other_session,
+  opened, not negotiated).
+
+FAILURE PATHS EXERCISED
+  - Flipped expectation (scratch run file writ_bend_monitor_flip.run in
+    writ-repo/run, removed after; run with WRIT_RUN_SCENARIOS on the make
+    command line, build.conf untouched): client config expected Denied/6
+    for run 1's request. Monitor still Committed; client "Error: client:
+    FAIL expected decision 2 reason 6, observed decision 1 reason 0",
+    exit value 1; run script "Error: the client writ_client_r did not exit
+    with value 0", make rc 2 (run-writ_bend_monitor_flip-1.out).
+  - No matching policy (scratch run writ_bend_monitor_nopolicy.run, removed
+    after): the client started as writ_client_x. The monitor logged
+    "Warning: writ_channel: no <policy> with a subject for 'writ_client_x
+    -> channel', session denied"; no channel was created and Bend received
+    nothing (run-writ_bend_monitor_nopolicy-1.out; the run stopped on that
+    line).
+  Not exercised: a wrong bucket length (dropped and counted; Task 3 adds
+  the bounded denial), a full queue, a repeated signal (coalesced), a put
+  to a closed channel, two channels at once, closing a channel, the client
+  never reading its reply (Task 3), fuel exhaustion (Task 3).
+
+REGRESSION (the shim is linked into every Bend component)
+  All eight Bend components relinked with the new shim (COMPILE writ_mem.o,
+  LINK; build-writ_bend_<name>-channel-t2.out, rc 0 each). Every component
+  now opens its config ROM once more at start (the shim's check for a
+  <writ_channel> node); none of them has one, so none announces a service.
+  make run/writ_bend_hello (run-writ_bend_hello-channel-t2.out): rc 0, "hi",
+    exit 0; ram used=8335360 (8314880 before: the extra config ROM
+    attachment), caps used=35 (unchanged).
+  make run/writ_bend_rts: rc 0; "bend: unknown runtime option --bogus" exit
+    1, help exit 0.
+  make run/writ_bend_probe: rc 0; delta 101 ms, PASS, timer short wakes=0.
+  make run/writ_bend_tests at 256M (run-writ_bend_tests-channel-t2-256M.out):
+    rc 0, 782 PASS lines, ALL LIBRARY TESTS PASSED, exit 0; the 834
+    component lines (extracted as in genode-corpus-base-linux.txt) have
+    sha256 fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff,
+    byte-identical to genode-tests-2.lines.
+  Re-emitting Probe.bend from the new Genode.bend gives a byte-identical
+  probe.c (unused types and effects add nothing).
+  The examples, overflow, and reservation probe runs were not repeated
+  (relinked only).
+  The library's own Tests.bend and PROOF.bend were not rerun: no library,
+  example, or test file changed.
+
+WRIT_BEND.TCL AND BUILD CONFIGURATION
+  scripts/genode/writ_bend.tcl unchanged (no stdout parameter was needed:
+  the monitor's lines go through Genode.log and libc stdout stays on
+  /dev/log). The channel runs share scripts/genode/writ_bend_monitor/
+  writ_bend_monitor.tcl instead, since their config has two children, a
+  <provides>, a route, and the <writ_channel> policy. build.conf (live) and
+  scripts/genode/writ_hello/build.conf.fragment: WRIT_RUN_SCENARIOS gains
+  writ_bend_monitor_accept and writ_bend_monitor_substitute.
+
+HASHES (sha256, final tree)
+  ee5289b6eff4e30427e1564eee3660905743d1b9c7822246ba840ec86d53cee7  hosts/genode/shim/writ_mem.cc
+  c8a963cf6a51b3b3b34397db71c976ad4b29bf6fc10bf4c476721f92f97cbceb  hosts/genode/shim/writ_channel_session.h
+  12996cbcda49f887e7ee0d3aeb67ff31f55d260d4b04f2756eb0feade45d3983  hosts/genode/effects/Channel.md
+  2525963184363b995f5826a13ac2ec8b7f3bdeff9f106d83700f4cefbf760449  hosts/genode/effects/Genode.bend
+  136c255e562a2642b9ebca0be5e6197c4e0fd453d64b52562d7a93645eba57f1  hosts/genode/effects/genode_take.c
+  b0ccd2dbda776815a98c50725f3f0fdb36eef79b2f0edbc2324292f2c74b1ce2  hosts/genode/effects/genode_take.js
+  24462f26c706bba7f07024c244bd42a3f97f3f205d15ba08a21bf68e937c9424  hosts/genode/effects/genode_put.c
+  267e8635b8492ee90c5c5dbaf446401d5c7932c2f2edc218267e1a4ffd2cbcdd  hosts/genode/effects/genode_put.js
+  e50b039ee0c56686cd8c306ed0758cae63983a455a3465ca238100f1edd56356  hosts/genode/monitor/Monitor.bend
+  325d543fd8840220084fc3785135026e5fe08c2a872efff16ef11372c1c51b36  hosts/genode/monitor/MonitorCheck.bend
+  ebbd562c3fa11e32bb1f5f522e9377ba4aed5e0cb2fe633c64c2fe148aeef8c4  hosts/genode/probes/client/writ_channel_client.cc
+  0f035e645137248ad91c53fb0f1e9883929c0dd483a8c8c578d0f1f24e1b37ed  hosts/genode/probes/client/target.mk
+  fbc19db604be1d2519f6dec4db2947cd55ff3cd980ba6641f2168da8772ef1f3  scripts/genode/writ_bend_monitor/target.mk
+  9f2665d046fbd1e793a1eb2ffaad44518d45514643a7be8b964b2aefa6cff1ba  scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl
+  654cd3461dcd09456b5633b9ef6ffff987401421847f239ab739ff521e3606d7  scripts/genode/writ_bend_monitor/writ_bend_monitor_accept.run
+  6da00df6ab09395c6b4a7916c8ad74b9628a223b530ba0a32927856a0dce282f  scripts/genode/writ_bend_monitor/writ_bend_monitor_substitute.run
+  5db756a649db3b2607ea8868828f83fc51a1b62771bdb659916cc45d52b7a161  scripts/genode/writ_bend.tcl
+  f5150891fd912d58e278b1a0469e3115a94744987f5717b6d27bc9923dd3a9da  scripts/genode/writ_bend.inc
+  33d7c91b238d0449c87a4d6d49f304d0cdef3f53654f08931aed52efc9fb1c49  ../writ-genode/build/x86_64/app/writ_bend_monitor/writ_bend_monitor
+  8191d91d09b75a46d4cd5ab8333d9469bae8831e7b7c2ed671ec237d160f2fb1  ../writ-genode/build/x86_64/app/writ_channel_client/writ_channel_client
+  writ_mem.cc: 6664b650...dfca (Task 1 fix round 1) -> the value above. One
+  comment line (a cited kernel.h line range) was corrected after the runs;
+  the rebuilt writ_mem.o and writ_bend_monitor are byte-identical to the
+  ones that ran (sha256 8788902c...3c9e and 33d7c91b...1c49, before and
+  after), so the runs above stand for the final file.
+  writ_bend.tcl and writ_bend.inc: unchanged from Task 1.
+  Live copies (src/writ_shim/writ_mem.cc, src/writ_shim/writ_channel_session.h,
+  src/app/writ_bend_monitor/target.mk, src/app/writ_channel_client/{target.mk,
+  writ_channel_client.cc}, run/writ_bend_monitor.tcl,
+  run/writ_bend_monitor_{accept,substitute}.run, run/writ_bend.tcl,
+  src/app/writ_bend.inc): byte-identical (cmp, 2026-11-04). Scratch run files
+  removed from writ-repo/run; build.conf differs from the fragment's list
+  only as recorded (the two new scenarios, in both).

@@ -417,3 +417,27 @@ the component with one `writ_shim:` line and exit value 1. Current gap:
 these effects are host rows beyond the monitor profile (`check-binary.sh`
 lists exactly the three) and are not yet admitted to it. Record:
 [genode-effects-base-linux.txt](../verification/genode-effects-base-linux.txt).
+
+Writ channel (channel lane, Task 2): `make run/writ_bend_monitor_accept`
+starts the Bend monitor `hosts/genode/monitor/Monitor.bend` as the component
+`writ_bend_monitor`, which serves a `Writ_channel` session, and a client
+probe started as the child `writ_client_r`. Init routes the client's session
+to the monitor; the monitor's `<writ_channel><policy
+label_prefix="writ_client_r ->" subject="1"/>` gives that channel route
+subject 1, the Scenario's reader R. The client writes a 64-byte
+report-to-summary request into its 4 KiB request bucket and signals;
+`Genode.take` yields the record with the route subject, the monitor decides
+through `DataOS.commit_from_capability` over the synthetic
+`examples/Scenario.bend` state, and `Genode.put` writes the decision record
+to the result bucket and signals back: `decision=Committed`. In
+`make run/writ_bend_monitor_substitute` the same route sends a body that
+claims subject S and names S's session; Bend still evaluates R and the
+library rejects it (`decision=Denied reason=6`). The session type has only
+four capability-handover RPC functions (two buckets, two signals); records
+carry the requests and decisions (GB-011). Current gap: one record per
+bucket, an oversized record is dropped and counted but not yet answered,
+the descriptor is opened per request rather than per channel, liveness with
+an unresponsive client and fuel exhaustion are not yet run (Task 3), and
+`base-hw` is not attempted. Records formats:
+[Channel.md](../hosts/genode/effects/Channel.md); evidence:
+[genode-channel-base-linux.txt](../verification/genode-channel-base-linux.txt).
