@@ -302,8 +302,8 @@ The index is where the reader stays. A click on any same-origin page link on it
 (change names, explainers, baselines, traceability, the nav, links inside lane
 cards) opens that page in a right-hand quick-view panel (an iframe of the page
 with `?embed=1`) instead of leaving the index; the panel bar shows the path,
-an "open in full" link to the normal page, and a close button; Escape closes
-it. Links with a hash (lane anchors) keep their default. Below 760px the panel
+an "open in full" link to the normal page, and a close button; Escape, the
+close button, or a click on the dimmed backdrop over the index closes it. Links with a hash (lane anchors) keep their default. Below 760px the panel
 fills the screen.
 
 Light and dark follow `prefers-color-scheme`, with the same palette and type as
