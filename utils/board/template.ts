@@ -103,12 +103,17 @@ function laneChip(l: Lane): string {
   return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase">${esc(phaseText(l))}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
 }
 
+/** Datastar signal name for a change's task row: slugs are not identifiers, so hyphens become underscores. */
+const taskSignal = (c: Change) => `t_${slug(c.name).replace(/-/g, "_")}`;
+
 /**
- * The expandable task list under a change row: open tasks first, grouped by
- * section, each with its id badge; done tasks behind a nested "N done"
- * toggle. Both open states are kept across pushes.
+ * The task row under a change: open tasks first as cards grouped by section,
+ * done tasks behind a nested toggle. Shown by a Datastar signal the chevron
+ * at the start of the change row flips; the row spans the table so opening
+ * it never resizes the columns. `style` is preserved across morphs so the
+ * reader's open rows stay open.
  */
-function taskDetails(c: Change): string {
+function taskRow(c: Change, columns: number): string {
   if (c.taskList.length === 0) return "";
   const group = (items: TaskItem[]) => {
     let section: string | null = null;
@@ -130,7 +135,14 @@ function taskDetails(c: Change): string {
   const doneList = done.length === 0
     ? ""
     : `<details id="done-${slug(c.name)}" class="donelist" data-preserve-attr="open"><summary>${done.length} done</summary><ul class="tasks">${group(done)}</ul></details>`;
-  return `<details id="tasks-${slug(c.name)}" class="tasklist" data-preserve-attr="open"><summary>${open.length} to do</summary>${openList}${doneList}</details>`;
+  return `<tr id="tasks-${slug(c.name)}" class="taskrow" data-show="$${taskSignal(c)}" data-preserve-attr="style" style="display:none"><td colspan="${columns}"><div class="taskrow-inner"><div class="doc-label">openspec/changes/${esc(c.name)}/tasks.md · ${open.length} to do · ${done.length} done</div>${openList}${doneList}</div></td></tr>`;
+}
+
+/** The chevron that opens a change's task row; a real button so it is keyboard-reachable. */
+function chevron(c: Change): string {
+  if (c.taskList.length === 0) return `<td class="chev-cell"></td>`;
+  const sig = taskSignal(c);
+  return `<td class="chev-cell"><button type="button" class="chev" aria-controls="tasks-${slug(c.name)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-preserve-attr="aria-expanded" title="Show the task list"><span data-text="$${sig} ? '▾' : '▸'">▸</span></button></td>`;
 }
 
 /** Task numbers a tasks.md marks done and open, for the line under a progress bar. */
@@ -189,24 +201,26 @@ export function indexTables(baselines: Baseline[], changes: Change[], scan: Lane
       + (landedOn.length === 0 ? "" : `<span class="muted small landed-list">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
     const deps = c.dependsOn.length === 0 ? "" : ` · depends on ${c.dependsOn.length}`;
     return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
-<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
+${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
 <td>${statusTag(c.status)}</td>
-<td>${progress(c.tasks)}${taskNumbers(c)}${taskDetails(c)}</td>
+<td>${progress(c.tasks)}${taskNumbers(c)}</td>
 <td class="chips">${chips || `<span class="muted">none</span>`}</td>
 <td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
-</tr>`;
+</tr>${taskRow(c, 6)}`;
   };
+  // One signal per change, false unless the reader already flipped it.
+  const signals = JSON.stringify(Object.fromEntries(changes.filter((c) => c.taskList.length > 0).map((c) => [taskSignal(c), false])));
   const shown = changes.filter((c) => c.tasks.done > 0 || (lanesOf.get(c.name) ?? []).length > 0);
   const rest = changes.filter((c) => !shown.includes(c));
   const restBoxes = rest.reduce((n, c) => n + c.tasks.total, 0);
-  const restRows = rest.length === 0 ? "" : `<tr class="rest"><td colspan="5"><details id="rest-changes" data-preserve-attr="open"><summary>${rest.length} more change${rest.length === 1 ? "" : "s"} with no task done and no lane (0 of ${restBoxes} boxes)</summary>
+  const restRows = rest.length === 0 ? "" : `<tr class="rest"><td colspan="6"><details id="rest-changes" data-preserve-attr="open"><summary>${rest.length} more change${rest.length === 1 ? "" : "s"} with no task done and no lane (0 of ${restBoxes} boxes)</summary>
 <div class="tablewrap"><table><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
-  return `<section id="index-tables">
+  return `<section id="index-tables" data-signals__ifmissing="${esc(signals)}">
 ${tiles}
 <p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence; a lane chip is what that lane's ledger and activity log say.</p>
 <h2>Pending changes</h2>
 <div class="tablewrap"><table class="changes">
-<thead><tr><th>Change</th><th>Status</th><th>Tasks</th><th>Worked on by</th><th>Explainers</th></tr></thead>
+<thead><tr><th class="chev-cell"><span class="visually-hidden">Tasks</span></th><th>Change</th><th>Status</th><th>Tasks</th><th>Worked on by</th><th>Explainers</th></tr></thead>
 <tbody>${shown.map(row).join("")}${restRows}</tbody>
 </table></div>
 <h2>Baseline capabilities</h2>
