@@ -14,24 +14,44 @@ Inspected on 2026-11-03 by emitting C for a one-line `IO.print` program with
 3,074 lines. Nothing here changes Writ's policy model; it describes an upstream
 compiler artifact and must be redone for any other Bend version.
 
+The inspection is repeatable: `sh scripts/runtime-profile/inventory.sh`, run
+from the repository root, emits C for
+[`scripts/runtime-profile/Hello.bend`](../scripts/runtime-profile/Hello.bend)
+into `../writ-build/runtime-profile/` and records the extracted host calls and
+effect rows in
+[`verification/runtime-inventory-bend-2.0.39.txt`](../verification/runtime-inventory-bend-2.0.39.txt).
+The table below was reconciled against that record. The extraction is textual,
+so it also counts calls in code compiled only for CUDA or Metal.
+
 ## What the generated C uses from the host
 
 | Area | Calls observed | Why the runtime needs it |
 | --- | --- | --- |
-| Memory | `mmap` with `MAP_ANON \| MAP_NORESERVE`, `mprotect`, `munmap` | Reserves the term heap and a 2 GiB evaluation stack with a guard page |
-| Faults | `sigaltstack`, `sigaction(SIGSEGV)`, `sigaction(SIGBUS)`, `signal(SIGPIPE)` | Turns a stack overflow or bad access into a fail-stop error message |
-| Threads | `pthread_create`, mutex, condvar, `pthread_detach`, `sched_yield` | One worker per `--threads` lane plus up to a bounded pool of IO helper threads |
-| Clock | `clock_gettime(CLOCK_MONOTONIC)`, `nanosleep` | `IO.now`, `IO.sleep`, deadlines |
+| Memory | `mmap` with `MAP_ANON \| MAP_NORESERVE`, `mprotect`, `munmap` | Reserves the term heap and a 2 GiB evaluation stack with a guard page; a failed reservation fails stop with `reservation failed` |
+| Faults | `sigaltstack`, `sigaction(SIGSEGV)`, `sigaction(SIGBUS)`, `signal(SIGPIPE)`; the handler uses `write(2)`, `signal(SIG_DFL)`, and `raise` | Turns a stack overflow or bad access into a fail-stop error message, then re-raises the signal |
+| Threads | `pthread_create`, `pthread_mutex_lock`/`unlock`, `pthread_cond_wait`/`signal`/`broadcast`, `pthread_detach`, `pthread_self`, `sched_yield` | One worker per `--threads` lane plus up to a bounded pool of IO helper threads; `pthread_self` lets the first failing thread claim the error report |
+| Clock | `clock_gettime(CLOCK_MONOTONIC)`, `nanosleep` | `IO.now`, `IO.sleep`, deadlines, and the wait of a thread that lost the error claim |
 | Event loop | `pipe`, `fcntl(O_NONBLOCK)`, `select`, `read`, `write` | Wakes the loop when a helper thread finishes an effect |
-| Process | `getenv("BENDRTS")`, `exit`, `sysconf(_SC_NPROCESSORS_ONLN)`, `sched_getaffinity`, cgroup `cpu.max` reads | Runtime options, exit status, default thread count |
-| Atomics | C11 `stdatomic` operations and fences | Shared heap and scheduler state across lanes |
-| GPU | `fopen`, CUDA driver and NVRTC, or Metal | Only when `!` calls are compiled for a device; absent with `--gpu off` on a machine without a device |
+| Process | `getenv("BENDRTS")`, `exit`, `sysconf(_SC_NPROCESSORS_ONLN)`, `sched_getaffinity`, and `fopen`/`fscanf`/`fclose` of cgroup `cpu.max` (or the cgroup v1 `cpu.cfs_quota_us` and `cpu.cfs_period_us`) on Linux; `_exit(1)` on a runtime failure | Runtime options, exit status, default thread count |
+| Allocation and text | `malloc`, `calloc`, `realloc`, `free`, `strdup`, `snprintf`, and C stdio for program output | Option parsing, IO work records, strings passed to effects |
+| Atomics | C11 `stdatomic` operations (`atomic_load_explicit`, `atomic_store_explicit`, `atomic_fetch_*_explicit`, compare-exchange) and the `__atomic_exchange_n`/`__atomic_store_n` builtins for host spin locks | Shared heap and scheduler state across lanes |
+| GPU | CUDA driver (`cu*`) and NVRTC (`nvrtc*`) calls plus `open` and `fopen` of the cached device program under `BEND_CUDA`; Metal (`MTLCreateSystemDefaultDevice` and Objective-C messages) under `__OBJC__` | Only when `!` calls are compiled for a device; the Hello binary built here with `bend -o` imports no CUDA or NVRTC symbol even though a CUDA toolkit is installed |
+
+`fopen`, `fscanf`, and `fclose` therefore belong to both the process and the
+GPU rows: a Linux monitor that drops the GPU code still reads its cgroup quota
+with them at startup, because `main` computes the default thread count before
+it parses `--threads`.
 
 Effects are registered per program. Each effect the program uses contributes a
-constructor that fills a row in an effect table; a request for an effect with no
-row fails with "an alien request". A monitor that only uses `IO.print` and `IO.die`
-therefore links no socket, file, audio, or process-spawning effect code, even
-though the headers for those remain in the emitted file.
+constructor, such as `io_print_use`, that calls `io_eff(CID_IO_print, io_print_run)`
+to fill a row in an effect table; a request for an effect with no row fails with
+"an alien request". The Hello program registers exactly one row, `IO.print`.
+The exit path is not a row: the IO loop handles the `Halt` request (from
+`IO.die`) and the `Exit` request (from `IO.exit`), and the `Emit` that finishes a
+task, before it consults the table, so every program has them. A monitor
+that only uses `IO.print` and `IO.die` therefore links no socket, file, audio,
+or process-spawning effect code, even though the headers for those remain in
+the emitted file.
 
 ## Observed on this machine
 
