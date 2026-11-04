@@ -10,11 +10,12 @@ GPU mode: not applicable; no --gpu run. Device calls below are source text
   under BEND_CUDA and __OBJC__ guards, not evidence of GPU execution.
 
 ## Host calls (name, area), sorted and unique
-# Pattern: (^|[^A-Za-z0-9_.>])(pthread_[a-z_]+|mmap|munmap|mprotect|sigaltstack|sigaction|signal|clock_gettime|nanosleep|sched_yield|sched_getaffinity|pipe|fcntl|select|read|write|open|fopen|fscanf|fclose|getenv|exit|sysconf|malloc|calloc|realloc|free|strdup|snprintf|atomic_[a-z_]+|__atomic_[a-z_]+|cu[A-Z][A-Za-z]+|nvrtc[A-Z][A-Za-z]+|MTL[A-Z][A-Za-z]+)\(
+# Pattern: (^|[^A-Za-z0-9_.>])(pthread_[a-z_]+|mmap|munmap|mprotect|sigaltstack|sigaction|signal|clock_gettime|nanosleep|sched_yield|sched_getaffinity|pipe|fcntl|select|read|write|open|fopen|fscanf|fclose|getenv|exit|_exit|raise|sysconf|malloc|calloc|realloc|free|strdup|snprintf|atomic_[a-z_]+|__atomic_[a-z_]+|cu[A-Z][A-Za-z]+|nvrtc[A-Z][A-Za-z]+|MTL[A-Z][A-Za-z]+)\(
 MTLCreateSystemDefaultDevice	device
 MTLSizeMake	device
 __atomic_exchange_n	atomics
 __atomic_store_n	atomics
+_exit	process
 atomic_compare_exchange_strong	atomics
 atomic_compare_exchange_weak_explicit	atomics
 atomic_fetch_add_explicit	atomics
@@ -69,6 +70,7 @@ pthread_detach	threads
 pthread_mutex_lock	threads
 pthread_mutex_unlock	threads
 pthread_self	threads
+raise	faults
 read	event-loop
 realloc	allocation-and-strings
 sched_getaffinity	process

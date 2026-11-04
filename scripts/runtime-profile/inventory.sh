@@ -48,6 +48,13 @@ if [ ! -f "$SRC" ]; then
   exit 2
 fi
 
+if ! command -v bend >/dev/null 2>&1; then
+  echo "inventory.sh: bend not found on PATH; add the pinned toolchain, e.g." >&2
+  # shellcheck disable=SC2016 # print the literal PATH hint
+  echo '  export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"' >&2
+  exit 2
+fi
+
 BEND_NO_TELEMETRY=1
 export BEND_NO_TELEMETRY
 
@@ -56,11 +63,13 @@ VERSION=${VERSION_LINE#bend }
 EVIDENCE=verification/runtime-inventory-bend-$VERSION.txt
 
 # Host call names from the task brief. MTL[A-Z][A-Za-z]+ extends the list so
-# the Metal entry points that docs/BEND-RUNTIME.md names are extracted too.
+# the Metal entry points that docs/BEND-RUNTIME.md names are extracted too;
+# _exit and raise extend it so the fault handler's fail-stop calls named in
+# that document are extracted as well.
 HOST_CALLS='pthread_[a-z_]+|mmap|munmap|mprotect|sigaltstack|sigaction|signal'
 HOST_CALLS=$HOST_CALLS'|clock_gettime|nanosleep|sched_yield|sched_getaffinity'
 HOST_CALLS=$HOST_CALLS'|pipe|fcntl|select|read|write|open|fopen|fscanf|fclose'
-HOST_CALLS=$HOST_CALLS'|getenv|exit|sysconf|malloc|calloc|realloc|free|strdup'
+HOST_CALLS=$HOST_CALLS'|getenv|exit|_exit|raise|sysconf|malloc|calloc|realloc|free|strdup'
 HOST_CALLS=$HOST_CALLS'|snprintf|atomic_[a-z_]+|__atomic_[a-z_]+'
 HOST_CALLS=$HOST_CALLS'|cu[A-Z][A-Za-z]+|nvrtc[A-Z][A-Za-z]+|MTL[A-Z][A-Za-z]+'
 
@@ -68,11 +77,11 @@ HOST_CALLS=$HOST_CALLS'|cu[A-Z][A-Za-z]+|nvrtc[A-Z][A-Za-z]+|MTL[A-Z][A-Za-z]+'
 area() {
   case $1 in
     mmap|munmap|mprotect) echo memory ;;
-    sigaltstack|sigaction|signal) echo faults ;;
+    sigaltstack|sigaction|signal|raise) echo faults ;;
     pthread_*|sched_yield) echo threads ;;
     clock_gettime|nanosleep) echo clock ;;
     pipe|fcntl|select|read|write) echo event-loop ;;
-    getenv|exit|sysconf|sched_getaffinity) echo process ;;
+    getenv|exit|_exit|sysconf|sched_getaffinity) echo process ;;
     # cpu_read() reads cgroup cpu.max with these on Linux; gpu_make() also
     # writes the device program with fopen.
     fopen|fscanf|fclose) echo process-and-device ;;
@@ -85,7 +94,7 @@ area() {
 
 mkdir -p "$OUT_DIR"
 EMIT="bend $SRC -o $C_FILE"
-$EMIT
+bend "$SRC" -o "$C_FILE"
 
 CALLS=$(grep -oE "(^|[^A-Za-z0-9_.>])($HOST_CALLS)\(" "$C_FILE" \
   | sed -E 's/^[^A-Za-z_]//; s/\($//' | sort -u)
