@@ -6,3 +6,4 @@
 /*.c
 /*.js
 *.o
+/contrib/board/node_modules/
