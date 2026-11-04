@@ -1,0 +1,33 @@
+Writ feature specification review
+Date: 2026-11-03 (America/Los_Angeles)
+Base: 06522bdce860ff720f16a8c331061f46627bb422
+
+Scope: WritFS, addressable views, locality, origin stages, controlled disclosure,
+scoped private matching, and cooperative retirement.
+PASS 7 new packages; 96 requirements, 200 scenarios, 64 unchecked tasks.
+PASS OpenSpec 1.16.0 strict validation: 36 active items, no issues.
+PASS new requirement bodies <=500 characters; concrete GIVEN/WHEN/THEN clauses.
+PASS 22-change dependency graph: all declared dependencies exist; no cycles.
+PASS all relative Markdown file targets resolve.
+PASS 48 Bend files, 4 Go files, and 2 Go module files are byte-identical to base.
+PASS 14 baseline specification files are byte-identical to base.
+
+Cross-review and resolved cases:
+- Explicit materialization; names do not grant authority or start billed work.
+- Original policy retained; effective confidentiality transition has separate authority.
+- Confidentiality grants cannot waive integrity, payment, operation, or sink checks.
+- Import disposition/status/availability are disclosure channels.
+- Event numbering follows recipient visibility filtering.
+- Rejected final releases cannot refund earlier recorded observations.
+- New uses require live grants; exact already-durable delivery recovery is distinct.
+- Retried accepted delivery cannot recreate an artifact retired by its receiver.
+- Offline/shared-reference retirement limits and receipt projections remain explicit.
+
+Writing references: knewter/tdisplay-k230, knewter/esp-sdr-stuff, knewter/time-tracker.
+Pinned links and adopted conventions: docs/FEATURE-SOURCES.md.
+No external implementation or prose copied.
+
+Evidence limits: design/source review and document validation only.
+No new runtime implementation, native mount, worker, private matcher, release
+engine, or disposal service was executed. Existing library/contribution test
+evidence retains its source and backend scope; no runtime suites were rerun.

@@ -127,10 +127,10 @@ was changed to bypass it. See `verification/kernel-verdict.txt` and `proofs.txt`
 
 ## OpenSpec suite
 
-The repository includes 14 baseline capability specs and 15 pending change
-packages. OpenSpec 1.16.0 strict validation passed all 29 items with no errors or
+The repository includes 14 baseline capability specs and 22 pending change
+packages. OpenSpec 1.16.0 strict validation passed all 36 items with no errors or
 warnings. Baseline specifications contain 143 requirements and 314 scenarios;
-pending deltas contain 141 requirements and 241 scenarios. All 133 implementation
+pending deltas contain 237 requirements and 441 scenarios. All 197 implementation
 tasks in those pending packages remain unchecked. The bounded rclone reference
 change is implemented and archived with eight completed tasks; it does not
 complete a production adapter. See `verification/openspec-validation.txt`.
@@ -139,6 +139,31 @@ This is specification validation, not execution of every acceptance scenario.
 Traceability tables distinguish named executable tests from source review and
 host preconditions. The documentation cleanup does not complete any proposed
 adapter task or expand the scope of the selected formal laws.
+
+## Data-view and cooperation specifications
+
+Seven proposed packages add WritFS, addressable views, locality-aware execution,
+origin stages, controlled disclosure, scoped private matching, and cooperative
+retirement. They contain 96 requirements, 200 scenarios, and 64 unchecked tasks.
+The [feature guide](docs/FEATURES.md) and
+[acceptance index](openspec/FEATURE-ACCEPTANCE.md) give concrete examples and
+cross-feature gates. The source and documentation-style review is recorded in
+[feature sources](docs/FEATURE-SOURCES.md).
+
+Strict OpenSpec validation passes all 36 active items with no issues. Review
+also checked relative Markdown targets, the 22-change dependency graph, scenario
+clauses, requirement lengths, and implementation/baseline preservation.
+Cross-review covered hidden match verdicts through status and disposition,
+visibility-filtered event numbering, original versus effective release policy,
+prior disclosure accounting, new-use versus durable-recovery authority, and
+publication replay after retirement.
+
+All 48 Bend files, four Go files, both Go module files, and 14 baseline specs are
+byte-identical to revision `06522bdce860ff720f16a8c331061f46627bb422`. Existing core
+and contribution execution evidence retains that exact source scope; runtime
+tests were not rerun for this specification-only update. None of the new native
+features, cryptographic matching, or disposal guarantees was executed. See
+[feature-spec-review.txt](verification/feature-spec-review.txt).
 
 ## Host platform research
 

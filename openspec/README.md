@@ -20,12 +20,26 @@ and actual confinement evidence.
 | [Baseline specs](#baseline-capabilities) | Current observable model behavior and explicitly identified integration preconditions |
 | [Traceability](#baseline-capabilities) | Requirement IDs mapped to Bend functions, named tests, reviewed cases, and missing evidence |
 | [Pending changes](ROADMAP.md) | Proposed new behavior, design decisions, and unchecked implementation tasks |
+| [Feature guide](../docs/FEATURES.md) and [acceptance index](FEATURE-ACCEPTANCE.md) | Worked WritFS/locality/release/search/retirement examples, linked contracts, and explicit evidence gaps |
 | [State machines](STATE-MACHINES.md) | Existing negotiation, reservation, and descriptor lifecycles |
 | [Project context](config.yaml) | Bend enforcement, optional adapter boundary, security invariants, and OpenSpec authoring rules |
 
 A scenario is an acceptance contract. Its presence does not mean it has an
 automated test. Each traceability table distinguishes executable evidence,
 source review, and host assumptions.
+
+## New feature contracts
+
+The [feature guide](../docs/FEATURES.md) follows one request from a named view to
+an authorized result, then shows a scoped import comparison and cooperative
+retirement. Seven separate proposed packages keep namespace, view resolution,
+placement, origin stages, disclosure, matching, and disposal independently
+reviewable. All their implementation tasks remain unchecked.
+
+Controlled disclosure is a distinct versioned profile. Current baseline APIs
+still retain all input restrictions and expose no declassification route. A new
+release view must retain its original policy and authenticated release chain;
+it cannot be converted to a legacy source by erasing labels.
 
 ## Baseline capabilities
 
@@ -85,6 +99,12 @@ Current contracts belong in `specs/`. New behavior starts as a change containing
 a proposal, design, tasks, and spec deltas. Use the existing capability names
 when changing behavior. Keep requirement IDs stable; a new requirement receives
 a new ID. Each normative requirement has concrete trigger/outcome scenarios.
+
+Lead new designs with an example and the current implementation gap. Link their
+acceptance gates and preserve incomplete or failed evidence. Shared examples live
+in the feature guide; individual packages own their normative details. The
+[source and convention notes](../docs/FEATURE-SOURCES.md) record the references
+behind this organization.
 
 Update the corresponding traceability table whenever code or tests change.
 Leave a task unchecked until its implementation and stated evidence exist.

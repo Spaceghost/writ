@@ -27,6 +27,12 @@ context: |
   POSIX is a protocol model; S3 and hosted languages are later adapters.
   Physical GPU execution and independent Lean kernel verification are unverified.
   OpenSpec is development tooling, not part of Writ's enforcement runtime.
+  Proposed WritFS, addressable views, locality, origin stages, controlled
+  disclosure, scoped private matching, and cooperative retirement are separate
+  pending features. Existing v1 APIs remain monotone. A release view preserves
+  original policy/provenance and a checked effective confidentiality transition;
+  it cannot waive integrity, payment, operation, or sink-effect obligations.
+  Read docs/FEATURES.md and openspec/FEATURE-ACCEPTANCE.md for examples and gates.
 
 rules:
   proposal:
@@ -40,6 +46,7 @@ rules:
     - Keep implementation and test links in the traceability documents, not normative text.
     - Preserve the distinction between machine-mediated guarantees and trusted-host assumptions.
   design:
+    - Start with a concrete example and current gap; link the acceptance evidence required before claiming implementation.
     - Identify authority ownership, inputs, state transitions, and the actual effect boundary.
     - Specify denial behavior and concurrency or crash behavior for state changes.
     - Keep all proposed policy and verification logic in Bend 2.

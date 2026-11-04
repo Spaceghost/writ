@@ -99,7 +99,7 @@ the core library does not depend on it.
 ## Read further
 
 - [Getting started: report to summary](docs/GETTING-STARTED.md)
+- [Proposed features: WritFS, compute near data, scoped matching, and retirement](docs/FEATURES.md)
 - [OpenSpec suite, state machines, and implementation roadmap](openspec/README.md)
 - [Library APIs](LIBRARY.md)
-- [Enforcement design and adapter contract](DESIGN.md)
 - [Verification record and captured results](VERIFICATION.md)

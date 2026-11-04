@@ -65,3 +65,15 @@ as implemented merely because their specifications validate.
 Validate document changes with OpenSpec 1.16.0:
 `openspec validate --all --strict --no-interactive`.
 This is structural validation, separate from the Bend tests and proof checks.
+
+Lead new feature documentation with a concrete example and the current gap.
+Link each acceptance claim to its exact contract and evidence; preserve failed
+and incomplete outcomes. Use docs/FEATURES.md for the reader's path and
+openspec/FEATURE-ACCEPTANCE.md for cross-feature qualification. Do not introduce
+a new documentation framework merely to publish a specification.
+
+The proposed controlled-disclosure profile is not implemented. Keep ordinary v1
+derivation monotone. A future release view must retain original policy/provenance
+and a separately authenticated effective-policy transition; never clear labels
+or strip a release chain to fit a legacy record. Confidentiality authority cannot
+waive integrity, payment, operation, or sink-effect obligations.

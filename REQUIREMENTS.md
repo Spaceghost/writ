@@ -29,7 +29,10 @@ effect; deferred means code is not included. These are not deployment claims.
 
 The governing rule is **no amplification**: control of an intermediate bucket
 does not grant authority to widen its origins' permissions. No declassification
-or endorsement exception has been added.
+or endorsement exception has been implemented. The proposed
+[controlled-disclosure profile](openspec/changes/add-controlled-disclosure/proposal.md)
+adds a distinct owner-authorized release view with retained original provenance;
+it does not change ordinary v1 derivation or authorize integrity endorsement.
 
 ## 2. Traceability
 
@@ -51,6 +54,13 @@ or endorsement exception has been added.
 | B14 | State machines with possible AI/Trealla proposals | Immutable requests, revisions, and guarded transitions govern `Negotiation`, `Ledger`, and `Frontend`. All authorization decisions are deterministic given trusted state. | Implemented state machines. AI/Trealla may later propose plans or evidence; their adapters and runtimes are deferred and gain no authority from proposing. |
 | B15 | POSIX first, S3 afterward | Both belong behind `DataOS.commit_from_capability` and the backplane's scoped output intent. | Ordering recorded. Neither a live POSIX adapter nor an S3 server is included. |
 | B16 | Build on Genode and support Linux, Windows, then a kernel using Drift | [Platform architecture](docs/PLATFORMS.md), [Genode mapping](docs/GENODE.md), [Linux/Windows profiles](docs/HOST-PLATFORMS.md), [Drift boundary](docs/DRIFT.md), and five proposed host OpenSpec changes | Researched and specified. The current tests execute the Bend model; native Writ ports, runtime bindings, and confinement qualification remain pending. |
+| B17 | WritFS exposes files and proc-like scoped activity | [WritFS namespace](openspec/changes/add-writfs-namespace/proposal.md) | Proposed. Per-session names, protected status/receipts, explicit framed controls, paired reads, and native enforcement remain to implement. |
+| B18 | Address a computation and materialize its result | [Addressable views](openspec/changes/add-addressable-views/proposal.md) | Proposed. Freeze inputs behind aliases, require explicit execution authority, reconcile retries, and recheck cached results. |
+| B19 | Move computation toward approved data locations | [Locality-aware execution](openspec/changes/add-locality-aware-execution/proposal.md) | Proposed. Residency filters eligible providers before approved total-cost ranking; no silent provider replacement or input movement. |
+| B20 | Origins require preparation and release-processing stages | [Origin transform stages](openspec/changes/add-origin-transform-stages/proposal.md) | Proposed. Pinned bounded stages, private intermediates, complete dependencies, per-stage effects, and independent release authority. |
+| B21 | Explicitly authorize a narrower disclosure | [Controlled disclosure](openspec/changes/add-controlled-disclosure/proposal.md) | Proposed. Every affected owner approves an exact sealed result; original policy is retained, all other obligations remain, and unsupported legacy consumers deny. |
+| B22 | Privately compare admitted imports within approved searches | [Scoped private matching](openspec/changes/add-scoped-private-matching/proposal.md) | Proposed. Exact trusted-matcher profile first; cryptographic profiles require separate qualification. Bounded match disclosure is not an ownership verdict. |
+| B23 | Cooperatively retire managed data | [Cooperative retirement](openspec/changes/add-cooperative-retirement/proposal.md) | Proposed. Exact disposal scope, live-use barriers, truthful pending/exception receipts, shared-reference safety, and restore reconciliation; no claim of unknown-copy erasure. |
 
 ## 3. Precise integration obligations
 

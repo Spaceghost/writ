@@ -81,12 +81,46 @@ Planner adapters may develop against authenticated request interfaces in paralle
 GPU validation can also proceed independently when suitable hardware is available.
 Neither path grants authority to bypass the integration chain.
 
+## Data views and cooperative operations
+
+These seven proposed changes extend the feature chain. The
+[feature guide](../docs/FEATURES.md) explains the user-facing behavior; the
+[acceptance index](FEATURE-ACCEPTANCE.md) lists the cross-feature checks and
+unverified evidence. All policy and verification implementation remains Bend.
+
+| Change | Scope | Depends on |
+| --- | --- | --- |
+| [Addressable views](changes/add-addressable-views/proposal.md) | Freeze inputs behind a named computation; explicitly materialize and reconcile its result | Issuance, confinement, durable publication |
+| [Locality-aware execution](changes/add-locality-aware-execution/proposal.md) | Enforce source/executor placement constraints and declared movement costs | Executor rendezvous, portable host contract |
+| [Controlled disclosure](changes/add-controlled-disclosure/proposal.md) | A versioned, affected-owner-authorized release of exact sealed output | Issuance, confinement, durable publication |
+| [Origin transform stages](changes/add-origin-transform-stages/proposal.md) | Pinned preparation, requested computation, and release processing | Confinement, durable publication, controlled disclosure |
+| [WritFS namespace](changes/add-writfs-namespace/proposal.md) | Session-scoped files, views, job state, receipts, and explicit controls | Host contract, issuance, durable publication, addressable views |
+| [Scoped private matching](changes/add-scoped-private-matching/proposal.md) | Approved import/corpus comparisons with bounded result disclosure | Issuance, confinement, controlled disclosure, durable publication |
+| [Cooperative retirement](changes/add-cooperative-retirement/proposal.md) | Scoped revocation, disposal coordination, and truthful participant receipts | Host contract, issuance, durable publication |
+
+WritFS initially requires explicit materialization. Browsing a namespace never
+starts work. The first matching profile is a mutually approved confined service
+with exact equality; cryptographic input privacy and semantic similarity need
+separate qualification. A disclosure grant changes only its specified
+confidentiality policy; original provenance and all other obligations remain.
+
+The common native boundary stays authoritative behind every presentation.
+WritFS does not choose FUSE, an on-disk format, or a storage engine. Direct Linux
+file compatibility builds on its native adapter; Genode and Windows use their
+own qualified bindings. Retirement and matching do not depend on a filesystem
+mount and do not acquire authority from a path.
+
 ## Proposed defaults
 
 The provider-selection change proposes the lowest approved total quote among
 eligible offers, with canonical provider then offer identity breaking ties. This is a
 reviewable default, not an implemented selection algorithm or an instruction to
 prefer price over source-owner restrictions.
+
+The locality change retains that ranking after filtering required residency and
+executor constraints. Approved total quotes include declared movement costs.
+A new preference ordering needs a coordinated, versioned rendezvous change;
+it cannot silently reorder an already approved plan.
 
 The POSIX change proposes a Linux character-device control interface and a
 capability-bound logical namespace. The transport and host isolation mechanism

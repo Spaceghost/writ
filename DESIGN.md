@@ -272,3 +272,22 @@ or a solver result through a future transport. They cannot supply trusted
 registries, approve for owners, mint paid witnesses, weaken labels, or skip the
 deterministic final gate. External runtimes and their parsers are intentionally
 not implemented here, matching the staged library scope.
+
+## 10. Proposed views and cooperative operations
+
+The [feature guide](docs/FEATURES.md) extends this design with WritFS, addressable
+views, locality-aware execution, origin preparation/release stages, controlled
+disclosure, scoped private matching, and cooperative retirement. The
+[acceptance index](openspec/FEATURE-ACCEPTANCE.md) links their contracts and the
+evidence needed before implementation claims.
+
+These are proposed services and versioned profiles. Current `Core`, `Transfer`,
+`Dlm`, `Frontend`, and `Backplane` behavior is unchanged. In particular, ordinary
+derivation still accumulates restrictions. A future controlled release preserves
+the full original graph/policy and authorizes a separate exact transition over
+sealed output; it cannot pass a lowered candidate to the existing verifier.
+
+Namespace presentation, locality preferences, pre/post stages, matching results,
+and retirement requests confer no authority of their own. They resolve through
+the same authenticated native boundary and current Bend decisions, with durable
+replay/accounting and explicit output-disclosure rules.
