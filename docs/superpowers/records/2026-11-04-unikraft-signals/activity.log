@@ -8,3 +8,5 @@
 2026-11-04T21:39:36Z	implementer	overflow image built with the template (141 s); check-fault.sh ovs1, ovs2: message before crash screen, QEMU 253, PASS; die 35 PASS; exhaust building
 2026-11-04T21:42:03Z	implementer	exhaust with signals: crash 253 at deliver.c:125 altstack assertion, no message (limit kept); unikernel-fault-qemu.txt rewritten (adopted configuration first, trial kept as history); refreshing unikernel-exit-codes.txt
 2026-11-04T21:42:55Z	implementer	exit-codes.txt refreshed; report written; committing task 1 (DONE_WITH_CONCERNS)
+2026-11-04T21:43:18Z	controller	task 1 reported DONE_WITH_CONCERNS; rulings on the template file and set names; reviewer dispatched
+2026-11-04T21:45:03Z	controller	task 1 review APPROVED; task 2 dispatched (corpus, effects, channel rebuilds)
