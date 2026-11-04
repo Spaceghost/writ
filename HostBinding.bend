@@ -697,15 +697,25 @@ def alias_routed(aliases: Aliases, +routes: Routes, +wanted: Nat, +subject: Nat,
 # node gave this exact alias to. A delegated alias stays authorized only while
 # the root of its delegation chain is still held by a domain the parent routes
 # as that subject on that service: withdrawing the delegator's route withdraws
-# every delegation drawn from it. The running host cannot observe the invoking
-# domain; this rule is enforced there by topology (GA-010).
+# every delegation drawn from it. A delegated holder is also denied while the
+# parent routes it as some other subject on the object's service. This is the
+# use-time counterpart of the check `delegate` makes on its target: a domain
+# routed as another subject after it received the delegation acts for that
+# other subject on the service, so keeping this subject's authority would merge
+# the two; the denial is SubjectMismatch, reported like any other unauthorized
+# holder. A route for the holder on a different service changes nothing here.
+# On Genode this models a parent reconfiguration that the monitor observes
+# through its own recorded routes, not through the invoking domain. The running
+# host cannot observe the invoking domain; this rule is enforced there by
+# topology (GA-010).
 def holder_authorized(+routes: Routes, +delegations: Delegations, +aliases: Aliases, +alias: Alias,
     +object: Object, +holder: Nat) -> Bool:
   Nat.is_eq(alias_holder(alias), holder)
     && (route_maps(routes, holder, object_owner(object), object_service(object))
       || (delegated_to(delegations, alias_id(alias), holder)
         && alias_routed(aliases, routes, chain_root(alias_id(alias), delegations, alias_id(alias)),
-          object_owner(object), object_service(object))))
+          object_owner(object), object_service(object))
+        && Bool.not(routed_otherwise(routes, holder, object_owner(object), object_service(object)))))
 
 def is_delegated(found: Maybe<&2, U32>) -> Bool:
   match found:
@@ -1024,6 +1034,7 @@ def delegate_target(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +ef
 # service acts for that other subject there; handing it this subject's object
 # would merge two subjects' authority, so it is SubjectMismatch. A delegatee
 # with no route on that service (the same subject's worker) is admitted.
+# holder_authorized repeats this check on every later use of the delegation.
 def delegate_resolved(found: Resolved, +state: State, +to_holder: Nat, +rights: U32) -> Change:
   match found:
     case Unresolved{reason}:

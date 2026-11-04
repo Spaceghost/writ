@@ -43,7 +43,8 @@ def reader() -> Nat:
 
 # Worker W and helper H: other domains acting for the same subject. They have
 # no route of their own, so any authority they hold must come from a recorded
-# delegation node.
+# delegation node. The worker_rerouted fixtures alone give W a route, as
+# another subject, to show that such a route withdraws W's delegation.
 def worker() -> Nat:
   8n
 
@@ -135,6 +136,16 @@ def service_two_routes() -> H.Routes:
 # The recorded table plus S routed as other_subject() on service().
 def stranger_routes() -> H.Routes:
   H.Routes{H.Route{parent_domain(), stranger(), service(), other_subject()}, routes()}
+
+# The recorded table plus W routed as other_subject() on service(): the parent
+# reconfigured W after R delegated to it. No transition adds routes, so states
+# using this table are hand-built from committed ones (see worker_rerouted).
+def worker_rerouted_routes() -> H.Routes:
+  H.Routes{H.Route{parent_domain(), worker(), service(), other_subject()}, routes()}
+
+# The recorded table plus W routed as other_subject() on other_service() only.
+def worker_other_service_routes() -> H.Routes:
+  H.Routes{H.Route{parent_domain(), worker(), other_service(), other_subject()}, routes()}
 
 def account(account_domain: Nat, caps: Nat) -> H.Quota:
   H.Quota{account_domain, 4096n, caps}
@@ -622,6 +633,24 @@ def stranger_opened() -> H.State:
 def stranger_other_mounted() -> H.State:
   with_routes(other_mounted(), stranger_routes())
 
+# R delegated its Session to W (and W opened through it); the parent then
+# routed W as other_subject() on service(). Hand-built from a committed state
+# by replacing only the route table; `valid` checks no route field, so it
+# holds, and the GA-005 checks assert it.
+def worker_rerouted() -> H.State:
+  with_routes(session_shared(), worker_rerouted_routes())
+
+def worker_opened_rerouted() -> H.State:
+  with_routes(worker_opened(), worker_rerouted_routes())
+
+# As worker_rerouted, but W's new route is on other_service().
+def worker_other_routed() -> H.State:
+  with_routes(session_shared(), worker_other_service_routes())
+
+# R's Session before any delegation, with W already routed as another subject.
+def mounted_worker_rerouted() -> H.State:
+  with_routes(mounted(), worker_rerouted_routes())
+
 # R closes its Session in attenuated(): Session 1, descriptor 2 opened from it,
 # and descriptor 3 attenuated from descriptor 2. Revision 4.
 def session_close() -> H.Change:
@@ -729,6 +758,11 @@ def withdrawn_open() -> H.Change:
 
 def stranger_delegate() -> H.Change:
   H.delegate(stranger_opened(), 2n, 2n, reader(), stranger(), read())
+
+# W opens through its delegated Session after the parent routed it as
+# another subject on the Session's service.
+def rerouted_delegatee_open() -> H.Change:
+  H.bind_open(worker_rerouted(), 2n, 2n, worker(), reader_caller(), registry(), read(), live())
 
 def delegator_after_delegatee_revoke() -> H.Change:
   H.delegate(delegatee_revoked(), 4n, 2n, reader(), helper(), read())
@@ -861,6 +895,12 @@ def ga005_checks() -> IO(Unit):
     vector("GA-005-6", "delegate", alias_outcome(stranger_delegate()))
     Test.check(H.Change.accepted(H.delegate(stranger_opened(), 2n, 2n, reader(), worker(), read())), "GA-005 delegation to the same subject's unrouted worker is still recorded")
     Test.check(H.Change.accepted(H.delegate(stranger_other_mounted(), 1n, 1n, reader(), stranger(), read())), "GA-005 a route on another service does not bar delegation")
+    Test.check(H.valid(worker_rerouted()) && H.valid(worker_opened_rerouted()) && H.valid(worker_other_routed()), "GA-005 delegatee rerouted after delegation fixtures are valid states")
+    Test.check(denied(rerouted_delegatee_open(), worker_rerouted(), H.SubjectMismatch{}), "GA-005 a delegatee later routed as another subject on the service denied SubjectMismatch at use")
+    vector("GA-005-7", "bind_open", alias_outcome(rerouted_delegatee_open()))
+    Test.check(denied(H.bind_attenuate(worker_opened_rerouted(), 3n, 3n, worker(), reader_caller(), registry(), read(), live()), worker_opened_rerouted(), H.SubjectMismatch{}), "GA-005 rerouting the delegatee also withdraws its derived alias")
+    Test.check(H.Change.accepted(H.bind_open(worker_other_routed(), 2n, 2n, worker(), reader_caller(), registry(), read(), live())), "GA-005 a later route for the delegatee on another service leaves its delegation usable")
+    Test.check(denied(H.delegate(mounted_worker_rerouted(), 1n, 1n, reader(), worker(), read()), mounted_worker_rerouted(), H.SubjectMismatch{}), "GA-005 delegation to a worker already routed as another subject is still denied SubjectMismatch")
 
 # GA-006 Delegation cannot widen rights.
 def ga006_checks() -> IO(Unit):
@@ -958,4 +998,4 @@ def main() -> IO(Unit):
     ga007_checks()
     ga008_checks()
     ga011_checks()
-    IO.print("HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
+    IO.print("HostBinding: 131 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
