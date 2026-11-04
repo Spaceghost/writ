@@ -40,19 +40,25 @@ static BOOL lpac_token(HANDLE token, PSID expected)
     TOKEN_APPCONTAINER_INFORMATION *package = (TOKEN_APPCONTAINER_INFORMATION *)package_storage;
     TOKEN_GROUPS *capabilities = (TOKEN_GROUPS *)capability_storage;
     TOKEN_MANDATORY_LABEL *label = (TOKEN_MANDATORY_LABEL *)label_storage;
-    if (!token_blob(token, TokenIsAppContainer, &app, sizeof(app)) || app != 1 ||
-        !token_blob(token, TokenIsLessPrivilegedAppContainer, &lpac, sizeof(lpac)) || lpac != 1 ||
-        !token_blob(token, TokenElevation, &elevated, sizeof(elevated)) || elevated != 0 ||
+    if (!token_blob(token, TokenIsAppContainer, &app, sizeof(app)) ||
+        !token_blob(token, TokenIsLessPrivilegedAppContainer, &lpac, sizeof(lpac)) ||
+        !token_blob(token, TokenElevation, &elevated, sizeof(elevated)) ||
         !token_blob(token, TokenAppContainerSid, package_storage, sizeof(package_storage)) ||
         !package->TokenAppContainer || !IsValidSid(package->TokenAppContainer) ||
         !EqualSid(package->TokenAppContainer, expected) ||
         !token_blob(token, TokenCapabilities, capability_storage, sizeof(capability_storage)) ||
-        capabilities->GroupCount != 0 ||
         !token_blob(token, TokenIntegrityLevel, label_storage, sizeof(label_storage)) ||
         !IsValidSid(label->Label.Sid)) return FALSE;
     BYTE subauthorities = *GetSidSubAuthorityCount(label->Label.Sid);
-    return subauthorities > 0 &&
-        *GetSidSubAuthority(label->Label.Sid, subauthorities - 1) <= SECURITY_MANDATORY_LOW_RID;
+    DWORD integrity = subauthorities ? *GetSidSubAuthority(label->Label.Sid, subauthorities - 1) : MAXDWORD;
+    BOOL ok = app == 1 && lpac == 1 && elevated == 0 && capabilities->GroupCount == 0 &&
+        integrity <= SECURITY_MANDATORY_LOW_RID;
+    if (!ok) {
+        fprintf(stderr, "FAIL LPAC token facts app=%lu lpac=%lu elevated=%lu capabilities=%lu integrity=%lu\n",
+            app, lpac, elevated, capabilities->GroupCount, integrity);
+        SetLastError(ERROR_ACCESS_DENIED);
+    }
+    return ok;
 }
 
 static BOOL image_identity(WRIT_WORKER *worker, const wchar_t *image)
@@ -178,10 +184,12 @@ static BOOL private_image(WRIT_WORKER *worker)
         worker->private_directory[0] = 0; worker->private_image[0] = 0;
         goto done;
     }
+    worker->directory_created = TRUE;
     output = CreateFileW(worker->private_image, GENERIC_WRITE, 0, &security,
         CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (output == INVALID_HANDLE_VALUE || !SetFilePointerEx(worker->image, zero, NULL, FILE_BEGIN))
-        goto done;
+    if (output == INVALID_HANDLE_VALUE) goto done;
+    worker->image_created = TRUE;
+    if (!SetFilePointerEx(worker->image, zero, NULL, FILE_BEGIN)) goto done;
     for (;;) {
         if (!ReadFile(worker->image, buffer, sizeof(buffer), &read, NULL)) goto done;
         if (!read) break;
@@ -218,12 +226,14 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     DWORD child_policy = PROCESS_CREATION_CHILD_PROCESS_RESTRICTED;
     DWORD64 mitigations = PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON;
     DWORD error = ERROR_INVALID_PARAMETER;
+    const char *stage = "image-identity";
     wchar_t system_root[MAX_PATH], environment[MAX_PATH + 32];
     ZeroMemory(worker, sizeof(*worker));
     worker->lpac = lpac;
     if (!inherited_count || inherited_count > 3 || wcschr(image, L'"') || !image_identity(worker, image))
         goto failed;
     if (lpac) {
+        stage = "appcontainer-profile";
         BYTE nonce[16];
         if (BCryptGenRandom(NULL, nonce, sizeof(nonce), BCRYPT_USE_SYSTEM_PREFERRED_RNG) < 0)
             goto failed;
@@ -238,9 +248,11 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
         worker->profile_created = TRUE;
         capabilities.AppContainerSid = worker->app_sid;
         /* No capability SIDs, including network, registryRead or lpacCom. */
+        stage = "private-image";
         if (!private_image(worker)) goto failed;
     }
 
+    stage = "job";
     worker->job = CreateJobObjectW(NULL, NULL);
     limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
         JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_PROCESS_MEMORY |
@@ -252,11 +264,12 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
         JOB_OBJECT_UILIMIT_DISPLAYSETTINGS | JOB_OBJECT_UILIMIT_GLOBALATOMS |
         JOB_OBJECT_UILIMIT_DESKTOP | JOB_OBJECT_UILIMIT_EXITWINDOWS;
     if (!worker->job || !SetInformationJobObject(worker->job, JobObjectExtendedLimitInformation,
-        &limits, sizeof(limits)) || !SetInformationJobObject(worker->job, JobObjectBasicUIRestrictions,
-        &ui, sizeof(ui))) goto failed;
+        &limits, sizeof(limits)) || (lpac && !SetInformationJobObject(worker->job, JobObjectBasicUIRestrictions,
+        &ui, sizeof(ui)))) goto failed;
 
     /* The fixture requires an elevated broker. New process ownership is the
        administrators group, not the user's SID; the LPAC receives no process-object grant. */
+    stage = "process-security-and-attributes";
     if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
         L"O:BAG:BAD:P(A;;GA;;;SY)(A;;GA;;;BA)", SDDL_REVISION_1, &process_sa.lpSecurityDescriptor, NULL))
         goto failed;
@@ -288,11 +301,13 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     if (!root_length || root_length >= ARRAYSIZE(system_root) ||
         FAILED(StringCchPrintfW(environment, ARRAYSIZE(environment) - 1, L"SystemRoot=%s", system_root)))
         goto failed;
+    stage = "create-process";
     if (!CreateProcessW(worker->image_path, command, &process_sa, &process_sa, TRUE,
         EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_NO_WINDOW |
         CREATE_UNICODE_ENVIRONMENT, environment, system_root, &startup.StartupInfo, &process))
         goto failed;
     worker->process = process.hProcess; worker->thread = process.hThread; worker->pid = process.dwProcessId;
+    stage = "native-lifetime-and-token";
     FILETIME exited, kernel, user;
     BOOL in_job = FALSE;
     if (!GetProcessTimes(worker->process, &worker->created, &exited, &kernel, &user) ||
@@ -301,6 +316,7 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
         !capture_user(token, worker->user_sid) ||
         !token_blob(token, TokenStatistics, &worker->token, sizeof(worker->token)) ||
         (lpac && !lpac_token(token, worker->app_sid))) goto failed;
+    stage = "wfp";
     if (lpac && !install_network_filters(worker)) goto failed;
     ok = TRUE;
     goto done;
@@ -308,6 +324,7 @@ failed:
     error = GetLastError();
     if (!error) error = ERROR_ACCESS_DENIED;
 done:
+    if (!ok) fprintf(stderr, "FAIL worker setup stage=%s error=%lu\n", stage, error);
     close_handle(&token);
     if (attributes_initialized) DeleteProcThreadAttributeList(startup.lpAttributeList);
     if (startup.lpAttributeList) HeapFree(GetProcessHeap(), 0, startup.lpAttributeList);
@@ -356,20 +373,27 @@ BOOL writ_worker_remove_network_filters(WRIT_WORKER *worker)
     return TRUE;
 }
 
-BOOL writ_worker_stop(WRIT_WORKER *worker)
+BOOL writ_worker_terminate(WRIT_WORKER *worker)
 {
-    BOOL ok = TRUE;
-    /* Keep network controls until the process has stopped retaining plaintext. */
+    /* Keep identity and network objects valid while filesystem callbacks drain. */
     if (worker->job) TerminateJobObject(worker->job, ERROR_OPERATION_ABORTED);
     if (worker->process) {
         TerminateProcess(worker->process, ERROR_OPERATION_ABORTED);
         if (WaitForSingleObject(worker->process, 5000) != WAIT_OBJECT_0) return FALSE;
     }
+    return TRUE;
+}
+
+BOOL writ_worker_stop(WRIT_WORKER *worker)
+{
+    BOOL ok = TRUE;
+    /* The mount must quiesce callbacks before releasing this retained identity. */
+    if (!writ_worker_terminate(worker)) return FALSE;
     if (!writ_worker_remove_network_filters(worker)) ok = FALSE;
     close_handle(&worker->thread); close_handle(&worker->process);
     close_handle(&worker->job); close_handle(&worker->image);
-    if (worker->private_image[0] && !DeleteFileW(worker->private_image)) ok = FALSE;
-    if (worker->private_directory[0] && !RemoveDirectoryW(worker->private_directory)) ok = FALSE;
+    if (worker->image_created && !DeleteFileW(worker->private_image)) ok = FALSE;
+    if (worker->directory_created && !RemoveDirectoryW(worker->private_directory)) ok = FALSE;
     if (worker->profile_created && FAILED(DeleteAppContainerProfile(worker->profile))) ok = FALSE;
     if (worker->app_sid) FreeSid(worker->app_sid);
     ZeroMemory(worker, sizeof(*worker));

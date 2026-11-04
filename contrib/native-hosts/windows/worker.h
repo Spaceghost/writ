@@ -16,7 +16,7 @@ typedef struct {
     wchar_t private_directory[MAX_PATH];
     wchar_t private_image[MAX_PATH];
     BYTE image_hash[32];
-    BOOL lpac, profile_created;
+    BOOL lpac, profile_created, directory_created, image_created;
     UINT64 filters[4];
 } WRIT_WORKER;
 
@@ -25,6 +25,7 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
 BOOL writ_worker_alive(const WRIT_WORKER *worker);
 BOOL writ_worker_matches(const WRIT_WORKER *worker, DWORD pid, HANDLE request_token);
 BOOL writ_worker_resume(WRIT_WORKER *worker);
+BOOL writ_worker_terminate(WRIT_WORKER *worker);
 BOOL writ_worker_remove_network_filters(WRIT_WORKER *worker);
 BOOL writ_worker_stop(WRIT_WORKER *worker);
 

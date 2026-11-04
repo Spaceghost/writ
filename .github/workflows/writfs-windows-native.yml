@@ -166,6 +166,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native CMake configuration failed.' }
           & cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'build.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Native Windows compilation failed.' }
+          & (Join-Path $build 'Release\writfs-probe.exe') --exit
+          if ($LASTEXITCODE -ne 0) { throw 'The native probe could not initialize outside its restricted job.' }
           Get-FileHash (Join-Path $build 'Release\writfs-windows.exe'),(Join-Path $build 'Release\writfs-probe.exe') -Algorithm SHA256 |
             Format-Table -AutoSize | Out-File (Join-Path $writLogs 'native-source-artifacts.txt')
       - name: Exercise a real native mount and actor-bound reads

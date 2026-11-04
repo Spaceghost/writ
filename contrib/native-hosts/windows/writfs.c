@@ -721,16 +721,20 @@ int wmain(int argc, wchar_t **argv)
     ok = !host.failed;
 done:
     if (!ok) fprintf(stderr, "FAIL native Windows profile=%s win32=%lu\n", lpac ? "lpac-canary" : "mount-canary", GetLastError());
-    if (!writ_worker_stop(&host.worker)) { fprintf(stderr, "FAIL worker cleanup\n"); ok = FALSE; }
+    if (!writ_worker_terminate(&host.worker)) { fprintf(stderr, "FAIL worker termination\n"); ok = FALSE; }
     if (host.filesystem) {
         FspFileSystemStopDispatcher(host.filesystem);
         FspFileSystemRemoveMountPoint(host.filesystem);
         FspFileSystemDelete(host.filesystem);
     }
+    /* Close callbacks may discover a failed policy cleanup during quiescence. */
+    if (host.failed) ok = FALSE;
+    if (!writ_worker_stop(&host.worker)) { fprintf(stderr, "FAIL worker cleanup\n"); ok = FALSE; }
     if (host.policy.process && !host.failed) {
         if (!rpc(&host, "STOP", 0, 0, 0, 0, "-", &reply) || !reply.allowed) ok = FALSE;
     }
     writ_policy_stop(&host.policy);
+    if (host.failed) ok = FALSE;
     if (report_read) CloseHandle(report_read); if (report_write) CloseHandle(report_write);
     if (ready) CloseHandle(ready); if (proceed) CloseHandle(proceed);
     for (int i = 0; i < 4; ++i) if (listeners[i] != INVALID_SOCKET) closesocket(listeners[i]);

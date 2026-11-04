@@ -76,12 +76,14 @@ def retained(+before: Authority.Grant, +after: Authority.Grant) -> Bool:
   receipt_ok(after) && Nat.is_eq(Authority.committed_revision(before), Authority.committed_revision(after)) &&
     Nat.is_eq(Authority.ledger_revision(before), Authority.ledger_revision(after))
 
-def repeat(remaining: Nat, +part: String, accumulated: String) -> String:
+# Construct the same boundary bytes with logarithmic concatenations. Repeated
+# prepends are quadratic in runtimes that flatten strings, including QuickJS.
+def doubled(remaining: Nat, +part: String) -> String:
   match remaining:
     case 0n:
-      accumulated
+      part
     case 1n+rest:
-      repeat(rest, part, part ++ accumulated)
+      doubled(rest, part ++ part)
 
 def open_many(remaining: Nat, state: Mount.State) -> Mount.State:
   match remaining:
@@ -96,10 +98,10 @@ def with_counters(state: Mount.State, sequence: U32, last: U32) -> Mount.State:
 
 def check_full_64_kib_payload_accepted() -> Case:
   Case{"full 64 KiB payload accepted", is_status(Mount.dispatch(Mount.initial(),
-     init_frame(repeat(65536n, "00", ""))), "OK")}
+     init_frame(doubled(16n, "00"))), "OK")}
 
 def check_payload_byte_cap_enforced_before_hashing() -> Case:
-  Case{"payload byte cap enforced before hashing", invalid(init_frame(repeat(65537n, "00", "")))}
+  Case{"payload byte cap enforced before hashing", invalid(init_frame("00" ++ doubled(16n, "00")))}
 
 def check_handle_counter_cannot_wrap() -> Case:
   Case{"handle counter cannot wrap", denied(with_counters(admitted(), 2, 65535), open_frame())}
@@ -155,7 +157,7 @@ def check_reject_payload_separator() -> Case:
   Case{"reject payload separator", invalid(init_frame("61\t62"))}
 
 def check_reject_oversized_frame() -> Case:
-  Case{"reject oversized frame", invalid(repeat(131201n, "x", ""))}
+  Case{"reject oversized frame", invalid(doubled(17n, "x") ++ doubled(7n, "x") ++ "x")}
 
 def check_actual_sha_256_binds_init_bytes() -> Case:
   Case{"actual SHA-256 binds INIT bytes", result(Mount.dispatch(Mount.initial(), init_frame("616263")),
