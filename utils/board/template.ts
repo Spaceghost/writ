@@ -45,7 +45,7 @@ function panel(): string {
   return `<div id="panel-backdrop" class="panel-backdrop" data-show="$panel != ''" data-preserve-attr="style" style="display:none" data-on:click="$panel = ''"></div>
 <aside id="panel" class="panel" data-show="$panel != ''" data-preserve-attr="style" style="display:none" aria-label="Quick view">
 <div class="panel-bar"><span class="panel-path" data-text="$panel"></span><a class="panel-open" data-attr:href="$panel" target="_top">open in full</a><button type="button" class="panel-close" aria-label="Close the quick view" data-on:click="$panel = ''">×</button></div>
-<iframe id="panel-frame" class="panel-frame" title="Quick view" data-attr:src="$panel ? $panel + ($panel.indexOf('/html/') > 0 ? '' : '?embed=1') : 'about:blank'" sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation-by-user-activation"></iframe>
+<iframe id="panel-frame" class="panel-frame" title="Quick view" data-attr:src="$panel ? $panel + ($panel.indexOf('/html/') > 0 ? '' : '?embed=1') : 'about:blank'" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"></iframe>
 </aside>`;
 }
 
@@ -468,6 +468,18 @@ export function questionPage(q: Question): string {
 </section>
 <section class="doc"><div class="doc-label">${esc(q.id)}.answers.jsonl, ${q.answers.length} entr${q.answers.length === 1 ? "y" : "ies"}</div>${answersList(q)}</section>
 </main>`;
+}
+
+/** The small page a question's form lands on after its answer is recorded; it renders inside the form's own frame. */
+export function answeredPage(id: string, at: string): string {
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Recorded</title>
+<style>body{margin:0;padding:1.2rem;font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;color:#1d2230;background:#f7f6f2}@media (prefers-color-scheme:dark){body{color:#e6e4dc;background:#15181f}}a{color:#15655c}@media (prefers-color-scheme:dark){a{color:#5fc2b2}}</style>
+</head><body>
+<p><strong>Recorded</strong> at ${esc(at)}. Your answer is in the thread under this form and the controller sees it on its next read.</p>
+<p><a href="/questions/${esc(id)}/html">Back to the form</a> to add more.</p>
+</body></html>
+`;
 }
 
 /** All questions, newest first, each linking to its page. */

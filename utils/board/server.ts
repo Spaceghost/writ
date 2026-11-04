@@ -391,8 +391,9 @@ async function recordAnswer(flags: Flags, hosts: Set<string>, id: string, req: R
   const entry: Answer = { at: new Date().toISOString(), who: "josh", fields };
   mkdirSync(dir, { recursive: true });
   appendFileSync(join(dir, `${id}.answers.jsonl`), JSON.stringify(entry) + "\n");
-  // The page's form lands here; show the thread, which the watcher has already re-rendered for open streams.
-  return new Response("", { status: 303, headers: { location: `/questions/${id}?embed=1&answered=1` } });
+  // The form lands on a small confirmation inside its own frame; the board page's
+  // thread around it is re-rendered by the watcher for every open stream.
+  return new Response("", { status: 303, headers: { location: `/questions/${id}/answered?at=${encodeURIComponent(entry.at)}` } });
 }
 
 // ---------------------------------------------------------------- lanes
@@ -1229,6 +1230,13 @@ async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<R
     return recordAnswer(flags, hosts, answer[1], req);
   }
   if (req.method !== "GET" && req.method !== "HEAD") return new Response("read-only\n", { status: 405 });
+  const answered = path.match(/^\/questions\/(q\d{1,6})\/answered$/);
+  if (answered) {
+    const at = (url.searchParams.get("at") ?? "").replace(/[^0-9TZ:.-]/g, "").slice(0, 32);
+    return new Response(T.answeredPage(answered[1], at), {
+      headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": "sandbox allow-scripts allow-forms allow-popups" },
+    });
+  }
   const qhtml = path.match(/^\/questions\/(q\d{1,6})\/html$/);
   if (qhtml) {
     // The question page, served as-is like an explainer, in the same CSP sandbox plus forms.
