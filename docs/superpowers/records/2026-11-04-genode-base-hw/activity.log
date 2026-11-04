@@ -10,3 +10,10 @@
 2026-11-04T16:14:15Z	implementer	INVENTORY: Fault delivery section with the two cases; base-linux reruns (hello, rts, reservation live) rc 0 so far
 2026-11-04T16:15:33Z	implementer	base-linux reruns pass: hello (ram 8335360, caps 35), rts, reservation live, guard, writ_bend_probe; hw guard probe: shim refusal line and init 'exited with exit value 139'; base-linux corpus build+run started
 2026-11-04T16:18:32Z	implementer	acceptance: hi + exit 0 on base-hw; evidence verification/genode-bend-hello-base-hw.txt written; committing (base-linux corpus still compiling)
+2026-11-04T16:19:19Z	implementer	hw hello run 5 with the final shim (comment-only fix): same binary hash, same log, script successful
+2026-11-04T16:29:36Z	controller	record moved to .lane/genode-base-hw/ (ledger, briefs, reports, log; committed per lane)
+2026-11-04T16:29:51Z	implementer	switched to .lane/genode-base-hw/ for log and report; waiting for base-linux corpus build
+2026-11-04T16:31:21Z	controller	record moved to docs/superpowers/records/2026-11-04-genode-base-hw/ (per plan, committed with the work)
+2026-11-04T16:32:06Z	implementer	switched to docs/superpowers/records/2026-11-04-genode-base-hw for log and report; note: b123e10 contains .lane/genode-base-hw.log (committed under the earlier instruction), its removal goes into the next commit
+2026-11-04T17:17:36Z	implementer	base-linux corpus with changed shim: 782 PASS, 834 lines byte-identical to the merged-tree reference (sha fc3a08aa...), exit 0, 60m31s
+2026-11-04T17:18:03Z	implementer	Task 1 done: report written; committing corpus record

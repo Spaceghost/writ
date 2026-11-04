@@ -1,5 +1,5 @@
 Bend generated C as a Genode component on base-hw under QEMU (Genode base-hw lane, Task 1)
-Recorded: 2026-11-04, 10:01 to (see BASE-LINUX RERUNS) -06:00
+Recorded: 2026-11-04, 10:01 to 11:20 -06:00
 
 Everything here is base-hw evidence: Genode's own kernel (core-hw-pc,
 bootstrap/hw) booted from an ISO image in QEMU 11.1.2 with TCG software CPU
@@ -244,8 +244,11 @@ RUNS ON BASE-HW (ram 256M, caps 1000; logs ../writ-genode/run-hw-hello-{1..4}.ou
   Run 1  unchanged shim: E2.
   Run 2  split shim: hi, exit 0; script failed on the line end (E4).
   Run 3  after the writ_bend.tcl fix: script successful.
-  Run 4  final committed sources (hello.run header comment updated after
-         run 3), 11 s, rc 0:
+  Run 5  after the comment-only citation fix in writ_mem.cc (0590e6dc...):
+         writ_mem.o rebuilt, same binary sha256 87fd2dfa...a151, the same
+         log as run 4 line for line, "Run script execution successful."
+  Run 4  final run script (hello.run header comment updated after run 3),
+         11 s, rc 0:
     spawn qemu-system-x86_64 -display none -accel tcg -no-reboot -serial mon:stdio -m 800 -cdrom var/run/writ_bend_hello.iso -machine q35 -cpu Skylake-Client -net nic,model=e1000,netdev=net0 -netdev user,id=net0
     Bender Version 0.9-beta7-51-g28ba2ad-dirty
     Patching BDA with I/O port 0x3f8.
@@ -326,7 +329,30 @@ BASE-LINUX RERUNS WITH THE CHANGED SHIM (build/x86_64, KERNEL=linux)
       0x7ffef7f02000 (guard page), component terminates" (the raw line, via
       the Linux kernel log path as before), no resumption
     writ_bend_probe:  PASS line, delta_ms=102 for sleep_ms=100, exit 0
-  Corpus (writ_bend_tests, 782 checks): see CORPUS ON BASE-LINUX below.
+
+CORPUS ON BASE-LINUX (changed shim)
+  Command: cd ../writ-genode/build/x86_64 && MAKEFLAGS= make run/writ_bend_tests
+    (log ../writ-genode/run-writ_bend_tests-basehw-t1-linux-256M.out),
+    10:15:31 to 11:16:02, 60m31s (the tests.c compile with clang-23 is
+    nearly all of it), rc 0. writ_mem.o of this build was compiled at
+    10:15:39 from the 742e4753... revision (token-identical with the final
+    one, HASHES).
+    [init -> writ_bend_tests] writ_mem: [exit] ram used=12558336 limit=268302940 caps used=40 limit=961 reservations=2 guards=1 chunks populated (total)=5 faults resolved=5 benign retries=0 reserved at hint=1 elsewhere=1 released=0 timer short wakes=0
+    [init] child "writ_bend_tests" exited with exit value 0
+    --- writ_bend_tests: 782 PASS lines, 834 component lines ---
+    Run script execution successful.
+  Comparison (from the writ-lanes directory), as in
+  verification/genode-corpus-base-linux.txt:
+    grep -a 'writ_bend_tests\]' writ-genode/run-writ_bend_tests-basehw-t1-linux-256M.out \
+      | grep -v 'writ_mem: ' | sed 's/^\[init -> writ_bend_tests\] //; s/\r$//' \
+      > writ-genode/genode-tests-basehw-t1-linux.lines
+    diff writ-build/genode-host-layer/merged/tests-1.out writ-genode/genode-tests-basehw-t1-linux.lines
+    -> no output, rc 0; 834 lines, 782 PASS, one "ALL LIBRARY TESTS PASSED"
+    sha256 of both: fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff
+    (the same as the merged-tree record and the channel lane's last run).
+  ram used 12558336 versus 12537856 in the merged-tree record (+20480; the
+  hello shows the same +20480 since the channel lane's Task 2, cause not
+  isolated, INVENTORY "Config").
 
 LIMITS
   - QEMU TCG emulated boot; not native hardware; --gpu off, CPU only.
