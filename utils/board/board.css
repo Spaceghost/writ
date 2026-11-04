@@ -68,6 +68,17 @@ td .sub { color: var(--muted); font-size: .84rem; }
 .progress { display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
 table.changes .progress .bar { width: 7rem; }
 .tasknums { font-family: var(--mono); font-size: .74rem; margin-top: .15rem; }
+details.tasklist { margin-top: .25rem; }
+details.tasklist > summary { cursor: pointer; font-family: var(--mono); font-size: .72rem; color: var(--accent); list-style: none; }
+details.tasklist > summary::before { content: "▸ "; } details.tasklist[open] > summary::before { content: "▾ "; }
+details.tasklist > ul { list-style: none; margin: .3rem 0 .2rem; padding: 0; display: grid; gap: .15rem; font-size: .84rem; min-width: 22rem; }
+details.tasklist li.task { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: .4rem; align-items: baseline; }
+details.tasklist li.task-section { font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: .3rem; }
+details.tasklist .box { color: var(--accent); }
+details.tasklist li.task-open .box { color: var(--muted); }
+details.tasklist .task-id { font-family: var(--mono); font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+details.tasklist li.task-done .task-text { color: var(--muted); }
+details.tasklist .task-text { overflow-wrap: anywhere; }
 tr.row-live td { background: var(--accent-soft); }
 tr.rest > td { padding: .4rem .6rem; }
 tr.rest summary { cursor: pointer; color: var(--muted); font-size: .9rem; }

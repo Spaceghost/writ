@@ -81,6 +81,8 @@ export type Change = {
   tasks: { done: number; total: number };
   /** Task ids ("1.3", "2.2") as written before each box, when the line starts with one. */
   taskIds: { done: string[]; open: string[] };
+  /** Every task box in tasks.md, in file order, with its section heading. */
+  taskList: TaskItem[];
   html: string[];
   hasDesign: boolean;
   specs: string[];
@@ -159,6 +161,27 @@ function firstHeading(markdown: string | null, fallback: string): string {
 }
 
 /** Counts GitHub-style task boxes as written; a checked box is not evidence. */
+export type TaskItem = { done: boolean; id: string | null; text: string; section: string | null };
+
+/** Every `- [ ]`/`- [x]` line of tasks.md with the nearest heading above it; text is cut at 200 chars. */
+export function taskList(markdown: string | null): TaskItem[] {
+  if (markdown === null) return [];
+  const out: TaskItem[] = [];
+  let section: string | null = null;
+  for (const line of markdown.split(/\r?\n/)) {
+    const h = line.match(/^#{1,6}\s+(.+?)\s*$/);
+    if (h) { section = h[1]; continue; }
+    const m = line.match(/^\s*[-*]\s+\[([ xX])\]\s+(.*)$/);
+    if (!m) continue;
+    const id = m[2].match(/^(\d+(?:\.\d+)*)\b\s*/);
+    // Backticks are markdown emphasis here; the list shows plain text.
+    const body = (id ? m[2].slice(id[0].length) : m[2]).replace(/`/g, "");
+    const text = body.length > 200 ? `${body.slice(0, 197)}...` : body;
+    out.push({ done: m[1] !== " ", id: id ? id[1] : null, text, section });
+  }
+  return out;
+}
+
 /** Task ids before checked and unchecked boxes: `- [x] 1.3 …` gives "1.3". */
 export function taskIds(markdown: string | null): { done: string[]; open: string[] } {
   const out = { done: [] as string[], open: [] as string[] };
@@ -240,6 +263,7 @@ function scanChanges(root: string): Change[] {
         dependsOn: meta.dependsOn,
         tasks: countTasks(readText(join(dir, "tasks.md"))),
         taskIds: taskIds(readText(join(dir, "tasks.md"))),
+        taskList: taskList(readText(join(dir, "tasks.md"))),
         html,
         hasDesign: existsSync(join(dir, "design.md")),
         specs: subdirs(join(dir, "specs")).filter((c) => existsSync(join(dir, "specs", c, "spec.md"))),
