@@ -141,7 +141,7 @@ revoke(domain)                      <span class="c"># bumps generations; stale a
 
 <h2 id="start">Where a subagent starts</h2>
 <p>This lane needs nothing but the pinned Bend toolchain. It is the one that can start today. The subagent should read <code>Frontend.bend</code> end to end, the <code>capability-frontend</code> baseline spec, and GN-003 through GN-011 in the Genode host spec, then write the records and the closed error type first and get <code>--check-only</code> green before any transition. Tests follow the <code>check(ok, name)</code> convention and the no-<code>if</code> style. It must not modify <code>Frontend.bend</code>; the module composes with it.</p>
-<p>Coordination with lane A: the shape of <code>Route</code> and <code>Binding</code> is what <code>Genode.accept</code> will construct. Agree on field names early and leave them stable.</p>
+<p>Coordination with lane A: the shape of <code>Route</code> and <code>Binding</code> is what the ingress effect <code>Genode.take</code> (formerly <code>Genode.accept</code>) and the monitor feed. On the implemented shape the shim's take carries the route subject the parent set (<code>hosts/genode/effects/Channel.md</code>), and the monitor builds the binding from that subject (<code>hosts/genode/monitor/Monitor.bend</code>). Agree on field names early and leave them stable.</p>
 <footer>Change files: <code>openspec/changes/add-genode-capability-adoption/</code>. Sibling pages: <strong>Bend on Genode</strong> and <strong>Library-Unikernel Runtime</strong>. Branch <code>unikernel-runtime-proposals</code>.</footer>
 </div>
 </body>
