@@ -16,3 +16,4 @@
 2026-11-04T21:35:01Z	implementer	fix round 1 started: openspec 1.16.0, observation commands, traceability
 2026-11-04T21:35:40Z	implementer	fix round 1: openspec 1.16.0 strict 44/44 (before and after traceability edit); evidence commands added; UL-002/UL-007 cite unikernel-linuxu.txt; committing
 2026-11-04T21:36:11Z	controller	fix round 1 verified; merging to master
+2026-11-04T21:36:13Z	controller	merged to master as 7071864
