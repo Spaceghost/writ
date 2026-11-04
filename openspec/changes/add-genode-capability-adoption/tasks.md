@@ -20,5 +20,5 @@ remains pending. This is pure Bend work that can proceed without a Genode build.
 
 ## 3. Handoff
 
-- [ ] 3.1 Document in the Genode component change how `Genode.accept` constructs binding records from the parent route and object identity, and which vectors it must replay; leave that change's tasks unchecked.
+- [ ] 3.1 Document in the Genode component change how `Genode.take` constructs binding records from the parent route and object identity, and which vectors it must replay; leave that change's tasks unchecked.
 - [ ] 3.2 Validate OpenSpec strictly.
