@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Writ Codebase Tour</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: reading column with an annotated file tree and command tables; Backplane comparison in two-up cards. */
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --fg: #1d2230; --muted: #5b6474; --line: #d9dbe0;
+  --accent: #15655c; --accent-soft: #e2efec; --deny: #a2452a; --deny-soft: #f6e6df;
+  --code-bg: #eeefeb; --comment: #6c7a6f;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+    --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+    --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 78ch; margin: 0 auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 2.6rem 0 .8rem; text-wrap: balance; }
+h3 { font-size: 1.08rem; font-weight: 600; margin: 1.6rem 0 .4rem; }
+p { margin: 0 0 .9rem; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); border-bottom: 1px solid var(--line); margin: 0 0 1.5rem; padding: .5rem 0; display: flex; gap: .3rem .9rem; flex-wrap: wrap; font-size: .85rem; z-index: 5; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: .9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0 0 1rem; min-width: 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--comment); font-style: italic; }
+/* annotated tree */
+.tree { font-family: var(--mono); font-size: .82rem; line-height: 1.6; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .8rem 1rem; overflow-x: auto; margin: 0 0 1.2rem; }
+.tree .row { display: grid; grid-template-columns: minmax(14ch, 24ch) 1fr; gap: 1rem; }
+.tree .row span:last-child { font-family: var(--body); font-size: .9rem; color: var(--muted); }
+.tree .grp { color: var(--accent); font-weight: 600; margin-top: .5rem; }
+@media (max-width: 520px) { .tree .row { grid-template-columns: 1fr; gap: 0; margin-bottom: .4rem; } }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .94rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .7rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1.2rem; }
+.callout.warn { border-color: var(--deny); background: var(--deny-soft); }
+.callout p:last-child { margin: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 0 0 1.2rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; min-width: 0; }
+.card h4 { margin: 0 0 .4rem; font-size: .95rem; }
+.card ul { margin: 0; padding-left: 1.1rem; font-size: .92rem; } .card li { margin-bottom: .25rem; }
+ol.steps { padding-left: 1.3rem; } ol.steps li { margin-bottom: .55rem; }
+ul { padding-left: 1.3rem; } li { margin-bottom: .35rem; }
+.pass { color: var(--accent); font-weight: 600; font-family: var(--mono); }
+.rules li strong { font-weight: 600; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">Writ · onboarding · 3 of 3</div>
+  <h1>Where everything lives</h1>
+  <p class="lede">An annotated map of the Writ repository, the house rules from <code>AGENTS.md</code>, the commands you will run daily, and a look at Backplane, the large Bend application now cloned beside it as a reference.</p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#tree">File map</a><a href="#order">Reading order</a><a href="#entry">Entry points</a><a href="#tests">Tests</a><a href="#specs">OpenSpec</a><a href="#rules">House rules</a><a href="#commands">Commands</a><a href="#backplane">Backplane</a>
+</nav>
+
+<h2 id="tree">File map</h2>
+<p>The library is flat at the root: 34 authored <code>.bend</code> files, about 8,200 lines in all, in pairs of module and test. Four directories hold docs, examples, specs, and captured evidence.</p>
+<div class="tree">
+  <div class="grp">Decision core</div>
+  <div class="row"><span>Core.bend</span><span>Constraint records, <code>Bits64</code>, reference solver, independent verifier, sink gate. Start here.</span></div>
+  <div class="row"><span>Gpu.bend · GpuLibrary.bend</span><span>Balanced work tree and the <code>!</code> dispatch; the optional device-facing facade.</span></div>
+  <div class="row"><span>Dlm.bend · DlmGpu.bend</span><span>Finite decentralized label model: principals, delegation closure, joins and meets, flow checks.</span></div>
+  <div class="row"><span>Transfer.bend · TransferGpu.bend</span><span>Paired grants, plans, origin rules, payment witnesses. Largest module.</span></div>
+  <div class="row"><span>Negotiation.bend</span><span>The session state machine: pin, challenge, sample, approve, reserve, start.</span></div>
+  <div class="row"><span>Ledger.bend</span><span>Reservations, commits, refunds, expiry, revisions, replay rejection.</span></div>
+  <div class="row"><span>Frontend.bend</span><span>Capability mount/open/dup/attenuate/close protocol and live plan resolution.</span></div>
+  <div class="row"><span>Backplane.bend</span><span>The final independent recheck that produces a <code>WriteIntent</code>.</span></div>
+  <div class="row"><span>DataOS.bend</span><span>Public facade. <code>commit_from_capability</code> is the host-facing release route.</span></div>
+  <div class="grp">Laws</div>
+  <div class="row"><span>Guard.bend</span><span>The <code>Checks</code> list and <code>choose</code>. 30 lines, pure, worth reading first.</span></div>
+  <div class="row"><span>LAWS.bend · PROOF.bend</span><span>Three claims and their proofs. <code>bend PROOF.bend</code> is the gate.</span></div>
+  <div class="grp">Tests</div>
+  <div class="row"><span>*Tests.bend</span><span>One per module: Core, Transfer, Dlm, Ledger, Negotiation, Backplane, Frontend, Facade.</span></div>
+  <div class="row"><span>PropertyTests.bend</span><span>Floyd–Warshall oracle over 320 four-node graphs against both producers.</span></div>
+  <div class="row"><span>Test.bend · Tests.bend</span><span>The <code>check</code> helper and the aggregator that runs every suite.</span></div>
+  <div class="grp">Entry points and examples</div>
+  <div class="row"><span>Example.bend · GpuExample.bend</span><span>Root conveniences that delegate to <code>examples/Commit.bend</code> and <code>examples/Parallel.bend</code>.</span></div>
+  <div class="row"><span>examples/</span><span><code>Flow</code>, <code>Transfer</code>, <code>Commit</code>, <code>Parallel</code>, plus shared <code>Scenario.bend</code> (synthetic records) and <code>Expect.bend</code> (fail-fast asserts).</span></div>
+  <div class="grp">Documents</div>
+  <div class="row"><span>README · LIBRARY · DESIGN</span><span>Pitch, API reference with failure contracts, enforcement design and adapter contract.</span></div>
+  <div class="row"><span>REQUIREMENTS · VERIFICATION</span><span>Coverage of requirements; the dated record of what was actually run and what was not.</span></div>
+  <div class="row"><span>AGENTS.md</span><span>House rules for anyone (human or agent) changing the code. Read before editing.</span></div>
+  <div class="row"><span>docs/</span><span>INSTALL, GETTING-STARTED, PLATFORMS, GENODE, HOST-PLATFORMS, DRIFT.</span></div>
+  <div class="row"><span>openspec/</span><span>Baseline specs, traceability tables, proposed changes, state machines, roadmap.</span></div>
+  <div class="row"><span>verification/</span><span>Captured outputs: test logs per backend, proof output, source SHA-256 manifest, environment.</span></div>
+  <div class="row"><span>contrib/rclone/</span><span>Optional rclone remote: Bend service and protocol, plus the one permitted Go adapter.</span></div>
+</div>
+
+<h2 id="order">A reading order that works</h2>
+<ol class="steps">
+  <li><code>Guard.bend</code>, then <code>LAWS.bend</code> and <code>PROOF.bend</code>. Thirty lines of code and three laws teach the no-<code>if</code> style, the <code>Checks</code> fold, and what a proof looks like.</li>
+  <li><code>examples/Expect.bend</code> then <code>examples/Flow.bend</code>. An IO block driving the real library with the smallest scenario.</li>
+  <li><code>Core.bend</code> top to bottom. The records and the comments on each one explain edge direction, what the monitor supplies, and why indexes are walked rather than wrapped.</li>
+  <li><code>examples/Scenario.bend</code>. Every synthetic record the examples share, each named for its role in the story. Follow any helper into its component module when you want the real type.</li>
+  <li><code>DataOS.bend</code>. Short, and it shows how the facade threads the capability check into <code>Backplane.commit</code>.</li>
+  <li><code>examples/Commit.bend</code> with <code>openspec/STATE-MACHINES.md</code> open beside it. That is the whole negotiation, including the revoked-capability branch.</li>
+  <li>Only then <code>Transfer.bend</code>, <code>Negotiation.bend</code>, <code>Backplane.bend</code>. They are long because every gate is explicit.</li>
+</ol>
+
+<h2 id="entry">Public entry points versus exported helpers</h2>
+<p>Bend exports every definition in a module. The docs draw a hard line between the calls a host is meant to use and the internal steps whose preconditions are set by their callers. Names like <code>*.checked</code>, <code>*.finish</code>, <code>*.result</code>, and <code>*.go</code> are implementation steps, never alternate release routes.</p>
+<div class="tablewrap"><table>
+<tr><th>Call</th><th>Returns</th></tr>
+<tr><td><code>Core.solve_cpu(graph, max_rounds)</code></td><td><code>Solved{candidate, rounds}</code> or <code>SolveFailed{reason}</code>. <code>0n</code> picks the N+1 sweep bound.</td></tr>
+<tr><td><code>Core.verify(original, candidate, live_stamp)</code></td><td><code>Approved{}</code> or <code>Denied{reason}</code>, independent of the solver.</td></tr>
+<tr><td><code>Core.authorize_sink(graph, candidate, stamp, sink)</code></td><td>Adds the destination's clearance, tolerated influence, and actual effect check.</td></tr>
+<tr><td><code>Dlm.flows(snapshot, epoch, source, dest)</code></td><td><code>Bool</code> finite-DLM flow decision.</td></tr>
+<tr><td><code>Transfer.admit(plan, live_context)</code></td><td><code>Admitted{Ticket}</code> or <code>Denied{reason}</code>.</td></tr>
+<tr><td><code>Negotiation.pin / challenge / sample / approve / reserve / start</code></td><td>Guarded transitions; failure returns the supplied session unchanged.</td></tr>
+<tr><td><code>Frontend.checked_plan(...)</code></td><td>The exact capability-bound plan or <code>None{}</code>.</td></tr>
+<tr><td><code>Backplane.commit(...)</code></td><td>Updated session and ledger plus <code>WriteIntent</code>, or <code>Rejected{session, ledger}</code>.</td></tr>
+<tr><td><code>DataOS.commit_from_capability(...)</code></td><td>Fresh descriptor and caller checks, then the whole backplane. The host-facing route.</td></tr>
+</table></div>
+
+<h2 id="tests">How tests are built</h2>
+<p>There is no test framework. <code>Test.bend</code> defines one function, <code>check(ok, name)</code>, which prints <span class="pass">PASS: name</span> or dies with status 1. Each <code>*Tests.bend</code> module has a <code>main</code> that runs its checks in an IO block, and <code>Tests.bend</code> imports all nine and calls them in order, finishing with <span class="pass">ALL LIBRARY TESTS PASSED</span>.</p>
+<pre><code><span class="c"># Tests.bend, in full</span>
+import ./CoreTests.bend as Core
+import ./TransferTests.bend as Transfer
+<span class="c"># ... seven more</span>
+
+def main() -&gt; IO(Unit):
+  do IO&lt;Unit&gt;:
+    Core.main()
+    Transfer.main()
+    <span class="c"># ...</span>
+    IO.print("ALL LIBRARY TESTS PASSED")</code></pre>
+<p>Counting both <code>PASS:</code> and <code>PASS </code> lines yields 638 per backend. The recorded suite was run on the JavaScript backend under Node and as a native binary on four threads with the GPU off. Today's run on this machine matched: the suite ended with the final line above and <code>PROOF.bend</code> printed <span class="pass">ALL PROOFS CHECK</span>.</p>
+<p>Examples are deliberately <em>not</em> tests. They import no <code>*Tests.bend</code> file, build their own clearly marked synthetic records, and must exercise both a permitted and a denied outcome. If you add an example, update its explanation and the captured output in <code>examples/README.md</code> together.</p>
+
+<h2 id="specs">OpenSpec: contracts beside code</h2>
+<p>Behavior changes start in <code>openspec/</code>. Current contracts live in <code>openspec/specs/</code>, one capability per directory, each paired with a traceability table in <code>openspec/traceability/</code> mapping requirement IDs to Bend functions and named tests. Proposed behavior lives in <code>openspec/changes/</code> as proposal, design, tasks, and delta specs. A scenario in a spec is an acceptance contract; it is not evidence that a test exists.</p>
+<pre><code>npm install -g @fission-ai/openspec@1.16.0
+openspec validate --all --strict --no-interactive   <span class="c"># structural only; not a Bend test</span>
+openspec show transfer-admission --type spec
+openspec status --change add-authenticated-grant-issuance</code></pre>
+<p>Pending changes worth knowing about by name: authenticated grant issuance, a capability POSIX adapter, an S3 adapter, Genode, Linux and Windows hosts, a Drift kernel host, metered sample execution, policy-aware audit, and physical GPU validation.</p>
+
+<h2 id="rules">House rules from <code>AGENTS.md</code></h2>
+<ul class="rules">
+  <li><strong>Everything authored is Bend 2.</strong> Generated C or JavaScript and native binaries go outside the source tree (the docs use a sibling <code>../writ-build/</code>). The only Go permitted is the rclone adapter under <code>contrib/rclone/go/</code>. No root Go module, no core dependency on it.</li>
+  <li><strong>Pinned toolchain.</strong> Bend 2.0.39 unless you are deliberately migrating and revalidating. Read <code>bend guide</code> and <code>bend guide shaders</code> before changing language or parallel code.</li>
+  <li><strong>After any meaningful security change:</strong> run <code>bend Tests.bend</code>, the native build of it, and <code>bend PROOF.bend</code>. Use <code>--verdict</code> if Lean is available. Report limits honestly: a CPU fallback is not a GPU test.</li>
+  <li><strong>Never add:</strong> <code>@unsafe</code> definitions, proof holes, unchecked array indexes, alternate release routes, automatic declassification, or caller-controlled authority facts.</li>
+  <li><strong>Keep the verifier independent</strong> of solver work lists. Revalidate capabilities, epochs, inherited restrictions, budgets, and exact scope at commit.</li>
+  <li><strong>Changing a law needs a written rationale.</strong> Never weaken one to make a changed implementation pass.</li>
+  <li><strong>Comments explain authority, invariants, edge direction, and failure behavior</strong>, not what an expression computes. Document public entry points and distinguish them from exported helpers.</li>
+  <li><strong>Comment-only cleanups</strong> are checked by diffing implementation tokens against the prior revision, and the source manifest in <code>verification/source-sha256.txt</code> must match the delivered tree.</li>
+  <li><strong>Host platforms:</strong> read <code>docs/PLATFORMS.md</code> first. Host qualification evidence is separate from library tests; a model test never hides a missing native control.</li>
+</ul>
+
+<h2 id="commands">Daily commands</h2>
+<pre><code><span class="c"># once per shell</span>
+export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"
+export BEND_NO_TELEMETRY=1
+cd /mnt/MediaVolume/Media/src/github.com/spaceghost/writ
+
+<span class="c"># quick loop</span>
+bend DataOS.bend --check-only        <span class="c"># typecheck the whole facade graph</span>
+bend examples/Flow.bend              <span class="c"># smallest end-to-end run</span>
+bend Tests.bend                      <span class="c"># 638 checks on the JS runtime, about a minute</span>
+bend PROOF.bend                      <span class="c"># ALL PROOFS CHECK</span>
+
+<span class="c"># native (clang 19+), outputs outside the tree</span>
+mkdir -p ../writ-build
+CC=clang bend Tests.bend -o ../writ-build/tests-native
+../writ-build/tests-native +RTS --threads 4 --gpu off
+
+<span class="c"># specs</span>
+openspec validate --all --strict --no-interactive</code></pre>
+
+<h2 id="backplane">Backplane: a large Bend app to learn from</h2>
+<p>You asked for the i2cjak Backplane source. It was not on disk, and the project has moved: the GitHub redirect from <code>i2cjak/Backplane</code> now lands on <code>BackplaneWorks/Backplane</code>. The latest <code>main</code> is cloned at:</p>
+<pre><code>~/src/github.com/BackplaneWorks/Backplane     <span class="c"># 3,695 commits, HEAD 18e9f71 from 2026-11-03</span></code></pre>
+<p>Backplane is an agentic hardware development workspace: an agent edits KiCad and FreeCAD files while you follow in board, schematic, and 3D viewers. The hub, viewers, and clients are a ground-up rewrite in Bend, around 1,180 <code>.bend</code> files. Its own <code>AGENTS.md</code> opens with the same advice as Writ's: run <code>bend guide</code>, keep rules in <code>LAWS.bend</code>, run <code>bend PROOF.bend</code> before committing, parallelize when possible.</p>
+<div class="grid2">
+  <div class="card"><h4>Layout to study</h4><ul>
+    <li><code>src/core/</code>: pure Bend, no IO. JSON, S-expressions, the event-sourced thread model, KiCad parsing, scene diff, semver, prompt logic.</li>
+    <li><code>src/server/</code>: the one Bend program that owns IO. HTTP and WebSocket, event store, agent processes, git, file watching. Custom effects are JavaScript in <code>src/server/effects/*.js</code>; the hub runs on Bun.</li>
+    <li><code>src/web/</code>, <code>desktop/</code>, <code>mobile/</code>: clients. Bend files alongside JS, Swift, and Kotlin shells.</li>
+    <li><code>test/</code>: Bend tests plus Python and TypeScript tooling tests.</li>
+  </ul></div>
+  <div class="card"><h4>Law-driven development at scale</h4><ul>
+    <li><code>LAWS.bend</code> holds 3,165 laws over the real code, about 16,000 lines; <code>PROOF.bend</code> matches it line for line.</li>
+    <li>Laws are small and concrete: <code>settle_at_window</code>, <code>semver_pre_before_release</code>, <code>string_eq_refl</code>. A module's header comment names the laws that govern it.</li>
+    <li><code>scripts/laws-shape.py</code> is a one-second structural check that needs no Bend. <code>scripts/merge-laws.py</code> is a block-wise git merge driver, because <code>merge=union</code> mangles proof files.</li>
+    <li>Humans own <code>LAWS.bend</code>; an agent may add a law but never weaken or delete one without consent. Writ's rule is the same.</li>
+  </ul></div>
+</div>
+<h3>What to borrow, and what differs</h3>
+<ul>
+  <li><strong>Borrow:</strong> the strict pure-core / IO-shell split. Writ already does this (the library is pure; only examples and tests touch IO), and Backplane shows it holding up across a real server.</li>
+  <li><strong>Borrow:</strong> the habit of writing a tiny law next to each nontrivial helper, with the module comment naming its laws. Writ has three laws today; there is room for more of this style.</li>
+  <li><strong>Borrow:</strong> reading <code>src/core/semver.bend</code> as a model of idiomatic small Bend: <code>Nat.read</code> into <code>Maybe</code>, <code>+i &lt;&gt; t</code> list patterns, and <code>.k</code>-suffixed continuation helpers that exist because <code>match</code> cannot inspect a computed value.</li>
+  <li><strong>Differs:</strong> Backplane writes its effects in JavaScript and runs on Bun. Writ forbids non-Bend implementation and uses only Base's built-in IO; any host adapter is a separate contribution with its own evidence.</li>
+  <li><strong>Differs:</strong> Backplane tests live under <code>test/</code> with a mixed toolchain. Writ keeps a flat <code>*Tests.bend</code> pair per module, a dated verification record, and OpenSpec traceability.</li>
+</ul>
+<div class="callout"><p>A note on scale: Backplane's <code>AGENTS.md</code> is long and specific to its own release process. Skim its first sixty lines and the <code>src/core</code> directory listing; that is where the transferable Bend craft is. The telemetry, packaging, and mobile sections are not relevant to Writ.</p></div>
+
+<footer>Companion pages: <strong>Bend 2 Primer</strong> and <strong>Writ Overview</strong>. Paths are for this machine: Writ at <code>/mnt/MediaVolume/Media/src/github.com/spaceghost/writ</code> (a second checkout exists under <code>~/src/github.com/spaceghost/writ</code>), Backplane at <code>~/src/github.com/BackplaneWorks/Backplane</code>.</footer>
+</div>
+</body>
+</html>
