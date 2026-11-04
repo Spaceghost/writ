@@ -252,7 +252,9 @@ function laneCard(l: Lane): string {
     ? `<p class="note-line">${esc(l.activityNote)}</p>`
     : l.activity.length === 0
       ? `<p class="muted small">No activity.log in this lane's record yet; agents append one line per step.</p>`
-      : `<ol class="log">${l.activity.map((a) =>
+      // Newest first in the DOM; the list is a column-reverse flex box, so it
+      // reads oldest to newest and opens scrolled to the newest line.
+      : `<ol class="log" reversed>${[...l.activity].reverse().map((a) =>
           `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
   const logName = l.sdd.length === 1 ? `${l.sdd[0].dir}/activity.log` : `activity.log of ${l.sdd.length} records`;
   const feed = `<div class="activity"><div class="doc-label">${esc(logName)}, last ${l.activity.length} lines</div>${activity}</div>`;

@@ -243,7 +243,7 @@ try {
   check("the table declares one signal per change with a task list", tables.includes(`data-signals__ifmissing=`) && tables.includes(`&quot;${sig}&quot;:false`));
   check("changes with no task and no lane are collapsed", tables.includes('id="rest-changes"') && /\d+ more changes with no task done and no lane/.test(tables));
   check("lane card shows its status line and the change it is on", lanesHtml.includes('class="lane-phase">Task 1 · fix round') && lanesHtml.includes(`lane-changes">on <a href="/change/${expected}"`));
-  check("lane card shows the activity log, oldest first", lanesHtml.indexOf("read the brief") < lanesHtml.indexOf("started the probe build") && lanesHtml.includes('log-who">implementer'));
+  check("lane card's activity feed is newest-first in the DOM inside a reversed list (rendered oldest to newest, scrolled to the end)", lanesHtml.includes('<ol class="log" reversed>') && lanesHtml.indexOf("started the probe build") < lanesHtml.indexOf("read the brief") && lanesHtml.includes('log-who">implementer'));
   check("the committed records/<plan>/ record is read instead of the sdd workspace", lanesHtml.includes("docs/superpowers/records/2026-11-04-smoke-lane/progress.md") && !lanesHtml.includes(".superpowers/sdd/smoke-plan/progress.md"));
   check("reviewer reports are listed after task reports", /<details id="lane-smoke-lane-[^"]*task-1-review-md" class="report review"/.test(lanesHtml) && lanesHtml.includes("Approved (smoke)"));
   check("/api/lanes carries the parsed activity and phase", (await (await fetch(`${base}/api/lanes`)).text()).includes('"label":"fix"'));
