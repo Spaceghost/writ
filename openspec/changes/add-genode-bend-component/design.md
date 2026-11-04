@@ -98,7 +98,7 @@ route subject 1, and every record taken from that session reaches Bend as
 `Monitor.bend` does not import `HostBinding.bend` (`Monitor.bend:1-12`); the
 table below is the construction a port must perform, not one the monitor
 performs today, and no HostBinding vector has been replayed on the host.
-Line numbers are those of the tree this section was written against.
+Line numbers refer to commit c380947.
 
 **Identity at take time (GB-007).** `Genode.take` hands Bend two words that are
 not record words (`hosts/genode/effects/Genode.bend:49-60`,
@@ -150,13 +150,21 @@ channel delivers.
 in `HostBindingTests.bend`; two required properties are `valid` checks with no
 vector line. "Analogue" means a Genode run exercises the corresponding monitor
 path; none feeds the vector's inputs or compares its normalized outcome.
+GA-009 (`openspec/changes/add-genode-capability-adoption/specs/genode-capability-adoption/spec.md:174`)
+requires a host port to replay all 41 vectors in
+`verification/host-binding-vectors.txt`. Inclusion rule for this table: every
+GA-005 and GA-008 vector and `valid` check, plus the GA-002 route vectors
+(all four) and GA-003-1, the open vector, that they rest on. The other vectors
+(GA-001, GA-003-2 to GA-003-4, GA-004, GA-006, GA-007, GA-011) are also owed
+and are not mapped here.
 
 | Vector or check | What it asserts | Monitor path | Genode run today |
 | --- | --- | --- | --- |
 | GA-002-1 (vectors:3, tests:847) | holder authorized through the recorded route | `route_caller`, `with_opened` | analogue: run 1, `accept` (`genode-channel-base-linux.txt:418-420`) |
 | GA-003-1 (vectors:7, tests:868) | open from the routed Session | `open_descriptor` | analogue: run 1 (descriptor=2) |
-| GA-002-2 (vectors:4, tests:855) | label suffix cannot name the subject | `_subject` suffix-only rule | analogue: scratch suffix run, removed after (`genode-channel-base-linux.txt:482-486`); run 4 for a body claim |
-| GA-002-3 (vectors:5, tests:857) | unrecorded route denied | `_create_session` subject 0 | analogue: same refusal line in the scratch run; no dedicated run |
+| GA-002-2 (vectors:4, tests:855) | label suffix cannot name the subject | `_subject` suffix-only rule | analogue: scratch suffix run, removed after (`genode-channel-base-linux.txt:482-486`; script deleted; not reproducible); run 4 for a body claim |
+| GA-002-3 (vectors:5, tests:857) | unrecorded route denied | `_create_session` subject 0 | gap: shares the subject-0 refusal with the scratch suffix run (`writ_mem.cc:1209-1214`); no run without a matching policy |
+| GA-002-4 (vectors:6, tests:862) | a route on another service, withdrawn, does not authorize the holder | none (one service; config never updated) | gap |
 | GA-005-1 (vectors:19, tests:927) | possession without a delegation record denied | none (no alias holder) | gap |
 | GA-005-2 (vectors:20, tests:930) | non-holder denied UnknownAlias | none | gap |
 | GA-005-3, GA-005-4 (vectors:21-22, tests:932, 939) | recorded delegatee accepted within scope | none (no delegation) | gap |
@@ -164,7 +172,7 @@ path; none feeds the vector's inputs or compares its normalized outcome.
 | GA-005-6 (vectors:24, tests:945) | delegation to a domain routed as another subject denied | none | gap |
 | GA-005-7 (vectors:25, tests:950) | delegatee routed as another subject denied at use (`holder_authorized`, `acts_for_owner`, `HostBinding.bend:768-834`) | reason 8 is the nearest, MonitorCheck on Linux only (`genode-channel-base-linux.txt:501`, `:505`) | gap |
 | GA-008-1 (vectors:32, tests:1000) | stale binding revision denied | none (no binding revision) | gap |
-| GA-008-2 (vectors:33, tests:1002) | Frontend rejects, state unchanged | `with_opened` reason 5 returns the state unbound (`Monitor.bend:446-447`) | analogue: run 3, `routed_s` (`genode-channel-base-linux.txt:450-452`, descriptor=0) |
+| GA-008-2 (vectors:33, tests:1002) | Frontend rejects, state unchanged | `with_opened` reason 5 returns the state unbound; the binding is made only in the `Changed` arm (`Monitor.bend:443-451`) | analogue: run 3, `routed_s` (`genode-channel-base-linux.txt:450-452`, descriptor=0) |
 | GA-008-3 (vectors:34, tests:1009) | invalid input state denied | none (no `valid` over monitor state) | gap |
 | check "GA-008 two objects bound to one Frontend handle are rejected by valid" (tests:1012) | unique handle per binding (`bindings_valid`, `HostBinding.bend:358-367`) | none: per-channel Frontend states | gap |
 | check "GA-008 two uncopied aliases for one live object are rejected by valid" (tests:1014) | single minted alias (`mints_valid`, `HostBinding.bend:478-492`) | none (no alias table) | gap |

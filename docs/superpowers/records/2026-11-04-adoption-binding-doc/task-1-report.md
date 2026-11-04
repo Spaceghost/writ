@@ -59,14 +59,15 @@ Citations, with the line each points at (checked with `sed -n` on this tree):
 | `genode-channel-base-linux.txt:501`, `:505` | MonitorCheck (Linux) reason 8 reply and PASS |
 | `genode-channel-base-linux.txt:612, 630, 638, 662, 860` | Task 3 runs bad_length, liveness, close line, queue, dead_client |
 
-Vectors and checks the section lists (14 vector lines + 2 `valid` checks = 16):
+Vectors and checks the section lists (15 vector lines + 2 `valid` checks = 17; fix round 1 added GA-002-4):
 
 | Item | Genode run today |
 | --- | --- |
 | GA-002-1 holder authorized through the route | analogue: run 1 |
 | GA-003-1 open from the routed Session | analogue: run 1 |
-| GA-002-2 suffix cannot name the subject | analogue: scratch suffix run (removed after); run 4 for a body claim |
-| GA-002-3 unrecorded route | partial analogue: same refusal line in the scratch run; no dedicated run |
+| GA-002-2 suffix cannot name the subject | analogue: scratch suffix run (script deleted; not reproducible); run 4 for a body claim |
+| GA-002-3 unrecorded route | gap: shares the subject-0 refusal with the scratch suffix run; no run without a matching policy |
+| GA-002-4 withdrawn route on another service | gap |
 | GA-005-1 possession without record | gap |
 | GA-005-2 non-holder UnknownAlias | gap |
 | GA-005-3 recorded delegatee accepted | gap |
@@ -80,8 +81,7 @@ Vectors and checks the section lists (14 vector lines + 2 `valid` checks = 16):
 | check "two objects bound to one Frontend handle" (unique handle per binding) | gap |
 | check "two uncopied aliases for one live object" (single minted alias) | gap |
 
-So 5 of 16 have an analogous Genode run (one through a removed scratch run, one
-partial); none is replayed with the vector's inputs or a normalized-outcome
+So 4 of 17 have an analogous Genode run (one through a deleted scratch run); none is replayed with the vector's inputs or a normalized-outcome
 comparison. Constants or gaps stated plainly: service (one, no word),
 generation (0, never carried; ids never reused), epochs (not binding fields;
 Scenario constants), `Route.child` and alias holder (not visible to Bend),
@@ -117,3 +117,19 @@ Results (2026-11-04, this worktree):
 Not run, by scope: native tests, `bend PROOF.bend`, any Genode build or run
 (text-only lane; no security law or implementation changed). No GPU, no host
 replay of any vector.
+
+## Fix round 1 (review task-1-review.md)
+
+- I-1: GA-002-3 is now a gap (no run without a matching policy; it only shares
+  the subject-0 refusal at `writ_mem.cc:1209-1214`); GA-002-2 says "script
+  deleted; not reproducible". Count 4 of 17 (was 5 of 16).
+- I-2: the section and adoption box 3.1 say GA-009 (adoption spec.md:174)
+  requires a host to replay all 41 vectors and that the table maps only the
+  GA-005/GA-008 vectors and checks plus the GA-002 and GA-003-1 vectors they
+  rest on; the other vector families are named as owed and unmapped.
+- M-1: inclusion rule stated; GA-002-4 (vectors:6, tests:862) added as a gap.
+- M-2: "Line numbers refer to commit c380947."
+- M-3: GA-008-2 row cites `Monitor.bend:443-451` (binding only in the
+  `Changed` arm).
+- OpenSpec 1.16.0 strict re-run via bunx: see the count below.
+  Result: 44 passed, 0 failed (`~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive`, after fix round 1).
