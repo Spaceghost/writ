@@ -22,7 +22,7 @@ pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto
 <p>These three C functions are what the Bend effects <code>Genode.log</code>, <code>Genode.now</code>, and <code>Genode.sleep</code> call (their C twins live in <code>hosts/genode/effects/</code>). Logging uses the component's existing LOG session. Time uses one <code>Timer::Connection</code>, a session to the timer service, opened on first use with the label <code>writ_shim</code> and kept for the component's life. Before opening it, the shim probes the route with <code>Env::try_session</code>, because a plain session request that the parent denies leaves the component hanging silently (header 1185-1190). The claim to check: the Bend program alone decides what is logged and when to wait (1146-1148), and the shim stops the component only when the clock itself cannot be trusted. <code>INVENTORY.md:233-259</code> ("Timer failure outcomes") and the Timer bullet at <code>:149-161</code> list this.</p>
 <p><strong>Open:</strong> <code>writ_mem.cc:1140-1287</code></p>
 <p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
-<form method="post" action="/questions/__ID__/answer">
+<form method="post" action="/questions/q13/answer">
 <h2>Claim 1</h2>
 <p><code>writ_shim_log</code> passes the bytes to <code>Genode::log</code> unchanged (up to <code>len</code> or the first NUL); it filters, labels, and adds nothing, and a null pointer does nothing.</p>
 <pre><code>1252	extern "C" void writ_shim_log(char const *text, size_t len)
