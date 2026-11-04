@@ -198,8 +198,9 @@ reads `open` until the reader answers (or after the controller's last `ask`),
 says so.
 `--questions <dir>` points the pages and answers at another directory (the
 smoke test uses a temporary one so it never writes to the repository). The
-index lists open and answered questions first with a tile count, and the nav
-links `/questions`.
+index shows only the questions still waiting on an answer (the section is
+absent when there are none); answered and closed ones stay on `/questions`,
+and the nav count is the open count.
 
 ## Requests
 
