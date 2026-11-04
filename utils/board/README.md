@@ -149,7 +149,10 @@ every `tasks.md`, lanes live and landed), then the changes table. A change with
 a task done or a lane on it is listed; the rest collapse under one line. Each
 listed change shows a progress bar and a chip per
 live or idle lane on it (dot, name, phase, age); landed lanes are a muted list.
-A small activity icon before the lane chips shows the last three activity
+Under each listed change a one-line ticker shows its newest activity line
+(time, lane, text); the element's id carries a hash of the line, so a pushed
+new line is a new element to the morph and slides in (no animation under
+`prefers-reduced-motion`). A small activity icon before the lane chips shows the last three activity
 lines across the lanes on the change as a tooltip on hover and, on click,
 opens a full-width row beneath the change with the last ten lines (newest in
 view, as in the lane feeds). A chevron at the start of each change row opens a full-width row beneath it

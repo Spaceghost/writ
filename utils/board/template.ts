@@ -164,6 +164,19 @@ function activityIcon(c: Change, lines: (ActivityLine & { lane: string })[]): st
   return `<button type="button" class="act" aria-label="Show recent activity" aria-controls="activity-${slug(c.name)}" title="${esc(tip)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-class:open="$${sig}" data-preserve-attr="aria-expanded class"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M1 8h3l2-5 3 10 2-5h4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></button>`;
 }
 
+/**
+ * The ticker under a change row: its newest activity line. The line's id
+ * carries a hash of its content, so a new line is a new element to the morph
+ * and the CSS enter animation plays; an unchanged line is left alone.
+ */
+function tickerRow(c: Change, lines: (ActivityLine & { lane: string })[], columns: number): string {
+  const a = lines[lines.length - 1];
+  if (!a) return "";
+  let h = 0;
+  for (const ch of `${a.at}${a.lane}${a.who}${a.text}`) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return `<tr class="tickerrow"><td colspan="${columns}"><p id="tick-${slug(c.name)}-${h.toString(36)}" class="ticker"><span class="log-at">${esc(clock(a.at))}</span><span class="log-who">${esc(a.lane)}${a.who ? ` · ${esc(a.who)}` : ""}</span><span class="log-text">${esc(a.text)}</span></p></td></tr>`;
+}
+
 function activityRow(c: Change, lines: (ActivityLine & { lane: string })[], columns: number): string {
   if (lines.length === 0) return "";
   const items = [...lines].reverse().map((a) =>
@@ -232,7 +245,7 @@ ${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class=
 <td class="tasks-cell">${progress(c.tasks)}</td>
 <td class="chips">${chips || `<span class="muted">none</span>`}</td>
 <td class="expl-cell">${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
-</tr>${taskRow(c, 6)}${activityRow(c, lines, 6)}`;
+</tr>${tickerRow(c, lines, 6)}${taskRow(c, 6)}${activityRow(c, lines, 6)}`;
   };
   // One signal per change for its task row and one for its activity row, false unless the reader already flipped it.
   const signals = JSON.stringify(Object.fromEntries([
