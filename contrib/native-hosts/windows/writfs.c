@@ -21,6 +21,7 @@ typedef NTSTATUS *PNTSTATUS;
 #include "worker.h"
 #include "probe.h"
 #include "isolation.h"
+#include <aclapi.h>
 
 typedef struct {
     DWORD actor, handle;
@@ -386,6 +387,84 @@ static BOOL initialize_policy(WRIT_HOST *host)
     return ok;
 }
 
+static BOOL owned_volume_security(WRIT_HOST *host)
+{
+    wchar_t path[512];
+    HANDLE device = INVALID_HANDLE_VALUE, primary = NULL, token = NULL;
+    PSID owner = NULL, group = NULL, actual_owner = NULL, actual_group = NULL;
+    PACL dacl = NULL, actual_dacl = NULL;
+    PSECURITY_DESCRIPTOR actual = NULL;
+    BOOL present = FALSE, defaulted = FALSE, permitted = FALSE, ok = FALSE;
+    DWORD error = ERROR_ACCESS_DENIED, granted = 0;
+    SECURITY_DESCRIPTOR_CONTROL control = 0;
+    DWORD revision = 0;
+    ACL_SIZE_INFORMATION expected_size = {0}, actual_size = {0};
+    GENERIC_MAPPING mapping = { FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_GENERIC_EXECUTE, FILE_ALL_ACCESS };
+    PRIVILEGE_SET privileges = {0};
+    DWORD privilege_size = sizeof(privileges);
+    const char *stage = "owned-device-open";
+    /* VolumeName comes from this retained WinFsp instance. Never touch its
+       global control device, the device-class registry or another mount. */
+    if (wcsncmp(host->filesystem->VolumeName, L"\\Device\\Volume{", 15) ||
+        FAILED(StringCchPrintfW(path, ARRAYSIZE(path), L"\\\\?\\GLOBALROOT%s", host->filesystem->VolumeName))) {
+        error = ERROR_INVALID_NAME; goto done;
+    }
+    /* No file-data access: open the device object itself, not its filesystem
+       root. An explicit instance DACL lets the LPAC reach Bend's callbacks. */
+    device = CreateFileW(path, READ_CONTROL | WRITE_DAC | WRITE_OWNER,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING,
+        FILE_FLAG_OVERLAPPED, NULL);
+    if (device == INVALID_HANDLE_VALUE) goto failed;
+    stage = "descriptor";
+    if (!GetSecurityDescriptorOwner(host->security, &owner, &defaulted) ||
+        !GetSecurityDescriptorGroup(host->security, &group, &defaulted) ||
+        !GetSecurityDescriptorDacl(host->security, &present, &dacl, &defaulted) ||
+        !present || !dacl || !IsValidAcl(dacl)) goto failed;
+    stage = "set-owned-device-security";
+    error = SetSecurityInfo(device, SE_FILE_OBJECT,
+        OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION |
+        PROTECTED_DACL_SECURITY_INFORMATION, owner, group, dacl, NULL);
+    if (error != ERROR_SUCCESS) goto done;
+    stage = "readback";
+    error = GetSecurityInfo(device, SE_FILE_OBJECT,
+        OWNER_SECURITY_INFORMATION | GROUP_SECURITY_INFORMATION | DACL_SECURITY_INFORMATION,
+        &actual_owner, &actual_group, &actual_dacl, NULL, &actual);
+    if (error != ERROR_SUCCESS) goto done;
+    if (!actual_owner || !actual_group || !actual_dacl || !IsValidAcl(actual_dacl) ||
+        !EqualSid(owner, actual_owner) || !EqualSid(group, actual_group) ||
+        !GetSecurityDescriptorControl(actual, &control, &revision) || !(control & SE_DACL_PROTECTED) ||
+        !GetAclInformation(dacl, &expected_size, sizeof(expected_size), AclSizeInformation) ||
+        !GetAclInformation(actual_dacl, &actual_size, sizeof(actual_size), AclSizeInformation) ||
+        expected_size.AceCount != actual_size.AceCount ||
+        expected_size.AclBytesInUse != actual_size.AclBytesInUse ||
+        memcmp(dacl, actual_dacl, expected_size.AclBytesInUse)) {
+        error = ERROR_INVALID_SECURITY_DESCR; goto done;
+    }
+    stage = "actual-lpac-access-check";
+    if (!OpenProcessToken(host->worker.process, TOKEN_QUERY | TOKEN_DUPLICATE, &primary) ||
+        !DuplicateTokenEx(primary, TOKEN_QUERY, NULL, SecurityIdentification, TokenImpersonation, &token) ||
+        !AccessCheck(actual, token, FILE_READ_DATA | FILE_TRAVERSE, &mapping, &privileges,
+            &privilege_size, &granted, &permitted)) goto failed;
+    if (!permitted || granted != (FILE_READ_DATA | FILE_TRAVERSE) || privileges.PrivilegeCount) {
+        error = ERROR_ACCESS_DENIED; goto done;
+    }
+    printf("NATIVE_PASS owned volume device descriptor read back; actual LPAC token has traversal/read access to this device\n");
+    ok = TRUE;
+    goto done;
+failed:
+    error = GetLastError();
+done:
+    if (actual) LocalFree(actual);
+    if (token) CloseHandle(token);
+    if (primary) CloseHandle(primary);
+    if (device != INVALID_HANDLE_VALUE) CloseHandle(device);
+    if (!ok) {
+        fprintf(stderr, "FAIL volume security stage=%s error=%lu\n", stage, error);
+        SetLastError(error ? error : ERROR_ACCESS_DENIED);
+    }
+    return ok;
+}
+
 static BOOL mount_filesystem(WRIT_HOST *host, wchar_t *mount)
 {
     FSP_FSCTL_VOLUME_PARAMS parameters;
@@ -434,11 +513,14 @@ static BOOL mount_filesystem(WRIT_HOST *host, wchar_t *mount)
     if (!NT_SUCCESS(status)) { fprintf(stderr, "FAIL winfsp-create status=%08lx\n", (DWORD)status); return FALSE; }
     host->filesystem->UserContext = host;
     FspFileSystemSetOperationGuardStrategy(host->filesystem, FSP_FILE_SYSTEM_OPERATION_GUARD_STRATEGY_COARSE);
+    /* Requests remain denied before ADMIT. Starting first also ensures a
+       misdirected device-security request cannot wait on an absent dispatcher. */
+    status = FspFileSystemStartDispatcher(host->filesystem, 1);
+    if (!NT_SUCCESS(status)) { fprintf(stderr, "FAIL winfsp-dispatch status=%08lx\n", (DWORD)status); return FALSE; }
+    if (host->worker.lpac && !owned_volume_security(host)) return FALSE;
     status = FspFileSystemSetMountPointEx(host->filesystem, mount, host->security);
     if (!NT_SUCCESS(status)) { fprintf(stderr, "FAIL winfsp-mount status=%08lx\n", (DWORD)status); return FALSE; }
     host->mounted = TRUE;
-    status = FspFileSystemStartDispatcher(host->filesystem, 1);
-    if (!NT_SUCCESS(status)) { fprintf(stderr, "FAIL winfsp-dispatch status=%08lx\n", (DWORD)status); return FALSE; }
     return TRUE;
 }
 
