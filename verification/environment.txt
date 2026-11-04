@@ -16,5 +16,7 @@
   "native_checks": 764,
   "node": "v26.10.0",
   "example_assertions_per_backend": 29,
-  "example_programs": 4
+  "example_programs": 4,
+  "qualification_probe_bend_files": 9,
+  "note": "bend_source_files counts the library, tests, examples, and proofs outside contrib/ and scripts/; qualification_probe_bend_files counts the host-lane probes under scripts/, which are not part of the suite."
 }

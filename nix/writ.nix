@@ -7,7 +7,7 @@
 #
 # The test assertions mirror the recorded verification (VERIFICATION.md): the
 # library driver prints both "PASS:" and "PASS " lines; together they number
-# 638, and the final line is "ALL LIBRARY TESTS PASSED".
+# 764, and the final line is "ALL LIBRARY TESTS PASSED".
 { pkgs, bend, openspec, clang }:
 
 let
@@ -52,7 +52,7 @@ let
   '';
 
   # Fails unless the captured test output ends with the success line and has
-  # exactly 638 lines beginning with PASS ("PASS:" and "PASS " forms together).
+  # exactly 764 lines beginning with PASS ("PASS:" and "PASS " forms together).
   assertTests = log: ''
     last=$(tail -n 1 ${log})
     passes=$(grep -c '^PASS' ${log} || true)
@@ -61,8 +61,8 @@ let
     if [ "$last" != "ALL LIBRARY TESTS PASSED" ]; then
       echo "expected final line ALL LIBRARY TESTS PASSED" >&2; exit 1
     fi
-    if [ "$passes" != 638 ]; then
-      echo "expected 638 PASS lines, found $passes" >&2; exit 1
+    if [ "$passes" != 764 ]; then
+      echo "expected 764 PASS lines, found $passes" >&2; exit 1
     fi
   '';
 
