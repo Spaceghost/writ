@@ -135,6 +135,14 @@ is unavailable there (E10).
    program cannot emit). Either way the halt after
    `exit`, `_exit`, and the trap must power off instead of idling (E9), and corpus
    failure, arena exhaustion, and fault must give distinct codes (UL-006).
+   **Unikernel port Task 1 (verification/unikernel-exit-codes.txt):** the host binding
+   `hosts/unikraft/exit_device.c` writes the status to `isa-debug-exit` from Unikraft's
+   termination table, requests the halt on the init process's exit, and writes 0x7e from
+   `UK_CRASH_EVENT`. With `CONFIG_LIBUKBOOT_MAINTHREAD=y` (the cause of the E9 idle was
+   main running on the init thread) the harness now sees QEMU 1 for success, 3 for
+   `IO.die(Unit, 1, ...)`, 253 for the Overflow fault, and 7 for `IO.exit(3)`. Open:
+   `IO.die` status 1 and a runtime `_exit(1)` (and so arena exhaustion, by reading the
+   emitted C) share code 3, and statuses above 124 share 255.
 2. **A declared single-lane configuration.** Keep `UKPLAT_CPU_MAXCOUNT=1` and the
    cooperative scheduler, run with `+RTS --threads 1`, and use the inline IO helper
    (UL-005). On this kernel `--threads 2` creates a lane whose `pool_work` was not entered before shutdown in a non-yielding program (E6; behaviour when the main lane yields not tried), so a
