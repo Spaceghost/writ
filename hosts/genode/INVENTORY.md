@@ -21,7 +21,13 @@ and a bounded request queue, exercised by `writ_bend_monitor`
 (`verification/genode-channel-base-linux.txt`). Since the channel lane's
 Task 3 (2026-11-04) it answers a wrong request length with a fixed
 transport refusal record and reports a closed session to Bend as a close
-event (see Writ channel bounds).
+event (see Writ channel bounds). Since the base-hw lane (2026-11-04) the
+same unit has a base-hw fault front end, and on base-hw under QEMU TCG the
+corpus (782 PASS), the four examples, Overflow (self-reported exit 139),
+and the eight channel runs pass (`verification/genode-bend-hello-base-hw.txt`,
+`verification/genode-corpus-base-hw.txt`,
+`verification/genode-runtime-rows-base-hw.md`,
+`verification/genode-channel-base-hw.txt`).
 
 ## Files
 
@@ -35,7 +41,11 @@ event (see Writ channel bounds).
 Live copy for the Genode build: `../writ-genode/writ-repo/src/writ_shim/writ_mem.cc`
 and `writ_channel_session.h` and `writ_shim.mk` beside it, byte-identical; its sha256 is recorded with each run in
 `verification/genode-reservation-probe-base-linux.txt` and, for the Bend
-component, `verification/genode-bend-hello-base-linux.txt`.
+component, `verification/genode-bend-hello-base-linux.txt`; for base-hw in
+`verification/genode-bend-hello-base-hw.txt`,
+`verification/genode-corpus-base-hw.txt`,
+`verification/genode-runtime-rows-base-hw.md`, and
+`verification/genode-channel-base-hw.txt`.
 
 How the entry points win: plain symbol interposition by the program binary.
 Calls from the program's own objects bind to the shim's definitions at static
@@ -69,7 +79,7 @@ run scripts source; live copy `run/writ_bend.tcl`).
 | `mprotect` | public entry point, shadows libc | `PROT_NONE` on a page-aligned range in a reservation makes a guard; `PROT_READ\|PROT_WRITE` on a guard-free range in a reservation returns 0 (it already is); lifting a guard or any other prot: -1 `ENOTSUP`; len 0, len larger than the reservation, or a range not contained in it: -1 `EINVAL`; outside reservations: libc (-1 `ENOSYS`) |
 | (all three above) | | fail with `ENOSYS` before `Libc::Component::construct` has resolved libc's originals |
 | `Libc::Component::construct` | component entry | stores the Env, resolves libc's originals, reads libc's config through `Libc::Env::with_config` (no ROM session of its own) and, only if it has a `<writ_channel>` node, starts the channel service (see Writ channel), then runs `main` as `posix`'s construct.cc does (so `posix` is not linked); if the libc environment has `WRIT_MEM_REPORT=1` it registers an `atexit` report first (diagnostics only, reads no other configuration) |
-| `writ_mem_report` | diagnostics helper | logs PD RAM used/limit, caps, and reservation counters (populated chunks, faults resolved, benign retries, reservations placed at the hint or elsewhere, released, and the Timer early-wake count); when the channel service runs, a second line with the channel counters (signals, coalesced, ring full, ring high-water mark, bad length, stale, taken, put, put skipped, closed) and the number of open and closing channel slots; called by the probes, and from `exit` when `WRIT_MEM_REPORT=1` |
+| `writ_mem_report` | diagnostics helper | logs, on fixed lines each under the LOG session's 232-byte limit for every tag in use (since the base-hw lane's final review), PD RAM used/limit, caps, reservations, and guards; then the reservation counters (populated chunks, faults resolved, benign retries, reservations placed at the hint or elsewhere, released, and the Timer early-wake count); when the channel service runs, a second line with the channel counters (signals, coalesced, ring full, ring high-water mark, bad length, stale, taken, put, put skipped, closed) and the number of open and closing channel slots; called by the probes, and from `exit` when `WRIT_MEM_REPORT=1` |
 | `writ_mem_restore_rt` | local (not global) asm symbol, base-linux build only | `rt_sigreturn` restorer for the SIGSEGV handler; absent from a base-hw build |
 | `writ_shim_log(char const *text, size_t len)` | effect host function (`Genode.log`) | `Genode::log` of at most `len` bytes as one `Cstring` (ends at the first NUL); nothing added; a null `text` does nothing |
 | `writ_shim_now_ms(void) -> uint64_t` | effect host function (`Genode.now`) | `elapsed_ms()` of the shim's Timer session (ms since the session was opened); 0 before `construct`; the twin truncates to U32 |
@@ -274,7 +284,7 @@ memory, so it cannot fault into its own handler.
 
 Coverage on base-hw. Because the handler is also registered on the PD's
 address space, stack area, and linker area, every page fault the shim cannot
-resolve anywhere in the component (inside a reservation, or outside every
+resolve anywhere in the component, outside the lock-holder cases below, (inside a reservation, or outside every
 reservation: a null pointer, a thread's stack guard, a write to read-only
 code) ends in the refusal line and `Parent::exit(139)`. Core does not log
 its own `illegal ...` line for such a fault: a region map with a
@@ -303,7 +313,9 @@ self-reported:
 4. the faulting thread stays halted and is never resumed, but other threads
    may run between the exit RPC and init destroying the PD (not observed;
    bounded in practice only by `--threads 1`);
-5. coverage is the scope above;
+5. coverage is the scope above; a fault while the faulter holds the LOG,
+   Env-session, or shim lock halts with no record (not observed; see the
+   paragraph below, Sessions RM, and the shim mutex note above);
 6. all evidence is from a QEMU TCG emulated boot.
 A refusal logs before it exits, so the line reaches the LOG before init
 destroys the PD. If the halted faulter holds the LOG client's lock (it
@@ -383,6 +395,11 @@ Console and time (channel lane, Task 1): `writ_shim_log` passes at most
 `MAX_STRING_LEN` (232, `log_session.h:48`) reaches the LOG in pieces.
 `writ_shim_now_ms` wraps only at 2^64 ms; `Genode.now` truncates to 32 bits
 (wraps after about 49.7 days; the probe compares by U32 difference).
+`writ_mem_report` keeps each of its lines under that limit for the tags in
+use (the probe's longest is "after 8 GiB mmap, untouched"); before the
+base-hw lane's final review its single report line was split by the LOG
+session when a probe passed a long tag (observed in
+`run-hw-writ_probe_reservation_live-t2c.out`; no matcher read the tail).
 `writ_shim_sleep_ms` sleeps at most `ms` per `msleep` call and loops until
 the deadline; each early wake is counted (`timer short wakes=` in
 `writ_mem_report`; 0 in every recorded run), and stops after 16 `msleep`
@@ -608,6 +625,23 @@ configured).
 - sha256 `db8a376d...` (full value and reruns in
   `verification/genode-channel-base-hw.txt`, SHIM CHANGES).
 
+## Changes in base-hw lane, final review
+
+- `writ_mem_report` prints fixed lines (ram/caps/reservations/guards;
+  chunks through timer short wakes; rm upgrades), each under the LOG
+  session's 232-byte limit for every tag in use; no line is split now.
+- Header sentences: on base-linux the upgrade would run in the SIGSEGV
+  handler on the faulting thread, so the Env-lock hazard is base-hw only by
+  construction; the take-parked counter is written without the channel
+  mutex and is diagnostics only.
+- Scripts: `writ_bend_require_refusal_exit` in `writ_bend.tcl` (init exit
+  value 139 for the component and no core fault line), used by
+  `writ_bend_overflow.run` and `writ_probe_reservation_guard.run` on hw;
+  the dead-client run on base-hw requires that init reports no exit of
+  `writ_client_f` (it replaced a row that repeated another).
+- sha256 `9d9d32d2402bd947c96a4632ae945c6825d1291a3ce97e5ac45b7d0349f71b5d`;
+  reruns in `verification/genode-channel-base-hw.txt`, FINAL REVIEW FIXES.
+
 ## Channel on base-hw (base-hw lane, Task 3)
 
 All eight monitor runs pass on base-hw (QEMU TCG). Observed wake path, the
@@ -625,10 +659,11 @@ C). Host differences, outside the shim:
 - A signal to a freed context is ignored silently by the base-hw kernel
   (`kernel/thread.cc:395-400`). base-linux core warns "invalid
   signal-context capability".
-- In the queue run the flooding clients outran the loop on base-hw: ring
-  max 8 and 139 coalesced signals, where base-linux showed ring max 1 and
-  no coalescing. The ring bound held, and no entry was dropped (ring
-  full=0).
+- In the queue run the flooding clients outran the loop on base-hw in both
+  runs (ring max 8; 78 and 139 coalesced signals), where base-linux showed
+  ring max 1 and no coalescing. Observed and timing-dependent, not required
+  by the script. The ring bound held and no entry was dropped (ring full=0,
+  by construction, see Bounds).
 
 ## Fault behaviour observed through a Bend program
 
@@ -661,9 +696,12 @@ base-hw neither needs a retry: the attach that populates or re-pieces a
 chunk wakes every faulter in its range, and a faulter left queued on a
 populated chunk (a failed re-attach, or a rights violation) is refused
 (not exercised). A fault taken while the faulting thread holds a Genode
-lock the handler needs would deadlock. The handler runs on the faulting
-stack (no SA_ONSTACK, see the source header), so a machine-stack overflow
-dies without the shim's line.
+lock the handler needs would deadlock. On base-linux the handler runs on
+the faulting stack (no SA_ONSTACK, see the source header), so a
+machine-stack overflow dies without the shim's line. On base-hw it runs on
+the `writ_fault` entrypoint's own stack, so a machine-stack overflow of
+another thread (a fault in the stack area) is refused with the line and
+exit 139 (not exercised).
 
 The Timer functions hold their own mutex only around the open-once check
 (not across `elapsed_ms` or `msleep`);

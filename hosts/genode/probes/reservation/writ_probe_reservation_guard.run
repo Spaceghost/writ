@@ -115,12 +115,11 @@ if {$resumed || $failed || !$refused} {
 }
 # base-hw (Genode base-hw lane, Task 1, fix round 1): the shim refuses by
 # Parent::exit(139) and the host's process list says nothing about a QEMU
-# guest, so only init's report of exactly exit value 139 counts.
+# guest, so only init's report of exactly exit value 139 counts, with core
+# silent (writ_bend.tcl, writ_bend_require_refusal_exit, base-hw lane final
+# review).
 if {[have_spec hw]} {
-	if {!$init_exit || $exit_value != 139} {
-		puts stderr "Error: on base-hw init must report exit value 139 (got $exit_value)"
-		exit 1
-	}
+	writ_bend_require_refusal_exit writ_probe_reservation
 } elseif {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
 	puts stderr "Error: the component neither exited nonzero nor vanished"
 	exit 1

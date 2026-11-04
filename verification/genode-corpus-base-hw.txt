@@ -62,6 +62,23 @@ QEMU_OPT += -display none -accel tcg -no-reboot; every make with MAKEFLAGS=)
     4c07ef848a6ec932766dd4b248ec46bca044ac824f4916594081c14179941dc8  writ_bend_hello
     132718e2f1286c19846901b7e6ff25982d2e641186cdccdd1a927c6bb9f00364  writ_bend_probe
 
+  Later builds (dated notes; same app/ paths, unstripped):
+    2026-11-04, Task 3, shim db8a376d...: the corpus and the hello/Overflow
+      reruns in ../writ-genode/run-hw-writ_bend_{tests,hello,overflow}-t3b.out
+      (those binaries were overwritten by the final-review rebuild below, so
+      their hashes are not given; the final-review build is the delivered one).
+    2026-11-04, final review, shim 9d9d32d2402bd947c96a4632ae945c6825d1291a3ce97e5ac45b7d0349f71b5d
+      (report split into fixed lines), logs ../writ-genode/run-hw-writ_bend_<name>-fr.out,
+      all rc 0, corpus 782 PASS / 834 lines / fc3a08aa..., examples identical:
+      4ba058194f7596a6a82e881120f1a8421e81ab5e1eb48a2151a9f7c7040bf2ed  writ_bend_tests
+      006620b7fe2a174629ab0b22f86c4c617b495a41211ba2d84fe3f1e499897920  writ_bend_example
+      70910e63ee4785156f82d848775cfedbe59a9693f20c82800f2ac381cbc541f2  writ_bend_flow
+      23a15c67afccd4f7454fd51a49e21a634cf495f705a8214dcc460e3e30e55070  writ_bend_transfer
+      a84409a348a4a841b72c22c6cdf083be54bcd72537a5b8d6fd6caa7529c037ac  writ_bend_gpuexample
+      2f501952f0c0f1c54f21bb7468d77d3f7e81a0797a318fba1b614bcc4b8ada05  writ_bend_overflow
+      38f6ed34de63be81c429f96e6e795c8932b359b274d05a5a56a3f8552dfb2834  writ_bend_hello
+      6d27cc32c548ebec5f58217b0814361b1658f029ac9a87c29e3801fa1d15f8dd  writ_bend_probe
+
 QEMU
   Corpus and examples (run tool default guest RAM):
     qemu-system-x86_64 -display none -accel tcg -no-reboot -serial mon:stdio

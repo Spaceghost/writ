@@ -7,8 +7,8 @@ GPU mode, compiler, binary or image hash, and harness that existing evidence
 files already hold. Nothing here was rerun or measured for this record: every
 value is copied from the file and section named in its cell. This record
 qualifies no host. Every executed row is CPU execution; none is GPU evidence,
-and the Unikraft row is an emulated boot (QEMU TCG), not an accelerated or
-hardware boot.
+and the Unikraft and Genode base-hw rows are emulated boots (QEMU TCG), not
+accelerated or hardware boots.
 
 ## Corpus history: 638, then 764, then 782
 
@@ -22,7 +22,7 @@ exact-source counts").
 | ---: | --- | --- |
 | 638 | the runtime-profile lane's tree, "before the integration that brought the corpus to 764" (uqemu lines 47-48; parity.txt line 5, "Date: 2026-11-03") | Linux native 1 lane and 4 lanes (runtime-profile-parity-1.txt, -4.txt) |
 | 764 | Genode lane at c96ef40 / caf13ca; unikernel lane at 74f57b7 (genode-corpus-linux-reference.txt header line 11; unikernel-corpus-qemu.txt lines 14-19) | Genode base-linux first run; Unikraft QEMU first run; their Linux 1-lane references. All kept as history |
-| 782 | after the merge of master dc6ff2b (genode-corpus-base-linux.txt "FINAL-REVIEW SECTION" lines 263-270; unikernel-corpus-qemu.txt "Integration rerun" lines 173-176) | Linux native 4 lanes and JavaScript (tests-native.txt, tests-js.txt); Linux native 1 lane reference; Genode base-linux; Unikraft QEMU TCG |
+| 782 | after the merge of master dc6ff2b (genode-corpus-base-linux.txt "FINAL-REVIEW SECTION" lines 263-270; unikernel-corpus-qemu.txt "Integration rerun" lines 173-176) | Linux native 4 lanes and JavaScript (tests-native.txt, tests-js.txt); Linux native 1 lane reference; Genode base-linux; Unikraft QEMU TCG; Genode base-hw (ghw "RESULT", lines 12-17) |
 
 The 638-check parity files say they are identical to `tests-native.txt`
 (runtime-profile-parity.txt lines 40-44); that comparison was made when
@@ -36,7 +36,9 @@ binary is recorded (see the gap list below).
 Abbreviations: `parity.txt` is `verification/runtime-profile-parity.txt`;
 `gcorpus` is `verification/genode-corpus-base-linux.txt`; `glref` is
 `verification/genode-corpus-linux-reference.txt`; `uqemu` is
-`verification/unikernel-corpus-qemu.txt`; `ulref` is
+`verification/unikernel-corpus-qemu.txt`; `ghw` is
+`verification/genode-corpus-base-hw.txt`; `gchw` is
+`verification/genode-channel-base-hw.txt`; `ulref` is
 `verification/unikernel-corpus-linux-reference.txt`. Line numbers are those
 of the files at commit c380947.
 
@@ -49,8 +51,12 @@ of the files at commit c380947.
 | Linux, JavaScript backend, 782 tree | [tests-js.txt](tests-js.txt) | 782 (VERIFICATION.md lines 47-49; environment.txt line 14); `ALL LIBRARY TESTS PASSED` (tests-js line 834); byte-identical to tests-native.txt (VERIFICATION.md line 49; source-sha256.txt lines 650-651) | not recorded (the reproduction `node ../writ-build/tests.js` passes no lane option, VERIFICATION.md line 56) | no device present (environment.txt lines 6-11); CPU execution | Bend 2.0.39 JavaScript emission; Node v26.10.0 (environment.txt lines 2, 17; VERIFICATION.md line 82) | not recorded (`tests.js` has no recorded hash) | `bend Tests.bend -o ../writ-build/tests.js`; `node ../writ-build/tests.js` (VERIFICATION.md lines 55-56) | not applicable (no native binary) | VERIFICATION.md "Executable checks" |
 | Genode 26.08 base-linux, single lane, 782 tree | component log `run-writ_bend_tests-2-merged-256M.out` (not committed); its 834 component lines are byte-identical to the Linux 1-lane 782 capture, sha256 `fc3a08aa...062916ff` (gcorpus lines 330-336) | 782 PASS lines, 834 component lines (gcorpus line 328); `ALL LIBRARY TESTS PASSED`, exit value 0 (gcorpus lines 273-274, 327) | 1 (`--threads 1`, gcorpus line 270; run-script args line 68) | `--gpu off`, CPU only, "This is not GPU evidence" (gcorpus lines 7-11, 270) | generated C by host clang 23.1.1 as `CUSTOM_CC = clang-23 --target=x86_64-unknown-elf` (gcorpus lines 63, 239-240; genode-bend-hello-base-linux.txt lines 86-87, 155-158); the shim by genode-x86-g++ 14.2.0 (genode-bend-hello-base-linux.txt line 383) | `writ_bend_tests` `903128fa1b2387d39d5f4ddbea2be8d5f6d48ba3416e146c350b7ef90df27d60` (gcorpus line 315; not committed); emitted `tests.c` `b50856fb...e184bb0602` (gcorpus line 283) | `cd ../writ-genode/build/x86_64 && make run/writ_bend_tests` (the `cd` from the BUILD block, the `make` from the CORPUS RUN block), run script `scripts/genode/writ_bend_tests/writ_bend_tests.run`, ram 256M; shim exit report `ram used=12537856 limit=268302940 caps used=40 limit=961` (gcorpus lines 58-59, 273, 324-326) | not run on `writ_bend_tests`; on the monitor ELF the check reports Genode effect rows beyond the profile and fails its symbol half (VERIFICATION.md "Genode Bend component, base-linux", lines 296-301) | gcorpus "FINAL-REVIEW SECTION": "RESULT", "INPUTS", "BUILD", "CORPUS RUN (merged tree)" |
 | Unikraft 0.21.0, QEMU TCG, single lane, 782 tree | console of `run-tests-m4096.log` (not committed), diffed against ulref's capture body: empty (uqemu lines 189-196) | 782; `ALL LIBRARY TESTS PASSED`; QEMU exit 1 (= guest status 0 through the debug-exit hook) (uqemu lines 192-197; hook, line 6) | 1 (`+RTS --threads 1`; `UKPLAT_CPU_MAXCOUNT=1`) (uqemu lines 7, 82-84, 163-164) | `--gpu off`, CPU only; "no accelerator device, no '!' device dispatch" (uqemu lines 7-8) | gcc 16.2.1 with `-std=gnu11`, kraft 0.12.16, lib-musl (uqemu lines 9-10; unikernel-pins.txt line 11); Linux reference used clang 23.1.1 (uqemu line 10) | image `tests-qemu` `7425abfea411a7c811f1ea8f624b7e583fc36fb24be4cd60a0d6b861176e7585`, ELF `tests-qemu.dbg` `2db2d9ebe185733dd9e9e865947930e0e0b49d3f995409efdc57bfc137a5f609` (uqemu lines 183-184; unikernel-binary-check.txt line 132). Clean builds embed the build time, so the image hash is per build and not reproducible (uqemu lines 89, 171) | `timeout 600 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/corpustests782/images/tests-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot`; machine type the default `pc` (uqemu lines 4-5, 191); also passed at `-m 32` (uqemu lines 198-204) | PASS on effect rows (`IO.print`); static link, so the host-symbol surface was not checked (unikernel-binary-check.txt lines 129-137) | uqemu "Integration rerun, 2026-11-04: merged tree, 782 checks"; unikernel-binary-check.txt "Integration rerun" |
-| Genode base-hw | pending: lane in flight | | | | | | | | |
+| Genode 26.08 base-hw, QEMU TCG, single lane, 782 tree | component log `run-hw-writ_bend_tests-fr.out` (not committed; earlier `-1.out`, `-t2b.out`); its 834 component lines diffed against the Linux 1-lane 782 capture: empty, sha256 `fc3a08aa...062916ff` (ghw "CORPUS RUN" lines 106-113; final-review note lines 69-71) | 782 PASS lines, 834 component lines; `ALL LIBRARY TESTS PASSED`, exit value 0 (ghw lines 13-17, 96-97) | 1 (`+RTS --threads 1`, ghw line 7) | `--gpu off`, CPU only, "this is not GPU evidence" (ghw lines 7-10) | generated C by `clang-23` (host clang 23.1.1, the same compiler as the base-linux row), the shim by genode-x86-g++ 14.2.0, as on base-linux (genode-bend-hello-base-hw.txt lines 42-43) | `writ_bend_tests` `4ba058194f7596a6a82e881120f1a8421e81ab5e1eb48a2151a9f7c7040bf2ed`, unstripped, shim `9d9d32d2...` (ghw line 72; not committed); earlier shim builds lines 53-63 | `cd ../writ-genode/build/x86_64-hw && MAKEFLAGS= make run/writ_bend_tests` (ghw line 91); QEMU `-display none -accel tcg -no-reboot -m 800 -machine q35 -cpu Skylake-Client` (ghw lines 81-86), ram 256M, caps 1000; shim exit report `ram used=12681216 limit=268143196 caps used=50 limit=951` (ghw line 95) | not run on `writ_bend_tests`; on the base-hw monitor ELF: effect rows exactly Genode.log/put/take, symbol half FAIL, 158 undefined symbols, 117 outside the profile (gchw "BINARY CHECK", lines 206-213) | ghw "RESULT", "BUILD", "QEMU", "CORPUS RUN"; gchw "BINARY CHECK" |
 | Unikraft channel | pending: lane in flight | | | | | | | | |
+
+The Unikraft channel row stays pending: that lane had not delivered when the
+base-hw row was filled (2026-11-04). Line numbers in the base-hw row are
+those of the files at the commit that filled it.
 
 Superseded runs at 764 checks, kept as history in the same files and not
 repeated as rows: Genode base-linux `writ_bend_tests` binary `f3806f42...3b4665c2`,
@@ -103,7 +109,8 @@ Rows read from source or compile output rather than executed:
 - No 782-check corpus run at one and four lanes from one binary on one host;
   the RH-005 lane comparison is the 638 tree's (parity.txt "Result").
 - No row has a binary check of its own corpus binary; the checks recorded are
-  on Hello and Widened (Linux), on the Genode monitor ELF, and on the Unikraft
+  on Hello and Widened (Linux), on the Genode monitor ELF (base-linux and
+  base-hw), and on the Unikraft
   `tests-qemu.dbg` (effect rows only, static link).
 - The Linux four-lane 782 binary and the JavaScript `tests.js` have no
   recorded hash.

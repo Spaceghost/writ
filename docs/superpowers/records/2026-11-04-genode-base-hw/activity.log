@@ -38,3 +38,11 @@
 2026-11-04T19:00:49Z	implementer	shim: rm upgrade counters (report + hw refusal), take wake-path diagnostics (thread name, parked count) in the channel section, header scope/hazard sentences; Overflow requires core silent on hw; probe_fault ends at core line on hw; monitor tcl matches \r*\n; running both kernels
 2026-11-04T19:27:38Z	implementer	all eight monitor runs pass on base-hw and base-linux (t3d); liveness and dead_client scripts adjusted for base-hw host behaviour; wake path recorded; check-binary run; writing records
 2026-11-04T19:29:58Z	implementer	Task 3 records written (channel base-hw record, GENODE.md section, INVENTORY, tasks 3.1/3.2); openspec 44/44 (store path and bunx); committing
+2026-11-04T19:30:45Z	controller	Task 3 done; review dispatched
+2026-11-04T19:35:27Z	controller	Task 3 approved; final whole-branch review dispatched
+2026-11-04T19:44:32Z	controller	final review approved; final fix pass dispatched
+2026-11-04T19:44:34Z	implementer	final-review fix pass started; merging master
+2026-11-04T19:46:24Z	implementer	shim report split into fixed lines (232-byte LOG limit), base-linux Env-lock sentence, counter disclosure; shared refusal-exit proc; dead_client hw row; tests.run \r*$; headers; running 18 scenarios on both kernels (fr)
+2026-11-04T19:48:04Z	implementer	heartbeat: final-review reruns in progress on both kernels; editing records meanwhile
+2026-11-04T19:50:20Z	implementer	heartbeat: fr reruns 11/36 done (all rc 0 so far); traceability, design, PLATFORMS, host-profile 2.3 edited
+2026-11-04T20:01:22Z	implementer	final-review fix pass: minors 1-12 and integration alignments applied; fr reruns rc 0 on both kernels; OpenSpec 44/0; committing

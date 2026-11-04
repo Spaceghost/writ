@@ -135,7 +135,9 @@ before init destroys the PD (bounded in practice by `--threads 1`); (5)
 coverage is page faults in the PD's address space, stack area, linker area,
 and the shim's reservations, not other exceptions, not a parent's handler
 displacing the shim's, and not a fault on the writ_fault thread (halts with
-no record); stack-area and linker-area faults were not exercised; (6)
+no record); stack-area and linker-area faults were not exercised; a fault
+while the faulter holds the LOG, Env-session, or shim lock halts with no
+record (not observed); (6)
 emulated boot only.
 
 ## Threads, clock, LOG, event loop, process

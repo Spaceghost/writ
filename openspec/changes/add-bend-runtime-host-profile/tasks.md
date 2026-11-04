@@ -20,8 +20,10 @@ qualify a host.
   Note (2026-11-04): the Windows (`add-windows-host`), Drift kernel
   (`add-drift-kernel-host`), and freestanding (`add-freestanding-bend-runtime`)
   changes now cite the profile in their design.md and runtime tasks. The Genode
-  and unikernel changes still wait for the live `genode-base-hw` and
-  `unikraft-twins` lanes, so this box stays unchecked.
+  change now cites it too (add-genode-bend-component design.md, "The runtime
+  host profile gates the monitor runtime", and its task 3.2). The unikernel
+  change still waits for the live `unikraft-twins` lane, so this box stays
+  unchecked.
 
 ## 3. Evidence
 

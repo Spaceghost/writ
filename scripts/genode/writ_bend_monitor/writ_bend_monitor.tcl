@@ -313,7 +313,7 @@ proc writ_bend_monitor_queue_run { } {
 #   client's decision is logged before R's, core warns about the freed
 #   context (base-linux only: base-hw's kernel drops a signal to an invalid
 #   context silently, repos/base-hw/src/core/kernel/thread.cc:395-400, so
-#   there is no line to require), R's PASS and exit 0 are logged, and init
+#   there it requires that init reported no exit of writ_client_f), R's PASS and exit 0 are logged, and init
 #   reported no exit of the monitor (it must still be serving).
 proc writ_bend_monitor_dead_client_run { } {
 	global output
@@ -342,11 +342,24 @@ proc writ_bend_monitor_dead_client_run { } {
 		"\\\[init -> writ_client_f\\\] client: registered a result signal context and freed it" "freed result context" \
 		"\\\[init -> writ_client_f\\\] client: request sent, staying alive with no result handler" "freed-context client sent" \
 		"$m monitor: channel=$f_channel route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 .*$m monitor: channel=\[0-9\]+ route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "R's decision after the freed-context client's decision" \
-		[expr {[have_spec hw] ? "client: request sent, staying alive with no result handler" : "Warning: invalid signal-context capability"}] [expr {[have_spec hw] ? "freed-context client still alive (base-hw drops a signal to a freed context silently, kernel/thread.cc:395-400)" : "core warning for the freed context"}] \
 		"\\\[init -> writ_client_r\\\] client: PASS decision 1 reason 0 as expected" "R's verdict" \
 		"child \"writ_client_r\" exited with exit value 0\r*\n" "R exit value 0" ]
 	if {[regexp "child \"$monitor\" exited" $output]} {
 		puts stderr "Error: the monitor exited"
+		exit 1
+	}
+	# The reply to the freed context. base-linux: core's signal proxy warns
+	# (signal_delivery_proxy.h:70). base-hw: the kernel drops a signal to an
+	# invalid capability silently (repos/base-hw/src/core/kernel/thread.cc:
+	# 395-400), so there is no line; require instead that the freed-context
+	# client is still alive (init reported no exit for it).
+	if {[have_spec hw]} {
+		if {[regexp "child \"writ_client_f\" exited" $output]} {
+			puts stderr "Error: the freed-context client exited"
+			exit 1
+		}
+	} elseif {![regexp {Warning: invalid signal-context capability} $output]} {
+		puts stderr "Error: missing core warning for the freed context"
 		exit 1
 	}
 	set decided [regexp -all "$m monitor: channel=\[0-9\]+ route_subject=2 session=2 " $output]

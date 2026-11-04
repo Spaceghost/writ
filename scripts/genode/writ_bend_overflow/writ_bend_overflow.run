@@ -123,14 +123,7 @@ if {!$refused} {
 	exit 1
 }
 if {[have_spec hw]} {
-	if {!$init_exit || $exit_value != 139} {
-		puts stderr "Error: on base-hw init must report exit value 139 (got $exit_value)"
-		exit 1
-	}
-	if {$core_line} {
-		puts stderr "Error: on base-hw core logged a fault line; the shim's handler did not take the fault"
-		exit 1
-	}
+	writ_bend_require_refusal_exit $name
 } elseif {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
 	puts stderr "Error: the component neither exited nonzero nor vanished"
 	exit 1

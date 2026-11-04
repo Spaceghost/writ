@@ -23,7 +23,9 @@ termination is self-requested through `Parent::exit(139)`; init records an
 exit value, not a fault; core is silent; other threads may run before init
 destroys the PD; coverage excludes non-page-fault exceptions, a parent's
 handler displacing the shim's, and faults on the writ_fault thread, and
-stack-area and linker-area faults were not exercised; the evidence is
+stack-area and linker-area faults were not exercised; a fault while the
+faulter holds the LOG, Env-session, or shim lock halts with no record (not
+observed); the evidence is
 emulated boot only. On `base-linux` 1.3 is not satisfied: the component
 terminated at the guard with no resumption, but init recorded nothing. 1.4's
 evidence stays `base-linux`; the base-hw corpus and example runs (782 PASS
@@ -82,7 +84,9 @@ Bend (reason 6), with request and result records word for word as on
 from `base-linux`. Two runs needed base-hw run-script conditions for host
 behaviour outside the shim (a client's buckets vanish when the monitor
 exits; the base-hw kernel drops a signal to a freed context silently),
-recorded with sources in the same file. 3.2: `check-binary.sh` was run on
+recorded with sources in the same file. In the queue run on base-hw the ring
+reached its depth of 8 and repeated signals were coalesced in both runs
+(observed, timing dependent, not required by the script). 3.2: `check-binary.sh` was run on
 the base-hw monitor ELF and fails as on `base-linux`: its effect rows are
 exactly Genode.log, Genode.put, and Genode.take, outside the monitor
 profile, and its symbol half fails against the Linux allow list, which was
@@ -109,4 +113,4 @@ hardware, GPU, or confinement evidence.
 ## 3. base-hw and evidence
 
 - [x] 3.1 Repeat 1.4 and 2.3 on x86_64 `base-hw` under QEMU with a pinned image; record results separately from `base-linux`.
-- [x] 3.2 Run the runtime profile's binary check on the component, record CPU execution for device paths, and validate OpenSpec strictly; leave the Genode host's confinement tasks unchecked.
+- [x] 3.2 Run the runtime profile's binary check on the component, record CPU execution for device paths, and validate OpenSpec strictly; leave the Genode host's confinement tasks unchecked. (cites `scripts/runtime-profile/` and the runtime host profile; per-base corpus rows in `verification/runtime-profile-hosts.md`)

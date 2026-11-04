@@ -3,7 +3,9 @@
 # implementation. Genode host-layer lane, Task 3. Starts writ_bend_transfer, the
 # unmodified C that Bend 2.0.39 emits for examples/Transfer.bend linked with the shim's
 # memory unit and Genode's libc, under init on base-linux (BOARD=linux
-# KERNEL=linux), single lane, CPU only (--gpu off).
+# KERNEL=linux), or, from the base-hw build
+# directory (KERNEL=hw BOARD=pc; Genode base-hw lane, Task 2), on base-hw
+# under QEMU with the same configuration; single lane, CPU only (--gpu off).
 #
 # Checks (any failure exits nonzero, so a changed example outcome fails the
 # run): init reports exit value 0; the shim's start line and its exit report

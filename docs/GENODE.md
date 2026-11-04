@@ -506,15 +506,20 @@ generated C). Two runs differ from `base-linux` in host behaviour, not in
 the shim. When the monitor exits, its RAM dataspaces (the clients' buckets)
 vanish, so a flooding client's next write faults and core logs it. The
 `base-hw` kernel also drops a signal to a freed signal context silently,
-where `base-linux` core warns. The binary check on the `base-hw` monitor
+where `base-linux` core warns. In the queue run, coalescing of repeated signals and a
+full-depth ring were exercised on `base-hw` (observed in both runs, timing
+dependent), which `base-linux` did not reliably do. The binary check on the `base-hw` monitor
 reports exactly the effect rows `Genode.log`, `Genode.put`, and
 `Genode.take` and fails its symbol half against the Linux allow list, as on
 `base-linux`. Evidence:
 [genode-channel-base-hw.txt](../verification/genode-channel-base-hw.txt).
 
 The design's ordering, "`base-linux` first, `base-hw` second, evidence kept
-separate", is met for the corpus and the channel: both pass on both bases,
-recorded in separate files. It is narrowed rather than closed, because
-the `base-hw` evidence is an emulated boot with one lane, and the
-Genode host's confinement, delegation, and revocation tasks are not
-started.
+separate", was followed per base, not across bases. The corpus now passes on
+both bases, recorded in separate files, and each base passed corpus parity
+before its own Writ session was served (GB-004's per-base reading). The
+design's stricter order, parity on both bases before the session is served
+on either, was not followed: the `base-linux` session was served before
+`base-hw` parity existed. The gap is narrowed, not closed: the `base-hw`
+evidence is an emulated boot with one lane, and the Genode host's
+confinement, delegation, and revocation tasks are not started.

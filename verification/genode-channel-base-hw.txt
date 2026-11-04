@@ -129,9 +129,14 @@ THE OTHER SIX ON BASE-HW (rc 0 each)
                  report: channel signals=155 coalesced=139 ring full=0 ring
                  max=8 ... taken=8 put=8; take parked=1. On base-linux the
                  same run gave signals=9 coalesced=0 ring max=1, take
-                 parked=6: on base-hw the flooding clients outran the loop,
-                 so the ring filled to its depth and repeated signals were
-                 coalesced, which base-linux did not reliably exercise.
+                 parked=6. Both base-hw runs filled the ring and coalesced:
+                 t3b signals=94 coalesced=78 ring max=8, t3d signals=155
+                 coalesced=139 ring max=8 (the flooding clients outran the
+                 loop). This coverage is observed and timing-dependent; the
+                 script does not require it (it requires ring max=[1-8]),
+                 and base-linux did not reliably exercise it. ring full=0
+                 holds by construction (one entry per channel slot,
+                 INVENTORY, Bounds).
   dead_client    a client that exits before its reply, one that freed its
                  result signal context, and R after 3000 ms: R Committed,
                  the monitor still serving.
@@ -162,7 +167,7 @@ DIFFERENCES FROM BASE-LINUX (host behaviour, not the shim)
      "/* ignore invalid signal */"). The warning is required on base-linux
      only; on base-hw the freed-context client's own decision before R's
      decision and the monitor's continued service remain required. First
-     base-hw run: rc 1, "missing core warning for the freed context"
+     base-hw run: rc 2 (run script exit 1), "missing core warning for the freed context"
      (../writ-genode/run-hw-writ_bend_monitor_dead_client-t3b.out).
   Both changed scenarios were rerun on both kernels (t3c), and then all
   eight on both kernels with the final tcl (t3d), rc 0.
@@ -268,3 +273,30 @@ LIMITS
   instrumented part is the take's thread, its park, and the log order.
   Nothing restarts the monitor after fuel exhaustion (GB-008's supervisor
   restart is not shown on either kernel).
+
+FINAL REVIEW FIXES (2026-11-04)
+  Shim 9d9d32d2402bd947c96a4632ae945c6825d1291a3ce97e5ac45b7d0349f71b5d:
+  writ_mem_report on fixed lines, each under the LOG session's 232-byte
+  limit for every tag in use (the probe's long tags had split the main
+  line, observed in run-hw-writ_probe_reservation_live-t2c.out; now the
+  longest line is 196 bytes with init's prefix, fr run); header sentences
+  (base-linux Env-lock, the unlocked take-parked counter). dead_client on
+  base-hw now requires that init reported no exit of writ_client_f (the
+  earlier hw row repeated another row). The "exactly exit value 139, core
+  silent" check is one proc, writ_bend.tcl writ_bend_require_refusal_exit,
+  used by writ_bend_overflow.run and writ_probe_reservation_guard.run.
+  Reruns, logs ../writ-genode/run-hw-<name>-fr.out and run-<name>-fr-linux.out,
+  all rc 0 on both kernels (18 each): hello, Overflow (hw: rm upgrades
+  sent=22 declined=0, guard 0x2280000000, exit 139, core silent), the
+  corpus (782 PASS, 834 lines, fc3a08aa..., diff empty, both), the four
+  examples (identical), writ_bend_probe, reservation live and guard, and
+  the eight monitor runs.
+  base-hw binaries (unstripped, app/<name>/<name>):
+    3a4c9eab84d434c6b992b125a13ba4edd9a8b7dcbd56613153a63cd1dcdbc892  writ_bend_monitor
+    b6197bcca925b0825e2f4d9249b268d049495518e4e007b4aaa424d0cb26d976  writ_channel_client (unchanged)
+  OpenSpec: bunx @fission-ai/openspec@1.16.0 validate --all --strict
+    --no-interactive, after the merge of master (985189f) and these edits:
+    "Totals: 44 passed, 0 failed (44 items)".
+  Binary check rerun on the final monitor ELF
+    (../writ-genode/check-binary-hw-monitor-fr.out): rc 1, effect rows
+    Genode.log Genode.put Genode.take, undefined symbols 158 (as above).

@@ -98,7 +98,7 @@ route subject 1, and every record taken from that session reaches Bend as
 `Monitor.bend` does not import `HostBinding.bend` (`Monitor.bend:1-12`); the
 table below is the construction a port must perform, not one the monitor
 performs today, and no HostBinding vector has been replayed on the host.
-Line numbers refer to commit c380947.
+Line numbers refer to commit c380947, except those into `hosts/genode/shim/writ_mem.cc`, which refer to its revision with sha256 `9d9d32d2...` (the base-hw lane's final revision; the base-hw front end moved the channel section by about 365 lines).
 
 **Identity at take time (GB-007).** `Genode.take` hands Bend two words that are
 not record words (`hosts/genode/effects/Genode.bend:49-60`,
@@ -107,20 +107,20 @@ not record words (`hosts/genode/effects/Genode.bend:49-60`,
 - the route subject: `Channel_root::_subject` returns the `subject` attribute
   of the best-matching `<policy>` under `<writ_channel>`, and 0 for a
   `<default-policy>`, a suffix-only policy, or no match
-  (`hosts/genode/shim/writ_mem.cc:1174-1188`); `_create_session` refuses
-  subject 0 (`writ_mem.cc:1209-1214`) and fixes the word in the channel object
-  (`Channel::subject`, `writ_mem.cc:1077`, constructed at `:1231`). A client
-  signal enqueues `{c->id, c->subject, false}` (`writ_mem.cc:1147-1148`), and
-  `writ_shim_take` copies that entry's words out (`writ_mem.cc:1373-1374`).
-  The config is libc's read-only ROM, never updated (`writ_mem.cc:962-966`);
+  (`hosts/genode/shim/writ_mem.cc:1539-1553`); `_create_session` refuses
+  subject 0 (`writ_mem.cc:1574-1579`) and fixes the word in the channel object
+  (`Channel::subject`, `writ_mem.cc:1442`, constructed at `:1596`). A client
+  signal enqueues `{c->id, c->subject, false}` (`writ_mem.cc:1512-1513`), and
+  `writ_shim_take` copies that entry's words out (`writ_mem.cc:1764-1765`).
+  The config is libc's read-only ROM, never updated (`writ_mem.cc:1327-1331`);
 - the object identity: the channel id, `_channel_next_id++` at session
-  creation (`writ_mem.cc:1120`, `:1222`), never reused.
+  creation (`writ_mem.cc:1485`, `:1587`), never reused.
 
-The 16 record words are copied separately (`writ_mem.cc:1367-1368`); no record
+The 16 record words are copied separately (`writ_mem.cc:1758-1759`); no record
 word contributes to either identity, and the body's `claimed_subject` is logged
 as untrusted and never used (`Monitor.bend:29-33`; run 4,
 `genode-channel-base-linux.txt:466-468`). The session label itself
-(`Channel::label`, `writ_mem.cc:1078`) is logged but not handed to Bend.
+(`Channel::label`, `writ_mem.cc:1443`) is logged but not handed to Bend.
 
 **Mapping onto `HostBinding.bend`.**
 
@@ -131,17 +131,17 @@ as untrusted and never used (`Monitor.bend:29-33`; run 4,
 | `Route.child` | gap: the client's domain is known only as the label prefix, which Bend does not receive |
 | `Route.service`, `Object.service` (`HostBinding.bend:40-41`) | constant: one service, `Writ_channel`; no service word reaches Bend |
 | `Object.id` | the channel id (`Request.channel`) |
-| `Object.owner` | the route subject fixed at session creation (`writ_mem.cc:1209`, `:1231`) |
+| `Object.owner` | the route subject fixed at session creation (`writ_mem.cc:1574`, `:1596`) |
 | `Object.generation`, `Alias.generation` (`HostBinding.bend:48-49`) | constant 0: ids are never reused and a close removes the binding (`Monitor.bend:227-230`), so no generation is carried or bumped |
 | `Object.kind` | one channel stands for both the Session and the Descriptor: `open_descriptor` mounts and opens in one step (`Monitor.bend:436-439`) |
 | `Alias` (holder, id) | gap: the session capability held by the client is not visible to Bend; no alias table exists |
 | `Binding.object`, `Binding.handle` (`HostBinding.bend:72-75`) | monitor `Binding{channel, subject, frontend, descriptor}` (`Monitor.bend:144-145`), made in `with_opened` from `Request.channel`, `Request.subject`, and the descriptor `Frontend.open` returned (`Monitor.bend:443-451`); at most `max_channels` = 8 (`Monitor.bend:152-153`; reason 7 at `:457`); a bound channel with another subject is refused (reason 8, `Monitor.bend:461-466`) |
-| `Quota` (`HostBinding.bend:61-62`) | the session's `ram_quota`/`cap_quota`, refused by the shim before Bend (`writ_mem.cc:1194-1207`); not a Bend record |
+| `Quota` (`HostBinding.bend:61-62`) | the session's `ram_quota`/`cap_quota`, refused by the shim before Bend (`writ_mem.cc:1559-1572`); not a Bend record |
 | `Delegation` (`HostBinding.bend:69-70`) | none |
 | `State.revision` | none; each binding has its own `Frontend.empty()` state (`Monitor.bend:437`), so the descriptor id is 2 on every channel (runs 1, 2, 4) |
 | epochs | not binding fields: the body's plan stamp is compared with the session plan (`Monitor.bend:423`); the Scenario's epochs are synthetic constants (`Monitor.bend:21-27`) |
 
-A close event (route subject 0, `writ_mem.cc:1336-1344`) is classified once
+A close event (route subject 0, `writ_mem.cc:1727-1735`) is classified once
 (`Monitor.bend:275-276`) and drops the binding; it is the only destruction the
 channel delivers.
 
@@ -163,7 +163,7 @@ and are not mapped here.
 | GA-002-1 (vectors:3, tests:847) | holder authorized through the recorded route | `route_caller`, `with_opened` | analogue: run 1, `accept` (`genode-channel-base-linux.txt:418-420`) |
 | GA-003-1 (vectors:7, tests:868) | open from the routed Session | `open_descriptor` | analogue: run 1 (descriptor=2) |
 | GA-002-2 (vectors:4, tests:855) | label suffix cannot name the subject | `_subject` suffix-only rule | analogue: scratch suffix run, removed after (`genode-channel-base-linux.txt:482-486`; script deleted; not reproducible); run 4 for a body claim |
-| GA-002-3 (vectors:5, tests:857) | unrecorded route denied | `_create_session` subject 0 | gap: shares the subject-0 refusal with the scratch suffix run (`writ_mem.cc:1209-1214`); no run without a matching policy |
+| GA-002-3 (vectors:5, tests:857) | unrecorded route denied | `_create_session` subject 0 | gap: shares the subject-0 refusal with the scratch suffix run (`writ_mem.cc:1574-1579`); no run without a matching policy |
 | GA-002-4 (vectors:6, tests:862) | a route on another service, withdrawn, does not authorize the holder | none (one service; config never updated) | gap |
 | GA-005-1 (vectors:19, tests:927) | possession without a delegation record denied | none (no alias holder) | gap |
 | GA-005-2 (vectors:20, tests:930) | non-holder denied UnknownAlias | none | gap |
@@ -193,9 +193,29 @@ new generation (`Monitor.bend:37-42`; GB-008 gap).
 ### base-linux first, base-hw second, and evidence stays separate
 
 `base-linux` gives fast iteration with Genode's socket-based capabilities and
-seccomp. `base-hw` under QEMU is the native reference. The corpus must pass on
-both, recorded separately, before the Writ session is served on either. No
-GPU: `!` calls run on the CPU pool and are recorded as such.
+seccomp. `base-hw` under QEMU is the native reference. The corpus passes on
+both, recorded separately (`verification/genode-corpus-base-linux.txt`,
+`verification/genode-corpus-base-hw.txt`), and the Writ session is served on
+both (`verification/genode-channel-base-linux.txt`,
+`verification/genode-channel-base-hw.txt`). The order reached is per base:
+each base passed corpus parity before its own session was served, but the
+`base-linux` session was served before `base-hw` parity existed, so parity
+on both bases before serving on either was not the order followed. The
+`base-hw` evidence is an emulated boot (QEMU TCG) with one lane, not native
+hardware. No GPU: `!` calls run on the CPU pool and are recorded as such.
+
+### The runtime host profile gates the monitor runtime
+
+The Genode component runs the generated Bend runtime as the monitor, so the
+runtime host profile ([add-bend-runtime-host-profile](../add-bend-runtime-host-profile/design.md),
+[docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md)) applies to it. The
+allow lists in `scripts/runtime-profile/` are the contract for what a monitor
+binary may link and call; `scripts/runtime-profile/check-binary.sh` is the
+check (run on the `base-linux` and `base-hw` monitor ELFs, both FAIL: Genode
+effect rows outside the profile, and a symbol half compared with the Linux
+surface), and the per-base corpus rows belong in
+`verification/runtime-profile-hosts.md`. The profile qualifies no Genode
+host; confinement evidence stays separate.
 
 ### What this change does not do
 
@@ -208,7 +228,12 @@ It makes the monitor exist and speak.
 A missing libc primitive fails the build or startup. A corpus mismatch fails
 qualification for that base. A fault terminates the component and is recorded
 by the supervisor; the monitor is restarted with a new generation per the host
-contract. A request that exceeds the shim's bound is dropped before parsing,
+contract. State reached: on `base-hw` "recorded by the supervisor" is init's
+record of the component's self-requested exit (`exited with exit value 139`
+after the shim's refusal line; core is silent), with the six limits in
+`verification/genode-bend-hello-base-hw.txt`; on `base-linux` init records
+nothing; on neither base is the monitor restarted, and no new generation is
+issued. A request that exceeds the shim's bound is dropped before parsing,
 counted, and answered with the shim's fixed transport refusal record. An alien effect halts, as on Linux.
 
 ## Evidence before claiming implementation

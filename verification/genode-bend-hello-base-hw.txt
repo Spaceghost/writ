@@ -528,7 +528,9 @@ GB-003 ON BASE-HW: WHAT THE RECORD IS
      handler on the component's address space, which displaces the shim's
      (one handler per region map); and a fault on the "writ_fault" thread
      itself (halts with no record; base-hw Task 2, M2). Stack-area and
-     linker-area faults were not exercised.
+     linker-area faults were not exercised. A fault while the faulter
+     holds the LOG, Env-session, or shim lock halts with no record (not
+     observed; base-hw lane final review).
   6. All evidence is from a QEMU TCG emulated boot.
   Correction to the plan's Task 2 text: core does not report unresolvable
   faults on a region map with a registered handler. The base-hw GB-003

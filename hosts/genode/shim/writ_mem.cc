@@ -180,7 +180,11 @@
  * the faulter would have to be the mutex holder faulting inside a
  * reservation, which no current path does; and a fault in the PD's own
  * areas (stack, linker, address space) inside a session request is
- * refused before any upgrade. Upgrades sent and declined are counted in
+ * refused before any upgrade. On base-linux the same upgrade runs in the
+ * SIGSEGV handler on the faulting thread itself, so a faulter holding the
+ * Env session mutex would deadlock on it (halted, no record); the same
+ * reasoning makes that unreachable on the runs here. Upgrades sent and
+ * declined are counted in
  * the exit report (rm upgrades) and, on base-hw, logged before a
  * refusal. On base-linux a refusal
  * prints one line with Genode::raw, restores the default SIGSEGV action,
@@ -1691,7 +1695,9 @@ static Signal_context_capability _channel_refuse(Channel &c, uint32_t seq)
  * "writ_channel" entrypoint, the parked helper thread returns from
  * writ_shim_take, and the runtime's io_help writes io_wake_fd, which wakes
  * the loop's select. The read of cnt() is unlocked; it can only misreport
- * a take that raced with a signal, never change what take returns.
+ * a take that raced with a signal, never change what take returns. The
+ * counter is written by the take thread without the channel mutex;
+ * diagnostics only.
  */
 static unsigned long _channel_take_parked;
 static bool          _channel_take_named;
@@ -1799,10 +1805,16 @@ extern "C" void writ_mem_report(char const *tag)
 		for (Reservation const &r : _res)
 			if (r.used) { live++; guards += r.num_guards; }
 	}
+	/*
+	 * Fixed lines, each below the LOG session's 232-byte string limit
+	 * (log_session.h, MAX_STRING_LEN) for every tag used here and in
+	 * probe_reservation.c; a longer line is split by the LOG session.
+	 */
 	log("writ_mem: [", tag, "] ram used=", s.ram.used.value,
 	    " limit=", s.ram.limit.value, " caps used=", s.caps.used.value,
 	    " limit=", s.caps.limit.value, " reservations=", live,
-	    " guards=", guards, " chunks populated (total)=", _chunks_populated,
+	    " guards=", guards);
+	log("writ_mem: [", tag, "] chunks populated (total)=", _chunks_populated,
 	    " faults resolved=", _faults_resolved,
 	    " benign retries=", _benign_retries,
 	    " reserved at hint=", _reserved_at_hint,

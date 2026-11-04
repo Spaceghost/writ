@@ -116,3 +116,76 @@ evidence. The authority state is synthetic.
   client signal. The monitor-side requirements are unchanged.
 - The take diagnostics read `cnt()` without the lock, so the parked count
   can misreport a racing signal.
+
+## Final-review fixes
+
+Merge first: `git merge master` as 985189f (clean; the manifest
+`verification/source-sha256.txt` was not touched, for integration to
+regenerate). Then one fix pass, committed with final-review.md and
+task-3-review.md.
+
+Minors:
+1. dead_client on hw: the repeated row is replaced by a check that init
+   reports no exit of `writ_client_f`; base-linux keeps core's warning.
+2. Queue coverage cites both hw runs (t3b 94/78, t3d 155/139, ring max 8)
+   and is called timing dependent, in the channel record, INVENTORY,
+   tasks.md Section 3, and GENODE.md.
+3. Channel record: "rc 2 (run script exit 1)".
+4. Corpus record: dated notes for the Task 3 build and the final-review
+   build, with the final binary hashes (shim 9d9d32d2) and log paths. The
+   db8a376d binaries were overwritten by the rebuild, so the delivered
+   build's hashes are given instead.
+5. Shim and INVENTORY: the take-parked counter is written without the
+   channel mutex; diagnostics only.
+6. `writ_mem_report` prints fixed lines, each under 232 bytes for every tag
+   in use (longest 196 in the reservation_live fr run).
+7. Limit 5 names the lock-holder halt (LOG, Env-session or shim lock held
+   by the faulter: no record; not observed) in tasks.md, the hello record,
+   the rows file and INVENTORY.
+8. Shim header: the base-linux Env-lock sentence (upgrade in the SIGSEGV
+   handler on the faulting thread would deadlock).
+9. Stale base-linux-only wording: INVENTORY Status, the stack sentence, the
+   run-script headers, and the corpus record's app/ path.
+10. `writ_bend_tests.run`: `\r*$`.
+11. One proc, `writ_bend_require_refusal_exit` in writ_bend.tcl, used by
+    the Overflow and guard run scripts.
+12. GENODE.md ordering paragraph: the corpus-then-channel order held per
+    base, not across bases.
+
+Integration alignments (each is a description alignment; no requirement
+was weakened):
+- traceability/genode-bend-component.md, header and GB-002/003/004/006/
+  008/009 plus rows 1.3, 3.1, 3.2: describe the base-hw evidence that now
+  exists; GB-003 base-linux and the supervisor restart stay unmet.
+- traceability/bend-runtime-host-profile.md, header, RH-003, RH-006,
+  RH-008: name the base-hw evidence; only the Unikraft channel is pending.
+- verification/runtime-profile-hosts.md: the base-hw row filled from the
+  corpus and channel records, cell by cell; the emulated-boot sentence, the
+  782 history row and the binary-check gap include base-hw; the Unikraft
+  channel row stays pending.
+- add-bend-runtime-host-profile/tasks.md 2.3 note: cites the Genode change;
+  only unikernel waits; box unchecked.
+- add-genode-bend-component/design.md: ordering reworded to the per-base
+  order that happened; "recorded by the supervisor" on base-hw means init's
+  record of a self-requested exit, with no restart; shim line numbers
+  refreshed to sha256 9d9d32d2 (the cited revision); a section on the
+  runtime host profile gating the monitor.
+- docs/PLATFORMS.md Genode row: generated Bend C now evaluates on Genode
+  (base-linux and base-hw under QEMU TCG); not native hardware, no host
+  qualified.
+
+Reruns with the final shim 9d9d32d2, rc 0 for all 18 scenarios on each
+kernel (logs `../writ-genode/run-hw-<name>-fr.out`,
+`run-<name>-fr-linux.out`): hello, Overflow (hw: rm upgrades sent=22
+declined=0, guard 0x2280000000, exit 139, core silent), the corpus (782
+PASS, 834 lines, fc3a08aa, diff empty), the four examples (identical),
+writ_bend_probe, reservation live and guard, and the eight monitor runs.
+writ_probe_fault was not rerun in this pass (no change to it or to the
+shim's refusal path; its t3b run stands). check-binary on the final hw
+monitor: rc 1, rows Genode.log/put/take, 158 undefined symbols. OpenSpec
+1.16.0 via bunx: 44 passed, 0 failed. Live copies cmp-identical. Not run:
+`bend Tests.bend`, `bend PROOF.bend` (no `.bend` changed).
+
+Left for integration: the manifest regeneration; the 3.1 note in
+add-bend-runtime-host-profile/tasks.md still calls base-hw a pending
+placeholder (outside this pass's allowed edit, which was the 2.3 note).

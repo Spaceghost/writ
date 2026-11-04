@@ -108,6 +108,29 @@ proc writ_bend_require_exit0 { name } {
 	}
 }
 
+# writ_bend_require_refusal_exit NAME (base-hw only; Genode base-hw lane)
+#   The shim's base-hw refusal ends the component with Parent::exit(139)
+#   (hosts/genode/shim/writ_mem.cc, "Failure behaviour"). Fails unless init
+#   reported exactly exit value 139 for NAME and core logged none of its own
+#   fault diagnostics (repos/base/src/core/region_map_component.cc:97-110,
+#   base-hw's pager.cc "unresolvable exception"): with the shim's handler
+#   registered core reflects the fault without one. Used by
+#   writ_bend_overflow.run and writ_probe_reservation_guard.run.
+proc writ_bend_require_refusal_exit { name } {
+	global output
+	if {![regexp "child \"$name\" exited with exit value (\[0-9-\]+)" $output -> value]} {
+		set value "none"
+	}
+	if {$value ne "139"} {
+		puts stderr "Error: on base-hw init must report exit value 139 for $name (got $value)"
+		exit 1
+	}
+	if {[regexp {illegal (READ|WRITE|EXEC)|unresolvable exception|violation at address|giving up on unexpectedly deep} $output]} {
+		puts stderr "Error: on base-hw core logged a fault line; the shim's handler did not take the fault"
+		exit 1
+	}
+}
+
 proc writ_bend_require_shim_lines { name } {
 	global output
 	foreach {re what} [list \
