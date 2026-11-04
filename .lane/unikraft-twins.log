@@ -27,3 +27,4 @@
 2026-11-04T16:17:45Z	implementer	r1 E6 probefail QEMU 3, check-image rc 1; E7 check-binary rows exactly Unikraft.log/now/sleep, rc 1
 2026-11-04T16:18:31Z	implementer	evidence: fix round 1 section added, R0 runs relabelled
 2026-11-04T16:19:43Z	implementer	r1 docs: INVENTORY, UNIKERNELS.md gap, tasks 2.1 line+note, design.md:42, explainer 107/118/130 aligned; openspec 1.16.0 strict 44/44
+2026-11-04T16:20:03Z	implementer	fix round 1 committed c3f2050
