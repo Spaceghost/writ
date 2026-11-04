@@ -1,6 +1,8 @@
 Genode host-layer lane, Task 1: lazily populated reservation with a guard page
 (C probe, base-linux)
-Recorded: 2026-11-03, 22:22 to 22:25 -06:00
+Recorded: 2026-11-03, 22:22 to 22:25 -06:00 (sections 1-7, commit 9f3451f);
+fix pass after review 2026-11-03, 22:35 to 22:45 -06:00 (section 8, which
+supersedes the hashes in section 1 and amends sections 3 and 7)
 
 Platform: Genode 26.08 (d18ee9e917200b059549e21f2dd9a55bfe61a0eb), build directory
 ../writ-genode/build/x86_64 (BOARD=linux KERNEL=linux), tool chain and host as
@@ -25,7 +27,8 @@ generated C was touched. The Bend build (writ_bend_hello) is Task 2.
                                            WRIT_RUN_SCENARIOS += the two scenarios
 
 Live copies in the Genode writ-repo (../writ-genode/writ-repo/), byte-identical
-to the committed files (cmp, all five, after the last run):
+to the committed files (cmp, all five, after the last run) AS OF 9f3451f; the
+current hashes are in section 8:
 
   8f313e946e027e7587a248cb702c0253719f5153d377f196d03d4a441d5e679b  src/writ_shim/writ_mem.cc
   3ab767f1abf79476f181c3e117c83060ae23c1bc6f0aecbbe637915b4b464de7  src/app/writ_probe_reservation/probe_reservation.c
@@ -128,11 +131,13 @@ delivered (region_map.h doc comment; region_map_client.cc:49-56 is an empty
 body), and an unpopulated managed-dataspace page is a PROT_NONE Linux mapping,
 so the touch is a Linux SIGSEGV. The shim therefore installs its own Linux
 SIGSEGV handler with the raw rt_sigaction system call (SA_SIGINFO |
-SA_RESTORER | SA_RESTART | SA_ONSTACK, own rt_sigreturn restorer), the same way
+SA_RESTORER | SA_RESTART, own rt_sigreturn restorer; SA_ONSTACK was dropped in
+the fix pass, section 8), the same way
 base-linux installs its exception handler, at the first qualifying mmap. The
 handler resolves the fault on the faulting thread and returns, so the access
-is retried. Every refusal (guard page, outside every reservation, populated
-chunk, chunk could not be charged) prints one line with Genode::raw, sets
+is retried. Every refusal (guard page, outside every reservation, a fault on
+a populated chunk that keeps recurring, chunk could not be charged) prints
+one line with Genode::raw, sets
 SIGSEGV to SIG_DFL, and returns; the retried access faults again and Linux
 kills the process. The region-map fault-signal front end needed on base-hw,
 NOVA, or seL4 is NOT built and NOT exercised here.
@@ -275,18 +280,273 @@ met on base-linux; GB-003's parent-record requirement stays open.
 - base-linux (Genode-on-Linux) only; not native; nothing about base-hw/NOVA/seL4.
 - The fault front end is base-linux-specific (raw Linux rt_sigaction) and runs
   a PD RPC (alloc_ram) and a local region-map attach from signal context on
-  the faulting thread. Safe for this single-threaded probe; with several
-  lanes, a fault while the same thread holds a Genode lock the handler needs
-  would deadlock. Not tested with threads.
+  the faulting thread. Only single-lane use has run. With several lanes, a
+  fault taken while the faulting thread itself holds a Genode lock the
+  handler needs (the shim's mutex, an RPC or region-map lock) would deadlock.
+  Race (fix pass): two lanes faulting on one unpopulated chunk, or a touch
+  while mprotect has a chunk's pieces detached, makes the second fault land
+  on a populated chunk; the handler now returns and the access is retried,
+  bounded by 16 retries per page address (16 slots, round-robin) before it
+  is refused. The retry path has not been exercised (no threaded case).
+- Syscalls do not fault: a system call that reads or writes an unpopulated
+  page of a reservation (for example write(2) from, or read(2) into, a heap
+  buffer that was never touched) gets EFAULT from Linux instead of a SIGSEGV,
+  so lazy population does not happen on that path. Buffers handed to I/O
+  must have been touched by user code first. Relevant before the Bend heap's
+  buffers reach the event loop's read/write. Not exercised.
+- No SA_ONSTACK (fix pass): a machine-stack overflow cannot run the shim's
+  handler; Linux then kills the process without the shim's line.
+- Before Libc::Component::construct the three entry points fail with ENOSYS
+  (fix pass), rather than calling through unset function pointers.
 - The shim's SIGSEGV handler replaces base-linux's process-wide after the
   first qualifying mmap; for faults outside every reservation it prints its
   own line instead of base-linux's "Segmentation fault (signum=11)" and still
   terminates. SIGBUS, SIGILL, SIGFPE keep base-linux's handler.
-- Not exercised: the "chunk could not be charged" refusal (touching more than
-  the quota), address hints (the runtime's corpus_at probes hints from 2^45
-  down), partial-munmap refusal, more than one reservation, more than 4096
+- Not exercised: address hints (the runtime's corpus_at probes hints from
+  2^45 down), partial-munmap refusal, more than one reservation, more than 4096
   pieces in one region map (base-linux MAX_REGIONS; an 8 GiB reservation
   fully touched is exactly 4096 chunks plus any guard split pieces).
-- Bounds: 32 reservations, 4 guards each, 2 MiB chunks, 1 GiB threshold.
+- Bounds: 32 reservations, 4 guards each, 2 MiB chunks, 1 GiB threshold;
+  a chunk needs RAM avail >= chunk + 64 KiB and caps avail >= 8.
 - The probe is a C stand-in; the Bend runtime has not run with the shim yet
   (Task 2).
+
+
+8. Fix pass after review (2026-11-03, 22:35 to 22:45 -06:00)
+------------------------------------------------------------
+
+Changes to hosts/genode/shim/writ_mem.cc:
+  F1  Chunks are charged through a plain Pd_session_client on
+      Env::pd_session_cap(), not Env::pd(). Env::pd() is an
+      Expanding_pd_session_client
+      (repos/base/src/include/base/internal/expanding_pd_session_client.h,
+      alloc_ram loop; repos/base/src/include/base/internal/runtime.h:45-46;
+      base-linux's Local_pd_session derives from it,
+      repos/base-linux/src/include/base/internal/local_pd_session.h:30) that
+      answers OUT_OF_RAM/OUT_OF_CAPS with a blocking parent resource_request.
+      The shim also checks stats().ram.avail() >= chunk + 64 KiB and
+      stats().caps.avail() >= 8 before alloc_ram, and names the reason in
+      the refusal line. writ_mem_report now also prints caps used/limit.
+  F2  mprotect/munmap validate the length before any sum: len == 0,
+      len > reservation size, n == 0 rejected with EINVAL; containment as
+      off <= size - n; overlap tested by _overlaps(a, n, b, s) without a + n.
+      Before: mprotect(p + 4096, SIZE_MAX - 1, PROT_NONE) page-rounded to 0
+      and returned 0 with an empty guard.
+  F3  A fault on a populated chunk outside every guard is retried (bounded,
+      16 per page address) instead of refused; see section 7.
+  F4  Only si_code > 0 is handled as a fault; a SIGSEGV from kill/sigqueue
+      sets SIG_DFL and is re-raised with tgkill(getpid, gettid, SIGSEGV).
+      Not exercised.
+  F5  mmap/munmap/mprotect fail with ENOSYS before construct (and if the
+      libc lookup failed) instead of calling null function pointers.
+  F6  Restorer asm: .pushsection .text / .p2align 4 / .size / .popsection.
+  F7  SA_ONSTACK removed (found during this pass, not in the review). With
+      F1-F6 and SA_ONSTACK still set, mode B faulted after five resolved
+      faults (run ../writ-genode/run-reservation-live-3.out before it was
+      overwritten; same failure re-shown with temporary raw() markers in
+      ../writ-genode/dbg.out, not part of the committed source):
+        Kernel: writ_mem: unresolved fault at 0x5100 (outside every reservation), component terminates
+        Error: Test execution timed out
+        journalctl -k: ld.lib.so[2225983]: segfault at 5100 ip 0000000016d4ffaf sp 00000000401ff6f0 error 4 in libc.lib.so.stripped[...]
+      The markers showed all five populations completing (stats, alloc_ram,
+      attach) and the next fault at 0x5100 inside libc.lib.so on a stack
+      (sp 0x401ff6f0) other than the application's (sp 0x403ffdb0). base-linux
+      sets each thread's alternate signal stack to the thread's whole
+      primary stack (repos/base-linux/src/lib/base/thread_linux.cc:53-59)
+      while libc runs main on a separate application stack, so a handler
+      delivered with SA_ONSTACK starts at the top of the entrypoint's stack
+      and can overwrite its suspended frames. That is the explanation
+      consistent with the observation, not separately proven. The first
+      commit's three-fault runs did not show it. Without SA_ONSTACK every
+      case below passes.
+Probe additions (probe_reservation.c): a second guard straddling the 6 GiB
+chunk boundary (+0x17fffe000, 16 KiB, both neighbouring chunks pre-touched);
+in no-touch, mprotect(len SIZE_MAX-1), mprotect(len 0), munmap(len SIZE_MAX-1)
+must fail with EINVAL; modes straddle-touch and exhaust. Run script
+writ_probe_reservation_guard.run takes WRIT_RESERVATION_MODE and
+WRIT_RESERVATION_CAPS; a hang fails it at the 60 s timeout.
+
+Files (live copies byte-identical by cmp, all five):
+  84cc8f12e194c123b073d55f23433096989449d20debca85b9e00c1b104eddac  src/writ_shim/writ_mem.cc
+  dd29fc6c95f7a5c4fb7351467340719ee5f7952c4fd9665e579f46d14d537543  src/app/writ_probe_reservation/probe_reservation.c
+  1d0e82ff5e7743beac5974d58ff61e847ccb918e81ab8755cda237f6420c6529  src/app/writ_probe_reservation/target.mk
+  c54a476f90dfabae853c281e898845592d4c65271c007bcf7ea9d0e1ec6a5d99  run/writ_probe_reservation_guard.run
+  18ce2570ea2e9f4e95325d318ea814d21b2dce272431d131ffcdac2a4fdeba99  run/writ_probe_reservation_live.run
+  6bbdca5d12f772171a3d0cec4d200f70cfe938b31ea525542eec3172dac03f4a  build/x86_64/bin/writ_probe_reservation (not committed)
+
+Commands (cd ../writ-genode/build/x86_64), all ram 256M, each run twice with
+logs identical from "spawn ./core" to the exit/refusal line (diff):
+  make run/writ_probe_reservation_live                                      runs live-3 22:39:04, live-4 22:42:04, rc 0
+  make run/writ_probe_reservation_guard                                     runs guard-3 22:39:22, guard-4 22:42:10, rc 0
+  WRIT_RESERVATION_MODE=straddle-touch make run/writ_probe_reservation_guard runs straddle-1 22:39:56, straddle-2 22:42:45, rc 0
+  WRIT_RESERVATION_MODE=exhaust WRIT_RESERVATION_CAPS=78 make run/writ_probe_reservation_guard
+                                                                            runs exhaust-caps78-1 22:40:30, -2 22:43:19, rc 0
+  WRIT_RESERVATION_MODE=exhaust WRIT_RESERVATION_CAPS=300 make run/writ_probe_reservation_guard
+                                                                            runs exhaust-caps300-1 22:41:04, -2 22:43:53, rc 0
+Logs: ../writ-genode/run-reservation-<name>.out. Second run of each:
+
+--- run-reservation-live-4.out, from "spawn ./core" (ANSI colour codes removed) ---
+  spawn ./core
+  Genode 26.08
+  17592186044415 MiB RAM and 19000 caps assigned to init
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1011c50
+  [init -> writ_probe_reservation] probe_reservation: mode no-touch
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1339392 limit=268319324 caps used=24 limit=266 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1572864 limit=268319324 caps used=27 limit=266 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of both guard windows
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x17fffe000, 16384, PROT_NONE) = 0 (straddles the 6 GiB chunk boundary)
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: bytes around both guards kept after the splits
+  [init -> writ_probe_reservation] probe_reservation: mprotect(len SIZE_MAX-1) = -1 (errno 22); mprotect(len 0) = -1 (errno 22); munmap(len SIZE_MAX-1) = -1 (errno 22)
+  [init -> writ_probe_reservation] Warning: mprotect: mprotect not implemented
+  [init -> writ_probe_reservation] probe_reservation: small mmap via libc at 0x7ffff7f72000; mprotect outside a reservation = -1 (errno 78)
+  [init -> writ_probe_reservation] probe_reservation: lifting the guard refused (errno 45)
+  [init -> writ_probe_reservation] writ_mem: [after munmap] ram used=1404928 limit=268319324 caps used=26 limit=266 reservations=0 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: done, exiting 0
+  [init] child "writ_probe_reservation" exited with exit value 0
+  
+  Run script execution successful.
+
+--- run-reservation-guard-4.out, from "spawn ./core" (ANSI colour codes removed) ---
+  spawn ./core
+  Genode 26.08
+  17592186044415 MiB RAM and 19000 caps assigned to init
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1011c50
+  [init -> writ_probe_reservation] probe_reservation: mode guard-touch
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1339392 limit=268319324 caps used=24 limit=266 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1572864 limit=268319324 caps used=27 limit=266 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of both guard windows
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x17fffe000, 16384, PROT_NONE) = 0 (straddles the 6 GiB chunk boundary)
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: bytes around both guards kept after the splits
+  [init -> writ_probe_reservation] probe_reservation: writing inside the guard window at 0x7ffef7f02000
+  Kernel: writ_mem: unresolved fault at 0x7ffef7f02000 (guard page), component terminates
+  
+  --- writ_probe_reservation_guard outcome (guard-touch, caps 300) ---
+  guard refusal line: 1
+  resumed line:       0
+  FAIL line:          0
+  init exit line:     0 (value none)
+  process alive:      0
+  ps control (timer): 1
+  
+  Run script execution successful.
+
+--- run-reservation-straddle-2.out, from "spawn ./core" (ANSI colour codes removed) ---
+  spawn ./core
+  Genode 26.08
+  17592186044415 MiB RAM and 19000 caps assigned to init
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1011c50
+  [init -> writ_probe_reservation] probe_reservation: mode straddle-touch
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1339392 limit=268319324 caps used=24 limit=266 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1572864 limit=268319324 caps used=27 limit=266 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of both guard windows
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x17fffe000, 16384, PROT_NONE) = 0 (straddles the 6 GiB chunk boundary)
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: bytes around both guards kept after the splits
+  [init -> writ_probe_reservation] probe_reservation: writing inside the straddling guard (upper chunk) at 0x7fff77e01000
+  Kernel: writ_mem: unresolved fault at 0x7fff77e01000 (guard page), component terminates
+  
+  --- writ_probe_reservation_guard outcome (straddle-touch, caps 300) ---
+  guard refusal line: 1
+  resumed line:       0
+  FAIL line:          0
+  init exit line:     0 (value none)
+  process alive:      0
+  ps control (timer): 1
+  
+  Run script execution successful.
+
+--- run-reservation-exhaust-caps78-2.out, from "spawn ./core" (ANSI colour codes removed) ---
+  spawn ./core
+  Genode 26.08
+  17592186044415 MiB RAM and 19000 caps assigned to init
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1011c50
+  [init -> writ_probe_reservation] probe_reservation: mode exhaust
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1339392 limit=268319324 caps used=24 limit=44 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1572864 limit=268319324 caps used=27 limit=44 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of both guard windows
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=12058624 limit=268319324 caps used=32 limit=44 reservations=1 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x17fffe000, 16384, PROT_NONE) = 0 (straddles the 6 GiB chunk boundary)
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=12058624 limit=268319324 caps used=32 limit=44 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: bytes around both guards kept after the splits
+  [init -> writ_probe_reservation] writ_mem: [before exhaust] ram used=12058624 limit=268319324 caps used=32 limit=44 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: exhaust: touching chunk at +0x40000000
+    (3 further "exhaust: touching chunk" lines, +2 MiB each)
+  [init -> writ_probe_reservation] probe_reservation: exhaust: touching chunk at +0x40800000
+  [init -> writ_probe_reservation] probe_reservation: exhaust: touching chunk at +0x40a00000
+  Kernel: writ_mem: unresolved fault at 0x7ffe38800000 (chunk could not be charged: cap quota), component terminates
+  
+  --- writ_probe_reservation_guard outcome (exhaust, caps 78) ---
+  guard refusal line: 1
+  resumed line:       0
+  FAIL line:          0
+  init exit line:     0 (value none)
+  process alive:      0
+  ps control (timer): 1
+  
+  Run script execution successful.
+
+--- run-reservation-exhaust-caps300-2.out, from "spawn ./core" (ANSI colour codes removed) ---
+  spawn ./core
+  Genode 26.08
+  17592186044415 MiB RAM and 19000 caps assigned to init
+  [init -> writ_probe_reservation] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x1011c50
+  [init -> writ_probe_reservation] probe_reservation: mode exhaust
+  [init -> writ_probe_reservation] writ_mem: [start] ram used=1339392 limit=268319324 caps used=24 limit=266 reservations=0 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mmap 8 GiB at 0x7ffdf7e00000
+  [init -> writ_probe_reservation] writ_mem: [after 8 GiB mmap, untouched] ram used=1572864 limit=268319324 caps used=27 limit=266 reservations=1 guards=0 chunks populated (total)=0 faults resolved=0 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: touched first page, last page, and both sides of both guard windows
+  [init -> writ_probe_reservation] writ_mem: [after touches] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=0 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x100100000, 16384, PROT_NONE) = 0
+  [init -> writ_probe_reservation] probe_reservation: mprotect(+0x17fffe000, 16384, PROT_NONE) = 0 (straddles the 6 GiB chunk boundary)
+  [init -> writ_probe_reservation] writ_mem: [after mprotect] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: bytes around both guards kept after the splits
+  [init -> writ_probe_reservation] writ_mem: [before exhaust] ram used=12058624 limit=268319324 caps used=32 limit=266 reservations=1 guards=2 chunks populated (total)=5 faults resolved=5 benign retries=0
+  [init -> writ_probe_reservation] probe_reservation: exhaust: touching chunk at +0x40000000
+    (120 further "exhaust: touching chunk" lines, +2 MiB each)
+  [init -> writ_probe_reservation] probe_reservation: exhaust: touching chunk at +0x4f200000
+  [init -> writ_probe_reservation] probe_reservation: exhaust: touching chunk at +0x4f400000
+  Kernel: writ_mem: unresolved fault at 0x7ffe47200000 (chunk could not be charged: RAM quota), component terminates
+  
+  --- writ_probe_reservation_guard outcome (exhaust, caps 300) ---
+  guard refusal line: 1
+  resumed line:       0
+  FAIL line:          0
+  init exit line:     0 (value none)
+  process alive:      0
+  ps control (timer): 1
+  
+  Run script execution successful.
+
+Host kernel log (journalctl -k), second runs:
+  22:42:15 ld.lib.so[2397467]: segfault at 7ffef7f02000 ip 0000000001000680 sp 00000000403ffdb0 error 6 in writ_probe_reservation.stripped  (guard-4)
+  22:42:49 ld.lib.so[2415948]: segfault at 7fff77e01000 ip 0000000001000680 sp 00000000403ffdb0 error 6 in writ_probe_reservation.stripped  (straddle-2)
+  22:43:23 ld.lib.so[2434381]: segfault at 7ffe38800000 ip 000000000100070b sp 00000000403ffdb0 error 6 in writ_probe_reservation.stripped  (exhaust-caps78-2)
+  22:43:56 ld.lib.so[2444189]: segfault at 7ffe47200000 ip 000000000100070b sp 00000000403ffdb0 error 6 in writ_probe_reservation.stripped  (exhaust-caps300-2)
+
+Figures:
+  mode B: 5 touched chunks = +10485760 bytes (12058624 - 1572864) and +5 caps
+    (27 -> 32): one cap per chunk dataspace. Both guards split populated
+    chunks without changing RAM or caps; the bytes on all four sides were
+    kept. The three overflow/zero-length calls returned -1 errno 22 (EINVAL).
+    After munmap: ram 1404928, caps 26.
+  caps 78 (limit 44): five more chunks charged (caps 32 -> 37), the sixth
+    refused with "cap quota" because 7 < 8 caps were left;
+    no hang, no resource request (init logged nothing).
+  caps 300 (limit 266): 122 more chunks charged, the 123rd refused with
+    "RAM quota" (268319324 - (12058624 + 122 x 2097152) = 408156 bytes left
+    < 2 MiB + 64 KiB). RAM runs out before caps at this quota.
+  Init logged nothing about the child in any death case (parent record
+  still open on base-linux, as section 5).

@@ -23,8 +23,9 @@ Probe scaffolding (not part of the shim, holds no authority):
 | Symbol | Kind | Behaviour |
 | --- | --- | --- |
 | `mmap` | public entry point, shadows libc | qualifying requests (len >= 1 GiB, `PROT_READ\|PROT_WRITE`, `MAP_PRIVATE\|MAP_ANON`, no `MAP_FIXED`/`MAP_SHARED`, fd -1, offset 0) become a reservation; everything else goes to libc's `mmap` |
-| `munmap` | public entry point, shadows libc | whole reservation only (partial: -1 `EINVAL`); other ranges go to libc |
-| `mprotect` | public entry point, shadows libc | `PROT_NONE` on a page-aligned range in a reservation makes a guard; lifting a guard or any other prot: -1 `ENOTSUP`; outside reservations: libc (-1 `ENOSYS`) |
+| `munmap` | public entry point, shadows libc | whole reservation only (partial or overflowing length: -1 `EINVAL`); other ranges go to libc |
+| `mprotect` | public entry point, shadows libc | `PROT_NONE` on a page-aligned range in a reservation makes a guard; `PROT_READ\|PROT_WRITE` on a guard-free range in a reservation returns 0 (it already is); lifting a guard or any other prot: -1 `ENOTSUP`; len 0, len larger than the reservation, or a range not contained in it: -1 `EINVAL`; outside reservations: libc (-1 `ENOSYS`) |
+| (all three above) | | fail with `ENOSYS` before `Libc::Component::construct` has resolved libc's originals |
 | `Libc::Component::construct` | component entry | stores the Env, resolves libc's originals, then runs `main` as `posix`'s construct.cc does (so `posix` is not linked) |
 | `writ_mem_report` | diagnostics helper (probes only) | logs PD RAM used/limit and reservation counters |
 | `writ_mem_restore_rt` | local (not global) asm symbol | `rt_sigreturn` restorer for the SIGSEGV handler |
@@ -34,19 +35,42 @@ Probe scaffolding (not part of the shim, holds no authority):
 - **RM** (`Rm_connection`, one per component, opened at the first reservation):
   `create`/`destroy` of one region map per reservation. On base-linux this
   session is local to the component.
-- **PD** (the component's own, `Env::pd()`): `alloc_ram`/`free_ram` for 2 MiB
-  chunks, `stats()` to refuse a chunk the quota cannot cover.
+- **PD** (the component's own), through a plain `Pd_session_client` on
+  `Env::pd_session_cap()`: `alloc_ram`/`free_ram` for 2 MiB chunks and
+  `stats()` to refuse a chunk the RAM or cap quota cannot cover. The
+  expanding `Env::pd()` client is deliberately not used for chunks, so a
+  fault never turns into a blocking resource request.
+- **Parent**: `exit(1)` if libc's originals cannot be resolved. Parent
+  `resource_request` can still be issued indirectly by `Env::ram()`/`Env::pd()`
+  allocations outside the fault path (the Heap below, Rm_connection session
+  upgrades in `Rm_connection::create`), never from the fault handler's chunk
+  allocation.
+- **Env::ram() and Env::rm() behind a Genode `Heap`**: the per-reservation chunk
+  tables and the `Shared_object` metadata.
 - **Local region map** (`Env::rm()`): attach/detach of each reservation.
 - **ROM** (through the dynamic linker): `Shared_object` for `libc.lib.so` to
   reach libc's own `mmap`, `munmap`, `mprotect`.
-- **base-linux only**: the raw Linux `rt_sigaction` system call for SIGSEGV
-  (the region-map fault signal is never delivered on base-linux). Kernels
+- **base-linux only**: the raw Linux `rt_sigaction`, `getpid`, `gettid`, and
+  `tgkill` system calls for SIGSEGV (the region-map fault signal is never
+  delivered on base-linux). Kernels
   that deliver region-map faults need a different front end, not built.
 
 ## Bounds
 
 32 reservations, 4 guards per reservation, 2 MiB chunks, 1 GiB threshold.
-A chunk is only allocated if the PD's available RAM covers it plus 64 KiB.
+A chunk is only allocated if the PD's available RAM covers it plus 64 KiB
+and at least 8 caps remain. At most 16 benign retries per page address
+(16 slots) for faults on an already populated chunk.
+
+## Concurrency assumption
+
+Only single-lane use has been run. One mutex guards all shim state and is
+also taken by the SIGSEGV handler. Two lanes faulting on the same chunk, or
+a touch while mprotect re-pieces a chunk, are handled by a bounded retry
+(not exercised). A fault taken while the faulting thread holds a Genode
+lock the handler needs would deadlock. The handler runs on the faulting
+stack (no SA_ONSTACK, see the source header), so a machine-stack overflow
+dies without the shim's line.
 
 ## Reviewer
 

@@ -286,8 +286,10 @@ session attached into the component. Nothing is backed until a touch. Then a
 chunk. `mprotect(PROT_NONE)` turns a range into a guard: overlapping chunks
 are re-attached around it, and a touch there is refused and kills the
 component. Under a 256M quota, an 8 GiB reservation cost 233472 bytes of
-metadata. Four touches charged exactly three 2 MiB chunks, and a write into
-the guard ended the component (record:
+metadata. Six touches charged exactly five 2 MiB chunks. Writes into a guard
+ended the component, both for a guard inside one chunk and for one that
+straddles a chunk boundary. Running out of RAM or cap quota also ended it
+with a refusal line instead of hanging on a resource request (record:
 [genode-reservation-probe-base-linux.txt](../verification/genode-reservation-probe-base-linux.txt)).
 
 Two base-linux facts limit this result. First, Genode does not deliver

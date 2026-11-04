@@ -56,19 +56,37 @@
  * installed at the first qualifying mmap and replaces base-linux's
  * handler process-wide. The handler resolves the fault on the faulting
  * thread, which makes a PD RPC from signal context; that is acceptable
- * for the probe, and is recorded as a limit. On kernels where Genode
+ * for the probe, and is recorded as a limit. Only kernel-generated
+ * faults (si_code > 0) are handled; a SIGSEGV queued or sent with kill
+ * gets the default action and is re-raised on the thread. On kernels where Genode
  * delivers region-map faults (base-hw, NOVA, seL4) the front end must be
  * the Region_map fault signal handled on a separate entrypoint instead;
  * that front end is not built here and nothing in this file claims it.
  *
  * Failure behaviour. Every refusal kills the component: a fault on a
- * guard, on a populated chunk (cannot be resolved by populating again),
- * outside every reservation, or a fault whose chunk cannot be charged
- * because the PD's remaining RAM quota is smaller than a chunk (checked
- * before alloc_ram, so the fault never turns into a blocking resource
- * request). A refusal prints one line with Genode::raw, restores the
- * default SIGSEGV action, and returns; the retried access then faults
- * again and Linux terminates the process.
+ * guard, outside every reservation, a fault whose chunk cannot be
+ * charged, or a fault on an already populated chunk that keeps recurring
+ * at the same address (more than MAX_RETRIES times). A chunk is charged
+ * through a plain Pd_session_client on Env::pd_session_cap(), not through
+ * Env::pd(): the latter is an Expanding_pd_session_client
+ * (repos/base/src/include/base/internal/expanding_pd_session_client.h)
+ * that answers OUT_OF_RAM and OUT_OF_CAPS with a blocking parent
+ * resource_request. The plain client returns the Alloc_error, and the
+ * shim also checks the PD's available RAM and caps against a margin
+ * first, so a fault never blocks on the parent. A refusal prints one line
+ * with Genode::raw, restores the default SIGSEGV action, and returns;
+ * the retried access then faults again and Linux terminates the process.
+ *
+ * Concurrency. The shim's state is guarded by one mutex, which the fault
+ * handler also takes. A fault on a chunk that is populated and outside
+ * every guard is the benign result of a race: another thread populated
+ * the chunk first, or mprotect had its pieces detached while splitting it
+ * around a guard. The handler then just returns and the access is
+ * retried. The bound on such retries per address is what still kills a
+ * truly unresolvable fault. Only single-lane use has been run
+ * (verification/genode-reservation-probe-base-linux.txt); a fault taken
+ * while the faulting thread itself holds a Genode lock the handler needs
+ * (this mutex, an RPC or region-map lock) would deadlock.
  */
 
 /* Genode includes */
@@ -76,6 +94,7 @@
 #include <base/log.h>
 #include <base/mutex.h>
 #include <base/shared_object.h>
+#include <pd_session/client.h>
 #include <libc/component.h>
 #include <libc/args.h>
 #include <region_map/client.h>
@@ -106,6 +125,10 @@ enum : size_t {
 	PAGE           = 4096,
 	MAX_RESERVATIONS = 32,
 	MAX_GUARDS       = 4,
+	MAX_RETRIES      = 16,          /* benign retries per faulting address */
+	RETRY_SLOTS      = 16,
+	RAM_MARGIN       = 64*1024,     /* kept free in the PD after a chunk  */
+	CAP_MARGIN       = 8,           /* caps kept free in the PD           */
 };
 
 
@@ -119,10 +142,12 @@ enum : size_t {
  */
 enum : unsigned long {
 	LX_SYS_RT_SIGACTION = 13,
+	LX_SYS_GETPID       = 39,
+	LX_SYS_GETTID       = 186,
+	LX_SYS_TGKILL       = 234,
 	LX_SIGSEGV          = 11,
 	LX_SA_SIGINFO       = 0x00000004,
 	LX_SA_RESTORER      = 0x04000000,
-	LX_SA_ONSTACK       = 0x08000000,
 	LX_SA_RESTART       = 0x10000000,
 	LX_SIG_DFL          = 0,
 };
@@ -143,11 +168,25 @@ struct Lx_sigaction /* struct kernel_sigaction, x86_64 */
 
 /* Restorer for SA_RESTORER: issue rt_sigreturn (as lx_restore_rt.S). */
 extern "C" void writ_mem_restore_rt(void);
-asm(".text\n"
+asm(".pushsection .text\n"
+    ".p2align 4\n"
     ".type writ_mem_restore_rt, @function\n"
     "writ_mem_restore_rt:\n"
     "\tmovq $15, %rax\n"
-    "\tsyscall\n");
+    "\tsyscall\n"
+    ".size writ_mem_restore_rt, .-writ_mem_restore_rt\n"
+    ".popsection\n");
+
+static long lx_syscall3(unsigned long nr, unsigned long a1,
+                        unsigned long a2, unsigned long a3)
+{
+	long ret;
+	asm volatile ("syscall"
+	              : "=a" (ret)
+	              : "0" (nr), "D" (a1), "S" (a2), "d" (a3)
+	              : "rcx", "r11", "memory");
+	return ret;
+}
 
 static long lx_rt_sigaction(unsigned long sig, Lx_sigaction const *act)
 {
@@ -244,6 +283,36 @@ static unsigned long _chunks_populated, _faults_resolved;
 
 static Mutex &_mutex() { static Mutex m { }; return m; }
 
+/*
+ * Benign-retry accounting for faults on populated chunks, keyed by page
+ * address. Entries are reused round-robin; an address that exceeds
+ * MAX_RETRIES is treated as unresolvable.
+ */
+struct Retry { addr_t page; unsigned count; };
+static Retry    _retries[RETRY_SLOTS];
+static unsigned _retry_next;
+static unsigned long _benign_retries;
+
+static bool _retry_allowed(addr_t a)
+{
+	addr_t const page = a & ~addr_t(PAGE - 1);
+	for (Retry &e : _retries)
+		if (e.count && e.page == page)
+			return ++e.count <= MAX_RETRIES;
+	_retries[_retry_next] = { page, 1 };
+	_retry_next = (_retry_next + 1) % RETRY_SLOTS;
+	return true;
+}
+
+/*
+ * Do [a, a+n) and [b, b+s) overlap? Written without a + n, so a length
+ * near SIZE_MAX cannot wrap. b + s never wraps (a reservation is mapped).
+ */
+static bool _overlaps(addr_t a, size_t n, addr_t b, size_t s)
+{
+	return a >= b ? a - b < s : b - a < n;
+}
+
 static Reservation *_lookup(addr_t a)
 {
 	for (Reservation &r : _res)
@@ -282,34 +351,45 @@ static void _detach_pieces(Reservation &r, size_t idx)
 }
 
 /*
- * Populate the chunk containing offset off. Refuses (returns false)
- * without allocating if the PD's remaining quota cannot cover the chunk.
+ * Non-expanding PD client for chunk allocation: Alloc_error comes back
+ * instead of becoming a blocking resource_request (see header).
  */
-static bool _populate(Reservation &r, addr_t off)
+static Constructible<Pd_session_client> _pd;
+
+/*
+ * Populate the chunk containing offset off. Returns nullptr on success,
+ * otherwise the reason for refusal; never asks the parent for quota.
+ */
+static char const *_populate(Reservation &r, addr_t off)
 {
 	size_t const idx = off / CHUNK;
-	if (r.chunks[idx].populated) return false;
-
 	size_t const len = _page_round(r.chunk_end(idx) - idx*CHUNK);
 
-	if (_env->pd().stats().ram.avail().value < len + 64*1024)
-		return false;
+	Pd_session::Stats const st = _pd->stats();
+	if (st.ram.avail().value < len + RAM_MARGIN)
+		return "chunk could not be charged: RAM quota";
+	if (st.caps.avail().value < CAP_MARGIN)
+		return "chunk could not be charged: cap quota";
 
 	Ram_dataspace_capability ds { };
-	_env->pd().alloc_ram(len).with_result(
+	char const *err = nullptr;
+	_pd->alloc_ram(len, CACHED).with_result(
 		[&] (Ram_dataspace_capability cap) { ds = cap; },
-		[&] (Alloc_error) { });
-	if (!ds.valid()) return false;
+		[&] (Alloc_error e) {
+			err = e == Alloc_error::OUT_OF_CAPS ? "chunk could not be charged: alloc_ram OUT_OF_CAPS"
+			    : e == Alloc_error::OUT_OF_RAM  ? "chunk could not be charged: alloc_ram OUT_OF_RAM"
+			    :                                 "chunk could not be charged: alloc_ram DENIED"; });
+	if (!ds.valid()) return err ? err : "chunk could not be charged: invalid dataspace";
 
 	r.chunks[idx] = { ds, true };
 	if (!_attach_pieces(r, idx)) {
 		_detach_pieces(r, idx);
-		_env->pd().free_ram(ds);
+		_pd->free_ram(ds);
 		r.chunks[idx] = { { }, false };
-		return false;
+		return "chunk could not be attached";
 	}
 	_chunks_populated++;
-	return true;
+	return nullptr;
 }
 
 
@@ -328,17 +408,39 @@ static void _refuse(char const *why, addr_t a)
 
 static void _segv_handler(int, Lx_siginfo *info, void *)
 {
+	/*
+	 * si_code <= 0: sent by kill/tgkill/sigqueue, not a memory fault.
+	 * Returning would not re-raise it, so take the default action now.
+	 */
+	if (info->code <= 0) {
+		raw("writ_mem: SIGSEGV not from a fault (si_code ", info->code,
+		    "), component terminates");
+		Lx_sigaction dfl { (void (*)(int, Lx_siginfo *, void *))LX_SIG_DFL,
+		                   0, nullptr, 0 };
+		lx_rt_sigaction(LX_SIGSEGV, &dfl);
+		lx_syscall3(LX_SYS_TGKILL, lx_syscall3(LX_SYS_GETPID, 0, 0, 0),
+		            lx_syscall3(LX_SYS_GETTID, 0, 0, 0), LX_SIGSEGV);
+		return;
+	}
+
 	addr_t const a = addr_t(info->addr);
 
 	Mutex::Guard guard(_mutex());
 
 	Reservation *r = _lookup(a);
-	if (!r)                         { _refuse("outside every reservation", a); return; }
+	if (!r)               { _refuse("outside every reservation", a); return; }
 	addr_t const off = a - r->base;
-	if (r->in_guard(off))           { _refuse("guard page", a); return; }
-	if (r->chunks[off/CHUNK].populated)
-	                                { _refuse("populated chunk", a); return; }
-	if (!_populate(*r, off))        { _refuse("chunk could not be charged", a); return; }
+	if (r->in_guard(off)) { _refuse("guard page", a); return; }
+
+	if (r->chunks[off/CHUNK].populated) {
+		/* benign race (see header): retry, but not without bound */
+		if (!_retry_allowed(a)) {
+			_refuse("populated chunk, fault keeps recurring", a); return; }
+		_benign_retries++;
+		return;
+	}
+
+	if (char const *why = _populate(*r, off)) { _refuse(why, a); return; }
 
 	_faults_resolved++;
 	/* returning retries the access, which now hits the attached chunk */
@@ -347,8 +449,21 @@ static void _segv_handler(int, Lx_siginfo *info, void *)
 static void _install_fault_handler()
 {
 	if (_fault_handler_installed) return;
+	/*
+	 * No SA_ONSTACK: base-linux sets each thread's alternate signal stack
+	 * to that thread's whole primary stack
+	 * (repos/base-linux/src/lib/base/thread_linux.cc:53-59), while libc
+	 * runs application code on a separate stack. A handler taken onto the
+	 * alternate stack starts at its top and can overwrite the suspended
+	 * entrypoint's frames. With SA_ONSTACK the probe faulted at 0x5100
+	 * inside libc.lib.so after five resolved faults, consistent with that
+	 * (verification/genode-reservation-probe-base-linux.txt, section 8).
+	 * The handler therefore runs on the faulting stack. A machine
+	 * stack overflow then cannot run it, and Linux kills the process
+	 * without the shim's line.
+	 */
 	Lx_sigaction act { _segv_handler,
-	                   LX_SA_SIGINFO | LX_SA_RESTORER | LX_SA_RESTART | LX_SA_ONSTACK,
+	                   LX_SA_SIGINFO | LX_SA_RESTORER | LX_SA_RESTART,
 	                   writ_mem_restore_rt, 0 };
 	if (lx_rt_sigaction(LX_SIGSEGV, &act) != 0) {
 		error("writ_mem: rt_sigaction(SIGSEGV) failed");
@@ -436,7 +551,7 @@ static void _release(Reservation &r)
 	for (size_t i = 0; i < r.num_chunks; i++)
 		if (r.chunks[i].populated) {
 			_detach_pieces(r, i);
-			_env->pd().free_ram(r.chunks[i].ds);
+			_pd->free_ram(r.chunks[i].ds);
 		}
 	/* Local_rm_session::destroy also detaches the region map locally */
 	_env->rm().detach(r.base);
@@ -459,6 +574,8 @@ static void _release(Reservation &r)
 extern "C" void *mmap(void *addr, ::size_t len, int prot, int flags,
                       int fd, ::off_t offset)
 {
+	if (!_env || !_libc_mmap) { errno = ENOSYS; return MAP_FAILED; }  /* before construct */
+
 	if (!_qualifies(len, prot, flags, fd, offset))
 		return _libc_mmap(addr, len, prot, flags, fd, offset);
 
@@ -468,13 +585,16 @@ extern "C" void *mmap(void *addr, ::size_t len, int prot, int flags,
 
 extern "C" int munmap(void *addr, ::size_t len)
 {
-	addr_t const a = addr_t(addr), e = a + len;
+	if (!_env || !_libc_munmap) { errno = ENOSYS; return -1; }  /* before construct */
+
+	addr_t const a = addr_t(addr);
 	{
 		Mutex::Guard guard(_mutex());
 		for (Reservation &r : _res) {
-			if (!r.used || e <= r.base || a >= r.base + r.size) continue;
+			if (!r.used || !_overlaps(a, len, r.base, r.size)) continue;
 			/* only the whole reservation can be unmapped */
-			if (a != r.base || _page_round(len) != r.size) {
+			if (a != r.base || len == 0 || len > r.size
+			 || _page_round(len) != r.size) {
 				errno = EINVAL; return -1; }
 			_release(r);
 			return 0;
@@ -485,25 +605,34 @@ extern "C" int munmap(void *addr, ::size_t len)
 
 extern "C" int mprotect(void *addr, ::size_t len, int prot)
 {
+	if (!_env || !_libc_mprotect) { errno = ENOSYS; return -1; }  /* before construct */
+
 	addr_t const a = addr_t(addr);
-	size_t const n = _page_round(len);
 
 	Mutex::Guard guard(_mutex());
 
 	Reservation *r = nullptr;
 	for (Reservation &cand : _res)
-		if (cand.used && a < cand.base + cand.size && a + n > cand.base) {
+		if (cand.used && _overlaps(a, len, cand.base, cand.size)) {
 			r = &cand; break; }
 	if (!r) return _libc_mprotect(addr, len, prot);
 
+	/*
+	 * Validate before any sum: len is bounded by the reservation size,
+	 * so the page-rounded n cannot wrap, and containment is tested as
+	 * off <= size - n.
+	 */
+	if ((a & (PAGE - 1)) || len == 0 || len > r->size || a < r->base) {
+		errno = EINVAL; return -1; }
+	size_t const n   = _page_round(len);
 	addr_t const off = a - r->base;
-	if ((a & (PAGE - 1)) || len == 0 || a < r->base || off + n > r->size) {
+	if (n == 0 || n > r->size || off > r->size - n) {
 		errno = EINVAL; return -1; }
 
 	auto overlaps_guard = [&] {
 		for (unsigned i = 0; i < r->num_guards; i++)
-			if (off < r->guards[i].off + r->guards[i].len
-			 && r->guards[i].off < off + n) return true;
+			if (_overlaps(off, n, r->guards[i].off, r->guards[i].len))
+				return true;
 		return false; };
 
 	if (prot == (PROT_READ | PROT_WRITE)) {
@@ -541,7 +670,8 @@ extern "C" int mprotect(void *addr, ::size_t len, int prot)
 
 extern "C" void writ_mem_report(char const *tag)
 {
-	Pd_session::Stats const s = _env->pd().stats();
+	if (!_env) return;
+	Pd_session::Stats const s = _pd->stats();
 	unsigned live = 0, guards = 0;
 	{
 		Mutex::Guard guard(_mutex());
@@ -549,9 +679,11 @@ extern "C" void writ_mem_report(char const *tag)
 			if (r.used) { live++; guards += r.num_guards; }
 	}
 	log("writ_mem: [", tag, "] ram used=", s.ram.used.value,
-	    " limit=", s.ram.limit.value, " reservations=", live,
+	    " limit=", s.ram.limit.value, " caps used=", s.caps.used.value,
+	    " limit=", s.caps.limit.value, " reservations=", live,
 	    " guards=", guards, " chunks populated (total)=", _chunks_populated,
-	    " faults resolved=", _faults_resolved);
+	    " faults resolved=", _faults_resolved,
+	    " benign retries=", _benign_retries);
 }
 
 
@@ -593,10 +725,12 @@ static bool _resolve_libc()
 
 void Libc::Component::construct(Libc::Env &env)
 {
-	_env = &env;
 	_heap.construct(env.ram(), env.rm());
+	_pd.construct(env.pd_session_cap());
 
+	_env = &env;   /* lookup helpers need it; entry points stay ENOSYS until resolved */
 	if (!_resolve_libc()) {
+		_libc_mmap = nullptr; _libc_munmap = nullptr; _libc_mprotect = nullptr;
 		env.parent().exit(1);
 		return;
 	}

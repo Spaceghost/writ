@@ -18,8 +18,27 @@
 # nonzero exit or the component's process is gone while the timer's is
 # still listed.
 #
+# Variants (Task 1 fix pass), selected by environment variables:
+#   WRIT_RESERVATION_MODE  guard-touch (default), straddle-touch, or exhaust
+#   WRIT_RESERVATION_CAPS  the component's cap quota (default 300)
+# For guard-touch and straddle-touch the refusal must name the guard page;
+# for exhaust it must say the chunk could not be charged. A component that
+# hangs (for example blocked in a parent resource request) produces none
+# of the awaited lines and fails the run at the 60 s timeout.
+#
 # Authority: as writ_probe_reservation_live.run.
 #
+
+set mode guard-touch
+if {[info exists ::env(WRIT_RESERVATION_MODE)]} { set mode $::env(WRIT_RESERVATION_MODE) }
+set caps 300
+if {[info exists ::env(WRIT_RESERVATION_CAPS)]} { set caps $::env(WRIT_RESERVATION_CAPS) }
+if {$mode == "exhaust"} {
+	set refusal_re {writ_mem: unresolved fault at [^\n]*chunk could not be charged}
+} else {
+	set refusal_re {writ_mem: unresolved fault at [^\n]*guard page}
+}
+puts "writ_probe_reservation_guard: mode $mode, caps $caps, ram 256M"
 
 build { core init timer lib/ld lib/libc lib/libm lib/vfs app/writ_probe_reservation }
 
@@ -40,12 +59,12 @@ config
 + default | caps: 200 | ram: 1M
 + start timer
   + provides | + service Timer
-+ start writ_probe_reservation | caps: 300 | ram: 256M
++ start writ_probe_reservation | caps: $caps | ram: 256M
   + config
     + vfs | + dir dev | + log
     + libc | stdout: /dev/log | stderr: /dev/log
     + arg | value: writ_probe_reservation
-    + arg | value: guard-touch
+    + arg | value: $mode
 -
 "
 
@@ -65,13 +84,13 @@ set alive [regexp {\[Genode\] init -> writ_probe_reservation} $ps_out]
 # control: the sibling timer must still be listed, or the ps check proves nothing
 set control [regexp {\[Genode\] init -> timer} $ps_out]
 
-set refused   [regexp {writ_mem: unresolved fault at [^\n]*guard page} $output]
+set refused   [regexp $refusal_re $output]
 set resumed   [regexp {probe_reservation: resumed} $output]
 set failed    [regexp {probe_reservation: FAIL} $output]
 set init_exit [regexp {child "writ_probe_reservation" exited with exit value ([0-9-]+)} $output -> exit_value]
 if {!$init_exit} { set exit_value "none" }
 
-puts "\n--- writ_probe_reservation_guard outcome ---"
+puts "\n--- writ_probe_reservation_guard outcome ($mode, caps $caps) ---"
 puts "guard refusal line: $refused"
 puts "resumed line:       $resumed"
 puts "FAIL line:          $failed"
@@ -80,7 +99,7 @@ puts "process alive:      $alive"
 puts "ps control (timer): $control"
 
 if {$resumed || $failed || !$refused} {
-	puts stderr "Error: guard touch did not end in a refused fault"
+	puts stderr "Error: $mode did not end in the expected refused fault"
 	exit 1
 }
 if {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
