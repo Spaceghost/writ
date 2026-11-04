@@ -14,7 +14,7 @@ import ./Frontend.bend as F
 #
 # Public Data records are a model, not unforgeable capabilities. The host must
 # construct State from authenticated native state; `valid` checks structure
-# only and does not authenticate the supplied state. Transitions (Task 2)
+# only and does not authenticate the supplied state. Every transition must
 # return the supplied state unchanged with a closed-set reason on any denial.
 
 # The native object classes the monitor mints. A Session backs a Frontend
@@ -32,11 +32,12 @@ type ObjectKind is Data:
 type Object is Data:
   Object{id: Nat, generation: Nat, owner: Nat, kind: ObjectKind}
 
-# A capability reference held by protection domain `holder` to the object
-# whose id is `object`. It names that object only while `generation` equals
+# A capability reference with id `id`, held by protection domain `holder`, to
+# the object whose id is `object`. The id names the reference slot the monitor
+# allocated and is never reused; delegation nodes name aliases by it. It names that object only while `generation` equals
 # the object's current generation; a mismatch is stale, not a lesser right.
 type Alias is Data:
-  Alias{holder: Nat, object: Nat, generation: Nat}
+  Alias{id: Nat, holder: Nat, object: Nat, generation: Nat}
 
 # A parent-imposed session route from `parent` to `child` for `service`.
 # `subject` is the identity the parent prepends to the session label and is
@@ -46,14 +47,15 @@ type Route is Data:
   Route{parent: Nat, child: Nat, service: Nat, subject: Nat}
 
 # Native resource accounts of protection domain `domain`, separate from the
-# Writ ledger. Exhaustion denies before Writ authority is consulted.
+# Writ ledger. A transition must deny on exhaustion before Writ authority is
+# consulted.
 type Quota is Data:
   Quota{domain: Nat, ram: Nat, caps: Nat}
 
 # One node of the delegation derivation tree: alias `from_alias` was used to
 # give `to_holder` the new alias `alias` with `rights`. Edges point from the
-# parent alias to the child alias. Rights never exceed the parent's effective
-# rights (enforced by the delegate transition), and revoking an alias revokes
+# parent alias to the child alias. A delegating transition must refuse rights
+# wider than the parent's effective rights, and revoking an alias must revoke
 # its whole subtree.
 type Delegation is Data:
   Delegation{from_alias: Nat, to_holder: Nat, rights: U32, alias: Nat}
@@ -67,12 +69,9 @@ type Objects is Data:
   NoObjects{}
   Objects{head: Object, tail: Objects}
 
-# Alias ids live in the list cell, not in the Alias record: an id names the
-# reference slot the monitor allocated, while the Alias says what it points to.
-# Delegation nodes and transitions name aliases by this id.
 type Aliases is Data:
   NoAliases{}
-  Aliases{id: Nat, head: Alias, tail: Aliases}
+  Aliases{head: Alias, tail: Aliases}
 
 type Routes is Data:
   NoRoutes{}
@@ -182,9 +181,14 @@ def object_id(object: Object) -> Nat:
     case Object{id, _, _, _}:
       id
 
+def alias_id(alias: Alias) -> Nat:
+  match alias:
+    case Alias{id, _, _, _}:
+      id
+
 def alias_object(alias: Alias) -> Nat:
   match alias:
-    case Alias{_, object, _}:
+    case Alias{_, _, object, _}:
       object
 
 def quota_domain(quota: Quota) -> Nat:
@@ -203,8 +207,8 @@ def alias_exists(aliases: Aliases, +wanted: Nat) -> Bool:
   match aliases:
     case NoAliases{}:
       False{}
-    case Aliases{id, _, rest}:
-      Nat.is_eq(id, wanted) || alias_exists(rest, wanted)
+    case Aliases{alias, rest}:
+      Nat.is_eq(alias_id(alias), wanted) || alias_exists(rest, wanted)
 
 def quota_exists(quotas: Quotas, +wanted: Nat) -> Bool:
   match quotas:
@@ -250,13 +254,14 @@ def aliases_valid(aliases: Aliases, +objects: Objects, +next: Nat) -> Bool:
   match aliases:
     case NoAliases{}:
       True{}
-    case Aliases{+id, alias, +rest}:
-      allocated(id, next) && Bool.not(alias_exists(rest, id))
+    case Aliases{+alias, +rest}:
+      allocated(alias_id(alias), next) && Bool.not(alias_exists(rest, alias_id(alias)))
         && object_exists(objects, alias_object(alias)) && aliases_valid(rest, objects, next)
 
 # Every binding links an existing native object to a handle that exists in the
 # embedded Frontend state, so every invocation reaches a real Writ check. An
 # object has at most one binding: two would let list order pick its authority.
+# A binding may name a closed handle; invocation still denies through Frontend.
 def bindings_valid(bindings: Bindings, +objects: Objects, +handles: F.Handles) -> Bool:
   match bindings:
     case NoBindings{}:
@@ -266,8 +271,9 @@ def bindings_valid(bindings: Bindings, +objects: Objects, +handles: F.Handles) -
         && Bool.not(bound_object_exists(rest, object)) && bindings_valid(rest, objects, handles)
 
 # Every delegation node joins two existing aliases, so revoking a subtree never
-# follows a dangling edge. Tree shape: each child alias has exactly one parent
-# node (otherwise its effective rights would depend on list order), and the
+# follows a dangling edge. Tree shape: each child alias has at most one parent
+# node; an alias with none is a root (two parents would let list order pick
+# its effective rights), and the
 # parent was allocated before the child, which excludes cycles because alias
 # ids only increase. Recorded rights stay inside Frontend's protocol bits.
 def delegations_valid(delegations: Delegations, +aliases: Aliases) -> Bool:
@@ -299,7 +305,8 @@ def quotas_valid(quotas: Quotas) -> Bool:
 #   names an existing Frontend handle, with at most one binding per object;
 # - every delegation joins existing aliases in a parent-before-child tree;
 # - each domain has at most one quota account.
-# Routes carry no ids and are checked against the caller at mount time.
+# Routes carry no ids; a mount transition must check the route's subject
+# against the authenticated caller.
 def valid(state: State) -> Bool:
   match state:
     case State{_, +next_object, +next_alias, +objects, +aliases, _, quotas,
