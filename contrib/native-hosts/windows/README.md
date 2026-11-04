@@ -58,6 +58,7 @@ a native machine-code Bend runtime.
 | `writfs.c` | WinFsp callbacks, immutable byte snapshot, bounded reply decoding, per-open handle ownership, native requester capture, fixture lifecycle and evidence collection |
 | `policy_pipe.c` | Private anonymous pipes to generated Bend; exact executable/module paths, stripped environment, handle allowlist, serialization, timeout and poisoned-connection teardown |
 | `worker.c` | Held executable identity, suspended process launch, actual token inspection, lifetime binding, job limits, fresh LPAC profile, WFP transactions/readback, owned-resource cleanup |
+| `isolation.c` | Explicit broker/child process ownership and DACLs; a same-SID, medium-integrity outsider probe with administrator group disabled and privileges removed |
 | `probe.c` | Native canary reads and negative probes that Bend cannot directly express; fixed-size reports to the private supervisor |
 | `CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; generated binaries stay outside the repository |
 
@@ -94,13 +95,21 @@ versions, MSVC output, requester identity facts and every observed probe result.
 Its mount lane and LPAC lane are distinct results. A successful build alone is
 not either result.
 
-The current launch uses the broker account's user SID with an LPAC token and an
-explicit worker process/thread owner and DACL. **It does not yet establish a
-dedicated execution account.** The worker-to-broker probe is not a proof that an
-ordinary same-user outsider cannot inspect the worker. Complete same-user
-isolation, verified image enrollment, profile/registry/cache disposal, hostile
-helper/device coverage, broker-crash teardown, restart recovery and durable
-publication remain separate acceptance gates.
+The current launch uses the broker account's user SID with an LPAC token.
+Broker, policy child and worker process objects have explicit Administrators/SYSTEM
+ownership and DACLs before observation. The separate ordinary outsider probe
+retains the same user SID, medium integrity, no AppContainer, no restricting SID
+list, administrator membership disabled, and no privilege beyond traversal. It
+first verifies the four process-access APIs against itself, then requires native
+access denial for `VM_READ`, `DUP_HANDLE`, `WRITE_DAC` and `WRITE_OWNER` against
+each live broker, policy and worker lifetime. The workflow records the outcome;
+source presence alone is not passing evidence.
+
+**This does not establish a dedicated execution account or complete same-user
+isolation.** Thread objects, all auxiliary runtime objects, verified image
+enrollment, profile/registry/cache disposal, hostile helper/device coverage,
+broker-crash teardown, restart recovery and durable publication remain separate
+acceptance gates. The test account's administrator token is trusted.
 
 Structured local event lines report a policy result against an observed process
 binding. They are bounded fixture evidence, not an administrator-resistant

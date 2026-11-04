@@ -1,4 +1,5 @@
 #include "policy_pipe.h"
+#include "isolation.h"
 #include <strsafe.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,6 +22,7 @@ BOOL writ_policy_start(WRIT_POLICY_PIPE *pipe, const wchar_t *node,
     const wchar_t *bridge, const wchar_t *module)
 {
     SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+    SECURITY_ATTRIBUTES process_sa = {0};
     STARTUPINFOEXW startup = {0};
     PROCESS_INFORMATION process = {0};
     JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {0};
@@ -79,7 +81,8 @@ BOOL writ_policy_start(WRIT_POLICY_PIPE *pipe, const wchar_t *node,
     startup.StartupInfo.hStdInput = child_input;
     startup.StartupInfo.hStdOutput = child_output;
     startup.StartupInfo.hStdError = child_error;
-    if (!CreateProcessW(node, command, NULL, NULL, TRUE,
+    if (!writ_process_security(&process_sa)) goto failed;
+    if (!CreateProcessW(node, command, &process_sa, &process_sa, TRUE,
         EXTENDED_STARTUPINFO_PRESENT | CREATE_NO_WINDOW | CREATE_SUSPENDED |
         CREATE_UNICODE_ENVIRONMENT, environment, system_root, &startup.StartupInfo, &process))
         goto failed;
@@ -91,6 +94,7 @@ BOOL writ_policy_start(WRIT_POLICY_PIPE *pipe, const wchar_t *node,
 failed:
     error = GetLastError();
 done:
+    if (process_sa.lpSecurityDescriptor) LocalFree(process_sa.lpSecurityDescriptor);
     close_handle(&process.hThread);
     close_handle(&child_input); close_handle(&child_output); close_handle(&child_error);
     if (startup.lpAttributeList) {

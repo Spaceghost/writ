@@ -90,6 +90,15 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
           New-Item -ItemType Directory -Path $writLogs | Out-Null
+          # Protect the fresh evidence directory before writing fixture records.
+          $logAcl = [Security.AccessControl.DirectorySecurity]::new()
+          $logAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')
+          Set-Acl -LiteralPath $writLogs -AclObject $logAcl
+          $actualAcl = Get-Acl -LiteralPath $writLogs
+          if (-not $actualAcl.AreAccessRulesProtected -or
+              $actualAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne 'S-1-5-32-544') {
+            throw 'Fixture evidence directory ownership was not installed.'
+          }
           if (-not $IsWindows) { throw 'Native Windows execution is required.' }
           $principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())
           if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {

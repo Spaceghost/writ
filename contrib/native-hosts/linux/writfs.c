@@ -44,7 +44,7 @@ struct host {
     atomic_int fatal, initialized;
     struct native_handle handles[HANDLE_LIMIT];
     struct native_event events[EVENT_LIMIT];
-    size_t event_count;
+    atomic_size_t event_count;
     struct fuse_session *session;
 };
 
@@ -68,11 +68,12 @@ static int decide(fuse_req_t req, const char *op, uint32_t id,
 {
     struct host *h = fuse_req_userdata(req);
     const struct fuse_ctx *context = fuse_req_ctx(req);
-    if (atomic_load(&h->fatal) || h->event_count == EVENT_LIMIT) {
+    size_t event_count = atomic_load_explicit(&h->event_count, memory_order_relaxed);
+    if (atomic_load(&h->fatal) || event_count == EVENT_LIMIT) {
         atomic_store(&h->fatal, 1); return EIO;
     }
     uint32_t current = actor(h, context);
-    struct native_event *e = &h->events[h->event_count++];
+    struct native_event *e = &h->events[event_count];
     e->pid = context ? context->pid : 0;
     e->uid = context ? context->uid : 0;
     e->gid = context ? context->gid : 0;
@@ -81,11 +82,13 @@ static int decide(fuse_req_t req, const char *op, uint32_t id,
     if (writ_policy_call(&h->policy, op, current, id, offset, count, argument, reply)) {
         e->status = WRIT_ERROR;
         snprintf(e->detail, sizeof e->detail, "TRANSPORT");
+        atomic_store_explicit(&h->event_count, event_count + 1, memory_order_release);
         atomic_store(&h->fatal, 1);
         return EIO;
     }
     e->status = reply->status; e->value = reply->value;
     memcpy(e->detail, reply->detail, sizeof e->detail);
+    atomic_store_explicit(&h->event_count, event_count + 1, memory_order_release);
     if (reply->status == WRIT_OK) return 0;
     if (reply->status == WRIT_DENY) return EACCES;
     return EIO;
@@ -164,7 +167,7 @@ static void open_inode(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
         fuse_reply_err(req, directory ? ENOTDIR : EISDIR); return;
     }
     if ((fi->flags & O_ACCMODE) != O_RDONLY ||
-        (fi->flags & (O_TRUNC | O_CREAT | O_APPEND | __O_TMPFILE))) {
+        (fi->flags & (O_TRUNC | O_CREAT | O_APPEND | (O_TMPFILE & ~O_DIRECTORY)))) {
         fuse_reply_err(req, EROFS); return;
     }
     struct native_handle *slot = NULL;
@@ -377,6 +380,9 @@ static int report(struct writ_child *child, enum writ_probe expected, uint32_t *
     if (writ_private_read(child->result, &r, sizeof r, 20000) ||
         r.magic != WRIT_REPORT_MAGIC || r.probe != (uint32_t)expected || r.ok != 1) {
         fprintf(stderr, "FAIL %s\n", probe_name(expected));
+        if (r.magic == WRIT_REPORT_MAGIC)
+            fprintf(stderr, "PROBE number=%" PRIu32 " ok=%" PRIu32 " value=%" PRIu32 "\n",
+                    r.probe, r.ok, r.value);
         if (r.magic == WRIT_REPORT_MAGIC && r.probe == W_SETUP_FAIL)
             fprintf(stderr, "SETUP step=%" PRIu32 "\n", r.value);
         return -1;
@@ -429,6 +435,20 @@ static int verified_profile(struct host *h)
 
 static int command(struct writ_child *child, char c)
 { return writ_private_write(child->command, &c, 1, 15000); }
+
+static int witnessed_denial(const struct host *h, pid_t pid, uint32_t actor_slot,
+                            const char *operation, unsigned int required)
+{
+    unsigned int found = 0;
+    size_t count = atomic_load_explicit(&h->event_count, memory_order_acquire);
+    for (size_t i = 0; i < count; ++i) {
+        const struct native_event *e = &h->events[i];
+        if (e->pid == pid && e->uid == h->uid && e->gid == h->gid &&
+            e->actor == actor_slot && e->status == WRIT_DENY &&
+            !strcmp(e->operation, operation)) ++found;
+    }
+    return found >= required;
+}
 
 static int positive_probes(struct host *h, const unsigned char *sealed)
 {
@@ -560,7 +580,8 @@ int main(int argc, char **argv)
     signal_handlers = 1;
     if (pthread_create(&thread, NULL, serve, &h)) goto cleanup;
     threaded = 1;
-    if (command(&h.reader, 'N') || report(&h.reader, W_PRE_ADMIT, NULL)) goto cleanup;
+    if (command(&h.reader, 'N') || report(&h.reader, W_PRE_ADMIT, NULL) ||
+        !witnessed_denial(&h, h.reader.pid, 1, "STAT", 1)) goto cleanup;
     struct writ_reply reply;
     if (writ_policy_call(&h.policy, "ADMIT", 1, 0, 0, 0, "public-canary", &reply) ||
         reply.status != WRIT_OK || reply.value != 1) goto cleanup;
@@ -572,6 +593,11 @@ int main(int argc, char **argv)
     for (enum writ_probe p = W_OUTSIDE_OPEN; p <= W_OUTSIDE_PTRACE; ++p)
         if (report(&other, p, NULL)) goto cleanup;
     if (report(&other, W_DONE, NULL)) goto cleanup;
+    if (!witnessed_denial(&h, other.pid, 0, "STAT", 2) ||
+        !witnessed_denial(&h, other.pid, 0, "OPEN", 1)) {
+        fputs("FAIL outsider denials did not reach the mounted Bend boundary\n", stderr); goto cleanup;
+    }
+    puts("PASS kernel-derived outsider requests reached Bend and were denied");
     writ_retire_child(&other);
     if (positive_probes(&h, bytes)) goto cleanup;
 

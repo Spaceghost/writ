@@ -1,6 +1,13 @@
 /* Native WinFsp presentation for the bounded Bend public-canary profile. */
 #define _WIN32_WINNT 0x0A00
 #define WIN32_LEAN_AND_MEAN
+#define WIN32_NO_STATUS
+#include <windows.h>
+#undef WIN32_NO_STATUS
+#include <winternl.h>
+/* WinFsp 2.2B5 exposes PNTSTATUS, which the lean current Windows SDK headers
+   do not declare. Preserve its exact SDK NTSTATUS pointer ABI. */
+typedef NTSTATUS *PNTSTATUS;
 #include <winfsp/winfsp.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -13,6 +20,7 @@
 #include "policy_pipe.h"
 #include "worker.h"
 #include "probe.h"
+#include "isolation.h"
 
 typedef struct {
     DWORD actor, handle;
@@ -454,11 +462,66 @@ static BOOL receivers_empty(SOCKET *receivers)
     return empty;
 }
 
+static BOOL socket_ready(SOCKET value, BOOL write)
+{
+    fd_set sockets;
+    TIMEVAL timeout = { 2, 0 };
+    FD_ZERO(&sockets); FD_SET(value, &sockets);
+    return select(0, write ? NULL : &sockets, write ? &sockets : NULL, NULL, &timeout) == 1;
+}
+
+static BOOL receiver_positive(SOCKET listener, int family, int type, unsigned short port)
+{
+    SOCKET sender = socket(family, type, type == SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP);
+    SOCKET accepted = INVALID_SOCKET;
+    BOOL ok = FALSE;
+    SOCKADDR_STORAGE destination = {0};
+    int length;
+    u_long nonblocking = 1;
+    static const char canary[] = "writ-receiver-positive-control";
+    char received[sizeof(canary)];
+    if (sender == INVALID_SOCKET || ioctlsocket(sender, FIONBIO, &nonblocking)) goto done;
+    if (family == AF_INET) {
+        SOCKADDR_IN *address = (SOCKADDR_IN *)&destination;
+        address->sin_family = AF_INET; address->sin_port = htons(port);
+        address->sin_addr.s_addr = htonl(INADDR_LOOPBACK); length = sizeof(*address);
+    } else {
+        SOCKADDR_IN6 *address = (SOCKADDR_IN6 *)&destination;
+        address->sin6_family = AF_INET6; address->sin6_port = htons(port);
+        address->sin6_addr = in6addr_loopback; length = sizeof(*address);
+    }
+    if (type == SOCK_STREAM) {
+        int result = connect(sender, (SOCKADDR *)&destination, length);
+        if (result == SOCKET_ERROR && WSAGetLastError() != WSAEWOULDBLOCK) goto done;
+        int error = 0, error_size = sizeof(error);
+        if (!socket_ready(sender, TRUE) || getsockopt(sender, SOL_SOCKET, SO_ERROR, (char *)&error, &error_size) || error ||
+            send(sender, canary, sizeof(canary), 0) != sizeof(canary) || !socket_ready(listener, FALSE)) goto done;
+        accepted = accept(listener, NULL, NULL);
+        if (accepted == INVALID_SOCKET || !socket_ready(accepted, FALSE) ||
+            recv(accepted, received, sizeof(received), 0) != sizeof(received)) goto done;
+    } else {
+        if (sendto(sender, canary, sizeof(canary), 0, (SOCKADDR *)&destination, length) != sizeof(canary) ||
+            !socket_ready(listener, FALSE) || recv(listener, received, sizeof(received), 0) != sizeof(received)) goto done;
+    }
+    ok = !memcmp(received, canary, sizeof(canary));
+done:
+    if (accepted != INVALID_SOCKET) closesocket(accepted);
+    if (sender != INVALID_SOCKET) closesocket(sender);
+    return ok;
+}
+
 static BOOL read_report(HANDLE input, HANDLE ready, HANDLE process, DWORD phase,
     unsigned int expected, WRIT_PROBE_REPORT *report)
 {
     HANDLE waits[2] = { ready, process };
-    if (WaitForMultipleObjects(2, waits, FALSE, 20000) != WAIT_OBJECT_0) return FALSE;
+    DWORD waited = WaitForMultipleObjects(2, waits, FALSE, 20000);
+    if (waited != WAIT_OBJECT_0) {
+        DWORD code = 0;
+        GetExitCodeProcess(process, &code);
+        fprintf(stderr, "FAIL probe wait phase=%lu wait=%08lx exit=%08lx error=%lu\n",
+            phase, waited, code, GetLastError());
+        return FALSE;
+    }
     DWORD available = 0, got = 0;
     if (!PeekNamedPipe(input, NULL, 0, NULL, &available, NULL) || available != sizeof(*report) ||
         !ReadFile(input, report, sizeof(*report), &got, NULL) || got != sizeof(*report) ||
@@ -516,7 +579,7 @@ int wmain(int argc, wchar_t **argv)
     wchar_t mount[3], command[32768], digest[65], path[32768], outside[MAX_PATH], temporary[MAX_PATH];
     WRIT_REPLY reply;
     WRIT_PROBE_REPORT report;
-    if (!choose_mount(mount) || !freeze_fixture(&host, argv[2]) ||
+    if (!writ_protect_broker() || !choose_mount(mount) || !freeze_fixture(&host, argv[2]) ||
         !writ_policy_start(&host.policy, argv[3], argv[4], argv[5]) || !initialize_policy(&host)) {
         fprintf(stderr, "FAIL initialize error=%lu\n", GetLastError()); goto done;
     }
@@ -535,8 +598,13 @@ int wmain(int argc, wchar_t **argv)
         sockets_ready = TRUE;
         for (int i = 0; i < 4; ++i) {
             listeners[i] = receiver(i % 2 ? AF_INET6 : AF_INET, i < 2 ? SOCK_STREAM : SOCK_DGRAM, &ports[i]);
-            if (listeners[i] == INVALID_SOCKET) { fprintf(stderr, "FAIL listener error=%d\n", WSAGetLastError()); goto done; }
+            if (listeners[i] == INVALID_SOCKET ||
+                !receiver_positive(listeners[i], i % 2 ? AF_INET6 : AF_INET, i < 2 ? SOCK_STREAM : SOCK_DGRAM, ports[i])) {
+                fprintf(stderr, "FAIL receiver positive control slot=%d error=%d\n", i, WSAGetLastError()); goto done;
+            }
         }
+        if (!receivers_empty(listeners)) goto done;
+        printf("NATIVE_PASS TCP/UDP IPv4/IPv6 receivers accepted public positive controls before the worker test\n");
     }
     if (!CreatePipe(&report_read, &report_write, &inherited, 0) ||
         !SetHandleInformation(report_read, HANDLE_FLAG_INHERIT, 0)) goto done;
@@ -578,6 +646,8 @@ int wmain(int argc, wchar_t **argv)
     if (denied != INVALID_HANDLE_VALUE) CloseHandle(denied);
     if (denied != INVALID_HANDLE_VALUE || denied_error != ERROR_ACCESS_DENIED) goto done;
     printf("NATIVE_PASS ordinary reader remains denied after worker admission\n");
+    if (!writ_same_user_probe(argv[6], host.policy.process, host.worker.process)) goto done;
+    printf("NATIVE_PASS limited same-user outsider denied VM_READ, DUP_HANDLE, WRITE_DAC and WRITE_OWNER for broker, policy and worker\n");
     if (lpac) {
         if (!receivers_empty(listeners) || GetFileAttributesW(outside) != INVALID_FILE_ATTRIBUTES ||
             GetLastError() != ERROR_FILE_NOT_FOUND) goto done;

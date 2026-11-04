@@ -204,7 +204,7 @@ static int install_filter(void)
         BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_openat, 0, 5),
         BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, args[2])),
         BPF_STMT(BPF_ALU | BPF_AND | BPF_K,
-            O_ACCMODE | O_CREAT | O_TRUNC | O_APPEND | __O_TMPFILE),
+            O_ACCMODE | O_CREAT | O_TRUNC | O_APPEND | (O_TMPFILE & ~O_DIRECTORY)),
         BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, 0, 0, 1),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
         BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | EPERM),

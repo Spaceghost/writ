@@ -15,15 +15,15 @@ set(WINFSP_ROOT "C:/Program Files (x86)/WinFsp" CACHE PATH "Pinned WinFsp SDK ro
 find_path(WINFSP_INCLUDE_DIR winfsp/winfsp.h PATHS "${WINFSP_ROOT}/inc" NO_DEFAULT_PATH REQUIRED)
 find_library(WINFSP_LIBRARY NAMES winfsp-x64 PATHS "${WINFSP_ROOT}/lib" NO_DEFAULT_PATH REQUIRED)
 
-add_executable(writfs-windows writfs.c worker.c policy_pipe.c)
+add_executable(writfs-windows writfs.c worker.c policy_pipe.c isolation.c)
 target_include_directories(writfs-windows PRIVATE "${WINFSP_INCLUDE_DIR}")
 target_compile_definitions(writfs-windows PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
 target_compile_options(writfs-windows PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-windows PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
 target_link_libraries(writfs-windows PRIVATE "${WINFSP_LIBRARY}" advapi32 bcrypt fwpuclnt rpcrt4 userenv ws2_32)
 
-add_executable(writfs-probe probe.c)
+add_executable(writfs-probe probe.c isolation.c)
 target_compile_definitions(writfs-probe PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
 target_compile_options(writfs-probe PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-probe PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
-target_link_libraries(writfs-probe PRIVATE bcrypt ws2_32)
+target_link_libraries(writfs-probe PRIVATE advapi32 bcrypt ws2_32)

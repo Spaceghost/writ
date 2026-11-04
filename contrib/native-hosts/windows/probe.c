@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <strsafe.h>
 #include "probe.h"
+#include "isolation.h"
 
 static void record(WRIT_PROBE_REPORT *report, unsigned int bit, BOOL success, DWORD error)
 {
@@ -126,7 +127,8 @@ static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_
     record(report, WRIT_PROBE_PUBLIC_FILE, file == INVALID_HANDLE_VALUE && error == ERROR_ACCESS_DENIED, error);
 
     wchar_t own_image[32768], command[32768];
-    STARTUPINFOW startup = { sizeof(startup) };
+    STARTUPINFOW startup = {0};
+    startup.cb = sizeof(startup);
     PROCESS_INFORMATION child = {0};
     GetModuleFileNameW(NULL, own_image, ARRAYSIZE(own_image));
     StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --exit", own_image);
@@ -189,6 +191,7 @@ static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_
 int wmain(int argc, wchar_t **argv)
 {
     if (argc == 2 && !wcscmp(argv[1], L"--exit")) return 0;
+    if (argc > 1 && !wcscmp(argv[1], L"--outsider")) return writ_outsider_probe(argc, argv);
     if (argc != 14) return 80;
     const wchar_t *mount = argv[1], *expected_hash = argv[2];
     DWORD expected_size = wcstoul(argv[3], NULL, 10);

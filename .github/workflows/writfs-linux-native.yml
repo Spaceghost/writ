@@ -116,7 +116,11 @@ jobs:
           set -euo pipefail
           writfs_user="writfs-ci-$GITHUB_RUN_ID"
           writfs_owned_user=0
+          writfs_work=
           cleanup() {
+            if [ -n "$writfs_work" ]; then
+              sudo rmdir "$writfs_work"
+            fi
             if [ "$writfs_owned_user" = 1 ]; then
               sudo userdel "$writfs_user"
             fi
@@ -127,9 +131,9 @@ jobs:
           writfs_owned_user=1
           writfs_uid="$(id -u "$writfs_user")"
           writfs_gid="$(id -g "$writfs_user")"
-          writfs_work="$RUNNER_TEMP/writfs-linux-fixtures"
-          mkdir -m 0755 "$writfs_work"
-          writfs_canary="$writfs_work/public-canary.bin"
+          writfs_work="$(sudo mktemp -d /tmp/writfs-linux-fixtures.XXXXXX)"
+          sudo chmod 0755 "$writfs_work"
+          writfs_canary="$WRITFS_LINUX_BUILD/public-canary.bin"
           printf 'WritFS public canary\000binary\377\n' > "$writfs_canary"
           chmod 0600 "$writfs_canary"
           writfs_arguments=(
