@@ -243,6 +243,9 @@ try {
   check("the table declares one signal per change with a task list", tables.includes(`data-signals__ifmissing=`) && tables.includes(`&quot;${sig}&quot;:false`));
   const asig = `a_${expected.replace(/-/g, "_")}`;
   check("the change row carries an activity icon with the last lines as its tooltip", row.includes(`class="act" aria-label="Show recent activity" aria-controls="activity-${expected}"`) && row.includes("started the probe build") && row.includes(`data-on:click="$${asig} = !$${asig}"`));
+  const tickStart = tables.indexOf(`<tr class="tickerrow">`, rowStart);
+  const tick = tables.slice(tickStart, tables.indexOf("</tr>", tickStart));
+  check("a ticker row under the change shows its newest activity line with a content-keyed id", tickStart > rowStart && /<p id="tick-add-bend-runtime-host-profile-[a-z0-9]+" class="ticker">/.test(tick) && tick.includes("started the probe build") && !tick.includes("read the brief"));
   const actStart = tables.indexOf(`<tr id="activity-${expected}" class="taskrow activityrow"`);
   const actRow = tables.slice(actStart, tables.indexOf("</tr>", actStart));
   check("the activity row follows the change row and lists the lane's lines newest-first in a reversed list", actStart > rowStart && actRow.includes(`data-show="$${asig}"`) && actRow.includes('<ol class="log" reversed>') && actRow.indexOf("started the probe build") < actRow.indexOf("read the brief") && actRow.includes("smoke-lane · implementer"));
@@ -285,6 +288,7 @@ try {
   const appendedTables = await waitFor("writing the evidence", 2000);
   const appendedLanes = await waitFor("writing the evidence", 2000);
   check("appending to the record's activity.log pushes the index tables within 2 s", appendedTables.ok && appendedTables.text.includes('data: elements <section id="index-tables"'), `${appendedTables.after} ms`);
+  check("the pushed tables carry the new line as a new ticker element", /<p id="tick-add-bend-runtime-host-profile-[a-z0-9]+" class="ticker"><span class="log-at">10:09:00<\/span>/.test(appendedTables.text) && appendedTables.text.includes("writing the evidence"));
   check("appending to the record's activity.log pushes the lane feed within 2 s", appendedLanes.ok && appendedLanes.text.includes('data: elements <section id="lanes"'), `${appendedLanes.after} ms`);
 
   writeFileSync(join(rec, "task-2-report.md"), "# Second\n\nStatus: NEW\n");
