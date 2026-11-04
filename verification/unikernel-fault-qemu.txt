@@ -1,3 +1,223 @@
+Unikraft signals lane, Task 1 (change task 2.3, UL-006): the runtime's fault message with
+the experimental posix signal library adopted in the template, and the exit map re-recorded
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run below is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine pc,
+-cpu max, -no-reboot, the isa-debug-exit device at 0xf4, +RTS --threads 1 --gpu off unless
+stated, through hosts/unikraft/scripts/run.sh; -m as stated. Not native, not an
+accelerated boot, CPU only: no GPU was used or tested. Unikraft 0.21.0 (7351f8b), kraft
+0.12.16, Bend 2.0.39 (pins: verification/unikernel-pins.txt). W = realpath
+../writ-unikernel from the repository root; nothing built is in the tree. The host was
+heavily loaded (load average 32 to 83 during this task); wall times are indicative only.
+
+== Result ==
+
+1. Fault message, template configuration. hosts/unikraft/app/Kraftfile now sets
+   CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y' (EXPERIMENTAL, lib/posix-process/Config.uk:78;
+   adopted 2026-11-04, question q2 ruling) and hosts/unikraft/scripts/build.sh passes
+   UK_CFLAGS="-std=gnu11 -include uk/config.h". No scratch script, no hand-edited
+   Kraftfile: the app directories were made by mkapp.sh from the template and built by
+   build.sh. The Overflow probe prints the runtime's own line
+   "bend: memory fault (machine stack overflow?)" before the crash screen, then ends in a
+   Unikraft crash ("Cannot deliver SIGSEGV for pf at 0x1080069000",
+   lib/posix-process/signal/deliver.c:428) and the hook's crash value, QEMU 253. Two boots,
+   same outcome; check-fault.sh, which now requires that line before the crash screen,
+   PASSES on both and FAILS on the earlier image built without signals.
+2. Exit map unchanged with the library present: success 33 (Hello), IO.die(..., 1, ...)
+   35 (Die), IO.exit(3) 39 (Exit), runtime stop 17 (Hello with "+RTS --threads 0" and
+   "+RTS --bogus"), crash 253 (Overflow, Exhaust). No value differs from the map recorded
+   before the library (earlier trial section below). Not exercised: the signal value 0x09
+   (QEMU 19), the non-halt value 0x7d (QEMU 251), statuses above 108 (QEMU 255).
+3. Arena exhaustion, now with signals: still a Unikraft crash with no message, QEMU 253,
+   but at a different site. Exhaust.bend at -m 1024 crashes at 3.5 s on
+   "Assertion failure: !(altstack->ss_flags & 1)" (deliver.c:125, handle_self), i.e. a
+   signal delivered while the alternate stack is already in use; "bend: memory fault" is
+   not printed. The earlier prediction ("would presumably reach err_trap and print the
+   memory-fault message", trial section below) is refuted for this size. Exhaustion keeps
+   no code of its own: it shares 253 with the stack-overflow fault.
+
+| Program (scripts/unikernel/) | How it ends | QEMU | Before the library |
+| --- | --- | --- | --- |
+| Hello.bend | main returns 0 | 33 | 33 |
+| Hello.bend, "+RTS --threads 0" | err_fail: _exit(1) | 17 | 17 |
+| Hello.bend, "+RTS --bogus" | main returns 1 | 17 | 17 |
+| Die.bend | IO.die(Unit, 1, "die"): exit(1) | 35 | 35 |
+| Exit.bend | IO.exit(3): exit(3) | 39 | 39 |
+| Overflow.bend | message, then Unikraft crash | 253 | 253 (no message) |
+| Exhaust.bend, -m 1024 | Unikraft crash (altstack assertion), no message | 253 | 253 (heap_alloc_miss) |
+
+== Configuration (in the tree) ==
+
+hosts/unikraft/app/Kraftfile (ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce):
+  the template gains one Kconfig line, CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y', with a comment.
+hosts/unikraft/scripts/build.sh (67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817):
+  UK_CFLAGS="-std=gnu11 -include uk/config.h", with a comment: with signals, 0.21.0's
+  lib/posix-process/shutdown.c:63 calls pprocess_signal_send, but shutdown.c includes
+  "signal/signal.h" (:11) before <uk/config.h> (:14), so signal.h's
+  "#if CONFIG_LIBPOSIX_PROCESS_MULTITHREADING" (:116) reads 0 and the declaration (:287)
+  is skipped (implicit-declaration error, observed in the trial below). No Unikraft source
+  is patched. The flag applies to every compilation unit of every image.
+hosts/unikraft/scripts/mkapp.sh: unchanged (it copies the template).
+Resolved .config, sigfault-unikraft against the pre-library codesb-unikraft (diff, app
+path line aside): CONFIG_LIBPOSIX_PROCESS_SIGNAL=y, CONFIG_LIBPOSIX_PROCESS_EXECVE=y and
+CONFIG_LIBUKBINFMT=y (selected by SIGNAL), CONFIG_LIBPOSIX_PROCESS_SIGNALFD not set; nothing
+else differs. .config sha256: sigfault d8f0bedf..., sigcodes 1f66e321... (they differ only
+in the CONFIG_UK_APP path).
+Unchanged sources the images link: hosts/unikraft/exit_device.c
+c4012e46747e8e9d256ed811cf7cf839dbfa2659989b152be763ab175a2f0d90, host.c not linked
+(WRIT_HOST_LAYER=n).
+
+== Builds ==
+
+The trial's set "fault" keeps its hand-edited scratch Kraftfile (history, below), which
+mkapp.sh refuses to overwrite, so the template builds use two new sets:
+  hosts/unikraft/scripts/mkapp.sh sigfault; hosts/unikraft/scripts/mkapp.sh sigcodes
+    $W/sigfault-unikraft/Kraftfile == hosts/unikraft/app/Kraftfile (ea319440..., cmp)
+  bend scripts/unikernel/{Overflow,Exhaust}.bend -o $W/sigfault/gen/{overflow,exhaust}.c
+  bend scripts/unikernel/{Hello,Die,Exit}.bend -o $W/sigcodes/gen/{hello,die,exit}.c
+Generated C, byte-identical to the earlier records:
+  1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc  overflow.c
+  8d79a44c43353b54e7b3a5a22a688765687160a158fd8c88ad7350284641dc37  exhaust.c
+  260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf  hello.c
+  94048ae7ceff0958375091de3d00bb300f885dc826df52ccb086ee3d480356d1  die.c
+  7b1b4c4386200758c1f77000328364f038fd96a09f3a46c179699e2d1bf14883  exit.c
+  hosts/unikraft/scripts/build.sh sigfault {overflow,exhaust}; build.sh sigcodes {hello,die,exit}
+Images (wall time of the successful build):
+  07ec5c163cff1fae1f6004b608e1c4fe0228bc9153b472ee3d3aec1079ea2613  $W/sigfault/images/overflow-qemu  (141 s)
+  51e275007430ce8e3d6c21d9314bc81672d3a04e9e1d299eff7b36b2a45fb372  $W/sigfault/images/exhaust-qemu   (70 s)
+  235bb67a3aecfbe64577d9964d0c8da6c8171c9f68325b2d115f572d4bfe1856  $W/sigcodes/images/hello-qemu     (167 s)
+  c17a9adb632f51ad64823508db36c47acb0589ea393328c774b85eb04d852f03  $W/sigcodes/images/die-qemu       (76 s)
+  acaa92489ce55bdd293bde75d02059ac7cc9012604f038e13c26e4535f723ab6  $W/sigcodes/images/exit-qemu      (69 s)
+The first attempts of overflow, exhaust, and die stopped before compiling: the build's
+fetch of https://www.musl-libc.org/releases/musl-1.2.3.tar.gz failed (wget left no file,
+"tar (child): .../musl-1.2.3.tar.gz: Cannot open"); the server answered slowly (22 s and
+38 s by hand). Each succeeded on its first retry with the same command. Not a compile
+error. The successful logs compile lib/posix-process/signal/ (4 lines naming signal/ in
+build-hello.log); the hello image has 31 pprocess_signal / sys_error_handler symbols (nm).
+
+== Fault message runs ==
+
+References: verification/unikernel-overflow-reference.txt
+(32dab546609fae16d71510a8a6a07c341a11997fe3d778b38ee45ffdd7d6209c) now holds two program
+lines, "overflow probe start" and "bend: memory fault (machine stack overflow?)" (identical
+to the trial's $W/fault/sig-ref.txt); verification/unikernel-exhaust-reference.txt
+(805668e1..., unchanged) holds "exhaust probe start".
+check-fault.sh (16e2cc07b2aa995cbf199b2061712904e22e99c37aaa1cf8ceb3bd5871e93a18) adds check
+2a: for the probe named overflow, the log's first line equal to
+"bend: memory fault (machine stack overflow?)" must come before the first
+"CRIT: Unikraft Crash" line.
+
+$ hosts/unikraft/scripts/check-fault.sh sigfault ovs1 overflow verification/unikernel-overflow-reference.txt 253 60 4096; echo $?
+program lines: equal
+crash screen: present
+fault message: before the crash screen
+QEMU exit: 253
+log: $W/sigfault/logs/run-ovs1.log; result: PASS
+0
+  console (run-ovs1.log, sha256 2f4e2e040f998de47149f329cefdcb9eabef4b8649eeb52980999d9a0050cf8c):
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+bend: memory fault (machine stack overflow?)
+[   17.370422] CRIT: [libposix_process] <deliver.c @  428> Cannot deliver SIGSEGV for pf at 0x1080069000
+[   17.372288] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+  ... (crash screen) ...
+[   17.373344] CRIT:  rip: 0008:0000000000129811
+253
+(wall 17.8 s)
+  addr2line on overflow-qemu.dbg: 0x129811 is sys_error_handler,
+  lib/posix-process/signal/deliver.c:428, the same rip and fault address as the trial.
+$ hosts/unikraft/scripts/check-fault.sh sigfault ovs2 overflow verification/unikernel-overflow-reference.txt 253 60 4096; echo $?
+  the same four check lines, result: PASS, 0; deliver.c @ 428 at 13.051273 s, fault at
+  0x1080069000; 253 (wall 13.5 s); run-ovs2.log sha256
+  79a0fe78c3d814a0e6436c851edee3db8e63003f72a369fd60bf899b02b5935c
+Negative control (the pre-library image $W/codesb/images/overflow-qemu, 27ea4f68..., no
+signals, booted against the new reference):
+$ hosts/unikraft/scripts/check-fault.sh codesb negsig1 overflow verification/unikernel-overflow-reference.txt 253 60 4096; echo $?
+1a2
+> bend: memory fault (machine stack overflow?)
+program lines: DIFFER
+crash screen: present
+fault message: MISSING before the crash screen
+QEMU exit: 253
+log: $W/codesb/logs/run-negsig1.log; result: FAIL
+1
+  (wall 14.4 s; run-negsig1.log sha256 8c77639d5aac474a0562eee81bac9f2f2e629709604e639745cd0e745537c8c4)
+Before booting, the extended script was also run without a boot (WRIT_NO_BOOT=1) on the
+trial capture fault/sig1 (PASS, 0) and on the pre-library capture codesb/ovf2 (FAIL on the
+program lines and the message, 1).
+
+Read (console, not traced), as in the trial: err_trap ran on the alternate stack and wrote
+the message, set SIG_DFL and re-raised; the re-raise did not end the process, the faulting
+access ran again, and the second fault found SIG_DFL, so posix-process crashed rather than
+deliver it. The image does not resume after the fault; the hook writes the crash value.
+
+== Arena exhaustion with signals ==
+
+$ hosts/unikraft/scripts/check-fault.sh sigfault exs1 exhaust verification/unikernel-exhaust-reference.txt 253 120 1024; echo $?
+program lines: equal
+crash screen: present
+QEMU exit: 253
+log: $W/sigfault/logs/run-exs1.log; result: PASS
+0
+  console (run-exs1.log, sha256 3c181ed69d8d601c7bf3a8ae14ca91636309b77dd928598bc36fa6fe71f86c3e):
+                  Ijiraq 0.21.0~7351f8b
+exhaust probe start
+[    3.507387] CRIT: [libposix_process] <deliver.c @  125> Assertion failure: !(altstack->ss_flags & 1)
+[    3.508667] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+  ... (crash screen) ...
+[    3.509436] CRIT:  rip: 0008:00000000001285e0
+253
+(wall 3.7 s)
+  addr2line on exhaust-qemu.dbg: 0x1285e0 is handle_self, deliver.c:125, the
+  UK_ASSERT(!(altstack->ss_flags & SS_ONSTACK)) taken when an SA_ONSTACK handler is
+  entered while the process's alternate stack is already marked in use (:122-127).
+Read (not traced): the out-of-memory fault became SIGSEGV for err_trap on the alternate
+stack, and a second fault was taken before err_trap's line reached the console, so the
+nested delivery hit the assertion. Which access faulted second (the alternate stack's own
+page, err_trap's write, or another) was not traced. Only -m 1024 was run; the earlier
+4096 and 12288 MiB runs were not repeated with signals. Limit, recorded: arena exhaustion
+has no code of its own and no message; it shares QEMU 253 with the stack-overflow fault.
+
+== Exit map runs (template configuration, signals present) ==
+
+References (scratch, outside the tree, copied unchanged from the earlier sets codesa and
+codesb): $W/sigcodes/hello-ref.txt 98ea6e4f... ('hi'), exit-ref.txt 68b4282e...
+('exiting with 3'), die-ref.txt a7f5dbe0... ('die probe start', 'die').
+$ hosts/unikraft/scripts/check-image.sh sigcodes hello1 hello $W/sigcodes/hello-ref.txt 33 "" 60 1024
+diff: empty / QEMU exit: 33 / result: PASS, script exit 0 (wall 0.5 s; run-hello1.log b206bb42...)
+$ hosts/unikraft/scripts/check-image.sh sigcodes die1 die $W/sigcodes/die-ref.txt 35 "" 60 1024
+diff: empty / QEMU exit: 35 / result: PASS, script exit 0 (wall 0.4 s; run-die1.log db57a219...)
+$ hosts/unikraft/scripts/check-image.sh sigcodes exit1 exit $W/sigcodes/exit-ref.txt 39 "" 60 1024
+diff: empty / QEMU exit: 39 / result: PASS, script exit 0 (wall 0.3 s; run-exit1.log 56de3188...)
+$ hosts/unikraft/scripts/run.sh sigcodes rtsthreads0 hello "+RTS --threads 0" 60 1024
+                  Ijiraq 0.21.0~7351f8b
+bend: expected a thread count of 1 or more after --threads
+17
+(wall 0.6 s; run-rtsthreads0.log eb25a181...)
+$ hosts/unikraft/scripts/run.sh sigcodes rtsbogus hello "+RTS --bogus" 60 1024
+                  Ijiraq 0.21.0~7351f8b
+bend: unknown runtime option --bogus
+17
+(wall 0.9 s; run-rtsbogus.log 38837224...)
+Negative control (Hello against the Exit reference and code):
+$ hosts/unikraft/scripts/check-image.sh sigcodes neg1 hello $W/sigcodes/exit-ref.txt 39 "" 60 1024
+diff: NOT EMPTY / QEMU exit: 33, expected 39 / result: FAIL, script exit 1
+
+Not exercised: the signal value 0x09 (QEMU 19). With signals, posix-process now sends
+SIGTERM to an init process still running at shutdown and waits on its exit semaphore
+(shutdown.c:61-67) instead of storing 0x80 | SIGKILL (the non-signal path, :100-101); a
+signal death stores the signal number. Either would be "nonzero without exit()", 19, by
+reading exit_device.c; if the process never ended after SIGTERM, the wait at :66 would
+leave the image running until the harness timeout (124), not traced. No program built here ends by
+a signal (the one candidate, io_work's leftover helper thread, is not built). The
+non-halt value 0x7d (QEMU 251) and statuses above 108 (0x7f, QEMU 255) were not exercised
+either. The channel monitor, the effects probe, and the corpus were not rebuilt with the
+library in this task (plan Task 2).
+
+== Earlier trial (effect-twins lane Task 3, 2026-11-04): history, superseded by the
+== adopted configuration above. Kept as recorded; its "template" is the template
+== before the library, and its scratch workaround is now build.sh's flag.
+
 Unikraft effect-twins lane, Task 3 (change task 2.3): the runtime's fault message, the
 exit-code map moved off QEMU 1, and arena exhaustion
 Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.

@@ -1,1 +1,10 @@
 2026-11-04T21:25:55Z	controller	lane created from master 5cd0ace; plan committed
+2026-11-04T21:27:29Z	implementer	task 1 started: read brief, plan constraints, fault and exit evidence, scripts
+2026-11-04T21:28:26Z	implementer	template edited (Kraftfile signals line, build.sh flag, check-fault.sh message check, overflow reference); generated C matches recorded hashes; building sets sigfault (overflow, exhaust) and sigcodes (hello, die, exit) with the template
+2026-11-04T21:31:31Z	implementer	heartbeat: builds running (hello rc=0 wall=167s overflow rc=1 wall=185s )
+2026-11-04T21:32:27Z	implementer	heartbeat: sigcodes hello built (167 s); sigfault overflow build failed fetching musl-1.2.3.tar.gz (download, not compile; retry after the chain); exhaust, die building
+2026-11-04T21:36:27Z	implementer	first pass: hello and exit built; overflow, exhaust, die failed downloading musl-1.2.3.tar.gz (musl-libc.org slow, wget 22-38 s by hand; not a compile error); rebuilding those with up to 3 attempts on that download failure only
+2026-11-04T21:36:59Z	implementer	sigcodes checks: hello 33 PASS, exit 39 PASS, +RTS --threads 0 and --bogus 17, negative control FAIL as expected; waiting on overflow, exhaust, die rebuilds
+2026-11-04T21:39:36Z	implementer	overflow image built with the template (141 s); check-fault.sh ovs1, ovs2: message before crash screen, QEMU 253, PASS; die 35 PASS; exhaust building
+2026-11-04T21:42:03Z	implementer	exhaust with signals: crash 253 at deliver.c:125 altstack assertion, no message (limit kept); unikernel-fault-qemu.txt rewritten (adopted configuration first, trial kept as history); refreshing unikernel-exit-codes.txt
+2026-11-04T21:42:55Z	implementer	exit-codes.txt refreshed; report written; committing task 1 (DONE_WITH_CONCERNS)

@@ -10,6 +10,9 @@
 #      time line;
 #   2. if expected_qemu_status is 253 (the exit hook's crash value), the log holds
 #      Unikraft's "CRIT: Unikraft Crash" line;
+#   2a. for the overflow probe, the log holds the runtime's own line "bend: memory fault
+#      (machine stack overflow?)" before that crash line (UL-006, posix signals in the
+#      Kraftfile); the reference must list it among the program lines as well;
 #   3. QEMU's exit status equals expected_qemu_status (run.sh's exit status when booting,
 #      and the status run.sh recorded in the log).
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise.
@@ -35,6 +38,12 @@ sed -n '/^ *Ijiraq 0\.21\.0~7351f8b$/,$p' "$L" | sed '1d' | head -n -2 \
 if diff "$C" "$REF"; then echo "program lines: equal"; else echo "program lines: DIFFER"; BAD=1; fi
 if [ "$XQ" = 253 ]; then
   if grep -q 'CRIT: Unikraft Crash' "$L"; then echo "crash screen: present"; else echo "crash screen: MISSING"; BAD=1; fi
+fi
+if [ "$P" = overflow ]; then
+  F=$(grep -n -m 1 -Fx 'bend: memory fault (machine stack overflow?)' "$L" | cut -d: -f1)
+  K=$(grep -n -m 1 'CRIT: Unikraft Crash' "$L" | cut -d: -f1)
+  if [ -n "$F" ] && [ -n "$K" ] && [ "$F" -lt "$K" ]; then echo "fault message: before the crash screen"
+  else echo "fault message: MISSING before the crash screen"; BAD=1; fi
 fi
 if [ "$Q" = "$XQ" ]; then echo "QEMU exit: $Q"; else echo "QEMU exit: $Q, expected $XQ"; BAD=1; fi
 echo "log: \$W/$S/logs/run-$LB.log; result: $([ $BAD = 0 ] && echo PASS || echo FAIL)"

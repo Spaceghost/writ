@@ -30,6 +30,11 @@ unikraft:
     # receives console or stdout bytes; only host.c reads and writes it.
     # host.c refuses to build without it.
     CONFIG_LIBNS16550_COM2: 'y'
+    # UL-006 fault message (adopted 2026-11-04, question q2): the EXPERIMENTAL posix
+    # signals turn the stack-guard page fault into SIGSEGV for the runtime's handler,
+    # which prints "bend: memory fault ..." before the crash (unikernel-fault-qemu.txt).
+    # Needs build.sh's "-include uk/config.h" to compile in 0.21.0.
+    CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y'
 
 libraries:
   musl:
