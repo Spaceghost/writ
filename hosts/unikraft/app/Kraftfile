@@ -1,0 +1,33 @@
+# Template Unikraft application for a Writ Bend image (hosts/unikraft/INVENTORY.md).
+# hosts/unikraft/scripts/mkapp.sh copies this file into $W/<set>-unikraft/, so
+# the relative paths below are relative to that app directory inside $W.
+spec: v0.6
+
+name: writ-bend
+
+unikraft:
+  source: ../src/unikraft
+  kconfig:
+    CONFIG_LIBUKVMEM: 'y'
+    CONFIG_LIBPOSIX_MMAP: 'y'
+    CONFIG_LIBPOSIX_PROCESS: 'y'
+    CONFIG_LIBPOSIX_FDTAB: 'y'
+    CONFIG_LIBPOSIX_SYSINFO: 'y'
+    CONFIG_LIBPOSIX_PIPE: 'y'
+    CONFIG_LIBPOSIX_POLL: 'y'
+    # Adjustment H2 (verification/unikernel-exit-codes.txt): run main() on its
+    # own thread so exit()/_exit() can reach the termination path, and keep the
+    # process exit event the hook listens to. exit_device.c refuses to build
+    # without either. MULTITHREADING was already the resolved default; it is
+    # declared so the requirement is visible here.
+    CONFIG_LIBUKBOOT_MAINTHREAD: 'y'
+    CONFIG_LIBPOSIX_PROCESS_MULTITHREADING: 'y'
+    # Single lane (UL-005): one virtual CPU.
+    CONFIG_UKPLAT_CPU_MAXCOUNT: 1
+
+libraries:
+  musl:
+    source: ../src/libs/musl
+
+targets:
+  - qemu/x86_64

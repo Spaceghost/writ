@@ -1,0 +1,138 @@
+Unikernel port lane, Task 4: runtime profile binary check (UL-003) on the Unikraft image ELFs
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9).
+
+Checker: scripts/runtime-profile/check-binary.sh (unchanged), allowlists
+scripts/runtime-profile/monitor-symbols.txt and monitor-effects.txt. Input: each image's
+non-stripped ELF (<image>.dbg: the same link as the booted image, with symbols and
+debug_info), statically linked. As the checker states, a static binary has no imports, so
+the undefined-symbol comparison is not applicable and only the EFFECT ROWS are checked;
+a PASS here does not cover the host-symbol surface (what Unikraft and musl link in).
+The images are compiled by gcc 16.2.1 at -O2 inside the Unikraft build, not clang; the
+effect-row detection still finds the `<prefix>_run` symbols, shown by the IO.print rows
+below and by the negative control, which must FAIL on TCP.listen.
+W is the build workspace (realpath ../writ-unikernel). Command for each row:
+  sh scripts/runtime-profile/check-binary.sh $W/<set>/images/<image>.dbg; echo $?
+(each row shows the checker's output after its first, "binary:", line; statuses at the end)
+
+## $W/corpus/images/tests-qemu.dbg
+sha256 5909e37f45e5d18453549968f47a9fa0b685d307473b68f0136bd6195d6b5797; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/corpus/images/example-qemu.dbg
+sha256 2360ef0f4961b48ed153d845227c9fb759fb1dfdf1c207999600e5276b8e6aea; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/corpus/images/flow-qemu.dbg
+sha256 64c598b20465b430e8bc665950b1beb24d26d78fab606ffc60579e5723b71263; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/corpus/images/transfer-qemu.dbg
+sha256 0bddc6db458e33ea4142b4bd8beedc851c50807903766dd7a9c6a26a541355e4; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/corpus/images/gpuexample-qemu.dbg
+sha256 b90989735b7a6dbe65f62fad745145c5e1da03e85b37909bb7febbd8eda80d98; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/exitcode/images/hello-qemu.dbg
+sha256 e2a22d59b029412b030101fd36da28436c1013383a2c80f828846203d49bb539; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/exitcode/images/die-qemu.dbg
+sha256 c93142a062360b7983a234714a11c482a4eff5a8e8c0523829d83829d600c421; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/exitcode/images/overflow-qemu.dbg
+sha256 ff851c39d29bcf56ab5bbb5162a6b35889e6a6b43eb200c979c9d54b252c922a; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/exitcode/images/exit-qemu.dbg
+sha256 4ee61c09fd6ba7f254d295005712d8960095174fe5ead929fb09b5a8c10f783e; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/crash/images/overflow-qemu.dbg
+sha256 eb1f73662e44551e9019670534472ca89e15ae6f657aca2deb165475abefbb7b; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/crash/images/overflow-nohook-qemu.dbg
+sha256 ef081c211e236d3d14ba7534ab34268e5e2c700261a449ae3d11ad88f85e6493; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+
+## $W/bincheck/images/widened-qemu.dbg
+sha256 4d552d3f1d180bb36b22c3d3bcbc3f7b5aa1bf5a250532a7626dd08811969a65; ELF 64-bit LSB executable, with debug_info, not stripped
+undefined symbols: not applicable (static link)
+effect rows: IO.print TCP.listen
+effects outside the monitor profile:
+  TCP.listen
+result: FAIL (outside the monitor profile)
+
+Rows: corpus/* are Task 3's five images (Tests.bend, Example.bend, examples/Flow.bend,
+examples/Transfer.bend, GpuExample.bend); exitcode/* Task 1's probes; crash/* Task 2's
+Overflow images (with and without the hook). The crash/overflow ELF checked is that of
+the third clean build (image d6eb58222113f5b180caebd61bb65c9b3fe8bec9d079b993bb384b2fdd8d3948,
+made after the comment-only header edit of exit_device.c), not the .dbg of the image booted
+in Task 2 (2d1301c2ffc3da82e56df24c33d47753a886cb33c9e85613b728b90356e0dd37), which each
+clean rebuild overwrote; the source and configuration are the same (comment-stripped
+tokens of the hook identical). crash/overflow-nohook is the booted build (d887b03a...); bincheck/widened is the negative control,
+scripts/runtime-profile/Widened.bend (Hello plus TCP.listen) built as a Unikraft image with
+the same template app (emitted C sha256
+04ffa7aa3671b877a7915dacf3522840389b033f098b87d361547e1a92f71163; it links: the TCP twin's
+socket calls resolve inside musl/Unikraft). It was not booted. Expected FAIL on TCP.listen.
+
+Checker exit status for each row (0 = PASS, 1 = FAIL):
+  corpus/tests: 0
+  corpus/example: 0
+  corpus/flow: 0
+  corpus/transfer: 0
+  corpus/gpuexample: 0
+  exitcode/hello: 0
+  exitcode/die: 0
+  exitcode/overflow: 0
+  exitcode/exit: 0
+  crash/overflow: 0
+  crash/overflow-nohook: 0
+  bincheck/widened: 1
+
+== Integration rerun, 2026-11-04: merged tree aaa6885 (master dc6ff2b), 782-check corpus ==
+
+## $W/corpustests782/images/tests-qemu.dbg
+sha256 2db2d9ebe185733dd9e9e865947930e0e0b49d3f995409efdc57bfc137a5f609; image tests-qemu 7425abfea411a7c811f1ea8f624b7e583fc36fb24be4cd60a0d6b861176e7585
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+The 764-check corpus row above (corpus/tests) is kept as history.
