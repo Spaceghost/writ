@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 3 of 9: making and releasing a reservation</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 3 of 9: making and releasing a reservation</h1>
+<p>A qualifying <code>mmap</code> becomes a <em>reservation</em>: address space that is set aside but has no memory behind it yet. Genode terms: a <em>dataspace</em> is a piece of memory (or address space) that can be referenced by capability and attached into an address space. A <em>Region_map</em> is an address-space layout: a set of dataspaces attached at offsets. A region map can itself be exported as a dataspace (a "managed dataspace") and attached into another region map. An <em>Rm_connection</em> is a session to the RM service that creates such region maps. So <code>_reserve</code> asks the RM session for an empty region map of the requested size, attaches it into the component's own address space (<code>Env::rm()</code>), and records it in a fixed table of 32 slots. Nothing is populated, so no RAM is charged here. Read the table struct first (378-435), then <code>_reserve</code> and <code>_release</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:378-435</code>, <code>writ_mem.cc:916-1028</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:969-1001</code> (tabs shown as four spaces):</p>
+<pre><code>    /*
+     * Linux treats the address as a hint: try it, then let the local
+     * region map choose. The runtime compares the result with its hint
+     * and unmaps a misplaced reservation itself.
+     */
+    Region_map_client rm(rm_cap);
+    auto attach_at = [&amp;] (bool use_at, addr_t at) -&gt; addr_t {
+        return _env-&gt;rm().attach(rm.dataspace(), {
+            .size = 0, .offset = 0, .use_at = use_at, .at = at,
+            .executable = false, .writeable = true
+        }).convert&lt;addr_t&gt;(
+            [&amp;] (Env::Local_rm::Attachment &amp;a) {
+                a.deallocate = false; return addr_t(a.ptr); },
+            [&amp;] (Env::Local_rm::Error) { return addr_t(0); });
+    };
+    addr_t base = 0;
+    if (hint &amp;&amp; (addr_t(hint) &amp; (PAGE - 1)) == 0)
+        base = attach_at(true, addr_t(hint));
+    if (base) _reserved_at_hint++;
+    if (!base) {
+        base = attach_at(false, 0);
+        if (base) _reserved_elsewhere++;
+    }
+    if (!base) {
+        _rm_connection-&gt;destroy(rm_cap);
+        _heap-&gt;free(chunks, num_chunks*sizeof(Chunk));
+        errno = ENOMEM; return MAP_FAILED;
+    }
+
+    *r = { .used = true, .base = base, .size = size, .rm_cap = rm_cap,
+           .chunks = chunks, .num_chunks = num_chunks, .guards = { },
+           .num_guards = 0 };
+    return (void *)base;</code></pre>
+<p class="note"><strong>Limit or policy?</strong> Two choices to judge. First, a hint that cannot be honoured is replaced by an address the local region map chooses (985-991). That is Linux's own <code>mmap</code> hint semantics, and the runtime compares the result with its hint and unmaps a misplaced one itself (969-973), so the caller still decides what to accept. Second, <code>MAX_RESERVATION</code> (930) also caps the runtime's <code>corpus_grow</code> at a 2 TiB corpus (919-929), and the 32 slots cap lanes at about 30 (<code>INVENTORY.md:379-383</code>). Both are fixed capacity bounds that surface as <code>ENOMEM</code>, which the runtime already handles as "cannot grow". No Writ fact enters either one.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li>Every refusal in <code>_reserve</code> sets <code>errno = ENOMEM</code>, undoes what it already built, and returns <code>MAP_FAILED</code> (930, 935, 946, 951, 957-958, 963-966, 992-996).</li>
+<li>A hint is tried only when it is page-aligned (985-986); otherwise, or on failure, the shim attaches wherever the local region map allows <code>writ_mem.cc:988-991</code> and counts which happened. It does not refuse the call or pick a reservation for any other reason.</li>
+<li>Nothing in <code>_reserve</code> <code>writ_mem.cc:916-1002</code> reads anything except its arguments, the slot table, and the results of Genode calls.</li>
+<li><code>_release</code> <code>writ_mem.cc:1004-1028</code> detaches and frees every populated chunk, destroys the region map, frees the chunk table, and (base-linux) clears the retry entries for this reservation's pages (1016-1024), so a later reservation at the same address inherits no counts.</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

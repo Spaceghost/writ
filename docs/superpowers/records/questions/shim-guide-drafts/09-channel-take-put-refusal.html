@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 9 of 9: queue, take, put, and the transport refusal</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 9 of 9: queue, take, put, and the transport refusal</h1>
+<p>This is the data path. A client writes a 64-byte record (16 words) after a 16-byte header into its request bucket, then signals. The <code>writ_channel</code> entrypoint queues one entry per channel in an 8-slot ring (1503-1519) and wakes a semaphore. <code>writ_shim_take</code> runs on a Bend runtime helper thread. It blocks on that semaphore, pops one entry, copies the record out once, and returns the record, the channel id, and the route subject stored at session creation. <code>writ_shim_put</code> copies Bend's reply into the result bucket without reading it and signals the client. One result is written by the shim itself: if the header length is not exactly 64, a fixed refusal record. GB-006's own scenario requires that ("dropped, counted, and answered with a fixed transport refusal before any Bend parsing"). See <code>INVENTORY.md:87-88</code>, <code>:201-211</code>, and the channel bounds at <code>:409-455</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:1334-1400</code>, <code>writ_mem.cc:1478-1519</code>, <code>writ_mem.cc:1669-1842</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:1742-1767</code> (tabs shown as four spaces):</p>
+<pre><code>            uint32_t const volatile *bucket = c-&gt;request_ds.local_addr&lt;uint32_t const volatile&gt;();
+            uint32_t const length = bucket[0];
+            /*
+             * Pairs with the client's release fence before it writes the
+             * length: the record words read below are not read before the
+             * length that announced them.
+             */
+            __atomic_thread_fence(__ATOMIC_ACQUIRE);
+            uint32_t const seq    = bucket[1];
+            if (length != CHANNEL_RECORD_SIZE) {
+                _channel_bad_length++;
+                warning("writ_channel: channel ", e.id, " request length ", length,
+                        " is not ", unsigned(CHANNEL_RECORD_SIZE),
+                        ", refused before Bend (bad length count ", _channel_bad_length, ")");
+                refused = _channel_refuse(*c, seq);
+            } else {
+                for (unsigned i = 0; i &lt; CHANNEL_RECORD_WORDS; i++)
+                    record[i] = bucket[CHANNEL_HEADER_SIZE/4 + i];
+
+                c-&gt;taken     = true;
+                c-&gt;taken_seq = seq;
+                _channel_taken++;
+                *channel = e.id;
+                *subject = e.subject;
+                return;
+            }</code></pre>
+<p class="note"><strong>Limit or policy?</strong> The length gate (1751-1756) is the one place the shim answers a client without Bend, so ask whether it is an alternate release decision. It is a fixed transport check. It depends only on the length word, and the record it writes (1674-1686) is the same for every channel and subject. Its kind, decision, and reason words (3, 3, 256; 1412-1416) are outside the monitor's (kind 2, decisions 1 and 2, reasons 0 to 8), so it cannot be read as a Writ outcome. Signal coalescing (1510) drops no data, because the bucket is read at take time. The close event (1727-1735) translates a native fact, a session closing, into subject 0, which no open channel can have.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li><code>take</code> copies exactly 16 words, once, after an acquire fence, and only when the length is exactly 64 <code>writ_mem.cc:1742-1759</code>; Bend sees only that copy.</li>
+<li>The subject returned to Bend is the one stored at session creation (1513, 1765), never a word from the bucket; a close event returns subject 0 and an all-zero record <code>writ_mem.cc:1727-1735</code>.</li>
+<li>A wrong length is counted, warned, and answered with the fixed record from <code>_channel_refuse</code> <code>writ_mem.cc:1674-1686</code>, which depends on nothing but the request's sequence number, and never reaches Bend.</li>
+<li><code>put</code> <code>writ_mem.cc:1775-1796</code> copies Bend's record without inspecting it, writes the sequence number and then the length after a release fence, and is skipped (counted) for a closed channel or one with no taken request; <code>writ_mem_report</code> (1798-1842) only reads counters and logs.</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

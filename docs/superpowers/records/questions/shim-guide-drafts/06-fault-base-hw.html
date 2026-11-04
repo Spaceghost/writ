@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 6 of 9: the base-hw region-map fault path and exit 139</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 6 of 9: the base-hw region-map fault path and exit 139</h1>
+<p>On base-hw (Genode's own kernel), core is the pager of every thread. When a thread touches part of a region map that has nothing attached, and a <em>fault handler</em> is registered on that region map, core halts the thread and sends a Genode signal instead of logging an error. A Genode <code>Signal_handler</code> is an object bound to an Entrypoint; when its signal arrives, the entrypoint's thread calls the handler method. Signals to one handler <em>coalesce</em>: several faults may arrive as one signal, which is why the handler drains every queued fault. The shim starts its own entrypoint, <code>writ_fault</code>, in <code>construct</code> before <code>main</code>. It registers one handler on every reservation's region map and on the PD's own address space, stack area, and linker area, so that faults outside every reservation (a null pointer, a thread's stack guard) also reach the shim and are refused. Unlike base-linux, a refusal here ends the component by asking the parent: <code>Parent::exit(139)</code>, where 139 = 128 + SIGSEGV. See <code>INVENTORY.md:275</code> (base-hw row) and the six limits at <code>:305-319</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:95-151</code>, <code>writ_mem.cc:190-211</code>, <code>writ_mem.cc:778-900</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:830-853</code> (tabs shown as four spaces):</p>
+<pre><code>        for (Pd_area const &amp;area : _pd_areas) {
+            Region_map::Fault const f = Region_map_client(area.cap).fault();
+            if (f.type != Region_map::Fault::Type::NONE)
+                _refuse(area.why, f.addr);
+        }
+
+        Mutex::Guard guard(_mutex());
+
+        for (Reservation &amp;r : _res) {
+            if (!r.used) continue;
+            Region_map_client rm(r.rm_cap);
+            for (;;) {
+                Region_map::Fault const f = rm.fault();
+                if (f.type == Region_map::Fault::Type::NONE) break;
+
+                addr_t const off = f.addr;   /* relative to the region map */
+                bool populated = false;
+                if (char const *why = _resolve_fault(r, off, populated))
+                    _refuse(why, r.base + off);
+                if (populated)
+                    _refuse("populated chunk, fault reflected", r.base + off);
+            }
+        }
+    }</code></pre>
+<p class="note"><strong>Limit or policy?</strong> Two things here look like choices. "Refuse a reflected fault on a populated chunk" (849-850) is not a policy: on base-hw core resolves touches of attached ranges itself, so a reflected fault there is one the shim cannot resolve (143-151). Exit value 139 (300, 794) is a reporting convention. It changes no outcome, since the component ends either way. It matters for evidence, though: init records an exit value, not a fault, and only the shim's own line tells it apart from a voluntary exit 139 (207-211). That is a GB-003 evidence limit, not a GB-006 decision.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li>A fault in the PD's address space, stack area, or linker area is refused before the shim mutex is taken and is never resolved <code>writ_mem.cc:830-834</code>; the areas are registered once at 884-889.</li>
+<li>For each live reservation the handler drains <code>fault()</code> until <code>Type::NONE</code>, sends each fault through the shared <code>_resolve_fault</code>, and refuses (does not retry) a reflected fault on a populated chunk <code>writ_mem.cc:838-852</code>; the base-linux retry table is not compiled here (505-520).</li>
+<li><code>_refuse</code> <code>writ_mem.cc:788-796</code> logs the counters line and the reason through the LOG session, calls <code>Parent::exit(REFUSED_FAULT_EXIT)</code>, and sleeps; it never wakes the faulting thread.</li>
+<li>No reservation can exist without the handler: <code>writ_fault</code> is started in <code>construct</code> (1902-1905, 863-891), each new region map registers the handler before <code>_reserve</code> returns (967, 895-898), and <code>_reserve</code> refuses if the handler was never installed (946).</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

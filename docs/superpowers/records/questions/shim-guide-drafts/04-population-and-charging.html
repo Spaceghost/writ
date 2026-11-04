@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 4 of 9: charging a chunk on first touch</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 4 of 9: charging a chunk on first touch</h1>
+<p>When the program first touches an untouched 2 MiB chunk of a reservation, the fault path (pages 5 and 6) calls <code>_populate</code>. It allocates a 2 MiB RAM dataspace from the component's own PD, which charges the component's RAM quota, and attaches it into the reservation's region map in "pieces" that skip any guard range. Two details matter for GB-006. Allocation goes through a plain <code>Pd_session_client</code> (557, built at 1893 on <code>pd_session_cap()</code>), not <code>Env::pd()</code>. The <code>Env::pd()</code> client turns an out-of-quota error into a blocking request to the parent for more resources. So a fault either succeeds from the quota the component already has, or is refused. On base-hw, attaching a piece costs metadata in core that is charged to the RM session's own small quota, so the shim may <em>upgrade</em> that session. An upgrade moves some of the component's own quota into the session; it is not a request for more. Header 153-189 explains this; <code>INVENTORY.md:92-120</code> (RM) and <code>:132-136</code> (PD) list it.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:153-189</code>, <code>writ_mem.cc:543-673</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:643-673</code> (tabs shown as four spaces):</p>
+<pre><code>static char const *_populate(Reservation &amp;r, addr_t off)
+{
+    size_t const idx = off / CHUNK;
+    size_t const len = _page_round(r.chunk_end(idx) - idx*CHUNK);
+
+    Pd_session::Stats const st = _pd-&gt;stats();
+    if (st.ram.avail().value &lt; len + RAM_MARGIN)
+        return "chunk could not be charged: RAM quota";
+    if (st.caps.avail().value &lt; CAP_MARGIN)
+        return "chunk could not be charged: cap quota";
+
+    Ram_dataspace_capability ds { };
+    char const *err = nullptr;
+    _pd-&gt;alloc_ram(len, CACHED).with_result(
+        [&amp;] (Ram_dataspace_capability cap) { ds = cap; },
+        [&amp;] (Alloc_error e) {
+            err = e == Alloc_error::OUT_OF_CAPS ? "chunk could not be charged: alloc_ram OUT_OF_CAPS"
+                : e == Alloc_error::OUT_OF_RAM  ? "chunk could not be charged: alloc_ram OUT_OF_RAM"
+                :                                 "chunk could not be charged: alloc_ram DENIED"; });
+    if (!ds.valid()) return err ? err : "chunk could not be charged: invalid dataspace";
+
+    r.chunks[idx] = { ds, true };
+    if (char const *why = _attach_pieces(r, idx)) {
+        _detach_pieces(r, idx);
+        _pd-&gt;free_ram(ds);
+        r.chunks[idx] = { { }, false };
+        return why;
+    }
+    _chunks_populated++;
+    return nullptr;
+}</code></pre>
+<p class="note"><strong>Limit or policy?</strong> This page is "accounting" in the Genode sense, not the Writ sense. It checks the component's quota against fixed margins (649-652: chunk + 64 KiB RAM, 8 caps) and spends quota on at most four fixed-size RM upgrades per piece (570-572, 620). Those are bounded, mechanical rules, and every caller gets the same ones. No Writ budget, payment, or label is consulted. A reviewer could still call "keep 64 KiB back" or "spend own quota on an upgrade" a resource policy. If you do, note that it is host resource policy, decided at compile time. Also note the documented exception: under a parent that answers an upgrade with PENDING, the upgrade could block (171-173).</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li><code>_populate</code> refuses with a named reason, before allocating, when the PD's available RAM is below the chunk plus <code>RAM_MARGIN</code> or caps are below <code>CAP_MARGIN</code> <code>writ_mem.cc:648-652</code>; it never calls the parent or <code>Env::pd()</code>.</li>
+<li>If any piece fails to attach, <code>_populate</code> detaches the pieces, frees the RAM, and clears the chunk entry <code>writ_mem.cc:665-669</code>; no half-populated chunk remains.</li>
+<li><code>_upgrade_rm_session</code> <code>writ_mem.cc:575-594</code> acts only on <code>OUT_OF_RAM</code>/<code>OUT_OF_CAPS</code>, only if the PD keeps its margins after the transfer, with the fixed amounts at 570-571, and <code>_attach_pieces</code> stops after <code>RM_UPGRADE_ATTEMPTS</code> tries per piece (620); every upgrade sent or declined is counted.</li>
+<li>Pieces never cover a guard range and are mapped non-executable and writeable: <code>for_each_piece</code> <code>writ_mem.cc:414-432</code> and <code>_piece_attr</code> <code>writ_mem.cc:547-551</code>.</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 5 of 9: the fault decision and the base-linux SIGSEGV path</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 5 of 9: the fault decision and the base-linux SIGSEGV path</h1>
+<p>On base-linux, Genode components are ordinary Linux processes, and an unpopulated part of a reservation is a <code>PROT_NONE</code> Linux mapping. Touching it raises the Linux signal <code>SIGSEGV</code>. A <em>signal handler</em> here means a Linux one: a function the kernel runs on the faulting thread. (Genode also has its own <code>Signal_handler</code>, an asynchronous notification dispatched by an entrypoint. That one appears on page 6.) Genode's own region-map fault notification is never delivered on base-linux (header 76-83). So the shim installs a raw SIGSEGV handler with the <code>rt_sigaction</code> system call, replacing base-linux's handler for the whole process (88-89). Both platforms share one decision function, <code>_resolve_fault</code> (688-696). Read it first. It is the only place that chooses between "populate" and "refuse". Then read the Linux front end. The base-linux row of <code>INVENTORY.md:274</code> ("Fault delivery" table) and the concurrency note at <code>:689-705</code> describe it.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:76-94</code>, <code>writ_mem.cc:213-239</code>, <code>writ_mem.cc:305-375</code>, <code>writ_mem.cc:487-541</code>, <code>writ_mem.cc:680-776</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:711-745</code> (tabs shown as four spaces):</p>
+<pre><code>static void _segv_handler(int, Lx_siginfo *info, void *)
+{
+    /*
+     * si_code &lt;= 0: sent by kill/tgkill/sigqueue, not a memory fault.
+     * Returning would not re-raise it, so take the default action now.
+     */
+    if (info-&gt;code &lt;= 0) {
+        raw("writ_mem: SIGSEGV not from a fault (si_code ", info-&gt;code,
+            "), component terminates");
+        Lx_sigaction dfl { (void (*)(int, Lx_siginfo *, void *))LX_SIG_DFL,
+                           0, nullptr, 0 };
+        lx_rt_sigaction(LX_SIGSEGV, &amp;dfl);
+        lx_syscall3(LX_SYS_TGKILL, lx_syscall3(LX_SYS_GETPID, 0, 0, 0),
+                    lx_syscall3(LX_SYS_GETTID, 0, 0, 0), LX_SIGSEGV);
+        return;
+    }
+
+    addr_t const a = addr_t(info-&gt;addr);
+
+    Mutex::Guard guard(_mutex());
+
+    Reservation *r = _lookup(a);
+    if (!r) { _refuse("outside every reservation", a); return; }
+
+    bool populated = false;
+    if (char const *why = _resolve_fault(*r, a - r-&gt;base, populated)) {
+        _refuse(why, a); return; }
+
+    if (populated) {
+        /* benign race (see header): retry, but not without bound */
+        if (!_retry_allowed(a)) {
+            _refuse("populated chunk, fault keeps recurring", a); return; }
+        _benign_retries++;
+        return;
+    }</code></pre>
+<p class="note"><strong>Limit or policy?</strong> <code>MAX_RETRIES</code> (293, used at 510-519 and 741-742) is the clearest "decides to kill" rule in the memory half. It is a bounded mechanical limit: it exists only so that a fault the shim cannot fix does not loop forever, and it reads nothing but a page address and a counter. Its stated flaws are both mechanical (494-501). A page that races harmlessly more than 16 times over a reservation's life is killed (a false positive). More than 16 stuck addresses at once can evict each other and livelock (a false negative). Neither is a Writ decision. Whether a false-positive kill is acceptable is an availability question, not a GB-006 one.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li><code>_resolve_fault</code> <code>writ_mem.cc:688-696</code> has exactly four outcomes (outside, guard, already populated, populated now or refused by <code>_populate</code>) and reads only the reservation's size, guard list, and chunk table.</li>
+<li>A SIGSEGV not generated by the kernel (<code>si_code &lt;= 0</code>, from <code>kill</code>/<code>tgkill</code>) is not treated as a fault: the default action is restored and the signal re-raised on the thread <code>writ_mem.cc:717-726</code>.</li>
+<li>The base-linux refusal <code>writ_mem.cc:702-709</code> prints one <code>raw</code> line, restores the default SIGSEGV action, and returns; the retried access then kills the process. Nothing on this path populates a guard or maps memory somewhere else.</li>
+<li>An already-populated chunk is retried only while <code>_retry_allowed</code> <code>writ_mem.cc:510-519</code> allows (at most 16 per page in 16 round-robin slots), and refused after that (741-742).</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 2 of 9: the three libc replacements (mmap, munmap, mprotect)</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 2 of 9: the three libc replacements (mmap, munmap, mprotect)</h1>
+<p>These are the public POSIX entry points the Bend runtime calls. The program binary's definitions shadow libc's by ordinary symbol interposition (<code>INVENTORY.md:50-55</code>, "How the entry points win"). The shim takes over only one shape of request: an anonymous, private, read-write mapping of at least 1 GiB. That is how the Bend runtime reserves its 8 GiB term heap and its 2 GiB per-lane stacks. Everything else goes to libc unchanged. The question for this page: does any refusal here depend on who is asking or what the memory is for, or only on whether the shim can carry the request out exactly? The inventory's "Exported symbols" table (<code>INVENTORY.md:73-88</code>) states the behaviour you are checking.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:907-914</code>, <code>writ_mem.cc:1031-1137</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:1041-1071</code> (tabs shown as four spaces):</p>
+<pre><code>extern "C" void *mmap(void *addr, ::size_t len, int prot, int flags,
+                      int fd, ::off_t offset)
+{
+    if (!_env || !_libc_mmap) { errno = ENOSYS; return MAP_FAILED; }  /* before construct */
+
+    if (!_qualifies(len, prot, flags, fd, offset))
+        return _libc_mmap(addr, len, prot, flags, fd, offset);
+
+    Mutex::Guard guard(_mutex());
+    return _reserve(addr, len);
+}
+
+extern "C" int munmap(void *addr, ::size_t len)
+{
+    if (!_env || !_libc_munmap) { errno = ENOSYS; return -1; }  /* before construct */
+
+    addr_t const a = addr_t(addr);
+    {
+        Mutex::Guard guard(_mutex());
+        for (Reservation &amp;r : _res) {
+            if (!r.used || !_overlaps(a, len, r.base, r.size)) continue;
+            /* only the whole reservation can be unmapped */
+            if (a != r.base || len == 0 || len &gt; r.size
+             || _page_round(len) != r.size) {
+                errno = EINVAL; return -1; }
+            _release(r);
+            return 0;
+        }
+    }
+    return _libc_munmap(addr, len);
+}</code></pre>
+<p class="note"><strong>Limit or policy?</strong> Each refusal here is "this unit cannot do that exactly": partial <code>munmap</code> (1063-1065), any protection other than RW or NONE, and lifting a guard (1108, 1112-1113) are unsupported operations, not judgments. <code>MAX_GUARDS</code> (1114) is a fixed table size. One place returns success without acting: RW on a guard-free range returns 0 (1105-1110), because a reservation is already RW. Decide whether you accept that as faithful.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li><code>_qualifies</code> <code>writ_mem.cc:907-914</code> tests only the request's shape (length, prot, flags, fd, offset); it reads no caller identity, label, or Bend state, and a non-qualifying call is forwarded unchanged to libc at 1046-1047.</li>
+<li><code>munmap</code> releases only a whole reservation: an overlapping range that is not exactly the reservation is <code>EINVAL</code> <code>writ_mem.cc:1063-1065</code>; a range overlapping no reservation goes to libc (1070).</li>
+<li><code>mprotect</code> on a reservation either records a <code>PROT_NONE</code> guard (1116-1121) or fails with <code>ENOTSUP</code>/<code>ENOMEM</code>/<code>EINVAL</code> <code>writ_mem.cc:1092-1114</code>; the single silent success is RW on a range with no guard (1105-1110).</li>
+<li>If re-attaching the pieces around a new guard fails, the guard stays recorded and the call returns <code>ENOMEM</code> <code>writ_mem.cc:1124-1135</code>; the shim never drops the guard to save the data.</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

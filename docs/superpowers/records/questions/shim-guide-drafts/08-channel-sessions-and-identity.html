@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 8 of 9: the Writ channel service, sessions, and route identity</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35}pre code{background:none;padding:0}
+</style>
+</head><body>
+<h1>Shim review 8 of 9: the Writ channel service, sessions, and route identity</h1>
+<p>When the component's config has a <code>&lt;writ_channel&gt;</code> node, the shim <em>announces</em> a service to its parent. Clients can then open <code>Writ_channel</code> sessions, which are routed by init. Each session gets two 4 KiB buckets (RAM dataspaces, one for requests, one for results) and a signal handler, all served on a dedicated entrypoint, <code>writ_channel</code>. The session interface (<code>writ_channel_session.h:72-75</code>) has four RPCs, and each only hands over a capability or registers one. The security-relevant step is at session creation. init prefixes every session label with the requesting child's name, so the client cannot forge that prefix. The shim looks the label up in the integrator's <code>&lt;policy&gt;</code> nodes and stores the matching <code>subject</code> number with the channel. Bend later maps that number to an identity (GB-007). Read the header 1289-1333 first. See <code>INVENTORY.md:177-200</code> and <code>:212-217</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:1289-1333</code>, <code>writ_mem.cc:1402-1476</code>, <code>writ_mem.cc:1521-1667</code></p>
+<p class="note">Excerpt, <code>writ_mem.cc:1532-1553</code> (tabs shown as four spaces):</p>
+<pre><code>    /*
+     * The subject word of the &lt;policy&gt; under &lt;writ_channel&gt; that matches
+     * the label best, 0 for none. Only a policy that names the label or a
+     * label prefix counts: the parent sets the prefix, while a suffix is
+     * the client's own choice and must not bind identity. The config is
+     * libc's, never updated, so every session sees the same policies.
+     */
+    uint32_t _subject(Session_label const &amp;label)
+    {
+        uint32_t subject = 0;
+        _channel_libc_env-&gt;with_config([&amp;] (Node const &amp;config) {
+            config.with_optional_sub_node("writ_channel", [&amp;] (Node const &amp;policies) {
+                subject = with_matching_policy(label, policies,
+                    [&amp;] (Node const &amp;policy) -&gt; uint32_t {
+                        if (!policy.has_type("policy")) return 0;   /* &lt;default-policy&gt; */
+                        if (!policy.has_attribute("label")
+                         &amp;&amp; !policy.has_attribute("label_prefix"))
+                            return 0;                               /* suffix-only */
+                        return policy.attribute_value("subject", uint32_t(0)); },
+                    [&amp;] () -&gt; uint32_t { return 0; }); }); });
+        return subject;
+    }</code></pre>
+<p class="note"><strong>Limit or policy?</strong> This is the section a reviewer is most likely to call policy. <code>_subject</code> encodes a security rule in C++: a <code>&lt;default-policy&gt;</code> or a suffix-only policy does not bind identity, because a label suffix is chosen by the client (1546-1549). <code>_create_session</code> then denies the session (1575-1579). The case for "binding": the shim decides no grant. It only looks up a word the integrator wrote, applies the same rule to every label, and leaves every request's accept or deny to Bend. The case for "policy": who may hold a channel, and under which subject, is an authority fact established here, outside Bend. <code>MAX_CHANNELS</code> (8) and the quota check are capacity bounds.</p>
+<p><strong>Confirm by reading:</strong></p>
+<ol>
+<li>The subject stored on a channel comes only from the integrator's config, matched against the parent-prefixed label: <code>_create_session</code> reads only the label and <code>ram_quota</code> from the client's arguments <code>writ_mem.cc:1557-1559</code> and takes the subject from <code>_subject</code> (1574).</li>
+<li>A <code>&lt;default-policy&gt;</code>, a policy with only <code>label_suffix</code>, no match, or <code>subject="0"</code> all give subject 0 <code>writ_mem.cc:1546-1551</code>, and subject 0 is <code>DENIED</code> <code>writ_mem.cc:1575-1579</code>.</li>
+<li>Apart from claim 2, a session is refused only for capacity: <code>ram_quota</code> below <code>CHANNEL_SESSION_RAM</code> (1559-1564), or no free slot, where a closing slot stays taken until Bend has taken its close event <code>writ_mem.cc:1581-1593</code>.</li>
+<li>The four RPC methods <code>writ_mem.cc:1467-1475</code> return the two bucket capabilities and the request signal, or store the client's result signal; none reads a bucket or decides anything.</li>
+</ol>
+<form method="post" action="/questions/__ID__/answer">
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>
