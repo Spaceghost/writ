@@ -101,8 +101,10 @@ stdio, and string imports `nm -u` shows for Hello on glibc) and
 (`IO.print`, `IO.print_err`, `IO.now`, `IO.sleep`; the exit path is
 loop-handled, not a row). Each file records why its denied groups are denied.
 `sh scripts/runtime-profile/check-binary.sh BINARY` reads a produced, dynamically
-linked binary and exits 1 naming every import and effect outside them; it
-refuses (exit 2) a stripped or statically linked binary rather than passing it.
+linked binary and exits 1 naming every import and effect outside them. For a
+statically linked binary it checks the linked effect rows only and reports the
+import comparison as not applicable, so a static pass says nothing about the
+host-symbol surface; it refuses (exit 2) a stripped binary rather than passing it.
 [`verification/runtime-profile-binary-check.txt`](../verification/runtime-profile-binary-check.txt)
 records Hello passing and `scripts/runtime-profile/Widened.bend`, which adds
 `TCP.listen`, failing on `TCP.listen` and the socket imports. A passing check

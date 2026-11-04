@@ -56,7 +56,7 @@ exit
 _exit
 sysconf
 sched_getaffinity
-__sched_cpucount
+__sched_cpucount  # glibc-only: CPU_COUNT helper (observed with glibc 2.44)
 
 # Cgroup CPU quota: on Linux, main reads cpu.max (or the cgroup v1 quota and
 # period files) at every startup to size the thread pool. These are not GPU
@@ -65,7 +65,7 @@ __sched_cpucount
 # glibc redirects fscanf to __isoc23_fscanf under C23 headers.
 fopen
 fscanf
-__isoc23_fscanf
+__isoc23_fscanf  # glibc-only: C23 fscanf redirect (glibc 2.38 and later; observed 2.44)
 fclose
 
 # Allocation and text: runtime buffers, the effect table, and messages.
@@ -105,7 +105,7 @@ strlen
 strspn
 strtok
 strtod
-__isoc23_strtol
+__isoc23_strtol  # glibc-only: C23 strtol redirect (glibc 2.38 and later; observed 2.44)
 
 # Atomics (atomic_* and __atomic_* in the inventory) compile to instructions
 # with clang on x86-64 and are not imports. If a build ever imports them from

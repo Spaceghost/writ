@@ -32,10 +32,22 @@
 #      they are not global T symbols. A name the rule maps to an effect that is
 #      not allowlisted, including any foreign C import, fails the check.
 #      IO.exit and IO.die are handled by the IO loop and have no row.
+#      Both the `_run` detection and this mapping rule depend on the C that
+#      Bend 2.0.39 emits and the way `bend -o` compiles it; re-validate them
+#      against the emitted C and the Base effect sources on any toolchain change.
+#      In a static binary, libc's own symbols share the table; they begin with
+#      `_` or are not `_run`/`_use` names in glibc 2.44, and any lower-case
+#      `<x>_run` that did collide would be denied, not admitted.
 #
-# Fails closed: a missing symbol table, a binary without the runtime effect
-# table symbol `io_runs`, or a statically linked binary (whose imports `nm -u`
-# cannot show) is refused rather than passed.
+# Static links: a binary with no (NEEDED) dynamic entries resolves libc inside
+# itself, so it has no imports to compare. The symbol comparison is skipped and
+# reported as not applicable; the effect-row check still runs on its symbol
+# table and still fails on a denied effect. A static PASS therefore confirms
+# the effect rows only, not the host-symbol surface.
+#
+# Fails closed: a missing symbol table or a binary without the runtime effect
+# table symbol `io_runs` (stripped, or not a Bend 2.0.39 binary) is refused
+# rather than passed.
 #
 # Exit status: 0 when no symbol and no effect is outside the profile; 1 when
 # any is, after printing each offending name; 2 when the binary cannot be
@@ -64,9 +76,9 @@ EFFECTS=$HERE/monitor-effects.txt
 [ -f "$EFFECTS" ] || die "$EFFECTS missing"
 
 # A static binary resolves its libc inside itself, so an empty `nm -u` would
-# say nothing about the host surface. Refuse it until a static check exists.
-readelf -d "$BIN" 2>/dev/null | grep -q '(NEEDED)' \
-  || die "$BIN: not dynamically linked; this check reads dynamic imports only"
+# say nothing about the host surface; only its effect rows are checked.
+LINK=dynamic
+readelf -d "$BIN" 2>/dev/null | grep -q '(NEEDED)' || LINK=static
 
 ALL=$(nm "$BIN" 2>/dev/null) || die "$BIN: nm could not read a symbol table"
 echo "$ALL" | grep -qE ' [bBdD] io_runs$' \
@@ -83,7 +95,11 @@ allow() {
 allow "$SYMBOLS" > "$TMP/allowed-symbols"
 allow "$EFFECTS" > "$TMP/allowed-effects"
 
-nm -u "$BIN" | awk '{ print $NF }' | sed 's/@.*//' | sort -u > "$TMP/symbols"
+if [ "$LINK" = dynamic ]; then
+  nm -u "$BIN" | awk '{ print $NF }' | sed 's/@.*//' | sort -u > "$TMP/symbols"
+else
+  : > "$TMP/symbols"
+fi
 
 echo "$ALL" | awk '
   $2 == "T" && $3 ~ /^[a-z][a-z0-9_]*_run$/ { sub(/_run$/, "", $3); print $3 }
@@ -103,7 +119,11 @@ comm -23 "$TMP/symbols" "$TMP/allowed-symbols" > "$TMP/bad-symbols"
 comm -23 "$TMP/effects" "$TMP/allowed-effects" > "$TMP/bad-effects"
 
 echo "binary: $BIN"
-echo "undefined symbols: $(wc -l < "$TMP/symbols" | tr -d ' ')"
+if [ "$LINK" = dynamic ]; then
+  echo "undefined symbols: $(wc -l < "$TMP/symbols" | tr -d ' ')"
+else
+  echo "undefined symbols: not applicable (static link)"
+fi
 echo "effect rows: $(tr '\n' ' ' < "$TMP/effects" | sed 's/ $//')"
 
 STATUS=0
@@ -118,7 +138,10 @@ if [ -s "$TMP/bad-symbols" ]; then
   sed 's/^/  /' "$TMP/bad-symbols"
 fi
 
-if [ "$STATUS" -eq 0 ]; then
+if [ "$STATUS" -eq 0 ] && [ "$LINK" = static ]; then
+  echo "result: PASS (effect rows within the monitor profile; static link, so"
+  echo "  the host-symbol surface was not checked)"
+elif [ "$STATUS" -eq 0 ]; then
   echo "result: PASS (within the monitor profile)"
 else
   echo "result: FAIL (outside the monitor profile)"
