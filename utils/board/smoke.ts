@@ -224,6 +224,7 @@ try {
   check("the change the lane's plan names carries the lane's chip", row.includes('class="chip chip-active"') && row.includes("#lane-smoke-lane"));
   check("the chip shows the ledger phase and an age", row.includes("Task 1 · fix round") && /chip-age">\d+ (s|min)</.test(row));
   check("task numbers are listed under the progress bar", /tasknums">[\d. ]+ done/.test(row));
+  check("a change row expands to its task list with open state kept", row.includes(`<details id="tasks-${expected}" class="tasklist" data-preserve-attr="open">`) && /class="task task-(done|open)"/.test(row) && row.includes('class="task-text">'));
   check("changes with no task and no lane are collapsed", tables.includes('id="rest-changes"') && /\d+ more changes with no task done and no lane/.test(tables));
   check("lane card shows its status line and the change it is on", lanesHtml.includes('class="lane-phase">Task 1 · fix round') && lanesHtml.includes(`lane-changes">on <a href="/change/${expected}"`));
   check("lane card shows the activity log, oldest first", lanesHtml.indexOf("read the brief") < lanesHtml.indexOf("started the probe build") && lanesHtml.includes('log-who">implementer'));

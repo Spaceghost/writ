@@ -103,6 +103,21 @@ function laneChip(l: Lane): string {
   return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase">${esc(phaseText(l))}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
 }
 
+/** The expandable task list under a change row: every box, grouped by section, open state kept. */
+function taskDetails(c: Change): string {
+  if (c.taskList.length === 0) return "";
+  let section: string | null = null;
+  const items: string[] = [];
+  for (const t of c.taskList) {
+    if (t.section !== section) {
+      section = t.section;
+      if (section !== null) items.push(`<li class="task-section">${esc(section)}</li>`);
+    }
+    items.push(`<li class="task ${t.done ? "task-done" : "task-open"}"><span class="box" aria-hidden="true">${t.done ? "☑" : "☐"}</span>${t.id === null ? "" : `<span class="task-id">${esc(t.id)}</span>`}<span class="task-text">${esc(t.text)}</span></li>`);
+  }
+  return `<details id="tasks-${slug(c.name)}" class="tasklist" data-preserve-attr="open"><summary>tasks</summary><ul>${items.join("")}</ul></details>`;
+}
+
 /** Task numbers a tasks.md marks done and open, for the line under a progress bar. */
 function taskNumbers(c: Change): string {
   if (c.taskIds.done.length === 0 && c.taskIds.open.length === 0) return "";
@@ -161,7 +176,7 @@ export function indexTables(baselines: Baseline[], changes: Change[], scan: Lane
     return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
 <td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
 <td>${statusTag(c.status)}</td>
-<td>${progress(c.tasks)}${taskNumbers(c)}</td>
+<td>${progress(c.tasks)}${taskNumbers(c)}${taskDetails(c)}</td>
 <td class="chips">${chips || `<span class="muted">none</span>`}</td>
 <td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
 </tr>`;
