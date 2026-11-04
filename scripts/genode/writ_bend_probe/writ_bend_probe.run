@@ -1,0 +1,109 @@
+#
+# writ_bend_probe.run - Genode run script (build configuration), not Writ
+# implementation. Genode channel lane, Task 1. Starts writ_bend_probe, the
+# unmodified C that Bend 2.0.39 emits for hosts/genode/monitor/Probe.bend
+# linked with the shim, under init on base-linux (BOARD=linux KERNEL=linux)
+# at 256M, and checks that the Bend program's Genode.log text reaches the
+# component's LOG session and that its two Genode.now readings around
+# Genode.sleep(100) differ by at least 100 ms.
+#
+# The configuration is writ_bend.tcl's writ_bend_boot with one change, so it
+# is written out here instead of calling that procedure: libc's stdout goes
+# to /dev/null (a <null/> node in /dev, on its own line: in the one-line form
+# '+ dir dev | + log | + null' the null node nests inside log, libc cannot
+# stat /dev/null, and the runtime stops on its first stdout write; run 1 in
+# verification/genode-effects-base-linux.txt) instead of /dev/log. The probe's
+# control line, printed with IO.print to stdout, therefore must not appear in
+# the LOG, and every "probe:" line that does appear came through
+# Genode.log -> writ_shim_log -> Genode::log, not through libc's stdout.
+# stderr stays on /dev/log, so a runtime error is still captured.
+#
+# Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
+# services plus a Timer session from the sibling timer component (the
+# upstream pattern: repos/libports/run/libc.run:1 builds timer and
+# :24-25 starts it with <provides><service name="Timer"/>; install_config is
+# tool/run/run:324). The shim opens its own Timer session, labelled
+# "writ_shim", at the probe's first Genode.now; libc opens its own for its
+# clock. The component's VFS holds /dev/log, /dev/null, and the vfs_pipe
+# file system at /pipe for the runtime's event loop; no file system,
+# network, or block access.
+#
+
+set name writ_bend_probe
+set ram 256M
+
+source [select_from_repositories run/writ_bend.tcl]
+
+build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]
+
+create_boot_directory
+
+install_config "
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start $name | caps: 1000 | ram: $ram
+  + config
+    + vfs
+      + dir dev
+        + log
+        + null
+      + dir pipe | + pipe
+    + libc | stdout: /dev/null | stderr: /dev/log | pipe: /pipe
+    + arg | value: $name
+    + arg | value: +RTS
+    + arg | value: --threads
+    + arg | value: 1
+    + arg | value: --gpu
+    + arg | value: off
+    + env | key: WRIT_MEM_REPORT | value: 1
+-
+"
+
+build_boot_image [build_artifacts]
+
+run_genode_until "child \"$name\" exited with exit value .*\n" 120
+
+writ_bend_require_exit0 $name
+writ_bend_require_shim_lines $name
+writ_bend_refuse_reserve_failure
+
+# The control line went to stdout (/dev/null); in the LOG it would mean the
+# run cannot tell libc's stdout from the shim's LOG path.
+if {[regexp {probe-control:} $output]} {
+	puts stderr "Error: the IO.print control line reached the LOG"
+	exit 1
+}
+
+foreach {re what} [list \
+	"\\\[init -> $name\\\] probe: hello from Bend through the Genode LOG session\r?\n" "Genode.log text" \
+	"\\\[init -> $name\\\] probe: PASS delta >= sleep\r?\n"                           "PASS verdict" ] {
+	if {![regexp $re $output]} {
+		puts stderr "Error: missing $what"
+		exit 1
+	}
+}
+
+# Recompute the delta from the logged readings rather than trusting the
+# verdict line alone (U32 difference, as the probe computes it).
+if {![regexp "probe: now before=(\[0-9\]+) after=(\[0-9\]+)" $output -> t0 t1]} {
+	puts stderr "Error: missing the two Genode.now readings"
+	exit 1
+}
+set delta [expr {($t1 - $t0) & 0xffffffff}]
+if {![regexp "probe: delta_ms=$delta sleep_ms=100\r?\n" $output] || $delta < 100} {
+	puts stderr "Error: delta $delta from the readings does not match the logged delta or is below 100 ms"
+	exit 1
+}
+puts "\n--- $name: readings $t0 -> $t1, delta $delta ms ---"

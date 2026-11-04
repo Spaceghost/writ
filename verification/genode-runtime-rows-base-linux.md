@@ -32,7 +32,9 @@ memory and fault rows must be measured again. No device was present or used.
   `writ_bend_gpuexample` (the four examples), and `writ_bend_overflow`
   (`scripts/runtime-profile/Overflow.bend`). Builds, hashes, and logs:
   `verification/genode-bend-hello-base-linux.txt` (host-layer section) and
-  `verification/genode-corpus-base-linux.txt`.
+  `verification/genode-corpus-base-linux.txt`. Since the channel lane's
+  Task 1 also `writ_bend_probe` (`hosts/genode/monitor/Probe.bend`, using
+  the `Genode.*` effects): `verification/genode-effects-base-linux.txt`.
 - **C probe**: a plain-C Genode component under `scripts/genode/probes/<row>/`
   (`probe_<row>.c`, `target.mk`, `writ_probe_<row>.run`), built with the
   writ_bend_hello `target.mk` pattern (`LIBS = posix`) by the Genode tool
@@ -75,6 +77,7 @@ the shared build and run files are `src/app/writ_bend.inc` and
 92fddcacccd06e30545ada83606dc960d081200366599049bf77d8db67db1846  run/writ_bend_gpuexample.run
 836482f88770e507d7dc9d4a2afbe31ece9085255193e7a5993672a45e7b5d35  run/writ_bend_hello.run
 37687fe801182740094f614f06e4d2ff4eb63602ae62df7fe8aedbb2746b1f11  run/writ_bend_overflow.run
+800d9483144202717aab77893d4200f34c0be288badb73fad5483fe787bed9ec  run/writ_bend_probe.run
 fdaa28a76a2a0686dc198234b08bc5fa0a60d3a7b3d41a319bba6a3100240283  run/writ_bend_rts.run
 5db756a649db3b2607ea8868828f83fc51a1b62771bdb659916cc45d52b7a161  run/writ_bend.tcl
 74439c72e91cd411a0819e4a637d786d268bb637e268ddc0ba102ce8bf425350  run/writ_bend_tests.run
@@ -93,6 +96,7 @@ f18ed1ce65ad452a8ae3bf23c1f3bbd1c7ed251c909caa00bde87810e2ab7b39  src/app/writ_b
 2bdeee659cc1c04ab544d876db3c71dcff55691215d630c37b092c752ed6b4eb  src/app/writ_bend_hello/target.mk
 f5150891fd912d58e278b1a0469e3115a94744987f5717b6d27bc9923dd3a9da  src/app/writ_bend.inc
 0ffbaa8e934ff9ae88fa0cc7847bbf9e1b79740642cc03798b3a79f782b14c62  src/app/writ_bend_overflow/target.mk
+99f2a1546031b2b7aac819a67ba098ff356e8d5da3a51b0cb8e7791cbaa846d7  src/app/writ_bend_probe/target.mk
 0f674ca0b0151a6afc7084890fc69cf4d3c671bc63820bcea58fe96019c6ea65  src/app/writ_bend_tests/target.mk
 7a49ff59befa5f69547d0931fc0ff8f3bed4e4fe6cd6e7bbd43fbaffd366342a  src/app/writ_bend_transfer/target.mk
 bbf48036b8f41f697c93b1b844ccd005b17434a6877632ede44629a93bdddbfb  src/app/writ_hello/main.cc
@@ -109,7 +113,7 @@ bdff1d1e0e488093ad27aeaa28205fa1ed5c11973d528254a7d33544986ee24b  src/app/writ_p
 1d0e82ff5e7743beac5974d58ff61e847ccb918e81ab8755cda237f6420c6529  src/app/writ_probe_reservation/target.mk
 fd9a2350dfd05b08082fb85a0375847b4010d554ec351abebce15562bdbc285c  src/app/writ_probe_threads/probe_threads.c
 d4ac74790dfaa624ff803067b0d02419a6bf0b8a1b2d1623da015130196510e4  src/app/writ_probe_threads/target.mk
-df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42  src/writ_shim/writ_mem.cc
+01d7dccbdf560dcd788dd3dfba4dfebb6513a035da14040d64a4e4b4d126920c  src/writ_shim/writ_mem.cc
 ```
 
 ## Authored non-Bend files
@@ -143,7 +147,8 @@ C, with the shim, under init on base-linux.
 | Memory: `munmap` | **supplied (host layer)** | whole-reservation release; no Bend program here calls it (corpus placed at its first hint, `released=0`) | C probe (`writ_probe_reservation_live`) |
 | Faults | **substituted** (termination only) | the host layer's fault path kills the component, no resumption; the runtime's own handler cannot run (libc emulates `sigaction`); **the parent does not record the fault** | Bend program (host layer): `writ_bend_overflow` runs 1-4 |
 | Threads | **supplied** | single-lane Bend runs open no worker; `--threads 2` not run through a Bend program | C probe |
-| Clock | **supplied** | monotonic; `nanosleep` returned short of 100 ms in 2 of 4 runs | C probe |
+| Clock | **supplied (Bend program via Genode.now/sleep)** | the shim's Timer session: `probe: now before=0 after=101`, `probe: delta_ms=101 sleep_ms=100` (runs 2-5: 101, 101, 101, 102 ms; no early wake); libc's own clock (`IO.now`/`IO.sleep`, `nanosleep`) is still a C-probe row, where `nanosleep` returned short of 100 ms in 2 of 4 runs | Bend program (`writ_bend_probe`, channel lane Task 1) + C probe |
+| LOG effect (`Genode.log`) | **supplied (Bend program)** | `Genode.log` -> `writ_shim_log` -> `Genode::log` on the component's LOG session: `[init -> writ_bend_probe] probe: hello from Bend through the Genode LOG session`, with libc stdout on /dev/null and the IO.print control line absent | Bend program (`writ_bend_probe`, channel lane Task 1) |
 | Event loop | **supplied** | needs the vfs_pipe mount and the libc `pipe` attribute; the corpus, the four examples, and the hello opened the loop's pipe and printed (Overflow printed nothing; the `writ_bend_rts` cases return before the loop) | Bend program (host layer): tests, examples, hello + C probe |
 | Process | **supplied** | `getenv`, stdout/stderr, exit status; `sysconf(_SC_NPROCESSORS_ONLN)` reports 1 | Bend program (host layer): exit value 0 of each run, `writ_bend_rts` |
 | Atomics | **unverified** | compiled; single-lane execution not separately shown, and no two lanes ran | compile of the generated C |
@@ -191,6 +196,21 @@ nothing before its fault, and the `writ_bend_rts` cases return during option
 parsing, before the loop, so neither shows the event loop.) Threads and clock
 remain C-probe rows: single-lane programs open no worker, and no Bend
 program here calls `IO.now` or `IO.sleep`.
+
+## Channel lane update (Task 1): Genode.* console and time effects
+
+2026-11-04. The shim (sha256 `01d7dccb...920c`, same translation unit,
+previously `df94a002...6f42`) adds `writ_shim_log`, `writ_shim_now_ms`, and
+`writ_shim_sleep_ms` over the component's LOG session and a Timer session it
+opens at first use. `hosts/genode/effects/Genode.bend` defines the effects
+`Genode.log`, `Genode.now`, and `Genode.sleep` with `.c` twins that call only
+those functions. The Bend program `hosts/genode/monitor/Probe.bend`, built
+as `writ_bend_probe` (`scripts/genode/writ_bend_probe/`) and run under init
+at 256M with libc stdout on `/dev/null`, logged its text through the LOG
+session and measured 101 to 102 ms around `Genode.sleep(100)` in four runs.
+The hello, rts, and 782-check corpus runs were repeated with the new shim
+and match (corpus lines byte-identical). Commands, configuration, logs, and
+the binary check: `verification/genode-effects-base-linux.txt`.
 
 ## Memory - reservation substituted, guard missing, munmap unverified (component lane, before the shim)
 

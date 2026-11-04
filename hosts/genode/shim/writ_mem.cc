@@ -1,10 +1,13 @@
 /*
  * writ_mem.cc - Genode host binding code for the Bend runtime's memory
- * calls. This is host binding code, not Writ policy: it makes no
- * authority, label, budget, or release decision, and nothing in it is
- * consulted by Writ's Bend verification. It is the memory part of the
- * single authored C++ unit GB-006 allows in a Bend component (the shim);
- * see hosts/genode/INVENTORY.md for its exported symbols and sessions.
+ * calls and for the Genode.* console and time effects. This is host
+ * binding code, not Writ policy: it makes no authority, label, budget, or
+ * release decision, and nothing in it is consulted by Writ's Bend
+ * verification. It is the single authored C++ unit GB-006 allows in a
+ * Bend component (the shim): the memory host layer below, then the LOG
+ * and Timer functions the effect twins in hosts/genode/effects/ call
+ * ("Console and time"). See hosts/genode/INVENTORY.md for its exported
+ * symbols and sessions.
  *
  * What it supplies, and why. Genode 26.08's libc commits and zeroes every
  * anonymous mmap from the component's RAM quota
@@ -118,6 +121,7 @@
 #include <libc/args.h>
 #include <region_map/client.h>
 #include <rm_session/connection.h>
+#include <timer_session/connection.h>
 #include <util/construct_at.h>
 
 /* libc includes (FreeBSD 12.0 constants: MAP_*, PROT_*, errno values) */
@@ -755,6 +759,86 @@ extern "C" int mprotect(void *addr, ::size_t len, int prot)
 	return 0;
 }
 
+
+/***********************************
+ ** Console and time (Genode.*)   **
+ ***********************************/
+
+/*
+ * Host functions behind the Bend effects Genode.log, Genode.now, and
+ * Genode.sleep (hosts/genode/effects/). Each moves bytes or reads a clock;
+ * none decides anything, and the Bend program alone decides what is
+ * logged and when it waits.
+ *
+ * LOG. writ_shim_log hands the bytes to Genode::log (repos/base/include/
+ * base/log.h), which writes them to the component's own LOG session, the
+ * one init routes to the parent's LOG service. The text is printed as a
+ * Cstring of at most len bytes (repos/base/include/util/string.h:757), so
+ * it ends at the first NUL; a line longer than the LOG session's
+ * MAX_STRING_LEN (232, repos/base/include/log_session/log_session.h:48)
+ * reaches the LOG in several pieces. Nothing is added to the text: the
+ * LOG service prefixes the session label ("[init -> <name>] ").
+ *
+ * Timer. One Timer::Connection (repos/base/include/timer_session/
+ * connection.h, label "writ_shim"), opened at the first now or sleep and
+ * kept for the component's life (Kept<T>, no destructor, as the memory
+ * state). It is used in the timer-session mode only: elapsed_ms is a
+ * plain RPC, and msleep blocks the calling thread on the connection's
+ * own Signal_receiver (connection.h:390-433), so it needs no entrypoint
+ * dispatch and may run on a runtime helper thread. Without a Timer
+ * route the session request is denied or never answered at the first
+ * call (init's routing decides; not exercised, and the shim reports
+ * nothing to the parent). The session clock is monotone milliseconds
+ * since this session was opened (the timer component subtracts the
+ * session's creation time, repos/base/include/timer/component.h:98-100
+ * and :202), so the first reading is near 0. writ_shim_sleep_ms returns
+ * only when that clock has advanced by at least ms, re-sleeping the
+ * remainder if msleep woke early, so a Bend program's delta of two
+ * readings around a sleep is at least the sleep (each early wake is
+ * counted in _timer_short_wakes and shown in writ_mem_report).
+ */
+
+static Kept<Timer::Connection> _timer;
+static unsigned long           _timer_short_wakes;
+
+static Mutex &_timer_mutex() { static Mutex m { }; return m; }
+
+/* Opens the Timer session on first use; null before construct. */
+static Timer::Connection *_timer_session()
+{
+	if (!_env) return nullptr;
+	Mutex::Guard guard(_timer_mutex());
+	if (!_timer.constructed())
+		_timer.construct(*_env, Timer::Connection::Label("writ_shim"));
+	return &*_timer;
+}
+
+extern "C" void writ_shim_log(char const *text, size_t len)
+{
+	if (!text) return;
+	log(Cstring(text, len));
+}
+
+/* 0 before construct, which no effect can run before. */
+extern "C" uint64_t writ_shim_now_ms(void)
+{
+	Timer::Connection *t = _timer_session();
+	return t ? t->elapsed_ms() : 0;
+}
+
+extern "C" void writ_shim_sleep_ms(uint32_t ms)
+{
+	Timer::Connection *t = _timer_session();
+	if (!t || ms == 0) return;
+	uint64_t const deadline = t->elapsed_ms() + ms;
+	for (bool first = true;; first = false) {
+		uint64_t const now = t->elapsed_ms();
+		if (now >= deadline) return;
+		if (!first) _timer_short_wakes++;  /* msleep returned before the deadline */
+		t->msleep(deadline - now);
+	}
+}
+
 extern "C" void writ_mem_report(char const *tag)
 {
 	if (!_env) return;
@@ -772,7 +856,8 @@ extern "C" void writ_mem_report(char const *tag)
 	    " faults resolved=", _faults_resolved,
 	    " benign retries=", _benign_retries,
 	    " reserved at hint=", _reserved_at_hint,
-	    " elsewhere=", _reserved_elsewhere, " released=", _released);
+	    " elsewhere=", _reserved_elsewhere, " released=", _released,
+	    " timer short wakes=", _timer_short_wakes);
 }
 
 

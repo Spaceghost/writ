@@ -9,14 +9,19 @@ PASS lines (764 before the merge of master at d8b1473) and `ALL LIBRARY TESTS PA
 the Linux single-lane reference line for line
 (`verification/genode-corpus-base-linux.txt`). This file lists host binding
 code only; none of it is Writ policy, and no authority, label, budget, or
-release decision is made here. The request queue and effects of task 2.2 are
-not part of this shim yet.
+release decision is made here. Since the Genode channel lane's Task 1
+(2026-11-04) the same unit also carries the LOG and Timer functions behind
+the `Genode.log`, `Genode.now`, and `Genode.sleep` effects
+(`hosts/genode/effects/`), exercised by `writ_bend_probe`
+(`verification/genode-effects-base-linux.txt`). The request queue and the
+channel of task 2.2 are not part of this shim yet.
 
 ## Files
 
 | File | Role | Linked into |
 | --- | --- | --- |
-| `hosts/genode/shim/writ_mem.cc` | memory host layer: lazily populated anonymous reservations, guard pages, component entry | `writ_probe_reservation` (C probe, Task 1); `writ_bend_hello` (Bend program, Task 2; `scripts/genode/writ_bend_hello/target.mk`, `LIBS = base libc`, posix no longer linked); `writ_bend_{tests,example,flow,transfer,gpuexample,overflow}` (Bend programs, Task 3; `scripts/genode/writ_bend_<name>/target.mk`, same pattern) |
+| `hosts/genode/shim/writ_mem.cc` | memory host layer: lazily populated anonymous reservations, guard pages, component entry; console and time functions for the `Genode.*` effects (channel lane, Task 1) | `writ_probe_reservation` (C probe, Task 1); `writ_bend_hello` (Bend program, Task 2; `scripts/genode/writ_bend_hello/target.mk`, `LIBS = base libc`, posix no longer linked); `writ_bend_{tests,example,flow,transfer,gpuexample,overflow}` (Bend programs, Task 3; `scripts/genode/writ_bend_<name>/target.mk`, same pattern); `writ_bend_probe` (Bend program `hosts/genode/monitor/Probe.bend`, channel lane Task 1; `scripts/genode/writ_bend_probe/target.mk`) |
+| `hosts/genode/effects/Genode.bend` and `genode_{log,now,sleep}.{c,js}` | Bend effect defs and their twins (`bend guide effects`); the `.c` twins are spliced into the generated C by the Bend compiler and call only `writ_shim_log`, `writ_shim_now_ms`, `writ_shim_sleep_ms`; the `.js` twins stop the run (JavaScript is not a Genode target). Not C++ and not a second shim unit | every Bend program that imports `Genode.bend` (now `writ_bend_probe`) |
 
 Live copy for the Genode build: `../writ-genode/writ-repo/src/writ_shim/writ_mem.cc`,
 byte-identical; its sha256 is recorded with each run in
@@ -52,8 +57,11 @@ run scripts source; live copy `run/writ_bend.tcl`).
 | `mprotect` | public entry point, shadows libc | `PROT_NONE` on a page-aligned range in a reservation makes a guard; `PROT_READ\|PROT_WRITE` on a guard-free range in a reservation returns 0 (it already is); lifting a guard or any other prot: -1 `ENOTSUP`; len 0, len larger than the reservation, or a range not contained in it: -1 `EINVAL`; outside reservations: libc (-1 `ENOSYS`) |
 | (all three above) | | fail with `ENOSYS` before `Libc::Component::construct` has resolved libc's originals |
 | `Libc::Component::construct` | component entry | stores the Env, resolves libc's originals, then runs `main` as `posix`'s construct.cc does (so `posix` is not linked); if the libc environment has `WRIT_MEM_REPORT=1` it registers an `atexit` report first (diagnostics only, reads no other configuration) |
-| `writ_mem_report` | diagnostics helper | logs PD RAM used/limit, caps, and reservation counters (populated chunks, faults resolved, benign retries, reservations placed at the hint or elsewhere, released); called by the probes, and from `exit` when `WRIT_MEM_REPORT=1` |
+| `writ_mem_report` | diagnostics helper | logs PD RAM used/limit, caps, and reservation counters (populated chunks, faults resolved, benign retries, reservations placed at the hint or elsewhere, released, and the Timer early-wake count); called by the probes, and from `exit` when `WRIT_MEM_REPORT=1` |
 | `writ_mem_restore_rt` | local (not global) asm symbol | `rt_sigreturn` restorer for the SIGSEGV handler |
+| `writ_shim_log(char const *text, size_t len)` | effect host function (`Genode.log`) | `Genode::log` of at most `len` bytes as one `Cstring` (ends at the first NUL); nothing added; a null `text` does nothing |
+| `writ_shim_now_ms(void) -> uint64_t` | effect host function (`Genode.now`) | `elapsed_ms()` of the shim's Timer session (ms since the session was opened); 0 before `construct`; the twin truncates to U32 |
+| `writ_shim_sleep_ms(uint32_t ms)` | effect host function (`Genode.sleep`) | `msleep` on the shim's Timer session until its clock has advanced by at least `ms` (re-sleeps the remainder after an early wake and counts it); `ms == 0` or before `construct` returns at once; called from a runtime helper thread (`io_work`) |
 
 ## Sessions and kernel interfaces used
 
@@ -73,6 +81,18 @@ run scripts source; live copy `run/writ_bend.tcl`).
 - **Env::ram() and Env::rm() behind a Genode `Heap`**: the per-reservation chunk
   tables and the `Shared_object` metadata.
 - **Local region map** (`Env::rm()`): attach/detach of each reservation.
+- **LOG** (the component's own, through `Genode::log`): `writ_shim_log`'s
+  text, and the shim's own diagnostic lines. No new session: the same LOG
+  session every component already has.
+- **Timer** (`Timer::Connection`, `repos/base/include/timer_session/connection.h`,
+  label `writ_shim`, one per component, opened at the first
+  `writ_shim_now_ms` or `writ_shim_sleep_ms` under its own mutex and never
+  closed): `elapsed_ms` (RPC) and `msleep` (blocks the calling thread on the
+  connection's own `Signal_receiver`, `connection.h:390-433`; no entrypoint
+  dispatch). Components that never call these open no Timer session from
+  the shim; libc opens its own Timer session for its clock either way. The
+  route comes from init (each run script starts a sibling `timer`); a
+  missing route is not handled by the shim (not exercised).
 - **ROM** (through the dynamic linker): `Shared_object` for `libc.lib.so` to
   reach libc's own `mmap`, `munmap`, `mprotect`.
 - **base-linux only**: the raw Linux `rt_sigaction`, `getpid`, `gettid`, and
@@ -115,6 +135,7 @@ are never destroyed (`Kept<T>`, no destructor): the Bend runtime exits with
 its reservations still mapped, and static destruction inside `exit` would
 otherwise revert the live chunk tables and close the RM session under mapped
 memory (observed as a "dangling allocation" warning with the Bend hello).
+The shim's Timer session is kept the same way (`Kept<Timer::Connection>`).
 
 ## Bounds
 
@@ -140,6 +161,15 @@ more than 16 times over a reservation's life is refused (component dies); and wi
 stuck at once the slots evict each other before any reaches the bound, so an
 unresolvable fault among them livelocks instead of terminating.
 
+Console and time (channel lane, Task 1): `writ_shim_log` passes at most
+`len` bytes and stops at a NUL; a line longer than the LOG session's
+`MAX_STRING_LEN` (232, `log_session.h:48`) reaches the LOG in pieces.
+`writ_shim_now_ms` wraps only at 2^64 ms; `Genode.now` truncates to 32 bits
+(wraps after about 49.7 days; the probe compares by U32 difference).
+`writ_shim_sleep_ms` sleeps at most `ms` per `msleep` call and loops until
+the deadline; each early wake is counted (`timer short wakes=` in
+`writ_mem_report`; 0 in every recorded run). One Timer session.
+
 ## Changes in Task 3
 
 - Comments only, implementation tokens unchanged (compared with the c96ef40
@@ -156,6 +186,16 @@ unresolvable fault among them livelocks instead of terminating.
   `df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42`; the
   hello, rts, and both reservation probe runs were repeated with it
   (`verification/genode-corpus-base-linux.txt`, final-review section).
+
+## Changes in channel lane, Task 1
+
+- Added the "Console and time" section (three exports above, the Timer
+  session, the `Genode::log` use) and the `timer short wakes=` field of
+  `writ_mem_report`; the file keeps its name (GB-006: one unit). sha256
+  `df94a002cd1fed498866f6faafe0a6e04249af74f7144647c28e85aff8026f42` ->
+  `01d7dccbdf560dcd788dd3dfba4dfebb6513a035da14040d64a4e4b4d126920c`.
+  The hello, rts, and 782-check corpus runs were repeated with it (corpus
+  lines byte-identical); see `verification/genode-effects-base-linux.txt`.
 
 ## Fault behaviour observed through a Bend program
 
@@ -176,6 +216,13 @@ a touch while mprotect re-pieces a chunk, are handled by a bounded retry
 lock the handler needs would deadlock. The handler runs on the faulting
 stack (no SA_ONSTACK, see the source header), so a machine-stack overflow
 dies without the shim's line.
+
+The Timer functions hold their own mutex only around the open-once check
+(not across `elapsed_ms` or `msleep`);
+`Timer::Connection::msleep` serializes concurrent sleeps on the one
+connection (`connection.h`, its `_mutex`), so two helper threads sleeping at
+once wait one after the other. The early-wake counter is a diagnostic and is
+not atomic.
 
 ## System calls do not populate
 

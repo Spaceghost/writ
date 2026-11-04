@@ -277,8 +277,10 @@ linked with the host-layer memory shim. The one-line `IO.print` hello prints
 `hi` and exits 0, and `Tests.bend` passes all 782 checks at a 256M quota,
 with a log that matches the Linux single-lane run line for line. The open
 gaps: when a component faults it is terminated, but the parent (init)
-records nothing; only single-lane runs (`--threads 1`) have been made; and
-threads and the clock are still shown only by C probes. The per-row record, with
+records nothing; only single-lane runs (`--threads 1`) have been made;
+threads are still shown only by C probes; and the clock is shown through a
+Bend program only on the shim's Timer session (`Genode.now`/`Genode.sleep`),
+not through libc's (`IO.now`/`IO.sleep`). The per-row record, with
 commands, log lines, source citations, and whether each row came from a Bend
 program, a plain-C probe, or source reading, is
 [genode-runtime-rows-base-linux.md](../verification/genode-runtime-rows-base-linux.md);
@@ -399,3 +401,18 @@ Records: [genode-corpus-base-linux.txt](../verification/genode-corpus-base-linux
 [genode-corpus-linux-reference.txt](../verification/genode-corpus-linux-reference.txt),
 and the updated rows in
 [genode-runtime-rows-base-linux.md](../verification/genode-runtime-rows-base-linux.md).
+
+Console and time effects (channel lane, Task 1): `make run/writ_bend_probe`
+runs `hosts/genode/monitor/Probe.bend`, which calls the Bend effects
+`Genode.log`, `Genode.now`, and `Genode.sleep` from
+`hosts/genode/effects/Genode.bend`. Their `.c` twins call only the shim's
+`writ_shim_log`, `writ_shim_now_ms`, and `writ_shim_sleep_ms` (same shim
+unit, over the component's LOG session and a Timer session). With libc's
+stdout on `/dev/null`, the probe's text still reached the LOG
+(`[init -> writ_bend_probe] probe: hello from Bend through the Genode LOG
+session`), and its readings around `Genode.sleep(100)` differed by 101 to
+102 ms in four runs at 256M. Current gap: these effects are host rows
+beyond the monitor profile (`check-binary.sh` lists exactly the three) and
+are not yet admitted to it, and the probe's failure branch was not
+exercised. Record:
+[genode-effects-base-linux.txt](../verification/genode-effects-base-linux.txt).
