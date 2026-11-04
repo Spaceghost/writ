@@ -1018,7 +1018,10 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
  * client: the signal is submitted and not acknowledged, and the next reply
  * on the channel overwrites the result bucket, so a client that never
  * reads its replies holds at most one result (its own bucket) and one ring
- * entry, and cannot delay another channel (GB-008). The client may map its result
+ * entry, and cannot delay another channel (GB-008) in the cases run. The
+ * submit itself is an RPC to this component's PD session in core; see
+ * hosts/genode/INVENTORY.md "Signal submit" for when that could block and
+ * which client cases are not shown. The client may map its result
  * bucket writable (Genode RAM dataspaces carry no read-only capability);
  * the shim never reads the result bucket, so that changes nothing here.
  *

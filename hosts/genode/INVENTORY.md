@@ -411,6 +411,17 @@ configured).
   `befbf2b2adf239b03d4eedc376220ab04bfc8b04b35ded683443c43c545af59d`
   (`verification/genode-channel-base-linux.txt`, TASK 3, HASHES).
 
+## Changes in channel lane, Task 3 final review
+
+- "Writ channel" section only: the refusal decision word is
+  `CHANNEL_DECISION_REFUSED = 3` (was 2, which overlapped Denied), with
+  its comment; then a comment-only change qualifying "cannot delay
+  another channel (GB-008)" with a cross-reference to "Signal submit"
+  (tokens identical with comments stripped). sha256 `befbf2b2...f59d`
+  -> `0c9d3616...f740` (decision word) ->
+  `d97a98de71818168751ab648b00a64bcefddac80b36b21b27c8786e95f1922e3`
+  (`verification/genode-channel-base-linux.txt`, TASK 3 FINAL REVIEW).
+
 ## Fault behaviour observed through a Bend program
 
 `writ_bend_overflow` (`scripts/runtime-profile/Overflow.bend`): every

@@ -870,6 +870,12 @@ shown: a client whose process is gone while its session stays open
 (listed as a gap).
   run-writ_bend_monitor_dead_client-t3-fr.out, -t3-fr-2.out,
   -t3-fr-final.out: rc 0.
+  Failed attempt kept: run-writ_bend_monitor_dead_client-t3-fr-1.out,
+  rc 2: writ_client_d "FAIL expected decision 0 reason 0, observed
+  decision 2 reason 5" and "Error: missing dead client sent and exited".
+  Cause: the client's mode buffer was String<16>, which truncated
+  "exit_after_signal", so writ_client_d ran in single mode and checked
+  a decision; fixed by String<32> in writ_channel_client.cc.
 
 writ_bend_boot refactor. writ_bend_boot takes optional start, extra
 config, children and builds; the probe run and writ_bend_monitor_boot
@@ -901,3 +907,41 @@ src/ is byte-identical to a committed file.
 
 Limits: CPU base-linux only; no GPU, no Lean kernel verdict, no
 hardware kernel. Task 2.2 and section 3 remain open.
+
+==========================================================================
+TASK 3 FINAL REVIEW, RE-REVIEW (2026-11-04)
+==========================================================================
+
+Dead-client run tightened (writ_bend_monitor.tcl d0de1a0e...dce7). The
+run now reads writ_client_f's channel from the shim's open line and
+requires that channel's Denied 5 decision before R's Committed, and
+requires core's "Warning: invalid signal-context capability", so the
+reply to the freed context is required, not only observed. The earlier
+"Required and observed" paragraph above described the observation; the
+requirement in the run scripts that produced -t3-fr*.out was any
+route-subject-2 decision before R's. The dead client's own decision is
+still not required: its queued entry can become the close event, and
+the S count is 1 or 2 (1 in this re-run). Requiring two S decisions
+would fail on that legitimate interleaving.
+
+Shim comment (D3), comment only: "cannot delay another channel (GB-008)"
+now reads "... (GB-008) in the cases run" with a cross-reference to
+INVENTORY.md "Signal submit". Tokens with comments stripped
+(g++ -fpreprocessed -dD -E -P, whitespace normalised; 3553 tokens) are
+identical to 0c9d3616...f740. writ_mem.cc 0c9d3616...f740 ->
+d97a98de71818168751ab648b00a64bcefddac80b36b21b27c8786e95f1922e3.
+
+Runs on the rebuilt binaries (writ_mem.o recompiled; t3-rereview-runs.log):
+  make run/writ_bend_hello: rc 0, "hi", exit 0, ram used=8335360, caps 35
+    (run-writ_bend_hello-t3-rr.out).
+  make run/writ_bend_monitor_dead_client: rc 0
+    (run-writ_bend_monitor_dead_client-t3-rr.out). Channels: f=1, d=2,
+    r=3. Observed: channel 1 (writ_client_f) Denied 5; core "Warning:
+    invalid signal-context capability"; channel 3 (writ_client_r)
+    Committed 0; R's PASS and exit 0; no monitor exit; 1 S decision.
+No corpus rerun: the shim change is comment-only (token-identical).
+
+HASHES (sha256, re-review)
+  d97a98de71818168751ab648b00a64bcefddac80b36b21b27c8786e95f1922e3  hosts/genode/shim/writ_mem.cc
+  d0de1a0ebc4dc998a077c0692f8f426e7ff4eb4182fd56e2a1da07b338a1dce7  scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl
+  Runtime-rows live hash table regenerated; live copies cmp-identical.

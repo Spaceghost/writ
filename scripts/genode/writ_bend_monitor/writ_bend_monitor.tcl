@@ -289,9 +289,10 @@ proc writ_bend_monitor_queue_run { } {
 #   registers a result signal context, frees it, sends S's request, and
 #   stays alive, so the monitor's reply signal goes to a context that no
 #   longer exists; writ_client_r (route subject 1) sends R's request after
-#   3000 ms and must be Committed. Fails unless R's decision and PASS are
-#   logged after both other requests were sent, R exited 0, and init
-#   reported no exit of the monitor (it must still be serving).
+#   3000 ms and must be Committed. Fails unless the freed-context
+#   client's decision is logged before R's, core warns about the freed
+#   context, R's PASS and exit 0 are logged, and init reported no exit of
+#   the monitor (it must still be serving).
 proc writ_bend_monitor_dead_client_run { } {
 	global output
 
@@ -305,11 +306,21 @@ proc writ_bend_monitor_dead_client_run { } {
 	run_genode_until "child \"writ_client_r\" exited with exit value .*\n" 130
 
 	set m "\\\[init -> $monitor\\\]"
+	# The freed-context client's channel, from the shim's open line, so
+	# its own decision (and so the reply to its freed context) is
+	# required, not just any route-subject-2 decision. The dead client's
+	# decision is not required: its queued entry may become the close
+	# event instead (observed once), so the S count is 1 or 2.
+	if {![regexp "$m writ_channel: channel (\[0-9\]+) opened for 'writ_client_f -> channel' route subject 2" $output -> f_channel]} {
+		puts stderr "Error: missing freed-context client's channel"
+		exit 1
+	}
 	writ_bend_monitor_require [list \
 		"\\\[init -> writ_client_d\\\] client: request sent, exiting before any reply" "dead client sent and exited" \
 		"\\\[init -> writ_client_f\\\] client: registered a result signal context and freed it" "freed result context" \
 		"\\\[init -> writ_client_f\\\] client: request sent, staying alive with no result handler" "freed-context client sent" \
-		"$m monitor: channel=\[0-9\]+ route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 .*$m monitor: channel=\[0-9\]+ route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "R's decision after a decision for a dead or freed-context client" \
+		"$m monitor: channel=$f_channel route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 .*$m monitor: channel=\[0-9\]+ route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "R's decision after the freed-context client's decision" \
+		"Warning: invalid signal-context capability" "core warning for the freed context" \
 		"\\\[init -> writ_client_r\\\] client: PASS decision 1 reason 0 as expected" "R's verdict" \
 		"child \"writ_client_r\" exited with exit value 0\r?\n" "R exit value 0" ]
 	if {[regexp "child \"$monitor\" exited" $output]} {
