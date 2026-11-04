@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Adopt the experimental Unikraft signal library for the fault message?</title>
+<meta name="writ-topic" content="unikraft">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+</style>
+</head><body>
+<h1>Adopt the experimental Unikraft signal library for the fault message?</h1>
+
+<p>UL-006 wants a fault to halt with a distinct code and the runtime's own message. The trial showed the message (<code>bend: memory fault (machine stack overflow?)</code>) appears only with <code>CONFIG_LIBPOSIX_PROCESS_SIGNAL</code>, which Unikraft 0.21.0 marks experimental and which does not compile as shipped (it needed <code>-include uk/config.h</code>). Adopting it means an experimental library in every image, a permanent build flag, a change to how shutdown works, and another 95-minute corpus rebuild. Without it the delivered images crash silently but still exit with the distinct code 253.</p>
+<p class="note">Either way, arena exhaustion stays a crash (253): the guest runs out of memory backing the arena before the runtime's own check is reached. That half of UL-006 needs a different idea (a smaller arena or a guard on the arena's end).</p>
+<form method="post" action="/questions/q2/answer">
+<fieldset><legend>Decision</legend>
+<label><input type="radio" name="signals" value="adopt">Adopt it: a lane enables the option, records the build flag, rebuilds and reruns the corpus</label>
+<label><input type="radio" name="signals" value="leave">Leave it: the distinct code is enough for now; the message half stays a recorded gap</label>
+<label><input type="radio" name="signals" value="upstream">Leave it and file the compile problem upstream first</label>
+</fieldset>
+<label>Notes<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

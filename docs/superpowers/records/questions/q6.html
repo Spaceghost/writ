@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The buckets runtime: brainstorm with Spaceghost first, or draft from his message?</title>
+<meta name="writ-topic" content="vision">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+</style>
+</head><body>
+<h1>The buckets runtime: brainstorm with Spaceghost first, or draft from his message?</h1>
+
+<p>Spaceghost described "a datacentric Rust of sorts, not a programming language, but buckets and code for the buckets as a runtime built to be cache-friendly and speedy when typed". The channel lane built one concrete piece (fixed-width record slots a client appends to and reads from, the monitor's loop as the only code attached). The brief for him lists the questions a design would need to settle (unit of typing, who owns a bucket's code and where it runs, queries over buckets versus views, what is Bend policy versus runtime mechanism).</p>
+<form method="post" action="/questions/q6/answer">
+<fieldset><legend>Next step</legend>
+<label><input type="radio" name="buckets" value="brainstorm">Set up a brainstorm with Spaceghost before anything is drafted</label>
+<label><input type="radio" name="buckets" value="draft">Draft a proposal under openspec/changes from his message and the channel, for him to tear apart</label>
+<label><input type="radio" name="buckets" value="wait">Wait; the host work comes first</label>
+</fieldset>
+<label>Notes<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>
