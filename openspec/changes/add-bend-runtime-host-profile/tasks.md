@@ -19,5 +19,5 @@ qualify a host.
 
 ## 3. Evidence
 
-- [ ] 3.1 Store per-host corpus output, lane count, GPU mode, compiler, and binary hash under verification/ and link them from the traceability table; keep review-only and executed evidence separate.
-- [ ] 3.2 Validate OpenSpec strictly and run the ordinary Bend test and proof checks to confirm no policy source changed.
+- [x] 3.1 Store per-host corpus output, lane count, GPU mode, compiler, and binary hash under verification/ and link them from the traceability table; keep review-only and executed evidence separate. Evidence: `verification/runtime-profile-hosts.md` (executed rows for Linux native one and four lanes, Linux JavaScript, Genode base-linux, and Unikraft QEMU TCG, each cell citing its source file; review-only items listed separately; Genode base-hw and the Unikraft channel are pending placeholders), linked from `openspec/traceability/bend-runtime-host-profile.md`. This stores evidence and qualifies no host.
+- [x] 3.2 Validate OpenSpec strictly and run the ordinary Bend test and proof checks to confirm no policy source changed. Evidence (2026-11-04, Linux, Bend 2.0.39, recorded in `docs/superpowers/records/2026-11-04-host-profile-evidence/task-1-report.md`): `bend Tests.bend` 782 PASS lines, `ALL LIBRARY TESTS PASSED`, exit 0, output identical to `verification/tests-native.txt`; `bend PROOF.bend` `ALL PROOFS CHECK`, exit 0 (no `--verdict`; the Lean kernel check was not run); OpenSpec 1.16.0 strict 44 passed, 0 failed. No `.bend` file changed in this lane.
