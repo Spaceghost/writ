@@ -98,7 +98,7 @@ host work. See the [backend guide](writfs/README.md) and its
 ## Status
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
-The recorded suite passes **764 checks on each of the JavaScript and native CPU
+The recorded suite passes **782 checks on each of the JavaScript and native CPU
 backends**. Physical GPU execution and independent Lean kernel verification have
 not been established.
 
