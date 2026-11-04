@@ -76,6 +76,9 @@ Task 2 probes (in tree), emitted with `bend scripts/unikernel/<P>.bend -o $W/gen
   gen/overflow.c  1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc
   gen/lanes.c     26d9873efaced5e45f828389384c65637a3872a61062cad7b2f1ef177ffc8fb1
   gen/exit.c      7b1b4c4386200758c1f77000328364f038fd96a09f3a46c179699e2d1bf14883
+  gen/exit0.c     ea0258f75b4f71f4145fc34cac2e0d4e34aacf4ddaa33f03d0790d75e01e6439
+                  (from $W/gen/exit0.bend, the sed variant of Exit.bend, emitted with
+                  `bend $W/gen/exit0.bend -o $W/gen/exit0.c`)
 
 == OSv (Task 3; compat observation, see verification/unikernel-matrix-osv.md) ==
 OSv release v0.57.0 (published 2022-12-20; annotated tag object 1352e20ca772a6ff50817b1275af915069178102,

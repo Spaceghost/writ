@@ -4,14 +4,14 @@ Selection (1.1, 1.2) is recorded in docs/UNIKERNELS.md ("Selection matrix, 2026-
 verification/unikernel-matrix-unikraft.md, verification/unikernel-matrix-osv.md, and
 verification/unikernel-pins.txt. Unikraft 0.21.0 is a native link; OSv 0.57.0 is a
 compat observation only (a Linux PIE through OSv's ELF loader), recorded so the matrix
-has two candidates. All runs are QEMU TCG emulated boots. The port and boot tasks remain
+has two candidates. All boot runs are QEMU TCG emulated boots (the one `linuxu` run was process execution, and native calibration runs on Linux). The port and boot tasks remain
 pending.
 
 ## 1. Selection
 
 - [x] 1.1 Pin Unikraft and OSv versions and toolchains; build the generated C of the `IO.print` reference program against each as a native application and record build outcome.
-  Checked with OSv as a recorded outcome, not a native build: OSv has no mode that links
-  application C into its kernel, so its build is a compat PIE (unikernel-matrix-osv.md).
+  Checked with OSv as a recorded outcome, not a native build: OSv's documentation describes no mode that links
+  application C into its kernel (unverified; no native-link attempt was made, and it is not a reason for the choice, which rests on Unikraft's executed native-link cells), so its build is a compat PIE (unikernel-matrix-osv.md).
 - [x] 1.2 Fill the selection matrix, one row per runtime inventory item per candidate, by executing each primitive (reservation with guard, threads or single lane, fault path, clock, self-pipe, environment, exit); publish the matrix and the chosen kernel with reasons.
 - [ ] 1.3 If Unikraft is chosen, run the reference program under its `linuxu` platform and record it as process execution, not a boot.
   Unchecked: the chosen pin (0.21.0) has no `linuxu` platform. The 0.16.3 `linuxu` image

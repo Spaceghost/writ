@@ -62,7 +62,9 @@ RAM exhaustion is a kernel abort that halts without power-off, not the runtime's
   sets it. OSv 0.57.0 predates them (O-E0). The object's references are renamed back with
   `objcopy --redefine-sym __isoc23_<f>=<f>` before linking. The runtime calls
   `strtol(v, NULL, 10)` and `fscanf(f, "%ld %ld", ...)`, where the C17 and C23 behavior
-  is the same (C23 differs only on `0b` prefixes with base 0 or 2).
+  is the same (C23 differs only on `0b` prefixes with base 0 or 2). Only `strtol` and
+  `fscanf` references are known to be present; the other five renames are defensive no-ops
+  when the symbol is absent, and the build script's `nm` check confirms none remain.
 
 ## Build and run harness (outside the tree)
 
