@@ -220,7 +220,7 @@ have their own evidence.
 
 The [roadmap](../openspec/ROADMAP.md) tracks the common contract and four host
 changes, plus a runtime and unikernel lane: the
-[Bend runtime host profile](../openspec/changes/add-bend-runtime-host-profile/proposal.md)
+[Bend runtime host profile](../openspec/changes/archive/2026-11-04-add-bend-runtime-host-profile/proposal.md)
 every port must satisfy ([inspected surface](BEND-RUNTIME.md)), an
 [immutable unikernel appliance](../openspec/changes/add-unikernel-appliance-host/proposal.md)
 for the monitor alone, a

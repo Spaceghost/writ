@@ -69,7 +69,7 @@ is in [docs/BEND-RUNTIME.md](../docs/BEND-RUNTIME.md).
 
 | Order | Change | Required evidence |
 | --- | --- | --- |
-| 1 | [Bend runtime host profile](changes/add-bend-runtime-host-profile/proposal.md) | Per-version host inventory, monitor allowlists, a binary check, and single-lane parity on each host |
+| 1 | [Bend runtime host profile](changes/archive/2026-11-04-add-bend-runtime-host-profile/proposal.md) | Per-version host inventory, monitor allowlists, a binary check, and single-lane parity on each host |
 | 2 | [Unikernel appliance host](changes/add-unikernel-appliance-host/proposal.md) | Corpus booted inside a pinned Linux-compatible unikernel image, one authenticated ingress, external state, and a timed rebuild drill |
 | 3 | [Library-unikernel Bend runtime](changes/add-unikernel-library-runtime/proposal.md) | Monitor natively linked into a library unikernel chosen by an executed matrix ([survey](../docs/UNIKERNELS.md)), effects bound to kernel primitives, parity in three environments |
 | 4 | [Freestanding Bend runtime](changes/add-freestanding-bend-runtime/proposal.md) | Unchanged evaluator over a reviewed no-libc host layer on a 64-bit kernel variant, serial-captured parity with the Linux single-lane record |

@@ -1,6 +1,6 @@
 # Bend runtime host profile traceability
 
-Proposed change: [add-bend-runtime-host-profile](../changes/add-bend-runtime-host-profile/specs/bend-runtime-host-profile/spec.md).
+Proposed change: [add-bend-runtime-host-profile](../changes/archive/2026-11-04-add-bend-runtime-host-profile/specs/bend-runtime-host-profile/spec.md).
 This is a proposed change; nothing here marks a host as satisfying the
 profile or qualified. Every execution named here is CPU execution with
 `--gpu off`; the Unikraft runs are emulated boots under QEMU TCG and the

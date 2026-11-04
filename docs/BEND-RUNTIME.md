@@ -6,7 +6,7 @@ proposed [unikernel appliance](../openspec/changes/add-unikernel-appliance-host/
 the [freestanding runtime](../openspec/changes/add-freestanding-bend-runtime/proposal.md),
 Genode, and the future Drift-backed kernel, must supply what that generated file
 asks of its host. This inspection records that surface for **Bend 2.0.39** so
-the [runtime host profile](../openspec/changes/add-bend-runtime-host-profile/proposal.md)
+the [runtime host profile](../openspec/changes/archive/2026-11-04-add-bend-runtime-host-profile/proposal.md)
 has a concrete starting inventory.
 
 Inspected on 2026-11-03 by emitting C for a one-line `IO.print` program with
