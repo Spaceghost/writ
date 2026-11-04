@@ -43,3 +43,58 @@ Genode 26.08
 
 Run script execution successful.
 
+
+== 2. Own component: writ_hello ==
+
+Sources:   ../writ-genode/writ-repo/src/app/writ_hello/{target.mk,main.cc}
+           ../writ-genode/writ-repo/run/writ_hello.run
+           (copies: scripts/genode/writ_hello/). main.cc is the minimal
+           Component::construct(Genode::Env &) calling Genode::log once.
+           The run script starts writ_hello under init with routes to the
+           parent's LOG, PD, CPU, and ROM only, waits up to 20 s for the line,
+           and checks it with grep_output/compare_output_to.
+Setup:     REPOSITORIES += ../writ-genode/writ-repo appended to etc/build.conf.
+Command:   cd ../writ-genode/build/x86_64 && make run/writ_hello
+Duration:  real 0m2.210s (incremental; base, core-linux, init already built)
+Exit:      0, "Run script execution successful."
+
+Log after "genode build completed" (verbatim, ANSI colour codes stripped):
+genode build completed
+spawn ./core
+Genode 26.08
+17592186044415 MiB RAM and 19000 caps assigned to init
+[init -> writ_hello] writ_hello: component constructed on Genode
+
+Run script execution successful.
+
+
+Failure path observed (first attempt, before the fix now in writ_hello.run):
+the wait pattern was "writ_hello: component constructed on Genode\n". The
+line was printed, but the pty delivers "\r\n", so the pattern never matched:
+
+  [init -> writ_hello] writ_hello: component constructed on Genode
+  Error: Test execution timed out
+  make: *** [etc/build.conf:155: run/writ_hello] Error 254
+
+The pattern now ends ".*\n", as upstream log.run's does. This also shows the
+run script exits nonzero when the expected line is not matched within the
+timeout. After both runs, no core/init/component processes remained (pgrep).
+
+== Limits ==
+
+- Genode-on-Linux only (base-linux). Says nothing about base-hw, NOVA, or
+  any native kernel, and nothing about Writ's own Linux host profile.
+- Seccomp check (separate manual start, not part of the run script):
+    cd ../writ-genode/build/x86_64/var/run/writ_hello/genode
+    timeout 4 ./core &   # then, 2 s later, /proc/<pid>/status of core's children
+  result:
+    [Genode] init                 NoNewPrivs: 1  Seccomp: 2 (filter)
+    [Genode] init -> writ_hello   NoNewPrivs: 1  Seccomp: 2 (filter)
+    core (core-linux)             NoNewPrivs: 0  Seccomp: 0
+  So components start under no_new_privs and a seccomp filter; core does
+  not. The filter's contents were not inspected.
+- writ_hello stays resident after construct() returns (normal for a Genode
+  component); the run tool and timeout end the scenario, not the component.
+- tool/run/run was invoked through nixpkgs expect 5.45.4 via an authored
+  build.conf rule, because the host has no /usr/bin/expect and no root.
+  The upstream tree is unmodified.
