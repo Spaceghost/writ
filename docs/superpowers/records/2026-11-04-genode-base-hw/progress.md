@@ -22,3 +22,4 @@ Final review: Approved for merge; 12 minors plus record alignments (traceability
 Final fix pass DONE (985189f merge, 821d20c). Second master merge requested to reconcile runtime-profile-hosts.md and the profile 2.3 note with the Unikraft merge; scoped re-review follows.
 Reconcile merge 60e732e done. Scoped re-review of the final pass dispatched.
 Final fix re-review: all addressed except two record lines (INVENTORY Env-lock sentence; base-hw row citations), fixed at integration by the controller. Merging to master.
+Merged to master as e7ff576 and pushed (gate: suite 782, proofs, MonitorCheck 17, OpenSpec 44/44, flake check); add-bend-runtime-host-profile archived as 03b7bcd.
