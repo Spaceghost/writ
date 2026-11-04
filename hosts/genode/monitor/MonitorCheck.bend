@@ -8,19 +8,20 @@ import ./Monitor.bend as Monitor
 
 # Linux check of the monitor's pure decision (Genode channel lane, Task 2).
 # Host scaffolding, not a Writ test suite entry: it runs Monitor.decide on
-# the two records the client probe sends, without Genode, the shim, or the
-# effects, so the Bend outcome can be compared with the component's. The
-# records are SYNTHETIC and the route subject is written in here, which is
-# exactly what the component never does: there it comes from the shim.
+# the records the client probe sends and on the channel-table cases,
+# without Genode, the shim, or the effects, so the Bend outcome can be
+# compared with the component's. The records are SYNTHETIC and the channel
+# id and route subject are written in here, which is exactly what the
+# component never does: there they come from the shim.
 # Exits 1 when an expected outcome changes.
 
 def expected_session_reader() -> U32:
   U32.from_nat(Negotiation.Session.revision(Monitor.initial_reader()))
 
-# A request as the shim would hand it over, for route subject `route`, body
-# session `session`, and body claimed subject `claimed`.
-def request(route: U32, session: U32, expected: U32, claimed: U32) -> Host.Request:
-  Host.Request{7, route, 1, 1, session, expected, Scenario.graph_epoch(),
+# A request as the shim would hand it over: channel id, route subject, body
+# session, expected revision, and the body's claimed subject.
+def request(channel: U32, route: U32, session: U32, expected: U32, claimed: U32) -> Host.Request:
+  Host.Request{channel, route, 1, 1, session, expected, Scenario.graph_epoch(),
     Scenario.policy_epoch(), Scenario.authority_epoch(), 99, 10, 1, 20, 1, claimed, 0, 0, 0}
 
 def show(reply: Host.Reply) -> String:
@@ -40,6 +41,19 @@ def reason(reply: Host.Reply) -> U32:
     case Host.Reply{_, _, _, r, _, _, _, _, _, _, _, _, _, _, _, _}:
       r
 
+def descriptor(reply: Host.Reply) -> U32:
+  match reply:
+    case Host.Reply{_, _, _, _, _, _, _, _, _, _, _, _, _, d, _, _}:
+      d
+
+def frontend_revision(reply: Host.Reply) -> U32:
+  match reply:
+    case Host.Reply{_, _, _, _, _, _, _, _, _, _, _, _, _, _, f, _}:
+      f
+
+def outcome_is(+reply: Host.Reply, d: U32, r: U32) -> Bool:
+  U32.is_eq(decision(reply), d) && U32.is_eq(reason(reply), r)
+
 def verdict(ok: Bool, +label: String) -> IO(Unit):
   match ok:
     case True{}:
@@ -47,33 +61,67 @@ def verdict(ok: Bool, +label: String) -> IO(Unit):
     case False{}:
       IO.die(Unit, 1, "FAIL " ++ label)
 
+def once(+req: Host.Request, state: Monitor.MonitorState, +candidate: Core.Candidate,
+  +principals: Dlm.Snapshot) -> Host.Reply:
+  Monitor.reply_of(Monitor.decide(req, state, candidate, principals))
+
+def after(+req: Host.Request, state: Monitor.MonitorState, +candidate: Core.Candidate,
+  +principals: Dlm.Snapshot) -> Monitor.MonitorState:
+  Monitor.state_of(Monitor.decide(req, state, candidate, principals))
+
+# Binds channels n, n-1, ..., 1, each with one R request on S's session
+# (denied by the library, but the channel's descriptor is bound).
+def fill(+n: Nat, state: Monitor.MonitorState, +candidate: Core.Candidate,
+  +principals: Dlm.Snapshot) -> Monitor.MonitorState:
+  match n:
+    case 0n:
+      state
+    case 1n+p:
+      after(request(U32.from_nat(n), 1, 2, 0, 2), fill(p, state, candidate, principals),
+        candidate, principals)
+
+def channel_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
+  +first = after(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
+    candidate, principals)
+  +own = once(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
+    candidate, principals)
+  +again = once(request(1, 1, 1, 7, 1), first, candidate, principals)
+  +full = fill(8n, Monitor.initial_state(), candidate, principals)
+  +ninth = once(request(9, 1, 2, 0, 2), full, candidate, principals)
+  +third = once(request(3, 1, 2, 0, 2), full, candidate, principals)
+  +moved = once(request(1, 2, 2, 0, 2), first, candidate, principals)
+  do IO<Unit>:
+    IO.print("reply ch1 second request : " ++ show(again))
+    IO.print("reply ch9, 8 bound       : " ++ show(ninth))
+    IO.print("reply ch3, 8 bound       : " ++ show(third))
+    IO.print("reply ch1 as route S     : " ++ show(moved))
+    verdict(outcome_is(again, 2, 6) && U32.is_eq(descriptor(again), descriptor(own)) &&
+      U32.is_eq(frontend_revision(again), frontend_revision(own)) &&
+      Bool.not(U32.is_eq(descriptor(own), 0)),
+      "second request on channel 1 reuses its descriptor and frontend revision (session now Committed)")
+    verdict(outcome_is(ninth, 2, 7), "ninth channel refused: channel table full")
+    verdict(outcome_is(third, 2, 6) && Bool.not(U32.is_eq(descriptor(third), 0)),
+      "bound channel 3 still served with a full table")
+    verdict(outcome_is(moved, 2, 8), "channel 1 arriving with another subject refused")
+
 def run(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
-  +own = Monitor.reply_of(Monitor.decide(request(1, 1, expected_session_reader(), 1),
-    Monitor.initial_state(), candidate, principals))
-  +claims = Monitor.reply_of(Monitor.decide(request(1, 2, 0, 2),
-    Monitor.initial_state(), candidate, principals))
-  # Contrast cases (Linux only): what the monitor would answer if S were the
-  # ROUTE subject (S holds no capability, so the descriptor step refuses,
-  # reason 5, not 6), and a replay of R's accepted request against the
-  # state the first commit left (the session is Committed, reason 6).
-  +as_s = Monitor.reply_of(Monitor.decide(request(2, 2, 0, 2),
-    Monitor.initial_state(), candidate, principals))
-  +replay = Monitor.reply_of(Monitor.decide(request(1, 1, expected_session_reader(), 1),
-    Monitor.state_of(Monitor.decide(request(1, 1, expected_session_reader(), 1),
-      Monitor.initial_state(), candidate, principals)), candidate, principals))
+  +own = once(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
+    candidate, principals)
+  +claims = once(request(1, 1, 2, 0, 2), Monitor.initial_state(), candidate, principals)
+  +as_s = once(request(1, 2, 2, 0, 2), Monitor.initial_state(), candidate, principals)
+  +claim_ignored = once(request(1, 1, 1, expected_session_reader(), 2), Monitor.initial_state(),
+    candidate, principals)
   do IO<Unit>:
     IO.print("expected_session (reader session revision) = " ++ U32.show(expected_session_reader()))
     IO.print("reply R route, R session : " ++ show(own))
     IO.print("reply R route, S claimed : " ++ show(claims))
-    verdict(U32.is_eq(decision(own), 1), "routed reader R committed")
-    verdict(U32.is_eq(decision(claims), 2) && U32.is_eq(reason(claims), 6),
-      "body claiming S denied by DataOS.commit_from_capability")
     IO.print("reply S route, S session : " ++ show(as_s))
-    IO.print("reply R replay           : " ++ show(replay))
-    verdict(U32.is_eq(decision(as_s), 2) && U32.is_eq(reason(as_s), 5),
-      "S as route subject denied at the descriptor step")
-    verdict(U32.is_eq(decision(replay), 2) && U32.is_eq(reason(replay), 6),
-      "replayed request denied by DataOS.commit_from_capability")
+    IO.print("reply R route, claims S  : " ++ show(claim_ignored))
+    verdict(outcome_is(own, 1, 0), "routed reader R committed")
+    verdict(outcome_is(claims, 2, 6), "body naming S's session denied by DataOS.commit_from_capability")
+    verdict(outcome_is(as_s, 2, 5), "S as route subject denied at the descriptor step")
+    verdict(outcome_is(claim_ignored, 1, 0), "R with a body claiming S committed (claim ignored)")
+    channel_cases(candidate, principals)
 
 def start(solved: Core.SolveResult, principals: Maybe<&2, Dlm.Snapshot>) -> IO(Unit):
   match solved principals:

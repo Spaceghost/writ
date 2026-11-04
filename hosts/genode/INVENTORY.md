@@ -70,7 +70,7 @@ run scripts source; live copy `run/writ_bend.tcl`).
 | `writ_shim_log(char const *text, size_t len)` | effect host function (`Genode.log`) | `Genode::log` of at most `len` bytes as one `Cstring` (ends at the first NUL); nothing added; a null `text` does nothing |
 | `writ_shim_now_ms(void) -> uint64_t` | effect host function (`Genode.now`) | `elapsed_ms()` of the shim's Timer session (ms since the session was opened); 0 before `construct`; the twin truncates to U32 |
 | `writ_shim_sleep_ms(uint32_t ms)` | effect host function (`Genode.sleep`) | `msleep` on the shim's Timer session until its clock has advanced by at least `ms` (re-sleeps the remainder after an early wake and counts it, at most `MAX_SLEEP_ROUNDS` = 16 `msleep` calls); `ms == 0` or before `construct` returns at once; called from a runtime helper thread (`io_work`); stops the component (exit value 1) on a frozen or reversed clock or past the round cap (see Timer failure outcomes) |
-| `writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)` | effect host function (`Genode.take`) | blocks (`Semaphore::down`) until a channel's request signal has queued an entry, then copies that channel's 16 record words from its request bucket into `record` and stores the channel id and the route subject; an entry for a closed channel (stale) or a header length other than 64 (bad length, one warning line) is counted and skipped; called from a runtime helper thread (`io_work`); never decides |
+| `writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)` | effect host function (`Genode.take`) | blocks (`Semaphore::down`) until a channel's request signal has queued an entry, then copies that channel's 16 record words (after an acquire fence that pairs with the client's release fence before its length write) from its request bucket into `record` and stores the channel id and the route subject; an entry for a closed channel (stale) or a header length other than 64 (bad length, one warning line) is counted and skipped; called from a runtime helper thread (`io_work`); never decides |
 | `writ_shim_put(uint32_t channel, uint32_t const *record)` | effect host function (`Genode.put`) | copies 16 words into the channel's result bucket at offset 16, then the request's sequence number and, after a release fence, the length 64; submits the client's registered signal; a channel that is closed or has no taken request is skipped and counted; runs on the Bend loop, does not block; never decides |
 
 ## Sessions and kernel interfaces used
@@ -111,10 +111,17 @@ run scripts source; live copy `run/writ_bend.tcl`).
   `sleep_forever`, so init records the exit value.
 - **ROM** (through the dynamic linker): `Shared_object` for `libc.lib.so` to
   reach libc's own `mmap`, `munmap`, `mprotect`.
-- **ROM `config`** (channel lane, Task 2): one `Attached_rom_dataspace`
-  opened in `construct` by every component that links the shim, read once
-  and never updated, only to look for `<writ_channel>`. Observed cost in the
-  hello: 20480 bytes more RAM (8314880 -> 8335360), caps unchanged.
+- **Config** (channel lane, Task 2, fix round 1): no ROM session of its
+  own. The shim reads libc's already-attached config through
+  `Libc::Env::with_config` (`repos/libports/include/libc/component.h:36-43`)
+  in `construct` to look for `<writ_channel>`, and again on the channel
+  entrypoint at each session creation to match the policy (a read-only
+  view of a ROM that is never updated here). Before fix round 1 the shim
+  opened a second `config` ROM in every component. The hello's
+  `ram used` is 8335360 both with that ROM and without it (8314880 before
+  Task 2), so the +20480 is not the ROM; its cause (the larger shim image or
+  its static data are candidates) is not isolated
+  (`verification/genode-channel-base-linux.txt`, FIX ROUND 1).
 - **Writ_channel, served** (channel lane, Task 2; only with `<writ_channel>`
   in the config): announced to the parent with
   `env.parent().announce(...)`; the root and every session are served by a
@@ -126,10 +133,19 @@ run scripts source; live copy `run/writ_bend.tcl`).
   the session object from a `Sliced_heap` on `Env::ram()`/`Env::rm()`. A
   session needs a donated `ram_quota` of at least `CHANNEL_SESSION_RAM`
   (16 KiB; the client's `Connection` donates `RAM_QUOTA` = 32 KiB and
-  `CAP_QUOTA` = 8). The subject word is the `subject` attribute of the best
-  `<policy>` under `<writ_channel>` for the parent-prefixed label
-  (`os/session_policy.h`); `<default-policy>`, no match, or subject 0:
-  `DENIED`. `Signal_transmitter` to the client's registered context per put.
+  `CAP_QUOTA` = 8), else `INSUFFICIENT_RAM`. Caps are covered by
+  `Root_component`'s own accounting: `Local_service::budget_adjusted_args`
+  refuses a `cap_quota` below `Writ_channel::Session::CAP_QUOTA` (8) with
+  `INSUFFICIENT_CAPS` before `_create_session` runs
+  (`repos/base/include/base/service.h:170-177`). A shim-side check of the
+  adjusted args was tried in fix round 1 and removed: it saw 7 of the 8
+  donated caps, refused the first attempt, and the client's `Connection`
+  retried with an upgrade (one warning per run).
+  The subject word is the `subject` attribute of the best `<policy>` under
+  `<writ_channel>` for the parent-prefixed label (`os/session_policy.h`);
+  only a policy with `label` or `label_prefix` binds identity (the suffix
+  is the client's choice); `<default-policy>`, a suffix-only policy, no
+  match, or subject 0: `DENIED`. `Signal_transmitter` to the client's registered context per put.
 - **Writ_channel session RPC functions** (`writ_channel_session.h`), the only
   ones: `request_bucket()` and `result_bucket()` return the two dataspace
   capabilities, `request_sigh()` returns the request signal context,
@@ -249,9 +265,19 @@ at most one entry per channel (a repeated signal is coalesced); 8 open
 channels (`MAX_CHANNELS`, the ninth session is `DENIED`); one record handed
 to Bend per take and one outstanding request per channel (a put clears it).
 Channel ids count up from 1 for the component's life (32-bit, never
-reused before wrapping). A full ring drops the signal and counts it; the
-client then has no reply until it signals again. Not exercised: full ring,
-coalescing, bad length, stale entries, put skipped, more than one channel.
+reused before wrapping). A full ring is impossible by construction:
+`static_assert(MAX_CHANNELS <= CHANNEL_QUEUE_DEPTH)` and at most one entry
+per channel, so the `ring full` count stays 0 (the check is defence in
+depth). Not exercised: coalescing, bad length, stale entries, put skipped,
+more than one channel at once.
+
+Monitor-side channel table (Bend, `Monitor.bend`, not the shim): at most 8
+bindings channel id -> (route subject, frontend state, descriptor id),
+made at the first record from a channel; later records reuse the binding;
+a ninth channel is denied (reason 7), a subject change on a bound channel
+too (reason 8). Gaps: an entry is never removed when its channel closes
+(Task 3: a shim close event or a close record kind), and subject S's
+session is synthetic, opened and not negotiated.
 
 ## Changes in Task 3
 

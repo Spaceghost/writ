@@ -1,5 +1,8 @@
 Writ channel on base-linux: request and result records through buckets and signals (Genode channel lane, Task 2)
-Recorded: 2026-11-04, about 01:40 to 03:20 -06:00.
+Recorded: 2026-11-04, about 01:40 to 03:20 -06:00; fix round 1 appended
+(section FIX ROUND 1 at the end, which supersedes the run logs, the result
+records, and the HASHES list above it: the reply now carries the bound
+descriptor in words 13 and 14).
 
 Everything here is Genode-on-Linux (base-linux: core, init, and components are
 Linux processes) evidence. It is not native Genode execution on any kernel,
@@ -22,12 +25,17 @@ RESULT
   which printed it and exited 0 (run 1).
   Substituted subject denied by Bend: yes. Same route (writ_client_r, route
   subject 1 = reader R); the body claims subject S (claimed_subject 2) and
-  names S's session (session 2). The monitor evaluated R, not S, and
-  DataOS.commit_from_capability returned Rejected (R is not the session's
-  reader): decision=Denied (2), reason 6 (run 2). Reason 6 is the library's
-  own rejection; had the body's S been used as the caller, the monitor
-  would have refused one step earlier at the descriptor (reason 5, S holds
-  no capability), as the Linux check below shows.
+  names S's session (session 2). The monitor evaluated R, not S:
+  decision=Denied (2), reason 6 (run 2). Reason 6 means R's descriptor was
+  opened and DataOS.commit_from_capability returned Rejected. Which check
+  failed is read from the code, not from the log: in DataOS.bend:52-61 the
+  first failing check is the reader gate (caller R = 7 is not the session's
+  reader S = 8), and S's session is Proposed (opened by Negotiation.open,
+  revision 0), so past that gate it would also fail Backplane.commit's
+  Running gate. With S as the route subject the monitor refuses one step
+  earlier, at the descriptor (reason 5, S holds no capability): shown on
+  Genode by run 3 (fix round 1), and the body claim being ignored on an
+  otherwise valid request by run 4 (Committed).
   The session type has four RPC functions, all capability handover
   (request_bucket, result_bucket, request_sigh, result_sigh); the request
   and the decision travelled only as records in the buckets (GB-011).
@@ -144,7 +152,7 @@ BUILDS
   (after the delay_ms option) 4: rc 0.
 
 RUN CONFIGURATION (installed var/run/writ_bend_monitor_accept/genode/config, run 1)
-  
+
   config
   + parent-provides
     + service LOG
@@ -184,7 +192,7 @@ RUN CONFIGURATION (installed var/run/writ_bend_monitor_accept/genode/config, run
         + any-child
     + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 2000
   -
-  
+
   Run 2 differs only in the client's config: session 2, expected_session 0,
   claimed_subject 2, expect_decision 2, expect_reason 6, delay_ms 0.
   RAM: init's children are timer (1M default), writ_bend_monitor 256M (as
@@ -203,18 +211,18 @@ RUN 1: routed reader R, own session (accepted; the take was parked first)
     [init -> writ_bend_monitor] monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; subjects come from the route
     [init -> writ_client_r] client: waiting 2000 ms before writing
     [init -> writ_bend_monitor] monitor: serving 4 records
-    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     [init -> writ_client_r] client: request written, signalling the monitor
     [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45
-    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000030: 2d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 2d 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     [init -> writ_client_r] client: decision=Committed (1) reason=0 route_subject=1 session=1 seq=1
     [init -> writ_client_r] client: PASS decision 1 reason 0 as expected
     [init] child "writ_client_r" exited with exit value 0
@@ -242,20 +250,20 @@ RUN 2: same route R, body claims S and names S's session (denied by Bend)
     [init -> writ_bend_monitor] writ_mem: libc mmap=0x16d14bc0 munmap=0x16d0aa00 mprotect=0x16cfc150 shim mmap=0x10ab400
     [init -> writ_bend_monitor] writ_channel: service announced (bucket 4096 bytes, record 64 bytes, queue depth 8, channels 8)
     [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
-    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00 
-    [init -> writ_client_r] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     [init -> writ_client_r] client: request written, signalling the monitor
     [init -> writ_bend_monitor] monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; subjects come from the route
     [init -> writ_bend_monitor] monitor: serving 4 records
     [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0
-    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
-    [init -> writ_client_r] client: result record +0x00000030: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     [init -> writ_client_r] client: decision=Denied (2) reason=6 route_subject=1 session=2 seq=1
     [init -> writ_client_r] client: PASS decision 2 reason 6 as expected
     [init] child "writ_client_r" exited with exit value 0
@@ -263,11 +271,15 @@ RUN 2: same route R, body claims S and names S's session (denied by Bend)
   session), claimed subject 2 (S). Result record, words: 1 2 2 6 1 2 0 0 0 0
   0 0 0 0 0 0 = Denied, reason 6 (DataOS.commit_from_capability returned
   Rejected), decided for route subject 1 (R), not for the claimed 2.
-  Why the library refuses: DataOS.commit_resolved requires the resolved
-  plan to equal the session's plan (it does: S's session is on the
-  Scenario's plan) and the caller, R = 7, to be the session's reader, S = 8
-  (DataOS.bend:52-61). S's session is synthetic (Monitor.other_session,
-  opened, not negotiated).
+  Why the library refuses (from reading the code, not observed in the log):
+  DataOS.commit_resolved (DataOS.bend:52-61) requires the resolved plan to
+  equal the session's plan (it does: S's session is on the Scenario's plan)
+  and the caller, R = 7, to be the session's reader, S = 8; that reader
+  gate is the first check that fails. S's session is synthetic
+  (Monitor.other_session): Proposed, revision 0, opened by Negotiation.open
+  and not negotiated, so Backplane.commit's Running gate would refuse it
+  too. The log shows only reason 6 (the library returned Rejected after R's
+  descriptor opened).
 
 FAILURE PATHS EXERCISED
   - Flipped expectation (scratch run file writ_bend_monitor_flip.run in
@@ -354,3 +366,189 @@ HASHES (sha256, final tree)
   src/app/writ_bend.inc): byte-identical (cmp, 2026-11-04). Scratch run files
   removed from writ-repo/run; build.conf differs from the fragment's list
   only as recorded (the two new scenarios, in both).
+
+FIX ROUND 1 (2026-11-04, about 02:00 to 04:10 -06:00; supersedes the run
+logs, the result records, and HASHES above)
+
+CHANGES
+  - Monitor.bend binds each channel (GB-010): MonitorState carries a bounded
+    list (max 8, the shim's MAX_CHANNELS) of channel -> {route subject,
+    Frontend.State, descriptor}. The first record on a channel opens the
+    descriptor and stores the binding; later records reuse it, and the
+    commit uses the stored frontend and its real revision
+    (Frontend.revision). New deny reasons: 7 channel table full (8 bound),
+    8 channel bound to another subject (Channel.md). Reply words 13 and 14
+    now carry the descriptor id and frontend revision. Gaps (Channel.md
+    "Current gap", INVENTORY): no entry is removed when a channel closes
+    (Task 3), and S's session is opened (Negotiation.open), not negotiated.
+  - The shared Tcl takes the client, route subject, session,
+    expected_session, claimed subject, expected decision and reason, delay,
+    and policies; it requires the monitor line with route_subject=$subject.
+    Two runs added: writ_bend_monitor_routed_s (child writ_client_s, policy
+    label_prefix "writ_client_s ->" subject 2) and
+    writ_bend_monitor_claim_ignored (route R, session 1, claimed subject 2).
+  - Shim: config through Libc::Env::with_config, no second config ROM;
+    a <policy> with neither label nor label_prefix binds no subject (the
+    session is refused); static_assert(MAX_CHANNELS <= CHANNEL_QUEUE_DEPTH),
+    so a full ring cannot happen (at most one queued entry per channel);
+    an acquire fence after reading the bucket length word. Caps: a shim
+    check of cap_quota >= Session::CAP_QUOTA was added and failed in every
+    run ("donated 7 caps, a channel needs 8", the client then retried),
+    because the args reaching _create_session are the adjusted ones:
+    Local_service::budget_adjusted_args already refuses a cap_quota below
+    CAP_QUOTA with INSUFFICIENT_CAPS (repos/base/include/base/service.h:
+    170-177) and then subtracts the session object's cap (179-186). The
+    check was removed and replaced by that citation; the runs below are
+    with the final shim and show no such warning.
+
+REASON 6 VERSUS REASON 5 (what each shows)
+  Reason 6 (run 2) means the descriptor for the route subject R opened and
+  DataOS.commit_from_capability rejected the commit. Which check rejected it
+  is read from the code, not from the log: in DataOS.bend:52-61 the reader
+  gate is the first check that fails for S's session under R's descriptor,
+  and S's session is Proposed (revision 0), so the Running gate would fail
+  too. The log only shows the reason number. Reason 5 (run 3) means no
+  descriptor opened for route subject S at all: the same request body
+  routed as S is refused one step earlier. Run 4 shows the body's claimed
+  subject is ignored: route R with claimed_subject 2 commits exactly as
+  run 1.
+
+RUNS (all with the final tree; build and run logs in ../writ-genode,
+*-fix1b.out; fix1b-channel-t2.log lists rc 0 for every build and run)
+  Run 1, make run/writ_bend_monitor_accept: rc 0
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+    [init -> writ_client_r] client: decision=Committed (1) reason=0 route_subject=1 session=1 seq=1
+    [init -> writ_client_r] client: PASS decision 1 reason 0 as expected
+    [init] child "writ_client_r" exited with exit value 0
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+  Run 2, make run/writ_bend_monitor_substitute: rc 0
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+    [init -> writ_client_r] client: decision=Denied (2) reason=6 route_subject=1 session=2 seq=1
+    [init -> writ_client_r] client: PASS decision 2 reason 6 as expected
+    [init] child "writ_client_r" exited with exit value 0
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 02 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 00 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+  Run 3, make run/writ_bend_monitor_routed_s: rc 0
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_s -> channel' route subject 2
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=2 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=5 (descriptor mount/open rejected) session_revision=0 reader_balance=0 descriptor=0 frontend_revision=0
+    [init -> writ_client_s] client: decision=Denied (2) reason=5 route_subject=2 session=2 seq=1
+    [init -> writ_client_s] client: PASS decision 2 reason 5 as expected
+    [init] child "writ_client_s" exited with exit value 0
+    [init -> writ_client_s] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_s] client: request record +0x00000000: 01 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00
+    [init -> writ_client_s] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_s] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_s] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_s] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_s] client: result record +0x00000000: 01 00 00 00 02 00 00 00 02 00 00 00 05 00 00 00
+    [init -> writ_client_s] client: result record +0x00000010: 02 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_s] client: result record +0x00000020: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_s] client: result record +0x00000030: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  Run 4, make run/writ_bend_monitor_claim_ignored: rc 0
+    [init -> writ_bend_monitor] writ_channel: channel 1 opened for 'writ_client_r -> channel' route subject 1
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=1 body_claimed_subject=2 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+    [init -> writ_client_r] client: decision=Committed (1) reason=0 route_subject=1 session=1 seq=1
+    [init -> writ_client_r] client: PASS decision 1 reason 0 as expected
+    [init] child "writ_client_r" exited with exit value 0
+    [init -> writ_client_r] client: request header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: request record +0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00
+    [init -> writ_client_r] client: request record +0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00
+    [init -> writ_client_r] client: request record +0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: request record +0x00000030: 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00
+    [init -> writ_client_r] client: result record +0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00
+    [init -> writ_client_r] client: result record +0x00000030: 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+  Suffix-only policy (scratch writ_bend_monitor_suffix.run, policy
+  label_suffix "channel" subject 1, removed after): the monitor logged
+    [init -> writ_bend_monitor] Warning: writ_channel: no <policy> with a subject for 'writ_client_r -> channel', session denied
+    no channel was created and Bend received nothing; the run stopped on
+    that line (make rc 0 because the scratch run waited only for it).
+
+LINUX CHECK (bend hosts/genode/monitor/MonitorCheck.bend, rc 0)
+    expected_session (reader session revision) = 6
+    reply R route, R session : 1 2 1 0 1 1 20 1 99 3 1 7 45 2 2 0
+    reply R route, S claimed : 1 2 2 6 1 2 0 0 0 0 0 0 0 2 2 0
+    reply S route, S session : 1 2 2 5 2 2 0 0 0 0 0 0 0 0 0 0
+    reply R route, claims S  : 1 2 1 0 1 1 20 1 99 3 1 7 45 2 2 0
+    PASS routed reader R committed
+    PASS body naming S's session denied by DataOS.commit_from_capability
+    PASS S as route subject denied at the descriptor step
+    PASS R with a body claiming S committed (claim ignored)
+    reply ch1 second request : 1 2 2 6 1 1 0 0 0 0 0 0 0 2 2 0
+    reply ch9, 8 bound       : 1 2 2 7 1 2 0 0 0 0 0 0 0 0 0 0
+    reply ch3, 8 bound       : 1 2 2 6 1 2 0 0 0 0 0 0 0 2 2 0
+    reply ch1 as route S     : 1 2 2 8 2 2 0 0 0 0 0 0 0 2 2 0
+    PASS second request on channel 1 reuses its descriptor and frontend revision (session now Committed)
+    PASS ninth channel refused: channel table full
+    PASS bound channel 3 still served with a full table
+    PASS channel 1 arriving with another subject refused
+  Flipped expectation (ninth channel expected reason 6 instead of 7,
+  temporary edit restored, sha256 of the file checked equal after): rc 1,
+  "FAIL ninth channel refused: channel table full".
+
+REGRESSION (shim relinked; build-writ_bend_{hello,probe,flow,monitor}-
+channel-t2-fix1b.out rc 0)
+  make run/writ_bend_hello: rc 0, exit 0, ram used=8335360, caps used=35.
+    RAM correction: Task 2 attributed +20480 (8314880 -> 8335360) to the
+    second config ROM. With that ROM gone the figure is unchanged at
+    8335360, so that attribution was wrong; the cause (the larger shim
+    image or its static data are candidates) is not isolated.
+  make run/writ_bend_rts: rc 0; bend_rts_bad exit 1, bend_rts_help exit 0.
+  make run/writ_bend_probe: rc 0; delta_ms=101, PASS, timer short wakes=0,
+    ram used=8597504.
+  make run/writ_bend_flow: rc 0; 4 PASS lines, exit 0, ram used=8335360.
+  The corpus (writ_bend_tests) was not rerun in this round: the memory path
+  (mmap/munmap/mprotect, reservations, faults) is unchanged; the final
+  review reruns it. Tests.bend and PROOF.bend not rerun: no library,
+  example, or test file changed.
+  For Task 3's fuel-exhaustion run: the shim's channel counters (bad
+  length, stale) and the monitor's RAM are not exercised or measured here.
+
+HASHES (sha256, final tree, fix round 1)
+  42813c0c8248b0cb81cf2d7dfe6706071d88afdb5732a285504db087a5d544e2  hosts/genode/shim/writ_mem.cc
+  c8a963cf6a51b3b3b34397db71c976ad4b29bf6fc10bf4c476721f92f97cbceb  hosts/genode/shim/writ_channel_session.h
+  c2216f312d405eaa0381982b9e7c8a7d1c13a6f2dcf4bcec43adb2d99cc74168  hosts/genode/effects/Channel.md
+  59ea9fea6d56e7d6fd993efab5f1ae9e9fe6a0792b45475a081042a12a71059d  hosts/genode/effects/Genode.bend
+  136c255e562a2642b9ebca0be5e6197c4e0fd453d64b52562d7a93645eba57f1  hosts/genode/effects/genode_take.c
+  24462f26c706bba7f07024c244bd42a3f97f3f205d15ba08a21bf68e937c9424  hosts/genode/effects/genode_put.c
+  5b9ae263633b857663feb9e7d1562eaa77bdab92b83af25119447de5e2afb203  hosts/genode/monitor/Monitor.bend
+  28bec7ba96eadcc9f846113e6e07e17630df0582a1bebd47ab6dd548c22e6724  hosts/genode/monitor/MonitorCheck.bend
+  ebbd562c3fa11e32bb1f5f522e9377ba4aed5e0cb2fe633c64c2fe148aeef8c4  hosts/genode/probes/client/writ_channel_client.cc
+  a1138553b6354e41fb07fa1648134deea3629f1c786b3ec39abccade33ac9159  scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl
+  635979541c8e5569cd7f44b732f043941338a210ce8882740d01f2f967ec5d4c  scripts/genode/writ_bend_monitor/writ_bend_monitor_accept.run
+  0b092119230f3a3865aca2ad7d06766cc31944a70c5483d26797179fdac0a84e  scripts/genode/writ_bend_monitor/writ_bend_monitor_substitute.run
+  a25eb8370ffc2097121b6f7b7000ba98cfcd95e1cff4f23bcb09ae30d1cbbb15  scripts/genode/writ_bend_monitor/writ_bend_monitor_routed_s.run
+  9ae540f2a3060b9646e843189540f8c087d65754c965e8ee4f3c894f4714b4c0  scripts/genode/writ_bend_monitor/writ_bend_monitor_claim_ignored.run
+  edbb9ff7b07cafb17396e02e17eb8df4cbb4c814ff6cc4f640598d8a85438708  ../writ-genode/bend-c/monitor/monitor.c (68330 lines, emitted after the last Monitor.bend/Genode.bend edit)
+  2d35f1bc55e5f6082cbbcf3876cadb1959a9083361c3c7ca5a6b298e9724bdc1  ../writ-genode/build/x86_64/app/writ_bend_monitor/writ_bend_monitor
+  8191d91d09b75a46d4cd5ab8333d9469bae8831e7b7c2ed671ec237d160f2fb1  ../writ-genode/build/x86_64/app/writ_channel_client/writ_channel_client (unchanged)
+  genode_take.js, genode_put.js, client target.mk, monitor target.mk,
+  writ_bend.tcl, writ_bend.inc: unchanged from the list above.
+  Live copies (src/writ_shim/{writ_mem.cc,writ_channel_session.h},
+  src/app/writ_bend_monitor/target.mk, src/app/writ_channel_client/
+  {target.mk,writ_channel_client.cc}, run/writ_bend_monitor.tcl,
+  run/writ_bend_monitor_{accept,substitute,routed_s,claim_ignored}.run,
+  run/writ_bend.tcl, src/app/writ_bend.inc): byte-identical (cmp,
+  2026-11-04). Scratch suffix run removed from writ-repo/run. build.conf and
+  the fragment both list the four channel scenarios.

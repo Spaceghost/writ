@@ -65,7 +65,7 @@ type Reply is Data:
   Reply{version: U32, kind: U32, decision: U32, reason: U32, subject: U32,
     session: U32, intent_destination_object: U32, intent_destination_version: U32,
     intent_invocation: U32, intent_artifact: U32, intent_backend: U32,
-    session_revision: U32, reader_balance: U32, reserved13: U32, reserved14: U32,
+    session_revision: U32, reader_balance: U32, descriptor: U32, frontend_revision: U32,
     reserved15: U32}
 
 # Blocks until a request record has landed in some client's request bucket

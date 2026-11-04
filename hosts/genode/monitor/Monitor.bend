@@ -78,6 +78,14 @@ def reason_descriptor_rejected() -> U32:
 def reason_commit_rejected() -> U32:
   6
 
+# Closed-type reasons of the channel table (GB-010): no free entry for a
+# new channel, or a bound channel arriving with another route subject.
+def reason_channel_table_full() -> U32:
+  7
+
+def reason_channel_subject_changed() -> U32:
+  8
+
 # Route subject words, as the run configuration's <policy subject=..> values.
 # The parent assigns them; the monitor maps them to Scenario identities.
 def route_subject_reader() -> U32:
@@ -105,32 +113,87 @@ def other_token() -> Transfer.CodeId:
 def other_caller() -> Frontend.Caller:
   Frontend.Caller{other_subject(), other_token()}
 
-# SYNTHETIC: S's session, opened (not negotiated) on the Scenario's plan with
-# S as reader. A request naming it from R's route must be refused because R
-# is not its reader; one from S's route would fail earlier, since S has no
-# capability to mount.
+# SYNTHETIC: S's session, opened (Negotiation.open: stage Proposed, revision
+# 0), not negotiated, on the Scenario's plan with S as reader. From reading
+# DataOS.bend:52-61, a request naming it from R's route fails the reader
+# gate first (R is not its reader) and, past that, would also fail
+# Backplane.commit's Running gate; one from S's route fails earlier, at the
+# descriptor, since S has no capability to mount.
 def other_session() -> Negotiation.Session:
   Negotiation.open(Negotiation.Request{Scenario.plan(), other_subject(), Scenario.quote_id(),
     Scenario.execution_units(), Scenario.deadline()})
 
+# One channel's descriptor (GB-010: one channel object per descriptor).
+# Bound at the first record taken from a channel id: the route subject, the
+# frontend state, and the descriptor id the protocol's mount and open gave
+# that subject. The shim never reuses a channel id and fixes its subject at
+# session creation, so a binding never moves to another client; a later
+# record with a different subject is refused (fail closed). Removing an
+# entry when its channel closes is not implemented (Task 3: a shim close
+# event or a close record kind).
+type Binding is Data:
+  Binding{channel: U32, subject: U32, frontend: Frontend.State, descriptor: Nat}
+
+type Bindings is Data:
+  NoBindings{}
+  Bound{binding: Binding, rest: Bindings}
+
+# Bound channels the table holds, as the shim's MAX_CHANNELS open sessions.
+def max_channels() -> Nat:
+  8n
+
+def Bindings.count(bindings: Bindings) -> Nat:
+  match bindings:
+    case NoBindings{}:
+      0n
+    case Bound{_, rest}:
+      Nat.add(1n, Bindings.count(rest))
+
+def binding_if(ok: Bool, binding: Binding, otherwise: Maybe<&2, Binding>) -> Maybe<&2, Binding>:
+  match ok:
+    case True{}:
+      Some{binding}
+    case False{}:
+      otherwise
+
+def Bindings.find(bindings: Bindings, +channel: U32) -> Maybe<&2, Binding>:
+  match bindings:
+    case NoBindings{}:
+      None{}
+    case Bound{+binding, rest}:
+      match binding:
+        case Binding{+bound, _, _, _}:
+          binding_if(U32.is_eq(bound, channel), binding, Bindings.find(rest, channel))
+
 # The monitor's serialized state: the reader's negotiated session, S's
-# session, and the ledger. A commit replaces the session and ledger it
-# returns, so a replayed request meets the Committed session, not a fresh
-# running one.
+# session, the ledger, and the channel table. A commit replaces the session
+# and ledger it returns, so a replayed request meets the Committed session,
+# not a fresh running one.
 type MonitorState is Data:
-  MonitorState{reader: Negotiation.Session, other: Negotiation.Session, ledger: Ledger.State}
+  MonitorState{reader: Negotiation.Session, other: Negotiation.Session, ledger: Ledger.State,
+    channels: Bindings}
 
 # The reader's running session (examples/Commit.bend's negotiation replay).
 def initial_reader() -> Negotiation.Session:
   Commit.running()
 
 def initial_state() -> MonitorState:
-  MonitorState{initial_reader(), other_session(), Commit.held_ledger()}
+  MonitorState{initial_reader(), other_session(), Commit.held_ledger(), NoBindings{}}
 
 def MonitorState.ledger(state: MonitorState) -> Ledger.State:
   match state:
-    case MonitorState{_, _, ledger}:
+    case MonitorState{_, _, ledger, _}:
       ledger
+
+def MonitorState.channels(state: MonitorState) -> Bindings:
+  match state:
+    case MonitorState{_, _, _, channels}:
+      channels
+
+def MonitorState.bind(state: MonitorState, binding: Binding) -> MonitorState:
+  match state:
+    case MonitorState{reader, other, ledger, channels}:
+      MonitorState{reader, other, ledger, Bound{binding, channels}}
 
 # Request field accessors (the shim-supplied words, then body words used here).
 def request_channel(request: Host.Request) -> U32:
@@ -198,29 +261,15 @@ def session_if(ok: Bool, session: Negotiation.Session, otherwise: Maybe<&2, Nego
 
 def session_for(+id: U32, state: MonitorState) -> Maybe<&2, Negotiation.Session>:
   match state:
-    case MonitorState{reader, other, _}:
+    case MonitorState{reader, other, _, _}:
       session_if(U32.is_eq(id, session_reader()), reader,
         session_if(U32.is_eq(id, session_other()), other, None{}))
 
-# Mount and open the route caller's descriptor through the protocol, as
-# examples/Commit.bend does for the Scenario caller.
-def open_mount(change: Frontend.Change, +caller: Frontend.Caller) -> Frontend.Change:
-  match change:
-    case Frontend.Rejected{state}:
-      Frontend.Rejected{state}
-    case Frontend.Changed{+state, id}:
-      Frontend.open(state, Scenario.registry(), Frontend.revision(state),
-        Frontend.Ref{caller, id}, Frontend.request_rights(Frontend.Execute{}), Scenario.live())
-
-def open_descriptor(+caller: Frontend.Caller) -> Frontend.Change:
-  +state = Frontend.empty()
-  open_mount(Frontend.mount(state, Scenario.registry(), Frontend.revision(state), caller,
-    Frontend.request_rights(Frontend.Execute{}), Scenario.live()), caller)
-
-# Decision records.
-def denial(+request: Host.Request, reason: U32) -> Host.Reply:
+# Decision records. A denial carries the channel's descriptor id and
+# frontend revision once the channel is bound, 0 and 0 before.
+def denial(+request: Host.Request, reason: U32, descriptor: U32, frontend_revision: U32) -> Host.Reply:
   Host.Reply{record_version(), kind_decision(), decision_denied(), reason, request_subject(request),
-    request_session(request), 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+    request_session(request), 0, 0, 0, 0, 0, 0, 0, descriptor, frontend_revision, 0}
 
 def backend_word(backend: Backplane.Backend) -> U32:
   match backend:
@@ -239,7 +288,7 @@ def artifact_word(artifact: Backplane.ArtifactId) -> U32:
       w0
 
 def accepted_reply(+request: Host.Request, +session: Negotiation.Session, +ledger: Ledger.State,
-  intent: Backplane.WriteIntent) -> Host.Reply:
+  intent: Backplane.WriteIntent, descriptor: U32, frontend_revision: U32) -> Host.Reply:
   match intent:
     case Backplane.WriteIntent{Transfer.Plan{_, inv, _, Transfer.ObjectVersion{dob, dv}, _, _, _},
       _, _, backend, artifact}:
@@ -247,67 +296,127 @@ def accepted_reply(+request: Host.Request, +session: Negotiation.Session, +ledge
         request_subject(request), request_session(request), U32.from_nat(dob), U32.from_nat(dv),
         U32.from_nat(inv), artifact_word(artifact), backend_word(backend),
         U32.from_nat(Negotiation.Session.revision(session)),
-        U32.from_nat(Ledger.balance(ledger, Scenario.reader())), 0, 0, 0}
+        U32.from_nat(Ledger.balance(ledger, Scenario.reader())), descriptor, frontend_revision, 0}
 
 # One decision: the record to put and the monitor state after it.
 type Outcome is Data:
   Outcome{reply: Host.Reply, state: MonitorState}
 
 def denied(+request: Host.Request, reason: U32, state: MonitorState) -> Outcome:
-  Outcome{denial(request, reason), state}
+  Outcome{denial(request, reason, 0, 0), state}
+
+def denied_bound(+request: Host.Request, reason: U32, descriptor: Nat, frontend: Frontend.State,
+  state: MonitorState) -> Outcome:
+  Outcome{denial(request, reason, U32.from_nat(descriptor), U32.from_nat(Frontend.revision(frontend))),
+    state}
 
 # A commit replaces the state of the session it was for.
 def store(is_reader: Bool, state: MonitorState, +session: Negotiation.Session,
   ledger: Ledger.State) -> MonitorState:
   match is_reader state:
-    case True{} MonitorState{_, other, _}:
-      MonitorState{session, other, ledger}
-    case False{} MonitorState{reader, _, _}:
-      MonitorState{reader, session, ledger}
+    case True{} MonitorState{_, other, _, channels}:
+      MonitorState{session, other, ledger, channels}
+    case False{} MonitorState{reader, _, _, channels}:
+      MonitorState{reader, session, ledger, channels}
 
-def committed(result: Backplane.CommitResult, +request: Host.Request, state: MonitorState) -> Outcome:
+def committed(result: Backplane.CommitResult, +request: Host.Request, +descriptor: Nat,
+  +frontend: Frontend.State, state: MonitorState) -> Outcome:
   match result:
     case Backplane.Rejected{_, _}:
-      denied(request, reason_commit_rejected(), state)
+      denied_bound(request, reason_commit_rejected(), descriptor, frontend, state)
     case Backplane.Committed{+session, +ledger, intent}:
-      Outcome{accepted_reply(request, session, ledger, intent),
+      Outcome{accepted_reply(request, session, ledger, intent, U32.from_nat(descriptor),
+        U32.from_nat(Frontend.revision(frontend))),
         store(U32.is_eq(request_session(request), session_reader()), state, session, ledger)}
 
-# The final gate: DataOS.commit_from_capability re-resolves the route
-# caller's descriptor against the CURRENT registry and checks that the
-# resolved plan is the session's plan and the caller is its reader.
-def with_descriptor(change: Frontend.Change, session: Negotiation.Session, +caller: Frontend.Caller,
-  +request: Host.Request, +state: MonitorState, candidate: Core.Candidate,
+# The final gate: DataOS.commit_from_capability re-resolves the channel's
+# bound descriptor against the CURRENT registry, with the stored frontend
+# state and its real revision, and checks that the resolved plan is the
+# session's plan and the caller is its reader.
+def commit_bound(session: Negotiation.Session, +caller: Frontend.Caller, +frontend: Frontend.State,
+  +descriptor: Nat, +request: Host.Request, +state: MonitorState, candidate: Core.Candidate,
   principals: Dlm.Snapshot) -> Outcome:
+  +ledger = MonitorState.ledger(state)
+  committed(Writ.commit_from_capability(session, U32.to_nat(request_expected_session(request)),
+    Ledger.revision(ledger), ledger, candidate, Frontend.Ref{caller, descriptor},
+    Frontend.revision(frontend),
+    Writ.Context{Scenario.backplane(principals), frontend, Scenario.registry()}),
+    request, descriptor, frontend, state)
+
+def with_plan(ok: Bool, session: Negotiation.Session, +caller: Frontend.Caller,
+  +frontend: Frontend.State, +descriptor: Nat, +request: Host.Request, state: MonitorState,
+  candidate: Core.Candidate, principals: Dlm.Snapshot) -> Outcome:
+  match ok:
+    case False{}:
+      denied_bound(request, reason_plan_mismatch(), descriptor, frontend, state)
+    case True{}:
+      commit_bound(session, caller, frontend, descriptor, request, state, candidate, principals)
+
+def with_session(found: Maybe<&2, Negotiation.Session>, +caller: Frontend.Caller,
+  +frontend: Frontend.State, +descriptor: Nat, +request: Host.Request, state: MonitorState,
+  candidate: Core.Candidate, principals: Dlm.Snapshot) -> Outcome:
+  match found:
+    case None{}:
+      denied_bound(request, reason_unknown_session(), descriptor, frontend, state)
+    case Some{+session}:
+      with_plan(Transfer.Plan.equal(body_plan(request), Negotiation.Session.plan(session)),
+        session, caller, frontend, descriptor, request, state, candidate, principals)
+
+# Mount and open the route caller's descriptor through the protocol, as
+# examples/Commit.bend does for the Scenario caller. Runs once per channel.
+def open_mount(change: Frontend.Change, +caller: Frontend.Caller) -> Frontend.Change:
+  match change:
+    case Frontend.Rejected{state}:
+      Frontend.Rejected{state}
+    case Frontend.Changed{+state, id}:
+      Frontend.open(state, Scenario.registry(), Frontend.revision(state),
+        Frontend.Ref{caller, id}, Frontend.request_rights(Frontend.Execute{}), Scenario.live())
+
+def open_descriptor(+caller: Frontend.Caller) -> Frontend.Change:
+  +state = Frontend.empty()
+  open_mount(Frontend.mount(state, Scenario.registry(), Frontend.revision(state), caller,
+    Frontend.request_rights(Frontend.Execute{}), Scenario.live()), caller)
+
+# First record on a channel: bind the descriptor the protocol opened, or
+# refuse without binding.
+def with_opened(change: Frontend.Change, +caller: Frontend.Caller, +request: Host.Request,
+  +state: MonitorState, candidate: Core.Candidate, principals: Dlm.Snapshot) -> Outcome:
   match change:
     case Frontend.Rejected{_}:
       denied(request, reason_descriptor_rejected(), state)
-    case Frontend.Changed{+frontend, id}:
-      +ledger = MonitorState.ledger(state)
-      committed(Writ.commit_from_capability(session, U32.to_nat(request_expected_session(request)),
-        Ledger.revision(ledger), ledger, candidate, Frontend.Ref{caller, id},
-        Frontend.revision(frontend),
-        Writ.Context{Scenario.backplane(principals), frontend, Scenario.registry()}),
-        request, state)
+    case Frontend.Changed{+frontend, +descriptor}:
+      with_session(session_for(request_session(request), state), caller, frontend, descriptor,
+        request, MonitorState.bind(state, Binding{request_channel(request),
+          request_subject(request), frontend, descriptor}), candidate, principals)
 
-def with_plan(ok: Bool, session: Negotiation.Session, +caller: Frontend.Caller,
-  +request: Host.Request, state: MonitorState, candidate: Core.Candidate,
+def with_room(full: Bool, +caller: Frontend.Caller, +request: Host.Request, +state: MonitorState,
+  candidate: Core.Candidate, principals: Dlm.Snapshot) -> Outcome:
+  match full:
+    case True{}:
+      denied(request, reason_channel_table_full(), state)
+    case False{}:
+      with_opened(open_descriptor(caller), caller, request, state, candidate, principals)
+
+def with_bound(ok: Bool, +caller: Frontend.Caller, +frontend: Frontend.State, +descriptor: Nat,
+  +request: Host.Request, +state: MonitorState, candidate: Core.Candidate,
   principals: Dlm.Snapshot) -> Outcome:
   match ok:
     case False{}:
-      denied(request, reason_plan_mismatch(), state)
+      denied_bound(request, reason_channel_subject_changed(), descriptor, frontend, state)
     case True{}:
-      with_descriptor(open_descriptor(caller), session, caller, request, state, candidate, principals)
+      with_session(session_for(request_session(request), state), caller, frontend, descriptor,
+        request, state, candidate, principals)
 
-def with_session(found: Maybe<&2, Negotiation.Session>, +caller: Frontend.Caller,
-  +request: Host.Request, state: MonitorState, candidate: Core.Candidate,
-  principals: Dlm.Snapshot) -> Outcome:
+# Later records on a bound channel reuse its descriptor.
+def with_binding(found: Maybe<&2, Binding>, +caller: Frontend.Caller, +request: Host.Request,
+  +state: MonitorState, candidate: Core.Candidate, principals: Dlm.Snapshot) -> Outcome:
   match found:
     case None{}:
-      denied(request, reason_unknown_session(), state)
-    case Some{+session}:
-      with_plan(Transfer.Plan.equal(body_plan(request), Negotiation.Session.plan(session)),
-        session, caller, request, state, candidate, principals)
+      with_room(Nat.is_ge(Bindings.count(MonitorState.channels(state)), max_channels()),
+        caller, request, state, candidate, principals)
+    case Some{Binding{_, subject, +frontend, +descriptor}}:
+      with_bound(U32.is_eq(subject, request_subject(request)), caller, frontend, descriptor,
+        request, state, candidate, principals)
 
 def with_caller(found: Maybe<&2, Frontend.Caller>, +request: Host.Request, +state: MonitorState,
   candidate: Core.Candidate, principals: Dlm.Snapshot) -> Outcome:
@@ -315,7 +424,8 @@ def with_caller(found: Maybe<&2, Frontend.Caller>, +request: Host.Request, +stat
     case None{}:
       denied(request, reason_unknown_subject(), state)
     case Some{+caller}:
-      with_session(session_for(request_session(request), state), caller, request, state, candidate, principals)
+      with_binding(Bindings.find(MonitorState.channels(state), request_channel(request)), caller,
+        request, state, candidate, principals)
 
 def checked(ok: Bool, +request: Host.Request, state: MonitorState, candidate: Core.Candidate,
   principals: Dlm.Snapshot) -> Outcome:
@@ -350,19 +460,23 @@ def reason_name(+word: U32) -> String:
         pick(U32.is_eq(word, reason_unknown_session()), "session unknown",
           pick(U32.is_eq(word, reason_plan_mismatch()), "plan is not the session's plan",
             pick(U32.is_eq(word, reason_descriptor_rejected()), "descriptor mount/open rejected",
-              pick(U32.is_eq(word, reason_commit_rejected()),
-                "DataOS.commit_from_capability rejected", "unknown")))))))
+              pick(U32.is_eq(word, reason_commit_rejected()), "DataOS.commit_from_capability rejected",
+                pick(U32.is_eq(word, reason_channel_table_full()), "channel table full",
+                  pick(U32.is_eq(word, reason_channel_subject_changed()),
+                    "channel bound to another subject", "unknown")))))))))
 
 def reply_line(+request: Host.Request, reply: Host.Reply) -> String:
   match reply:
-    case Host.Reply{_, _, decision, +reason, _, _, _, _, _, _, _, revision, balance, _, _, _}:
+    case Host.Reply{_, _, decision, +reason, _, _, _, _, _, _, _, revision, balance, descriptor,
+      frontend_revision, _}:
       "monitor: channel=" ++ U32.show(request_channel(request)) ++
         " route_subject=" ++ U32.show(request_subject(request)) ++
         " session=" ++ U32.show(request_session(request)) ++
         " body_claimed_subject=" ++ U32.show(request_claimed_subject(request)) ++ " (untrusted, not used)" ++
         " decision=" ++ decision_name(decision) ++ " reason=" ++ U32.show(reason) ++
         " (" ++ reason_name(reason) ++ ") session_revision=" ++ U32.show(revision) ++
-        " reader_balance=" ++ U32.show(balance)
+        " reader_balance=" ++ U32.show(balance) ++ " descriptor=" ++ U32.show(descriptor) ++
+        " frontend_revision=" ++ U32.show(frontend_revision)
 
 def reply_of(outcome: Outcome) -> Host.Reply:
   match outcome:

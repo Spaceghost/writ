@@ -1,0 +1,16 @@
+#
+# writ_bend_monitor_routed_s.run - Genode run script (build configuration),
+# not Writ implementation. Genode channel lane, Task 2 fix round 1, run 3.
+# The client is started as the child writ_client_s, which the monitor's
+# <policy label_prefix="writ_client_s ->" subject="2"/> gives route subject
+# 2 (the synthetic subject S), and sends run 2's body: S's session 2,
+# claimed subject 2. Expected: Denied with reason 5, refused at the
+# descriptor step (S holds no capability in Scenario.registry(), so the
+# protocol's mount fails and no channel binding is made), not reason 6.
+# Together with run 2 this shows on Genode that the route, not the body,
+# selects the caller. Exits nonzero when that changes.
+# The shared procedure is scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl.
+#
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+writ_bend_monitor_run writ_client_s 2 2 0 2 2 5 0

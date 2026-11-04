@@ -12,4 +12,4 @@
 #
 source [select_from_repositories run/writ_bend_monitor.tcl]
 
-writ_bend_monitor_run writ_client_r 2 0 2 2 6 0
+writ_bend_monitor_run writ_client_r 1 2 0 2 2 6 0

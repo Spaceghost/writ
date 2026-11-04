@@ -13,7 +13,10 @@ its request bucket and signals; the monitor answers `Committed` in the
 result bucket (`verification/genode-channel-base-linux.txt`, run 1). Current
 gap: one record per bucket and one outstanding request per channel; a
 record of the wrong declared length is dropped and counted but not yet
-answered (the bounded denial record is Task 3).
+answered (the bounded denial record is Task 3); the monitor binds a
+descriptor to a channel at its first record but never removes the binding
+when the channel closes (Task 3: a shim close event or a close record
+kind); subject S's session is opened, not negotiated (synthetic).
 
 ## Encoding
 
@@ -85,7 +88,7 @@ words: `channel` (the shim's id for the channel the record arrived on) and
 | 0x00 | 0 | `version` | 1 |
 | 0x04 | 1 | `kind` | 2: decision |
 | 0x08 | 2 | `decision` | 1 Committed, 2 Denied |
-| 0x0c | 3 | `reason` | 0 none; 1 bad record (version, kind, or reserved words); 2 route subject unknown; 3 session unknown; 4 the body's plan is not the session's plan; 5 the route caller's descriptor mount/open was rejected; 6 `DataOS.commit_from_capability` returned Rejected |
+| 0x0c | 3 | `reason` | 0 none; 1 bad record (version, kind, or reserved words); 2 route subject unknown; 3 session unknown; 4 the body's plan is not the session's plan; 5 the route caller's descriptor mount/open was rejected (no binding made); 6 `DataOS.commit_from_capability` returned Rejected (the descriptor was opened and the library refused); 7 channel table full (8 bound channels, `Monitor.max_channels`); 8 the channel is bound to another route subject |
 | 0x10 | 4 | `subject` | the route subject the decision was made for |
 | 0x14 | 5 | `session` | the request's session id |
 | 0x18 | 6 | `intent_destination_object` | write intent: destination object (0 on denial) |
@@ -95,10 +98,25 @@ words: `channel` (the shim's id for the channel the record arrived on) and
 | 0x28 | 10 | `intent_backend` | write intent: 1 Storage, 2 Network, 3 Display, 4 Device |
 | 0x2c | 11 | `session_revision` | the committed session's revision |
 | 0x30 | 12 | `reader_balance` | the reader's ledger balance after the commit |
-| 0x34 | 13-15 | `reserved13..15` | 0 |
+| 0x34 | 13 | `descriptor` | the channel's bound descriptor id (0 before the channel is bound) |
+| 0x38 | 14 | `frontend_revision` | the bound frontend state's revision, used at commit (0 before binding) |
+| 0x3c | 15 | `reserved15` | 0 |
 
 A write intent is descriptive: no write is performed by the monitor or the
 shim in this task.
+
+## Channel binding (GB-010)
+
+The monitor keeps a table of at most 8 entries (`max_channels`, the shim's
+`MAX_CHANNELS`): channel id -> (route subject, frontend state, descriptor
+id). At the first record from a channel id it mounts and opens the route
+caller's descriptor through the protocol and stores it; every later record
+on that channel reuses it, and the commit uses the stored frontend state
+and its real revision. The shim never reuses a channel id and fixes a
+channel's subject at session creation, so the binding is fail closed: a
+ninth unbound channel is refused with reason 7, a bound channel arriving
+with another subject with reason 8. Entries are not yet removed when a
+channel closes (Task 3).
 
 ## Route subject (GB-007)
 
@@ -112,7 +130,10 @@ maps label prefixes to subject words:
 </writ_channel>
 ```
 
+Only a `<policy>` with a `label` or `label_prefix` attribute binds identity:
+the prefix is set by the parent, while a suffix is the client's own choice.
 The shim looks the word up at session creation (no match, a
-`<default-policy>`, or subject 0 refuses the session) and hands it to Bend
+`<default-policy>`, a policy matched only by `label_suffix`, or subject 0
+refuses the session) and hands it to Bend
 with every record from that channel. `Monitor.bend` maps word 1 to
 `examples/Scenario.bend`'s reader and word 2 to the synthetic subject S.

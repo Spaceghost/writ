@@ -115,7 +115,6 @@
 
 /* Genode includes */
 #include <base/attached_ram_dataspace.h>
-#include <base/attached_rom_dataspace.h>
 #include <base/entrypoint.h>
 #include <base/heap.h>
 #include <base/log.h>
@@ -956,8 +955,14 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
  * client cannot choose the prefix. The channel's subject word is the
  * `subject` attribute of the <policy> under <writ_channel> that matches the
  * label best (os/session_policy.h with_matching_policy, label/label_prefix/
- * label_suffix scoring). Only a <policy> node counts: a <default-policy>,
- * no match, or subject 0 refuses the session (DENIED). The integrator
+ * label_suffix scoring). Only a <policy> node with a `label` or
+ * `label_prefix` attribute binds identity: a <default-policy>, a policy
+ * matched only through `label_suffix` (the suffix is chosen by the client),
+ * no match, or subject 0 refuses the session (DENIED). The policies are
+ * read from libc's own attached config (Libc::Env::with_config,
+ * repos/libports/include/libc/component.h:36-43), a read-only view of a ROM
+ * that is never updated here, so the channel entrypoint may read it at
+ * session creation without further locking. The integrator
  * writes that configuration; the shim only looks the word up. Bend maps
  * the word to an identity; the record body never supplies it.
  *
@@ -993,7 +998,8 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
  *
  * Failure behaviour (host failure handling, not policy). Session creation
  * answers INSUFFICIENT_RAM when the donated quota is below
- * CHANNEL_SESSION_RAM, DENIED when no policy matches or MAX_CHANNELS are
+ * CHANNEL_SESSION_RAM (Root_component itself answers INSUFFICIENT_CAPS below
+ * Writ_channel::Session::CAP_QUOTA), DENIED when no policy matches or MAX_CHANNELS are
  * open. A closed channel is removed from the table under the mutex, so a
  * queued entry for it is skipped by take and counted as stale.
  */
@@ -1011,6 +1017,13 @@ enum : unsigned {
 
 static_assert(CHANNEL_HEADER_SIZE + CHANNEL_RECORD_SIZE <= CHANNEL_BUCKET_SIZE,
               "a record fits its bucket");
+/*
+ * Every open channel holds at most one ring entry, so with no more channels
+ * than ring slots the ring cannot overflow: the "ring full" count stays 0
+ * by construction (the check in _channel_signalled is defence in depth).
+ */
+static_assert(MAX_CHANNELS <= CHANNEL_QUEUE_DEPTH, "the ring cannot overflow");
+
 static_assert(CHANNEL_SESSION_RAM <= Writ_channel::Session::RAM_QUOTA,
               "the client's donation covers a channel");
 
@@ -1097,7 +1110,8 @@ static void _channel_signalled(uint32_t id)
 	_channel_ready().up();
 }
 
-static Kept<Attached_rom_dataspace> _channel_config;
+/* libc's environment, for its already-attached config (set in _channel_init) */
+static Libc::Env *_channel_libc_env;
 
 struct Channel_root : Root_component<Channel>
 {
@@ -1109,20 +1123,25 @@ struct Channel_root : Root_component<Channel>
 
 	/*
 	 * The subject word of the <policy> under <writ_channel> that matches
-	 * the label best, 0 for none. The config ROM is read once at start
-	 * and never updated, so every session sees the same policies.
+	 * the label best, 0 for none. Only a policy that names the label or a
+	 * label prefix counts: the parent sets the prefix, while a suffix is
+	 * the client's own choice and must not bind identity. The config is
+	 * libc's, never updated, so every session sees the same policies.
 	 */
 	uint32_t _subject(Session_label const &label)
 	{
-		Node const config = _channel_config->node();
-		return config.with_sub_node("writ_channel",
-			[&] (Node const &policies) -> uint32_t {
-				return with_matching_policy(label, policies,
+		uint32_t subject = 0;
+		_channel_libc_env->with_config([&] (Node const &config) {
+			config.with_optional_sub_node("writ_channel", [&] (Node const &policies) {
+				subject = with_matching_policy(label, policies,
 					[&] (Node const &policy) -> uint32_t {
 						if (!policy.has_type("policy")) return 0;   /* <default-policy> */
+						if (!policy.has_attribute("label")
+						 && !policy.has_attribute("label_prefix"))
+							return 0;                               /* suffix-only */
 						return policy.attribute_value("subject", uint32_t(0)); },
-					[&] () -> uint32_t { return 0; }); },
-			[&] () -> uint32_t { return 0; });
+					[&] () -> uint32_t { return 0; }); }); });
+		return subject;
 	}
 
 	Create_result _create_session(char const *args) override
@@ -1135,6 +1154,13 @@ struct Channel_root : Root_component<Channel>
 			        " bytes, a channel needs ", unsigned(CHANNEL_SESSION_RAM));
 			return Create_error::INSUFFICIENT_RAM;
 		}
+
+		/*
+		 * Caps need no check here: Root_component's budget_adjusted_args
+		 * already refuses a cap_quota below Writ_channel::Session::CAP_QUOTA
+		 * with INSUFFICIENT_CAPS before this runs (repos/base/include/base/
+		 * service.h:170-177), and the args seen here are the adjusted ones.
+		 */
 
 		uint32_t const subject = _subject(label);
 		if (!subject) {
@@ -1188,10 +1214,10 @@ static Kept<Channel_root>           _channel_root;
  * Announces the Writ_channel service when the config has a <writ_channel>
  * node. Called once from Libc::Component::construct before main runs.
  */
-static void _channel_init(Env &env)
+static void _channel_init(Libc::Env &env)
 {
-	_channel_config.construct(env, "config");
-	Node const config = _channel_config->node();
+	_channel_libc_env = &env;
+	env.with_config([&] (Node const &config) {
 	config.with_optional_sub_node("writ_channel", [&] (Node const &) {
 		_channel_ep.construct(env, size_t(CHANNEL_EP_STACK), "writ_channel",
 		                      Affinity::Location());
@@ -1201,7 +1227,7 @@ static void _channel_init(Env &env)
 		log("writ_channel: service announced (bucket ", unsigned(CHANNEL_BUCKET_SIZE),
 		    " bytes, record ", unsigned(CHANNEL_RECORD_SIZE), " bytes, queue depth ",
 		    unsigned(CHANNEL_QUEUE_DEPTH), ", channels ", unsigned(MAX_CHANNELS), ")");
-	});
+	}); });
 }
 
 extern "C" void writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)
@@ -1221,6 +1247,12 @@ extern "C" void writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *su
 
 		uint32_t const volatile *bucket = c->request_ds.local_addr<uint32_t const volatile>();
 		uint32_t const length = bucket[0];
+		/*
+		 * Pairs with the client's release fence before it writes the
+		 * length: the record words read below are not read before the
+		 * length that announced them.
+		 */
+		__atomic_thread_fence(__ATOMIC_ACQUIRE);
 		uint32_t const seq    = bucket[1];
 		if (length != CHANNEL_RECORD_SIZE) {
 			_channel_bad_length++;
