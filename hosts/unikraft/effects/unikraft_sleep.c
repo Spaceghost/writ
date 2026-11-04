@@ -10,7 +10,7 @@
 // Not io_work: on this single-lane Unikraft configuration an io_work helper
 // thread is a second thread of the init process that never ends, so when main
 // returns lib/posix-process/shutdown.c reports 0x80 | SIGKILL and the exit
-// hook maps it to QEMU 255 (verification/unikernel-effects-qemu.txt, E1).
+// hook maps it to QEMU 255 (verification/unikernel-effects-qemu.txt, R0-E1).
 //
 // w->data holds UNIKRAFT_SLEEP_WORDS words, allocated here and freed when
 // the sleep ends: [0] start, [1] deadline (both ns on the host clock),

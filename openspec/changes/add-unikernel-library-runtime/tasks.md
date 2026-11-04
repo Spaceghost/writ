@@ -23,7 +23,8 @@ pending.
 ## 2. Port
 
 - [ ] 2.1 Author the console, time, and ingress effect twins for the chosen kernel (exit is the inventoried termination host layer); publish their trust inventory; run the runtime profile's binary check on the image.
-  Unchecked: the ingress twin is missing. Exit: `hosts/unikraft/exit_device.c` (a C
+  Unchecked: the ingress twins exist only as scaffolding (below; the subject is a
+  build-time word, not an authenticated route). Exit: `hosts/unikraft/exit_device.c` (a C
   termination and crash hook, not a Bend effect twin) gives QEMU 1 / 3 / 253 for success,
   `IO.die`, and a fault (verification/unikernel-exit-codes.txt). Console and time:
   `hosts/unikraft/effects/Unikraft.bend` (`Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`)
@@ -39,6 +40,20 @@ pending.
   have not been exercised. The images still send `IO.print` through lib-musl; only
   `Unikraft.log` uses a twin, so the "Console effect" scenario (a twin for `IO.print`) is
   a gap.
+  Ingress: `Unikraft.take` and `Unikraft.put` (same file, `.c` twins over `host.c`) carry
+  the Genode channel's 64-byte records in fixed 80-byte frames over QEMU's second serial
+  port (ISA COM2, `CONFIG_LIBNS16550_COM2`, a Unix socket on the host;
+  `hosts/unikraft/effects/Channel.md`); `take` parks on the runtime timer between 10 ms
+  polls of COM2, since COM2 has no descriptor or interrupt in this configuration. The
+  monitor `hosts/unikraft/monitor/Monitor.bend` (fuel 4, SYNTHETIC Scenario state) answered
+  the host-side client probe with Committed (reason 0) and, for S's session named by the
+  body under the R subject, Denied by `DataOS.commit_from_capability` (reason 6); a
+  wrong-length frame got host.c's transport refusal (kind 3, reason 256) before Bend; the
+  reason-5 contrast (S as the subject) is shown on Linux by `MonitorCheck.bend`
+  (verification/unikernel-channel-qemu.txt). The subject is a build-time word
+  (`WRIT_CHANNEL_SUBJECT`): there is no parent route on a unikernel, so this is
+  SCAFFOLDING for the ingress twin and the gap UL-008's single-ingress rule and the
+  appliance host must close; it is never read from the record body.
   `hosts/unikraft/INVENTORY.md` lists every file, exported symbol, and what it may touch.
   UL-004 amended (unikraft effect-twins lane, Task 1), as AGENTS.md requires a rationale for
   a contract change. The old text made the effect twins the only kernel-specific code, but

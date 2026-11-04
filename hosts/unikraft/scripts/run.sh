@@ -9,6 +9,11 @@
 #                        (where Unikraft's own qemu_exit/qemu_crash write)
 #   WRIT_QEMU_FEED='cmd' feed cmd's stdout to QEMU's stdin (serial/monitor mux)
 #                        instead of /dev/null, e.g. to type a monitor command
+#   WRIT_QEMU_SERIAL2=spec add a second serial port (ISA COM2, 0x2f8) with that
+#                        chardev spec, e.g. unix:/path,server=on,wait=off (the
+#                        Writ channel, hosts/unikraft/effects/Channel.md); the
+#                        first is then given explicitly as -serial mon:stdio,
+#                        which is what -nographic uses when no -serial is given
 # Writes $W/<set>/logs/run-<label>.raw (the serial bytes as captured) and
 # run-<label>.log: the command, the console from the "Booting from ROM" line on
 # with escapes, CRs, NUL bytes and empty lines removed (a reading aid; diffs use
@@ -32,17 +37,18 @@ case "${WRIT_QEMU_DEVICE:-1}" in
   *) DEV="-device isa-debug-exit,iobase=0xf4,iosize=0x04" ;;
 esac
 NR="-no-reboot"; [ "${WRIT_QEMU_REBOOT:-0}" = 1 ] && NR=""
+SER=""; [ -n "$WRIT_QEMU_SERIAL2" ] && SER="-serial mon:stdio -serial $WRIT_QEMU_SERIAL2"
 L="$W/$S/logs/run-$LB.log"; R="$W/$S/logs/run-$LB.raw"
 IN="</dev/null"; [ -n "$WRIT_QEMU_FEED" ] && IN="(stdin: $WRIT_QEMU_FEED)"
-echo "\$ timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M -cpu max -kernel \$W/$S/images/$P-qemu -append \"$AP\" $DEV $NR $IN; echo \$?" > "$L"
+echo "\$ timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M -cpu max -kernel \$W/$S/images/$P-qemu -append \"$AP\" $DEV $NR $SER $IN; echo \$?" > "$L"
 B=$(date +%s.%N)
 if [ -n "$WRIT_QEMU_FEED" ]; then
   bash -c "$WRIT_QEMU_FEED" | timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" -cpu max \
-    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR > "$R" 2>&1
+    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR $SER > "$R" 2>&1
   RC=${PIPESTATUS[1]}
 else
   timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" -cpu max \
-    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR </dev/null > "$R" 2>&1
+    -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR $SER </dev/null > "$R" 2>&1
   RC=$?
 fi
 E=$(date +%s.%N)

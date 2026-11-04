@@ -24,6 +24,12 @@ unikraft:
     CONFIG_LIBPOSIX_PROCESS_MULTITHREADING: 'y'
     # Single lane (UL-005): one virtual CPU.
     CONFIG_UKPLAT_CPU_MAXCOUNT: 1
+    # Writ channel (hosts/unikraft/effects/Channel.md): register the second ISA
+    # serial port (0x2f8, QEMU's second -serial) as the console device "COM2".
+    # drivers/ukconsole/ns16550/com.c registers it with flags 0, so it never
+    # receives console or stdout bytes; only host.c reads and writes it.
+    # host.c refuses to build without it.
+    CONFIG_LIBNS16550_COM2: 'y'
 
 libraries:
   musl:

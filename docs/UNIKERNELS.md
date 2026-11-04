@@ -93,11 +93,20 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   Gap: the re-park and clock-failure paths of `host.c` have never been exercised (no clock
   fault can be injected without patching Unikraft), and a fully stopped clock is bounded
   only by the harness timeout. `IO.print` still goes through lib-musl, not a twin.
+- **Ingress (scaffolding):** `Unikraft.take` / `Unikraft.put` carry 64-byte records in
+  80-byte frames over QEMU's second serial port (COM2, a Unix socket on the host;
+  `hosts/unikraft/effects/Channel.md`). For example, the client probe's report-to-summary
+  request reaches `hosts/unikraft/monitor/Monitor.bend`, which answers Committed (reason 0);
+  the same plan naming S's session is Denied by `DataOS.commit_from_capability` (reason 6)
+  ([unikernel-channel-qemu.txt](../verification/unikernel-channel-qemu.txt)). Gap: the
+  subject is a build-time word, not a route; whoever reaches the socket speaks as it
+  (UL-008 and the appliance host must close this). `take` polls COM2 every 10 ms on the
+  runtime timer because COM2 has no descriptor or interrupt here.
 - **UL-004 amended:** the effect twins and the inventoried boot and termination host layer
   are the only kernel-specific code (the crash hook cannot be a twin; rationale in the
   change's tasks.md 2.1).
 - **Host code:** listed in [hosts/unikraft/INVENTORY.md](../hosts/unikraft/INVENTORY.md).
-- **Open:** the ingress effect twin (task 2.1); the runtime's fault
+- **Open:** an authenticated ingress subject (task 2.1, UL-008); the runtime's fault
   message on a fault (2.3); arena exhaustion and `IO.die(…, 1, …)` share status 1 (QEMU 3);
   statuses above 0x7c share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU
   codes of program statuses 62 and 63; more lanes (2.4); accelerated boots (3.1).
