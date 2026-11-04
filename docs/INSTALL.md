@@ -58,6 +58,36 @@ on entry. `flake.lock` pins nixpkgs to one nixos-unstable revision. Run
 versions. The recorded commands and outputs are in
 [verification/nix-shell.txt](../verification/nix-shell.txt).
 
+The flake also builds and checks the library itself, offline in the Nix
+sandbox, from a source tree filtered to the root and `examples/` `.bend` files:
+
+```sh
+nix build .#tests-native
+./result/bin/tests-native +RTS --threads 4 --gpu off
+nix build .#examples-native
+nix flake check
+```
+
+`packages.tests-native` is `bend Tests.bend -o tests-native` compiled with the
+flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
+and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
+`examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
+library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 638 lines
+beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
+`bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
+`--verdict`); and it runs `openspec validate --all --strict --no-interactive`
+over `openspec/` (`openspec`). These reproduce the recorded test, proof, and
+specification verification on the pinned Bend 2.0.39 and OpenSpec 1.16.0. The
+native checks use the flake's clang 23.1.3, not the clang 19.1.1 of the
+recorded native run, and the JavaScript check uses Bend's bundled runtime, not
+the separate Node.js 24.22.1 run. The native test check is a CPU run; nothing
+in the flake builds a device program or tests a GPU. `nix flake check` does
+not build `examples-native`; build it explicitly. The recorded runs are in
+[verification/nix-checks.txt](../verification/nix-checks.txt), and two clean
+builds of `tests-native` with identical store hashes are in
+[verification/nix-determinism.txt](../verification/nix-determinism.txt).
+
 These commands need flakes. If your Nix configuration does not enable them, add
 `--extra-experimental-features 'nix-command flakes'` to each command, or add
 `experimental-features = nix-command flakes` to `~/.config/nix/nix.conf`.
