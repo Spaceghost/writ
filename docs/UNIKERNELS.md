@@ -81,8 +81,19 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   together with the console check, since QEMU also exits 1 on its own startup errors.
 - **After a crash or `main`:** no reset observed; QEMU ends with 0, consistent with an ACPI
   power-off ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)).
+- **Console and time effects:** `Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`
+  (`hosts/unikraft/effects/Unikraft.bend`, `.c` twins over `hosts/unikraft/host.c`). For
+  example, `scripts/unikernel/Probe.bend` built with `WRIT_HOST_LAYER=y` prints
+  `probe: hello from Bend through the Unikraft console` on serial through the twin, reads
+  100 to 101 ms around `Unikraft.sleep(100)`, and exits 1 (QEMU 3) when the delta leaves
+  [100, 1100), shown once from a scratch build ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt)).
+  Gap: the sleep blocks the loop thread, because an `io_work` helper thread outlives `main`
+  on this configuration and turns success into QEMU 255 (same file, E1).
+- **UL-004 amended:** the effect twins and the inventoried boot and termination host layer
+  are the only kernel-specific code (the crash hook cannot be a twin; rationale in the
+  change's tasks.md 2.1).
 - **Host code:** listed in [hosts/unikraft/INVENTORY.md](../hosts/unikraft/INVENTORY.md).
-- **Open:** the console, time, and ingress effect twins (task 2.1); the runtime's fault
+- **Open:** the ingress effect twin (task 2.1); the runtime's fault
   message on a fault (2.3); arena exhaustion and `IO.die(…, 1, …)` share status 1 (QEMU 3);
   statuses above 0x7c share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU
   codes of program statuses 62 and 63; more lanes (2.4); accelerated boots (3.1).

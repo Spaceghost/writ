@@ -1,14 +1,56 @@
 # Unikraft host binding inventory
 
 Every authored non-Bend file under `hosts/unikraft/` (UL-004), including this file
-(`INVENTORY.md`, documentation only: it is not linked or run). There are no Bend effect
-definitions or `.c` effect twins here yet: the console, time, and ingress twins of
-tasks.md 2.1 are not written, and the images use Bend 2.0.39's own `IO.print` row
-(verification/unikernel-binary-check.txt). These files are host
-binding code for the Unikraft 0.21.0 target, not Writ policy: they carry how an image
-ended out to the harness and decide no authority question. Nothing under `hosts/` is
-imported by the Bend library or the test suite; the files are linked only into a
-Unikraft application through that application's `Makefile.uk`.
+(`INVENTORY.md`, documentation only: it is not linked or run), and the Bend effect
+definitions they serve. UL-004 (as amended in the effect-twins lane, Task 1) allows two
+kinds of kernel-specific code: the effect twins, and the inventoried boot and termination
+host layer (`exit_device.c`, which cannot be a twin because no Bend code runs on a crash or
+after `main` returns, and `host.c`, the functions the twins call). These files are host
+binding code for the Unikraft 0.21.0 target, not Writ policy: they move console bytes,
+read a clock, wait, and carry how an image ended out to the harness, and decide no
+authority question. Nothing under `hosts/` is imported by the Bend library or the test
+suite; the C files are linked only into a Unikraft application through that application's
+`Makefile.uk`, and the effect definitions are imported only by programs built as images
+(today `scripts/unikernel/Probe.bend`). The ingress twin of tasks.md 2.1 is not written.
+
+## Effect definitions and twins (`effects/`)
+
+Naming rule: the Bend effect `Unikraft.<x>` is declared in `effects/Unikraft.bend`; its C
+twin is `effects/unikraft_<x>.c`, defines `Term unikraft_<x>_run(Env, Term*, IoWork*)` and
+the constructor `unikraft_<x>_use` (registering `io_eff(CID(Unikraft.<x>), unikraft_<x>_run)`),
+and declares and calls only `host.c` functions; its JS twin is `effects/unikraft_<x>.js` and
+throws `Unikraft.<x>: the JavaScript runner is not a Unikraft target; ...`.
+`scripts/runtime-profile/check-binary.sh` maps `unikraft_<x>_run` to `Unikraft.<x>`, so an
+image's effect rows name exactly the Unikraft effects it uses (verification/unikernel-effects-qemu.txt,
+E7). No other authored function may end in `_run` or `_use`. A `.c` twin is spliced into the
+program's generated C by the Bend compiler (`bend guide effects`), so it is compiled as part
+of `app.c`; on a Linux build the `writ_uk_*` symbols are undefined and the link fails.
+
+| File | Defines / exports | Calls | May touch | Bounds |
+| --- | --- | --- | --- | --- |
+| `effects/Unikraft.bend` | `Unikraft.log(text: String) -> IO(Unit)`, `Unikraft.now() -> IO(U32)`, `Unikraft.sleep(ms: U32) -> IO(Unit)` (public entry points for image programs) | the twins below, by `import` | nothing itself | as below |
+| `effects/unikraft_log.c` | `unikraft_log_run` (T), `unikraft_log_use` (constructor) | runtime `io_cstr`, `free`, `term_pak`, `io_eff`; `writ_uk_log` | the argument string (a `malloc`ed copy, freed) | as `writ_uk_log` |
+| `effects/unikraft_now.c` | `unikraft_now_run`, `unikraft_now_use` | `writ_uk_now_ms` | nothing | 64-bit ms truncated to U32 (wraps after about 49.7 days) |
+| `effects/unikraft_sleep.c` | `unikraft_sleep_run`, `unikraft_sleep_use` | `writ_uk_sleep_ms` | blocks the event loop's thread for the sleep (not `io_work`: a helper thread outlives `main` and makes success QEMU 255, E1 of the evidence) | as `writ_uk_sleep_ms` |
+| `effects/unikraft_{log,now,sleep}.js` | `unikraft_<x>` registered with `io_eff` | nothing | nothing (throws) | none |
+
+## Host layer
+
+| File | Exported symbols | May touch | Linked how |
+| --- | --- | --- | --- |
+| `host.c` | `writ_uk_log(const char*, size_t)`, `writ_uk_now_ms(void)`, `writ_uk_sleep_ms(uint32_t)` (type T); `writ_uk_out`, `writ_uk_fail` are `static` | `uk_console_out` (`lib/ukconsole/include/uk/console.h`: every STDOUT console device, the serial console on qemu/x86_64); `ukplat_monotonic_clock` (`include/uk/plat/time.h`); `uk_sched_thread_sleep` (`lib/uksched/include/uk/sched.h`, blocks the calling thread); `_exit(1)` on a clock failure. Reads the text it is given; no other memory beyond its stack, no file, socket, or device other than the console | By reference when `WRIT_HOST_LAYER=y`: the app `Makefile.uk` adds `$(WRIT_HOSTS_UNIKRAFT)/host.c` to its `SRCS`. Default `n`, so images without Unikraft effects link as before. Refuses to build (`#error`) without `CONFIG_LIBUKCONSOLE` or `CONFIG_HAVE_SCHED` |
+
+`host.c` bounds and failures: one log text is written up to its first NUL and at most
+4096 bytes (`WRIT_UK_LOG_MAX`), followed by a newline; a longer text is cut there and
+marked ` [writ_uk_log: truncated]`. A console write error is not reported (no channel to
+report it on). `writ_uk_sleep_ms` returns only when the monotonic clock is at least `ms`
+past its entry reading, re-sleeping the remainder after an early wake, at most 16
+scheduler sleeps (`WRIT_UK_SLEEP_ROUNDS`); a reading below the start, a reading that has
+not advanced after a scheduler sleep, or a 17th round writes one `writ_uk: ...` line and
+ends the image with `_exit(1)` (QEMU 3). These failure paths were not forced in a run
+(no clock fault can be injected without patching Unikraft).
+
+## Termination hook
 
 | File | Exported symbols | May touch | Linked how |
 | --- | --- | --- | --- |
@@ -38,21 +80,23 @@ they build or copy is written inside the repository.
 
 | File | Role | Exported symbols / variables | May touch |
 | --- | --- | --- | --- |
-| `app/Kraftfile` | Template Unikraft app (A3 libraries, `LIBUKBOOT_MAINTHREAD=y`, `UKPLAT_CPU_MAXCOUNT=1`, lib-musl, `qemu/x86_64`); its relative paths resolve inside `$W/<set>-unikraft/` | app name `writ-bend` (image `writ-bend_qemu-x86_64`) | nothing (configuration) |
-| `app/Makefile.uk` | Template app makefile. No machine path: requires `WRIT_APP_C` and `WRIT_HOSTS_UNIKRAFT` from the environment (stops with `$(error ...)` otherwise); links `exit_device.c` by reference unless `WRIT_EXIT_HOOK=n`; adjustments A1 and H1 | library `appwritbend`; reads `WRIT_APP_C`, `WRIT_HOSTS_UNIKRAFT`, `WRIT_EXIT_HOOK` (default `y`) | nothing (configuration) |
+| `app/Kraftfile` | Build configuration, not a twin. Template Unikraft app (A3 libraries, `LIBUKBOOT_MAINTHREAD=y`, `UKPLAT_CPU_MAXCOUNT=1`, lib-musl, `qemu/x86_64`); its relative paths resolve inside `$W/<set>-unikraft/` | app name `writ-bend` (image `writ-bend_qemu-x86_64`) | nothing (configuration) |
+| `app/Makefile.uk` | Template app makefile (build configuration, not a twin). No machine path: requires `WRIT_APP_C` and `WRIT_HOSTS_UNIKRAFT` from the environment (stops with `$(error ...)` otherwise); links `exit_device.c` by reference unless `WRIT_EXIT_HOOK=n`, and `host.c` when `WRIT_HOST_LAYER=y`; adjustments A1 and H1 | library `appwritbend`; reads `WRIT_APP_C`, `WRIT_HOSTS_UNIKRAFT`, `WRIT_EXIT_HOOK` (default `y`), `WRIT_HOST_LAYER` (default `n`) | nothing (configuration) |
 | `app/Config.uk` | Empty app Kconfig, as before | none | nothing |
 | `scripts/env.sh` | Sourced by every script: sets the workspace and kraft command; stops the caller if `W` is empty or not a directory | sets `HERE`, `REPO`, `W` (from the environment, else `<repository>/../writ-unikernel`), `KRAFT`; defines `writ_strip_serial` (NUL, escapes, CR), used by `run.sh` and `console.sh` | nothing |
 | `scripts/mkapp.sh <set>` | Creates `$W/<set>-unikraft/` from `app/` and `$W/<set>/{gen,images,logs}`; refuses to overwrite a differing app file; links the compiler's own `stdatomic.h` (A1) | reads `CC` (default `gcc`) | `$W` only |
-| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `$W/<set>-unikraft/app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | exports `WRIT_APP_C`, `WRIT_HOSTS_UNIKRAFT`, `WRIT_EXIT_HOOK` (default `y`) to kraft/make; sets `UK_CFLAGS=-std=gnu11`; reads `WRIT_JOBS` (make `-j`, default `nproc`) | `$W` only |
+| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `$W/<set>-unikraft/app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | exports `WRIT_APP_C`, `WRIT_HOSTS_UNIKRAFT`, `WRIT_EXIT_HOOK` (default `y`), `WRIT_HOST_LAYER` (default `n`) to kraft/make; sets `UK_CFLAGS=-std=gnu11`; reads `WRIT_JOBS` (make `-j`, default `nproc`) | `$W` only |
 | `scripts/run.sh <set> <label> <probe> <append> [timeout] [mem]` | One TCG boot under `timeout` with `-device isa-debug-exit,iobase=0xf4,iosize=0x04` and `-no-reboot`; writes `run-<label>.raw` and a cleaned `run-<label>.log` with the command and QEMU status; exits with QEMU's (or timeout's) status | reads `WRIT_QEMU_REBOOT=1` (omit `-no-reboot`), `WRIT_QEMU_DEVICE=0` (no device) or `=501` (device at 0x501), `WRIT_QEMU_FEED` (command fed to QEMU's stdin); exits 2 before QEMU if the image or logs directory is missing; needs `bc` (wall time) | `$W` only |
 | `scripts/console.sh <run.raw>` | Extracts the program's console from a `run.sh` capture for a line-for-line diff: removes NUL, CR, terminal escapes, everything through `Booting from ROM` and its dots, and Unikraft's 7-line banner, which it requires verbatim; fails if the program's part holds a NUL, an ESC, or a CR that is not the CR of a CR LF; keeps every later line | none | reads the capture; writes stdout and three `mktemp` files (`$T`, `$T.banner`, `$T.tail`), removed on exit |
-| `scripts/check-image.sh <set> <label> <probe> <reference> <qemu_status> [pass] [timeout] [mem]` | Boots the image once through `run.sh` and checks console diff (empty), PASS count (if given), last line (if `WRIT_EXPECT_LAST_LINE`), and QEMU status; exits 1 if any expected outcome changed | reads `WRIT_EXPECT_LAST_LINE`, `WRIT_NO_BOOT=1` (check an existing capture) | `$W` only; two `mktemp` files |
+| `scripts/check-image.sh <set> <label> <probe> <reference> <qemu_status> [pass] [timeout] [mem]` | Boots the image once through `run.sh` and checks console diff (empty), PASS count (if given), last line (if `WRIT_EXPECT_LAST_LINE`), and QEMU status; exits 1 if any expected outcome changed | reads `WRIT_EXPECT_LAST_LINE`, `WRIT_NO_BOOT=1` (check an existing capture), `WRIT_CONSOLE_SED` (sed script masking run-dependent values before the diff, printed when used) | `$W` only; two `mktemp` files (plus `<first>.m` while masking) |
 | `scripts/check-corpus.sh <set> <label> [timeout] [mem]` | `check-image.sh` for `tests-qemu` against `verification/unikernel-corpus-linux-reference.txt`, QEMU 1, last line `ALL LIBRARY TESTS PASSED` | reads `WRIT_CORPUS_PASS` (default 782, the merged tree's corpus) | `$W` only |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
 `lib/uklibid`), and `build.sh` always builds clean.
 
 Probe scaffolding outside this directory: `scripts/unikernel/*.bend` (Hello, Die, Exit,
-Overflow, Clock, Lanes) are small Bend programs that only exercise the image (a print, a
-status, a fault, a clock read, lanes); they define no effect, policy, or authority and are
-not imported by the library or the test suite.
+Overflow, Clock, Lanes, Probe) are small Bend programs that only exercise the image (a
+print, a status, a fault, a clock read, lanes, the Unikraft effects); they define no
+effect, policy, or authority and are not imported by the library or the test suite.
+`Probe.bend` imports `effects/Unikraft.bend` and is built with `WRIT_HOST_LAYER=y`; its
+console reference is `verification/unikernel-effects-probe-reference.txt`.

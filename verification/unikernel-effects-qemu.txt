@@ -178,3 +178,13 @@ result: FAIL (outside the monitor profile)
   (writ_uk_log, writ_uk_now_ms, writ_uk_sleep_ms; nm type T) end in neither _run nor _use,
   so the check does not read them as rows. As before, a static image has no import list, so
   the host-symbol surface is not checked by this tool.
+
+== OpenSpec ==
+
+  ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 --version            -> 1.16.0
+  ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+    -> Totals: 44 passed, 0 failed (44 items); exit 0
+  (after the UL-004 amendment in openspec/changes/add-unikernel-library-runtime/specs/
+  unikernel-library-runtime/spec.md; the Nix store path recorded elsewhere for 1.16.0 is no
+  longer present on this machine, so the pinned npm package was run through bunx.)
+  Structural validation only, separate from the Bend tests and proof checks.
