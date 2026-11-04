@@ -3,8 +3,9 @@
 Sections 1 and 2 are complete with the evidence named in
 [VERIFICATION.md](../../../VERIFICATION.md) and the
 [traceability table](../../traceability/genode-capability-adoption.md); in
-section 3, 3.1 is checked and 3.2 remains pending. This is pure Bend work that
-can proceed without a Genode build.
+section 3, 3.1 and 3.2 are checked; replaying the vectors on a Genode host is
+not done (see 3.1). This is pure Bend work that can proceed without a Genode
+build.
 
 ## 1. Model
 
@@ -22,4 +23,4 @@ can proceed without a Genode build.
 ## 3. Handoff
 
 - [x] 3.1 Document in the Genode component change how `Genode.take` constructs binding records from the parent route and object identity, and which vectors it must replay; leave that change's tasks unchecked. Evidence: section "Binding records from `Genode.take`" in [add-genode-bend-component/design.md](../add-genode-bend-component/design.md) (identity sources, field mapping with constants and gaps, the GA-005 and GA-008 vectors with the Genode run or gap for each, and what is not yet reachable); that change's tasks are untouched. No vector is replayed on the host yet.
-- [ ] 3.2 Validate OpenSpec strictly.
+- [x] 3.2 Validate OpenSpec strictly. Evidence: OpenSpec 1.16.0 `validate --all --strict --no-interactive`, 44 passed, 0 failed, and `bend Tests.bend` (Bend 2.0.39, Linux) 782 PASS lines with `ALL LIBRARY TESTS PASSED`, HostBinding 144 checks and 41 vectors identical to `verification/host-binding-vectors.txt`, on lane adoption-binding-doc 2026-11-04 (docs/superpowers/records/2026-11-04-adoption-binding-doc/task-1-report.md). Structural validation only; no vector is replayed on a host.

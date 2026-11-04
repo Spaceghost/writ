@@ -91,3 +91,29 @@ revocation on route change (config ROM never updated), generation turnover
 
 OpenSpec after Task 1: `validate --all --strict --no-interactive`,
 44 passed, 0 failed.
+
+## Task 2: traceability and box 3.2
+
+- `openspec/traceability/genode-capability-adoption.md`: GA-005 and GA-008 rows'
+  coverage boundary now end with "Documented for Genode in 'Binding records from
+  `Genode.take`' in add-genode-bend-component/design.md; replay not yet run on
+  the host", with the per-row gap or analogue.
+- `openspec/traceability/genode-bend-component.md`: GB-007 row's gap column
+  cites the section and says no vector is replayed yet.
+- `openspec/changes/add-genode-capability-adoption/tasks.md`: box 3.2 checked
+  with the two results below; the intro sentence updated. The Genode component
+  change's `tasks.md` is untouched.
+
+Results (2026-11-04, this worktree):
+
+- OpenSpec 1.16.0 (`~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all
+  --strict --no-interactive`): 44 passed, 0 failed, after Task 1 and again
+  after Task 2.
+- `bend Tests.bend` (Bend 2.0.39, `BEND_NO_TELEMETRY=1`, Linux CPU): rc 0,
+  782 PASS lines, 0 FAIL, `ALL LIBRARY TESTS PASSED`; "HostBinding: 144 checks
+  passed, 41 vectors emitted"; the emitted VECTOR lines are identical (`diff`)
+  to `verification/host-binding-vectors.txt`. Unchanged from the expected 782.
+
+Not run, by scope: native tests, `bend PROOF.bend`, any Genode build or run
+(text-only lane; no security law or implementation changed). No GPU, no host
+replay of any vector.
