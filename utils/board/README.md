@@ -133,7 +133,9 @@ commit), so after a merge the ledger, briefs, reports, reviews and log sit on
 master beside the plan as the record of how it went; a worktree therefore
 holds the records of landed plans too, and the board shows those whose
 `Branch:` line is the worktree's branch. A record is tens of kilobytes. The
-board shows the last twelve lines per lane,
+board shows the last twelve lines per lane, laid out oldest to newest with the box
+scrolled to the newest line (the items are newest-first in a column-reverse
+flex list, so an appended line keeps the view at the end),
 oldest first, newest emphasised, and the newest line is the tooltip on the
 lane's chip in the change table. The file is the main "being worked on"
 signal: a lane is **active** when its newest signal (last commit time,

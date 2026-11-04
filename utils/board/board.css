@@ -127,12 +127,15 @@ td.chips { min-width: 14rem; }
 .lane-changes { color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .lane-landed { opacity: .8; }
 .lane .activity { margin: .5rem 0 .2rem; }
-.log { list-style: none; margin: .3rem 0 .2rem; padding: .4rem .6rem; background: var(--code-bg); border-radius: 6px; font-size: .8rem; max-height: 11rem; overflow-y: auto; display: flex; flex-direction: column; gap: .15rem; }
+/* Items are newest-first in the DOM and laid out column-reverse: the feed reads
+   oldest to newest top-down and the scroll box starts at its end, so the newest
+   line is visible and a push that appends keeps the view at the end. */
+.log { list-style: none; margin: .3rem 0 .2rem; padding: .4rem .6rem; background: var(--code-bg); border-radius: 6px; font-size: .8rem; max-height: 11rem; overflow-y: auto; display: flex; flex-direction: column-reverse; gap: .15rem; }
 .log li { display: grid; grid-template-columns: 4.6rem 5.4rem minmax(0, 1fr); gap: .5rem; align-items: baseline; }
 .log-at { font-family: var(--mono); font-size: .74rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .log-who { font-family: var(--mono); font-size: .74rem; color: var(--accent); overflow-wrap: anywhere; }
 .log-text { overflow-wrap: anywhere; }
-.log li:last-child .log-text { font-weight: 600; }
+.log li:first-child .log-text { font-weight: 600; }
 .progress .bar { width: 4rem; height: .4rem; background: var(--code-bg); border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .progress .bar > span { display: block; height: 100%; background: var(--accent); }
 .progress .num { font-family: var(--mono); font-size: .8rem; font-variant-numeric: tabular-nums; }
