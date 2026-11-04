@@ -65,6 +65,28 @@ None of this is a security claim. Every candidate is one address space, so the
 image holds the monitor only, and the hypervisor, host kernel, and firmware stay
 in the trusted base as the appliance change states.
 
+## Port status (unikernel port lane, 2026-11-04)
+
+The matrix below records the kernels **before** the port; where a cell has since changed,
+it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one lane:
+
+- **Corpus parity:** `Tests.bend` (782 checks, merged tree aaa6885) prints 782 PASS lines
+  and `ALL LIBRARY TESTS PASSED` with QEMU exit 1, its console identical line for line to a
+  Linux `--threads 1 --gpu off` capture after removing only SeaBIOS output and Unikraft's
+  banner; the four examples match likewise ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt)). Checked by
+  `hosts/unikraft/scripts/check-corpus.sh` and `check-image.sh`, which exit nonzero when an
+  expected outcome changes.
+- **Exit status:** the exit hook `hosts/unikraft/exit_device.c` gives QEMU 1 for status 0,
+  2s + 1 for status s up to 0x7c, 253 for a crash ([unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)). QEMU 1 is success only
+  together with the console check, since QEMU also exits 1 on its own startup errors.
+- **After a crash or `main`:** no reset observed; QEMU ends with 0, consistent with an ACPI
+  power-off ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)).
+- **Host code:** listed in [hosts/unikraft/INVENTORY.md](../hosts/unikraft/INVENTORY.md).
+- **Open:** the console, time, and ingress effect twins (task 2.1); the runtime's fault
+  message on a fault (2.3); arena exhaustion and `IO.die(…, 1, …)` share status 1 (QEMU 3);
+  statuses above 0x7c share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU
+  codes of program statuses 62 and 63; more lanes (2.4); accelerated boots (3.1).
+
 ## Selection matrix, 2026-11
 
 Executed 2026-11-03 under the library-unikernel lane, Tasks 1 to 3. Every cell except those marked
@@ -93,11 +115,11 @@ built here).
 | Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was not exercised | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
 | Process: argv | **supplied** via `-append` (E3) | **supplied** via the kernel command line (O-E3) |
 | Process: `BENDRTS` | **substituted**: build-time only, compiled into the environment (E8) | **supplied** at boot with `--env=` (O-E8) |
-| Process: exit status | **missing**: return from `main` ends the run with QEMU 0 whatever it returned (power-off inferred; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred)); `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |
+| Process: exit status | (matrix, before the port; see [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)) **missing**: return from `main` ends the run with QEMU 0 whatever it returned (power-off inferred; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred)); `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |
 | Process: CPU count | **consistent with supplied**; not distinguishable from the runtime's fallback at one CPU (default `lanes 1`, E5); SMP not tried | **supplied**: 1 on `-smp 1`, 2 on `-smp 2` (O-E5) |
 | Atomics | **supplied** by GCC's `stdatomic.h` (A1); exercised on one lane and one CPU only (E5, E9) | **supplied** by clang's `stdatomic.h`; exercised with two lanes on two vCPUs (TCG) (O-E5, O-E6) |
 | Device dispatch | **missing** by construction: no accelerator code compiled, no `!` program run (E2) | **missing** by construction, the same (O-E2) |
-| Rebuild-stable image (not UL-008 reproducibility) | **rebuild-stable on one host and path (same $W, same host GCC)**: rebuilds gave identical image hashes (unikernel-matrix-unikraft.md, "Build and run harness (outside the tree)", image hash table) | **rebuild-stable on one host and path**: the probes image rebuilt to the same hash (unikernel-matrix-osv.md, "Image and executable hashes", rebuild line) |
+| Rebuild-stable image (not UL-008 reproducibility) | (matrix, before the port; see [unikernel-crash-action.txt](../verification/unikernel-crash-action.txt), Images) **incremental** rebuilds on one host and path gave identical image hashes (unikernel-matrix-unikraft.md, "Build and run harness (outside the tree)", image hash table), but **clean builds are not hash-stable**: Unikraft embeds the build time (`HOSTUTC`, `lib/uklibid`), and two clean builds differ in those bytes | **rebuild-stable on one host and path**: the probes image rebuilt to the same hash (unikernel-matrix-osv.md, "Image and executable hashes", rebuild line) |
 
 `linuxu` is not a column: the pinned 0.21.0 has no `linuxu` platform, and the 0.16.3 run
 (process execution, not a boot) stops at `bend: reservation failed` because `posix-mmap`
@@ -112,12 +134,13 @@ is unavailable there (E10).
   which the appliance change owns, not this one.
 - Its native image already supplies the rows the first port needs: Memory **supplied**
   (E1, E2), Clock **supplied** (E7), Event loop **supplied** with A3 (E1, E7), argv
-  **supplied** (E3), and a reproducible image.
+  **supplied** (E3), and an image that is rebuild-stable only incrementally (matrix, before the port; clean builds embed the build time, see [unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)).
 - Its gaps are ones the runtime profile lets an effect twin or a declared mode close,
   rather than ones that need a different libc: Threads is a single lane (E6), which is
   what UL-005 asks for first; Faults is a halting trap with no resumption (E4), which
-  RH-006 accepts once the code is recorded; the open problem is the exit status
-  (**missing**, E3, E9), which is a platform shutdown path, not a libc primitive.
+  RH-006 accepts once the code is recorded; the open problem was the exit status
+  (**missing**, E3, E9; matrix, before the port; since supplied by the exit hook, see
+  [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)), which is a platform shutdown path, not a libc primitive.
 - The survey's fallback rule ("move to OSv only if Unikraft's libc proves to be missing a
   primitive the runtime profile cannot waive") is not triggered: in the A1 to A3
   configuration the only Unikraft cells marked **missing** are the exit status and device
@@ -126,8 +149,9 @@ is unavailable there (E10).
 
 ### What the effect-twins task needs from Unikraft
 
-1. **An exit path the harness can see.** Today every exit is QEMU status 0 or a hang
-   (E3, E9), and a fault looks like success (E4). The exit twin needs a platform shutdown
+1. **An exit path the harness can see.** (Matrix, before the port; now done, see
+   [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt).) In the matrix every exit was QEMU status 0 or a hang
+   (E3, E9), and a fault looked like success (E4). The exit twin needs a platform shutdown
    that carries a code: for example QEMU's `isa-debug-exit` device written by the exit
    twin and by the fault halt, with the run harness mapping its status. The device-carried
    code is the requirement; a console line is diagnostic only, because program output
@@ -146,7 +170,7 @@ is unavailable there (E10).
 2. **A declared single-lane configuration.** Keep `UKPLAT_CPU_MAXCOUNT=1` and the
    cooperative scheduler, run with `+RTS --threads 1`, and use the inline IO helper
    (UL-005). On this kernel `--threads 2` creates a lane whose `pool_work` was not entered before shutdown in a non-yielding program (E6; behaviour when the main lane yields not tried), so a
-   multi-lane build must not be configured by accident. `UKPLAT_CPU_MAXCOUNT=1` must be set explicitly in the Kraftfile (today it is only a resolved default, matrix ~565); SMP is a later task (2.4), and
+   multi-lane build must not be configured by accident. `UKPLAT_CPU_MAXCOUNT=1` is now set explicitly in the Kraftfile (done: `hosts/unikraft/app/Kraftfile`; in the matrix it was only a resolved default, matrix ~565); SMP is a later task (2.4), and
    the OSv hang at shutdown with more than one lane (cause inferred, O-E6) should be
    investigated as part of it.
 3. **The fault halt to carry the runtime's message.** The runtime's `SIGSEGV` handler
@@ -176,8 +200,9 @@ is unavailable there (E10).
 
 ### Single most likely blocker, per candidate
 
-- **Unikraft:** the exit status. No exit path reaches the harness (E3, E9), and until one
-  does, RH-006 and UL-006 cannot be checked from the run's status.
+- **Unikraft:** the exit status (matrix, before the port; since resolved by the exit hook,
+  see [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)). No exit path reached the harness (E3, E9), so RH-006 and UL-006 could
+  not be checked from the run's status.
 - **OSv (for a native link):** the loader (from documentation, not built). OSv's
   documentation describes application loading only through its ELF linker (mode note in
   unikernel-matrix-osv.md; O-E0 shows the loader rejecting a header, not the absence of

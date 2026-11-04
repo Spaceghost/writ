@@ -31,7 +31,9 @@ idled until killed (exit paths, matrix E9). Supplementary rows (same hook):
 Hook source: hosts/unikraft/exit_device.c (sha256
 b1dc08bbf14f88a998c22fa64da37e56113c08142d742559a419ee338e1bc51e at Task 1; Task 2 edited
 only its header comment, adding boot.c:447/452 and crash.c:129/132 citations, comment-
-stripped tokens identical, now bf796eed8f6d9715e25c2fb74eb76cb712a04767ffd1d29bac7c3bbfc8ab5c8c), inventoried in
+stripped tokens identical, then bf796eed8f6d9715e25c2fb74eb76cb712a04767ffd1d29bac7c3bbfc8ab5c8c; the final review
+edited only comments again, tokens identical, now
+752a215e521c099cef5350208718866597b977e6b21782c11bfd9b7c4fc80833), inventoried in
 hosts/unikraft/INVENTORY.md. It is linked by REFERENCE (not copied): the app Makefile.uk
 names its path in this worktree. Paths below are under $W/src/unikraft.
 
@@ -256,8 +258,15 @@ hello die overflow (static, not stripped, with debug_info), each:
 - The crash value says only "Unikraft crash". The runtime's own fault message
   ('bend: memory fault ...') still does not appear (matrix E4); the stack-guard page
   fault, guest-RAM exhaustion by stack growth, and any other unhandled trap all give 253.
-- QEMU 0 or 124 is now never success; only 1 is. A harness without the device sees the
-  old behavior (0 for return from main; crash action per Task 2).
+- QEMU 0 or 124 is now never success. QEMU 1 is success only together with a
+  banner-verified console check (hosts/unikraft/scripts/check-image.sh): QEMU itself
+  exits 1 on its own startup errors (a bad option, a missing kernel file). A harness
+  without the device sees the old behavior (0 for return from main; crash action per
+  verification/unikernel-crash-action.txt).
+- timeout(1) exits 124 on expiry, 125 if it fails itself, and 127 if QEMU cannot be run;
+  124 is even and never a QEMU debug-exit code, but 125 and 127 equal the codes of program
+  statuses 62 and 63. Moving success off 1 (writing s + 0x10, for example) would separate
+  success from QEMU's own error 1 and is left to task 2.1 (the exit twin).
 - One CPU, cooperative scheduler, +RTS --threads 1. Exit from a second lane, and exit
   while other posix threads are running, were not tried.
 - Whether LIBUKBOOT_MAINTHREAD's own main_thread_dtor would end an exit() run without

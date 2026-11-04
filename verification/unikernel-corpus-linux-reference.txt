@@ -3,6 +3,9 @@ Tree: lane/unikernel-port at aaa6885, the merge of master dc6ff2b (Tests.bend la
 8d6fe33); 782 checks. The earlier 764-check reference (lane at 74f57b7, before the merge) is
 in git history (commit 2985b2f) and in verification/unikernel-corpus-qemu.txt's first section.
 verification/runtime-profile-parity-1.txt is the older 638-check record and is left unchanged.
+Recapture this file (same command, same tree as the image) whenever
+verification/tests-native.txt changes, and set WRIT_CORPUS_PASS for check-corpus.sh if the
+check count changes; a stale reference makes the image check fail or compare the wrong tree.
 Process execution on Linux x86_64 (Manjaro, kernel 7.2.9), CPU only, --gpu off; not GPU evidence.
 $ bend Tests.bend -o $W/corpus782/linux/tests      # bend 2.0.39, clang 23.1.1, BEND_NO_TELEMETRY=1
   binary sha256 b79c5fdbeb07abb8406cd5de37d3761ba59189ec89c39dafa93a4de6adf40f7c

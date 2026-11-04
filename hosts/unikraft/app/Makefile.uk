@@ -1,4 +1,4 @@
-# Template Makefile.uk for a Writ Bend image (unikernel port lane). Copied into
+# Template Makefile.uk for a Writ Bend image (hosts/unikraft/INVENTORY.md). Copied into
 # $W/<set>-unikraft/ by hosts/unikraft/scripts/mkapp.sh. Both paths below come
 # from the environment that hosts/unikraft/scripts/build.sh exports; there is
 # no machine-specific default, so a build without them stops here.
@@ -16,8 +16,8 @@ APPWRITBEND_SRCS-y += $(WRIT_APP_C)
 ifeq ($(WRIT_HOSTS_UNIKRAFT),)
 $(error WRIT_HOSTS_UNIKRAFT is not set; build with hosts/unikraft/scripts/build.sh)
 endif
-# WRIT_EXIT_HOOK=n leaves the exit-code hook out (Task 2 uses it once to observe
-# Unikraft's own crash action); every other image links it.
+# WRIT_EXIT_HOOK=n leaves the exit-code hook out, only to observe Unikraft's own
+# crash action (verification/unikernel-crash-action.txt); every other image links it.
 WRIT_EXIT_HOOK ?= y
 ifeq ($(WRIT_EXIT_HOOK),y)
 APPWRITBEND_SRCS-y += $(WRIT_HOSTS_UNIKRAFT)/exit_device.c
@@ -27,7 +27,7 @@ endif
 # expose only the compiler's own stdatomic.h (a freestanding compiler header).
 APPWRITBEND_CINCLUDES-y += -I$(APPWRITBEND_BASE)/compiler-include
 
-# Adjustment H1 (Task 1): <uk/boot.h> (uk_boot_shutdown_req) includes
+# Adjustment H1 (verification/unikernel-exit-codes.txt): <uk/boot.h> (uk_boot_shutdown_req) includes
 # <uk/plat/common/bootinfo.h>, which only libraries that add the platform
 # common include directory can see (lib/ukboot and lib/posix-process do the same).
 APPWRITBEND_CINCLUDES-y += -I$(UK_PLAT_COMMON_BASE)/include

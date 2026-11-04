@@ -219,3 +219,22 @@ prints 'diff: NOT EMPTY' and 'result: FAIL' and exits 1.
 
 Binary check on the new ELF: PASS, effect rows IO.print (verification/unikernel-binary-check.txt,
 integration section).
+
+== Final-review recheck, 2026-11-04 (no rebuild, no boot) ==
+
+After the final review's script edits (run.sh usage guards and exit 2 before QEMU on a
+missing image or logs directory; one writ_strip_serial in env.sh used by run.sh and
+console.sh; check-image.sh WRIT_NO_BOOT=1, which checks an existing capture and reads the
+QEMU status from its log), the existing captures were rechecked:
+$ WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-image.sh corpus flow-check-m4096 flow $W/corpus/linux/flow-1.txt 1 4; echo $?
+diff: empty / PASS lines: 4 / QEMU exit: 1 / result: PASS; exit 0
+$ WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-corpus.sh corpustests782 tests-m4096; echo $?
+diff: empty / PASS lines: 782 / last line: ALL LIBRARY TESTS PASSED / QEMU exit: 1 / result: PASS; exit 0
+Negative control, with a boot (flow-qemu against transfer's reference):
+$ hosts/unikraft/scripts/check-image.sh corpus flow-neg2-m4096 flow $W/corpus/linux/transfer-1.txt 1 4 300 4096; echo $?
+diff: NOT EMPTY / result: FAIL; exit 1   (also exit 1 with WRIT_NO_BOOT=1 on flow-neg-m4096)
+$ hosts/unikraft/scripts/run.sh corpus x nosuch ""; echo $?
+run.sh: no image .../corpus/images/nosuch-qemu or no directory .../corpus/logs
+2
+QEMU 1 is counted as success only with the console check: QEMU itself exits 1 on its own
+startup errors, which leave no Unikraft banner, so console.sh fails on them.

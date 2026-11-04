@@ -51,3 +51,8 @@ Totals: 43 passed, 0 failed (43 items)
 0
 
 Earlier in Task 4 the installed OpenSpec 1.11.0 (~/.bun/bin/openspec) was used, with the same totals (43 passed, 0 failed).
+
+Rerun after the final-review fixes (2026-11-04), same binary:
+$ openspec validate --all --strict --no-interactive; echo $?
+Totals: 43 passed, 0 failed (43 items)
+0

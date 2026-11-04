@@ -33,7 +33,9 @@ Writ harness still passes -no-reboot on every run as a guard: any path that does
 reset (a triple fault before the crash handler, a guest that sets
 LIBUKDEBUG_CRASH_ACTION_REBOOT, a different platform driver) then ends QEMU instead of
 re-running the program. The hook writes 0x7d for a non-halt shutdown target, so with
-the device a restart request is QEMU 251, not a silent re-run. Success is QEMU 1 only.
+the device a restart request is QEMU 251, not a silent re-run. Success requires QEMU 1
+together with the banner-verified console check of hosts/unikraft/scripts/check-image.sh:
+QEMU also exits 1 on its own startup errors, so QEMU 1 alone is not success.
 
 == Why (source, Unikraft 0.21.0 under $W/src/unikraft; read, consistent with the runs) ==
 
@@ -45,7 +47,7 @@ plat/kvm/x86/qemu.c qemu_crash writes 42 with outw to port 0x501 (QEMU's default
 isa-debug-exit iobase; QEMU 85 if a device is there), 1 to port 0x505 (pvpanic), then
 the ACPI shutdown 0x2000 to port 0x604 (power-off). Note also qemu.c:79-80: syshalt AND
 sysrestart are both qemu_exit (41 to 0x501, then the ACPI power-off), so on this
-platform even a restart request powers off. Confirmation that the native path is
+platform even a restart request powers off. Confirmation that Unikraft's own crash path is
 qemu_crash: the no-hook image with '-device isa-debug-exit,iobase=0x501,iosize=0x02'
 (no -no-reboot) exits QEMU 85 = (42 << 1) | 1.
 

@@ -13,9 +13,19 @@
 # run-<label>.log: the command, the console from the "Booting from ROM" line on
 # with escapes, CRs, NUL bytes and empty lines removed (a reading aid; diffs use
 # console.sh on the .raw), the QEMU (or timeout) exit status, and the wall time.
-# Exits with QEMU's (or timeout's) status, so 1 is the hook's success.
+# Exits with QEMU's (or timeout's) status. That status alone is not success: QEMU
+# also exits 1 on its own startup errors, so success is QEMU 1 together with the
+# banner-verified console check of check-image.sh. Exits 2, before starting QEMU,
+# if the image or the set's logs directory is missing. Needs bc for the wall time.
 . "$(dirname "$0")/env.sh"
-S=$1; LB=$2; P=$3; AP=$4; T=${5:-60}; M=${6:-1024}
+S=${1:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}
+LB=${2:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}
+P=${3:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}
+AP=$4; T=${5:-60}; M=${6:-1024}
+if [ ! -f "$W/$S/images/$P-qemu" ] || [ ! -d "$W/$S/logs" ]; then
+  echo "run.sh: no image $W/$S/images/$P-qemu or no directory $W/$S/logs" >&2
+  exit 2
+fi
 case "${WRIT_QEMU_DEVICE:-1}" in
   0) DEV="" ;;
   501) DEV="-device isa-debug-exit,iobase=0x501,iosize=0x02" ;;
@@ -36,7 +46,7 @@ else
   RC=$?
 fi
 E=$(date +%s.%N)
-tr -d '\000' < "$R" | sed -e 's/\x1b\[[0-9;?]*[A-Za-z]//g' -e 's/\x1bc//g' -e 's/\r//g' \
+writ_strip_serial < "$R" \
   | sed -n '/Booting from ROM/,$p' | sed 's/^Booting from ROM\.*//' | grep -a -v "^$" >> "$L"
 echo "$RC" >> "$L"
 printf '(wall %.1f s)\n' "$(echo "$E - $B" | bc)" >> "$L"

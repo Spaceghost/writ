@@ -21,6 +21,7 @@
 # the program's part of the capture holds a NUL, an ESC, or a CR not followed by LF,
 # so a removal can never hide a byte the program printed.
 set -e
+. "$(dirname "$0")/env.sh"
 R=${1:?usage: console.sh <run.raw>}
 T=$(mktemp); trap 'rm -f "$T" "$T.banner" "$T.tail"' EXIT
 # The program's part of the raw capture: everything after the banner's last line.
@@ -36,7 +37,7 @@ if [ "$NUL" != 0 ] || [ "$ESC" != 0 ] || [ "$CR" != "$CRLF" ]; then
   echo "console.sh: after the banner $R has NUL=$NUL ESC=$ESC CR=$CR (CR LF=$CRLF); only CR LF may be stripped" >&2
   exit 1
 fi
-tr -d '\000' < "$R" | sed -e 's/\x1b\[[0-9;?]*[A-Za-z]//g' -e 's/\x1bc//g' -e 's/\r//g' \
+writ_strip_serial < "$R" \
   | awk 'f{print;next} i=index($0,"Booting from ROM"){f=1; r=substr($0,i+16); sub(/^\.\.+/,"",r); if (r!="") print r}' > "$T"
 cat > "$T.banner" <<'B'
 Powered by

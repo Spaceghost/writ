@@ -21,7 +21,11 @@
  * Program statuses are clamped below 0x7d so that no exit status a program can
  * choose produces the crash or non-halt value: those two values come only from
  * this file's crash and shutdown-target checks. QEMU status 0 or 124 (timeout)
- * therefore never means success; only q = 1 does.
+ * therefore never means success. q = 1 alone does not prove success either:
+ * QEMU itself exits 1 on its own startup errors, so a harness counts q = 1 as
+ * success only together with a banner-verified console check
+ * (hosts/unikraft/scripts/check-image.sh). timeout(1)'s own 125 and 127 equal
+ * q for statuses 62 and 63.
  *
  * Unikraft hooks used (paths under the Unikraft 0.21.0 tree):
  *   - Termination table: include/uk/init.h (struct uk_term_ctx, uk_term_func_t,
@@ -47,8 +51,9 @@
  *   - Crash event: lib/ukdebug/include/uk/crash.h (UK_CRASH_EVENT), raised by
  *     _uk_crash() in lib/ukdebug/crash.c:129 after the crash screen and before
  *     crash_shutdown() (crash.c:132). Without the device Unikraft's own crash
- *     action powers the guest off (QEMU 0), not a reset
- *     (verification/unikernel-crash-action.txt).
+ *     action ends QEMU with 0 and no reset, consistent with an ACPI power-off
+ *     (its qemu_crash exits 85 with a device at 0x501;
+ *     verification/unikernel-crash-action.txt).
  */
 
 #include <uk/config.h>
@@ -60,8 +65,8 @@
 
 /* Without a separate main thread, exit() and _exit() terminate the init thread
  * itself, so the termination path below is never reached and the guest idles
- * (matrix E9; observed again in this task: uk_boot_shutdown_req is then a
- * macro returning -ENOTSUP). Refuse to build rather than link a hook that
+ * (matrix E9; observed under gdb, verification/unikernel-exit-codes.txt
+ * adjustment H2: uk_boot_shutdown_req is then a macro returning -ENOTSUP). Refuse to build rather than link a hook that
  * cannot report those exits.
  */
 #if !CONFIG_LIBUKBOOT_MAINTHREAD
