@@ -343,8 +343,8 @@ RESULT
   caps 35 of 963. The 8 GiB term heap and the 2 GiB evaluation stack are
   lazily populated reservations; three 2 MiB chunks were charged in total.
   The stack guard (mprotect PROT_NONE) succeeded and is a real unmapped
-  range. Six runs on the final or near-final source (runs 8-10 here, plus
-  the probe and rts regressions) gave the same log.
+  range. Runs 8, 9, and 10 gave the same log; run 10 used exactly the
+  committed sources and the binary hash below.
 
 INPUTS
   hello.c       ../writ-genode/hello/hello.c, not re-emitted (unchanged on
@@ -356,10 +356,10 @@ INPUTS
                 live copy ../writ-genode/writ-repo/src/writ_shim/writ_mem.cc
                 byte-identical (cmp)
   target.mk     scripts/genode/writ_bend_hello/target.mk, sha256
-                c5b8177f90a280aa150f95737a65f910a7293b037f532123f8c6c01cf2bee79d
+                c62f23eaf78632a1ceb158f6995e6bf0ecf093fcc50f4935daaf4621af55a721
                 live src/app/writ_bend_hello/target.mk byte-identical
   Run script    scripts/genode/writ_bend_hello/writ_bend_hello.run, sha256
-                e297575fc2e56f6dd63ce617bd804e7eacceb06a0e32bb1ff9a9beb208e9f06b
+                434cb23ef767ea96720315834558704f8649a23978cac801bd0d7ebb02983b00
                 live run/writ_bend_hello.run byte-identical
                 (writ_bend_rts.run unchanged, daf83b18...e4c2, byte-identical)
   Binary        build/x86_64/app/writ_bend_hello/writ_bend_hello (not
