@@ -70,6 +70,21 @@ The status printed is timeout's. script's log ends with `COMMAND_EXIT_CODE="0"` 
 "Session terminated, killing shell... ...killed."; that line is written after the session was
 killed and is not taken as the program's status.
 
+Process-state capture (used for the /proc lines below; run from each app directory, for
+<app> in hello-linuxu, hello-linuxu-heap4095, hello-linuxu-heap8196). The image is started
+under a pty in the background; 6 s later, while it hangs after the failure, its mappings of
+1 MiB or more and its VmSize/VmRSS are printed:
+  cd $L/<app>; B=$PWD/.unikraft/build/hello-bend_linuxu-x86_64
+  (timeout 15 script -q -e -c "$B +RTS --threads 1 --gpu off" /dev/null </dev/null >/dev/null &)
+  sleep 6; pid=$(pgrep -f "^$B" | head -1)
+  awk '{split($1,a,"-"); len=strtonum("0x" a[2])-strtonum("0x" a[1]);
+        if (len >= 1048576) printf "%s %s %d MiB %s %s\n",$1,$2,len/1048576,$5,$6 $7}' /proc/$pid/maps
+  grep -E 'VmSize|VmRSS' /proc/$pid/status
+Other quoted outputs: image hashes `sha256sum .unikraft/build/hello-bend_linuxu-x86_64`;
+resolved options `grep -E 'HEAPMB|UKMMAP|POSIX_MMAP|LIBUKVMEM|UKLIBPARAM' .config.hello-bend_linuxu-x86_64`;
+run output `tr -d '\r' < $L/logs/run-<v>.log | sed -n '/Telesto/,$p'`; generated C
+`sha256sum $L/gen/hello.c; wc -l < $L/gen/hello.c`; symbols `nm .unikraft/build/hello-bend_linuxu-x86_64.dbg | grep -E ' (mmap|uk_syscall_e_mmap|pool_mmap|err_fail)$'`.
+
 == Baseline (HEAPMB 4) ==
   T=30: status 124. Output after the banner (`Telesto 0.16.3~e453b74`):
     bend: reservation failed
@@ -80,9 +95,36 @@ killed and is not taken as the program's status.
 Observation of the mapping that failed (no strace; gdb breakpoints, executable = the stripped
 image, symbols from hello-bend_linuxu-x86_64.dbg; the .dbg ELF itself segfaults in
 ukplat_memregion_list_insert when run directly, so it was used for symbols only).
-Command file $L/logs/gdb-mmap.cmd: break uk_syscall_e_mmap (print rdi, rsi, rdx, rcx, r8),
-break musl src/mman/mmap.c:34 (print `ret`, the value the syscall returned), break err_fail (print
-the message and `bt 6`, then kill); `run +RTS --threads 1 --gpu off`; run under the same `script` pty.
+Command file $L/logs/gdb-mmap.cmd, verbatim (rdi..r8 are mmap's first five arguments at entry
+to uk_syscall_e_mmap; musl src/mman/mmap.c:34 is the first line after the syscall, where `ret`
+holds what it returned):
+  symbol-file .unikraft/build/hello-bend_linuxu-x86_64.dbg
+  set pagination off
+  set confirm off
+  break uk_syscall_e_mmap
+  commands
+  silent
+  printf "mmap addr=%#lx len=%#lx prot=%#lx flags=%#lx fd=%ld\n", $rdi, $rsi, $rdx, $rcx, $r8
+  continue
+  end
+  break mmap.c:34
+  commands
+  silent
+  printf "  musl __mmap sees ret=%ld\n", ret
+  continue
+  end
+  break err_fail
+  commands
+  printf "err_fail: %s\n", (char*)$rdi
+  bt 6
+  kill
+  quit
+  end
+  run +RTS --threads 1 --gpu off
+Run (cwd $L/hello-linuxu, under a pty because linuxu needs a TTY on stdin):
+  timeout 120 script -q -e -c "gdb -q -batch -x $L/logs/gdb-mmap.cmd .unikraft/build/hello-bend_linuxu-x86_64" \
+    $L/logs/gdb-mmap-heap4.log </dev/null >/dev/null
+  tr -d '\r' < $L/logs/gdb-mmap-heap4.log | grep -E 'mmap|err_fail|^#'
 Output (log $L/logs/gdb-mmap-heap4.log):
   mmap addr=0x200000000000 len=0x200000000 prot=0x3 flags=0x4022 fd=-1
     musl __mmap sees ret=-12
@@ -168,3 +210,14 @@ process was not traced. A harness can only tell this failure by reading the outp
 Not attempted: hello did not run, so Tests.bend was not built, there is no corpus result to
 compare with tests-native.txt, and check-binary.sh was not run on a linuxu ELF. Box 1.3 stays
 unchecked (openspec/changes/add-unikernel-library-runtime/tasks.md).
+
+== OpenSpec structural validation (document changes only; not a Bend test or proof) ==
+Pinned OpenSpec 1.16.0, from the worktree root (fix round 1, 2026-11-04):
+  ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 --version      # 1.16.0
+  ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive; echo $?
+  Totals: 44 passed, 0 failed (44 items)
+  0
+Rerun after the traceability edit in the same round, with the same command and the same totals (see below).
+An earlier run under the locally installed `openspec` 1.11.0 (44 passed) is superseded by
+this one and is not evidence for the pinned version.
+

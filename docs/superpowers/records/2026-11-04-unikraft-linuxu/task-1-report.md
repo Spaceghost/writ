@@ -57,3 +57,12 @@ not printed, so Task 2 took the stall branch. Box 1.3 is still unchecked.
   file.
 - `verification/source-sha256.txt` was not updated, because the brief said no manifest.
 - Nothing traced why linuxu's `_exit(1)` does not end the process.
+
+## Fix round 1
+
+This round answers task-1-review.md.
+
+- OpenSpec: I reran validation with the pinned 1.16.0 (`~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive`). Result: 44 passed, 0 failed, exit 0. I ran it once before the traceability edit and once after. The evidence file records the command and the result, and says the 1.11.0 run is superseded.
+- Observation commands: `verification/unikernel-linuxu.txt` now gives the gdb command file verbatim, the gdb run line, the `/proc/<pid>/maps` and status capture, and the commands behind the other outputs it quotes (image hashes, .config grep, run-log extraction, generated-C hash, nm).
+- Traceability (controller ruling): `openspec/traceability/unikernel-library-runtime.md` rows UL-002 and UL-007 now cite `unikernel-linuxu.txt` as the 0.16.3 linuxu chase, alongside matrix E10. The citation says the run stalled at the 8 GiB reservation and that box 1.3 is still open. This is a text change only: no box or requirement changed.
+- `verification/source-sha256.txt` is still not updated (no manifest, as instructed).
