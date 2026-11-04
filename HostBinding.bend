@@ -254,6 +254,14 @@ def bound_object_exists(bindings: Bindings, +wanted: Nat) -> Bool:
     case Bindings{Binding{object, _}, rest}:
       Nat.is_eq(object, wanted) || bound_object_exists(rest, wanted)
 
+# Whether some binding links Frontend handle `wanted` to an object.
+def bound_handle_exists(bindings: Bindings, +wanted: Nat) -> Bool:
+  match bindings:
+    case NoBindings{}:
+      False{}
+    case Bindings{Binding{_, handle}, rest}:
+      Nat.is_eq(handle, wanted) || bound_handle_exists(rest, wanted)
+
 # Whether alias `wanted` exists and is held by protection domain `holder`.
 def alias_held(aliases: Aliases, +wanted: Nat, +holder: Nat) -> Bool:
   match aliases:
@@ -350,14 +358,20 @@ def aliases_valid(aliases: Aliases, +objects: Objects, +next: Nat) -> Bool:
 # Every binding links an existing native object to a handle that exists in the
 # embedded Frontend state, so every invocation reaches a real Writ check. An
 # object has at most one binding: two would let list order pick its authority.
+# A handle is bound to at most one object: two objects on one handle would let
+# a reference to either exercise the same Writ grant under the other object's
+# owner, kind, and delegation records, and closing either would close the
+# grant behind both (close_doomed closes the bound handle of every destroyed
+# object). A forged state that shares a handle is denied as a whole.
 # A binding may name a closed handle; invocation still denies through Frontend.
 def bindings_valid(bindings: Bindings, +objects: Objects, +handles: F.Handles) -> Bool:
   match bindings:
     case NoBindings{}:
       True{}
-    case Bindings{Binding{+object, handle}, +rest}:
+    case Bindings{Binding{+object, +handle}, +rest}:
       object_exists(objects, object) && F.handle_exists(handles, handle)
-        && Bool.not(bound_object_exists(rest, object)) && bindings_valid(rest, objects, handles)
+        && Bool.not(bound_object_exists(rest, object)) && Bool.not(bound_handle_exists(rest, handle))
+        && bindings_valid(rest, objects, handles)
 
 # Every delegation node joins two existing aliases, so revoking a subtree never
 # follows a dangling edge. Tree shape: each child alias has at most one parent
@@ -394,6 +408,95 @@ def quotas_valid(quotas: Quotas) -> Bool:
     case Quotas{+quota, +rest}:
       Bool.not(quota_exists(rest, quota_domain(quota))) && quotas_valid(rest)
 
+# Whether object `object` still has a current alias, i.e. is live. Only a
+# live object's destruction releases anything; destroying a stale object again
+# releases nothing.
+def current_alias_exists(aliases: Aliases, +object: Nat, +generation: Nat) -> Bool:
+  match aliases:
+    case NoAliases{}:
+      False{}
+    case Aliases{Alias{_, _, named, current}, rest}:
+      (Nat.is_eq(named, object) && Nat.is_eq(current, generation))
+        || current_alias_exists(rest, object, generation)
+
+# Whether alias `wanted` was made by copying another alias to the same object.
+# A copy was never charged a capability slot; a minted or derived alias was.
+def copied(delegations: Delegations, +aliases: Aliases, +wanted: Nat, +object: Nat) -> Bool:
+  match delegations:
+    case NoDelegations{}:
+      False{}
+    case Delegations{Delegation{from_alias, _, _, alias}, rest}:
+      (Nat.is_eq(alias, wanted) && alias_names(aliases, from_alias, object))
+        || copied(rest, aliases, wanted, object)
+
+def choose_holder(ok: Bool, holder: Nat, rest: Maybe<&2, Nat>) -> Maybe<&2, Nat>:
+  match ok:
+    case True{}:
+      Some{holder}
+    case False{}:
+      rest
+
+# The domain charged when `object` was minted: the holder of its alias that
+# is not a copy. commit_mint creates exactly one such alias per object, and
+# `valid` admits at most one for a live object (see mints_valid), so neither
+# the refund nor close authority depends on list order.
+def minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Maybe<&2, Nat>:
+  match aliases:
+    case NoAliases{}:
+      None{}
+    case Aliases{Alias{id, holder, named, _}, rest}:
+      choose_holder(Nat.is_eq(named, object) && Bool.not(copied(delegations, all, id, object)), holder,
+        minter(rest, delegations, all, object))
+
+def minter_absent(found: Maybe<&2, Nat>) -> Bool:
+  match found:
+    case None{}:
+      True{}
+    case Some{_}:
+      False{}
+
+# Whether at most one alias in `aliases` is an uncopied alias to `object`.
+# Each alias is judged by `minter` itself (on a one-alias list), and the rest
+# by `minter` on the tail, so this clause and the refund rule read one
+# definition of "not a copy" and cannot drift apart. `all` is the complete
+# alias list against which copy edges are resolved. Each alias rescans the
+# rest of the list through `minter`, and each `minter` step looks up copy
+# edges in `delegations` against `all`, so the cost per object is roughly
+# cubic in the number of aliases times the delegation lookups, and `valid`
+# runs it for every live object at every transition. That cost was accepted
+# to keep one shared definition of minted/copied rather than a second,
+# separately maintained counter.
+def single_minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Bool:
+  match aliases:
+    case NoAliases{}:
+      True{}
+    case Aliases{+alias, +rest}:
+      (minter_absent(minter(Aliases{alias, NoAliases{}}, delegations, all, object))
+          || minter_absent(minter(rest, delegations, all, object)))
+        && single_minter(rest, delegations, all, object)
+
+# Every live object (one with an alias at its current generation) has at most
+# one alias that no delegation node records as a copy of the same object. That
+# alias names the domain `minter` returns: the one refunded when the object is
+# destroyed and the one close_authorized lets destroy it. A second uncopied
+# alias (a reference recorded outside delegation, or a stale alias left beside
+# a current one) would let list order choose which domain is refunded and
+# which may close the object, so the whole state is denied. Every alias to the
+# object counts, whatever its generation, because `minter` reads them all. A
+# destroyed object is exempt: destruction prunes its copies' delegation nodes
+# and leaves their aliases stale, so its copies read as uncopied, and neither
+# refund (gated on current_alias_exists) nor close (which resolves a current
+# alias first) consults `minter` for it. A derived object's first alias is
+# uncopied even when a node records it, because the node's parent names
+# another object.
+def mints_valid(objects: Objects, +aliases: Aliases, +delegations: Delegations) -> Bool:
+  match objects:
+    case NoObjects{}:
+      True{}
+    case Objects{Object{+id, +generation, _, _, _, _}, rest}:
+      (Bool.not(current_alias_exists(aliases, id, generation)) || single_minter(aliases, delegations, aliases, id))
+        && mints_valid(rest, aliases, delegations)
+
 # Public entry point: the structural invariant every transition requires of
 # its input and preserves on success. It is total and checks shape only; it
 # does not authenticate the state, the routes, or who holds which alias.
@@ -403,21 +506,24 @@ def quotas_valid(quotas: Quotas) -> Bool:
 # - object and alias ids are unique and were allocated by their counters, and
 #   every derivation edge names an earlier existing object on the same service;
 # - every alias and every binding names an existing object, and every binding
-#   names an existing Frontend handle, with at most one binding per object;
+#   names an existing Frontend handle, with at most one binding per object and
+#   at most one object per handle;
 # - every delegation joins existing aliases in a parent-before-child tree,
 #   names the child's holder, and stays on the parent's object or on an
 #   object derived from it;
+# - every live object has at most one uncopied alias, the minter's;
 # - each domain has at most one quota account.
 # Routes carry no ids; a mount transition must check the route's subject
 # against the authenticated caller.
 def valid(state: State) -> Bool:
   match state:
     case State{_, +next_object, +next_alias, +objects, +aliases, _, quotas,
-        delegations, bindings, +frontend}:
+        +delegations, bindings, +frontend}:
       Nat.is_gt(next_object, 0n) && Nat.is_gt(next_alias, 0n) && F.valid(frontend)
         && objects_valid(objects, objects, next_object) && aliases_valid(aliases, objects, next_alias)
         && bindings_valid(bindings, objects, F.handles(frontend))
-        && delegations_valid(delegations, aliases, objects) && quotas_valid(quotas)
+        && delegations_valid(delegations, aliases, objects) && mints_valid(objects, aliases, delegations)
+        && quotas_valid(quotas)
 
 # ---------------------------------------------------------------------------
 # Transitions.
@@ -659,6 +765,14 @@ def routed_otherwise(routes: Routes, +child: Nat, +subject: Nat, +service: Nat) 
       (Nat.is_eq(routed, child) && Nat.is_eq(served, service) && Bool.not(Nat.is_eq(named, subject)))
         || routed_otherwise(rest, child, subject, service)
 
+# Whether `domain` may act for `object`'s owner as a delegated holder: the
+# parent does not route it as another subject on the object's service. The
+# delegate-time check on a delegatee (delegate_resolved) and the use-time
+# check on a delegated holder (holder_authorized) share this helper, so the
+# two cannot drift apart. A domain with no route on that service passes.
+def acts_for_owner(+routes: Routes, +domain: Nat, +object: Object) -> Bool:
+  Bool.not(routed_otherwise(routes, domain, object_owner(object), object_service(object)))
+
 # The parent alias of `wanted` in the delegation tree, or 0n for a root. Id 0
 # is never allocated, so a root's parent can never match a cut.
 def parent_of(delegations: Delegations, +wanted: Nat) -> Nat:
@@ -697,15 +811,27 @@ def alias_routed(aliases: Aliases, +routes: Routes, +wanted: Nat, +subject: Nat,
 # node gave this exact alias to. A delegated alias stays authorized only while
 # the root of its delegation chain is still held by a domain the parent routes
 # as that subject on that service: withdrawing the delegator's route withdraws
-# every delegation drawn from it. The running host cannot observe the invoking
-# domain; this rule is enforced there by topology (GA-010).
+# every delegation drawn from it. A delegated holder is also denied while the
+# parent routes it as some other subject on the object's service. This is the
+# use-time counterpart of the check `delegate` makes on its target: a domain
+# routed as another subject after it received the delegation acts for that
+# other subject on the service, so keeping this subject's authority would merge
+# the two; the denial is SubjectMismatch, reported like any other unauthorized
+# holder. A route for the holder on a different service changes nothing here.
+# The delegate-time and use-time checks share acts_for_owner. No transition
+# records route changes, so this model sees a reroute only in a route table
+# the host supplies. That is a HOST OBLIGATION, not something this model
+# discharges: a host must update the route record and withdraw the rerouted
+# domain's delegated endpoints at reconfiguration, since it cannot attribute
+# later invocations (GA-010).
 def holder_authorized(+routes: Routes, +delegations: Delegations, +aliases: Aliases, +alias: Alias,
     +object: Object, +holder: Nat) -> Bool:
   Nat.is_eq(alias_holder(alias), holder)
     && (route_maps(routes, holder, object_owner(object), object_service(object))
       || (delegated_to(delegations, alias_id(alias), holder)
         && alias_routed(aliases, routes, chain_root(alias_id(alias), delegations, alias_id(alias)),
-          object_owner(object), object_service(object))))
+          object_owner(object), object_service(object))
+        && acts_for_owner(routes, holder, object)))
 
 def is_delegated(found: Maybe<&2, U32>) -> Bool:
   match found:
@@ -1024,13 +1150,15 @@ def delegate_target(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +ef
 # service acts for that other subject there; handing it this subject's object
 # would merge two subjects' authority, so it is SubjectMismatch. A delegatee
 # with no route on that service (the same subject's worker) is admitted.
+# holder_authorized repeats this check, through the same acts_for_owner
+# helper, on every later use of the delegation.
 def delegate_resolved(found: Resolved, +state: State, +to_holder: Nat, +rights: U32) -> Change:
   match found:
     case Unresolved{reason}:
       Rejected{state, reason}
     case Resolved{alias, +object, _, +effective, _}:
-      delegate_target(Bool.not(routed_otherwise(routes(state), to_holder, object_owner(object),
-          object_service(object))), state, alias, to_holder, effective, rights)
+      delegate_target(acts_for_owner(routes(state), to_holder, object), state, alias, to_holder,
+        effective, rights)
 
 def delegate_checked(ok: Bool, +state: State, +alias_id: Nat, +from_holder: Nat, +to_holder: Nat,
     +rights: U32) -> Change:
@@ -1159,44 +1287,6 @@ def destroy(objects: Objects, +cut: Cut, +aliases: Aliases, +all: Objects) -> Ob
     case Objects{+object, rest}:
       Objects{bumped(doomed(object_id(object), cut, aliases, all, object_id(object)), object),
         destroy(rest, cut, aliases, all)}
-
-# Whether object `object` still has a current alias, i.e. is live. Only a
-# live object's destruction releases anything; destroying a stale object again
-# releases nothing.
-def current_alias_exists(aliases: Aliases, +object: Nat, +generation: Nat) -> Bool:
-  match aliases:
-    case NoAliases{}:
-      False{}
-    case Aliases{Alias{_, _, named, current}, rest}:
-      (Nat.is_eq(named, object) && Nat.is_eq(current, generation))
-        || current_alias_exists(rest, object, generation)
-
-# Whether alias `wanted` was made by copying another alias to the same object.
-# A copy was never charged a capability slot; a minted or derived alias was.
-def copied(delegations: Delegations, +aliases: Aliases, +wanted: Nat, +object: Nat) -> Bool:
-  match delegations:
-    case NoDelegations{}:
-      False{}
-    case Delegations{Delegation{from_alias, _, _, alias}, rest}:
-      (Nat.is_eq(alias, wanted) && alias_names(aliases, from_alias, object))
-        || copied(rest, aliases, wanted, object)
-
-def choose_holder(ok: Bool, holder: Nat, rest: Maybe<&2, Nat>) -> Maybe<&2, Nat>:
-  match ok:
-    case True{}:
-      Some{holder}
-    case False{}:
-      rest
-
-# The domain charged when `object` was minted: the holder of its alias that
-# is not a copy. commit_mint creates exactly one such alias per object.
-def minter(aliases: Aliases, +delegations: Delegations, +all: Aliases, +object: Nat) -> Maybe<&2, Nat>:
-  match aliases:
-    case NoAliases{}:
-      None{}
-    case Aliases{Alias{id, holder, named, _}, rest}:
-      choose_holder(Nat.is_eq(named, object) && Bool.not(copied(delegations, all, id, object)), holder,
-        minter(rest, delegations, all, object))
 
 def add_one(ok: Bool, quota: Quota) -> Quota:
   match ok quota:
