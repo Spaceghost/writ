@@ -225,15 +225,19 @@ All source links below refer to the inspected Genode 26.08 revision.
 - **G7 — VFS reconfiguration:** [Genode 26.08 release notes](https://genode.org/documentation/release-notes/26.08).
 - **G8 — Memory and quotas:** [core services](https://genode.org/documentation/genode-foundations/26.05/architecture/Core_-_the_root_of_the_component_tree.html).
 - **G9 — Linux implementation:** [IPC](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/src/lib/base/ipc.cc), [startup filter](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/src/lib/base/runtime.cc), [filter generator](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/tool/seccomp/seccomp_bpf_compiler.h), and [hybrid build](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/lib/mk/lx_hybrid.mk).
-- **G10 — Pinned Bend and current evidence:** [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39) and [Writ verification record](../VERIFICATION.md); the generated native output has since been compiled for `base-linux` (see the base-linux runtime-row section below), with the blockers listed there.
+- **G10 — Pinned Bend and current evidence:** [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39) and [Writ verification record](../VERIFICATION.md); the generated native output has since been compiled for `base-linux` and, with the host-layer shim, runs the hello, the 764-check corpus, and the four examples there (see the base-linux runtime-row section below, which also lists the open gaps).
 - **G11 — GPU API:** [gpu_session.h](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/os/include/gpu_session/gpu_session.h).
 
 ## Runtime rows on base-linux, 2026-11
 
-The unmodified C that Bend 2.0.39 emits for a one-line `IO.print` program now
-builds and loads as a Genode 26.08 component on `base-linux`
-(Genode-on-Linux, not a native kernel), but it does not yet print: the
-runtime stops before evaluating any Bend term. The per-row record, with
+The unmodified C that Bend 2.0.39 emits for Bend programs now runs as Genode
+26.08 components on `base-linux` (Genode-on-Linux, not a native kernel),
+linked with the host-layer memory shim. The one-line `IO.print` hello prints
+`hi` and exits 0, and `Tests.bend` passes all 764 checks at a 256M quota,
+with a log that matches the Linux single-lane run line for line. The open
+gaps: when a component faults it is terminated, but the parent (init)
+records nothing; only single-lane runs (`--threads 1`) have been made; and
+threads and the clock are still shown only by C probes. The per-row record, with
 commands, log lines, source citations, and whether each row came from a Bend
 program, a plain-C probe, or source reading, is
 [genode-runtime-rows-base-linux.md](../verification/genode-runtime-rows-base-linux.md);

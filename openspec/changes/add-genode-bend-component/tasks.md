@@ -12,7 +12,9 @@ byte-identical to a fresh Linux single-lane record of the same tree
 verification/genode-corpus-linux-reference.txt). 1.3 stays open: a stack
 overflow was forced through a Bend program (`Overflow.bend`), and the
 component terminated at the runtime's guard page with no resumption, but the
-parent (init) recorded nothing. The runtime rows are in
+parent (init) recorded nothing. The GB-004 scenario's count of 638 checks
+is the older corpus; parity for 1.4 was checked against the current
+764-check record of this tree. The runtime rows are in
 verification/genode-runtime-rows-base-linux.md.
 
 ## 1. Component build and runtime rows

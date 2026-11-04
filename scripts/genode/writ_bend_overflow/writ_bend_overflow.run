@@ -29,17 +29,19 @@
 # Authority and configuration: as writ_bend_hello.run (parent LOG, PD, CPU,
 # ROM, RM; Timer from the sibling timer; VFS /dev/log and a local vfs_pipe
 # at /pipe; +RTS --threads 1 --gpu off as <arg> nodes; WRIT_MEM_REPORT=1).
-# RAM defaults to 256M; WRIT_BEND_RAM overrides it (recorded per run).
-# Caps default to 1000, as for the other components; WRIT_BEND_CAPS
-# overrides them. Each populated 2 MiB chunk is a RAM dataspace and costs
-# the component a capability, so walking the whole 2 GiB evaluation stack
-# (1024 chunks) needs more than 1000 caps (recorded per run).
+# RAM defaults to 3G and caps to 2000, the values at which the recursion
+# reaches the runtime's stack guard (verification/genode-corpus-base-linux.txt,
+# runs 3 and 4). Each populated 2 MiB chunk is a RAM dataspace and costs the
+# component a capability, so walking the whole 2 GiB evaluation stack (1024
+# chunks) needs more than 2 GiB of RAM and more than 1000 caps. WRIT_BEND_RAM
+# and WRIT_BEND_CAPS override them; smaller values (256M, or 1000 caps)
+# exercise the shim's quota refusal instead of the guard (runs 1 and 2).
 #
 
 set name writ_bend_overflow
-set ram 256M
+set ram 3G
 if {[info exists ::env(WRIT_BEND_RAM)]} { set ram $::env(WRIT_BEND_RAM) }
-set caps 1000
+set caps 2000
 if {[info exists ::env(WRIT_BEND_CAPS)]} { set caps $::env(WRIT_BEND_CAPS) }
 
 build [list core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/$name]

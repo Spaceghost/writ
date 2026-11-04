@@ -72,7 +72,7 @@ files:
 17556719b92cdfa5cf71a9d71e2d7f7504cb010047d4b2ecac62d38e89c20af9  run/writ_bend_flow.run
 09ca0c30b04f2eb221b561ba19653cd5915cdf0e519df91ba5e79348094aede2  run/writ_bend_gpuexample.run
 2283d9482d5ac2545bb0d05954f5f4b1cd3094689da2c3b78ebb42240e47b16f  run/writ_bend_hello.run
-e2b416dfb5dc078f923f9956746ade7cba8d8fd4952e69dd0d3846e332a2363f  run/writ_bend_overflow.run
+dd8998619abfc8e25e188dd270f344b079705ca7b4251c604c856a099c096cc2  run/writ_bend_overflow.run
 0148be571265e9e7e536d77b56b8a6ec5d6b175e6196e0abbab3bb929deecc0f  run/writ_bend_rts.run
 b70cc84ce4e5247ba7fc1f2e0f175c9e0926400307e7d20817f0f0a6be152972  run/writ_bend_tests.run
 18139c56991b87d42af033e485c6c4e305e6761977441b56944db972e990c0d8  run/writ_bend_transfer.run
@@ -137,9 +137,9 @@ C, with the shim, under init on base-linux.
 | Faults | **substituted** (termination only) | the host layer's fault path kills the component, no resumption; the runtime's own handler cannot run (libc emulates `sigaction`); **the parent does not record the fault** | Bend program (host layer): `writ_bend_overflow` runs 1-4 |
 | Threads | **supplied** | single-lane Bend runs open no worker; `--threads 2` not run through a Bend program | C probe |
 | Clock | **supplied** | monotonic; `nanosleep` returned short of 100 ms in 2 of 4 runs | C probe |
-| Event loop | **supplied** | needs the vfs_pipe mount and the libc `pipe` attribute; every Bend component opened its pipe and printed | Bend program (host layer) + C probe |
+| Event loop | **supplied** | needs the vfs_pipe mount and the libc `pipe` attribute; the corpus, the four examples, and the hello opened the loop's pipe and printed (Overflow printed nothing; the `writ_bend_rts` cases return before the loop) | Bend program (host layer): tests, examples, hello + C probe |
 | Process | **supplied** | `getenv`, stdout/stderr, exit status; `sysconf(_SC_NPROCESSORS_ONLN)` reports 1 | Bend program (host layer): exit value 0 of each run, `writ_bend_rts` |
-| Atomics | **unverified** across lanes | executed in one lane by every run; no two lanes ran | Bend program (single lane) |
+| Atomics | **unverified** | compiled; single-lane execution not separately shown, and no two lanes ran | compile of the generated C |
 | Device dispatch | **CPU only, by construction** | every run passes `--gpu off`; GpuExample's dispatch line is program text | source reading of the generated C + run arguments |
 
 ## Host-layer update (host-layer lane, Task 3)
@@ -176,10 +176,12 @@ to the runtime's real guard page and terminates with no resumption; GB-003's
 parent-record half is still missing on base-linux, so the row is
 "substituted (termination only)", not complete.
 
-Event loop and process (Bend program, host layer). Every component above ran
-`io_loop`, which opens a pipe before the first print, through the vfs_pipe
-mount and libc `pipe: /pipe`; each print reached the LOG session and each
-exit value reached init (0 for the corpus and examples). Threads and clock
+Event loop and process (Bend program, host layer). The corpus, the four
+examples, and the hello ran `io_loop`, which opens a pipe before the first
+print, through the vfs_pipe mount and libc `pipe: /pipe`; each print reached
+the LOG session and each exit value 0 reached init. (Overflow printed
+nothing before its fault, and the `writ_bend_rts` cases return during option
+parsing, before the loop, so neither shows the event loop.) Threads and clock
 remain C-probe rows: single-lane programs open no worker, and no Bend
 program here calls `IO.now` or `IO.sleep`.
 

@@ -167,12 +167,12 @@ FAULT ROW: Overflow.bend through the Bend program (GB-003 substitute)
     guard page refusal: 0, base-linux fault line: 0, runtime fault message: 0,
     result printed: 0, init exit line: 0, init lines naming child: 0,
     process alive: 0, ps control (timer): 1
-    host kernel: ld.lib.so[4028388]: segfault at 7fff87743000 ip 0000000001002560 sp 00000000403fda60 error 6 in writ_bend_overflow.stripped
+    host kernel (journal file below): ld.lib.so[4028388]: segfault at 7fff87743000 ip 0000000001002560 sp 00000000403fda60 error 6 in writ_bend_overflow.stripped
   Run 2 (00:03:11, ram 3G, caps 1000; run-writ_bend_overflow-2-3G.out), rc 0:
     Kernel: writ_mem: unresolved fault at 0x7fffe4143000 (chunk could not be charged: cap quota), component terminates
     guard page refusal: 0, init exit line: 0, init lines naming child: 0,
     process alive: 0, ps control: 1
-    host kernel: segfault at 7fffe4143000 ip 0000000001002560 sp 00000000403fda60
+    host kernel (journal file below): segfault at 7fffe4143000 ip 0000000001002560 sp 00000000403fda60
     Why: every populated chunk is one RAM dataspace capability; 2 GiB of
     stack is 1024 chunks, more than the 1000-cap quota allows. Change: the
     overflow run script takes WRIT_BEND_CAPS (default 1000).
@@ -192,9 +192,19 @@ FAULT ROW: Overflow.bend through the Bend program (GB-003 substitute)
     ps control (timer):      1
 
     Run script execution successful.
-    host kernel: ld.lib.so[4039033]: segfault at 7ffff7f43000 ip 0000000001002560 sp 00000000403fda60 error 6 in writ_bend_overflow.stripped
+    host kernel (journal file below): ld.lib.so[4039033]: segfault at 7ffff7f43000 ip 0000000001002560 sp 00000000403fda60 error 6 in writ_bend_overflow.stripped
   Run 4 (ram 3G, caps 2000; run-writ_bend_overflow-4-3G-caps2000.out): identical
     refusal line and outcome (guard page, process gone, init silent).
+  Host kernel lines above: journalctl -k --since "2026-11-04 00:02:00" \
+    --until "2026-11-04 00:10:00" --no-pager > ../writ-genode/journal-k-overflow-task3.out
+  (saved after the runs; five segfault lines: one per Overflow run, at
+  00:02:34, 00:03:17, 00:04:06, 00:05:02, run 4's at 0x7ffff7f43000 like
+  run 3's, plus the reservation guard probe regression at 00:06:10, at
+  0x7ffef7f02000).
+  Script revisions: runs 1 and 2 used the revision before WRIT_BEND_CAPS
+  existed (caps fixed at 1000); runs 3 and 4 used the revision with the
+  override (default still 256M/1000). Fix round 1 (below) then made 3G and
+  2000 caps the defaults.
 
   Reading: the three fault addresses lie in the evaluation-stack
   reservation (the one placed "elsewhere"; the term heap is at 1<<45). The
@@ -231,3 +241,19 @@ LIMITS
   - The parent-record requirement of GB-003 remains open on base-linux.
   - The Overflow guard run needs ram 3G and caps 2000 because every touched
     stack chunk is charged; the minimum was not searched.
+
+FIX ROUND 1 (2026-11-04, after review)
+  writ_bend_overflow.run now defaults to ram 3G and caps 2000 (the values
+  of runs 3 and 4), so the guard result is the default outcome; the header
+  says smaller values exercise the quota refusal. New sha256
+  dd8998619abfc8e25e188dd270f344b079705ca7b4251c604c856a099c096cc2, live
+  copy byte-identical (cmp). Run 5 with no environment overrides
+  (cd ../writ-genode/build/x86_64 && ( ulimit -c 0; make run/writ_bend_overflow ),
+  log ../writ-genode/run-writ_bend_overflow-5-defaults.out), rc 0:
+    Kernel: writ_mem: unresolved fault at 0x7ffff7f43000 (guard page), component terminates
+    --- writ_bend_overflow outcome (ram 3G, caps 2000) ---
+    shim refusal line: 1 (reason: guard page), guard page refusal: 1,
+    init exit line: 0 (value none), init lines naming child: 0,
+    process alive: 0
+  Run 5 happened after the journal file above was saved, so its kernel line
+  is not in that file.
