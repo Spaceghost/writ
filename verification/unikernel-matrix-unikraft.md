@@ -34,12 +34,12 @@ Value key: `supplied` (the host provides the behavior the runtime expects), `sub
 | --- | --- | --- | --- |
 | Memory | **supplied**, lazily backed | Hello boots and prints `hi` with `-m 1024` down to `-m 8` (E1). Under gdb the runtime's two reservations are `mmap addr=0x200000000000 len=0x200000000` (8 GiB heap, first hint taken) and `mmap addr=0 len=0x8000c000` (2 GiB stack + 16 KiB guard + alternate signal stack); no `reservation failed` or `stack guard failed` (E2). Pages are backed on touch only: exhausting guest RAM is a Unikraft crash, not the runtime's own message (E4). | **missing**: `bend: reservation failed`, then the process does not exit (killed, 124); same with `+RTS --gpu 64MB` (E10). posix-mmap is dropped on linuxu (no `LIBUKVMEM`). |
 | Faults | **substituted** by a Unikraft trap that halts | Overflow.bend reaches the guard page (`r08: 000000108003f000` = stack base `0x100003f000` + 2 GiB) and the guest prints `CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)` plus registers; the runtime's `bend: memory fault (machine stack overflow?)` never appears, so its `SIGSEGV` handler does not run; QEMU exits **0** (E4). | not reached: startup stops at the reservation. |
-| Threads | **substituted** by a single lane: creation succeeds, the second lane never runs | Hello makes no parallel call, so `--threads 2` creates no thread (E5, prints `hi`, 0). Lanes.bend with `--threads 2` prints `lanes 2` and the correct `pow2 4194304`, 0 (E5). Under gdb, `pthread_create(entry=pool_work, arg=1)` returns 0, but `pool_work` is never entered before the guest powers off; both `pool_rows` turns run on the main loop's stack `0x100003f000` (E6). Default thread count (no options): `lanes 1`. | not reached. |
+| Threads | **substituted** by a single lane: creation succeeds, the second lane never runs | Hello makes no parallel call, so `--threads 2` creates no thread (E5, prints `hi`, 0). Lanes.bend with `--threads 2` prints `lanes 2` and the correct `pow2 4194304`, 0 (E5). Under gdb, `pthread_create(entry=pool_work, arg=1)` returns 0, but `pool_work` is not entered by shutdown (the guest powers off first); both `pool_rows` turns run on the main loop's stack `0x100003f000` (E6). The cause is inferred, not traced: with one CPU and the cooperative scheduler, the new thread is never scheduled because the main loop never yields to it. Default thread count (no options): `lanes 1`. | not reached. |
 | Clock | **supplied** | Clock.bend prints `before 108`, `after 211`, `advanced`; QEMU exits 0 (E7). One sample: 103 ms across a 100 ms sleep; backward motion was not hunted for. | not reached. |
 | Event loop | **supplied** with A3; **missing** with the plan's four libraries | With A3, startup reaches the first print in every probe (E1); `IO.sleep` parks on `select` with a timeout and wakes (E7). Without `posix-pipe`/`posix-poll`, startup stops at `bend: the event loop failed to open` (Task 1 `qemu/x86_64` A1 + A2 run below). A helper thread writing the wake pipe was not exercised: no monitor-profile effect uses an IO helper thread. | not reached (0.16.3 linuxu pulls in posix-pipe and posix-poll by dependency, but startup stops earlier). |
-| Process | **substituted**: argv supplied; `BENDRTS` is build-time only; exit status **missing** | argv: `-append "+RTS --bogus -RTS"` prints `bend: unknown runtime option --bogus`; `+RTS --help` prints the usage with `argv[0]` = the kernel path (E3). `getenv("BENDRTS")`: returns nothing by default (`LIBPOSIX_ENVIRON` with only `PATH=/bin`); compiled in as `CONFIG_LIBPOSIX_ENVIRON_ENVP1: 'BENDRTS=--bogus'` it is read (`bend: unknown runtime option --bogus`) (E8). Exit: returning from `main` powers the guest off with QEMU status 0 whatever `main` returned (`return 1` after the bad option also gives 0) (E3); `exit(3)`, `exit(0)` (IO.exit) and `_exit(1)` (runtime failure) leave the guest idle until killed, 124 (E9); gdb shows the idle thread in `plat_native_lcpu_halt_irq` (E9). | argv **supplied** (`--help` usage, `--bogus` message). `BENDRTS` from the host environment is **not** read (`BENDRTS=--bogus` still reaches `reservation failed`). Return from `main` gives status 0 whatever it returned (`--bogus` returns 1, observed 0); `_exit(1)` after the reservation failure does not end the process (124) (E10). Needs a TTY on stdin (Task 1). |
-| Atomics | **supplied** by the compiler (A1), single CPU only | Every probe compiles against GCC's `stdatomic.h` and runs the runtime's atomics (err_claim CAS, pool counters in Lanes.bend `--threads 2/4` with a correct result) (E5). Atomics across CPUs were not exercised: one CPU. | supplied at compile time; exercised only by `err_claim` before `_exit`. |
-| Device dispatch (`!` calls) | **missing** (CPU only) | No accelerator code is compiled (the CUDA/Metal branches are under `BEND_CUDA`/`__OBJC__`, unset; Task 1). No probe uses `!`. `+RTS --gpu 64MB` is accepted but, with no `!` call in the program, does not change the heap reservation: `len=0x200000000` either way (E2). Every run is CPU execution with `--gpu off` or no option. | same: not compiled. |
+| Process | **substituted**: argv supplied; `BENDRTS` is build-time only; exit status **missing** | argv: `-append "+RTS --bogus -RTS"` prints `bend: unknown runtime option --bogus`; `+RTS --help` prints the usage with `argv[0]` = the kernel path (E3). `getenv("BENDRTS")`: returns nothing by default (`LIBPOSIX_ENVIRON` with only `PATH=/bin`); compiled in as `CONFIG_LIBPOSIX_ENVIRON_ENVP1: 'BENDRTS=--bogus'` it is read (`bend: unknown runtime option --bogus`) (E8). Exit: returning from `main` powers the guest off with QEMU status 0 whatever `main` returned (`return 1` after the bad option also gives 0) (E3); `exit(3)`, `exit(0)` (IO.exit) and `_exit(1)` (runtime failure; the `--threads 0` run, which is `err_fail` then `_exit(1)` by reading the emitted C, line 3043 of `hello.c`, not by a trace) leave the guest idle until killed, 124 (E9); gdb shows the idle thread in `plat_native_lcpu_halt_irq` (E9). | argv **supplied** (`--help` usage, `--bogus` message). `BENDRTS` from the host environment is **not** read (`BENDRTS=--bogus` still reaches `reservation failed`). Return from `main` gives status 0 whatever it returned (`--bogus` returns 1, observed 0); `_exit(1)` after the reservation failure does not end the process (124) (E10). Needs a TTY on stdin (Task 1). |
+| Atomics | **supplied** by the compiler (A1), single CPU only | Every probe compiles against GCC's `stdatomic.h`. Exercised: the pool counters on the main lane in Lanes.bend `--threads 2/4` (correct result, E5; one lane only, since the second never runs, E6) and the `err_claim` compare-and-swap on the `_exit` paths (E9). Nothing here shows atomics under contention: no second lane ran and there is one CPU. | supplied at compile time; exercised only by `err_claim` before `_exit`. |
+| Device dispatch (`!` calls) | **missing** (CPU only), by construction | The value is by construction, not an observed failure: no accelerator code is compiled (the CUDA/Metal branches are under `BEND_CUDA`/`__OBJC__`, unset; Task 1). No probe uses `!`. `+RTS --gpu 64MB` is accepted but, with no `!` call in the program, does not change the heap reservation: `len=0x200000000` either way (E2). Every run is CPU execution with `--gpu off` or no option; no `!` program was run. | same: not compiled, by construction. |
 
 ### What the runtime profile's fault rule accepts
 
@@ -83,6 +83,56 @@ New Bend programs, all under `scripts/unikernel/`, each emitted with
 On the Linux host (native static build, outside the tree) Clock prints `advanced`, Lanes
 prints `lanes 2` / `pow2 4194304` under `--threads 2`, and Exit exits 3: the probes are
 right, so a different unikernel outcome is the host's.
+
+Calibration commands and outputs (re-run in Task 3; Linux x86_64, clang 23.1.1, Bend
+2.0.39; logs `$W/logs/task3/calib-*.log`). The depth variants are made outside the tree
+from the in-tree probe; `overflow-1e9.c` is byte-identical to `$W/gen/overflow.c`
+(sha256 `1e273e1a...`):
+
+```sh
+cd <repository root>; W=$(realpath ../writ-unikernel); mkdir -p $W/calib
+for d in 6 8 9; do
+  sed "s/depth(1000000000n)/depth(1$(printf '%0*d' $d 0)n)/" scripts/unikernel/Overflow.bend > $W/calib/overflow-1e$d.bend
+  bend $W/calib/overflow-1e$d.bend -o $W/calib/overflow-1e$d.c
+  clang -O2 -static $W/calib/overflow-1e$d.c -o $W/calib/overflow-1e$d -lm
+done
+for p in Clock Lanes Exit; do q=$(echo $p | tr A-Z a-z)
+  bend scripts/unikernel/$p.bend -o $W/calib/$q.c
+  clang -O2 -static $W/calib/$q.c -o $W/calib/$q -lm
+done
+cd $W/calib; ulimit -c 0
+```
+
+```
+$ ./overflow-1e6 +RTS --threads 1 --gpu off; echo $?
+overflow probe start
+1000000
+0
+$ ./overflow-1e8 +RTS --threads 1 --gpu off; echo $?
+overflow probe start
+100000000
+0
+$ ./overflow-1e9 +RTS --threads 1 --gpu off; echo $?
+overflow probe start
+bend: memory fault (machine stack overflow?)
+Segmentation fault
+139
+$ ./clock +RTS --threads 1 --gpu off; echo $?
+before 175353151
+after 175353251
+advanced
+0
+$ ./lanes +RTS --threads 2 --gpu off; echo $?
+lanes 2
+pow2 4194304
+0
+$ ./exit +RTS --threads 1 --gpu off; echo $?
+exiting with 3
+3
+```
+
+(`Segmentation fault` is the shell's report of the child's `SIGSEGV`, shortened from
+`bash: line 1: <pid> Segmentation fault  timeout 300 ./overflow-1e9 ...`.)
 
 ## Build and run harness (outside the tree)
 
@@ -145,7 +195,27 @@ The same with `-m 128`, `-m 64`, `-m 32`, `-m 16` and `-m 8` (`run-hello-m*.log`
 prints `hi` and gives 0. With `-append ""`: `hi`, 0.
 
 **E2 Reservation sizes (gdb).** Break at `main`, then at `__mmap`, printing `$rdi`/`$rsi`
-at each stop (`$W/logs/task2/gdb-span.log`):
+at each stop (`$W/logs/task2/gdb-span.log`). Command file `$W/gdb-span.cmd`:
+
+```
+set pagination off
+set confirm off
+target remote :1234
+hbreak main
+continue
+hbreak __mmap
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+kill
+```
+
+Output:
 
 ```
 == -append "+RTS --threads 1 --gpu off"
@@ -244,7 +314,29 @@ pow2 4194304
 
 **E6 Does the second lane start (gdb, Lanes `--threads 2`).** Hardware breakpoints on
 `pool_open`, then `pthread_create` (with `finish`), then `pool_work` and `pool_rows`
-(`$W/logs/task2/gdb-lanes-t2.log`):
+(`$W/logs/task2/gdb-lanes-t2.log`). Command file `$W/gdb-lanes.cmd`:
+
+```
+set pagination off
+set confirm off
+target remote :1234
+hbreak pool_open
+continue
+hbreak pthread_create
+continue
+bt 2
+finish
+hbreak pool_work
+hbreak pool_rows
+continue
+bt 3
+continue
+bt 3
+continue
+bt 3
+```
+
+Output:
 
 ```
 Breakpoint 1, pool_open () at $W/rows-unikraft/../gen/app.c:2212
@@ -255,7 +347,7 @@ Breakpoint 4, pool_rows (e=..., stk=0x100003f000) at $W/rows-unikraft/../gen/app
 [Inferior 1 (process 1) exited normally]
 ```
 
-Breakpoint 3 (`pool_work`, the worker's entry) never fires; both `pool_rows` calls come
+Breakpoint 3 (`pool_work`, the worker's entry) does not fire before shutdown; both `pool_rows` calls come
 from `pool_turn` on the main loop's stack, then the guest powers off. (The `app.c` line
 numbers gdb prints do not match the source lines; the function names are what matter.)
 
@@ -298,7 +390,14 @@ qemu-system-x86_64: terminating on signal 15 from pid 3640784 (timeout)
 124
 ```
 
-Attaching gdb 8 s after boot of `exit-qemu` (`$W/logs/task2/gdb-exit-hang.log`):
+That `+RTS --threads 0` reaches `_exit(1)` is from source reading of the emitted C
+(`err_fail("expected a thread count of 1 or more after --threads")` at `hello.c:3043`, and
+`err_fail` prints then calls `_exit(1)`); no breakpoint on `_exit` was set.
+
+Attaching gdb 8 s after boot of `exit-qemu` (`$W/logs/task2/gdb-exit-hang.log`; qemu
+started with `-s`, then `$W/gdb-exit2.cmd`: `set pagination off`, `set confirm off`,
+`target remote :1234`, `bt 12`, `kill`; `$W/gdb-exit.cmd` is the same without the last
+two lines and was used only to let the guest run under a debugger):
 
 ```
 #0  0x00000000001c1152 in plat_native_lcpu_halt_irq () at $W/src/unikraft/plat/native/arch/x86_64/lcpu_pm.c:235
@@ -379,6 +478,16 @@ build descriptors under `../writ-unikernel/`):
   `$W/hello-unikraft-0.16.3-a1`, `env -u UK_CFLAGS $KRAFT build --no-update --target
   linuxu/x86_64 -j 16 .`) the first error is
   `src-0.16.3/unikraft/lib/ukboot/boot.c:499:18: error: too many arguments to function '*ctorfn'; expected 0, have 2`.
+  Re-run in Task 3 to capture the status (after `rm -rf .unikraft`; log
+  `$W/logs/task3/build-linuxu-0.16.3-a1only.log`):
+
+  ```
+  $ env -u UK_CFLAGS $KRAFT build --no-update --target linuxu/x86_64 -j 16 . > $W/logs/task3/build-linuxu-0.16.3-a1only.log 2>&1; echo $?
+  1
+  ```
+
+  The log's first `error:` line is the same `boot.c:499:18` error, followed by
+  `could not complete build: build failed: exit status 2` (kraft's own status is 1).
 - **A3** Added `CONFIG_LIBPOSIX_PIPE` and `CONFIG_LIBPOSIX_POLL` to the plan's four
   libraries so the runtime's self-pipe (`pipe`, `select`) exists. Supplementary to Task 1;
   the plan's library set is the A1 + A2 row.

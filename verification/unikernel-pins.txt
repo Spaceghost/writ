@@ -76,3 +76,53 @@ Task 2 probes (in tree), emitted with `bend scripts/unikernel/<P>.bend -o $W/gen
   gen/overflow.c  1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc
   gen/lanes.c     26d9873efaced5e45f828389384c65637a3872a61062cad7b2f1ef177ffc8fb1
   gen/exit.c      7b1b4c4386200758c1f77000328364f038fd96a09f3a46c179699e2d1bf14883
+
+== OSv (Task 3; compat observation, see verification/unikernel-matrix-osv.md) ==
+OSv release v0.57.0 (published 2022-12-20; annotated tag object 1352e20ca772a6ff50817b1275af915069178102,
+  commit e4854b260ab1e91a1892cb909f2f50499b692030, both read from the GitHub API on 2026-11-03).
+No source tree was cloned and OSv was not built; the prebuilt release assets were used.
+The release publishes no checksum file; the hashes below are observed only.
+Download (W absolute as above):
+  mkdir -p $W/downloads/osv-0.57.0 && cd $W/downloads/osv-0.57.0
+  for f in osv-loader.qemu.x86_64 osv-loader.elf.x86_64.gz osv.bootstrap.mpm.x86_64 osv.bootstrap.yaml index.yaml; do
+    curl -sSLO https://github.com/cloudius-systems/osv/releases/download/v0.57.0/$f; done
+Observed sha256:
+  511388a052f8986b2259e832f9e3882a320ec718002e3ba536030c9b2ae32db2  osv-loader.qemu.x86_64   (raw disk: boot loader + kernel)
+  9251f15f45f3e271d7c059025d922dc20dafc599e793692ab99c50a0db91eab0  osv-loader.elf.x86_64.gz
+  78fafe0acfd881c1318e39951dddf9cf8dcc140413723e49c9327077f771fa65  osv-loader.elf (gunzip of the above, at $W/osv/loader/)
+  2b76fafe0078192665212780cd96d981e3d15cae3f03d5ead640ac2169fb7e50  osv.bootstrap.mpm.x86_64
+  6f924b93561f8076870293e5f347c40c7185a71a4ce0f09a343193f391346fd5  osv.bootstrap.yaml
+  a2ee3644f28576c833d3ee2389bd2f3a47029e64747f7c5086f0d2984184321b  index.yaml
+  (index.yaml: version "0.57.0", platform "Fedora Linux 35 (Workstation Edition)")
+The kernel identifies itself on the console as `OSv v0.57.0`.
+
+== capstan ==
+capstan v1.0.0 (published 2023-05-23; tag object 204f048e2f76d5dc1b7af0eb6b2111e3461d238e,
+  commit 6bb7574c54296a47a30984604dcbb41c8cf8ad8a). Go binary release, no checksum published.
+  mkdir -p $W/downloads/capstan-1.0.0 $W/tools/capstan-1.0.0 && cd $W/downloads/capstan-1.0.0
+  curl -sSLO https://github.com/cloudius-systems/capstan/releases/download/v1.0.0/capstan
+  cp capstan $W/tools/capstan-1.0.0/ && chmod +x $W/tools/capstan-1.0.0/capstan
+  $W/tools/capstan-1.0.0/capstan --version     # capstan version v1.0.0
+Observed sha256:
+  7461fbb1a5ce795e4008d7884dbdf6ff437971c71a8e8d266dd2addedeadab3a  capstan
+capstan state is kept out of $HOME with CAPSTAN_ROOT=$W/capstan-home on every call. The base
+image and bootstrap package were placed by hand, not pulled (cwd $W):
+  capstan import -v 0.57.0 -d "OSv 0.57.0 osv-loader.qemu.x86_64 (release asset)" osv-loader $W/downloads/osv-0.57.0/osv-loader.qemu.x86_64
+  cp $W/downloads/osv-0.57.0/osv-loader.qemu.x86_64 $CAPSTAN_ROOT/repository/osv-loader/osv-loader.qemu
+  mkdir -p $CAPSTAN_ROOT/packages
+  cp $W/downloads/osv-0.57.0/osv.bootstrap.mpm.x86_64 $CAPSTAN_ROOT/packages/osv.bootstrap.mpm
+  cp $W/downloads/osv-0.57.0/osv.bootstrap.yaml $CAPSTAN_ROOT/packages/osv.bootstrap.yaml
+(`capstan import` stores the image as osv-loader.raw, the same bytes; `package compose` reads
+osv-loader.qemu, hence the copy. `package compose` without osv.bootstrap present prints that it
+is missing and exits 0.)
+
+== Host toolchain used by the OSv build (not downloaded) ==
+clang version 23.1.1; LLD 23.1.1 (O1: GNU ld 2.47 output is rejected by OSv 0.57's loader)
+GNU objcopy (GNU Binutils) 2.47 (O2: __isoc23_* renames)
+glibc 2.44 headers (ldd (GNU libc) 2.44)
+Inputs: Task 2's $W/gen/{hello,clock,overflow,lanes,exit,exit0}.c, hashes above.
+
+== Task 3 calibration inputs (outside the tree) ==
+$W/calib/overflow-1e{6,8,9}.bend from scripts/unikernel/Overflow.bend by sed; overflow-1e9.c is
+byte-identical to $W/gen/overflow.c. $W/calib/{clock,lanes,exit}.c re-emitted from the in-tree
+probes; clock.c, lanes.c and exit.c are byte-identical to the $W/gen copies.
