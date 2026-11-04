@@ -64,3 +64,107 @@ missing a primitive the runtime profile cannot waive.
 None of this is a security claim. Every candidate is one address space, so the
 image holds the monitor only, and the hypervisor, host kernel, and firmware stay
 in the trusted base as the appliance change states.
+
+## Selection matrix, 2026-11
+
+Executed 2026-11-03 under the library-unikernel lane, Tasks 1 to 3. Every cell except those marked
+"by construction" or "from documentation" comes from running an image; the evidence pointer names the block in
+[unikernel-matrix-unikraft.md](../verification/unikernel-matrix-unikraft.md) (`E<n>`, and
+Task 1's build matrix) or
+[unikernel-matrix-osv.md](../verification/unikernel-matrix-osv.md) (`O-E<n>`). Pins are in
+[unikernel-pins.txt](../verification/unikernel-pins.txt). Every Unikraft and OSv boot run is an emulated
+boot under QEMU 11.1.2 with TCG (the one `linuxu` run was process execution); none is an accelerated boot and none is a device run. Every Unikraft QEMU run used `-no-reboot`, so QEMU status 0 cannot distinguish a guest power-off from a guest reset: "halt" and "powers off" for Unikraft are inferences (OSv prints "Powering off.", so its label is observed).
+
+The two columns are not the same kind of evidence. **Unikraft** is a native link: the
+emitted C is the Unikraft application, built against lib-musl into one kernel image
+(UL-001's mode). **OSv** is a compat observation: the emitted C is built by the host
+toolchain into a Linux PIE and loaded by OSv's in-kernel ELF linker, which UL-001 excludes;
+OSv has no mode that links application C into the kernel (from its documentation, not
+built here).
+
+| Row | Unikraft 0.21.0, `qemu/x86_64`, native link | OSv 0.57.0, `qemu/x86_64`, compat PIE |
+| --- | --- | --- |
+| Native link (UL-001) | **supplied**: links and boots with build adjustments A1 to A3, none in Bend output (Task 1 matrix) | **unverified (from documentation; no native-link attempt made)**: OSv's documentation describes no link-into-kernel application mode; the compat program runs through the ELF loader (mode note; O-E0 shows that loader rejecting a header, not the absence of a mode) |
+| Memory | **supplied**, lazy: 8 GiB heap, first hint taken (inferred from no further calls; E2 printed the mmap arguments, not return values), and 2 GiB+guard stack; boots at `-m 8` (E1, E2) | **supplied**, lazy: heap at the third hint `1<<43`, stack mapped; boots at `-m 32` (O-E1, O-E2) |
+| Faults | **substituted**: guard hit gives `CRIT: Unikraft Crash` and, inferred, a halt; the runtime's handler never runs; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred) (E4) | **supplied**: the runtime's `bend: memory fault` message, then OSv powers off (`Uncaught signal 11` with `--verbose`); QEMU 0 (O-E4) |
+| Guest RAM exhaustion (stack growth) | **substituted**: the same Unikraft crash; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred); arena exhaustion not induced (E4, `-m 1024`, Overflow) | **substituted**: OSv kernel `Aborted` in its page pool; halts without power-off, killed (O-E4, `-m 1024`) |
+| Threads | **substituted** by a single lane: `pthread_create` returns 0, `pool_work` was not entered before shutdown in a non-yielding program (E6); behaviour when the main lane yields not tried; one CPU, cooperative (E5, E6) | **supplied**: second lane runs on one and on two vCPUs, correct results (O-E5, O-E6); but shutdown with an open pool **missing**: guest idles after `main` returns (O-E6) |
+| Clock | **supplied** (E7) | **supplied** (O-E7) |
+| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was not exercised | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
+| Process: argv | **supplied** via `-append` (E3) | **supplied** via the kernel command line (O-E3) |
+| Process: `BENDRTS` | **substituted**: build-time only, compiled into the environment (E8) | **supplied** at boot with `--env=` (O-E8) |
+| Process: exit status | **missing**: return from `main` ends the run with QEMU 0 whatever it returned (power-off inferred; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred)); `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |
+| Process: CPU count | **consistent with supplied**; not distinguishable from the runtime's fallback at one CPU (default `lanes 1`, E5); SMP not tried | **supplied**: 1 on `-smp 1`, 2 on `-smp 2` (O-E5) |
+| Atomics | **supplied** by GCC's `stdatomic.h` (A1); exercised on one lane and one CPU only (E5, E9) | **supplied** by clang's `stdatomic.h`; exercised with two lanes on two vCPUs (TCG) (O-E5, O-E6) |
+| Device dispatch | **missing** by construction: no accelerator code compiled, no `!` program run (E2) | **missing** by construction, the same (O-E2) |
+| Rebuild-stable image (not UL-008 reproducibility) | **rebuild-stable on one host and path (same $W, same host GCC)**: rebuilds gave identical image hashes (unikernel-matrix-unikraft.md, "Build and run harness (outside the tree)", image hash table) | **rebuild-stable on one host and path**: the probes image rebuilt to the same hash (unikernel-matrix-osv.md, "Image and executable hashes", rebuild line) |
+
+`linuxu` is not a column: the pinned 0.21.0 has no `linuxu` platform, and the 0.16.3 run
+(process execution, not a boot) stops at `bend: reservation failed` because `posix-mmap`
+is unavailable there (E10).
+
+### Chosen kernel for the native-link lane: Unikraft 0.21.0
+
+- The choice rests on Unikraft's executed cells: native link **supplied** (Task 1 A1+A2+A3
+  row), so it is the one candidate here shown to meet UL-001. OSv's native-link status is
+  **unverified** (documentation only, no attempt made) and is not a reason for the choice;
+  OSv's better cells (Faults **supplied**, Threads **supplied**) belong to the compat path,
+  which the appliance change owns, not this one.
+- Its native image already supplies the rows the first port needs: Memory **supplied**
+  (E1, E2), Clock **supplied** (E7), Event loop **supplied** with A3 (E1, E7), argv
+  **supplied** (E3), and a reproducible image.
+- Its gaps are ones the runtime profile lets an effect twin or a declared mode close,
+  rather than ones that need a different libc: Threads is a single lane (E6), which is
+  what UL-005 asks for first; Faults is a halting trap with no resumption (E4), which
+  RH-006 accepts once the code is recorded; the open problem is the exit status
+  (**missing**, E3, E9), which is a platform shutdown path, not a libc primitive.
+- The survey's fallback rule ("move to OSv only if Unikraft's libc proves to be missing a
+  primitive the runtime profile cannot waive") is not triggered: in the A1 to A3
+  configuration the only Unikraft cells marked **missing** are the exit status and device
+  dispatch (by construction), and OSv does not supply a harness-visible status either
+  (its cell is console-only).
+
+### What the effect-twins task needs from Unikraft
+
+1. **An exit path the harness can see.** Today every exit is QEMU status 0 or a hang
+   (E3, E9), and a fault looks like success (E4). The exit twin needs a platform shutdown
+   that carries a code: for example QEMU's `isa-debug-exit` device written by the exit
+   twin and by the fault halt, with the run harness mapping its status. The device-carried
+   code is the requirement; a console line is diagnostic only, because program output
+   shares the console and could forge a parsed status (unless the framing is one the
+   program cannot emit). Either way the halt after
+   `exit`, `_exit`, and the trap must power off instead of idling (E9), and corpus
+   failure, arena exhaustion, and fault must give distinct codes (UL-006).
+2. **A declared single-lane configuration.** Keep `UKPLAT_CPU_MAXCOUNT=1` and the
+   cooperative scheduler, run with `+RTS --threads 1`, and use the inline IO helper
+   (UL-005). On this kernel `--threads 2` creates a lane whose `pool_work` was not entered before shutdown in a non-yielding program (E6; behaviour when the main lane yields not tried), so a
+   multi-lane build must not be configured by accident. `UKPLAT_CPU_MAXCOUNT=1` must be set explicitly in the Kraftfile (today it is only a resolved default, matrix ~565); SMP is a later task (2.4), and
+   the OSv hang at shutdown with more than one lane (cause inferred, O-E6) should be
+   investigated as part of it.
+3. **The fault halt to carry the runtime's message.** The runtime's `SIGSEGV` handler
+   does not run on Unikraft (E4); the halting fault handler (task 2.3) has to print the
+   runtime's fault text, or an equivalent recorded line, before the coded halt.
+4. **The A3 libraries kept or replaced.** The event loop needs `posix-pipe` and
+   `posix-poll` (Task 1 A1+A2 run); an ingress twin that replaces the self-pipe could drop
+   them, and UL-003's binary check decides which stay. lib-musl itself selects
+   `LIBPOSIX_VFS` and `LIBUKFS` (a VFS core, no filesystem driver; matrix ~565), which
+   UL-003's "no filesystem library" check will meet.
+5. **Settle the platform action after a crash and after `main`.** Run once without
+   `-no-reboot`, or set a gdb breakpoint on the platform terminate path, to learn whether
+   the crash path and the return from `main` power off or reset. Until settled,
+   `-no-reboot` is a harness requirement. If the crash path is a reset, an image run
+   without `-no-reboot` would re-run the program, which is resumption at the image level
+   and forbidden by UL-006.
+6. **Compiler parity (UL-005).** The emitted C is compiled as `-std=gnu11` with GCC here,
+   while the Linux reference uses clang's default dialect: a compiler and dialect
+   difference, not an evaluator edit.
+
+### Single most likely blocker, per candidate
+
+- **Unikraft:** the exit status. No exit path reaches the harness (E3, E9), and until one
+  does, RH-006 and UL-006 cannot be checked from the run's status.
+- **OSv (for a native link):** the loader (from documentation, not built). OSv's
+  documentation describes application loading only through its ELF linker (mode note in
+  unikernel-matrix-osv.md; O-E0 shows the loader rejecting a header, not the absence of
+  another mode), so, if that holds, UL-001 would need a link-into-kernel
+  application mode added to OSv itself (unverified).
