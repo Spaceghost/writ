@@ -22,18 +22,23 @@ pending.
 
 ## 2. Port
 
-- [ ] 2.1 Author the console, time, exit, and ingress effect twins for the chosen kernel; publish their trust inventory; run the runtime profile's binary check on the image.
+- [ ] 2.1 Author the console, time, and ingress effect twins for the chosen kernel (exit is the inventoried termination host layer); publish their trust inventory; run the runtime profile's binary check on the image.
   Unchecked: the ingress twin is missing. Exit: `hosts/unikraft/exit_device.c` (a C
   termination and crash hook, not a Bend effect twin) gives QEMU 1 / 3 / 253 for success,
   `IO.die`, and a fault (verification/unikernel-exit-codes.txt). Console and time:
   `hosts/unikraft/effects/Unikraft.bend` (`Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`)
   with `.c` twins over `hosts/unikraft/host.c` and `.js` twins that fail; the probe
   `scripts/unikernel/Probe.bend` puts its text on serial through `Unikraft.log`, measures
-  100 to 101 ms around a 100 ms sleep, shows its FAIL branch once (QEMU 3), and
+  102 to 103 ms around a 100 ms sleep, shows its FAIL branch once (QEMU 3), and
   check-binary.sh sees exactly the three effects as rows beyond the profile
-  (verification/unikernel-effects-qemu.txt; static link, so effect rows only). The sleep
-  blocks the loop thread: an `io_work` helper thread outlives `main` on this configuration
-  and turns success into QEMU 255 (that file, E1), which the ingress twin must also avoid.
+  (verification/unikernel-effects-qemu.txt, fix round 1; static link, so effect rows only).
+  The sleep parks on the runtime's own timer (`io_wait_on`, as `IO.sleep` does), so the loop
+  stays live; `io_work` is out because its helper thread outlives `main` on this
+  configuration and turns success into QEMU 255 (that file, R0-E1), and the ingress twin
+  must park on its device descriptor the same way. The re-park and clock-failure paths
+  have not been exercised. The images still send `IO.print` through lib-musl; only
+  `Unikraft.log` uses a twin, so the "Console effect" scenario (a twin for `IO.print`) is
+  a gap.
   `hosts/unikraft/INVENTORY.md` lists every file, exported symbol, and what it may touch.
   UL-004 amended (unikraft effect-twins lane, Task 1), as AGENTS.md requires a rationale for
   a contract change. The old text made the effect twins the only kernel-specific code, but
@@ -45,7 +50,9 @@ pending.
   the only kernel-specific code", and the trust inventory must name each such file, its
   exported symbols, and what it may touch, so the hook is reviewed as strictly as a twin; it
   still decides no authority question. "Exit" moves from the twins' primitives to that host
-  layer. The Kraftfile and Makefile.uk remain build configuration, listed in the inventory.
+  layer, and the inventory sentence (each file, its exported symbols, what it may touch) is
+  added to the requirement. The Kraftfile and Makefile.uk remain build configuration,
+  listed in the inventory.
   The exit hook should also move success off QEMU 1 (for example by writing s + 0x10), since
   QEMU itself exits 1 on its own startup errors; until then QEMU 1 counts as success only
   with the console check.

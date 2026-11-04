@@ -8,9 +8,10 @@ import Base
 # and a .js twin.
 #
 # Authority: none is granted or decided here. The .c twins call only host.c's
-# three functions (hosts/unikraft/INVENTORY.md), and host.c only writes bytes
-# to Unikraft's STDOUT console devices, reads the platform monotonic clock, and
-# blocks the calling thread on the scheduler. The Bend program decides what to
+# four functions and the runtime's own helpers (io_cstr, io_wait_on, io_tick;
+# hosts/unikraft/INVENTORY.md), and host.c only writes bytes to Unikraft's
+# STDOUT console devices and reads the platform monotonic clock; the sleep
+# waits on the runtime's own timer. The Bend program decides what to
 # log and when to wait. A console line is output, never a credential or an
 # authority fact.
 #
@@ -36,12 +37,13 @@ def Unikraft.now() -> IO(U32):
   import "./unikraft_now.js"
 
 # Returns after the platform monotonic clock has advanced by at least `ms`
-# milliseconds (writ_uk_sleep_ms). The wait blocks the event loop's thread
-# on Unikraft's scheduler (not a spin; the idle thread halts the CPU), so no
-# other computation of the program runs during it; it does not use an
-# io_work helper thread (unikraft_sleep.c says why). A clock that is frozen
-# or goes backwards across a scheduler sleep, or a sleep that needs more
-# than 16 scheduler sleeps, ends the image with exit status 1 after one console line.
+# milliseconds. The twin parks on the runtime's own timer (io_wait_on with a
+# deadline, as IO.sleep does), so the event loop stays live and no helper
+# thread is created; host.c reads the clock at the start and on each wake
+# (writ_uk_sleep_left). A wake whose reading has not advanced, a reading
+# below the start, or a 17th park ends the image with exit status 1 after
+# one console line. A clock that stops completely never wakes the park; that
+# is bounded only by the harness timeout.
 def Unikraft.sleep(ms: U32) -> IO(Unit):
   import "./unikraft_sleep.c"
   import "./unikraft_sleep.js"

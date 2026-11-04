@@ -1,0 +1,29 @@
+2026-11-04T15:59:11Z	controller	lane created from master 09cd9bc; Task 1 brief written
+2026-11-04T16:00:00Z	implementer	Task 1 started; reading brief, inventory, scripts, Genode twins
+2026-11-04T16:00:38Z	controller	Task 1 implementer dispatched
+2026-11-04T16:01:42Z	implementer	design: host.c (uk_console_out, ukplat_monotonic_clock, uk_sched_thread_sleep loop) + twins; report started
+2026-11-04T16:03:16Z	implementer	Makefile.uk/build.sh: WRIT_HOST_LAYER (default n) links host.c; probe.c emitted; Linux link fails, JS twin fails as designed
+2026-11-04T16:03:19Z	implementer	build started: effects/probe (WRIT_HOST_LAYER=y)
+2026-11-04T16:04:03Z	implementer	build finished: probe-qemu in 40 s
+2026-11-04T16:04:09Z	implementer	run 1: serial text OK, delta 106, PASS line; but QEMU 255 not 1 (status not representable); investigating
+2026-11-04T16:04:32Z	implementer	cause of 255: io_work helper thread outlives main, init process still RUNNING at shutdown -> exit_code 0x80|SIGKILL=137 (posix-process/shutdown.c:99-101) -> 0x7f; switching sleep to the loop thread
+2026-11-04T16:04:52Z	implementer	build started: probe with loop-thread sleep
+2026-11-04T16:05:36Z	implementer	run 2 (loop-thread sleep): serial text OK, delta 100, PASS, QEMU 1
+2026-11-04T16:05:50Z	implementer	check-image probe-3..5 PASS (deltas 100,100,101); building scratch FAIL probe (min_delta 1000)
+2026-11-04T16:06:44Z	implementer	FAIL branch: probefail QEMU 3, FAIL line, check-image rc 1
+2026-11-04T16:06:53Z	implementer	check-binary on probe/probefail/iowork .dbg: rows exactly Unikraft.log/now/sleep, FAIL(1) as expected; io_work capture check-image FAIL on QEMU 255
+2026-11-04T16:07:39Z	implementer	regression: hello built without host layer (default), check-image PASS QEMU 1, no writ_uk symbols
+2026-11-04T16:08:33Z	implementer	wrote verification/unikernel-effects-qemu.txt (E1-E7)
+2026-11-04T16:09:17Z	implementer	UL-004 amended in spec delta, rationale in tasks.md 2.1 note; openspec 1.16.0 (bunx) strict: 44 passed, 0 failed
+2026-11-04T16:10:09Z	implementer	INVENTORY, UNIKERNELS.md port status, OpenSpec record committed
+2026-11-04T16:10:23Z	implementer	Task 1 DONE_WITH_CONCERNS; report written
+2026-11-04T16:10:45Z	controller	Task 1 done; review dispatched
+2026-11-04T16:13:24Z	controller	activity log moved to .lane/unikraft-twins.log (committed per lane from now on)
+2026-11-04T16:14:31Z	implementer	fix round 1 started: sleep via io_wait_on time park; doc fixes
+2026-11-04T16:14:31Z	controller	review: needs fixes (io_wait_on sleep); fix round 1 dispatched
+2026-11-04T16:15:36Z	implementer	build started: probe with io_wait_on sleep
+2026-11-04T16:16:38Z	implementer	build finished: probe-qemu d42680ce (io_wait_on sleep)
+2026-11-04T16:16:49Z	implementer	r1 E2 run.sh delta 103 QEMU 1; E3-E5 check-image PASS deltas 102,102,102; rebuilding probefail
+2026-11-04T16:17:45Z	implementer	r1 E6 probefail QEMU 3, check-image rc 1; E7 check-binary rows exactly Unikraft.log/now/sleep, rc 1
+2026-11-04T16:18:31Z	implementer	evidence: fix round 1 section added, R0 runs relabelled
+2026-11-04T16:19:43Z	implementer	r1 docs: INVENTORY, UNIKERNELS.md gap, tasks 2.1 line+note, design.md:42, explainer 107/118/130 aligned; openspec 1.16.0 strict 44/44

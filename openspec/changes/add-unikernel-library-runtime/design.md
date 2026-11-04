@@ -36,11 +36,15 @@ the answer.
 ### Effects bind to kernel primitives where that removes a layer
 
 The monitor-profile effects are authored in Bend with C twins. On the chosen
-kernel the twins call its console, time, and exit primitives directly instead
-of going through libc emulation of Linux syscalls. The authenticated channel
+kernel the twins call its console and time primitives directly instead of
+going through libc emulation of Linux syscalls. The authenticated channel
 ingress uses the kernel's networking or a virtio transport chosen by the host
-contract's channel change. The twins are the only kernel-specific code and are
-listed in a trust inventory as authored binding code.
+contract's channel change. Exit and crash reporting cannot be a twin, since no
+Bend code runs on a crash or after `main` returns; it is a boot and termination
+host layer. The effect twins and that inventoried host layer are the only
+kernel-specific code, and each file is listed in a trust inventory as authored
+binding code with its exported symbols and what it may touch (UL-004, amended
+with its rationale in tasks.md 2.1).
 
 ### Lanes and memory follow the profile
 

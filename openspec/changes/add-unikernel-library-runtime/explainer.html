@@ -104,7 +104,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
 <ul>
   <li><strong>Native link, not ELF loading.</strong> The generated C is the application. A compat loader in the build configuration belongs to the appliance, not here.</li>
   <li><strong>Select by an executed matrix.</strong> One cell per row per candidate, filled by running it. Unikraft first because <code>linuxu</code> lets the port be debugged as a Linux process before any VM boot.</li>
-  <li><strong>Effect twins bind to kernel primitives.</strong> Console, time, exit, and the ingress channel call the kernel directly. They are the only kernel-specific code and are inventoried.</li>
+  <li><strong>Effect twins bind to kernel primitives.</strong> Console, time, and the ingress channel call the kernel directly; exit and crash reporting is an inventoried termination host layer, since no Bend code runs on a crash. The twins and that boot and termination host layer are the only kernel-specific code, and each file is inventoried with its exported symbols and what it may touch.</li>
   <li><strong>Single lane first, faults halt.</strong> One lane removes the pthread rows. A page fault reaches a handler that prints the runtime's message and halts with a distinct code.</li>
   <li><strong>Three environments, recorded apart.</strong> As a Linux process, under QEMU software emulation, under Firecracker or KVM. Only the last two are boots.</li>
 </ul>
@@ -115,7 +115,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
   <div class="req"><span class="id">UL-001</span><span>The image is a native link; no Linux-ELF compatibility loader.</span></div>
   <div class="req"><span class="id">UL-002</span><span>Selection by a published matrix with every cell established by execution.</span></div>
   <div class="req"><span class="id">UL-003</span><span>Only profile libraries linked; passes the runtime profile's binary check.</span></div>
-  <div class="req"><span class="id">UL-004</span><span>Effect twins bind to kernel primitives, are the only kernel-specific code, and are inventoried.</span></div>
+  <div class="req"><span class="id">UL-004</span><span>Effect twins bind to kernel console, time, and channel primitives; the twins and the inventoried boot and termination host layer are the only kernel-specific code.</span></div>
   <div class="req"><span class="id">UL-005</span><span>Single lane first with line-for-line parity; more lanes only after, preserving the match.</span></div>
   <div class="req"><span class="id">UL-006</span><span>Faults halt with a distinct code; no resumption.</span></div>
   <div class="req"><span class="id">UL-007</span><span>Linux-process, emulated, and accelerated results recorded separately; only the last two are boots.</span></div>
@@ -127,7 +127,7 @@ footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
   <li>Pin Unikraft and OSv. Build the hello program's generated C as a native application on each. Record build outcome.</li>
   <li>Fill the matrix by executing each row on each. Publish the choice with reasons.</li>
   <li>If Unikraft: run under <code>linuxu</code>. Record as process execution, not a boot.</li>
-  <li>Author the console, time, exit, and ingress twins. Inventory them. Run the binary check on the image.</li>
+  <li>Author the console, time, and ingress twins (exit is the inventoried termination host layer). Inventory them. Run the binary check on the image.</li>
   <li>Single lane. Corpus and examples under QEMU. Line-for-line match with the Linux record.</li>
   <li>Halting fault handler. Forced overflow and arena exhaustion with distinct codes.</li>
   <li>Enable lanes. Match preserved. Boot under Firecracker or KVM. Separate record.</li>

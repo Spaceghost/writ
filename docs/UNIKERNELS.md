@@ -85,10 +85,14 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   (`hosts/unikraft/effects/Unikraft.bend`, `.c` twins over `hosts/unikraft/host.c`). For
   example, `scripts/unikernel/Probe.bend` built with `WRIT_HOST_LAYER=y` prints
   `probe: hello from Bend through the Unikraft console` on serial through the twin, reads
-  100 to 101 ms around `Unikraft.sleep(100)`, and exits 1 (QEMU 3) when the delta leaves
-  [100, 1100), shown once from a scratch build ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt)).
-  Gap: the sleep blocks the loop thread, because an `io_work` helper thread outlives `main`
-  on this configuration and turns success into QEMU 255 (same file, E1).
+  102 to 103 ms around `Unikraft.sleep(100)`, and exits 1 (QEMU 3) when the delta leaves
+  [100, 1100), shown once from a scratch build ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), fix round 1).
+  The sleep parks on the runtime's own timer (`io_wait_on`, as `IO.sleep` does), so the loop
+  stays live and no helper thread is created: an `io_work` helper thread outlives `main` on
+  this configuration and turns success into QEMU 255 ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1).
+  Gap: the re-park and clock-failure paths of `host.c` have never been exercised (no clock
+  fault can be injected without patching Unikraft), and a fully stopped clock is bounded
+  only by the harness timeout. `IO.print` still goes through lib-musl, not a twin.
 - **UL-004 amended:** the effect twins and the inventoried boot and termination host layer
   are the only kernel-specific code (the crash hook cannot be a twin; rationale in the
   change's tasks.md 2.1).
@@ -123,7 +127,7 @@ built here).
 | Guest RAM exhaustion (stack growth) | **substituted**: the same Unikraft crash; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred); arena exhaustion not induced (E4, `-m 1024`, Overflow) | **substituted**: OSv kernel `Aborted` in its page pool; halts without power-off, killed (O-E4, `-m 1024`) |
 | Threads | **substituted** by a single lane: `pthread_create` returns 0, `pool_work` was not entered before shutdown in a non-yielding program (E6); behaviour when the main lane yields not tried; one CPU, cooperative (E5, E6) | **supplied**: second lane runs on one and on two vCPUs, correct results (O-E5, O-E6); but shutdown with an open pool **missing**: guest idles after `main` returns (O-E6) |
 | Clock | **supplied** (E7) | **supplied** (O-E7) |
-| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was not exercised | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
+| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was exercised later and works, but the never-ending helper thread turns success into QEMU 255 at shutdown ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1) | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
 | Process: argv | **supplied** via `-append` (E3) | **supplied** via the kernel command line (O-E3) |
 | Process: `BENDRTS` | **substituted**: build-time only, compiled into the environment (E8) | **supplied** at boot with `--env=` (O-E8) |
 | Process: exit status | (matrix, before the port; see [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)) **missing**: return from `main` ends the run with QEMU 0 whatever it returned (power-off inferred; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred)); `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |
