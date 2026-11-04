@@ -142,6 +142,7 @@ try {
   const explainer = await fetch(`${base}/change/${expected}/html/explainer.html`);
   const onDisk = readFileSync(join(root, "openspec", "changes", expected, "explainer.html"), "utf8");
   check("explainer served as-is with text/html", explainer.headers.get("content-type")?.startsWith("text/html") === true && (await explainer.text()) === onDisk);
+  check("standalone explainer carries the CSP sandbox", explainer.headers.get("content-security-policy") === "sandbox allow-scripts allow-popups");
 
   check("traversal is not served", (await fetch(`${base}/change/${expected}/html/..%2Fproposal.md`)).status === 404);
   check("POST is refused", (await fetch(`${base}/`, { method: "POST" })).status === 405);

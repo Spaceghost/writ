@@ -7,9 +7,12 @@
 // Read-only contract: the server only reads files below --root and --lanes. It
 // never writes, never executes a file it reads, and runs exactly two read-only
 // git commands per lane (`rev-parse --abbrev-ref HEAD` and `log -1`), which read
-// the worktree's gitdir. The watcher also watches that gitdir's `logs/`
-// directory for HEAD's reflog name only (never reading it) so a commit refreshes
-// the panel. Markdown is rendered with raw HTML escaped and unsafe link schemes
+// the worktree's gitdir. One path outside --root and --lanes is watched: the
+// lane's git metadata `logs/` directory, located from the `gitdir:` line of the
+// lane's `.git` file (standard layout: <main repo>/.git/worktrees/<lane>/logs;
+// the board follows whatever gitdir says). That watch is notify-only, filtered
+// to HEAD's reflog name, and nothing there is ever opened or read; it exists so
+// a commit refreshes the panel. Markdown is rendered with raw HTML escaped and unsafe link schemes
 // replaced by `#`; explainer pages are served byte-for-byte as text/html only
 // when their name appears in the scanned change directory as a regular file
 // (not a symlink). Request paths are matched against scanned names, never
@@ -574,10 +577,18 @@ function events(flags: Flags, page: string): Response {
   let client: Client | undefined;
   const stream = new ReadableStream({
     async start(controller) {
-      const v = await view(flags, page, snapshot(flags));
+      // A failed first render (for example a lane scan throwing) keeps the
+      // stream open with nothing recorded as sent, so the next flush sends
+      // every fragment.
+      let v: View | null = null;
+      try {
+        v = await view(flags, page, snapshot(flags));
+      } catch (err) {
+        console.error(`board: initial render of ${page} failed: ${err}`);
+      }
       const c: Client = {
         page,
-        last: new Map(Object.entries(v.parts)),
+        last: new Map(v === null ? [] : Object.entries(v.parts)),
         send(text) {
           try {
             controller.enqueue(encoder.encode(text));
@@ -589,7 +600,8 @@ function events(flags: Flags, page: string): Response {
         },
       };
       client = c;
-      if (c.send(patchElements(v.nav) + patchElements(v.main))) clients.add(c);
+      const first = v === null ? ": initial render failed; waiting for the next change\n\n" : patchElements(v.nav) + patchElements(v.main);
+      if (c.send(first)) clients.add(c);
     },
     cancel() {
       if (client) clients.delete(client);
@@ -806,7 +818,11 @@ async function handle(flags: Flags, req: Request): Promise<Response> {
     if (!change || !change.html.includes(explainer[2])) return notFound;
     const bytes = readRegular(join(flags.root, "openspec", "changes", change.name, explainer[2]));
     if (bytes === null) return notFound;
-    return new Response(bytes, { headers: { "content-type": "text/html; charset=utf-8" } });
+    // The CSP sandbox gives the standalone view the same opaque-origin
+    // isolation as the board's sandboxed iframe.
+    return new Response(bytes, {
+      headers: { "content-type": "text/html; charset=utf-8", "content-security-policy": "sandbox allow-scripts allow-popups" },
+    });
   }
   const v = await view(flags, path, snapshot(flags));
   return new Response(T.shell(v.title, v.nav, v.main, path), {

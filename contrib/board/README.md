@@ -71,7 +71,8 @@ bun contrib/board/smoke.ts
 
 It never writes to the repository or a lane, never runs any other `git`
 command, and never executes what it reads. Lane files and explainers are opened
-without following symlinks. Markdown (documents, ledgers, reports) goes through
+with `O_NOFOLLOW`, so a symlink as the final path component is refused (symlinked
+parent directories are not checked), and must be regular files. Markdown (documents, ledgers, reports) goes through
 one pipeline: raw HTML is shown escaped, and a link keeps its target only if it
 is `http:`, `https:`, `mailto:`, a fragment, or a same-origin relative path;
 any other scheme (including one hidden behind character references or control
@@ -106,8 +107,13 @@ and their external links can open, but the frame gets an opaque origin, so an
 explainer cannot read the board's DOM, cookies, or storage or script the board
 page. None of the current explainers uses `localStorage`, cookies, forms, or
 `window.parent`/`window.top` (checked with grep over
-`openspec/changes/*/*.html`), so none needs same-origin access. If one ever
-does, open it with the standalone link rather than widening the sandbox.
+`openspec/changes/*/*.html`), so none needs same-origin access.
+
+The explainer route itself also sends
+`Content-Security-Policy: sandbox allow-scripts allow-popups`, so the "open
+standalone" view gets the same opaque-origin isolation as the iframe. An
+explainer that needed same-origin access would not get it by either route;
+that would be a deliberate change to both the iframe attribute and this header.
 
 ## Frontend pins
 
@@ -157,10 +163,14 @@ Watched, ignoring `node_modules`, `.git`, and build directories (`build`,
 - `<root>/openspec`, `<root>/verification`, `<root>/docs`;
 - the `--lanes` directory itself (new or removed worktrees);
 - in each lane, `openspec`, `verification`, `docs`, and `.superpowers/sdd`;
-- each lane's gitdir `logs/` directory, filtered to the `HEAD` reflog, so a
-  commit refreshes the branch and last-commit line. This is the one watch
-  inside git metadata; it only receives change notifications and never reads
-  the file (the commit line comes from `git log`).
+- each lane's git metadata `logs/` directory, filtered to the `HEAD` reflog,
+  so a commit refreshes the branch and last-commit line. **This is the one path
+  the board watches outside `--root` and `--lanes`.** The path comes from the
+  `gitdir:` line of the lane's `.git` file (or `<lane>/.git/logs` when `.git`
+  is a directory). In the standard layout that is
+  `<main repository>/.git/worktrees/<lane>/logs`, but the board follows
+  whatever the gitdir line says. The watch is notify-only: the board never
+  opens or reads anything there (the commit line comes from `git log`).
 
 Watch strategy: one non-recursive `fs.watch` per directory, not
 `fs.watch(..., { recursive: true })`. On Bun 1.1.8 under Linux the recursive
@@ -173,6 +183,10 @@ update (adding new directories and dropping removed ones). Anchor directories
 to a watched subtree, so unrelated edits elsewhere in a worktree do not trigger
 rescans. With six lanes this is about 700 watches, well under the default
 inotify limit.
+
+Known gap: a file change between a connection's initial render and its
+registration for pushes is not sent until the next change.
+
 ## Layout
 
 Light and dark follow `prefers-color-scheme`, with the same palette and type as
