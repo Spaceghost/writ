@@ -225,5 +225,52 @@ All source links below refer to the inspected Genode 26.08 revision.
 - **G7 — VFS reconfiguration:** [Genode 26.08 release notes](https://genode.org/documentation/release-notes/26.08).
 - **G8 — Memory and quotas:** [core services](https://genode.org/documentation/genode-foundations/26.05/architecture/Core_-_the_root_of_the_component_tree.html).
 - **G9 — Linux implementation:** [IPC](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/src/lib/base/ipc.cc), [startup filter](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/src/lib/base/runtime.cc), [filter generator](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/tool/seccomp/seccomp_bpf_compiler.h), and [hybrid build](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/base-linux/lib/mk/lx_hybrid.mk).
-- **G10 — Pinned Bend and current evidence:** [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39) and [Writ verification record](../VERIFICATION.md); native output was inspected, not compiled for Genode.
+- **G10 — Pinned Bend and current evidence:** [Bend 2.0.39](https://github.com/bendlang/bend/releases/tag/v2.0.39) and [Writ verification record](../VERIFICATION.md); the generated native output has since been compiled for `base-linux` (see the base-linux runtime-row section below), with the blockers listed there.
 - **G11 — GPU API:** [gpu_session.h](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/os/include/gpu_session/gpu_session.h).
+
+## Runtime rows on base-linux, 2026-11
+
+The unmodified C that Bend 2.0.39 emits for a one-line `IO.print` program now
+builds and loads as a Genode 26.08 component on `base-linux`
+(Genode-on-Linux, not a native kernel), but it does not yet print: the
+runtime stops before evaluating any Bend term. The per-row record, with
+commands, log lines, source citations, and whether each row came from a Bend
+program, a plain-C probe, or source reading, is
+[genode-runtime-rows-base-linux.md](../verification/genode-runtime-rows-base-linux.md);
+the build itself is in
+[genode-bend-hello-base-linux.txt](../verification/genode-bend-hello-base-linux.txt).
+
+- **Memory: reservation substituted, guard missing, `munmap` unverified.** Genode's libc `mmap` for anonymous
+  memory (`repos/libports/src/lib/libc/file_operations.cc:648-671`) allocates
+  the whole length from libc's heap and zeroes it, so the runtime's fixed
+  8 GiB term heap is committed RAM: a component needs more than 10 GiB of
+  quota for `--threads 1`, and at 256M it blocks on a resource request
+  instead of failing. `mprotect` is a weak dummy returning -1
+  (`dummies.cc:126`), so the evaluation stack's guard page cannot be made and
+  the runtime exits with `bend: stack guard failed`. `mprotect` is not stubbed
+  to a no-op, because that would silently remove the stack-overflow fail-stop.
+- **Faults: the runtime's own handler is missing.** libc's `sigaction` only
+  fills an emulated table; base-linux handles hardware faults itself and
+  lets Linux kill the process. A C probe that overflows its stack was
+  terminated and did not resume, but init recorded nothing.
+- Threads, the monotonic clock, the event loop's pipe and `select`, and the
+  process calls (`BENDRTS`, exit status) are supplied by libc, as shown by C
+  probes. The event loop is supplied with a `vfs_pipe` mount and the libc
+  `pipe` attribute in its configuration. A 100 ms `nanosleep` returned
+  slightly early in two of four clock runs. Atomics are unverified (compiled,
+  not executed), and device dispatch is CPU only by construction.
+
+Fault-substitute decision: the profile's halting substitute is the base
+platform's fault path, which ends the component with no resumption. GB-003
+also requires the parent to record the fault, and on `base-linux` it does
+not, so that requirement stays open. `base-hw` must be measured separately.
+
+The next step is a host-layer fix, outside Bend: a Genode-side `mprotect`
+that changes the guard range's attachment in the component's region map,
+supplied either inside the GB-006 shim (inventoried with it) or as a libports
+patch with its own pin, plus an anonymous mapping that reserves address space
+and backs it on demand instead of committing 8 GiB (a Genode-side change). A
+runtime heap-size option for the fixed 8 GiB reservation would be a change to
+Bend's runtime upstream, not to Genode 26.08. Until then, the threads, clock,
+event-loop, and fault rows are established only by plain-C probes, which
+stand in for the Bend program.

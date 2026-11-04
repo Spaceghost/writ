@@ -1,12 +1,17 @@
 # Bend runtime as a Genode component: tasks
 
-All tasks remain pending. docs/GENODE.md and docs/BEND-RUNTIME.md are source
-inspections; no Genode component containing Bend has been built.
+Only 1.2 is complete. It is checked because every execution named in 1.2 was
+performed, while Atomics and `munmap` remain unverified. The generated C of the reference program builds and
+loads as a component on `base-linux`, but it stops at the stack guard before
+printing (verification/genode-bend-hello-base-linux.txt), so 1.1 stays open.
+The runtime rows are in verification/genode-runtime-rows-base-linux.md; the
+fault outcome there comes from a C probe, and the parent does not record the
+fault, so 1.3 stays open.
 
 ## 1. Component build and runtime rows
 
 - [ ] 1.1 Pin Genode 26.08, its toolchain, and a `base-linux` run script; compile the generated C of the `IO.print` reference program as a Genode component and show its output in the Genode log.
-- [ ] 1.2 Check each runtime inventory row against the pinned libc source and record supplied, substituted, or missing; verify `mmap` with `MAP_NORESERVE`, `mprotect`, pthreads, `pipe`/`select`, and the fault path by executing each, not by reading headers.
+- [x] 1.2 Check each runtime inventory row against the pinned libc source and record supplied, substituted, or missing; verify `mmap` with `MAP_NORESERVE`, `mprotect`, pthreads, `pipe`/`select`, and the fault path by executing each, not by reading headers.
 - [ ] 1.3 Select the fault substitute if signal delivery does not reach the handler; force a stack overflow and show the component terminates and the parent records it, with no resumption.
 - [ ] 1.4 Compile and run `Tests.bend` and the four examples as components on `base-linux`; capture the log and compare line for line with the Linux single-lane record.
 

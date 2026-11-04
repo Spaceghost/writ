@@ -1,0 +1,36 @@
+#
+# writ_hello.run - Genode run script (build configuration), not Writ
+# implementation. Starts the writ_hello component under init and succeeds
+# only if its single log line appears within 20 seconds. Written for the
+# base-linux bring-up (BOARD=linux KERNEL=linux); the routes grant only the
+# parent-provided LOG, PD, CPU, and ROM services, as upstream log.run does.
+#
+
+build { core init lib/ld app/writ_hello }
+
+create_boot_directory
+
+install_config {
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
++ default-route | + any-service | + parent
++ default | caps: 100 | ram: 10M
++ start writ_hello
+-
+}
+
+build_boot_image [build_artifacts]
+
+append qemu_args "-nographic "
+
+run_genode_until "writ_hello: component constructed on Genode.*\n" 20
+
+grep_output {\[init -\> writ_hello\]}
+
+compare_output_to {
+[init -> writ_hello] writ_hello: component constructed on Genode
+}

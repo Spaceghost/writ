@@ -1,0 +1,51 @@
+# build.conf.fragment - build configuration, not Writ implementation.
+#
+# Authored additions to the Genode build directory's etc/build.conf
+# (../writ-genode/build/x86_64/etc/build.conf, created by
+# genode/tool/create_builddir x86_64). The rest of that file is the unmodified
+# upstream template. Edits applied to the template:
+#
+#   BOARD ?= pc       -> BOARD ?= linux
+#   (added)              KERNEL ?= linux
+#   #MAKE += -j4      -> MAKE += -j16
+#   REPOSITORIES      += ../writ-genode/writ-repo   (added for writ_hello)
+#   #REPOSITORIES += $(GENODE_DIR)/repos/libports
+#                     -> REPOSITORIES += $(GENODE_DIR)/repos/libports
+#                        (uncommented for writ_bend_hello, Task 2: libc, libm,
+#                        posix, and vfs live there; the libc port was prepared
+#                        with tool/ports/prepare_port libc, see
+#                        verification/genode-bend-hello-base-linux.txt)
+#   #REPOSITORIES += $(GENODE_DIR)/repos/gems
+#                     -> REPOSITORIES += $(GENODE_DIR)/repos/gems
+#                        (uncommented for the event-loop probe, Task 3:
+#                        libc's pipe() needs the vfs_pipe plugin, which
+#                        lives there; see
+#                        verification/genode-runtime-rows-base-linux.md)
+#
+# and the block below appended at the end. The companion etc/tools.conf holds
+# one line selecting the relocated tool chain (see verification/genode-pins.txt):
+#
+#   CROSS_DEV_PREFIX = <writ-genode>/toolchain/25.05/bin/genode-x86-
+#
+##
+## Writ bring-up (authored): the host lacks /usr/bin/expect and has no root.
+## For the scenarios listed in WRIT_RUN_SCENARIOS, this static pattern rule
+## (an explicit rule) takes precedence over the upstream implicit 'run/%' rule
+## in tool/builddir/build.mk. It is otherwise identical to that rule
+## but runs tool/run/run through a locally obtained expect interpreter.
+WRIT_EXPECT ?= <writ-genode>/host-tools/expect/bin/expect
+
+WRIT_RUN_SCENARIOS ?= log writ_hello writ_bend_hello writ_bend_rts writ_probe_threads writ_probe_clock writ_probe_evloop writ_probe_process writ_probe_fault
+
+$(addprefix run/,$(WRIT_RUN_SCENARIOS)): run/%:
+	$(VERBOSE)test -f "$(call select_from_repositories,run/$*.run)" || (echo "Error: No run script for $*"; exit -1)
+	$(VERBOSE)$(WRIT_EXPECT) $(GENODE_DIR)/tool/run/run --genode-dir $(GENODE_DIR) \
+	                                     --name $* \
+	                                     --specs "$(SPECS)" \
+	                                     --board "$(BOARD)" \
+	                                     --repositories "$(REPOSITORIES)" \
+	                                     --cross-dev-prefix "$(CROSS_DEV_PREFIX)" \
+	                                     --qemu-args "$(QEMU_OPT)" \
+	                                     --make "$(MAKE)" \
+	                                     $(RUN_OPT) \
+	                                     --include $(call select_from_repositories,run/$*.run)

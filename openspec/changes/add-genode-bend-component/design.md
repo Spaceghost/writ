@@ -19,6 +19,9 @@ toolchain against Genode's libc, not run through a Linux-ABI compatibility
 layer. This keeps the runtime's host calls on Genode's own implementations and
 makes every missing primitive a link or startup failure rather than a silent
 emulation.
+GCC 14.2 lacks statement-level `musttail`, so the generated translation unit
+is compiled with a pinned clang while linking, `ld.lib.so`, and libc stay on
+the Genode toolchain; this stays open until Genode moves to GCC 15 or later.
 
 ### Satisfy the runtime profile row by row, with the profile's substitutes
 
