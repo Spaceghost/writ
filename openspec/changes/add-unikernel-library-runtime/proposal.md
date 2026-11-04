@@ -59,3 +59,7 @@ is not a library unikernel.
 - [Bend runtime host profile](../add-bend-runtime-host-profile/proposal.md)
 - [Unikernel appliance host](../add-unikernel-appliance-host/proposal.md):
   deployment rules and the rebuild drill are inherited from it.
+
+## Explainer
+
+[explainer.html](explainer.html) is a standalone reading page for this change, including the candidate survey.

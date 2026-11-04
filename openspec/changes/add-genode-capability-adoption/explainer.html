@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Genode Capability Adoption</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: reading column; the two models side by side as cards; adopted/rejected as two-column lists. */
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --fg: #1d2230; --muted: #5b6474; --line: #d9dbe0;
+  --accent: #15655c; --accent-soft: #e2efec; --deny: #a2452a; --deny-soft: #f6e6df;
+  --warn: #8a6d1f; --warn-soft: #f5edd6; --code-bg: #eeefeb; --comment: #6c7a6f;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --warn: #d9b65a; --warn-soft: #3a3220; --code-bg: #10131a; --comment: #8fa297; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --warn: #d9b65a; --warn-soft: #3a3220; --code-bg: #10131a; --comment: #8fa297; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 78ch; margin: 0 auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 2.6rem 0 .8rem; text-wrap: balance; }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.4rem 0 .4rem; }
+p { margin: 0 0 .9rem; } .lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; } a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); border-bottom: 1px solid var(--line); margin: 0 0 1.5rem; padding: .5rem 0; display: flex; gap: .3rem .9rem; flex-wrap: wrap; font-size: .85rem; z-index: 5; }
+nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: .9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0 0 1rem; min-width: 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; } pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--comment); font-style: italic; } .k { color: var(--accent); font-weight: 600; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .94rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .7rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1.2rem; }
+.callout.warn { border-color: var(--deny); background: var(--deny-soft); } .callout p:last-child { margin: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 0 0 1.2rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; min-width: 0; }
+.card h4 { margin: 0 0 .4rem; font-size: .95rem; } .card ul { margin: 0; padding-left: 1.1rem; font-size: .92rem; } .card li { margin-bottom: .3rem; }
+.card.adopt { border-color: var(--accent); } .card.reject { border-color: var(--deny); }
+.card.adopt h4 { color: var(--accent); } .card.reject h4 { color: var(--deny); }
+.reqs { display: grid; gap: .35rem; margin: 0 0 1.2rem; }
+.req { display: grid; grid-template-columns: 5.2rem 1fr; gap: .6rem; font-size: .93rem; padding: .35rem 0; border-bottom: 1px dashed var(--line); }
+.req .id { font-family: var(--mono); font-size: .8rem; color: var(--accent); padding-top: .15rem; }
+@media (max-width: 480px) { .req { grid-template-columns: 1fr; gap: .1rem; } }
+ul { padding-left: 1.3rem; } li { margin-bottom: .35rem; } ol.steps { padding-left: 1.3rem; } ol.steps li { margin-bottom: .55rem; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">Writ · proposal review · lane B of 3</div>
+  <h1>Taking Genode's capability ideas into Writ's own model</h1>
+  <p class="lede">Change <code>add-genode-capability-adoption</code>. A pure-Bend module that models object capabilities the way Genode does them, composes it with <code>Frontend</code>, and says out loud which Genode semantics Writ adopts and which it refuses. No native code. Proposed; nothing built.</p>
+</header>
+<nav class="toc" aria-label="Sections"><a href="#two">Two models</a><a href="#module">The module</a><a href="#adopt">Adopted and rejected</a><a href="#reqs">Requirements</a><a href="#tasks">Milestones</a><a href="#start">Where a subagent starts</a></nav>
+
+<h2 id="two">Two models that have to agree</h2>
+<div class="grid2">
+  <div class="card"><h4>Writ's Frontend today</h4><ul>
+    <li>A capability is a record: 256-bit token compared in full, subject, exact plan, rights bits, authority epoch, expiry.</li>
+    <li>Transitions: mount, open, dup, attenuate, close, resolve. Each checks a revision and returns the old state on denial.</li>
+    <li>Public data constructors. Nothing is unforgeable; the monitor is trusted to build these from authenticated state.</li>
+  </ul></div>
+  <div class="card"><h4>Genode's object capabilities</h4><ul>
+    <li>A capability refers to an RPC object. Each protection domain sees its own local selector for it.</li>
+    <li>Delegation is passing a capability in an invocation. Possession generally permits further delegation.</li>
+    <li>Sessions are created through the parent, which routes and labels them. RAM and capability quotas are accounted per domain.</li>
+    <li>Destroying the object invalidates every reference to it.</li>
+  </ul></div>
+</div>
+<p>The Genode host spec already says in prose that native selectors are local, that delegation cannot impersonate the reader, and that labels are not identity. If those rules are implemented only inside the C++ shim, the shim is making policy. If they are implemented in Bend with tests and laws, the shim stays thin and the same binding model can be replayed on every host.</p>
+
+<h2 id="module">The module</h2>
+<p>A new Bend module (provisionally <code>HostBinding.bend</code>) beside <code>Frontend</code>, not inside it. Existing frontend requirements CF-001 through CF-014 do not change.</p>
+<div class="tablewrap"><table>
+<tr><th>Record</th><th>Meaning</th></tr>
+<tr><td><code>Object{id, generation, owner, kind}</code></td><td>A native RPC object the monitor created: session, descriptor, or result channel</td></tr>
+<tr><td><code>Alias{holder, object, generation}</code></td><td>A reference held by a protection domain; valid only while generations match</td></tr>
+<tr><td><code>Route{parent, child, service, label_prefix}</code></td><td>A parent-imposed session route; the trusted part of a label</td></tr>
+<tr><td><code>Quota{domain, ram, caps}</code></td><td>Native resource accounts, separate from Writ's ledger</td></tr>
+<tr><td><code>Binding{object, handle}</code></td><td>The link from a native object to a <code>Frontend.Handle</code></td></tr>
+</table></div>
+<pre><code><span class="c"># transitions compose with Frontend; every denial returns the input state</span>
+bind_mount(route, caller, ...)      <span class="c"># route prefix must name the authenticated caller</span>
+bind_open(alias, rights, ...)       <span class="c"># mints a NEW object for the narrower handle</span>
+bind_attenuate(alias, rights, ...)  <span class="c"># likewise; never re-shares the parent object</span>
+bind_close(alias, ...)              <span class="c"># destroys the object; every alias to it goes stale</span>
+revoke(domain)                      <span class="c"># bumps generations; stale aliases fail on use</span>
+
+<span class="k">type</span> Error <span class="k">is</span> Data:
+  StaleGeneration{}  RouteMismatch{}  SubjectMismatch{}  WidenedRights{}  QuotaExhausted{}</code></pre>
+
+<h2 id="adopt">Adopted and rejected</h2>
+<div class="grid2">
+  <div class="card adopt"><h4>Adopted from Genode</h4><ul>
+    <li><strong>Parent-mediated routing is the session-binding primitive.</strong> The parent-prepended label prefix is the only identity source. A suffix is resource intent.</li>
+    <li><strong>Destruction invalidates aliases.</strong> Revocation is object destruction plus a generation bump. There is no "revoke one copy," because Genode cannot do that either.</li>
+    <li><strong>Quota saturation denies first.</strong> No RAM or capability quota, no object, no Writ check. The ledger is untouched.</li>
+  </ul></div>
+  <div class="card reject"><h4>Rejected from Genode</h4><ul>
+    <li><strong>Possession is not the subject.</strong> An alias in domain D proves D can invoke the object, not that D is the reader who mounted it. <code>Frontend.Caller</code> stays the authenticated subject.</li>
+    <li><strong>Delegation does not widen.</strong> A delegatee gets at most the bound handle's rights, matching the frontend's attenuation rule.</li>
+  </ul></div>
+</div>
+<div class="callout"><p>Each adopted and rejected item becomes a Bend test that also emits a canonical vector: initial state, transition, expected outcome, with no native selector values. Lane A's Genode component replays those vectors against real sessions. That is how the portable host contract's "decision and native tests" requirement gets satisfied without inventing a second policy implementation.</p></div>
+
+<h2 id="reqs">Requirements</h2>
+<div class="reqs">
+  <div class="req"><span class="id">GA-001</span><span>Native objects carry a generation; an alias is valid only while generations match.</span></div>
+  <div class="req"><span class="id">GA-002</span><span>Mount binds through a parent route whose prefix names the authenticated subject; suffixes contribute nothing.</span></div>
+  <div class="req"><span class="id">GA-003</span><span>Open and attenuate mint new objects; never an alias to the parent object.</span></div>
+  <div class="req"><span class="id">GA-004</span><span>Close destroys the object so every alias in every domain fails; applies <code>Frontend.close</code>.</span></div>
+  <div class="req"><span class="id">GA-005</span><span>Possession is not the subject; holder must equal the binding's subject unless an explicit recorded delegation covers it.</span></div>
+  <div class="req"><span class="id">GA-006</span><span>Delegation cannot widen rights.</span></div>
+  <div class="req"><span class="id">GA-007</span><span>Quota saturation denies before any Frontend or ledger check.</span></div>
+  <div class="req"><span class="id">GA-008</span><span>Every denial returns the input state and a reason from a closed error type; proven as a law.</span></div>
+  <div class="req"><span class="id">GA-009</span><span>Vectors are generated by the tests, byte-identical across runs, and replayable by hosts.</span></div>
+</div>
+
+<h2 id="tasks">Milestones</h2>
+<ol class="steps">
+  <li>The module with its five records and closed error type typechecks.</li>
+  <li>Five transitions composed with Frontend. Denial returns the input state.</li>
+  <li>Tests for every adopted and rejected semantic, in the existing <code>Test.bend</code> style.</li>
+  <li>Two laws in <code>LAWS.bend</code>: denial preserves state, generations are monotone. Proven in <code>PROOF.bend</code>.</li>
+  <li>Vectors emitted under <code>verification/</code>; mapping table from GN and PH requirements to vectors, gaps marked reviewed-only.</li>
+  <li>Added to <code>Tests.bend</code>; full suite on both backends; manifest and verification record updated.</li>
+</ol>
+
+<h2 id="start">Where a subagent starts</h2>
+<p>This lane needs nothing but the pinned Bend toolchain. It is the one that can start today. The subagent should read <code>Frontend.bend</code> end to end, the <code>capability-frontend</code> baseline spec, and GN-003 through GN-011 in the Genode host spec, then write the records and the closed error type first and get <code>--check-only</code> green before any transition. Tests follow the <code>check(ok, name)</code> convention and the no-<code>if</code> style. It must not modify <code>Frontend.bend</code>; the module composes with it.</p>
+<p>Coordination with lane A: the shape of <code>Route</code> and <code>Binding</code> is what <code>Genode.accept</code> will construct. Agree on field names early and leave them stable.</p>
+<footer>Change files: <code>openspec/changes/add-genode-capability-adoption/</code>. Sibling pages: <strong>Bend on Genode</strong> and <strong>Library-Unikernel Runtime</strong>. Branch <code>unikernel-runtime-proposals</code>.</footer>
+</div>
+</body>
+</html>

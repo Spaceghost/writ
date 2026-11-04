@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Writ Unikernel Lane</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: reading column; the three changes as a dependency ladder drawn in HTML so it themes; requirement lists per change. */
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --fg: #1d2230; --muted: #5b6474; --line: #d9dbe0;
+  --accent: #15655c; --accent-soft: #e2efec; --deny: #a2452a; --deny-soft: #f6e6df;
+  --warn: #8a6d1f; --warn-soft: #f5edd6;
+  --code-bg: #eeefeb; --comment: #6c7a6f;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+    --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+    --warn: #d9b65a; --warn-soft: #3a3220;
+    --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --warn: #d9b65a; --warn-soft: #3a3220;
+  --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 78ch; margin: 0 auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 2.6rem 0 .8rem; text-wrap: balance; }
+h3 { font-size: 1.08rem; font-weight: 600; margin: 1.6rem 0 .4rem; }
+p { margin: 0 0 .9rem; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); border-bottom: 1px solid var(--line); margin: 0 0 1.5rem; padding: .5rem 0; display: flex; gap: .3rem .9rem; flex-wrap: wrap; font-size: .85rem; z-index: 5; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: .9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0 0 1rem; min-width: 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--comment); font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .94rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .7rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1.2rem; }
+.callout.warn { border-color: var(--deny); background: var(--deny-soft); }
+.callout.note { border-color: var(--warn); background: var(--warn-soft); }
+.callout p:last-child { margin: 0; }
+/* ladder */
+.ladder { display: grid; gap: .6rem; margin: 0 0 1.4rem; }
+.rung { display: grid; grid-template-columns: 2.2rem 1fr; gap: .8rem; align-items: start; }
+.rung .n { font-family: var(--display); font-size: 1.6rem; font-weight: 700; color: var(--accent); line-height: 1; padding-top: .3rem; }
+.rung .box { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; min-width: 0; }
+.rung .box h4 { margin: 0 0 .3rem; font-size: 1rem; }
+.rung .box p { margin: 0 0 .4rem; font-size: .93rem; }
+.rung .box .feeds { font-size: .82rem; color: var(--muted); font-family: var(--mono); }
+.feeds b { color: var(--fg); font-weight: 600; }
+/* status chips */
+.chip { display: inline-block; font-family: var(--mono); font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); margin-right: .3rem; }
+.chip.ok { border-color: var(--accent); color: var(--accent); }
+.chip.no { border-color: var(--deny); color: var(--deny); }
+.chip.pend { border-color: var(--warn); color: var(--warn); }
+/* req lists */
+.reqs { display: grid; gap: .35rem; margin: 0 0 1.2rem; }
+.req { display: grid; grid-template-columns: 5.2rem 1fr; gap: .6rem; font-size: .93rem; padding: .35rem 0; border-bottom: 1px dashed var(--line); }
+.req .id { font-family: var(--mono); font-size: .8rem; color: var(--accent); padding-top: .15rem; }
+@media (max-width: 480px) { .req { grid-template-columns: 1fr; gap: .1rem; } }
+ul { padding-left: 1.3rem; } li { margin-bottom: .35rem; }
+.pass { color: var(--accent); font-weight: 600; font-family: var(--mono); }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">Writ · proposal review · branch unikernel-runtime-proposals</div>
+  <h1>Three changes that get Writ into a unikernel</h1>
+  <p class="lede">What was pushed, why it is shaped this way, what each change promises, what was actually observed on this machine, and the decisions still open. All three are <code>x-status: proposed</code>. Nothing is implemented and no Bend source changed.</p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#why">Why this shape</a><a href="#ladder">The three changes</a><a href="#surface">Runtime surface</a><a href="#profile">1 · Runtime profile</a><a href="#appliance">2 · Appliance</a><a href="#freestanding">3 · Freestanding</a><a href="#observed">Observed</a><a href="#open">Open decisions</a><a href="#next">Next</a>
+</nav>
+
+<h2 id="why">Why this shape</h2>
+<p>The founding chat said two things about the unikernel: "wrap it in an existing one" first, and the real value is being able to "rebuild from entirely new hardware" so that data-theft recovery takes moments. The existing roadmap already had a Drift kernel host at the far end of the host lane, but every host change (Genode, Windows, Drift) contained the same unexamined task: "port the Bend runtime." Nobody had written down what that runtime needs.</p>
+<p>So the lane is split into a prerequisite everyone shares, the cheap wrap-it route, and the expensive own-kernel route. Each is a separate OpenSpec change with its own requirements and evidence, matching how Spaceghost structured the seven feature changes he landed yesterday.</p>
+
+<h2 id="ladder">The three changes, in order</h2>
+<div class="ladder">
+  <div class="rung"><div class="n">1</div><div class="box">
+    <h4>add-bend-runtime-host-profile</h4>
+    <p>A per-Bend-version inventory of what the generated C needs from its host, a <strong>monitor profile</strong> allowlist of symbols and effects, a build-time check of the produced binary, and a parity rule that one lane and four lanes give identical decisions.</p>
+    <div class="feeds">feeds → <b>every host port</b> · genode 1.2 · windows runtime · drift 1.3 · changes 2 and 3 below</div>
+  </div></div>
+  <div class="rung"><div class="n">2</div><div class="box">
+    <h4>add-unikernel-appliance-host</h4>
+    <p>Boot the <em>unmodified</em> Bend monitor binary inside an existing Linux-ABI unikernel. Immutable reproducible image, one authenticated ingress, state kept outside the image, a timed rebuild drill. Explicitly not a worker confinement boundary.</p>
+    <div class="feeds">depends on → <b>1</b> for the corpus milestone · host contract, grant issuance, durable publication for the service milestone</div>
+  </div></div>
+  <div class="rung"><div class="n">3</div><div class="box">
+    <h4>add-freestanding-bend-runtime</h4>
+    <p>A no-libc host layer under the <em>unchanged</em> evaluator for the Drift kernel route. 64-bit first. Serial-captured corpus parity with the Linux single-lane record.</p>
+    <div class="feeds">depends on → <b>1</b> · feeds → <b>add-drift-kernel-host task 1.3</b> only; supplies none of that host's isolation evidence</div>
+  </div></div>
+</div>
+<div class="callout"><p>Change 2 is the fast path to something bootable. Its first milestone needs only change 1 and a QEMU. Change 3 is research-grade and sits behind Drift's kernel work. Doing them in this order means the unikernel can ship evidence while the kernel route is still being argued about.</p></div>
+
+<h2 id="surface">What the Bend runtime actually asks of a host</h2>
+<p>This is the inspection behind change 1, from emitting C for a one-line <code>IO.print</code> program with Bend 2.0.39. The emitted file is 3,074 lines; the lower half is the runtime. It is recorded in <code>docs/BEND-RUNTIME.md</code>.</p>
+<div class="tablewrap"><table>
+<tr><th>Area</th><th>Calls</th><th>Why</th></tr>
+<tr><td>Memory</td><td><code>mmap</code> anon + noreserve, <code>mprotect</code></td><td>Reserves the term heap and a 2 GiB evaluation stack with a guard page</td></tr>
+<tr><td>Faults</td><td><code>sigaltstack</code>, <code>sigaction</code> on SIGSEGV and SIGBUS</td><td>Stack overflow or bad access becomes a fail-stop message</td></tr>
+<tr><td>Threads</td><td>pthreads, mutex, condvar, <code>sched_yield</code></td><td>One worker per <code>--threads</code> lane plus a bounded pool of IO helper threads</td></tr>
+<tr><td>Clock</td><td><code>clock_gettime(MONOTONIC)</code>, <code>nanosleep</code></td><td><code>IO.now</code>, <code>IO.sleep</code>, deadlines</td></tr>
+<tr><td>Event loop</td><td><code>pipe</code>, <code>fcntl</code>, <code>select</code></td><td>Self-pipe wakes the loop when a helper thread finishes an effect</td></tr>
+<tr><td>Process</td><td><code>getenv("BENDRTS")</code>, <code>exit</code>, <code>sysconf</code>, cgroup reads</td><td>Runtime options, exit status, default thread count</td></tr>
+<tr><td>GPU</td><td><code>fopen</code>, CUDA or Metal</td><td>Only when <code>!</code> calls compile for a device</td></tr>
+</table></div>
+<p>The useful discovery: effects are registered per program through constructor functions that fill a table. A monitor using only <code>IO.print</code> and <code>IO.die</code> links no socket, file, audio, or process code. An unregistered effect fails with the runtime's own "an alien request" error. That is what makes a tight monitor allowlist practical rather than aspirational.</p>
+
+<h2 id="profile">1 · Bend runtime host profile</h2>
+<p>Eight requirements, sixteen scenarios. The point is to replace "port the runtime" with a checklist a host can pass or fail.</p>
+<div class="reqs">
+  <div class="req"><span class="id">RH-001</span><span>Inventory is pinned to a Bend version; a compiler migration makes every host qualification stale until re-reviewed.</span></div>
+  <div class="req"><span class="id">RH-002</span><span>The monitor profile is an allowlist: memory, faults, threads, clock, loop, process, atomics, plus <code>IO.print</code>, <code>IO.print_err</code>, <code>IO.now</code>, <code>IO.sleep</code>, exit, and a host-added authenticated channel. Sockets, files, spawning, audio, windows, GPU loading are denied.</span></div>
+  <div class="req"><span class="id">RH-003</span><span>The actual produced binary is checked (undefined symbols or effect table). A passing run log alone does not qualify.</span></div>
+  <div class="req"><span class="id">RH-004</span><span>Primitives keep runtime semantics. A clock that can go backward fails even if every test passes.</span></div>
+  <div class="req"><span class="id">RH-005</span><span>Lane count does not change decisions: <code>--threads 1</code> and four threads print identical PASS lines and the same 638 count.</span></div>
+  <div class="req"><span class="id">RH-006</span><span>Faults fail stop. A host that swallows the signal or resumes after it is out of profile.</span></div>
+  <div class="req"><span class="id">RH-007</span><span>CPU fallback is recorded as CPU. Never as GPU.</span></div>
+  <div class="req"><span class="id">RH-008</span><span>Evidence is stored per host and separated into executed versus review-only.</span></div>
+</div>
+<p>Tasks: an inventory command, the allowlists, the binary check (shown failing on a binary that links <code>TCP.listen</code>), the single-lane parity run, forced fault and reservation failure, and updating the other host changes to cite it.</p>
+
+<h2 id="appliance">2 · Unikernel appliance host</h2>
+<p>Ten requirements, twenty scenarios. The appliance is the monitor and nothing else, in an image you can name by hash and rebuild from zero.</p>
+<div class="reqs">
+  <div class="req"><span class="id">UA-001</span><span>Image contains only the monitor binary, the unikernel, and boot config. A debug shell disqualifies it.</span></div>
+  <div class="req"><span class="id">UA-002</span><span>Two clean builds from pinned inputs give the same image hash; deployments name images by hash.</span></div>
+  <div class="req"><span class="id">UA-003</span><span>The library corpus and four examples run inside the booted image and match the Linux record line for line.</span></div>
+  <div class="req"><span class="id">UA-004</span><span>The single address space is not a worker boundary. Running requester code inside is denied, not sandboxed.</span></div>
+  <div class="req"><span class="id">UA-005</span><span>Exactly one ingress: the host contract's authenticated session channel, plus the durable store connection.</span></div>
+  <div class="req"><span class="id">UA-006</span><span>Session, ledger, epochs, and sealed artifacts live only in the attached durable store. The image holds nothing that must survive replacement.</span></div>
+  <div class="req"><span class="id">UA-007</span><span>Rebuild is drilled and timed: destroy, boot fresh image on a fresh VM, attach store, reconcile each outstanding invocation exactly once. Repeated for every image change.</span></div>
+  <div class="req"><span class="id">UA-008</span><span>Monotonic clock verified at boot; missing clock denies protected work, missing entropy denies challenge issuance.</span></div>
+  <div class="req"><span class="id">UA-009</span><span>The trusted base is named: hypervisor, host kernel, firmware, unikernel. "Immune to host compromise" is rejected as a claim.</span></div>
+  <div class="req"><span class="id">UA-010</span><span>QEMU emulation, hardware virtualization, and physical deployment are separate evidence.</span></div>
+</div>
+<div class="callout note"><p>The "no Linux zero-day" line from the chat is kept, but scoped: the guest has no Linux kernel, so a Linux kernel bug on the host does not execute inside the monitor. The hypervisor and host still have to be trusted, and the record has to say so.</p></div>
+<p>Milestones in the tasks: boot the corpus on two candidate unikernels and pick one by evidence; reproducible image; corpus passes under QEMU; single ingress verified by scanning; empty-store and populated-store boots; clock and entropy denials; the rebuild drill with elapsed time.</p>
+
+<h2 id="freestanding">3 · Freestanding Bend runtime</h2>
+<p>Nine requirements, eighteen scenarios. This is the piece the Drift kernel host was missing: how you run the evaluator with no libc at all.</p>
+<div class="reqs">
+  <div class="req"><span class="id">FR-001</span><span>The generated evaluator and effect table are linked unmodified; only a host layer is added beneath. Patching the evaluator disqualifies the port.</span></div>
+  <div class="req"><span class="id">FR-002</span><span>First port is x86_64 long mode. A 32-bit build is refused with the term width as the reason.</span></div>
+  <div class="req"><span class="id">FR-003</span><span>Memory is a fixed arena with a guard region; exhaustion halts with the runtime's own message.</span></div>
+  <div class="req"><span class="id">FR-004</span><span>Faults halt with a distinct code. No resumption.</span></div>
+  <div class="req"><span class="id">FR-005</span><span>Single-lane parity: serial capture equals the Linux <code>--threads 1 --gpu off</code> record line for line.</span></div>
+  <div class="req"><span class="id">FR-006</span><span>Clock is calibrated monotonic or reported absent; absent denies deadline-dependent checks.</span></div>
+  <div class="req"><span class="id">FR-007</span><span>Only monitor-profile effects link: console to serial, exit to the emulator's exit device. Alien effects halt.</span></div>
+  <div class="req"><span class="id">FR-008</span><span><code>!</code> calls run on the lane pool and are recorded as CPU.</span></div>
+  <div class="req"><span class="id">FR-009</span><span>Results are emulated evidence and count only toward the Drift host's runtime task, not its isolation tasks.</span></div>
+</div>
+<p>The design replaces each libc dependency one for one: <code>mmap</code> becomes an arena, signals become an exception handler that halts, pthreads become a single lane (kernel threads later, behind the same symbols), the clock becomes a calibrated TSC, the self-pipe becomes an in-memory completion queue. The evaluator never knows.</p>
+
+<h2 id="observed">What was actually observed</h2>
+<div class="tablewrap"><table>
+<tr><th>Check</th><th>Result</th></tr>
+<tr><td>Emit C for hello with Bend 2.0.39, static link with clang 23.1.1</td><td><span class="chip ok">ran</span> 1.1 MB static x86_64 ELF prints <code>hi</code> under <code>--threads 1 --gpu off</code></td></tr>
+<tr><td>Drift <code>tools/check-kernel.sh</code> at pinned <code>0b7aaca</code>, GCC 16.2.1, QEMU 11.1.2</td><td><span class="chip no">stopped</span> Builds the 32-bit kernel; prints "Drift reference kernel"; QEMU exits before any device PASS line</td></tr>
+<tr><td>OpenSpec 1.16.0 strict validation</td><td><span class="chip ok">39 valid</span> 27 new requirements, 54 scenarios, 28 unchecked tasks</td></tr>
+<tr><td>Bend tests and proofs</td><td><span class="chip ok">unchanged</span> No <code>.bend</code> touched; 638 checks and 3 proofs from the earlier run still stand</td></tr>
+<tr><td>Any image, boot, or runtime port</td><td><span class="chip pend">none</span> Nothing in the proposals is implemented</td></tr>
+</table></div>
+<p>The static link result matters because that is exactly what a Linux-ABI unikernel consumes. The Drift result is a real blocker for change 3 on this machine and is recorded as such, not papered over.</p>
+
+<h2 id="open">Open decisions</h2>
+<ul>
+  <li><strong>Which unikernel.</strong> Nanos runs a single process with threads and consumes plain ELF. Unikraft's ELF loader needs position-independent executables and describes binary compatibility as not yet upstreamed. The proposal makes this a task outcome, chosen by booting the corpus on both. If you already have a preference, say so and it becomes a decision instead.</li>
+  <li><strong>64-bit kernel variant for Drift.</strong> Change 3 asserts the first port must be long mode. That means adding an x86_64 boot path beside Drift's 32-bit example, which is Drift work, not Writ work. Spaceghost should weigh in.</li>
+  <li><strong>Where the inventory script and binary check live.</strong> AGENTS.md keeps authored implementation in Bend. A symbol-allowlist checker is build tooling like OpenSpec. The proposal puts it in build tooling; the exact directory is unnamed.</li>
+  <li><strong>Provisioning path for channel identity and entropy.</strong> UA-006 says the image holds no secret that must survive rebuild, so keys arrive at boot. How is out of scope and will need its own change.</li>
+  <li><strong>Drift kernel failure on this machine.</strong> Someone needs to try an older GCC or QEMU to see whether it is a toolchain regression or a real bug.</li>
+</ul>
+
+<h2 id="next">What implementing change 1 would look like</h2>
+<p>If the shape is right, the first real work is small and self-contained:</p>
+<pre><code><span class="c"># 1. a command that regenerates the inventory</span>
+bend tools/inventory/Hello.bend -o build/hello.c
+grep -oE '\b(mmap|pthread_[a-z_]+|clock_gettime|...)\(' build/hello.c | sort -u
+
+<span class="c"># 2. a binary check against the monitor allowlist</span>
+nm -u build/tests-native | awk '{print $2}' | sort &gt; actual.txt
+comm -23 actual.txt tools/profile/monitor-symbols.txt    <span class="c"># must be empty</span>
+
+<span class="c"># 3. the parity run</span>
+build/tests-native +RTS --threads 1 --gpu off | diff - verification/tests-native.txt</code></pre>
+<p>Those three artifacts, plus a forced stack overflow and a forced reservation failure, close most of change 1's tasks and give change 2 its starting binary.</p>
+
+<footer>Branch <code>unikernel-runtime-proposals</code> on spaceghost/writ, commit 9628ee5, based on master at 876e617. Files: three change directories under <code>openspec/changes/</code>, <code>docs/BEND-RUNTIME.md</code>, and link edits in <code>ROADMAP.md</code>, <code>PLATFORMS.md</code>, <code>DRIFT.md</code>.</footer>
+</div>
+</body>
+</html>

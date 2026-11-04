@@ -60,3 +60,7 @@ source changes.
 
 Drift's reference kernel and its device tests are an external dependency
 inspected in [docs/DRIFT.md](../../../docs/DRIFT.md).
+
+## Explainer
+
+The lane reading page is [add-bend-runtime-host-profile/explainer.html](../add-bend-runtime-host-profile/explainer.html).

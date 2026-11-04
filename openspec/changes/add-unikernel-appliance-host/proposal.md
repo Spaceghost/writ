@@ -60,3 +60,7 @@ firmware remain in the trusted base and are named as such.
 
 The first milestone (corpus boots and passes) depends only on the runtime
 profile. The service and rebuild milestones depend on the rest.
+
+## Explainer
+
+The lane reading page is [add-bend-runtime-host-profile/explainer.html](../add-bend-runtime-host-profile/explainer.html).

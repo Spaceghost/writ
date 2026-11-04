@@ -62,3 +62,7 @@ external dependency pinned to 26.08.
 
 Related: [Genode capability adoption](../add-genode-capability-adoption/proposal.md)
 supplies the Bend model the Writ session effect binds to.
+
+## Explainer
+
+[explainer.html](explainer.html) is a standalone reading page for this change.

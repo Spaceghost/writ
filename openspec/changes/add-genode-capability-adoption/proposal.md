@@ -62,3 +62,7 @@ change consumes the vectors.
   GN-005 and GN-009 through GN-011 name the semantics adopted or rejected.
 
 Consumed by [Bend runtime as a Genode component](../add-genode-bend-component/proposal.md).
+
+## Explainer
+
+[explainer.html](explainer.html) is a standalone reading page for this change. [capability-shape.html](capability-shape.html) evaluates whether Genode's capability shape fits Writ and proposes amendments to GA-005 that are not yet applied.

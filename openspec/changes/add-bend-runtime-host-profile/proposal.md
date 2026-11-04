@@ -60,3 +60,7 @@ Used by [add-unikernel-appliance-host](../add-unikernel-appliance-host/proposal.
 [add-freestanding-bend-runtime](../add-freestanding-bend-runtime/proposal.md),
 [add-genode-host](../add-genode-host/tasks.md), [add-windows-host](../add-windows-host/proposal.md),
 and [add-drift-kernel-host](../add-drift-kernel-host/tasks.md).
+
+## Explainer
+
+[explainer.html](explainer.html) is a standalone reading page covering this change together with the appliance and freestanding runtime changes.
