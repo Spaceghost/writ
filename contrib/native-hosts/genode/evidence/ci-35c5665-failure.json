@@ -1,0 +1,44 @@
+{
+  "repository": "Spaceghost/writ",
+  "commit": "35c5665efef64420b73fe84d6d198f17e1fec891",
+  "tree": "9cdf75988d91f7e5bc2d27a892fbcd4ece993c90",
+  "workflow": ".github/workflows/writfs-genode-native.yml",
+  "run_id": 41774496385,
+  "run_attempt": 1,
+  "job_id": 126391570920,
+  "run_url": "https://github.com/Spaceghost/writ/actions/runs/41774496385",
+  "job_url": "https://github.com/Spaceghost/writ/actions/runs/41774496385/job/126391570920",
+  "conclusion": "failure",
+  "failure": "Native mount corpus exceeded the 600-second native test deadline after 764 core assertions passed; harness exit status 254.",
+  "native_core_assertions_passed": 764,
+  "native_mount_complete": false,
+  "native_filesystem_and_vfs_boots_executed": false,
+  "artifact": {
+    "id": 13297266061,
+    "name": "writfs-genode-native-1",
+    "url": "https://github.com/Spaceghost/writ/actions/runs/41774496385/artifacts/13297266061",
+    "sha256": "ab8956864a88f7ed25546b6a8a8e4ca4dfabcbff040de3a3c62a93167386e85b",
+    "expires_at": "2026-11-18T04:52:51Z"
+  },
+  "retained_log_sha256": {
+    "bend-generation-and-proof.log": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+    "complete.log": "c0e856cf6f9e75637a95fd5a53098de640ca6aa01733f49a0e381c7ab7f985d9",
+    "environment.log": "e664ea86d435bac85eaee229a098bd4993e9bc09467a24af62fe9945db239127",
+    "ports.log": "efbdf045540924df5dec3e7855d2f718bd593536514c137ca736b7c94f15efaa",
+    "runner.log": "65b73a1dc65ae397c5937ee0e5ae092a9308999e00aa43f891492c85f98fe337",
+    "writ_policy.log": "e72c9cfe09451634b327adc86b079f02af4cb2dd7d00c71bc85f355620e771c4"
+  },
+  "source_and_build_manifest": "Not emitted: the first native boot timed out before the script reached its final manifest step.",
+  "observed_terminal_lines": [
+    "[init -> test_writ_policy] ALL LIBRARY TESTS PASSED",
+    "[init -> test_writ_policy] PASS native Genode core corpus: 764",
+    "Error: Test execution timed out"
+  ],
+  "retained_native_transcripts": {
+    "corpus-41774496385-failure.log": {
+      "sha256": "5df463f46a7680d57a33c7479f698dd511f1b3dbd6d47af22f7af0e3e3eceec1",
+      "artifact_member": "writ_policy.log",
+      "normalization": "Retained from QEMU command to terminal result; CR/CRLF normalized to LF, ANSI terminal controls removed, trailing whitespace stripped."
+    }
+  }
+}

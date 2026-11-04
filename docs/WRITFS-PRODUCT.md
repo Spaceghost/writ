@@ -2,17 +2,25 @@
 
 An admitted analysis worker should be able to read a restricted report while an
 ordinary browser opening that same object receives access denied. The record
-should identify the observed process and its verified security context. Today
-Writ has policy checks and private native storage staging; the mounted view and
-the controls that contain the worker still need implementation.
+should identify the observed process and its verified security context. The
+[native canary contribution](../contrib/native-hosts/README.md) now supplies
+one immutable read-only object on Windows, Linux and native Genode. Its
+[execution evidence](../contrib/native-hosts/VERIFICATION.md) is the starting
+point for the remaining protected-data product work.
+
+Windows mounted access and LPAC revocation pass, but direct byte-worker network,
+clipboard and COM probes cannot initialize. Its strict confinement gate remains
+failed; separate no-data diagnostic passes do not qualify that reader. The
+[Windows record](../contrib/native-hosts/windows/VERIFICATION.md) preserves the
+actual failure and exact profile differences.
 
 **Product priority: Windows first, with native Linux and Genode targets sharing
 one Bend authority model.** Genode remains the capability reference. This is a
 proposed product design, not an implemented Windows service or a qualification
 of any complete filesystem/host. The existing [native storage backend](../writfs/README.md)
 has separately scoped Btrfs/ZFS evidence; it does not supply these frontends or
-their confinement. Each target remains pending until its own native filesystem
-and host acceptance tests pass.
+their confinement. The bounded canary and complete product have separate
+qualification scopes; each target's broader host acceptance remains pending.
 
 The product should answer two concrete questions: may this process observe this
 object under the current terms, and which authenticated execution context was
@@ -186,21 +194,20 @@ Base has no ready-made HANDLE/token/WFP binding or stdin-read effect. Native C
 runtime dependencies also require a Windows port. Do not run the existing TCP
 service unchanged on Windows and describe it as portable. [B1] [B2] [B3]
 
-Two distinct routes remain open:
+Two runtime routes have separate qualification scopes:
 
 | Route | Meaning and required work |
 | --- | --- |
-| Compiled Bend `.mjs` on native Windows | Generate the policy/state module from Bend and invoke it through a pinned Windows JavaScript runtime and reviewed host binding. This is Windows OS execution of generated JavaScript, not Bend native machine-code support. Validate the actual runtime under LPAC and replace unsupported effects explicitly. |
+| Compiled Bend `.mjs` on native Windows | Generate the policy/state module from Bend and invoke it through a pinned native JavaScript runtime and reviewed binding. This is OS execution of generated JavaScript, not machine-code Bend support. Validate the broker runtime and replace unsupported effects explicitly. A future JavaScript worker would separately require validation inside its LPAC profile. |
 | Native machine-code Bend port | Port the generated backend/runtime's allocation, threads, synchronization, clocks, entropy and I/O to Windows, then bind WinFsp/Win32/WFP and run the same corpus. Compilation alone still does not qualify confinement. |
 
-The first route is the smaller bring-up candidate. The existing core and native
-storage model have already passed 638 and 78 checks respectively as generated
-JavaScript under native Windows Server 2025 Node; see the
-[execution record](../writfs/VERIFICATION.md#windows-policy-execution).
-Those tests exercise policy, not filesystem or confinement bindings.
-The product still needs a real
-Windows host: an asserted setup record, a WSL process or a JSON conversation
-cannot substitute for native observations and enforced controls.
+The contribution implements the first route with native Node in the trusted
+broker, outside the LPAC worker. That worker is a fixed native probe. Its
+[execution record](../contrib/native-hosts/windows/VERIFICATION.md) captures real
+WinFsp reads, native identity, revocation and incomplete confinement evidence.
+The earlier 638-core/78-storage-model run remains historical policy evidence.
+A complete service and protected-data qualification remain pending; WSL or
+asserted setup records cannot substitute for native observations.
 
 | Binding family | Native responsibilities; policy remains Bend |
 | --- | --- |
@@ -212,20 +219,21 @@ cannot substitute for native observations and enforced controls.
 | Generated-module invocation | Bounded canonical values, exact integer widths, serialized state application and safe callback/concurrency ownership; no caller-supplied authoritative context |
 
 These API families are backed by the Windows/WinFsp references below; their Writ
-composition is proposed and unimplemented. The binding must return facts and
+composition is implemented only within the bounded canary. The complete host
+remains proposed. The binding must return facts and
 errors, perform only accepted effects, and expose no general shell, arbitrary
 native call or alternate release endpoint. [W1] [W5] [W7] [W9] [W11]
 
-### Minimal proposed source exception, for review
+### Approved native source boundary
 
-Current [AGENTS.md](../AGENTS.md) permits authored Go only for the existing
-`contrib/rclone/go/` interface/transport contribution. It does **not** authorize
-new Windows bindings. This document changes no rule and grants no exception.
+The user approved the native binding exception in [AGENTS.md](../AGENTS.md).
+The existing `contrib/rclone/go/` exception remains limited to its rclone
+interface/transport contribution.
 
-The proposed exception is a separately reviewed `contrib/native-hosts/` tree
-limited to the following mechanical native boundaries:
+The additional `contrib/native-hosts/` tree is limited to the following
+mechanical native boundaries:
 
-| Proposed path | Permitted binding work |
+| Path | Permitted binding work |
 | --- | --- |
 | `windows/` | C/C++ WinFsp/Win32/WFP ABI bindings, generated Bend module invocation, and a small JavaScript I/O harness if the initial Windows runtime requires it |
 | `linux/` | C libfuse connection, callback, buffer and descriptor-lifetime bindings |
@@ -239,18 +247,20 @@ label decisions, accounting, replay rules or release decisions may move into
 these packages. Policy and state machines stay authored in Bend; generated
 outputs stay build artifacts.
 
-Without that approval, the current boundary permits Bend implementation,
-generated-code execution checks and source review. These must not be presented
-as a native enforcing filesystem. Each proposed host binding requires its own
-source inventory and actual native acceptance, even under this narrow exception.
+Each binding requires its own source inventory and actual native acceptance.
+Approval to write a binding is not host qualification. The shared mounted-view
+state machine and authority path stay in Bend; the bindings own native resources
+and translate observed facts and admitted effects.
 
-Genode needs a substantive runtime adaptation: the pinned Bend CPU runtime
+Genode's machine-code route needs runtime adaptation: the pinned Bend CPU runtime
 reserves a 2 GiB guarded stack and an initial 8 GiB sparse heap. Genode 26.08
 libc's `mprotect` returns failure, while anonymous `mmap` allocates RAM-backed
 storage and does not implement the required adjacent growth contract. A
 single-thread setting does not remove these assumptions. Port guards and bounded
 allocation through actual Genode region maps/dataspaces; do not disable the
-guard or claim a linked binary is a running monitor. Sources: the
+guard or claim a linked binary is a running monitor. The canary executes pure
+Bend-generated JavaScript in native QuickJS with bounded memory and stack checks.
+Sources: the
 [Bend runtime](https://github.com/bendlang/bend/blob/v2.0.39/bend2/comp.ts),
 [Genode libc dummy operations](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/libports/src/lib/libc/dummies.cc),
 and [memory mapping](https://codeberg.org/genodelabs/genode/src/commit/d18ee9e917200b059549e21f2dd9a55bfe61a0eb/repos/libports/src/lib/libc/file_operations.cc).
@@ -281,8 +291,9 @@ Future durable publication must satisfy its separate crash/replay contract.
 
 ## Primary references
 
-Research inspected 2026-11-04. Links establish platform mechanisms; the Writ
-profile, source exception and acceptance plan above remain proposed decisions.
+Research inspected 2026-11-04. Links establish platform mechanisms. The native
+source exception is approved and the bounded canary is implemented; the broader
+protected-data product profile and its qualification remain pending.
 
 [W1]: https://winfsp.dev/doc/WinFsp-API-winfsp.h/
 [W2]: https://learn.microsoft.com/en-us/windows/win32/projfs/cache-state

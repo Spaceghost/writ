@@ -5,20 +5,31 @@ independent verification, and multiparty transformation negotiation.
 
 **The core implementation, tests, examples, and proofs are Bend 2.** The optional
 [rclone contribution](contrib/rclone/README.md) has a separate minimal Go interface
-adapter; its policy and reference service are also Bend. There is no project
-Rust, C, WGSL, JavaScript, or Python implementation.
-Bend's compiler, Base effects, generated backends, operating system, and device
-drivers remain external dependencies.
+adapter; its policy and reference service are also Bend. The approved
+[native-host contribution](contrib/native-hosts/README.md) contains C/C++ OS ABI
+and filesystem bindings, resource and handle lifetimes, bounded runtime adaptations, and a
+small JavaScript invocation/I/O harness. Policy, grants, state transitions and
+release decisions remain in Bend; the native boundary performs admitted effects.
+Generated backends and binaries stay outside the source package. Bend's compiler,
+Base effects, Node/QuickJS, operating systems and device drivers are dependencies.
 
-This is an executable **security-core library and protocol model**. It is not a
-bootable OS, a running kernel character device, a process sandbox, or a deployed
-payment service. Hosted transformation languages are deliberately left for the
-later execution-adapter stage.
+The core is an executable **security-core library and protocol model**. Its
+optional contribution now runs a bounded read-only public-canary view through
+Linux FUSE, Windows WinFsp and native Genode filesystem sessions. Those native
+results have [separate qualification records](contrib/native-hosts/VERIFICATION.md);
+they do not establish a complete protected-data host, custom OS, kernel character
+device or payment service. General hosted transformation languages remain later
+execution-adapter work.
 
-The native integration direction is [Genode first](docs/PLATFORMS.md), with the
-same Bend decision core intended for Linux, Windows, and a later Drift-backed
-kernel. These are separately qualified host targets; a successful library run
-does not establish their IPC authentication, confinement, or durable effects.
+[Windows is the first product target; Genode is the capability reference](docs/PLATFORMS.md).
+The same Bend decision core serves the native Linux, Windows and Genode
+contributions, with a later Drift-backed kernel planned. Linux and Genode native
+canary lanes pass. Windows mounted reads and revocation pass, while complete
+confinement remains unqualified: direct byte-worker channel probes cannot
+initialize their APIs, and a separate no-data diagnostic does not qualify that
+worker. Native Node on Linux/Windows and native QuickJS on Genode execute the
+generated Bend modules; this does not claim a general machine-code Bend runtime
+port. See the [platform evidence](contrib/native-hosts/VERIFICATION.md).
 
 New to the code? Start with the [report-to-summary walkthrough](docs/GETTING-STARTED.md)
 and [runnable examples](examples/README.md). This file is the API reference.
@@ -106,6 +117,13 @@ only private read-only native stages. It does not replace the core trust contrac
 or implement durable logical publication. Its full native IDs and source-seal
 manifest hashes have different semantics from the rclone reference's payload
 checksums.
+
+The [native mounted-view contribution](contrib/native-hosts/README.md) uses
+`writfs/MountAuthority` and `writfs/Mount` for the complete admission gate,
+retained committed state, immutable payload digest, handles and later release
+decisions. Its native bindings expose one bounded public fixture. That mounted
+view and the Btrfs/ZFS private-stage backend have separate evidence and do not
+yet form a complete writable or durable filesystem product.
 
 Import component modules for their record constructors; import the facade for
 the combined path:
@@ -227,10 +245,12 @@ authority path remains the same.
   frontend tokens compare all 256 bits. Numeric IDs, counters, amounts, and times
   use `Nat`; the current compiled runtime caps Nat arithmetic at 2^48−1 and raises
   a runtime error above the cap. They are not arbitrary-precision runtime IDs.
-- No declassification or integrity endorsement path is implemented. No full
-  source-language type/effect inference, external-language sandbox, durable
-  storage adapter, cryptographic grant issuer, kernel mount/device, S3 server,
-  or real payment settlement is included.
+- No declassification or integrity endorsement path is implemented. Full
+  source-language type/effect inference, arbitrary-language confinement,
+  durable authorized publication, cryptographic grant issuance, a kernel
+  character/block-device adapter, S3 service and real payment settlement remain
+  outside the implemented core. The native mount contribution supplies a
+  bounded view of public fixtures; it does not qualify a complete protected host.
 - All registry, graph, context, caller, session, and ledger records must come from
   authoritative monitor state. Exported Bend data constructors and returned
   tickets are descriptions, not unforgeable capabilities. They must not be

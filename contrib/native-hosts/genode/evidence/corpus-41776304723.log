@@ -1,0 +1,858 @@
+spawn qemu-system-x86_64 -nographic -accel tcg -m 512 -nic none -no-reboot -serial mon:stdio -cdrom var/run/writ_policy.iso -machine q35 -cpu Skylake-Client
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.pcid [bit 17]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.x2apic [bit 21]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.tsc-deadline [bit 24]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.hle [bit 4]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.invpcid [bit 10]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.0DH:EAX.xsavec [bit 1]
+SeaBIOS (version 1.16.3-debian-1.16.3-2)
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from DVD/CD...
+error: can't find command `loadfont'.
+  Booting `Genode on base-hw'
+
+
+
+Bender Version 0.9-beta7-51-g28ba2ad-dirty
+
+Patching BDA with I/O port 0x3f8.
+
+Bender: Hello World.
+
+hwp config: eeo=na irq=na hwp=na epp=na epb=na
+Cpu apic_id=0x0 [0:0:0:0:0:0]
+
+
+kernel initialized
+Genode 26.08
+493 MiB RAM and 64536 caps assigned to init
+[init -> test_writ_policy] PASS native allocator checks: 24
+[init -> test_writ_policy] Warning: clock_gettime(): missing real-time clock
+[init -> test_writ_policy] PASS: exact 64-bit union across both words
+[init -> test_writ_policy] PASS: exact 64-bit intersection
+[init -> test_writ_policy] PASS: bit 63 cannot be satisfied by low word
+[init -> test_writ_policy] PASS: valid graph admitted
+[init -> test_writ_policy] PASS: CPU Jacobi propagation and final stability sweep
+[init -> test_writ_policy] PASS: Bend parallel producer matches sequential producer
+[init -> test_writ_policy] PASS: independent verifier checks original graph
+[init -> test_writ_policy] PASS: summary cannot escape source confidentiality
+[init -> test_writ_policy] PASS: covered destination and actual effect succeed
+[init -> test_writ_policy] PASS: untrusted provenance is checked separately
+[init -> test_writ_policy] PASS: actual network effect needs a live grant
+[init -> test_writ_policy] PASS: callee effect requires grant even when requested mask is zero
+[init -> test_writ_policy] PASS: sink index never wraps
+[init -> test_writ_policy] PASS: list lookup rejects maximal U32 index
+[init -> test_writ_policy] PASS: source secrecy omission rejected
+[init -> test_writ_policy] PASS: source provenance omission rejected
+[init -> test_writ_policy] PASS: source effect omission rejected
+[init -> test_writ_policy] PASS: derived secrecy omission rejected
+[init -> test_writ_policy] PASS: derived provenance omission rejected
+[init -> test_writ_policy] PASS: callee effect omission rejected
+[init -> test_writ_policy] PASS: static equality cannot keep a larger domain
+[init -> test_writ_policy] PASS: empty candidate domain rejected
+[init -> test_writ_policy] PASS: unsupported candidate domain rejected
+[init -> test_writ_policy] PASS: missing candidate nodes rejected
+[init -> test_writ_policy] PASS: extra candidate nodes rejected
+[init -> test_writ_policy] PASS: conservative extra restrictions remain valid
+[init -> test_writ_policy] PASS: extra restrictions still constrain the sink
+[init -> test_writ_policy] PASS: changed graph generation denies
+[init -> test_writ_policy] PASS: changed policy generation denies
+[init -> test_writ_policy] PASS: authority epoch high word is checked
+[init -> test_writ_policy] PASS: candidate stamp must match live snapshot
+[init -> test_writ_policy] PASS: one-sweep budget fails closed
+[init -> test_writ_policy] PASS: final convergence check consumes fuel
+[init -> test_writ_policy] PASS: exact convergence budget succeeds
+[init -> test_writ_policy] PASS: parallel budget fails closed
+[init -> test_writ_policy] PASS: missing flow endpoint rejected before solving
+[init -> test_writ_policy] PASS: parallel producer receives only validated graph
+[init -> test_writ_policy] PASS: missing equality endpoint rejected
+[init -> test_writ_policy] PASS: missing call endpoint rejected
+[init -> test_writ_policy] PASS: empty seed type domain rejected
+[init -> test_writ_policy] PASS: unsupported seed type domain rejected
+[init -> test_writ_policy] PASS: incompatible static types conflict
+[init -> test_writ_policy] PASS: parallel producer preserves type conflict
+[init -> test_writ_policy] PASS: cyclic flow reaches verified fixed point
+[init -> test_writ_policy] PASS: parallel cycle agrees with CPU
+[init -> test_writ_policy] PASS: empty graph succeeds in zero rounds
+[init -> test_writ_policy] PASS: empty parallel graph needs no dispatch
+[init -> test_writ_policy] PASS: bit 63 propagates in all three restriction domains
+[init -> test_writ_policy] PASS: parallel propagation retains high bits
+[init -> test_writ_policy] PASS: high-word restrictions can be explicitly covered
+[init -> test_writ_policy] PASS: high-word required effect cannot be dropped
+[init -> test_writ_policy] PASS: stable forged producer output fails independent verification
+[init -> test_writ_policy] Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+[init -> test_writ_policy] PASS valid paired admission
+[init -> test_writ_policy] PASS summary retains origin and labels
+[init -> test_writ_policy] PASS read required
+[init -> test_writ_policy] PASS write required
+[init -> test_writ_policy] PASS read domain distinct
+[init -> test_writ_policy] PASS write domain distinct
+[init -> test_writ_policy] PASS read object version exact
+[init -> test_writ_policy] PASS write object exact
+[init -> test_writ_policy] PASS graph epoch current
+[init -> test_writ_policy] PASS policy epoch current
+[init -> test_writ_policy] PASS authority epoch current
+[init -> test_writ_policy] PASS expiry exclusive
+[init -> test_writ_policy] PASS all 256 code bits bound
+[init -> test_writ_policy] PASS invocation bound
+[init -> test_writ_policy] PASS read grant stamp bound
+[init -> test_writ_policy] PASS fresh writer cannot redirect old read destination
+[init -> test_writ_policy] PASS fresh writer cannot redirect old read write-domain
+[init -> test_writ_policy] PASS operation kind approved
+[init -> test_writ_policy] PASS operation code approved
+[init -> test_writ_policy] PASS origin code pin required
+[init -> test_writ_policy] PASS origin transform restrictions retained
+[init -> test_writ_policy] PASS empty origins rejected
+[init -> test_writ_policy] PASS unknown kind bits rejected
+[init -> test_writ_policy] PASS derived source cannot widen origin rights
+[init -> test_writ_policy] PASS source cannot erase origin secrecy
+[init -> test_writ_policy] PASS payment required
+[init -> test_writ_policy] PASS payment origin version
+[init -> test_writ_policy] PASS payment invocation
+[init -> test_writ_policy] PASS payment code
+[init -> test_writ_policy] PASS payment kind
+[init -> test_writ_policy] PASS payment destination
+[init -> test_writ_policy] PASS payment quote
+[init -> test_writ_policy] PASS payment expiry
+[init -> test_writ_policy] PASS ROT13 or summary cannot clear confidentiality
+[init -> test_writ_policy] PASS integrity independently enforced
+[init -> test_writ_policy] PASS own bucket only narrows output operations
+[init -> test_writ_policy] PASS multiple origins union labels including bit63
+[init -> test_writ_policy] PASS old read cannot approve expanded source manifest
+[init -> test_writ_policy] PASS every source read required
+[init -> test_writ_policy] PASS every original payment required
+[init -> test_writ_policy] PASS copy preserves schema and remains protected
+[init -> test_writ_policy] PASS parallel batch admission
+[init -> test_writ_policy] PASS parallel batch retains denial
+[init -> test_writ_policy] PASS preflight collects every inherited origin in order
+[init -> test_writ_policy] PASS origin discovery is independent of later grants and payment
+[init -> test_writ_policy] PASS preflight rejects stale authority
+[init -> test_writ_policy] PASS preflight source version exact
+[init -> test_writ_policy] PASS preflight rejects malformed source schema
+[init -> test_writ_policy] PASS preflight refuses missing provenance
+[init -> test_writ_policy] PASS preflight rejects source erasing origin labels
+[init -> test_writ_policy] PASS preflight rejects amplified origin rights
+[init -> test_writ_policy] PASS ambiguous runtime source schema denied
+[init -> test_writ_policy] PASS unknown payment operation bits denied
+[init -> test_writ_policy] Transfer: 53 checks passed
+[init -> test_writ_policy] PASS: DLM exact finite closure validates
+[init -> test_writ_policy] PASS: DLM transitive delegation closure validates
+[init -> test_writ_policy] PASS: delegation direction and transitivity
+[init -> test_writ_policy] PASS: delegation does not reverse
+[init -> test_writ_policy] PASS: Top acts for every registered principal
+[init -> test_writ_policy] PASS: every registered principal acts for Bottom
+[init -> test_writ_policy] PASS: ordinary principal has no implicit Top authority
+[init -> test_writ_policy] PASS: unregistered principal denies even for Top
+[init -> test_writ_policy] PASS: unsupported composite principal denies
+[init -> test_writ_policy] PASS: authority epoch mismatch denies
+[init -> test_writ_policy] PASS: invented closure authority denies
+[init -> test_writ_policy] PASS: omitted delegation edge in closure denies
+[init -> test_writ_policy] PASS: malformed relation shape denies
+[init -> test_writ_policy] PASS: out-of-universe relation bit denies
+[init -> test_writ_policy] PASS: unknown delegation endpoint denies preparation
+[init -> test_writ_policy] PASS: oversized principal universe denies
+[init -> test_writ_policy] PASS: unsupported delegation denies preparation
+[init -> test_writ_policy] PASS: empty name registry retains Top and Bottom
+[init -> test_writ_policy] PASS: highest supported principal uses bit 31 correctly
+[init -> test_writ_policy] PASS: preparation computes transitive authority
+[init -> test_writ_policy] PASS: owner-sensitive readers include owner and delegate
+[init -> test_writ_policy] PASS: untrusted owner imposes no policy on observer
+[init -> test_writ_policy] PASS: confidentiality join intersects readers
+[init -> test_writ_policy] PASS: confidentiality meet unions readers
+[init -> test_writ_policy] PASS: integrity join unions possible writers
+[init -> test_writ_policy] PASS: integrity meet intersects possible writers
+[init -> test_writ_policy] PASS: uncredited integrity owner gives unknown provenance
+[init -> test_writ_policy] PASS: public information may acquire secrecy restrictions
+[init -> test_writ_policy] PASS: protected information cannot flow to public
+[init -> test_writ_policy] PASS: narrowing the reader set is allowed
+[init -> test_writ_policy] PASS: widening the reader set requires separate authority
+[init -> test_writ_policy] PASS: trusted information may lose integrity
+[init -> test_writ_policy] PASS: untrusted information cannot endorse itself
+[init -> test_writ_policy] PASS: integrity ordering follows possible writer inclusion
+[init -> test_writ_policy] PASS: removing possible writers requires endorsement
+[init -> test_writ_policy] PASS: maximal restriction is a valid information-flow sink
+[init -> test_writ_policy] PASS: unknown policy principal denies reflexive-looking query
+[init -> test_writ_policy] PASS: unsupported policy principal denies
+[init -> test_writ_policy] PASS: stale flow query denies
+[init -> test_writ_policy] PASS: secret control dependency survives an otherwise-public result
+[init -> test_writ_policy] PASS: dependency joins retain untrusted influence
+[init -> test_writ_policy] PASS: join is an upper bound
+[init -> test_writ_policy] PASS: meet is a lower bound
+[init -> test_writ_policy] PASS: parallel batch agrees with four independent semantic outcomes
+[init -> test_writ_policy] PASS: complete CPU replay accepts correct batch results
+[init -> test_writ_policy] PASS: complete CPU replay rejects fabricated allows
+[init -> test_writ_policy] PASS: complete CPU replay rejects truncated result shape
+[init -> test_writ_policy] DLM: 47 checks passed
+[init -> test_writ_policy] PASS: ledger reserves reader expense
+[init -> test_writ_policy] PASS: reservation removes available funds
+[init -> test_writ_policy] PASS: stale revision denies
+[init -> test_writ_policy] PASS: overdraft denies
+[init -> test_writ_policy] PASS: one live reservation per invocation
+[init -> test_writ_policy] PASS: receipt cannot switch invocation
+[init -> test_writ_policy] PASS: receipt cannot switch payer
+[init -> test_writ_policy] PASS: receipt cannot switch amount
+[init -> test_writ_policy] PASS: scoped commit succeeds
+[init -> test_writ_policy] PASS: commit replay denies
+[init -> test_writ_policy] PASS: cancellation refunds hold
+[init -> test_writ_policy] PASS: cancelled receipt cannot replay
+[init -> test_writ_policy] PASS: expired hold cannot commit
+[init -> test_writ_policy] PASS: expiration refunds hold
+[init -> test_writ_policy] PASS: unexpired hold cannot be reaped
+[init -> test_writ_policy] PASS: duplicate payer registry denies
+[init -> test_writ_policy] Ledger: 16 checks passed
+[init -> test_writ_policy] PASS: negotiation reaches running in guarded order
+[init -> test_writ_policy] PASS: every stage retains immutable request
+[init -> test_writ_policy] PASS: candidate identity cannot change
+[init -> test_writ_policy] PASS: stale session revision denies
+[init -> test_writ_policy] PASS: challenge requires pinned candidate
+[init -> test_writ_policy] PASS: future challenge not yet usable
+[init -> test_writ_policy] PASS: protected sample has pre-execution gate
+[init -> test_writ_policy] PASS: sample cannot read without paired source grant
+[init -> test_writ_policy] PASS: old nonce cannot pair with fresh duplicate ID
+[init -> test_writ_policy] PASS: failed sample denies transition
+[init -> test_writ_policy] PASS: wrong sample nonce denies
+[init -> test_writ_policy] PASS: passing sample does not replace owner approval
+[init -> test_writ_policy] PASS: sample cannot skip negotiation
+[init -> test_writ_policy] PASS: every contributing origin must approve
+[init -> test_writ_policy] PASS: all contributing origins permit negotiation
+[init -> test_writ_policy] PASS: owner approval binds exact destination
+[init -> test_writ_policy] PASS: reader-funded reservation succeeds
+[init -> test_writ_policy] PASS: negotiation reserves reader balance
+[init -> test_writ_policy] PASS: reservation must name reader as payer
+[init -> test_writ_policy] PASS: quote substitution denies
+[init -> test_writ_policy] PASS: revoked budget denies start despite live hold
+[init -> test_writ_policy] PASS: revoked read grant denies execution
+[init -> test_writ_policy] PASS: revoked origin approval denies execution
+[init -> test_writ_policy] PASS: expiry is exclusive at deadline
+[init -> test_writ_policy] PASS: cannot execute before negotiation
+[init -> test_writ_policy] PASS: authority epoch drift denies start
+[init -> test_writ_policy] Negotiation: 26 checks passed
+[init -> test_writ_policy] PASS: backplane commits fully verified transaction
+[init -> test_writ_policy] PASS: write intent retains origins, types, restrictions and DLM label
+[init -> test_writ_policy] PASS: committed session is terminal
+[init -> test_writ_policy] PASS: commit advances ledger revision
+[init -> test_writ_policy] PASS: commit spends reserved amount once
+[init -> test_writ_policy] PASS: old running session cannot replay spent receipt
+[init -> test_writ_policy] PASS: terminal session cannot commit twice
+[init -> test_writ_policy] PASS: commit rejects stale session revision
+[init -> test_writ_policy] PASS: commit rejects stale ledger revision
+[init -> test_writ_policy] PASS: forged solver labels cannot authorize output
+[init -> test_writ_policy] PASS: passing sample cannot commit
+[init -> test_writ_policy] PASS: late owner revocation denies commit
+[init -> test_writ_policy] PASS: denied commit does not consume hold
+[init -> test_writ_policy] PASS: denied commit preserves original session
+[init -> test_writ_policy] PASS: late budget revocation denies commit
+[init -> test_writ_policy] PASS: late read revocation denies commit
+[init -> test_writ_policy] PASS: late write revocation denies commit
+[init -> test_writ_policy] PASS: missing origin payment witness denies commit
+[init -> test_writ_policy] PASS: transfer authority epoch drift denies commit
+[init -> test_writ_policy] PASS: DLM authority epoch drift denies commit
+[init -> test_writ_policy] PASS: graph policy epoch drift denies commit
+[init -> test_writ_policy] PASS: DLM blocks secret-to-public release
+[init -> test_writ_policy] PASS: network backend adds actual network effect
+[init -> test_writ_policy] PASS: storage backend adds actual write effect
+[init -> test_writ_policy] PASS: combined control label rechecked against actual destination
+[init -> test_writ_policy] PASS: oracle fixture has valid static narrowing
+[init -> test_writ_policy] PASS: static narrowing cannot change declared output schema
+[init -> test_writ_policy] PASS: binding includes reader and immutable negotiation terms
+[init -> test_writ_policy] PASS: exclusive deadline denies final commit
+[init -> test_writ_policy] PASS: stamp bridge preserves high word
+[init -> test_writ_policy] PASS: stamp bridge cannot truncate high word
+[init -> test_writ_policy] PASS: bit63 epoch mismatch cannot alias low epoch
+[init -> test_writ_policy] PASS: identical duplicate bindings deny closed
+[init -> test_writ_policy] PASS: conflicting bindings deny with permissive entry first
+[init -> test_writ_policy] PASS: conflicting bindings deny with restrictive entry first
+[init -> test_writ_policy] PASS: duplicate registry rejection preserves reservation
+[init -> test_writ_policy] PASS: write intent preserves all 256 artifact identity bits
+[init -> test_writ_policy] PASS: artifact identity differs in final word
+[init -> test_writ_policy] PASS: artifact identity comes from authoritative binding
+[init -> test_writ_policy] PASS: distinct full requests are separate binding keys
+[init -> test_writ_policy] Backplane: 40 checks passed
+[init -> test_writ_policy] PASS: frontend fixture has a valid paired read/write contract
+[init -> test_writ_policy] PASS: empty frontend state is valid
+[init -> test_writ_policy] PASS: unique capability registry validates
+[init -> test_writ_policy] PASS: capability mounts as a protocol handle
+[init -> test_writ_policy] PASS: mount allocates first monotonic ID
+[init -> test_writ_policy] PASS: mounted capability opens a descriptor record
+[init -> test_writ_policy] PASS: open allocates next descriptor ID
+[init -> test_writ_policy] PASS: open preserves frontend structural validity
+[init -> test_writ_policy] PASS: read request resolves exact immutable plan
+[init -> test_writ_policy] PASS: write request resolves same exact plan
+[init -> test_writ_policy] PASS: execute resolves exact plan with all rights
+[init -> test_writ_policy] PASS: mount handle itself cannot perform an operation
+[init -> test_writ_policy] PASS: descriptor cannot cross authenticated subjects
+[init -> test_writ_policy] PASS: descriptor cannot switch capability token
+[init -> test_writ_policy] PASS: all 256 token bits participate in lookup
+[init -> test_writ_policy] PASS: token possession does not change bound subject
+[init -> test_writ_policy] PASS: unknown rights bit denies mount
+[init -> test_writ_policy] PASS: mount cannot amplify registry rights
+[init -> test_writ_policy] PASS: open cannot amplify mounted rights
+[init -> test_writ_policy] PASS: descriptor is not a mount alias
+[init -> test_writ_policy] PASS: mount is not a duplicable operational descriptor
+[init -> test_writ_policy] PASS: descriptor duplication succeeds under live authority
+[init -> test_writ_policy] PASS: dup allocates a distinct descriptor ID
+[init -> test_writ_policy] PASS: dup preserves exact token and plan scope
+[init -> test_writ_policy] PASS: descriptor rights may be attenuated in current state
+[init -> test_writ_policy] PASS: attenuated read right remains usable
+[init -> test_writ_policy] PASS: attenuation removes write right
+[init -> test_writ_policy] PASS: attenuation removes execute right
+[init -> test_writ_policy] PASS: attenuation cannot restore removed rights
+[init -> test_writ_policy] PASS: duplication preserves attenuation
+[init -> test_writ_policy] PASS: zero-right descriptor authorizes no read
+[init -> test_writ_policy] PASS: zero-right descriptor authorizes no write
+[init -> test_writ_policy] PASS: zero-right descriptor authorizes no execution
+[init -> test_writ_policy] PASS: removing registry capability revokes existing descriptor
+[init -> test_writ_policy] PASS: revoked descriptor cannot duplicate itself
+[init -> test_writ_policy] PASS: registry rights reduction invalidates wider existing descriptor
+[init -> test_writ_policy] PASS: registry replacement cannot redirect existing descriptor plan
+[init -> test_writ_policy] PASS: altered descriptor plan disagrees with trusted registry
+[init -> test_writ_policy] PASS: read request still requires destination write approval
+[init -> test_writ_policy] PASS: write request still requires exact source read approval
+[init -> test_writ_policy] PASS: capability cannot bypass inherited payment requirement
+[init -> test_writ_policy] PASS: stale revision cannot resolve operation
+[init -> test_writ_policy] PASS: stale revision cannot duplicate descriptor
+[init -> test_writ_policy] PASS: rejected mutation leaves revision unchanged
+[init -> test_writ_policy] PASS: authority epoch change invalidates open descriptor
+[init -> test_writ_policy] PASS: stale capability cannot mount in new epoch
+[init -> test_writ_policy] PASS: stale mounted capability cannot open
+[init -> test_writ_policy] PASS: expiry is exclusive at exact deadline
+[init -> test_writ_policy] PASS: expired descriptor cannot duplicate itself
+[init -> test_writ_policy] PASS: expired capability cannot mount
+[init -> test_writ_policy] PASS: shortening registry expiry invalidates older broader handle
+[init -> test_writ_policy] PASS: duplicate capability token is ambiguous and invalid
+[init -> test_writ_policy] PASS: malformed registry denies mount
+[init -> test_writ_policy] PASS: malformed registry denies resolution
+[init -> test_writ_policy] PASS: malformed registry rights deny
+[init -> test_writ_policy] PASS: capability epoch must match immutable plan epoch
+[init -> test_writ_policy] PASS: duplicate descriptor IDs invalidate state
+[init -> test_writ_policy] PASS: ambiguous descriptor state denies resolution
+[init -> test_writ_policy] PASS: next descriptor ID must exceed every allocated ID
+[init -> test_writ_policy] PASS: unallocated zero descriptor denies
+[init -> test_writ_policy] PASS: unknown descriptor denies
+[init -> test_writ_policy] PASS: closing descriptor records tombstone
+[init -> test_writ_policy] PASS: closed descriptor cannot resolve
+[init -> test_writ_policy] PASS: closed descriptor cannot duplicate
+[init -> test_writ_policy] PASS: closed descriptor cannot be reactivated by attenuation
+[init -> test_writ_policy] PASS: close replay denies
+[init -> test_writ_policy] PASS: another subject cannot close descriptor
+[init -> test_writ_policy] PASS: another token cannot close descriptor
+[init -> test_writ_policy] PASS: closing one descriptor preserves independently duplicated descriptor
+[init -> test_writ_policy] PASS: new open never reuses tombstoned descriptor ID
+[init -> test_writ_policy] Frontend: 70 checks passed
+[init -> test_writ_policy] PASS: binding fixture state is valid
+[init -> test_writ_policy] PASS: state equality separates a committed change from its input
+[init -> test_writ_policy] PASS: state equality sees a single quota field
+[init -> test_writ_policy] PASS: state equality sees the embedded Frontend state
+[init -> test_writ_policy] PASS: denial checks assert the exact reason
+[init -> test_writ_policy] PASS: GA-001 generation fixture is a valid state
+[init -> test_writ_policy] PASS: GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration
+[init -> test_writ_policy] VECTOR GA-001-1 bind_open denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-001 stale alias cannot be delegated
+[init -> test_writ_policy] PASS: GA-001 stale alias cannot close the current object
+[init -> test_writ_policy] PASS: GA-001 alias at current generation 4 proceeds
+[init -> test_writ_policy] VECTOR GA-001-2 bind_open accepted alias=3;object=2
+[init -> test_writ_policy] PASS: GA-001 current alias reaches the Frontend check
+[init -> test_writ_policy] PASS: GA-002 mount on a recorded route naming the caller succeeds
+[init -> test_writ_policy] VECTOR GA-002-1 bind_mount accepted alias=1;object=1
+[init -> test_writ_policy] PASS: GA-002 mount issues the first alias id
+[init -> test_writ_policy] PASS: GA-002 mount mints a Session owned by the route subject on the route service
+[init -> test_writ_policy] PASS: GA-002 the routed child domain holds the Session alias
+[init -> test_writ_policy] PASS: GA-002 the Session is bound to the new Frontend handle
+[init -> test_writ_policy] PASS: GA-002 Frontend.mount was applied
+[init -> test_writ_policy] PASS: GA-002 mount preserves binding validity
+[init -> test_writ_policy] PASS: GA-002 route prefix naming R mounted for caller S denied RouteMismatch
+[init -> test_writ_policy] VECTOR GA-002-2 bind_mount denied RouteMismatch
+[init -> test_writ_policy] PASS: GA-002 a presented route the parent never recorded denied RouteMismatch
+[init -> test_writ_policy] VECTOR GA-002-3 bind_mount denied RouteMismatch
+[init -> test_writ_policy] PASS: GA-002 route for an unrouted service denied RouteMismatch
+[init -> test_writ_policy] PASS: GA-002 Session on the second service opens under its own route
+[init -> test_writ_policy] PASS: GA-002 route withdrawal fixture is a valid state
+[init -> test_writ_policy] PASS: GA-002 a route on another service does not authorize the holder
+[init -> test_writ_policy] VECTOR GA-002-4 bind_open denied SubjectMismatch
+[init -> test_writ_policy] PASS: GA-003 open from the Session issues a new alias
+[init -> test_writ_policy] VECTOR GA-003-1 bind_open accepted alias=2;object=2
+[init -> test_writ_policy] PASS: GA-003 opened alias names a distinct object
+[init -> test_writ_policy] PASS: GA-003 open mints a Descriptor object
+[init -> test_writ_policy] PASS: GA-003 the new object is bound to the new handle
+[init -> test_writ_policy] PASS: GA-003 the Session alias is unaffected by open
+[init -> test_writ_policy] PASS: GA-003 the Session alias still opens after open
+[init -> test_writ_policy] PASS: GA-003 open preserves binding validity
+[init -> test_writ_policy] PASS: GA-003 attenuate issues a new alias
+[init -> test_writ_policy] PASS: GA-003 attenuate mints a distinct object bound to a distinct handle
+[init -> test_writ_policy] VECTOR GA-003-2 bind_attenuate accepted alias=3;object=3
+[init -> test_writ_policy] PASS: GA-003 attenuate leaves the parent Frontend handle rights intact
+[init -> test_writ_policy] PASS: GA-003 the attenuated Frontend handle carries only read
+[init -> test_writ_policy] PASS: GA-003 parent alias keeps its rights and the copy gets the narrower rights
+[init -> test_writ_policy] PASS: GA-003 the parent descriptor alias is unaffected by attenuate
+[init -> test_writ_policy] PASS: GA-003 attenuate preserves binding validity
+[init -> test_writ_policy] PASS: GA-003 attenuating a Session alias denied FrontendRejected
+[init -> test_writ_policy] PASS: GA-003 attenuate outside the protocol rights denied WidenedRights
+[init -> test_writ_policy] PASS: GA-003 open through an unknown alias denied UnknownAlias
+[init -> test_writ_policy] VECTOR GA-003-3 bind_open denied UnknownAlias
+[init -> test_writ_policy] PASS: GA-003 open through a Descriptor alias denied FrontendRejected
+[init -> test_writ_policy] VECTOR GA-003-4 bind_open denied FrontendRejected
+[init -> test_writ_policy] PASS: GA-004 owner closes a descriptor held by two domains
+[init -> test_writ_policy] VECTOR GA-004-1 bind_close accepted object=2
+[init -> test_writ_policy] PASS: GA-004 after close the owner's alias is stale
+[init -> test_writ_policy] VECTOR GA-004-2 delegate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-004 after close the second holder's alias is stale
+[init -> test_writ_policy] VECTOR GA-004-3 delegate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-004 close applies Frontend.close to the bound handle
+[init -> test_writ_policy] PASS: GA-004 close leaves the parent Session usable
+[init -> test_writ_policy] PASS: GA-004 close preserves binding validity
+[init -> test_writ_policy] PASS: GA-004 close at a stale revision destroys nothing and leaves state unchanged
+[init -> test_writ_policy] VECTOR GA-004-4 bind_close denied StaleRevision
+[init -> test_writ_policy] PASS: GA-004 close Frontend rejects destroys nothing
+[init -> test_writ_policy] PASS: GA-004 a domain without the alias cannot close it and is told UnknownAlias
+[init -> test_writ_policy] PASS: GA-004 a non-holder of a destroyed alias is told UnknownAlias, not StaleGeneration
+[init -> test_writ_policy] PASS: GA-004 a delegatee holding a read copy of the Session cannot destroy it
+[init -> test_writ_policy] VECTOR GA-004-5 bind_close denied SubjectMismatch
+[init -> test_writ_policy] PASS: GA-004 a delegatee holding a copy of a descriptor cannot destroy it
+[init -> test_writ_policy] PASS: GA-004 a delegatee may close the descriptor it opened itself
+[init -> test_writ_policy] VECTOR GA-004-6 bind_close accepted object=2
+[init -> test_writ_policy] PASS: GA-004 closing a Session with a two-level derivation below it commits
+[init -> test_writ_policy] VECTOR GA-004-7 bind_close accepted object=1
+[init -> test_writ_policy] PASS: GA-004 closing a Session closes every derived descriptor's Frontend handle
+[init -> test_writ_policy] PASS: GA-004 after a Session close the Session alias is stale
+[init -> test_writ_policy] PASS: GA-004 after a Session close the opened descriptor alias is stale
+[init -> test_writ_policy] PASS: GA-004 after a Session close the attenuated descriptor alias is stale
+[init -> test_writ_policy] VECTOR GA-004-8 delegate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-004 a Session close stays valid and refunds all three objects
+[init -> test_writ_policy] PASS: GA-004 a Session close skips a derived handle that was already closed
+[init -> test_writ_policy] PASS: GA-005 holder-without-record fixture is a valid state
+[init -> test_writ_policy] PASS: GA-005 alias held by Q with no delegation record denied SubjectMismatch
+[init -> test_writ_policy] VECTOR GA-005-1 bind_attenuate denied SubjectMismatch
+[init -> test_writ_policy] PASS: GA-005 unrecorded holder cannot delegate onward
+[init -> test_writ_policy] PASS: GA-005 a domain that does not hold the alias denied UnknownAlias
+[init -> test_writ_policy] VECTOR GA-005-2 bind_open denied UnknownAlias
+[init -> test_writ_policy] PASS: GA-005 recorded delegation to the worker is accepted
+[init -> test_writ_policy] VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
+[init -> test_writ_policy] PASS: GA-005 delegatee opens through a delegated Session
+[init -> test_writ_policy] PASS: GA-005 the delegatee's opened alias is usable
+[init -> test_writ_policy] PASS: GA-005 the delegatee's opened alias resolves within the record
+[init -> test_writ_policy] PASS: GA-005 the delegatee is accepted only within the delegated scope
+[init -> test_writ_policy] PASS: GA-005 delegatee derivations preserve binding validity
+[init -> test_writ_policy] PASS: GA-005 while R's route stands the delegatee opens through the delegated Session
+[init -> test_writ_policy] VECTOR GA-005-4 bind_open accepted alias=3;object=2
+[init -> test_writ_policy] PASS: GA-005 route withdrawal after delegation fixture is a valid state
+[init -> test_writ_policy] PASS: GA-005 withdrawing the delegator's route withdraws the delegatee's authority
+[init -> test_writ_policy] VECTOR GA-005-5 bind_open denied SubjectMismatch
+[init -> test_writ_policy] PASS: GA-005 route withdrawal also withdraws the delegatee's derived alias
+[init -> test_writ_policy] PASS: GA-005 delegation to a domain routed as another subject on the service denied SubjectMismatch
+[init -> test_writ_policy] VECTOR GA-005-6 delegate denied SubjectMismatch
+[init -> test_writ_policy] PASS: GA-005 delegation to the same subject's unrouted worker is still recorded
+[init -> test_writ_policy] PASS: GA-005 a route on another service does not bar delegation
+[init -> test_writ_policy] PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
+[init -> test_writ_policy] VECTOR GA-006-1 delegate denied WidenedRights
+[init -> test_writ_policy] PASS: GA-006 delegation outside the protocol rights denied WidenedRights
+[init -> test_writ_policy] PASS: GA-006 read delegation of the same read-only descriptor is recorded
+[init -> test_writ_policy] VECTOR GA-006-2 delegate accepted alias=4;object=3
+[init -> test_writ_policy] PASS: GA-006 delegatee of the read-only descriptor shares its object and carries read only
+[init -> test_writ_policy] PASS: GA-006 narrower read-only delegation is recorded
+[init -> test_writ_policy] VECTOR GA-006-3 delegate accepted alias=3;object=2
+[init -> test_writ_policy] PASS: GA-006 delegatee alias carries read only
+[init -> test_writ_policy] PASS: GA-006 delegator alias keeps its rights
+[init -> test_writ_policy] PASS: GA-006 delegatee cannot attenuate past its delegated rights
+[init -> test_writ_policy] PASS: GA-006 delegation preserves binding validity
+[init -> test_writ_policy] PASS: GA-007 mount with zero capability quota denied QuotaExhausted
+[init -> test_writ_policy] PASS: GA-007 open with zero capability quota denied QuotaExhausted
+[init -> test_writ_policy] VECTOR GA-007-1 bind_open denied QuotaExhausted
+[init -> test_writ_policy] PASS: GA-007 only the retried open adds a Frontend handle and advances Frontend
+[init -> test_writ_policy] PASS: GA-007 quota is checked before Frontend authority
+[init -> test_writ_policy] VECTOR GA-007-2 bind_open denied QuotaExhausted
+[init -> test_writ_policy] PASS: GA-007 after top-up the open proceeds at the same revision
+[init -> test_writ_policy] VECTOR GA-007-3 bind_open accepted alias=2;object=2
+[init -> test_writ_policy] PASS: GA-007 the retried open is charged and reaches Frontend
+[init -> test_writ_policy] PASS: GA-007 mount and open each charge one capability slot
+[init -> test_writ_policy] PASS: GA-007 destroying an object refunds its capability slot
+[init -> test_writ_policy] PASS: GA-007 destroying a Session refunds its derived objects too
+[init -> test_writ_policy] PASS: GA-007 revoking a domain refunds the slots of its live objects
+[init -> test_writ_policy] PASS: GA-007 revoke refunds each destroyed object to the domain charged for it
+[init -> test_writ_policy] PASS: GA-008 mount at a stale revision denied StaleRevision
+[init -> test_writ_policy] VECTOR GA-008-1 bind_mount denied StaleRevision
+[init -> test_writ_policy] PASS: GA-008 mount Frontend rejects returns the input state
+[init -> test_writ_policy] VECTOR GA-008-2 bind_mount denied FrontendRejected
+[init -> test_writ_policy] PASS: GA-008 open at a stale revision denied StaleRevision
+[init -> test_writ_policy] PASS: GA-008 attenuate at a stale revision denied StaleRevision
+[init -> test_writ_policy] PASS: GA-008 delegate at a stale revision denied StaleRevision
+[init -> test_writ_policy] PASS: GA-008 revoke at a stale revision denied StaleRevision
+[init -> test_writ_policy] PASS: GA-008 dangling alias fixture is invalid
+[init -> test_writ_policy] PASS: GA-008 an invalid input state is denied StaleRevision
+[init -> test_writ_policy] VECTOR GA-008-3 bind_mount denied StaleRevision
+[init -> test_writ_policy] PASS: GA-008 revoke on an invalid input state is denied
+[init -> test_writ_policy] PASS: GA-011 a two-level chain R to W to H is recorded
+[init -> test_writ_policy] PASS: GA-011 the chain preserves binding validity
+[init -> test_writ_policy] PASS: GA-011 revoking R's domain commits
+[init -> test_writ_policy] VECTOR GA-011-1 revoke accepted domain=7
+[init -> test_writ_policy] PASS: GA-011 revoking R makes W's alias stale
+[init -> test_writ_policy] VECTOR GA-011-2 delegate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-011 revoking R makes H's alias stale
+[init -> test_writ_policy] VECTOR GA-011-3 delegate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-011 revoke removes the whole subtree
+[init -> test_writ_policy] PASS: GA-011 closing R's descriptor makes W's alias stale
+[init -> test_writ_policy] PASS: GA-011 closing R's descriptor makes H's alias stale
+[init -> test_writ_policy] PASS: GA-011 close removes the whole subtree and stays valid
+[init -> test_writ_policy] PASS: GA-011 removing W's node removes H's node with it
+[init -> test_writ_policy] PASS: GA-011 removing H's node keeps W's node
+[init -> test_writ_policy] PASS: GA-011 child delegation wider than its read-only parent denied and no node added
+[init -> test_writ_policy] VECTOR GA-011-4 delegate denied WidenedRights
+[init -> test_writ_policy] PASS: GA-011 W's derived object is usable before its branch is cut
+[init -> test_writ_policy] PASS: GA-011 derived object is stale after its parent is closed
+[init -> test_writ_policy] VECTOR GA-011-5 bind_attenuate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-011 derived object is stale after its parent's holder is revoked
+[init -> test_writ_policy] PASS: GA-011 revoking the delegatee's domain commits
+[init -> test_writ_policy] VECTOR GA-011-6 revoke accepted domain=8
+[init -> test_writ_policy] PASS: GA-011 revoking a delegatee destroys the delegator's object too
+[init -> test_writ_policy] VECTOR GA-011-7 delegate denied StaleGeneration
+[init -> test_writ_policy] PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
+[init -> test_writ_policy] HostBinding: 126 checks passed, 40 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+[init -> test_writ_policy] PASS: facade links capability descriptor through complete commit
+[init -> test_writ_policy] PASS: facade preserves output provenance
+[init -> test_writ_policy] PASS: capability revocation is checked at commit
+[init -> test_writ_policy] PASS: revoked capability spends no reservation
+[init -> test_writ_policy] PASS: authenticated caller must own descriptor
+[init -> test_writ_policy] PASS: authenticated subject must be negotiated reader
+[init -> test_writ_policy] PASS: execution requires execute right as well as read and write
+[init -> test_writ_policy] PASS: closed descriptor cannot commit
+[init -> test_writ_policy] PASS: stale frontend revision cannot commit
+[init -> test_writ_policy] PASS: capability possession cannot override label denial
+[init -> test_writ_policy] Facade: 10 checks passed
+[init -> test_writ_policy] PASS: oracle fixture: disconnected vertices
+[init -> test_writ_policy] PASS: oracle fixture: directed chain
+[init -> test_writ_policy] PASS: oracle fixture: directed cycle
+[init -> test_writ_policy] PASS: oracle fixture: undirected component
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 0
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 1
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 2
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 3
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 4
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 5
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 6
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 7
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 8
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 9
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 10
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 11
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 12
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 13
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 14
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 15
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 16
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 17
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 18
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 19
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 20
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 21
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 22
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 23
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 24
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 25
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 26
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 27
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 28
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 29
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 30
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 31
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 32
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 33
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 34
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 35
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 36
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 37
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 38
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 39
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 40
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 41
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 42
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 43
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 44
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 45
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 46
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 47
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 48
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 49
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 50
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 51
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 52
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 53
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 54
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 55
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 56
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 57
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 58
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 59
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 60
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 61
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 62
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 63
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 64
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 65
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 66
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 67
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 68
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 69
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 70
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 71
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 72
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 73
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 74
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 75
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 76
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 77
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 78
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 79
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 80
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 81
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 82
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 83
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 84
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 85
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 86
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 87
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 88
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 89
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 90
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 91
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 92
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 93
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 94
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 95
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 96
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 97
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 98
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 99
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 100
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 101
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 102
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 103
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 104
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 105
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 106
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 107
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 108
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 109
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 110
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 111
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 112
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 113
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 114
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 115
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 116
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 117
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 118
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 119
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 120
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 121
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 122
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 123
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 124
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 125
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 126
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 127
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 128
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 129
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 130
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 131
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 132
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 133
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 134
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 135
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 136
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 137
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 138
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 139
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 140
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 141
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 142
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 143
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 144
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 145
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 146
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 147
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 148
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 149
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 150
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 151
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 152
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 153
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 154
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 155
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 156
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 157
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 158
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 159
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 160
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 161
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 162
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 163
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 164
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 165
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 166
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 167
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 168
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 169
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 170
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 171
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 172
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 173
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 174
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 175
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 176
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 177
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 178
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 179
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 180
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 181
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 182
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 183
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 184
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 185
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 186
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 187
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 188
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 189
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 190
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 191
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 192
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 193
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 194
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 195
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 196
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 197
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 198
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 199
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 200
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 201
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 202
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 203
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 204
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 205
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 206
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 207
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 208
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 209
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 210
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 211
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 212
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 213
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 214
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 215
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 216
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 217
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 218
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 219
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 220
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 221
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 222
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 223
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 224
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 225
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 226
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 227
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 228
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 229
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 230
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 231
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 232
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 233
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 234
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 235
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 236
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 237
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 238
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 239
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 240
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 241
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 242
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 243
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 244
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 245
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 246
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 247
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 248
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 249
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 250
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 251
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 252
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 253
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 254
+[init -> test_writ_policy] PASS: reachable-seed oracle, topology 255
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 0
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 1
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 2
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 3
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 4
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 5
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 6
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 7
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 8
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 9
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 10
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 11
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 12
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 13
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 14
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 15
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 16
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 17
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 18
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 19
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 20
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 21
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 22
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 23
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 24
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 25
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 26
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 27
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 28
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 29
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 30
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 31
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 32
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 33
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 34
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 35
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 36
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 37
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 38
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 39
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 40
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 41
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 42
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 43
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 44
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 45
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 46
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 47
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 48
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 49
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 50
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 51
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 52
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 53
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 54
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 55
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 56
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 57
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 58
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 59
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 60
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 61
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 62
+[init -> test_writ_policy] PASS: equality-conflict oracle, topology 63
+[init -> test_writ_policy] Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+[init -> test_writ_policy] ALL LIBRARY TESTS PASSED
+[init -> test_writ_policy] PASS native Genode core corpus: 764
+[init -> test_writ_policy] TIMING core_ms=6112
+[init -> test_writ_policy] Warning: clock_gettime(): missing real-time clock
+[init -> test_writ_policy] PASS native Genode mount corpus: 69
+[init -> test_writ_policy] TIMING mount_ms=126117
+[init -> test_writ_policy] QUICKJS heap_peak=60675673 reserved_peak=61331033 heap_live=0 reserved=0 tracked_limit=67108864
+[init -> test_writ_policy] WRIT POLICY NATIVE PASS
+WRIT GENODE CORPUS ACCEPTED 764 + 69
+
+Run script execution successful.

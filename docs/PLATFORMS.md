@@ -7,21 +7,41 @@ own native filesystem and enforcement evidence. A later kernel using
 contract. Writ's policy, verification, and state transitions remain authored in
 Bend 2 on every target.
 
-This is the integration architecture and acceptance plan. The current repository
-contains the tested Bend library and protocol models; it does not yet contain a
-working Writ Genode component, direct Linux confinement broker, native Windows
-service, or custom kernel. Running the existing library tests on Linux validates
-the library, not the missing host enforcement.
+This document separates the implemented native public-canary contribution from
+the broader host acceptance plan. The repository now has real Linux FUSE,
+Windows WinFsp and native Genode filesystem bindings using the same Bend policy.
+Linux and native Genode canary lanes pass. Windows mounted reads and revocation
+pass, while its complete confinement lane remains failed. These bounded results
+are recorded in the [native execution evidence](../contrib/native-hosts/VERIFICATION.md);
+they do not qualify arbitrary applications, durable publication or a complete
+protected-data host. A custom kernel remains future work.
 
 ## Platform roles
 
 | Target | Role | Native boundary to use | Current Writ evidence |
 | --- | --- | --- | --- |
-| Genode on Linux | First component/runtime bring-up with rapid debugging | Genode sessions, capability-mediated IPC, restricted components; host bridges explicitly trusted | Architecture and proposed acceptance scenarios |
-| Native Genode | Reference isolation deployment; initially Genode 26.08 x86_64/base-hw under QEMU | Protection domains, routed services, dataspaces, resource quotas, kernel-backed object capabilities | Architecture and proposed acceptance scenarios |
-| Direct Linux | Native Linux service deployment | Authenticated broker, confined worker processes, scoped descriptors, required kernel controls | Bend CPU library tests and a separate private native-storage primitive; complete host qualification pending |
-| Native Windows | First filesystem product target | WinFsp, authenticated broker, LPAC worker profile, explicit handles and WFP | 638 core + 78 model checks as generated Bend JavaScript on Windows Server; filesystem/runtime bindings and confinement pending |
+| Genode on Linux | Separate native C runtime bring-up and debugging | Genode sessions, capability-mediated IPC, restricted components; host bridges explicitly trusted | Generated Bend C builds/loads but stops before evaluating a term; [runtime rows](../verification/genode-runtime-rows-base-linux.md) retain plain-C probes and memory/fault blockers |
+| Native Genode | Capability reference; Genode 26.08 x86_64/base-hw under QEMU | Protection domains, routed services, dataspaces, resource quotas, kernel-backed object capabilities | [Native pass](../contrib/native-hosts/genode/VERIFICATION.md): 782 core checks, 69 mount checks, 24 allocator assertions, 56 filesystem-session assertions and eight libc/VFS assertions; broader protected-host gates remain open |
+| Direct Linux | Native Linux service deployment | Authenticated broker, a fixed confined reader, scoped descriptors, required kernel controls | [Native pass](../contrib/native-hosts/linux/verification/README.md): integrated 782-check core, real FUSE reads and actor denials, revocation, interpreter loss and broker-crash cleanup; complete host qualification pending |
+| Native Windows | First filesystem product target | WinFsp, authenticated broker, LPAC worker profile, explicit handles and WFP | [Mounted I/O and revocation pass](../contrib/native-hosts/windows/VERIFICATION.md); direct byte-worker channel probes remain incomplete and the enclosing confinement lane fails |
 | Future kernel with Drift | Own-kernel deployment after its protection mechanisms exist | Kernel capabilities, isolated drivers, IRQ/DMA/memory mediation, durable storage | Drift source review; no Writ kernel port |
+
+Linux and Windows bindings invoke Bend-generated JavaScript through native Node.
+Genode runs the same generated module inside a native QuickJS component. The
+policy state remains private to that interpreter. The approved source boundary
+is [contrib/native-hosts](../contrib/native-hosts/README.md): C/C++ OS interfaces,
+resource/handle lifetimes, necessary runtime adaptation and a small invocation
+harness, with an explicit source and trust inventory. These paths establish
+native OS execution of generated Bend; they do not claim a general machine-code
+Bend port to Windows or Genode.
+
+The Windows byte worker cannot initialize the direct network, clipboard and
+COM probes, so those outcomes receive no confinement credit. A separate
+diagnostic process with `registryRead` and Win32k enabled receives no canary
+bytes and has a different profile. Its successful checks do not replace the
+byte worker's missing evidence. See the
+[Windows record](../contrib/native-hosts/windows/VERIFICATION.md) for the exact
+failed run and remaining product gates.
 
 Genode supports multiple base kernels, and its documentation explicitly makes
 security dependent on the selected implementation. Genode-on-Linux has a real
@@ -70,15 +90,16 @@ host cannot establish the required identity or prevent an out-of-scope transfer,
 the protected request is denied. It must not silently treat a later holder as
 the original reader.
 
-The first worker topology avoids that ambiguity: the trusted supervisor retains
-the Writ commit session. A transformation worker receives scoped inputs and a
+The proposed topology for transformation workers avoids that ambiguity: the
+trusted supervisor retains the Writ commit session. A worker receives scoped inputs and a
 private result channel, with no direct commit capability. Any allowed channel
 that can carry capabilities is part of the confinement review.
 
 ## The shared host contract
 
 Five primitive families connect platform mechanisms to the Bend library. These
-are behavioral requirements, not an already implemented C ABI or wire protocol.
+requirements for complete hosts extend beyond the contribution's bounded
+[mounted-view protocol](../contrib/native-hosts/PROTOCOL.md).
 
 | Primitive family | Required behavior |
 | --- | --- |
@@ -100,6 +121,10 @@ Any authoritative encoding must be versioned, canonical, bounded, and explicit
 about integer widths and unknown variants; JSON is not the core fact format.
 
 ## Reference component topology
+
+This is the proposed topology for protected transformations. The canary mounts do not
+implement this complete pipeline; Genode's current diagnostic clients also have
+explicit log capabilities.
 
 ```mermaid
 flowchart TD
@@ -149,16 +174,19 @@ authorized reader's memory.
 | Durable operation works | Crash/replay/revocation tests preserve authority, funds, metadata, and exactly the approved publication |
 | Accelerator works | The actual compute backend runs, remains isolated as required, and matches verified CPU results |
 
-The pinned Bend 2.0.39 installation currently supplies Linux/macOS execution;
-native Genode and native Windows require runtime/ABI bring-up. WSL can help
-development but is Linux execution evidence. The available Linux release also
-does not establish musl/Alpine compatibility. See [installation](INSTALL.md).
+The pinned Bend 2.0.39 installation supplies Linux/macOS native execution. The
+Windows and Genode canary bindings use the generated-JavaScript paths described
+above; general machine-code runtime ports remain separate work. WSL is Linux
+execution evidence. The available Linux release also does not establish
+musl/Alpine compatibility. See [installation](INSTALL.md) and the separately
+recorded [runtime surface](BEND-RUNTIME.md).
 
 Keep policy and verification in Bend. Adapt allocation, threads, clocks, entropy,
 IPC, and other necessary runtime primitives through a narrow platform boundary.
-Compiler-generated C and upstream Genode/OS bindings are external dependencies;
-they do not justify moving policy decisions into an unreviewed native shim.
-Any additional authored binding code needs an explicit source and trust inventory.
+The approved C/C++ bindings and JavaScript harness under `contrib/native-hosts/`
+have that limited responsibility. They must preserve the authoritative Bend
+state and decisions; the per-platform source/trust inventories identify their
+native authority and dependencies.
 
 ## Drift and the future kernel
 
@@ -176,10 +204,12 @@ conformance evidence; Drift alone does not satisfy either path.
 ## Build order and specifications
 
 Keep one common host contract and prioritize the Windows filesystem/broker and
-confined-reader product slice. Develop the Linux FUSE and native Genode
-filesystem-session paths against the same Bend decisions. Genode-on-Linux is a
-separate runtime/session bring-up aid; native base-hw qualification remains
-required for a native Genode claim. See the [product plan](WRITFS-PRODUCT.md).
+confined-reader product slice. Extend the passing Linux FUSE and native Genode
+filesystem-session contributions against the same Bend decisions, while closing
+the Windows byte worker's remaining confinement gates. Genode-on-Linux remains
+a separate runtime/session bring-up path; the base-hw canary's passing execution
+does not qualify that runtime or the complete protected host. See the
+[product plan](WRITFS-PRODUCT.md).
 The [WritFS native storage backend](../writfs/README.md) is one such isolated
 Linux primitive: it creates private Btrfs snapshots and ZFS filesystem/zvol
 clones using the same Bend commit gate. Its native storage evidence does not

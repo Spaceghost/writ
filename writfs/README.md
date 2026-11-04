@@ -27,6 +27,16 @@ The operator must supply those public fixtures. The CLI accepts any structurally
 supported selector; it does not classify contents or authenticate a production
 authority issuer.
 
+## Native mounted canaries
+
+The separate [native-host contribution](../contrib/native-hosts/README.md) adds
+one immutable read-only public object through WinFsp, Linux FUSE and native
+Genode File_system/VFS. It shares Bend authority and mounted-view state, with
+native reader bindings. Its [evidence](../contrib/native-hosts/VERIFICATION.md)
+separates mounted execution from complete confinement; the Windows confinement
+gate remains failed. It does not yet present a whole staged dataset, change
+Btrfs/ZFS internals or qualify protected production data.
+
 ## Where it fits
 
 ```mermaid

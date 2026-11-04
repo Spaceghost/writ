@@ -1,0 +1,149 @@
+{
+  "commit": "897f3fa807fae9a3fe02b23db7244425ca986717",
+  "tree": "2036044a92d24ed3d3efc268af4aa34a0e313ba6",
+  "run_id": 41776304723,
+  "run_attempt": 1,
+  "job_id": 126397367166,
+  "run_url": "https://github.com/Spaceghost/writ/actions/runs/41776304723",
+  "job_url": "https://github.com/Spaceghost/writ/actions/runs/41776304723/job/126397367166",
+  "created_at": "2026-11-04T04:57:43Z",
+  "completed_at": "2026-11-04T05:04:33Z",
+  "artifact": {
+    "id": 13297133388,
+    "name": "writfs-genode-native-1",
+    "url": "https://github.com/Spaceghost/writ/actions/runs/41776304723/artifacts/13297133388",
+    "sha256": "e8aa3911984e20920cbf840813f061e250ad25aaa01f9c052d8bf6c91ca28f6e",
+    "expires_at": "2026-11-18T05:04:29Z"
+  },
+  "repository": "Spaceghost/writ",
+  "workflow": ".github/workflows/writfs-genode-native.yml",
+  "conclusion": "success",
+  "native_results": {
+    "allocator_invariants": 24,
+    "core_assertions": 764,
+    "mount_assertions": 69,
+    "filesystem_assertions": {
+      "reader": 44,
+      "stranger": 6,
+      "forger": 6
+    },
+    "vfs_assertions": 8,
+    "heap_peak": 60675673,
+    "reserved_peak": 61331033,
+    "teardown_live": 0,
+    "teardown_reserved": 0,
+    "core_ms": 6112,
+    "mount_ms": 126117,
+    "host_binding_vectors": 40
+  },
+  "host_allocator_sanitizers": {
+    "assertions": 24,
+    "address": true,
+    "undefined_behavior": true,
+    "leaks": true
+  },
+  "retained_artifact_file_sha256": {
+    "allocator-sanitizers.log": "da2c4f6a19afa1374780a1e494b9d528634d7113042c8ad3b9e8803d7b982f31",
+    "bend-generation-and-proof.log": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+    "complete.log": "40085e233e672430c1786793bc8da01c479422b90802f2c4dfd03cf9c092cc4c",
+    "environment.log": "a26b661e07372c03addf94d223d8c8e190d812b01ce5eeea99a11c5251bf7955",
+    "ports.log": "efbdf045540924df5dec3e7855d2f718bd593536514c137ca736b7c94f15efaa",
+    "runner.log": "8b55a85c64642aa5a71ee5de17119f747c5ad550238cdb3de3b06b4c2a9398ac",
+    "source-and-build-sha256.txt": "ab5aba4380e0c43117ca2d77da90de6ae96c74fa803d98668948060fd2943f6a",
+    "writ_policy.config": "c7ff710f900eda71e8d71f36d73dd5a6525c9b599716c1e41632063a8cacb60a",
+    "writ_policy.log": "eb94557bfd1b6b2d31254e2d0280bfb52552bbdd4cd876bb8dccdf9830341ab7",
+    "writfs.config": "1794442d684316410f020833f607ca4372f45ae4d64c5cf8d2a5feb88b7d18f5",
+    "writfs.log": "054325fac29a5fd04c33ba385b3bf3d56a79235e957bf2af99e2d174de0fc5eb",
+    "writfs_vfs.config": "04b27967f59e9093e392178916d5bcab2c993a8f19708d567b3e24b0a518e8fc",
+    "writfs_vfs.log": "b6cc9ce7afdb2dd7f0412bc92475bb7b0fa56b0b65d25dc48ccbc49c6a32562f"
+  },
+  "retained_repo_files": {
+    "corpus-41776304723.log": {
+      "artifact_member": "writ_policy.log",
+      "sha256": "ceef7a9ba55b275382e0a4549860176ab772820039ff26f99c21bad093b441f9",
+      "normalization": "Retained from QEMU command to terminal result; CR/CRLF normalized to LF, ANSI terminal controls removed, trailing whitespace stripped."
+    },
+    "filesystem-41776304723.log": {
+      "artifact_member": "writfs.log",
+      "sha256": "c239c234dae583bf0e4f8e082d08b556afc1c4ebe32fbaf9c53805538d2360e8",
+      "normalization": "Retained from QEMU command to terminal result; CR/CRLF normalized to LF, ANSI terminal controls removed, trailing whitespace stripped."
+    },
+    "vfs-41776304723.log": {
+      "artifact_member": "writfs_vfs.log",
+      "sha256": "5f05342c59fe9625a4bd3dd4636f7502d0ab66d76377344537d87048bfb99b09",
+      "normalization": "Retained from QEMU command to terminal result; CR/CRLF normalized to LF, ANSI terminal controls removed, trailing whitespace stripped."
+    },
+    "41776304723-environment.log": {
+      "artifact_member": "environment.log",
+      "sha256": "a26b661e07372c03addf94d223d8c8e190d812b01ce5eeea99a11c5251bf7955",
+      "normalization": "None; exact artifact bytes."
+    },
+    "41776304723-allocator.log": {
+      "artifact_member": "allocator-sanitizers.log",
+      "sha256": "da2c4f6a19afa1374780a1e494b9d528634d7113042c8ad3b9e8803d7b982f31",
+      "normalization": "None; exact artifact bytes."
+    },
+    "41776304723-source-and-build.sha256": {
+      "artifact_member": "source-and-build-sha256.txt",
+      "sha256": "ab5aba4380e0c43117ca2d77da90de6ae96c74fa803d98668948060fd2943f6a",
+      "normalization": "None; exact artifact bytes."
+    },
+    "41776304723-writ_policy.config": {
+      "artifact_member": "writ_policy.config",
+      "sha256": "c7ff710f900eda71e8d71f36d73dd5a6525c9b599716c1e41632063a8cacb60a",
+      "normalization": "None; exact artifact bytes."
+    },
+    "41776304723-writfs.config": {
+      "artifact_member": "writfs.config",
+      "sha256": "1794442d684316410f020833f607ca4372f45ae4d64c5cf8d2a5feb88b7d18f5",
+      "normalization": "None; exact artifact bytes."
+    },
+    "41776304723-writfs_vfs.config": {
+      "artifact_member": "writfs_vfs.config",
+      "sha256": "04b27967f59e9093e392178916d5bcab2c993a8f19708d567b3e24b0a518e8fc",
+      "normalization": "None; exact artifact bytes."
+    }
+  },
+  "source_and_build_sha256": {
+    ".github/workflows/writfs-genode-native.yml": "c6c2bec26165640c1c14fa736b1a3c23576fa35e582571f7f6b25f71ae537211",
+    "contrib/native-hosts/genode/README.md": "306b42aa0164ab94dd0f6db952e01decc47b88572779ad236563e9fe8ea072f2",
+    "contrib/native-hosts/genode/VERIFICATION.md": "fb1d2925bbd6a5acbcccc1e2b2b056fcd3066299722772c7b19f9c4220a7f6cb",
+    "contrib/native-hosts/genode/build-and-run.sh": "b55a16d43f401247eaa56c04f0be40075f9b956f90026a6c663c209fbc4f5c60",
+    "contrib/native-hosts/genode/include/writfs/control.h": "9b494e8f22e8a1a953aaa9c0891f98d4d35e6456b30048c6d272e903fdd67406",
+    "contrib/native-hosts/genode/lib/mk/writ_quickjs.mk": "d8773e6f87a70104973de174776d25605684af08e5f22b4b430c4b94d65dfa19",
+    "contrib/native-hosts/genode/run/writ_common.inc": "bee0981e440035409deacb69e0b5575d8f776234512e4fe3b90d1baca57ddc02",
+    "contrib/native-hosts/genode/run/writ_policy.run": "505e3cbb77554a70e5e457da53bccca945abbfb2b8187480d57246592c439f17",
+    "contrib/native-hosts/genode/run/writfs.run": "277535ff3e4d3d957cf68abd01765508e6f33541252edf95f96b6f245187210c",
+    "contrib/native-hosts/genode/run/writfs_vfs.run": "9e615e42a7b5b5aac0f702c79d8337dffc40bb8f190095b9e16e715b60277502",
+    "contrib/native-hosts/genode/src/server/writfs/main.cc": "47cad58db3dc0cd7a05dc607e9507f0f25b3a2f8e1bcfe2cd6663836c1b25a04",
+    "contrib/native-hosts/genode/src/server/writfs/target.mk": "5971bfe47961eb04a77b61dfc6dd016e376bca13e3581ce82ec2bcd686f6bb69",
+    "contrib/native-hosts/genode/src/test/writ_policy/main.cc": "9f56bdb65f9ae62960f9ec5670d3acd6a1f01e5696aa02d221f5ffd5347407f4",
+    "contrib/native-hosts/genode/src/test/writ_policy/target.mk": "2545e9d960207b7fa093d555e59dc9c32e4ae298f54a219d6971b7ecee67a13f",
+    "contrib/native-hosts/genode/src/test/writfs/main.cc": "67cf3622199126ce24113a6135c71ecd48df9baa27b4482e2579ea002201f4a9",
+    "contrib/native-hosts/genode/src/test/writfs/target.mk": "d642722d4861e5879bf090fe2bcca2bb120dfa428d24971d34bd573a2e1fb332",
+    "contrib/native-hosts/genode/src/test/writfs_vfs/main.cc": "e54d3c1ca9ed2247a09412de7ee3de23f75c89a00b4f1a2222129f4f8287c6fd",
+    "contrib/native-hosts/genode/src/test/writfs_vfs/target.mk": "0a4a60deef77fc84f77bae94368e0cdb405c51fdb41e24b964d7998a50060f4a",
+    "contrib/native-hosts/runtime/genode/allocator_checks.c": "ebb146539b28d606b0158f95b9b4ff6a0cd5eb35fbc4f4a14d50c6ffab355f3e",
+    "contrib/native-hosts/runtime/genode/allocator_checks.h": "def389f65b5b88522be4928c637e15a7947598f42611327504a9e52592e80de9",
+    "contrib/native-hosts/runtime/genode/allocator_probe.c": "3def8ffbdc2442d0e04329530956d9edeca562b71cb41b9261cf055a40836b10",
+    "contrib/native-hosts/runtime/genode/core_checks.cc": "9db389dfed67d0c33c840a66c3338d86465eea55667d40fe0129ffa1ac277c1b",
+    "contrib/native-hosts/runtime/genode/malloc_np.h": "7064e9ad3fcfa3586d0f18f87a71ef3cdb9ffa6374c8036cc9ac5fdd2c29e325",
+    "contrib/native-hosts/runtime/genode/policy.cc": "c7aa2307ef50930f463258af3a6d7576fc8cb855246767c107366974921c5742",
+    "contrib/native-hosts/runtime/genode/policy.h": "f24ca528ff1a10bdff93393cc20eef7eff3f9183f0a299dfbd472cf1f2cefae3",
+    "contrib/native-hosts/runtime/genode/quickjs_alloc.c": "c90ae5f69dfb66e4abf93e427fbbf5a4f7c2904c0aa0c9b0c3adef657527bafd",
+    "contrib/native-hosts/runtime/genode/quickjs_alloc.h": "a15619245618f54ba52a52ca9b74195b73edc54eb5fb123ac84d1bc3ff7bf005",
+    "writfs/Mount.bend": "410b27a640c8f9272e30c30ccee4d37ea968b9e8c57b57ce2977a5d050eaf252",
+    "writfs/MountAuthority.bend": "9823ae951cee14da45ee19998b2ec334635ef8f16563e85101bcea139a044a29",
+    "writfs/MountTests.bend": "f0d02d2bca0bcb70f8c0e2b0e94686430d816dd47b3c0b9ec97c96aa69ad4be4",
+    "/home/runner/work/_temp/writfs-genode/generated/core-tests.js": "849333764b8d32e34befc8ba067710246fe4a11abb5296fae6fd38099515309c",
+    "/home/runner/work/_temp/writfs-genode/generated/mount-tests.mjs": "cad0f40f0d8d5fea4ea3f9c90614f513aedb01ecfc7477736d2a0d06ce90abaf",
+    "/home/runner/work/_temp/writfs-genode/generated/mount.mjs": "11595d6ad83fd3a072784a1feded3e39d0f23cd21843278be4f959a13cd235d8",
+    "/home/runner/work/_temp/writfs-genode/hw/var/run/writ_policy.iso": "7bede34ef649a61ac66d7a8685360c78e8a4aba7651327aeae1ab53789968497",
+    "/home/runner/work/_temp/writfs-genode/hw/var/run/writfs.iso": "079dd377a4b8ea014c91ec708b25c30d1ad1b9ca58ab61539b767a3bfb29b976",
+    "/home/runner/work/_temp/writfs-genode/hw/var/run/writfs_vfs.iso": "410f69d35d189d9916a468c1181fbd5278da7e501193b83ed3447b3244416c5b",
+    "/home/runner/work/_temp/writfs-genode/hw/bin/writfs": "1c8517b304cbeec599d480cae8913986af64b7aeda9017c09210e1db9ef2c860",
+    "/home/runner/work/_temp/writfs-genode/hw/bin/test_writ_policy": "b6b17c785f9adefa5be40ffc897ed911426f866638e2ca6630db15dabd6569c2",
+    "/home/runner/work/_temp/writfs-genode/hw/bin/test_writfs": "8539787ea6d479b8d6d6e3a402db238b1c2252c1a3d1a34d93ee215d6752cc55",
+    "/home/runner/work/_temp/writfs-genode/hw/bin/test_writfs_vfs": "670d3ce0cc62c98a6ed5f464583f04681ccfaa8d63b331fdf67d1fb213a815e7"
+  }
+}

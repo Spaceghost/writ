@@ -2,22 +2,25 @@
 
 Core regression rerun on 2026-11-04 using **Bend 2.0.39**, Linux x86_64, and
 **clang 19.1.1**. Earlier example/platform evidence is scoped below. The
-HostBinding suite and its final-review fix wave were rerun on 2026-11-03 with
-Bend 2.0.39, **clang 23.1.1**, and Node v26.10.0, as recorded in the HostBinding
-rows below.
+HostBinding records also include the 2026-11-03 review wave and 2026-11-04
+binding-gap fixes with Bend 2.0.39, **clang 23.1.1**, and Node v26.10.0.
 The core and examples contain 36 authored `.bend` files (34 originally verified,
 plus `HostBinding.bend` and `HostBindingTests.bend`). Their implementation,
 test drivers, and proof declarations are Bend 2. The optional rclone contribution
-adds 14 Bend files and a separate minimal Go adapter. WritFS adds seven Bend
-files and a shared Bend SHA-256 module, with separate native-storage evidence.
+adds 14 Bend files and a separate minimal Go adapter. WritFS adds seven native
+storage Bend files, three mounted-view Bend files and a shared SHA-256 module.
+Inventoried C/C++ bindings and small JavaScript runtime harnesses remain under
+contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
 The final combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
 the emitted JavaScript backend under Node and a native Bend executable using
-four CPU threads with GPU execution explicitly disabled. The suite was last
-rerun on 2026-11-03 after the HostBinding final-review fix wave with Bend
-2.0.39, clang 23.1.1 (the C compiler Bend invokes), and Node v26.10.0.
+four CPU threads with GPU execution explicitly disabled. After integrating
+master 58cdbfa4's final binding fixes, the native-host work reran all 782 checks
+and 41 vectors with Bend 2.0.39, clang 19.1.1 and Node 24.22.1. Both outputs are
+byte-identical and match the upstream 782-check records. The later master
+dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are unchanged.
 
 | Suite | Checks | Main coverage |
 | --- | ---: | --- |
@@ -82,8 +85,9 @@ The fix wave changed one earlier vector: GA-005-2 is now `denied UnknownAlias`
 (was `denied SubjectMismatch`), because an alias the acting domain does not
 hold is reported as unknown before any generation or subject check. The inputs behind
 each vector id and the requirement mapping are in the
-[traceability table](openspec/traceability/genode-capability-adoption.md). No
-host port replays these vectors yet.
+[traceability table](openspec/traceability/genode-capability-adoption.md).
+Native canary runtimes execute the model corpus, but no host binding yet
+replays those vectors against native capability transitions.
 
 A native compiler arity limit encountered in a large test driver was resolved by
 moving large cached fixtures into small helper functions. The final source and
@@ -162,7 +166,9 @@ can fall back to CPU execution; success does not establish the physical backend.
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
 dependency completeness, cryptographic authentication, the compiler, or the OS.
-No project source declares unsafe code, foreign code, or a proof hole.
+The Bend policy/proof sources introduce no unsafe definitions or proof holes.
+Inventoried C/C++ OS/runtime bindings and native probes are separate from these
+laws; the ordinary proof check does not prove their correctness.
 
 The independent `--verdict` check **did not run successfully**. The official Lean
 4.34.0 release archive was downloaded and hash-verified, but its executable exits
@@ -184,27 +190,28 @@ Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
 ## OpenSpec suite
 
-The repository includes 15 baseline capability specs and 22 pending change
-packages. OpenSpec 1.16.0 strict validation passed all 37 items with no errors or
-warnings. Baseline specifications contain 153 requirements and 341 scenarios;
-pending deltas contain 237 requirements and 441 scenarios. All 197 implementation
-tasks in those pending packages remain unchecked. Since then, tasks 1.1 to 1.4 and 2.1 to 2.3 of
-`add-genode-capability-adoption` have been checked against the HostBinding
-evidence above; its section 3 remains unchecked. After the HostBinding
-final-review fix wave edited that change's `tasks.md` (task 2.1 wording) and
-its traceability table, `bunx @fission-ai/openspec@1.16.0 validate --all
---strict --no-interactive` passed with 0 failed; `verification/openspec-validation.txt`
-holds the earlier 37-item run, while the 2026-11-04 rerun after the parked-gaps
-lane and its final-review fix wave, `Totals: 43 passed, 0 failed (43 items)`, is
-recorded here. The bounded rclone reference change is
-implemented and archived with eight completed tasks. Native snapshot staging is
-implemented and archived with ten completed tasks. Neither completes a
-production host adapter. See `verification/openspec-validation.txt`.
+OpenSpec 1.16.0 strict validation passes all **44 active items**: 16 baseline
+capabilities and 28 pending change packages. The baseline has 161 requirements
+and 362 scenarios; pending deltas have 294 requirements and 555 scenarios.
+The 28 pending task files retain 238 unchecked and 15 previously completed
+tasks, unchanged from integrated master dc6ff2b2.
 
-This is specification validation, not execution of every acceptance scenario.
-Traceability tables distinguish named executable tests from source review and
-host preconditions. The documentation cleanup does not complete any proposed
-adapter task or expand the scope of the selected formal laws.
+Only the bounded native-canary change was completed and archived in this
+contribution: eight requirements, 21 scenarios and six tasks. Windows mounted
+presentation is implemented, while its complete confinement gate remains failed.
+That failure and the separate diagnostic results are recorded explicitly; the
+broader Windows host proposal remains open. The other host, runtime, namespace,
+issuer and durable-publication changes retain their own qualification gates.
+
+The earlier rclone reference and native snapshot staging archives retain their
+eight and ten completed tasks respectively. Historical 37-item OpenSpec output
+remains in verification/openspec-validation.txt; the current result is in
+[the native contribution's validation record](contrib/native-hosts/verification/openspec.txt).
+
+Structural validation does not execute every acceptance scenario or establish
+confinement. Traceability identifies named tests, reviewed mechanics and remaining
+host preconditions. No security law or broader host task was weakened to close
+the bounded canary contract.
 
 ## Data-view and cooperation specifications
 
@@ -217,9 +224,9 @@ cross-feature gates. The source and documentation-style review is recorded in
 [feature sources](docs/FEATURE-SOURCES.md).
 
 The specification-only revision `876e6171b24b6ee8970ce58529c5abeb224474ab`
-passed strict OpenSpec validation for its 36 active items. The combined tree
-passes all 37 items, including native snapshot staging. The feature review
-also checked relative Markdown targets, the 22-change dependency graph, scenario
+passed strict OpenSpec validation for its 36 active items. The subsequent
+snapshot-staging revision passed the 37 items then present. The historical
+feature review also checked relative links, its 22-change dependency graph, scenario
 clauses, requirement lengths, and implementation/baseline preservation.
 Cross-review covered hidden match verdicts through status and disposition,
 visibility-filtered event numbering, original versus effective release policy,
@@ -231,9 +238,11 @@ both Go module files, and 14 baseline specs from revision
 `06522bdce860ff720f16a8c331061f46627bb422`. Its historical review remains in
 [feature-spec-review.txt](verification/feature-spec-review.txt). The combined
 tree additionally contains the shared SHA module and native storage work
-described below, with separate execution evidence. All 22 pending task files
-remain unchanged. Mounted WritFS, cryptographic matching, and disposal guarantees
-remain proposed; native private staging does not complete those features.
+described below, with separate execution evidence. That revision preserved its
+22 pending task files. Later upstream model/runtime work records its own partial
+completion; the seven feature packages retain their unchecked tasks. General
+WritFS namespaces, cryptographic matching and disposal remain proposed; native
+staging and canary mounts do not complete those features.
 
 ## Host platform research
 
@@ -245,14 +254,14 @@ changes with 60 requirements, 120 scenarios, and 46 unchecked tasks.
 Genode 26.08 source was downloaded, checked against the recorded archive digest,
 and inspected at commit `d18ee9e917200b059549e21f2dd9a55bfe61a0eb`. Drift source
 and retained evidence were inspected at `0b7aaca7f4ff5e3da0570379632f952ecfe754f7`.
-Linux and Windows mechanism claims are linked to primary documentation. These
-are source/document reviews; no Writ Genode image, Linux confinement broker,
-native Windows adapter, future kernel, or GPU isolation profile was executed.
+Linux and Windows mechanism claims are linked to primary documentation. Those
+original records were source/document reviews. Later native canary execution is
+recorded separately below. No future kernel or GPU isolation profile is qualified.
 
-All 34 pre-existing core/example Bend files are byte-identical to verified revision
-`5982d18dff6ef21953058423ebdfb410d1de6b11`. The 638 library checks and 29 example
-assertions per backend are retained evidence for that identical source, not new
-host-port results. See [platform-review.txt](verification/platform-review.txt).
+At that platform-research revision, all 34 core/example Bend files were identical
+to `5982d18dff6ef21953058423ebdfb410d1de6b11`. Its 638 library checks and
+29 example assertions per backend are historical evidence, not host-port results.
+The later HostBinding additions and 782-check regressions are recorded above. See [platform-review.txt](verification/platform-review.txt).
 
 ## Optional rclone contribution
 
@@ -265,7 +274,7 @@ bounded TCP transport. The root library has no new implementation dependency.
 
 The contribution passes 165 pure checks per Bend backend, 34 real CLI integration
 checks per test-driver backend against a native service, and nine Go tests. The
-root 638-check suites and ordinary proof checks were rerun successfully. See the
+then-current root 638-check suites and ordinary proof checks were rerun successfully. See the
 [detailed record](contrib/rclone/VERIFICATION.md) for captured results, exact
 limits, toolchain versions, and the distinction between these test lanes.
 
@@ -283,9 +292,9 @@ receipts, collision refusal, and the supported Btrfs snapshot transaction
 transition. Both jobs cleaned up their owned fixtures successfully.
 
 The SHA-256 extraction passed 25 digest and 74 rclone model regressions per
-backend; the original algorithm and all 34 core/example files are unchanged.
-The 638-check root suites and ordinary checks for the same three laws were
-rerun successfully. See the [detailed WritFS record](writfs/VERIFICATION.md)
+backend. That storage revision preserved the algorithm and all 34 then-existing
+core/example files. Its 638-check root suites and the three laws then present
+were rerun successfully. See the [detailed WritFS record](writfs/VERIFICATION.md)
 for source comparisons, exact native versions, logs, and fixes established by
 real native execution.
 
@@ -299,6 +308,39 @@ provide a mounted Writ filesystem, authenticated storage service, durable
 logical publication, handle revocation, or arbitrary-worker confinement.
 Its native manifest seal is not a payload content hash. It adds no Go/C authored
 implementation and does not replace the rclone contribution's memory-only store.
+
+## Native filesystem canaries
+
+The optional [native contribution](contrib/native-hosts/README.md) implements
+one immutable read-only public object through WinFsp, Linux FUSE and native
+Genode File_system/VFS. Shared Bend modules retain the complete facade commit,
+hash the frozen payload, bind native reader lifetimes and mediate metadata,
+bounded handles and supervisor revocation.
+
+The [execution record](contrib/native-hosts/VERIFICATION.md) captures 69 mount
+vectors plus a count-consistency check: 70 PASS lines on each local backend.
+The integrated core passes 782 checks and 41 vectors on both CPU backends;
+all six ordinary laws pass. Linux native CI passes its actual mounts, fixed
+worker probes, revocation, interpreter/broker failure and owned cleanup.
+Genode clean CI passes the 782-core and 69-mount corpus, 24 allocator checks
+on host and guest, 56 filesystem checks and eight libc/VFS checks.
+
+Windows mounted reads, caller denial and revocation pass, including its LPAC
+reader. The strict confinement gate remains failed because direct network,
+clipboard and COM probes cannot initialize in the byte-worker profile. Separate
+no-data diagnostic passes do not replace those missing observations; the
+[Windows record](contrib/native-hosts/windows/VERIFICATION.md) retains exit 1.
+
+Windows and Genode execute generated JavaScript in native Node/QuickJS. This
+does not qualify general machine-code Bend ports. Public input status is an
+operator precondition. Events identify process/session facts, not human intent,
+and are bounded diagnostics rather than durable audit. Broader host, issuer,
+whole-dataset presentation, writable publication and recovery remain pending.
+
+All 67 Bend files from integrated master dc6ff2b2 remain byte-identical. This
+contribution adds three Bend modules and changes no existing security law.
+Independent Lean kernel verification and physical GPU execution remain outside
+these results. Earlier 638/764 native records retain their exact-source counts.
 
 ## Model boundaries
 

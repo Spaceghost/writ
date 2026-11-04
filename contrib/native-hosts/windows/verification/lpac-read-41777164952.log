@@ -1,0 +1,102 @@
+Native Windows retained evidence
+Source commit: ade584c113676530a244f62b8ec032a0042451d9
+Run: https://github.com/Spaceghost/writ/actions/runs/41777164952
+Job: https://github.com/Spaceghost/writ/actions/runs/41777164952/job/126400146774
+Enclosing workflow: FAILURE. Ordinary mounted lifecycle: PASS.
+Exact owned-volume descriptor/readback allowed the zero-capability LPAC to reach Bend callbacks.
+All seven LPAC filesystem checks passed; direct API probes failed and LPAC revocation was not reached in this run.
+
+The following lines are filtered from the GitHub native job log; native result text and timestamps are preserved.
+
+2026-11-04T05:06:41.3855850Z OS: Microsoft Windows Server 2025 Datacenter 10.0.26100 64-bit
+2026-11-04T05:06:41.3857686Z Image: win25-vs2026 20261030.294.1
+2026-11-04T05:06:41.3857942Z Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe v22.23.4
+2026-11-04T05:06:41.3858705Z Policy SHA256: 11595d6ad83fd3a072784a1feded3e39d0f23cd21843278be4f959a13cd235d8
+2026-11-04T05:06:42.0949894Z PASS transport coalesced frames preserve sequence
+2026-11-04T05:06:42.1465335Z PASS transport fragmented frame remains one request
+2026-11-04T05:06:42.1956889Z PASS transport unterminated frame closes transport
+2026-11-04T05:06:42.2826924Z PASS transport oversized frame closes transport
+2026-11-04T05:06:42.3406442Z PASS transport carriage return closes transport
+2026-11-04T05:06:42.3926448Z PASS transport non-ASCII byte closes transport
+2026-11-04T05:06:42.4525942Z PASS transport NUL byte closes transport
+2026-11-04T05:06:42.6164551Z PASS transport 64 KiB frame reaches Bend with exact digest
+2026-11-04T05:06:42.6763677Z PASS transport Bend owns canonical parsing and error sequencing
+2026-11-04T05:06:46.3336397Z WinFsp: 2.2.26286.14d6e02
+2026-11-04T05:06:46.3337106Z Source: 14d6e0280ae15e2550c44d6dbc476be51649727f
+2026-11-04T05:06:46.3338762Z Release: v2.2B5 prerelease with published security fixes
+2026-11-04T05:07:26.0937260Z Native argument count: 7; Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe
+2026-11-04T05:07:26.2331095Z IDENTITY pid=4940 created=01dd6c1a6221053c user=S-1-5-21-3077485881-3661871218-4154919024-500 auth=00000000000b1bad package=none lpac=0 image_sha256=a59bcfac2c540191ae904c0fb6a94bc5da2207c0bdce5b7a06839bf6bd016540
+2026-11-04T05:07:26.2575905Z NATIVE_PASS native WinFsp filesystem mounted at Z:
+2026-11-04T05:07:26.2576851Z EVENT n=1 policy=2 kind=stat pid=7360 actor=0 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:26.2750396Z NATIVE_PASS ordinary reader receives access denied before admission
+2026-11-04T05:07:26.2750937Z EVENT n=2 policy=4 kind=stat pid=7360 actor=0 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:26.2886952Z NATIVE_PASS actual worker token presented by the wrong native process remains denied
+2026-11-04T05:07:26.2888024Z EVENT n=3 policy=5 kind=stat pid=4940 actor=1 result=allow reason=STAT
+2026-11-04T05:07:26.3044622Z EVENT n=4 policy=6 kind=open pid=4940 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:26.3989899Z EVENT n=5 policy=13 kind=read-bound-open pid=4940 actor=1 result=allow reason=READ
+2026-11-04T05:07:26.4047847Z EVENT n=6 policy=14 kind=stat pid=4940 actor=1 result=allow reason=STAT
+2026-11-04T05:07:26.4145369Z EVENT n=7 policy=15 kind=open pid=4940 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:26.4618332Z EVENT n=8 policy=20 kind=read-bound-open pid=4940 actor=1 result=allow reason=READ
+2026-11-04T05:07:26.4974448Z EVENT n=9 policy=22 kind=read-bound-open pid=4940 actor=1 result=allow reason=READ
+2026-11-04T05:07:26.5087692Z EVENT n=10 policy=23 kind=stat pid=4940 actor=1 result=allow reason=STAT
+2026-11-04T05:07:26.5244939Z EVENT n=11 policy=24 kind=open pid=4940 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:26.6194174Z EVENT n=12 policy=31 kind=stat pid=4940 actor=1 result=allow reason=STAT
+2026-11-04T05:07:26.6196737Z EVENT n=13 policy=32 kind=open pid=4940 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:26.6832865Z EVENT n=14 policy=37 kind=stat pid=4940 actor=1 result=allow reason=STAT
+2026-11-04T05:07:26.6835526Z PROBE phase=1 passed=0000007f failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=5 e5=123 e6=5 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=0 e18=0 clipboard_stage=0 com_stage=0
+2026-11-04T05:07:26.6983410Z NATIVE_PASS admitted worker read, digest, range, EOF and directory match
+2026-11-04T05:07:26.6984828Z NATIVE_PASS write, alternate stream and new-file attempts fail
+2026-11-04T05:07:26.6985937Z EVENT n=15 policy=38 kind=stat pid=7360 actor=0 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:26.7044443Z NATIVE_PASS ordinary reader remains denied after worker admission
+2026-11-04T05:07:26.7045279Z NATIVE_PASS limited same-user outsider denied VM_READ, DUP_HANDLE, WRITE_DAC and WRITE_OWNER for broker, policy and worker
+2026-11-04T05:07:26.7046123Z PROBE phase=2 passed=00000000 failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=0 e18=0 clipboard_stage=0 com_stage=0
+2026-11-04T05:07:26.7297745Z EVENT n=16 policy=40 kind=stat pid=4940 actor=1 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:26.7365149Z EVENT n=17 policy=41 kind=read-bound-open pid=4940 actor=1 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:26.7366978Z PROBE phase=3 passed=00060000 failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=5 e18=5 clipboard_stage=0 com_stage=0
+2026-11-04T05:07:26.7670766Z NATIVE_PASS revocation denies new opens and a subsequent uncached read
+2026-11-04T05:07:26.7671218Z ALL WINDOWS NATIVE CHECKS PASSED profile=mount-canary
+2026-11-04T05:07:27.2386330Z PASS native private pipes execute actual Bend admission, read, revocation and cleanup
+2026-11-04T05:07:27.2387768Z PASS native policy child ignores injected Node environment
+2026-11-04T05:07:27.3833366Z PASS native 64 KiB payload traverses private pipes with exact Bend digest
+2026-11-04T05:07:27.4146488Z PASS native fragmented reply is accepted exactly once
+2026-11-04T05:07:27.4286918Z PASS native malformed peer early poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.4443542Z PASS native malformed peer after-lf poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.4601914Z PASS native malformed peer sequence poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.4680228Z PASS native malformed peer replay poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.4758996Z PASS native malformed peer leading-zero poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.4951610Z PASS native malformed peer sequence-overflow poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.4975767Z PASS native malformed peer value-overflow poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5073653Z PASS native malformed peer trailing-field poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5233812Z PASS native malformed peer status poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5315503Z PASS native malformed peer reason poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5386270Z PASS native malformed peer cr poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5550213Z PASS native malformed peer non-ascii poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5632662Z PASS native malformed peer nul poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5708556Z PASS native malformed peer oversize poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5746416Z PASS native malformed peer partial poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:27.5783203Z PASS native malformed peer eof poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:42.5912734Z PASS native malformed peer read-timeout poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:57.5935442Z PASS native malformed peer write-timeout poisons the pipe, retires the child and refuses retry
+2026-11-04T05:07:57.5936651Z ALL WINDOWS NATIVE TRANSPORT CHECKS PASSED (22 assertions)
+2026-11-04T05:07:57.8952616Z Native argument count: 7; Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe
+2026-11-04T05:07:58.0089685Z NATIVE_PASS TCP/UDP IPv4/IPv6 receivers accepted public positive controls before the worker test
+2026-11-04T05:07:58.0090565Z NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny
+2026-11-04T05:07:58.0092100Z IDENTITY pid=784 created=01dd6c1a751080ee user=S-1-5-21-3077485881-3661871218-4154919024-500 auth=00000000000b1bad package=S-1-15-2-1307569702-1022703055-3828339259-1821050546-3373962673-1494248211-2536028752 lpac=1 image_sha256=a59bcfac2c540191ae904c0fb6a94bc5da2207c0bdce5b7a06839bf6bd016540
+2026-11-04T05:07:58.0259723Z POSITIVE channels passed=00019000 failed=00000000 child=0 clipboard_stage=4 clipboard=00000000 com_stage=4 com=00000000
+2026-11-04T05:07:58.0334656Z NATIVE_PASS owned volume device descriptor read back; actual LPAC token has traversal/read access to this device
+2026-11-04T05:07:58.0336259Z NATIVE_PASS native WinFsp filesystem mounted at Z:
+2026-11-04T05:07:58.0337183Z EVENT n=1 policy=2 kind=stat pid=9676 actor=0 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:58.0652468Z NATIVE_PASS ordinary reader receives access denied before admission
+2026-11-04T05:07:58.0653208Z EVENT n=2 policy=4 kind=stat pid=9676 actor=0 result=deny reason=ACTOR_OR_PHASE
+2026-11-04T05:07:58.0752562Z NATIVE_PASS actual worker token presented by the wrong native process remains denied
+2026-11-04T05:07:58.0753412Z EVENT n=3 policy=5 kind=stat pid=784 actor=1 result=allow reason=STAT
+2026-11-04T05:07:58.0809562Z EVENT n=4 policy=6 kind=open pid=784 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:58.1608386Z EVENT n=5 policy=13 kind=read-bound-open pid=784 actor=1 result=allow reason=READ
+2026-11-04T05:07:58.1761258Z EVENT n=6 policy=14 kind=stat pid=784 actor=1 result=allow reason=STAT
+2026-11-04T05:07:58.1916305Z EVENT n=7 policy=15 kind=open pid=784 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:58.2608247Z EVENT n=8 policy=20 kind=read-bound-open pid=784 actor=1 result=allow reason=READ
+2026-11-04T05:07:58.2765093Z EVENT n=9 policy=22 kind=read-bound-open pid=784 actor=1 result=allow reason=READ
+2026-11-04T05:07:58.2858139Z EVENT n=10 policy=23 kind=stat pid=784 actor=1 result=allow reason=STAT
+2026-11-04T05:07:58.3014655Z EVENT n=11 policy=24 kind=open pid=784 actor=1 result=allow reason=OPEN
+2026-11-04T05:07:58.3419510Z PROBE phase=1 passed=0000787f failed=00018780 e0=0 e1=0 e2=0 e3=0 e4=5 e5=123 e6=5 e7=10107 e8=10107 e9=10107 e10=10107 e11=5 e12=367 e13=6 e14=5 e15=2147943514 e16=2147943759 e17=0 e18=0 clipboard_stage=1 com_stage=1
+2026-11-04T05:07:58.4017120Z FAIL native Windows profile=lpac-canary win32=5

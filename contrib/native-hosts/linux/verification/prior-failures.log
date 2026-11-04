@@ -1,0 +1,49 @@
+# Focused historical native Linux failures
+# Original timestamped lines from the named GitHub Actions jobs.
+# Command echoes, package installation and common model/core assertions omitted.
+
+# Run 41770442545, job 126378652240, source 944fe2ba571b01d9762d9c2154d24ade77fb13a2
+2026-11-04T03:59:42.4818762Z Commit: 944fe2ba571b01d9762d9c2154d24ade77fb13a2
+2026-11-04T04:02:02.6710198Z PASS kernel-observed credentials, namespaces, seccomp and no_new_privs
+2026-11-04T04:02:02.6711390Z PROFILE linux-x86_64-canary-v1 landlock_abi=8 required=3
+2026-11-04T04:02:02.7290245Z PASS Bend capability-to-commit admission
+2026-11-04T04:02:02.7323837Z PASS mounted bytes equal sealed canary
+2026-11-04T04:02:02.7328099Z PASS range read
+2026-11-04T04:02:02.7334442Z PASS EOF
+2026-11-04T04:02:02.7340037Z FAIL scoped directory listing
+2026-11-04T04:02:02.7405223Z LINUX NATIVE CANARY CHECK FAILED; no protected-data qualification
+2026-11-04T04:02:02.7708755Z ##[error]Process completed with exit code 1.
+
+# Run 41771484394, job 126381951527, source 9f3a49d57b97ec71cc65cb76d8e0d43912fb234a
+2026-11-04T04:09:42.4467916Z Commit: 9f3a49d57b97ec71cc65cb76d8e0d43912fb234a
+2026-11-04T04:12:01.4724169Z PASS kernel-observed credentials, namespaces, seccomp and no_new_privs
+2026-11-04T04:12:01.4725028Z PROFILE linux-x86_64-canary-v1 landlock_abi=8 required=3
+2026-11-04T04:12:01.5299257Z PASS Bend capability-to-commit admission
+2026-11-04T04:12:01.5356966Z PASS mounted bytes equal sealed canary
+2026-11-04T04:12:01.5359654Z PASS range read
+2026-11-04T04:12:01.5362304Z PASS EOF
+2026-11-04T04:12:01.5379980Z PASS scoped directory listing
+2026-11-04T04:12:01.5387420Z PASS Bend revocation committed
+2026-11-04T04:12:01.5387887Z PASS existing descriptor read denied after stop
+2026-11-04T04:12:01.5388785Z PASS duplicate read denied after stop
+2026-11-04T04:12:01.5399704Z PASS native descriptors closed
+2026-11-04T04:12:01.5450322Z ALL LINUX NATIVE CANARY CHECKS PASSED; owned resources cleaned
+2026-11-04T04:12:01.5539979Z PASS kernel-observed credentials, namespaces, seccomp and no_new_privs
+2026-11-04T04:12:01.5540466Z PROFILE linux-x86_64-canary-v1 landlock_abi=8 required=3
+2026-11-04T04:12:01.6085577Z PASS Bend capability-to-commit admission
+2026-11-04T04:12:01.6135547Z PASS mounted bytes equal sealed canary
+2026-11-04T04:12:01.6138374Z PASS range read
+2026-11-04T04:12:01.6141407Z PASS EOF
+2026-11-04T04:12:01.6159030Z PASS scoped directory listing
+2026-11-04T04:12:01.6188005Z PASS existing descriptor read denied after stop
+2026-11-04T04:12:01.6188554Z PASS duplicate read denied after stop
+2026-11-04T04:12:01.6191753Z PASS native descriptors closed
+2026-11-04T04:12:01.6224125Z ALL LINUX NATIVE CANARY CHECKS PASSED; owned resources cleaned
+2026-11-04T04:12:01.6328485Z FAIL native worker ready
+2026-11-04T04:12:01.6328944Z PROBE number=41 ok=0 value=8
+2026-11-04T04:12:01.6329296Z SETUP step=8
+2026-11-04T04:12:01.6331777Z SETUP REFUSED before input loading or Bend admission
+2026-11-04T04:12:01.6332336Z LINUX NATIVE CANARY CHECK FAILED; no protected-data qualification
+2026-11-04T04:12:01.6333014Z /home/runner/work/_temp/ff808f7d-2f68-4d99-ac9a-9a7fb02d32c4.sh: line 43: rg: command not found
+2026-11-04T04:12:01.6694972Z ##[error]Process completed with exit code 127.
+

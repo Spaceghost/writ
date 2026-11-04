@@ -1,0 +1,177 @@
+name: WritFS native Linux mount
+
+# Public canary bring-up. Missing native controls fail this lane; a passing
+# model test does not replace the mount, worker, or failure tests below.
+on:
+  push:
+    branches: [master, writfs-native-hosts-ci]
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/rclone/bend/**'
+      - 'contrib/native-hosts/AGENTS.md'
+      - 'contrib/native-hosts/PROTOCOL.md'
+      - 'contrib/native-hosts/runtime/*.mjs'
+      - 'contrib/native-hosts/linux/**'
+      - '.github/workflows/writfs-linux-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      BEND_NO_TELEMETRY: '1'
+      CC: clang-19
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22.23.4'
+          check-latest: false
+
+      - name: Install native dependencies and record the host
+        run: |
+          set -euo pipefail
+          writfs_build="$RUNNER_TEMP/writfs-linux-build"
+          writfs_logs="$RUNNER_TEMP/writfs-linux-logs"
+          mkdir -p "$writfs_build" "$writfs_logs"
+          printf 'WRITFS_LINUX_BUILD=%s\nWRITFS_LINUX_LOGS=%s\n' \
+            "$writfs_build" "$writfs_logs" >> "$GITHUB_ENV"
+          {
+            printf 'Commit: %s\nRunner: %s %s\n' "$GITHUB_SHA" "$ImageOS" "$ImageVersion"
+            uname -a
+            cat /etc/os-release
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends \
+              clang-19 gcc make pkg-config libfuse3-dev fuse3 kmod
+            sudo modprobe fuse
+            test -c /dev/fuse
+            clang-19 --version
+            gcc --version
+            pkg-config --modversion fuse3
+            node --version
+            dpkg-query -W libfuse3-3 libfuse3-dev fuse3
+          } 2>&1 | tee "$writfs_logs/environment.log"
+
+      - name: Install the verified Bend compiler
+        run: |
+          set -euo pipefail
+          writfs_bend="$RUNNER_TEMP/writfs-linux-bend-2.0.39"
+          mkdir -p "$writfs_bend"
+          curl --proto '=https' --tlsv1.2 --retry 3 -fL \
+            https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+            -o "$writfs_bend/release.tar.gz"
+          printf '%s  %s\n' \
+            6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+            "$writfs_bend/release.tar.gz" | sha256sum -c -
+          tar -xzf "$writfs_bend/release.tar.gz" -C "$writfs_bend"
+          test "$("$writfs_bend/bend/bin/bend" version)" = 'bend 2.0.39'
+          printf '%s\n' "$writfs_bend/bend/bin" >> "$GITHUB_PATH"
+
+      - name: Build the shared policy and run the common gates
+        run: |
+          set -euo pipefail
+          bend writfs/Mount.bend -o "$WRITFS_LINUX_BUILD/mount.mjs"
+          bend writfs/MountTests.bend -o "$WRITFS_LINUX_BUILD/mount-tests.js"
+          node "$WRITFS_LINUX_BUILD/mount-tests.js" | tee "$WRITFS_LINUX_LOGS/mount-js.log"
+          bend writfs/MountTests.bend -o "$WRITFS_LINUX_BUILD/mount-tests-native"
+          "$WRITFS_LINUX_BUILD/mount-tests-native" +RTS --threads 4 --gpu off \
+            | tee "$WRITFS_LINUX_LOGS/mount-native.log"
+          node contrib/native-hosts/runtime/check-bridge.mjs "$WRITFS_LINUX_BUILD/mount.mjs" \
+            | tee "$WRITFS_LINUX_LOGS/bridge.log"
+          bend Tests.bend -o "$WRITFS_LINUX_BUILD/core-tests.js"
+          node "$WRITFS_LINUX_BUILD/core-tests.js" | tee "$WRITFS_LINUX_LOGS/core-js.log"
+          bend Tests.bend -o "$WRITFS_LINUX_BUILD/core-tests-native"
+          "$WRITFS_LINUX_BUILD/core-tests-native" +RTS --threads 4 --gpu off \
+            | tee "$WRITFS_LINUX_LOGS/core-native.log"
+          bend PROOF.bend | tee "$WRITFS_LINUX_LOGS/ordinary-proofs.log"
+
+      - name: Build and test native pipe transport
+        run: |
+          set -euo pipefail
+          make -C contrib/native-hosts/linux CC=gcc OUT="$WRITFS_LINUX_BUILD" \
+            2>&1 | tee "$WRITFS_LINUX_LOGS/native-build.log"
+          "$WRITFS_LINUX_BUILD/transport-probe" "$(command -v node)" \
+            "$GITHUB_WORKSPACE/contrib/native-hosts/runtime/node-policy.mjs" \
+            "$WRITFS_LINUX_BUILD/mount.mjs" \
+            | tee "$WRITFS_LINUX_LOGS/native-transport.log"
+          sha256sum "$WRITFS_LINUX_BUILD/writfs-linux" "$WRITFS_LINUX_BUILD/mount.mjs" \
+            contrib/native-hosts/linux/*.c contrib/native-hosts/linux/*.h \
+            contrib/native-hosts/runtime/node-policy.mjs \
+            | tee "$WRITFS_LINUX_LOGS/source-and-build-sha256.txt"
+
+      - name: Exercise the real mount, confinement, revocation and interpreter failure
+        run: |
+          set -euo pipefail
+          writfs_user="writfs-ci-$GITHUB_RUN_ID"
+          writfs_owned_user=0
+          writfs_work=
+          cleanup() {
+            if [ -n "$writfs_work" ]; then
+              sudo rmdir "$writfs_work"
+            fi
+            if [ "$writfs_owned_user" = 1 ]; then
+              sudo userdel "$writfs_user"
+            fi
+          }
+          trap cleanup EXIT
+          sudo useradd --system --user-group --no-create-home \
+            --shell /usr/sbin/nologin "$writfs_user"
+          writfs_owned_user=1
+          writfs_uid="$(id -u "$writfs_user")"
+          writfs_gid="$(id -g "$writfs_user")"
+          writfs_work="$(sudo mktemp -d /tmp/writfs-linux-fixtures.XXXXXX)"
+          sudo chmod 0755 "$writfs_work"
+          writfs_canary="$WRITFS_LINUX_BUILD/public-canary.bin"
+          printf 'WritFS public canary\000binary\377\n' > "$writfs_canary"
+          chmod 0600 "$writfs_canary"
+          writfs_arguments=(
+            --node "$(command -v node)"
+            --bridge "$GITHUB_WORKSPACE/contrib/native-hosts/runtime/node-policy.mjs"
+            --module "$WRITFS_LINUX_BUILD/mount.mjs"
+            --public-fixture "$writfs_canary"
+            --work-dir "$writfs_work"
+            --uid "$writfs_uid" --gid "$writfs_gid"
+          )
+          sudo "$WRITFS_LINUX_BUILD/writfs-linux" "${writfs_arguments[@]}" --case revoke \
+            2>&1 | tee "$WRITFS_LINUX_LOGS/native-revocation.log"
+          sudo "$WRITFS_LINUX_BUILD/writfs-linux" "${writfs_arguments[@]}" --case policy-exit \
+            2>&1 | tee "$WRITFS_LINUX_LOGS/native-policy-failure.log"
+          sudo "$WRITFS_LINUX_BUILD/crash-probe" "$WRITFS_LINUX_BUILD/writfs-linux" \
+            "$(command -v node)" \
+            "$GITHUB_WORKSPACE/contrib/native-hosts/runtime/node-policy.mjs" \
+            "$WRITFS_LINUX_BUILD/mount.mjs" "$writfs_canary" "$writfs_work" \
+            "$writfs_uid" "$writfs_gid" \
+            2>&1 | tee "$WRITFS_LINUX_LOGS/native-broker-crash.log"
+          set +e
+          sudo "$WRITFS_LINUX_BUILD/writfs-linux" "${writfs_arguments[@]}" \
+            --require-landlock 4294967294 > "$WRITFS_LINUX_LOGS/setup-refusal.log" 2>&1
+          writfs_refused=$?
+          set -e
+          cat "$WRITFS_LINUX_LOGS/setup-refusal.log"
+          test "$writfs_refused" = 1
+          grep -F 'SETUP REFUSED before input loading or Bend admission' \
+            "$WRITFS_LINUX_LOGS/setup-refusal.log"
+          printf 'PASS missing required Landlock capability refuses setup before input\n'
+          test "$(find "$writfs_work" -mindepth 1 -maxdepth 1 -type d | wc -l)" = 0
+          printf 'PASS all owned native fixture mounts and directories retired\n'
+
+      - name: Retain native evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writfs-linux-native-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writfs-linux-logs/
+          if-no-files-found: error
+          retention-days: 14

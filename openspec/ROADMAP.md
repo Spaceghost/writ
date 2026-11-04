@@ -1,7 +1,8 @@
 # Pending implementation
 
-Every pending change below is proposed. Its implementation tasks are unchecked. Existing
-Bend decisions and protocol models do not make the missing host service complete.
+Every pending change below remains incomplete. Its task list records bounded
+implementation evidence already obtained. Models and partial native probes do
+not qualify the complete host service.
 
 The separately implemented [rclone contribution](../contrib/rclone/README.md)
 provides a bounded memory-only client integration exercise. Its
@@ -13,6 +14,13 @@ authenticated issuer, confinement, and durable-publication work below pending.
 primitive: private read-only Btrfs snapshots and ZFS filesystem/zvol clones.
 Its bounded native adapter does not complete the broader Linux host, POSIX
 presentation, authenticated issuer, or durable-publication requirements below.
+
+The [native canary frontends](../contrib/native-hosts/README.md) add WinFsp,
+Linux FUSE and native Genode File_system/VFS for one immutable public object.
+Their [execution record](../contrib/native-hosts/VERIFICATION.md) leaves broader
+host, issuer, namespace and durable-audit/publication tasks below open. Windows
+mounted access passes while its full confinement gate remains failed. Generated
+JavaScript execution is separate from the machine-code runtime proposals.
 
 **Windows is the first product target; Genode is the reference native capability
 platform.** The shared Bend policy core also targets native Linux and a later

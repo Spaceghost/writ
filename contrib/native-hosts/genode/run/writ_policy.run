@@ -1,0 +1,32 @@
+source [file join [file dirname [info script]] writ_common.inc]
+build { core init timer lib/ld lib/libc lib/libm lib/vfs test/writ_policy }
+create_boot_directory
+writ_generated { core-tests.js mount-tests.mjs }
+if {![info exists env(WRIT_CORE_EXPECTED)] ||
+    ![regexp {^[1-9][0-9]{0,4}$} $env(WRIT_CORE_EXPECTED)]} {
+    error "WRIT_CORE_EXPECTED must explicitly pin the complete core assertion count"
+}
+set expected_core $env(WRIT_CORE_EXPECTED)
+
+install_config {
+config
+} [writ_parent_services] {
++ start test_writ_policy | caps: 256 | ram: 128M
+  + config | expected_core: } $expected_core {
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + vfs | + dir dev | + log
+  + route
+} [writ_rom_route { test_writ_policy ld.lib.so libc.lib.so libm.lib.so vfs.lib.so core-tests.js mount-tests.mjs }] {
+-
+}
+
+build_boot_image [build_artifacts]
+run_genode_until {WRIT POLICY NATIVE (PASS|FAIL)} 600
+if {![regexp {PASS native allocator checks: 24} $output] ||
+    ![regexp "PASS native Genode core corpus: $expected_core" $output] ||
+    ![regexp {PASS native Genode mount corpus: 69} $output] ||
+    ![regexp {WRIT POLICY NATIVE PASS} $output] ||
+    [regexp {WRIT POLICY NATIVE FAIL} $output]} {
+    error "native generated Bend corpus failed"
+}
+puts "WRIT GENODE CORPUS ACCEPTED $expected_core + 69"

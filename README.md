@@ -74,10 +74,22 @@ using [Drift](https://github.com/Spaceghost/drift) for portable drivers.
 
 Start with [the platform architecture](docs/PLATFORMS.md): it maps native authority,
 delegation, worker isolation, sealed artifacts, and publication to one host
-contract. The [native filesystem product plan](docs/WRITFS-PRODUCT.md) prioritizes
-Windows while retaining separate Linux and native Genode acceptance. Complete host
-ports remain proposed. The native storage backend below is a separate Linux
-integration with a deliberately narrower trust boundary.
+contract. The [native filesystem contributions](contrib/native-hosts/README.md)
+now provide one immutable public-canary view through WinFsp, Linux FUSE and native
+Genode File_system/VFS. Bend owns admission, exact identity, handles and revocation;
+OS bindings retain native requester evidence. Their
+[execution record](contrib/native-hosts/VERIFICATION.md) separates mounted
+behavior from complete confinement and product qualification.
+
+Windows mounted reads, caller denial and revocation pass, including its LPAC
+reader. Its strict confinement gate still fails because direct network,
+clipboard and COM probes cannot initialize in that byte-worker profile.
+Separate no-data diagnostics pass but do not replace that missing qualification.
+The [Windows record](contrib/native-hosts/windows/VERIFICATION.md) preserves both.
+
+The [native filesystem product plan](docs/WRITFS-PRODUCT.md) prioritizes Windows.
+Complete protected hosts, arbitrary applications, external issuance and durable
+audit/publication remain pending. Native storage below has a separate boundary.
 
 ## Native storage
 
@@ -90,9 +102,10 @@ or FUSE data proxy.
 
 The initial backend creates private, read-only stages under a trusted
 administrative monitor. It includes an inspection/public-fixture CLI and
-disposable native filesystem tests. A mounted POSIX view, device export,
-durable logical publication, and complete worker confinement remain separate
-host work. See the [backend guide](writfs/README.md) and its
+disposable native filesystem tests. Whole-dataset presentation, device export,
+durable logical publication and complete worker confinement remain separate
+host work. The canary frontends do not yet expose whole staged datasets.
+See the [backend guide](writfs/README.md) and its
 [verification record](writfs/VERIFICATION.md).
 
 ## Status

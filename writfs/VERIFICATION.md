@@ -15,7 +15,7 @@ capabilities, `/dev/zfs`, `/dev/fuse`, or loop-control device.
 | **WritFS total** | **95** | **Both complete runs passed** |
 | Shared SHA-256 regression | 25 | [JavaScript](verification/shared-sha-js.txt), [native CPU](verification/shared-sha-native.txt) |
 | Existing rclone model regression | 74 | [JavaScript](verification/rclone-model-js.txt), [native CPU](verification/rclone-model-native.txt) |
-| Existing core library regression | 638 | [JavaScript](../verification/tests-js.txt), [native CPU](../verification/tests-native.txt) |
+| Existing core regression at the storage revision | 638 | [JavaScript](https://github.com/Spaceghost/writ/blob/7ad85be40485c7ba8547f63dc96971d27e7164ad/verification/tests-js.txt), [native CPU](https://github.com/Spaceghost/writ/blob/7ad85be40485c7ba8547f63dc96971d27e7164ad/verification/tests-native.txt) |
 
 The model checks exercise all three provider-specific operation identities,
 complete uint64 identities, canonical locators, malformed/writable/nested source

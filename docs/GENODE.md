@@ -1,13 +1,17 @@
 # Genode as Writ's reference host
 
-**Build Writ's enforcing environment on Genode's capability machinery. Keep the
-information-flow rules and final authority checks in Bend 2.** The same Writ
-contract will also have Linux, Windows, and later Drift-backed kernel hosts; their
-native object handles and isolation mechanisms need separate validation.
+**Genode is Writ's capability reference; Windows is the first product target.**
+A native Genode program can now mount the contributed `File_system` service
+through VFS and read its immutable public canary at `/writ/data`. The shared
+Bend monitor admits observations and revokes retained handles. Linux FUSE and
+Windows WinFsp use the same Bend decisions, with separate native evidence.
 
-This document records researched mechanisms and a proposed integration. There is
-no Writ Genode executable, session service, or live confinement result yet. The
-implementation work is tracked in
+This document records the working bounded canary and the remaining protected-host
+architecture. The [native contribution](../contrib/native-hosts/genode/README.md)
+has a real session service and libc/VFS consumer. Its diagnostic clients have
+log capabilities, so the passing mount does not establish a completely confined
+worker, safe arbitrary capability delegation or durable publication. Broader
+implementation work remains tracked in
 [add-genode-host](../openspec/changes/add-genode-host/proposal.md) and the shared
 [portable host contract](../openspec/changes/add-portable-host-contract/proposal.md).
 
@@ -23,9 +27,9 @@ downloaded and checked against the pin already recorded by
 df74f96c70c72607d66f5440439680b63683f09edd92809996845f0f29453a74
 ```
 
-The first native reference target is **x86_64, base-hw**, initially under QEMU.
-Initial runtime/session development starts on `base-linux`; its deployment
-qualification is distinct from the native reference. Foundations 26.05 explicitly
+The tested native canary target is **x86_64, base-hw**, under QEMU TCG.
+Separate Bend native C runtime development uses `base-linux`; its deployment
+qualification remains distinct from the native reference. Foundations 26.05 explicitly
 makes capability security conditional on
 the selected kernel implementation. A successful run on one base platform does
 not establish another's security. [G1]
@@ -33,6 +37,37 @@ not establish another's security. [G1]
 Genode's current upstream is Codeberg. Its configuration format is HID; new
 recipes should follow the pinned source and current documentation rather than
 copying old XML recipes. [G2]
+
+## Executing native canary
+
+[Run 41776659987](https://github.com/Spaceghost/writ/actions/runs/41776659987)
+passed the clean build and three native boots at
+`a66c03e5249d3e507694dbe11070a27aa8024d81`. The
+[retained evidence](../contrib/native-hosts/genode/VERIFICATION.md) records:
+
+| Native gate | Result |
+| --- | --- |
+| Generated Bend core | 782 assertions and 41 HostBinding vectors passed |
+| Generated mounted-view policy | All 69 assertions passed, including the full 64 KiB boundary |
+| Runtime allocator | 24 native assertions passed; the same host assertions passed ASan, UBSan and leak detection |
+| Actual filesystem sessions | 56 assertions passed, including forged labels, malformed shared-memory descriptors, session-local handles and retained-handle revocation |
+| Actual libc/VFS mount | Eight assertions passed through `open`, `read`, `lseek`, `fstat` and `close`, with write/unknown-object denial |
+
+The service executes the unchanged Bend-generated `mount.mjs` inside native
+QuickJS, with private policy state, a 64 MiB reservation limit and active stack
+checks. The C/C++ session/packet binding and bounded allocator adaptation stay
+under the approved `contrib/native-hosts/` boundary; policy and release decisions
+remain in Bend. Native Node provides the corresponding generated-module path
+on Linux and Windows. This is distinct from porting Bend's native C runtime.
+
+The trusted supervisor's exact route binds one retained reader session. The
+admitted native session owns its handles; an unadmitted component or forged label
+suffix cannot acquire that invocation. This establishes the tested
+component/session association, not a person's identity or a general delegation
+rule. The initial 600-second corpus timeout, bounded allocation-reuse fix and
+successful later runs remain in the evidence record. Full protected-worker
+confinement, arbitrary writable files, durable recovery and native Btrfs/ZFS
+block storage remain separate acceptance work.
 
 ## What Genode gives us
 
@@ -80,8 +115,8 @@ Writ's confidentiality and integrity labels. [G4]
 
 ## Proposed component layout
 
-The first reference topology keeps policy and commit capabilities in trusted
-components. An untrusted transformation receives only approved inputs and a
+The proposed topology for protected transformations keeps policy and commit
+capabilities in trusted components. An untrusted transformation receives only approved inputs and a
 private result channel. It never receives the general publication capability.
 
 ```mermaid
@@ -172,15 +207,18 @@ authority remains security-relevant. Hybrid components use a separate build and
 startup path; their Linux access belongs to the host trust boundary. Treat this
 configuration as Genode-on-Linux, distinct from a native Writ Linux broker. [G9]
 
-For Bend, begin with the CPU policy path and the existing denial corpus. Genode's
-RPC interface is a C++ framework API, while the pinned Bend native output depends
-on a runtime with memory mapping, threads, synchronization, clocks, and IO. A
-working runtime/ABI port is a prerequisite, not supplied by the `.bend` extension.
-All authored Writ policy and verification remain Bend 2. Generated native output
-stays a build artifact. No handwritten C/C++ policy substitute or untested native
-bridge is included here. [G3, G10]
+The current base-hw canary executes the CPU policy corpus through native QuickJS.
+Genode's RPC interface remains a C++ framework API, while Bend's separate native
+C output depends on memory mapping, threads, synchronization, clocks and IO.
+Its general runtime/ABI port still has the blockers recorded below. The working
+generated-JavaScript service does not disable the native C runtime's guard
+checks or claim that those primitives have been supplied. All authored Writ
+policy and verification remain Bend 2; generated output stays a build artifact.
+The approved native binding has its own
+[source and trust inventory](../contrib/native-hosts/genode/README.md#source-and-trust-inventory).
+[G3, G10]
 
-The runtime port and the ingress are specified in
+The broader native C runtime port and ingress are specified in
 [add-genode-bend-component](../openspec/changes/add-genode-bend-component/proposal.md):
 Bend-authored effects with C twins over one inventoried `extern "C"` shim. The
 binding between Genode objects and Writ handles is modeled in Bend by
@@ -196,10 +234,11 @@ own authoritative graph/state in a separate protection domain from untrusted
 compute. A correct candidate check cannot defend monitor memory that a device is
 allowed to overwrite. [G11]
 
-## What must be demonstrated before declaring support
+## Remaining protected-host acceptance
 
-Build a pinned native image, run the Bend policy corpus inside the monitor, and
-exercise the complete report-to-summary scenario. Then try forged references,
+The canary already builds a pinned native image and runs the complete current
+Bend core and mount corpora in the guest. Full host qualification still requires
+the complete report-to-summary topology. Exercise forged references,
 delegated endpoints, hostile label suffixes, retained output channels, stale
 sessions, mutable artifacts, restarted services, and exhausted quotas. Capture
 the actual component routes, kernel/platform identity, build hashes, denials,

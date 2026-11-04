@@ -1,0 +1,9 @@
+schema: spec-driven
+created: 2026-11-03
+x-status: implemented-bounded-canary
+x-related-work:
+  - add-portable-host-contract
+  - add-windows-host
+  - add-linux-host
+  - add-genode-host
+  - add-writfs-namespace

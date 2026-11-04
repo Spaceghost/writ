@@ -3,7 +3,7 @@ name: WritFS native filesystems
 on:
   push:
     branches:
-      - main
+      - master
       - writfs-native-ci
     paths:
       - 'writfs/**'
