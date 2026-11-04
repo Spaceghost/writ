@@ -55,7 +55,7 @@ if {[regexp {probe_reservation: FAIL} $output]} {
 	puts stderr "Error: the probe reported a failure"
 	exit 1
 }
-if {![regexp {child "writ_probe_reservation" exited with exit value 0\r?\n} $output]} {
+if {![regexp {child "writ_probe_reservation" exited with exit value 0\r*\n} $output]} {
 	puts stderr "Error: writ_probe_reservation did not exit with value 0"
 	exit 1
 }

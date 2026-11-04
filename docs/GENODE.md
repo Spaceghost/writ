@@ -211,8 +211,10 @@ The current base-hw canary executes the CPU policy corpus through native QuickJS
 Genode's RPC interface remains a C++ framework API, while Bend's separate native
 C output depends on memory mapping, threads, synchronization, clocks and IO.
 On `base-linux` that C output now runs the full corpus through the inventoried
-host-layer memory shim (the runtime rows below); its `base-hw` port and a
-parent-recorded fault remain open. The working
+host-layer memory shim (the runtime rows below), and on `base-hw` under QEMU
+TCG it runs the same corpus and serves the Writ channel; on `base-hw` the
+parent records the component's self-reported fault exit, while on
+`base-linux` a parent-recorded fault remains open. The working
 generated-JavaScript service does not disable the native C runtime's guard
 checks or claim that those primitives have been supplied. All authored Writ
 policy and verification remain Bend 2; generated output stays a build artifact.
@@ -312,7 +314,8 @@ after it give the current memory, fault, event-loop, and corpus results.
 Fault-substitute decision: the profile's halting substitute is the base
 platform's fault path, which ends the component with no resumption. GB-003
 also requires the parent to record the fault, and on `base-linux` it does
-not, so that requirement stays open. `base-hw` must be measured separately.
+not, so that requirement stays open there. `base-hw` was measured separately
+(below, "Runtime rows on base-hw").
 
 The next step is a host-layer fix, outside Bend: a Genode-side `mprotect`
 that changes the guard range's attachment in the component's region map,
@@ -343,8 +346,10 @@ with a refusal line instead of hanging on a resource request (record:
 
 Two base-linux facts limit this result. First, Genode does not deliver
 region-map fault signals on Linux, so the shim fills chunks from a Linux
-SIGSEGV handler it installs itself. Kernels that deliver region-map faults
-need a separate front end, which has not been built. Second, init still
+SIGSEGV handler it installs itself. The base-hw lane (Task 1) built the
+region-map front end for base-hw beside it, selected at build time
+([base-hw hello record](../verification/genode-bend-hello-base-hw.txt));
+NOVA and seL4 have none. Second, init still
 recorded nothing when the component died, so GB-003's parent-record
 requirement stays open on base-linux.
 
@@ -455,6 +460,66 @@ out; coalescing of repeated signals is not reliably exercised. Current gap: one 
 restarts the monitor after fuel exhaustion (GB-008's supervisor restart),
 the fuel is global so any client can end the service, whether the reply
 signal can block the loop on base-linux beyond the cases run is not shown,
-and `base-hw` is not attempted. Record formats:
+and `base-hw` is covered in the next section. Record formats:
 [Channel.md](../hosts/genode/effects/Channel.md); evidence:
 [genode-channel-base-linux.txt](../verification/genode-channel-base-linux.txt).
+
+## Runtime rows on base-hw, 2026-11
+
+Example: in a `KERNEL=hw BOARD=pc` build directory, `make run/writ_bend_tests`
+boots core, init, and the same generated C of `Tests.bend` from an ISO under
+QEMU TCG (`-accel tcg`, an emulated boot, not native hardware) at ram 256M.
+It prints 782 PASS lines, exits 0, and its 834 lines are byte-identical to
+the Linux single-lane run; the four examples match too. `make
+run/writ_bend_monitor_accept` serves reader R's request (Committed) and
+`make run/writ_bend_monitor_substitute` has Bend deny the body claiming S
+(reason 6), with request and result records word for word as on
+`base-linux`; all eight channel runs pass. Current gap: everything is
+emulated boot and one lane (`--threads 1`, `--gpu off`, no device), the
+fault record is self-reported, the binary check still fails against the
+Linux allow list, and NOVA and seL4 have no fault front end.
+
+On `base-hw` the shim fills reservation chunks through Genode's region-map
+fault handler instead of a SIGSEGV handler, on its own "writ_fault"
+entrypoint. Overflow (`scripts/runtime-profile/Overflow.bend`, ram 3G, caps
+2000) reached the runtime's guard page; the shim logged `unresolved fault
+at 0x2280000000 (guard page), component terminates`, and init logged
+`exited with exit value 139`. Core logged nothing, because core reflects a
+fault to a registered handler without a diagnostic. That record is the
+component's own exit value through `Parent::exit(139)`, not a fault the
+parent observed, and it carries six stated limits
+([base-hw hello record](../verification/genode-bend-hello-base-hw.txt),
+GB-003 ON BASE-HW). Its first run was refused for RM-session quota (core
+charges each attached piece to the session); the shim now upgrades that
+session from the component's own quota, bounded (22 upgrades in that run).
+Every row was measured again on `base-hw`, with provenance per row (Bend
+program, C probe, or source reading):
+[genode-runtime-rows-base-hw.md](../verification/genode-runtime-rows-base-hw.md).
+The corpus and Overflow are in
+[genode-corpus-base-hw.txt](../verification/genode-corpus-base-hw.txt).
+
+The channel's `Genode.take` wakes the same way as on `base-linux`, as
+observed: it runs on the runtime's io_help thread (`pthread.0`), parks in
+the shim's semaphore, and returns when the client's signal ups it; the loop
+then resumes through the runtime's own completion pipe (read in the
+generated C). Two runs differ from `base-linux` in host behaviour, not in
+the shim. When the monitor exits, its RAM dataspaces (the clients' buckets)
+vanish, so a flooding client's next write faults and core logs it. The
+`base-hw` kernel also drops a signal to a freed signal context silently,
+where `base-linux` core warns. In the queue run, coalescing of repeated signals and a
+full-depth ring were exercised on `base-hw` (observed in both runs, timing
+dependent), which `base-linux` did not reliably do. The binary check on the `base-hw` monitor
+reports exactly the effect rows `Genode.log`, `Genode.put`, and
+`Genode.take` and fails its symbol half against the Linux allow list, as on
+`base-linux`. Evidence:
+[genode-channel-base-hw.txt](../verification/genode-channel-base-hw.txt).
+
+The design's ordering, "`base-linux` first, `base-hw` second, evidence kept
+separate", was followed per base, not across bases. The corpus now passes on
+both bases, recorded in separate files, and each base passed corpus parity
+before its own Writ session was served (GB-004's per-base reading). The
+design's stricter order, parity on both bases before the session is served
+on either, was not followed: the `base-linux` session was served before
+`base-hw` parity existed. The gap is narrowed, not closed: the `base-hw`
+evidence is an emulated boot with one lane, and the Genode host's
+confinement, delegation, and revocation tasks are not started.

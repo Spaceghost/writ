@@ -8,7 +8,10 @@
 # Live copy: ../writ-genode/writ-repo/run/writ_bend.tcl (byte-identical).
 #
 # writ_bend_boot NAME RAM CAPS ?STDOUT? ?START? ?CONFIG? ?CHILDREN? ?BUILDS?
-#   Builds and boots one Bend component under init on base-linux. Authority:
+#   Builds and boots one Bend component under init, on base-linux or, from
+#   a KERNEL=hw BOARD=pc build directory, on base-hw under QEMU (the run
+#   tool's boot_dir/hw and power_on/qemu; the boot configuration is the
+#   same; Genode base-hw lane, Task 1). Authority:
 #   init routes the parent's LOG, PD, CPU, ROM, and RM services and a Timer
 #   session from the sibling timer. The component's VFS holds /dev/log and a
 #   component-local vfs_pipe file system at /pipe for libc's pipe() (the
@@ -30,7 +33,10 @@
 #   procedure installed before the parameters existed.
 #
 # writ_bend_require_exit0 NAME
-#   Fails unless init reported exit value 0 for NAME.
+#   Fails unless init reported exit value 0 for NAME. The line may end in
+#   any number of carriage returns: base-linux's log ends it in "\r\n",
+#   the QEMU serial log of base-hw in "\r\r\n" (Genode base-hw lane,
+#   Task 1, verification/genode-bend-hello-base-hw.txt).
 #
 # writ_bend_require_shim_lines NAME
 #   Fails unless the shim's start line and its exit report are present.
@@ -96,8 +102,31 @@ config
 
 proc writ_bend_require_exit0 { name } {
 	global output
-	if {![regexp "child \"$name\" exited with exit value 0\r?\n" $output]} {
+	if {![regexp "child \"$name\" exited with exit value 0\r*\n" $output]} {
 		puts stderr "Error: $name did not exit with value 0"
+		exit 1
+	}
+}
+
+# writ_bend_require_refusal_exit NAME (base-hw only; Genode base-hw lane)
+#   The shim's base-hw refusal ends the component with Parent::exit(139)
+#   (hosts/genode/shim/writ_mem.cc, "Failure behaviour"). Fails unless init
+#   reported exactly exit value 139 for NAME and core logged none of its own
+#   fault diagnostics (repos/base/src/core/region_map_component.cc:97-110,
+#   base-hw's pager.cc "unresolvable exception"): with the shim's handler
+#   registered core reflects the fault without one. Used by
+#   writ_bend_overflow.run and writ_probe_reservation_guard.run.
+proc writ_bend_require_refusal_exit { name } {
+	global output
+	if {![regexp "child \"$name\" exited with exit value (\[0-9-\]+)" $output -> value]} {
+		set value "none"
+	}
+	if {$value ne "139"} {
+		puts stderr "Error: on base-hw init must report exit value 139 for $name (got $value)"
+		exit 1
+	}
+	if {[regexp {illegal (READ|WRITE|EXEC)|unresolvable exception|violation at address|giving up on unexpectedly deep} $output]} {
+		puts stderr "Error: on base-hw core logged a fault line; the shim's handler did not take the fault"
 		exit 1
 	}
 }

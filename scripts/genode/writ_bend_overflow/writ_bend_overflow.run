@@ -41,6 +41,19 @@
 # and WRIT_BEND_CAPS override them; smaller values (256M, or 1000 caps)
 # exercise the shim's quota refusal instead of the guard (runs 1 and 2).
 #
+# base-hw (Genode base-hw lane, Task 2), from a KERNEL=hw BOARD=pc build
+# directory: the guard touch is a region-map fault reflected to the shim's
+# handler, which logs the same refusal line and ends the component with
+# Parent::exit(139) (hosts/genode/shim/writ_mem.cc, "Failure behaviour");
+# core logs nothing for it. The QEMU guest gets 4 GiB (-m 4096, added to
+# qemu_args below; the run tool's default is 800 MiB, tool/run/power_on/
+# qemu:84-108) so that init can grant the 3G quota. On base-hw the last
+# condition is instead: init reported exactly exit value 139 and core
+# logged no fault line of its own (Task 3); the
+# process-list checks are printed but do not count (they read the host's
+# processes, not the guest's). A result line may end in any number of
+# carriage returns (QEMU's serial log ends lines in "\r\r\n").
+#
 
 set name writ_bend_overflow
 set ram 3G
@@ -50,6 +63,8 @@ if {[info exists ::env(WRIT_BEND_RAM)]}  { set ram  $::env(WRIT_BEND_RAM);  set 
 if {[info exists ::env(WRIT_BEND_CAPS)]} { set caps $::env(WRIT_BEND_CAPS); set overridden 1 }
 
 source [select_from_repositories run/writ_bend.tcl]
+
+if {[have_spec hw]} { append qemu_args " -m 4096 " }
 
 writ_bend_boot $name $ram $caps
 
@@ -72,10 +87,17 @@ set refused [regexp "writ_mem: unresolved fault at \[^ \]+ \\((\[^)\]*)\\)" $out
 set guard   [expr {$reason eq "guard page"}]
 set kernel  [regexp {Kernel: Segmentation fault} $output]
 set runtime [regexp {bend: memory fault} $output]
-set resumed [regexp "\\\[init -> $name\\\] \[0-9\]+\r?\n" $output]
+set resumed [regexp "\\\[init -> $name\\\] \[0-9\]+\r*\n" $output]
 set init_exit [regexp "child \"$name\" exited with exit value (\[0-9-\]+)" $output -> exit_value]
 if {!$init_exit} { set exit_value "none" }
 set init_lines [regexp -all -line "^\\\[init\\\] .*$name" $output]
+# core's own fault diagnostics (repos/base/src/core/region_map_component.cc:
+# 97-110, and the base-hw kernel's unresolvable-exception line): with the
+# shim's handler registered core reflects the fault and prints none of them
+set core_line [regexp {illegal (READ|WRITE|EXEC)|unresolvable exception|violation at address|giving up on unexpectedly deep} $output]
+set upgrades "none"
+regexp {writ_mem: \[refusal\] rm upgrades sent=([0-9]+) declined=([0-9]+)} $output -> sent declined
+if {[info exists sent]} { set upgrades "sent $sent, declined $declined" }
 
 puts "\n--- $name outcome (ram $ram, caps $caps) ---"
 puts "shim refusal line:       $refused (reason: $reason)"
@@ -85,6 +107,8 @@ puts "runtime fault message:   $runtime"
 puts "result printed:          $resumed"
 puts "init exit line:          $init_exit (value $exit_value)"
 puts "init lines naming child: $init_lines"
+puts "core fault line:         $core_line"
+puts "rm session upgrades:     $upgrades"
 puts "process alive:           $alive"
 puts "ps control (timer):      $control"
 
@@ -98,7 +122,9 @@ if {!$refused} {
 	puts stderr "Error: no shim refusal line"
 	exit 1
 }
-if {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
+if {[have_spec hw]} {
+	writ_bend_require_refusal_exit $name
+} elseif {!(($init_exit && $exit_value != 0) || (!$alive && $control))} {
 	puts stderr "Error: the component neither exited nonzero nor vanished"
 	exit 1
 }

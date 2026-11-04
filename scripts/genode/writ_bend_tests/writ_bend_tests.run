@@ -3,7 +3,9 @@
 # implementation. Genode host-layer lane, Task 3. Starts writ_bend_tests,
 # the unmodified C that Bend 2.0.39 emits for Tests.bend linked with the
 # shim's memory unit and Genode's libc, under init on base-linux
-# (BOARD=linux KERNEL=linux), single lane, CPU only.
+# (BOARD=linux KERNEL=linux), or, from the base-hw build
+# directory (KERNEL=hw BOARD=pc; Genode base-hw lane, Task 2), on base-hw
+# under QEMU with the same configuration; single lane, CPU only.
 #
 # Checks (any failure exits nonzero): init reports exit value 0; the shim's
 # start line and its exit report are present; base-linux logged no
@@ -57,7 +59,7 @@ if {$pass != $expected_pass} {
 	puts stderr "Error: expected $expected_pass PASS lines, got $pass"
 	exit 1
 }
-if {![regexp "\\\[init -> $name\\\] ALL LIBRARY TESTS PASSED\r?$" [lindex $lines end]]} {
+if {![regexp "\\\[init -> $name\\\] ALL LIBRARY TESTS PASSED\r*$" [lindex $lines end]]} {
 	puts stderr "Error: the last component line is not ALL LIBRARY TESTS PASSED"
 	exit 1
 }

@@ -1,0 +1,52 @@
+2026-11-04T15:59:11Z	controller	lane created from master 09cd9bc; Task 1 brief written
+2026-11-04T16:00:38Z	controller	Task 1 implementer dispatched
+2026-11-04T16:01:14Z	implementer	Task 1 started: read brief, shim, INVENTORY, scripts, base-linux evidence
+2026-11-04T16:04:12Z	implementer	base-hw build dir ../writ-genode/build/x86_64-hw created (KERNEL=hw BOARD=pc); grub2 port prepared
+2026-11-04T16:09:04Z	implementer	baseline hw run 1 (unchanged shim): 'unresolvable exception ... thread=ep ip=0x1019af3' at the raw rt_sigaction syscall, as expected
+2026-11-04T16:11:57Z	implementer	shim: Region_map fault front end on 'writ_fault' entrypoint behind WRIT_SHIM_FAULT_REGION_MAP (writ_shim.mk by KERNEL); hw build rc 0
+2026-11-04T16:12:34Z	implementer	hw run 2: hi and exit value 0 under QEMU; run script check failed on \r\r\n line end; writ_bend.tcl now accepts \r*\n
+2026-11-04T16:13:07Z	implementer	hw run 3: hi, exit value 0, run script successful; report ram used=8429568 caps used=41 faults resolved=3 (Region_map handler)
+2026-11-04T16:13:24Z	controller	activity log moved to .lane/genode-base-hw.log (committed per lane from now on)
+2026-11-04T16:14:15Z	implementer	INVENTORY: Fault delivery section with the two cases; base-linux reruns (hello, rts, reservation live) rc 0 so far
+2026-11-04T16:15:33Z	implementer	base-linux reruns pass: hello (ram 8335360, caps 35), rts, reservation live, guard, writ_bend_probe; hw guard probe: shim refusal line and init 'exited with exit value 139'; base-linux corpus build+run started
+2026-11-04T16:18:32Z	implementer	acceptance: hi + exit 0 on base-hw; evidence verification/genode-bend-hello-base-hw.txt written; committing (base-linux corpus still compiling)
+2026-11-04T16:19:19Z	implementer	hw hello run 5 with the final shim (comment-only fix): same binary hash, same log, script successful
+2026-11-04T16:29:36Z	controller	record moved to .lane/genode-base-hw/ (ledger, briefs, reports, log; committed per lane)
+2026-11-04T16:29:51Z	implementer	switched to .lane/genode-base-hw/ for log and report; waiting for base-linux corpus build
+2026-11-04T16:31:21Z	controller	record moved to docs/superpowers/records/2026-11-04-genode-base-hw/ (per plan, committed with the work)
+2026-11-04T16:32:06Z	implementer	switched to docs/superpowers/records/2026-11-04-genode-base-hw for log and report; note: b123e10 contains .lane/genode-base-hw.log (committed under the earlier instruction), its removal goes into the next commit
+2026-11-04T17:17:36Z	implementer	base-linux corpus with changed shim: 782 PASS, 834 lines byte-identical to the merged-tree reference (sha fc3a08aa...), exit 0, 60m31s
+2026-11-04T17:18:03Z	implementer	Task 1 done: report written; committing corpus record
+2026-11-04T17:18:39Z	controller	Task 1 done; review dispatched
+2026-11-04T17:25:58Z	controller	review: needs fixes (reruns, inventory, fault coverage); fix round 1 dispatched
+2026-11-04T17:31:03Z	implementer	fix round 1: handler also on PD address space, stack area, linker area; attach errors named; hw scratch null-pointer probe: shim refusal line + init exit value 139, no core 'illegal'; hw guard probe (exit 139 now required) and hello pass
+2026-11-04T17:42:12Z	implementer	fix round 1: base-linux reruns with final shim all pass (hello, rts, 2 probes, writ_bend_probe, 8 monitor runs, overflow, corpus 782 PASS identical); evidence FIX ROUND 1 written
+2026-11-04T17:42:36Z	implementer	fix round 1 done; committing
+2026-11-04T17:42:58Z	controller	fix round 1 done; scoped re-review dispatched
+2026-11-04T17:46:20Z	controller	Task 1 complete; Task 2 (corpus and fault row on base-hw) dispatched
+2026-11-04T17:47:34Z	implementer	Task 2 started; Linux reference unchanged since d8b1473, no recapture needed
+2026-11-04T17:50:51Z	implementer	M1 (PD areas before mutex), M2, M3 done; base-linux reruns pass (hello, rts, 2 reservation probes, writ_bend_probe, overflow guard refusal); hw build of corpus+examples running
+2026-11-04T18:33:34Z	implementer	hw build of tests, 4 examples, overflow, hello, probes: rc 0 in 44m36s; running corpus on base-hw
+2026-11-04T18:34:28Z	implementer	corpus on base-hw at 256M: 782 PASS, 834 lines byte-identical to the Linux reference (fc3a08aa), exit 0, 39 s
+2026-11-04T18:35:11Z	implementer	four examples on base-hw at 256M: exit 0, logs byte-identical to the Linux reference; running Overflow
+2026-11-04T18:38:44Z	implementer	error: Overflow on base-hw at 3G/2000 caps refused at 0x2206c00000 with 'chunk could not be attached: attach OUT_OF_CAPS', init exit 139, core silent; RM session's 2 caps exhausted by piece attaches. Fix: bounded RM-session upgrade (8 KiB / 2 caps, 4 attempts per piece) paid from the PD under the margins
+2026-11-04T18:42:58Z	implementer	Overflow on base-hw with the RM-session upgrade: guard-page refusal at 0x2280000000, init exit 139, core silent. base-linux reruns with the changed shim (hello, rts, reservation live+guard, writ_bend_probe, Overflow, corpus 782 identical) all pass
+2026-11-04T18:51:29Z	implementer	base-hw final-shim reruns pass (hello, guard, nullfault, corpus 782 identical, four examples, Overflow guard exit 139); seven run-script matchers changed to \r*\n and rerun on both kernels; rows and corpus records written; box 1.3 checked (base-hw, self-reported exit); openspec 1.16.0 44/44; committing Task 2
+2026-11-04T18:52:02Z	controller	Task 2 done; review dispatched
+2026-11-04T18:57:40Z	controller	Task 2 approved; Task 3 (channel on base-hw, binary check, boxes) dispatched
+2026-11-04T18:58:08Z	implementer	Task 3 started: read brief and Task 2 review (8 minors)
+2026-11-04T19:00:49Z	implementer	shim: rm upgrade counters (report + hw refusal), take wake-path diagnostics (thread name, parked count) in the channel section, header scope/hazard sentences; Overflow requires core silent on hw; probe_fault ends at core line on hw; monitor tcl matches \r*\n; running both kernels
+2026-11-04T19:27:38Z	implementer	all eight monitor runs pass on base-hw and base-linux (t3d); liveness and dead_client scripts adjusted for base-hw host behaviour; wake path recorded; check-binary run; writing records
+2026-11-04T19:29:58Z	implementer	Task 3 records written (channel base-hw record, GENODE.md section, INVENTORY, tasks 3.1/3.2); openspec 44/44 (store path and bunx); committing
+2026-11-04T19:30:45Z	controller	Task 3 done; review dispatched
+2026-11-04T19:35:27Z	controller	Task 3 approved; final whole-branch review dispatched
+2026-11-04T19:44:32Z	controller	final review approved; final fix pass dispatched
+2026-11-04T19:44:34Z	implementer	final-review fix pass started; merging master
+2026-11-04T19:46:24Z	implementer	shim report split into fixed lines (232-byte LOG limit), base-linux Env-lock sentence, counter disclosure; shared refusal-exit proc; dead_client hw row; tests.run \r*$; headers; running 18 scenarios on both kernels (fr)
+2026-11-04T19:48:04Z	implementer	heartbeat: final-review reruns in progress on both kernels; editing records meanwhile
+2026-11-04T19:50:20Z	implementer	heartbeat: fr reruns 11/36 done (all rc 0 so far); traceability, design, PLATFORMS, host-profile 2.3 edited
+2026-11-04T20:01:22Z	implementer	final-review fix pass: minors 1-12 and integration alignments applied; fr reruns rc 0 on both kernels; OpenSpec 44/0; committing
+2026-11-04T20:03:18Z	controller	final fix pass done; reconciling with the Unikraft merge
+2026-11-04T20:03:49Z	implementer	merged master 88f1cab as 60e732e: runtime-profile-hosts.md and profile tasks.md 2.3/3.1 reconciled; OpenSpec 44/0; git diff --check clean
+2026-11-04T20:04:10Z	controller	reconciled with master; scoped re-review dispatched
+2026-11-04T20:10:11Z	controller	re-review approved after two record-line fixes; merging

@@ -15,6 +15,14 @@
 # outcome is recorded, not asserted: which outcome the profile accepts is
 # decided in verification/genode-runtime-rows-base-linux.md.
 #
+# base-hw (Genode base-hw lane, Task 3): the probe links no shim, so no
+# handler is registered on its address space and core logs the
+# unresolvable fault itself ("illegal WRITE at address ... by pager_object:
+# pd='init -> writ_probe_fault'", repos/base/src/core/region_map_component.cc:103)
+# and halts the thread; init records nothing. On base-hw the wait also ends
+# at that line and the 45-second tail is skipped, so a sweep does not pay
+# the timeout. The outcome is printed, not asserted, as on base-linux.
+#
 # Authority: as writ_bend_hello.run - parent LOG, PD, CPU, ROM, RM, and a
 # Timer session from the sibling timer; the VFS holds only /dev/log.
 #
@@ -48,20 +56,24 @@ config
 
 build_boot_image [build_artifacts]
 
-run_genode_until {(probe_fault: handler reached|child "writ_probe_fault" exited with exit value|Segmentation fault|Bad memory access)[^\n]*\n} 60
+run_genode_until {(probe_fault: handler reached|child "writ_probe_fault" exited with exit value|Segmentation fault|Bad memory access|illegal (READ|WRITE) at address [^\n]*writ_probe_fault)[^\n]*\n} 60
 
 # Keep reading for a further 45 seconds; a timeout here is expected.
-set spawn_id [output_spawn_id]
-expect -timeout 45 \
-	-re {[^\n]*\n} { append output $expect_out(0,string); exp_continue } \
-	timeout { } \
-	eof { }
+# Skipped on base-hw, where core's line above is the outcome.
+if {![have_spec hw]} {
+	set spawn_id [output_spawn_id]
+	expect -timeout 45 \
+		-re {[^\n]*\n} { append output $expect_out(0,string); exp_continue } \
+		timeout { } \
+		eof { }
+}
 
 puts "\n--- writ_probe_fault outcome ---"
 puts "handler line:    [regexp {probe_fault: handler reached} $output]"
 puts "init exit line:  [regexp {child \"writ_probe_fault\" exited with exit value} $output]"
 puts "platform fault:  [regexp {Segmentation fault|Bad memory access} $output]"
 puts "resumed line:    [regexp {probe_fault: resumed} $output]"
+puts "core fault line: [regexp {illegal (READ|WRITE) at address} $output]"
 
 if {[regexp {probe_fault: resumed} $output]} {
 	puts stderr "Error: execution resumed past the fault"
