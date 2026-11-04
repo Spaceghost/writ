@@ -73,7 +73,7 @@ Executed 2026-11-03 under the library-unikernel lane, Tasks 1 to 3. Every cell e
 Task 1's build matrix) or
 [unikernel-matrix-osv.md](../verification/unikernel-matrix-osv.md) (`O-E<n>`). Pins are in
 [unikernel-pins.txt](../verification/unikernel-pins.txt). Every Unikraft and OSv boot run is an emulated
-boot under QEMU 11.1.2 with TCG (the one `linuxu` run was process execution); none is an accelerated boot and none is a device run. Every Unikraft QEMU run used `-no-reboot`, so QEMU status 0 cannot distinguish a guest power-off from a guest reset: "halt" and "powers off" for Unikraft are inferences (OSv prints "Powering off.", so its label is observed).
+boot under QEMU 11.1.2 with TCG (the one `linuxu` run was process execution); none is an accelerated boot and none is a device run. Every Unikraft QEMU run in the matrix used `-no-reboot`, so in the matrix QEMU status 0 alone cannot distinguish a guest power-off from a guest reset; the unikernel port's Task 2 then ran the crash and the return from `main` without `-no-reboot` and observed a power-off with no reset in both ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)), so "powers off" for those Unikraft paths is now observed (OSv prints "Powering off.", so its label was observed already).
 
 The two columns are not the same kind of evidence. **Unikraft** is a native link: the
 emitted C is the Unikraft application, built against lib-musl into one kernel image
@@ -157,12 +157,18 @@ is unavailable there (E10).
    them, and UL-003's binary check decides which stay. lib-musl itself selects
    `LIBPOSIX_VFS` and `LIBUKFS` (a VFS core, no filesystem driver; matrix ~565), which
    UL-003's "no filesystem library" check will meet.
-5. **Settle the platform action after a crash and after `main`.** Run once without
-   `-no-reboot`, or set a gdb breakpoint on the platform terminate path, to learn whether
-   the crash path and the return from `main` power off or reset. Until settled,
-   `-no-reboot` is a harness requirement. If the crash path is a reset, an image run
-   without `-no-reboot` would re-run the program, which is resumption at the image level
-   and forbidden by UL-006.
+5. **The platform action after a crash and after `main` (settled).** Run without
+   `-no-reboot` (unikernel port Task 2,
+   [unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)): with the
+   exit hook and the debug-exit device the Overflow crash exits QEMU 253 before any
+   reset; without the hook, or without the device, Unikraft's own crash action is an
+   ACPI power-off (QEMU 0, banner once, no output after the crash screen), and the
+   return from `main` likewise powers off. A monitor `system_reset` control does re-run
+   the image, so a reset would have been seen. No observed path resumes the program.
+   The harness still passes `-no-reboot` on every run as a guard against any path that
+   does reset (a triple fault, `LIBUKDEBUG_CRASH_ACTION_REBOOT`, another platform
+   driver), so that such a path ends QEMU instead of re-running the program, which
+   would be resumption at the image level and forbidden by UL-006.
 6. **Compiler parity (UL-005).** The emitted C is compiled as `-std=gnu11` with GCC here,
    while the Linux reference uses clang's default dialect: a compiler and dialect
    difference, not an evaluator edit.

@@ -22,3 +22,24 @@ Values written to port `0xf4` and the QEMU status each gives (`(v << 1) | 1`):
 | Unikraft crash (`UK_CRASH_EVENT`) | 0x7e | 253 |
 
 Evidence and the cited Unikraft hook locations: `verification/unikernel-exit-codes.txt`.
+
+## Application template and scripts (from Task 2 of the unikernel port)
+
+These replace the out-of-tree `$W/exitcode-build.sh`, `$W/exitcode-run.sh`, and the
+absolute `WRIT_HOSTS_UNIKRAFT ?= /mnt/...` default of Task 1's `$W/exitcode-unikraft/Makefile.uk`.
+`W` is the build workspace: taken from the environment, otherwise
+`<repository>/../writ-unikernel` (as `verification/unikernel-pins.txt` records). Nothing
+they build or copy is written inside the repository.
+
+| File | Role | May touch |
+| --- | --- | --- |
+| `app/Kraftfile` | Template Unikraft app (A3 libraries, `LIBUKBOOT_MAINTHREAD=y`, `UKPLAT_CPU_MAXCOUNT=1`, lib-musl, `qemu/x86_64`); its relative paths resolve inside `$W/<set>-unikraft/` | nothing (configuration) |
+| `app/Makefile.uk` | Template app makefile. No machine path: requires `WRIT_APP_C` and `WRIT_HOSTS_UNIKRAFT` from the environment (stops with `$(error ...)` otherwise); links `exit_device.c` by reference unless `WRIT_EXIT_HOOK=n`; adjustments A1 and H1 | nothing (configuration) |
+| `app/Config.uk` | Empty app Kconfig, as before | nothing |
+| `scripts/env.sh` | Sourced: sets `REPO`, `W`, and the pinned `KRAFT` command | nothing |
+| `scripts/mkapp.sh <set>` | Creates `$W/<set>-unikraft/` from `app/` and `$W/<set>/{gen,images,logs}`; refuses to overwrite a differing app file; links the compiler's own `stdatomic.h` (A1) | `$W` only |
+| `scripts/build.sh <set> <probe>` | Clean kraft build of `$W/<set>/gen/<probe>.c` (copied to `app.c`, never edited) into `$W/<set>/images/<probe>-qemu[.dbg]`; prints the image sha256 | `$W` only |
+| `scripts/run.sh <set> <label> <probe> <append> [timeout] [mem]` | One TCG boot under `timeout` with `-device isa-debug-exit,iobase=0xf4,iosize=0x04` and `-no-reboot` (`WRIT_QEMU_DEVICE=0` / `WRIT_QEMU_REBOOT=1` omit them); writes `run-<label>.raw` and a cleaned `run-<label>.log` with the QEMU status | `$W` only |
+
+Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
+`lib/uklibid`), and `build.sh` always builds clean.

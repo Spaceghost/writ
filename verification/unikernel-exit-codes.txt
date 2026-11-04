@@ -29,7 +29,9 @@ idled until killed (exit paths, matrix E9). Supplementary rows (same hook):
 == Mechanism (Unikraft 0.21.0, commit 7351f8b563c9e6773da9fdd5bacde6ac91e32112) ==
 
 Hook source: hosts/unikraft/exit_device.c (sha256
-b1dc08bbf14f88a998c22fa64da37e56113c08142d742559a419ee338e1bc51e), inventoried in
+b1dc08bbf14f88a998c22fa64da37e56113c08142d742559a419ee338e1bc51e at Task 1; Task 2 edited
+only its header comment, adding boot.c:447/452 and crash.c:129/132 citations, comment-
+stripped tokens identical, now bf796eed8f6d9715e25c2fb74eb76cb712a04767ffd1d29bac7c3bbfc8ab5c8c), inventoried in
 hosts/unikraft/INVENTORY.md. It is linked by REFERENCE (not copied): the app Makefile.uk
 names its path in this worktree. Paths below are under $W/src/unikraft.
 
@@ -121,6 +123,14 @@ H2: with the resolved default (LIBUKBOOT_MAINTHREAD not set) the Die image built
   CONFIG_LIBPOSIX_PROCESS_MULTITHREADING=y, CONFIG_UKPLAT_CPU_MAXCOUNT=1.
 
 == Build commands ==
+
+(Task 1 used the out-of-tree $W/exitcode-build.sh / $W/exitcode-run.sh and the app
+directory $W/exitcode-unikraft quoted here, whose Makefile.uk carries an absolute default
+for WRIT_HOSTS_UNIKRAFT. From Task 2 on they are superseded by the in-tree
+hosts/unikraft/scripts/ (mkapp.sh, build.sh, run.sh, parameterised on $W) and the
+template hosts/unikraft/app/ (Makefile.uk with no machine path: build.sh exports
+WRIT_HOSTS_UNIKRAFT and WRIT_APP_C); see hosts/unikraft/INVENTORY.md. The Task 1 images
+were not rebuilt with the new scripts.)
 
 From the repository root (Bend 2.0.39, BEND_NO_TELEMETRY=1):
   mkdir -p $W/exitcode/gen
@@ -253,4 +263,9 @@ hello die overflow (static, not stripped, with debug_info), each:
 - Whether LIBUKBOOT_MAINTHREAD's own main_thread_dtor would end an exit() run without
   the ppexit handler was not tested; gdb shows the handler's request comes first.
 - -no-reboot was used on every run; reset versus halt after a crash without the device
-  is Task 2's observation.
+  is Task 2's observation (verification/unikernel-crash-action.txt: a power-off, QEMU 0,
+  no reset).
+- abort() and signal termination (SIGABRT, a raised or unhandled signal) were not
+  tested. A Bend program cannot call abort(), and the runtime's own failures go through
+  err_fail -> _exit(1); whether an abort() in C reaches the ppexit handler (and so the
+  status path) or Unikraft's crash path is unknown.

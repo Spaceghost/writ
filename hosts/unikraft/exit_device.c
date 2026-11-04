@@ -25,12 +25,13 @@
  *
  * Unikraft hooks used (paths under the Unikraft 0.21.0 tree):
  *   - Termination table: include/uk/init.h (struct uk_term_ctx, uk_term_func_t,
- *     uk_early_initcall_prio). lib/ukboot/boot.c calls each term function in
+ *     uk_early_initcall_prio). lib/ukboot/boot.c:447 calls each term function in
  *     reverse table order with the context whose exit_code is main's return
  *     value, or, for exit()/_exit(), the init process's status as set by
  *     lib/posix-process/shutdown.c (pprocess_system_shutdown, a late-class term
  *     that runs before this one). This entry is class 1 (early) priority 0, so
- *     it is the last term function called, right before uk_pm_shutdown().
+ *     it is the last term function called, right before uk_pm_shutdown()
+ *     (boot.c:452).
  *   - Process exit event: lib/posix-process/include/uk/process/events.h
  *     (POSIX_PROCESS_PPEXIT_HANDLER), raised by pprocess_exit() after the exit
  *     status is stored (lib/posix-process/exit.c:203, :213). When the init
@@ -44,8 +45,10 @@
  *     tested. Without LIBUKBOOT_MAINTHREAD, exit() and _exit() end the init
  *     thread itself and the guest idles (matrix E9), hence the #error below.
  *   - Crash event: lib/ukdebug/include/uk/crash.h (UK_CRASH_EVENT), raised by
- *     _uk_crash() in lib/ukdebug/crash.c after the crash screen and before
- *     crash_shutdown().
+ *     _uk_crash() in lib/ukdebug/crash.c:129 after the crash screen and before
+ *     crash_shutdown() (crash.c:132). Without the device Unikraft's own crash
+ *     action powers the guest off (QEMU 0), not a reset
+ *     (verification/unikernel-crash-action.txt).
  */
 
 #include <uk/config.h>

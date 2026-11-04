@@ -1,0 +1,151 @@
+Unikernel port lane, Task 2: the platform action after a crash (halt versus reset)
+Recorded 2026-11-03 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type the
+qemu-system-x86_64 default (pc), -cpu max, -m 4096 for Overflow (-m 1024 for Hello),
+-append "+RTS --threads 1 --gpu off", 60 s timeout, serial captured whole. CPU only.
+Unlike Task 1, the runs below DO NOT pass -no-reboot (except where stated). Unikraft
+0.21.0 (7351f8b), kraft 0.12.16; pins in verification/unikernel-pins.txt. W is the build
+workspace (realpath of ../writ-unikernel from the repository root); nothing built is in
+the tree.
+
+== Result ==
+
+The crash is NOT followed by a reset. Observed, without -no-reboot:
+- With the Task 1 hook and the debug-exit device: QEMU exits 253 right after the crash
+  screen, before any reset (one banner, one program start).
+- With the hook left out at build time (and, separately, with the hook linked but the
+  device absent): Unikraft's own crash action runs and QEMU exits 0, the action of a
+  guest ACPI power-off. The banner and 'overflow probe start' appear exactly once; no
+  output follows the crash screen; QEMU ends on its own in 10.6 to 16.8 s, well inside
+  the 60 s timeout. That is a power-off, not a reset and not an idle halt.
+- Control (same no-hook image, no -no-reboot): a reset injected from the QEMU monitor
+  (system_reset) at about 4 s DOES re-run the image: the banner and 'overflow probe
+  start' appear twice, then the second run crashes and QEMU exits 0. So a reset would
+  have been visible in the captures above, and none occurred.
+- Return from main without -no-reboot: the Task 1 Hello image exits QEMU 1 with the
+  device and 0 without it, one banner, 'hi' once: also no reset.
+
+Harness rule (stated accordingly, docs/UNIKERNELS.md updated): on this kernel and QEMU
+qemu/x86_64 platform neither a crash nor a return from main resets the guest, so
+-no-reboot is not needed to stop resumption at the image level for those paths. The
+Writ harness still passes -no-reboot on every run as a guard: any path that does request a
+reset (a triple fault before the crash handler, a guest that sets
+LIBUKDEBUG_CRASH_ACTION_REBOOT, a different platform driver) then ends QEMU instead of
+re-running the program. The hook writes 0x7d for a non-halt shutdown target, so with
+the device a restart request is QEMU 251, not a silent re-run. Success is QEMU 1 only.
+
+== Why (source, Unikraft 0.21.0 under $W/src/unikraft; read, consistent with the runs) ==
+
+lib/ukdebug/Config.uk:48 default LIBUKDEBUG_CRASH_ACTION_HALT (our .config: the default).
+lib/ukdebug/crash.c:129 raises UK_CRASH_EVENT (the hook's handler, which writes 0x7e to
+port 0xf4), then :132 crash_shutdown(), which with the halt action is uk_pm_syscrash()
+(crash.c:79). lib/ukpm/pm.c:122 uk_pm_syscrash calls the platform's syscrash op:
+plat/kvm/x86/qemu.c qemu_crash writes 42 with outw to port 0x501 (QEMU's default
+isa-debug-exit iobase; QEMU 85 if a device is there), 1 to port 0x505 (pvpanic), then
+the ACPI shutdown 0x2000 to port 0x604 (power-off). Note also qemu.c:79-80: syshalt AND
+sysrestart are both qemu_exit (41 to 0x501, then the ACPI power-off), so on this
+platform even a restart request powers off. Confirmation that the native path is
+qemu_crash: the no-hook image with '-device isa-debug-exit,iobase=0x501,iosize=0x02'
+(no -no-reboot) exits QEMU 85 = (42 << 1) | 1.
+
+== Images (built with the in-tree scripts, hosts/unikraft/scripts/) ==
+
+From the repository root (Bend 2.0.39, BEND_NO_TELEMETRY=1):
+  hosts/unikraft/scripts/mkapp.sh crash                  # $W/crash-unikraft from hosts/unikraft/app/
+  bend scripts/unikernel/Overflow.bend -o $W/crash/gen/overflow.c
+  cp $W/crash/gen/overflow.c $W/crash/gen/overflow-nohook.c
+  hosts/unikraft/scripts/build.sh crash overflow                         # hook linked
+  WRIT_EXIT_HOOK=n hosts/unikraft/scripts/build.sh crash overflow-nohook  # hook left out
+Emitted C (never edited; = pins and Task 1):
+  1e273e1ada07ed667b365c68d5173655d0814a74a768aae30dfbd049877cffcc  overflow.c
+Images:
+  2d1301c2ffc3da82e56df24c33d47753a886cb33c9e85613b728b90356e0dd37  $W/crash/images/overflow-qemu
+  d887b03aa8a91efd322964b9e99fd518db3da3d51db2543664d294972975f44b  $W/crash/images/overflow-nohook-qemu
+(The runs below used these two images. overflow-qemu differs from Task 1's 57a1e...
+because the template app has a different name and library name; same Kconfig, same hook,
+same emitted C.)
+Image hashes are per build: build.sh starts from a clean build directory, and Unikraft
+embeds the build time (Makefile:467 HOSTUTC := $(shell date -Iseconds -u), stored by
+lib/uklibid). After the comment-only header edit of exit_device.c in this task (comment-
+stripped tokens compared with the previous revision: identical, gcc -fpreprocessed -E -P),
+overflow-qemu was rebuilt twice (daa16f9d..., then d6eb5822...); those two images differ
+in 2 bytes, at offset 1090596, inside the ISO-8601 build-time string. Task 1's identical
+hashes came from incremental builds that did not regenerate that string.
+nm on the .dbg: 6 writ_exit symbols in overflow-qemu.dbg, 0 in overflow-nohook-qemu.dbg.
+The build-time disable is the template Makefile.uk switch WRIT_EXIT_HOOK=n, which leaves
+exit_device.c out of the link; the hook source has no knob, so the crash handler alone
+was not disabled separately (the no-device run below is the equivalent for the crash
+path: the handler's port write goes to an unmapped port and is ignored).
+
+== Runs ==
+
+hosts/unikraft/scripts/run.sh crash <label> <probe> "+RTS --threads 1 --gpu off" 60 4096
+with WRIT_QEMU_REBOOT=1 (omit -no-reboot) and, where stated, WRIT_QEMU_DEVICE=0 (omit the
+device). Logs $W/crash/logs/run-<label>.{raw,log}. Console shown from the banner's last
+line; the crash screen's ASCII art and register lines are elided here (they are in the
+logs). Counts are over the whole .raw capture.
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04; echo $?
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+[    8.398043] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[    8.399461] CRIT: Registers:
+253
+(wall 8.6 s)   banners 1, 'overflow probe start' 1, crash screens 1, lines after the crash screen 0
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04; echo $?
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+[   10.360877] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[   10.362233] CRIT: Registers:
+0
+(wall 10.6 s)  banners 1, starts 1, crash screens 1, lines after 0
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-qemu -append "+RTS --threads 1 --gpu off"; echo $?
+  (hook linked, no device)
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+[   12.234162] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[   12.235521] CRIT: Registers:
+0
+(wall 12.6 s)  banners 1, starts 1, crash screens 1, lines after 0
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off"; echo $?
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+[   16.314273] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+[   16.316676] CRIT: Registers:
+0
+(wall 16.8 s)  banners 1, starts 1, crash screens 1, lines after 0
+
+$ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0x501,iosize=0x02 </dev/null > run-nohook-port501-reboot.raw 2>&1; echo $?
+85             banners 1, starts 1, crash screens 1, lines after 0
+
+Control, reset injected (log run-control-system-reset.raw):
+$ ( sleep 4; printf '\001c'; sleep 1; printf 'system_reset\n'; sleep 50 ) | timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/crash/images/overflow-nohook-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 > run-control-system-reset.raw 2>&1; echo $?
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+QEMU 11.1.2 monitor - type 'help' for more information
+(qemu) system_reset            (the monitor echoes the typed command character by character)
+                  Ijiraq 0.21.0~7351f8b
+overflow probe start
+[   11.553996] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+0              banners 2, starts 2, crash screens 1
+
+Return from main, no -no-reboot ($W/exitcode/images/hello-qemu, Task 1 image, -m 1024):
+  with   -device isa-debug-exit,iobase=0xf4,iosize=0x04: QEMU 1, banners 1, 'hi' 1
+  without the device:                                   QEMU 0, banners 1, 'hi' 1
+
+== Limits ==
+
+- One crash kind: the Overflow stack-guard page fault, on one CPU. A fault that the crash
+  handler cannot reach (for example a triple fault, which QEMU turns into a reset) was
+  not induced; that is the case the retained -no-reboot guards.
+- LIBUKDEBUG_CRASH_ACTION_REBOOT was not built or run; by reading qemu.c it too would
+  power off on this platform (sysrestart = qemu_exit).
+- QEMU 0 is the status of a guest ACPI power-off; "power-off" for the native path is
+  observed as "QEMU exited by itself with 0, no reset, no idle" plus the source reading
+  and the port-0x501 confirmation above, not as a printed message.
+- abort() and signal termination were not exercised (a Bend program cannot call abort;
+  see verification/unikernel-exit-codes.txt limits).
