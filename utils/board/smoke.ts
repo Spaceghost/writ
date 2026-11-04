@@ -219,12 +219,20 @@ try {
   const tablesStart = indexHtml.indexOf('id="index-tables"');
   const tables = indexHtml.slice(tablesStart, indexHtml.indexOf("</section>", tablesStart));
   check("index shows summary tiles", tables.includes('class="tiles"') && tables.includes("Being worked on"));
-  const rowStart = tables.indexOf(`/change/${expected}"`);
+  // The row starts with the chevron cell, before the change link.
+  const linkAt = tables.indexOf(`/change/${expected}"`);
+  const rowStart = tables.lastIndexOf("<tr", linkAt);
   const row = tables.slice(rowStart, tables.indexOf("</tr>", rowStart));
   check("the change the lane's plan names carries the lane's chip", row.includes('class="chip chip-active"') && row.includes("#lane-smoke-lane"));
   check("the chip shows the ledger phase and an age", row.includes("Task 1 · fix round") && /chip-age">\d+ (s|min)</.test(row));
   check("task numbers are listed under the progress bar", /tasknums">[\d. ]+ done/.test(row));
-  check("a change row expands to its open tasks, done ones behind a nested toggle", row.includes(`<details id="tasks-${expected}" class="tasklist" data-preserve-attr="open"><summary>`) && /<summary>\d+ to do<\/summary>/.test(row) && row.includes(`<details id="done-${expected}" class="donelist" data-preserve-attr="open"><summary>`) && row.indexOf('class="task task-open"') < row.indexOf('class="task task-done"'));
+  const sig = `t_${expected.replace(/-/g, "_")}`;
+  check("the change row starts with a chevron that flips its task signal", row.includes(`<button type="button" class="chev" aria-controls="tasks-${expected}" data-on:click="$${sig} = !$${sig}"`));
+  const taskRowStart = tables.indexOf(`<tr id="tasks-${expected}" class="taskrow"`);
+  const taskRowHtml = tables.slice(taskRowStart, tables.indexOf("</tr>", taskRowStart));
+  check("the task row follows the change row, spans the table, and is shown by the signal", taskRowStart > rowStart && taskRowHtml.includes(`data-show="$${sig}"`) && taskRowHtml.includes('data-preserve-attr="style"') && taskRowHtml.includes('<td colspan="6">'));
+  check("open tasks come first, done ones behind a nested toggle", taskRowHtml.indexOf('class="task task-open"') < taskRowHtml.indexOf('class="task task-done"') && taskRowHtml.includes(`<details id="done-${expected}" class="donelist" data-preserve-attr="open"><summary>`));
+  check("the table declares one signal per change with a task list", tables.includes(`data-signals__ifmissing=`) && tables.includes(`&quot;${sig}&quot;:false`));
   check("changes with no task and no lane are collapsed", tables.includes('id="rest-changes"') && /\d+ more changes with no task done and no lane/.test(tables));
   check("lane card shows its status line and the change it is on", lanesHtml.includes('class="lane-phase">Task 1 · fix round') && lanesHtml.includes(`lane-changes">on <a href="/change/${expected}"`));
   check("lane card shows the activity log, oldest first", lanesHtml.indexOf("read the brief") < lanesHtml.indexOf("started the probe build") && lanesHtml.includes('log-who">implementer'));
