@@ -85,7 +85,44 @@ cd $W/osv/pkg-probes && $C package compose --fs rofs --size 64M --run "/hello" p
 ROFS image on the host from the release `osv-loader` base and the release
 `osv.bootstrap` package, both placed in `$CAPSTAN_ROOT` by hand (no capstan pull). The
 image `$W/capstan-home/repository/probes/probes.qemu` was rebuilt and gave the same sha256
-both times.
+both times: the first build, kept as `$W/osv/probes.qemu.first`, and the rebuild are both
+`28b441c4ee9852d7ac74fc9b50894c8633a62499847b46c1f029fb271d793ad5`.
+
+The single-probe images (`hello.qemu` in O-E0 and O-E1) come from `$W/osv/osv-build.sh`,
+which, in its final form, is:
+
+```sh
+#!/bin/sh
+# osv-build.sh <probe> <image-name> "<cmdline>"
+# Compile $W/gen/<probe>.c as a dynamic PIE (clang + lld, so no PT_GNU_SFRAME),
+# package it at /<probe> and compose an OSv ROFS image with the cmdline baked in.
+set -e
+W=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel
+C=$W/tools/capstan-1.0.0/capstan
+export CAPSTAN_ROOT=$W/capstan-home
+p=$1; img=$2; cmd=$3
+mkdir -p $W/osv/build
+# O1: link with lld (GNU ld 2.47 emits PT_GNU_SFRAME, which OSv 0.57 rejects).
+# O2: glibc 2.44 headers redirect strtol/fscanf to the C23 __isoc23_* entry points
+#     under _GNU_SOURCE (which the emitted C defines); OSv 0.57 predates them, so the
+#     object's references are renamed back to the C17 names before linking.
+clang -std=gnu11 -O2 -fPIE -pthread -c $W/gen/$p.c -o $W/osv/build/$p.o
+objcopy $(for s in strtol fscanf sscanf strtoul strtoll strtoull scanf; do printf -- '--redefine-sym __isoc23_%s=%s ' $s $s; done) $W/osv/build/$p.o
+clang -fuse-ld=lld -pie -pthread $W/osv/build/$p.o -o $W/osv/build/$p.pie -lm
+nm -D --undefined-only $W/osv/build/$p.pie | grep -c isoc23 || true
+P=$W/osv/pkg-$img
+rm -rf $P; mkdir -p $P/meta
+cp $W/osv/build/$p.pie $P/$p
+printf 'name: writ.%s\ntitle: Bend %s (compat observation)\nauthor: writ unikernel lane\nversion: 0.0.1\n' $img $p > $P/meta/package.yaml
+cd $P
+$C package compose --fs rofs --size 64M --run "$cmd" $img
+sha256sum $W/osv/build/$p.pie $CAPSTAN_ROOT/repository/$img/$img.qemu
+```
+
+For O-E0's first block the compile line was the earlier
+`gcc -std=gnu11 -O2 -fPIE -pie -pthread $W/gen/hello.c -o hello.pie -lm` (GNU ld) composed
+the same way as image `writ-hello`; for its second block the script linked with
+`clang -std=gnu11 -O2 -fPIE -pie -pthread -fuse-ld=lld` and had no `objcopy` step.
 
 `$W/osv/osv-run.sh <label> "<cmdline>" [T=60] [M=1024] [S=1]` boots the release kernel ELF
 by PVH with the command line on `-append` (so `argv` varies per run, as on Unikraft) and
@@ -165,7 +202,18 @@ continue
 printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
 finish
 printf "  returned %#lx\n", $rax
-(the continue / printf / finish / printf group four times in all)
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+finish
+printf "  returned %#lx\n", $rax
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+finish
+printf "  returned %#lx\n", $rax
+continue
+printf "mmap addr=%#lx len=%#lx\n", $rdi, $rsi
+finish
+printf "  returned %#lx\n", $rax
 kill
 ```
 
@@ -183,9 +231,22 @@ mmap addr=0 len=0x8000c000
 ```
 
 `corpus_map` tries `1<<45` and halves; a mapping that comes back elsewhere is unmapped
-(`corpus_at`). A second command file, `$W/osv/gdb/mmap.cmd` (the same breakpoint with
-`commands; silent; printf "mmap addr=%#lx len=%#lx prot=%#lx flags=%#lx\n", $rdi, $rsi,
-$rdx, $rcx; continue; end`), printed the same four calls, each `prot=0x3 flags=0x4022`, for
+(`corpus_at`). A second command file, `$W/osv/gdb/mmap.cmd`:
+
+```
+set pagination off
+set confirm off
+target remote :1234
+hbreak *0x403d0080
+commands
+silent
+printf "mmap addr=%#lx len=%#lx prot=%#lx flags=%#lx\n", $rdi, $rsi, $rdx, $rcx
+continue
+end
+continue
+```
+
+printed the same four calls, each `prot=0x3 flags=0x4022`, for
 both `--gpu off` and `--gpu 64MB` (`gdb-mmap-off.log`, `gdb-mmap-64MB.log`).
 
 **O-E3 argv and return from `main`, Hello.**
@@ -288,7 +349,38 @@ With `--verbose` and `--threads 2` the output ends at `pow2 4194304` and no
 (gdb Python): hardware breakpoint on `pthread_create` with condition
 `($rdx & 0xfff) == 0x250` (the app's `pool_work`), derive the base, then hardware
 breakpoints on `pool_work` (base+`0x6250`) and `pool_rows` (base+`0x6300`), printing
-`$rsp` at each stop. `-smp 2` (`gdb-lanes-smp2.log`):
+`$rsp` at each stop. The file, as used for the `-smp 2` run:
+
+```python
+# gdb -batch -x lanes.py: find the app's pthread_create(pool_work), derive the PIE
+# base from pool_work's offset (0x6250 in lanes.pie), then watch pool_work and pool_rows.
+import gdb
+gdb.execute("set pagination off"); gdb.execute("set confirm off")
+gdb.execute("target remote :1235")
+gdb.execute("hbreak *0x403ca570")
+gdb.execute("condition 1 ($rdx & 0xfff) == 0x250")
+gdb.execute("continue")
+entry = int(gdb.parse_and_eval("$rdx")) & 0xffffffffffffffff
+base = entry - 0x6250
+print("app pthread_create entry=%#x arg=%#x base=%#x" % (entry, int(gdb.parse_and_eval("$rcx")), base))
+gdb.execute("delete 1")
+gdb.execute("hbreak *%#x" % (base + 0x6250))   # pool_work
+gdb.execute("hbreak *%#x" % (base + 0x6300))   # pool_rows
+for i in range(4):
+    try:
+        gdb.execute("continue")
+    except gdb.error as e:
+        print("stop:", e); break
+    pc = int(gdb.parse_and_eval("$pc")) & 0xffffffffffffffff
+    rsp = int(gdb.parse_and_eval("$rsp")) & 0xffffffffffffffff
+    name = {base+0x6250: "pool_work", base+0x6300: "pool_rows"}.get(pc, hex(pc))
+    print("hit %s thread=%s rdi=%#x rsi=%#x rsp=%#x" % (name, gdb.selected_thread().num, int(gdb.parse_and_eval("$rdi")) & 0xffffffffffffffff, int(gdb.parse_and_eval("$rsi")) & 0xffffffffffffffff, rsp))
+gdb.execute("kill")
+```
+
+The `-smp 1` run used the same file with `target remote :1234` and `range(6)`; the last
+`continue` of that run waited on the hung guest until the gdb timeout. `-smp 2`
+(`gdb-lanes-smp2.log`):
 
 ```
 app pthread_create entry=0x10000000b250 arg=0x1 base=0x100000005000
@@ -329,8 +421,19 @@ returned into pc=0x40396ccd
 
 `0x40396ccd` is inside `osv::application::run_main()` (`nm -DC`: `0x40396c90`). The `exit`
 breakpoint is never hit before the 140 s timeout. Attached 10 s after `pow2` with `-smp 2`
-(`$W/osv/gdb/hang.cmd`: `add-symbol-file lanes.pie -o 0x100000005000`, `target remote
-:1236`, `info threads`, `thread apply all bt 12`, `kill`):
+(`$W/osv/gdb/hang.cmd`):
+
+```
+set pagination off
+set confirm off
+add-symbol-file /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel/osv/build/lanes.pie -o 0x100000005000
+target remote :1236
+info threads
+thread apply all bt 12
+kill
+```
+
+Output:
 
 ```
 * 1    Thread 1.1 (CPU#0 [halted ]) 0x00000000403648a1 in sched::cpu::do_idle() ()
@@ -397,7 +500,8 @@ Powering off.
 | `osv/build/lanes.pie` | `dee2a09ea942cf7ab8698067c2613836a2cc5b1e077beea7dbbf71f55eda8c1a` |
 | `osv/build/exit.pie` | `8d49bb06c2fdbd81dd307d758f54383105c81b9da8bb7720c79e5c43860759f1` |
 | `osv/build/exit0.pie` | `768ac86b824d7c511c920a0e422c5066f9a9250165e9c07802eb6904f1299777` |
-| `capstan-home/repository/probes/probes.qemu` | `28b441c4ee9852d7ac74fc9b50894c8633a62499847b46c1f029fb271d793ad5` |
+| `capstan-home/repository/probes/probes.qemu` (rebuild) | `28b441c4ee9852d7ac74fc9b50894c8633a62499847b46c1f029fb271d793ad5` |
+| `osv/probes.qemu.first` (first build) | `28b441c4ee9852d7ac74fc9b50894c8633a62499847b46c1f029fb271d793ad5` |
 | `capstan-home/repository/hello/hello.qemu` | `699dde0cae26b3328ffb947bc38b1d5f4d200ecc5a0aa08fcebed7f279c989cf` |
 
 ## Limits of this record

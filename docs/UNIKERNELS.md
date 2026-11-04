@@ -67,13 +67,13 @@ in the trusted base as the appliance change states.
 
 ## Selection matrix, 2026-11
 
-Executed 2026-11-03 under the library-unikernel lane, Tasks 1 to 3. Every cell below
-comes from running an image; the evidence pointer names the block in
+Executed 2026-11-03 under the library-unikernel lane, Tasks 1 to 3. Every cell except those marked
+"by construction" or "from documentation" comes from running an image; the evidence pointer names the block in
 [unikernel-matrix-unikraft.md](../verification/unikernel-matrix-unikraft.md) (`E<n>`, and
 Task 1's build matrix) or
 [unikernel-matrix-osv.md](../verification/unikernel-matrix-osv.md) (`O-E<n>`). Pins are in
-[unikernel-pins.txt](../verification/unikernel-pins.txt). All runs are emulated boots
-under QEMU 11.1.2 with TCG; none is an accelerated boot and none is a device run.
+[unikernel-pins.txt](../verification/unikernel-pins.txt). All boot runs are emulated
+boots under QEMU 11.1.2 with TCG; none is an accelerated boot and none is a device run.
 
 The two columns are not the same kind of evidence. **Unikraft** is a native link: the
 emitted C is the Unikraft application, built against lib-musl into one kernel image
@@ -84,20 +84,20 @@ built here).
 
 | Row | Unikraft 0.21.0, `qemu/x86_64`, native link | OSv 0.57.0, `qemu/x86_64`, compat PIE |
 | --- | --- | --- |
-| Native link (UL-001) | **supplied**: links and boots with build adjustments A1 to A3, none in Bend output (Task 1 matrix) | **missing**: no link-into-kernel mode; the program runs through the ELF loader (O-E0, mode note) |
+| Native link (UL-001) | **supplied**: links and boots with build adjustments A1 to A3, none in Bend output (Task 1 matrix) | **missing** (from documentation, not built): OSv documents no link-into-kernel application mode; the compat program runs through the ELF loader (mode note; O-E0 shows that loader rejecting a header, not the absence of a mode) |
 | Memory | **supplied**, lazy: 8 GiB heap at the first hint and 2 GiB+guard stack; boots at `-m 8` (E1, E2) | **supplied**, lazy: heap at the third hint `1<<43`, stack mapped; boots at `-m 32` (O-E1, O-E2) |
 | Faults | **substituted**: guard hit gives `CRIT: Unikraft Crash` and a halt; the runtime's handler never runs; QEMU 0 (E4) | **supplied**: the runtime's `bend: memory fault` message, then OSv powers off (`Uncaught signal 11` with `--verbose`); QEMU 0 (O-E4) |
 | Memory exhaustion | **substituted**: the same Unikraft crash, QEMU 0 (E4, `-m 1024`) | **substituted**: OSv kernel `Aborted` in its page pool; halts without power-off, killed (O-E4, `-m 1024`) |
 | Threads | **substituted** by a single lane: `pthread_create` returns 0, `pool_work` is not entered by shutdown; one CPU, cooperative (E5, E6) | **supplied**: second lane runs on one and on two vCPUs, correct results (O-E5, O-E6); but shutdown with an open pool **missing**: guest idles after `main` returns (O-E6) |
 | Clock | **supplied** (E7) | **supplied** (O-E7) |
-| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run) | **supplied** (O-E1, O-E7) |
+| Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was not exercised | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
 | Process: argv | **supplied** via `-append` (E3) | **supplied** via the kernel command line (O-E3) |
 | Process: `BENDRTS` | **substituted**: build-time only, compiled into the environment (E8) | **supplied** at boot with `--env=` (O-E8) |
-| Process: exit status | **missing**: return from `main` powers off with QEMU 0 whatever it returned; `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted**: every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9) |
+| Process: exit status | **missing**: return from `main` powers off with QEMU 0 whatever it returned; `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |
 | Process: CPU count | **supplied** for one CPU (default `lanes 1`, E5); SMP not tried | **supplied**: 1 on `-smp 1`, 2 on `-smp 2` (O-E5) |
 | Atomics | **supplied** by GCC's `stdatomic.h` (A1); exercised on one lane and one CPU only (E5, E9) | **supplied** by clang's `stdatomic.h`; exercised with two lanes on two vCPUs (TCG) (O-E5, O-E6) |
 | Device dispatch | **missing** by construction: no accelerator code compiled, no `!` program run (E2) | **missing** by construction, the same (O-E2) |
-| Reproducible image | **supplied**: rebuilds gave identical image hashes (Task 2 harness table) | **supplied**: the probes image rebuilt to the same hash (OSv harness) |
+| Reproducible image | **supplied**: rebuilds gave identical image hashes (unikernel-matrix-unikraft.md, "Build and run harness (outside the tree)", image hash table) | **supplied**: the probes image rebuilt to the same hash (unikernel-matrix-osv.md, "Image and executable hashes", rebuild line) |
 
 `linuxu` is not a column: the pinned 0.21.0 has no `linuxu` platform, and the 0.16.3 run
 (process execution, not a boot) stops at `bend: reservation failed` because `posix-mmap`
@@ -106,7 +106,7 @@ is unavailable there (E10).
 ### Chosen kernel for the native-link lane: Unikraft 0.21.0
 
 - It is the only candidate that meets UL-001 at all. The OSv column's
-  "Native link (UL-001)" cell is **missing**, and OSv's better cells (Faults **supplied**,
+  "Native link (UL-001)" cell is **missing** (from documentation, not built), and OSv's better cells (Faults **supplied**,
   Threads **supplied**) belong to the compat path, which the appliance change owns, not
   this one.
 - Its native image already supplies the rows the first port needs: Memory **supplied**
@@ -136,8 +136,8 @@ is unavailable there (E10).
    cooperative scheduler, run with `+RTS --threads 1`, and use the inline IO helper
    (UL-005). On this kernel `--threads 2` creates a lane that never runs (E6), so a
    multi-lane build must not be configured by accident; SMP is a later task (2.4), and
-   the OSv observation that a second lane needs an explicit pool shutdown (O-E6) should be
-   carried into it.
+   the OSv hang at shutdown with more than one lane (cause inferred, O-E6) should be
+   investigated as part of it.
 3. **The fault halt to carry the runtime's message.** The runtime's `SIGSEGV` handler
    does not run on Unikraft (E4); the halting fault handler (task 2.3) has to print the
    runtime's fault text, or an equivalent recorded line, before the coded halt.
@@ -149,6 +149,8 @@ is unavailable there (E10).
 
 - **Unikraft:** the exit status. No exit path reaches the harness (E3, E9), and until one
   does, RH-006 and UL-006 cannot be checked from the run's status.
-- **OSv (for a native link):** the loader. OSv runs applications only through its ELF
-  linker (O-E0, mode note), so UL-001 cannot be met without adding a link-into-kernel
+- **OSv (for a native link):** the loader (from documentation, not built). OSv
+  documents application loading only through its ELF linker (mode note in
+  unikernel-matrix-osv.md; O-E0 shows the loader rejecting a header, not the absence of
+  another mode), so UL-001 cannot be met without adding a link-into-kernel
   application mode to OSv itself.
