@@ -1,6 +1,8 @@
 # Nix flake check evidence (Task 2 of the Nix flake lane)
 # Date: 2026-11-04T02:38:59Z
 # Host: Linux 7.2.9-1-MANJARO x86_64; nix (Nix) 2.35.2; sandbox = true
+# Binding: at clean HEAD the derivation paths listed in this file evaluate identically (verified
+#   by the final reviewer with nix eval), so this evidence is bound to the committed derivations.
 # Flake revision: 4a1b43b plus uncommitted docs/INSTALL.md and verification/ files, which are
 #   outside every filtered build source (hence the 'dirty' warning; no derivation changes).
 # nixpkgs: github:NixOS/nixpkgs/0bb2eedc20e4739f29e8045034f2828ad7054f8f
@@ -1403,3 +1405,12 @@ building '/nix/store/4jnhazbgaqwxsqhn5938hs67ry57k8g8-openspec-version-check.drv
 openspec-version-check> 1.16.0
 all checks passed!
 exit 0
+
+== Fix wave (2026-11-04) ==
+$ nix flake check
+running 4 flake checks...
+building bend-version-check.drv, openspec-1.16.0.drv, openspec-version-check.drv, writ-openspec.drv
+all checks passed!
+$ nixpkgs-fmt --check flake.nix nix/bend.nix nix/openspec/default.nix nix/writ.nix
+(nixpkgs-fmt 1.3.0 from the flake's formatter output; it is not in the dev shell)
+0 / 4 would have been reformatted

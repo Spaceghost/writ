@@ -77,8 +77,9 @@ binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 638 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
-over `openspec/` (`openspec`). These reproduce the recorded test, proof, and
-specification verification on the pinned Bend 2.0.39 and OpenSpec 1.16.0. The
+over `openspec/` (`openspec`). These reproduce the recorded outcomes (same pass
+counts, success lines, and validation totals) on the pinned Bend 2.0.39 and
+OpenSpec 1.16.0. The
 native checks use the flake's clang 23.1.3, not the clang 19.1.1 of the
 recorded native run, and the JavaScript check uses Bend's bundled runtime, not
 the separate Node.js 24.22.1 run. The native test check is a CPU run; nothing

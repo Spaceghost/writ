@@ -94,6 +94,7 @@ let
     { src = "Example.bend"; bin = "example"; }
     { src = "examples/Flow.bend"; bin = "flow"; }
     { src = "examples/Transfer.bend"; bin = "transfer"; }
+    # CPU build of GpuExample.bend with no device program; not GPU evidence.
     { src = "GpuExample.bend"; bin = "gpu-example"; }
   ];
 

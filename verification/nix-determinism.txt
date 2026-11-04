@@ -44,10 +44,13 @@ checking outputs of '/nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-nati
 /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
 (exit 0; nix reports no non-determinism)
 
-Result: build 1 and build 2 produced the same store path
-  /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
-with the same nix hash path
+Result: the evidence is the equal `nix hash path` values
   sha256-pr7V2E3aeNrwEP9xeJDKiz5dNRQGksiIsY+K+j2ShA4=
+for the two builds, the `cmp` result (identical binaries), and the clean
+`--rebuild` (no non-determinism reported). Both builds are at the same store path
+  /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+but tests-native is input-addressed, so that path is fixed by the derivation and
+its equality is expected by construction, not evidence.
 
 Supplementary: packages.x86_64-linux.examples-native
 $ nix hash path /nix/store/mmg5i94gs52n4cghmmf7azlq81xavj0v-writ-examples-native

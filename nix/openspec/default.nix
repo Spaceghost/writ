@@ -12,6 +12,7 @@
 , fetchurl
 , nodejs_22
 , jq
+, makeWrapper
 }:
 
 buildNpmPackage (finalAttrs: {
@@ -24,8 +25,6 @@ buildNpmPackage (finalAttrs: {
   };
 
   nodejs = nodejs_22;
-  nativeBuildInputs = [ jq ];
-
   postPatch = ''
     jq 'del(.devDependencies)' package.json > package.json.new
     mv package.json.new package.json
@@ -41,6 +40,13 @@ buildNpmPackage (finalAttrs: {
     hash = "sha256-0wnUqswvz7ikZjPCB4Ha51fBmIl2N51lJNpWAJcMMeg=";
   };
   dontNpmBuild = true;
+
+  nativeBuildInputs = [ jq makeWrapper ];
+
+  # Telemetry off by default outside the dev shell; callers may still override.
+  postInstall = ''
+    wrapProgram $out/bin/openspec --set-default OPENSPEC_TELEMETRY 0
+  '';
 
   meta = {
     description = "Spec-driven development CLI used to validate Writ's openspec/ tree";

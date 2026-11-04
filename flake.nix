@@ -30,15 +30,12 @@
       };
 
       checks.${system} = {
-        # Fails unless the store copy of Bend runs and reports the pinned version.
+        # Fails unless the store copy of Bend runs and reports exactly "bend 2.0.39".
         bend-version = pkgs.runCommand "bend-version-check" { nativeBuildInputs = [ bend ]; } ''
           export HOME=$TMPDIR
           out_text=$(bend version)
           echo "$out_text"
-          case "$out_text" in
-            *2.0.39*) ;;
-            *) echo "expected Bend 2.0.39" >&2; exit 1 ;;
-          esac
+          test "$out_text" = "bend 2.0.39" || { echo "expected exactly 'bend 2.0.39'" >&2; exit 1; }
           touch $out
         '';
         # Fails unless the packaged OpenSpec reports exactly 1.16.0.
