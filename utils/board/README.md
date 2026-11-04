@@ -160,8 +160,11 @@ with the change's `tasks.md`: open boxes first as cards grouped by section,
 done ones behind a nested "N done" toggle. The row is shown by a Datastar
 signal per change (`data-signals__ifmissing` on the tables section), so a
 push never closes what the reader opened and opening never resizes the
-columns. Below 760px the Status and Explainers columns are hidden (both are on
-the change page) so the row keeps the chevron, name, bar, and lane chips. Lane cards show the status line (dot, phase, age, changes), the activity feed,
+columns. Each lane chip stays on one line (the phase shortens with an
+ellipsis first), landed lanes are one muted line, and the ticker is one line.
+Below 1100px the Explainers column is hidden and each change becomes two lines
+(chevron, name, status, bar; then the lanes under the name) with no column
+header; below 760px the Status pill is hidden too (both are on the change page). Lane cards show the status line (dot, phase, age, changes), the activity feed,
 then the ledger tail and reports; live lanes sort first.
 
 ## Requests
