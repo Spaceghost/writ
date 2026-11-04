@@ -983,16 +983,40 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
  * two reserved words); the record follows at offset 16 (Channel.md). The
  * shim copies exactly CHANNEL_RECORD_SIZE bytes, once, at take time; Bend
  * only ever sees that copy, so a client rewriting its bucket after the
- * signal cannot change what was decided. A header whose length is not
- * exactly CHANNEL_RECORD_SIZE is dropped and counted before any Bend
- * parsing (no reply in this task; the bounded denial record is Task 3).
- * Words are copied in host order; the targets are x86_64, little-endian.
+ * signal cannot change what was decided. Words are copied in host
+ * order; the targets are x86_64, little-endian.
+ *
+ * Transport refusal (GB-006, Task 3). A header whose length is not exactly
+ * CHANNEL_RECORD_SIZE is never copied and never reaches Bend: take counts
+ * it and answers it at once with a fixed refusal record in the result
+ * bucket (version 1, kind CHANNEL_KIND_REFUSAL = 3, decision 2 Denied,
+ * reason CHANNEL_REASON_BAD_LENGTH = 256, every other word 0, the request's
+ * sequence in the header) and signals the client. This is the one result
+ * the shim writes on its own. It carries no Writ decision: it is the same
+ * record for every channel and subject, depends only on the length word,
+ * and its kind and reason words are outside the monitor's (kind 2, reasons
+ * 0 to 8), so a client cannot mistake it for a decision by Bend.
+ *
+ * Close event (Task 3). When a session closes, the channel is removed from
+ * the table and its slot is held as "closing" until Bend has taken a close
+ * event for it: a ring entry marked close (an entry already queued for
+ * the channel is turned into it; the queued request is dropped and counted
+ * as stale), which take hands over as channel id with route subject 0 and
+ * all record words 0. Subject 0 is never a channel's subject (a session
+ * whose policy gives 0 is refused) and is not a record word, so a client
+ * cannot forge a close event for its own or another channel. Holding the
+ * slot keeps the bound: every ring entry belongs to a distinct slot, so the
+ * ring still holds at most MAX_CHANNELS entries.
  *
  * Results. writ_shim_put runs on the Bend loop: it writes the record at
  * offset 16, the request's sequence number, and last the length (after a
  * release fence) into the channel's result bucket, then submits the
  * client's registered signal. A put for a channel that has closed or has
- * no taken request is skipped and counted. The client may map its result
+ * no taken request is skipped and counted. The shim never waits for a
+ * client: the signal is submitted and not acknowledged, and the next reply
+ * on the channel overwrites the result bucket, so a client that never
+ * reads its replies holds at most one result (its own bucket) and one ring
+ * entry, and cannot delay another channel (GB-008). The client may map its result
  * bucket writable (Genode RAM dataspaces carry no read-only capability);
  * the shim never reads the result bucket, so that changes nothing here.
  *
@@ -1000,8 +1024,9 @@ extern "C" void writ_shim_sleep_ms(uint32_t ms)
  * answers INSUFFICIENT_RAM when the donated quota is below
  * CHANNEL_SESSION_RAM (Root_component itself answers INSUFFICIENT_CAPS below
  * Writ_channel::Session::CAP_QUOTA), DENIED when no policy matches or MAX_CHANNELS are
- * open. A closed channel is removed from the table under the mutex, so a
- * queued entry for it is skipped by take and counted as stale.
+ * open, or all slots are open or closing. A closed channel is removed
+ * from the table under the mutex before it is destroyed, so take never
+ * copies from a freed bucket.
  */
 
 enum : unsigned {
@@ -1013,14 +1038,24 @@ enum : unsigned {
 	MAX_CHANNELS         = 8,
 	CHANNEL_EP_STACK     = 8*1024*sizeof(long),
 	CHANNEL_SESSION_RAM  = 2*CHANNEL_BUCKET_SIZE + 8*1024,
+
+	/* the shim's own refusal record (transport, not a Writ decision) */
+	CHANNEL_VERSION           = 1,
+	CHANNEL_KIND_REFUSAL      = 3,
+	CHANNEL_DECISION_DENIED   = 2,
+	CHANNEL_REASON_BAD_LENGTH = 256,
+
+	/* the route subject take reports for a close event; never a channel's */
+	CHANNEL_SUBJECT_CLOSED    = 0,
 };
 
 static_assert(CHANNEL_HEADER_SIZE + CHANNEL_RECORD_SIZE <= CHANNEL_BUCKET_SIZE,
               "a record fits its bucket");
 /*
- * Every open channel holds at most one ring entry, so with no more channels
- * than ring slots the ring cannot overflow: the "ring full" count stays 0
- * by construction (the check in _channel_signalled is defence in depth).
+ * Every slot, open or closing, holds at most one ring entry, so with no
+ * more slots than ring entries the ring cannot overflow: the "ring full"
+ * count stays 0 by construction (the check in _channel_signalled is
+ * defence in depth).
  */
 static_assert(MAX_CHANNELS <= CHANNEL_QUEUE_DEPTH, "the ring cannot overflow");
 
@@ -1070,10 +1105,11 @@ struct Channel : Rpc_object<Writ_channel::Session>
 	}
 };
 
-struct Channel_entry { uint32_t id, subject; };
+struct Channel_entry { uint32_t id, subject; bool close; };
 
 /* all guarded by _channel_mutex */
 static Channel       *_channels[MAX_CHANNELS];
+static uint32_t       _channel_closing[MAX_CHANNELS];  /* id whose close event is not yet taken */
 static Channel_entry  _channel_ring[CHANNEL_QUEUE_DEPTH];
 static unsigned       _channel_ring_head, _channel_ring_count;
 static uint32_t       _channel_next_id = 1;
@@ -1081,7 +1117,7 @@ static uint32_t       _channel_next_id = 1;
 /* counters for writ_mem_report (diagnostics only), guarded by _channel_mutex */
 static unsigned long _channel_signals, _channel_coalesced, _channel_ring_full,
                      _channel_bad_length, _channel_stale, _channel_taken,
-                     _channel_put, _channel_put_skipped;
+                     _channel_put, _channel_put_skipped, _channel_closed;
 
 static Semaphore &_channel_ready() { static Semaphore s { 0 }; return s; }
 
@@ -1103,7 +1139,7 @@ static void _channel_signalled(uint32_t id)
 		if (c->queued) { _channel_coalesced++; return; }
 		if (_channel_ring_count == CHANNEL_QUEUE_DEPTH) { _channel_ring_full++; return; }
 		_channel_ring[(_channel_ring_head + _channel_ring_count) % CHANNEL_QUEUE_DEPTH] =
-			{ c->id, c->subject };
+			{ c->id, c->subject, false };
 		_channel_ring_count++;
 		c->queued = true;
 	}
@@ -1156,10 +1192,11 @@ struct Channel_root : Root_component<Channel>
 		}
 
 		/*
-		 * Caps need no check here: Root_component's budget_adjusted_args
-		 * already refuses a cap_quota below Writ_channel::Session::CAP_QUOTA
-		 * with INSUFFICIENT_CAPS before this runs (repos/base/include/base/
-		 * service.h:170-177), and the args seen here are the adjusted ones.
+		 * Caps need no check here: Local_service::budget_adjusted_args,
+		 * which Root_component calls before _create_session, already
+		 * refuses a cap_quota below Writ_channel::Session::CAP_QUOTA with
+		 * INSUFFICIENT_CAPS (repos/base/include/base/service.h:170-177),
+		 * and the args seen here are the adjusted ones.
 		 */
 
 		uint32_t const subject = _subject(label);
@@ -1174,12 +1211,12 @@ struct Channel_root : Root_component<Channel>
 		{
 			Mutex::Guard guard(_channel_mutex());
 			for (unsigned i = 0; i < MAX_CHANNELS; i++)
-				if (!_channels[i]) { slot = i; break; }
+				if (!_channels[i] && !_channel_closing[i]) { slot = i; break; }
 			if (slot < MAX_CHANNELS) id = _channel_next_id++;
 		}
 		if (slot == MAX_CHANNELS) {
 			warning("writ_channel: ", unsigned(MAX_CHANNELS),
-			        " channels open, session for '", label, "' denied");
+			        " channels open or closing, session for '", label, "' denied");
 			return Create_error::DENIED;
 		}
 
@@ -1194,14 +1231,40 @@ struct Channel_root : Root_component<Channel>
 		return c;
 	}
 
+	/*
+	 * The slot stays closing until take has handed the close event to
+	 * Bend; a request still queued for the channel becomes that event.
+	 */
 	void _destroy_session(Channel &c) override
 	{
+		bool queued_close = false;
 		{
 			Mutex::Guard guard(_channel_mutex());
-			for (Channel *&s : _channels)
-				if (s == &c) s = nullptr;
+			for (unsigned i = 0; i < MAX_CHANNELS; i++)
+				if (_channels[i] == &c) {
+					_channels[i]        = nullptr;
+					_channel_closing[i] = c.id;
+				}
+			if (c.queued) {
+				for (unsigned i = 0; i < _channel_ring_count; i++) {
+					Channel_entry &e = _channel_ring[(_channel_ring_head + i) % CHANNEL_QUEUE_DEPTH];
+					if (e.id == c.id) e.close = true;
+				}
+				_channel_stale++;
+			} else if (_channel_ring_count < CHANNEL_QUEUE_DEPTH) {
+				_channel_ring[(_channel_ring_head + _channel_ring_count) % CHANNEL_QUEUE_DEPTH] =
+					{ c.id, c.subject, true };
+				_channel_ring_count++;
+				queued_close = true;
+			} else {
+				/* not reached (one entry per slot); then no event, slot freed */
+				_channel_ring_full++;
+				for (uint32_t &id : _channel_closing)
+					if (id == c.id) id = 0;
+			}
 		}
-		log("writ_channel: channel ", c.id, " closed");
+		if (queued_close) _channel_ready().up();
+		log("writ_channel: channel ", c.id, " closed, close event queued for Bend");
 		Genode::destroy(md_alloc(), &c);
 	}
 };
@@ -1230,45 +1293,83 @@ static void _channel_init(Libc::Env &env)
 	}); });
 }
 
+/*
+ * Writes the shim's fixed refusal record into c's result bucket (caller
+ * holds _channel_mutex) and returns the client's signal to submit after
+ * the mutex is released. Depends on nothing but the request's sequence.
+ */
+static Signal_context_capability _channel_refuse(Channel &c, uint32_t seq)
+{
+	uint32_t volatile *bucket = c.result_ds.local_addr<uint32_t volatile>();
+	uint32_t const record[CHANNEL_RECORD_WORDS] = {
+		CHANNEL_VERSION, CHANNEL_KIND_REFUSAL, CHANNEL_DECISION_DENIED,
+		CHANNEL_REASON_BAD_LENGTH, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+		bucket[CHANNEL_HEADER_SIZE/4 + i] = record[i];
+	bucket[1] = seq;
+	__atomic_thread_fence(__ATOMIC_RELEASE);
+	bucket[0] = CHANNEL_RECORD_SIZE;
+	return c.client_sigh;
+}
+
 extern "C" void writ_shim_take(uint32_t *record, uint32_t *channel, uint32_t *subject)
 {
 	for (;;) {
 		_channel_ready().down();
 
-		Mutex::Guard guard(_channel_mutex());
-		if (!_channel_ring_count) continue;   /* not reached: one up per entry */
-		Channel_entry const e = _channel_ring[_channel_ring_head];
-		_channel_ring_head = (_channel_ring_head + 1) % CHANNEL_QUEUE_DEPTH;
-		_channel_ring_count--;
+		Signal_context_capability refused { };
+		{
+			Mutex::Guard guard(_channel_mutex());
+			if (!_channel_ring_count) continue;   /* not reached: one up per entry */
+			Channel_entry const e = _channel_ring[_channel_ring_head];
+			_channel_ring_head = (_channel_ring_head + 1) % CHANNEL_QUEUE_DEPTH;
+			_channel_ring_count--;
 
-		Channel *c = _channel_lookup(e.id);
-		if (!c) { _channel_stale++; continue; }
-		c->queued = false;
+			if (e.close) {
+				for (uint32_t &id : _channel_closing)
+					if (id == e.id) id = 0;   /* the slot is free again */
+				for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+					record[i] = 0;
+				_channel_closed++;
+				*channel = e.id;
+				*subject = CHANNEL_SUBJECT_CLOSED;
+				return;
+			}
 
-		uint32_t const volatile *bucket = c->request_ds.local_addr<uint32_t const volatile>();
-		uint32_t const length = bucket[0];
-		/*
-		 * Pairs with the client's release fence before it writes the
-		 * length: the record words read below are not read before the
-		 * length that announced them.
-		 */
-		__atomic_thread_fence(__ATOMIC_ACQUIRE);
-		uint32_t const seq    = bucket[1];
-		if (length != CHANNEL_RECORD_SIZE) {
-			_channel_bad_length++;
-			warning("writ_channel: channel ", e.id, " request length ", length,
-			        " is not ", unsigned(CHANNEL_RECORD_SIZE), ", dropped before Bend");
-			continue;
+			Channel *c = _channel_lookup(e.id);
+			if (!c) { _channel_stale++; continue; }   /* not reached: closes convert */
+			c->queued = false;
+
+			uint32_t const volatile *bucket = c->request_ds.local_addr<uint32_t const volatile>();
+			uint32_t const length = bucket[0];
+			/*
+			 * Pairs with the client's release fence before it writes the
+			 * length: the record words read below are not read before the
+			 * length that announced them.
+			 */
+			__atomic_thread_fence(__ATOMIC_ACQUIRE);
+			uint32_t const seq    = bucket[1];
+			if (length != CHANNEL_RECORD_SIZE) {
+				_channel_bad_length++;
+				warning("writ_channel: channel ", e.id, " request length ", length,
+				        " is not ", unsigned(CHANNEL_RECORD_SIZE),
+				        ", refused before Bend (bad length count ", _channel_bad_length, ")");
+				refused = _channel_refuse(*c, seq);
+			} else {
+				for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
+					record[i] = bucket[CHANNEL_HEADER_SIZE/4 + i];
+
+				c->taken     = true;
+				c->taken_seq = seq;
+				_channel_taken++;
+				*channel = e.id;
+				*subject = e.subject;
+				return;
+			}
 		}
-		for (unsigned i = 0; i < CHANNEL_RECORD_WORDS; i++)
-			record[i] = bucket[CHANNEL_HEADER_SIZE/4 + i];
-
-		c->taken     = true;
-		c->taken_seq = seq;
-		_channel_taken++;
-		*channel = e.id;
-		*subject = e.subject;
-		return;
+		/* a refusal: signal the client, then wait for the next entry */
+		if (refused.valid())
+			Signal_transmitter(refused).submit();
 	}
 }
 
@@ -1316,11 +1417,17 @@ extern "C" void writ_mem_report(char const *tag)
 	    " timer short wakes=", _timer_short_wakes);
 	if (_channel_root.constructed()) {
 		Mutex::Guard guard(_channel_mutex());
+		unsigned open = 0, closing = 0;
+		for (unsigned i = 0; i < MAX_CHANNELS; i++) {
+			if (_channels[i])        open++;
+			if (_channel_closing[i]) closing++;
+		}
 		log("writ_mem: [", tag, "] channel signals=", _channel_signals,
 		    " coalesced=", _channel_coalesced, " ring full=", _channel_ring_full,
 		    " bad length=", _channel_bad_length, " stale=", _channel_stale,
 		    " taken=", _channel_taken, " put=", _channel_put,
-		    " put skipped=", _channel_put_skipped);
+		    " put skipped=", _channel_put_skipped, " closed=", _channel_closed,
+		    " open=", open, " closing=", closing);
 	}
 }
 

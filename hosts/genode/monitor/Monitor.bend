@@ -11,7 +11,7 @@ import ../../../DataOS.bend as Writ
 import ../../../examples/Scenario.bend as Scenario
 import ../../../examples/Commit.bend as Commit
 
-# Writ channel monitor (Genode channel lane, Task 2). It runs as the Genode
+# Writ channel monitor (Genode channel lane, Tasks 2 and 3). It runs as the Genode
 # component writ_bend_monitor (scripts/genode/writ_bend_monitor/): it takes
 # request records from client channels (Genode.take), decides each through
 # the library's DataOS.commit_from_capability, and puts one decision record
@@ -35,9 +35,13 @@ import ../../../examples/Commit.bend as Commit
 # Public entry point: main. Everything else is an implementation helper.
 
 # Records processed before the monitor exits with value 0 (GB-008: the loop
-# is fuel-bounded; the supervisor restarts the component for more).
+# is fuel-bounded). Every take counts, a close event too, so no client can
+# keep the loop alive past this bound. Restarting the component with a new
+# generation is the supervisor's job and is not configured in these runs
+# (init does not restart it). Task 3 raised it from 4 to 8 so the liveness
+# run can serve a second client between a flooding client's records.
 def fuel() -> Nat:
-  4n
+  8n
 
 # Record words (hosts/genode/effects/Channel.md).
 def record_version() -> U32:
@@ -88,6 +92,12 @@ def reason_channel_subject_changed() -> U32:
 
 # Route subject words, as the run configuration's <policy subject=..> values.
 # The parent assigns them; the monitor maps them to Scenario identities.
+# Word 0 is no subject: the shim refuses a session whose policy gives 0 and
+# uses 0 only to report that a channel has closed (Channel.md, "Close
+# event"). It is not a record word, so a client cannot send it.
+def route_subject_closed() -> U32:
+  0
+
 def route_subject_reader() -> U32:
   1
 
@@ -128,9 +138,9 @@ def other_session() -> Negotiation.Session:
 # frontend state, and the descriptor id the protocol's mount and open gave
 # that subject. The shim never reuses a channel id and fixes its subject at
 # session creation, so a binding never moves to another client; a later
-# record with a different subject is refused (fail closed). Removing an
-# entry when its channel closes is not implemented (Task 3: a shim close
-# event or a close record kind).
+# record with a different subject is refused (fail closed). A binding is
+# made even when that first record is denied after the descriptor opened,
+# and is removed when the shim reports the channel closed (close_channel).
 type Binding is Data:
   Binding{channel: U32, subject: U32, frontend: Frontend.State, descriptor: Nat}
 
@@ -165,6 +175,24 @@ def Bindings.find(bindings: Bindings, +channel: U32) -> Maybe<&2, Binding>:
         case Binding{+bound, _, _, _}:
           binding_if(U32.is_eq(bound, channel), binding, Bindings.find(rest, channel))
 
+# The table without the binding of a closed channel (a channel never
+# bound, such as one refused at the descriptor, leaves it unchanged).
+def keep_unless(drop: Bool, binding: Binding, rest: Bindings) -> Bindings:
+  match drop:
+    case True{}:
+      rest
+    case False{}:
+      Bound{binding, rest}
+
+def Bindings.remove(bindings: Bindings, +channel: U32) -> Bindings:
+  match bindings:
+    case NoBindings{}:
+      NoBindings{}
+    case Bound{+binding, rest}:
+      match binding:
+        case Binding{+bound, _, _, _}:
+          keep_unless(U32.is_eq(bound, channel), binding, Bindings.remove(rest, channel))
+
 # The monitor's serialized state: the reader's negotiated session, S's
 # session, the ledger, and the channel table. A commit replaces the session
 # and ledger it returns, so a replayed request meets the Committed session,
@@ -195,6 +223,12 @@ def MonitorState.bind(state: MonitorState, binding: Binding) -> MonitorState:
     case MonitorState{reader, other, ledger, channels}:
       MonitorState{reader, other, ledger, Bound{binding, channels}}
 
+# A closed channel's binding is dropped (exported for MonitorCheck.bend).
+def close_channel(state: MonitorState, +channel: U32) -> MonitorState:
+  match state:
+    case MonitorState{reader, other, ledger, channels}:
+      MonitorState{reader, other, ledger, Bindings.remove(channels, channel)}
+
 # Request field accessors (the shim-supplied words, then body words used here).
 def request_channel(request: Host.Request) -> U32:
   match request:
@@ -220,6 +254,10 @@ def request_claimed_subject(request: Host.Request) -> U32:
   match request:
     case Host.Request{_, _, _, _, _, _, _, _, _, _, _, _, _, _, claimed, _, _, _}:
       claimed
+
+# A take that reports a closed channel rather than a request record.
+def is_close_event(+request: Host.Request) -> Bool:
+  U32.is_eq(request_subject(request), route_subject_closed())
 
 # Version, kind, and the reserved words must be exactly as Channel.md states.
 def well_formed(request: Host.Request) -> Bool:
@@ -499,7 +537,33 @@ def answer(+request: Host.Request, state: MonitorState, candidate: Core.Candidat
   principals: Dlm.Snapshot) -> IO(MonitorState):
   emit(request, decide(request, state, candidate, principals))
 
-# The fuel-bounded loop: one record at a time (GB-008).
+# A close event: drop the channel's binding, log the table size, put
+# nothing (the channel is gone).
+def closed_line(+channel: U32, before: Nat, after: Nat) -> String:
+  "monitor: channel=" ++ U32.show(channel) ++ " closed (shim close event) bindings " ++
+    Nat.show(before) ++ " -> " ++ Nat.show(after)
+
+def on_close(+request: Host.Request, +state: MonitorState) -> IO(MonitorState):
+  +next = close_channel(state, request_channel(request))
+  do IO<MonitorState>:
+    Host.Genode.log(closed_line(request_channel(request), Bindings.count(MonitorState.channels(state)),
+      Bindings.count(MonitorState.channels(next))))
+    IO.pure(MonitorState, next)
+
+def step(close: Bool, +request: Host.Request, state: MonitorState, candidate: Core.Candidate,
+  principals: Dlm.Snapshot) -> IO(MonitorState):
+  match close:
+    case True{}:
+      on_close(request, state)
+    case False{}:
+      answer(request, state, candidate, principals)
+
+def handle(+request: Host.Request, state: MonitorState, candidate: Core.Candidate,
+  principals: Dlm.Snapshot) -> IO(MonitorState):
+  step(is_close_event(request), request, state, candidate, principals)
+
+# The fuel-bounded loop: one record at a time (GB-008). At fuel 0 main
+# returns and the component exits with value 0.
 def serve(fuel: Nat, state: MonitorState, +candidate: Core.Candidate,
   +principals: Dlm.Snapshot) -> IO(Unit):
   match fuel:
@@ -508,7 +572,7 @@ def serve(fuel: Nat, state: MonitorState, +candidate: Core.Candidate,
     case 1n+rest:
       do IO<Unit>:
         request : Host.Request <- Host.Genode.take()
-        next : MonitorState <- answer(request, state, candidate, principals)
+        next : MonitorState <- handle(request, state, candidate, principals)
         serve(rest, next, candidate, principals)
 
 def start(solved: Core.SolveResult, principals: Maybe<&2, Dlm.Snapshot>) -> IO(Unit):

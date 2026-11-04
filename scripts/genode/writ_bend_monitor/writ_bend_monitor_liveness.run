@@ -1,0 +1,10 @@
+#
+# writ_bend_monitor_liveness.run - Genode run script (build configuration), not
+# Writ implementation. Genode channel lane, Task 3. See
+# writ_bend_monitor_liveness_run in the shared procedure
+# scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl for the clients,
+# the expected outcome, and the checks. Exits nonzero when that changes.
+#
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+writ_bend_monitor_liveness_run

@@ -1,6 +1,6 @@
 /*
  * writ_channel_client.cc - SCAFFOLDING, NOT A WRIT CLIENT. Genode channel
- * lane, Task 2. A probe component that exercises one Writ channel of the
+ * lane, Tasks 2 and 3. A probe component that exercises one Writ channel of the
  * monitor component writ_bend_monitor: it holds no authority, makes no Writ
  * decision, and its records are synthetic. It is C++ because a Genode
  * session client is C++ (Genode::Connection, Rpc_client); it is not part
@@ -19,7 +19,19 @@
  * Config (all words decimal; the record layout is hosts/genode/effects/
  * Channel.md):
  *   <config session=".." expected_session=".." claimed_subject=".."
- *           expect_decision=".." expect_reason=".." delay_ms=".."/>
+ *           expect_decision=".." expect_reason=".." delay_ms=".."
+ *           mode=".." count=".." period_ms=".."/>
+ * mode (Task 3) selects the exercise:
+ *   "single" (default) the steps above, one request.
+ *   "bad_length" first a request whose header length is 65, then one whose
+ *     length is 0 (GB-006: the shim must answer each with its fixed
+ *     refusal record, kind 3, decision 2, reason 256, every other word 0,
+ *     and the request's sequence), then the valid request, whose decision
+ *     must be the expected one. Any other answer exits 1.
+ *   "flood" (GB-008, the unresponsive client) sends the valid request
+ *     `count` times, `period_ms` apart (sequence 1, 2, ...), from the
+ *     constructor, so its entrypoint never dispatches the result signal: it
+ *     never reads a reply. Then it exits 0. It checks nothing.
  * delay_ms (default 0) makes the client sleep on a Timer session before it
  * writes, so the monitor's Genode.take is already parked when the signal
  * arrives; with 0 the request is usually queued before Bend first takes.
@@ -83,6 +95,24 @@ struct Writ_channel_client::Main
 	uint32_t const _expect_decision = _word("expect_decision");
 	uint32_t const _expect_reason   = _word("expect_reason");
 
+	enum class Mode { SINGLE, BAD_LENGTH, FLOOD };
+
+	Mode _mode_from_config()
+	{
+		using Name = String<16>;
+		Name const m = _config.node().attribute_value("mode", Name("single"));
+		if (m == "bad_length") return Mode::BAD_LENGTH;
+		if (m == "flood")      return Mode::FLOOD;
+		return Mode::SINGLE;
+	}
+
+	Mode const _mode = _mode_from_config();
+
+	/* bad_length: the header lengths sent before the valid request */
+	static constexpr uint32_t BAD_LENGTHS[] = { 65, 0 };
+	enum : unsigned { NUM_BAD = 2 };
+	unsigned _step = 0;   /* index of the request in flight */
+
 	static void _dump(char const *what, uint32_t const volatile *words, unsigned n)
 	{
 		for (unsigned line = 0; line < n; line += 4) {
@@ -102,8 +132,44 @@ struct Writ_channel_client::Main
 		sleep_forever();
 	}
 
+	/*
+	 * The shim's transport refusal (Channel.md, "Transport refusal"): exactly
+	 * version 1, kind 3, decision 2, reason 256, the rest 0, for sequence seq.
+	 */
+	bool _is_refusal(uint32_t seq) const
+	{
+		uint32_t const volatile *r = _result + HEADER_WORDS;
+		if (_result[1] != seq) return false;
+		if (r[0] != 1 || r[1] != 3 || r[2] != 2 || r[3] != 256) return false;
+		for (unsigned i = 4; i < RECORD_WORDS; i++)
+			if (r[i] != 0) return false;
+		return true;
+	}
+
 	void _handle_result()
 	{
+		if (_mode == Mode::BAD_LENGTH && _step < NUM_BAD) {
+			uint32_t const length = BAD_LENGTHS[_step];
+			uint32_t const seq    = _step + 1;
+			if (_result[0] != RECORD_SIZE) {
+				log("client: result signal without a record (length ", _result[0], ")");
+				return;
+			}
+			_dump("result header", _result, HEADER_WORDS);
+			_dump("result record", _result + HEADER_WORDS, RECORD_WORDS);
+			if (!_is_refusal(seq)) {
+				error("client: FAIL request length ", length, " (seq ", seq,
+				      ") was not answered by the shim's refusal record");
+				_exit(1);
+			}
+			log("client: refusal for request length ", length, " seq ", seq,
+			    ": kind=3 (transport refusal) decision=Denied (2) reason=256 (bad length)");
+			_step++;
+			if (_step < NUM_BAD) _send(BAD_LENGTHS[_step], _step + 1);
+			else                 _send(RECORD_SIZE, _step + 1);
+			return;
+		}
+
 		if (_result[0] != RECORD_SIZE) {
 			log("client: result signal without a record (length ", _result[0], ")");
 			return;
@@ -116,7 +182,7 @@ struct Writ_channel_client::Main
 		    " route_subject=", r[4], " session=", r[5], " seq=", _result[1]);
 
 		bool const ok = r[0] == 1 && r[1] == 2 && r[2] == _expect_decision
-		             && r[3] == _expect_reason;
+		             && r[3] == _expect_reason && _result[1] == _step + 1;
 		if (ok) {
 			log("client: PASS decision ", r[2], " reason ", r[3], " as expected");
 			_exit(0);
@@ -140,6 +206,31 @@ struct Writ_channel_client::Main
 			timer.msleep(delay);
 		}
 
+		if (_mode == Mode::FLOOD) {
+			uint32_t const count  = _word("count");
+			uint32_t const period = _word("period_ms");
+			Timer::Connection timer { _env };
+			for (uint32_t i = 1; i <= count; i++) {
+				_write(RECORD_SIZE, i);
+				log("client: flood request ", i, " of ", count,
+				    " signalled, reply not read");
+				Signal_transmitter(_channel.request_sigh()).submit();
+				timer.msleep(period);
+			}
+			log("client: flood done, ", count, " requests sent, no reply read");
+			_exit(0);
+		}
+
+		if (_mode == Mode::BAD_LENGTH) _send(BAD_LENGTHS[0], 1);
+		else                           _send(RECORD_SIZE, 1);
+	}
+
+	/*
+	 * Writes the request record and a header announcing `length` bytes
+	 * with sequence `seq`; the length word is written last.
+	 */
+	void _write(uint32_t length, uint32_t seq)
+	{
 		uint32_t const record[RECORD_WORDS] = {
 			1,                          /* version                        */
 			1,                          /* kind: commit request           */
@@ -154,13 +245,18 @@ struct Writ_channel_client::Main
 		};
 		for (unsigned i = 0; i < RECORD_WORDS; i++)
 			_request[HEADER_WORDS + i] = record[i];
-		_request[1] = 1;              /* sequence */
+		_request[1] = seq;            /* sequence */
 		__atomic_thread_fence(__ATOMIC_RELEASE);
-		_request[0] = RECORD_SIZE;    /* length, written last */
+		_request[0] = length;         /* length, written last */
+	}
 
+	void _send(uint32_t length, uint32_t seq)
+	{
+		_write(length, seq);
 		_dump("request header", _request, HEADER_WORDS);
 		_dump("request record", _request + HEADER_WORDS, RECORD_WORDS);
-		log("client: request written, signalling the monitor");
+		log("client: request written (length ", length, " seq ", seq,
+		    "), signalling the monitor");
 		Signal_transmitter(_channel.request_sigh()).submit();
 	}
 };

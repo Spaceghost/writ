@@ -1,9 +1,10 @@
 # Writ channel record formats
 
-Genode channel lane, Task 2. The byte layout of the records a client and the
+Genode channel lane, Tasks 2 and 3. The byte layout of the records a client and the
 Bend monitor exchange through one Writ channel (GB-010, GB-011). The shim
 (`hosts/genode/shim/writ_mem.cc`, "Writ channel") copies these words and
-never interprets them beyond the bucket header's length; the monitor
+never interprets them beyond the bucket header's length (and answers a
+wrong length with its fixed transport refusal, below); the monitor
 (`hosts/genode/monitor/Monitor.bend`) decides. The Bend records
 `Request` and `Reply` in `Genode.bend` mirror the formats field for field,
 and the twins `genode_take.c` and `genode_put.c` marshal the words only.
@@ -12,11 +13,11 @@ Example: reader R's client writes the report-to-summary request below into
 its request bucket and signals; the monitor answers `Committed` in the
 result bucket (`verification/genode-channel-base-linux.txt`, run 1). Current
 gap: one record per bucket and one outstanding request per channel; a
-record of the wrong declared length is dropped and counted but not yet
-answered (the bounded denial record is Task 3); the monitor binds a
-descriptor to a channel at its first record but never removes the binding
-when the channel closes (Task 3: a shim close event or a close record
-kind); subject S's session is opened, not negotiated (synthetic).
+client that floods gets no priority but also no bound on how often it is
+served beyond the ring's order (each of its records costs the monitor one
+unit of fuel); the monitor exits at fuel 0 and nothing restarts it
+(GB-008's supervisor restart with a new generation is not configured);
+subject S's session is opened, not negotiated (synthetic).
 
 ## Encoding
 
@@ -48,8 +49,29 @@ Bucket header (both buckets):
 | 0x0c | reserved | 0 |
 
 The shim copies the 64 request bytes once, when `Genode.take` takes the
-channel's queue entry; a header length other than 64 is dropped and counted
-(`bad length=` in the shim's report) before any Bend parsing.
+channel's queue entry; a header length other than 64 is never copied, is
+counted (`bad length=` in the shim's report and in its warning line), and
+is answered with the transport refusal below before any Bend parsing.
+
+## Transport refusal (kind 3, written by the shim)
+
+The one result record the shim writes on its own (GB-006). It carries no
+Writ decision: it is a fixed record that depends only on the request's
+length word being wrong, the same for every channel and route subject, and
+Bend never sees the request. Its kind and reason words are outside the
+monitor's (kind 2, reasons 0 to 8).
+
+| Word | Value |
+| --- | --- |
+| 0 version | 1 |
+| 1 kind | 3: transport refusal |
+| 2 decision | 2 (Denied) |
+| 3 reason | 256: bad length (the header length was not 64) |
+| 4 to 15 | 0 |
+
+The result header carries length 64 and the refused request's sequence.
+The client's result signal is submitted as for a decision. Exercised with
+lengths 65 and 0 (`writ_bend_monitor_bad_length`).
 
 ## Request record (kind 1, commit request)
 
@@ -88,7 +110,7 @@ words: `channel` (the shim's id for the channel the record arrived on) and
 | 0x00 | 0 | `version` | 1 |
 | 0x04 | 1 | `kind` | 2: decision |
 | 0x08 | 2 | `decision` | 1 Committed, 2 Denied |
-| 0x0c | 3 | `reason` | 0 none; 1 bad record (version, kind, or reserved words); 2 route subject unknown; 3 session unknown; 4 the body's plan is not the session's plan; 5 the route caller's descriptor mount/open was rejected (no binding made); 6 `DataOS.commit_from_capability` returned Rejected (the descriptor was opened and the library refused); 7 channel table full (8 bound channels, `Monitor.max_channels`); 8 the channel is bound to another route subject |
+| 0x0c | 3 | `reason` | 0 none; 1 bad record (version, kind, or reserved words); 2 route subject unknown; 3 session unknown; 4 the body's plan is not the session's plan; 5 the route caller's descriptor mount/open was rejected (no binding made); 6 `DataOS.commit_from_capability` returned Rejected (the descriptor was opened and the library refused); 7 channel table full (8 channels bound at once, `Monitor.max_channels`; a binding is made at a channel's first record, even when that record is then denied, and removed at its close event); 8 the channel is bound to another route subject |
 | 0x10 | 4 | `subject` | the route subject the decision was made for |
 | 0x14 | 5 | `session` | the request's session id |
 | 0x18 | 6 | `intent_destination_object` | write intent: destination object (0 on denial) |
@@ -114,9 +136,24 @@ caller's descriptor through the protocol and stores it; every later record
 on that channel reuses it, and the commit uses the stored frontend state
 and its real revision. The shim never reuses a channel id and fixes a
 channel's subject at session creation, so the binding is fail closed: a
-ninth unbound channel is refused with reason 7, a bound channel arriving
-with another subject with reason 8. Entries are not yet removed when a
-channel closes (Task 3).
+ninth unbound channel while 8 are bound is refused with reason 7, a bound
+channel arriving with another subject with reason 8. The binding is
+removed when the shim reports the channel closed (below); before Task 3
+bindings were never removed, so reason 7 counted channels over the
+component's life.
+
+## Close event
+
+When a client's session closes (the client exits or closes it), the shim
+removes the channel and queues a close event for it; `Genode.take` answers
+a `Request` with the channel's id, `subject` 0, and all 16 record words 0,
+and the monitor drops that channel's binding (no reply is put). Route
+subject 0 is never a channel's subject (a policy giving 0 refuses the
+session) and is not a record word, so no client can send a close event.
+The shim holds the channel's slot until the event is taken, so the queue
+still holds at most one entry per slot (8). A request still queued at
+close becomes the close event (counted `stale`). A close event costs one
+unit of the monitor's fuel like a record.
 
 ## Route subject (GB-007)
 

@@ -6,7 +6,8 @@ import ../../../Negotiation.bend as Negotiation
 import ../../../examples/Scenario.bend as Scenario
 import ./Monitor.bend as Monitor
 
-# Linux check of the monitor's pure decision (Genode channel lane, Task 2).
+# Linux check of the monitor's pure decision (Genode channel lane, Tasks 2
+# and 3).
 # Host scaffolding, not a Writ test suite entry: it runs Monitor.decide on
 # the records the client probe sends and on the channel-table cases,
 # without Genode, the shim, or the effects, so the Bend outcome can be
@@ -80,12 +81,41 @@ def fill(+n: Nat, state: Monitor.MonitorState, +candidate: Core.Candidate,
       after(request(U32.from_nat(n), 1, 2, 0, 2), fill(p, state, candidate, principals),
         candidate, principals)
 
+def bound(state: Monitor.MonitorState) -> Nat:
+  Monitor.Bindings.count(Monitor.MonitorState.channels(state))
+
+# Close events (Task 3): the shim reports a closed channel as a take with
+# route subject 0; the monitor drops that channel's binding only.
+def close_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
+  +first = after(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
+    candidate, principals)
+  +full = fill(8n, Monitor.initial_state(), candidate, principals)
+  +freed = Monitor.close_channel(full, 3)
+  +ninth = once(request(9, 1, 2, 0, 2), freed, candidate, principals)
+  do IO<Unit>:
+    IO.print("bindings ch1 bound, closed : " ++ Nat.show(bound(first)) ++ " -> " ++
+      Nat.show(bound(Monitor.close_channel(first, 1))))
+    IO.print("bindings 8 bound, ch3 closed: " ++ Nat.show(bound(full)) ++ " -> " ++ Nat.show(bound(freed)))
+    IO.print("reply ch9 after ch3 closed : " ++ show(ninth))
+    verdict(Monitor.is_close_event(request(5, 0, 0, 0, 0)) &&
+      Bool.not(Monitor.is_close_event(request(5, 1, 1, 6, 1))),
+      "route subject 0 is a close event, a routed record is not")
+    verdict(Nat.is_eq(bound(first), 1n) && Nat.is_eq(bound(Monitor.close_channel(first, 1)), 0n),
+      "closing channel 1 removes its binding")
+    verdict(Nat.is_eq(bound(Monitor.close_channel(first, 2)), 1n) &&
+      Nat.is_eq(bound(Monitor.close_channel(full, 42)), 8n),
+      "closing an unbound channel leaves the table unchanged")
+    verdict(Nat.is_eq(bound(freed), 7n) && outcome_is(ninth, 2, 6) &&
+      Bool.not(U32.is_eq(descriptor(ninth), 0)),
+      "after channel 3 closed a ninth channel is bound and served (not reason 7)")
+
 def channel_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
   +first = after(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
     candidate, principals)
   +own = once(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
     candidate, principals)
   +again = once(request(1, 1, 1, 7, 1), first, candidate, principals)
+  +twice = after(request(1, 1, 1, 7, 1), first, candidate, principals)
   +full = fill(8n, Monitor.initial_state(), candidate, principals)
   +ninth = once(request(9, 1, 2, 0, 2), full, candidate, principals)
   +third = once(request(3, 1, 2, 0, 2), full, candidate, principals)
@@ -99,10 +129,12 @@ def channel_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(U
       U32.is_eq(frontend_revision(again), frontend_revision(own)) &&
       Bool.not(U32.is_eq(descriptor(own), 0)),
       "second request on channel 1 reuses its descriptor and frontend revision (session now Committed)")
+    verdict(Nat.is_eq(bound(twice), 1n), "two requests on channel 1 leave one binding")
     verdict(outcome_is(ninth, 2, 7), "ninth channel refused: channel table full")
     verdict(outcome_is(third, 2, 6) && Bool.not(U32.is_eq(descriptor(third), 0)),
       "bound channel 3 still served with a full table")
     verdict(outcome_is(moved, 2, 8), "channel 1 arriving with another subject refused")
+    close_cases(candidate, principals)
 
 def run(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Unit):
   +own = once(request(1, 1, 1, expected_session_reader(), 1), Monitor.initial_state(),
