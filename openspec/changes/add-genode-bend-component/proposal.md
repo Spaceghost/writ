@@ -25,9 +25,11 @@ surface the component must satisfy through Genode's libc.
   natively, which need the profile's substitutes (single lane, halting fault
   path), and which fail.
 - Define **Genode effects** authored in Bend with C twins: console output over
-  the LOG session, time over the Timer session, and a **Writ session** server
-  effect that parks the loop on a Genode signal and hands each authenticated
-  request to Bend as a term.
+  the LOG session, time over the Timer session, and a **Writ channel** pair of
+  effects (`take`, `put`) over bounded typed request and result buckets, so
+  the interaction above the kernel is records in channels rather than
+  procedure calls. Genode's RPC objects, dataspaces, and signals are only the
+  transport.
 - Define the `extern "C"` shim as the only authored C++ binding, with an
   explicit source and trust inventory.
 - Require corpus parity inside the component before any session is served.

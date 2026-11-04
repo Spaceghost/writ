@@ -26,6 +26,17 @@ makes this impossible, the change is re-planned; forking the runtime is out of
 scope because it would make the freestanding monitor compute with code that no
 other target runs.
 
+### The host layer may be nelibc
+
+Spaceghost is building **nelibc**, a small Nelua-authored libc. It is a
+candidate for the host layer's libc subset: the generated runtime needs only
+the memory, fault, thread, clock, environment, and exit symbols the profile
+lists, and a libc whose C is generated from Nelua under the Drift pattern (an
+explicit external dependency, no Nelua runtime, no allocator of its own) fits
+the trust model better than a general-purpose libc. The selection task compares
+nelibc against a hand-written minimal host layer on exactly those symbols and
+records which rows each supplies. Either way the evaluator is not modified.
+
 ### 64-bit first
 
 The Bend term is one 64-bit word with pointers stored inline, and the runtime

@@ -95,14 +95,14 @@ Term genode_log_run(Env e, Term* f, IoWork* w) {
     <div class="box bend">Writ monitor component<small>generated C + Bend effects, compiled in Genode's build against its libc</small></div>
   </div>
   <div class="lane">
-    <div class="box bend">Bend event loop<small>accept → DataOS.commit_from_capability → answer, under fuel</small></div>
+    <div class="box bend">Bend event loop<small>take a request record → DataOS.commit_from_capability → put a result record, under fuel</small></div>
     <span class="arrow">→</span>
     <div class="box shim">extern "C" shim<small>bounded request queue; no branches that decide</small></div>
     <span class="arrow">→</span>
-    <div class="box genode">LOG · Timer · Writ session RPC objects<small>route identity from the parent, never from the body</small></div>
+    <div class="box genode">LOG · Timer · Writ channel objects<small>request and result buckets plus a signal; identity from the parent route, never from the body</small></div>
   </div>
 </div>
-<p>One request at a time. That is not a limitation to apologize for: the backplane requires one authoritative state at commit, and a serial loop is the simplest way to get it. <code>Genode.accept</code> parks on the runtime's wait mechanism (a pipe on base-linux, a signal receiver bridged to the libc wakeup on base-hw) until the shim has a request.</p>
+<p>Data-centric above the kernel: a Writ channel is a request bucket and a result bucket the monitor owns for one descriptor, plus a signal. Clients append request records and read result records; nothing above Genode's transport is a procedure call. One record at a time, because the backplane requires one authoritative state at commit. <code>Genode.take</code> parks on the runtime's wait mechanism (a pipe on base-linux, a signal receiver bridged to the libc wakeup on base-hw) until the shim has a record.</p>
 
 <h2 id="rows">Runtime rows on Genode's libc</h2>
 <p>Genode's libc is FreeBSD-derived. For each row of the runtime inventory the port must record supplied, substituted, or missing, by running it, on both base platforms. Expectations to test, not assume:</p>

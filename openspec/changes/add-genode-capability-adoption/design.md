@@ -6,7 +6,7 @@ In the report-to-summary example, `Frontend.mount` binds reader 7 to a
 capability for the exact summarization plan, `open` yields a descriptor, and
 `DataOS.commit_from_capability` rechecks the descriptor at release. On Genode
 the same reader is a component whose parent routed it a Writ session; the
-descriptor is an RPC object the monitor created; closing it destroys that
+descriptor is a native channel object the monitor created; closing it destroys that
 object. Nothing in the repository says these correspond, so a port would guess.
 
 The current gap: `Frontend` has no notion of a native object, a generation, a
@@ -20,7 +20,7 @@ delegation edge, or a route. The Genode host spec states the rules in prose.
 
 | Record | Meaning |
 | --- | --- |
-| `Object{id, generation, owner, kind}` | A native RPC object the monitor created; `kind` is session, descriptor, or result channel |
+| `Object{id, generation, owner, kind}` | A native channel object the monitor created; `kind` is session, descriptor, or result channel |
 | `Alias{holder, object, generation}` | A capability reference held by a protection domain; valid only while generations match |
 | `Route{parent, child, service, label_prefix}` | A parent-imposed session route; the trusted part of a label |
 | `Quota{domain, ram, caps}` | Native resource accounts, separate from Writ's ledger |
@@ -79,7 +79,7 @@ confinement inventory, never at the server at call time. GA-005 is a model
 rule; GA-010 is the matching topology obligation: a per-subject object is
 handed only to domains with no capability-carrying channel outside their
 delegation record. Object granularity is identity granularity, so the Genode
-component mints one RPC object per descriptor.
+component mints one channel object per descriptor.
 
 ### Capabilities are references, records are authority
 

@@ -40,25 +40,45 @@ Three effect families are authored in Bend:
 | --- | --- | --- |
 | `Genode.log(text)` | `writ_shim_log` | LOG |
 | `Genode.now()`, `Genode.sleep(ms)` | `writ_shim_now`, `writ_shim_sleep` | Timer |
-| `Genode.accept()` | parks on a signal, then `writ_shim_take_request` | Writ session (server side) |
-| `Genode.answer(request_id, reply)` | `writ_shim_reply` | Writ session |
+| `Genode.take()` | parks on a signal, then `writ_shim_take` | Writ channel: the client's request bucket |
+| `Genode.put(channel_id, record)` | `writ_shim_put` | Writ channel: the client's result bucket |
 
 The shim is one C++ translation unit exporting `extern "C"` functions. It owns
-the Genode environment, the session objects, and a bounded request queue. It
-contains no policy: a request is delivered to Bend as an opaque, bounded term
-with the authenticated session identity the parent route established, and Bend
-decides. The shim's source, size, and reviewed obligations are listed in the
-trust inventory that AGENTS.md requires for authored binding code.
+the Genode environment, the channel objects, and a bounded request queue. It
+contains no policy: a request record is delivered to Bend as an opaque, bounded
+term with the authenticated channel identity the parent route established, and
+Bend decides. The shim's source, size, and reviewed obligations are listed in
+the trust inventory that AGENTS.md requires for authored binding code.
 
-### The Writ session is served from the event loop
+### Writ is data-centric above the kernel: channels, not procedure calls
 
-Bend's loop runs effects one at a time and parks blocking ones. `Genode.accept`
+Genode's kernel-level mechanism is RPC objects, dataspaces, and signals, and
+nothing above it can avoid using them as the transport. What Writ exposes on
+top is not a procedure interface. A **Writ channel** is a pair of bounded,
+typed buckets the monitor owns for one descriptor: a request bucket the client
+appends records to and a result bucket the client reads. Each bucket is a RAM
+dataspace mapped read-only or write-only on the client side as appropriate,
+and a Genode signal tells the other party that a record landed. The Genode
+object behind the channel exists for identity and lifetime (GB-010); it has no
+method surface beyond "attach these dataspaces, deliver this signal."
+
+This matches the rest of Writ: WritFS already frames interaction as names,
+views, jobs, and framed control records, and transfer admission is a decision
+over records. A client does not call `commit`; it writes a request record that
+names an exact plan, and later reads a result record that carries a decision
+and a write intent or a denial reason. "Search atop, not RPC below": clients
+query buckets and views; the monitor materializes.
+
+### The channel is served from the event loop
+
+Bend's loop runs effects one at a time and parks blocking ones. `Genode.take`
 parks with the runtime's wait mechanism on a descriptor the shim signals when a
-request arrives (on `base-linux`, a pipe; on `base-hw`, the shim's signal
-receiver bridged to the libc wakeup). The monitor's `main` is a fuel-bounded
-loop: accept, decide through `DataOS`, answer. One request is processed at a
-time, which is what the backplane's "one authoritative state at commit" rule
-requires anyway.
+request record arrives (on `base-linux`, a pipe; on `base-hw`, the shim's
+signal receiver bridged to the libc wakeup). The monitor's `main` is a
+fuel-bounded loop: take, decide through `DataOS`, put. One record is processed
+at a time, which is what the backplane's "one authoritative state at commit"
+rule requires anyway. A record larger than the bucket's bound is never copied
+into Bend; the shim counts it and the client sees a bounded-size denial record.
 
 ### base-linux first, base-hw second, and evidence stays separate
 

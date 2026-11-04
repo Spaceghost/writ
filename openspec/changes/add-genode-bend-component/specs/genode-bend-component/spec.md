@@ -136,15 +136,15 @@ The monitor loop SHALL process one request at a time under fuel and SHALL keep s
 - **WHEN** another request arrives
 - **THEN** the monitor exits cleanly and the supervisor restarts it with a new generation.
 
-### Requirement: GB-010 One RPC object per descriptor, never a sink
+### Requirement: GB-010 One channel object per descriptor, never a sink
 
-The shim SHALL mint one RPC object per Writ descriptor, SHALL NOT multiplex descriptors over a shared session object, and SHALL NOT expose any object whose invocation performs a sink effect directly; every object resolves to a monitor record that Bend re-checks.
+The shim SHALL mint one channel object (a request bucket, a result bucket, and a signal) per Writ descriptor, SHALL NOT multiplex descriptors over a shared object, and SHALL NOT expose any object whose use performs a sink effect directly; every object resolves to a monitor record that Bend re-checks.
 
 #### Scenario: Two descriptors for one reader
 
 - **GIVEN** reader R opens two descriptors
 - **WHEN** the shim's objects are listed
-- **THEN** two distinct RPC objects exist and closing one leaves the other invocable.
+- **THEN** two distinct channel objects exist and closing one leaves the other usable.
 
 #### Scenario: Object points at a publisher
 
@@ -167,3 +167,19 @@ Qualification SHALL record `base-linux` and `base-hw` results separately, with b
 - **GIVEN** a record states device execution inside the component
 - **WHEN** it is reviewed
 - **THEN** it is rejected; Genode's GPU session is not a Bend compute backend.
+
+### Requirement: GB-011 Interaction above the kernel is records in channels
+
+The component SHALL expose Writ to clients as typed request and result buckets per descriptor, with a signal for readiness, and SHALL NOT expose a procedure interface whose method names carry Writ semantics; Genode RPC, dataspaces, and signals are the transport only.
+
+#### Scenario: Client submits a request record
+
+- **GIVEN** reader R holds a channel for an open descriptor
+- **WHEN** R appends a bounded request record naming an exact plan and the shim signals the monitor
+- **THEN** `Genode.take` yields the record with the channel's route identity and the result bucket later holds a decision record.
+
+#### Scenario: A method surface is proposed
+
+- **GIVEN** a shim design exposes `commit`, `read`, or `open` as RPC methods
+- **WHEN** it is reviewed
+- **THEN** it is rejected under this capability; the only operations are attach buckets and deliver signal.
