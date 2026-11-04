@@ -149,7 +149,10 @@ every `tasks.md`, lanes live and landed), then the changes table. A change with
 a task done or a lane on it is listed; the rest collapse under one line. Each
 listed change shows a progress bar and a chip per
 live or idle lane on it (dot, name, phase, age); landed lanes are a muted list.
-A chevron at the start of each change row opens a full-width row beneath it
+A small activity icon before the lane chips shows the last three activity
+lines across the lanes on the change as a tooltip on hover and, on click,
+opens a full-width row beneath the change with the last ten lines (newest in
+view, as in the lane feeds). A chevron at the start of each change row opens a full-width row beneath it
 with the change's `tasks.md`: open boxes first as cards grouped by section,
 done ones behind a nested "N done" toggle. The row is shown by a Datastar
 signal per change (`data-signals__ifmissing` on the tables section), so a
