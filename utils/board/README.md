@@ -56,7 +56,7 @@ bun utils/board/smoke.ts
   (others are listed as skipped):
   - branch and last commit, from the only two git commands the board runs,
     both read-only: `git -C <dir> rev-parse --abbrev-ref HEAD` and
-    `git -C <dir> log -1 --no-show-signature --format=%h%x09%s%x09%cr`. They
+    `git -C <dir> log -1 --no-show-signature --format=%h%x09%s%x09%cr%x09%ct`. They
     run with `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, and `GIT_COMMON_DIR`
     removed from the environment, `GIT_CONFIG_NOSYSTEM=1`, and no pager or
     terminal prompt. Git config in a lane cannot make these commands run a
@@ -66,7 +66,15 @@ bun utils/board/smoke.ts
   - for each `<dir>/.superpowers/sdd/<plan>/`, the last ten lines of
     `progress.md` and every `task-<n>-report.md` (in task order, each in a
     collapsible section, its `Status:` line in the summary). This workspace is
-    git-ignored, so it is read from the filesystem, never from git;
+    git-ignored, so it is read from the filesystem, never from git. From the
+    ledger the board also reads the plan's **phase** (the last line naming a
+    task, a final review, or a merge, classified by its wording: dispatched,
+    implemented, in review, fix round, complete, landed) and the plan file the
+    first line names (`# SDD ledger — plan: docs/superpowers/plans/<x>.md`,
+    only that directory, no traversal), whose first `openspec/changes/<name>`
+    reference is the change the lane works on (task-box drift is listed
+    separately and does not make a lane "on" a change);
+  - for each plan, the last twelve lines of `activity.log` (see below);
   - every change under `<dir>/openspec/changes/` whose checkbox counts differ
     from the root's, or that the root does not have;
   - files under `<dir>/verification/` that the root lacks, or that are newer
@@ -95,6 +103,39 @@ characters) and protocol-relative `//host` links become `#`. Relative links
 between OpenSpec documents are rewritten to board routes; other relative links
 (for example to `.bend` sources) are left as written and do not resolve on the
 board.
+
+### Activity log
+
+Agents working in a lane append one line per step to
+`<lane>/.superpowers/sdd/<plan>/activity.log`, tab-separated:
+
+```
+<UTC time, RFC 3339>	<who>	<what happened>
+```
+
+for example:
+
+```sh
+printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" implementer "Task 3: liveness run passed, writing the evidence" >> .superpowers/sdd/<plan>/activity.log
+```
+
+`who` is the role (`implementer`, `reviewer`, `controller`). A line without
+tabs is shown as text alone. The board shows the last twelve lines per plan,
+oldest first, newest emphasised, and the newest line is the tooltip on the
+lane's chip in the change table. The file is the main "being worked on"
+signal: a lane is **active** when its newest signal (last commit time,
+`progress.md`, `activity.log`, or a report file) is under 30 minutes old,
+**in review** when its ledger phase says review and that signal is under three
+hours old, **landed** when every plan's phase is a merge, and **idle**
+otherwise. None of this is verification: it is what the lane wrote.
+
+The index leads with three tiles (changes being worked on, tasks done across
+every `tasks.md`, lanes live and landed), then the changes table. A change with
+a task done or a lane on it is listed; the rest collapse under one line. Each
+listed change shows a progress bar, the task ids done and open, and a chip per
+live or idle lane on it (dot, name, phase, age); landed lanes are a muted list.
+Lane cards show the status line (dot, phase, age, changes), the activity feed,
+then the ledger tail and reports; live lanes sort first.
 
 ## Requests
 
@@ -175,10 +216,12 @@ received, as Datastar `datastar-patch-elements` outer morphs by id:
 
 | Page | Fragments |
 | --- | --- |
-| `/` | `#nav`, `#index-tables` (change and baseline tables), `#lanes` |
+| `/` | `#nav`, `#index-tables` (tiles, change and baseline tables), `#lanes` |
 | `/change/<name>`, `/spec/<name>[/traceability]` | `#nav`, `#main` |
 
-So a report edit in a lane pushes only `#lanes` to index pages, and a
+So a report edit in a lane pushes `#lanes` to index pages (and
+`#index-tables` when a chip's phase, age, or tooltip changed), an
+`activity.log` append pushes the lane's feed within the debounce window, and a
 `tasks.md` edit pushes the tables, the nav, and that change's page. The morph
 keeps what the reader changed in the browser: open report sections, nav
 groups, the selected explainer tab, and loaded iframes (`data-preserve-attr`

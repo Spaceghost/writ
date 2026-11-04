@@ -8,7 +8,7 @@
 // <details>, and the `style`/`aria-selected` that the explainer tabs set.
 // Nested elements a morph should match keep stable ids for the same reason.
 
-import type { Baseline, Change, Lane, LaneScan } from "./server.ts";
+import type { Baseline, Change, Lane, LaneScan, LaneStatus, Phase } from "./server.ts";
 
 /** Pinned Datastar release; see README.md for where the version was found. */
 export const DATASTAR_URL = "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.4/bundles/datastar.js";
@@ -63,6 +63,58 @@ function progress(t: { done: number; total: number }): string {
 
 const statusTag = (s: string) => `<span class="status status-${esc(s.replace(/[^a-z0-9-]/gi, ""))}">${esc(s)}</span>`;
 
+/** "12 s", "4 min", "3 h", "2 d": how long ago an epoch-ms signal was. */
+export function ago(at: number | null, now = Date.now()): string {
+  if (at === null) return "no signal";
+  const s = Math.max(0, Math.round((now - at) / 1000));
+  if (s < 60) return `${s} s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 48) return `${h} h`;
+  return `${Math.round(h / 24)} d`;
+}
+
+const PHASE_WORDS: Record<Phase["label"], string> = {
+  dispatched: "dispatched", implemented: "implemented, awaiting review", review: "in review", fix: "fix round",
+  complete: "complete", landed: "landed", unknown: "",
+};
+
+/** The newest plan phase of a lane, as a short phrase ("Task 3 · fix round"). */
+export function phaseText(l: Lane): string {
+  const p = [...l.sdd].reverse().find((x) => x.phase !== null)?.phase ?? null;
+  if (p === null) return "no ledger phase";
+  const word = PHASE_WORDS[p.label] || "see ledger";
+  return p.task === null ? word : `Task ${p.task} · ${word}`;
+}
+
+/** The newest activity line of a lane, or null. */
+function latestActivity(l: Lane): string | null {
+  for (const p of [...l.sdd].reverse()) {
+    const a = p.activity[p.activity.length - 1];
+    if (a) return a.text;
+  }
+  return null;
+}
+
+const dot = (status: LaneStatus) => `<span class="dot dot-${status}" aria-hidden="true"></span>`;
+
+/** A lane chip for a change row: dot, lane name, phase, age. */
+function laneChip(l: Lane): string {
+  const latest = latestActivity(l);
+  const title = latest === null ? "" : ` title="${esc(latest)}"`;
+  return `<span class="chip chip-${l.status}"${title}>${dot(l.status)}<a href="#lane-${slug(l.name)}">${esc(l.name)}</a><span class="chip-phase">${esc(phaseText(l))}</span><span class="chip-age">${esc(ago(l.signalAt))}</span></span>`;
+}
+
+/** Task numbers a tasks.md marks done and open, for the line under a progress bar. */
+function taskNumbers(c: Change): string {
+  if (c.taskIds.done.length === 0 && c.taskIds.open.length === 0) return "";
+  const list = (ids: string[]) => ids.map(esc).join(" ");
+  const done = c.taskIds.done.length === 0 ? "" : `${list(c.taskIds.done)} done`;
+  const open = c.taskIds.open.length === 0 ? "" : `${list(c.taskIds.open)} open`;
+  return `<div class="sub tasknums">${[done, open].filter(Boolean).join(" · ")}</div>`;
+}
+
 /** Left list of changes grouped by status, then a link per baseline section. */
 export function nav(changes: Change[], page: string): string {
   const groups = new Map<string, Change[]>();
@@ -78,26 +130,57 @@ export function nav(changes: Change[], page: string): string {
   return `<nav id="nav" class="side" aria-label="Changes"><a class="home"${page === "/" ? ` aria-current="page"` : ""} href="/">Index</a>${body}</nav>`;
 }
 
-/** Index tables (changes, then baselines); patched as `#index-tables`. */
-export function indexTables(baselines: Baseline[], changes: Change[]): string {
+/**
+ * Index tables (summary tiles, changes with their lanes, then baselines);
+ * patched as `#index-tables`. Changes with a task done or a lane on them come
+ * first; the rest collapse under one line so the live ones are visible.
+ */
+export function indexTables(baselines: Baseline[], changes: Change[], scan: LaneScan | null): string {
+  const lanesOf = new Map<string, Lane[]>();
+  for (const l of scan?.lanes ?? []) for (const c of l.changes) lanesOf.set(c, [...(lanesOf.get(c) ?? []), l]);
+  const live = (l: Lane) => l.status === "active" || l.status === "review";
+  const workedOn = changes.filter((c) => (lanesOf.get(c.name) ?? []).some(live));
+  const done = changes.reduce((n, c) => n + c.tasks.done, 0);
+  const total = changes.reduce((n, c) => n + c.tasks.total, 0);
+  const lanes = scan?.lanes ?? [];
+  const liveLanes = lanes.filter(live);
+  const landed = lanes.filter((l) => l.status === "landed");
+  const tiles = scan === null ? "" : `<div class="tiles">
+<div class="tile"><span class="tile-label">Being worked on</span><span class="tile-value">${workedOn.length} change${workedOn.length === 1 ? "" : "s"}</span><span class="tile-sub">${workedOn.map((c) => esc(c.name)).join(" · ") || "no lane with a signal in the last 30 min"}</span></div>
+<div class="tile"><span class="tile-label">Tasks done</span><span class="tile-value">${done} of ${total}</span><span class="tile-sub">checkbox counts across every tasks.md</span></div>
+<div class="tile"><span class="tile-label">Lanes</span><span class="tile-value">${liveLanes.length} live · ${landed.length} landed</span><span class="tile-sub">${lanes.length} worktrees; a lane is live when its ledger says review or anything in it was written in the last 30 min</span></div>
+</div>`;
   const baseRows = baselines.map((b) => `<tr>
 <td><a href="/spec/${href(b.name)}">${esc(b.name)}</a><div class="sub">${esc(b.title)}</div></td>
 <td class="n">${b.requirements}</td>
 <td>${b.traceability ? `<a href="/spec/${href(b.name)}/traceability">traceability</a>` : `<span class="muted">none</span>`}</td>
 </tr>`).join("");
-  const changeRows = changes.map((c) => `<tr>
-<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub">${esc(c.title)}</div></td>
+  const row = (c: Change) => {
+    const on = lanesOf.get(c.name) ?? [];
+    const landedOn = on.filter((l) => l.status === "landed");
+    const chips = on.filter((l) => l.status !== "landed").map(laneChip).join("")
+      + (landedOn.length === 0 ? "" : `<span class="muted small landed-list">landed: ${landedOn.map((l) => `<a href="#lane-${slug(l.name)}">${esc(l.name)}</a>`).join(", ")}</span>`);
+    const deps = c.dependsOn.length === 0 ? "" : ` · depends on ${c.dependsOn.length}`;
+    return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
+<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
 <td>${statusTag(c.status)}</td>
-<td>${progress(c.tasks)}</td>
-<td class="n" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${c.dependsOn.length}</td>
+<td>${progress(c.tasks)}${taskNumbers(c)}</td>
+<td class="chips">${chips || `<span class="muted">none</span>`}</td>
 <td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
-</tr>`).join("");
+</tr>`;
+  };
+  const shown = changes.filter((c) => c.tasks.done > 0 || (lanesOf.get(c.name) ?? []).length > 0);
+  const rest = changes.filter((c) => !shown.includes(c));
+  const restBoxes = rest.reduce((n, c) => n + c.tasks.total, 0);
+  const restRows = rest.length === 0 ? "" : `<tr class="rest"><td colspan="5"><details id="rest-changes" data-preserve-attr="open"><summary>${rest.length} more change${rest.length === 1 ? "" : "s"} with no task done and no lane (0 of ${restBoxes} boxes)</summary>
+<div class="tablewrap"><table><tbody>${rest.map(row).join("")}</tbody></table></div></details></td></tr>`;
   return `<section id="index-tables">
-<p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence.</p>
+${tiles}
+<p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence; a lane chip is what that lane's ledger and activity log say.</p>
 <h2>Pending changes</h2>
-<div class="tablewrap"><table>
-<thead><tr><th>Change</th><th>Status</th><th>Tasks</th><th>Deps</th><th>Explainers</th></tr></thead>
-<tbody>${changeRows}</tbody>
+<div class="tablewrap"><table class="changes">
+<thead><tr><th>Change</th><th>Status</th><th>Tasks</th><th>Worked on by</th><th>Explainers</th></tr></thead>
+<tbody>${shown.map(row).join("")}${restRows}</tbody>
 </table></div>
 <h2>Baseline capabilities</h2>
 <div class="tablewrap"><table>
@@ -128,11 +211,22 @@ function laneCard(l: Lane): string {
     ? ""
     : `<p class="commit"><code>${esc(l.commit.hash)}</code> ${esc(l.commit.subject)} <span class="muted">${esc(l.commit.when)}</span></p>`;
   const notes = l.notes.map((n) => `<p class="note-line">${esc(n)}</p>`).join("");
+  const changes = l.changes.length === 0
+    ? ""
+    : `<span class="lane-changes">on ${l.changes.map((c) => `<a href="/change/${href(c)}">${esc(c)}</a>`).join(", ")}</span>`;
+  const status = `<p class="lane-status">${dot(l.status)}<span class="lane-phase">${esc(phaseText(l))}</span><span class="muted">signal ${esc(ago(l.signalAt))} ago</span>${changes}</p>`;
   const sdd = l.sdd.map((p) => {
     const rel = `.superpowers/sdd/${p.plan}`;
     const ledger = p.ledger === null
       ? `<p class="note-line">${esc(p.ledgerNote ?? "no ledger")}</p>`
       : `<div class="md ledger">${p.ledger}</div>`;
+    const activity = p.activityNote !== null
+      ? `<p class="note-line">${esc(p.activityNote)}</p>`
+      : p.activity.length === 0
+        ? `<p class="muted small">No activity.log yet; agents append one line per step.</p>`
+        : `<ol class="log">${p.activity.map((a) =>
+            `<li><span class="log-at">${esc(a.at.replace(/^\d{4}-\d{2}-\d{2}T/, "").replace(/Z$/, ""))}</span><span class="log-who">${esc(a.who)}</span><span class="log-text">${esc(a.text)}</span></li>`).join("")}</ol>`;
+    const feed = `<div class="activity"><div class="doc-label">${esc(rel)}/activity.log, last ${p.activity.length} lines</div>${activity}</div>`;
     const reports = p.reports.length === 0
       ? `<p class="muted small">No task reports yet.</p>`
       : p.reports.map((r) => {
@@ -141,7 +235,7 @@ function laneCard(l: Lane): string {
           const body = r.html === null ? `<p class="note-line">${esc(r.file)} could not be read</p>` : `<div class="md">${r.html}</div>`;
           return `<details id="${rid}" class="report" data-preserve-attr="open"><summary><code>${esc(r.file)}</code>${status}</summary>${body}</details>`;
         }).join("");
-    return `<div class="plan"><div class="doc-label">${esc(rel)}/progress.md, last 10 lines</div>${ledger}${reports}</div>`;
+    return `<div class="plan">${feed}<div class="doc-label">${esc(rel)}/progress.md, last 10 lines</div>${ledger}${reports}</div>`;
   }).join("");
   const diffs = l.taskDiffs.length === 0
     ? ""
@@ -151,9 +245,9 @@ function laneCard(l: Lane): string {
     ? ""
     : `<div class="drift"><div class="doc-label">verification/ files new or changed relative to the root</div><ul>${l.verification.map((v) =>
         `<li><code>${esc(v.path)}</code> <span class="muted">${v.kind}</span></li>`).join("")}</ul></div>`;
-  return `<article id="${id}" class="lane">
+  return `<article id="${id}" class="lane lane-${l.status}">
 <header><h3>${esc(l.name)}</h3>${branch}</header>
-${commit}${notes}${sdd}${diffs}${ver}
+${status}${commit}${notes}${sdd}${diffs}${ver}
 </article>`;
 }
 
@@ -163,7 +257,11 @@ export function lanesPanel(scan: LaneScan | null): string {
   if (scan === null) body = `<p class="muted">No <code>--lanes</code> directory given.</p>`;
   else if (!scan.readable) body = `<p class="note-line">Lanes directory <code>${esc(scan.dir)}</code> could not be read.</p>`;
   else if (scan.lanes.length === 0) body = `<p class="muted">No git worktrees found in <code>${esc(scan.dir)}</code>.</p>`;
-  else body = scan.lanes.map(laneCard).join("\n");
+  else {
+    // Live lanes first, then landed last; stable otherwise.
+    const rank: Record<LaneStatus, number> = { active: 0, review: 0, idle: 1, landed: 2 };
+    body = [...scan.lanes].sort((a, b) => rank[a.status] - rank[b.status]).map(laneCard).join("\n");
+  }
   const skipped = scan && scan.skipped.length > 0
     ? `<p class="muted small">Not git worktrees, skipped: ${scan.skipped.map((s) => `<code>${esc(s)}</code>`).join(", ")}</p>`
     : "";

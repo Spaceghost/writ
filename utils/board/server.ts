@@ -79,6 +79,8 @@ export type Change = {
   status: string;
   dependsOn: string[];
   tasks: { done: number; total: number };
+  /** Task ids ("1.3", "2.2") as written before each box, when the line starts with one. */
+  taskIds: { done: string[]; open: string[] };
   html: string[];
   hasDesign: boolean;
   specs: string[];
@@ -157,6 +159,16 @@ function firstHeading(markdown: string | null, fallback: string): string {
 }
 
 /** Counts GitHub-style task boxes as written; a checked box is not evidence. */
+/** Task ids before checked and unchecked boxes: `- [x] 1.3 …` gives "1.3". */
+export function taskIds(markdown: string | null): { done: string[]; open: string[] } {
+  const out = { done: [] as string[], open: [] as string[] };
+  if (markdown === null) return out;
+  for (const m of markdown.matchAll(/^\s*[-*]\s+\[([ xX])\]\s+(\d+(?:\.\d+)*)\b/gm)) {
+    (m[1] === " " ? out.open : out.done).push(m[2]);
+  }
+  return out;
+}
+
 export function countTasks(markdown: string | null): { done: number; total: number } {
   let done = 0;
   let total = 0;
@@ -227,6 +239,7 @@ function scanChanges(root: string): Change[] {
         status: meta.status,
         dependsOn: meta.dependsOn,
         tasks: countTasks(readText(join(dir, "tasks.md"))),
+        taskIds: taskIds(readText(join(dir, "tasks.md"))),
         html,
         hasDesign: existsSync(join(dir, "design.md")),
         specs: subdirs(join(dir, "specs")).filter((c) => existsSync(join(dir, "specs", c, "spec.md"))),
@@ -244,18 +257,46 @@ const LEDGER_TAIL = 10;
 const REPORT_FILE = /^task-(\d+)-report\.md$/;
 const GIT_TIMEOUT_MS = 3000;
 
+/** One line of a plan's `activity.log`: `<ISO time>\t<who>\t<text>`; a line without tabs is all text. */
+export type ActivityLine = { at: string; who: string; text: string };
+
+/**
+ * Where a plan stands, read from the last ledger line that names a task (or
+ * the final-review and merge lines after the tasks). `label` is a closed set
+ * so the template can colour it; `text` is the line itself, shortened.
+ */
+export type Phase = {
+  label: "dispatched" | "implemented" | "review" | "fix" | "complete" | "landed" | "unknown";
+  task: string | null;
+  text: string;
+};
+
 export type LaneSdd = {
   plan: string;
   /** Rendered tail of progress.md, or null with `ledgerNote` saying why. */
   ledger: string | null;
   ledgerNote: string | null;
+  /** The plan file the ledger's first line names, relative to the lane, or null. */
+  planFile: string | null;
+  phase: Phase | null;
+  /** Last lines of activity.log, oldest first; empty when the file is absent. */
+  activity: ActivityLine[];
+  activityNote: string | null;
   reports: { file: string; status: string | null; html: string | null }[];
 };
+
+/** How a lane is shown: by its newest phase, then by how recently anything in it was written. */
+export type LaneStatus = "active" | "review" | "idle" | "landed";
 
 export type Lane = {
   name: string;
   branch: string | null;
-  commit: { hash: string; subject: string; when: string } | null;
+  commit: { hash: string; subject: string; when: string; at: number | null } | null;
+  /** Changes this lane works on: named by its plan files or differing in task boxes. */
+  changes: string[];
+  /** Epoch ms of the newest signal (commit, ledger, activity log, report), or null. */
+  signalAt: number | null;
+  status: LaneStatus;
   /** Each entry says what could not be read for this lane. */
   notes: string[];
   sdd: LaneSdd[];
@@ -272,7 +313,7 @@ export type LaneScan = { dir: string; readable: boolean; lanes: Lane[]; skipped:
  * vectors are fixed so no request or file content can reach git's argv.
  */
 const GIT_BRANCH = ["rev-parse", "--abbrev-ref", "HEAD"] as const;
-const GIT_LAST = ["log", "-1", "--no-show-signature", "--format=%h%x09%s%x09%cr"] as const;
+const GIT_LAST = ["log", "-1", "--no-show-signature", "--format=%h%x09%s%x09%cr%x09%ct"] as const;
 
 /**
  * Environment for git. Variables that would redirect git to another
@@ -333,6 +374,82 @@ function ledgerTail(text: string): string {
   return lines.slice(-LEDGER_TAIL).join("\n");
 }
 
+/** Lines of activity.log shown per plan. */
+const ACTIVITY_TAIL = 12;
+/** A signal younger than this makes a lane "active". */
+export const ACTIVE_MS = 30 * 60 * 1000;
+/** A ledger saying "review" counts as live only this long; reviews are quiet on disk but not for hours. */
+export const REVIEW_MS = 3 * 60 * 60 * 1000;
+const LEDGER_PLAN = /^#\s*SDD ledger\s*[—-]+\s*plan:\s*(\S+)/;
+const CHANGE_REF = /openspec\/changes\/([A-Za-z0-9._-]+)/g;
+
+/** Parses activity.log text into its last ACTIVITY_TAIL lines. */
+export function parseActivity(text: string): ActivityLine[] {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim() !== "");
+  return lines.slice(-ACTIVITY_TAIL).map((line) => {
+    const parts = line.split("\t");
+    if (parts.length >= 3) return { at: parts[0], who: parts[1], text: parts.slice(2).join("\t") };
+    if (parts.length === 2) return { at: parts[0], who: "", text: parts[1] };
+    return { at: "", who: "", text: line };
+  });
+}
+
+/**
+ * The phase of a plan from its ledger: the last line that names a task, a
+ * final review, or a merge wins. Wording follows the SDD ledger convention
+ * (`Task N: dispatched`, `implementer DONE`, `Review dispatched`,
+ * `fix round R`, `complete`, `Merged to master`).
+ */
+export function parsePhase(ledger: string): Phase | null {
+  const lines = ledger.split(/\r?\n/).map((l) => l.trim()).filter((l) => l !== "");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    const task = line.match(/^Task\s+(\d+(?:\s*(?:,|and|-)\s*\d+)*)\s*:/i)?.[1] ?? null;
+    const isFinal = /^(final|whole-branch|merged|pushed|fix round)/i.test(line);
+    if (task === null && !isFinal) continue;
+    const text = line.length > 160 ? `${line.slice(0, 157)}...` : line;
+    let label: Phase["label"] = "unknown";
+    if (/merged to master|pushed master|\blanded\b|\bmerging\b|\bmerged\b/i.test(line)) label = "landed";
+    else if (/\bcomplete\b/i.test(line)) label = "complete";
+    else if (/fix round|fix pass|micro-round/i.test(line)) label = "fix";
+    else if (/re-review|review/i.test(line)) label = "review";
+    else if (/\b(DONE|DONE_WITH_CONCERNS|BLOCKED|NEEDS_CONTEXT)\b/.test(line)) label = "implemented";
+    else if (/dispatched/i.test(line)) label = "dispatched";
+    return { label, task, text };
+  }
+  return null;
+}
+
+/**
+ * Change names a plan file refers to, in order of first mention. The first is
+ * the plan's primary change (its `Spec:` line); later mentions are context.
+ */
+export function planChanges(planText: string): string[] {
+  const out: string[] = [];
+  for (const m of planText.matchAll(CHANGE_REF)) if (!out.includes(m[1])) out.push(m[1]);
+  return out;
+}
+
+/**
+ * The plan file a ledger names, as a lane-relative path, only if it is a
+ * markdown file under docs/superpowers/plans with no path traversal.
+ */
+function ledgerPlanFile(ledger: string): string | null {
+  const rel = ledger.split(/\r?\n/, 1)[0].match(LEDGER_PLAN)?.[1] ?? null;
+  if (rel === null) return null;
+  if (!/^docs\/superpowers\/plans\/[A-Za-z0-9._-]+\.md$/.test(rel)) return null;
+  return rel;
+}
+
+function mtimeMs(path: string): number | null {
+  try {
+    const st = lstatSync(path);
+    return st.isFile() ? st.mtimeMs : null;
+  } catch {
+    return null;
+  }
+}
+
 function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
   const base = join(dir, ".superpowers", "sdd");
   if (!existsSync(base)) return { sdd: [], note: null };
@@ -347,12 +464,26 @@ function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
       const ledgerPath = join(planDir, "progress.md");
       let ledger: string | null = null;
       let ledgerNote: string | null = null;
+      let planFile: string | null = null;
+      let phase: Phase | null = null;
       if (!existsSync(ledgerPath)) ledgerNote = "no progress.md yet";
       else {
         const text = readRegularText(ledgerPath);
         if (text === null) ledgerNote = "progress.md could not be read (not a regular file, or removed mid-scan)";
         else if (text.trim() === "") ledgerNote = "progress.md is empty (possibly mid-write)";
-        else ledger = renderMarkdown(ledgerTail(text), `${rel}/progress.md`, { lineBreaks: true });
+        else {
+          ledger = renderMarkdown(ledgerTail(text), `${rel}/progress.md`, { lineBreaks: true });
+          planFile = ledgerPlanFile(text);
+          phase = parsePhase(text);
+        }
+      }
+      const activityPath = join(planDir, "activity.log");
+      let activity: ActivityLine[] = [];
+      let activityNote: string | null = null;
+      if (existsSync(activityPath)) {
+        const text = readRegularText(activityPath);
+        if (text === null) activityNote = "activity.log could not be read (not a regular file, or removed mid-scan)";
+        else activity = parseActivity(text);
       }
       const reports = regularFiles(planDir, REPORT_FILE)
         .sort((x, y) => Number(x.match(REPORT_FILE)![1]) - Number(y.match(REPORT_FILE)![1]))
@@ -361,7 +492,7 @@ function scanSdd(dir: string): { sdd: LaneSdd[]; note: string | null } {
           const status = text?.match(/^Status:\s*(.+?)\s*$/m)?.[1] ?? null;
           return { file, status, html: text === null ? null : renderMarkdown(text, `${rel}/${file}`) };
         });
-      return { plan, ledger, ledgerNote, reports };
+      return { plan, ledger, ledgerNote, planFile, phase, activity, activityNote, reports };
     }),
   };
 }
@@ -420,8 +551,9 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
   let commit: Lane["commit"] = null;
   if (last === null) notes.push("last commit could not be read (git log failed)");
   else {
-    const [hash, subject = "", when = ""] = last.split("\t");
-    commit = { hash, subject, when };
+    const [hash, subject = "", when = "", ct = ""] = last.split("\t");
+    const at = /^\d+$/.test(ct) ? Number(ct) * 1000 : null;
+    commit = { hash, subject, when, at };
   }
   const { sdd, note } = scanSdd(dir);
   if (note) notes.push(note);
@@ -433,7 +565,43 @@ async function scanLane(root: string, rootChanges: Change[], lanes: string, name
       })
     : [];
   if (!existsSync(dir)) notes.push("directory could not be read (removed?)");
-  return { name, branch, commit, notes, sdd, taskDiffs, verification: newerVerification(root, dir) };
+  // Changes the lane works on: the primary change each plan file names. Task-box
+  // drift is shown separately; an old lane drifts from the root without working on it.
+  const known = new Set(rootChanges.map((c) => c.name));
+  const changes: string[] = [];
+  for (const p of sdd) {
+    if (p.planFile === null) continue;
+    const text = readRegularText(join(dir, p.planFile));
+    if (text === null) continue;
+    const primary = planChanges(text).find((c) => known.has(c));
+    if (primary !== undefined && !changes.includes(primary)) changes.push(primary);
+  }
+  // The newest write anywhere the lane records progress, or its last commit.
+  const times: number[] = [];
+  if (commit?.at != null) times.push(commit.at);
+  for (const p of sdd) {
+    const planDir = join(dir, ".superpowers", "sdd", p.plan);
+    for (const f of ["progress.md", "activity.log", ...p.reports.map((r) => r.file)]) {
+      const t = mtimeMs(join(planDir, f));
+      if (t !== null) times.push(t);
+    }
+  }
+  const signalAt = times.length === 0 ? null : Math.max(...times);
+  return { name, branch, commit, changes, signalAt, status: laneStatus(sdd, signalAt), notes, sdd, taskDiffs, verification: newerVerification(root, dir) };
+}
+
+/**
+ * Landed once every plan's phase is landed; in review while the newest plan is
+ * in review; active while any signal is younger than ACTIVE_MS; otherwise idle.
+ * A review is read-only work, so it is shown even when the files are quiet.
+ */
+export function laneStatus(sdd: Pick<LaneSdd, "phase">[], signalAt: number | null, now = Date.now()): LaneStatus {
+  const phases = sdd.map((p) => p.phase).filter((p): p is Phase => p !== null);
+  if (phases.length > 0 && phases.every((p) => p.label === "landed")) return "landed";
+  const age = signalAt === null ? Infinity : now - signalAt;
+  const newest = phases[phases.length - 1];
+  if (newest?.label === "review" && age < REVIEW_MS) return "review";
+  return age < ACTIVE_MS ? "active" : "idle";
 }
 
 async function scanLanes(root: string, rootChanges: Change[], lanes: string | null): Promise<LaneScan | null> {
@@ -551,8 +719,9 @@ async function view(flags: Flags, page: string, snap: Snapshot): Promise<View> {
   const notFound = page1(404, "Not found", T.notFound(page));
 
   if (page === "/") {
-    const tables = T.indexTables(baselines, changes);
-    const lanes = T.lanesPanel(await snap.lanes());
+    const scan = await snap.lanes();
+    const tables = T.indexTables(baselines, changes, scan);
+    const lanes = T.lanesPanel(scan);
     return { status: 200, title: "Writ board", nav, main: T.index(tables, lanes, flags.lanes !== null), parts: { nav, "index-tables": tables, lanes } };
   }
   let m: RegExpMatchArray | null;
