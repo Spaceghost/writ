@@ -1,6 +1,7 @@
 import Base
 import ./Guard.bend as Guard
 import ./LAWS.bend as Laws
+import ./HostBinding.bend as HostBinding
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -18,3 +19,22 @@ def Laws.denied_selects_original(A, proposal, original):
 
 def Laws.denied_ledger_preserves_state(proposal, original, reason):
   {==}
+
+def Laws.binding_denied_preserves_state(state, reason):
+  {==}
+
+# Induction on n: `Nat.cmp(1n+p, 2n+p)` reduces to `Nat.cmp(p, 1n+p)`, so the
+# step case is the hypothesis itself.
+def Laws.nat_lt_successor(n):
+  match n:
+    case 0n:
+      {==}
+    case 1n+p:
+      Laws.nat_lt_successor(p)
+
+# Matching exposes the generation field, after which the goal is
+# nat_lt_successor at that generation.
+def Laws.generation_bump_monotone(object):
+  match object:
+    case HostBinding.Object{id, generation, owner, kind, derived_from, service}:
+      Laws.nat_lt_successor(generation)

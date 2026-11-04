@@ -2,6 +2,7 @@
 #include <libc/component.h>
 #include <base/log.h>
 #include <string.h>
+#include <stdlib.h>
 
 using namespace Genode;
 
@@ -40,8 +41,14 @@ void Writ::Javascript::budget()
 JSValue Writ::Javascript::module(char const *source, size_t length, char const *name)
 {
     budget();
-    JSValue compiled = JS_Eval(_context, source, length, name,
+    if (!length || length > 2U * 1024U * 1024U) throw Failed();
+    char *copy = static_cast<char *>(malloc(length + 1));
+    if (!copy) throw Failed();
+    Genode::memcpy(copy, source, length);
+    copy[length] = 0;
+    JSValue compiled = JS_Eval(_context, copy, length, name,
                               JS_EVAL_TYPE_MODULE | JS_EVAL_FLAG_COMPILE_ONLY);
+    free(copy);
     if (JS_IsException(compiled)) throw Failed();
     auto *definition = static_cast<JSModuleDef *>(JS_VALUE_GET_PTR(compiled));
     JSValue result = JS_EvalFunction(_context, compiled);
@@ -63,7 +70,7 @@ JSValue Writ::Javascript::module(char const *source, size_t length, char const *
     return exports;
 }
 
-JSValue Writ::Javascript::call(JSValue function, int count, JSValue const *arguments)
+JSValue Writ::Javascript::call(JSValue function, int count, JSValue *arguments)
 {
     budget();
     if (!JS_IsFunction(_context, function)) throw Failed();
@@ -75,7 +82,13 @@ JSValue Writ::Javascript::call(JSValue function, int count, JSValue const *argum
 JSValue Writ::Javascript::script(char const *source, size_t length, char const *name)
 {
     budget();
-    JSValue result = JS_Eval(_context, source, length, name, JS_EVAL_TYPE_GLOBAL);
+    if (!length || length > 2U * 1024U * 1024U) throw Failed();
+    char *copy = static_cast<char *>(malloc(length + 1));
+    if (!copy) throw Failed();
+    Genode::memcpy(copy, source, length);
+    copy[length] = 0;
+    JSValue result = JS_Eval(_context, copy, length, name, JS_EVAL_TYPE_GLOBAL);
+    free(copy);
     if (JS_IsException(result)) throw Failed();
     return result;
 }
@@ -130,7 +143,7 @@ Writ::Policy::Reply Writ::Policy::parse(char const *text, size_t length)
     Reply result;
     if (!length || length > 256 || text[length - 1] != '\n') return result;
     char copy[257];
-    memcpy(copy, text, length);
+    Genode::memcpy(copy, text, length);
     copy[length - 1] = 0;
     char *fields[5] { copy, nullptr, nullptr, nullptr, nullptr };
     unsigned field = 0;
@@ -143,16 +156,16 @@ Writ::Policy::Reply Writ::Policy::parse(char const *text, size_t length)
         } else if (c < 32 || c > 126) return result;
     }
     uint32_t sequence = 0;
-    if (field != 4 || strcmp(fields[0], "WRITFS1") ||
+    if (field != 4 || Genode::strcmp(fields[0], "WRITFS1") ||
         !decimal(fields[1], sequence) || _sequence == 0xffffffffU ||
         sequence != _sequence + 1 || !decimal(fields[3], result.value) ||
-        !*fields[4] || strlen(fields[4]) >= 80) return Reply();
-    if (!strcmp(fields[2], "OK")) result.status = Status::OK;
-    else if (!strcmp(fields[2], "DENY")) result.status = Status::DENY;
-    else if (!strcmp(fields[2], "ERROR")) result.status = Status::ERROR;
+        !*fields[4] || Genode::strlen(fields[4]) >= 80) return Reply();
+    if (!Genode::strcmp(fields[2], "OK")) result.status = Status::OK;
+    else if (!Genode::strcmp(fields[2], "DENY")) result.status = Status::DENY;
+    else if (!Genode::strcmp(fields[2], "ERROR")) result.status = Status::ERROR;
     else return Reply();
     _sequence = sequence;
-    result.detail = String<80>(fields[4]);
+    result.detail = String<80>(Cstring(fields[4]));
     return result;
 }
 

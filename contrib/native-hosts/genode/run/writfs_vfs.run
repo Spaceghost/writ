@@ -1,0 +1,29 @@
+source [file join [file dirname [info script]] writ_common.inc]
+build { core init timer lib/ld lib/libc lib/libm lib/vfs server/writfs test/writfs_vfs }
+create_boot_directory
+writ_generated { mount.mjs }
+writ_canary
+
+install_config {
+config
+} [writ_parent_services] [writ_server {operator -> control}] {
++ start reader | caps: 200 | ram: 16M
+  + binary test_writfs_vfs
+  + config
+    + libc | stdout: /dev/log | stderr: /dev/log
+    + vfs
+      + dir dev | + log
+      + dir writ | + fs | label: / | writeable: no
+  + route
+    + service File_system | + child writfs
+} [writ_rom_route { test_writfs_vfs ld.lib.so libc.lib.so libm.lib.so vfs.lib.so }] {
+-
+}
+
+build_boot_image [build_artifacts]
+run_genode_until {WRITFS VFS NATIVE (PASS|FAIL)|WRITFS STARTUP FAILED} 120
+if {![regexp {WRITFS VFS NATIVE PASS} $output] ||
+    [regexp {WRITFS (VFS NATIVE FAIL|STARTUP FAILED)} $output]} {
+    error "native libc VFS integration failed"
+}
+puts "WRIT GENODE LIBC VFS ACCEPTED"

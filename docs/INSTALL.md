@@ -36,6 +36,70 @@ The Linux release targets glibc; a musl-only Alpine installation needs a compati
 environment or a separately validated toolchain. The package's recorded run was
 on Linux x86_64; other platforms are not claimed as tested here.
 
+## Nix
+
+The repository's `flake.nix` packages the same pinned toolchain. From the
+repository root, on Linux x86_64 with Nix installed:
+
+```sh
+nix develop
+bend version
+openspec --version
+```
+
+The shell provides Bend 2.0.39 (the official release tarball above, fetched by
+its recorded SHA-256 and patched only to use the Nix store's dynamic loader),
+OpenSpec 1.16.0 (built from the npm registry tarball with a committed
+`utils/nix/openspec/package-lock.json`), the newest clang in the locked nixpkgs as
+`CC`, Node.js 22, Bun, Python 3, QEMU, git, gh, and make. It exports
+`BEND_NO_TELEMETRY=1` and `OPENSPEC_TELEMETRY=0`, and prints the tool versions
+on entry. `flake.lock` pins nixpkgs to one nixos-unstable revision. Run
+`nix flake check` to confirm the packaged Bend and OpenSpec report the pinned
+versions. The recorded commands and outputs are in
+[verification/nix-shell.txt](../verification/nix-shell.txt).
+
+The flake also builds and checks the library itself, offline in the Nix
+sandbox, from a source tree filtered to the root and `examples/` `.bend` files:
+
+```sh
+nix build .#tests-native
+./result/bin/tests-native +RTS --threads 4 --gpu off
+nix build .#examples-native
+nix flake check
+```
+
+`packages.tests-native` is `bend Tests.bend -o tests-native` compiled with the
+flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
+and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
+`examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
+library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 764 lines
+beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
+`bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
+`--verdict`); and it runs `openspec validate --all --strict --no-interactive`
+over `openspec/` (`openspec`). These reproduce the recorded outcomes (same pass
+counts, success lines, and validation totals) on the pinned Bend 2.0.39 and
+OpenSpec 1.16.0. The
+native checks use the flake's clang 23.1.3, not the clang 19.1.1 of the
+recorded native run, and the JavaScript check uses Bend's bundled runtime, not
+the separate Node.js 24.22.1 run. The native test check is a CPU run; nothing
+in the flake builds a device program or tests a GPU. `nix flake check` does
+not build `examples-native`; build it explicitly. The recorded runs are in
+[verification/nix-checks.txt](../verification/nix-checks.txt), and two clean
+builds of `tests-native` with identical store hashes are in
+[verification/nix-determinism.txt](../verification/nix-determinism.txt).
+
+These commands need flakes. If your Nix configuration does not enable them, add
+`--extra-experimental-features 'nix-command flakes'` to each command, or add
+`experimental-features = nix-command flakes` to `~/.config/nix/nix.conf`.
+
+The manual instructions above remain valid and install the same pinned
+versions; Nix is a convenience for obtaining them, not a requirement. The
+native-build examples below name `clang-19`; inside the Nix shell use `$CC`
+instead. The shell's clang (23.1.3 at the locked revision) is newer than the
+clang 19.1.1 used for the recorded native run, so a native result from the shell
+is a separate run, not a reproduction of that record.
+
 ## Run the examples
 
 ```sh
@@ -94,7 +158,7 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **638 passing checks** and
+Each complete test run should report **764 passing checks** and
 `ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks three selected laws about guards
 and preservation of denied state; it does not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.

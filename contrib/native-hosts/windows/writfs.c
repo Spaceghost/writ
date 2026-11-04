@@ -551,7 +551,7 @@ static BOOL read_report(HANDLE input, HANDLE ready, HANDLE process, DWORD phase,
     printf("PROBE phase=%lu passed=%08x failed=%08x", phase, report->passed, report->failed);
     for (unsigned int i = 0; i < ARRAYSIZE(report->errors); ++i)
         printf(" e%u=%lu", i, (DWORD)report->errors[i]);
-    printf("\n"); fflush(stdout);
+    printf(" clipboard_stage=%u com_stage=%u\n", report->clipboard_stage, report->com_stage); fflush(stdout);
     return report->passed == expected && report->failed == 0;
 }
 
@@ -670,6 +670,7 @@ int wmain(int argc, wchar_t **argv)
     }
     CloseHandle(report_write); report_write = NULL;
     print_identity(&host.worker);
+    if (lpac && !writ_positive_channels(host.worker.image_path)) goto done;
     if (!mount_filesystem(&host, mount)) goto done;
     printf("NATIVE_PASS native WinFsp filesystem mounted at %ls\n", mount);
     if (FAILED(StringCchPrintfW(path, ARRAYSIZE(path), L"%s\\data", mount))) goto done;
@@ -733,7 +734,7 @@ done:
     if (host.policy.process && !host.failed) {
         if (!rpc(&host, "STOP", 0, 0, 0, 0, "-", &reply) || !reply.allowed) ok = FALSE;
     }
-    writ_policy_stop(&host.policy);
+    if (!writ_policy_stop(&host.policy)) { fprintf(stderr, "FAIL policy process retirement\n"); ok = FALSE; }
     if (host.failed) ok = FALSE;
     if (report_read) CloseHandle(report_read); if (report_write) CloseHandle(report_write);
     if (ready) CloseHandle(ready); if (proceed) CloseHandle(proceed);

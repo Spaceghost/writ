@@ -1,0 +1,75 @@
+name: WritFS native Genode mount
+
+on:
+  push:
+    branches: [master, writfs-native-hosts-ci]
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/rclone/bend/**'
+      - 'contrib/native-hosts/genode/**'
+      - 'contrib/native-hosts/runtime/genode/**'
+      - '.github/workflows/writfs-genode-native.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  base-hw:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      BEND_NO_TELEMETRY: '1'
+      WRIT_CORE_EXPECTED: '764'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install native build and emulator dependencies
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writfs-genode/logs"
+          {
+            printf 'Commit: %s\nRunner: %s %s\n' "$GITHUB_SHA" "$ImageOS" "$ImageVersion"
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends \
+              build-essential libfl2 libncurses-dev libgmp10 libzstd1 \
+              flex bison patch expect tcl xorriso qemu-system-x86 \
+              curl xz-utils unzip rsync
+          } 2>&1 | tee "$RUNNER_TEMP/writfs-genode/logs/runner.log"
+
+      - name: Install the verified Bend compiler
+        run: |
+          set -euo pipefail
+          writ_bend="$RUNNER_TEMP/writfs-genode-bend-2.0.39"
+          mkdir -p "$writ_bend"
+          curl --proto '=https' --tlsv1.2 --retry 3 -fL \
+            https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+            -o "$writ_bend/release.tar.gz"
+          printf '%s  %s\n' \
+            6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+            "$writ_bend/release.tar.gz" | sha256sum -c -
+          tar -xzf "$writ_bend/release.tar.gz" -C "$writ_bend"
+          test "$("$writ_bend/bend/bin/bend" version)" = 'bend 2.0.39'
+          printf '%s\n' "$writ_bend/bend/bin" >> "$GITHUB_PATH"
+
+      - name: Build and boot native Genode policy and mount probes
+        run: |
+          set -euo pipefail
+          bash contrib/native-hosts/genode/build-and-run.sh "$RUNNER_TEMP/writfs-genode" \
+            2>&1 | tee "$RUNNER_TEMP/writfs-genode/logs/complete.log"
+
+      - name: Retain native Genode evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writfs-genode-native-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writfs-genode/logs/
+          if-no-files-found: error
+          retention-days: 14

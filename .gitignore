@@ -6,3 +6,5 @@
 /*.c
 /*.js
 *.o
+/result*
+/utils/board/node_modules/

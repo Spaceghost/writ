@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bend 2 Primer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, a slim sticky section nav, numbered-only where the content is a sequence. */
+:root {
+  --bg: #f7f6f2;
+  --surface: #ffffff;
+  --fg: #1d2230;
+  --muted: #5b6474;
+  --line: #d9dbe0;
+  --accent: #15655c;        /* seal green: allowed / PASS */
+  --accent-soft: #e2efec;
+  --deny: #a2452a;          /* rust: denied / FAIL */
+  --deny-soft: #f6e6df;
+  --code-bg: #eeefeb;
+  --comment: #6c7a6f;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+    --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+    --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 72ch; margin: 0 auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 2.6rem 0 .8rem; text-wrap: balance; }
+h3 { font-size: 1.08rem; font-weight: 600; margin: 1.6rem 0 .4rem; }
+p { margin: 0 0 .9rem; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); border-bottom: 1px solid var(--line); margin: 0 0 1.5rem; padding: .5rem 0; display: flex; gap: .3rem .9rem; flex-wrap: wrap; font-size: .85rem; z-index: 5; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: .9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0 0 1rem; min-width: 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--comment); font-style: italic; }
+.k { color: var(--accent); font-weight: 600; }
+.d { color: var(--deny); }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .94rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td code { white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .7rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1.2rem; }
+.callout.warn { border-color: var(--deny); background: var(--deny-soft); }
+.callout p:last-child { margin: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin: 0 0 1.2rem; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: .9rem 1rem; min-width: 0; }
+.card h4 { margin: 0 0 .35rem; font-size: .95rem; }
+.card p { margin: 0; font-size: .92rem; color: var(--muted); }
+ol.steps { padding-left: 1.3rem; } ol.steps li { margin-bottom: .5rem; }
+ul { padding-left: 1.3rem; } li { margin-bottom: .3rem; }
+.pass { color: var(--accent); font-weight: 600; font-family: var(--mono); }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">Writ · onboarding · 1 of 3</div>
+  <h1>Bend 2, as Writ uses it</h1>
+  <p class="lede">A working primer for someone who has never written Bend. It covers the parts of the language this codebase leans on, the mistakes the checker will catch on your first day, and how to run things. Pinned toolchain: Bend 2.0.39.</p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#setup">Setup</a><a href="#shape">Shape of a program</a><a href="#affine">Affine values</a><a href="#match">Match &amp; termination</a><a href="#numbers">Numbers &amp; annotations</a><a href="#io">IO blocks</a><a href="#laws">Laws &amp; proofs</a><a href="#parallel">Parallelism</a><a href="#modules">Modules</a><a href="#tooling">Tooling</a><a href="#exercise">First exercise</a>
+</nav>
+
+<h2 id="setup">Setup on this machine</h2>
+<p>Bend 2.0.39 is now installed under your home directory, exactly as <code>docs/INSTALL.md</code> prescribes, without touching your shell profile. Put it on <code>PATH</code> in any shell where you work on Writ:</p>
+<pre><code>export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"
+export BEND_NO_TELEMETRY=1
+bend version        <span class="c"># bend 2.0.39</span>
+bend guide          <span class="c"># the official language guide, read it once end to end</span>
+bend guide shaders  <span class="c"># before you touch anything with a ! call</span>
+bend base Map       <span class="c"># the Base library, one name and everything under it</span></code></pre>
+<p>Bend 1 and HVM are different systems. Anything you find online about them does not apply here.</p>
+
+<h2 id="shape">The shape of a program</h2>
+<p>Syntax looks like Python. Semantics are closer to Haskell and Lean: pure, typed, almost no inference, and every function must provably terminate. A file is a list of datatypes and functions, and a <code>main</code> that returns <code>IO</code> gets compiled and run.</p>
+<pre><code><span class="k">import</span> Base
+
+<span class="k">type</span> Shape <span class="k">is</span> Data:
+  Circle{r: U32}
+  Square{s: U32}
+
+<span class="k">def</span> area(x: Shape) -&gt; U32:
+  <span class="k">match</span> x:
+    <span class="k">case</span> Circle{+r}:
+      (3 * r * r : U32)
+    <span class="k">case</span> Square{+s}:
+      (s * s : U32)
+
+<span class="k">def</span> main() -&gt; IO(Unit):
+  <span class="k">do</span> IO&lt;Unit&gt;:
+    IO.print(U32.show(area(Square{5})))</code></pre>
+<p>Three things to notice already. Every constructor is written with braces, even when empty: <code>True{}</code>, <code>Nil{}</code>, <code>None{}</code>. Arithmetic is wrapped in parentheses with a type: <code>(a + b : U32)</code>. And <code>+r</code> in the pattern marks a field you intend to use twice.</p>
+
+<h2 id="affine">Affine by default: the <code>+</code> rule</h2>
+<p>This is the rule that generates the most first-day errors. A variable may be used <strong>at most once</strong> unless you mark it reusable with <code>+</code>. Reusable requires the type to be <code>Data</code> (copyable); functions, arrays, and IO handles are <code>Type</code> and can never be copied.</p>
+<pre><code><span class="c"># -A: erased (gone at runtime), n: affine (default), +x: reusable</span>
+<span class="k">def</span> replicate(-A: Data, n: Nat, +x: A) -&gt; List&lt;A&gt;:
+  <span class="k">match</span> n:
+    <span class="k">case</span> 0n:
+      Nil{}
+    <span class="k">case</span> 1n+p:
+      x &lt;&gt; replicate(A, p, x)   <span class="c"># x used twice: allowed because of +x</span></code></pre>
+<p>Writ marks parameters with <code>+</code> all over the place, and you will see <code>+List&lt;State&gt;</code> in record fields. That plus means the whole list is reusable (<code>List&lt;&amp;2, State&gt;</code>). Dropping an affine value is always free; using it twice is the compile error.</p>
+<div class="callout"><p>Rule of thumb: when the checker complains about a variable used more than once, add <code>+</code> at its binding site (parameter, pattern, or <code>+x = ...</code> let). If it refuses because the type is not <code>Data</code>, restructure so the value is threaded through and handed back.</p></div>
+
+<h2 id="match">Match, termination, and definition order</h2>
+<p>There is no <code>if</code>. You match on <code>True{}</code> and <code>False{}</code>. Writ's <code>Guard.choose</code> and every <code>check</code> helper are written this way.</p>
+<pre><code><span class="k">def</span> choose(-A: Type, allowed: Bool, yes: A, no: A) -&gt; A:
+  <span class="k">match</span> allowed:
+    <span class="k">case</span> False{}:
+      no
+    <span class="k">case</span> True{}:
+      yes</code></pre>
+<p>Matching has sharp rules that feel odd at first but keep proofs sound:</p>
+<ul>
+  <li><strong>You can only match a parameter or a pattern-bound variable.</strong> <code>match f(x):</code> is rejected. To branch on a computed value, pass it to a helper that matches on its own parameter. That is why Writ is full of small <code>*.checked</code>, <code>*.go</code>, and <code>commit_resolved</code> helpers.</li>
+  <li><strong>Recursion must shrink.</strong> A recursive call has to pass a smaller piece of a matched parameter, and that shrinking parameter should come first in the argument list. A loop bounded by the outside world takes a <code>Nat</code> fuel argument and counts it down; Writ's solver has <code>max_rounds</code> for exactly this reason.</li>
+  <li><strong>No mutual recursion, and a def may only call defs above it.</strong> Order your file bottom-up. Two mutually recursive functions become one def with a selector argument.</li>
+  <li><strong>Multi-scrutinee match</strong> is normal: <code>match a b:</code> with <code>case Bits64{al, ah} Bits64{bl, bh}:</code>. A <code>_</code> catches the rest.</li>
+</ul>
+<p><code>@unsafe</code> defs skip the termination check. Writ's rules forbid them in the library; the proof gate names every def that depends on one.</p>
+
+<h2 id="numbers">Numbers, literals, and annotations</h2>
+<div class="tablewrap"><table>
+<tr><th>Type</th><th>Literal</th><th>Notes</th></tr>
+<tr><td><code>U32</code></td><td><code>42</code></td><td>32-bit words. Bit ops <code>U32.and/or/xor/shl/shr</code>. Writ builds 64-bit flag sets from two of these (<code>Bits64{lo, hi}</code>).</td></tr>
+<tr><td><code>Nat</code></td><td><code>7n</code>, <code>1n+p</code></td><td>Unary naturals for counting, IDs, fuel, proofs. The compiled runtime caps arithmetic at 2^48−1. Pattern <code>1n+p</code> peels one off.</td></tr>
+<tr><td><code>F32</code></td><td><code>1.5</code></td><td>Floats. Not used by Writ's policy core.</td></tr>
+<tr><td><code>Bool</code></td><td><code>True{}</code></td><td>A datatype. Combine with <code>&amp;&amp;</code>, <code>||</code>, <code>Bool.not</code>.</td></tr>
+<tr><td><code>String</code></td><td><code>"s"</code></td><td>Concatenate with <code>++</code>. Compare with <code>String.eq</code>.</td></tr>
+</table></div>
+<p>Operators only work inside a typed parenthesis: <code>(count + 1 : U32)</code>, <code>(index - 1 : U32)</code>. Comparisons are plain calls: <code>U32.is_eq(a, b)</code>, <code>Nat.is_lt(now, deadline)</code>. The <code>==</code> symbol is reserved for equality <em>types</em> in laws, never for runtime comparison. When the checker cannot decide a type, annotate: <code>{3 : U32}</code>.</p>
+
+<h2 id="io">IO blocks</h2>
+<p>Effects live in <code>IO</code> and are sequenced with <code>do</code>. Every bind is annotated with its type. A step with no binding must produce <code>Unit</code>.</p>
+<pre><code><span class="k">def</span> main() -&gt; IO(Unit):
+  <span class="k">do</span> IO&lt;Unit&gt;:
+    IO.print("Flow: a summary keeps its report's restrictions.")
+    candidate : Core.Candidate &lt;- Expect.solved(Core.solve_cpu(Scenario.graph(), 0n))
+    explain(candidate)</code></pre>
+<p>That is the real <code>main</code> of <code>examples/Flow.bend</code>. Two Base calls you will use in tests and examples: <code>IO.print</code> and <code>IO.die(A, status, message)</code>, which exits the process. Writ's <code>Test.bend</code> and <code>examples/Expect.bend</code> are nothing more than thin wrappers over those two. <code>do</code> works on any monad with <code>bind</code> and <code>pure</code>, so you will also see <code>do Maybe&lt;&amp;2, U32&gt;:</code> blocks in the guide.</p>
+
+<h2 id="laws">Laws and proofs</h2>
+<p>A <code>law</code> is a claim. A <code>def</code> of the same name is its proof. A proposition is a type; <code>{a == b : T}</code> is an equality type and <code>{==}</code> proves it when both sides compute to the same term. Matching refines the goal per case, and a recursive call is the induction hypothesis.</p>
+<pre><code><span class="c"># LAWS.bend (humans own it; the claim)</span>
+<span class="k">law</span> denied_selects_original:
+  <span class="k">for</span> -A: Type
+  <span class="k">for</span> proposal: A
+  <span class="k">for</span> original: A
+  {Guard.choose(A, False{}, proposal, original) == original : A}
+
+<span class="c"># PROOF.bend (the evidence; imports LAWS.bend)</span>
+<span class="k">def</span> Laws.denied_selects_original(A, proposal, original):
+  {==}</code></pre>
+<p>The convention is two root files: <code>LAWS.bend</code> states, <code>PROOF.bend</code> proves. <code>bend PROOF.bend</code> prints <span class="pass">ALL PROOFS CHECK</span> or names the failures. <code>--verdict</code> rechecks with a small kernel that has its own proof in Lean 4; that needs a working Lean install, which this repo's verification record says was not available. Writ currently keeps three laws about guards and preservation of denied state. Backplane, the reference app, keeps over three thousand. Same mechanism.</p>
+
+<h2 id="parallel">Parallelism and the <code>!</code> call</h2>
+<p>A parallel let runs two calls at once: <code>a b = f(x) g(y)</code>. You promise the compiler they are independent (purity makes this automatic) and roughly equal in cost (your job). A bang, <code>f!(x)</code>, hands that call and every parallel call inside it to the GPU.</p>
+<pre><code><span class="k">def</span> pow2(+n: Nat) -&gt; U32:
+  <span class="k">match</span> n:
+    <span class="k">case</span> 0n:
+      1
+    <span class="k">case</span> 1n+p:
+      a b = pow2(p) pow2(p)   <span class="c"># fork-join, balanced</span>
+      (a + b : U32)
+
+<span class="k">def</span> main() -&gt; IO(Unit):
+  IO.print(U32.show(pow2!(20n)))</code></pre>
+<div class="callout warn"><p>What a <code>!</code> does not prove: that anything ran on a GPU. The JavaScript target runs everything sequentially. A native build without a device, or with <code>+RTS --gpu off</code>, runs bangs on the CPU pool. Writ's own docs say this bluntly, and <code>AGENTS.md</code> requires you to report it the same way: a CPU fallback is not a GPU test.</p></div>
+<p>Writ's device-facing entry points are <code>Gpu.bend</code>, <code>GpuLibrary.bend</code>, <code>DlmGpu.bend</code>, and <code>TransferGpu.bend</code>. Everything they produce is re-verified on the host by code that does not share their work tree. Read <code>bend guide shaders</code> before editing any of them.</p>
+
+<h2 id="modules">Modules and imports</h2>
+<p>A module is a file. An import gives it a local alias, and that alias prefixes every def in it. Dots inside names are just characters, so <code>Core.verify</code> inside <code>Core.bend</code> is simply a def named <code>verify</code> seen from outside, and <code>Bits64.join</code> is a def whose name happens to contain a dot.</p>
+<pre><code><span class="k">import</span> Base
+<span class="k">import</span> ./Core.bend <span class="k">as</span> Core
+<span class="k">import</span> ../Core.bend <span class="k">as</span> Core          <span class="c"># from inside examples/</span>
+<span class="k">import</span> ./CoreTests.bend <span class="k">as</span> Core      <span class="c"># Tests.bend aliases the test module the same way</span></code></pre>
+<p>All of Writ's imports are local paths. Base comes with the compiler. Nothing is fetched from BendHub, and nothing should be published there.</p>
+
+<h2 id="tooling">Tooling cheat sheet</h2>
+<div class="tablewrap"><table>
+<tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>bend file.bend</code></td><td>Check the file, then run <code>main</code> on the bundled JavaScript runtime. A file without <code>main</code> just checks.</td></tr>
+<tr><td><code>bend file.bend --check-only</code></td><td>Typecheck only. Writ uses it on <code>DataOS.bend</code> and <code>GpuLibrary.bend</code>.</td></tr>
+<tr><td><code>bend file.bend -o ../build/x</code></td><td>Native binary via clang (19+ when <code>!</code> is present). Keep outputs outside the source tree.</td></tr>
+<tr><td><code>./x +RTS --threads 4 --gpu off</code></td><td>Run a native binary on four CPU threads with bangs forced onto the CPU.</td></tr>
+<tr><td><code>bend PROOF.bend</code></td><td>Check every law has a valid proof.</td></tr>
+<tr><td><code>bend PROOF.bend --verdict</code></td><td>Recheck with the Lean-proven kernel (needs Lean 4.34.0).</td></tr>
+<tr><td><code>bend base</code>, <code>bend base List</code></td><td>Print the Base library, or one name and everything under it.</td></tr>
+</table></div>
+
+<h2 id="exercise">A first exercise inside Writ</h2>
+<p>Write a tiny module that uses the library the way the examples do. Save this as <code>examples/Hello.bend</code> in the repo (or anywhere beside <code>Expect.bend</code>), then run it with <code>bend examples/Hello.bend</code>.</p>
+<pre><code><span class="k">import</span> Base
+<span class="k">import</span> ../Core.bend <span class="k">as</span> Core
+<span class="k">import</span> ./Expect.bend <span class="k">as</span> Expect
+
+<span class="c"># Two 64-bit flag sets. Bit 0 of the low word is Writ's "incident team" secrecy bit.</span>
+<span class="k">def</span> team_only() -&gt; Core.Bits64:
+  Core.Bits64{1, 0}
+
+<span class="k">def</span> public() -&gt; Core.Bits64:
+  Core.Bits64.zero()
+
+<span class="k">def</span> main() -&gt; IO(Unit):
+  <span class="k">do</span> IO&lt;Unit&gt;:
+    IO.print("Hello: labels only grow along a flow.")
+    <span class="c"># join is set union: public joined with team-only is team-only</span>
+    Expect.boolean(Core.Bits64.equal(Core.Bits64.join(public(), team_only()), team_only()),
+      True{}, "join keeps the restriction")
+    <span class="c"># subset asks "does every bit of a appear in b?"</span>
+    Expect.boolean(Core.Bits64.subset(team_only(), public()), False{},
+      "team-only data does not fit a public clearance")</code></pre>
+<p>Expected output is two <span class="pass">PASS</span> lines. Then try the breakage: flip the second expected value to <code>True{}</code> and watch the process exit with status 1 and an expected-versus-observed message. That fail-fast style is how every Writ example and test is written.</p>
+<ol class="steps">
+  <li>Read <code>Guard.bend</code> (30 lines). It shows a datatype, a fold, and the no-<code>if</code> style.</li>
+  <li>Read <code>examples/Expect.bend</code> and <code>examples/Flow.bend</code>. That is an IO block calling the real library.</li>
+  <li>Read the first 220 lines of <code>Core.bend</code>: records, <code>Bits64</code>, and the checked list lookup that never wraps an index.</li>
+  <li>Run <code>bend Tests.bend</code>. It takes a minute and ends with <span class="pass">ALL LIBRARY TESTS PASSED</span>.</li>
+</ol>
+
+<footer>Companion pages: <strong>Writ Overview</strong> (what the library decides and why) and <strong>Writ Codebase Tour</strong> (where everything lives, plus Backplane as a reference app). Source of truth for the language: <code>bend guide</code>.</footer>
+</div>
+</body>
+</html>

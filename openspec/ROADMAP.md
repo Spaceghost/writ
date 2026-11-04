@@ -52,6 +52,39 @@ publication dependencies below before handling protected data. Passing a model
 test, booting a component, or observing one denied syscall completes none of those
 combined enforcement gates by itself.
 
+### Runtime and unikernel lane
+
+Each native lane says "port the Bend runtime" in its tasks. These three changes
+make that prerequisite concrete and add the immutable-image deployment shape from
+the project's founding discussion. The inspected runtime surface for Bend 2.0.39
+is in [docs/BEND-RUNTIME.md](../docs/BEND-RUNTIME.md).
+
+| Order | Change | Required evidence |
+| --- | --- | --- |
+| 1 | [Bend runtime host profile](changes/add-bend-runtime-host-profile/proposal.md) | Per-version host inventory, monitor allowlists, a binary check, and single-lane parity on each host |
+| 2 | [Unikernel appliance host](changes/add-unikernel-appliance-host/proposal.md) | Corpus booted inside a pinned Linux-compatible unikernel image, one authenticated ingress, external state, and a timed rebuild drill |
+| 3 | [Library-unikernel Bend runtime](changes/add-unikernel-library-runtime/proposal.md) | Monitor natively linked into a library unikernel chosen by an executed matrix ([survey](../docs/UNIKERNELS.md)), effects bound to kernel primitives, parity in three environments |
+| 4 | [Freestanding Bend runtime](changes/add-freestanding-bend-runtime/proposal.md) | Unchanged evaluator over a reviewed no-libc host layer on a 64-bit kernel variant, serial-captured parity with the Linux single-lane record |
+
+The appliance hosts the monitor only; its single address space is never a worker
+boundary. The library runtime is the end state of "leverage an existing
+unikernel and make the Bend runtime fit it"; the appliance is its compat-mode
+first boot. The freestanding runtime feeds the Drift kernel host's runtime task
+and supplies none of that host's isolation, capability, or publication evidence.
+
+### Genode runtime and binding lane
+
+Two changes make the Genode reference host's runtime and ingress tasks
+concrete. They can proceed in parallel: one is a Genode build, the other is pure
+Bend.
+
+| Change | Required evidence |
+| --- | --- |
+| [Bend runtime as a Genode component](changes/add-genode-bend-component/proposal.md) | Generated C compiled in the Genode build on `base-linux` then `base-hw`; per-row runtime outcomes; Bend-authored effects over LOG, Timer, and a Writ session; one inventoried `extern "C"` shim with no policy |
+| [Genode capability adoption](changes/add-genode-capability-adoption/proposal.md) | A Bend host-binding model composed with `Frontend`: generations, routes, delegation edges, quotas; adopted and rejected Genode semantics as tests, laws, and replayable vectors |
+
+Neither completes the Genode host's confinement, sealing, or revocation tasks.
+
 ## Feature dependencies
 
 | Order | Change | Capability and exit evidence |

@@ -186,6 +186,18 @@ jobs:
           & (Join-Path $build 'writfs-windows.exe') @nativeArgs 2>&1 |
             Tee-Object -FilePath (Join-Path $writLogs 'mount.txt')
           if ($LASTEXITCODE -ne 0) { throw 'Native mounted filesystem checks failed.' }
+      - name: Exercise the actual native private-pipe transport
+        if: ${{ always() && !cancelled() && steps.native.outcome == 'success' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'
+          $node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source
+          $bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path
+          $module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'
+          & (Join-Path $build 'writfs-transport-probe.exe') $node $bridge $module 2>&1 |
+            Tee-Object -FilePath (Join-Path $writLogs 'native-transport.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows pipe validation or teardown failed.' }
       - name: Exercise LPAC, WFP, egress probes and revocation
         if: ${{ always() && !cancelled() && steps.native.outcome == 'success' }}
         run: |

@@ -1,11 +1,13 @@
 #define _WIN32_WINNT 0x0A00
 #include "worker.h"
+#include "isolation.h"
 #include <bcrypt.h>
 #include <fwpmu.h>
 #include <rpc.h>
 #include <sddl.h>
 #include <strsafe.h>
 #include <userenv.h>
+#include <objbase.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -222,12 +224,13 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     SIZE_T attribute_size = 0;
     BOOL attributes_initialized = FALSE, ok = FALSE;
     HANDLE token = NULL;
+    LPWSTR app_sid_string = NULL, app_folder = NULL;
     DWORD opt_out = PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT;
     DWORD child_policy = PROCESS_CREATION_CHILD_PROCESS_RESTRICTED;
     DWORD64 mitigations = PROCESS_CREATION_MITIGATION_POLICY_WIN32K_SYSTEM_CALL_DISABLE_ALWAYS_ON;
     DWORD error = ERROR_INVALID_PARAMETER;
     const char *stage = "image-identity";
-    wchar_t system_root[MAX_PATH], environment[MAX_PATH + 32];
+    wchar_t system_root[MAX_PATH], environment[WRIT_ENVIRONMENT_CAPACITY];
     ZeroMemory(worker, sizeof(*worker));
     worker->lpac = lpac;
     if (!inherited_count || inherited_count > 3 || wcschr(image, L'"') || !image_identity(worker, image))
@@ -296,14 +299,17 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
     startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
     /* No inherited console or standard I/O. Only the three private test handles
        in HANDLE_LIST can survive. The fixed probe uses WriteFile explicitly. */
-    ZeroMemory(environment, sizeof(environment));
-    DWORD root_length = GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root));
-    if (!root_length || root_length >= ARRAYSIZE(system_root) ||
-        FAILED(StringCchPrintfW(environment, ARRAYSIZE(environment) - 1, L"SystemRoot=%s", system_root)))
-        goto failed;
+    stage = "environment";
+    if (lpac) {
+        if (!ConvertSidToStringSidW(worker->app_sid, &app_sid_string)) goto failed;
+        HRESULT hr = GetAppContainerFolderPath(app_sid_string, &app_folder);
+        if (FAILED(hr)) { error = HRESULT_CODE(hr); goto done; }
+    }
+    if (!writ_child_environment(system_root, ARRAYSIZE(system_root), environment,
+        ARRAYSIZE(environment), app_folder)) goto failed;
     stage = "create-process";
     if (!CreateProcessW(worker->image_path, command, &process_sa, &process_sa, TRUE,
-        EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_NO_WINDOW |
+        EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS |
         CREATE_UNICODE_ENVIRONMENT, environment, system_root, &startup.StartupInfo, &process))
         goto failed;
     worker->process = process.hProcess; worker->thread = process.hThread; worker->pid = process.dwProcessId;
@@ -329,6 +335,8 @@ done:
     if (attributes_initialized) DeleteProcThreadAttributeList(startup.lpAttributeList);
     if (startup.lpAttributeList) HeapFree(GetProcessHeap(), 0, startup.lpAttributeList);
     if (process_sa.lpSecurityDescriptor) LocalFree(process_sa.lpSecurityDescriptor);
+    if (app_folder) CoTaskMemFree(app_folder);
+    if (app_sid_string) LocalFree(app_sid_string);
     if (!ok) { writ_worker_stop(worker); SetLastError(error); }
     return ok;
 }

@@ -1,0 +1,144 @@
+Monitor profile binary check (RH-002, RH-003)
+Bend version: bend 2.0.39 (from `bend version`)
+Compilers: clang version 23.1.1 with LLD 23.1.1; gcc (GCC) 16.2.1 20260810
+  (`bend -o` builds with clang at -O2; the static commands are given in each section)
+Host: Linux 7.2.9-1-MANJARO x86_64, glibc 2.44
+Date: 2026-11-03 (CST)
+Environment: BEND_NO_TELEMETRY=1; commands run from the repository root
+Lanes: not applicable; the check reads symbol tables and runs no binary
+GPU mode: not applicable; no --gpu run and no device code executed
+Input: scripts/runtime-profile/monitor-symbols.txt (sha256 7b559fe5fa781c931016c8160523cae94b19229f9798fc4af4ee8f547dfdac05)
+Input: scripts/runtime-profile/monitor-effects.txt (sha256 bb8cc5e5633ecadbf3e8f4d58cf883c08566dd78890b3407eedf89ed343e90ed)
+Input: scripts/runtime-profile/check-binary.sh (sha256 a31490da084eb5d4d3c985dfca51bf1e52c136360af04bc520193ed64409dc96)
+
+## 1. Hello, dynamic: expected PASS, exit 0
+$ bend scripts/runtime-profile/Hello.bend -o ../writ-build/runtime-profile/fixwave/hello
+[exit status: 0]
+binary sha256: 6d74494364506dc35de5e0c59f24a845a66c190b74c48081ed29641899566711
+$ file -b ../writ-build/runtime-profile/fixwave/hello
+ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=e0db6ca0bb3fabd537d4efe7a45303701ebdac07, for GNU/Linux 4.4.0, not stripped
+[exit status: 0]
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/hello
+binary: ../writ-build/runtime-profile/fixwave/hello
+undefined symbols: 58
+effect rows: IO.print
+result: PASS (within the monitor profile)
+[exit status: 0]
+
+## 2. Widened (Hello plus TCP.listen("127.0.0.1", 0)), dynamic: expected FAIL, exit 1
+$ bend scripts/runtime-profile/Widened.bend -o ../writ-build/runtime-profile/fixwave/widened
+[exit status: 0]
+binary sha256: b106954b9eb01e1b51369caebd89c5168c13e866931fe40f1b3410eaf98e5cb6
+$ file -b ../writ-build/runtime-profile/fixwave/widened
+ELF 64-bit LSB pie executable, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=f5b9455f2eea61c468f044062af49d28d632ad9d, for GNU/Linux 4.4.0, not stripped
+[exit status: 0]
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/widened
+binary: ../writ-build/runtime-profile/fixwave/widened
+undefined symbols: 65
+effect rows: IO.print TCP.listen
+effects outside the monitor profile:
+  TCP.listen
+undefined symbols outside the monitor profile:
+  bind
+  close
+  inet_pton
+  listen
+  setsockopt
+  socket
+  strerror
+result: FAIL (outside the monitor profile)
+[exit status: 1]
+
+## C for the static builds
+# The same emission inventory.sh uses; the plain static command is the one docs/BEND-RUNTIME.md records.
+$ bend scripts/runtime-profile/Hello.bend -o ../writ-build/runtime-profile/fixwave/hello.c
+[exit status: 0]
+$ bend scripts/runtime-profile/Widened.bend -o ../writ-build/runtime-profile/fixwave/widened.c
+[exit status: 0]
+
+## 3. Hello, static (clang -O2 -static): expected PASS on effect rows only, exit 0
+$ clang -std=c11 -O2 -static ../writ-build/runtime-profile/fixwave/hello.c -o ../writ-build/runtime-profile/fixwave/hello-static -lpthread -lm
+[exit status: 0]
+binary sha256: 44deeeb31d721d94bed7dfa377cc3cd59f703446f6808630c59954ca24f559c5
+$ file -b ../writ-build/runtime-profile/fixwave/hello-static
+ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=e3d75ef0904ed63a475163695a174cfd10133079, for GNU/Linux 4.4.0, not stripped
+[exit status: 0]
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/hello-static
+binary: ../writ-build/runtime-profile/fixwave/hello-static
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+[exit status: 0]
+
+## 4. Widened, static (clang -O2 -static): expected FAIL on TCP.listen, exit 1
+$ clang -std=c11 -O2 -static ../writ-build/runtime-profile/fixwave/widened.c -o ../writ-build/runtime-profile/fixwave/widened-static -lpthread -lm
+[exit status: 0]
+binary sha256: 4a5ddda0a2d1a694e33d61f53e870dfd9d0e4a9c69a8e3849178ad1c30f28354
+$ file -b ../writ-build/runtime-profile/fixwave/widened-static
+ELF 64-bit LSB executable, x86-64, version 1 (GNU/Linux), statically linked, BuildID[sha1]=135d37ecc3e469899dd62af6c0b498774051a553, for GNU/Linux 4.4.0, not stripped
+[exit status: 0]
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/widened-static
+binary: ../writ-build/runtime-profile/fixwave/widened-static
+undefined symbols: not applicable (static link)
+effect rows: IO.print TCP.listen
+effects outside the monitor profile:
+  TCP.listen
+result: FAIL (outside the monitor profile)
+[exit status: 1]
+
+## 5. Widened, static with link-time optimization (clang -O2 -flto -fuse-ld=lld -static): expected FAIL, exit 1
+# LTO internalizes the effect functions, so tcp_listen_run is a local (t) symbol here.
+# The check before this revision read only global (T) _run names and passed this binary
+# with an empty effect-row list; it now reads T and t and refuses an empty list.
+$ clang -std=c11 -O2 -flto -fuse-ld=lld -static ../writ-build/runtime-profile/fixwave/widened.c -o ../writ-build/runtime-profile/fixwave/widened-static-lto -lpthread -lm
+[exit status: 0]
+binary sha256: 91afb1ed54d5854cbcb6945a3338571562baabd03b5a149a767c22017401639e
+$ file -b ../writ-build/runtime-profile/fixwave/widened-static-lto
+ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, for GNU/Linux 4.4.0, BuildID[sha1]=3775e8607331ef35566b91f09c855b94960a2418, not stripped
+[exit status: 0]
+$ nm ../writ-build/runtime-profile/fixwave/widened-static-lto | grep -E ' [tT] [a-z][a-z0-9_]*_run$| io_eff_rows$'
+00000000002e7390 t dlerror_run
+000000000022ec50 r io_eff_rows
+00000000002f3cf0 t io_print_run
+00000000002f2c50 t tcp_listen_run
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/widened-static-lto
+binary: ../writ-build/runtime-profile/fixwave/widened-static-lto
+undefined symbols: not applicable (static link)
+effect rows: IO.print TCP.listen
+effects outside the monitor profile:
+  TCP.listen
+result: FAIL (outside the monitor profile)
+[exit status: 1]
+
+## Supplementary: gcc -O2 -flto -static (Widened) and clang LTO Hello
+# gcc LTO also keeps the runtime helper cube_run as a local; it is in NOT_EFFECTS.
+$ gcc -std=c11 -O2 -flto -static ../writ-build/runtime-profile/fixwave/widened.c -o ../writ-build/runtime-profile/fixwave/widened-static-gcclto -lpthread -lm
+[exit status: 0]
+$ nm ../writ-build/runtime-profile/fixwave/widened-static-gcclto | grep -E ' [tT] [a-z][a-z0-9_]*_run$'
+00000000004015f1 t cube_run
+0000000000479d50 t dlerror_run
+00000000004023af t io_print_run
+0000000000402e23 t tcp_listen_run
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/widened-static-gcclto
+binary: ../writ-build/runtime-profile/fixwave/widened-static-gcclto
+undefined symbols: not applicable (static link)
+effect rows: IO.print TCP.listen
+effects outside the monitor profile:
+  TCP.listen
+result: FAIL (outside the monitor profile)
+[exit status: 1]
+# For Hello, clang LTO removes the io_eff_rows table symbol entirely, so the check
+# cannot find the effect table and refuses the binary (exit 2) instead of passing it.
+# An LTO-built monitor therefore has no PASS route with this check; it fails closed.
+$ clang -std=c11 -O2 -flto -fuse-ld=lld -static ../writ-build/runtime-profile/fixwave/hello.c -o ../writ-build/runtime-profile/fixwave/hello-static-lto -lpthread -lm
+[exit status: 0]
+$ sh scripts/runtime-profile/check-binary.sh ../writ-build/runtime-profile/fixwave/hello-static-lto
+check-binary.sh: ../writ-build/runtime-profile/fixwave/hello-static-lto: no io_eff_rows effect table symbol (stripped, table optimized away, or not a Bend 2.0.39 binary)
+[exit status: 2]
+
+## Result
+Hello passes dynamically and with a plain static link. Widened fails on TCP.listen in all
+three builds (dynamic, plain static, static LTO), and dynamically also on its socket imports.
+Static results confirm effect rows only; the host-symbol surface of a static binary is not
+checked. The check does not enforce the Bend version pin; see docs/BEND-RUNTIME.md.

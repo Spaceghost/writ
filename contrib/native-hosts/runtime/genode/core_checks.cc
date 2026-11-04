@@ -42,7 +42,7 @@ JSValue output(JSContext *ctx, JSValueConst, int argc, JSValueConst *argv)
     char line[1025];
     memcpy(line, text, length);
     line[length - 1] = 0;
-    Genode::log(line);
+    Genode::log(Genode::Cstring(line));
     JS_FreeCString(ctx, text);
     return JS_UNDEFINED;
 }
@@ -86,8 +86,9 @@ globalThis.TextEncoder = class {
 
 }
 
-unsigned Writ::run_core_checks(char const *source, Genode::size_t length)
+unsigned Writ::run_core_checks(char const *source, Genode::size_t length, unsigned expected)
 {
+    if (!expected || expected > 100000) throw Javascript::Failed();
     Javascript js;
     JSContext *ctx = js.context();
     Core_checks state;
@@ -101,6 +102,6 @@ unsigned Writ::run_core_checks(char const *source, Genode::size_t length)
     result = js.script(source, length, "core-tests.js");
     JS_FreeValue(ctx, result);
     if (state.failed || state.exits != 1 || state.exit_code ||
-        !state.summary || state.passed != 638) throw Javascript::Failed();
+        !state.summary || state.passed != expected) throw Javascript::Failed();
     return state.passed;
 }

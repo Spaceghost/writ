@@ -1,0 +1,13 @@
+{
+  "name": "writ-dev-board",
+  "private": true,
+  "description": "Read-only development board for Writ's OpenSpec suite and lane worktrees. Tooling only; not part of Writ.",
+  "type": "module",
+  "scripts": {
+    "start": "bun server.ts --root ../..",
+    "smoke": "bun smoke.ts"
+  },
+  "dependencies": {
+    "marked": "18.1.3"
+  }
+}

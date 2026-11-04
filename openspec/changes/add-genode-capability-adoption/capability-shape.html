@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Capability Shape for Writ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: verdict first, then a property-by-property fit table, the crux drawn as a short flow, an alternatives matrix, and amendments. */
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --fg: #1d2230; --muted: #5b6474; --line: #d9dbe0;
+  --accent: #15655c; --accent-soft: #e2efec; --deny: #a2452a; --deny-soft: #f6e6df;
+  --warn: #8a6d1f; --warn-soft: #f5edd6; --code-bg: #eeefeb; --comment: #6c7a6f;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --warn: #d9b65a; --warn-soft: #3a3220; --code-bg: #10131a; --comment: #8fa297; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --warn: #d9b65a; --warn-soft: #3a3220; --code-bg: #10131a; --comment: #8fa297; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 82ch; margin: 0 auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 2.6rem 0 .8rem; text-wrap: balance; }
+h3 { font-size: 1.05rem; font-weight: 600; margin: 1.4rem 0 .4rem; }
+p { margin: 0 0 .9rem; } .lede { font-size: 1.15rem; color: var(--muted); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; } a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); border-bottom: 1px solid var(--line); margin: 0 0 1.5rem; padding: .5rem 0; display: flex; gap: .3rem .9rem; flex-wrap: wrap; font-size: .85rem; z-index: 5; }
+nav.toc a { color: var(--muted); text-decoration: none; } nav.toc a:hover { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: .9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0 0 1rem; min-width: 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; } pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--comment); font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .9rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+.verdict { background: var(--surface); border: 2px solid var(--accent); border-radius: 10px; padding: 1rem 1.2rem; margin: 0 0 1.6rem; }
+.verdict h2 { margin: 0 0 .5rem; font-size: 1.3rem; } .verdict p:last-child { margin: 0; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .7rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1.2rem; }
+.callout.warn { border-color: var(--deny); background: var(--deny-soft); } .callout.note { border-color: var(--warn); background: var(--warn-soft); } .callout p:last-child { margin: 0; }
+.chip { display: inline-block; font-family: var(--mono); font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+.chip.ok { border-color: var(--accent); color: var(--accent); } .chip.no { border-color: var(--deny); color: var(--deny); } .chip.part { border-color: var(--warn); color: var(--warn); }
+.flow { display: flex; gap: .5rem; flex-wrap: wrap; align-items: stretch; margin: 0 0 1.2rem; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .7rem; font-size: .88rem; flex: 1 1 160px; min-width: 0; }
+.box small { display: block; color: var(--muted); font-size: .78rem; } .box.bad { border-color: var(--deny); background: var(--deny-soft); }
+.arrow { align-self: center; color: var(--muted); font-family: var(--mono); font-size: .8rem; }
+ul { padding-left: 1.3rem; } li { margin-bottom: .4rem; } ol { padding-left: 1.3rem; } ol li { margin-bottom: .5rem; }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">Writ · evaluation · capability models</div>
+  <h1>Do Genode's capabilities have the right shape for Writ?</h1>
+  <p class="lede">Partly. They are the right shape for who can reach what. They are the wrong shape for what a Writ grant <em>is</em>. This page separates the two, checks the alternatives, and says what that means for the Genode lanes already proposed.</p>
+</header>
+<nav class="toc" aria-label="Sections"><a href="#verdict">Verdict</a><a href="#needs">What Writ needs</a><a href="#fit">Genode, property by property</a><a href="#crux">The crux</a><a href="#alts">Alternatives</a><a href="#amend">Amendments</a><a href="#ask">Questions for Spaceghost</a></nav>
+
+<div class="verdict" id="verdict">
+  <h2>Verdict</h2>
+  <p>A Writ grant is <strong>registry-shaped</strong>: bound to an authenticated subject, scoped to one exact plan (ordered inputs with versions, destination, write domain, code identity, operation kind, three epochs, exclusive expiry), paired with its counterpart grant, and re-resolved against live state at every use and again at commit. No kernel capability encodes that, and none should try. Genode's object capabilities are <strong>reachability-shaped</strong>: an unforgeable reference to an RPC object, delegable by invocation, routed and quota-bounded by a parent. That is exactly the layer Writ needs underneath its registry and exactly the layer it lacks today.</p>
+  <p>So: use Genode capabilities as unforgeable references to monitor-owned records, never as the records. Keep Genode as the reference host for confinement topology, interposition, routing identity, and quotas, where its shape is better than the alternatives. And fix one thing in the capability-adoption proposal, because Genode cannot tell the monitor <em>who</em> invoked an object, only <em>which</em> object was invoked.</p>
+</div>
+
+<h2 id="needs">What Writ actually needs from a capability</h2>
+<p>Read off <code>Frontend.bend</code>, <code>Transfer.GrantScope</code>, the transfer-admission and authority-boundary baselines, and the portable host contract.</p>
+<div class="tablewrap"><table>
+<tr><th>Property</th><th>Where Writ states it</th><th>Meaning</th></tr>
+<tr><td>Subject-bound</td><td><code>Frontend.Caller</code>, PH-002, GN-004</td><td>Authority belongs to an authenticated reader. Possession by someone else proves nothing.</td></tr>
+<tr><td>Exact-plan scoped</td><td><code>GrantScope</code>, TA-002 to TA-005, CF-008</td><td>One invocation, ordered input versions, destination, write domain, code, kind. Not "read bucket X".</td></tr>
+<tr><td>Paired</td><td>TA-001</td><td>A read grant is useless without the matching write grant for the same plan.</td></tr>
+<tr><td>Attenuate-only</td><td>CF-006, PH-005</td><td>Rights and lifetime can narrow. Nothing widens without new authorization.</td></tr>
+<tr><td>Epoch-revocable, live-resolved</td><td>TA-006, CF-007, CF-014</td><td>Any epoch bump invalidates everything. Every use re-reads the registry. Commit re-reads it again.</td></tr>
+<tr><td>Exclusive expiry</td><td>TA-007</td><td><code>now &lt; valid_until</code>, from the monitor's clock, not the holder's.</td></tr>
+<tr><td>Describes, never acts</td><td>AB-001, AB-002, CF-010</td><td>Holding a descriptor authorizes nothing by itself; admission still runs; the intent is not the effect.</td></tr>
+<tr><td>Non-ambient</td><td>AB-005, PH-006, GN-006</td><td>A worker must have no route to any effect the monitor did not grant.</td></tr>
+</table></div>
+<p>The first seven are properties of a <em>record in a registry</em>. The last is a property of a <em>system topology</em>. Keep that split in mind; it is the whole evaluation.</p>
+
+<h2 id="fit">Genode's shape, property by property</h2>
+<div class="tablewrap"><table>
+<tr><th>Writ property</th><th>Genode mechanism</th><th>Fit</th><th>Why</th></tr>
+<tr><td>Subject-bound</td><td>Parent-mediated session routing; label prefix</td><td><span class="chip part">partial</span></td><td>Identity exists at session creation, imposed by the parent. After that, a capability is bearer within the system: whoever holds it can invoke it.</td></tr>
+<tr><td>Exact-plan scoped</td><td>None. An RPC object exposes an interface, not a plan</td><td><span class="chip no">mismatch</span></td><td>Scope lives in the monitor's record. Genode's cap can only point at it.</td></tr>
+<tr><td>Paired</td><td>None</td><td><span class="chip no">n/a</span></td><td>No capability system expresses "needs both". This is policy, and belongs in Bend on every host.</td></tr>
+<tr><td>Attenuate-only</td><td>No rights bits on a cap; attenuation means a new, narrower RPC object (a proxy)</td><td><span class="chip part">partial</span></td><td>Works, but each descriptor must be its own object. Zircon and seL4 carry rights on the handle instead.</td></tr>
+<tr><td>Epoch-revocable</td><td>Destroying an object invalidates every reference; no partial revoke</td><td><span class="chip ok">fits</span></td><td>Coarse, but Writ's epoch bump is coarse too. Per-descriptor objects give per-descriptor close.</td></tr>
+<tr><td>Exclusive expiry</td><td>None</td><td><span class="chip no">n/a</span></td><td>Monitor clock, monitor rule. Any host.</td></tr>
+<tr><td>Describes, never acts</td><td>Caps <em>do</em> act: invoking is the effect</td><td><span class="chip part">inverted</span></td><td>Fine as long as the object invoked is the monitor's ingress and the monitor still runs admission. Dangerous if a cap ever points straight at a sink.</td></tr>
+<tr><td>Non-ambient</td><td>Recursive structure, no ambient authority, every service routed by a parent, RAM and cap quotas</td><td><span class="chip ok">best in class</span></td><td>This is why Genode is the reference. The confinement topology is explicit, inspectable, and enforced below Writ.</td></tr>
+<tr><td>Interposition</td><td>A parent can interpose any service its child requests</td><td><span class="chip ok">best in class</span></td><td>The monitor as interposer between worker and world is a native Genode pattern, not a workaround.</td></tr>
+<tr><td>Sealed artifacts</td><td><code>seal_ram</code> restricts future attachments only</td><td><span class="chip part">partial</span></td><td>The host spec already handles this with a fresh never-writable copy. Correct, and the same on every host.</td></tr>
+</table></div>
+
+<h2 id="crux">The crux: Genode reports which object was invoked, not who invoked it</h2>
+<div class="flow">
+  <div class="box">Parent routes a Writ session to reader R<small>identity is known here, once</small></div>
+  <span class="arrow">→</span>
+  <div class="box">Monitor mints descriptor object D for R<small>D now <em>is</em> R, as far as RPC dispatch can tell</small></div>
+  <span class="arrow">→</span>
+  <div class="box bad">R's worker passes the cap to D to component Q<small>legal in Genode; Q's invocations arrive as "D was invoked"</small></div>
+  <span class="arrow">→</span>
+  <div class="box bad">Monitor cannot see Q<small>no runtime subject-mismatch denial is possible at the server</small></div>
+</div>
+<p>This is the one place the lane-B proposal overstated what the model can enforce. GA-005 promises that a delegated descriptor used by another domain is "denied with a subject-mismatch reason." On Genode the server never learns the holder, so that denial is a property of the <strong>model</strong>, not of the running system. The only real defense is topology: a domain holding a per-subject object must have no channel that can carry a capability out. Genode makes that topology explicit and enforceable, which is good, but it is a different claim from "the monitor denies it."</p>
+<div class="callout note"><p>The existing Genode host spec (GN-004) and the platform doc already say this in prose: "possession of a transferable native endpoint does not automatically establish the original requesting subject; deny an ambiguous attribution." The adoption proposal needs to carry the same humility into its scenarios.</p></div>
+
+<h2 id="alts">The alternatives, and what each would buy</h2>
+<div class="tablewrap"><table>
+<tr><th>Model</th><th>Shape</th><th>Closer to Writ on</th><th>Further from Writ on</th><th>Worth taking</th></tr>
+<tr><td><strong>seL4</strong></td><td>Kernel objects in CSpaces; caps carry rights bits; endpoint badges identify the sender's cap; a capability derivation tree (CDT) lets you revoke a subtree; untyped memory retyped explicitly</td><td>Rights on the cap match <code>Frontend</code>'s rights bits. Badges give per-client identity at an endpoint without minting a proxy. CDT gives selective revocation of what was delegated from a given cap. Formally verified kernel.</td><td>No parent routing or session labels; you build all topology yourself. Badged caps are still bearer: a passed badge impersonates. Much less framework than Genode.</td><td>Model a derivation tree in the Bend binding module so explicit delegations are accounted for and revocable as a unit. Note that Genode has historically run on seL4 as a base kernel; whether the pinned 26.08 still ships that base needs checking before planning on it.</td></tr>
+<tr><td><strong>Zircon (Fuchsia)</strong></td><td>Per-process handles with rights bits; duplicate with a subset of rights; transfer only over channels; no revoke short of killing the object's holder</td><td>Handle rights and duplicate-narrower are exactly <code>Frontend</code>'s dup and attenuate. Handles are not forgeable integers.</td><td>No revocation primitive; no quotas; no recursive routing; no interposition story.</td><td>Nothing Genode cannot emulate with per-descriptor objects. Confirms the Frontend shape is reasonable.</td></tr>
+<tr><td><strong>CHERI</strong></td><td>Hardware capabilities on pointers: bounds, permissions, monotonic narrowing, sealing</td><td>Monotonicity is Writ's attenuate-only rule in silicon. Sealing is a real immutable-artifact primitive.</td><td>It is a memory model, not a service model. No subjects, no revocation except by not sharing, no routing.</td><td>Nothing now. Later, a CHERI target for the freestanding runtime would make the heap's affine discipline enforceable by hardware. Note it, do not plan it.</td></tr>
+<tr><td><strong>KeyKOS / EROS / Coyotos</strong></td><td>Persistent object capabilities; weak (sensory) keys for read-only views; space banks for memory accounting; everything checkpointed</td><td>Space banks are Genode's quotas with a longer pedigree. Persistence matches Writ's durable-publication need. Sensory keys are a clean read-only attenuation.</td><td>Dead or research-only. Nothing to build on.</td><td>The sensory-key idea: a descriptor that can never be used to obtain a writable alias. Already implied by Writ's rights bits; worth naming in the model.</td></tr>
+<tr><td><strong>Capsicum (FreeBSD)</strong></td><td>Capability mode plus rights on file descriptors</td><td>Rights-on-descriptor again. Unix-shaped, so the POSIX adapter will meet it.</td><td>Ambient authority before capability mode; no delegation tracking; no quotas.</td><td>Relevant to the Linux host, not to the shape question.</td></tr>
+<tr><td><strong>Macaroons, Biscuit, UCAN</strong></td><td>Bearer tokens that carry caveats; attenuation by adding caveats; delegation chain inside the token; verification by the issuer</td><td>Caveats express exact-plan scope and exclusive expiry almost verbatim. The delegation chain is auditable.</td><td>Bearer. The whole token is the authority; Writ rejects exactly that. Verification is local to the issuer, not a live registry.</td><td>The caveat vocabulary is a useful cross-check that <code>GrantScope</code> is complete. Never adopt the bearer part.</td></tr>
+<tr><td><strong>Writ's own Frontend</strong></td><td>Registry lookup by 256-bit token plus subject, exact plan, rights, epoch, expiry; every use re-resolves</td><td>It is the record all the above would point at.</td><td>The token is a comparison, not an unforgeable reference. The host must supply unforgeability.</td><td>Keep it as the authority. Let the host supply the reference.</td></tr>
+</table></div>
+<div class="callout"><p>Pattern across the table: every mainstream capability system is bearer <em>inside</em> its trust domain. Subject binding always comes from somewhere else: a parent, a badge handed out by a trusted party, a channel topology. Writ already knew this. The question "does Genode have the right shape" therefore reduces to "does Genode give the best somewhere-else," and the answer is yes: parent routing plus explicit, quota-bounded confinement is stronger than badges alone and far stronger than per-process handles.</p></div>
+
+<h2 id="amend">What this changes in the proposals</h2>
+<ol>
+  <li><strong>Lane B, GA-005.</strong> Rewrite as two requirements. One is a model rule: a transition is denied when the alias holder differs from the binding's subject. The other is a topology obligation: a domain holding a per-subject object must have no capability-carrying channel to any domain outside its delegation record, and the host contract's confinement evidence must show it. Drop the implication that the running monitor can detect the mismatch.</li>
+  <li><strong>Lane B, add a derivation record.</strong> Borrow seL4's CDT as data: every explicit delegation is a node under the delegating alias, and revocation of an alias revokes its subtree. This is what makes PH-005's "narrow only, never widen" checkable across a chain, and it costs nothing on Genode because the model is in Bend.</li>
+  <li><strong>Lane A, the shim.</strong> Mint one channel object (request bucket, result bucket, signal) per descriptor, never share one across descriptors, and never expose an object that points at a sink. The object is the only identity the server has, so object granularity is identity granularity. Above the kernel the interaction is records in buckets, not procedure calls; Genode's RPC is only the transport.</li>
+  <li><strong>Both lanes, a non-claim.</strong> Write down that Genode caps are references to records and the records are the authority. No plan, rights, or expiry is ever encoded in a Genode object. A port that tries is wrong even if it passes the vectors.</li>
+  <li><strong>Nothing changes in the choice of reference host.</strong> On the properties where a kernel can help (non-ambient, interposition, quotas, routing identity, revoke-by-destroy), Genode is at or near the top. On the properties where no kernel helps, Writ's registry is already the right shape.</li>
+</ol>
+
+<h2 id="ask">Questions for Spaceghost</h2>
+<ul>
+  <li>Does the pinned Genode 26.08 still support seL4 as a base kernel? If yes, is a Genode-on-seL4 profile worth a row in the host table, for the CDT and the verified kernel?</li>
+  <li>Is one channel object per descriptor acceptable cost, or do you want descriptors multiplexed over one object with the monitor's registry as the only discriminator? The first gives kernel-level close; the second gives only registry-level close.</li>
+  <li>Should the binding model name a sensory (read-only, non-upgradable) descriptor kind explicitly, or is the rights bitmask enough?</li>
+</ul>
+<footer>Grounded in <code>Frontend.bend</code>, <code>Transfer.GrantScope</code>, the transfer-admission and authority-boundary baselines, the portable host contract, the Genode host spec, and <code>docs/GENODE.md</code>. Amendments were applied to the branch on 2026-11-03: GA-005 reworded as a model rule, GA-010 (topology) and GA-011 (derivation tree) added, GB-010 (one object per descriptor) added, and the design notes updated.</footer>
+</div>
+</body>
+</html>

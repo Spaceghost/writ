@@ -1,0 +1,28 @@
+Runtime profile lane: library tests, proof checks, and OpenSpec validation
+Bend version: bend 2.0.39 (from `bend version`)
+Host: Linux 7.2.9-1-MANJARO x86_64
+Date: 2026-11-03 (CST)
+Environment: BEND_NO_TELEMETRY=1; PATH begins with the pinned Bend 2.0.39 toolchain; run from the repository root
+Scope: run after the final-review fixes to scripts/runtime-profile/, docs/BEND-RUNTIME.md, and
+  verification/; this fix wave changes no .bend file
+Lanes: default (no +RTS option given); GPU mode: not applicable, nothing here runs device code
+
+## Library tests
+$ bend Tests.bend
+638 PASS lines, 0 FAIL lines; final lines:
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+[exit status: 0]
+
+## Proof checks (no --verdict; the Lean kernel check was not run)
+$ bend PROOF.bend
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.
+[exit status: 0]
+# "ALL PROOFS CHECK" is Bend's own checker; it is not a Lean kernel verdict.
+
+## OpenSpec structural validation (OpenSpec 1.16.0)
+$ bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+Totals: 42 passed, 0 failed (42 items)
+[exit status: 0]
+# Structural validation only; separate from the Bend tests and proof checks.

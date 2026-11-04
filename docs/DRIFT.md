@@ -151,3 +151,9 @@ atomic Writ transaction.
 All of those integration steps remain pending. The existing Bend library and
 Drift's driver examples make the boundaries concrete; they do not complete the
 future kernel host.
+
+The runtime half of step 4 is specified separately in the
+[freestanding Bend runtime](../openspec/changes/add-freestanding-bend-runtime/proposal.md)
+change, with the inspected host surface in [BEND-RUNTIME.md](BEND-RUNTIME.md).
+That change also records that Drift's reference kernel is 32-bit while the Bend
+term is a 64-bit word, so the first runtime port needs a long-mode kernel variant.

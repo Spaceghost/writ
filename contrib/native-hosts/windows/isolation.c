@@ -1,10 +1,42 @@
 #define _WIN32_WINNT 0x0A00
 #include "isolation.h"
+#include "probe.h"
 #include <aclapi.h>
 #include <sddl.h>
 #include <strsafe.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+BOOL writ_child_environment(wchar_t *system_root, DWORD root_capacity,
+    wchar_t *environment, size_t capacity, const wchar_t *private_temp)
+{
+    wchar_t local_appdata[MAX_PATH], temporary[MAX_PATH], path[2 * MAX_PATH + 16], drive[3];
+    DWORD root_length = GetWindowsDirectoryW(system_root, root_capacity);
+    DWORD local_length = GetEnvironmentVariableW(L"LOCALAPPDATA", local_appdata, ARRAYSIZE(local_appdata));
+    if (!root_length || root_length >= root_capacity || system_root[1] != L':' ||
+        !local_length || local_length >= ARRAYSIZE(local_appdata)) return FALSE;
+    if (private_temp) {
+        if (FAILED(StringCchCopyW(temporary, ARRAYSIZE(temporary), private_temp))) return FALSE;
+    } else {
+        DWORD length = GetTempPathW(ARRAYSIZE(temporary), temporary);
+        if (!length || length >= ARRAYSIZE(temporary)) return FALSE;
+    }
+    drive[0] = system_root[0]; drive[1] = L':'; drive[2] = 0;
+    if (FAILED(StringCchPrintfW(path, ARRAYSIZE(path), L"%s\\System32;%s", system_root, system_root))) return FALSE;
+    /* Windows' loader needs system paths; AppContainer launch resolves its
+       profile through LOCALAPPDATA. No caller PATH, runtime hooks or shell state
+       survive. Environment strings supply locations, never filesystem grants. */
+    const wchar_t *names[] = {L"LOCALAPPDATA", L"Path", L"SystemDrive", L"SystemRoot", L"TEMP", L"TMP", L"windir"};
+    const wchar_t *values[] = {local_appdata, path, drive, system_root, temporary, temporary, system_root};
+    size_t used = 0;
+    ZeroMemory(environment, capacity * sizeof(wchar_t));
+    for (size_t i = 0; i < ARRAYSIZE(names); ++i) {
+        if (used + 1 >= capacity || FAILED(StringCchPrintfW(environment + used, capacity - used - 1,
+            L"%s=%s", names[i], values[i]))) return FALSE;
+        used += wcslen(environment + used) + 1;
+    }
+    return TRUE;
+}
 
 BOOL writ_process_security(SECURITY_ATTRIBUTES *attributes)
 {
@@ -108,7 +140,7 @@ BOOL writ_same_user_probe(const wchar_t *image, HANDLE policy, HANDLE worker)
     DWORD size = sizeof(admin_sid), needed = 0, exit_code = 1, error = ERROR_ACCESS_DENIED;
     SIZE_T attribute_size = 0;
     BOOL ok = FALSE, attributes_ready = FALSE;
-    wchar_t command[32768], security[512], system_root[MAX_PATH], environment[MAX_PATH + 32];
+    wchar_t command[32768], security[512], system_root[MAX_PATH], environment[WRIT_ENVIRONMENT_CAPACITY];
     if (WaitForSingleObject(policy, 0) != WAIT_TIMEOUT || WaitForSingleObject(worker, 0) != WAIT_TIMEOUT ||
         !image || wcschr(image, L'"') ||
         !CreateWellKnownSid(WinBuiltinAdministratorsSid, NULL, admin_sid, &size) ||
@@ -144,14 +176,11 @@ BOOL writ_same_user_probe(const wchar_t *image, HANDLE policy, HANDLE worker)
         &job, sizeof(job), NULL, NULL)) goto failed;
     startup.StartupInfo.cb = sizeof(startup);
     startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
-    ZeroMemory(environment, sizeof(environment));
-    DWORD root_length = GetWindowsDirectoryW(system_root, ARRAYSIZE(system_root));
-    if (!root_length || root_length >= ARRAYSIZE(system_root) ||
-        FAILED(StringCchPrintfW(environment, ARRAYSIZE(environment) - 1, L"SystemRoot=%s", system_root)) ||
+    if (!writ_child_environment(system_root, ARRAYSIZE(system_root), environment, ARRAYSIZE(environment), NULL) ||
         FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --outsider %lu %lu %lu", image,
             GetCurrentProcessId(), GetProcessId(policy), GetProcessId(worker))) ||
         !CreateProcessAsUserW(restricted, image, command, &child_security, &child_security, FALSE,
-            EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT,
+            EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT,
             environment, system_root, &startup.StartupInfo, &process)) goto failed;
     if (!OpenProcessToken(process.hProcess, TOKEN_QUERY, &actual) ||
         !writ_ordinary_token(actual, user->User.Sid) || ResumeThread(process.hThread) == (DWORD)-1 ||
@@ -207,4 +236,70 @@ int writ_outsider_probe(int argc, wchar_t **argv)
         }
     }
     return 0;
+}
+
+BOOL writ_positive_channels(const wchar_t *image)
+{
+    SECURITY_ATTRIBUTES inherited = { sizeof(inherited), NULL, TRUE }, security = {0};
+    HANDLE input = NULL, output = NULL, job = NULL;
+    PROCESS_INFORMATION process = {0};
+    STARTUPINFOEXW startup = {0};
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits = {0};
+    SIZE_T attribute_size = 0;
+    BOOL ok = FALSE, attributes_ready = FALSE;
+    DWORD exit_code = STILL_ACTIVE, available = 0, got = 0;
+    wchar_t command[32768], system_root[MAX_PATH], environment[WRIT_ENVIRONMENT_CAPACITY];
+    WRIT_PROBE_REPORT report = {0};
+    if (!image || wcschr(image, L'"') || !writ_process_security(&security) ||
+        !CreatePipe(&input, &output, &inherited, 0) ||
+        !SetHandleInformation(input, HANDLE_FLAG_INHERIT, 0)) goto done;
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE |
+        JOB_OBJECT_LIMIT_ACTIVE_PROCESS | JOB_OBJECT_LIMIT_PROCESS_MEMORY |
+        JOB_OBJECT_LIMIT_JOB_MEMORY | JOB_OBJECT_LIMIT_PROCESS_TIME;
+    limits.BasicLimitInformation.ActiveProcessLimit = 2; /* probe and its --exit positive child */
+    limits.BasicLimitInformation.PerProcessUserTimeLimit.QuadPart = 10LL * 10000000LL;
+    limits.ProcessMemoryLimit = 128 * 1024 * 1024;
+    limits.JobMemoryLimit = 256 * 1024 * 1024;
+    job = CreateJobObjectW(NULL, NULL);
+    if (!job || !SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) goto done;
+    InitializeProcThreadAttributeList(NULL, 2, 0, &attribute_size);
+    startup.lpAttributeList = HeapAlloc(GetProcessHeap(), 0, attribute_size);
+    if (!startup.lpAttributeList ||
+        !InitializeProcThreadAttributeList(startup.lpAttributeList, 2, 0, &attribute_size)) goto done;
+    attributes_ready = TRUE;
+    if (!UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_HANDLE_LIST,
+        &output, sizeof(output), NULL, NULL) ||
+        !UpdateProcThreadAttribute(startup.lpAttributeList, 0, PROC_THREAD_ATTRIBUTE_JOB_LIST,
+        &job, sizeof(job), NULL, NULL)) goto done;
+    startup.StartupInfo.cb = sizeof(startup);
+    startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    if (!writ_child_environment(system_root, ARRAYSIZE(system_root), environment, ARRAYSIZE(environment), NULL) ||
+        FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --positive %llu", image,
+            (unsigned long long)(ULONG_PTR)output)) ||
+        !CreateProcessW(image, command, &security, &security, TRUE,
+            EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT,
+            environment, system_root, &startup.StartupInfo, &process)) goto done;
+    CloseHandle(output); output = NULL;
+    if (ResumeThread(process.hThread) == (DWORD)-1 ||
+        WaitForSingleObject(process.hProcess, 20000) != WAIT_OBJECT_0 ||
+        !GetExitCodeProcess(process.hProcess, &exit_code) ||
+        !PeekNamedPipe(input, NULL, 0, NULL, &available, NULL) || available != sizeof(report) ||
+        !ReadFile(input, &report, sizeof(report), &got, NULL) || got != sizeof(report) ||
+        report.magic != WRIT_PROBE_MAGIC || report.phase != 4) goto done;
+    printf("POSITIVE channels passed=%08x failed=%08x child=%lu clipboard_stage=%u clipboard=%08lx com_stage=%u com=%08lx\n",
+        report.passed, report.failed, (DWORD)report.errors[12], report.clipboard_stage,
+        (DWORD)report.errors[15], report.com_stage, (DWORD)report.errors[16]);
+    fflush(stdout);
+    ok = !exit_code && !report.failed && report.passed == WRIT_PROBE_POSITIVE_MASK;
+done:
+    if (!ok) fprintf(stderr, "FAIL channel positive controls error=%lu exit=%08lx\n", GetLastError(), exit_code);
+    if (job) TerminateJobObject(job, ERROR_OPERATION_ABORTED);
+    if (process.hProcess) { WaitForSingleObject(process.hProcess, 5000); CloseHandle(process.hProcess); }
+    if (process.hThread) CloseHandle(process.hThread);
+    if (job) CloseHandle(job);
+    if (input) CloseHandle(input); if (output) CloseHandle(output);
+    if (attributes_ready) DeleteProcThreadAttributeList(startup.lpAttributeList);
+    if (startup.lpAttributeList) HeapFree(GetProcessHeap(), 0, startup.lpAttributeList);
+    if (security.lpSecurityDescriptor) LocalFree(security.lpSecurityDescriptor);
+    return ok;
 }

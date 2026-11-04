@@ -189,7 +189,21 @@ The later kernel follows after its memory, capability, IPC, and device mechanism
 have their own evidence.
 
 The [roadmap](../openspec/ROADMAP.md) tracks the common contract and four host
-changes. POSIX remains the first file-style interface, followed by S3. This
+changes, plus a runtime and unikernel lane: the
+[Bend runtime host profile](../openspec/changes/add-bend-runtime-host-profile/proposal.md)
+every port must satisfy ([inspected surface](BEND-RUNTIME.md)), an
+[immutable unikernel appliance](../openspec/changes/add-unikernel-appliance-host/proposal.md)
+for the monitor alone, a
+[library-unikernel runtime](../openspec/changes/add-unikernel-library-runtime/proposal.md)
+that links the monitor natively into an existing unikernel
+([candidate survey](UNIKERNELS.md)), and a
+[freestanding runtime](../openspec/changes/add-freestanding-bend-runtime/proposal.md)
+for the later kernel. A unikernel's single address space hosts the monitor; it
+is not a worker confinement boundary. For Genode, the
+[Bend component](../openspec/changes/add-genode-bend-component/proposal.md) and
+[capability adoption](../openspec/changes/add-genode-capability-adoption/proposal.md)
+changes supply the runtime, effects, and binding model the reference host's
+tasks assume. POSIX remains the first file-style interface, followed by S3. This
 interface ordering does not make a Linux character device the foundation of the
 Genode or Windows ports. Each adapter must reach the same Bend authorization path.
 

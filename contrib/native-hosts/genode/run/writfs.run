@@ -1,0 +1,37 @@
+source [file join [file dirname [info script]] writ_common.inc]
+build { core init timer lib/ld lib/libc lib/libm lib/vfs server/writfs test/writfs }
+create_boot_directory
+writ_generated { mount.mjs }
+writ_canary
+
+proc writ_probe { role administrative } {
+    set control ""
+    if {$administrative} { set control "    + service Writ_control | + child writfs\n" }
+    return [join [list "\n+ start $role | caps: 128 | ram: 8M\n" {
+  + binary test_writfs
+  + config | role: } $role {
+  + route
+    + service File_system | + child writfs
+} $control [writ_rom_route { test_writfs ld.lib.so }]] ""]
+}
+
+install_config {
+config
+} [writ_parent_services] [writ_server {reader -> control}] \
+  [writ_probe reader 1] [writ_probe stranger 0] [writ_probe forger 0] {
+-
+}
+
+build_boot_image [build_artifacts]
+run_genode_until {WRITFS (READY|STARTUP FAILED)} 120
+if {[regexp {WRITFS STARTUP FAILED} $output]} { error "native filesystem startup failed" }
+for {set i 0} {$i < 3} {incr i} {
+    run_genode_until {WRITFS NATIVE (PASS role=(reader|stranger|forger)|FAIL)} 120 [output_spawn_id]
+    if {[regexp {WRITFS NATIVE FAIL} $output]} { error "native filesystem probe failed" }
+}
+foreach role {reader stranger forger} {
+    if {![regexp "WRITFS NATIVE PASS role=$role" $output]} {
+        error "missing native probe completion: $role"
+    }
+}
+puts "WRIT GENODE FILE_SYSTEM ACCEPTED reader stranger forger"

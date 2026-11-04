@@ -3,7 +3,11 @@
 
 #include <base/stdint.h>
 #include <util/string.h>
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
 #include <quickjs.h>
+#pragma GCC diagnostic pop
 
 namespace Writ {
 
@@ -25,7 +29,7 @@ public:
     JSContext *context() { return _context; }
     void budget();
     JSValue module(char const *, Genode::size_t, char const *);
-    JSValue call(JSValue, int, JSValue const *);
+    JSValue call(JSValue, int, JSValue *);
     JSValue script(char const *, Genode::size_t, char const *);
 };
 
@@ -68,7 +72,7 @@ public:
 };
 
 unsigned run_pure_checks(char const *, Genode::size_t);
-unsigned run_core_checks(char const *, Genode::size_t);
+unsigned run_core_checks(char const *, Genode::size_t, unsigned expected);
 
 }
 #endif

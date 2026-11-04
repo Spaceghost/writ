@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Writ Overview</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Source+Sans+3:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column; the pipeline and state machine are drawn as HTML flow rows so they theme. */
+:root {
+  --bg: #f7f6f2; --surface: #ffffff; --fg: #1d2230; --muted: #5b6474; --line: #d9dbe0;
+  --accent: #15655c; --accent-soft: #e2efec; --deny: #a2452a; --deny-soft: #f6e6df;
+  --code-bg: #eeefeb; --comment: #6c7a6f;
+  --display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+    --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+    --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15181f; --surface: #1c2028; --fg: #e6e4dc; --muted: #a4a9b4; --line: #333945;
+  --accent: #5fc2b2; --accent-soft: #1d3330; --deny: #e38a6b; --deny-soft: #3a2620;
+  --code-bg: #10131a; --comment: #8fa297; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 17px; line-height: 1.55; margin: 0; }
+.wrap { max-width: 76ch; margin: 0 auto; padding-block: 2.5rem 5rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.hero { display: grid; gap: .6rem; margin-bottom: 2rem; }
+.eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2rem, 5vw, 2.9rem); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 2.6rem 0 .8rem; text-wrap: balance; }
+h3 { font-size: 1.08rem; font-weight: 600; margin: 1.6rem 0 .4rem; }
+p { margin: 0 0 .9rem; }
+.lede { font-size: 1.15rem; color: var(--muted); }
+.motto { font-family: var(--display); font-style: italic; font-size: 1.3rem; color: var(--fg); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+nav.toc { position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); border-bottom: 1px solid var(--line); margin: 0 0 1.5rem; padding: .5rem 0; display: flex; gap: .3rem .9rem; flex-wrap: wrap; font-size: .85rem; z-index: 5; }
+nav.toc a { color: var(--muted); text-decoration: none; }
+nav.toc a:hover { color: var(--accent); }
+pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: .9rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .84rem; line-height: 1.5; margin: 0 0 1rem; min-width: 0; }
+code { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: .08em .35em; border-radius: 4px; }
+pre code { background: none; padding: 0; font-size: inherit; }
+.c { color: var(--comment); font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 1.2rem; font-size: .94rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.callout { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: .7rem 1rem; border-radius: 0 6px 6px 0; margin: 0 0 1.2rem; }
+.callout.warn { border-color: var(--deny); background: var(--deny-soft); }
+.callout p:last-child { margin: 0; }
+/* pipeline diagram */
+.pipe { display: grid; grid-template-columns: 1fr; gap: .5rem; margin: 0 0 1.4rem; }
+.lane { display: flex; align-items: stretch; gap: .5rem; flex-wrap: wrap; }
+.box { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: .5rem .7rem; font-size: .88rem; flex: 1 1 150px; min-width: 0; }
+.box small { display: block; color: var(--muted); font-size: .78rem; }
+.box.gate { border-color: var(--accent); border-width: 2px; }
+.box.out { background: var(--accent-soft); border-color: var(--accent); }
+.arrow { align-self: center; color: var(--muted); font-family: var(--mono); font-size: .8rem; padding: 0 .1rem; }
+/* state machine */
+.states { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin: 0 0 .8rem; font-family: var(--mono); font-size: .8rem; }
+.st { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: .2rem .6rem; }
+.st.final { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+.pass { color: var(--accent); font-weight: 600; font-family: var(--mono); }
+.deny { color: var(--deny); font-weight: 600; font-family: var(--mono); }
+ul { padding-left: 1.3rem; } li { margin-bottom: .35rem; }
+dl.kv { display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1rem; margin: 0 0 1.2rem; font-size: .95rem; }
+dl.kv dt { color: var(--muted); } dl.kv dd { margin: 0; }
+@media (max-width: 480px) { dl.kv { grid-template-columns: 1fr; } dl.kv dt { margin-top: .4rem; } }
+footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .88rem; }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+  <div class="eyebrow">Writ · onboarding · 2 of 3</div>
+  <h1>What Writ decides, and what it refuses to</h1>
+  <p class="motto">Data carries its terms.</p>
+  <p class="lede">Writ is a Bend 2 library for information-flow control, capability-bound operations, and multiparty transformation approval. It answers one question: may this operation move these exact inputs to this exact destination under the authority that exists right now?</p>
+</header>
+
+<nav class="toc" aria-label="Sections">
+  <a href="#story">The story</a><a href="#pipeline">Pipeline</a><a href="#layers">Layers</a><a href="#negotiation">Negotiation</a><a href="#run">Run it</a><a href="#status">Status &amp; limits</a><a href="#platforms">Platforms</a>
+</nav>
+
+<h2 id="story">One story runs through everything</h2>
+<p>Every example, test fixture, and doc uses the same scenario: <strong>a restricted incident report becomes an approved internal summary.</strong> The report belongs to the incident team and contains reporter-supplied claims. A summary must keep both facts. Shortening a document does not make it public, and it does not make its claims trustworthy.</p>
+<dl class="kv">
+  <dt>Source object</dt><dd>Version 1 of the incident report (object 10)</dd>
+  <dt>Destination</dt><dd>Version 1 of the internal summary (object 20)</dd>
+  <dt>Operation</dt><dd>One registered summarizer, identified by all 256 bits of its code identity</dd>
+  <dt>Confidentiality</dt><dd>Secrecy bit 0, meaning "incident team only"</dd>
+  <dt>Integrity</dt><dd>Untrusted bit 1, meaning "reporter supplied"</dd>
+  <dt>Origin terms</dt><dd>Only that summarizer, only the <code>Summarize</code> operation kind, payment rule <code>Free</code></dd>
+  <dt>Reader</dt><dd>Subject 7, who funds the run with 50 synthetic execution units</dd>
+</dl>
+<p>The central claim: changing bytes never authorizes release. Copying, ROT13, encryption, compression, hashing, summarizing, and embedding all keep their source's restrictions. Writ follows <em>dependency and authority</em>, not byte similarity. An approved transformation may change the schema (document to summary), but secrecy and untrusted provenance only accumulate.</p>
+
+<h2 id="pipeline">How a write gets authorized</h2>
+<p>A solver proposes. An independent verifier checks the proposal against the original constraints. The commit path rechecks live authority before producing a scoped write intent. Nothing in the library performs the write itself.</p>
+<div class="pipe">
+  <div class="lane">
+    <div class="box">Original dependency graph<small>monitor-supplied nodes and flow / equal / calls edges</small></div>
+    <span class="arrow">→</span>
+    <div class="box">Producer<small><code>Core.solve_cpu</code> or <code>GpuLibrary.solve</code>; proposes a candidate</small></div>
+    <span class="arrow">→</span>
+    <div class="box gate">Original-graph verifier<small><code>Core.verify</code>; independent of the solver's work tree</small></div>
+  </div>
+  <div class="lane">
+    <div class="box">Plan + source and destination policies</div>
+    <span class="arrow">→</span>
+    <div class="box gate">Paired grant admission<small><code>Transfer.admit</code>; read grant and write grant must cover the same exact plan</small></div>
+  </div>
+  <div class="lane">
+    <div class="box">Live capability, origin approvals, reservation<small><code>Frontend</code>, <code>Negotiation</code>, <code>Ledger</code></small></div>
+    <span class="arrow">→</span>
+    <div class="box gate">Final commit gate<small><code>DataOS.commit_from_capability</code> → <code>Backplane.commit</code></small></div>
+    <span class="arrow">→</span>
+    <div class="box out">Scoped write intent<small>plus updated session and ledger; the host executes it atomically</small></div>
+  </div>
+</div>
+<p>Each node in the constraint graph carries four things: a type domain (which shrinks by intersection), a secrecy set, an untrusted-influence set, and a required-effects set (all three grow by union). The three edge kinds:</p>
+<div class="tablewrap"><table>
+<tr><th>Edge</th><th>Direction</th><th>Consequence</th></tr>
+<tr><td><code>flow</code></td><td>source → dependent result</td><td>Secrecy and untrusted influence accumulate. Includes control dependencies, not just data.</td></tr>
+<tr><td><code>equal</code></td><td>symmetric</td><td>Both endpoints' type domains intersect.</td></tr>
+<tr><td><code>calls</code></td><td>callee → caller</td><td>The caller inherits the callee's required effects.</td></tr>
+</table></div>
+<div class="callout"><p>The verifier is the stronger separation in the system. It reads the original seeds and every original edge and does not reuse the solver's propagation helpers or convergence claim. That is what catches the <code>stripped_candidate</code> in <code>examples/Flow.bend</code>: a proposal that keeps the real report seed but quietly drops the summary's inherited labels.</p></div>
+
+<h2 id="layers">The layers</h2>
+<div class="tablewrap"><table>
+<tr><th>Modules</th><th>Responsibility</th></tr>
+<tr><td><code>Core</code>, <code>Gpu</code>, <code>GpuLibrary</code></td><td>Type/effect constraints, parallel solving, independent verification, sink effect gate.</td></tr>
+<tr><td><code>Dlm</code>, <code>DlmGpu</code></td><td>Finite decentralized label model in the Jif style: owner-sensitive confidentiality and integrity over at most 30 named principals plus top and bottom. No declassification path exists.</td></tr>
+<tr><td><code>Transfer</code>, <code>TransferGpu</code></td><td>Paired read/write grants that both bind the exact plan (invocation, ordered input versions, destination, write domain, code identity, operation kind, epochs, expiry). Inherited origin rules and payment witnesses.</td></tr>
+<tr><td><code>Negotiation</code>, <code>Ledger</code></td><td>Candidate pinning, fresh challenges, sample permission, every-origin approval, reader-funded reservation, replay rejection.</td></tr>
+<tr><td><code>Frontend</code>, <code>Backplane</code>, <code>DataOS</code></td><td>Capability mount/descriptor protocol, the final independent recheck, and the public facade that ties them together.</td></tr>
+<tr><td><code>Guard</code>, <code>LAWS</code>, <code>PROOF</code></td><td>The check-list datatype and three proven laws: a failed check anywhere denies, a denial selects the original state, a denied ledger result preserves state.</td></tr>
+</table></div>
+<p>Two authority domains stay separate on purpose. <strong>Read</strong> and <strong>write</strong> are distinct grants; neither follows from holding a reference to the data. Possessing broad permissions somewhere in the system is not enough; both grants must cover this exact plan. Owning the destination bucket gives you no power to weaken what lands in it.</p>
+
+<h2 id="negotiation">The negotiation session</h2>
+<p>A session advances through guarded transitions. Each step preserves the immutable request, checks the current revision, and returns the <em>original</em> state on failure.</p>
+<div class="states">
+  <span class="st">Proposed</span><span>→</span><span class="st">CandidateFixed</span><span>→</span><span class="st">Challenged</span><span>→</span><span class="st">Sampled</span><span>→</span><span class="st">OwnersApproved</span><span>→</span><span class="st">Reserved</span><span>→</span><span class="st">Running</span><span>→</span><span class="st final">Committed</span>
+</div>
+<ul>
+  <li><strong>Pinning</strong> fixes the candidate's identity. A challenge is only valid if issued after the pin.</li>
+  <li><strong>Sampling</strong> is a bounded trial, gated by <code>sample_permit</code> before any data is read. Passing a sample never removes labels; every contributing origin must still approve.</li>
+  <li><strong>Reservation</strong> moves execution units out of the reader's available balance. Commit consumes the hold. Cancel or expiry refunds it. Receipts are never recycled.</li>
+  <li><strong>Commit</strong> re-resolves the live capability descriptor, checks the caller is the negotiated reader, and runs every backplane gate again. A revoked capability means <span class="deny">Rejected</span> with the supplied session and ledger unchanged.</li>
+</ul>
+
+<h2 id="run">Run it yourself</h2>
+<p>From the repository root, with Bend 2.0.39 on <code>PATH</code>. Each program checks its own outcomes and exits with status 1 if any changes.</p>
+<div class="tablewrap"><table>
+<tr><th>Command</th><th>Demonstrates</th><th>Checks</th></tr>
+<tr><td><code>bend examples/Flow.bend</code></td><td>A summary inherits restrictions; a forged candidate fails verification</td><td class="num">4</td></tr>
+<tr><td><code>bend examples/Transfer.bend</code></td><td>Both grants must match; provenance survives the transfer</td><td class="num">4</td></tr>
+<tr><td><code>bend Example.bend</code></td><td>Full negotiation, capability mount, commit, then revocation denial</td><td class="num">16</td></tr>
+<tr><td><code>bend GpuExample.bend</code></td><td>Three device-requesting paths with host verification</td><td class="num">5</td></tr>
+</table></div>
+<p>Output from this machine today, running the first one:</p>
+<pre><code>Flow: a summary keeps its report's restrictions.
+<span class="pass">PASS</span> constraint candidate verified: True
+<span class="pass">PASS</span> internal summary write allowed: True
+<span class="pass">PASS</span> public summary write denied for confidentiality: True
+<span class="pass">PASS</span> stripped-label candidate rejected: True</code></pre>
+<p>The full suite and the proof gate:</p>
+<pre><code>bend Tests.bend     <span class="c"># ... ALL LIBRARY TESTS PASSED   (638 checks, verified today)</span>
+bend PROOF.bend     <span class="c"># ALL PROOFS CHECK                (3 laws)</span></code></pre>
+
+<h2 id="status">Status and limits, stated plainly</h2>
+<p>The repo is unusually careful about not overclaiming, and <code>AGENTS.md</code> asks you to keep it that way. What exists:</p>
+<ul>
+  <li>An executable security-core library and protocol model, entirely in Bend 2. Tests, examples, and proofs pass on the JavaScript backend and on a native CPU build.</li>
+  <li>Finite property coverage: a Floyd–Warshall oracle checks 320 graph cases against both the reference and the parallel producer.</li>
+</ul>
+<p>What does not exist yet, and must not be implied by a green run:</p>
+<ul>
+  <li>Physical GPU execution. Every recorded run used <code>--gpu off</code> or the sequential JavaScript runner.</li>
+  <li>Independent Lean kernel verification. The <code>--verdict</code> step could not start on the recording machine.</li>
+  <li>Real POSIX devices, worker confinement, authenticated grant issuance, durable storage, payment settlement, hosted-language execution. All are OpenSpec change proposals, not implemented adapters.</li>
+  <li>Declassification or endorsement. Intentionally absent from the release path.</li>
+</ul>
+<div class="callout warn"><p>Every public Bend data constructor in this library is a description, not a capability. Deserializing a <code>Ticket</code>, <code>Session</code>, or <code>WriteIntent</code> from an untrusted caller and treating it as authority is the one thing the design forbids above all others. Authority comes from monitor-owned state, authenticated before the call.</p></div>
+
+<h2 id="platforms">Host platforms</h2>
+<p>Genode is the reference capability platform: trusted parent routing establishes session authority and the Writ service runs the full Bend checks on top. Direct Linux, native Windows, and a future kernel using Drift for drivers are separate targets sharing one Bend decision core. All host ports are proposed; the current execution evidence is for the library only. A native handle or descriptor is never a portable credential, and bearer possession alone does not establish the original caller's identity. <code>docs/PLATFORMS.md</code> is required reading before touching any native boundary.</p>
+<p>The optional <code>contrib/rclone/</code> remote is the one sanctioned place with Go: a thin interface adapter for rclone. Policy and the reference service there are still Bend.</p>
+
+<footer>Sources: <code>README.md</code>, <code>docs/GETTING-STARTED.md</code>, <code>DESIGN.md</code>, <code>LIBRARY.md</code>, <code>VERIFICATION.md</code>, and today's test run. Companion pages: <strong>Bend 2 Primer</strong> and <strong>Writ Codebase Tour</strong>.</footer>
+</div>
+</body>
+</html>

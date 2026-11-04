@@ -1,0 +1,64 @@
+# Nix determinism evidence: packages.x86_64-linux.tests-native (Task 2 of the Nix flake lane)
+# Date: 2026-11-04T02:38:21Z
+# Host: Linux 7.2.9-1-MANJARO x86_64; nix (Nix) 2.35.2; sandbox = true
+# Flake revision under test: 4a1b43b (nix/writ.nix and flake.nix as committed; the only
+#   uncommitted change during these runs was docs/INSTALL.md, which is outside the
+#   filtered build source and does not change the derivation)
+# nixpkgs: github:NixOS/nixpkgs/0bb2eedc20e4739f29e8045034f2828ad7054f8f
+# Toolchain: Bend 2.0.39 (official release), clang 23.1.3 (llvmPackages_latest, Nix cc-wrapper)
+# Bend's compile step observed in the sandbox: $CC -std=c11 -O3 <generated>.c -lpthread -lm -o $out/bin/tests-native
+#   (cc-wrapper targets generic x86-64; -source-date-epoch 315532800; no -march=native)
+# Derivation: /nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv
+# Before build 1, both the output and the check that references it were removed with
+# nix store delete; before build 2 the output was removed again. Build 3 is an
+# independent nix build --rebuild, which fails if the new output differs bit-for-bit.
+
+$ nix store delete <checks.tests-native output> && nix store delete /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+1 store paths deleted, 27.3 KiB freed
+1 store paths deleted, 2.9 MiB freed
+
+$ nix build .#tests-native --print-out-paths
+this derivation will be built:
+  /nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv
+building '/nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv'...
+/nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+$ nix hash path /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+sha256-pr7V2E3aeNrwEP9xeJDKiz5dNRQGksiIsY+K+j2ShA4=
+
+$ nix store delete /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+1 store paths deleted, 2.9 MiB freed
+
+$ nix build .#tests-native --print-out-paths
+this derivation will be built:
+  /nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv
+building '/nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv'...
+/nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+$ nix hash path /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+sha256-pr7V2E3aeNrwEP9xeJDKiz5dNRQGksiIsY+K+j2ShA4=
+
+$ cmp <copy of build 1 bin/tests-native> /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native/bin/tests-native
+(no output; exit 0: identical)
+
+$ nix build .#tests-native --rebuild --print-out-paths
+checking outputs of '/nix/store/n3gbkr87xir0bcbd34ypbcq174vbhmm6-writ-tests-native.drv'...
+/nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+(exit 0; nix reports no non-determinism)
+
+Result: the evidence is the equal `nix hash path` values
+  sha256-pr7V2E3aeNrwEP9xeJDKiz5dNRQGksiIsY+K+j2ShA4=
+for the two builds, the `cmp` result (identical binaries), and the clean
+`--rebuild` (no non-determinism reported). Both builds are at the same store path
+  /nix/store/1zmbhfjm5g33agl3drhkb3gsa3gcsnlj-writ-tests-native
+but tests-native is input-addressed, so that path is fixed by the derivation and
+its equality is expected by construction, not evidence.
+
+Supplementary: packages.x86_64-linux.examples-native
+$ nix hash path /nix/store/mmg5i94gs52n4cghmmf7azlq81xavj0v-writ-examples-native
+sha256-z57/bd5quPYF2lFqWJjeJfgoUMBh7U8hco6TuFIFAqk=
+$ nix build .#examples-native --rebuild --print-out-paths
+checking outputs of '/nix/store/x88wr8k74wcc8w7fhv9sy6w15qmhy2y0-writ-examples-native.drv'...
+/nix/store/mmg5i94gs52n4cghmmf7azlq81xavj0v-writ-examples-native
+(exit 0; hash after rebuild unchanged: sha256-z57/bd5quPYF2lFqWJjeJfgoUMBh7U8hco6TuFIFAqk=)
+
+Scope: identical outputs on one host with one locked toolchain. This does not claim
+identical outputs on other hosts or other nixpkgs revisions.

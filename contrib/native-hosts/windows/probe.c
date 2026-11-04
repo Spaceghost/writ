@@ -5,13 +5,13 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <bcrypt.h>
-#include <objbase.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <strsafe.h>
 #include "probe.h"
 #include "isolation.h"
+#include "channels.h"
 
 static void record(WRIT_PROBE_REPORT *report, unsigned int bit, BOOL success, DWORD error)
 {
@@ -113,6 +113,53 @@ static void network_checks(WRIT_PROBE_REPORT *report, unsigned short *ports)
     if (!initialized) WSACleanup();
 }
 
+static void child_check(WRIT_PROBE_REPORT *report, BOOL positive)
+{
+    wchar_t image[32768], command[32768];
+    STARTUPINFOW startup = {0};
+    PROCESS_INFORMATION child = {0};
+    startup.cb = sizeof(startup);
+    DWORD length = GetModuleFileNameW(NULL, image, ARRAYSIZE(image)), error = ERROR_INVALID_PARAMETER;
+    BOOL success = FALSE;
+    if (!length || length >= ARRAYSIZE(image) ||
+        FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --exit", image))) goto done;
+    BOOL created = CreateProcessW(image, command, NULL, NULL, FALSE,
+        DETACHED_PROCESS | CREATE_SUSPENDED, NULL, NULL, &startup, &child);
+    error = created ? ERROR_SUCCESS : GetLastError();
+    if (!created) {
+        success = !positive && (error == ERROR_ACCESS_DENIED || error == ERROR_CHILD_PROCESS_BLOCKED);
+        goto done;
+    }
+    if (positive) {
+        DWORD exit_code = 1;
+        success = ResumeThread(child.hThread) != (DWORD)-1 &&
+            WaitForSingleObject(child.hProcess, 10000) == WAIT_OBJECT_0 &&
+            GetExitCodeProcess(child.hProcess, &exit_code) && exit_code == 0;
+        error = success ? ERROR_SUCCESS : (exit_code ? exit_code : GetLastError());
+    }
+    TerminateProcess(child.hProcess, ERROR_OPERATION_ABORTED);
+    WaitForSingleObject(child.hProcess, 5000);
+    CloseHandle(child.hThread); CloseHandle(child.hProcess);
+done:
+    record(report, WRIT_PROBE_CHILD, success, error);
+}
+
+static int positive_channels(HANDLE output)
+{
+    WRIT_PROBE_REPORT report = {0};
+    report.magic = WRIT_PROBE_MAGIC; report.phase = 4;
+    child_check(&report, TRUE);
+    WRIT_CHANNEL_RESULT clipboard = writ_clipboard_attempt();
+    WRIT_CHANNEL_RESULT com = writ_com_attempt();
+    report.clipboard_stage = clipboard.stage; report.com_stage = com.stage;
+    record(&report, WRIT_PROBE_CLIPBOARD, clipboard.stage == 4 && clipboard.result == S_OK, (DWORD)clipboard.result);
+    record(&report, WRIT_PROBE_COM, com.stage == 4 && com.result == S_OK, (DWORD)com.result);
+    DWORD written = 0;
+    BOOL sent = WriteFile(output, &report, sizeof(report), &written, NULL) && written == sizeof(report);
+    CloseHandle(output);
+    return sent && !report.failed && report.passed == WRIT_PROBE_POSITIVE_MASK ? 0 : 87;
+}
+
 static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_path, DWORD broker_pid)
 {
     DWORD error;
@@ -126,21 +173,7 @@ static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_
     }
     record(report, WRIT_PROBE_PUBLIC_FILE, file == INVALID_HANDLE_VALUE && error == ERROR_ACCESS_DENIED, error);
 
-    wchar_t own_image[32768], command[32768];
-    STARTUPINFOW startup = {0};
-    startup.cb = sizeof(startup);
-    PROCESS_INFORMATION child = {0};
-    DWORD image_length = GetModuleFileNameW(NULL, own_image, ARRAYSIZE(own_image));
-    if (!image_length || image_length >= ARRAYSIZE(own_image) ||
-        FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --exit", own_image))) {
-        record(report, WRIT_PROBE_CHILD, FALSE, ERROR_INVALID_PARAMETER);
-    } else {
-        BOOL created = CreateProcessW(own_image, command, NULL, NULL, FALSE,
-            CREATE_NO_WINDOW | CREATE_SUSPENDED, NULL, NULL, &startup, &child);
-        error = created ? 0 : GetLastError();
-        if (created) { TerminateProcess(child.hProcess, 91); CloseHandle(child.hThread); CloseHandle(child.hProcess); }
-        record(report, WRIT_PROBE_CHILD, !created, error);
-    }
+    child_check(report, FALSE);
 
     HANDLE console = CreateFileW(L"CONOUT$", GENERIC_WRITE, FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
     error = console == INVALID_HANDLE_VALUE ? GetLastError() : 0;
@@ -154,47 +187,18 @@ static void confinement_checks(WRIT_PROBE_REPORT *report, const wchar_t *public_
     if (broker) CloseHandle(broker);
     record(report, WRIT_PROBE_BROKER, !broker && error == ERROR_ACCESS_DENIED, error);
 
-    HMODULE user = LoadLibraryW(L"user32.dll");
-    BOOL clipboard_open = FALSE;
-    error = user ? 0 : GetLastError();
-    if (user) {
-        typedef BOOL (WINAPI *OPEN_CLIPBOARD)(HWND);
-        typedef BOOL (WINAPI *CLOSE_CLIPBOARD)(void);
-        OPEN_CLIPBOARD open = (OPEN_CLIPBOARD)GetProcAddress(user, "OpenClipboard");
-        CLOSE_CLIPBOARD close = (CLOSE_CLIPBOARD)GetProcAddress(user, "CloseClipboard");
-        if (open) { clipboard_open = open(NULL); error = clipboard_open ? 0 : GetLastError(); }
-        else error = ERROR_PROC_NOT_FOUND;
-        if (clipboard_open && close) close();
-        FreeLibrary(user);
-    }
-    record(report, WRIT_PROBE_CLIPBOARD, !clipboard_open, error);
-
-    HMODULE ole = LoadLibraryW(L"ole32.dll");
-    HRESULT result = HRESULT_FROM_WIN32(GetLastError());
-    if (ole) {
-        typedef HRESULT (WINAPI *INITIALIZE)(LPVOID, DWORD);
-        typedef HRESULT (WINAPI *CREATE)(REFCLSID, LPUNKNOWN, DWORD, REFIID, LPVOID *);
-        typedef void (WINAPI *UNINITIALIZE)(void);
-        INITIALIZE initialize = (INITIALIZE)GetProcAddress(ole, "CoInitializeEx");
-        CREATE create = (CREATE)GetProcAddress(ole, "CoCreateInstance");
-        UNINITIALIZE uninitialize = (UNINITIALIZE)GetProcAddress(ole, "CoUninitialize");
-        const GUID shell = {0x13709620,0xc279,0x11ce,{0xa4,0x9e,0x44,0x45,0x53,0x54,0x00,0x00}};
-        const GUID unknown = {0x00000000,0x0000,0x0000,{0xc0,0x00,0x00,0x00,0x00,0x00,0x00,0x46}};
-        void *object = NULL;
-        result = initialize ? initialize(NULL, COINIT_MULTITHREADED) : E_NOTIMPL;
-        if (SUCCEEDED(result)) {
-            result = create ? create(&shell, NULL, CLSCTX_LOCAL_SERVER, &unknown, &object) : E_NOTIMPL;
-            if (object) ((IUnknown *)object)->lpVtbl->Release((IUnknown *)object);
-            if (uninitialize) uninitialize();
-        }
-        FreeLibrary(ole);
-    }
-    record(report, WRIT_PROBE_COM, FAILED(result), (DWORD)result);
+    WRIT_CHANNEL_RESULT clipboard = writ_clipboard_attempt();
+    WRIT_CHANNEL_RESULT com = writ_com_attempt();
+    report->clipboard_stage = clipboard.stage; report->com_stage = com.stage;
+    record(report, WRIT_PROBE_CLIPBOARD, writ_clipboard_denied(clipboard), (DWORD)clipboard.result);
+    record(report, WRIT_PROBE_COM, writ_com_denied(com), (DWORD)com.result);
 }
 
 int wmain(int argc, wchar_t **argv)
 {
     if (argc == 2 && !wcscmp(argv[1], L"--exit")) return 0;
+    if (argc == 3 && !wcscmp(argv[1], L"--positive"))
+        return positive_channels((HANDLE)(uintptr_t)_wcstoui64(argv[2], NULL, 10));
     if (argc > 1 && !wcscmp(argv[1], L"--outsider")) return writ_outsider_probe(argc, argv);
     if (argc != 14) return 80;
     const wchar_t *mount = argv[1], *expected_hash = argv[2];
