@@ -138,23 +138,33 @@ BOOL writ_same_user_probe(const wchar_t *image, HANDLE policy, HANDLE worker)
     PSID medium = NULL;
     LPWSTR user_string = NULL;
     DWORD size = sizeof(admin_sid), needed = 0, exit_code = 1, error = ERROR_ACCESS_DENIED;
+    const char *stage = "live-targets";
     SIZE_T attribute_size = 0;
     BOOL ok = FALSE, attributes_ready = FALSE;
     wchar_t command[32768], security[512], system_root[MAX_PATH], environment[WRIT_ENVIRONMENT_CAPACITY];
     if (WaitForSingleObject(policy, 0) != WAIT_TIMEOUT || WaitForSingleObject(worker, 0) != WAIT_TIMEOUT ||
-        !image || wcschr(image, L'"') ||
-        !CreateWellKnownSid(WinBuiltinAdministratorsSid, NULL, admin_sid, &size) ||
-        !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE | TOKEN_ASSIGN_PRIMARY, &source) ||
+        !image || wcschr(image, L'"')) { SetLastError(ERROR_INVALID_PARAMETER); goto failed; }
+    stage = "source-token";
+    if (!CreateWellKnownSid(WinBuiltinAdministratorsSid, NULL, admin_sid, &size) ||
+        !OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY | TOKEN_DUPLICATE |
+            TOKEN_ASSIGN_PRIMARY | TOKEN_ADJUST_DEFAULT, &source) ||
         !GetTokenInformation(source, TokenUser, user_storage, sizeof(user_storage), &needed)) goto failed;
     SID_AND_ATTRIBUTES disabled = { admin_sid, 0 };
     /* No restricting SID list or AppContainer is added: the negative reader
        keeps the same user SID and ordinary user access, without admin privileges. */
+    stage = "restrict-token";
+    /* CreateRestrictedToken preserves the source handle's access rights.
+       TOKEN_ADJUST_DEFAULT is required to lower the new token's integrity. */
     if (!CreateRestrictedToken(source, DISABLE_MAX_PRIVILEGE, 1, &disabled, 0, NULL, 0, NULL, &restricted) ||
         !ConvertStringSidToSidW(L"S-1-16-8192", &medium)) goto failed;
     TOKEN_MANDATORY_LABEL label = { { medium, SE_GROUP_INTEGRITY } };
-    if (!SetTokenInformation(restricted, TokenIntegrityLevel, &label, sizeof(label) + GetLengthSid(medium)) ||
-        !writ_ordinary_token(restricted, user->User.Sid) ||
-        !ConvertSidToStringSidW(user->User.Sid, &user_string) ||
+    stage = "medium-integrity";
+    if (!SetTokenInformation(restricted, TokenIntegrityLevel, &label, sizeof(label) + GetLengthSid(medium))) goto failed;
+    stage = "restricted-token-facts";
+    SetLastError(ERROR_ACCESS_DENIED);
+    if (!writ_ordinary_token(restricted, user->User.Sid)) goto failed;
+    stage = "child-security";
+    if (!ConvertSidToStringSidW(user->User.Sid, &user_string) ||
         FAILED(StringCchPrintfW(security, ARRAYSIZE(security),
             L"O:%sD:P(A;;GA;;;%s)(A;;GA;;;SY)(A;;GA;;;BA)", user_string, user_string)) ||
         !ConvertStringSecurityDescriptorToSecurityDescriptorW(security, SDDL_REVISION_1,
@@ -165,6 +175,7 @@ BOOL writ_same_user_probe(const wchar_t *image, HANDLE policy, HANDLE worker)
     limits.BasicLimitInformation.ActiveProcessLimit = 1;
     limits.BasicLimitInformation.PerProcessUserTimeLimit.QuadPart = 10LL * 10000000LL;
     limits.ProcessMemoryLimit = 64 * 1024 * 1024;
+    stage = "job-and-attributes";
     job = CreateJobObjectW(NULL, NULL);
     if (!job || !SetInformationJobObject(job, JobObjectExtendedLimitInformation, &limits, sizeof(limits))) goto failed;
     InitializeProcThreadAttributeList(NULL, 1, 0, &attribute_size);
@@ -176,22 +187,37 @@ BOOL writ_same_user_probe(const wchar_t *image, HANDLE policy, HANDLE worker)
         &job, sizeof(job), NULL, NULL)) goto failed;
     startup.StartupInfo.cb = sizeof(startup);
     startup.StartupInfo.dwFlags = STARTF_USESTDHANDLES;
+    stage = "environment-and-command";
     if (!writ_child_environment(system_root, ARRAYSIZE(system_root), environment, ARRAYSIZE(environment), NULL) ||
         FAILED(StringCchPrintfW(command, ARRAYSIZE(command), L"\"%s\" --outsider %lu %lu %lu", image,
-            GetCurrentProcessId(), GetProcessId(policy), GetProcessId(worker))) ||
-        !CreateProcessAsUserW(restricted, image, command, &child_security, &child_security, FALSE,
+            GetCurrentProcessId(), GetProcessId(policy), GetProcessId(worker)))) goto failed;
+    stage = "create-process";
+    if (!CreateProcessAsUserW(restricted, image, command, &child_security, &child_security, FALSE,
             EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | DETACHED_PROCESS | CREATE_UNICODE_ENVIRONMENT,
             environment, system_root, &startup.StartupInfo, &process)) goto failed;
-    if (!OpenProcessToken(process.hProcess, TOKEN_QUERY, &actual) ||
-        !writ_ordinary_token(actual, user->User.Sid) || ResumeThread(process.hThread) == (DWORD)-1 ||
-        WaitForSingleObject(process.hProcess, 10000) != WAIT_OBJECT_0 ||
-        !GetExitCodeProcess(process.hProcess, &exit_code) || exit_code ||
-        WaitForSingleObject(policy, 0) != WAIT_TIMEOUT || WaitForSingleObject(worker, 0) != WAIT_TIMEOUT) goto failed;
+    stage = "actual-child-token";
+    if (!OpenProcessToken(process.hProcess, TOKEN_QUERY, &actual)) goto failed;
+    SetLastError(ERROR_ACCESS_DENIED);
+    if (!writ_ordinary_token(actual, user->User.Sid)) goto failed;
+    stage = "resume";
+    if (ResumeThread(process.hThread) == (DWORD)-1) goto failed;
+    stage = "wait-and-exit";
+    DWORD waited = WaitForSingleObject(process.hProcess, 10000);
+    if (waited != WAIT_OBJECT_0) {
+        if (waited != WAIT_FAILED) SetLastError(ERROR_TIMEOUT);
+        goto failed;
+    }
+    if (!GetExitCodeProcess(process.hProcess, &exit_code)) goto failed;
+    if (exit_code) { SetLastError(ERROR_INVALID_DATA); goto failed; }
+    stage = "targets-still-live";
+    if (WaitForSingleObject(policy, 0) != WAIT_TIMEOUT || WaitForSingleObject(worker, 0) != WAIT_TIMEOUT) {
+        SetLastError(ERROR_PROCESS_ABORTED); goto failed;
+    }
     ok = TRUE;
     goto done;
 failed:
     error = GetLastError();
-    fprintf(stderr, "FAIL ordinary same-user process probe error=%lu exit=%lu\n", error, exit_code);
+    fprintf(stderr, "FAIL ordinary same-user process probe stage=%s error=%lu exit=%lu\n", stage, error, exit_code);
 done:
     if (job) TerminateJobObject(job, ERROR_OPERATION_ABORTED);
     if (process.hProcess) { WaitForSingleObject(process.hProcess, 5000); CloseHandle(process.hProcess); }

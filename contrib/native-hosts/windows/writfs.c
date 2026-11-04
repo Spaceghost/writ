@@ -32,7 +32,7 @@ typedef struct {
     WRIT_POLICY_PIPE policy;
     WRIT_WORKER worker;
     CRITICAL_SECTION lock;
-    BOOL lock_ready, failed;
+    BOOL lock_ready, failed, mounted;
     DWORD sequence, audit_count, byte_count;
     BYTE *bytes;
     PSECURITY_DESCRIPTOR security;
@@ -436,6 +436,7 @@ static BOOL mount_filesystem(WRIT_HOST *host, wchar_t *mount)
     FspFileSystemSetOperationGuardStrategy(host->filesystem, FSP_FILE_SYSTEM_OPERATION_GUARD_STRATEGY_COARSE);
     status = FspFileSystemSetMountPointEx(host->filesystem, mount, host->security);
     if (!NT_SUCCESS(status)) { fprintf(stderr, "FAIL winfsp-mount status=%08lx\n", (DWORD)status); return FALSE; }
+    host->mounted = TRUE;
     status = FspFileSystemStartDispatcher(host->filesystem, 1);
     if (!NT_SUCCESS(status)) { fprintf(stderr, "FAIL winfsp-dispatch status=%08lx\n", (DWORD)status); return FALSE; }
     return TRUE;
@@ -719,7 +720,9 @@ int wmain(int argc, wchar_t **argv)
     DWORD exit_code;
     if (!GetExitCodeProcess(host.worker.process, &exit_code) || exit_code) goto done;
     printf("NATIVE_PASS revocation denies new opens and a subsequent uncached read\n");
+    EnterCriticalSection(&host.lock);
     ok = !host.failed;
+    LeaveCriticalSection(&host.lock);
 done:
     if (!ok) fprintf(stderr, "FAIL native Windows profile=%s win32=%lu\n", lpac ? "lpac-canary" : "mount-canary", GetLastError());
     if (!writ_worker_terminate(&host.worker)) { fprintf(stderr, "FAIL worker termination\n"); ok = FALSE; }
@@ -727,6 +730,16 @@ done:
         FspFileSystemStopDispatcher(host.filesystem);
         FspFileSystemRemoveMountPoint(host.filesystem);
         FspFileSystemDelete(host.filesystem);
+        host.filesystem = NULL;
+        if (host.mounted) {
+            wchar_t target[1024];
+            DWORD mapped = QueryDosDeviceW(mount, target, ARRAYSIZE(target));
+            DWORD error = mapped ? ERROR_ALREADY_EXISTS : GetLastError();
+            if (mapped || error != ERROR_FILE_NOT_FOUND) {
+                fprintf(stderr, "FAIL owned mount drive still resolves after cleanup error=%lu\n", error);
+                ok = FALSE;
+            }
+        }
     }
     /* Close callbacks may discover a failed policy cleanup during quiescence. */
     if (host.failed) ok = FALSE;

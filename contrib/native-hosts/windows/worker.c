@@ -33,9 +33,73 @@ static BOOL capture_user(HANDLE token, BYTE *sid)
     return CopySid(SECURITY_MAX_SID_SIZE, sid, user->User.Sid);
 }
 
-static BOOL lpac_token(HANDLE token, PSID expected)
+static BOOL lpac_access_check(HANDLE token, PSID expected, PSID user, BOOL diagnostic)
 {
-    DWORD app = 0, lpac = 0, elevated = 1;
+    HANDLE duplicate = NULL, checked = token;
+    TOKEN_TYPE type;
+    LPWSTR package_string = NULL, user_string = NULL;
+    const wchar_t *package_classes[4];
+    const BOOL expected_access[4] = { TRUE, TRUE, FALSE, FALSE };
+    const char *names[4] = { "exact-package", "restricted-packages", "all-packages", "user-only" };
+    BOOL ok = FALSE;
+    DWORD error = ERROR_ACCESS_DENIED;
+    if (!token_blob(token, TokenType, &type, sizeof(type))) goto failed;
+    if (type == TokenPrimary) {
+        if (!DuplicateTokenEx(token, TOKEN_QUERY, NULL, SecurityIdentification,
+            TokenImpersonation, &duplicate)) goto failed;
+        checked = duplicate;
+    } else if (type != TokenImpersonation) goto done;
+    if (!ConvertSidToStringSidW(expected, &package_string) ||
+        !ConvertSidToStringSidW(user, &user_string)) goto failed;
+    package_classes[0] = package_string;
+    package_classes[1] = L"S-1-15-2-2"; /* ALL RESTRICTED APPLICATION PACKAGES */
+    package_classes[2] = L"S-1-15-2-1"; /* ALL APPLICATION PACKAGES */
+    package_classes[3] = NULL;
+    for (unsigned int i = 0; i < ARRAYSIZE(package_classes); ++i) {
+        wchar_t sddl[1024];
+        PSECURITY_DESCRIPTOR descriptor = NULL;
+        GENERIC_MAPPING mapping = { FILE_GENERIC_READ, FILE_GENERIC_WRITE, FILE_GENERIC_EXECUTE, FILE_ALL_ACCESS };
+        PRIVILEGE_SET privileges = {0};
+        DWORD privilege_size = sizeof(privileges), granted = 0;
+        BOOL permitted = FALSE;
+        HRESULT formatted = package_classes[i] ?
+            StringCchPrintfW(sddl, ARRAYSIZE(sddl), L"O:SYG:SYD:P(A;;0x1;;;%s)(A;;0x1;;;%s)",
+                user_string, package_classes[i]) :
+            StringCchPrintfW(sddl, ARRAYSIZE(sddl), L"O:SYG:SYD:P(A;;0x1;;;%s)", user_string);
+        if (FAILED(formatted)) { error = ERROR_INSUFFICIENT_BUFFER; goto done; }
+        if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, SDDL_REVISION_1,
+            &descriptor, NULL)) goto failed;
+        /* Check the actual launched/request token against unchanged descriptors.
+           Never remove an ACE or simulate the LPAC opt-out on an ordinary token. */
+        BOOL completed = AccessCheck(descriptor, checked, FILE_READ_DATA, &mapping,
+            &privileges, &privilege_size, &granted, &permitted);
+        DWORD access_error = GetLastError();
+        LocalFree(descriptor);
+        if (!completed || permitted != expected_access[i] ||
+            granted != (expected_access[i] ? FILE_READ_DATA : 0) || privileges.PrivilegeCount) {
+            error = completed ? ERROR_ACCESS_DENIED : access_error;
+            if (diagnostic) fprintf(stderr,
+                "FAIL LPAC AccessCheck test=%s completed=%u permitted=%u granted=%08lx privileges=%lu error=%lu\n",
+                names[i], completed, permitted, granted, privileges.PrivilegeCount, error);
+            goto done;
+        }
+    }
+    ok = TRUE;
+    goto done;
+failed:
+    error = GetLastError();
+done:
+    if (package_string) LocalFree(package_string);
+    if (user_string) LocalFree(user_string);
+    close_handle(&duplicate);
+    if (!ok) SetLastError(error ? error : ERROR_ACCESS_DENIED);
+    return ok;
+}
+
+static BOOL lpac_token(HANDLE token, PSID expected, BOOL diagnostic)
+{
+    DWORD app = 0, elevated = 1;
+    BYTE user[SECURITY_MAX_SID_SIZE];
     BYTE package_storage[sizeof(TOKEN_APPCONTAINER_INFORMATION) + SECURITY_MAX_SID_SIZE];
     BYTE capability_storage[sizeof(TOKEN_GROUPS) + 16 * sizeof(SID_AND_ATTRIBUTES) + 16 * SECURITY_MAX_SID_SIZE];
     BYTE label_storage[sizeof(TOKEN_MANDATORY_LABEL) + SECURITY_MAX_SID_SIZE];
@@ -43,24 +107,28 @@ static BOOL lpac_token(HANDLE token, PSID expected)
     TOKEN_GROUPS *capabilities = (TOKEN_GROUPS *)capability_storage;
     TOKEN_MANDATORY_LABEL *label = (TOKEN_MANDATORY_LABEL *)label_storage;
     if (!token_blob(token, TokenIsAppContainer, &app, sizeof(app)) ||
-        !token_blob(token, TokenIsLessPrivilegedAppContainer, &lpac, sizeof(lpac)) ||
         !token_blob(token, TokenElevation, &elevated, sizeof(elevated)) ||
         !token_blob(token, TokenAppContainerSid, package_storage, sizeof(package_storage)) ||
-        !package->TokenAppContainer || !IsValidSid(package->TokenAppContainer) ||
-        !EqualSid(package->TokenAppContainer, expected) ||
         !token_blob(token, TokenCapabilities, capability_storage, sizeof(capability_storage)) ||
         !token_blob(token, TokenIntegrityLevel, label_storage, sizeof(label_storage)) ||
-        !IsValidSid(label->Label.Sid)) return FALSE;
+        !capture_user(token, user)) return FALSE;
+    if (!package->TokenAppContainer || !IsValidSid(package->TokenAppContainer) ||
+        !EqualSid(package->TokenAppContainer, expected) || !IsValidSid(label->Label.Sid)) {
+        SetLastError(ERROR_ACCESS_DENIED);
+        return FALSE;
+    }
     BYTE subauthorities = *GetSidSubAuthorityCount(label->Label.Sid);
     DWORD integrity = subauthorities ? *GetSidSubAuthority(label->Label.Sid, subauthorities - 1) : MAXDWORD;
-    BOOL ok = app == 1 && lpac == 1 && elevated == 0 && capabilities->GroupCount == 0 &&
+    BOOL ok = app == 1 && elevated == 0 && capabilities->GroupCount == 0 &&
         integrity <= SECURITY_MANDATORY_LOW_RID;
     if (!ok) {
-        fprintf(stderr, "FAIL LPAC token facts app=%lu lpac=%lu elevated=%lu capabilities=%lu integrity=%lu\n",
-            app, lpac, elevated, capabilities->GroupCount, integrity);
+        if (diagnostic) fprintf(stderr, "FAIL LPAC token facts app=%lu elevated=%lu capabilities=%lu integrity=%lu\n",
+            app, elevated, capabilities->GroupCount, integrity);
         SetLastError(ERROR_ACCESS_DENIED);
     }
-    return ok;
+    /* Require observable native access semantics, without relying on the
+       availability of the class-46 token-information query. */
+    return ok && lpac_access_check(token, expected, user, diagnostic);
 }
 
 static BOOL image_identity(WRIT_WORKER *worker, const wchar_t *image)
@@ -313,15 +381,44 @@ BOOL writ_worker_create(WRIT_WORKER *worker, const wchar_t *image,
         CREATE_UNICODE_ENVIRONMENT, environment, system_root, &startup.StartupInfo, &process))
         goto failed;
     worker->process = process.hProcess; worker->thread = process.hThread; worker->pid = process.dwProcessId;
-    stage = "native-lifetime-and-token";
+    stage = "native-lifetime";
     FILETIME exited, kernel, user;
     BOOL in_job = FALSE;
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION actual_limits = {0};
+    JOBOBJECT_BASIC_UI_RESTRICTIONS actual_ui = {0};
+    PROCESS_MITIGATION_CHILD_PROCESS_POLICY actual_children = {0};
+    PROCESS_MITIGATION_SYSTEM_CALL_DISABLE_POLICY actual_system_calls = {0};
     if (!GetProcessTimes(worker->process, &worker->created, &exited, &kernel, &user) ||
-        !IsProcessInJob(worker->process, worker->job, &in_job) || !in_job ||
-        !OpenProcessToken(worker->process, TOKEN_QUERY, &token) ||
+        !IsProcessInJob(worker->process, worker->job, &in_job)) goto failed;
+    if (!in_job) { error = ERROR_ACCESS_DENIED; goto done; }
+    stage = "job-limit-readback";
+    if (!QueryInformationJobObject(worker->job, JobObjectExtendedLimitInformation,
+        &actual_limits, sizeof(actual_limits), NULL)) goto failed;
+    if (actual_limits.BasicLimitInformation.LimitFlags != limits.BasicLimitInformation.LimitFlags ||
+        actual_limits.BasicLimitInformation.ActiveProcessLimit != 1 ||
+        actual_limits.ProcessMemoryLimit != limits.ProcessMemoryLimit) {
+        error = ERROR_ACCESS_DENIED; goto done;
+    }
+    stage = "child-policy-readback";
+    if (!GetProcessMitigationPolicy(worker->process, ProcessChildProcessPolicy,
+        &actual_children, sizeof(actual_children))) goto failed;
+    if (!actual_children.NoChildProcessCreation) { error = ERROR_ACCESS_DENIED; goto done; }
+    if (lpac) {
+        stage = "ui-job-readback";
+        if (!QueryInformationJobObject(worker->job, JobObjectBasicUIRestrictions, &actual_ui, sizeof(actual_ui), NULL)) goto failed;
+        if (actual_ui.UIRestrictionsClass != ui.UIRestrictionsClass) { error = ERROR_ACCESS_DENIED; goto done; }
+        stage = "win32k-policy-readback";
+        if (!GetProcessMitigationPolicy(worker->process, ProcessSystemCallDisablePolicy,
+            &actual_system_calls, sizeof(actual_system_calls))) goto failed;
+        if (!actual_system_calls.DisallowWin32kSystemCalls) { error = ERROR_ACCESS_DENIED; goto done; }
+    }
+    stage = "native-token";
+    if (!OpenProcessToken(worker->process, TOKEN_QUERY | TOKEN_DUPLICATE, &token) ||
         !capture_user(token, worker->user_sid) ||
-        !token_blob(token, TokenStatistics, &worker->token, sizeof(worker->token)) ||
-        (lpac && !lpac_token(token, worker->app_sid))) goto failed;
+        !token_blob(token, TokenStatistics, &worker->token, sizeof(worker->token))) goto failed;
+    stage = "lpac-token";
+    if (lpac && !lpac_token(token, worker->app_sid, TRUE)) goto failed;
+    if (lpac) printf("NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny\n");
     stage = "wfp";
     if (lpac && !install_network_filters(worker)) goto failed;
     ok = TRUE;
@@ -364,7 +461,7 @@ BOOL writ_worker_matches(const WRIT_WORKER *worker, DWORD pid, HANDLE request_to
        is sufficient for this equality check; anonymous tokens are not. */
     if (facts.TokenType == TokenImpersonation && facts.ImpersonationLevel < SecurityIdentification)
         return FALSE;
-    return !worker->lpac || lpac_token(request_token, worker->app_sid);
+    return !worker->lpac || lpac_token(request_token, worker->app_sid, FALSE);
 }
 
 BOOL writ_worker_resume(WRIT_WORKER *worker)
