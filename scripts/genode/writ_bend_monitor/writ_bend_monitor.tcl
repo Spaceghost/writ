@@ -4,7 +4,7 @@
 # channel lane, Tasks 2 and 3. Sourced by writ_bend_monitor_accept.run,
 # writ_bend_monitor_substitute.run, writ_bend_monitor_routed_s.run,
 # writ_bend_monitor_claim_ignored.run, writ_bend_monitor_bad_length.run, and
-# writ_bend_monitor_liveness.run through
+# writ_bend_monitor_liveness.run, and writ_bend_monitor_queue.run through
 #   source [select_from_repositories run/writ_bend_monitor.tcl]
 # Live copy: ../writ-genode/writ-repo/run/writ_bend_monitor.tcl (byte-identical).
 #
@@ -47,6 +47,23 @@
 #   S is not required to exit: on base-linux its next signal to the exited
 #   monitor fails in lx_sendmsg (-111, connection refused) and S stays
 #   blocked there (observed; host transport behaviour, not checked).
+#
+# writ_bend_monitor_queue_run (Task 3, GB-006 queue depth and channels)
+#   Nine clients writ_client_q1 .. writ_client_q9 under one policy
+#   (label_prefix "writ_client_q", route subject 2). The shim admits 8
+#   channels (MAX_CHANNELS) and refuses the ninth session. After 2000 ms
+#   each admitted client floods S's request (500 times, 2 ms apart, never
+#   reading a reply), so requests from several channels arrive while the
+#   monitor takes one at a time. The monitor's 8 units of fuel are spent on
+#   8 requests (Denied, reason 5) and it exits. Fails unless exactly one
+#   session was refused for the channel limit, 8 channels opened, 8 Bend
+#   decision lines were logged, the exit counters show ring full=0 and 8
+#   taken and put, and init reported the monitor's exit value 0. The
+#   ring's high-water mark (ring max=) and the coalesced count are
+#   recorded, not required (they depend on timing). A first version with
+#   one request per client after the delay never had more than one entry
+#   in the ring (ring max=1, arrivals spread out) and spent fuel on close
+#   events; it was replaced by this one.
 #
 # Authority: init routes the parent-provided LOG, PD, CPU, ROM, and RM
 # services and the sibling timer's Timer to both children. The client's
@@ -258,8 +275,40 @@ proc writ_bend_monitor_liveness_run { } {
 		"child \"$served\" exited with exit value 0\r?\n" "served client exit value 0" \
 		"$m monitor: fuel exhausted, exiting" "fuel exhausted line" \
 		"$m writ_mem: \\\[exit\\\] ram used=\[0-9\]+ limit=\[0-9\]+ caps used=\[0-9\]+ limit=\[0-9\]+ " "monitor RAM and caps at exit" \
-		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 bad length=0 stale=\[0-9\]+ taken=\[0-9\]+ put=\[0-9\]+ put skipped=\[0-9\]+ closed=\[0-9\]+ open=\[0-9\]+ closing=\[0-9\]+" "shim channel counters at exit" \
+		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 ring max=\[0-9\]+ bad length=0 stale=\[0-9\]+ taken=\[0-9\]+ put=\[0-9\]+ put skipped=\[0-9\]+ closed=\[0-9\]+ open=\[0-9\]+ closing=\[0-9\]+" "shim channel counters at exit" \
 		"child \"$monitor\" exited with exit value 0\r?\n" "monitor exit value 0" \
 		"$m monitor: fuel exhausted, exiting.*child \"$monitor\" exited with exit value 0\r?\n.*\\\[init -> $flood\\\] client: flood request \[0-9\]+ of 12 signalled" "a flood request after the monitor's exit" ]
 	puts "\n--- $flood flooded without reading; $served served Committed; monitor exited 0 at fuel 0 ---"
+}
+
+proc writ_bend_monitor_queue_run { } {
+	global output
+
+	set monitor writ_bend_monitor
+	set clients ""
+	for {set i 1} {$i <= 9} {incr i} {
+		append clients [writ_bend_monitor_client writ_client_q$i \
+			" | mode: flood | count: 500 | period_ms: 2 | session: 2 | expected_session: 0 | claimed_subject: 2 | delay_ms: 2000"]
+	}
+	writ_bend_monitor_boot {
+      + policy | label_prefix: writ_client_q | subject: 2} $clients
+
+	run_genode_until "child \"$monitor\" exited with exit value .*\n" 130
+
+	set m "\\\[init -> $monitor\\\]"
+	writ_bend_monitor_require [list \
+		"$m monitor: fuel exhausted, exiting" "fuel exhausted line" \
+		"$m writ_mem: \\\[exit\\\] ram used=\[0-9\]+ limit=\[0-9\]+ caps used=\[0-9\]+ limit=\[0-9\]+ " "monitor RAM and caps at exit" \
+		"$m writ_mem: \\\[exit\\\] channel signals=\[0-9\]+ coalesced=\[0-9\]+ ring full=0 ring max=\[1-8\] bad length=0 stale=0 taken=8 put=8 put skipped=0 closed=0 open=8 closing=0" "shim channel counters at exit" \
+		"child \"$monitor\" exited with exit value 0\r?\n" "monitor exit value 0" ]
+	set refused [regexp -all "$m \[^\r\n\]*Warning: writ_channel: 8 channels open or closing, session for 'writ_client_q\[0-9\] -> channel' denied" $output]
+	set opened  [regexp -all "$m writ_channel: channel \[0-9\]+ opened for 'writ_client_q\[0-9\] -> channel' route subject 2" $output]
+	set decided [regexp -all "$m monitor: channel=\[0-9\]+ route_subject=2 session=2 body_claimed_subject=2 \\(untrusted, not used\\) decision=Denied reason=5 " $output]
+	if {$refused != 1 || $opened != 8 || $decided != 8} {
+		puts stderr "Error: $opened channels opened, $refused refused, $decided decisions (expected 8, 1, 8)"
+		exit 1
+	}
+	regexp {ring max=([0-9]+)} $output -> ring_max
+	regexp {coalesced=([0-9]+)} $output -> coalesced
+	puts "\n--- 8 channels, the ninth session refused; ring max=$ring_max of 8, coalesced=$coalesced; monitor exited 0 ---"
 }

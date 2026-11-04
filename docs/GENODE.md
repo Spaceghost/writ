@@ -436,12 +436,18 @@ library rejects it (`decision=Denied reason=6`); routed as S
 (`make run/writ_bend_monitor_routed_s`) the same body is refused earlier at
 the descriptor (`reason=5`), and R with a body claiming S
 (`make run/writ_bend_monitor_claim_ignored`) is Committed. The monitor binds
-one descriptor to each channel at its first record and reuses it. The
+one descriptor to each channel at its first record and reuses it, and
+drops the binding when the shim reports the channel closed. The
 session type has only four capability-handover RPC functions (two buckets,
-two signals); records carry the requests and decisions (GB-011). Current
-gap: one record per bucket, an oversized record is dropped and counted but
-not yet answered, a channel's binding is not removed when it closes,
-liveness with an unresponsive client and fuel exhaustion are not yet run
-(Task 3), and `base-hw` is not attempted. Records formats:
+two signals); records carry the requests and decisions (GB-011). Bounds
+and liveness (Task 3): `make run/writ_bend_monitor_bad_length` sends
+header lengths 65 and 0, which the shim counts and answers with its fixed
+transport refusal (kind 3, reason 256, no Writ decision) before Bend, then
+a valid request that Bend commits; `make run/writ_bend_monitor_liveness`
+runs a client that floods without ever reading a reply beside one that
+sends once and is Committed, until the monitor's fuel runs out and init
+reports its exit value 0. Current gap: one record per bucket, nothing
+restarts the monitor after fuel exhaustion (GB-008's supervisor restart),
+and `base-hw` is not attempted. Records formats:
 [Channel.md](../hosts/genode/effects/Channel.md); evidence:
 [genode-channel-base-linux.txt](../verification/genode-channel-base-linux.txt).

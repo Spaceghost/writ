@@ -552,3 +552,207 @@ HASHES (sha256, final tree, fix round 1)
   run/writ_bend.tcl, src/app/writ_bend.inc): byte-identical (cmp,
   2026-11-04). Scratch suffix run removed from writ-repo/run. build.conf and
   the fragment both list the four channel scenarios.
+
+TASK 3 (2026-11-04; bounds, liveness, close event, binary check; supersedes
+HASHES above for the files listed below)
+
+All runs base-linux (Genode-on-Linux), single lane, --gpu off, synthetic
+authority as above. Build and run logs in ../writ-genode: build-*-t3*.out,
+run-<scenario>-t3-final.out; t3-final.log lists rc 0 for every build and
+run of the final tree (8 Bend components relinked, 7 monitor runs, hello,
+rts, probe, corpus).
+
+RESULT
+  Bad length answered before Bend (GB-006): yes. Unresponsive client does
+  not stop a second client (GB-008): yes. Fuel exhaustion exits the monitor
+  with value 0 (GB-008): yes. Close event removes the binding: yes
+  (implemented, exercised once on Genode, cases on Linux). Binary check:
+  run, rc 1, effect rows exactly Genode.log, Genode.put, Genode.take (see
+  BINARY CHECK). Not met here: GB-008's "the supervisor restarts it with a
+  new generation" (init does not restart the monitor; nothing configured).
+
+CHANGES
+  - Shim, "Writ channel" section only (every changed hunk lies after the
+    section header at line 925; the memory path, console, and time code are
+    unchanged token for token by construction of the diff). (1) Transport
+    refusal: a header length other than 64 is never copied; take counts it,
+    logs one warning with the count, writes the fixed record version 1,
+    kind 3, decision 2, reason 256, words 4-15 = 0, with the request's
+    sequence and length 64 in the result header, and submits the client's
+    signal; Bend never sees the request. It is the only result the shim
+    writes itself and carries no Writ decision (Channel.md "Transport
+    refusal"; kind 3 and reason 256 are outside the monitor's kind 2 and
+    reasons 0-8). (2) Close event: _destroy_session holds the slot as
+    closing and queues a close entry (a queued request becomes it, counted
+    stale); take frees the slot and returns channel id, route subject 0,
+    record words 0. Subject 0 is never a channel's subject and not a record
+    word. Every ring entry belongs to a distinct slot, so the ring bound (8)
+    holds. (3) Counters line gains ring max= (high-water mark), closed=,
+    open=, closing=. (4) The cap comment names
+    Local_service::budget_adjusted_args, called by Root_component.
+  - Monitor.bend: fuel 4 -> 8 (so the liveness run can serve a second
+    client between a flood's records); a take with route subject 0 is a
+    close event: the binding is removed (Bindings.remove, close_channel),
+    one log line "channel=N closed (shim close event) bindings a -> b", no
+    put; a close event costs one unit of fuel. Reason 7 now means 8
+    channels bound at once (bindings are made even for denied requests and
+    removed at close); before this task it counted channels over the
+    component's life.
+  - Client probe modes: bad_length (65, then 0, then the valid request;
+    checks each refusal word for word and the sequence) and flood (count
+    requests period_ms apart from the constructor, never dispatching the
+    result signal).
+  - Shared Tcl: boot/client/require helpers; procedures
+    writ_bend_monitor_bad_length_run, _liveness_run, _queue_run; run
+    scripts writ_bend_monitor_{bad_length,liveness,queue}.run; the four
+    Task 2 runs use the same helpers. build.conf (live) and
+    scripts/genode/writ_hello/build.conf.fragment list the three new
+    scenarios.
+
+GB-006 BAD LENGTH: make run/writ_bend_monitor_bad_length (rc 0)
+    [init -> writ_bend_monitor] Warning: writ_channel: channel 1 request length 65 is not 64, refused before Bend (bad length count 1)
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: result record +0x00000000: 01 00 00 00 03 00 00 00 02 00 00 00 00 01 00 00
+    [init -> writ_client_r] client: result record +0x00000010..0x30: all 00
+    [init -> writ_client_r] client: refusal for request length 65 seq 1: kind=3 (transport refusal) decision=Denied (2) reason=256 (bad length)
+    [init -> writ_bend_monitor] Warning: writ_channel: channel 1 request length 0 is not 64, refused before Bend (bad length count 2)
+    [init -> writ_client_r] client: result header +0x00000000: 40 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00
+    [init -> writ_client_r] client: refusal for request length 0 seq 2: kind=3 (transport refusal) decision=Denied (2) reason=256 (bad length)
+    [init -> writ_bend_monitor] monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+    [init -> writ_client_r] client: decision=Committed (1) reason=0 route_subject=1 session=1 seq=3
+    [init] child "writ_client_r" exited with exit value 0
+  The run requires both warnings with counts 1 and 2, both client refusal
+  lines (the client checks all 16 words and the sequence), exactly one
+  Bend decision line in the whole log (neither refused request reached
+  Bend), and the client's PASS and exit 0. The request bucket held the
+  valid 16 record words each time; only the header length differed.
+
+GB-008 UNRESPONSIVE CLIENT AND FUEL EXHAUSTION: make run/writ_bend_monitor_liveness (rc 0)
+  writ_client_s (route subject 2) floods 12 requests 400 ms apart from its
+  constructor and never dispatches its result signal; writ_client_r (route
+  subject 1) sends once after 1000 ms. Final run (the first run had the
+  same order and counter values; its counters line predates ring max=):
+    monitor: channel=2 route_subject=2 ... decision=Denied reason=5   (x3, flood)
+    monitor: channel=1 route_subject=1 session=1 ... decision=Committed reason=0 ... session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+    [init] child "writ_client_r" exited with exit value 0
+    monitor: channel=1 closed (shim close event) bindings 1 -> 0
+    monitor: channel=2 route_subject=2 ... decision=Denied reason=5   (x3, flood)
+    monitor: fuel exhausted, exiting
+    [init -> writ_bend_monitor] writ_mem: [exit] ram used=8667136 limit=268328754 caps used=55 limit=966 reservations=2 guards=1 chunks populated (total)=3 faults resolved=3 benign retries=0 reserved at hint=1 elsewhere=1 released=0 timer short wakes=0
+    [init -> writ_bend_monitor] writ_mem: [exit] channel signals=7 coalesced=0 ring full=0 ring max=1 bad length=0 stale=0 taken=7 put=7 put skipped=0 closed=1 open=1 closing=0
+    [init] child "writ_bend_monitor" exited with exit value 0
+    [init -> writ_client_s] client: flood request 7 of 12 signalled, reply not read
+  Fuel 8 = 7 records + 1 close event. Six replies were put to S, whose
+  entrypoint never ran its result handler; R was served between them. The
+  shim never waits for a client (put submits and returns; the next reply
+  overwrites the bucket), so S held one result bucket and at most one ring
+  entry. Monitor at exit: ram used 8667136 bytes of 268328754, caps 55 of
+  966. After the monitor's exit S's next signal fails on base-linux:
+    [init -> writ_client_s] Error: ... lx_sendmsg to sd socket=42,... failed with -111 in lx_call()
+  and S stays blocked (host transport behaviour; the first version of the
+  run waited for S's exit and timed out for this reason; the run now ends
+  at the first flood request after the monitor's exit). The 8th take was
+  the last: the request that arrived after fuel 0 was not taken. Nothing
+  restarts the monitor.
+
+QUEUE DEPTH AND CHANNEL LIMIT: make run/writ_bend_monitor_queue (rc 0)
+  Nine clients writ_client_q1..q9 under one policy (label_prefix
+  "writ_client_q", subject 2), each flooding S's request 500 times, 2 ms
+  apart, after 2000 ms.
+    [init -> writ_bend_monitor] Warning: writ_channel: 8 channels open or closing, session for 'writ_client_q6 -> channel' denied
+    [init -> writ_client_q6] Error: stop because parent denied Writ_channel-session: label="channel", , ram_quota=32K, cap_quota=8
+    8 decision lines, Denied reason 5, in ring order across channels
+      (first run: channels 1 2 1 3 2 1 4 2; final run: 1 1 2 1 2 3 4 1)
+    writ_mem: [exit] ram used=8757248 limit=268552460 caps used=91 limit=1022 ...
+    writ_mem: [exit] channel signals=9 coalesced=0 ring full=0 ring max=1 bad length=0 stale=0 taken=8 put=8 put skipped=0 closed=0 open=8 closing=0
+    [init] child "writ_bend_monitor" exited with exit value 0
+  First run: signals=11, ring max=3. The ring's occupancy depends on
+  arrival timing (Bend decides a reason-5 record faster than the clients
+  re-signal); a full ring (8) was not observed and cannot occur by
+  construction. A first design (one request per client after the delay)
+  never had more than one entry (ring max=1) and spent fuel on close
+  events; it was replaced. The denied ninth client stays in Genode's
+  "stop because parent denied" sleep (Env::session's behaviour).
+
+LINUX CHECK (bend hosts/genode/monitor/MonitorCheck.bend, rc 0)
+  The Task 2 lines above unchanged, plus:
+    PASS two requests on channel 1 leave one binding
+    bindings ch1 bound, closed : 1 -> 0
+    bindings 8 bound, ch3 closed: 8 -> 7
+    reply ch9 after ch3 closed : 1 2 2 6 1 2 0 0 0 0 0 0 0 2 2 0
+    PASS route subject 0 is a close event, a routed record is not
+    PASS closing channel 1 removes its binding
+    PASS closing an unbound channel leaves the table unchanged
+    PASS after channel 3 closed a ninth channel is bound and served (not reason 7)
+  Flipped expectation (7n -> 8n in the last case, restored, sha256 equal
+  after): rc 1, "FAIL after channel 3 closed a ninth channel is bound ...".
+  bend Monitor.bend --check-only: the expected "13 defs rely on unsafe or
+  foreign code" (the five Genode effects and emit, answer, on_close, step,
+  handle, serve, start, main); the decision and close_channel are not in it.
+
+BINARY CHECK
+  Command: sh scripts/runtime-profile/check-binary.sh \
+             ../writ-genode/build/x86_64/app/writ_bend_monitor/writ_bend_monitor
+  rc 1 (FAIL), output in ../writ-genode/check-binary-monitor-t3-final.out:
+    undefined symbols: 158
+    effect rows: Genode.log Genode.put Genode.take
+    effects outside the monitor profile: Genode.log Genode.put Genode.take
+    undefined symbols outside the monitor profile: 117 names
+  Effect rows: the rows beyond the monitor profile are only Genode effects,
+  the host-added channel effects the Genode profile allows (Genode.log,
+  Genode.now, Genode.sleep, Genode.take, Genode.put). The monitor carries
+  three of the five: Monitor.bend calls neither Genode.now nor
+  Genode.sleep, and Bend 2.0.39 emits a row only for an effect the program
+  uses (monitor.c registers exactly io_eff for Genode_log, Genode_put,
+  Genode_take; nm shows genode_{log,put,take}_run). The probe carries the
+  other two (Task 1 record). It has no IO row at all: every monitor line
+  goes through Genode.log. The allow lists were not edited.
+  Undefined symbols: the symbol half compares with monitor-symbols.txt,
+  the Linux host surface, and fails on every Genode binary, as Task 1
+  recorded. Baseline with the same shim: writ_bend_hello 155 undefined,
+  115 outside the profile. The monitor's 117 are the hello's 115 plus
+  Genode::Signal_transmitter::Signal_transmitter(Capability<Signal_context>)
+  and Genode::Signal_transmitter::submit(unsigned) (the shim's put and
+  refusal signals).
+
+REGRESSION (final shim)
+  The four Task 2 runs (accept, substitute, routed_s, claim_ignored): rc 0,
+  the same decision lines and words as fix round 1 (Committed 0; Denied 6;
+  Denied 5; Committed 0).
+  make run/writ_bend_hello: rc 0, "hi", exit 0, ram used=8335360, caps used=35.
+  make run/writ_bend_rts: rc 0; bend_rts_bad exit 1, bend_rts_help exit 0.
+  make run/writ_bend_probe: rc 0; delta_ms=102, PASS, ram used=8597504.
+  make run/writ_bend_tests at 256M (run-writ_bend_tests-t3-final-256M.out):
+    rc 0, 782 PASS lines, ALL LIBRARY TESTS PASSED, exit 0; the 834
+    component lines (extracted as in genode-corpus-base-linux.txt) are
+    byte-identical (cmp) to genode-tests-2.lines, sha256
+    fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff.
+    The memory path is byte-identical in source; the shim change is
+    confined to the channel section, which the test component never
+    starts (no <writ_channel>).
+  Examples, overflow, and reservation probes: relinked only, not rerun.
+  Tests.bend and PROOF.bend not rerun: no library, example, or test file
+  changed. OpenSpec: the pinned 1.16.0 is not installed here; the
+  available openspec 1.11.0 `validate --all --strict --no-interactive`
+  reports 44 passed, 0 failed (structural only, older version).
+
+HASHES (sha256, final tree, Task 3)
+  befbf2b2adf239b03d4eedc376220ab04bfc8b04b35ded683443c43c545af59d  hosts/genode/shim/writ_mem.cc
+  5a0efadccb45160d6aedd5b9d4d7e6d3ded86c560f2bbc629a98ad8d2db5714e  hosts/genode/effects/Channel.md
+  1fb965901cbd2c2552dc904d123971d3bfeccad4c266386b54fc77959d56d6ef  hosts/genode/monitor/Monitor.bend
+  418ee152dd426fa982b243262723c52185623d19fe21c8e29b95002d4b211d2d  hosts/genode/monitor/MonitorCheck.bend
+  27542fa87d14c9df6a3c07f14bd031c1780c70369407c0a9c35bf3904b2d32fc  hosts/genode/probes/client/writ_channel_client.cc
+  d1afe30f2ab5c4892b43c9ca93ef21beb79e0ae0cf87b87f722f4e5a1157313d  scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl
+  991270f982644dea0439b47d683398d393ae7026ef21ddfc2644c68ef3ad2ed4  scripts/genode/writ_bend_monitor/writ_bend_monitor_bad_length.run
+  08200e9a4b0c32ff4adbe907f420365600163966e68555e6e413b1b8b2501424  scripts/genode/writ_bend_monitor/writ_bend_monitor_liveness.run
+  6788c041d48badf3c259640c18139422ce43cc9279682efb85de919ec37a3648  scripts/genode/writ_bend_monitor/writ_bend_monitor_queue.run
+  7255153fb2c7dac0ebffeb139ad7063cf318be649aedcd1ced95412efe4742d4  ../writ-genode/bend-c/monitor/monitor.c (70689 lines; re-emitted from the final tree, cmp identical)
+  8de73af0c891aa39e4fff24841f8c53e00793db4d3cacc128005807ded36ac00  ../writ-genode/build/x86_64/app/writ_bend_monitor/writ_bend_monitor
+  3d6b7af7a404e83c51d4457a520941527c55f688a2d070beecb16c60fbcda7c4  ../writ-genode/build/x86_64/app/writ_channel_client/writ_channel_client
+  Unchanged from fix round 1: writ_channel_session.h, Genode.bend, the
+  twins, the four Task 2 run scripts, both target.mk files, writ_bend.tcl,
+  writ_bend.inc.
+  Live copies (src/writ_shim/*, src/app/writ_bend_monitor/target.mk,
+  src/app/writ_channel_client/*, run/writ_bend_monitor.tcl, the seven
+  run/writ_bend_monitor_*.run, run/writ_bend.tcl, src/app/writ_bend.inc):
+  byte-identical (cmp, 2026-11-04).

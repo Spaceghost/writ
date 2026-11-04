@@ -31,7 +31,10 @@
  *   "flood" (GB-008, the unresponsive client) sends the valid request
  *     `count` times, `period_ms` apart (sequence 1, 2, ...), from the
  *     constructor, so its entrypoint never dispatches the result signal: it
- *     never reads a reply. Then it exits 0. It checks nothing.
+ *     never reads a reply. Then it exits 0. It checks nothing. On
+ *     base-linux a signal submitted after the monitor has exited fails in
+ *     lx_sendmsg (connection refused) and the client stays blocked there
+ *     instead of exiting (observed in writ_bend_monitor_liveness).
  * delay_ms (default 0) makes the client sleep on a Timer session before it
  * writes, so the monitor's Genode.take is already parked when the signal
  * arrives; with 0 the request is usually queued before Bend first takes.

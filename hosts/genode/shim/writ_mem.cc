@@ -1118,6 +1118,7 @@ static uint32_t       _channel_next_id = 1;
 static unsigned long _channel_signals, _channel_coalesced, _channel_ring_full,
                      _channel_bad_length, _channel_stale, _channel_taken,
                      _channel_put, _channel_put_skipped, _channel_closed;
+static unsigned      _channel_ring_max;   /* most entries the ring has held at once */
 
 static Semaphore &_channel_ready() { static Semaphore s { 0 }; return s; }
 
@@ -1141,6 +1142,7 @@ static void _channel_signalled(uint32_t id)
 		_channel_ring[(_channel_ring_head + _channel_ring_count) % CHANNEL_QUEUE_DEPTH] =
 			{ c->id, c->subject, false };
 		_channel_ring_count++;
+		if (_channel_ring_count > _channel_ring_max) _channel_ring_max = _channel_ring_count;
 		c->queued = true;
 	}
 	_channel_ready().up();
@@ -1255,6 +1257,7 @@ struct Channel_root : Root_component<Channel>
 				_channel_ring[(_channel_ring_head + _channel_ring_count) % CHANNEL_QUEUE_DEPTH] =
 					{ c.id, c.subject, true };
 				_channel_ring_count++;
+				if (_channel_ring_count > _channel_ring_max) _channel_ring_max = _channel_ring_count;
 				queued_close = true;
 			} else {
 				/* not reached (one entry per slot); then no event, slot freed */
@@ -1424,6 +1427,7 @@ extern "C" void writ_mem_report(char const *tag)
 		}
 		log("writ_mem: [", tag, "] channel signals=", _channel_signals,
 		    " coalesced=", _channel_coalesced, " ring full=", _channel_ring_full,
+		    " ring max=", _channel_ring_max,
 		    " bad length=", _channel_bad_length, " stale=", _channel_stale,
 		    " taken=", _channel_taken, " put=", _channel_put,
 		    " put skipped=", _channel_put_skipped, " closed=", _channel_closed,
