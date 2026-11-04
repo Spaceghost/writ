@@ -1,0 +1,180 @@
+Unikraft effect-twins lane, Task 1: console and time effects through hosts/unikraft/host.c
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type the
+qemu-system-x86_64 default (pc), -cpu max, -m 1024, -no-reboot, the exit device
+-device isa-debug-exit,iobase=0xf4,iosize=0x04 (exit_device.c: QEMU 1 = status 0,
+QEMU 3 = status 1, 255 = status above 0x7c), -append "+RTS --threads 1 --gpu off",
+stdin /dev/null, timeout 60 s. One lane, CPU only; no accelerator, not native, not GPU.
+Unikraft 0.21.0 (7351f8b), kraft 0.12.16, lib-musl, gcc 16.2.1 (-std=gnu11), Bend 2.0.39
+(BEND_NO_TELEMETRY=1). W is the build workspace, realpath of ../writ-unikernel from the
+repository root (here /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel).
+Nothing built is in the tree.
+
+== Result ==
+
+The Bend program scripts/unikernel/Probe.bend, importing hosts/unikraft/effects/Unikraft.bend,
+built as an image with the exit hook and the host layer, wrote its four "probe:" lines to the
+serial console through Unikraft.log (writ_uk_log -> uk_console_out); the program makes no
+IO.print call, so every line seen came through the twin. Two Unikraft.now readings around
+Unikraft.sleep(100) differed by 100, 100, 100, and 101 ms (runs E2 to E5), ordered,
+inside [100, 1100); QEMU 1 each, check-image.sh PASS. The FAIL branch (scratch copy requiring a
+delta of at least 1000 ms) logged its FAIL line and ended with QEMU 3; check-image.sh exits 1
+on it (E6). check-binary.sh sees exactly Unikraft.log, Unikraft.now, Unikraft.sleep as effect
+rows, all three outside the monitor profile (E7). The first build ran the sleep on an io_work
+helper thread and ended with QEMU 255 (E1); the sleep now runs on the loop thread.
+
+Sleep mechanism: uk_sched_thread_sleep (lib/uksched/include/uk/sched.h; lib/uksched/sched.c:348)
+from host.c, in a loop that re-reads ukplat_monotonic_clock until the deadline, at most 16
+scheduler sleeps, exiting 1 on a frozen or backward clock. Why not nanosleep: in 0.21.0 it is
+uk_sys_nanosleep, which under CONFIG_HAVE_SCHED calls the same uk_sched_thread_sleep
+(lib/posix-time/time.c:69-97); calling it directly avoids the syscall shim and its EINTR
+remainder. Why on the loop thread, not io_work: see E1. In these runs the loop never needed a
+second scheduler sleep (each delta is the sleep or 1 ms more); the re-sleep and failure paths
+of writ_uk_sleep_ms were not exercised by a fault (not forced: there is no clock fault to inject
+without patching Unikraft).
+
+== Build ==
+
+From the repository root:
+  export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1
+  hosts/unikraft/scripts/mkapp.sh effects          # $W/effects-unikraft from hosts/unikraft/app/
+  bend scripts/unikernel/Probe.bend -o $W/effects/gen/probe.c
+  WRIT_HOST_LAYER=y hosts/unikraft/scripts/build.sh effects probe
+Emitted C (never edited), 4260 lines:
+  3d33bf31b19b498bde41d1038f1e91d5aa42ea3d3189965f38632d9815f40e2b  probe.c
+  registrations as spliced:
+    io_eff(CID_______hosts_unikraft_effects_Unikraft_Unikraft_log, unikraft_log_run);
+    io_eff(CID_______hosts_unikraft_effects_Unikraft_Unikraft_now, unikraft_now_run);
+    io_eff(CID_______hosts_unikraft_effects_Unikraft_Unikraft_sleep, unikraft_sleep_run);
+Image (per build; Unikraft embeds the build time):
+  bf4ebee0dd50d0b44b25d3881c9d7047144d8b08a84944410c86bff95622e7df  $W/effects/images/probe-qemu
+  052b388eef88d5afae5e07aaef3181db42cf883a85bfcaf1e6e166b3b547da39  $W/effects/images/probe-qemu.dbg
+Sources as built (commit e740ed7):
+  a36bdcf9d7768a1efbcca23293d7b1ad1b9fab9b6a2dd96b4e7ffde17ace17e8  hosts/unikraft/host.c
+  15974812d6c181d93f0086d35a343f4ab12f7d5c048aba15944b56faffb36fb6  hosts/unikraft/effects/Unikraft.bend
+  0c4d3a6ac7cb239ce556777b0f3337d1ed77af470701a7dadb3b399c940baa4e  hosts/unikraft/effects/unikraft_log.c
+  fac11e40328888d084ac09fdc463e846bd3254a46128fea7a708665024f33133  hosts/unikraft/effects/unikraft_now.c
+  a031082ee870ecbcade6e29e53477431e84eea0bc80a7762de1fcf720e46468e  hosts/unikraft/effects/unikraft_sleep.c
+
+Build-configuration changes, each with its reason:
+  - hosts/unikraft/app/Makefile.uk: WRIT_HOST_LAYER ?= n; =y adds $(WRIT_HOSTS_UNIKRAFT)/host.c
+    to the app's SRCS by reference. Reason: the twins are spliced into app.c and call
+    writ_uk_*, which only host.c defines. Default n so every image whose program uses no
+    Unikraft.* effect links exactly as before (checked: hello rebuilt from $W/gen/hello.c
+    in a fresh set $W/effectsreg with the new template and default n, console "hi", QEMU 1,
+    check-image.sh PASS, no writ_uk_* symbol in the .dbg).
+  - hosts/unikraft/scripts/build.sh: exports WRIT_HOST_LAYER (default n) to kraft/make.
+    Reason: make reads it from the environment, as it does WRIT_EXIT_HOOK.
+  - hosts/unikraft/scripts/check-image.sh: optional WRIT_CONSOLE_SED, a sed script applied
+    to console.sh's output before the reference diff, printed when used. Reason: the probe's
+    clock readings differ from run to run; the reference holds the masked text and the
+    program's exit status checks the values. Without the variable the script is unchanged.
+  - No Kraftfile change: CONFIG_LIBUKCONSOLE=y and CONFIG_HAVE_SCHED=y (uksched,
+    ukschedcoop) are already in the resolved configuration ($W/effects-unikraft/.config*),
+    and host.c refuses to build (#error) without either.
+No Unikraft source, runtime, or generated C was changed.
+
+Linux and JavaScript (the twins' failure on non-targets):
+  bend scripts/unikernel/Probe.bend -o $W/effects/gen/probe-linux
+    -> clang link error: undefined reference to `writ_uk_sleep_ms' / `writ_uk_log' (and
+       writ_uk_now_ms): the twins link only into a Unikraft image with host.c.
+  bend scripts/unikernel/Probe.bend; echo $?
+    -> Error: Unikraft.log: the JavaScript runner is not a Unikraft target; build with
+       bend -o <name>.c and link hosts/unikraft/host.c into a Unikraft image
+       (hosts/unikraft/scripts/build.sh)
+       1
+
+== Runs ==
+
+Check command (E3 to E5; reference verification/unikernel-effects-probe-reference.txt):
+  WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' \
+    hosts/unikraft/scripts/check-image.sh effects probe-<n> probe \
+    verification/unikernel-effects-probe-reference.txt 1 "" 60 1024; echo $?
+run.sh's command line for every run (from its log):
+  $ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/effects/images/<image> -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot </dev/null; echo $?
+Serial text below is run.sh's cleaned log from the banner's last line on.
+
+E1 io_work variant (first build; image d224e011..., kept as $W/effects/images/probe-iowork-qemu,
+emitted C $W/effects/gen/probe-iowork.c, twin as $W/effects/logs/unikraft_sleep-iowork.c.txt,
+which ran writ_uk_sleep_ms by io_work on a runtime helper thread, as the Genode twin does):
+  hosts/unikraft/scripts/run.sh effects probe-1 probe "+RTS --threads 1 --gpu off" 60 1024
+                  Ijiraq 0.21.0~7351f8b
+probe: hello from Bend through the Unikraft console
+probe: before=110 after=216
+probe: delta_ms=106 sleep_ms=100 min_delta_ms=100 max_delta_ms=1100
+probe: PASS after >= before and min <= delta < max
+255
+  The helper thread ran (the first IO helper thread exercised on this target: the sleep
+  completed and woke the loop through the runtime's wake pipe), but QEMU ended with 255,
+  "status above 0x7c". Cause, read from the source, not traced: the runtime's io_help
+  thread loops forever, so when main returns the init process (pid 1) still has a running
+  thread; with CONFIG_LIBPOSIX_PROCESS_SIGNAL not set, lib/posix-process/shutdown.c:96-101
+  then sets exit_code = 0x80 | SIGKILL (137), which exit_device.c maps to 0x7f (QEMU 255).
+  WRIT_NO_BOOT=1 check-image.sh on this capture: diff empty, "QEMU exit: 255, expected 1",
+  result FAIL, exit 1. Consequence: on this configuration an io_work effect makes every
+  successful run end as 255. unikraft_sleep.c therefore blocks the loop thread instead;
+  the cost is that no other computation of the program runs during a sleep. Task 2's
+  blocking take meets the same limit.
+
+E2 loop-thread sleep (the committed twin): run.sh effects probe-2 probe
+probe: hello from Bend through the Unikraft console
+probe: before=110 after=210
+probe: delta_ms=100 sleep_ms=100 min_delta_ms=100 max_delta_ms=1100
+probe: PASS after >= before and min <= delta < max
+1
+
+E3 check-image.sh probe-3: before=110 after=210 delta_ms=100; "console masked with: sed -e
+   's/=[0-9][0-9]*/=N/g'", diff: empty, QEMU exit: 1, result: PASS, exit 0
+E4 check-image.sh probe-4: before=109 after=209 delta_ms=100; diff empty, QEMU 1, PASS, exit 0
+E5 check-image.sh probe-5: before=109 after=210 delta_ms=101; diff empty, QEMU 1, PASS, exit 0
+Wall time per boot 0.3 to 0.4 s.
+
+A delta of exactly 100 is consistent with the bound: writ_uk_sleep_ms returns only once the
+nanosecond clock is at least 100 ms past its entry reading, and the millisecond readings are
+truncations of the same clock taken before entry and after return, so their difference is
+at least 100.
+
+E6 FAIL branch, scratch build (outside the tree, never committed):
+  sed -e "s#^import ../../hosts/unikraft/effects/Unikraft.bend as Host#import ../../../unikraft-twins/hosts/unikraft/effects/Unikraft.bend as Host#" \
+      -e '/^def min_delta_ms/{n;s/sleep_ms()/1000/}' scripts/unikernel/Probe.bend > $W/effects/scratch/ProbeFail.bend
+  (diff against Probe.bend: the import path, and min_delta_ms() = 1000 instead of sleep_ms())
+  bend $W/effects/scratch/ProbeFail.bend -o $W/effects/gen/probefail.c
+  WRIT_HOST_LAYER=y hosts/unikraft/scripts/build.sh effects probefail
+    9157fa9654144bbecbb100746da487217a90c44ae46a8fc066f863a466a72271  ProbeFail.bend
+    82bbdcc9242073d236e721a4501f0cae45e8c06f4a88698721b4847ab333030f  probefail.c
+    4ea205a6204dedbdbf5e02c750992a6a9636e0b89b463a58e20894cf6b0e5fff  probefail-qemu
+  hosts/unikraft/scripts/run.sh effects probefail-1 probefail "+RTS --threads 1 --gpu off" 60 1024
+probe: hello from Bend through the Unikraft console
+probe: before=110 after=211
+probe: delta_ms=101 sleep_ms=100 min_delta_ms=1000 max_delta_ms=1100
+probe: FAIL readings outside after >= before and min <= delta < max
+3
+  WRIT_NO_BOOT=1 WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' hosts/unikraft/scripts/check-image.sh \
+    effects probefail-1 probefail verification/unikernel-effects-probe-reference.txt 1 "" 60 1024
+console masked with: sed -e 's/=[0-9][0-9]*/=N/g'
+4c4
+< probe: FAIL readings outside after >= before and min <= delta < max
+---
+> probe: PASS after >= before and min <= delta < max
+diff: NOT EMPTY
+QEMU exit: 3, expected 1
+log: $W/effects/logs/run-probefail-1.log; result: FAIL
+  exit 1
+
+E7 Binary check (UL-003), scripts/runtime-profile/check-binary.sh unchanged, allow lists unchanged:
+  sh scripts/runtime-profile/check-binary.sh $W/effects/images/probe-qemu.dbg; echo $?
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.now Unikraft.sleep
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.now
+  Unikraft.sleep
+result: FAIL (outside the monitor profile)
+  1
+  The rows beyond the profile are exactly the three Unikraft effects (the probe makes no
+  IO.print call, so no Base row appears). Same rows and status for probefail-qemu.dbg
+  (ffc2cf1b...) and probe-iowork-qemu.dbg (b77d3e7e...). host.c's exported names
+  (writ_uk_log, writ_uk_now_ms, writ_uk_sleep_ms; nm type T) end in neither _run nor _use,
+  so the check does not read them as rows. As before, a static image has no import list, so
+  the host-symbol surface is not checked by this tool.

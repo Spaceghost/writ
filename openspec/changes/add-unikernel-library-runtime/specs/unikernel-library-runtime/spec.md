@@ -59,7 +59,7 @@ The image SHALL select only the kernel libraries the runtime profile rows requir
 
 ### Requirement: UL-004 Effect twins bind to kernel primitives
 
-The monitor-profile effects SHALL be Bend defs whose C twins call the kernel's console, time, exit, and channel primitives, SHALL be the only kernel-specific code, and SHALL be listed in a trust inventory.
+The monitor-profile effects SHALL be Bend defs whose C twins call the kernel's console, time, and channel primitives. The effect twins and the inventoried boot and termination host layer SHALL be the only kernel-specific code, and SHALL be listed in a trust inventory that names each file, its exported symbols, and what it may touch.
 
 #### Scenario: Console effect
 

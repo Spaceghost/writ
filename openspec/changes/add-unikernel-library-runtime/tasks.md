@@ -23,20 +23,32 @@ pending.
 ## 2. Port
 
 - [ ] 2.1 Author the console, time, exit, and ingress effect twins for the chosen kernel; publish their trust inventory; run the runtime profile's binary check on the image.
-  Unchecked: only the exit part exists. `hosts/unikraft/exit_device.c` (a C termination
-  and crash hook, not a Bend effect twin) gives QEMU 1 / 3 / 253 for success, `IO.die`, and
-  a fault (verification/unikernel-exit-codes.txt); `hosts/unikraft/INVENTORY.md` lists it
-  and the build scripts; the binary check ran on every image ELF and fails a `TCP.listen`
-  image (verification/unikernel-binary-check.txt; static link, so effect rows only). No
-  console, time, or ingress twin and no Bend effect definition has been written: the images
-  use Bend 2.0.39's own `IO.print` row through lib-musl.
-  UL-004 says the effect twins SHALL be the only kernel-specific code, but `exit_device.c`,
-  the Kraftfile, and the Makefile.uk are kernel-specific and are not twins, and the crash
-  handler cannot be one (no Bend effect runs on a crash). 2.1 must either subsume the hook
-  under the twins or amend UL-004 with an explicit rationale, as AGENTS.md requires for a
-  contract change; the spec is not amended here. The exit twin should also move success
-  off QEMU 1 (for example by writing s + 0x10), since QEMU itself exits 1 on its own
-  startup errors; until then QEMU 1 counts as success only with the console check.
+  Unchecked: the ingress twin is missing. Exit: `hosts/unikraft/exit_device.c` (a C
+  termination and crash hook, not a Bend effect twin) gives QEMU 1 / 3 / 253 for success,
+  `IO.die`, and a fault (verification/unikernel-exit-codes.txt). Console and time:
+  `hosts/unikraft/effects/Unikraft.bend` (`Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`)
+  with `.c` twins over `hosts/unikraft/host.c` and `.js` twins that fail; the probe
+  `scripts/unikernel/Probe.bend` puts its text on serial through `Unikraft.log`, measures
+  100 to 101 ms around a 100 ms sleep, shows its FAIL branch once (QEMU 3), and
+  check-binary.sh sees exactly the three effects as rows beyond the profile
+  (verification/unikernel-effects-qemu.txt; static link, so effect rows only). The sleep
+  blocks the loop thread: an `io_work` helper thread outlives `main` on this configuration
+  and turns success into QEMU 255 (that file, E1), which the ingress twin must also avoid.
+  `hosts/unikraft/INVENTORY.md` lists every file, exported symbol, and what it may touch.
+  UL-004 amended (unikraft effect-twins lane, Task 1), as AGENTS.md requires a rationale for
+  a contract change. The old text made the effect twins the only kernel-specific code, but
+  the termination and crash hook cannot be a twin: a twin is a Bend effect the program
+  calls, and no Bend code runs on a Unikraft crash or after `main` has returned, which is
+  exactly when the hook reports how the image ended; moving that reporting into a twin would
+  lose the crash and exit outcomes, and dropping the hook would hide them. The requirement
+  now reads "the effect twins and the inventoried boot and termination host layer SHALL be
+  the only kernel-specific code", and the trust inventory must name each such file, its
+  exported symbols, and what it may touch, so the hook is reviewed as strictly as a twin; it
+  still decides no authority question. "Exit" moves from the twins' primitives to that host
+  layer. The Kraftfile and Makefile.uk remain build configuration, listed in the inventory.
+  The exit hook should also move success off QEMU 1 (for example by writing s + 0x10), since
+  QEMU itself exits 1 on its own startup errors; until then QEMU 1 counts as success only
+  with the console check.
 - [x] 2.2 Configure a single lane with the inline IO helper; build `Tests.bend` and the four examples; capture console output under QEMU and compare line for line with the Linux single-lane record.
   Evidence: verification/unikernel-corpus-qemu.txt (current result: its integration rerun
   section, tree aaa6885). One CPU (`UKPLAT_CPU_MAXCOUNT=1`) and `+RTS --threads 1 --gpu off`.
