@@ -46,7 +46,7 @@ Evidence files: [genode-bend-hello-base-linux.txt](../../verification/genode-ben
 
 Cross-change coordination point: the capability-adoption change
 ([add-genode-capability-adoption](../changes/add-genode-capability-adoption/))
-and its explainer still name the request effect `Genode.accept`; this change
-names it `Genode.take` (as implemented). The adoption change is not edited
-here; its binding records and vectors are not yet replayed through
-`Genode.take`.
+explainer now names the request effect `Genode.take` (formerly
+`Genode.accept`), matching this change; its spec and tasks never named
+`accept`. The adoption binding records and vectors are not yet replayed
+through `Genode.take`.
