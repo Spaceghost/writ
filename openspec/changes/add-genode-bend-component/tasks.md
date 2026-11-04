@@ -29,14 +29,19 @@ reader R's report-to-summary request is Committed by
 `DataOS.commit_from_capability`, and the same route with a body claiming S
 is Denied by Bend (reason 6); S's session is synthetic, opened and not
 negotiated (verification/genode-channel-base-linux.txt, runs 1 to 4). 2.4:
-request size is bounded at 64 bytes and lengths 65 and 0 are counted and
-answered by the shim's fixed transport refusal before Bend; queue depth is
-bounded at one entry per channel slot and 8 slots, and with 9 clients the
-ninth session is refused and 8 flooding channels are served in ring order;
-the ring held at most 3 entries at once in one run and 1 in the rerun (the
-occupancy depends on timing; a full ring cannot occur by construction and
-was not observed); a
-client that floods without ever reading its replies does not stop a second
+request size is bounded at 64 bytes and lengths 65, 0, and 0xFFFFFFFF
+(above the 4 KiB bucket) are counted and answered by the shim's fixed
+transport refusal before Bend; queue depth is bounded at one entry per
+channel slot and 8 slots: with 9 clients 8 sessions opened (the ninth
+refused) and 8 decisions over channels 1-4 (1-3 in the rerun) were made
+in ring order before the fuel ran out, with at most 3 entries in the
+ring at once (timing dependent; a full ring cannot occur by construction
+and was not observed). Coalescing in the shim (a channel signalled again
+while its entry is queued, kept to one entry) was not reliably exercised:
+coalesced was 0 in every retained run, and in six burst attempts it was
+above 0 twice (3 and 1), because Genode merges repeated submits to one
+signal context before the handler runs (about 10 handler calls for 400
+submits); no burst run is kept. A client that floods without ever reading its replies does not stop a second
 client from being served, and the loop exits with value 0 when its fuel
 runs out (same file, TASK 3). GB-008's restart by a supervisor with a new
 generation is not configured. 2.2 stays open: the shim, its bounded queue,

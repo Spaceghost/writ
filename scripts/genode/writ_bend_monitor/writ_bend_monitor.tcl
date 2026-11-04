@@ -26,12 +26,13 @@
 #   subject SUBJECT, and both records were dumped.
 #
 # writ_bend_monitor_bad_length_run (Task 3, GB-006)
-#   One client, writ_client_r (route subject 1), in mode bad_length: a
-#   request with header length 65, then one with length 0, then R's valid
-#   request on session 1. Fails unless the shim warned for both lengths
-#   with bad length counts 1 and 2, the client printed the shim's refusal
-#   for each, the monitor logged exactly one decision line (the valid
-#   request: Committed, reason 0), and the client exited 0.
+#   One client, writ_client_r (route subject 1), in mode bad_length:
+#   requests with header lengths 65, 0, and 4294967295 (0xFFFFFFFF, above
+#   the 4 KiB bucket), then R's valid request on session 1. Fails unless
+#   the shim warned for the three lengths with bad length counts 1, 2, 3,
+#   the client printed the shim's refusal for each, the monitor logged
+#   exactly one decision line (the valid request, seq 4: Committed, reason
+#   0), and the client exited 0.
 #
 # writ_bend_monitor_liveness_run (Task 3, GB-008)
 #   Two clients under two policies in one run. writ_client_s (route subject
@@ -235,18 +236,20 @@ proc writ_bend_monitor_bad_length_run { } {
 		"$m writ_channel: channel 1 opened for '$client -> channel' route subject 1\r?\n" "channel opened" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 65 is not 64, refused before Bend \\(bad length count 1\\)" "shim refusal of length 65" \
 		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 0 is not 64, refused before Bend \\(bad length count 2\\)" "shim refusal of length 0" \
+		"$m \[^\r\n\]*Warning: writ_channel: channel 1 request length 4294967295 is not 64, refused before Bend \\(bad length count 3\\)" "shim refusal of length 0xFFFFFFFF" \
 		"$c client: refusal for request length 65 seq 1: kind=3 \\(transport refusal\\) decision=Denied \\(2\\) reason=256 \\(bad length\\)" "client refusal line for 65" \
 		"$c client: refusal for request length 0 seq 2: kind=3 \\(transport refusal\\) decision=Denied \\(2\\) reason=256 \\(bad length\\)" "client refusal line for 0" \
+		"$c client: refusal for request length 4294967295 seq 3: kind=3 \\(transport refusal\\) decision=Denied \\(2\\) reason=256 \\(bad length\\)" "client refusal line for 0xFFFFFFFF" \
 		"$m monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "Bend decision line for the valid request" \
-		"$c client: decision=Committed \\(1\\) reason=0 route_subject=1 session=1 seq=3" "client decision for seq 3" \
+		"$c client: decision=Committed \\(1\\) reason=0 route_subject=1 session=1 seq=4" "client decision for seq 4" \
 		"$c client: PASS decision 1 reason 0 as expected" "client verdict" ]
-	# Neither refused request reached Bend: one decision line in all.
+	# No refused request reached Bend: one decision line in all.
 	set decisions [regexp -all "$m monitor: channel=\[0-9\]+ route_subject=\[0-9\]+ session=\[0-9\]+ body_claimed_subject=\[0-9\]+ \\(untrusted, not used\\) decision=" $output]
 	if {$decisions != 1} {
 		puts stderr "Error: $decisions Bend decision lines, expected 1 (a refused request reached Bend)"
 		exit 1
 	}
-	puts "\n--- $client: lengths 65 and 0 refused by the shim before Bend; valid request Committed ---"
+	puts "\n--- $client: lengths 65, 0, 0xFFFFFFFF refused by the shim before Bend; valid request Committed ---"
 }
 
 proc writ_bend_monitor_liveness_run { } {

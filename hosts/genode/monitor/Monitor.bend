@@ -256,8 +256,31 @@ def request_claimed_subject(request: Host.Request) -> U32:
       claimed
 
 # A take that reports a closed channel rather than a request record.
-def is_close_event(+request: Host.Request) -> Bool:
-  U32.is_eq(request_subject(request), route_subject_closed())
+#
+# Each take is classified once into a closed type, so the loop matches on
+# the kind of event and never on a subject word again. Shim invariant
+# (writ_mem.cc, "Close event"): an open channel's subject is never 0, and
+# 0 is not a record word, so only the shim can produce Closed.
+type TakeEvent is Data:
+  Closed{channel: U32}
+  Record{request: Host.Request}
+
+def event_if(closed: Bool, +request: Host.Request) -> TakeEvent:
+  match closed:
+    case True{}:
+      Closed{request_channel(request)}
+    case False{}:
+      Record{request}
+
+def classify(+request: Host.Request) -> TakeEvent:
+  event_if(U32.is_eq(request_subject(request), route_subject_closed()), request)
+
+def TakeEvent.is_closed(event: TakeEvent) -> Bool:
+  match event:
+    case Closed{_}:
+      True{}
+    case Record{_}:
+      False{}
 
 # Version, kind, and the reserved words must be exactly as Channel.md states.
 def well_formed(request: Host.Request) -> Bool:
@@ -543,24 +566,24 @@ def closed_line(+channel: U32, before: Nat, after: Nat) -> String:
   "monitor: channel=" ++ U32.show(channel) ++ " closed (shim close event) bindings " ++
     Nat.show(before) ++ " -> " ++ Nat.show(after)
 
-def on_close(+request: Host.Request, +state: MonitorState) -> IO(MonitorState):
-  +next = close_channel(state, request_channel(request))
+def on_close(+channel: U32, +state: MonitorState) -> IO(MonitorState):
+  +next = close_channel(state, channel)
   do IO<MonitorState>:
-    Host.Genode.log(closed_line(request_channel(request), Bindings.count(MonitorState.channels(state)),
+    Host.Genode.log(closed_line(channel, Bindings.count(MonitorState.channels(state)),
       Bindings.count(MonitorState.channels(next))))
     IO.pure(MonitorState, next)
 
-def step(close: Bool, +request: Host.Request, state: MonitorState, candidate: Core.Candidate,
+def step(event: TakeEvent, state: MonitorState, candidate: Core.Candidate,
   principals: Dlm.Snapshot) -> IO(MonitorState):
-  match close:
-    case True{}:
-      on_close(request, state)
-    case False{}:
+  match event:
+    case Closed{channel}:
+      on_close(channel, state)
+    case Record{request}:
       answer(request, state, candidate, principals)
 
 def handle(+request: Host.Request, state: MonitorState, candidate: Core.Candidate,
   principals: Dlm.Snapshot) -> IO(MonitorState):
-  step(is_close_event(request), request, state, candidate, principals)
+  step(classify(request), state, candidate, principals)
 
 # The fuel-bounded loop: one record at a time (GB-008). At fuel 0 main
 # returns and the component exits with value 0.

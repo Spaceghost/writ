@@ -283,18 +283,22 @@ reused before wrapping). A full ring is impossible by construction:
 per channel, so the `ring full` count stays 0 (the check is defence in
 depth; with close events every ring entry belongs to a distinct slot,
 open or closing, and a slot is not reused before its close event is
-taken). Bad length (lengths 65 and 0) is refused, counted, and answered
+taken). Bad length (lengths 65, 0, and 0xFFFFFFFF) is refused, counted, and answered
 before Bend (`writ_bend_monitor_bad_length`). Two channels at once, one
 of them flooding without reading its replies, a close event, and the
 exit counters are exercised by `writ_bend_monitor_liveness`; nine clients
-(the ninth session refused at `MAX_CHANNELS`, 8 flooding channels served in
-ring order, `ring max=` the ring's high-water mark) by
-`writ_bend_monitor_queue` (`verification/genode-channel-base-linux.txt`,
+(8 sessions opened, the ninth refused at `MAX_CHANNELS`; 8 decisions over
+channels 1-4 (1-3 in the rerun) in ring order before the fuel ran out; `ring max=` the ring's
+high-water mark) by `writ_bend_monitor_queue` (`verification/genode-channel-base-linux.txt`,
 TASK 3). The shim never
 blocks on a client: a reply overwrites the channel's result bucket and
 submits the signal without waiting, so an unresponsive client holds one
-result bucket and at most one ring entry. Not exercised: coalescing,
-stale entries, put skipped, a close event while a request is queued.
+result bucket and at most one ring entry. Not reliably exercised:
+coalescing (0 in every retained run; above 0 in two of six burst attempts
+that were not kept, because Genode merges repeated submits to one signal
+context before the shim's handler runs). Not exercised: stale entries,
+put skipped, a close event while a request is queued, a close event while
+a request is in Bend (put skipped; stale counter).
 
 Monitor-side channel table (Bend, `Monitor.bend`, not the shim): at most 8
 bindings channel id -> (route subject, frontend state, descriptor id),
@@ -372,10 +376,12 @@ subject S's session is synthetic, opened and not negotiated.
   are unchanged): the transport refusal (`_channel_refuse`, constants
   `CHANNEL_KIND_REFUSAL`, `CHANNEL_REASON_BAD_LENGTH`), the close event
   (`_channel_closing` slots, `Channel_entry::close`, `_destroy_session`,
-  take), the `closed=`, `open=`, and `closing=` fields of the counters
+  take), the ring high-water mark (`_channel_ring_max`, the `ring max=`
+  field), the `closed=`, `open=`, and `closing=` fields of the counters
   line, and the cap comment naming `Local_service::budget_adjusted_args`.
-  sha256 `42813c0c...44e2` -> recorded in
-  `verification/genode-channel-base-linux.txt` (TASK 3, HASHES).
+  sha256 `42813c0c...44e2` (Task 2 fix round 1) ->
+  `befbf2b2adf239b03d4eedc376220ab04bfc8b04b35ded683443c43c545af59d`
+  (`verification/genode-channel-base-linux.txt`, TASK 3, HASHES).
 
 ## Fault behaviour observed through a Bend program
 

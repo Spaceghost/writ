@@ -71,7 +71,7 @@ monitor's (kind 2, reasons 0 to 8).
 
 The result header carries length 64 and the refused request's sequence.
 The client's result signal is submitted as for a decision. Exercised with
-lengths 65 and 0 (`writ_bend_monitor_bad_length`).
+lengths 65, 0, and 0xFFFFFFFF (`writ_bend_monitor_bad_length`).
 
 ## Request record (kind 1, commit request)
 

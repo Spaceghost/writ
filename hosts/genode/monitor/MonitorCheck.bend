@@ -97,8 +97,8 @@ def close_cases(+candidate: Core.Candidate, +principals: Dlm.Snapshot) -> IO(Uni
       Nat.show(bound(Monitor.close_channel(first, 1))))
     IO.print("bindings 8 bound, ch3 closed: " ++ Nat.show(bound(full)) ++ " -> " ++ Nat.show(bound(freed)))
     IO.print("reply ch9 after ch3 closed : " ++ show(ninth))
-    verdict(Monitor.is_close_event(request(5, 0, 0, 0, 0)) &&
-      Bool.not(Monitor.is_close_event(request(5, 1, 1, 6, 1))),
+    verdict(Monitor.TakeEvent.is_closed(Monitor.classify(request(5, 0, 0, 0, 0))) &&
+      Bool.not(Monitor.TakeEvent.is_closed(Monitor.classify(request(5, 1, 1, 6, 1)))),
       "route subject 0 is a close event, a routed record is not")
     verdict(Nat.is_eq(bound(first), 1n) && Nat.is_eq(bound(Monitor.close_channel(first, 1)), 0n),
       "closing channel 1 removes its binding")

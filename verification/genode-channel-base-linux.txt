@@ -648,8 +648,12 @@ GB-008 UNRESPONSIVE CLIENT AND FUEL EXHAUSTION: make run/writ_bend_monitor_liven
   overwrites the bucket), so S held one result bucket and at most one ring
   entry. Monitor at exit: ram used 8667136 bytes of 268328754, caps 55 of
   966. After the monitor's exit S's next signal fails on base-linux:
-    [init -> writ_client_s] Error: ... lx_sendmsg to sd socket=42,... failed with -111 in lx_call()
-  and S stays blocked (host transport behaviour; the first version of the
+    [init -> writ_client_s] Error: 2050679:2050684 lx_sendmsg to sd socket=42,inode=218236781 failed with -111 in lx_call()
+  This line comes from the first liveness run, which timed out waiting for
+  S's exit; its log was overwritten by the next run and not kept. The two
+  retained logs (run-writ_bend_monitor_liveness-t3.out and -t3-final.out)
+  end at the flood request after the monitor's exit with the start of the
+  same Error line cut off by the run tool. S stays blocked (host transport behaviour; the first version of the
   run waited for S's exit and timed out for this reason; the run now ends
   at the first flood request after the monitor's exit). The 8th take was
   the last: the request that arrived after fuel 0 was not taken. Nothing
@@ -756,3 +760,76 @@ HASHES (sha256, final tree, Task 3)
   src/app/writ_channel_client/*, run/writ_bend_monitor.tcl, the seven
   run/writ_bend_monitor_*.run, run/writ_bend.tcl, src/app/writ_bend.inc):
   byte-identical (cmp, 2026-11-04).
+
+TASK 3 FIX ROUND 1 (2026-11-04; supersedes TASK 3 where they differ)
+
+CHANGES
+  - Claims corrected: the queue run opens 8 sessions (the ninth refused)
+    and makes 8 decisions over channels 1-4 (first final run: 1 1 2 1 2 3 4
+    1) or 1-3 (this round: 1 2 1 2 1 3 2 1) in ring order before the fuel
+    runs out; it does not serve all 8 channels. tasks.md 2.4, INVENTORY,
+    GENODE.md reworded.
+  - Bad length: a third length 0xFFFFFFFF (4294967295, above the 4 KiB
+    bucket). The run requires three refusals with counts 1, 2, 3 and the
+    valid request as seq 4.
+  - Monitor.bend: each take is classified once into the closed type
+    TakeEvent = Closed{channel} | Record{request} (classify); step matches
+    on it. Bend-only, no record or shim change; the shim-invariant comment
+    is kept. (The name Event is already taken by an import.)
+  - lx_sendmsg provenance: see the note in the GB-008 section above (the
+    line is from the first, timed-out liveness run, whose log was not kept).
+  - Shim unchanged in this round (writ_mem.cc identical to 10144f0), so
+    hello, rts, probe, and the corpus were not rerun; their TASK 3 results
+    stand.
+
+BURST ATTEMPT (coalescing; bounded, then dropped)
+  A run writ_bend_monitor_burst was written to require coalesced > 0 and
+  ring max > 1 at the monitor's exit. Six runs, three configurations
+  (logs kept: ../writ-genode/run-writ_bend_monitor_burst-t3-fix1-*.out):
+    4 clients x 3 signals, no delay, period 0  (-1):     signals=9  coalesced=3 ring max=1  FAIL
+    6 clients x 3 signals, 1500 ms, period 0   (-2):     signals=10 coalesced=1 ring max=2  PASS
+                                                (-final): signals=6  coalesced=0 ring max=1  FAIL
+    8 clients x 50 signals, 1500 ms, 1 ms      (-b1):    signals=9  coalesced=0 ring max=1  FAIL
+                                                (-b2):    signals=10 coalesced=0 ring max=2  FAIL
+                                                (-b3):    signals=10 coalesced=0 ring max=2  FAIL
+  Why: Genode merges repeated submits to one signal context into a single
+  delivery before the handler runs (in -b1..-b3, 400 submits reached the
+  shim as 9-10 handler calls), so the shim's coalescing branch runs only
+  when a submit lands after the previous delivery and before Bend takes
+  the entry, a window of the order of one decision. A run that requires
+  it passes at random, so it was not kept (scripts and scenario entry
+  removed). Coalescing in the shim is therefore recorded as not reliably
+  exercised; the repeated signals a client can cause are bounded first by
+  Genode's merging and then by the one-entry-per-channel rule.
+
+LINUX CHECK (MonitorCheck.bend, rc 0): 13 PASS lines, as in TASK 3; the
+  close-event case now checks TakeEvent.is_closed(classify(..)).
+  bend Monitor.bend --check-only: the same 13 IO-loop defs depend on
+  foreign effects; classify and the decision are not among them.
+
+RUNS (final client and monitor; ../writ-genode/run-writ_bend_monitor_<r>-t3-fix1-final.out,
+t3-fix1.log): accept, substitute, routed_s, claim_ignored, bad_length,
+liveness, queue: rc 0 each.
+    bad_length: refusals for 65 (count 1), 0 (count 2), 4294967295 (count 3);
+      one Bend decision line; client decision Committed seq=4.
+    liveness: S x3, R Committed, R close (bindings 1 -> 0), S x3; counters
+      signals=7 coalesced=0 ring full=0 ring max=1 bad length=0 stale=0
+      taken=7 put=7 put skipped=0 closed=1 open=1 closing=0; monitor exit 0.
+    queue: ninth session refused; counters signals=9 coalesced=0 ring
+      full=0 ring max=1 taken=8 put=8 closed=0 open=8; monitor exit 0.
+  check-binary.sh on the rebuilt monitor: rc 1, effect rows Genode.log
+  Genode.put Genode.take, 158 undefined / 117 outside (unchanged).
+
+HASHES (sha256, fix round 1)
+  befbf2b2adf239b03d4eedc376220ab04bfc8b04b35ded683443c43c545af59d  hosts/genode/shim/writ_mem.cc (unchanged)
+  9dd1659ccf7b6c19f29f1f8f25d1e373de56edee0b5fc5c777c6c89c810d008f  hosts/genode/effects/Channel.md
+  d2b9c05ed9274fa1ca5d502f2d0afc951a47594b20a34c4bbd3db6336465d9e1  hosts/genode/monitor/Monitor.bend
+  16ca01721664cee31f6edcecf16074827d23034a08a2cf99ca2171fe946366a6  hosts/genode/monitor/MonitorCheck.bend
+  f75987f1f06578aaff7fbc504535a108ca094a79479be7fde536d76320cef230  hosts/genode/probes/client/writ_channel_client.cc
+  2131ec39a65671632f0c8aeb6c4a966ef912ec44e2200e1183723ece0ddf0564  scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl
+  303956371393800bb0a73040b64e0257e25af21a6239a64311ff8c8dc0fbe34c  ../writ-genode/bend-c/monitor/monitor.c (70658 lines; re-emitted, cmp identical)
+  51c72cfee9bfa412b5ae9bc4ac0d366c0e8d707349b8820619b27a40b491dabf  ../writ-genode/build/x86_64/app/writ_bend_monitor/writ_bend_monitor
+  959abae6f570c18f4745a5540d5bea0708476e7dc7be8ba5a06c7597af6d8304  ../writ-genode/build/x86_64/app/writ_channel_client/writ_channel_client
+  Run scripts unchanged from TASK 3. Live copies cmp-identical (shim,
+  session header, client, both target.mk, the shared Tcl, the seven
+  monitor run scripts; no burst script in either tree).

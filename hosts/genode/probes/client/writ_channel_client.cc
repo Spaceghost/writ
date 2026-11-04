@@ -23,15 +23,16 @@
  *           mode=".." count=".." period_ms=".."/>
  * mode (Task 3) selects the exercise:
  *   "single" (default) the steps above, one request.
- *   "bad_length" first a request whose header length is 65, then one whose
- *     length is 0 (GB-006: the shim must answer each with its fixed
+ *   "bad_length" requests whose header lengths are 65, 0, and 0xFFFFFFFF
+ *     (above the 4 KiB bucket) in turn (GB-006: the shim must answer each with its fixed
  *     refusal record, kind 3, decision 2, reason 256, every other word 0,
  *     and the request's sequence), then the valid request, whose decision
  *     must be the expected one. Any other answer exits 1.
  *   "flood" (GB-008, the unresponsive client) sends the valid request
  *     `count` times, `period_ms` apart (sequence 1, 2, ...), from the
  *     constructor, so its entrypoint never dispatches the result signal: it
- *     never reads a reply. Then it exits 0. It checks nothing. On
+ *     never reads a reply. With period_ms 0 the signals are submitted back
+ *     to back (the burst run). Then it exits 0. It checks nothing. On
  *     base-linux a signal submitted after the monitor has exited fails in
  *     lx_sendmsg (connection refused) and the client stays blocked there
  *     instead of exiting (observed in writ_bend_monitor_liveness).
@@ -112,8 +113,8 @@ struct Writ_channel_client::Main
 	Mode const _mode = _mode_from_config();
 
 	/* bad_length: the header lengths sent before the valid request */
-	static constexpr uint32_t BAD_LENGTHS[] = { 65, 0 };
-	enum : unsigned { NUM_BAD = 2 };
+	static constexpr uint32_t BAD_LENGTHS[] = { 65, 0, 0xffffffffu };
+	enum : unsigned { NUM_BAD = 3 };
 	unsigned _step = 0;   /* index of the request in flight */
 
 	static void _dump(char const *what, uint32_t const volatile *words, unsigned n)
@@ -218,7 +219,7 @@ struct Writ_channel_client::Main
 				log("client: flood request ", i, " of ", count,
 				    " signalled, reply not read");
 				Signal_transmitter(_channel.request_sigh()).submit();
-				timer.msleep(period);
+				if (period) timer.msleep(period);
 			}
 			log("client: flood done, ", count, " requests sent, no reply read");
 			_exit(0);
