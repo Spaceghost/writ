@@ -142,17 +142,9 @@ function taskRow(c: Change, columns: number): string {
 function chevron(c: Change): string {
   if (c.taskList.length === 0) return `<td class="chev-cell"></td>`;
   const sig = taskSignal(c);
-  return `<td class="chev-cell"><button type="button" class="chev" aria-controls="tasks-${slug(c.name)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-preserve-attr="aria-expanded" title="Show the task list"><span data-text="$${sig} ? '▾' : '▸'">▸</span></button></td>`;
+  return `<td class="chev-cell"><button type="button" class="chev" aria-label="Show the task list" aria-controls="tasks-${slug(c.name)}" data-on:click="$${sig} = !$${sig}" data-attr:aria-expanded="$${sig} ? 'true' : 'false'" data-class:open="$${sig}" data-preserve-attr="aria-expanded class"></button></td>`;
 }
 
-/** Task numbers a tasks.md marks done and open, for the line under a progress bar. */
-function taskNumbers(c: Change): string {
-  if (c.taskIds.done.length === 0 && c.taskIds.open.length === 0) return "";
-  const list = (ids: string[]) => ids.map(esc).join(" ");
-  const done = c.taskIds.done.length === 0 ? "" : `${list(c.taskIds.done)} done`;
-  const open = c.taskIds.open.length === 0 ? "" : `${list(c.taskIds.open)} open`;
-  return `<div class="sub tasknums">${[done, open].filter(Boolean).join(" · ")}</div>`;
-}
 
 /** Left list of changes grouped by status, then a link per baseline section. */
 export function nav(changes: Change[], page: string): string {
@@ -202,10 +194,10 @@ export function indexTables(baselines: Baseline[], changes: Change[], scan: Lane
     const deps = c.dependsOn.length === 0 ? "" : ` · depends on ${c.dependsOn.length}`;
     return `<tr class="${(lanesOf.get(c.name) ?? []).some(live) ? "row-live" : ""}">
 ${chevron(c)}<td><a href="/change/${href(c.name)}">${esc(c.name)}</a><div class="sub" title="${esc(c.dependsOn.join(", ") || "no dependencies")}">${esc(c.title)}${deps}</div></td>
-<td>${statusTag(c.status)}</td>
-<td>${progress(c.tasks)}${taskNumbers(c)}</td>
+<td class="status-cell">${statusTag(c.status)}</td>
+<td class="tasks-cell">${progress(c.tasks)}</td>
 <td class="chips">${chips || `<span class="muted">none</span>`}</td>
-<td>${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
+<td class="expl-cell">${c.html.map((f) => `<a href="/change/${href(c.name)}/html/${href(f)}">${esc(f)}</a>`).join("<br>") || `<span class="muted">none</span>`}</td>
 </tr>${taskRow(c, 6)}`;
   };
   // One signal per change, false unless the reader already flipped it.
@@ -220,7 +212,7 @@ ${tiles}
 <p class="lede">${baselines.length} baseline capabilities and ${changes.length} pending changes. Task counts are checkbox counts as written in each <code>tasks.md</code>, not evidence; a lane chip is what that lane's ledger and activity log say.</p>
 <h2>Pending changes</h2>
 <div class="tablewrap"><table class="changes">
-<thead><tr><th class="chev-cell"><span class="visually-hidden">Tasks</span></th><th>Change</th><th>Status</th><th>Tasks</th><th>Worked on by</th><th>Explainers</th></tr></thead>
+<thead><tr><th class="chev-cell"></th><th>Change</th><th class="status-cell">Status</th><th class="tasks-cell">Tasks</th><th>Worked on by</th><th class="expl-cell">Explainers</th></tr></thead>
 <tbody>${shown.map(row).join("")}${restRows}</tbody>
 </table></div>
 <h2>Baseline capabilities</h2>

@@ -225,9 +225,8 @@ try {
   const row = tables.slice(rowStart, tables.indexOf("</tr>", rowStart));
   check("the change the lane's plan names carries the lane's chip", row.includes('class="chip chip-active"') && row.includes("#lane-smoke-lane"));
   check("the chip shows the ledger phase and an age", row.includes("Task 1 · fix round") && /chip-age">\d+ (s|min)</.test(row));
-  check("task numbers are listed under the progress bar", /tasknums">[\d. ]+ done/.test(row));
   const sig = `t_${expected.replace(/-/g, "_")}`;
-  check("the change row starts with a chevron that flips its task signal", row.includes(`<button type="button" class="chev" aria-controls="tasks-${expected}" data-on:click="$${sig} = !$${sig}"`));
+  check("the change row starts with a chevron that flips its task signal", row.includes(`<button type="button" class="chev" aria-label="Show the task list" aria-controls="tasks-${expected}" data-on:click="$${sig} = !$${sig}"`) && row.includes(`data-class:open="$${sig}"`));
   const taskRowStart = tables.indexOf(`<tr id="tasks-${expected}" class="taskrow"`);
   const taskRowHtml = tables.slice(taskRowStart, tables.indexOf("</tr>", taskRowStart));
   check("the task row follows the change row, spans the table, and is shown by the signal", taskRowStart > rowStart && taskRowHtml.includes(`data-show="$${sig}"`) && taskRowHtml.includes('data-preserve-attr="style"') && taskRowHtml.includes('<td colspan="6">'));
