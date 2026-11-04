@@ -1,0 +1,26 @@
+PASS: SHA-256 empty bytes
+PASS: SHA-256 NIST abc
+PASS: SHA-256 NIST two-block message
+PASS: SHA-256 standard 112-byte message
+PASS: SHA-256 NUL byte
+PASS: SHA-256 high-bit byte
+PASS: SHA-256 55-byte padding boundary
+PASS: SHA-256 56-byte padding boundary
+PASS: SHA-256 63-byte padding boundary
+PASS: SHA-256 64-byte padding boundary
+PASS: SHA-256 65-byte padding boundary
+PASS: SHA-256 all 256 binary byte values
+PASS: SHA-256 many binary blocks
+PASS: SHA-256 accepts the full 64 KiB payload
+PASS: SHA-256 artifact binds all eight words in order
+PASS: SHA-256 diagnostic hex preserves leading zeroes
+PASS: SHA-256 rejects uppercase hex
+PASS: SHA-256 rejects an odd hex length
+PASS: SHA-256 rejects non-hex bytes
+PASS: SHA-256 rejects malformed suffixes
+PASS: SHA-256 rejects non-ASCII hex
+PASS: SHA-256 rejects spaces
+PASS: SHA-256 rejects line breaks
+PASS: SHA-256 rejects a hex prefix
+PASS: SHA-256 rejects a payload above 64 KiB
+ALL DIGEST TESTS PASSED

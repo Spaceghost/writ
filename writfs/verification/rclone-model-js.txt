@@ -1,0 +1,75 @@
+PASS: private import accepted
+PASS: import assigns fixed policy and exact service origin
+PASS: managed copy passes full Writ commit facade
+PASS: managed copy preserves full origin restrictions
+PASS: copy receipt binds plan policy label storage and sealed artifact
+PASS: import artifact is actual SHA-256 of bytes
+PASS: copy keeps exact artifact association
+PASS: archive source can copy back to private
+PASS: second generation retains original origin and restrictions
+PASS: public destination denied with identical complete state
+PASS: denied public copy leaves no object
+PASS: imports cannot bypass archive copy gate
+PASS: imports cannot assign public policy
+PASS: missing source rejected
+PASS: source version must match exactly
+PASS: overwrite requires current destination version
+PASS: new destination requires absent expectation
+PASS: import overwrite rejects stale expectation
+PASS: plaintext read route denied
+PASS: exact import retry returns original result
+PASS: exact copy retry returns original result
+PASS: replay rejects changed bytes
+PASS: replay rejects changed path
+PASS: replay rejects changed destination expectation
+PASS: replay rejects changed source version
+PASS: replay rejects changed destination
+PASS: replay rejects changed operation
+PASS: exact overwrite accepted
+PASS: overwrite retains object ID and assigns immutable version origin
+PASS: current listing hides historical version while history retains it
+PASS: old retry cannot overwrite a later version
+PASS: old source version cannot silently read current bytes
+PASS: copy can replace exact destination version
+PASS: copy overwrite preserves new source origin without stale policy
+PASS: odd content hex rejected
+PASS: uppercase content hex rejected
+PASS: nonhex content rejected
+PASS: oversized object rejected before digesting
+PASS: noncanonical request ID rejected
+PASS: copy cannot carry replacement bytes
+PASS: import cannot smuggle a destination
+PASS: printable ASCII relative names supported
+PASS: absolute path rejected
+PASS: empty segment rejected
+PASS: dot segment rejected
+PASS: dotdot segment rejected
+PASS: trailing separator rejected
+PASS: backslash alias rejected
+PASS: NUL rejected
+PASS: non-ASCII rejected
+PASS: empty file path rejected
+PASS: path cap exact at 512 bytes
+PASS: mutation enforces canonical paths
+PASS: fixed roots exist
+PASS: explicit empty directory accepted
+PASS: empty directory and ancestors remain visible
+PASS: repeated mkdir does not mutate state
+PASS: file cannot become an ancestor directory
+PASS: mkdir cannot replace a file
+PASS: copy cannot replace a directory
+PASS: public namespace cannot gain nested directories
+PASS: retained versions are bounded
+PASS: exact payload and aggregate caps accepted
+PASS: aggregate retained bytes cap enforced
+PASS: explicit directories bounded
+PASS: final commit rejects revoked descriptor capability
+PASS: missing approved code denied by full gate
+PASS: payment obligation cannot be replaced by free standing profile
+PASS: extra source secrecy cannot exceed fixed clearance
+PASS: exact 64 KiB payload import accepted
+PASS: maximum import artifact matches SHA-256 vector
+PASS: maximum body exact replay is stack bounded
+PASS: maximum body managed copy passes full gate
+PASS: maximum body copy preserves artifact identity
+ALL MODEL TESTS PASSED

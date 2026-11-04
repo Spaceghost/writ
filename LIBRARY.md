@@ -99,6 +99,14 @@ checks must observe one authoritative state at commit.
 
 ## Public entry points
 
+The optional [WritFS native backend](writfs/README.md) is a separate consumer of
+these entry points. `writfs/Native.authorize` uses the existing capability-to-commit
+facade for exact native snapshot/clone plans; `writfs/Host` creates and verifies
+only private read-only native stages. It does not replace the core trust contract
+or implement durable logical publication. Its full native IDs and source-seal
+manifest hashes have different semantics from the rclone reference's payload
+checksums.
+
 Import component modules for their record constructors; import the facade for
 the combined path:
 

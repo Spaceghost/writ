@@ -1,0 +1,95 @@
+WritFS policy/model verification on native Windows Node
+
+Commit: b709bd833cd71eb51d8dbf4ed0c60974a2b5e073
+Tree: 01c7cde493297e918a517f6b041c6f7d9c85ae5d
+Workflow: https://github.com/Spaceghost/writ/actions/runs/41750878613
+Windows job: https://github.com/Spaceghost/writ/actions/runs/41750878613/job/126315488128
+Result: success; 78 passing checks; Node exit status 0.
+Backend: Bend 2.0.39 generated JavaScript, native Windows Node v22.23.4.
+
+The following assertion, suite-summary, and exit-status lines are extracted
+verbatim from the Windows job log, with line endings normalized to LF.
+The existing "ALL NATIVE MODEL TESTS PASSED" marker describes the native-storage
+model suite. This lane did not mount or exercise a Windows filesystem.
+See windows-policy-environment.txt for environment, hashes, and scope.
+
+2026-11-04T01:00:05.8401670Z PASS: canonical lowercase UUID accepted
+2026-11-04T01:00:05.8403247Z PASS: uppercase UUID alias denied
+2026-11-04T01:00:05.8403969Z PASS: zero native UUID denied
+2026-11-04T01:00:05.8404855Z PASS: full uint64 maximum retained as canonical string
+2026-11-04T01:00:05.8405599Z PASS: uint64 overflow denied
+2026-11-04T01:00:05.8406569Z PASS: decimal aliases denied
+2026-11-04T01:00:05.8408498Z PASS: native identifiers above uint32 remain valid
+2026-11-04T01:00:05.8409702Z PASS: canonical absolute native locator accepted
+2026-11-04T01:00:05.8410425Z PASS: native path aliases denied
+2026-11-04T01:00:05.8411323Z PASS: option-like and whitespace components denied
+2026-11-04T01:00:05.8412413Z PASS: ZFS source must name one snapshot
+2026-11-04T01:00:05.8413088Z PASS: ZFS snapshot grammar is unambiguous
+2026-11-04T01:00:05.8437407Z PASS: native locator cap is exact
+2026-11-04T01:00:05.8440653Z PASS: writable Btrfs source cannot be sealed
+2026-11-04T01:00:05.8443130Z PASS: nested subvolumes cannot masquerade as a complete source
+2026-11-04T01:00:05.8447346Z PASS: ordinary subdirectory cannot authorize whole-subvolume copy
+2026-11-04T01:00:05.8448326Z PASS: live readonly ZFS dataset is not an immutable snapshot
+2026-11-04T01:00:05.8502816Z PASS: Btrfs preview contains only literal readonly snapshot argv
+2026-11-04T01:00:05.8527707Z PASS: filesystem clone cannot auto-mount or inherit sharing
+2026-11-04T01:00:05.8578919Z PASS: volume clone cannot expose a block device
+2026-11-04T01:00:05.8580581Z PASS: different filesystem container denied
+2026-11-04T01:00:05.8583214Z PASS: cross-provider native copy denied
+2026-11-04T01:00:05.8585216Z PASS: logical source version must match full plan
+2026-11-04T01:00:05.8591307Z PASS: logical destination version must match full plan
+2026-11-04T01:00:05.8598857Z PASS: source generation high word is bound into artifact seal
+2026-11-04T01:00:05.8608794Z PASS: artifact substitution including final word denied
+2026-11-04T01:00:05.8611251Z PASS: provider-specific executor identity cannot be exchanged
+2026-11-04T01:00:05.8613966Z PASS: native Copy requires exactly one source occurrence
+2026-11-04T01:00:05.8683876Z PASS: Btrfs action traverses complete Writ commit facade
+2026-11-04T01:00:05.8695084Z PASS: restricted source cannot target public clearance
+2026-11-04T01:00:05.8728706Z PASS: descriptor revocation is checked at final gate
+2026-11-04T01:00:05.8780084Z PASS: stale session revision denied
+2026-11-04T01:00:05.8795549Z PASS: stale ledger revision denied
+2026-11-04T01:00:05.8823899Z PASS: stale frontend revision denied
+2026-11-04T01:00:05.8828516Z PASS: another subject cannot reuse descriptor
+2026-11-04T01:00:05.8834016Z PASS: synthetic alternate artifact is valid at generic core boundary
+2026-11-04T01:00:05.8932442Z PASS: native gate additionally binds exact native source seal
+2026-11-04T01:00:05.8953027Z PASS: accepted intent for another invocation cannot authorize command
+2026-11-04T01:00:05.8962166Z PASS: synthetic network intent passes its own full core gate
+2026-11-04T01:00:05.8962599Z PASS: native backend requires Storage intent
+2026-11-04T01:00:05.8963540Z PASS: native authorization preserves full origin and operation restrictions
+2026-11-04T01:00:05.8971657Z PASS: returned session records committed model transition
+2026-11-04T01:00:05.8985597Z PASS: terminal session cannot authorize another effect
+2026-11-04T01:00:05.8998025Z PASS: consumed current reservation cannot be replayed from old session
+2026-11-04T01:00:05.9025228Z PASS: stage receipt retains exact plan policy DLM label backend and artifact
+2026-11-04T01:00:05.9062168Z PASS: writable native result denied
+2026-11-04T01:00:05.9128686Z PASS: nested native result denied
+2026-11-04T01:00:05.9129004Z PASS: nonroot native result denied
+2026-11-04T01:00:05.9148566Z PASS: Btrfs result must identify exact source parent UUID
+2026-11-04T01:00:05.9160537Z PASS: source UUID cannot masquerade as created copy
+2026-11-04T01:00:05.9196927Z PASS: source rootid cannot masquerade as created copy
+2026-11-04T01:00:05.9207615Z PASS: created snapshot must remain in registered filesystem
+2026-11-04T01:00:05.9208809Z PASS: native result cannot be redirected to another locator
+2026-11-04T01:00:05.9228455Z PASS: source generation rollback during native effect denied without uint32 truncation
+2026-11-04T01:00:05.9230627Z PASS: post-authorization argv substitution denied
+2026-11-04T01:00:05.9232198Z PASS: altered native action cannot mint receipt
+2026-11-04T01:00:05.9233878Z PASS: reconciliation accepts exact recorded native identity
+2026-11-04T01:00:05.9235364Z PASS: same pathname and parent do not reconcile a different native object
+2026-11-04T01:00:05.9237851Z PASS: canonical generation comparison retains numeric order across widths and uint64 high bits
+2026-11-04T01:00:05.9263208Z PASS: snapshot transaction source advance retains exact original authorized intent and seal
+2026-11-04T01:00:05.9264121Z PASS: preflight still rejects any source generation change
+2026-11-04T01:00:05.9265093Z PASS: post-source generation must equal the created snapshot transaction
+2026-11-04T01:00:05.9272038Z PASS: valid snapshot generation cannot excuse a changed source UUID
+2026-11-04T01:00:05.9282396Z PASS: created snapshot generation and creation transaction must agree for source advance
+2026-11-04T01:00:05.9297653Z PASS: reconciliation admits only the recorded snapshot source transaction
+2026-11-04T01:00:05.9312092Z PASS: future source generation cannot reconcile an earlier snapshot receipt
+2026-11-04T01:00:05.9320250Z PASS: ZFS filesystem action traverses complete Writ commit facade
+2026-11-04T01:00:05.9326966Z PASS: observed readonly unmounted filesystem clone accepted
+2026-11-04T01:00:05.9332870Z PASS: ZFS clone must retain exact origin snapshot
+2026-11-04T01:00:05.9339349Z PASS: pool GUID high bits are not discarded
+2026-11-04T01:00:05.9347487Z PASS: mounted filesystem clone denied
+2026-11-04T01:00:05.9353778Z PASS: mountable filesystem clone denied
+2026-11-04T01:00:05.9359871Z PASS: filesystem mountpoint exposure denied
+2026-11-04T01:00:05.9367709Z PASS: ZFS volume action traverses complete Writ commit facade
+2026-11-04T01:00:05.9376371Z PASS: observed hidden readonly zvol retains exact intent
+2026-11-04T01:00:05.9384472Z PASS: visible zvol device mode denied
+2026-11-04T01:00:05.9391205Z PASS: created dataset kind cannot replace authorized volume kind
+2026-11-04T01:00:05.9399033Z PASS: reconciliation checks creation transaction as well as GUID
+2026-11-04T01:00:05.9399414Z ALL NATIVE MODEL TESTS PASSED
+2026-11-04T01:00:05.9484448Z Node exit status: 0

@@ -1,0 +1,32 @@
+WritFS native ZFS verification
+
+Commit: ede07df5ccaa08b4695788770d16b7eeb269d3c0
+Tree: b8d49cb202d0935639d8e16769e222495baee927
+Workflow: https://github.com/Spaceghost/writ/actions/runs/41748733557
+Job: https://github.com/Spaceghost/writ/actions/runs/41748733557/job/126308199296
+Result: success; 18 passing checks; cleanup exit status 0.
+
+The following native assertion and cleanup lines are extracted verbatim from the
+GitHub job log. Setup and compiler versions are in native-environment.txt.
+The public fixture used a new 1 GiB regular-file vdev and a unique temporary pool.
+
+2026-11-04T00:42:53.1297319Z PASS: public destination fails the complete Writ gate before native execution
+2026-11-04T00:42:53.1298133Z PASS: revoked capability fails before native execution
+2026-11-04T00:42:53.2504603Z PASS: actual native stage retains complete source origin and restrictions
+2026-11-04T00:42:53.2931270Z PASS: a repeated creation cannot overwrite or adopt the existing target
+2026-11-04T00:42:53.3517041Z PASS: exact recorded native identity reconciles without creating another object
+2026-11-04T00:42:53.3527654Z PASS: ZFS stage remains unmounted
+2026-11-04T00:42:53.3803697Z PASS: ZFS native clone contains the public fixture bytes
+2026-11-04T00:42:53.3810824Z PASS: ZFS kernel rejects writes to the read-only clone
+2026-11-04T00:42:53.4332056Z PASS: changed native mount controls invalidate the recorded private stage
+2026-11-04T00:42:53.5264643Z PASS: public destination fails the complete Writ gate before native execution
+2026-11-04T00:42:53.5265633Z PASS: revoked capability fails before native execution
+2026-11-04T00:42:53.6746727Z PASS: actual native stage retains complete source origin and restrictions
+2026-11-04T00:42:53.7261954Z PASS: a repeated creation cannot overwrite or adopt the existing target
+2026-11-04T00:42:53.7934144Z PASS: exact recorded native identity reconciles without creating another object
+2026-11-04T00:42:53.7945243Z PASS: native zvol clone remains unexposed with volmode=none
+2026-11-04T00:42:53.8174850Z PASS: native zvol clone preserves the actual block payload
+2026-11-04T00:42:53.8175792Z PASS: ZFS kernel rejects writing the read-only cloned zvol
+2026-11-04T00:42:53.8864564Z PASS: exposing a zvol invalidates its recorded private-stage controls
+2026-11-04T00:42:53.8989972Z ALL NATIVE ZFS CHECKS PASSED
+2026-11-04T00:42:53.9308112Z Native fixture cleanup finished; exit status: 0

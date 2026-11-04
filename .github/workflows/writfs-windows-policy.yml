@@ -1,0 +1,213 @@
+name: Writ policy on Windows Node
+
+# This lane qualifies generated JavaScript execution, not a Windows filesystem,
+# a native machine-code Bend runtime, or a protected Windows host profile.
+on:
+  push:
+    branches:
+      - main
+      - writfs-native-ci
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/rclone/bend/Authority.bend'
+      - 'docs/INSTALL.md'
+      - '.github/workflows/writfs-windows-policy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Compile Bend policy tests to JavaScript
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.generated.outputs.artifact-id }}
+    env:
+      BEND_NO_TELEMETRY: '1'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Record build environment
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writfs-windows-build-logs"
+          {
+            printf 'Commit: %s\n' "$GITHUB_SHA"
+            printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"
+            uname -a
+            cat /etc/os-release
+          } 2>&1 | tee "$RUNNER_TEMP/writfs-windows-build-logs/environment.log"
+
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install and verify Bend 2.0.39
+        run: |
+          set -euo pipefail
+          {
+            writfs_bend_directory="$RUNNER_TEMP/writfs-windows-bend-2.0.39"
+            mkdir -p "$writfs_bend_directory"
+            curl --proto '=https' --tlsv1.2 --retry 3 -fL \
+              https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+              -o "$writfs_bend_directory/release.tar.gz"
+            printf '%s  %s\n' \
+              6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+              "$writfs_bend_directory/release.tar.gz" | sha256sum -c -
+            tar -xzf "$writfs_bend_directory/release.tar.gz" -C "$writfs_bend_directory"
+            writfs_bend_version="$("$writfs_bend_directory/bend/bin/bend" version)"
+            printf '%s\n' "$writfs_bend_version"
+            test "$writfs_bend_version" = 'bend 2.0.39'
+            printf '%s\n' "$writfs_bend_directory/bend/bin" >> "$GITHUB_PATH"
+          } 2>&1 | tee "$RUNNER_TEMP/writfs-windows-build-logs/bend-toolchain.log"
+
+      - name: Compile the existing Bend suites outside the checkout
+        run: |
+          set -euo pipefail
+          writfs_generated_directory="$RUNNER_TEMP/writfs-windows-generated"
+          mkdir -p "$writfs_generated_directory"
+          bend Tests.bend -o "$writfs_generated_directory/library-tests.js" \
+            2>&1 | tee "$RUNNER_TEMP/writfs-windows-build-logs/library-compile.log"
+          bend writfs/Tests.bend -o "$writfs_generated_directory/writfs-model-tests.js" \
+            2>&1 | tee "$RUNNER_TEMP/writfs-windows-build-logs/writfs-model-compile.log"
+          {
+            printf 'Source commit: %s\n' "$GITHUB_SHA"
+            bend version
+            printf 'Entries: Tests.bend; writfs/Tests.bend\n'
+            printf 'Scope: generated JavaScript policy/model tests on native Windows Node.\n'
+          } > "$writfs_generated_directory/source.txt"
+          (
+            cd "$writfs_generated_directory"
+            sha256sum library-tests.js writfs-model-tests.js
+          ) | tee "$writfs_generated_directory/SHA256SUMS"
+
+      - name: Retain generated test artifacts
+        id: generated
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writfs-windows-generated-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writfs-windows-generated/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain build logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writfs-windows-build-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writfs-windows-build-logs/
+          if-no-files-found: error
+          retention-days: 14
+
+  windows:
+    name: Run generated Bend tests on native Windows Node
+    needs: build
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Record Windows and Node environment
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writfsLogDirectory = Join-Path $env:RUNNER_TEMP 'writfs-windows-logs'
+          New-Item -ItemType Directory -Path $writfsLogDirectory -Force | Out-Null
+          if (-not $IsWindows) { throw 'This lane requires native Windows PowerShell.' }
+          $writfsNode = (Get-Command node.exe -CommandType Application).Source
+          $writfsNodeVersion = & $writfsNode --version
+          if ($LASTEXITCODE -ne 0) { throw 'Native Windows Node could not start.' }
+          $writfsOS = Get-CimInstance Win32_OperatingSystem
+          @(
+            "Commit: $env:GITHUB_SHA"
+            "OS: $($writfsOS.Caption) $($writfsOS.Version) build $($writfsOS.BuildNumber)"
+            "Architecture: $($writfsOS.OSArchitecture)"
+            "Runner image: $env:ImageOS $env:ImageVersion"
+            "PowerShell: $($PSVersionTable.PSVersion)"
+            "Node executable: $writfsNode"
+            "Node version: $writfsNodeVersion"
+            'Execution: Bend-generated JavaScript under native Windows Node; no WSL.'
+            'Scope: policy/model execution; filesystem, machine-code, and host-enforcement qualification remain separate.'
+          ) | Tee-Object -FilePath (Join-Path $writfsLogDirectory 'environment.log')
+          "WRITFS_NODE=$writfsNode" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Download the exact generated artifact from the build job
+        id: generated
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.build.outputs.artifact-id }}
+          path: ${{ runner.temp }}/writfs-windows-generated/
+          merge-multiple: true
+          digest-mismatch: error
+
+      - name: Record generated artifact provenance
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $writfsGeneratedDirectory = Join-Path $env:RUNNER_TEMP 'writfs-windows-generated'
+          $writfsLogDirectory = Join-Path $env:RUNNER_TEMP 'writfs-windows-logs'
+          Get-Content (Join-Path $writfsGeneratedDirectory 'source.txt') |
+            Tee-Object -FilePath (Join-Path $writfsLogDirectory 'source.log')
+          Get-FileHash -Algorithm SHA256 -Path @(
+            (Join-Path $writfsGeneratedDirectory 'library-tests.js')
+            (Join-Path $writfsGeneratedDirectory 'writfs-model-tests.js')
+          ) | Format-List | Out-String |
+            Tee-Object -FilePath (Join-Path $writfsLogDirectory 'generated-hashes.log')
+
+      - name: Run the Bend library tests
+        id: library
+        if: ${{ !cancelled() && steps.generated.outcome == 'success' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $writfsLog = Join-Path $env:RUNNER_TEMP 'writfs-windows-logs/library-tests.log'
+          & $env:WRITFS_NODE (Join-Path $env:RUNNER_TEMP 'writfs-windows-generated/library-tests.js') 2>&1 |
+            Tee-Object -FilePath $writfsLog
+          $writfsExit = $LASTEXITCODE
+          "Node exit status: $writfsExit" | Tee-Object -FilePath $writfsLog -Append
+          exit $writfsExit
+
+      - name: Run the Bend WritFS model tests
+        id: model
+        if: ${{ !cancelled() && steps.generated.outcome == 'success' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $false
+          $writfsLog = Join-Path $env:RUNNER_TEMP 'writfs-windows-logs/writfs-model-tests.log'
+          & $env:WRITFS_NODE (Join-Path $env:RUNNER_TEMP 'writfs-windows-generated/writfs-model-tests.js') 2>&1 |
+            Tee-Object -FilePath $writfsLog
+          $writfsExit = $LASTEXITCODE
+          "Node exit status: $writfsExit" | Tee-Object -FilePath $writfsLog -Append
+          exit $writfsExit
+
+      - name: Summarize execution scope and results
+        if: always()
+        env:
+          WRITFS_LIBRARY_RESULT: ${{ steps.library.outcome }}
+          WRITFS_MODEL_RESULT: ${{ steps.model.outcome }}
+        run: |
+          @(
+            '## Bend policy execution on Windows'
+            ''
+            'These are Bend-generated JavaScript tests executed by native Windows Node.'
+            'Windows filesystem, native machine-code, and host-enforcement qualification remain separate.'
+            ''
+            '| Bend entry | Result |'
+            '| --- | --- |'
+            "| Tests.bend | $env:WRITFS_LIBRARY_RESULT |"
+            "| writfs/Tests.bend | $env:WRITFS_MODEL_RESULT |"
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8 -Append
+
+      - name: Retain Windows execution logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writfs-windows-policy-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writfs-windows-logs/
+          if-no-files-found: error
+          retention-days: 14

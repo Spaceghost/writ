@@ -1,0 +1,25 @@
+WritFS native Btrfs verification
+
+Commit: ede07df5ccaa08b4695788770d16b7eeb269d3c0
+Tree: b8d49cb202d0935639d8e16769e222495baee927
+Workflow: https://github.com/Spaceghost/writ/actions/runs/41748733557
+Job: https://github.com/Spaceghost/writ/actions/runs/41748733557/job/126308199045
+Result: success; 11 passing checks; cleanup exit status 0.
+
+The following native assertion and cleanup lines are extracted verbatim from the
+GitHub job log. Setup and compiler versions are in native-environment.txt.
+The public fixture used a new 1 GiB regular-file image and one new loop device.
+
+2026-11-04T00:42:53.8095148Z PASS: writable Btrfs subvolume is not an admitted immutable source
+2026-11-04T00:42:53.8184599Z PASS: ordinary directory cannot stand in for its containing subvolume
+2026-11-04T00:42:53.8323415Z PASS: public destination fails the complete Writ gate before native execution
+2026-11-04T00:42:53.8324247Z PASS: revoked capability fails before native execution
+2026-11-04T00:42:53.8796424Z PASS: actual native stage retains complete source origin and restrictions
+2026-11-04T00:42:53.8984353Z PASS: a repeated creation cannot overwrite or adopt the existing target
+2026-11-04T00:42:53.9248180Z PASS: exact recorded native identity reconciles without creating another object
+2026-11-04T00:42:53.9248996Z PASS: Btrfs native snapshot contains the public fixture bytes
+2026-11-04T00:42:53.9249677Z PASS: Btrfs kernel rejects writes to the created read-only snapshot
+2026-11-04T00:42:53.9251047Z PASS: later live-source edits do not change the native snapshot
+2026-11-04T00:42:53.9416319Z PASS: nested Btrfs subvolumes are rejected instead of silently omitted
+2026-11-04T00:42:53.9416773Z ALL NATIVE BTRFS CHECKS PASSED
+2026-11-04T00:42:53.9628603Z Native fixture cleanup finished; exit status: 0

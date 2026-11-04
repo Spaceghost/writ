@@ -1,0 +1,43 @@
+WritFS native CI environment and verification status
+
+Recorded from both actual GitHub Actions job logs on 2026-11-04 UTC.
+This is administrative native staging evidence, not worker confinement or
+durable logical publication qualification.
+
+Commit: ede07df5ccaa08b4695788770d16b7eeb269d3c0
+Tree: b8d49cb202d0935639d8e16769e222495baee927
+Workflow: https://github.com/Spaceghost/writ/actions/runs/41748733557
+Btrfs job: https://github.com/Spaceghost/writ/actions/runs/41748733557/job/126308199045
+ZFS job: https://github.com/Spaceghost/writ/actions/runs/41748733557/job/126308199296
+Workflow conclusion: success
+Native execution: 2026-11-04 00:42:53 UTC
+
+Runner label: ubuntu-24.04 (fresh GitHub-hosted x86_64 VM per matrix job)
+Runner image in both jobs: ubuntu24 20261026.354.1
+Actions runner: 2.338.2
+Operating system: Ubuntu 24.04.5 LTS
+Kernel: 7.0.0-1017-azure, #17~24.04.1-Ubuntu SMP PREEMPT
+Bend: 2.0.39
+Bend archive SHA-256: 6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab
+Clang: Ubuntu clang 19.1.1 (1ubuntu1~24.04.2)
+Btrfs userspace: btrfs-progs v6.6.3
+ZFS userspace: zfs-2.2.2-0ubuntu9.5
+ZFS kernel module: zfs-kmod-2.4.1-1ubuntu5.1
+udev: 255.4-1ubuntu8.18
+Native runtime: +RTS --threads 4 --gpu off
+
+Btrfs result: SUCCESS, 11 passing checks, ALL NATIVE BTRFS CHECKS PASSED,
+cleanup exit status 0. Actual snapshot bytes, read-only kernel enforcement,
+source edits, exact receipt reconciliation and nested-subvolume rejection
+were exercised. See native-btrfs.txt.
+
+ZFS result: SUCCESS, 18 passing checks, ALL NATIVE ZFS CHECKS PASSED,
+cleanup exit status 0. Both filesystem cloning and actual zvol block payloads
+were exercised, including private-stage controls and exposure invalidation.
+See native-zfs.txt.
+
+Fixtures: new 1 GiB regular files beneath RUNNER_TEMP; Btrfs used one newly
+allocated loop device, and ZFS used a unique pool with cachefile=none.
+Only resources successfully created by each job were eligible for cleanup.
+Native modules, fixture creation, compiler, and archive verification succeeded
+in both jobs. Missing support or failed assertions were not converted to skips.

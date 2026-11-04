@@ -9,9 +9,14 @@ provides a bounded memory-only client integration exercise. Its
 [evidence](../contrib/rclone/VERIFICATION.md) leave all production host,
 authenticated issuer, confinement, and durable-publication work below pending.
 
-**Genode is the reference native capability platform.** The shared Bend policy
-core will also support direct Linux, native Windows, and a later kernel using
-Drift. Host qualification and file-style API compatibility are separate work.
+[WritFS native staging](../writfs/README.md) adds a separate native storage
+primitive: private read-only Btrfs snapshots and ZFS filesystem/zvol clones.
+Its bounded native adapter does not complete the broader Linux host, POSIX
+presentation, authenticated issuer, or durable-publication requirements below.
+
+**Windows is the first product target; Genode is the reference native capability
+platform.** The shared Bend policy core also targets native Linux and a later
+kernel using Drift. Host qualification and file-style API compatibility are separate work.
 See the [platform architecture](../docs/PLATFORMS.md).
 
 ## Native host foundation
@@ -24,9 +29,11 @@ See the [platform architecture](../docs/PLATFORMS.md).
 | Windows | [Native Windows host](changes/add-windows-host/proposal.md) | Validated runtime/ABI, LPAC/AppContainer profile, authenticated IPC, restricted handles/process tree, and native probes |
 | Later kernel | [Drift-backed kernel host](changes/add-drift-kernel-host/proposal.md) | Kernel authority/isolation plus scoped driver resources; reuse Genode over a new base where feasible |
 
-Genode-on-Linux is the first runtime/session bring-up lane. Its restricted
-components and unrestricted host bridges must be inventoried; it is not equivalent
-to native Genode qualification. The first native reference is pinned Genode 26.08
+The Windows filesystem/broker and confined-reader slice is the first product
+lane; see the [product plan](../docs/WRITFS-PRODUCT.md). Genode-on-Linux remains a
+runtime/session bring-up lane. Its restricted components and unrestricted host
+bridges must be inventoried; it is not equivalent to native Genode qualification.
+The first native reference is pinned Genode 26.08
 x86_64/base-hw under QEMU; hardware deployment needs its own evidence. Direct
 Linux and Windows can develop against the common contract
 without depending on a Genode binary installation.
@@ -127,10 +134,11 @@ capability-bound logical namespace. The transport and host isolation mechanism
 are explicit dependencies. The published baseline does not contain a kernel
 driver, filesystem mount, or foreign-language runtime.
 
-POSIX remains the first file-style interface, followed by S3. A Linux character
-device is one host adapter, not a required substrate for the Genode or Windows
-targets. Host ports must preserve the common subject, delegation, exact-plan,
-and publication semantics before exposing compatibility interfaces.
+In the POSIX/S3 compatibility lane, S3 follows the POSIX adapter. The filesystem
+product targets Windows first. A Linux character device is one host adapter,
+not a required substrate for the Genode or Windows targets. Host ports must
+preserve the common subject, delegation, exact-plan, and publication semantics
+before exposing compatibility interfaces.
 
 Each change records migration and rollback behavior. Rollback never restores
 consumed receipts or authority epochs, and never falls back to an unchecked

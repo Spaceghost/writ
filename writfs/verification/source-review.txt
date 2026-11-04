@@ -1,0 +1,18 @@
+Shared SHA-256 implementation is byte-identical after removing import lines.
+Original core/example Bend sources byte-identical to rclone base: 34 files.
+
+Native CI source comparison: exact indexed tree 01c7cde493297e918a517f6b041c6f7d9c85ae5d
+matches Windows policy run 41750878613; native backend code also matches
+successful filesystem run 41748733557. Later changes add docs and evidence only.
+
+85414eb671c9d2c5d63ea87f3e7f80082d983c645cfc90f85d208a74977d4f5c  .github/workflows/writfs-native.yml
+587f759e9399819a9de31b5bd0b97211744d46b07d2b87694156bebbba57a596  .github/workflows/writfs-windows-policy.yml
+fa454d44f9df72ba0357765526acdd03e43f8782d524ff7232ae00df31b7b582  contrib/rclone/bend/Digest.bend
+1909812ff8351bddc207965ced7e8fcb0c150d5bf4276641ffb28fb9225b3b3a  lib/Sha256.bend
+8abc7b3e4dad1e58095ee6a016f7c3739575c6fb9ddd03db92e3a9ce2bcf22db  writfs/Host.bend
+2979ffe79dd5b8c39a24c44cfc8c56bc250ed6213dfa873d933ff6d6addb4c33  writfs/HostTests.bend
+2d126230fe3a09226c155de5d5d04e29707c5ca51bc9f4168c3dfdae5c756748  writfs/Main.bend
+db9545ef2df3cad448165ca9741aa6fe0e653fcc8e3a2fb154e14bc65894f84d  writfs/Native.bend
+a9369dfb9940282716d7c8719b8e8c0895fd3a863e2c0405af8ed10188ebedf8  writfs/NativeIntegration.bend
+9e5ee4253a2d4400da2d68f856f9b3eb75a13ce55639bfe717cc9b33de317b0f  writfs/Tests.bend
+0cd444402b11362a5fddc15c8d99c444888c931f26e9e26e9f3f57a568713020  writfs/examples/Authority.bend

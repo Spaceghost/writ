@@ -1,0 +1,42 @@
+Native verification fixes and their evidence
+
+The completed native run is:
+https://github.com/Spaceghost/writ/actions/runs/41748733557
+Commit: ede07df5ccaa08b4695788770d16b7eeb269d3c0
+
+Btrfs snapshot transaction
+-------------------------
+The diagnostic run at
+https://github.com/Spaceghost/writ/actions/runs/41748237302
+showed a read-only source's generation advancing from 7 to 8 when the
+authorized snapshot was created. Its filesystem UUID, subvolume UUID,
+root ID, creation generation, origin, and all controls remained unchanged.
+The created snapshot had generation 8, creation generation 8, a distinct
+identity, and the expected source UUID as its origin.
+
+Preflight still requires exact source equality. The post-effect rule now
+admits only a Btrfs generation increase tied to both generation fields of
+that exact newly created snapshot, with every other source fact unchanged.
+The original source seal and authorization are retained. Reconciliation
+still requires the exact previously recorded created-object observation.
+This models the observed filesystem transaction; it does not allow arbitrary
+source drift, pathname adoption, or automatic retries after an unknown effect.
+
+ZFS device readiness
+--------------------
+The first run's ZFS filesystem checks passed, but the zvol test checked its
+device symlink before asynchronous creation completed. Draining the current
+udev queue with settle did not wait for that future event. The fixture now
+uses udevadm wait --timeout=15 on the exact newly owned device path, followed
+by an explicit block-device check. There is no skip on timeout.
+Reference: https://www.freedesktop.org/software/systemd/man/255/udevadm.html
+Both actual zvol payload and read-only checks passed after this change.
+
+Bend test driver
+----------------
+The native compiler's arity limit of 247 was resolved by splitting
+stage/retry/reconciliation checks into small helpers, avoiding simultaneous
+retention of wide authorization and receipt records. Writable and nested
+Btrfs observations are checked for rejection by Native.seal, where admission
+belongs; observing their metadata alone is not an authorization operation.
+No policy check was removed to make the driver compile or pass.

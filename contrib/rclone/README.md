@@ -14,7 +14,7 @@ example, not durable backup storage or a production issuer.
 | Location | Responsibility |
 | --- | --- |
 | `bend/Authority.bend`, `bend/Model.bend` | Fixed service-owned authority, immutable versions, exact replay, Writ commit path |
-| `bend/Digest.bend` | SHA-256 over the actual payload, entirely in Bend |
+| `bend/Digest.bend`, `../../lib/Sha256.bend` | Stable adapter entry points to shared pure Bend SHA-256 over the actual payload |
 | `bend/Wire.bend`, `bend/Transport.bend` | Bounded canonical protocol and native loopback TCP |
 | `bend/Application.bend`, `bend/Presenter.bend`, `bend/Server.bend` | Authentication, metadata views, and serialized service loop |
 | `go/` | Independent Go module: rclone interfaces, bounded transport, and a small CLI entry point |
