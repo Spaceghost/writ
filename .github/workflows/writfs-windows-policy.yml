@@ -22,7 +22,7 @@ permissions:
 jobs:
   build:
     name: Compile Bend policy tests to JavaScript
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, linux, x64, bak]
     timeout-minutes: 20
     outputs:
       artifact-id: ${{ steps.generated.outputs.artifact-id }}
