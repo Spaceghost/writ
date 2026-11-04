@@ -1,0 +1,11 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-11-03-nix-flake.md
+Branch: lane/nix-flake
+Base: 3f6bf86
+Preflight: lanes share no files; Hello.bend owned by runtime-profile (others create own fallback); profile uses scripts/ not tools/ (gitignored). Ruling: Nix and board lanes are tooling under the contrib/rclone precedent — flagged for Spaceghost; costs a revert if he objects.
+Task 1: implementer DONE_WITH_CONCERNS (commits 0e4e635, 9a21376). Ruling: newest clang (23.1.3) in pinned nixpkgs stands per the plan; Task 2 records its own clang and the verification record is updated at integration, not pinned back to 19 — costs a doc update if Spaceghost wants parity with the recorded clang 19 run. Ruling: OPENSPEC_TELEMETRY=0 and CC in the shell accepted.
+Task 1: complete (commits 3f6bf86..9a21376, review clean). Minor (deferred, carried into Task 2): the Bend wrapper has not been shown to load bend2/ (only `bend version` ran) — Task 2 checks compile and run through the store bend and so covers it; llvmPackages_latest floats on lock update, INSTALL names 23.1.3; INSTALL autoPatchelf wording.
+Task 2: implementer DONE (commits 4a1b43b, 95adf01); determinism hashes matched; review dispatched.
+Task 2: complete (commits 9a21376..95adf01, review clean). Minor (deferred): GPU example build comment as CPU fallback; optional examples-native check; evidence taken on a dirty tree (disclosed). All plan tasks complete; final whole-branch review dispatched.
+Final review: ready as-is; 8 minors. Ruling: one fix wave for minors 1 (INSTALL reproduce wording), 2 (determinism store-path wording), 3 (gpu-example CPU comment), 5 (OpenSpec wrapper OPENSPEC_TELEMETRY=0), 7 (exact bend version check), plus one evidence header line binding checks to HEAD drv paths; skip 4 (examples check, optional), 6 (OpenSpec hash provenance comment — included as a comment only if the registry integrity is at hand), 8 (unused cc.lib). Triage: wrapper argv0 moot; llvm latest leave; INSTALL patchelf wording accurate; manifest regeneration at integration.
+Final fix wave: commit 61c05e0, flake check passed; scoped re-review dispatched.
+Final fix wave re-review: all addressed. Finishing: merging lane/nix-flake into unikernel-runtime-proposals (the agreed integration branch; master untouched).

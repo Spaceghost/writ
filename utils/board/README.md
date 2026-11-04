@@ -49,6 +49,10 @@ bun utils/board/smoke.ts
 
 - `openspec/specs/*/spec.md`: baseline capabilities (first heading, count of
   `### Requirement:` headings) and `openspec/traceability/<name>.md` if present.
+- `openspec/changes/archive/*/`: archived changes, listed on the index apart
+  from the pending ones with their archive date and the baseline capability
+  their spec delta was folded into; their pages and explainers are served from
+  the archive directory.
 - `openspec/changes/*/` except `archive/`: `.openspec.yaml` (`x-status`,
   `x-depends-on` only), `proposal.md` (first heading is the title), `design.md`,
   `tasks.md` (counts `- [ ]` and `- [x]`), `specs/*/spec.md`, and `*.html`.
@@ -63,10 +67,16 @@ bun utils/board/smoke.ts
     program through the board: signature verification (`log.showSignature`,
     `gpg.program`) is off in the argv, the pager is `cat`, and neither command
     runs hooks, diff drivers, textconv filters, or credential helpers;
-  - for each `<dir>/.superpowers/sdd/<plan>/`, the last ten lines of
-    `progress.md` and every `task-<n>-report.md` (in task order, each in a
-    collapsible section, its `Status:` line in the summary). This workspace is
-    git-ignored, so it is read from the filesystem, never from git. From the
+  - the committed execution records `<dir>/docs/superpowers/records/<plan>/`
+    whose ledger's `Branch:` line names the lane's branch (or, without that
+    line, whose name ends with the worktree's name): the last ten lines of
+    `progress.md` (the ledger), every `task-<n>-report.md` (in task order,
+    each in a collapsible section, its `Status:` line in the summary), every
+    `task-<n>-review.md` and `final-review.md` (reviewer reports), and
+    `activity.log` (below). Records are per plan, and a plan targets one
+    proposal; they are committed with the lane's work, so they land on master
+    at merge. A lane with no record falls back to the git-ignored
+    `.superpowers/sdd/<plan>/` workspaces, read from the filesystem. From the
     ledger the board also reads the plan's **phase** (the last line naming a
     task, a final review, or a merge, classified by its wording: dispatched,
     implemented, in review, fix round, complete, landed) and the plan file the
@@ -74,7 +84,7 @@ bun utils/board/smoke.ts
     only that directory, no traversal), whose first `openspec/changes/<name>`
     reference is the change the lane works on (task-box drift is listed
     separately and does not make a lane "on" a change);
-  - for each plan, the last twelve lines of `activity.log` (see below);
+  - the last twelve lines of the records' `activity.log` (see below);
   - every change under `<dir>/openspec/changes/` whose checkbox counts differ
     from the root's, or that the root does not have;
   - files under `<dir>/verification/` that the root lacks, or that are newer
@@ -106,8 +116,9 @@ board.
 
 ### Activity log
 
-Agents working in a lane append one line per step to
-`<lane>/.superpowers/sdd/<plan>/activity.log`, tab-separated:
+Agents working on a plan append one line per step to
+`docs/superpowers/records/<plan>/activity.log` in the worktree (the plan's
+record directory, created by the controller with the ledger), tab-separated:
 
 ```
 <UTC time, RFC 3339>	<who>	<what happened>
@@ -116,11 +127,22 @@ Agents working in a lane append one line per step to
 for example:
 
 ```sh
-printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" implementer "Task 3: liveness run passed, writing the evidence" >> .superpowers/sdd/<plan>/activity.log
+printf '%s\t%s\t%s\n' "$(date -u +%FT%TZ)" implementer "Task 3: liveness run passed, writing the evidence" >> docs/superpowers/records/2026-11-04-genode-channel/activity.log
 ```
 
-`who` is the role (`implementer`, `reviewer`, `controller`). A line without
-tabs is shown as text alone. The board shows the last twelve lines per plan,
+`who` is the role (`implementer`, `reviewer`, `controller`). While a build or
+run takes more than a few minutes, the agent appends a heartbeat line at the
+start of each wait iteration (every 10 minutes at most), so a lane that is
+building does not fall under the 30-minute idle rule below. A line without
+tabs is shown as text alone. The whole record directory is committed with the
+plan's work (`git add docs/superpowers/records/<plan>` at each acceptance
+commit), so after a merge the ledger, briefs, reports, reviews and log sit on
+master beside the plan as the record of how it went; a worktree therefore
+holds the records of landed plans too, and the board shows those whose
+`Branch:` line is the worktree's branch. A record is tens of kilobytes. The
+board shows the last twelve lines per lane, laid out oldest to newest with the box
+scrolled to the newest line (the items are newest-first in a column-reverse
+flex list, so an appended line keeps the view at the end),
 oldest first, newest emphasised, and the newest line is the tooltip on the
 lane's chip in the change table. The file is the main "being worked on"
 signal: a lane is **active** when its newest signal (last commit time,
@@ -132,9 +154,24 @@ otherwise. None of this is verification: it is what the lane wrote.
 The index leads with three tiles (changes being worked on, tasks done across
 every `tasks.md`, lanes live and landed), then the changes table. A change with
 a task done or a lane on it is listed; the rest collapse under one line. Each
-listed change shows a progress bar, the task ids done and open, and a chip per
+listed change shows a progress bar and a chip per
 live or idle lane on it (dot, name, phase, age); landed lanes are a muted list.
-Lane cards show the status line (dot, phase, age, changes), the activity feed,
+Under each listed change a one-line ticker shows its newest activity line
+(time, lane, text); the element's id carries a hash of the line, so a pushed
+new line is a new element to the morph and slides in (no animation under
+`prefers-reduced-motion`). A small activity icon before the lane chips shows the last three activity
+lines across the lanes on the change as a tooltip on hover and, on click,
+opens a full-width row beneath the change with the last ten lines (newest in
+view, as in the lane feeds). A chevron at the start of each change row opens a full-width row beneath it
+with the change's `tasks.md`: open boxes first as cards grouped by section,
+done ones behind a nested "N done" toggle. The row is shown by a Datastar
+signal per change (`data-signals__ifmissing` on the tables section), so a
+push never closes what the reader opened and opening never resizes the
+columns. Each lane chip stays on one line (the phase shortens with an
+ellipsis first), landed lanes are one muted line, and the ticker is one line.
+Below 1100px the Explainers column is hidden and each change becomes two lines
+(chevron, name, status, bar; then the lanes under the name) with no column
+header; below 760px the Status pill is hidden too (both are on the change page). Lane cards show the status line (dot, phase, age, changes), the activity feed,
 then the ledger tail and reports; live lanes sort first.
 
 ## Requests
@@ -181,6 +218,10 @@ The explainer route itself also sends
 standalone" view gets the same opaque-origin isolation as the iframe. An
 explainer that needed same-origin access would not get it by either route;
 that would be a deliberate change to both the iframe attribute and this header.
+
+Any page route also accepts `?embed=1`, which renders the page without the
+header and nav (the body carries class `embed`) for the index's quick-view
+panel; it opens its own `/events` stream, so it stays live.
 
 ## Frontend pins
 
@@ -237,7 +278,7 @@ Watched, ignoring `node_modules`, `.git`, and build directories (`build`,
 
 - `<root>/openspec`, `<root>/verification`, `<root>/docs`;
 - the `--lanes` directory itself (new or removed worktrees);
-- in each lane, `openspec`, `verification`, `docs`, and `.superpowers/sdd`;
+- in each lane, `openspec`, `verification`, `docs` (which holds the records), and `.superpowers/sdd`;
 - each lane's git metadata `logs/` directory, filtered to the `HEAD` reflog,
   so a commit refreshes the branch and last-commit line. **This is the one path
   the board watches outside `--root` and `--lanes`.** The path comes from the
@@ -263,6 +304,14 @@ Known gap: a file change between a connection's initial render and its
 registration for pushes is not sent until the next change.
 
 ## Layout
+
+The index is where the reader stays. A click on any same-origin page link on it
+(change names, explainers, baselines, traceability, the nav, links inside lane
+cards) opens that page in a right-hand quick-view panel (an iframe of the page
+with `?embed=1`) instead of leaving the index; the panel bar shows the path,
+an "open in full" link to the normal page, and a close button; Escape, the
+close button, or a click on the dimmed backdrop over the index closes it. Links with a hash (lane anchors) keep their default. Below 760px the panel
+fills the screen.
 
 Light and dark follow `prefers-color-scheme`, with the same palette and type as
 the explainer pages. Below 760px the change list moves under the content and

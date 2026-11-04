@@ -1,0 +1,10 @@
+### Task 1: A lazily populated reservation with a real guard, as a C probe
+
+Design and prove the mechanism on a plain-C Genode component before touching the Bend build.
+
+1. Implement, in C++ under `hosts/genode/shim/` (one translation unit, `extern "C"` entry points), replacements for `mmap`, `munmap`, and `mprotect` that apply only to anonymous `MAP_PRIVATE|MAP_ANON` requests of at least 1 GiB (the runtime's heap and stack reservations); everything else forwards to Genode's libc. For a qualifying `mmap`: create a managed dataspace via `Rm_connection` / `Region_map` of the requested size, attach it into the component's address space, and install a fault handler that, on first touch of a page range, allocates a RAM dataspace chunk (for example 2 MiB) from the component's own PD and attaches it at the faulting offset. This gives `MAP_NORESERVE` semantics: RAM is charged only when touched. For `mprotect(addr, len, PROT_NONE)` inside a managed region: detach any populated chunk overlapping the range and mark the range as a guard so the fault handler refuses to populate it; a touch there is an unresolvable fault and the component dies (the fault substitute GB-003 accepts). For `munmap`: detach and free.
+2. Cite the Genode 26.08 headers you rely on (`region_map/client.h`, `rm_session/connection.h`, `base/attached_ram_dataspace.h`, the fault-handler signal API) with file paths in the evidence.
+3. Probe: `hosts/genode/probes/reservation/` with a C `main` that mmaps 8 GiB anonymous, touches one page at the start and one near the end, calls `mprotect` on a 16 KiB window to PROT_NONE, touches inside it (expect death), and, in a second run without the guard touch, exits 0. Run both under init on base-linux with a 256M quota and record the logs, the RAM quota actually consumed (from init's reporting or `Pd_session::used_ram`), and the component death on the guard touch.
+
+Acceptance: an 8 GiB anonymous reservation succeeds under a 256M quota, touched pages are charged lazily, and a guard-page touch kills the component with the parent logging the fault. Evidence: `verification/genode-reservation-probe-base-linux.txt`.
+

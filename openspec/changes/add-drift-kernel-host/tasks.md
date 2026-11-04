@@ -7,7 +7,7 @@ in docs/DRIFT.md does not complete a runtime or kernel task.
 
 - [ ] 1.1 Pin the kernel, Drift, Bend, bridge, and selected Genode base; record the preferred Genode reuse route or justify and qualify a direct portable-host adapter.
 - [ ] 1.2 Implement protected memory, authenticated IPC, native object generations and delegation; verify forged references, stale slots, and worker access to monitor pages fail on the booted kernel.
-- [ ] 1.3 Port the actual Bend runtime and bounded native bridge; execute the unchanged authority path and reject caller-supplied replacements for monitor records.
+- [ ] 1.3 Port the actual Bend runtime and bounded native bridge; execute the unchanged authority path and reject caller-supplied replacements for monitor records. (cite `scripts/runtime-profile/` and record the run in `verification/runtime-profile-hosts.md`)
 - [ ] 1.4 Enforce monotonic deadline handling and memory, capability, execution, and event quotas; test exhaustion and invalid-clock handling without public output.
 
 ## 2. Devices and publication

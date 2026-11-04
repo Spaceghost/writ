@@ -1,0 +1,21 @@
+# Plan: Runtime host profile, the per-host evidence record
+
+Spec: `openspec/changes/add-bend-runtime-host-profile/` (tasks 3.1, 3.2). The profile (`scripts/runtime-profile/`, `docs/BEND-RUNTIME.md`, `verification/runtime-profile-*.txt`, `verification/runtime-profile-binary-check.txt`) now has executed corpus evidence on three hosts: Linux single-lane and four-lane (`verification/runtime-profile-parity-*.txt`, `tests-native.txt`), Genode base-linux (`verification/genode-corpus-base-linux.txt`, `genode-corpus-linux-reference.txt`, `genode-runtime-rows-base-linux.md`), and Unikraft under QEMU TCG (`verification/unikernel-corpus-qemu.txt`, `unikernel-binary-check.txt`). Task 3.1 asks for one record that stores, per host, the corpus output reference, lane count, GPU mode, compiler, and binary hash, linked from the traceability table, with review-only and executed evidence kept apart.
+
+## Global Constraints
+
+- Records lane. Touch only a new `verification/runtime-profile-hosts.md`, `openspec/traceability/bend-runtime-host-profile.md` (create it in the shape of `openspec/traceability/genode-bend-component.md` if it does not exist; otherwise add the rows), and `openspec/changes/add-bend-runtime-host-profile/tasks.md` (boxes 3.1 and 3.2 with evidence). Do not touch any other change's files, `hosts/`, `scripts/`, or existing evidence files; the Genode base-hw and Unikraft lanes are editing those now. Every value in the record is copied from an existing evidence file with the file and section cited; nothing is rerun or measured anew except the Linux checks in Task 2. Review-only facts (read from source, not executed) are marked as such.
+- Validate with `~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive` from the worktree root and record the count. No manifest, no push, one commit per task.
+- Append one line per step to `docs/superpowers/records/2026-11-04-host-profile-evidence/activity.log` (tab-separated time, role, text); report at `docs/superpowers/records/2026-11-04-host-profile-evidence/task-1-report.md`; `git add -A docs/superpowers/records/2026-11-04-host-profile-evidence` with each commit.
+
+### Task 1: The per-host record
+
+Write `verification/runtime-profile-hosts.md`: a table with one row per executed host configuration (Linux native single-lane, Linux native four-lane, Linux JavaScript backend, Genode base-linux single-lane, Unikraft QEMU TCG single-lane; add the Genode base-hw and the Unikraft channel rows only as "pending: lane in flight" placeholders with no numbers) and columns: corpus output file, PASS count and final line, lane count, GPU mode (every row is CPU; say "GPU off, CPU fallback" where the record says so), compiler and version (clang-23 for the Genode generated C, gcc for Unikraft, Bend's own native pipeline for Linux; cite where each is recorded), binary or image hash with the note that Unikraft clean builds embed the build time, the exact harness line (QEMU machine, `-m`, `-no-reboot`, or the Genode run script and quota), and the evidence section it comes from. Below the table: a "Review-only" list for rows read from source rather than executed (for example the Genode base-linux `munmap` row credited to the C probe, OSv entries), each with its citation. State the 638 → 764 → 782 corpus history once and which rows ran at which count.
+
+Acceptance: every cell cites a file that contains that value; executed and review-only rows are separated; box 3.1 checked with the file named.
+
+### Task 2: Traceability and the checks
+
+Link the record from the traceability table (`openspec/traceability/bend-runtime-host-profile.md`, create if absent with one row per RP requirement of the change mapped to evidence or a quoted gap). Run `bend Tests.bend` and `bend PROOF.bend` on Linux (`export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1`) and OpenSpec strict; record the three results in the report; check box 3.2 citing them. Leave box 2.3 unchecked and say in the report that it waits for the host lanes to land because it edits their tasks files.
+
+Acceptance: the traceability file links the record; the suite (782), proofs, and OpenSpec results are in the report; box 3.2 checked; 2.3 left with the reason.

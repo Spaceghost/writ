@@ -84,6 +84,14 @@ process, audio, or window effect is linked, and `getenv("BENDRTS")` returns a
 build-time string. The self-pipe and `select` become a direct in-memory
 completion queue because every effect completes inline in the single-lane port.
 
+The monitor profile's allow lists in `scripts/runtime-profile/` are the contract
+for what the freestanding image may link and call, and the host layer, whether
+nelibc or hand-written, supplies no symbol or effect row outside them (no host
+libc is present to supply others).
+`scripts/runtime-profile/check-binary.sh` is the check, and the image's corpus
+run belongs in `verification/runtime-profile-hosts.md`. See
+[docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md).
+
 ### GPU dispatch is CPU
 
 `!` calls run on the single lane. The port records this as CPU execution and

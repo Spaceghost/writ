@@ -1,0 +1,5 @@
+2026-11-04T14:30:44Z	controller	lane merged to master and pushed; activity log convention starts here
+2026-11-04T14:30:44Z	controller	board-activity landed on master as d1ccdb2; live board restarted
+2026-11-04T16:13:24Z	controller	activity log moved to .lane/genode-channel.log (committed per lane from now on)
+2026-11-04T16:29:37Z	controller	record moved to .lane/genode-channel/ (ledger, briefs, reports, log; committed per lane)
+2026-11-04T16:31:21Z	controller	record moved to docs/superpowers/records/2026-11-04-genode-channel/ (per plan, committed with the work)

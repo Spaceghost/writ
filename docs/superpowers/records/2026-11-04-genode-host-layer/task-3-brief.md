@@ -1,0 +1,5 @@
+### Task 3: Corpus and fault row through the Bend program
+
+Build `Tests.bend` and the four examples as components with the same configuration (quota as needed, recorded). Capture logs and compare line for line with the Linux single-lane records (`verification/runtime-profile-parity-1.txt`). Then run `scripts/runtime-profile/Overflow.bend` as a component and record what happens: the runtime's own fault message cannot appear on base-linux (the host handler pre-empts it per the rows file); record whether the component dies and whether the parent logs it; that is the GB-003 substitute. Update `verification/genode-runtime-rows-base-linux.md`: memory rows now `supplied (host layer)`, faults `substituted` or `missing` per observation, event loop `supplied`, with provenance "Bend program". Update the `docs/GENODE.md` section. Check `tasks.md` 1.1 (hello printed), 1.3 (only if the fault substitute was executed through the Bend program), 1.4 (only if parity matched). Write `hosts/genode/INVENTORY.md`.
+
+Acceptance: 764 PASS lines and the final line in the component log, or a recorded stopping point; rows updated with provenance; inventory written; boxes match evidence.

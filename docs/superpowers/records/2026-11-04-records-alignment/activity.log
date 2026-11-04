@@ -1,0 +1,10 @@
+2026-11-04T15:59:11Z	controller	lane created from master 09cd9bc; Task 1 brief written
+2026-11-04T16:00:38Z	controller	Task 1 implementer dispatched
+2026-11-04T16:00:52Z	implementer	task 1: renamed the single Genode.accept (explainer.html:144)
+2026-11-04T16:01:39Z	implementer	task 1 committed
+2026-11-04T16:01:57Z	implementer	task 2 committed; openspec 44 passed (1.11.0, 1.16.0 store path absent)
+2026-11-04T16:02:31Z	controller	implementer done; review dispatched
+2026-11-04T16:06:37Z	controller	merged to master and pushed
+2026-11-04T16:13:24Z	controller	activity log moved to .lane/records-alignment.log (committed per lane from now on)
+2026-11-04T16:29:37Z	controller	record moved to .lane/records-alignment/ (ledger, briefs, reports, log; committed per lane)
+2026-11-04T16:31:21Z	controller	record moved to docs/superpowers/records/2026-11-04-records-alignment/ (per plan, committed with the work)
