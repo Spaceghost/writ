@@ -9,9 +9,10 @@ import ./TransferTests.bend as TF
 import ./Test.bend as Test
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
-# Sections follow the change's tasks; this file holds `offers` (1.1). Every
-# denial check asserts the exact Error and that the returned state equals the
-# supplied one, field by field, through `denied`.
+# Sections follow the change's tasks; this file holds `offers` (1.1) and
+# `approvals` (1.2, first half). Every denial check asserts the exact Error
+# and that the returned state equals the supplied one, field by field,
+# through `denied`.
 #
 # Every fixture here is a SYNTHETIC AUTHORITY RECORD and SYNTHETIC MONITOR
 # STATE, not an authenticated issuer. Provider grants are built through
@@ -475,7 +476,295 @@ def offers() -> IO(Unit):
     offer_records()
     offer_denials()
 
+# --- Section 1.2 (first half): origin approvals (ER-006 records, ER-002 inputs)
+
+# Approval fixtures. Every field carries its own value: version 1, serial 12
+# (13, 14, 15 for later approvals), issuer 101 (object 10's read authority),
+# origin 10v4, provider A 201, profile 1, TF.plan(), valid while now < 130.
+# Ids are allocated by the transition (1, then 2).
+def approval_until() -> Nat:
+  130n
+
+def approval_with(serial: Nat, issuer: I.Principal, origin: T.ObjectVersion,
+    provider: I.Principal, profile: Nat, plan: T.Plan, until: Nat) -> R.OriginApproval:
+  R.OriginApproval{R.record_version(), serial, issuer, origin, provider, profile, plan, until}
+
+def approval_a() -> R.OriginApproval:
+  approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(),
+    TF.plan(), approval_until())
+
+# A second approval by the same authority: serial 13, provider B, profile 2.
+def approval_b2() -> R.OriginApproval:
+  approval_with(13n, IT.source_authority(), TF.source_object(), provider_b(), 2n,
+    TF.plan(), approval_until())
+
+def approve_change() -> R.Change:
+  R.submit_approval(opened(), 0n, IT.source_authority(), approval_a(), snapshot())
+
+def approved() -> R.State:
+  R.Change.state(approve_change())
+
+def approve_b2_change() -> R.Change:
+  R.submit_approval(approved(), 1n, IT.source_authority(), approval_b2(), snapshot())
+
+# Approval 2 (B at profile 2) at the head, approval 1 (A at profile 1) after.
+def approved_two() -> R.State:
+  R.Change.state(approve_b2_change())
+
+def withdraw_change() -> R.Change:
+  R.withdraw_approval(approved(), 1n, IT.source_authority(), 1n, snapshot())
+
+def withdrawn() -> R.State:
+  R.Change.state(withdraw_change())
+
+def withdrawn_one_of_two() -> R.State:
+  R.Change.state(R.withdraw_approval(approved_two(), 2n, IT.source_authority(), 1n, snapshot()))
+
+# After the withdrawal, a fresh approval for the same origin, provider and
+# profile under the new serial 15.
+def approval_a15() -> R.OriginApproval:
+  approval_with(15n, IT.source_authority(), TF.source_object(), provider_a(), profile(),
+    TF.plan(), approval_until())
+
+def reapprove_change() -> R.Change:
+  R.submit_approval(withdrawn(), 2n, IT.source_authority(), approval_a15(), snapshot())
+
+def stored(id: Nat, approval: R.OriginApproval, withdrawn: Bool) -> R.StoredApproval:
+  R.StoredApproval{id, approval, withdrawn}
+
+# SYNTHETIC MONITOR STATE: issuer variants the monitor might install.
+def with_directory(state: I.State, directory: I.Authorities) -> I.State:
+  match state:
+    case I.State{revision, next_id, live, _, placements, approvals, grants, seen}:
+      I.State{revision, next_id, live, directory, placements, approvals, grants, seen}
+
+def with_placements(state: I.State, placements: I.Placements) -> I.State:
+  match state:
+    case I.State{revision, next_id, live, directory, _, approvals, grants, seen}:
+      I.State{revision, next_id, live, directory, placements, approvals, grants, seen}
+
+# Object 10's read authority 101 removed from the directory (the former
+# authority); every other entry kept.
+def dropped_issuer() -> I.State:
+  with_directory(issuer(),
+    I.Authorities{I.WriteAuthority{IT.write_authority(), IT.write6()},
+    I.Authorities{I.ReadAuthority{IT.other_read_authority(), IT.read9()},
+    I.Authorities{I.ReadAuthority{IT.second_source_authority(), IT.read7()},
+    I.Authorities{I.WriteAuthority{IT.write5_authority(), IT.write5()},
+    I.NoAuthorities{}}}}})
+
+# Object 10 moved to read domain 9, whose authority is 103, not 101.
+def moved_issuer() -> I.State:
+  with_placements(issuer(),
+    I.Placements{I.SourceAt{TF.source_object(), IT.read9()},
+    I.Placements{I.SourceAt{IT.second_source(), IT.read7()},
+    I.Placements{I.DestinationAt{TF.destination_object(), IT.write6()},
+    I.NoPlacements{}}}})
+
+# Object 10 placed a second time, in read domain 9: ambiguous, so placed in
+# no domain.
+def ambiguous_issuer() -> I.State:
+  with_placements(issuer(), I.Placements{I.SourceAt{TF.source_object(), IT.read9()}, I.placements(issuer())})
+
+# SYNTHETIC MONITOR STATE: a third record under id 1 ahead of approvals 2
+# and 1, so id 1 is held twice with another id between them.
+def with_extra_approval(state: R.State, extra: R.StoredApproval) -> R.State:
+  match state:
+    case R.State{revision, next_id, request, constraint, offers, approvals, selection,
+        retired, evidence, dispatched, seen}:
+      R.State{revision, next_id, request, constraint, offers,
+        R.Approvals{extra, approvals}, selection, retired, evidence, dispatched, seen}
+
+def duplicate_ids() -> R.State:
+  with_extra_approval(approved_two(), stored(1n, approval_a15(), False{}))
+
+# SYNTHETIC MONITOR STATE: an offer serial 12 recorded for principal 101, in
+# the offer namespace only.
+def offer_serial_12() -> R.State:
+  with_seen(opened(), R.Serials{R.OfferSerial{IT.source_authority(), 12n}, R.NoSerials{}})
+
+# Transfer contexts (SYNTHETIC MONITOR STATE). The inherited origin 30v6 is
+# not placed anywhere in the issuer.
+def inherited_origin() -> T.ObjectVersion:
+  TF.second_object()
+
+def free_rule(origin: T.ObjectVersion) -> T.OriginRule:
+  T.OriginRule{origin, T.Bits64{1, 0}, T.Bits64{2, 0}, 7, TF.one_code(TF.code()), T.Free{}}
+
+# Source 10v4 derives from itself and from the inherited origin 30v6.
+def inherited_context() -> T.Context:
+  TF.with_origin(TF.context(), T.RCons{TF.origin(), T.RCons{free_rule(inherited_origin()), T.REnd{}}}, 7)
+
+# Sources 10v4 (read domain 5) and 11v4 (read domain 7), each its own origin,
+# for IT.plan_two().
+def two_context() -> T.Context:
+  TF.with_sources(TF.context(), T.SCons{TF.source(), T.SCons{T.SourcePolicy{IT.second_source(),
+    T.ReadDomain{7n}, 1, 2n, T.Bits64{1, 0}, T.Bits64{2, 0}, 7,
+    T.RCons{free_rule(IT.second_source()), T.REnd{}}}, T.SEnd{}}})
+
+def two_snapshot() -> R.Snapshot:
+  R.Snapshot{issuer(), two_context(), IT.now()}
+
+def approval_two(serial: Nat, issuer: I.Principal, origin: T.ObjectVersion) -> R.OriginApproval:
+  approval_with(serial, issuer, origin, provider_a(), profile(), IT.plan_two(), approval_until())
+
+# Object 10 approved for A over the two-source plan; then object 11 too
+# (object 11's authority 104, serial 12: the same number as 101's serial, in
+# the same namespace, but another issuer).
+def two_ten() -> R.State:
+  R.Change.state(R.submit_approval(opened_two(), 0n, IT.source_authority(),
+    approval_two(12n, IT.source_authority(), TF.source_object()), two_snapshot()))
+
+def two_eleven_change() -> R.Change:
+  R.submit_approval(two_ten(), 1n, IT.second_source_authority(),
+    approval_two(12n, IT.second_source_authority(), IT.second_source()), two_snapshot())
+
+def two_both() -> R.State:
+  R.Change.state(two_eleven_change())
+
+def lookup_is(lookup: T.OriginLookup, expected: T.Objects) -> Bool:
+  match lookup:
+    case T.Missing{}:
+      False{}
+    case T.Found{objects}:
+      T.Objects.equal(objects, expected)
+
+def a_approved(state: R.State, issuer: I.State, now: Nat) -> Bool:
+  R.origin_approved(R.approvals(state), TF.source_object(), provider_a(), profile(), TF.plan(),
+    issuer, now)
+
+def origins_for(state: R.State, +plan: T.Plan, context: T.Context) -> Bool:
+  R.origins_approved(T.required_origins(plan, context), R.approvals(state), provider_a(),
+    profile(), plan, issuer(), IT.now())
+
+# The accepting paths and the stored records.
+def approval_records() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(R.Change.accepted(approve_change()) && issued_is(R.Change.issued(approve_change()), 1n)
+      && Nat.is_eq(R.revision(approved()), 1n) && Nat.is_eq(R.next_id(approved()), 2n)
+      && approvals_equal(R.approvals(approved()), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}})
+      && serials_equal(R.seen(approved()), R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}})
+      && R.valid(approved()), "ER-006 object 10's read authority 101 approves provider A at profile 1 for TF.plan(): stored unwithdrawn under id 1 at revision 1, (101, serial 12) seen")
+    Test.check(R.Change.accepted(approve_b2_change()) && issued_is(R.Change.issued(approve_b2_change()), 2n)
+      && Nat.is_eq(R.revision(approved_two()), 2n) && Nat.is_eq(R.next_id(approved_two()), 3n)
+      && approvals_equal(R.approvals(approved_two()),
+        R.Approvals{stored(2n, approval_b2(), False{}), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}}})
+      && serials_equal(R.seen(approved_two()),
+        R.Serials{R.ApprovalSerial{IT.source_authority(), 13n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}})
+      && R.valid(approved_two()), "ER-006 101's second approval, serial 13 for provider B at profile 2, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)")
+    Test.check(R.Change.accepted(two_eleven_change()) && issued_is(R.Change.issued(two_eleven_change()), 2n)
+      && serials_equal(R.seen(two_both()),
+        R.Serials{R.ApprovalSerial{IT.second_source_authority(), 12n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}}), "ER-006 object 11's authority 104 may use serial 12 after 101 used it: replay is per issuer")
+    Test.check(R.Change.accepted(R.submit_approval(offer_serial_12(), 0n, IT.source_authority(), approval_a(), snapshot())), "ER-006 an offer serial 12 recorded for 101 does not replay 101's approval serial 12: separate namespaces")
+    Test.check(R.Change.accepted(R.submit_approval(opened(), 0n, IT.source_authority(),
+        approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), 101n), snapshot())), "ER-006 an approval valid until 101 is accepted at 100")
+    Test.check(R.Change.accepted(withdraw_change()) && issued_is(R.Change.issued(withdraw_change()), 1n)
+      && Nat.is_eq(R.revision(withdrawn()), 2n) && Nat.is_eq(R.next_id(withdrawn()), 2n)
+      && approvals_equal(R.approvals(withdrawn()), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}})
+      && serials_equal(R.seen(withdrawn()), R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}})
+      && R.valid(withdrawn()), "ER-006 101 withdraws approval 1: the record stays in place marked withdrawn, its serial stays seen, revision 2")
+    Test.check(approvals_equal(R.approvals(withdrawn_one_of_two()),
+        R.Approvals{stored(2n, approval_b2(), False{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}})
+      && approvals_equal(R.approvals(R.Change.state(R.withdraw_approval(withdrawn_one_of_two(), 3n, IT.source_authority(), 2n, snapshot()))),
+        R.Approvals{stored(2n, approval_b2(), True{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}}), "ER-006 withdrawing approval 1 leaves approval 2 unwithdrawn, and withdrawing 2 later keeps 1 withdrawn")
+    Test.check(R.Change.accepted(reapprove_change()) && issued_is(R.Change.issued(reapprove_change()), 2n)
+      && approvals_equal(R.approvals(R.Change.state(reapprove_change())),
+        R.Approvals{stored(2n, approval_a15(), False{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}})
+      && a_approved(R.Change.state(reapprove_change()), issuer(), IT.now()), "ER-006 after the withdrawal a new approval for object 10 and A under serial 15 is a new record, id 2, and approves A again")
+
+# Every submit_approval and withdraw_approval gate, each denial with its exact
+# reason and the supplied state returned unchanged.
+def approval_denials() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.write_authority(), approval_a(), snapshot()),
+        opened(), R.Unauthenticated{}), "ER-006 unauthenticated approver: from the write authority 102, an approval claiming object 10's authority 101 denied Unauthenticated")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.write_authority(),
+        approval_with(12n, IT.write_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), approval_until()), snapshot()),
+        opened(), R.NotAuthority{}), "ER-006 the write authority 102 approving object 10 under its own identity denied NotAuthority")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.other_read_authority(),
+        approval_with(12n, IT.other_read_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), approval_until()), snapshot()),
+        opened(), R.NotAuthority{}), "ER-006 read authority 103 for read domain 9, where object 10 is not placed, approving object 10 denied NotAuthority")
+    Test.check(lookup_is(T.required_origins(TF.plan(), inherited_context()),
+        T.OCons{TF.source_object(), T.OCons{inherited_origin(), T.OEnd{}}})
+      && denied(R.submit_approval(opened(), 0n, IT.source_authority(),
+        approval_with(12n, IT.source_authority(), inherited_origin(), provider_a(), profile(), TF.plan(), approval_until()),
+        R.Snapshot{issuer(), inherited_context(), IT.now()}),
+        opened(), R.WrongDomain{}), "ER-006 the inherited origin 30v6, listed by T.required_origins but placed nowhere in the issuer, denied WrongDomain")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(), approval_a(), snapshot_with(ambiguous_issuer(), IT.now())),
+        opened(), R.WrongDomain{}), "ER-006 object 10 placed twice in the issuer is in no domain: denied WrongDomain")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(),
+        approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), IT.plan_invocation(), approval_until()), snapshot()),
+        opened(), R.ScopeMismatch{}), "ER-006 an approval for a plan that differs from the request's in invocation (98, not 99) denied ScopeMismatch")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(),
+        approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), IT.now()), snapshot()),
+        opened(), R.Expired{}), "ER-006 an approval submitted at its own valid_until 100 denied Expired")
+    Test.check(denied(R.submit_approval(approved(), 1n, IT.source_authority(),
+        approval_with(12n, IT.source_authority(), TF.source_object(), provider_b(), 2n, TF.plan(), approval_until()), snapshot()),
+        approved(), R.Replay{}), "ER-006 101 reusing serial 12 for a different approval (provider B, profile 2) denied Replay")
+    Test.check(denied(R.submit_approval(approved_two(), 2n, IT.source_authority(), approval_a(), snapshot()),
+        approved_two(), R.Replay{}), "ER-006 101's serial 12, recorded behind its serial 13, denied Replay")
+    Test.check(denied(R.submit_approval(withdrawn(), 2n, IT.source_authority(), approval_a(), snapshot()),
+        withdrawn(), R.Replay{}), "ER-006 resubmitting withdrawn approval serial 12 denied Replay")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(),
+        R.OriginApproval{2n, 12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), approval_until()}, snapshot()),
+        opened(), R.UnknownVersion{})
+      && denied(R.submit_approval(opened(), 0n, IT.source_authority(),
+        R.OriginApproval{0n, 12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), approval_until()}, snapshot()),
+        opened(), R.UnknownVersion{}), "ER-006 approval record versions 2 and 0 denied UnknownVersion")
+    Test.check(denied(R.submit_approval(approved(), 0n, IT.source_authority(), approval_b2(), snapshot()),
+        approved(), R.StaleRevision{}), "ER-006 an approval validated at revision 0 against the state at revision 1 denied StaleRevision")
+    Test.check(denied(R.withdraw_approval(approved(), 1n, IT.other_read_authority(), 1n, snapshot()),
+        approved(), R.Unauthenticated{}), "ER-006 withdrawal of approval 1 by 103, not its issuer, denied Unauthenticated")
+    Test.check(denied(R.withdraw_approval(approved(), 1n, IT.source_authority(), 1n, snapshot_with(dropped_issuer(), IT.now())),
+        approved(), R.NotAuthority{}), "ER-006 withdrawal by 101 after the monitor removed it from the directory denied NotAuthority")
+    Test.check(denied(R.withdraw_approval(approved(), 1n, IT.source_authority(), 1n, snapshot_with(moved_issuer(), IT.now())),
+        approved(), R.NotAuthority{}), "ER-006 withdrawal by 101 after the monitor moved object 10 to read domain 9 denied NotAuthority")
+    Test.check(denied(R.withdraw_approval(approved(), 0n, IT.source_authority(), 1n, snapshot()),
+        approved(), R.StaleRevision{}), "ER-006 a withdrawal validated at revision 0 against the state at revision 1 denied StaleRevision")
+    Test.check(denied(R.withdraw_approval(approved(), 1n, IT.source_authority(), 5n, snapshot()),
+        approved(), R.MissingApproval{})
+      && Bool.not(R.valid(duplicate_ids()))
+      && denied(R.withdraw_approval(duplicate_ids(), 2n, IT.source_authority(), 1n, snapshot()),
+        duplicate_ids(), R.MissingApproval{}), "ER-006 withdrawal of an absent id 5, or of id 1 held by two records with id 2 between them (synthetic, not valid), denied MissingApproval")
+    Test.check(Bool.not(R.approval_issued_by(None{}, IT.source_authority()))
+      && Bool.not(R.approval_still_authority(None{}, issuer(), IT.source_authority()))
+      && Bool.not(R.not_yet_withdrawn(None{})), "ER-006 withdrawal helpers behind the MissingApproval gate: a missing approval has no issuer, no authority and no unwithdrawn flag")
+    Test.check(denied(R.withdraw_approval(withdrawn(), 2n, IT.source_authority(), 1n, snapshot()),
+        withdrawn(), R.Revoked{}), "ER-006 a second withdrawal of approval 1 denied Revoked: withdrawal is single use")
+
+# origin_approved and origins_approved.
+def approval_predicates() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(a_approved(approved(), issuer(), IT.now()) && a_approved(approved(), issuer(), 129n)
+      && a_approved(approved_two(), issuer(), IT.now())
+      && R.origin_approved(R.approvals(approved_two()), TF.source_object(), provider_b(), 2n, TF.plan(), issuer(), IT.now()), "ER-006 origin_approved: object 10 approved for A at profile 1 at 100 and 129, also with B's approval stored ahead of it, and for B at profile 2")
+    Test.check(Bool.not(R.origin_approved(R.approvals(approved()), TF.source_object(), provider_b(), profile(), TF.plan(), issuer(), IT.now()))
+      && Bool.not(R.origin_approved(R.approvals(approved()), TF.source_object(), provider_a(), 2n, TF.plan(), issuer(), IT.now())), "ER-006 origin_approved is false for provider B and for profile 2 when only A at profile 1 was approved")
+    Test.check(Bool.not(R.origin_approved(R.approvals(approved()), TF.source_object(), provider_a(), profile(), IT.plan_invocation(), issuer(), IT.now()))
+      && Bool.not(R.origin_approved(R.approvals(approved()), IT.second_source(), provider_a(), profile(), TF.plan(), issuer(), IT.now())), "ER-006 origin_approved is false for another plan and for another origin (object 11)")
+    Test.check(Bool.not(a_approved(withdrawn(), issuer(), IT.now())), "ER-006 origin_approved is false after withdrawal")
+    Test.check(Bool.not(a_approved(approved(), issuer(), approval_until())), "ER-006 origin_approved is false at now = valid_until 130")
+    Test.check(Bool.not(a_approved(approved(), dropped_issuer(), IT.now()))
+      && Bool.not(a_approved(approved(), moved_issuer(), IT.now()))
+      && Bool.not(a_approved(approved(), ambiguous_issuer(), IT.now())), "ER-006 origin_approved re-reads the issuer: false once 101 leaves the directory, once object 10 moves to read domain 9, or once object 10 is placed twice")
+    Test.check(origins_for(approved(), TF.plan(), TF.context())
+      && Bool.not(R.origins_approved(T.Missing{}, R.approvals(approved()), provider_a(), profile(), TF.plan(), issuer(), IT.now()))
+      && Bool.not(origins_for(approved(), TF.plan(), TF.with_live(TF.context(), next_epoch())))
+      && Bool.not(R.origins_approved(T.Found{T.OEnd{}}, R.approvals(approved()), provider_a(), profile(), TF.plan(), issuer(), IT.now())), "ER-006 origins_approved: true for TF.plan() with object 10 approved; false for a Missing lookup (also via a stale context) and for an empty one")
+    Test.check(lookup_is(T.required_origins(IT.plan_two(), two_context()),
+        T.OCons{TF.source_object(), T.OCons{IT.second_source(), T.OEnd{}}})
+      && Bool.not(origins_for(two_ten(), IT.plan_two(), two_context()))
+      && origins_for(two_both(), IT.plan_two(), two_context()), "ER-006 two-source plan: approval of object 10 only leaves origins_approved false; approving object 11 too makes it true")
+    Test.check(Bool.not(origins_for(approved(), TF.plan(), inherited_context())), "ER-006 the inherited origin 30v6 listed by T.required_origins but unapproved leaves origins_approved false")
+
+def approvals() -> IO(Unit):
+  do IO<Unit>:
+    approval_records()
+    approval_denials()
+    approval_predicates()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     offers()
-    IO.print("Rendezvous: 34 checks passed")
+    approvals()
+    IO.print("Rendezvous: 70 checks passed")

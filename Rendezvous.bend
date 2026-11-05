@@ -47,8 +47,9 @@ import ./Issuance.bend as I
 #   currency is re-derived from it with `I.current` at every call; a stale
 #   issuer state would keep a revoked grant usable, which Bend cannot detect.
 # - The snapshot's transfer context (`Snapshot.transfer`): the current
-#   `T.Context`. It is carried for later eligibility checks (required origins);
-#   `submit_offer` does not read it.
+#   `T.Context`. It is carried for eligibility: `origins_approved` takes
+#   `T.required_origins(plan, transfer)`, which lists every contributing
+#   origin, inherited ones included. No transition reads it yet.
 # - The snapshot's `now`, the monitor's trusted time. Every expiry is
 #   exclusive (now < valid_until), matching Transfer, Frontend and Issuance.
 # - `expected_revision`, the revision the caller validated against; the host
@@ -66,8 +67,9 @@ import ./Issuance.bend as I
 # Guard.Checks projection of one ordered gate list (the Issuance pattern), so
 # the existing law `failed_check_denies` covers a failed rendezvous check at
 # any position. The denial reason is the first failing gate of the same list,
-# so acceptance and reason cannot drift apart. `submit_offer` has no outer
-# revision match: no law pins one, and its revision gate is the first gate.
+# so acceptance and reason cannot drift apart. `submit_offer`,
+# `submit_approval` and `withdraw_approval` have no outer revision match: no
+# law pins one, and each one's revision gate is its first gate.
 #
 # Submission is not eligibility (plan ruling). `submit_offer` checks the
 # offer's identity, plan, backing grant, lifetime and record uniqueness. The
@@ -75,7 +77,24 @@ import ./Issuance.bend as I
 # are eligibility conditions (checked before ranking, at every selection and
 # every use), so an offer outside them is stored but never selectable.
 #
-# Public entry points: `open`, `submit_offer`, `valid`, the `Change.*`
+# Origin approvals (plan ruling). An `OriginApproval` covers one origin, one
+# provider, one execution profile and one exact plan. Its `issuer` and
+# `provider` fields are CLAIMS. `submit_approval` requires the issuer claim to
+# be the authenticated `from`, and requires the snapshot's issuer state to
+# place the origin in exactly one read domain whose directory authority is
+# `from` (the approval names no domain; the issuer's placements locate it),
+# so only the principal the Issuance directory names for an origin can speak
+# for it. An inherited origin that is not placed cannot be approved. Only the
+# recorded issuer, still that authority in the snapshot, may withdraw;
+# withdrawal sets a never-cleared flag, keeps the record and keeps `(issuer,
+# serial)` in `seen`, so a later approval is a new record with a new serial.
+# `origin_approved` re-reads the issuer's authority from the supplied issuer
+# state at every call, so a directory or placement change withdraws the
+# approval without editing it; `origins_approved` requires every origin
+# `T.required_origins` lists, and a Missing or empty lookup is False.
+#
+# Public entry points: `open`, `submit_offer`, `submit_approval`,
+# `withdraw_approval`, `valid`, the `Change.*`
 # accessors and the state, snapshot and record accessors. Every other def is
 # an exported implementation helper; calling one does not perform a
 # transition's checks.
@@ -115,8 +134,8 @@ type Profiles is Data:
 
 # An origin's approval of one provider at one profile for one exact plan.
 # `issuer` and `provider` are CLAIMS: the issuer is checked against `from`
-# and the issuer directory at submission (a later task). `valid_until` is
-# exclusive.
+# and the snapshot issuer's directory and placements at submission, and its
+# authority is re-read at every use. `valid_until` is exclusive.
 type OriginApproval is Data:
   OriginApproval{version: Nat, serial: Nat, issuer: I.Principal,
     origin: T.ObjectVersion, provider: I.Principal, profile: Nat, plan: T.Plan,
@@ -218,7 +237,8 @@ type Error is Data:
 
 # A rejection carries the supplied state unchanged; a change carries the next
 # state and an id. For an accepted offer the id is the offer's serial (the
-# full identity is the offer's `OfferId`, whose provider is `from`).
+# full identity is the offer's `OfferId`, whose provider is `from`); for an
+# accepted or withdrawn approval it is the approval's allocated id.
 type Change is Data:
   Rejected{state: State, reason: Error}
   Changed{state: State, id: Nat}
@@ -713,17 +733,343 @@ def submit_offer(+state: State, +expected_revision: Nat, +from: I.Principal, +of
   submit_offer_checked(Guard.all(offer_checks(state, expected_revision, from, offer, snapshot)),
     state, expected_revision, from, offer, snapshot)
 
-# --- Structural validity -----------------------------------------------------
+# --- Origin approvals (ER-006 records, ER-002 inputs) ------------------------
 
-def allocated(+id: Nat, next_id: Nat) -> Bool:
-  Nat.is_gt(id, 0n) && Nat.is_lt(id, next_id)
+def OriginApproval.serial(approval: OriginApproval) -> Nat:
+  match approval:
+    case OriginApproval{_, serial, _, _, _, _, _, _}:
+      serial
 
+def OriginApproval.issuer(approval: OriginApproval) -> I.Principal:
+  match approval:
+    case OriginApproval{_, _, issuer, _, _, _, _, _}:
+      issuer
+
+def OriginApproval.origin(approval: OriginApproval) -> T.ObjectVersion:
+  match approval:
+    case OriginApproval{_, _, _, origin, _, _, _, _}:
+      origin
+
+def StoredApproval.approval(stored: StoredApproval) -> OriginApproval:
+  match stored:
+    case StoredApproval{_, approval, _}:
+      approval
+
+def StoredApproval.withdrawn(stored: StoredApproval) -> Bool:
+  match stored:
+    case StoredApproval{_, _, withdrawn}:
+      withdrawn
+
+# The read domain the supplied issuer state places source version `origin`
+# in, or None when it is not placed or placed more than once
+# (`I.source_domain`). An origin's authority is located only here, never by a
+# field of the approval: an OriginApproval names no domain.
+def origin_domain(issuer: I.State, +origin: T.ObjectVersion) -> Maybe<&2, T.ReadDomain>:
+  I.source_domain(I.placements(issuer), origin)
+
+def origin_placed(issuer: I.State, +origin: T.ObjectVersion) -> Bool:
+  Maybe.is_some(&2, T.ReadDomain, origin_domain(issuer, origin))
+
+def authority_in(found: Maybe<&2, T.ReadDomain>, +directory: I.Authorities,
+    +principal: I.Principal) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{domain}:
+      I.is_read_authority(directory, principal, domain)
+
+# Whether the supplied issuer state's directory names `principal` the read
+# authority for the domain its placements put `origin` in. Read-namespace
+# entries only: a write authority, or a read authority for another domain,
+# never speaks for the origin. A missing or ambiguous placement speaks for
+# nobody. Re-read from the supplied issuer state at every call, so a
+# directory or placement change withdraws the authority without editing any
+# rendezvous record.
+def speaks_for_origin(+issuer: I.State, +principal: I.Principal, +origin: T.ObjectVersion) -> Bool:
+  authority_in(origin_domain(issuer, origin), I.directory(issuer), principal)
+
+def approval_serial_entry(entry: Serial, +issuer: I.Principal, +serial: Nat) -> Bool:
+  match entry:
+    case OfferSerial{_, _}:
+      False{}
+    case ApprovalSerial{seen_issuer, seen_serial}:
+      I.Principal.equal(seen_issuer, issuer) && Nat.is_eq(seen_serial, serial)
+
+# Whether `(issuer, serial)` was ever accepted as an origin approval. Seen
+# pairs are never removed, so a withdrawn approval's serial cannot be reused.
+# The offer-serial namespace is not consulted.
+def approval_serial_seen(seen: Serials, +issuer: I.Principal, +serial: Nat) -> Bool:
+  match seen:
+    case NoSerials{}:
+      False{}
+    case Serials{head, tail}:
+      approval_serial_entry(head, issuer, serial) || approval_serial_seen(tail, issuer, serial)
+
+# Every check an origin-approval submission must pass, in denial order: the
+# race (revision), the format, identity (the issuer claim is `from`), the
+# origin's placement in the snapshot issuer (exactly one read domain), the
+# authority (`from`, not the claim, is that domain's read authority in the
+# snapshot directory), the plan (exactly the request's), the lifetime, and
+# last replay. The provider and profile are not checked here: an approval for
+# a provider without a grant, or at a profile outside the constraint, is
+# stored but never makes an offer eligible (eligibility, a later task).
+def approval_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
+    approval: OriginApproval, +snapshot: Snapshot) -> Gates:
+  match approval:
+    case OriginApproval{version, +serial, issuer, +origin, _, _, plan, valid_until}:
+      Gate{revision_current(state, expected_revision), StaleRevision{},
+      Gate{version_supported(version), UnknownVersion{},
+      Gate{I.claim_matches(from, issuer), Unauthenticated{},
+      Gate{origin_placed(Snapshot.issuer(snapshot), origin), WrongDomain{},
+      Gate{speaks_for_origin(Snapshot.issuer(snapshot), from, origin), NotAuthority{},
+      Gate{plan_is_request(plan, state), ScopeMismatch{},
+      Gate{unexpired(Snapshot.now(snapshot), valid_until), Expired{},
+      Gate{Bool.not(approval_serial_seen(seen(state), from, serial)), Replay{},
+      Open{}}}}}}}}}
+
+def approval_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +approval: OriginApproval, +snapshot: Snapshot) -> Guard.Checks:
+  Gates.checks(approval_gates(state, expected_revision, from, approval, snapshot))
+
+# Store the admitted approval unedited under the fresh id `next_id`, record
+# `(from, serial)` for ever, and advance `next_id` and the revision once.
+# Called only after every gate held. The recorded replay identity is the
+# authenticated `from` (the claim_matches gate made the stored issuer claim
+# equal to it at this point).
+def commit_approval(state: State, approval: OriginApproval, from: I.Principal, serial: Nat) -> Change:
+  match state:
+    case State{revision, +next_id, request, constraint, offers, approvals, selection,
+        retired, evidence, dispatched, seen}:
+      Changed{State{1n+revision, 1n+next_id, request, constraint, offers,
+        Approvals{StoredApproval{next_id, approval, False{}}, approvals}, selection,
+        retired, evidence, dispatched, Serials{ApprovalSerial{from, serial}, seen}}, next_id}
+
+def submit_approval_checked(ok: Bool, +state: State, +expected_revision: Nat, +from: I.Principal,
+    +approval: OriginApproval, +snapshot: Snapshot) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
+      Rejected{state, Gates.reason(approval_gates(state, expected_revision, from, approval, snapshot), StaleRevision{})}
+    case True{}:
+      commit_approval(state, approval, from, OriginApproval.serial(approval))
+
+# Public entry point (ER-006 records): the host submits an origin approval on
+# behalf of the authenticated principal `from`. Accepted only when the state
+# is at `expected_revision`; the record is version 1; its issuer claim is
+# `from`; the snapshot's issuer state places the approved origin in exactly
+# one read domain and its directory names `from` that domain's read
+# authority; the approval's plan is exactly the request plan; `now <
+# valid_until`; and `(from, serial)` is unseen as an approval serial. The
+# approval is then stored unedited under a fresh id (the change id), not
+# withdrawn, its serial recorded, and `next_id` and the revision advanced
+# once. A stored approval covers one origin, one provider, one profile and
+# one plan, and confers nothing by itself: `origin_approved` re-derives its
+# issuer's authority from the issuer state at every use. Denial order:
+# StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority,
+# ScopeMismatch, Expired, Replay; the state is returned unchanged.
+def submit_approval(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +approval: OriginApproval, +snapshot: Snapshot) -> Change:
+  submit_approval_checked(Guard.all(approval_checks(state, expected_revision, from, approval, snapshot)),
+    state, expected_revision, from, approval, snapshot)
+
+# --- Withdrawal --------------------------------------------------------------
+
+# Whether any stored approval has id `wanted`, whatever its content.
 def approval_id_exists(approvals: Approvals, +wanted: Nat) -> Bool:
   match approvals:
     case NoApprovals{}:
       False{}
     case Approvals{head, tail}:
       Nat.is_eq(StoredApproval.id(head), wanted) || approval_id_exists(tail, wanted)
+
+def approval_entry(+stored: StoredApproval, +wanted: Nat) -> Maybe<&2, StoredApproval>:
+  Guard.choose(Maybe<&2, StoredApproval>, Nat.is_eq(StoredApproval.id(stored), wanted), Some{stored}, None{})
+
+# A hit is kept only when no later record has the same id.
+def first_approval(found: Maybe<&2, StoredApproval>, again: Bool,
+    rest: Maybe<&2, StoredApproval>) -> Maybe<&2, StoredApproval>:
+  match found again:
+    case None{} _:
+      rest
+    case Some{stored} False{}:
+      Some{stored}
+    case Some{_} True{}:
+      None{}
+
+# The stored approval under `wanted`, or None when it is absent or ambiguous.
+def find_approval(approvals: Approvals, +wanted: Nat) -> Maybe<&2, StoredApproval>:
+  match approvals:
+    case NoApprovals{}:
+      None{}
+    case Approvals{head, +tail}:
+      first_approval(approval_entry(head, wanted), approval_id_exists(tail, wanted), find_approval(tail, wanted))
+
+def approval_present(found: Maybe<&2, StoredApproval>) -> Bool:
+  Maybe.is_some(&2, StoredApproval, found)
+
+# The stored approval's recorded issuer is the authenticated principal. The
+# recorded issuer was bound to the submitter's authenticated `from` at
+# submission, so only that principal speaks for the approval. Absence denies.
+def approval_issued_by(found: Maybe<&2, StoredApproval>, +from: I.Principal) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      I.claim_matches(from, OriginApproval.issuer(StoredApproval.approval(stored)))
+
+# `from` is still the read authority for the stored approval's origin in the
+# snapshot issuer state (directory and placements re-read now). Absence denies.
+def approval_still_authority(found: Maybe<&2, StoredApproval>, +issuer: I.State,
+    +from: I.Principal) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      speaks_for_origin(issuer, from, OriginApproval.origin(StoredApproval.approval(stored)))
+
+# The approval has not been withdrawn yet. Withdrawing twice is denied
+# Revoked (as `I.revoke` denies a second revocation) rather than advancing the
+# revision for no change.
+def not_yet_withdrawn(found: Maybe<&2, StoredApproval>) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      Bool.not(StoredApproval.withdrawn(stored))
+
+# Every check a withdrawal must pass, in denial order: the race (revision),
+# the approval's existence, identity (`from` is the recorded issuer), the
+# authority (`from` is still the read authority for the approval's origin in
+# the snapshot issuer), and that the approval is not already withdrawn.
+def withdraw_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +approval_id: Nat, +snapshot: Snapshot) -> Gates:
+  Gate{revision_current(state, expected_revision), StaleRevision{},
+  Gate{approval_present(find_approval(approvals(state), approval_id)), MissingApproval{},
+  Gate{approval_issued_by(find_approval(approvals(state), approval_id), from), Unauthenticated{},
+  Gate{approval_still_authority(find_approval(approvals(state), approval_id), Snapshot.issuer(snapshot), from), NotAuthority{},
+  Gate{not_yet_withdrawn(find_approval(approvals(state), approval_id)), Revoked{},
+  Open{}}}}}}
+
+def withdraw_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +approval_id: Nat, +snapshot: Snapshot) -> Guard.Checks:
+  Gates.checks(withdraw_gates(state, expected_revision, from, approval_id, snapshot))
+
+def mark_withdrawn(stored: StoredApproval, +id: Nat) -> StoredApproval:
+  match stored:
+    case StoredApproval{+sid, approval, withdrawn}:
+      StoredApproval{sid, approval, withdrawn || Nat.is_eq(sid, id)}
+
+# Set the withdrawn flag on the stored approval under `id`, and on nothing
+# else. Every other flag is kept, so a later withdrawal never clears an
+# earlier one, and every record stays in place.
+def withdraw_in(approvals: Approvals, +id: Nat) -> Approvals:
+  match approvals:
+    case NoApprovals{}:
+      NoApprovals{}
+    case Approvals{head, tail}:
+      Approvals{mark_withdrawn(head, id), withdraw_in(tail, id)}
+
+# Mark the approval withdrawn and advance the revision once. `seen` keeps the
+# approval's `(issuer, serial)`, so the withdrawn approval cannot be submitted
+# again; a later approval for the same origin and provider is a new record
+# with a new serial and a new id. Called only after every gate held.
+def commit_withdrawal(state: State, +approval_id: Nat) -> Change:
+  match state:
+    case State{revision, next_id, request, constraint, offers, approvals, selection,
+        retired, evidence, dispatched, seen}:
+      Changed{State{1n+revision, next_id, request, constraint, offers,
+        withdraw_in(approvals, approval_id), selection, retired, evidence, dispatched, seen},
+        approval_id}
+
+def withdraw_approval_checked(ok: Bool, +state: State, +expected_revision: Nat,
+    +from: I.Principal, +approval_id: Nat, +snapshot: Snapshot) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
+      Rejected{state, Gates.reason(withdraw_gates(state, expected_revision, from, approval_id, snapshot), StaleRevision{})}
+    case True{}:
+      commit_withdrawal(state, approval_id)
+
+# Public entry point (ER-006 records): the host withdraws a stored origin
+# approval on behalf of the authenticated principal `from`. Accepted only
+# when the state is at `expected_revision`, `approval_id` names exactly one
+# stored approval, `from` is that approval's recorded issuer, the snapshot's
+# issuer state still names `from` the read authority for the domain its
+# placements put the approval's origin in, and the approval is not already
+# withdrawn. It then sets the approval's never-cleared withdrawn flag, keeps
+# the record and its serial, and advances the revision once; the change id is
+# the approval id. Denial order: StaleRevision, MissingApproval,
+# Unauthenticated, NotAuthority, Revoked (already withdrawn); the state is
+# returned unchanged.
+def withdraw_approval(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +approval_id: Nat, +snapshot: Snapshot) -> Change:
+  withdraw_approval_checked(Guard.all(withdraw_checks(state, expected_revision, from, approval_id, snapshot)),
+    state, expected_revision, from, approval_id, snapshot)
+
+# --- Approval predicates (ER-002 inputs, ER-006) -----------------------------
+
+# One stored approval covers exactly this origin, provider, profile and plan,
+# is not withdrawn, is unexpired at `now`, and its recorded issuer is still
+# the read authority for the origin in the supplied issuer state. The
+# recorded issuer was bound to the authenticated submitter by
+# `submit_approval`; it is compared here against the current directory and
+# placements, never believed as authority.
+def stored_covers(stored: StoredApproval, +origin: T.ObjectVersion, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat) -> Bool:
+  match stored:
+    case StoredApproval{_, approval, withdrawn}:
+      match approval:
+        case OriginApproval{_, _, recorded, +approved, approved_provider, approved_profile,
+            approved_plan, valid_until}:
+          Bool.not(withdrawn) && T.ObjectVersion.equal(approved, origin)
+            && I.Principal.equal(approved_provider, provider) && Nat.is_eq(approved_profile, profile)
+            && T.Plan.equal(approved_plan, plan) && unexpired(now, valid_until)
+            && speaks_for_origin(issuer, recorded, approved)
+
+# Whether some stored approval covers `origin` for `provider` at `profile`
+# and `plan` at `now`, against the supplied issuer state. Exported
+# implementation helper for eligibility; a later task calls it with the
+# snapshot's issuer and `now`. An approval for another provider, another
+# profile or another plan never covers this one.
+def origin_approved(approvals: Approvals, +origin: T.ObjectVersion, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat) -> Bool:
+  match approvals:
+    case NoApprovals{}:
+      False{}
+    case Approvals{head, tail}:
+      stored_covers(head, origin, provider, profile, plan, issuer, now)
+        || origin_approved(tail, origin, provider, profile, plan, issuer, now)
+
+def origins_all(origins: T.Objects, +approvals: Approvals, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat) -> Bool:
+  match origins:
+    case T.OEnd{}:
+      True{}
+    case T.OCons{origin, rest}:
+      origin_approved(approvals, origin, provider, profile, plan, issuer, now)
+        && origins_all(rest, approvals, provider, profile, plan, issuer, now)
+
+# Every origin the lookup lists, including inherited ones, is approved for
+# this provider, profile and plan. `lookup` is `T.required_origins(plan,
+# transfer)` for the snapshot's transfer context, the lookup `N.owners` uses;
+# Missing (malformed or stale policy) or an empty list is False, so an
+# unknown origin set is never treated as approved.
+def origins_approved(lookup: T.OriginLookup, +approvals: Approvals, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat) -> Bool:
+  match lookup:
+    case T.Missing{}:
+      False{}
+    case T.Found{+objects}:
+      T.Objects.nonempty(objects) && origins_all(objects, approvals, provider, profile, plan, issuer, now)
+
+# --- Structural validity -----------------------------------------------------
+
+def allocated(+id: Nat, next_id: Nat) -> Bool:
+  Nat.is_gt(id, 0n) && Nat.is_lt(id, next_id)
 
 # Each stored approval has an allocated id that no later record repeats.
 def approvals_valid(approvals: Approvals, +next_id: Nat) -> Bool:

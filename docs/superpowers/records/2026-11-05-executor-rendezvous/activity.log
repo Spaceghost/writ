@@ -9,3 +9,7 @@
 2026-11-05T14:54:14Z	implementer	fix round 1: six checks added (F1-F5), comments for F5 and zero quote; 48 mutants all killed; Tests.bend 1462 PASS, PROOF.bend ALL PROOFS CHECK; committing
 2026-11-05T14:54:55Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T14:55:58Z	controller	task 1 complete; task 2 dispatched (origin approvals)
+2026-11-05T14:56:36Z	implementer	task 2 started: read brief, task 1 records
+2026-11-05T15:02:55Z	implementer	approvals: submit_approval, withdraw_approval, origin_approved, origins_approved added; 34 new checks green (68); starting mutation sweep
+2026-11-05T15:05:21Z	implementer	mutation sweep 1: 54 mutants, 3 survived (H6, W7, W16); 2 checks added; rerunning
+2026-11-05T15:07:35Z	implementer	mutation sweep final: 58 mutants, 54 killed, 4 equivalent (claim vs from after the claim gate); Tests.bend 1498 PASS, PROOF.bend ALL PROOFS CHECK; report written; committing
