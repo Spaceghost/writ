@@ -9,3 +9,5 @@ Task 3: dispatched implementer (in parallel with the task 1 review; different fi
 Task 1: review APPROVED both axes; one wording fix carried to the final fix round (lanes-qemu.txt:24-26, "halted at pool_open" is not what the gdb logs show).
 Task 3: implementer DONE (57204a9); two stale E6 passages outside the touch list noted (matrix:68, UNIKERNELS.md:194,201) — carried to the final fix round. Final whole-branch review dispatched.
 Final review: Needs fixes before merge (five text fixes: evidence wording, stale E6 pointers, pool_work credit, INVENTORY rows). Fix round 1 dispatched (Task 3 implementer resumed).
+Fix round 1: verified by the controller (wording, pointers, credit, INVENTORY rows; strict 44; no .bend/Kraftfile/host C diff). Final review resolved; complete.
+Merge: to master
