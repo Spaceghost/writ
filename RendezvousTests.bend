@@ -1184,11 +1184,11 @@ def selection() -> IO(Unit):
 # OfferId{201, 4} on grant 3, quote 38, valid while now < 113; B's is
 # OfferId{202, 5} on grant 6, quote 41, valid while now < 140; both at
 # profile 1 and approved by object 10's authority: B by approval_tb()
-# (serial 19, valid until 128, id 1), then A by approval_a() (serial 12,
-# valid until 130, id 2), so the first stored approval is A's and does not
-# cover B. The negotiation is pinned at 100
-# (NT.pinned()), A is selected at 103 as selection 3, and the trial runs at
-# 110. Challenge and sample records are SYNTHETIC MONITOR STATE (the
+# (serial 19, valid until 128, id 1) and A by approval_a() (serial 12,
+# valid until 130, id 2). B's is submitted first, so A's record heads the
+# stored list and `covering_until` meets it first when projecting for B.
+# The negotiation is pinned at 100 (NT.pinned()), A is selected at 103 as
+# selection 3, and the trial runs at 110. Challenge and sample records are SYNTHETIC MONITOR STATE (the
 # monitor's trusted receipts), valid until 170 and 160.
 def approval_tb() -> R.OriginApproval:
   approval_with(19n, IT.source_authority(), TF.source_object(), provider_b(), profile(),
@@ -1402,6 +1402,11 @@ def budgets_of(context: N.Context) -> N.Budgets:
     case N.Context{_, _, _, _, budgets}:
       budgets
 
+def samples_of(context: N.Context) -> N.Samples:
+  match context:
+    case N.Context{_, _, _, samples, _}:
+      samples
+
 def empty_at(context: N.Context, budgets: N.Budgets, now: Nat) -> Bool:
   context_is(context, N.NoApprovals{}, N.NoChallenges{}, N.NoSamples{}, budgets, now)
 
@@ -1469,7 +1474,7 @@ def trial_substitutions() -> IO(Unit):
       && trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{202n, 5n}, 21n, TF.code()), challenged_t(), R.NotSelected{}), "ER-005 offer substitution: A's evidence naming OfferId{201, 9} or B's OfferId{202, 5} denied NotSelected")
     Test.check(trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.other_code()), challenged_t(), R.ScopeMismatch{})
       && n_samples_equal(R.projected_samples(N.Samples{sample_rec(31n, IT.plan_code(), 21n, nonce_of(1), True{}, 160n), N.NoSamples{}},
-        R.evidence(evidenced()), 3n, TF.plan()), N.NoSamples{}), "ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31")
+        R.evidence(evidenced()), 3n, offer_ta(), TF.plan()), N.NoSamples{}), "ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31")
     Test.check(trial_denied(ev_a(31n, 24n), challenged_t(), R.WrongTrial{})
       && trial_denied(ev_a(31n, 23n), session_at(23n), R.WrongTrial{})
       && trial_denied(ev_a(31n, 29n), session_at(29n), R.WrongTrial{}), "ER-005 challenge substitution: evidence naming 24 on a session challenged with 21, or a session at 23 (the other plan's challenge) or at the absent 29, denied WrongTrial")
@@ -1532,8 +1537,52 @@ def ev_b(sample: Nat, challenge: Nat) -> R.Evidence:
 def b_evidence_change() -> R.Change:
   submit_2(provider_b(), ev_b(36n, 26n))
 
+def b_evidenced() -> R.State:
+  R.Change.state(b_evidence_change())
+
+# SYNTHETIC MONITOR STATES: evidence under A's current selection id 3 that
+# names B's offer {202, 5} with A's claim, or A's offer {201, 4} with B's
+# claim. No transition stores either.
+def with_evidence(state: R.State, evidence: R.Evidences) -> R.State:
+  match state:
+    case R.State{revision, next_id, request, constraint, offers, approvals, selection,
+        retired, _, dispatched, seen}:
+      R.State{revision, next_id, request, constraint, offers, approvals, selection,
+        retired, evidence, dispatched, seen}
+
+def foreign_offer() -> R.State:
+  with_evidence(selected_t(), R.Evidences{R.StoredEvidence{3n,
+    evidence_with(1n, 31n, provider_a(), R.OfferId{202n, 5n}, 21n, TF.code())}, R.NoEvidence{}})
+
+def foreign_provider() -> R.State:
+  with_evidence(selected_t(), R.Evidences{R.StoredEvidence{3n,
+    evidence_with(1n, 31n, provider_b(), R.OfferId{201n, 4n}, 21n, TF.code())}, R.NoEvidence{}})
+
+# A's offer {201, 4} selected again after abandon, as selection 4 at 106.
+def reselected_a() -> R.Change:
+  R.select(abandoned_t(), 7n, NT.pinned(), 1n, NT.context(106n), snapshot_with(issuer(), 106n))
+
 def b_approvals() -> N.Approvals:
   a_approvals(128n)
+
+# Session binding, foreign evidence and reselection of the same offer
+# (fix round 1).
+def trial_bindings() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(N.Step.accepted(N.approve(sampled_t(), 3n, proj_b(b_evidenced())))
+      && Bool.not(R.session_follows_selection(b_evidenced(), sampled_t()))
+      && Bool.not(R.session_follows_selection(b_evidenced(), N.Step.session(N.approve(sampled_t(), 3n, proj_b(b_evidenced())))))
+      && R.session_follows_selection(b_evidenced(), challenged_b())
+      && R.session_follows_selection(evidenced(), sampled_t())
+      && Bool.not(R.session_follows_selection(selected_t(), challenged_t()))
+      && Bool.not(R.session_follows_selection(abandoned_t(), sampled_t()))
+      && Bool.not(R.session_follows_selection(evidenced(), challenged_for(N.Request{TF.plan(), 7n, 41n, 30n, 180n}))), "ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but session_follows_selection rejects it and its approved successor; it holds for B's session and for A's under selection 3, and not before evidence, with no selection, or for a session with quote 41")
+    Test.check(Bool.not(R.valid(foreign_offer())) && Bool.not(R.valid(foreign_provider()))
+      && R.valid(evidenced()) && R.valid(b_evidenced())
+      && n_samples_equal(samples_of(proj_on(foreign_offer())), N.NoSamples{})
+      && n_samples_equal(samples_of(proj_on(foreign_provider())), N.NoSamples{}), "ER-005 evidence under A's selection id 3 naming B's offer, or A's offer with B's claim, is not a valid state and projects no sample")
+    Test.check(selected(reselected_a(), offer_ta()) && issued_is(R.Change.issued(reselected_a()), 4n)
+      && context_is(proj_on(R.Change.state(reselected_a())), a_approvals(113n), N.NoChallenges{}, N.NoSamples{}, trial_budgets(), 110n), "ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)")
 
 def trial_reuse() -> IO(Unit):
   do IO<Unit>:
@@ -1543,7 +1592,7 @@ def trial_reuse() -> IO(Unit):
         N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}}, N.NoSamples{}, trial_budgets(), 120n), "ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)")
     Test.check(N.Step.accepted(N.challenge(session2(), 1n, 26n, proj_b(selected_b())))
       && denied(submit_2(provider_b(), ev_b(31n, 21n)), selected_b(), R.WrongTrial{})
-      && denied(submit_2(provider_b(), ev_b(31n, 26n)), selected_b(), R.WrongTrial{}), "ER-005 reusing another provider's sample: B submitting A's sample 31 and challenge 21 as its own, or A's sample 31 under its challenge 26, denied WrongTrial")
+      && denied(submit_2(provider_b(), ev_b(31n, 26n)), selected_b(), R.WrongTrial{}), "ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial")
     Test.check(denied(submit_2(provider_b(), good_evidence()), selected_b(), R.Unauthenticated{})
       && denied(submit_2(provider_a(), good_evidence()), selected_b(), R.NotSelected{})
       && denied(submit_2(provider_a(), ev_b(36n, 26n)), selected_b(), R.NotSelected{}), "ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected")
@@ -1613,6 +1662,7 @@ def trials() -> IO(Unit):
     trial_substitutions()
     trial_helpers()
     trial_reuse()
+    trial_bindings()
     trial_owners()
 
 def main() -> IO(Unit):
@@ -1621,4 +1671,4 @@ def main() -> IO(Unit):
     approvals()
     selection()
     trials()
-    IO.print("Rendezvous: 151 checks passed")
+    IO.print("Rendezvous: 154 checks passed")

@@ -144,7 +144,14 @@ import ./Issuance.bend as I
 # is abandoned, withdrawn, revoked, at a stale epoch or missing an origin's
 # approval. The host must rebuild the projection from the current
 # rendezvous, issuer and transfer states for every use; a cached projection
-# keeps stale authority, which Bend cannot detect.
+# keeps stale authority, which Bend cannot detect. The projection does not
+# bind a Negotiation session to the selection: a session that reached
+# Sampled under a retired selection still passes `N.approve`, `N.reserve`
+# and `N.start` on a later selection's projection, because those stages
+# never re-check the challenge or sample. Binding the session is the
+# dispatch gate's job (`session_follows_selection`). The challenge window
+# is sound only if the host supplies non-decreasing monitor time across
+# selections and never reuses a challenge id across selections.
 #
 # Public entry points: `open`, `submit_offer`, `submit_approval`,
 # `withdraw_approval`, `select`, `abandon` (a monitor action),
@@ -1875,6 +1882,37 @@ def submit_evidence(+state: State, +expected_revision: Nat, +from: I.Principal, 
   submit_evidence_by(selected_provider_is(state, from), state, expected_revision, from, evidence,
     session, n_context, snapshot)
 
+# --- Session binding (ER-005; the dispatch gate's input) --------------------
+
+# Whether evidence stored under selection `id` names challenge `challenge`.
+def challenge_evidenced(evidences: Evidences, +id: Nat, +challenge: Nat) -> Bool:
+  match evidences:
+    case NoEvidence{}:
+      False{}
+    case Evidences{StoredEvidence{selection, Evidence{_, _, _, _, named_challenge, _}}, tail}:
+      (Nat.is_eq(selection, id) && Nat.is_eq(named_challenge, challenge))
+        || challenge_evidenced(tail, id, challenge)
+
+def session_follows(selection: Selection, +state: State, +session: N.Session) -> Bool:
+  match selection:
+    case NoSelection{}:
+      False{}
+    case Selection{id, _, _, _, _, _}:
+      N.Request.equal(N.Session.request(session), request(state))
+        && challenge_evidenced(evidence(state), id, session_challenge(session))
+
+# Whether the Negotiation session belongs to the current selection's trial:
+# it carries exactly the rendezvous request, and its recorded challenge is
+# the challenge of evidence stored under the current selection's id. False
+# with no selection or no evidence. The projection does not take the
+# session, and `N.approve`, `N.reserve` and `N.start` never re-check the
+# challenge or sample, so a session that reached Sampled under a retired
+# selection still passes them on a later selection's projection; the
+# dispatch gate must require this predicate. It relies on the host never
+# reusing a challenge id across selections. Exported implementation helper.
+def session_follows_selection(+state: State, +session: N.Session) -> Bool:
+  session_follows(selection(state), state, session)
+
 # --- Negotiation projection (ER-004, ER-005, ER-006) -----------------------
 
 def challenge_after_fixation(challenge: N.Challenge, +plan: T.Plan, +after: Nat) -> Bool:
@@ -1900,24 +1938,32 @@ def projected_challenges(challenges: N.Challenges, +plan: T.Plan, +after: Nat) -
       keep_challenge(challenge_after_fixation(head, plan, after), head,
         projected_challenges(rest, plan, after))
 
-def evidence_names(stored: StoredEvidence, +id: Nat, +sample: Nat, +challenge: Nat) -> Bool:
+# The stored record is under selection `id`, names the selected offer's
+# identity and provider claim, and names sample `sample` for challenge
+# `challenge`. The offer and provider are compared as well as the id, so a
+# monitor-installed record under the current id that names another
+# provider's offer is never projected (the selection's identity is
+# revalidated at every call, not inferred from the id alone).
+def evidence_names(stored: StoredEvidence, +id: Nat, +offer: Offer, +sample: Nat, +challenge: Nat) -> Bool:
   match stored:
-    case StoredEvidence{selection, Evidence{_, named, _, _, named_challenge, _}}:
-      Nat.is_eq(selection, id) && Nat.is_eq(named, sample) && Nat.is_eq(named_challenge, challenge)
+    case StoredEvidence{selection, Evidence{_, named, provider, named_offer, named_challenge, _}}:
+      Nat.is_eq(selection, id) && OfferId.equal(named_offer, Offer.id(offer))
+        && I.Principal.equal(provider, Offer.provider(offer))
+        && Nat.is_eq(named, sample) && Nat.is_eq(named_challenge, challenge)
 
-# Whether evidence stored under selection `id` names sample `sample` for
-# challenge `challenge`.
-def evidence_named(evidences: Evidences, +id: Nat, +sample: Nat, +challenge: Nat) -> Bool:
+# Whether evidence stored under selection `id` for the selected `offer`
+# names sample `sample` for challenge `challenge`.
+def evidence_named(evidences: Evidences, +id: Nat, +offer: Offer, +sample: Nat, +challenge: Nat) -> Bool:
   match evidences:
     case NoEvidence{}:
       False{}
     case Evidences{head, tail}:
-      evidence_names(head, id, sample, challenge) || evidence_named(tail, id, sample, challenge)
+      evidence_names(head, id, offer, sample, challenge) || evidence_named(tail, id, offer, sample, challenge)
 
-def sample_named(sample: N.Sample, +evidences: Evidences, +id: Nat, +plan: T.Plan) -> Bool:
+def sample_named(sample: N.Sample, +evidences: Evidences, +id: Nat, +offer: Offer, +plan: T.Plan) -> Bool:
   match sample:
     case N.Sample{sample_id, actual_plan, challenge, _, _, _}:
-      T.Plan.equal(actual_plan, plan) && evidence_named(evidences, id, sample_id, challenge)
+      T.Plan.equal(actual_plan, plan) && evidence_named(evidences, id, offer, sample_id, challenge)
 
 def keep_sample(ok: Bool, sample: N.Sample, rest: N.Samples) -> N.Samples:
   match ok:
@@ -1927,17 +1973,18 @@ def keep_sample(ok: Bool, sample: N.Sample, rest: N.Samples) -> N.Samples:
       rest
 
 # The supplied samples for exactly `plan` that evidence stored under
-# selection `id` names, with the challenge it names, in supplied order. A
+# selection `id` for the selected `offer` names, with the challenge it
+# names, in supplied order. A
 # retired selection's evidence is under another id, which is never reused,
 # so it is never projected for a later selection. Exported implementation
 # helper of `negotiation_context`.
-def projected_samples(samples: N.Samples, +evidences: Evidences, +id: Nat, +plan: T.Plan) -> N.Samples:
+def projected_samples(samples: N.Samples, +evidences: Evidences, +id: Nat, +offer: Offer, +plan: T.Plan) -> N.Samples:
   match samples:
     case N.NoSamples{}:
       N.NoSamples{}
     case N.Samples{+head, rest}:
-      keep_sample(sample_named(head, evidences, id, plan), head,
-        projected_samples(rest, evidences, id, plan))
+      keep_sample(sample_named(head, evidences, id, offer, plan), head,
+        projected_samples(rest, evidences, id, offer, plan))
 
 def OriginApproval.valid_until(approval: OriginApproval) -> Nat:
   match approval:
@@ -2013,7 +2060,7 @@ def selected_context(selection: Selection, +state: State, transfer: T.Context,
     case Selection{+id, +offer, _, _, +selected_at, _}:
       N.Context{transfer, projected_approvals(offer, state, snapshot),
         projected_challenges(challenges, Offer.plan(offer), selected_at),
-        projected_samples(samples, evidence(state), id, Offer.plan(offer)), budgets}
+        projected_samples(samples, evidence(state), id, offer, Offer.plan(offer)), budgets}
 
 def current_context(current: Bool, +state: State, n_context: N.Context, +snapshot: Snapshot) -> N.Context:
   match current n_context:
@@ -2042,7 +2089,12 @@ def current_context(current: Bool, +state: State, n_context: N.Context, +snapsho
 # withdraws its approval, Negotiation's unchanged checks deny. The host must
 # rebuild the projection from the current rendezvous, issuer and transfer
 # states for every use; a cached projection keeps stale authority, which
-# Bend cannot detect.
+# Bend cannot detect. It does not take or bind the Negotiation session: a
+# session that reached Sampled under a retired selection still passes
+# `N.approve`, `N.reserve` and `N.start` here, so dispatch must also require
+# `session_follows_selection`. The challenge filter excludes an earlier
+# selection's challenges only if monitor time is non-decreasing across
+# selections and challenge ids are not reused across selections.
 def negotiation_context(+state: State, n_context: N.Context, +snapshot: Snapshot) -> N.Context:
   current_context(selection_current(state, snapshot), state, n_context, snapshot)
 
@@ -2067,14 +2119,27 @@ def selection_valid(selection: Selection, +next_id: Nat) -> Bool:
     case Selection{id, _, _, _, _, _}:
       allocated(id, next_id)
 
-def evidence_valid(evidence: Evidences, +next_id: Nat) -> Bool:
+# Evidence under the current selection's id names that selection's offer
+# identity and provider claim; evidence under any other id (a retired
+# selection, whose record is not kept) is not constrained here.
+def evidence_binds(selection: Selection, +stored_id: Nat, +evidence: Evidence) -> Bool:
+  match selection:
+    case NoSelection{}:
+      True{}
+    case Selection{id, +offer, _, _, _, _}:
+      Bool.not(Nat.is_eq(stored_id, id))
+        || (OfferId.equal(Evidence.offer(evidence), Offer.id(offer))
+          && I.Principal.equal(Evidence.provider(evidence), Offer.provider(offer)))
+
+def evidence_valid(evidence: Evidences, +next_id: Nat, +selection: Selection) -> Bool:
   match evidence:
     case NoEvidence{}:
       True{}
     case Evidences{head, tail}:
       match head:
-        case StoredEvidence{selection, _}:
-          allocated(selection, next_id) && evidence_valid(tail, next_id)
+        case StoredEvidence{+stored_id, record}:
+          allocated(stored_id, next_id) && evidence_binds(selection, stored_id, record)
+            && evidence_valid(tail, next_id, selection)
 
 def dispatches_valid(dispatched: Dispatches, +next_id: Nat) -> Bool:
   match dispatched:
@@ -2122,13 +2187,14 @@ def serials_valid(seen: Serials) -> Bool:
 # Public entry point: structural validity only. Every allocated id (stored
 # approvals, the selection, the retired selection, evidence and dispatch
 # selection ids) is below `next_id`, approval ids are unique, no serial is
-# recorded twice, and every stored offer's identity belongs to its own
-# provider claim. This does not authenticate the supplied state, and no
+# recorded twice, every stored offer's identity belongs to its own
+# provider claim, and evidence under the current selection's id names that
+# selection's offer and provider. This does not authenticate the supplied state, and no
 # transition treats a valid state as evidence: each recomputes its own checks.
 def valid(state: State) -> Bool:
   match state:
-    case State{_, +next_id, _, _, offers, approvals, selection, retired, evidence, dispatched, seen}:
+    case State{_, +next_id, _, _, offers, approvals, +selection, retired, evidence, dispatched, seen}:
       Nat.is_gt(next_id, 0n) && approvals_valid(approvals, next_id)
         && selection_valid(selection, next_id) && Nat.is_lt(retired, next_id)
-        && evidence_valid(evidence, next_id) && dispatches_valid(dispatched, next_id)
+        && evidence_valid(evidence, next_id, selection) && dispatches_valid(dispatched, next_id)
         && offers_valid(offers) && serials_valid(seen)

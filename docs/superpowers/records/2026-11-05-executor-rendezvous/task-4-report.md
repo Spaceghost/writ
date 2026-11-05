@@ -54,7 +54,7 @@ Ruling applied: the brief says the currency gate gives "NotSelected, or the elig
 
 All three lists are empty unless `selection_current(state, snapshot)` holds at that call. So with no selection, after `abandon` or `withdraw_offer`, after an Issuance revocation, after an epoch advance, or after an origin withdraws its approval, `N.challenge`, `N.sample` and `N.approve` deny unchanged.
 
-It cannot carry a stale selection for three reasons:
+The lists cannot carry a stale selection, for three reasons. (Corrected in fix round 1: the projection does not bind a Negotiation session to the selection; see S1 below.)
 - Nothing is cached. Currency, the grant, the approvals and the stamp are re-derived from the state and snapshot passed in.
 - The selection read is the state's current one. Samples are matched by the current selection id, and ids are never reused, so a retired selection's evidence is never projected for a later one. The test "ER-005 after abandon, B is selected as selection 4 ..." shows A's sample 31 absent although the raw context holds it.
 - Challenges must follow the current selection's own `selected_at`.
@@ -66,7 +66,7 @@ Ruling applied: the brief says only the approvals list is gated on `selection_cu
 ## Denial and substitution cases (section `trials`, 34 checks)
 
 Fixtures:
-- A's trial offer is OfferId{201, 4} (grant 3, quote 38, valid until 113). B's is OfferId{202, 5} (grant 6, quote 41, valid until 140). B's approval (serial 19, until 128) is stored before A's (serial 12, until 130).
+- A's trial offer is OfferId{201, 4} (grant 3, quote 38, valid until 113). B's is OfferId{202, 5} (grant 6, quote 41, valid until 140). B's approval (serial 19, until 128) is submitted first, so A's (serial 12, until 130) heads the stored list and `covering_until` meets it first.
 - The negotiation is pinned at 100, A is selected at 103 as selection 3, and the trial runs at 110.
 - Challenges: 21 (issued 105) and 24 (104) follow fixation; 22 was issued at 103; 23 is for the plan whose code differs in one word.
 - Sample 31 is the passing one. Each other sample record differs from it in exactly one field.
@@ -153,7 +153,7 @@ Coverage:
 - the commit fields;
 - the outer match.
 
-The first sweep left two fixture-collision survivors, C7 and P16. Both are fixed: B's approval now has a distinct lifetime and is stored before A's, and the check "no longer stored" now includes an offers list holding only B's record.
+The first sweep left two fixture-collision survivors, C7 and P16. Both are fixed: B's approval now has a distinct lifetime and is submitted first, so A's heads the stored list, and the check "no longer stored" now includes an offers list holding only B's record.
 
 ## The law
 
@@ -188,3 +188,34 @@ It is not a trivial law. It names a transition, and it becomes false if the oute
 4. **ER-006 on the two-source plan uses a synthetic Sampled session.** The two-source plan's second source is not readable in the transfer fixture (`T.admit(IT.plan_two(), two_context())` is not accepted), so `N.sample` cannot reach Sampled there. The test exercises `N.approve`'s owner check on a SYNTHETIC session at Sampled; the full challenge, sample, approve and reserve flow is tested on the one-source plan.
 5. **Unmetered trial compute.** This is the recorded gap (plan ruling): the module header and the tasks.md box state it, and traceability is Task 7.
 6. **Mutation scratch location.** The plan names `../writ-build/executor-rendezvous/mutant/`; the dispatch names the session scratchpad. I followed the dispatch, as Task 3 did.
+
+## Fix round 1 (review task-4-review.md: S1 to S6)
+
+Spec compliance was approved. The security review raised three projection gaps (S1 to S3) and three minor items (S4 to S6). All six are addressed. `Negotiation.bend`, `LAWS.bend` and `PROOF.bend` are unchanged in this round.
+
+- **S1, session carry-over.** A session that reached Sampled under A's retired selection 3 still passes `N.approve`, `N.reserve` and `N.start` on B's projection. The cause is that those Negotiation stages never re-check the challenge or sample, and the projection does not take the session.
+  - Fix (the review's): the exported helper `session_follows_selection(state, session)`, through the inner `session_follows` and `challenge_evidenced`. It holds only when the session carries exactly the rendezvous request and its recorded challenge is the challenge of evidence stored under the current selection's id.
+  - The module header "Projection" paragraph and the `negotiation_context` doc now say that the projection does not bind the session, and that binding is the dispatch gate's job. The section "The projection, and why it cannot carry a stale selection" above is corrected to match.
+  - New check: "ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but session_follows_selection rejects it and its approved successor; it holds for B's session and for A's under selection 3, and not before evidence, with no selection, or for a session with quote 41". It records the probe's carry-over (`N.approve` accepted) and pins every conjunct of the helper (mutants B1 to B5).
+- **S2, foreign evidence.**
+  - `evidence_names` now keys on the selection id and also on the selected offer's identity and provider claim. The selected `Offer` is passed down through `projected_samples`, `sample_named` and `evidence_named`.
+  - `valid` now rejects evidence under the current selection's id that names another offer or provider claim (`evidence_binds`). Evidence under a retired id is unconstrained, because a retired selection's record is not kept.
+  - New check: "ER-005 evidence under A's selection id 3 naming B's offer, or A's offer with B's claim, is not a valid state and projects no sample". It uses two SYNTHETIC states, `foreign_offer()` and `foreign_provider()`, each differing in one field, and kills P25, P26 and V1 to V4.
+- **S3, offer-keyed projection.** New check: "ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)". It kills the review's R1, recorded as P27, and P8.
+- **S4, time and id assumptions.** The header and the `negotiation_context` doc now state both assumptions: the host supplies non-decreasing monitor time across selections and never reuses a challenge id across selections.
+- **S5, overclaiming check name.** Renamed to "ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial".
+- **S6, approval-order wording.** Reworded in the test fixture comment and in this report: B's approval is submitted first, so A's heads the stored list.
+
+Mutation pass, rerun in the session scratchpad's `executor-rendezvous-t4/`: 88 mutants, 85 killed, and the same 3 equivalent (P14, P18, T10). The new mutants are P25 to P27, V1 to V4 and B1 to B5. P6, P8 to P11 and P19 were re-patterned for the new signatures. O1 and O3 still fail PROOF.bend. The table is in `task-4-mutants.md`.
+
+Verification:
+- `bend Rendezvous.bend --check-only`: `ALL PROOFS CHECK`.
+- `bend RendezvousTests.bend`: `Rendezvous: 154 checks passed` (151 plus 3).
+- `bend Tests.bend`: `ALL LIBRARY TESTS PASSED`, 1582 PASS, 0 FAIL.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` with 23 laws.
+- `git diff master -- LAWS.bend PROOF.bend`: still added lines only.
+
+### Carried to Task 5
+
+- `dispatch` must gate on `session_follows_selection(state, session)` (reason `MissingEvidence` or `WrongTrial`), so that a Negotiation session whose trial belongs to a retired selection cannot be dispatched.
+- Test: run A's trial to Sampled under selection 3, then `abandon`, select B, and store B's evidence. Advance A's session to Running on B's projection; the review's probe shows this is possible. Then dispatch with A's session must be denied.
