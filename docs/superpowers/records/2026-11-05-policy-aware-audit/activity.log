@@ -85,3 +85,5 @@
 2026-11-05T19:02:50Z	implementer	heartbeat: final-tree native rebuild running (poll 7)
 2026-11-05T19:03:20Z	implementer	heartbeat: final-tree native rebuild running (poll 8)
 2026-11-05T19:04:08Z	implementer	final-tree native rebuild exit 0 (363 s), run exit 0, 1713 PASS, output cmp-identical to the first native capture and the Node capture; report written; committing
+2026-11-05T19:05:02Z	controller	task 6 reported; task review and final review dispatched
+2026-11-05T19:13:01Z	controller	Task 6 review: spec APPROVED, quality APPROVED; two comment nits (duplicated arity comments at AuditTests.bend 493/501, 545/553, 2213/2221; pointer should cite verification/policy-aware-audit.txt). Folded into the final-review fix round.

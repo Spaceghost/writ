@@ -25,3 +25,5 @@ Task 5: fix round 1 done (607fd05): owner-stream filter pinned by a check and th
 Task 5: complete (re-review ALL CLOSED; 1713 checks, 29 laws).
 Task 6: dispatched implementer (docs/AUDIT.md, traceability, full verification; no count pins, pins table instead)
 Task 6: first implementer stalled after the native build failed on the arity limit (last activity 17:36 UTC, no process, stopped 18:40 UTC); re-dispatched with the uncommitted work and the rendezvous lane's fix (split long test conjunctions into named Bool defs).
+Task 6: implementer DONE_WITH_CONCERNS (0d886cb): JS and native 1713 byte-identical, 29 laws, --verdict refused, strict 44; docs/AUDIT.md, traceability, evidence, pins table (1713, 29). Arity lesson refined: at most 247 live words per def with records unboxed, so record-list literals count; fixed by linking lists onto _rest defs and splitting a few checks, verified token-identical. The AuditQuery.bend header comment-only edit is accepted. Task reviewer and final whole-branch reviewer dispatched in parallel.
+Task 6: review APPROVED (spec + quality); two comment-only nits carried to the final fix round. Task 6: complete.
