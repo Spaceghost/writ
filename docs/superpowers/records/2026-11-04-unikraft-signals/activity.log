@@ -39,3 +39,5 @@
 2026-11-05T00:31:52Z	implementer	corpus image built (see bwrap log); booting check-corpus.sh at -m 4096 and -m 32
 2026-11-05T00:34:14Z	implementer	corpus: check-corpus.sh PASS at -m 4096 and -m 32 (782 PASS, diff empty, QEMU 33; build 9795 s first try); count negative control FAIL; binary checks on all nine new .dbg as expected; corpus and binary-check evidence written
 2026-11-05T00:35:06Z	implementer	task 2 report written; committing (DONE_WITH_CONCERNS)
+2026-11-05T00:35:59Z	controller	task 2 reported DONE_WITH_CONCERNS; reviewer dispatched
+2026-11-05T00:37:26Z	controller	task 2 review APPROVED; task 3 dispatched (records, box 2.3)
