@@ -53,3 +53,5 @@
 2026-11-05T04:49:39Z	controller	review: subject-free projections; fix round 1 dispatched (subject-scoped projections)
 2026-11-05T04:50:21Z	implementer	task 5 fix round 1 started: read task-5-review.md; taking the structural option (subject-scoped projections taking the authenticated principal)
 2026-11-05T04:53:22Z	implementer	fix round 1: projections take the authenticated principal (usable_by = speaks_for_subject && current); 5 new checks (subject scoping x3, registry-layer other subject, partial staleness M-2), derived reads/writes pinned (M-3); doc gains The subject of a use, M-1 and M-4 text; grant_registered renamed grant_capabilities; 12 new mutants all killed (M-2 and M-3 checks each kill alone); bend Tests.bend 985 PASS (782 + 201 + 2) ALL LIBRARY TESTS PASSED; bend PROOF.bend ALL PROOFS CHECK (12 laws); committing
+2026-11-05T04:53:42Z	controller	fix round 1 reported (subject-scoped projections); scoped re-review dispatched
+2026-11-05T04:55:55Z	controller	task 5 complete; task 6 dispatched (end-to-end scenarios, evidence, traceability)
