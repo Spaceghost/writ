@@ -133,6 +133,7 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   are the only kernel-specific code (the crash hook cannot be a twin; rationale in the
   change's tasks.md 2.1).
 - **Host code:** listed in [hosts/unikraft/INVENTORY.md](../hosts/unikraft/INVENTORY.md).
+- **Appliance rules (task 3.2):** UA-001 to UA-010 applied to the library image, with the rebuild drill and the trusted-base statement, in [unikernel-appliance-rules.md](../verification/unikernel-appliance-rules.md).
 - **Image configuration pins (trust inventory):** every `qemu/x86_64` image made from
   `hosts/unikraft/app/` (corpus, examples, effects probe, channel monitor, fault and exit
   probes) links Unikraft 0.21.0's `lib/posix-process` with POSIX signals,
