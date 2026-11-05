@@ -68,7 +68,9 @@ in the trusted base as the appliance change states.
 ## Port status (unikernel port lane, 2026-11-04)
 
 The matrix below records the kernels **before** the port; where a cell has since changed,
-it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one lane:
+it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one lane, except
+the KVM bullet. The change is **not finished**: tasks 1.3, 2.1 and 2.4 are open (the
+Open bullets below); the closing lane (2026-11-05) is the last planned Unikraft lane.
 
 - **Corpus parity:** `Tests.bend` (782 checks, merged tree aaa6885) prints 782 PASS lines
   and `ALL LIBRARY TESTS PASSED` with QEMU exit 33 (1 under the first exit map), its console identical line for line to a
@@ -102,6 +104,19 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   33, `IO.die` 35, `IO.exit(3)` 39, runtime stop 17, crash 253;
   [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt), "CURRENT MAP,
   RE-RECORDED WITH POSIX SIGNALS"). Every run is a QEMU TCG boot on the CPU; no GPU test.
+- **KVM (task 3.1, 2026-11-05):** for example, `hosts/unikraft/scripts/run.sh sigcodes
+  kvmfix-hello1 hello "+RTS --threads 1 --gpu off" 60 1024 "" kvm` boots the hello probe
+  with `-accel kvm -cpu host` (QEMU 11.1.2, AMD Ryzen 9 5950X, kernel 7.2.9, one vCPU) to
+  `hi` and QEMU 33. Hello 33, Die 35, Exit 39, Exhaust 253, Overflow's fault message then
+  253, and the corpus 33 with 782 PASS lines each pass their check scripts, recorded only
+  in [unikernel-kvm.txt](../verification/unikernel-kvm.txt) (TCG records unchanged). Under
+  KVM the guest runs briefly past the exit-device write, so Unikraft's `pm.c:69` shutdown
+  line, whole or cut off, can end a capture; the strict checks failed on 13 of 21 boots
+  before the check scripts learned to drop, and count, a trailing unterminated kernel-line
+  fragment (`kernel shutdown fragment after exit: dropped <0|1>`;
+  [unikernel-kvm.txt](../verification/unikernel-kvm.txt), "Finding: the guest runs on
+  after the exit-device write (KVM)", "Fix round 2"). Wall times were observed only (KVM
+  slower than TCG on a loaded host, not investigated). CPU only; Firecracker not tried.
 - **After a crash or `main`:** no reset observed; QEMU ends with 0, consistent with an ACPI
   power-off ([unikernel-crash-action.txt](../verification/unikernel-crash-action.txt)).
 - **Console and time effects:** `Unikraft.log`, `Unikraft.now`, `Unikraft.sleep`
@@ -171,7 +186,33 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   never calls `uk_lcpu_start`, and every `--threads 2` run, with the shipped template as
   well, ends in the `alloc.c @ 198` shutdown assertion, QEMU 253, so the corpus was not
   run on two lanes; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
-  "Stopping point"); accelerated boots (3.1).
+  "Stopping point"); the reference program under `linuxu` (1.3: the 0.16.3 `linuxu` image
+  stops at the runtime's 8 GiB CPU heap reservation, refused by `lib/ukmmap`, before the
+  program's first output; [unikernel-linuxu.txt](../verification/unikernel-linuxu.txt),
+  "Which attempt came closest"); the appliance rules are a checklist, not met: UA-002,
+  UA-004, UA-005, UA-006 and UA-008 are gaps and UA-001 and UA-007 partial, so UL-008 is
+  unmet ([unikernel-appliance-rules.md](../verification/unikernel-appliance-rules.md),
+  "Checklist").
+- **Open, three change tasks:** 1.3 (above), 2.1 (the `IO.print` twin and an authenticated
+  ingress subject; the subject needs a transport decision first) and 2.4 (a second lane
+  runs on one vCPU only, and `--threads 2` crashes at shutdown even on the shipped
+  template; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
+  "Stopping point"). Boxes 3.1, 3.2 and 3.3 are checked; the change is not finished.
+- **Follow-ups for the next image rebuild** (each changes every image set, so none was
+  made in the closing lane):
+  - a halt after the exit-device write in `hosts/unikraft/exit_device.c`: under KVM the
+    guest runs briefly past the write, which the check scripts now tolerate only as a
+    counted trailing fragment ([unikernel-kvm.txt](../verification/unikernel-kvm.txt),
+    "Finding: the guest runs on after the exit-device write (KVM)", "Fix round 2");
+  - `CONFIG_LIBUKLIBID_INFO_COMPILEDATE` unset, for a stable image hash: the drill's clean
+    rebuild differs from the recorded image only in the 25-byte build time in
+    `.uk_libinfo` (review-only, not tried;
+    [unikernel-appliance-rules.md](../verification/unikernel-appliance-rules.md), UA-002
+    row and "Comparison");
+  - `-nic none` in `hosts/unikraft/scripts/run.sh`, so QEMU's default network card is not
+    attached (iPXE is seen at PCI 00:03.0; the image has no driver for it;
+    [unikernel-appliance-rules.md](../verification/unikernel-appliance-rules.md), UA-005
+    row).
 
 ## Selection matrix, 2026-11
 

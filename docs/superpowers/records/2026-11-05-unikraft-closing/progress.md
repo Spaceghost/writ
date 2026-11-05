@@ -9,3 +9,4 @@ Task 1: review NEEDS_FIXES both axes (the fragment rule also drops legitimate pr
 Task 1: fix round 2 done (e944b22); scoped re-review dispatched.
 Task 1: complete (re-review ALL CLOSED; accepted limit: an unterminated program line that is exactly "[" would be dropped, stated in env.sh and the evidence).
 Task 2: implementer DONE_WITH_CONCERNS (102c4c7): 3 met, 2 partly, 5 gaps; drill 68.7 s, images identical except the 25-byte build time. Ruling: QEMU, host kernel, and firmware are trusted and outside the image (UA-009 reading accepted); follow-ups for the next rebuild (exit_device halt, CONFIG_LIBUKLIBID_INFO_COMPILEDATE, -nic none) go in the Open list in Task 3. Reviewer dispatched; Task 3 dispatched in parallel.
+Task 2: complete (review APPROVED both axes; three optional nits carried to the final round: UA-009 label, UA-003 quote wording, Config.uk:78-79).
