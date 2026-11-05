@@ -594,6 +594,8 @@ $ uptime
   00:33:35 up 3 days,  4:06,  1 user,  load average: 19.11, 32.92, 33.53
 
 ### Series solver size 16 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Solver.verified(r, graph))` and `e : Bool <- IO.pure(Bool, Solver.expected(r, groups))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:33:35 up 3 days,  4:06,  1 user,  load average: 19.11, 32.92, 33.53
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/solver-16/01-on ../writ-build/physical-gpu/task7/solver on bench 16 20
@@ -968,6 +970,8 @@ $ uptime
   00:33:46 up 3 days,  4:06,  1 user,  load average: 17.86, 32.19, 33.28
 
 ### Series labels size 16 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Dlm.verify_batch(queries, snapshot, r))` and `e : Bool <- IO.pure(Bool, Labels.expected(r, depth, 0))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:33:46 up 3 days,  4:06,  1 user,  load average: 17.86, 32.19, 33.28
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/labels-16/01-on ../writ-build/physical-gpu/task7/labels on bench 16 20
@@ -1342,6 +1346,8 @@ $ uptime
   00:33:57 up 3 days,  4:06,  1 user,  load average: 18.93, 31.97, 33.20
 
 ### Series transfers size 16 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Transfers.replay(requests, r))` and `e : Bool <- IO.pure(Bool, Transfers.expected(r, depth, 0))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:33:57 up 3 days,  4:06,  1 user,  load average: 18.93, 31.97, 33.20
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/transfers-16/01-on ../writ-build/physical-gpu/task7/transfers on bench 16 20
@@ -1716,6 +1722,8 @@ $ uptime
   00:34:07 up 3 days,  4:06,  1 user,  load average: 20.72, 31.91, 33.17
 
 ### Series solver size 1024 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Solver.verified(r, graph))` and `e : Bool <- IO.pure(Bool, Solver.expected(r, groups))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:34:07 up 3 days,  4:06,  1 user,  load average: 20.72, 31.91, 33.17
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/solver-1024/01-on ../writ-build/physical-gpu/task7/solver on bench 1024 20
@@ -2090,6 +2098,8 @@ $ uptime
   00:34:31 up 3 days,  4:07,  1 user,  load average: 19.78, 30.75, 32.75
 
 ### Series labels size 1024 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Dlm.verify_batch(queries, snapshot, r))` and `e : Bool <- IO.pure(Bool, Labels.expected(r, depth, 0))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:34:31 up 3 days,  4:07,  1 user,  load average: 19.78, 30.75, 32.75
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/labels-1024/01-on ../writ-build/physical-gpu/task7/labels on bench 1024 20
@@ -2464,6 +2474,8 @@ $ uptime
   00:34:43 up 3 days,  4:07,  1 user,  load average: 18.84, 30.18, 32.54
 
 ### Series transfers size 1024 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Transfers.replay(requests, r))` and `e : Bool <- IO.pure(Bool, Transfers.expected(r, depth, 0))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:34:43 up 3 days,  4:07,  1 user,  load average: 18.84, 30.18, 32.54
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/transfers-1024/01-on ../writ-build/physical-gpu/task7/transfers on bench 1024 20
@@ -2838,6 +2850,8 @@ $ uptime
   00:35:01 up 3 days,  4:07,  1 user,  load average: 23.43, 30.46, 32.58
 
 ### Series solver size 16384 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Solver.verified(r, graph))` and `e : Bool <- IO.pure(Bool, Solver.expected(r, groups))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:37:18 up 3 days,  4:10,  1 user,  load average: 15.95, 25.13, 30.31
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/solver-16384/01-on ../writ-build/physical-gpu/task7/solver on bench 16384 20
@@ -3212,6 +3226,8 @@ $ uptime
   01:36:17 up 3 days,  5:09,  1 user,  load average: 21.76, 28.28, 29.74
 
 ### Series labels size 16384 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Dlm.verify_batch(queries, snapshot, r))` and `e : Bool <- IO.pure(Bool, Labels.expected(r, depth, 0))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:35:01 up 3 days,  4:07,  1 user,  load average: 23.43, 30.46, 32.58
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/labels-16384/01-on ../writ-build/physical-gpu/task7/labels on bench 16384 20
@@ -3586,6 +3602,8 @@ $ uptime
   00:35:37 up 3 days,  4:08,  1 user,  load average: 18.98, 28.54, 31.86
 
 ### Series transfers size 16384 (REPS 20; order on off off on on off on on: pairs on/off, off/on, on/off, then the A-versus-A pair on/on)
+Stage attribution caveat (Task 9 note): in this probe's bench loop the marks t1..t5 are bound with `+`, but the verify and expected-pattern results are bound without it (`v : Bool <- IO.pure(Bool, Transfers.replay(requests, r))` and `e : Bool <- IO.pure(Bool, Transfers.expected(r, depth, 0))`). verify_ms and check_ms are attributed to those stages only if each binding is forced before the next mark; that is not established (see Limits, "Whether each mark sees fully evaluated values").
+
 $ uptime
   00:35:37 up 3 days,  4:08,  1 user,  load average: 18.98, 28.54, 31.86
 $ /usr/bin/python3 -I ../writ-build/physical-gpu/task7/trun.py ../writ-build/physical-gpu/task7/series/transfers-16384/01-on ../writ-build/physical-gpu/task7/transfers on bench 16384 20
@@ -4447,7 +4465,7 @@ Cold process wall also contains the tail (CPU reference plus run mode's checks o
 | transfers | 16384 | 531 / 61 = 8.69 | 347 / 31 = 11.19 | 8465 / 1328 = 6.38 |
 
 Slower cases, as measured: every measured case. In all nine path-and-size cells, under both conditions where a ratio is defined, the complete `--gpu on` pipeline took longer than the `--gpu off` pipeline of the same binary on this host at the stated load. No speedup was measured, so this file contains no speedup sentence.
-Break-even, as measured: not reached at any measured size (16, 1024, 16384 leaves) for any path. The smallest measured ratio is the solver's: 2.07 (warm total, size 1024) and 2.35 to 2.60 at 16384. Nothing is stated about sizes that were not measured, and no trend is extrapolated.
+Break-even, as measured: not reached at any measured size (16, 1024, 16384 leaves) for any path. The smallest measured ratio of the two pipeline columns (cold pipeline, warm total) is the solver's: 2.07 (warm total, size 1024) and 2.35 to 2.60 at 16384. The smallest ratio in the table overall is 1.96 (cold process wall, solver 1024), a column that includes the tail and is not a pipeline column. (Task 9 wording fix; no number changed.) Nothing is stated about sizes that were not measured, and no trend is extrapolated.
 Cold start: under `--gpu on` the bundled startup (exec, runtime init, CUDA context, module load) is 123 to 204 ms median against 10 to 39 ms under `--gpu off`, and it dominates the cold pipeline at sizes 16 and 1024 for every path.
 Compile, not pipeline: with the .gpu deleted, startup was 1019 ms (solver), 486 ms (labels) and 11541 ms (transfers), against 157, 123 and 154 ms in the fresh-.gpu run straight after (one run each, load 20.30 to 19.11; taken on a loaded host; not representative). The difference holds the runtime's NVRTC compile of the device program and is not part of any pipeline number above. Each regenerated .gpu was cmp-identical to the build's.
 Verify under the device: the verify component (CPU code) is much larger under `--gpu on` than under `--gpu off` (labels 16384 warm 149 against 2; transfers 16384 316 against 26; solver 16384 4707 against 1592). This is recorded as measured and not explained; see the Stage split paragraph. It is part of every complete pipeline above, which is why the pipelines, not the device-call component, are compared.

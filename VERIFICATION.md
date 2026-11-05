@@ -185,6 +185,53 @@ or device isolation claim was validated.** This environment had no `/dev/nvidia0
 no `/dev/dri`, and no CUDA toolkit. Native tests used `--gpu off`. Bend's `!`
 can fall back to CPU execution; success does not establish the physical backend.
 
+The paragraph above is the record of that environment and stays as history.
+
+### 2026-11-05: one GPU host (validate-physical-gpu-execution, proposed)
+
+This host differs from the environment above: it has `/dev/nvidia0`, the CUDA
+toolkit and NVRTC. Linux 7.2.9-1-MANJARO x86_64, 32 CPUs, NVIDIA GeForce RTX
+4090 `GPU-0188dad3-4d11-4254-3a0d-50e3808bf464`, driver 615.71.09, CUDA UMD
+13.4, Bend 2.0.39, clang 23.1.1, NVRTC 13.4.92, cubins `sm=89`
+([gpu-toolchain.txt](verification/gpu-toolchain.txt), "Result"). The host is
+shared with the display and other GPU clients and was loaded throughout
+(1-minute load 10.79 to 99.82 on 32 CPUs). Every configuration, hash and
+command is in [gpu-validation-hosts.md](verification/gpu-validation-hosts.md);
+the requirement map is
+[openspec/traceability/gpu-validation.md](openspec/traceability/gpu-validation.md).
+
+Library correctness: the library corpus printed 782 PASS lines with
+`--gpu on` and with `--gpu off`, byte-identical to `tests-native.txt`, on the
+782 tree before the merge of master
+([gpu-corpus.txt](verification/gpu-corpus.txt), "Result"). The merged tree
+prints 1428 checks on the CPU ([gpu-final-checks.txt](verification/gpu-final-checks.txt));
+it has no `--gpu on` corpus run.
+
+GPU claim, limited to runs with observed launches: compute-sanitizer counted
+`bend_dev` launches attributed to the binary, and the hardware-evidence gate
+passed, for the graph solver, the label batch and the transfer batch, each in
+its own single-bang probe ([gpu-paths.txt](verification/gpu-paths.txt),
+"Result"), for 18 of 20 parity cases ([gpu-parity.txt](verification/gpu-parity.txt),
+"Result"), for 11 injected faults on device results, each denied in every
+round ([gpu-injection.txt](verification/gpu-injection.txt), "Result"), and for
+the solver bang inside the corpus, 4915 launches
+([gpu-corpus.txt](verification/gpu-corpus.txt), "Result"). The gate refuses
+forced CPU fallback, a hidden device and zero launches
+([gpu-gate-controls.txt](verification/gpu-gate-controls.txt), "Result").
+Everything else is CPU execution: every `--gpu off` run, every CPU reference,
+verifier and replay, and the corpus's label and transfer batches.
+
+Limits: the timings were taken on a loaded host and are not representative;
+the device path was slower than the CPU in every measured cell, and no speedup
+is claimed ([gpu-pipeline.txt](verification/gpu-pipeline.txt), "Result",
+"Limits"). The device call is not split into memory movement, dispatch and
+kernel time, because Nsight is not installed. The only trust profile is GT-1
+trusted device: the managed heap is shared and writable, and hostile device code
+and drivers are excluded from the threat model as a limit, not a boundary
+([gpu-trust-profile.md](verification/gpu-trust-profile.md), "Threat-model
+exclusion"). The label and transfer checks reuse the producers' evaluators. No
+32-bit probe digest is equality evidence. No Lean verdict exists.
+
 ## Explicit proof scope
 
 `bend PROOF.bend` prints `ALL PROOFS CHECK` for seventeen declared laws:

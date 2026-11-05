@@ -230,3 +230,11 @@
 2026-11-05T07:50:29Z	implementer	task 8 fix round 1 started: read task-8-review.md (8 findings, text only)
 2026-11-05T07:51:06Z	implementer	task 8 fix round 1: eight review findings applied to gpu-trust-profile.md (timer limit, trusted list additions, proof wording, detection wording, binary_sha256 quote, Build citation, client names, validates wording); openspec strict 44 passed; committing
 2026-11-05T07:51:19Z	controller	task 8 complete; task 9 dispatched
+2026-11-05T07:51:57Z	implementer	task 9 start; merging master into lane/physical-gpu
+2026-11-05T07:52:08Z	implementer	merge clean as dbed241 (no conflicts); starting bend Tests.bend and PROOF.bend on merged tree
+2026-11-05T07:52:33Z	implementer	Tests.bend 1428 PASS + ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK; --verdict refused (lean not found), exit 1
+2026-11-05T07:54:15Z	implementer	carried notes: gpu-paths.txt digest reconciliation (equal counts only, typed comparisons and gpu-parity.txt), gpu-corpus.txt Limits bullet, gpu-pipeline.txt smallest-ratio wording and nine stage-attribution caveats
+2026-11-05T07:55:10Z	implementer	source check: library modules in every path record equal the merged tree; Tests.bend and FacadeTests.bend differ (corpus evidence is the 782 tree's only); writing hosts table
+2026-11-05T07:56:50Z	implementer	wrote verification/gpu-validation-hosts.md (host row, 11 configuration rows, gap list); next: traceability
+2026-11-05T07:58:30Z	implementer	wrote traceability gpu-validation.md, PX-001/PX-008 pointers, VERIFICATION.md dated section, tasks.md boxes (1.1-1.3, 2.1-2.3, 3.2, 4.3 checked; 3.1 unchecked with reason; 4.1/4.2 untouched); running final checks
+2026-11-05T07:59:42Z	implementer	final checks on merged tree: Tests 1428 PASS, PROOF ALL PROOFS CHECK, --verdict refused (lean not found), OpenSpec 44/0, .bend diff = 4 probes; wrote gpu-final-checks.txt and task-9-report.md; committing

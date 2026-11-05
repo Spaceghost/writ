@@ -1,0 +1,119 @@
+Final checks of the physical-gpu lane on the merged tree (GV-001 to GV-008 traceability; spec task 4.3; Task 9)
+Bend version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend, sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+Compiler: clang version 23.1.1 (not used by these checks; `bend Tests.bend` and `bend PROOF.bend` run in the Bend driver, not as a native build); OpenSpec 1.16.0 through ~/.bun/bin/bunx
+Host: Linux 7.2.9-1-MANJARO x86_64, 32 online CPUs; 1-minute load average 13.70 at the start (uptime below)
+Date: 2026-11-05 07:58 UTC
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:/opt/cuda/bin:$PATH"; export BEND_NO_TELEMETRY=1. Commands run from the worktree root on lane/physical-gpu at dbed241b152f865a43cb9fb24efd1a68256aaa1a (the merge of master 1c73004 into the lane), with only Task 9's Markdown and text edits uncommitted (no .bend file edited after the merge).
+Execution: CPU only. None of these checks is GPU evidence; `bend Tests.bend` runs the library corpus in the Bend driver with no device. The device evidence is in the files listed in verification/gpu-validation-hosts.md.
+
+## Build
+No build. These checks run from source.
+
+## Run
+
+$ uptime
+ 01:58:30 up 3 days,  5:31,  1 user,  load average: 13.70, 19.12, 22.74
+[exit status: 0]
+
+$ timeout 600 bend Tests.bend
+[exit status: 0; stderr empty; wall 2360 ms]
+stdout: 1522 lines, sha256 6faee2192533a33a714641f1efe895a1352f619df554207805265bd60e9f9318
+grep -cE '^PASS[: ]': 1428; grep -c '^FAIL': 0
+last three lines, verbatim:
+PASS: equality-conflict oracle, topology 63
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+
+$ timeout 600 bend PROOF.bend
+[exit status: 0; stderr empty; wall 324 ms]
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.
+declared laws (grep -c '^def Laws\.' PROOF.bend): 17
+
+$ timeout 600 bend PROOF.bend --verdict
+[exit status: 1; stdout empty; stderr verbatim below]
+Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
+
+$ timeout 600 ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+[exit status: 0]
+✓ change/add-addressable-views
+✓ change/add-authenticated-grant-issuance
+✓ change/add-capability-posix-adapter
+✓ change/add-confined-transform-execution
+✓ change/add-controlled-disclosure
+✓ change/add-cooperative-retirement
+✓ change/add-drift-kernel-host
+✓ change/add-durable-publication
+✓ change/add-executor-rendezvous
+✓ change/add-external-planner-adapters
+✓ change/add-freestanding-bend-runtime
+✓ change/add-genode-host
+✓ change/add-linux-host
+✓ change/add-locality-aware-execution
+✓ change/add-metered-sample-execution
+✓ change/add-origin-transform-stages
+✓ change/add-policy-aware-audit
+✓ change/add-portable-host-contract
+✓ change/add-s3-adapter
+✓ change/add-scoped-private-matching
+✓ change/add-unikernel-appliance-host
+✓ change/add-unikernel-library-runtime
+✓ change/add-windows-host
+✓ change/add-writfs-namespace
+✓ spec/authority-boundary
+✓ spec/bend-runtime-host-profile
+✓ spec/candidate-verification
+✓ spec/capability-frontend
+✓ spec/commit-backplane
+✓ spec/constraint-solving
+✓ spec/data-model
+✓ spec/decentralized-labels
+✓ spec/genode-bend-component
+✓ spec/genode-capability-adoption
+✓ spec/native-host-canary-mounts
+✓ spec/native-snapshot-staging
+✓ spec/parallel-execution
+✓ spec/provenance-preservation
+✓ spec/rclone-contrib-remote
+✓ spec/reservation-ledger
+✓ spec/transfer-admission
+✓ spec/transformation-negotiation
+✓ change/validate-physical-gpu-execution
+✓ spec/verification-evidence
+Totals: 44 passed, 0 failed (44 items)
+
+$ git diff --stat master -- '*.bend'
+[exit status: 0]
+ scripts/gpu-validation/Bang.bend      |  138 +++
+ scripts/gpu-validation/Labels.bend    |  968 ++++++++++++++++++++
+ scripts/gpu-validation/Solver.bend    | 1213 +++++++++++++++++++++++++
+ scripts/gpu-validation/Transfers.bend | 1556 +++++++++++++++++++++++++++++++++
+ 4 files changed, 3875 insertions(+)
+
+$ git diff --name-only master -- '*.bend'
+scripts/gpu-validation/Bang.bend
+scripts/gpu-validation/Labels.bend
+scripts/gpu-validation/Solver.bend
+scripts/gpu-validation/Transfers.bend
+
+## Result
+
+Library correctness (CPU, merged tree): `bend Tests.bend` printed 1428 PASS lines, 0 FAIL lines, final line `ALL LIBRARY TESTS PASSED`, exit 0. 1428 is the count on the merged tree (master's pin, unchanged; this lane adds no tests and touched no count pin).
+
+Proofs: `bend PROOF.bend` printed `ALL PROOFS CHECK` for the seventeen declared laws (none added by this lane). `bend PROOF.bend --verdict` refused, exit 1, because Lean is not on PATH; no kernel verdict exists.
+
+OpenSpec: 44 passed, 0 failed under `--strict`. This is structural validation of the documents, separate from the Bend checks.
+
+Source diff: `git diff --stat master -- '*.bend'` lists exactly four files, all under scripts/gpu-validation/:
+- scripts/gpu-validation/Bang.bend: qualification probe (one bang, checksum against a no-bang run); not policy source.
+- scripts/gpu-validation/Solver.bend: qualification probe for GPU.solve (modes run, parity, inject, bench); not policy source.
+- scripts/gpu-validation/Labels.bend: qualification probe for GPU.label_batch (modes run, parity, inject, bench, bench-forged); not policy source.
+- scripts/gpu-validation/Transfers.bend: qualification probe for GPU.transfer_batch (modes run, parity, inject, bench); not policy source.
+They import library modules and examples/Scenario.bend, never a *Tests.bend or Test.bend, and they are not part of Tests.bend. No library, example, test, law or proof source differs from master.
+
+GPU claim: none from this file. The GPU evidence and its limits are in verification/gpu-validation-hosts.md and openspec/traceability/gpu-validation.md.
+
+## Limits
+- These checks ran on the CPU. The device corpus run (verification/gpu-corpus.txt) is on the 782 tree before the merge; the merged 1428 tree has no `--gpu on` corpus run.
+- No Lean verdict (`--verdict` refused); `ALL PROOFS CHECK` is Bend's ordinary checker, not a kernel verdict.
+- The native corpus (`bend Tests.bend -o ...`) and the JavaScript corpus were not rebuilt here; the master records (verification/tests-native.txt, tests-js.txt) are master's.
