@@ -3,6 +3,7 @@ import ./Guard.bend as Guard
 import ./LAWS.bend as Laws
 import ./HostBinding.bend as HostBinding
 import ./HostIdentity.bend as HostIdentity
+import ./HostPrimitives.bend as HostPrimitives
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -41,4 +42,10 @@ def Laws.generation_bump_monotone(object):
       Laws.nat_lt_successor(generation)
 
 def Laws.identity_denied_preserves_state(state, reason):
+  {==}
+
+def Laws.primitive_denied_preserves_state(state, reason):
+  {==}
+
+def Laws.primitive_denied_emits_nothing(state, reason):
   {==}

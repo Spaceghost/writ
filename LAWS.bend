@@ -3,6 +3,7 @@ import ./Guard.bend as Guard
 import ./Ledger.bend as Ledger
 import ./HostBinding.bend as HostBinding
 import ./HostIdentity.bend as HostIdentity
+import ./HostPrimitives.bend as HostPrimitives
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -66,3 +67,29 @@ law identity_denied_preserves_state:
   for state: HostIdentity.State
   for reason: HostIdentity.Error
   {HostIdentity.Change.state(HostIdentity.Rejected{state, reason}) == state : HostIdentity.State}
+
+# A denied host-primitive step carries the supplied state unchanged, for any
+# state and any closed-type reason. This holds by computation of the
+# `Step.state` accessor; it is stated to fix the contract every HostPrimitives
+# transition's denial path relies on (deny by returning `Denied{state, r}`
+# with the caller's own state). It does not assert that any transition chose
+# the denial path, that the reason is the right one, or that an admitted
+# step is correct; those are covered by HostPrimitivesTests.
+law primitive_denied_preserves_state:
+  for state: HostPrimitives.State
+  for reason: HostPrimitives.Error
+  {HostPrimitives.Step.state(HostPrimitives.Denied{state, reason}) == state : HostPrimitives.State}
+
+# A denied host-primitive step yields no effect, for any state and any
+# closed-type reason: the effects a target binding may execute are exactly
+# `Step.effects` of the transition's output, and for a denial that list is
+# empty, so an effect exists only on an admitted transition. This holds by
+# computation of the `Step.effects` accessor (`Denied` has no effects field).
+# It does not assert which transitions deny, that a reason is the right one,
+# or that an admitted step's effects are correct; HostPrimitivesTests covers
+# those. That a binding executes only effects this monitor returned is a
+# host obligation.
+law primitive_denied_emits_nothing:
+  for state: HostPrimitives.State
+  for reason: HostPrimitives.Error
+  {HostPrimitives.Step.effects(HostPrimitives.Denied{state, reason}) == [] : List<&2, HostPrimitives.Effect>}
