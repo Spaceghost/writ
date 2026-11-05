@@ -221,3 +221,17 @@ def Laws.audit_revoked_export_emits_nothing(state, expected_revision, from, requ
   %Equal.sym(Maybe<&2, AuditExport.ExportGrant>, AuditExport.find_export_grant(AuditExport.grants(state), from, request), Some{g}, found) : {AuditExport.Transmission.effects(AuditExport.transmit_found(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
   %Equal.sym(Bool, AuditExport.ExportGrant.revoked(g), True{}, revoked) : {AuditExport.Transmission.effects(AuditExport.transmit_unrevoked(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
   {==}
+
+# `visible` is `Bool.and(in_stream(owner, e), releasable(..))`; rewriting the
+# first conjunct to False{} with the stream hypothesis (reversed) makes the
+# conjunction False{} by computation. A proof helper for the law below, not
+# a law of its own.
+def audit_outside_stream_invisible(state: AuditQuery.State, owner: Dlm.Principal, sink: AuditEvent.Sink, e: AuditEvent.Recorded, outside: {AuditQuery.in_stream(owner, e) == False{} : Bool}) -> {AuditQuery.visible(state, owner, sink, e) == False{} : Bool}:
+  %Equal.sym(Bool, AuditQuery.in_stream(owner, e), False{}, outside) : {Bool.and(_, AuditEvent.releasable(AuditQuery.snapshot(state), AuditQuery.epoch(state), AuditEvent.Recorded.policy(e), sink)) == False{} : Bool}
+  {==}
+
+# `export_log_view` unfolds to `AuditQuery.view(query(state), ..)` on both
+# sides, so the goal is `audit_invisible_event_unobservable` at the query
+# state, with its hypothesis supplied by the helper above.
+def Laws.audit_export_outside_stream_unobservable(state, owner, sink, before, after, e, outside):
+  Laws.audit_invisible_event_unobservable(AuditExport.query(state), owner, sink, before, after, e, audit_outside_stream_invisible(AuditExport.query(state), owner, sink, e, outside))

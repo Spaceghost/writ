@@ -52,8 +52,9 @@ import ./AuditQuery.bend as AQ
 # `Metric` grant never authorizes `Events`), and two matching grants are
 # ambiguous and resolve to None (fail closed). As for read grants, a revoked
 # record is kept, so a re-installed grant with the same four names is
-# ambiguous and refused until the epoch advances or the monitor prunes the
-# revoked record.
+# ambiguous and refused, in every epoch, until the monitor prunes the revoked
+# record: the lookup does not read the epoch, so an epoch advance alone does
+# not lift the refusal (AuditTests pins both cases).
 #
 # Order of checks in `transmit` (every one re-derived from the state at the
 # call; nothing is cached):
@@ -81,8 +82,9 @@ import ./AuditQuery.bend as AQ
 #    fit its canonical word form (never a truncated word).
 # The order is not observable to the sink: every denial is `Withheld{}`.
 #
-# The visible set. `export_view(state, request, sink)` is exactly
-# `AQ.view(query_state, owner, sink, AQ.event_log(query_state))`: the view a
+# The visible set. `export_view(state, owner, sink)` is exactly
+# `AQ.view(query_state, owner, sink, AQ.event_log(query_state))`, through the
+# helper `export_log_view` that the third law is stated over: the view a
 # query of the same owner through the same sink would page, built with
 # AuditQuery's `visible` (the owner's stream under `AE.event_streams`, and
 # `AE.releasable` of the event's policy to that sink under the state's
@@ -107,7 +109,7 @@ import ./AuditQuery.bend as AQ
 #   count over every stored event would leak hidden ones, and withholding
 #   the metric whenever a hidden event exists would reveal that hidden
 #   events exist; a visible-view count reveals neither. It undercounts by
-#   design (docs/AUDIT.md says so). A count at or above 2^32 is Withheld,
+#   design (Task 6's docs/AUDIT.md says so). A count at or above 2^32 is Withheld,
 #   never wrapped; that bound depends on the visible view only.
 # - `Alert{}`: one emission per visible event whose kind is `rule`, each the
 #   view encoding of that event, in append order. A hidden matching event
@@ -125,6 +127,11 @@ import ./AuditQuery.bend as AQ
 # `ExportGrant`, `ExportRequest`, `Emit` and `Transmission` are public Data
 # records, a model, not unforgeable evidence or capabilities, and an `Emit`
 # is a description for the host's sink binding, not authority to send.
+# Host obligation (carried to Task 6): a host delivers a `Sent`
+# transmission's effects only to the named sink's binding, never to the
+# exporter process. The exporter holds no read grant, so it learns at most
+# whether a transmission was sent, and that bit depends only on its grant,
+# the gates and the visible view.
 #
 # Public entry points: `empty`, `transmit`, `revoke_export` (a monitor
 # transition), the constant `export_format_version`, the state, grant,
@@ -133,9 +140,9 @@ import ./AuditQuery.bend as AQ
 # and `view_tags` (the export wire form, a boundary and not policy), and the
 # equality helpers `Channel.equal`, `Emit.equal`, `Emissions.equal` and
 # `Transmission.equal`. Every other def (`find_export_grant`,
-# `export_gates`, `export_gate_list`, `export_view`, `metric_count`,
-# `channel_content` and the rest) is an exported implementation helper:
-# calling one performs none of `transmit`'s checks.
+# `export_gates`, `export_gate_list`, `export_view`, `export_log_view`,
+# `metric_count`, `channel_content` and the rest) is an exported
+# implementation helper: calling one performs none of `transmit`'s checks.
 #
 # Laws (LAWS.bend):
 # - `audit_ungranted_export_emits_nothing`: whenever no export grant names
@@ -151,6 +158,15 @@ import ./AuditQuery.bend as AQ
 #   transmissions are denied, not rerouted). It does not claim that
 #   `revoke_export` sets the flag (AuditTests' export section shows it) or
 #   anything about an expired or other-epoch grant (tested).
+# - `audit_export_outside_stream_unobservable`: inserting into the log, at
+#   any position, an event outside the requested owner's stream
+#   (`AQ.in_stream` False) leaves `export_log_view` unchanged, for every
+#   state, owner and sink. An export under one owner's grant never carries,
+#   counts or alerts on another owner's event, even one releasable to the
+#   export sink. It does not claim that `transmit` reads the log only through
+#   `export_log_view` (that is this module's structure, shown by the tests),
+#   or anything about events inside the owner's stream that the sink may not
+#   receive (AuditQuery's `audit_invisible_event_unobservable` covers those).
 
 # --- Records -----------------------------------------------------------------
 
@@ -456,10 +472,16 @@ def view_encode(+v: AQ.View) -> Maybe<&2, List<&2, U32>>:
 
 # --- Channel content ----------------------------------------------------------
 
+# The visible view of `stored` for `owner` through `sink`, judged against the
+# query state's snapshot and epoch (AuditQuery's `view`, so the owner's
+# stream and `releasable` both apply).
+def export_log_view(+state: State, +owner: D.Principal, +sink: AE.Sink, stored: AQ.Stored) -> AQ.Views:
+  AQ.view(query(state), owner, sink, stored)
+
 # Exactly the view a query of `owner` through `sink` would page: the visible
 # view of the query state's log. The only route from the log to an emission.
 def export_view(+state: State, +owner: D.Principal, +sink: AE.Sink) -> AQ.Views:
-  AQ.view(query(state), owner, sink, AQ.event_log(query(state)))
+  export_log_view(state, owner, sink, AQ.event_log(query(state)))
 
 def joined_words(a: Maybe<&2, List<&2, U32>>, b: Maybe<&2, List<&2, U32>>) -> Maybe<&2, List<&2, U32>>:
   match a b:

@@ -255,3 +255,58 @@ Environment: `export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/b
 7. **Grant approval** stays a recorded gap (controller ruling: monitor-installed export grants).
 8. **Residual channels:** timing over the whole log, and the requester's one-bit label-table observation, stated in the header and carried to Task 6. No constant time, and no model of when an exporter calls.
 9. **Count:** 35 checks against an estimate of about 26; the extra checks pin the view encoder, the content refusal, the revoke transition and the survivors.
+
+## Fix round 1
+
+Input: `task-5-review.md` (I1 Important; M1 to M4 Minor; A1 and A2 advisory). Status: DONE.
+
+### I1: the owner-stream filter is now pinned by a check and by a law
+
+- **Check** (in `content_gated`): "AU-007 an event releasable to the export sink but outside the grant owner's stream (Mallory's early denial through sink 4) changes no Events, Metric or Alert word".
+  - Alice's exporter 60 gets grants 207 (Events), 208 (Metric) and 209 (Alert) for the all-principals sink 4.
+  - Not vacuous: it asserts that `h_mallory` is `AE.releasable` to `sink_all()` and is not in Alice's stream.
+  - Over `[v_admitted, h_mallory, v_stale]`, Events is `Sent` with exactly the views of `v_admitted` and `v_stale`, Metric (AdmissionDenied) is `[1]`, and Alert is exactly one alert, for `v_stale`.
+  - Each of the three channels equals its result over `[v_admitted, v_stale]`.
+- **Law** `audit_export_outside_stream_unobservable` (law 29), proved with no hole.
+  - Statement: for all export `state`, `owner`, `sink`, `before`, `after` and `e`, with `{AuditQuery.in_stream(owner, e) == False{}}`, `export_log_view(state, owner, sink, Stored.append(before, Stored.cons(e, after))) == export_log_view(state, owner, sink, Stored.append(before, after))`.
+  - Rationale: an export under one owner's grant never carries, counts or alerts on another owner's event, even one releasable to the export sink.
+  - Proof: a helper (`audit_outside_stream_invisible`, a proof helper and not a law) rewrites `visible`'s first conjunct with the hypothesis to get `visible == False`. The law is then `audit_invisible_event_unobservable` at `query(state)`.
+  - To state it, `export_view` now calls a new helper `export_log_view(state, owner, sink, stored)`, which is `AQ.view(query(state), owner, sink, stored)`. That is the plan's "named helper the entry point is shown to use" form, as for Task 4's law over `view`.
+  - Not claimed: that `transmit` reads the log only through `export_log_view`. That is structural (`event_log` appears only in `export_view`), and the new check shows it.
+  - Mutants that break it: V11 (the review's R4: `export_log_view` keeps every releasable event regardless of stream) and V1 (the raw log) make the statement false. V13 (`AQ.visible` without the stream test) fails at the helper. V9 and V10 (an export view that no longer goes through `AQ.view`) break the proof term but not necessarily the statement.
+- **Why the no-grant and revoked laws stay as they are:** both state that nothing is emitted under a missing or revoked grant, so they say nothing about content and cannot cover the owner filter. Content is covered by the new law. Stating it over `transmit` itself would mean pushing the rewrite under `transmit`'s matches on the stuck `find_sink` result and the request fields. That needs a log-insensitivity lemma for `AQ.view` over two query states that differ in their log field, so I stated the law over the helper instead. The review's A1 is advisory: the two laws keep the brief's `effects == []` form, and the tests pin the exact `Withheld{}`.
+
+### M1: the re-grant remedy
+
+The header now says that a re-installed grant with the same four names is ambiguous and refused in every epoch until the monitor prunes the revoked record, because the lookup does not read the epoch, so an epoch advance alone does not lift the refusal. New check: "AU-007 a re-installed grant beside its revoked record is ambiguous and withheld (NoGrant), at the same epoch and after an epoch advance" (grants 210 at epoch 3 and 211 at epoch 4, each beside revoked 201). Carried to Task 6: the same correction applies to AuditQuery's documentation (Task 4 M3).
+
+### M2 to M4
+
+- **M2:** the header now states the host obligation. A host delivers a `Sent` transmission's effects only to the named sink's binding, never to the exporter process. The exporter holds no read grant, so it learns at most whether a transmission was sent, and that bit depends only on its grant, the gates and the visible view. Carried to Task 6's host obligations.
+- **M3:** the header now reads `export_view(state, owner, sink)`.
+- **M4:** the header now says "Task 6's docs/AUDIT.md says so".
+
+### Mutation pass (rerun on the commit tree)
+
+The script is `scratchpad/policy-aware-audit/mutate5.py`, and the table is `scratchpad/policy-aware-audit/mutants/task-5-fix1.tsv`. The view mutants V1, V9 and V10 were retargeted to the `export_log_view` body, and three were added:
+
+| id | mutation | killed by | proofs |
+|---|---|---|---|
+| V11 | `export_log_view` keeps every releasable event regardless of stream (review R4) | "AU-007 an event releasable to the export sink but outside the grant owner's stream (Mallory's early denial through sink 4) changes no Events, Metric or Alert word" | fails at Laws.audit_export_outside_stream_unobservable |
+| V12 | `export_view` bypasses the helper with a releasable-only filter | same check | proofs check |
+| V13 | AuditQuery `visible` drops the stream test | "AU-003 a reader holding Alice and Bob grants through sink 1 sees no mixed event in either stream: there is no operator widening" | fails at audit_outside_stream_invisible |
+
+Changed rows: V1, V9 and V10 now also fail at `Laws.audit_export_outside_stream_unobservable`. V4 (alert ignores the rule) and V8 (a metric total) are now first caught by the new check, and are still caught by their earlier checks.
+
+**73 mutants: 68 killed (66 by a check, T2 and T4 by the revoked law only), 5 equivalent** (E4, E5, E6, K4 and T9; the arguments are unchanged).
+
+### Commands and final lines
+
+- `bend AuditEvent.bend --check-only`, `bend AuditQuery.bend --check-only` and `bend AuditExport.bend --check-only` each print `ALL PROOFS CHECK`.
+- `bend AuditTests.bend` prints `Audit: 285 checks passed`: 248 plus 37 export checks.
+- `bend Tests.bend`: `ALL LIBRARY TESTS PASSED`, exit 0; 1713 `^PASS(:| )` lines and 0 FAIL: 1428 plus 285 = 1713.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` and `Use --verdict for mathematical validity.`, exit 0; 29 laws.
+- `git diff master -- LAWS.bend PROOF.bend Tests.bend` removes 0 lines.
+- `openspec validate --all --strict --no-interactive` (1.16.0) gives 44 passed, 0 failed.
+- tasks.md box 1.4 evidence now also names the third law and the new check.
+- Not run: `--verdict`, native, GPU.

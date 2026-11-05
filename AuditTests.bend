@@ -2860,6 +2860,17 @@ def x_revoked_state() -> AX.State:
 def x_with(id: Nat, epoch: Nat, until: Nat, revoked: Bool) -> AX.ExportGrants:
   x_grants_of([AX.ExportGrant{id, alice_exporter(), alice(), 1n, AX.Events{}, epoch, until, revoked}])
 
+# A revoked grant 201 kept beside a re-installed grant with the same four
+# names, at the same epoch (210) and, after an epoch advance, at epoch 4
+# (211). The lookup does not read the epoch, so both are ambiguous.
+def regrant_same_epoch() -> AX.State:
+  x_state_full(policy_epoch(), x_grants_of([AX.ExportGrant{201n, alice_exporter(), alice(), 1n, AX.Events{}, policy_epoch(), q_until(), True{}},
+    AX.ExportGrant{210n, alice_exporter(), alice(), 1n, AX.Events{}, policy_epoch(), q_until(), False{}}]), visible_five())
+
+def regrant_next_epoch() -> AX.State:
+  x_state_full(4n, x_grants_of([AX.ExportGrant{201n, alice_exporter(), alice(), 1n, AX.Events{}, policy_epoch(), q_until(), True{}},
+    AX.ExportGrant{211n, alice_exporter(), alice(), 1n, AX.Events{}, 4n, q_until(), False{}}]), visible_five())
+
 def revoked_export() -> IO(Unit):
   +st = x_revoked_state()
   do IO<Unit>:
@@ -2909,6 +2920,9 @@ def revoked_export() -> IO(Unit):
       withheld(AX.transmit(AX.Change.state(AX.revoke_export(st, 1n+x_revision(), 202n)), 2n+x_revision(),
         alice_exporter(), denied_rule(AX.Metric{}), q_now())),
       "AU-007 a later revocation of another export grant keeps the earlier revocation in force")
+    Test.check(withheld_at(regrant_same_epoch(), alice_exporter(), events_request(alice(), 1n), AQ.NoGrant{}) &&
+      withheld_at(regrant_next_epoch(), alice_exporter(), events_request(alice(), 1n), AQ.NoGrant{}),
+      "AU-007 a re-installed grant beside its revoked record is ambiguous and withheld (NoGrant), at the same epoch and after an epoch advance")
 
 # --- export: content stays policy-gated with a grant ------------------------------
 
@@ -2930,6 +2944,21 @@ def alerts_of(xs: List<&2, AE.Recorded>) -> AX.Transmission:
 def events_of(xs: List<&2, AE.Recorded>) -> AX.Transmission:
   send(x_state(xs), alice_exporter(), events_request(alice(), 1n))
 
+# Alice's exporter 60 holds her Events, Metric and Alert grants for the
+# all-principals sink 4 (grants 207 to 209), to which Mallory's early denial
+# naming Alice's objects is releasable although it is in Mallory's stream
+# only. The stream filter, not `releasable`, must keep it out.
+def wide_grants() -> AX.ExportGrants:
+  x_grants_of([x_grant(207n, alice_exporter(), alice(), 4n, AX.Events{}),
+    x_grant(208n, alice_exporter(), alice(), 4n, AX.Metric{}),
+    x_grant(209n, alice_exporter(), alice(), 4n, AX.Alert{})])
+
+def wide_send(xs: List<&2, AE.Recorded>, channel: AX.Channel) -> AX.Transmission:
+  send(x_state_full(policy_epoch(), wide_grants(), xs), alice_exporter(), x_request(alice(), channel, 4n, AE.AdmissionDenied{}))
+
+def wide_unchanged(+channel: AX.Channel) -> Bool:
+  AX.Transmission.equal(wide_send([v_admitted(), h_mallory(), v_stale()], channel), wide_send([v_admitted(), v_stale()], channel))
+
 def content_gated() -> IO(Unit):
   do IO<Unit>:
     Test.check(sent_as(events_of([v_admitted(), h_mixed(), v_origin()]), one_emission(1n, expected_words([v_admitted(), v_origin()]))) &&
@@ -2938,6 +2967,13 @@ def content_gated() -> IO(Unit):
     Test.check(AX.Transmission.equal(events_of(interleaved()), events_of(visible_five())) &&
       sent_as(events_of([h_bob(), h_commit(), h_mallory()]), one_emission(1n, [])),
       "AU-007 Bob's own event, a commit by subject 7 and Mallory's early denial change no Events word; a log of only hidden events sends an empty batch")
+    Test.check(AE.releasable(snapshot(), policy_epoch(), AE.Recorded.policy(h_mallory()), sink_all()) &&
+      Bool.not(AQ.in_stream(alice(), h_mallory())) &&
+      sent_as(wide_send([v_admitted(), h_mallory(), v_stale()], AX.Events{}), one_emission(4n, expected_words([v_admitted(), v_stale()]))) &&
+      sent_as(wide_send([v_admitted(), h_mallory(), v_stale()], AX.Metric{}), one_emission(4n, [1])) &&
+      sent_as(wide_send([v_admitted(), h_mallory(), v_stale()], AX.Alert{}), expected_alerts(4n, [v_stale()])) &&
+      wide_unchanged(AX.Events{}) && wide_unchanged(AX.Metric{}) && wide_unchanged(AX.Alert{}),
+      "AU-007 an event releasable to the export sink but outside the grant owner's stream (Mallory's early denial through sink 4) changes no Events, Metric or Alert word")
     Test.check(sent_as(send(x_state([v_admitted(), h_mixed()]), both_exporter(), events_request(alice(), 3n)),
         one_emission(3n, expected_words([v_admitted(), h_mixed()]))),
       "AU-007 through the both-owners sink 3 the mixed event is releasable and its view is emitted to sink 3")
@@ -3097,4 +3133,4 @@ def main() -> IO(Unit):
     event_policy()
     query()
     export()
-    IO.print("Audit: 283 checks passed")
+    IO.print("Audit: 285 checks passed")

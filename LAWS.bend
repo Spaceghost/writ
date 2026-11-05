@@ -480,3 +480,29 @@ law audit_revoked_export_emits_nothing:
   for found: {AuditExport.find_export_grant(AuditExport.grants(state), from, request) == Some{g} : Maybe<&2, AuditExport.ExportGrant>}
   for revoked: {AuditExport.ExportGrant.revoked(g) == True{} : Bool}
   {AuditExport.Transmission.effects(AuditExport.transmit(state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+
+# AU-007 with AU-003: inserting into a log, at any position (any `before`,
+# any `after`), an event outside the requested owner's stream
+# (`AuditQuery.in_stream` False) leaves the export view `export_log_view`
+# exactly as it was, for every export state, owner and sink. Every Events,
+# Metric and Alert emission is computed from that view, so an export under
+# one owner's grant never carries, counts or alerts on another owner's
+# event, even one releasable to the export sink (another owner's
+# early-denied request, for example): the grant's owner name is not
+# defeated by `releasable` alone. The proof derives `visible` False from the
+# stream hypothesis (`visible` is the stream test and then `releasable`) and
+# applies `audit_invisible_event_unobservable` to the query state. An export
+# view that keeps every releasable event regardless of stream breaks it, and
+# so does a `visible` without the stream test. It does not claim that
+# `transmit` reads the log only through `export_log_view` (AuditExport's
+# structure, shown by AuditTests' export section), or anything about compute
+# time.
+law audit_export_outside_stream_unobservable:
+  for +state: AuditExport.State
+  for +owner: Dlm.Principal
+  for +sink: AuditEvent.Sink
+  for before: AuditQuery.Stored
+  for +after: AuditQuery.Stored
+  for +e: AuditEvent.Recorded
+  for outside: {AuditQuery.in_stream(owner, e) == False{} : Bool}
+  {AuditExport.export_log_view(state, owner, sink, AuditQuery.Stored.append(before, AuditQuery.Stored.cons(e, after))) == AuditExport.export_log_view(state, owner, sink, AuditQuery.Stored.append(before, after)) : AuditQuery.Views}

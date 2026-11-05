@@ -50,3 +50,8 @@
 2026-11-05T17:13:43Z	implementer	AuditExport.bend written (checks), two laws proved (28 laws, PROOF green); export section 34 checks plus the carried version-0 conjunct; Audit 282; starting mutation batch
 2026-11-05T17:18:08Z	implementer	mutation batch 1 (70 mutants): survivors S1 (empty test ran at a stale revision), T10, W13, W5 got checks or a sharpened fixture (Audit 283); batch 2: 65 killed (T2, T4 by the revoked law only), 5 equivalent (E4 E5 E6 K4 T9); running full validation
 2026-11-05T17:20:36Z	implementer	validation green: check-only x3 ALL PROOFS CHECK; Audit 283; Tests.bend 1428 plus 283 = 1711 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (28 laws); openspec 44 passed; box 1.4 checked; report written; committing
+2026-11-05T17:21:02Z	controller	task 5 reported; reviewer dispatched
+2026-11-05T17:28:08Z	controller	review: owner-stream filter unpinned; fix round 1 dispatched
+2026-11-05T17:28:46Z	implementer	fix round 1 started: read task-5-review.md (I1 owner-stream filter unpinned; M1 epoch remedy false; M2 host delivery obligation; M3 export_view parameter; M4 forward reference)
+2026-11-05T17:30:55Z	implementer	fix round 1: new law audit_export_outside_stream_unobservable proved (29 laws); I1 check and re-grant check added (Audit 285); header M1-M4 corrected; rerunning mutation batch with V11 (review R4), V12, V13
+2026-11-05T17:32:19Z	implementer	fix round 1 validation green: Audit 285; Tests.bend 1428 plus 285 = 1713 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (29 laws); 73 mutants, 68 killed, 5 equivalent; openspec 44 passed; report section appended; committing
