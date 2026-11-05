@@ -13,3 +13,4 @@ Task 3: implementer DONE_WITH_CONCERNS (4e2b8ec). Ruling: the hosts/unikraft/INV
 Final review: Needs fixes before merge (INVENTORY.md shutdown sentence, check-fault row, evidence pointers; traceability merge conflict with master). Fix round 1 dispatched (implementer resumed); scoped re-review next.
 Fix round 1: verified by the controller (markers gone, inventory and UNIKERNELS sentences corrected, traceability rows kept, no .bend diff, OpenSpec 44). Final review resolved; complete.
 Merge: to master
+Merge: merged to master as 10a59cf

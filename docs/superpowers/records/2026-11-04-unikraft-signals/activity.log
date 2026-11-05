@@ -53,3 +53,4 @@
 2026-11-05T00:46:39Z	implementer	merge commit f93c84d (traceability: master's UL-002/UL-007, branch's UL-006); fixing INVENTORY.md and UNIKERNELS.md
 2026-11-05T00:47:23Z	implementer	fix round: INVENTORY.md (shutdown SIGTERM row, evidence pointers, check-fault row) and UNIKERNELS.md (:115, item 3) corrected; OpenSpec strict 44 passed after merge; committing
 2026-11-05T00:48:06Z	controller	fix round verified; merging to master
+2026-11-05T00:48:09Z	controller	merged to master as 10a59cf
