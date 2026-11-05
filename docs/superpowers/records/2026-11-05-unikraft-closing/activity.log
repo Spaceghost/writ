@@ -1,1 +1,16 @@
 2026-11-05T01:11:15Z	controller	lane created from master 0f329b3 after unikraft-lanes landed
+2026-11-05T01:12:54Z	implementer	task 1 started: read brief, plan Global Constraints, run.sh, check-image/fault/corpus.sh, evidence files
+2026-11-05T01:12:54Z	implementer	host facts: AMD Ryzen 9 5950X (AMD-V), kernel 7.2.9-1-MANJARO, QEMU 11.1.2; /dev/kvm crw-rw-rw- root:kvm; load average 102
+2026-11-05T01:12:54Z	implementer	image sha256 verified against evidence: sigcodes hello/die/exit, sigfault overflow/exhaust, sigcorpustests tests: all six match, no rebuild
+2026-11-05T01:12:54Z	implementer	run.sh: optional 8th argument accel (tcg default -cpu max; kvm -accel kvm -cpu host; other values exit 2)
+2026-11-05T01:13:02Z	implementer	run.sh checks: accel bogus -> exit 2 before QEMU; no accel -> logged command byte-identical to run-hello1.log (TCG), QEMU 33
+2026-11-05T01:13:13Z	implementer	KVM hello (sigcodes kvm-hello1): QEMU 33, check-image.sh WRIT_NO_BOOT=1 PASS
+2026-11-05T01:13:54Z	implementer	KVM die (kvm-die1): QEMU 35 but check-image FAIL: pm.c:69 'PM driver failed' line with a NUL after the program lines (console.sh refused); kept as recorded. KVM exit (kvm-exit1): QEMU 39, PASS. Rerunning hello/die/exit x5 each to measure
+2026-11-05T01:16:51Z	implementer	reruns r2-r6: QEMU status 33/35/39 on all 15; check-image PASS on hello3,4,6 and die3 only; the rest end with Unikraft's own pm.c:69 log line (whole or cut off, sometimes a NUL) after the program lines: the guest runs on after the exit-device write before QEMU exits
+2026-11-05T01:17:48Z	implementer	KVM exhaust (sigfault kvm-exhaust1): 253, check-fault PASS, wall 18.0 s (TCG 3.7 s). KVM overflow (kvm-overflow1): message then 253, check-fault PASS, wall 29.0 s (TCG 17.8/13.5 s). Load average ~100
+2026-11-05T01:17:48Z	implementer	KVM corpus boot started (sigcorpustests kvm-tests-m4096, timeout 600, -m 4096)
+2026-11-05T01:18:09Z	implementer	KVM corpus (kvm-tests-m4096): QEMU 33, check-corpus.sh WRIT_NO_BOOT=1 PASS: diff empty, 782 PASS, last line ok; wall 8.5 s (TCG record 2.2 s). Starting corpus reruns x2 and same-session TCG controls
+2026-11-05T01:19:08Z	implementer	KVM corpus reruns: kvm-tests2 33 but FAIL (cut-off '[  ' Unikraft log line after ALL LIBRARY TESTS PASSED), kvm-tests3 33 PASS. Same-session TCG controls: corpus 3.1 s PASS, exhaust 11.5 s PASS, overflow 16.1 s PASS (load ~60-70)
+2026-11-05T01:19:50Z	implementer	TCG controls hello/die/exit x3 each: all PASS (0.2-0.3 s). info kvm: 'kvm support: enabled', CPU #0 model=host. QEMU start-and-quit 0.08 s kvm / 0.05 s tcg, so the slower KVM walls are guest time. Writing verification/unikernel-kvm.txt
+2026-11-05T01:21:49Z	implementer	wrote verification/unikernel-kvm.txt; box 3.1 left open: strict checks PASS on 8 of 21 KVM hello/die/exit/corpus boots (guest runs on after the exit write); exit map and 782 count held on all 23
+2026-11-05T01:22:36Z	implementer	task 1 report written; committing (box 3.1 left open)
