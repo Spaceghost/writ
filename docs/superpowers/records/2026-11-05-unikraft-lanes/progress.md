@@ -7,3 +7,4 @@ Task 1: implementer DONE_WITH_CONCERNS (d14eb71): second lane runs on vCPU 0 onl
 Task 2: implementer DONE (8a4cbf6): stall recorded; the shipped template also crashes at shutdown on --threads 2 (same assertion, 253), so the crash is independent of the CPU count. Ruling: Task 2 (one evidence section and one box note) is reviewed by the final whole-branch review rather than a separate task review — costs one unreviewed step until then if wrong.
 Task 3: dispatched implementer (in parallel with the task 1 review; different files)
 Task 1: review APPROVED both axes; one wording fix carried to the final fix round (lanes-qemu.txt:24-26, "halted at pool_open" is not what the gdb logs show).
+Task 3: implementer DONE (57204a9); two stale E6 passages outside the touch list noted (matrix:68, UNIKERNELS.md:194,201) — carried to the final fix round. Final whole-branch review dispatched.
