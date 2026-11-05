@@ -15,6 +15,13 @@
 #      Kraftfile); the reference must list it among the program lines as well;
 #   3. QEMU's exit status equals expected_qemu_status (run.sh's exit status when booting,
 #      and the status run.sh recorded in the log).
+# Kernel shutdown fragment: before check 1, if the last program line (the line before
+# the QEMU status line) is a prefix of Unikraft's pm.c:69 shutdown line
+# (writ_is_pm_shutdown_fragment, env.sh), that one line is dropped, and only that line;
+# "kernel shutdown fragment after exit: dropped <0|1>" is printed on every run. Under KVM
+# the guest runs briefly past exit_device.c's port write, contradicting that file's
+# "QEMU does not return here" (verification/unikernel-kvm.txt, "Finding: the guest runs
+# on after the exit-device write (KVM)").
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise.
 # Host tooling: makes no Writ decision.
 . "$(dirname "$0")/env.sh"
@@ -33,8 +40,11 @@ if [ "${WRIT_NO_BOOT:-0}" != 1 ]; then
 fi
 [ -f "$L" ] || { echo "log: missing ($L)"; echo "result: FAIL"; exit 1; }
 Q=$(tail -n 2 "$L" | head -n 1)
-sed -n '/^ *Ijiraq 0\.21\.0~7351f8b$/,$p' "$L" | sed '1d' | head -n -2 \
-  | grep -v '^\[ *[0-9][0-9.]*\] ' > "$C"
+sed -n '/^ *Ijiraq 0\.21\.0~7351f8b$/,$p' "$L" | sed '1d' | head -n -2 > "$C"
+FR=0
+if writ_is_pm_shutdown_fragment "$(tail -n 1 "$C")"; then head -n -1 "$C" > "$C.f" && mv "$C.f" "$C"; FR=1; fi
+echo "kernel shutdown fragment after exit: dropped $FR"
+grep -v '^\[ *[0-9][0-9.]*\] ' "$C" > "$C.f"; mv "$C.f" "$C"
 if diff "$C" "$REF"; then echo "program lines: equal"; else echo "program lines: DIFFER"; BAD=1; fi
 if [ "$XQ" = 253 ]; then
   if grep -q 'CRIT: Unikraft Crash' "$L"; then echo "crash screen: present"; else echo "crash screen: MISSING"; BAD=1; fi

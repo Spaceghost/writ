@@ -24,3 +24,29 @@ KRAFT="$W/tools/kraftkit-0.12.16/kraft --config-dir $W/kraft-home/config \
 writ_strip_serial() {
   tr -d '\000' | sed -e 's/\x1b\[[0-9;?]*[A-Za-z]//g' -e 's/\x1bc//g' -e 's/\r//g'
 }
+
+# writ_is_pm_shutdown_fragment <line>: true when <line> (already passed through
+# writ_strip_serial, so NUL bytes are gone) is a nonempty prefix of Unikraft's own
+# shutdown line, the timestamp being any "[ <digits>.<digits>]":
+#   [    0.173610] ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy loop...
+# (lib/ukpm/pm.c:67-69, from uk_pm_shutdown, which runs after exit_device.c's port
+# write). Under KVM the guest runs briefly past that write before QEMU exits, so the
+# line, whole or cut off and sometimes with a NUL, can end a capture whose QEMU status
+# is already the hook's; exit_device.c's comment "QEMU does not return here" is
+# contradicted there (verification/unikernel-kvm.txt, "Finding: the guest runs on
+# after the exit-device write (KVM)"). The proper fix is a halt after the write in
+# exit_device.c, left for the next rebuild of every set. Callers apply this only to
+# the capture's last line and print how many lines they dropped (0 or 1); nothing
+# else is ever dropped.
+WRIT_PM_SHUTDOWN_TAIL=' ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy loop...'
+writ_is_pm_shutdown_fragment() {
+  [ -n "$1" ] || return 1
+  # Cut inside the timestamp: "[", "[    0", "[    0.13", ...
+  if printf '%s\n' "$1" | grep -qxE '\[ *([0-9]+(\.[0-9]*)?)?'; then return 0; fi
+  printf '%s\n' "$1" | grep -qE '^\[ *[0-9]+\.[0-9]+\]' || return 1
+  _writ_rest=$(printf '%s\n' "$1" | sed -E 's/^\[ *[0-9]+\.[0-9]+\]//')
+  case "$WRIT_PM_SHUTDOWN_TAIL" in
+    "$_writ_rest"*) return 0 ;;
+  esac
+  return 1
+}
