@@ -90,3 +90,4 @@
 2026-11-05T19:17:48Z	controller	Final review: Needs fixes (B1 wrapper return value must stay in the monitor; B2 wrapper exclusivity is an untested precondition, forged Recorded visible). Ruling: both doc-only fixes as specified, plus N1-N5 and the Task 6 pointer nit in the same single fix round; tokens must stay identical to 0d886cb.
 2026-11-05T19:18:05Z	implementer	final fix round started
 2026-11-05T19:20:14Z	implementer	final fix round committed (B1 B2 N1-N5)
+2026-11-05T19:20:28Z	controller	Final fix round DONE (86bfddd): tokens identical to 0d886cb, 1713/29, strict 44. Scoped re-review dispatched.
