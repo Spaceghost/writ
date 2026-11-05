@@ -56,21 +56,8 @@ law generation_bump_monotone:
   {Nat.is_lt(HostBinding.object_generation(object),
      HostBinding.object_generation(HostBinding.bumped(True{}, object))) == True{} : Bool}
 
-# A rejected issuance change carries the supplied state unchanged, for any
-# state and any closed-set reason. This holds by computation of the
-# `Change.state` accessor; it is stated to fix the denial contract every
-# Issuance transition relies on (submission, registration and revocation deny
-# by returning `Rejected{state, r}` with the caller's own state), so a denied
-# or raced registration exposes no new state. It does not assert that any
-# transition chose the denial path or the right reason; IssuanceTests checks
-# both, with full state equality, for every denial.
-law issuance_denied_preserves_state:
-  for state: Issuance.State
-  for reason: Issuance.Error
-  {Issuance.Change.state(Issuance.Rejected{state, reason}) == state : Issuance.State}
-
 # No natural number equals its successor under `Nat.is_eq`. Auxiliary
-# arithmetic fact for issuance_stale_revision_rejects; it says nothing about
+# arithmetic fact for the three issuance stale-revision laws; it says nothing about
 # Issuance by itself.
 law nat_eq_successor_false:
   for n: Nat
@@ -91,3 +78,30 @@ law issuance_stale_revision_rejects:
   for now: Nat
   for token: Transfer.CodeId
   {Issuance.Change.accepted(Issuance.register(state, 1n+Issuance.revision(state), request, now, token)) == False{} : Bool}
+
+# A registration whose expected revision is one past the state's revision
+# returns exactly the supplied state, for every request, time and token. So a
+# registration raced by any transition that moved the state exposes no new
+# state: no grant is stored and no approval consumed. The proof pins
+# `register`'s outer `revision_current` match and that its Rejected branch
+# carries the caller's state. It covers the successor revision only; state
+# preservation on every other denial is tested (IssuanceTests' `denied`,
+# with full state equality), not proved here.
+law issuance_stale_registration_keeps_state:
+  for state: Issuance.State
+  for request: Issuance.Request
+  for now: Nat
+  for token: Transfer.CodeId
+  {Issuance.Change.state(Issuance.register(state, 1n+Issuance.revision(state), request, now, token)) == state : Issuance.State}
+
+# The same for revocation: a revocation whose expected revision is one past
+# the state's returns exactly the supplied state, for every principal and
+# approval id, so a raced revocation changes no flag and advances no
+# revision. The proof pins `revoke`'s outer revision match and its Rejected
+# branch. Successor revision only; other denials are tested, not proved. It
+# does not claim the host serializes installs (AB-006).
+law issuance_stale_revocation_keeps_state:
+  for state: Issuance.State
+  for from: Issuance.Principal
+  for id: Nat
+  {Issuance.Change.state(Issuance.revoke(state, 1n+Issuance.revision(state), from, id)) == state : Issuance.State}

@@ -76,15 +76,10 @@ import ./Frontend.bend as F
 #
 # Laws. This module relies on the existing law `failed_check_denies` through
 # its gate structure (and `current`'s Guard.Checks lists), without modifying
-# it, and adds three in LAWS.bend:
-# - `issuance_denied_preserves_state`: a rejected change carries the supplied
-#   state, for every state and reason. It fixes the denial contract every
-#   issuance transition relies on, so a denied or raced registration exposes
-#   no new state. It holds by computation and does not prove that a
-#   transition chose the denial path.
+# it, and adds four in LAWS.bend:
 # - `nat_eq_successor_false`: no natural number equals its successor under
-#   `Nat.is_eq`; auxiliary arithmetic for the next law, saying nothing about
-#   issuance by itself.
+#   `Nat.is_eq`; auxiliary arithmetic for the three stale-revision laws,
+#   saying nothing about issuance by itself.
 # - `issuance_stale_revision_rejects`: `register` called with an expected
 #   revision one past the state's never commits, for every state, request,
 #   time and token. A registration validated at revision r cannot commit
@@ -93,6 +88,14 @@ import ./Frontend.bend as F
 #   gate, which is why that outer match stays. It covers the successor
 #   revision only and does not claim that the host serializes installs
 #   (AB-006); the inner StaleRevision gate and the tests cover the rest.
+# - `issuance_stale_registration_keeps_state` and
+#   `issuance_stale_revocation_keeps_state`: `register` and `revoke` called
+#   with an expected revision one past the state's return exactly the supplied
+#   state, for every other argument. A raced registration or revocation
+#   therefore exposes no new state; the proofs also pin each transition's
+#   outer revision match and its Rejected branch. They cover the successor
+#   revision only; denials at other gates are shown, with full state
+#   equality, by the tests, not proved.
 
 # --- Identities --------------------------------------------------------------
 
@@ -157,9 +160,10 @@ type Approval is Data:
 
 # An accepted approval under its issuer-state id. `consumed_by` is 0 until a
 # registration consumes it (then the grant id, kept through revocation);
-# `revoked` is set only by its issuer's revocation (`revoke`). Both are monitor bookkeeping that can only withdraw
-# authority: an unconsumed, unrevoked record grants nothing by itself, and
-# every use re-checks the directory and placements.
+# `revoked` is set only by its issuer's revocation (`revoke`) and never
+# cleared. Both are monitor bookkeeping that can only withdraw authority: an
+# unconsumed, unrevoked record grants nothing by itself, and every use
+# re-checks the directory and placements.
 type Stored is Data:
   Stored{id: Nat, approval: Approval, consumed_by: Nat, revoked: Bool}
 
@@ -1305,6 +1309,8 @@ def mark_revoked(stored: Stored, +id: Nat) -> Stored:
       Stored{sid, approval, consumed_by, revoked || Nat.is_eq(sid, id)}
 
 # Set the revoked flag on the stored approval under `id`, and on nothing else.
+# Every other flag is kept as it was, so a later revocation never clears an
+# earlier one.
 # `consumed_by` is kept, so the history of which grant the approval backed
 # survives the revocation.
 def revoke_in(approvals: Approvals, +id: Nat) -> Approvals:
@@ -1529,12 +1535,13 @@ def derived_checks(+child: Grant, +parent: Grant) -> Guard.Checks:
 # Whether `grant` is usable, walking its parent chain. `parent` is the
 # grant's parent id and `found` that id's lookup in this state's grants; both
 # call sites compute them from the grant being checked, so they are not
-# caller facts. `fuel` is the grant list itself and loses one entry per step,
-# so the walk is structural and a chain longer than the list (a cycle) runs
-# out and denies. A root grant (parent 0) answers from its own and its
-# approvals' checks; a derived grant from its own checks, the attenuation
-# checks against its parent's exact record in this state, and its parent
-# being current in turn. A missing or ambiguous parent denies.
+# caller facts. Exported implementation helper: only `current` and its own
+# recursion may supply `found`. `fuel` is the grant list itself and loses one
+# entry per step, so the walk is structural and a chain longer than the list
+# (a cycle) runs out and denies. A root grant (parent 0) answers from its own
+# and its approvals' checks; a derived grant from its own checks, the
+# attenuation checks against its parent's exact record in this state, and its
+# parent being current in turn. A missing or ambiguous parent denies.
 def current_within(fuel: Grants, parent: Nat, found: Maybe<&2, Grant>, +state: State,
     +grant: Grant, +now: Nat) -> Bool:
   match fuel:

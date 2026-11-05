@@ -12,3 +12,5 @@ Task 2: implementer DONE_WITH_CONCERNS (b4629ca): 872 checks (+51), 55 of 60 mut
 Task 2: review spec APPROVED, security NEEDS_FIXES (three mutants survive: write-domain comparison in scope_equal, consuming uncited approvals, dropping earlier grants). Fix round 1 dispatched.
 Task 2: fix round 1 verified by the controller (tests only, three mutants now killed, 875 checks); complete.
 Task 3: dispatched implementer
+Task 3: implementer DONE_WITH_CONCERNS (4cf2f6a): 928 checks (+53), 9 laws (3 added, additions only), 59 of 63 mutants killed, 4 equivalent. Rulings: current walking the parent chain ahead of Task 4 is accepted (Task 4 builds derive on it and must require a child to cite no approvals); stricter per-use rechecks stand; the definition move is acceptable if the reviewer confirms conditions are unchanged. Reviewer dispatched.
+Task 3: review spec APPROVED, security NEEDS_FIXES (a later revoke could un-revoke earlier ones untested; issuance_denied_preserves_state is trivially true). Ruling: a trivially true law is a proof hole, so it is replaced by the reviewer's two real proofs (11 laws), never kept with reworded prose. Fix round 1 dispatched.

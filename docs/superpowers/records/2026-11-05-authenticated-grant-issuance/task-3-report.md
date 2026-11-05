@@ -266,3 +266,57 @@ All three proofs are complete. There are no holes and no `unsafe` definitions. T
      This follows the plan's rule that projections revalidate placements and exact scope at every use. Approval and grant lifetimes are revalidated as expiry only.
 4. **Moving `grants_valid` and `valid` to the end of `Issuance.bend`** is a code move that Bend's in-order resolution requires. Their earlier conjuncts are unchanged.
 5. **The `--verdict` kernel check was not available** (no Lean toolchain).
+
+## Fix round 1 (review task-3-review.md: I-1, I-2, M-1, M-2, M-3)
+
+Status: DONE.
+
+### I-1: a later revocation that clears earlier ones
+
+The code had no bug. `mark_revoked` builds `Stored{sid, approval, consumed_by, revoked || Nat.is_eq(sid, id)}`, so every existing flag is kept, and `revoke` cannot clear an earlier revocation. The tests had a gap, though. Two checks were added:
+- "GI-005 a later revocation keeps an earlier revocation". This is the reviewer's check: revoke 1, then 2, and approval 1 stays revoked.
+- "GI-005 after approval 1 and then approval 4 are revoked, grant 3 (backed by approval 1) is still not current". This is the `current`-based check the controller asked for. Grant 6 is registered from `fresh_pair()`'s approvals 4 and 5. Approval 1 is then revoked at revision 6 and approval 4 at revision 7, and grant 3 must not be current.
+
+Each check kills the mutant on its own. The `current`-based check was confirmed on a scratch copy with the flag check removed. The `mark_revoked` and `revoke_in` comments now say that a flag is never cleared.
+
+### I-2: the trivial denial law
+
+`issuance_denied_preserves_state` was removed from `LAWS.bend`, `PROOF.bend` and the `Issuance.bend` header. It was added in this lane, so relative to master the diff is still additions only (`git diff master -- LAWS.bend PROOF.bend`: 0 removed lines). It was replaced by the reviewer's two prototyped laws. Both check on this tree as written:
+- **`issuance_stale_registration_keeps_state`**: `Change.state(register(state, 1n+revision(state), request, now, token)) == state`, for all arguments.
+  - What it proves: a registration raced by any transition that moved the state returns exactly the supplied state. No grant is stored and no approval is consumed.
+  - It pins `register`'s outer revision match and that its Rejected branch carries the caller's state.
+- **`issuance_stale_revocation_keeps_state`**: the same statement for `revoke(state, 1n+revision(state), from, id)`.
+  - It pins `revoke`'s outer match and its Rejected branch.
+
+Both proofs match the state and rewrite the `revision_current` scrutinee with `Equal.sym(..., nat_eq_successor_false(revision))`, as `issuance_stale_revision_rejects` does. Each rationale says it covers the successor revision only. State preservation on every other denial is tested, through `denied` with full state equality, and is not proved. Neither law claims host install serialization (AB-006).
+
+**The law count is 10, not 11.** The ruling said to drop or rename the trivial law rather than keep it. Dropping it gives 6 existing + `nat_eq_successor_false` + `issuance_stale_revision_rejects` + the two new laws = 10. A count of 11 would mean keeping the tautology.
+
+### Minor findings
+
+- M-1: two checks were added. "GI-005 a grant whose scope names subject 0 is not current" is the reviewer's. Its twin is "GI-005 a grant whose scope has an empty source manifest is not current".
+- M-2: the `current_within` comment now says it is an exported implementation helper, and that only `current` and its own recursion may supply `found`.
+- M-3: the `Stored` comment was reflowed, and so was the `current_within` comment.
+
+### Mutants for this round
+
+The harness is `/tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/55038343-2e0b-4235-a6a8-7c68c6dd1f50/scratchpad/scripts/mutate5.py`, run on the scratch copy `scratchpad/mut5`.
+
+| Mutant | Checked by | Result |
+|---|---|---|
+| `mark_revoked`: a later revocation clears earlier ones | tests | KILLED: GI-005 a later revocation keeps an earlier revocation |
+| `own_checks`: `scope_wellformed` replaced by `scope_at_live` | tests | KILLED: GI-005 a grant whose scope names subject 0 is not current |
+| `own_checks`: subject conjunct dropped | tests | KILLED: GI-005 a grant whose scope names subject 0 is not current |
+| `own_checks`: manifest conjunct dropped | tests | KILLED: GI-005 a grant whose scope has an empty source manifest is not current |
+| `revoke` outer revision match only (an equivalent survivor in the first round) | `bend PROOF.bend` | KILLED: SOME PROOFS FAIL |
+| `revoke` outer branch carries committed state | `bend PROOF.bend` | KILLED: SOME PROOFS FAIL |
+| `register` outer branch carries committed state | `bend PROOF.bend` | KILLED: SOME PROOFS FAIL |
+
+With this round, the 63 mutants of the first round have 60 killed and 3 equivalent. The three equivalents are the None arms behind the presence gate. The 4 new test mutants are all killed.
+
+### Verification (Bend 2.0.39)
+
+- `bend Issuance.bend --check-only`: `ALL PROOFS CHECK`.
+- `bend Tests.bend` (exit 0, 0 FAIL): `Issuance: 150 checks passed` ... `ALL LIBRARY TESTS PASSED`. The PASS count is 932 (879 `PASS:` + 53 `PASS `), which is 782 + 150.
+- `bend PROOF.bend` (exit 0): 10 laws, 10 proof defs, `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` `--verdict` is still unavailable because there is no Lean toolchain. There was no native build and no GPU test.
+- The box 1.3 evidence line in `tasks.md` now names the current laws.

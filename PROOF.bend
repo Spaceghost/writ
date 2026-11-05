@@ -40,9 +40,6 @@ def Laws.generation_bump_monotone(object):
     case HostBinding.Object{id, generation, owner, kind, derived_from, service}:
       Laws.nat_lt_successor(generation)
 
-def Laws.issuance_denied_preserves_state(state, reason):
-  {==}
-
 # Induction on n: `Nat.cmp(1n+p, 2n+p)` reduces to `Nat.cmp(p, 1n+p)`, so the
 # step case is the hypothesis itself.
 def Laws.nat_eq_successor_false(n):
@@ -60,4 +57,20 @@ def Laws.issuance_stale_revision_rejects(state, request, now, token):
   match state:
     case Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}:
       %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.accepted(Issuance.register_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, request, now, token)) == False{} : Bool}
+      {==}
+
+# As issuance_stale_revision_rejects: after the rewrite `register_current`
+# takes its False{} branch, `Rejected{state, StaleRevision{}}`, whose
+# `Change.state` is the matched state by computation.
+def Laws.issuance_stale_registration_keeps_state(state, request, now, token):
+  match state:
+    case Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}:
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.state(Issuance.register_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, request, now, token)) == Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen} : Issuance.State}
+      {==}
+
+# The same argument through `revoke_current`.
+def Laws.issuance_stale_revocation_keeps_state(state, from, id):
+  match state:
+    case Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}:
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.state(Issuance.revoke_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, from, id)) == Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen} : Issuance.State}
       {==}
