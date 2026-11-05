@@ -39,3 +39,4 @@ Final review: Needs fixes before merge (I-1 pin the byte-identical statements to
 Final fix round done (c5f5982): merged-tree device corpus 1428 on and off, 4915 launches, gate PASS, cmp identical to the merged tests-native.txt; I-1..I-3, the M and O items, and the carried low items closed. Scoped re-review dispatched.
 Final re-review: Ready to merge. Complete.
 Merge: to master (no count change; manifest regenerated at merge)
+Merge: merged to master as 34e2488
