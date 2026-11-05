@@ -1,0 +1,94 @@
+2026-11-05T14:32:01Z	controller	lane created from master d7967c8
+2026-11-05T14:35:41Z	implementer	task 1 started: read brief, plan Global Constraints, AGENTS.md, Transfer/Backplane/DataOS/Frontend/Negotiation, Issuance header, LAWS/PROOF, fixtures; baseline bend Tests.bend prints 1428 PASS
+2026-11-05T14:39:13Z	implementer	AuditEvent.bend written (EventRecord/EventKind: Base declares Event, Kind is a keyword); four laws appended to LAWS.bend/PROOF.bend; LAWS.bend needs Core, Frontend, Backplane, DataOS imports besides AuditEvent to name the law types; bend PROOF.bend: ALL PROOFS CHECK
+2026-11-05T14:41:37Z	implementer	AuditTests.bend event_projection: 47 checks green; registered in Tests.bend (one import, one call)
+2026-11-05T14:42:58Z	implementer	mutation batch started: 67 mutants of AuditEvent.bend under ../writ-build/policy-aware-audit/mutants/task-1/, each run against bend AuditTests.bend and bend PROOF.bend
+2026-11-05T14:43:48Z	implementer	heartbeat: mutation batch running (output ../writ-build/policy-aware-audit/mutants/task-1.tsv); a first run mistakenly wrote to ../../writ-build and was stopped and removed
+2026-11-05T14:44:13Z	implementer	heartbeat: mutation batch 24 of 67 done, all killed so far
+2026-11-05T14:45:35Z	implementer	first mutation batch: survivors F12, E1, E2, E5, E17, T4, T5, T6; diagnostic-field mutants X1-X4, X8-X11 failed to compile (accessor called above its def). Added checks: format version pinned to 1, EventKind/Phase.equal separation, artifact_equal separation (49 checks); fixed mutant helpers; rerunning whole batch
+2026-11-05T14:48:43Z	implementer	controller note: another lane touched the shared scratchpad and my mutation output; script moved to scratchpad/policy-aware-audit/, previous mutant output deleted, full batch (68 mutants, not 67 as logged earlier) regenerated before citing it
+2026-11-05T14:50:27Z	implementer	final: AuditEvent --check-only ALL PROOFS CHECK; AuditTests 49 checks; Tests.bend ALL LIBRARY TESTS PASSED, 1428 plus 49 = 1477; PROOF.bend ALL PROOFS CHECK, 21 laws; LAWS/PROOF diff additions only; committing task 1
+2026-11-05T14:50:53Z	controller	task 1 reported; reviewer dispatched
+2026-11-05T14:56:56Z	controller	review: early-denial scope fields are a channel; fix round 1 dispatched (withhold unchecked fields)
+2026-11-05T14:58:27Z	implementer	fix round 1 started: read task-1-review.md; plan: Scope sum type (ScopeRead with plan fields | ScopeNotRead), early-denial reasons classified from T.admit order, header field-by-field admission, Task 3 obligations, distinct sentinels, drop Guard import
+2026-11-05T15:03:13Z	implementer	fix round 1: AuditEvent Scope marker in place, header rewritten field by field with Task 3 obligations, Guard import and Diagnostic accessors removed; AuditTests: distinct sentinel ranges, vouched Read-denial fixtures, 8 early-denial/scope checks plus one Scope.equal check, 58 checks green
+2026-11-05T15:04:02Z	implementer	fix round 1 mutation batch started: 86 mutants (adds S1-S15 scope rule, E19-E21 Scope.equal), output ../writ-build/policy-aware-audit/mutants/task-1-fix1.tsv, script scratchpad/policy-aware-audit/mutate.py
+2026-11-05T15:08:15Z	implementer	fix round 1 batch 1: survivors S14 (admitted scope untested), T1 (Read/Payment pair no longer isolates Read/Write tags) plus equivalents E1/E2/E5; added checks for admitted scope and denial_equal over all ten reasons (60 checks); rerunning whole batch
+2026-11-05T15:12:13Z	implementer	fix round 1 final batch: 86 mutants, 83 killed (14 also by a law), 3 equivalent (E1, E2, E5); Tests.bend 1428 plus 60 = 1488, PROOF.bend ALL PROOFS CHECK 21 laws; report fix round 1 section appended; committing
+2026-11-05T15:12:31Z	controller	fix round 1 reported (ScopeNotRead); scoped re-review dispatched
+2026-11-05T15:14:49Z	controller	task 1 complete; task 2 dispatched (encoding)
+2026-11-05T15:22:48Z	implementer	task 2 started: read brief, plan Global Constraints, task 1 report/review/re-review, AuditEvent.bend, AuditTests.bend, HostWire.bend and HostWireTests.bend; baseline Audit 60 checks
+2026-11-05T15:31:01Z	implementer	codec written (field_allowlist, encode, decode, FormatError, header check order and sensitivity notes) and event_format section (79 checks); Audit 139 checks, Tests.bend 1428 plus 139 = 1567 ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK (21 laws, LAWS/PROOF untouched)
+2026-11-05T15:32:06Z	implementer	mutation batch 1 started: 94 mutants on AuditEvent.bend (allowlist A1-A17, header H1-H8, walk W1-W6, values V1-V20, coherence C1-C12, encoder N1-N24, tags T1-T4, E1/E2/E5, F1-F3), script scratchpad/policy-aware-audit/mutate2.py, output ../writ-build/policy-aware-audit/mutants/task-2.tsv
+2026-11-05T15:36:11Z	implementer	mutation batch 1: survivors W4, V3, V5, V18, C3, F1-F3 plus V19 and N21 (unreachable fallbacks), N24 did not compile; added 8 checks (format_isolated: missing field length word, phase and outcome words on admission events, outcome widths, kind-only contradictions, FormatError.equal and DecodeResult.equal) and made the tests' rejected() a test-side reason code; Audit 147 checks; rerunning whole batch
+2026-11-05T15:44:00Z	implementer	batch 2: 96 of 97 killed, V19 survived (unreachable interpret arm), N21 killed after a direct check that field_values names no value for reserved tags (Audit 148); box 1.1 checked with evidence; AuditTests header scoped to event_projection; final clean rerun of the batch on the commit tree
+2026-11-05T15:49:05Z	implementer	final batch 97 mutants, 96 killed, 1 equivalent (V19); E1/E2/E5 killed; Audit 148 checks; Tests.bend 1428 plus 148 = 1576 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (21 laws); openspec strict 44 passed; report written; committing
+2026-11-05T15:49:33Z	controller	task 2 reported; reviewer dispatched
+2026-11-05T15:57:55Z	controller	task 2 review APPROVED; task 3 dispatched (event policies)
+2026-11-05T16:04:32Z	implementer	task 3 started: read brief, plan Global Constraints and rulings, task 1 and 2 reports and reviews (obligations: requester label on admission events, binding labels on commit events), AuditEvent.bend, Dlm.bend, Transfer.bend, Backplane.bend, DataOS.bend, LAWS/PROOF style; baseline Audit 148 checks, 21 laws
+2026-11-05T16:12:25Z	implementer	event policy written (Influence/Edge/EventPolicy/Recorded/Sink/Owners, object_influence with fail-closed lookup, decision/context/requester/binding influences, secrecy joins, admission_policy/commit_policy, influences_flow/releasable/event_owners) and wrappers return recorded; two laws added with a typed Bool lemma def in PROOF.bend; event_policy section 40 checks, Audit 188
+2026-11-05T16:15:08Z	implementer	mutation batch 1 started: 64 mutants on AuditEvent.bend (derivation P1-P43, release R1-R8, owners O1-O6, wrappers W1-W7), script scratchpad/policy-aware-audit/mutate3.py, output ../writ-build/policy-aware-audit/mutants/task-3.tsv
+2026-11-05T16:15:59Z	implementer	heartbeat: mutation batch 1 running (about 15 of 65 done)
+2026-11-05T16:17:49Z	implementer	mutation batch 1: 59 of 65 killed; survivors P18, P20 (context_influences), P33 (commit untrusted), P40, P41 (multi-origin fold), W6 (commit record event); added 3 checks and widened 1 (context_influences list over TF.pair_context, two-origin secrecy and untrusted fold, commit untrusted set, commit record event); Audit 191; rerunning whole batch
+2026-11-05T16:19:14Z	implementer	heartbeat: batch 2 running; box 1.2 checked with evidence; report drafted
+2026-11-05T16:20:13Z	implementer	batch 2: 64 of 64 killed, 0 equivalent (law 1 broken by R1-R3, law 2 by W1, W3, W7); Audit 191; Tests.bend 1428 plus 191 = 1619 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (23 laws); openspec strict 44 passed; box 1.2 checked; report written; committing
+2026-11-05T16:20:48Z	controller	task 3 reported; ruling on stream membership for early denials; reviewer dispatched
+2026-11-05T16:30:20Z	controller	review: stream membership leak confirmed; fix round 1 dispatched
+2026-11-05T16:31:20Z	implementer	fix round 1 started: read task-3-review.md (I1 stream membership for ScopeNotRead events, I2 duplicates beyond the head and first source, I3 version match and commit context influences, M1-M3 comments)
+2026-11-05T16:33:01Z	implementer	event_streams/streams_for added (ScopeNotRead joins the requester's stream only), header stream rule, residual one-bit channel and subject-numbering notes; 7 checks added (3 stream, duplicate behind the head, duplicate second source, other version, exact commit influence list); Audit 198; new mutants S1-S3, X2, X4, X6, X7 all killed; full batch (71) started
+2026-11-05T16:35:43Z	implementer	fix round 1: full batch 71 of 71 killed, 0 equivalent; Audit 198; Tests.bend 1428 plus 198 = 1626 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (23 laws, unchanged); report fix-round section written; committing
+2026-11-05T16:36:02Z	controller	fix round 1 reported (event_streams); scoped re-review dispatched
+2026-11-05T16:37:12Z	controller	task 3 complete; task 4 dispatched (queries)
+2026-11-05T16:44:20Z	implementer	task 4 started: read brief, plan Global Constraints, task 1-3 reports and reviews (carried item: stream membership must not leak through queries; use event_streams), AuditEvent, Issuance gate/revision pattern, LAWS/PROOF
+2026-11-05T16:49:42Z	implementer	AuditQuery.bend written (nine gates, view filter, page/work, revoke_read); three laws appended to LAWS/PROOF, PROOF.bend ALL PROOFS CHECK; query section added to AuditTests: Audit 245 checks (198 plus 47); starting mutation batch
+2026-11-05T16:52:17Z	implementer	mutation batch 1 (69 mutants): D1-D8 bad patches (script fixed), P8 did not compile (fixed); survivors V6, P11, K6 got checks (Audit 248); E4-E6, K4, P6, P7 argued equivalent; rerunning full batch
+2026-11-05T16:52:54Z	implementer	mutation batch 2 (70 mutants): 64 killed, 6 equivalent (E4 E5 E6 K4 P6 P7, arms behind an earlier failing gate); running Tests.bend and PROOF.bend
+2026-11-05T16:55:02Z	implementer	correction: batch 2 is 74 mutants, 68 killed, 6 equivalent (earlier line miscounted 70/64); Tests.bend 1428 plus 248 = 1676 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (26 laws); openspec 44 passed; box 1.3 checked; report written; committing
+2026-11-05T16:55:50Z	controller	task 4 reported; reviewer dispatched
+2026-11-05T17:03:11Z	controller	task 4 review APPROVED; task 5 dispatched (exports)
+2026-11-05T17:07:19Z	implementer	task 5 started: read brief, plan Global Constraints and rulings, Task 4 report and review (carried M1: version-0 check), AuditQuery.bend, AuditEvent records and encoder, LAWS/PROOF style
+2026-11-05T17:13:43Z	implementer	AuditExport.bend written (checks), two laws proved (28 laws, PROOF green); export section 34 checks plus the carried version-0 conjunct; Audit 282; starting mutation batch
+2026-11-05T17:18:08Z	implementer	mutation batch 1 (70 mutants): survivors S1 (empty test ran at a stale revision), T10, W13, W5 got checks or a sharpened fixture (Audit 283); batch 2: 65 killed (T2, T4 by the revoked law only), 5 equivalent (E4 E5 E6 K4 T9); running full validation
+2026-11-05T17:20:36Z	implementer	validation green: check-only x3 ALL PROOFS CHECK; Audit 283; Tests.bend 1428 plus 283 = 1711 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (28 laws); openspec 44 passed; box 1.4 checked; report written; committing
+2026-11-05T17:21:02Z	controller	task 5 reported; reviewer dispatched
+2026-11-05T17:28:08Z	controller	review: owner-stream filter unpinned; fix round 1 dispatched
+2026-11-05T17:28:46Z	implementer	fix round 1 started: read task-5-review.md (I1 owner-stream filter unpinned; M1 epoch remedy false; M2 host delivery obligation; M3 export_view parameter; M4 forward reference)
+2026-11-05T17:30:55Z	implementer	fix round 1: new law audit_export_outside_stream_unobservable proved (29 laws); I1 check and re-grant check added (Audit 285); header M1-M4 corrected; rerunning mutation batch with V11 (review R4), V12, V13
+2026-11-05T17:32:19Z	implementer	fix round 1 validation green: Audit 285; Tests.bend 1428 plus 285 = 1713 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (29 laws); 73 mutants, 68 killed, 5 equivalent; openspec 44 passed; report section appended; committing
+2026-11-05T17:32:38Z	controller	fix round 1 reported (owner-stream law); scoped re-review dispatched
+2026-11-05T17:34:12Z	controller	task 5 complete; task 6 dispatched (documentation and verification)
+2026-11-05T17:34:58Z	implementer	task 6 started: read brief, plan Global Constraints and cross-lane ruling (no count pins; pins table in report)
+2026-11-05T17:35:03Z	implementer	native build started (bend Tests.bend -o tests-native); JS run alongside
+2026-11-05T17:35:30Z	implementer	JS: 1713 PASS, Audit 285, ALL LIBRARY TESTS PASSED; PROOF ALL PROOFS CHECK; --verdict refused (no lean); openspec 44 passed; native build still running
+2026-11-05T17:36:11Z	implementer	native CPU build FAILED: "Error: an arity over 247" (bend Tests.bend -o tests-native, exit 1, real 0m51.9s); diagnosing (AuditTests grouping vs the native arity limit)
+2026-11-05T18:39:52Z	controller	task 6 implementer stalled at the arity limit and was stopped; re-dispatched
+2026-11-05T18:40:35Z	implementer	task 6 resumed (re-dispatch): read brief and activity log; kept the stalled attempt's lines
+2026-11-05T18:41:59Z	implementer	arity bisect: AuditTests.bend alone reproduces (emit C, 9 s); probing each check group by emitting C for a one-group driver
+2026-11-05T18:42:33Z	implementer	arity bisect: 9 of 50 groups fail (protected_content committed_recorded format_round_trips binding_checks stream_checks totals_and_empty pagination work_budget content_gated); probing each of their statements
+2026-11-05T18:50:32Z	implementer	arity cause found: not conjunction length; the limit counts the words live in one def (records are unboxed). Failing sites: interleaved() (8 AE.Recorded in one list literal; 7 already fail), projected_denials() (10 events), 4 checks with several commit/admission fixtures (protected_content 5, committed_recorded 0 and 10, stream_checks 0), and binding_checks 5 (one conjunct, two commit fixtures)
+2026-11-05T18:50:32Z	implementer	fix: 4 checks split per conjunct (11 Bool defs), binding_checks 5 per operand (2 defs), the two lists consed onto a _rest def; token check (inline defs, fold lists) equal; 285 check names identical before and after; AuditTests emits C (23 s)
+2026-11-05T18:50:41Z	implementer	JS after the split: byte-identical to the run before it; native CPU build started (nohup)
+2026-11-05T18:51:59Z	implementer	heartbeat: native build in the clang phase; running PROOF.bend, one --verdict attempt and OpenSpec strict alongside
+2026-11-05T18:52:10Z	implementer	PROOF.bend ALL PROOFS CHECK (29 laws); --verdict exit 1, lean not found (NOT VERIFIED); OpenSpec strict 44 passed
+2026-11-05T18:52:48Z	implementer	AuditQuery header, comment only (tokens equal): Task 4 M2 dependent-gate clause corrected; read-grant re-install refusal (Task 4 M3, epoch advance does not lift it) and the Top-stream convention (A3) stated; heartbeat: native build still compiling
+2026-11-05T18:53:39Z	implementer	heartbeat: native build running; writing docs/AUDIT.md
+2026-11-05T18:55:27Z	implementer	docs/AUDIT.md written; heartbeat: native build still running; writing the traceability file
+2026-11-05T18:57:06Z	implementer	native CPU build exit 0 (364 s); running it with --threads 4 --gpu off
+2026-11-05T18:57:24Z	implementer	native run exit 0: 1713 PASS (1660 PASS: plus 53 PASS), 0 FAIL, Audit 285, ALL LIBRARY TESTS PASSED; cmp with the Node capture: identical, sha256 0851dc61399c52211be5a513614c81afbd4960837a7a2cb917be533fde96acf3 (also the pre-split JS hash); CPU, --gpu off, not a GPU test. Rebuilding natively on the final .bend tree (the first build predates the comment-only AuditQuery edit)
+2026-11-05T18:59:09Z	implementer	traceability, verification/policy-aware-audit.txt and tasks.md (first line, section 1 citations, section 2 and 3 reasons) written; captures copied to the record directory; heartbeat: final-tree native rebuild running
+2026-11-05T18:59:49Z	implementer	heartbeat: final-tree native rebuild running (poll 1)
+2026-11-05T19:00:19Z	implementer	heartbeat: final-tree native rebuild running (poll 2)
+2026-11-05T19:00:49Z	implementer	heartbeat: final-tree native rebuild running (poll 3)
+2026-11-05T19:01:19Z	implementer	heartbeat: final-tree native rebuild running (poll 4)
+2026-11-05T19:01:50Z	implementer	heartbeat: final-tree native rebuild running (poll 5)
+2026-11-05T19:02:20Z	implementer	heartbeat: final-tree native rebuild running (poll 6)
+2026-11-05T19:02:50Z	implementer	heartbeat: final-tree native rebuild running (poll 7)
+2026-11-05T19:03:20Z	implementer	heartbeat: final-tree native rebuild running (poll 8)
+2026-11-05T19:04:08Z	implementer	final-tree native rebuild exit 0 (363 s), run exit 0, 1713 PASS, output cmp-identical to the first native capture and the Node capture; report written; committing
+2026-11-05T19:05:02Z	controller	task 6 reported; task review and final review dispatched
+2026-11-05T19:13:01Z	controller	Task 6 review: spec APPROVED, quality APPROVED; two comment nits (duplicated arity comments at AuditTests.bend 493/501, 545/553, 2213/2221; pointer should cite verification/policy-aware-audit.txt). Folded into the final-review fix round.
+2026-11-05T19:17:48Z	controller	Final review: Needs fixes (B1 wrapper return value must stay in the monitor; B2 wrapper exclusivity is an untested precondition, forged Recorded visible). Ruling: both doc-only fixes as specified, plus N1-N5 and the Task 6 pointer nit in the same single fix round; tokens must stay identical to 0d886cb.
+2026-11-05T19:18:05Z	implementer	final fix round started
+2026-11-05T19:20:14Z	implementer	final fix round committed (B1 B2 N1-N5)
+2026-11-05T19:20:28Z	controller	Final fix round DONE (86bfddd): tokens identical to 0d886cb, 1713/29, strict 44. Scoped re-review dispatched.
+2026-11-05T19:21:53Z	reviewer	Final fix re-review: ALL CLOSED (B1 B2 N1-N5, Task 6 nit); tokens identical to 0d886cb for 4 files, 1713 PASS/285 audit, strict 44; no new defects

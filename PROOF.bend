@@ -6,6 +6,10 @@ import ./Issuance.bend as Issuance
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
+import ./AuditEvent.bend as AuditEvent
+import ./Dlm.bend as Dlm
+import ./AuditQuery.bend as AuditQuery
+import ./AuditExport.bend as AuditExport
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -115,3 +119,119 @@ def Laws.publication_refused_preserves_state(state, session, ledger, reason):
 
 def Laws.publication_refused_emits_nothing(state, session, ledger, reason):
   {==}
+
+# Both sides unfold to `project` over the same plan, the same stuck
+# `Transfer.admit(plan, context)` and the same event id; `caller_subject`
+# reduces on the literal `Frontend.Caller{subject, _}` to `subject` on both
+# sides, and neither the token nor the diagnostic occurs in the result.
+def Laws.audit_admission_event_ignores_diagnostic(plan, context, labels, subject, t1, t2, d1, d2, event_id):
+  {==}
+
+# The left side unfolds to `commit_event` over the same session, the same
+# stuck facade result and event id; `DataOS.subject` reduces on both Ref
+# literals to `subject`, and the diagnostic does not occur.
+def Laws.audit_commit_event_ignores_diagnostic(session, expected_session, expected_ledger, ledger, candidate, subject, id, t1, t2, expected_frontend, context, labels, diagnostic, event_id):
+  {==}
+
+# The decision field of the wrapper's record is the bound library call.
+def Laws.audit_admit_returns_library_decision(plan, context, labels, caller, diagnostic, event_id):
+  {==}
+
+# The result field of the wrapper's record is the bound facade call.
+def Laws.audit_commit_returns_library_result(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context, labels, diagnostic, event_id):
+  {==}
+
+# Case analysis on a Bool: `Bool.and` matches its first argument, so a False
+# second argument needs both cases. A proof helper for the law below, not a
+# law of its own.
+def audit_bool_and_false_right(b: Bool) -> {Bool.and(b, False{}) == False{} : Bool}:
+  match b:
+    case False{}:
+      {==}
+    case True{}:
+      {==}
+
+# Induction on `before`. Empty: the list is `Influenced{i, after}`, whose
+# head conjunct is rewritten to False{} by the hypothesis (reversed), and
+# `Bool.and(False{}, _)` computes to False{}. Cons: the tail conjunct is the
+# induction hypothesis (reversed), and `Bool.and(x, False{})` is False{} by
+# the case analysis above.
+def Laws.audit_failed_influence_withholds(snapshot, epoch, before, after, i, sink_label, fails):
+  match before:
+    case AuditEvent.NoInfluences{}:
+      %Equal.sym(Bool, Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(i), sink_label), False{}, fails) : {Bool.and(_, AuditEvent.influences_flow(snapshot, epoch, after, sink_label)) == False{} : Bool}
+      {==}
+    case AuditEvent.Influenced{h, t}:
+      %Equal.sym(Bool, AuditEvent.influences_flow(snapshot, epoch, AuditEvent.Influences.append(t, AuditEvent.Influences.cons(i, after)), sink_label), False{}, Laws.audit_failed_influence_withholds(snapshot, epoch, t, after, i, sink_label, fails)) : {Bool.and(Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(h), sink_label), _) == False{} : Bool}
+      audit_bool_and_false_right(Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(h), sink_label))
+
+# The recorded policy is the `admission_policy` call the wrapper builds,
+# which takes no decision; `caller_subject` reduces on the literal
+# `Frontend.Caller{subject, token}` to `subject`.
+def Laws.audit_outcome_never_lowers_policy(plan, context, labels, subject, token, diagnostic, event_id):
+  {==}
+
+# Induction on `before`. Empty: both sides unfold to the view of
+# `Logged{e, after}` and of `after`; the left is `view_step(visible(state,
+# owner, sink, e), e, view(.., after))`, whose scrutinee the hypothesis
+# (reversed) rewrites to False{}, and `view_step(False{}, _, rest)` is
+# `rest`. Cons: both sides are `view_step` of the same head and visibility,
+# and the induction hypothesis (reversed) rewrites the left tail into the
+# right one.
+def Laws.audit_invisible_event_unobservable(state, owner, sink, before, after, e, hidden):
+  match before:
+    case AuditQuery.NoRecords{}:
+      %Equal.sym(Bool, AuditQuery.visible(state, owner, sink, e), False{}, hidden) : {AuditQuery.view_step(_, e, AuditQuery.view(state, owner, sink, after)) == AuditQuery.view(state, owner, sink, after) : AuditQuery.Views}
+      {==}
+    case AuditQuery.Logged{h, t}:
+      %Equal.sym(AuditQuery.Views, AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(t, AuditQuery.Stored.cons(e, after))), AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(t, after)), Laws.audit_invisible_event_unobservable(state, owner, sink, t, after, e, hidden)) : {AuditQuery.view_step(AuditQuery.visible(state, owner, sink, h), h, _) == AuditQuery.view_step(AuditQuery.visible(state, owner, sink, h), h, AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(t, after))) : AuditQuery.Views}
+      {==}
+
+# Matching exposes the revision field, so `respond` unfolds to
+# `respond_current(Nat.is_eq(revision, 1n+revision), ...)`. Rewriting that
+# scrutinee to False{} with nat_eq_successor_false (reversed) selects the
+# refusal branch, `Refused{public_denial()}`, which computes to the goal.
+def Laws.audit_stale_query_refused(state, from, query, sink_id, now):
+  match state:
+    case AuditQuery.State{revision, epoch, snapshot, sinks, grants, log}:
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {AuditQuery.respond_current(_, AuditQuery.State{revision, epoch, snapshot, sinks, grants, log}, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+      {==}
+
+# Two rewrites: the revision hypothesis (reversed) selects `respond_current`'s
+# True{} branch, `respond_checked(Guard.all(query_gates(..)), ..)`; the gate
+# hypothesis (reversed) selects its False{} branch, the public refusal.
+def Laws.audit_refusal_is_constant(state, expected_revision, from, query, sink_id, now, current, refused):
+  %Equal.sym(Bool, AuditQuery.revision_current(state, expected_revision), True{}, current) : {AuditQuery.respond_current(_, state, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+  %Equal.sym(Bool, Guard.all(AuditQuery.query_gates(state, from, query, sink_id, now)), False{}, refused) : {AuditQuery.respond_checked(_, state, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+  {==}
+
+# `transmit` unfolds to `transmit_found(find_export_grant(grants(state),
+# from, request), ...)`. Rewriting that lookup to None{} with the hypothesis
+# (reversed) selects `transmit_found`'s None branch, `Withheld{}`, whose
+# effects are [] by computation.
+def Laws.audit_ungranted_export_emits_nothing(state, expected_revision, from, request, now, missing):
+  %Equal.sym(Maybe<&2, AuditExport.ExportGrant>, AuditExport.find_export_grant(AuditExport.grants(state), from, request), None{}, missing) : {AuditExport.Transmission.effects(AuditExport.transmit_found(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+  {==}
+
+# Two rewrites: the lookup hypothesis (reversed) selects `transmit_found`'s
+# Some branch, `transmit_unrevoked(ExportGrant.revoked(g), ...)`; the
+# revocation hypothesis (reversed) selects its True{} branch, `Withheld{}`,
+# whose effects are [] by computation.
+def Laws.audit_revoked_export_emits_nothing(state, expected_revision, from, request, now, g, found, revoked):
+  %Equal.sym(Maybe<&2, AuditExport.ExportGrant>, AuditExport.find_export_grant(AuditExport.grants(state), from, request), Some{g}, found) : {AuditExport.Transmission.effects(AuditExport.transmit_found(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+  %Equal.sym(Bool, AuditExport.ExportGrant.revoked(g), True{}, revoked) : {AuditExport.Transmission.effects(AuditExport.transmit_unrevoked(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+  {==}
+
+# `visible` is `Bool.and(in_stream(owner, e), releasable(..))`; rewriting the
+# first conjunct to False{} with the stream hypothesis (reversed) makes the
+# conjunction False{} by computation. A proof helper for the law below, not
+# a law of its own.
+def audit_outside_stream_invisible(state: AuditQuery.State, owner: Dlm.Principal, sink: AuditEvent.Sink, e: AuditEvent.Recorded, outside: {AuditQuery.in_stream(owner, e) == False{} : Bool}) -> {AuditQuery.visible(state, owner, sink, e) == False{} : Bool}:
+  %Equal.sym(Bool, AuditQuery.in_stream(owner, e), False{}, outside) : {Bool.and(_, AuditEvent.releasable(AuditQuery.snapshot(state), AuditQuery.epoch(state), AuditEvent.Recorded.policy(e), sink)) == False{} : Bool}
+  {==}
+
+# `export_log_view` unfolds to `AuditQuery.view(query(state), ..)` on both
+# sides, so the goal is `audit_invisible_event_unobservable` at the query
+# state, with its hypothesis supplied by the helper above.
+def Laws.audit_export_outside_stream_unobservable(state, owner, sink, before, after, e, outside):
+  Laws.audit_invisible_event_unobservable(AuditExport.query(state), owner, sink, before, after, e, audit_outside_stream_invisible(AuditExport.query(state), owner, sink, e, outside))
