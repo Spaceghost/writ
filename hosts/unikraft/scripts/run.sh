@@ -1,8 +1,12 @@
 #!/bin/bash
-# Usage: run.sh <set> <label> <probe> <append> [timeout_s] [mem_MiB]
+# Usage: run.sh <set> <label> <probe> <append> [timeout_s] [mem_MiB] [vcpus]
 # Emulated boot (QEMU TCG) of $W/<set>/images/<probe>-qemu; serial on stdout.
 # Defaults: timeout 60 s, -m 1024, the isa-debug-exit device at 0xf4 (the exit
-# hook's port), and -no-reboot. Environment switches, each recorded in the log:
+# hook's port), and -no-reboot. vcpus, if given, adds -smp <vcpus> (and is then in
+# the logged command); if omitted no -smp is passed (QEMU's default, one vCPU), so
+# calls without it run and log exactly as before. More than one vCPU is used only
+# with an image whose set sets CONFIG_UKPLAT_CPU_MAXCOUNT above 1 (the lanes set).
+# Environment switches, each recorded in the log:
 #   WRIT_QEMU_REBOOT=1   omit -no-reboot
 #   WRIT_QEMU_DEVICE=0   omit the debug-exit device
 #   WRIT_QEMU_DEVICE=501 put the device at QEMU's default port 0x501 instead
@@ -24,10 +28,11 @@
 # check of check-image.sh. Exits 2, before starting QEMU,
 # if the image or the set's logs directory is missing. Needs bc for the wall time.
 . "$(dirname "$0")/env.sh"
-S=${1:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}
-LB=${2:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}
-P=${3:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem]}
+S=${1:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem] [vcpus]}
+LB=${2:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem] [vcpus]}
+P=${3:?usage: run.sh <set> <label> <probe> <append> [timeout] [mem] [vcpus]}
 AP=$4; T=${5:-60}; M=${6:-1024}
+SMP=(); [ -n "$7" ] && SMP=(-smp "$7")
 if [ ! -f "$W/$S/images/$P-qemu" ] || [ ! -d "$W/$S/logs" ]; then
   echo "run.sh: no image $W/$S/images/$P-qemu or no directory $W/$S/logs" >&2
   exit 2
@@ -42,14 +47,14 @@ NR="-no-reboot"; [ "${WRIT_QEMU_REBOOT:-0}" = 1 ] && NR=""
 SER=(); [ -n "$WRIT_QEMU_SERIAL2" ] && SER=(-serial mon:stdio -serial "$WRIT_QEMU_SERIAL2")
 L="$W/$S/logs/run-$LB.log"; R="$W/$S/logs/run-$LB.raw"
 IN="</dev/null"; [ -n "$WRIT_QEMU_FEED" ] && IN="(stdin: $WRIT_QEMU_FEED)"
-echo "\$ timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M -cpu max -kernel \$W/$S/images/$P-qemu -append \"$AP\" $DEV $NR ${SER[*]} $IN; echo \$?" > "$L"
+echo "\$ timeout $T qemu-system-x86_64 -accel tcg -nographic -m $M ${SMP[*]:+${SMP[*]} }-cpu max -kernel \$W/$S/images/$P-qemu -append \"$AP\" $DEV $NR ${SER[*]} $IN; echo \$?" > "$L"
 B=$(date +%s.%N)
 if [ -n "$WRIT_QEMU_FEED" ]; then
-  bash -c "$WRIT_QEMU_FEED" | timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" -cpu max \
+  bash -c "$WRIT_QEMU_FEED" | timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" "${SMP[@]}" -cpu max \
     -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR "${SER[@]}" > "$R" 2>&1
   RC=${PIPESTATUS[1]}
 else
-  timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" -cpu max \
+  timeout "$T" qemu-system-x86_64 -accel tcg -nographic -m "$M" "${SMP[@]}" -cpu max \
     -kernel "$W/$S/images/$P-qemu" -append "$AP" $DEV $NR "${SER[@]}" </dev/null > "$R" 2>&1
   RC=$?
 fi
