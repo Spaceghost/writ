@@ -17,11 +17,15 @@ import ./Backplane.bend as B
 import ./DataOS.bend as OS
 import ./BackplaneTests.bend as BF
 import ./FacadeTests.bend as FT
+import ./Dlm.bend as D
+import ./HostWire.bend as W
+import ./HostPrimitivesTests.bend as HPT
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
 # Sections follow the change's tasks; this file holds `offers` (1.1),
 # `approvals` (1.2, first half), `selection` (1.2, second half), `trials`
-# (1.3), `dispatch` (1.4) and `integration` (1.5). Every denial check asserts the exact Error
+# (1.3), `dispatch` (1.4), `integration` (1.5) and `scenarios` (2.1, whole
+# lifecycles from `open`). Every denial check asserts the exact Error
 # and that the returned state equals the supplied one, field by field,
 # through `denied`.
 #
@@ -2266,6 +2270,540 @@ def integration() -> IO(Unit):
     integration_commits()
     integration_samples()
 
+# --- Section 2.1: whole-lifecycle scenarios (scenarios) -----------------------
+
+# Each scenario walks one lifecycle from `R.open` through the public entry
+# points of Issuance (`submit_source`, `submit_write`, `register`, `revoke`),
+# Rendezvous (`submit_offer`, `submit_approval`, `withdraw_approval`,
+# `select`, `abandon`, `withdraw_offer`, `submit_evidence`, `dispatch` and
+# the projections), Negotiation (`open`, `pin`, `challenge`, `sample`,
+# `approve`, `reserve`, `start`), Backplane (`commit`), and, for the
+# HostPrimitives leg, Frontend (`mount`, `open`, `checked_plan`) and
+# HostPrimitives (`issue`, `admit_worker`). No intermediate Rendezvous,
+# Issuance or Negotiation state is hand-built. What the monitor supplies is
+# SYNTHETIC MONITOR STATE, as in every section: the Negotiation context's
+# challenge, sample and budget receipts and its stale raw approvals, the
+# transfer policies of `two_context()`, the host fixture `host()` (bound
+# through `HP.open_session`), the target report and route inventory
+# (HostPrimitivesTests' `full_report` and `mediated_inventory`), and the
+# Backplane binding, graph, candidate and principals (BackplaneTests).
+#
+# The world: the two-source plan IT.plan_two() (object 10, read domain 5,
+# authority 101; object 11, read domain 7, authority 104), request
+# `two_request()` (reader 7, quote ceiling 42, units 30, deadline 180),
+# constraint {1}. The issuer starts from IssuanceTests' `two_registered()`
+# (reader 7's grant 4 for the plan, approvals 1 to 3) and registers, through
+# the public entry points, grant 8 for A (rights 5 until 125, token word 1),
+# grant 12 for B (rights 5 until 150, token word 2), both for the plan, and
+# grant 15 for D for the one-source TF.plan() only (token word 4). Offers:
+# A {201, 1} on grant 8 quoting 38 until 125; B {202, 1} on grant 12
+# quoting 41 until 140. Approvals (valid while now < 130): 101 and 104 each
+# approve A (serial 31) and B (serial 32), as ids 1 to 4. The negotiation is
+# pinned at 100, the selection made at 103, the trial (challenge 41 issued
+# at 105, sample 51) and dispatch run at 110.
+
+def sc_plan() -> T.Plan:
+  IT.plan_two()
+
+# SYNTHETIC MONITOR STATE: two_context()'s policies with the approved
+# operation taking two inputs of type 1, one per source of the plan, so
+# Transfer admission can admit the two-source plan.
+def with_operation(context: T.Context, operation: T.ApprovedOperation) -> T.Context:
+  match context:
+    case T.Context{live, now, sources, destination, _, reads, writes, payments}:
+      T.Context{live, now, sources, destination, operation, reads, writes, payments}
+
+def sc_policies() -> T.Context:
+  with_operation(two_context(),
+    T.ApprovedOperation{TF.code(), T.Summarize{}, 2n, T.TCons{1, T.TCons{1, T.TEnd{}}}, 2})
+
+# One provider grant for the two-source plan, registered through the public
+# entry points: 101 approves object 10, 104 approves object 11, 102 approves
+# the write (serial `serial` each, rights 7 until 200), and the provider
+# registers rights 5 until `until` with `token`.
+def sc_grant(+state: I.State, +provider: I.Principal, +serial: Nat, +until: Nat, token: T.CodeId) -> I.State:
+  +scope = provider_scope(provider, sc_plan())
+  +s1 = I.Change.state(I.submit_source(state, I.revision(state), IT.source_authority(),
+    I.SourceApproval{1n, serial, IT.source_authority(), TF.source_object(), IT.read5(), scope, 7, 200n}, IT.now()))
+  +s2 = I.Change.state(I.submit_source(s1, I.revision(s1), IT.second_source_authority(),
+    I.SourceApproval{1n, serial, IT.second_source_authority(), IT.second_source(), IT.read7(), scope, 7, 200n}, IT.now()))
+  +s3 = I.Change.state(I.submit_write(s2, I.revision(s2), IT.write_authority(),
+    I.WriteApproval{1n, serial, IT.write_authority(), TF.destination_object(), IT.write6(), scope, 7, 200n}, IT.now()))
+  I.Change.state(I.register(s3, I.revision(s3), provider,
+    I.Request{1n, scope, IT.two(I.next_id(state), 1n+I.next_id(state)), 2n+I.next_id(state), 5, until},
+    IT.now(), token))
+
+def sc_a_until() -> Nat:
+  125n
+
+# Grants 4 (reader 7), 8 (A), 12 (B) and 15 (D, the one-source plan).
+def sc_issuer() -> I.State:
+  with_grant(sc_grant(sc_grant(IT.two_registered(), provider_a(), 2n, sc_a_until(), token_a()),
+    provider_b(), 3n, 150n, token_b()), provider_d(), 4n, 5, token_d())
+
+# The issuer after object 10's authority 101 revokes source approval 5, the
+# approval behind A's grant 8.
+def sc_revoked() -> I.State:
+  I.Change.state(I.revoke(sc_issuer(), I.revision(sc_issuer()), IT.source_authority(), 5n))
+
+def sc_snap(+issuer: I.State, +now: Nat) -> R.Snapshot:
+  R.Snapshot{issuer, sc_policies(), now}
+
+# Reader 7's transfer context at `now`, its grant lists rebuilt from
+# `issuer` for this use, under two_context()'s policies.
+def sc_reader(+issuer: I.State, +now: Nat) -> T.Context:
+  TF.with_now(TF.with_writes(TF.with_reads(sc_policies(), I.reads(issuer, IT.subject_principal(), now)),
+    I.writes(issuer, IT.subject_principal(), now)), now)
+
+def sc_nonce() -> T.CodeId:
+  nonce_of(7)
+
+def sc_nonce_b() -> T.CodeId:
+  nonce_of(8)
+
+# SYNTHETIC MONITOR STATE: the monitor's receipts. Challenge 41 (issued at
+# 105) and 42 (issued at 114) for the plan; passing samples 51 and 52
+# answering them; reader 7's budget for the request under receipt 11; and
+# raw approvals of both origins the projection must not pass through.
+def sc_challenges() -> N.Challenges:
+  N.Challenges{N.Challenge{41n, sc_plan(), sc_nonce(), 105n, 170n},
+  N.Challenges{N.Challenge{42n, sc_plan(), sc_nonce_b(), 114n, 170n}, N.NoChallenges{}}}
+
+def sc_samples() -> N.Samples:
+  N.Samples{N.Sample{51n, sc_plan(), 41n, sc_nonce(), True{}, 160n},
+  N.Samples{N.Sample{52n, sc_plan(), 42n, sc_nonce_b(), True{}, 160n}, N.NoSamples{}}}
+
+def sc_budgets() -> N.Budgets:
+  N.Budgets{N.Budget{11n, sc_plan(), 7n, 42n, 30n, 180n}, N.NoBudgets{}}
+
+def sc_raw_approvals() -> N.Approvals:
+  N.Approvals{N.Approval{TF.source_object(), sc_plan(), 180n},
+  N.Approvals{N.Approval{IT.second_source(), sc_plan(), 180n}, N.NoApprovals{}}}
+
+def sc_raw(+issuer: I.State, +now: Nat) -> N.Context:
+  N.Context{sc_reader(issuer, now), sc_raw_approvals(), sc_challenges(), sc_samples(), sc_budgets()}
+
+# The projection the host rebuilds for one use at `now`.
+def sc_proj(+state: R.State, +issuer: I.State, +now: Nat) -> N.Context:
+  R.negotiation_context(state, sc_raw(issuer, now), sc_snap(issuer, now))
+
+def sc_offer_a() -> R.Offer:
+  offer_with(R.OfferId{201n, 1n}, provider_a(), 8n, sc_plan(), 38n, sc_a_until())
+
+def sc_offer_b() -> R.Offer:
+  offer_with(R.OfferId{202n, 1n}, provider_b(), 12n, sc_plan(), 41n, 140n)
+
+def sc_approval(serial: Nat, issuer: I.Principal, origin: T.ObjectVersion, provider: I.Principal) -> R.OriginApproval:
+  approval_with(serial, issuer, origin, provider, profile(), sc_plan(), approval_until())
+
+# Submit at the state's own revision against the scenario issuer at 100.
+def sc_put_offer(+state: R.State, +from: I.Principal, +offer: R.Offer) -> R.State:
+  R.Change.state(R.submit_offer(state, R.revision(state), from, offer, sc_snap(sc_issuer(), 100n)))
+
+def sc_put_approval(+state: R.State, +from: I.Principal, +approval: R.OriginApproval) -> R.State:
+  R.Change.state(R.submit_approval(state, R.revision(state), from, approval, sc_snap(sc_issuer(), 100n)))
+
+def sc_opened() -> R.State:
+  R.open(two_request(), constraint())
+
+# Both offers stored (revision 2).
+def sc_offered() -> R.State:
+  sc_put_offer(sc_put_offer(sc_opened(), provider_a(), sc_offer_a()), provider_b(), sc_offer_b())
+
+# 101 and 104 approve A (ids 1 and 2), then B (ids 3 and 4), on `state`.
+def sc_approve_all(+state: R.State) -> R.State:
+  sc_put_approval(sc_put_approval(sc_put_approval(sc_put_approval(state,
+    IT.source_authority(), sc_approval(31n, IT.source_authority(), TF.source_object(), provider_a())),
+    IT.second_source_authority(), sc_approval(31n, IT.second_source_authority(), IT.second_source(), provider_a())),
+    IT.source_authority(), sc_approval(32n, IT.source_authority(), TF.source_object(), provider_b())),
+    IT.second_source_authority(), sc_approval(32n, IT.second_source_authority(), IT.second_source(), provider_b()))
+
+# Both offers and all four approvals stored: revision 6.
+def sc_approved() -> R.State:
+  sc_approve_all(sc_offered())
+
+# The reader's negotiation, pinned at 100 through Negotiation's entry points.
+def sc_pinned() -> N.Session:
+  N.Step.session(N.pin(N.open(two_request()), 0n, TF.code(), sc_raw(sc_issuer(), 100n)))
+
+def sc_select_on(+state: R.State, +issuer: I.State, +now: Nat) -> R.Change:
+  R.select(state, R.revision(state), sc_pinned(), 1n, sc_raw(issuer, now), sc_snap(issuer, now))
+
+def sc_select() -> R.Change:
+  sc_select_on(sc_approved(), sc_issuer(), 103n)
+
+# Selection 5 of A's offer at 103, revision 7.
+def sc_selected() -> R.State:
+  R.Change.state(sc_select())
+
+def sc_challenged_on(+state: R.State, +issuer: I.State, +id: Nat, +now: Nat) -> N.Session:
+  N.Step.session(N.challenge(sc_pinned(), 1n, id, sc_proj(state, issuer, now)))
+
+def sc_challenged() -> N.Session:
+  sc_challenged_on(sc_selected(), sc_issuer(), 41n, 110n)
+
+def sc_evidence_a() -> R.Evidence:
+  evidence_with(R.record_version(), 51n, provider_a(), R.OfferId{201n, 1n}, 41n, TF.code())
+
+def sc_submit_on(+state: R.State, +from: I.Principal, +evidence: R.Evidence, +session: N.Session,
+    +issuer: I.State, +now: Nat) -> R.Change:
+  R.submit_evidence(state, R.revision(state), from, evidence, session, sc_raw(issuer, now), sc_snap(issuer, now))
+
+def sc_evidence_change() -> R.Change:
+  sc_submit_on(sc_selected(), provider_a(), sc_evidence_a(), sc_challenged(), sc_issuer(), 110n)
+
+# A's evidence stored under selection 5, revision 8.
+def sc_evidenced() -> R.State:
+  R.Change.state(sc_evidence_change())
+
+# The trial session sampled, owners-approved, reserved (receipt 11, a fresh
+# ledger) and started on the projection rebuilt at 110 for each step.
+def sc_sampled() -> N.Session:
+  N.Step.session(N.sample(sc_challenged(), 2n, 51n, sc_proj(sc_evidenced(), sc_issuer(), 110n)))
+
+def sc_owners() -> N.Session:
+  N.Step.session(N.approve(sc_sampled(), 3n, sc_proj(sc_evidenced(), sc_issuer(), 110n)))
+
+def sc_reservation() -> N.ReservationStep:
+  N.reserve(sc_owners(), 4n, 0n, 11n, sc_proj(sc_evidenced(), sc_issuer(), 110n), NT.initial_ledger())
+
+def sc_reserved() -> N.Session:
+  N.ReservationStep.session(sc_reservation())
+
+def sc_ledger() -> L.State:
+  N.ReservationStep.ledger(sc_reservation())
+
+def sc_running() -> N.Session:
+  N.Step.session(N.start(sc_reserved(), 5n, sc_proj(sc_evidenced(), sc_issuer(), 110n), sc_ledger()))
+
+def sc_dispatch_on(+state: R.State, +offer: R.OfferId, +worker: Nat, +session: N.Session, +issuer: I.State,
+    +now: Nat) -> R.Change:
+  R.dispatch(state, R.revision(state), offer, host(), HP.revision(host()), worker, session, 6n,
+    sc_proj(state, issuer, now), sc_snap(issuer, now))
+
+def sc_dispatch() -> R.Change:
+  sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n)
+
+# Selection 5 dispatched to A's worker session 6, revision 9.
+def sc_dispatched() -> R.State:
+  R.Change.state(sc_dispatch())
+
+# The Backplane binding for the scenario request (BackplaneTests' graph,
+# sink, labels, backend and artifact).
+def sc_binding() -> B.Binding:
+  B.Binding{two_request(), BF.graph(), BF.sink(), D.secret_untrusted(), D.secret_untrusted(), B.Storage{},
+    BF.artifact()}
+
+def sc_commit_on(+state: R.State, +issuer: I.State, +now: Nat) -> B.CommitResult:
+  B.commit(sc_running(), 6n, 1n, sc_ledger(), BF.candidate(),
+    BF.with_binding(BF.with_negotiation(BF.context(), sc_proj(state, issuer, now)), sc_binding()))
+
+def sc_commit() -> B.CommitResult:
+  sc_commit_on(sc_dispatched(), sc_issuer(), 110n)
+
+# A rejected commit that keeps the Running session and the reservation.
+def sc_kept(+result: B.CommitResult) -> Bool:
+  Bool.not(B.accepted(result)) && N.Session.is(B.session(result), N.Running{})
+    && Nat.is_eq(N.Session.revision(B.session(result)), 6n)
+    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(sc_ledger()))
+    && N.hold_live(B.ledger(result), sc_running(), 110n)
+
+# The committed write intent keeps the scenario plan and both origins.
+def sc_retained(result: B.CommitResult) -> Bool:
+  match result:
+    case B.Rejected{_, _}:
+      False{}
+    case B.Committed{_, _, B.WriteIntent{plan, T.OutputPolicy{_, _, _, _, origins}, _, _, _}}:
+      T.Plan.equal(plan, sc_plan())
+        && T.Objects.equal(T.Origins.objects(origins), T.OCons{TF.source_object(), T.OCons{IT.second_source(), T.OEnd{}}})
+
+# The HostPrimitives leg. A mounts (handle 1) and opens a descriptor with
+# rights 5 (handle 2) from `registry` at 110, as the monitor opens the
+# dispatched worker's input.
+def sc_live() -> F.Live:
+  F.Live{3n, 110n}
+
+def sc_descriptor(+registry: F.Registry) -> F.State:
+  +mounted = F.state(F.mount(F.empty(), registry, 0n, caller_a(), 5, sc_live()))
+  F.state(F.open(mounted, registry, 1n, F.Ref{caller_a(), 1n}, 5, sc_live()))
+
+# A's transfer context at 110 rebuilt from the issuer for this use.
+def sc_provider_transfer(+issuer: I.State) -> T.Context:
+  TF.with_now(TF.with_writes(TF.with_reads(sc_policies(), I.reads(issuer, provider_a(), 110n)),
+    I.writes(issuer, provider_a(), 110n)), 110n)
+
+def sc_registry() -> F.Registry:
+  R.provider_registry(sc_dispatched(), sc_snap(sc_issuer(), 110n))
+
+def sc_checked() -> Maybe<&2, T.Plan>:
+  F.checked_plan(sc_descriptor(sc_registry()), sc_registry(), 2n, F.Ref{caller_a(), 2n}, F.Read{},
+    sc_provider_transfer(sc_issuer()))
+
+# The monitor issues the worker's input (execute right 4, until 120) on A's
+# worker session 6 for handle 2, then admits the worker under the profile
+# session 6 was bound under (1). The input is identity slot 1, the first
+# the host's table allocates.
+def sc_issue() -> HP.Step:
+  HP.issue(host(), HP.revision(host()), worker_a(), sc_descriptor(sc_registry()), 2n, sc_plan(), 4, 120n)
+
+def sc_input() -> W.Ref:
+  W.Ref{U32.from_nat(host_id()), U32.from_nat(host_incarnation()), U32.from_nat(1n), U32.from_nat(HI.first_generation())}
+
+def sc_admit() -> HP.Step:
+  +issued = HP.Step.state(sc_issue())
+  HP.admit_worker(issued, HP.revision(issued), HPT.full_report(), HPT.mediated_inventory(), worker_a(), sc_input(), 110n)
+
+# The admission delivered exactly the input `input` to one worker.
+def sc_delivers(+step: HP.Step, input: W.Ref) -> Bool:
+  match step:
+    case HP.Admitted{_, effects}:
+      match effects:
+        case [HP.DeliverInputs{_, ref}]:
+          W.Ref.equal(ref, input)
+        case _:
+          False{}
+    case HP.Denied{_, _}:
+      False{}
+
+def sc_accepted(+step: HP.Step) -> Bool:
+  match step:
+    case HP.Admitted{_, _}:
+      True{}
+    case HP.Denied{_, _}:
+      False{}
+
+def scenario_current() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(R.revision(sc_approved()), 6n) && R.valid(sc_approved())
+      && eligible_now(R.ineligibility(sc_offer_a(), sc_approved(), sc_snap(sc_issuer(), 103n)))
+      && eligible_now(R.ineligibility(sc_offer_b(), sc_approved(), sc_snap(sc_issuer(), 103n)))
+      && selected(sc_select(), sc_offer_a()) && issued_is(R.Change.issued(sc_select()), 5n), "scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5")
+    Test.check(N.Session.is(sc_challenged(), N.Challenged{}) && R.Change.accepted(sc_evidence_change())
+      && N.Session.is(sc_sampled(), N.Sampled{}) && N.Session.is(sc_owners(), N.OwnersApproved{})
+      && N.Session.is(sc_reserved(), N.Reserved{}) && N.Session.is(sc_running(), N.Running{})
+      && R.Change.accepted(sc_dispatch())
+      && dispatches_equal(R.dispatched(sc_dispatched()), R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+      && R.valid(sc_dispatched()), "scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6")
+    Test.check(B.accepted(sc_commit()) && sc_retained(sc_commit()) && N.Session.is(B.session(sc_commit()), N.Committed{})
+      && Nat.is_eq(L.revision(B.ledger(sc_commit())), 2n), "scenario current authority: Backplane.commit on the dispatched selection's projection commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2")
+    Test.check(single_token_is(sc_registry(), token_a()) && IT.plan_is(sc_checked(), sc_plan())
+      && sc_accepted(sc_issue()) && sc_delivers(sc_admit(), sc_input()), "scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6")
+
+# --- Scenarios: revocation at three points ------------------------------------
+
+# Before selection: 104 withdraws its approval of A for object 11 (id 2) at
+# revision 6, so the state is at revision 7.
+def sc_unapproved_a() -> R.State:
+  R.Change.state(R.withdraw_approval(sc_approved(), 6n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 100n)))
+
+def sc_select_b() -> R.Change:
+  sc_select_on(sc_unapproved_a(), sc_issuer(), 103n)
+
+# The approvals the projection carries.
+def sc_approvals_of(+context: N.Context) -> N.Approvals:
+  approvals_of(context)
+
+def scenario_revocation() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(reason_is(R.ineligibility(sc_offer_a(), sc_unapproved_a(), sc_snap(sc_issuer(), 103n)), R.MissingApproval{})
+      && selected(sc_select_b(), sc_offer_b()) && issued_is(R.Change.issued(sc_select_b()), 5n)
+      && denied(sc_dispatch_on(R.Change.state(sc_select_b()), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n),
+        R.Change.state(sc_select_b()), R.NotSelected{}), "scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected")
+    Test.check(denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_revoked(), 110n), sc_evidenced(), R.Revoked{})
+      && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_revoked(), 110n)), N.NoApprovals{})
+      && Bool.not(N.Step.accepted(N.start(sc_reserved(), 5n, sc_proj(sc_evidenced(), sc_revoked(), 110n), sc_ledger())))
+      && registry_empty(R.provider_registry(sc_evidenced(), sc_snap(sc_revoked(), 110n))), "scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty")
+    Test.check(sc_kept(sc_commit_on(sc_dispatched(), sc_revoked(), 110n))
+      && registry_empty(R.provider_registry(sc_dispatched(), sc_snap(sc_revoked(), 110n)))
+      && Bool.not(sc_accepted(HP.issue(host(), HP.revision(host()), worker_a(),
+        sc_descriptor(R.provider_registry(sc_dispatched(), sc_snap(sc_revoked(), 110n))), 2n, sc_plan(), 4, 120n))), "scenario revocation between dispatch and commit: once 101 revokes approval 5 after selection 5 is dispatched, Backplane.commit on the rebuilt projection rejects and spends no reservation, provider_registry is empty, and HostPrimitives.issue finds no handle to bind the worker's input to")
+
+# --- Scenarios: replay ---------------------------------------------------------
+
+# B withdraws its unselected offer {202, 1} (revision 7); 104 withdraws
+# approval 2 (revision 7).
+def sc_b_withdrawn() -> R.State:
+  R.Change.state(R.withdraw_offer(sc_approved(), 6n, provider_b(), R.OfferId{202n, 1n}))
+
+def sc_reapprove(serial: Nat) -> R.Change:
+  R.submit_approval(sc_unapproved_a(), 7n, IT.second_source_authority(),
+    sc_approval(serial, IT.second_source_authority(), IT.second_source(), provider_a()), sc_snap(sc_issuer(), 100n))
+
+def scenario_replay() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(denied(R.submit_offer(sc_b_withdrawn(), 7n, provider_b(), sc_offer_b(), sc_snap(sc_issuer(), 100n)), sc_b_withdrawn(), R.Replay{})
+      && denied(R.submit_approval(sc_approved(), 6n, IT.source_authority(),
+        sc_approval(31n, IT.source_authority(), TF.source_object(), provider_a()), sc_snap(sc_issuer(), 100n)), sc_approved(), R.Replay{})
+      && denied(sc_reapprove(31n), sc_unapproved_a(), R.Replay{})
+      && R.Change.accepted(sc_reapprove(33n)) && issued_is(R.Change.issued(sc_reapprove(33n)), 5n), "scenario replay: B's offer serial 1 resubmitted after B withdraws it is denied Replay, 101's approval serial 31 resubmitted is denied Replay, and after 104 withdraws approval 2 its serial 31 is denied Replay while a fresh serial 33 is accepted as id 5")
+    Test.check(denied(sc_submit_on(sc_dispatched(), provider_a(), sc_evidence_a(), sc_challenged(), sc_issuer(), 110n), sc_dispatched(), R.Replay{})
+      && denied(sc_dispatch_on(sc_dispatched(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n), sc_dispatched(), R.Replay{}), "scenario replay: after dispatch, A's evidence for selection 5 resubmitted is denied Replay and a second dispatch of selection 5 to A's worker session 6 is denied Replay, the state kept each time")
+
+# --- Scenarios: a substituted candidate, then abandon and reselect -------------
+
+# After A's evidence is stored (revision 8), B offers {202, 2} at quote 20
+# until 140 (revision 9); the monitor abandons selection 5 (revision 10,
+# retired 5) and selects again at 112: B's {202, 2} as selection 6
+# (revision 11). B's trial runs at 116 on challenge 42 (issued 114) and
+# sample 52 from the reader's negotiation pinned at 100.
+def sc_offer_b2() -> R.Offer:
+  offer_with(R.OfferId{202n, 2n}, provider_b(), 12n, sc_plan(), 20n, 140n)
+
+def sc_newcomer() -> R.State:
+  R.Change.state(R.submit_offer(sc_evidenced(), 8n, provider_b(), sc_offer_b2(), sc_snap(sc_issuer(), 112n)))
+
+def sc_abandoned() -> R.State:
+  R.Change.state(R.abandon(sc_newcomer(), 9n))
+
+def sc_reselect() -> R.Change:
+  sc_select_on(sc_abandoned(), sc_issuer(), 112n)
+
+def sc_reselected() -> R.State:
+  R.Change.state(sc_reselect())
+
+def sc_b_challenged() -> N.Session:
+  sc_challenged_on(sc_reselected(), sc_issuer(), 42n, 116n)
+
+def sc_evidence_b() -> R.Evidence:
+  evidence_with(R.record_version(), 52n, provider_b(), R.OfferId{202n, 2n}, 42n, TF.code())
+
+def sc_b_evidenced() -> R.State:
+  R.Change.state(sc_submit_on(sc_reselected(), provider_b(), sc_evidence_b(), sc_b_challenged(), sc_issuer(), 116n))
+
+def sc_b_proj() -> N.Context:
+  sc_proj(sc_b_evidenced(), sc_issuer(), 116n)
+
+def sc_b_reservation() -> N.ReservationStep:
+  N.reserve(N.Step.session(N.approve(N.Step.session(N.sample(sc_b_challenged(), 2n, 52n, sc_b_proj())), 3n, sc_b_proj())),
+    4n, 0n, 11n, sc_b_proj(), NT.initial_ledger())
+
+def sc_b_ledger() -> L.State:
+  N.ReservationStep.ledger(sc_b_reservation())
+
+def sc_b_running() -> N.Session:
+  N.Step.session(N.start(N.ReservationStep.session(sc_b_reservation()), 5n, sc_b_proj(), sc_b_ledger()))
+
+def sc_b_dispatch() -> R.Change:
+  sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_b_running(), sc_issuer(), 116n)
+
+def sc_b_commit() -> B.CommitResult:
+  B.commit(sc_b_running(), 6n, 1n, sc_b_ledger(), BF.candidate(),
+    BF.with_binding(BF.with_negotiation(BF.context(), sc_proj(R.Change.state(sc_b_dispatch()), sc_issuer(), 116n)), sc_binding()))
+
+def sc_challenges_of(+context: N.Context) -> N.Challenges:
+  match context:
+    case N.Context{_, _, challenges, _, _}:
+      challenges
+
+def scenario_reselect() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(R.revision(sc_newcomer()), 9n)
+      && denied(R.select(sc_newcomer(), 9n, sc_pinned(), 1n, sc_raw(sc_issuer(), 112n), sc_snap(sc_issuer(), 112n)), sc_newcomer(), R.AlreadySelected{})
+      && denied(sc_dispatch_on(sc_newcomer(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 112n), sc_newcomer(), R.NotSelected{})
+      && selection_offer_is(R.selection(sc_newcomer()), sc_offer_a()), "scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5")
+    Test.check(selected(sc_reselect(), sc_offer_b2()) && issued_is(R.Change.issued(sc_reselect()), 6n) && Nat.is_eq(R.retired(sc_reselected()), 5n)
+      && denied(sc_dispatch_on(sc_reselected(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_reselected(), R.MissingEvidence{})
+      && Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_reselected(), sc_issuer(), 116n))))
+      && N.Session.is(sc_b_challenged(), N.Challenged{}), "scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is")
+    Test.check(denied(sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_b_evidenced(), R.WrongTrial{})
+      && R.Change.accepted(sc_b_dispatch()) && B.accepted(sc_b_commit()) && sc_retained(sc_b_commit())
+      && single_token_is(R.provider_registry(R.Change.state(sc_b_dispatch()), sc_snap(sc_issuer(), 116n)), token_b()), "scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12")
+
+# --- Scenarios: denial cases ----------------------------------------------------
+
+# Principal C (203, authenticated, holding no grant) and D (204, holding
+# grant 15 for the one-source TF.plan() only), each on the approved state at
+# revision 6.
+def sc_on_approved(+from: I.Principal, +offer: R.Offer) -> R.Change:
+  R.submit_offer(sc_approved(), 6n, from, offer, sc_snap(sc_issuer(), 100n))
+
+def sc_offer_d(plan: T.Plan) -> R.Offer:
+  offer_with(R.OfferId{204n, 1n}, provider_d(), 15n, plan, 30n, 140n)
+
+def scenario_identity() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(denied(sc_on_approved(provider_c(), offer_with(R.OfferId{203n, 2n}, provider_a(), 8n, sc_plan(), 30n, 120n)), sc_approved(), R.Unauthenticated{})
+      && denied(sc_on_approved(provider_c(), offer_with(R.OfferId{201n, 2n}, provider_c(), 8n, sc_plan(), 30n, 120n)), sc_approved(), R.Unauthenticated{})
+      && denied(sc_on_approved(provider_c(), offer_with(R.OfferId{203n, 1n}, provider_c(), 8n, sc_plan(), 30n, 120n)), sc_approved(), R.NoGrant{})
+      && denied(R.submit_approval(sc_approved(), 6n, provider_c(), sc_approval(34n, IT.source_authority(), TF.source_object(), provider_c()), sc_snap(sc_issuer(), 100n)), sc_approved(), R.Unauthenticated{})
+      && selected(sc_select(), sc_offer_a()), "scenario unauthenticated provider: principal C submitting an offer under A's claim, or A's identity under its own claim, is denied Unauthenticated, its own offer citing A's grant 8 is denied NoGrant, and an approval it submits as 101 is denied Unauthenticated; the state is kept and A is selected")
+    Test.check(denied(sc_on_approved(provider_d(), sc_offer_d(sc_plan())), sc_approved(), R.ScopeMismatch{})
+      && denied(sc_on_approved(provider_d(), sc_offer_d(TF.plan())), sc_approved(), R.ScopeMismatch{})
+      && denied(R.submit_approval(sc_approved(), 6n, IT.source_authority(),
+        approval_with(35n, IT.source_authority(), TF.source_object(), provider_d(), profile(), TF.plan(), approval_until()), sc_snap(sc_issuer(), 100n)), sc_approved(), R.ScopeMismatch{})
+      && selected(sc_select(), sc_offer_a()), "scenario scope narrower than the plan: D's grant 15 covers only the one-source TF.plan(), so D's offer of the two-source plan on it, and its offer of TF.plan() itself, are denied ScopeMismatch, as is 101's approval of D for TF.plan(); A is selected")
+
+# Selection racing revocation: A is selected at 103 on the issuer state
+# before the revocation; the revoked issuer is what every later call reads.
+def sc_raced_select() -> R.Change:
+  sc_select_on(sc_approved(), sc_revoked(), 103n)
+
+# Partial owner agreement: after A's session starts, 104 withdraws its
+# approval of A for object 11 (id 2) at revision 8 (revision 9).
+def sc_partial() -> R.State:
+  R.Change.state(R.withdraw_approval(sc_evidenced(), 8n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 110n)))
+
+# Whether `origin`'s approval of A at profile 1 for the plan counts at 110.
+def sc_origin_approved(+state: R.State, +origin: T.ObjectVersion) -> Bool:
+  R.origin_approved(R.approvals(state), origin, provider_a(), profile(), sc_plan(), sc_issuer(), 110n)
+
+def scenario_currency() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(denied(sc_submit_on(sc_selected(), provider_a(), sc_evidence_a(), sc_challenged(), sc_revoked(), 110n), sc_selected(), R.Revoked{})
+      && Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_selected(), sc_revoked(), 110n))))
+      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_revoked(), 110n), sc_evidenced(), R.Revoked{})
+      && selected(sc_raced_select(), sc_offer_b()), "scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B")
+    Test.check(R.Change.accepted(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 124n))
+      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 125n), sc_evidenced(), R.Expired{})
+      && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_issuer(), 125n)), N.NoApprovals{}), "scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals")
+    Test.check(denied(sc_dispatch_on(sc_partial(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n), sc_partial(), R.MissingApproval{})
+      && sc_kept(B.commit(sc_running(), 6n, 1n, sc_ledger(), BF.candidate(),
+        BF.with_binding(BF.with_negotiation(BF.context(), sc_proj(sc_partial(), sc_issuer(), 110n)), sc_binding())))
+      && sc_origin_approved(sc_partial(), TF.source_object()) && Bool.not(sc_origin_approved(sc_partial(), IT.second_source()))
+      && sc_origin_approved(sc_evidenced(), IT.second_source()), "scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval and Backplane.commit on the rebuilt projection rejects and spends no reservation")
+
+# Identical candidates: A and B offer the same plan, code, profile 1, quote
+# 40 and lifetime (until 125), differing only in identity, provider and
+# backing grant; both are approved by both origins.
+def sc_twin_a() -> R.Offer:
+  offer_with(R.OfferId{201n, 1n}, provider_a(), 8n, sc_plan(), 40n, sc_a_until())
+
+def sc_twin_b() -> R.Offer:
+  offer_with(R.OfferId{202n, 1n}, provider_b(), 12n, sc_plan(), 40n, sc_a_until())
+
+def sc_twins_ab() -> R.State:
+  sc_approve_all(sc_put_offer(sc_put_offer(sc_opened(), provider_a(), sc_twin_a()), provider_b(), sc_twin_b()))
+
+def sc_twins_ba() -> R.State:
+  sc_approve_all(sc_put_offer(sc_put_offer(sc_opened(), provider_b(), sc_twin_b()), provider_a(), sc_twin_a()))
+
+def sc_twin_selected() -> R.State:
+  R.Change.state(sc_select_on(sc_twins_ba(), sc_issuer(), 103n))
+
+def sc_twin_b_evidence() -> R.Evidence:
+  evidence_with(R.record_version(), 51n, provider_b(), R.OfferId{202n, 1n}, 41n, TF.code())
+
+def scenario_targets() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(denied(sc_dispatch_on(sc_evidenced(), R.OfferId{202n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_evidenced(), R.NotSelected{})
+      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_evidenced(), R.NotSelected{})
+      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, 3n, sc_running(), sc_issuer(), 110n), sc_evidenced(), R.NotSelected{})
+      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, 4n, sc_running(), sc_issuer(), 110n), sc_evidenced(), R.WrongProfile{})
+      && R.Change.accepted(sc_dispatch()), "scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches")
+    Test.check(selected(sc_select_on(sc_twins_ab(), sc_issuer(), 103n), sc_twin_a()) && selected(sc_select_on(sc_twins_ba(), sc_issuer(), 103n), sc_twin_a())
+      && denied(sc_submit_on(sc_twin_selected(), provider_b(), sc_twin_b_evidence(), sc_challenged_on(sc_twin_selected(), sc_issuer(), 41n, 110n), sc_issuer(), 110n), sc_twin_selected(), R.NotSelected{})
+      && denied(sc_dispatch_on(sc_twin_selected(), R.OfferId{202n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_twin_selected(), R.NotSelected{}), "scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)")
+
+def scenarios() -> IO(Unit):
+  do IO<Unit>:
+    scenario_current()
+    scenario_revocation()
+    scenario_replay()
+    scenario_reselect()
+    scenario_identity()
+    scenario_currency()
+    scenario_targets()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     offers()
@@ -2274,4 +2812,5 @@ def main() -> IO(Unit):
     trials()
     dispatch()
     integration()
-    IO.print("Rendezvous: 197 checks passed")
+    scenarios()
+    IO.print("Rendezvous: 216 checks passed")

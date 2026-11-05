@@ -57,7 +57,8 @@ host must meet. None of them is evidence that a host meets it today.
 Contracts and evidence:
 
 - Proposed contract: [executor-rendezvous spec](../openspec/changes/add-executor-rendezvous/specs/executor-rendezvous/spec.md) (ER-001 to ER-008), with its [design](../openspec/changes/add-executor-rendezvous/design.md) and [tasks](../openspec/changes/add-executor-rendezvous/tasks.md).
-- Traceability: `openspec/traceability/executor-rendezvous.md`. It is written by task 2.1 of this change and does not exist yet.
+- Traceability: [executor-rendezvous traceability](../openspec/traceability/executor-rendezvous.md), one row per requirement with its named tests and reviewed-only gaps (task 2.1).
+- Evidence: [verification/executor-rendezvous.txt](../verification/executor-rendezvous.txt), the recorded commands, counts, laws and mutation totals of this lane's tree.
 - Grant authority: [docs/GRANT-ISSUANCE.md](GRANT-ISSUANCE.md). A provider's authority is a registered Issuance grant, and every Issuance trusted input is also a rendezvous input.
 - Dependent proposal: [add-locality-aware-execution](../openspec/changes/add-locality-aware-execution/proposal.md) (see "What the locality proposal may extend").
 
