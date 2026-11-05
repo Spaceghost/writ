@@ -38,3 +38,7 @@
 2026-11-05T04:20:44Z	implementer	derive, laws and attenuation section (29 checks) in; mutation: 47 derive mutants, 41 killed by tests, outer lifetime match killed by bend PROOF.bend, 5 None-arm equivalents; task 3 mutants rerun: unchanged (60 killed, 4 known)
 2026-11-05T04:22:37Z	implementer	report written; final verification run before commit
 2026-11-05T04:23:03Z	implementer	final: mutant total corrected to 49 (43 killed by tests, 1 by bend PROOF.bend, 5 None-arm equivalents); bend Tests.bend ALL LIBRARY TESTS PASSED 961 PASS (782 + 179); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing
+2026-11-05T04:23:31Z	controller	task 4 reported; reviewer dispatched
+2026-11-05T04:30:05Z	implementer	task 4 fix round 1 started: read task-4-review.md
+2026-11-05T04:30:08Z	controller	review: speaks_for gap and id-0 grant; fix round 1 dispatched
+2026-11-05T04:33:33Z	implementer	fix round 1: subject 6 and principal 0 SubjectMismatch checks (I-1); id_named in own_checks and parent_present, forged id-0 grant and parent id 0 checks (M-1); header reason mapping (M-2); comment reflow (M-3); 5 new mutants all killed (54 total, 48 by tests, 1 proof-only, 5 equivalent); bend Tests.bend ALL LIBRARY TESTS PASSED 965 PASS (782 + 183); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing

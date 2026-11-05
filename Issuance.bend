@@ -65,7 +65,10 @@ import ./Frontend.bend as F
 # reason on any denial, and advances the revision exactly once on acceptance.
 # A stored derived grant's subject is the authenticated `from` that derived
 # it, because `derive` requires `from` to be the parent's scope subject and
-# copies that scope.
+# copies that scope. `derive` reports a missing or ambiguous parent (or
+# parent id 0) as MissingApproval and a parent that is not current for any
+# reason other than its own expiry as Revoked; the closed set has no separate
+# reasons for either.
 #
 # Gates. Each transition first matches on the revision check, then computes
 # acceptance as `Guard.all` over the Guard.Checks projection of one ordered
@@ -1509,15 +1512,22 @@ def grant_request(grant: Grant) -> Request:
     case Grant{_, _, scope, rights, valid_until, sources, write, _}:
       Request{1n, scope, sources, write, rights, valid_until}
 
-# What every grant, root or derived, must satisfy at each use: it is exactly
-# the record registered under its id in this state, its scope is well formed
-# at the CURRENT live stamp (an epoch advance withdraws it), and `now` is
-# before its exclusive `valid_until`.
+# A positive id. No transition allocates id 0: it is the root encoding of
+# `parent` and the unconsumed sentinel of `consumed_by`, so a record under id
+# 0 would read unconsumed approvals as consumed by it.
+def id_named(id: Nat) -> Bool:
+  Nat.is_gt(id, 0n)
+
+# What every grant, root or derived, must satisfy at each use: its id is
+# positive, it is exactly the record registered under that id in this state,
+# its scope is well formed at the CURRENT live stamp (an epoch advance
+# withdraws it), and `now` is before its exclusive `valid_until`.
 def own_checks(+state: State, +grant: Grant, +now: Nat) -> Guard.Checks:
+  Guard.Require{id_named(Grant.id(grant)),
   Guard.Require{registered_as(find_grant(grants(state), Grant.id(grant)), grant),
   Guard.Require{scope_wellformed(Grant.scope(grant), live(state)),
   Guard.Require{unexpired(now, Grant.valid_until(grant)),
-  Guard.End{}}}}
+  Guard.End{}}}}}
 
 # What a root grant's cited approvals must satisfy at each use, re-derived
 # from this state: each exists and was consumed by exactly this grant, no id
@@ -1606,16 +1616,17 @@ def current_within(fuel: Grants, parent: Nat, found: Maybe<&2, Grant>, +state: S
 
 # Public entry point (GI-005): whether `grant` is usable in `state` at `now`.
 # The supplied grant is a claim: nothing is believed because the record
-# exists. Usability is re-derived on every call: the grant must be exactly
-# the record registered under its id here; its scope well formed at the live
-# stamp and `now` before its `valid_until`; for a root grant every cited
-# approval present, consumed by this grant, unrevoked, still authorized by the
-# directory and still placed, covering the manifest, with the same scope,
-# rights covering the grant's and `now` before its `valid_until`; for a
-# derived grant the parent registered, current in turn, the child within
-# its scope, rights and lifetime, and citing no approvals. A revoked approval, a directory or
-# placement change, an epoch advance or expiry therefore withdraws the grant
-# and everything derived from it, without editing any record.
+# exists. Usability is re-derived on every call: the grant's id must be
+# positive and the grant exactly the record registered under it here; its
+# scope well formed at the live stamp and `now` before its `valid_until`; for
+# a root grant every cited approval present, consumed by this grant,
+# unrevoked, still authorized by the directory and still placed, covering the
+# manifest, with the same scope, rights covering the grant's and `now` before
+# its `valid_until`; for a derived grant the parent registered, current in
+# turn, the child within its scope, rights and lifetime, and citing no
+# approvals. A revoked approval, a directory or placement change, an epoch
+# advance or expiry therefore withdraws the grant and everything derived from
+# it, without editing any record.
 def current(+state: State, +grant: Grant, +now: Nat) -> Bool:
   current_within(grants(state), Grant.parent(grant), find_grant(grants(state), Grant.parent(grant)),
     state, grant, now)
@@ -1657,11 +1668,14 @@ def Principal.id(principal: Principal) -> Nat:
 def speaks_for_subject(from: Principal, scope: Scope) -> Bool:
   Nat.is_eq(Principal.id(from), Scope.subject(scope))
 
-# The parent id resolved to exactly one registered grant. An absent or
-# ambiguous id resolves to none (MissingApproval: the closed error set has no
-# separate reason for a missing grant).
-def parent_present(found: Maybe<&2, Grant>) -> Bool:
-  Maybe.is_some(&2, Grant, found)
+# The parent id is a real grant id and resolved to exactly one registered
+# grant. Id 0 is never allocated (it is the root encoding of `parent` and the
+# unconsumed sentinel of `consumed_by`), so a record under id 0 is never a
+# parent, and a child can never be stored with the root encoding. An absent
+# or ambiguous id resolves to none. Both deny with MissingApproval: the closed
+# error set has no separate reason for a missing grant.
+def parent_present(found: Maybe<&2, Grant>, +parent_id: Nat) -> Bool:
+  id_named(parent_id) && Maybe.is_some(&2, Grant, found)
 
 # Each parent helper below fails closed on an absent parent.
 def parent_subject_is(found: Maybe<&2, Grant>, +from: Principal) -> Bool:
@@ -1712,13 +1726,13 @@ def parent_lifetime_covers(found: Maybe<&2, Grant>, +valid_until: Nat) -> Bool:
 # A parent that is not current for any reason other than its own expiry
 # (a revoked approval, a monitor change, an ancestor withdrawn) denies with
 # Revoked: its authority has been withdrawn.
-def derive_gates(+found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat,
+def derive_gates(+found: Maybe<&2, Grant>, +parent_id: Nat, +state: State, +expected_revision: Nat,
     +from: Principal, child: Derivation, +now: Nat, +token: T.CodeId) -> Gates:
   match child:
     case Derivation{version, +rights, +valid_until}:
       Gate{revision_current(state, expected_revision), StaleRevision{},
       Gate{version_supported(version), UnknownVersion{},
-      Gate{parent_present(found), MissingApproval{},
+      Gate{parent_present(found, parent_id), MissingApproval{},
       Gate{parent_subject_is(found, from), SubjectMismatch{},
       Gate{parent_unexpired(found, now), Expired{},
       Gate{parent_current(found, state, now), Revoked{},
@@ -1729,9 +1743,9 @@ def derive_gates(+found: Maybe<&2, Grant>, +state: State, +expected_revision: Na
       Gate{token_fresh(grants(state), token), DuplicateToken{},
       Open{}}}}}}}}}}}}
 
-def derive_checks(+found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat,
+def derive_checks(+found: Maybe<&2, Grant>, +parent_id: Nat, +state: State, +expected_revision: Nat,
     +from: Principal, +child: Derivation, +now: Nat, +token: T.CodeId) -> Guard.Checks:
-  Gates.checks(derive_gates(found, state, expected_revision, from, child, now, token))
+  Gates.checks(derive_gates(found, parent_id, state, expected_revision, from, child, now, token))
 
 # Store the child under a fresh id (the change id) and advance the revision
 # once. The child's scope is the parent's record's scope, copied, so its plan,
@@ -1756,7 +1770,7 @@ def derive_checked(ok: Bool, +parent: Grant, +state: State, +expected_revision: 
       # `ok` is Guard.all over the same gate list, so some gate failed and
       # Gates.reason returns its reason; the StaleRevision fallback is
       # unreachable here.
-      Rejected{state, Gates.reason(derive_gates(Some{parent}, state, expected_revision, from, child, now, token), StaleRevision{})}
+      Rejected{state, Gates.reason(derive_gates(Some{parent}, parent_id, state, expected_revision, from, child, now, token), StaleRevision{})}
     case True{}:
       commit_derivation(state, parent_id, parent, child, token)
 
@@ -1769,16 +1783,16 @@ def derive_bounded(bounded: Bool, +parent: Grant, +state: State, +expected_revis
     +from: Principal, +parent_id: Nat, +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
   match bounded:
     case False{}:
-      Rejected{state, Gates.reason(derive_gates(Some{parent}, state, expected_revision, from, child, now, token), StaleRevision{})}
+      Rejected{state, Gates.reason(derive_gates(Some{parent}, parent_id, state, expected_revision, from, child, now, token), StaleRevision{})}
     case True{}:
-      derive_checked(Guard.all(derive_checks(Some{parent}, state, expected_revision, from, child, now, token)),
+      derive_checked(Guard.all(derive_checks(Some{parent}, parent_id, state, expected_revision, from, child, now, token)),
         parent, state, expected_revision, from, parent_id, child, now, token)
 
 def derive_found(found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat,
     +from: Principal, +parent_id: Nat, +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
   match found:
     case None{}:
-      Rejected{state, Gates.reason(derive_gates(None{}, state, expected_revision, from, child, now, token), StaleRevision{})}
+      Rejected{state, Gates.reason(derive_gates(None{}, parent_id, state, expected_revision, from, child, now, token), StaleRevision{})}
     case Some{+parent}:
       derive_bounded(lifetime_within(Derivation.valid_until(child), Grant.valid_until(parent)),
         parent, state, expected_revision, from, parent_id, child, now, token)
@@ -1789,8 +1803,8 @@ def derive_found(found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat
 # the parent's scope and subject and cites no approvals, so it can narrow
 # rights and shorten the lifetime but never widen the scope, change the
 # subject or extend the expiry. Accepted only when the state is at
-# `expected_revision`, the derivation is version 1, `parent_id` names exactly
-# one registered grant, `from` is that grant's scope subject, `now` is before
+# `expected_revision`, the derivation is version 1, `parent_id` is positive
+# and names exactly one registered grant, `from` is that grant's scope subject, `now` is before
 # the parent's `valid_until` and the parent is `current` at `now`, the
 # requested rights are valid and within the parent's, `now` is before the
 # requested `valid_until`, that lifetime is within the parent's, and `token`
@@ -1852,10 +1866,11 @@ def grants_valid(grants: Grants, +next_id: Nat, +approvals: Approvals) -> Bool:
 # Public entry point: structural validity only. Ids are positive, below
 # `next_id` and unique; every stored approval's serial is recorded; every
 # grant is backed (its cited approvals consumed by exactly it, or its parent
-# registered before it and attenuated, with no cited approvals); no object is placed twice in one namespace; no
-# serial is recorded twice. It does not authenticate the supplied state, and
-# no transition treats a valid state as evidence: each recomputes its own
-# checks, and `current` re-derives usability at every use.
+# registered before it and attenuated, with no cited approvals); no object
+# is placed twice in one namespace; no serial is recorded twice. It does not
+# authenticate the supplied state, and no transition treats a valid state as
+# evidence: each recomputes its own checks, and `current` re-derives
+# usability at every use.
 def valid(state: State) -> Bool:
   match state:
     case State{_, +next_id, _, _, placements, +approvals, grants, +seen}:

@@ -17,3 +17,5 @@ Task 3: review spec APPROVED, security NEEDS_FIXES (a later revoke could un-revo
 Task 3: fix round 1 done (13fb1b4): no real un-revoke bug, two tests now pin it; the trivial law dropped and replaced by the two real ones (10 laws); 932 checks. Scoped re-review dispatched.
 Task 3: complete (re-review ALL CLOSED; 932 checks, 10 laws).
 Task 4: dispatched implementer
+Task 4: implementer DONE_WITH_CONCERNS (3af6527): 961 checks (+29), 12 laws (+2: the law and a helper lemma), 43 of 49 mutants killed by tests, 1 by PROOF, 5 equivalent. Rulings: the child's subject equals the authenticated caller through derive's from == parent subject check, no new Grant field (acceptable if the reviewer confirms the caller check cannot be bypassed); MissingApproval for a missing parent and Revoked for a non-current parent are acceptable within the fixed error set, stated in the header; valid rejecting widened children stands. Reviewer dispatched.
+Task 4: review spec APPROVED, security NEEDS_FIXES (speaks_for_subject is_eq to is_le survives; a forged id-0 grant counts as current; header mapping; a comment). Fix round 1 dispatched.

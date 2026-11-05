@@ -232,3 +232,62 @@ Regression: Task 3's `mutate4.py` was rerun on this tree as `mutate4b.py`, with 
 4. **`valid` is stricter.** A derived record must now attenuate its parent's record and cite no approvals. It no longer suffices for the parent to exist. Only the synthetic widened and citing fixtures are affected, and their tests now assert `not valid`.
 5. **The outer `lifetime_within` match** in `derive` is test-equivalent to gate 10 and exists for the law. It is pinned by `bend PROOF.bend`, like `register`'s and `revoke`'s outer revision matches.
 6. **`--verdict` was not available** (no Lean toolchain).
+
+## Fix round 1 (review task-4-review.md: I-1, M-1, M-2, M-3)
+
+Status: DONE.
+
+### I-1: the subject gate below the subject
+
+The gate itself was correct. The tests had a gap: every principal they denied had an id above subject 7, so an `is_le` mutant survived. Two denial checks were added, each through `denied` with SubjectMismatch:
+- "GI-006 subject 6 deriving from subject 7's grant denied SubjectMismatch"
+- "GI-006 principal 0 deriving from subject 7's grant denied SubjectMismatch"
+
+### M-1: grant id 0
+
+- **`current`.** `own_checks` gains a first conjunct, `id_named(Grant.id(grant))`, where `id_named(id) = Nat.is_gt(id, 0n)`. This is a Task 3 carry-over. A forged grant under id 0 over unconsumed approvals is no longer current. Before the fix, `consumed_by` 0 (unconsumed) read as "consumed by grant 0".
+- **`derive`.** `parent_present` now takes `parent_id` and requires `id_named(parent_id)` as well as an exact lookup. The reason stays MissingApproval. A child can therefore never be stored with the root encoding (`parent = 0`). `derive_gates` and `derive_checks` gain a `parent_id` parameter for this.
+- The law and its proof are unchanged. They do not mention `derive_gates`, and `bend PROOF.bend` still checks.
+- New checks:
+  - "GI-006 a forged grant under id 0 over unconsumed approvals is not current and not valid". It uses the synthetic `forged0()`, which `valid` rejects.
+  - "GI-006 deriving from parent id 0 denied MissingApproval". Without the `parent_present` id check, this would read Revoked.
+
+### M-2: the reason mapping in the header
+
+The module header now says that `derive` reports a missing or ambiguous parent (or parent id 0) as MissingApproval, and a parent that is not current for any reason other than its own expiry as Revoked. It says the closed set has no separate reasons for either. The `derive` entry-point comment says the parent id must be positive.
+
+### M-3: reflow
+
+These comment blocks were reflowed:
+- `current`'s entry-point comment, which also now names the positive-id requirement;
+- `valid`'s comment, which had a 113-column line;
+- the `parent_present` and `own_checks` comments, which were rewritten.
+
+No comment line in `Issuance.bend` exceeds 100 columns. The last two edits were comment-only. Their code lines, with comments stripped, are identical to the tree the mutation run used.
+
+### Mutants for this round
+
+The harness is `/tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/55038343-2e0b-4235-a6a8-7c68c6dd1f50/scratchpad/scripts/mutate7.py`. It is `mutate6.py` with target strings updated for the new `parent_id` argument, plus the five mutants below, run on the scratch copy `scratchpad/mut7`.
+
+| Mutant | First failing check |
+|---|---|
+| `speaks_for_subject` uses `Nat.is_le` | KILLED: GI-006 subject 6 deriving from subject 7's grant denied SubjectMismatch |
+| `speaks_for_subject` uses `Nat.is_ge` | KILLED: GI-006 the source authority, not subject 7, deriving from subject 7's grant denied SubjectMismatch |
+| `own_checks` drops `id_named` | KILLED: GI-006 a forged grant under id 0 over unconsumed approvals is not current and not valid |
+| `parent_present` drops `id_named` | KILLED: GI-006 deriving from parent id 0 denied MissingApproval |
+| `id_named` always true | KILLED: GI-006 a forged grant under id 0 over unconsumed approvals is not current and not valid |
+
+The total is now 54 mutants:
+- 48 are killed by the tests.
+- The outer `lifetime_within` match is killed by `bend PROOF.bend`. So is the bounded branch carrying the committed state, which the tests also kill.
+- 5 are equivalent: the None arms behind the presence gate, unchanged.
+
+Every first-round result is unchanged.
+
+### Verification (Bend 2.0.39)
+
+- `bend Issuance.bend --check-only`: `ALL PROOFS CHECK`.
+- `bend Tests.bend` (exit 0, 0 FAIL): `Issuance: 183 checks passed` ... `ALL LIBRARY TESTS PASSED`. The PASS count is 965 (912 `PASS:` + 53 `PASS `), which is 782 + 183.
+- `bend PROOF.bend` (exit 0): `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` There are 12 laws.
+- `git diff master -- LAWS.bend PROOF.bend`: 0 removed lines.
+- `--verdict` is still unavailable because there is no Lean toolchain.
