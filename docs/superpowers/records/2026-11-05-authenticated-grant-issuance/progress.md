@@ -14,3 +14,6 @@ Task 2: fix round 1 verified by the controller (tests only, three mutants now ki
 Task 3: dispatched implementer
 Task 3: implementer DONE_WITH_CONCERNS (4cf2f6a): 928 checks (+53), 9 laws (3 added, additions only), 59 of 63 mutants killed, 4 equivalent. Rulings: current walking the parent chain ahead of Task 4 is accepted (Task 4 builds derive on it and must require a child to cite no approvals); stricter per-use rechecks stand; the definition move is acceptable if the reviewer confirms conditions are unchanged. Reviewer dispatched.
 Task 3: review spec APPROVED, security NEEDS_FIXES (a later revoke could un-revoke earlier ones untested; issuance_denied_preserves_state is trivially true). Ruling: a trivially true law is a proof hole, so it is replaced by the reviewer's two real proofs (11 laws), never kept with reworded prose. Fix round 1 dispatched.
+Task 3: fix round 1 done (13fb1b4): no real un-revoke bug, two tests now pin it; the trivial law dropped and replaced by the two real ones (10 laws); 932 checks. Scoped re-review dispatched.
+Task 3: complete (re-review ALL CLOSED; 932 checks, 10 laws).
+Task 4: dispatched implementer

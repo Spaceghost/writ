@@ -31,3 +31,5 @@
 2026-11-05T03:54:00Z	controller	review: un-revoke gap and a trivial law; fix round 1 dispatched (real proofs, 11 laws)
 2026-11-05T03:54:12Z	implementer	task 3 fix round 1 started: read task-3-review.md (I-1 un-revoke mutant, I-2 trivial denial law, M-1..M-3)
 2026-11-05T03:56:14Z	implementer	fix round 1: no un-revoke bug in revoke (mark_revoked keeps revoked ||); 4 checks added (I-1 flag and current-based, M-1 subject 0 and empty manifest; Issuance 150); trivial issuance_denied_preserves_state dropped, issuance_stale_registration_keeps_state and issuance_stale_revocation_keeps_state added (10 laws); 7 targeted mutants all killed; bend Tests.bend ALL LIBRARY TESTS PASSED 932 PASS (782 + 150); bend PROOF.bend ALL PROOFS CHECK; report section appended; committing
+2026-11-05T03:56:59Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T04:02:30Z	controller	task 3 complete; task 4 dispatched (derive: attenuation only)
