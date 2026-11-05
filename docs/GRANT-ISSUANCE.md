@@ -59,7 +59,7 @@ transition's checks.
 | `derive(state, expected_revision, from, parent_id, child, now, token)` | Issues an attenuated grant to the parent's own subject (GI-006, GI-007). |
 | `current(state, grant, now)` | Whether a grant is usable now, re-derived from the state (GI-005). |
 | `valid(state)` | Structural validity only. It authenticates nothing. |
-| `reads(state, now)`, `writes(state, now)`, `registry(state, now)` | Projections of the current grants into `T.Reads`, `T.Writes` and `F.Registry` (GI-008). |
+| `reads(state, from, now)`, `writes(state, from, now)`, `registry(state, from, now)` | Projections of the authenticated principal's current grants into `T.Reads`, `T.Writes` and `F.Registry` (GI-008). |
 | `Change.accepted`, `Change.state`, `Change.reason`, `Change.issued`, and the state accessors | Read a transition's outcome. |
 
 ## Trusted identity inputs
@@ -68,16 +68,18 @@ Bend authenticates nothing by itself. It compares what it is given. Each input
 below is taken as given. The other parameters are untrusted claims that Bend
 checks against these inputs: the approval records, the `Request` (scope, cited
 approval ids, rights, lifetime), the `Derivation`, the `parent_id` and
-`approval_id`, and the `grant` passed to `current`. For each one, this section says what Bend does with
-it, who must supply it on a real host, and what happens if the host supplies
-it wrongly.
+`approval_id`, and the `grant` passed to `current`. For each trusted input,
+this section says what Bend does with it, who must supply it on a real host,
+and what happens if the host supplies it wrongly.
 
 ### The authenticated principal (`from`)
 
 `submit_source`, `submit_write`, `revoke` and `derive` each take
 `from: Principal`, a separate parameter that the host attaches to the
-transition. It is not a record field. No approval, request or derivation can
-assert its own authentication.
+transition. The projections `reads`, `writes` and `registry` take the same
+parameter for the principal of a use, and that principal is the identity the
+host presents to Frontend as `F.Caller.subject`. It is not a record field.
+No approval, request or derivation can assert its own authentication.
 
 - What Bend does with it: an approval is accepted only when its claimed
   `issuer` equals `from` (otherwise `Unauthenticated`) and the directory names
@@ -96,8 +98,10 @@ assert its own authentication.
   (see `docs/PLATFORMS.md`).
 - If it is wrong: anyone the host misidentifies as a directory authority can
   submit and revoke approvals in that authority's domains, and anyone
-  misidentified as a grant's subject can derive from it. Bend cannot detect
-  this, because the parameter is the definition of who is asking.
+  misidentified as a grant's subject can derive from it and use it: the
+  projections built for that principal include the grant, and Frontend's
+  caller check compares against the same identity. Bend cannot detect this,
+  because the parameter is the definition of who is asking.
 
 ### The authority directory and the placements
 
@@ -136,11 +140,17 @@ epochs). `now` is passed to every submission, registration, derivation,
   `now` and include only grants current at that time.
 - Who supplies them: the monitor, from its authoritative epoch state and a
   trusted clock. The `now` passed to the projections must be the same time
-  the host passes in `T.Context.now` and `F.Live` for that use.
+  the host passes in `T.Context.now` and `F.Live` for that use, and the live
+  stamp must be the one in `T.Context.live`.
 - If they are wrong: a stale live stamp keeps grants from a retired epoch
   usable, and a clock that runs slow or is caller-chosen extends every
-  lifetime. A projection built at an earlier `now` than the use-time check
-  can include a grant that has already expired.
+  lifetime. Expiry and epoch are re-checked at use against `T.Context.now`
+  and `live` (`Transfer.scoped`, `Frontend.capability_current`), so a
+  projection built at an earlier `now` cannot by itself admit an expired
+  grant while those use-time values are trusted; a later `now` only drops
+  grants. Revocation and directory or placement changes are enforced only by
+  rebuilding the projection, so the time and stamp for both must come from
+  the monitor.
 
 ### Fresh tokens
 
@@ -184,23 +194,63 @@ denial returns the supplied state unchanged.
 
 ### Rebuilding the projections for every use
 
-`reads(state, now)`, `writes(state, now)` and `registry(state, now)` return
-the grant lists `Transfer.admit` consumes (`T.Context.reads`/`writes`) and
-the registry `Frontend` and the DataOS facade consume (`F.Registry`).
+`reads(state, from, now)`, `writes(state, from, now)` and
+`registry(state, from, now)` return the grant lists `Transfer.admit` consumes
+(`T.Context.reads`/`writes`) and the registry `Frontend` and the DataOS
+facade consume (`F.Registry`), for one use by the authenticated principal
+`from`.
 
 - What Bend does with them: each projection walks the grant list and keeps
-  only grants that are `current` at `now`, so a revoked, expired or otherwise
-  withdrawn grant contributes nothing to any of the three. Each read grant
+  only grants whose scope's subject is `from` and that are `current` at
+  `now`. A revoked, expired or otherwise withdrawn grant contributes nothing
+  to any of the three, and neither does another subject's grant. Each read grant
   is placed in the source's read domain, and every entry is bound to the
   grant's own scope and lifetime. `T.admit` and `F.checked_plan` then run
   unchanged on the result. Issuance adds no shortcut around them.
 - Who supplies them: the host must rebuild all three from the current,
-  installed issuer state for every use. It must not cache one, reuse an
-  earlier one, or let the caller supply one.
-- If it is wrong: a cached projection keeps a revoked grant usable. The
-  use-time checks see only the lists they are given, so they cannot tell a
-  stale projection from a current one. Merging in grants from another
-  source puts authority beside the issuer's that the issuer never checked.
+  installed issuer state, for the principal of this use, for every use. It
+  must not cache one, reuse an earlier one, reuse one built for another
+  principal, or let the caller supply one. The projections replace only the
+  grant fields of `T.Context`. The live stamp, `now`, the source and
+  destination policies, the operation and the payment witnesses stay
+  host-supplied Transfer inputs. The issuer's placements and the context's
+  source and destination policy domains must come from the same monitor
+  record: `ReadGrant.matches` requires the projected read domain to equal the
+  source policy's domain, so a divergence denies (fail-closed) but signals a
+  host fault.
+- If it is wrong: a cached projection keeps a revoked grant usable, and
+  likewise a grant withdrawn by a directory or placement change, because
+  those are the facts the use-time checks cannot re-derive. They see only
+  the lists they are given, so they cannot tell a stale projection from a
+  current one. Merging in grants from another source puts authority beside
+  the issuer's that the issuer never checked.
+
+### The subject of a use
+
+Transfer's grants carry no subject: `T.ReadGrant`, `T.WriteGrant` and
+`T.GrantScope` bind a plan's invocation, manifest, destination, write domain,
+code, kind, stamp and lifetime, but not who may use them. Only Frontend's
+`capability_current`, reached through `F.checked_plan` and so through
+`DataOS.commit_from_capability`, compares a use with an authenticated
+caller. Other library paths run `T.admit` on a bare `T.Context` with no
+caller check: `DataOS.admit`, `Backplane.commit` and the Negotiation
+transitions.
+
+- What Bend does about it: the projections are subject-scoped. They take the
+  authenticated principal of the use and return only that subject's grants,
+  so a list built for one caller never holds another subject's grant. A
+  different principal gets empty lists ("GI-008 subject-scoped projections:
+  ..." checks in `IssuanceTests.bend`), and on a bare `T.admit` path
+  principal 8 gets no admission from subject 7's grant.
+- Who supplies it: the host's transport identity verification, the same
+  input as `from` above. The principal passed to the projections must be the
+  caller of this use, and the same identity the host presents as
+  `F.Caller.subject`.
+- If it is wrong: lists built for the wrong principal, or reused for a
+  different caller, hand that subject's grants to someone else. On a path
+  that also goes through `F.checked_plan`, the registry's subject check
+  still refuses a caller whose authenticated subject does not own the token.
+  On a bare `T.admit` path nothing else checks the caller.
 
 ### Approvals carried off-host
 

@@ -117,3 +117,75 @@ All 27 mutants are killed: 26 in the first pass, and the last one after check 3 
 2. **Counts.** The brief estimated about 6 Issuance checks, 2 Facade checks and a suite of about 854; the 854 is stale. The actual counts are 13 Issuance checks, 2 Facade checks and a suite of 980. No count pin was edited, per the cross-lane ruling.
 3. **FacadeTests imports IssuanceTests.** It does this for the issuer fixtures (the state, the token and the pair builder). It is a test-to-test import only, with the same shape as the existing `TF`/`BF`/`NF` imports, and the facade itself is untouched.
 4. **`--verdict` was not run.** See Verification.
+
+## Fix round 1
+
+Source: task-5-review.md (spec APPROVED; security NEEDS_FIXES for I-1 and M-1 to M-4).
+
+### I-1: I took the structural option, subject-scoped projections
+
+The three projections now take the authenticated principal of the use: `reads(state, from, now)`, `writes(state, from, now)` and `registry(state, from, now)`.
+
+- **The filter.** One named helper, `usable_by(state, grant, from, now)`, is `speaks_for_subject(from, Grant.scope(grant)) && current(state, grant, now)`. It replaces the bare `current` gate in `reads_of`, `writes_of` and `registry_of`.
+- **What a list now holds.** A list built for one caller never holds another subject's grant. That holds even on a path that runs `T.admit` without Frontend's caller check (`DataOS.admit`, `Backplane.commit`, Negotiation).
+- **The registry is scoped too.** This keeps the three lists consistent, and Frontend's own subject check still applies on top.
+- **Why the structural option and not a documented hazard.** The fix is local to `Issuance.bend`, and the use-time modules stay untouched. The changed signatures are used only by the tests, which I updated: the facade tests build their projections for `I.Principal{7n}`, the Ref's caller.
+- **Header.** The bullet now says the projections take the use's principal, that this principal is the same transport-verified identity as `F.Caller.subject`, that a projection built for another principal must not be reused, and that expiry and epoch are re-checked at use while revocation, directory and placement changes are not.
+- **Document.**
+  - A new section, "The subject of a use", covers what Bend does, who supplies the principal, and what goes wrong otherwise. It names `DataOS.admit`, `Backplane.commit` and Negotiation as the paths without a caller check.
+  - The principal section says the projections take `from`, and that `from` is `F.Caller.subject` at use.
+  - The entry-point table shows the new signatures.
+
+New checks in the `integration` section:
+
+- "GI-008 subject-scoped projections: subject 7's current grant 3 projects nothing for principal 8, principal 6 or principal 0"
+- "GI-008 subject-scoped projections: on a path that runs T.admit without Frontend's caller check, principal 8 gets no admission from subject 7's grant"
+- "GI-008 subject-scoped projections: with grants for subjects 7 and 8 on one plan, each principal's projections hold exactly its own grant". The fixture `two_subjects` adds grant 6 for subject 8 on the same plan.
+- "GI-008 the registry layer alone denies another subject: subject 6 presenting grant 3's token on subject 7's descriptor gets no plan". This is the review's optional check.
+
+### M-1 to M-4 and the nits
+
+- **M-1.** The live stamp and `now` section now says:
+  - expiry and epoch are re-checked at use against `T.Context.now`/`live`, so a projection built at an earlier `now` cannot by itself admit an expired grant;
+  - a later `now` only drops grants;
+  - revocation and directory or placement changes are enforced only by rebuilding, so the time and stamp must come from the monitor for both.
+
+  The per-use section says a cached list's danger is specifically revocation and directory or placement changes.
+- **M-2.** New check: "GI-008 partial staleness: a rebuilt registry beside stale transfer lists, or a stale registry beside rebuilt lists, still gives no plan after the write revocation". To confirm it kills the review's mutant on its own, I ran it as the only integration check against the `registry_of` gate with the currency conjunct removed: it fails, and it passes unmutated.
+- **M-3.** The derived-child check now also pins `reads` and `writes` exactly. The child's entries carry `TF.scope_for(TF.plan(), write6(), 120n)` and come ahead of grant 3's. Run alone, it kills the `grant_scope` lifetime-200 mutant.
+- **M-4.** The per-use section says:
+  - the projections replace only the grant fields of `T.Context`;
+  - the live stamp, `now`, policies, operation and payments stay host Transfer inputs;
+  - the issuer's placements and the context's policy domains must come from the same monitor record; a divergence denies.
+- **Nits.**
+  - `grant_registered` is renamed `grant_capabilities`.
+  - The long line in the document is rewrapped.
+  - The derived check's name now says "into the registry and the Transfer scopes".
+
+### Mutation exercise on the new branches
+
+Mutants were applied to a scratch copy, and each run executed `bend IssuanceTests.bend` and `bend FacadeTests.bend`.
+
+| Mutant | Killed by |
+|---|---|
+| `usable_by`: subject conjunct dropped | subject-scoped "projects nothing for principal 8, 6 or 0" |
+| `usable_by`: currency conjunct dropped | "revocation after registration ... T.admit denies Write", and Facade check 2 |
+| `reads_of` / `writes_of` / `registry_of` gate is `current` only | subject-scoped "projects nothing ..." (each) |
+| `reads_of` / `writes_of` / `registry_of` gate is subject only | "revocation after registration ... denies Write" (each); for the registry, also the M-2 check alone |
+| `reads_of` / `writes_of` / `registry_of` tail walked for principal 7 | "with grants for subjects 7 and 8 on one plan ..." (each) |
+| `grant_scope` lifetime 200 | grant 3 exact check; the M-3 derived check alone |
+
+All 12 are killed, and none is equivalent. The scripts are `t5mut2.py` (the whole suite) and a check-isolation run, both in the session scratchpad.
+
+### Verification
+
+- `bend Issuance.bend --check-only`: `ALL PROOFS CHECK`.
+- `bend Tests.bend`: 985 `PASS` lines, 0 `FAIL`. That is 782 plus 201 Issuance plus 2 new Facade checks. The summary lines:
+  - `Transfer: 53 checks passed`
+  - `Frontend: 70 checks passed`
+  - `Facade: 12 checks passed`
+  - `Issuance: 201 checks passed`
+  - last line: `ALL LIBRARY TESTS PASSED`
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` There are 12 laws, unchanged.
+- `git diff 4ac8041 -- Transfer.bend Frontend.bend DataOS.bend Tests.bend LAWS.bend PROOF.bend` is empty.
+- `--verdict` was not run (no kernel toolchain).

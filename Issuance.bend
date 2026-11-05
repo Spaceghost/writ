@@ -36,12 +36,18 @@ import ./Frontend.bend as F
 # - `token`, the fresh capability token the monitor supplies to `register`
 #   and `derive` (Bend generates no randomness). Bend only checks that no
 #   registered grant already holds it.
-# - The projections `reads`, `writes` and `registry` (GI-008): the host must
-#   rebuild `T.Context.reads`/`writes` and the `F.Registry` from the current
-#   issuer state, at the monitor's `now`, for every use, and must not reuse an
-#   earlier projection. Bend then still runs `T.admit` and
-#   `F.checked_plan` unchanged on them; a stale projection would keep a
-#   revoked grant usable, which Bend cannot detect at the use-time check.
+# - The projections `reads`, `writes` and `registry` (GI-008) take the
+#   authenticated principal `from` of the use and return only that subject's
+#   current grants: Transfer grants carry no subject, so the subject is fixed
+#   here, before the lists reach `T.admit`. `from` is the same
+#   transport-verified identity the host presents as `F.Caller.subject`. The
+#   host must rebuild `T.Context.reads`/`writes` and the `F.Registry` from the
+#   current issuer state, for that principal and at the monitor's `now`, for
+#   every use, and must not reuse an earlier projection or one built for
+#   another principal. Bend then still runs `T.admit` and `F.checked_plan`
+#   unchanged on them. Expiry and epoch are re-checked at use; revocation and
+#   directory or placement changes are not, so a stale projection would keep
+#   a revoked grant usable, which Bend cannot detect at the use-time check.
 #
 # `from` is attached to submissions, revocations and derivations. Only an
 # approval's recorded issuer, still the directory authority for the approval's
@@ -1892,14 +1898,25 @@ def valid(state: State) -> Bool:
 # issuer's state into the grant lists `Transfer.admit` consumes
 # (`T.Context.reads`/`writes`) and the registry `Frontend` consumes
 # (`F.Registry`); Bend then still runs `T.admit` and `F.checked_plan`,
-# unchanged, on what they return. A grant appears only while `current` holds
-# for it in this state at `now`, so a revoked approval (source or write), a
+# unchanged, on what they return. Each projection is for one authenticated
+# principal `from`: a grant appears only when its scope's subject is `from`
+# and `current` holds for it in this state at `now`. Transfer's grants have no
+# subject field, so without this filter one subject's grant would admit any
+# caller's matching plan on a path that runs `T.admit` without Frontend's
+# caller check (`DataOS.admit`, `Backplane.commit`, a Negotiation context).
+# The currency filter means a revoked approval (source or write), a
 # directory, placement or epoch change, an expired grant or a withdrawn
 # ancestor removes the whole grant from all three projections at once: a
 # grant is never projected half usable. Nothing is cached: each call walks the
 # grant list and re-derives `current`, and the result is not a fact the
 # caller may keep. The host must rebuild the projections from the current
 # issuer state for every use (a trusted input; see the module header).
+
+# The projection filter: the grant is for the authenticated principal of this
+# use (its scope's subject is `from`) and is current in `state` at `now`. A
+# grant failing either conjunct contributes nothing to any projection.
+def usable_by(+state: State, +grant: Grant, +from: Principal, +now: Nat) -> Bool:
+  speaks_for_subject(from, Grant.scope(grant)) && current(state, grant, now)
 
 # The Transfer scope a grant confers: the plan's invocation, ordered manifest,
 # destination, code, kind and stamp, the scope's write domain, and the grant's
@@ -1936,7 +1953,8 @@ def manifest_reads(manifest: T.Objects, +placements: Placements, +scope: T.Grant
       placed_read(source_domain(placements, head), head, scope,
         manifest_reads(tail, placements, scope, rest))
 
-# The filtering gate: a grant that is not current contributes no read.
+# The filtering gate: a grant not usable by this use's principal contributes
+# no read.
 def grant_reads(usable: Bool, +grant: Grant, +state: State, rest: T.Reads) -> T.Reads:
   match usable:
     case False{}:
@@ -1945,22 +1963,23 @@ def grant_reads(usable: Bool, +grant: Grant, +state: State, rest: T.Reads) -> T.
       manifest_reads(T.Plan.sources(Scope.plan(Grant.scope(grant))), placements(state),
         grant_scope(grant), rest)
 
-# Walk the grant list, judging each record with `current` against the whole
+# Walk the grant list, judging each record with `usable_by` against the whole
 # state (so a record whose id is ambiguous, or that its approvals do not back,
 # is not projected).
-def reads_of(grants: Grants, +state: State, +now: Nat) -> T.Reads:
+def reads_of(grants: Grants, +state: State, +from: Principal, +now: Nat) -> T.Reads:
   match grants:
     case NoGrants{}:
       T.ReadEnd{}
     case Grants{+head, tail}:
-      grant_reads(current(state, head, now), head, state, reads_of(tail, state, now))
+      grant_reads(usable_by(state, head, from, now), head, state, reads_of(tail, state, from, now))
 
-# Public entry point (GI-008): the source-read grants for `T.Context.reads`,
-# one per manifest entry of each grant current in `state` at `now`, each in
+# Public entry point (GI-008): the source-read grants for `T.Context.reads`
+# of a use by the authenticated principal `from`: one per manifest entry of
+# each grant for subject `from` that is current in `state` at `now`, each in
 # the source's placed read domain and bound to the grant's scope and
 # lifetime. Rebuild it for every use; `T.admit` still decides.
-def reads(+state: State, +now: Nat) -> T.Reads:
-  reads_of(grants(state), state, now)
+def reads(+state: State, +from: Principal, +now: Nat) -> T.Reads:
+  reads_of(grants(state), state, from, now)
 
 # The destination-write grant a grant confers: the plan's destination in the
 # scope's write domain.
@@ -1968,7 +1987,8 @@ def grant_write(+grant: Grant) -> T.WriteGrant:
   T.WriteGrant{T.Plan.destination(Scope.plan(Grant.scope(grant))), Scope.write_domain(Grant.scope(grant)),
     grant_scope(grant)}
 
-# The filtering gate: a grant that is not current contributes no write.
+# The filtering gate: a grant not usable by this use's principal contributes
+# no write.
 def grant_writes(usable: Bool, +grant: Grant, rest: T.Writes) -> T.Writes:
   match usable:
     case False{}:
@@ -1976,18 +1996,19 @@ def grant_writes(usable: Bool, +grant: Grant, rest: T.Writes) -> T.Writes:
     case True{}:
       T.WriteCons{grant_write(grant), rest}
 
-def writes_of(grants: Grants, +state: State, +now: Nat) -> T.Writes:
+def writes_of(grants: Grants, +state: State, +from: Principal, +now: Nat) -> T.Writes:
   match grants:
     case NoGrants{}:
       T.WriteEnd{}
     case Grants{+head, tail}:
-      grant_writes(current(state, head, now), head, writes_of(tail, state, now))
+      grant_writes(usable_by(state, head, from, now), head, writes_of(tail, state, from, now))
 
 # Public entry point (GI-008): the destination-write grants for
-# `T.Context.writes`, one per grant current in `state` at `now`. Rebuild it
+# `T.Context.writes` of a use by the authenticated principal `from`: one per
+# grant for subject `from` that is current in `state` at `now`. Rebuild it
 # for every use; `T.admit` still decides.
-def writes(+state: State, +now: Nat) -> T.Writes:
-  writes_of(grants(state), state, now)
+def writes(+state: State, +from: Principal, +now: Nat) -> T.Writes:
+  writes_of(grants(state), state, from, now)
 
 # The Frontend capability a grant confers: its monitor-supplied token, the
 # scope's subject and plan, the grant's rights and exclusive lifetime, and the
@@ -1999,26 +2020,28 @@ def grant_capability(grant: Grant) -> F.Capability:
         case Scope{+plan, _, subject}:
           F.Capability{token, subject, plan, rights, F.authority(T.Plan.stamp(plan)), valid_until}
 
-# The filtering gate: a grant that is not current registers no capability.
-def grant_registered(usable: Bool, +grant: Grant, rest: F.Registry) -> F.Registry:
+# The filtering gate: a grant not usable by this use's principal registers
+# no capability.
+def grant_capabilities(usable: Bool, +grant: Grant, rest: F.Registry) -> F.Registry:
   match usable:
     case False{}:
       rest
     case True{}:
       F.Registered{grant_capability(grant), rest}
 
-def registry_of(grants: Grants, +state: State, +now: Nat) -> F.Registry:
+def registry_of(grants: Grants, +state: State, +from: Principal, +now: Nat) -> F.Registry:
   match grants:
     case NoGrants{}:
       F.EmptyRegistry{}
     case Grants{+head, tail}:
-      grant_registered(current(state, head, now), head, registry_of(tail, state, now))
+      grant_capabilities(usable_by(state, head, from, now), head, registry_of(tail, state, from, now))
 
 # Public entry point (GI-008): the capability registry for `F.mount`,
-# `F.checked_plan` and the DataOS facade, one capability per grant current in
-# `state` at `now`. Tokens are distinct because `register` and `derive` deny
-# a token already held. Rebuild it for every use; Frontend still checks the
-# authenticated caller, rights, epoch and expiry, and `checked_plan` still
-# runs `T.admit`.
-def registry(+state: State, +now: Nat) -> F.Registry:
-  registry_of(grants(state), state, now)
+# `F.checked_plan` and the DataOS facade of a use by the authenticated
+# principal `from`: one capability per grant for subject `from` that is
+# current in `state` at `now`. Tokens are distinct because `register` and
+# `derive` deny a token already held. Rebuild it for every use; Frontend
+# still checks the authenticated caller, rights, epoch and expiry, and
+# `checked_plan` still runs `T.admit`.
+def registry(+state: State, +from: Principal, +now: Nat) -> F.Registry:
+  registry_of(grants(state), state, from, now)

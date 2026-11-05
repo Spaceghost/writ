@@ -22,3 +22,5 @@ Task 4: review spec APPROVED, security NEEDS_FIXES (speaks_for_subject is_eq to 
 Task 4: fix round 1 done (db5c38e): 965 checks; the is_le mutant and the id-0 mutants are killed. Scoped re-review dispatched.
 Task 4: complete (re-review ALL CLOSED; 965 checks, 12 laws).
 Task 5: dispatched implementer
+Task 5: implementer DONE_WITH_CONCERNS (4ac8041): projections reads/writes/registry recomputed per call, use-time modules untouched, 980 checks (+15), 27 mutants killed, docs/GRANT-ISSUANCE.md. Rulings: a non-current grant leaves both projections, so a source revocation denies at Write under the admission check order; that is stricter than the brief's Read wording and accepted (the Read denial is also shown with the synthetic write list); the test-to-test import is accepted. Reviewer dispatched.
+Task 5: review spec APPROVED, security NEEDS_FIXES (the reads/writes projections carry no subject; only registry ties a use to the caller). Ruling: subject-scoped projections preferred (take the authenticated principal, return only its grants), else a loud documented hazard. Fix round 1 dispatched with the four minor items.

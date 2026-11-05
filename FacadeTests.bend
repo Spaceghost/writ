@@ -36,7 +36,8 @@ def run(context: OS.Context, subject: Nat, expected_frontend: Nat) -> B.CommitRe
 # Issuance model produced: the transfer context's read/write lists and the
 # capability registry are the projections of a SYNTHETIC issuer state
 # (IssuanceTests fixtures, not an authenticated issuer), rebuilt at the facade
-# time 110 for this use, exactly as a host must rebuild them per use.
+# time 110 for this use and for the principal of the use (subject 7, the
+# same identity as the Ref's caller), exactly as a host must rebuild them.
 
 def issued_caller() -> F.Caller:
   F.Caller{7n, IF.token()}
@@ -44,15 +45,15 @@ def issued_caller() -> F.Caller:
 # Subject 7 mounts and opens an execute descriptor (handle 2, frontend
 # revision 2) from the projected registry while grant 3 is current.
 def issued_descriptor() -> F.State:
-  mounted = F.state(F.mount(F.empty(), I.registry(IF.execute_state(), 110n), 0n, issued_caller(), 7, F.Live{3n, 110n}))
-  F.state(F.open(mounted, I.registry(IF.execute_state(), 110n), 1n, F.Ref{issued_caller(), 1n}, 7, F.Live{3n, 110n}))
+  mounted = F.state(F.mount(F.empty(), I.registry(IF.execute_state(), I.Principal{7n}, 110n), 0n, issued_caller(), 7, F.Live{3n, 110n}))
+  F.state(F.open(mounted, I.registry(IF.execute_state(), I.Principal{7n}, 110n), 1n, F.Ref{issued_caller(), 1n}, 7, F.Live{3n, 110n}))
 
 # The facade context whose transfer grants and registry are rebuilt from
 # `state` at 110; the descriptor was opened earlier, while grant 3 was current.
 def issued_context(+state: I.State) -> OS.Context:
   OS.Context{BF.with_transfer(BF.context(),
-      TF.with_writes(TF.with_reads(TF.with_now(TF.context(), 110n), I.reads(state, 110n)), I.writes(state, 110n))),
-    issued_descriptor(), I.registry(state, 110n)}
+      TF.with_writes(TF.with_reads(TF.with_now(TF.context(), 110n), I.reads(state, I.Principal{7n}, 110n)), I.writes(state, I.Principal{7n}, 110n))),
+    issued_descriptor(), I.registry(state, I.Principal{7n}, 110n)}
 
 def issued_run(+state: I.State) -> B.CommitResult:
   OS.commit_from_capability(NF.running(), 6n, 1n, NF.held_ledger(), BF.candidate(),
