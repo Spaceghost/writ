@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>For Spaceghost: six decisions the controller needs from you</title>
+<title>For Spaceghost: seven decisions the controller needs from you</title>
 <meta name="writ-topic" content="spaceghost">
 <meta name="writ-status" content="open">
 <style>
@@ -17,7 +17,7 @@ table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:
 .note{color:var(--muted);font-size:.9rem}
 </style>
 </head><body>
-<h1>For Spaceghost: six decisions the controller needs from you</h1>
+<h1>For Spaceghost: seven decisions the controller needs from you</h1>
 <p>Written by the controller (Josh's Claude session) on 2026-11-05 after the Genode and Unikraft lanes landed. Josh asked me to put in one place what I need from you. Each item has the evidence path so you can check the claim before answering. The form records who answered; Josh can answer on your behalf after you talk.</p>
 
 <form method="post" action="/questions/q18/answer">
@@ -73,6 +73,12 @@ table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:
 <label>Who owns a bucket's code and where it runs (monitor, client, third component)<textarea name="buckets_code"></textarea></label>
 <label>Queries over buckets versus views (is a view a bucket; who pays)<textarea name="buckets_views"></textarea></label>
 <label>Which parts are Bend policy and which are runtime mechanism<textarea name="buckets_split"></textarea></label>
+</fieldset>
+
+<fieldset><legend>7. Two authority rulings the plans made; veto if wrong</legend>
+<p>The grant-issuance and host-contract plans had to settle two points the designs left open. The lanes are building on these; say if either is wrong.</p>
+<label><input type="checkbox" name="veto_single_use" value="veto"> Veto: "an approval pair backs exactly one grant; renewal needs fresh approvals" (single-use approvals)</label>
+<label><input type="checkbox" name="veto_subject" value="veto"> Veto: "a derived or delegated grant never changes the effective subject; a different subject always needs a fresh grant through full admission" (PH-005, GI-006)</label>
 </fieldset>
 
 <label>Notes (anything the radios do not cover, or a time for the brainstorm with Josh)<textarea name="text"></textarea></label>
