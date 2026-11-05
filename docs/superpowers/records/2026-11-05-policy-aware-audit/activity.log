@@ -55,3 +55,5 @@
 2026-11-05T17:28:46Z	implementer	fix round 1 started: read task-5-review.md (I1 owner-stream filter unpinned; M1 epoch remedy false; M2 host delivery obligation; M3 export_view parameter; M4 forward reference)
 2026-11-05T17:30:55Z	implementer	fix round 1: new law audit_export_outside_stream_unobservable proved (29 laws); I1 check and re-grant check added (Audit 285); header M1-M4 corrected; rerunning mutation batch with V11 (review R4), V12, V13
 2026-11-05T17:32:19Z	implementer	fix round 1 validation green: Audit 285; Tests.bend 1428 plus 285 = 1713 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (29 laws); 73 mutants, 68 killed, 5 equivalent; openspec 44 passed; report section appended; committing
+2026-11-05T17:32:38Z	controller	fix round 1 reported (owner-stream law); scoped re-review dispatched
+2026-11-05T17:34:12Z	controller	task 5 complete; task 6 dispatched (documentation and verification)

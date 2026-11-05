@@ -21,3 +21,6 @@ Task 4: complete (review APPROVED both axes; carried to Task 5: the version-gate
 Task 5: dispatched implementer (exports, metrics, alerts)
 Task 5: implementer DONE_WITH_CONCERNS (45d5e99): AuditExport.bend, 35 checks (Audit 283, tree 1711), 28 laws (+2), 65 of 70 mutants killed, 5 equivalent; the carried version-0 check added. Rulings: Emission constructor name, reused Gate enum, gates 3-4 overlapping the outer checks pinned by first_failed_gate, Events sending the whole visible view, and an empty Events batch as one wordless emission (identical with or without hidden events) are all accepted. Reviewer dispatched.
 Task 5: review NEEDS_FIXES both axes (no leak in the code, but removing the export view's owner-stream filter passes all 283 checks and the proofs; header: an epoch advance does not lift the re-grant refusal). Fix round 1 dispatched; an owner-stream law requested if provable.
+Task 5: fix round 1 done (607fd05): owner-stream filter pinned by a check and the new law audit_export_outside_stream_unobservable; header corrections; 1713 checks, 29 laws; 68 of 73 mutants killed, 5 equivalent. Scoped re-review dispatched.
+Task 5: complete (re-review ALL CLOSED; 1713 checks, 29 laws).
+Task 6: dispatched implementer (docs/AUDIT.md, traceability, full verification; no count pins, pins table instead)
