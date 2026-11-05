@@ -1,0 +1,81 @@
+2026-11-05T02:51:29Z	controller	lane created from master d56325b
+2026-11-05T02:52:34Z	implementer	task 1 started; reading brief, plan constraints, AGENTS.md, bend guide and existing modules
+2026-11-05T02:56:11Z	implementer	read complete; writing Issuance.bend (state, directory, placements, gates, submit_source, submit_write)
+2026-11-05T02:59:55Z	implementer	Issuance.bend and IssuanceTests.bend (24 checks) green standalone; registered in Tests.bend; box 1.1 checked; running full suite and proofs
+2026-11-05T03:00:43Z	implementer	bend Tests.bend: ALL LIBRARY TESTS PASSED, 806 PASS (782 + 24); bend PROOF.bend: ALL PROOFS CHECK (six laws unchanged); report written; committing
+2026-11-05T03:01:01Z	controller	task 1 reported; reviewer dispatched
+2026-11-05T03:05:29Z	controller	review: tests too weak on write-side denials; fix round 1 dispatched
+2026-11-05T03:05:56Z	implementer	fix round 1 started: read task-1-review.md (I-1 write-side gate tests, I-2 ambiguous placement, M-1..M-3)
+2026-11-05T03:08:42Z	implementer	fix round 1: 15 checks added (39 total), M-2/M-3 applied; 31 single-gate mutants in a scratch copy: 29 killed, 2 survivors are the outer revision match (equivalent to the inner gate); running full suite and proofs
+2026-11-05T03:09:17Z	implementer	fix round 1: bend Tests.bend ALL LIBRARY TESTS PASSED 821 PASS (782 + 39); bend PROOF.bend ALL PROOFS CHECK; report section appended; committing
+2026-11-05T03:09:48Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T03:11:01Z	controller	task 1 complete; task 2 dispatched (register: paired exact-scope issuance)
+2026-11-05T03:11:50Z	implementer	task 2 started: read brief, plan constraints, task 1 report/reviews
+2026-11-05T03:16:59Z	implementer	register implemented in Issuance.bend: Request, 31 ordered gates (register_gates/register_checks), commit_grant consumes cited approvals; check-only green; writing registration tests
+2026-11-05T03:20:09Z	implementer	registration section: 49 checks (Issuance 88), all pass; running the register removal exercise on a scratch copy
+2026-11-05T03:22:52Z	implementer	removal exercise: 59 mutants, 54 killed, 5 equivalent survivors; 2 boundary acceptance checks added (Issuance 90); box 1.2 checked; running bend Tests.bend and bend PROOF.bend
+2026-11-05T03:24:04Z	implementer	bend Tests.bend ALL LIBRARY TESTS PASSED 872 PASS (782 + 90; Issuance 90); bend PROOF.bend ALL PROOFS CHECK; task-2-report.md written; committing
+2026-11-05T03:24:15Z	implementer	correction to the removal-exercise line above: first run 59 mutants, 53 killed, 6 survived (5 equivalent + strict lifetime_within); rerun after the 2 boundary checks killed strict lifetime_within and a rights-equality mutant; total 60 mutants, 55 killed, 5 equivalent (as the report states); task 2 committed
+2026-11-05T03:24:41Z	controller	task 2 reported; reviewer dispatched
+2026-11-05T03:30:17Z	controller	review: three test gaps; fix round 1 dispatched
+2026-11-05T03:30:30Z	implementer	task 2 fix round 1 started: read task-2-review.md (I-1 source write-domain binding, I-2 over-consumption, I-3 grant history, M-1, M-2)
+2026-11-05T03:31:00Z	implementer	fix round 1: 3 checks added (Issuance 93), M-1 comment and check-name note; 3 review mutants each killed by its new check; running bend Tests.bend and bend PROOF.bend
+2026-11-05T03:31:21Z	implementer	fix round 1: bend Tests.bend ALL LIBRARY TESTS PASSED 875 PASS (782 + 93); bend PROOF.bend ALL PROOFS CHECK; report section appended (mutant count corrected to 59 before this round, 62 with it: 57 killed, 5 equivalent); committing
+2026-11-05T03:31:35Z	controller	task 2 complete; task 3 dispatched (revoke, current, three laws)
+2026-11-05T03:32:15Z	implementer	task 3 started: read task-3-brief.md, plan Global Constraints, task 1-2 reports and reviews
+2026-11-05T03:41:04Z	implementer	revoke, current and valid backing added to Issuance.bend; revision section 51 checks (Issuance 144) green standalone; running mutation exercise
+2026-11-05T03:43:07Z	implementer	mutation exercise: 67 mutants, 62 killed, 5 equivalent (revoke outer match; three None arms behind the presence gate); 2 checks added for the derived own-checks survivor (Issuance 146); three laws added, bend PROOF.bend ALL PROOFS CHECK (9 laws); bend Tests.bend ALL LIBRARY TESTS PASSED 928 PASS (782 + 146); box 1.3 checked; writing report
+2026-11-05T03:43:20Z	implementer	correction to the previous line: 63 mutants, 59 killed (58 in the first run, plus the derived own-checks mutant after its 2 checks), 4 equivalent; the Task 2 register outer-match survivor is now killed by bend PROOF.bend
+2026-11-05T03:44:31Z	implementer	task-3-report.md written; committing
+2026-11-05T03:44:57Z	controller	task 3 reported; reviewer dispatched
+2026-11-05T03:54:00Z	controller	review: un-revoke gap and a trivial law; fix round 1 dispatched (real proofs, 11 laws)
+2026-11-05T03:54:12Z	implementer	task 3 fix round 1 started: read task-3-review.md (I-1 un-revoke mutant, I-2 trivial denial law, M-1..M-3)
+2026-11-05T03:56:14Z	implementer	fix round 1: no un-revoke bug in revoke (mark_revoked keeps revoked ||); 4 checks added (I-1 flag and current-based, M-1 subject 0 and empty manifest; Issuance 150); trivial issuance_denied_preserves_state dropped, issuance_stale_registration_keeps_state and issuance_stale_revocation_keeps_state added (10 laws); 7 targeted mutants all killed; bend Tests.bend ALL LIBRARY TESTS PASSED 932 PASS (782 + 150); bend PROOF.bend ALL PROOFS CHECK; report section appended; committing
+2026-11-05T03:56:59Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T04:02:30Z	controller	task 3 complete; task 4 dispatched (derive: attenuation only)
+2026-11-05T04:03:24Z	implementer	task 4 started: read brief, plan Global Constraints, task 3 report/review/re-review
+2026-11-05T04:08:02Z	implementer	design: derive = lookup, outer lifetime_within match (for the law), then 11 ordered gates; current and valid require a derived grant to cite no approvals, valid also checks attenuation against the parent record; law stated over derive itself with a lookup hypothesis
+2026-11-05T04:20:44Z	implementer	derive, laws and attenuation section (29 checks) in; mutation: 47 derive mutants, 41 killed by tests, outer lifetime match killed by bend PROOF.bend, 5 None-arm equivalents; task 3 mutants rerun: unchanged (60 killed, 4 known)
+2026-11-05T04:22:37Z	implementer	report written; final verification run before commit
+2026-11-05T04:23:03Z	implementer	final: mutant total corrected to 49 (43 killed by tests, 1 by bend PROOF.bend, 5 None-arm equivalents); bend Tests.bend ALL LIBRARY TESTS PASSED 961 PASS (782 + 179); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing
+2026-11-05T04:23:31Z	controller	task 4 reported; reviewer dispatched
+2026-11-05T04:30:05Z	implementer	task 4 fix round 1 started: read task-4-review.md
+2026-11-05T04:30:08Z	controller	review: speaks_for gap and id-0 grant; fix round 1 dispatched
+2026-11-05T04:33:33Z	implementer	fix round 1: subject 6 and principal 0 SubjectMismatch checks (I-1); id_named in own_checks and parent_present, forged id-0 grant and parent id 0 checks (M-1); header reason mapping (M-2); comment reflow (M-3); 5 new mutants all killed (54 total, 48 by tests, 1 proof-only, 5 equivalent); bend Tests.bend ALL LIBRARY TESTS PASSED 965 PASS (782 + 183); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing
+2026-11-05T04:33:51Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T04:35:34Z	controller	task 4 complete; task 5 dispatched (integration with admission and the facade; trusted inputs doc)
+2026-11-05T04:38:08Z	implementer	task 5 started: read brief, plan constraints, Issuance.bend, Transfer/Frontend/DataOS, Facade/Transfer/Backplane fixtures
+2026-11-05T04:40:43Z	implementer	projections reads/writes/registry added to Issuance.bend; integration section 12 checks (Issuance 195); FacadeTests 2 checks (Facade 12); running bend Tests.bend and PROOF.bend
+2026-11-05T04:44:03Z	implementer	mutation exercise on the projections: 27 removal/replacement mutants, 26 killed by tests first pass; the survivor (placed_read None arm, unreachable for a current grant) killed after adding a direct helper check; Issuance 196
+2026-11-05T04:44:03Z	implementer	docs/GRANT-ISSUANCE.md written; tasks.md box 1.5 checked; bend Tests.bend ALL LIBRARY TESTS PASSED 980 PASS (782 + 196 Issuance + 2 Facade); bend PROOF.bend ALL PROOFS CHECK (12 laws, unchanged); writing report and committing
+2026-11-05T04:44:13Z	implementer	task 5 report written (DONE_WITH_CONCERNS: source-revocation denies at Write when both projections rebuilt, Read shown for the read projection alone; counts; no --verdict); committing
+2026-11-05T04:44:31Z	controller	task 5 reported; reviewer dispatched
+2026-11-05T04:49:39Z	controller	review: subject-free projections; fix round 1 dispatched (subject-scoped projections)
+2026-11-05T04:50:21Z	implementer	task 5 fix round 1 started: read task-5-review.md; taking the structural option (subject-scoped projections taking the authenticated principal)
+2026-11-05T04:53:22Z	implementer	fix round 1: projections take the authenticated principal (usable_by = speaks_for_subject && current); 5 new checks (subject scoping x3, registry-layer other subject, partial staleness M-2), derived reads/writes pinned (M-3); doc gains The subject of a use, M-1 and M-4 text; grant_registered renamed grant_capabilities; 12 new mutants all killed (M-2 and M-3 checks each kill alone); bend Tests.bend 985 PASS (782 + 201 + 2) ALL LIBRARY TESTS PASSED; bend PROOF.bend ALL PROOFS CHECK (12 laws); committing
+2026-11-05T04:53:42Z	controller	fix round 1 reported (subject-scoped projections); scoped re-review dispatched
+2026-11-05T04:55:55Z	controller	task 5 complete; task 6 dispatched (end-to-end scenarios, evidence, traceability)
+2026-11-05T04:56:44Z	implementer	task 6 started: read task-6-brief.md, plan Global Constraints and Task 6, task 5 report and re-review
+2026-11-05T05:00:24Z	implementer	read Issuance.bend header and entry points, IssuanceTests fixtures and sections, TF/Frontend fixtures, GI spec, traceability and evidence shapes; designing the scenarios section (two-source pair flow on TF.pair_plan, revocation mid-flow and after derivation, replay, six denial lifecycles)
+2026-11-05T05:03:58Z	implementer	scenarios section written (23 checks, Issuance 224); scenario-only mutation run: 19 gate mutants, 18 killed by scenario checks alone, 1 equivalent within public lifecycles (register DestinationIsPlans, shadowed by SameScope; submit_write already binds the destination); 3 checks added for the first-pass survivors; running full suite and proofs
+2026-11-05T05:05:38Z	implementer	suite 1008 PASS (782 + 224 + 2), ALL LIBRARY TESTS PASSED; PROOF ALL PROOFS CHECK; wrote verification/grant-issuance.txt and openspec/traceability/grant-issuance.md (GI-001 to GI-008 rows, reviewed-only gaps)
+2026-11-05T05:07:05Z	implementer	transfer-admission deferred sentence replaced with a pointer to grant-issuance.md; box 2.1 checked; OpenSpec strict 44 passed (sanity); task-6-report.md written; committing
+2026-11-05T05:07:46Z	controller	task 6 reported; reviewer dispatched
+2026-11-05T05:09:24Z	controller	task 6 review APPROVED; task 7 dispatched (full runs, proofs, OpenSpec, host preconditions)
+2026-11-05T05:09:57Z	implementer	task 7 started: read brief, plan constraints (cross-lane count-pin ruling), task 6 review
+2026-11-05T05:10:43Z	implementer	carried note M-2: added 2 GI-003 checks (source-version-only, output-type-only mismatch; Issuance 226); suite 1010 PASS, ALL LIBRARY TESTS PASSED; running mutation exercise in scratch copy
+2026-11-05T05:11:53Z	implementer	mutation exercise (scratch copies, Transfer.bend mutated there only): version-blind manifest in Plan.equal KILLED first by the new source-version check; output type dropped from Plan.equal KILLED first by the new output-type check; starting native CPU build to ../writ-build/authenticated-grant-issuance/tests-native
+2026-11-05T05:12:10Z	implementer	JS run: verification/tests-js.txt 1010 PASS, 0 FAIL, ALL LIBRARY TESTS PASSED; bend PROOF.bend ALL PROOFS CHECK; --verdict exit 1 (lean not on PATH), NOT VERIFIED; native build still running
+2026-11-05T05:14:03Z	implementer	OpenSpec strict 44 passed; --verdict appended to kernel-verdict.txt; GRANT-ISSUANCE.md: stale Task 6 phrase dropped, Remaining host preconditions section added (7 items); VERIFICATION.md proof scope gains the six issuance laws (no count sentence touched); evidence and traceability updated; native build heartbeat: still compiling
+2026-11-05T05:15:16Z	implementer	native CPU build rc 0 (2m55s); run +RTS --threads 4 --gpu off rc 0: verification/tests-native.txt 1010 PASS, 0 FAIL, ALL LIBRARY TESTS PASSED, byte-identical to tests-js.txt (sha256 61743d04...295a); CPU run, not a GPU test
+2026-11-05T05:15:58Z	implementer	box 2.2 checked; OpenSpec strict re-run 44 passed (identical); bend diff lists exactly the six lane .bend files, LAWS/PROOF additions only; task-7-report.md written (DONE_WITH_CONCERNS: total 1010 with the 2 added GI-003 checks); committing
+2026-11-05T05:16:28Z	controller	task 7 reported; task review and final review dispatched
+2026-11-05T05:17:41Z	controller	task 7 review: one sentence fix, folded into the final round
+2026-11-05T05:23:59Z	implementer	final fix round started: read final-review.md and task-7-review.md; ruling I-1 option A (register takes authenticated from, must equal scope subject)
+2026-11-05T05:24:06Z	controller	final review: register must authenticate the subject (I-1); final fix round dispatched
+2026-11-05T05:27:17Z	implementer	I-1 option A implemented: register(state, expected_revision, from, request, now, token), gate speaks_for_subject(from, scope) after UnknownVersion denying SubjectMismatch; 94 test register calls pass the request subject (principal8 for subject-8 requests); 4 new checks (3 registration, 1 scenario), Issuance 230; suite 1014 PASS; register laws gain for-from quantifier, PROOF ALL PROOFS CHECK; running mutation
+2026-11-05T05:28:17Z	implementer	mutation: subject gate replaced by True KILLED by the principal-8 check; gate weakened to accept any non-8 caller KILLED by the authority-caller check; docs updated (I-1, rights reach Frontend only, monotone clock, no grant-level revocation open); native CPU rebuild started
+2026-11-05T05:31:11Z	implementer	native CPU rebuild rc 0 (2m42s), run --gpu off rc 0: 1014 PASS, byte-identical to tests-js.txt (sha256 e07942b33808774a01ebf82f6a1a2396513088b893b43eeb3641831a87138928); JS 1014 PASS 0 FAIL; PROOF ALL PROOFS CHECK (12 laws); OpenSpec strict 44 passed; traceability GI-002/GI-004/GI-007 and evidence updated
+2026-11-05T05:32:02Z	implementer	final fix round section appended to task-7-report.md (pins table now 1014); committing
+2026-11-05T05:32:46Z	controller	final fix round reported; scoped re-review dispatched
+2026-11-05T05:35:07Z	controller	final re-review ready; merging to master

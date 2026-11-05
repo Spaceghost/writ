@@ -1,0 +1,38 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-11-05-authenticated-grant-issuance.md
+Branch: lane/authenticated-grant-issuance
+
+Conflict scan: Issuance.bend/IssuanceTests.bend new; Transfer/Frontend/DataOS/Backplane untouched; Tests.bend gains one registration block; proofs are additions only. Cross-lane ruling: no count pins. Plan rulings accepted (single-use approvals; derived grant keeps subject and scope) and put to Spaceghost on q18 as a veto.
+Task 1: dispatched implementer
+Task 1: implementer DONE_WITH_CONCERNS (8bceb59): 806 checks (782+24), proofs unchanged. Rulings: the three stricter checks stand (they narrow, never widen); Stored.revoked as a Bool is acceptable because it can only remove authority — reviewer to confirm it is never read as a grant of authority; empty records for later tasks acceptable. Reviewer dispatched.
+Task 1: review spec APPROVED, security NEEDS_FIXES (write-side denial branches not pinned by tests; ambiguous-placement test passes a first-match resolver). Fix round 1 dispatched: a failing test per removed denial branch.
+Task 1: fix round 1 done (23270ac): 821 checks; 29 of 31 denial-branch removals now fail a test (the two outer revision matches are duplicated by the inner gate, kept for the Task 3 law); replay identity is the authenticated principal. Scoped re-review dispatched.
+Task 1: complete (re-review ALL CLOSED; 821 checks).
+Task 2: dispatched implementer
+Task 2: implementer DONE_WITH_CONCERNS (b4629ca): 872 checks (+51), 55 of 60 mutants caught, the 5 survivors equivalent. Rulings: the stricter gates stand (all narrow); the grant scope copied from the request only after equality with every cited approval is acceptable if the reviewer confirms the equality gates are complete; no explicit id>0 gate acceptable given no transition issues id 0 (reviewer to confirm). Reviewer dispatched.
+Task 2: review spec APPROVED, security NEEDS_FIXES (three mutants survive: write-domain comparison in scope_equal, consuming uncited approvals, dropping earlier grants). Fix round 1 dispatched.
+Task 2: fix round 1 verified by the controller (tests only, three mutants now killed, 875 checks); complete.
+Task 3: dispatched implementer
+Task 3: implementer DONE_WITH_CONCERNS (4cf2f6a): 928 checks (+53), 9 laws (3 added, additions only), 59 of 63 mutants killed, 4 equivalent. Rulings: current walking the parent chain ahead of Task 4 is accepted (Task 4 builds derive on it and must require a child to cite no approvals); stricter per-use rechecks stand; the definition move is acceptable if the reviewer confirms conditions are unchanged. Reviewer dispatched.
+Task 3: review spec APPROVED, security NEEDS_FIXES (a later revoke could un-revoke earlier ones untested; issuance_denied_preserves_state is trivially true). Ruling: a trivially true law is a proof hole, so it is replaced by the reviewer's two real proofs (11 laws), never kept with reworded prose. Fix round 1 dispatched.
+Task 3: fix round 1 done (13fb1b4): no real un-revoke bug, two tests now pin it; the trivial law dropped and replaced by the two real ones (10 laws); 932 checks. Scoped re-review dispatched.
+Task 3: complete (re-review ALL CLOSED; 932 checks, 10 laws).
+Task 4: dispatched implementer
+Task 4: implementer DONE_WITH_CONCERNS (3af6527): 961 checks (+29), 12 laws (+2: the law and a helper lemma), 43 of 49 mutants killed by tests, 1 by PROOF, 5 equivalent. Rulings: the child's subject equals the authenticated caller through derive's from == parent subject check, no new Grant field (acceptable if the reviewer confirms the caller check cannot be bypassed); MissingApproval for a missing parent and Revoked for a non-current parent are acceptable within the fixed error set, stated in the header; valid rejecting widened children stands. Reviewer dispatched.
+Task 4: review spec APPROVED, security NEEDS_FIXES (speaks_for_subject is_eq to is_le survives; a forged id-0 grant counts as current; header mapping; a comment). Fix round 1 dispatched.
+Task 4: fix round 1 done (db5c38e): 965 checks; the is_le mutant and the id-0 mutants are killed. Scoped re-review dispatched.
+Task 4: complete (re-review ALL CLOSED; 965 checks, 12 laws).
+Task 5: dispatched implementer
+Task 5: implementer DONE_WITH_CONCERNS (4ac8041): projections reads/writes/registry recomputed per call, use-time modules untouched, 980 checks (+15), 27 mutants killed, docs/GRANT-ISSUANCE.md. Rulings: a non-current grant leaves both projections, so a source revocation denies at Write under the admission check order; that is stricter than the brief's Read wording and accepted (the Read denial is also shown with the synthetic write list); the test-to-test import is accepted. Reviewer dispatched.
+Task 5: review spec APPROVED, security NEEDS_FIXES (the reads/writes projections carry no subject; only registry ties a use to the caller). Ruling: subject-scoped projections preferred (take the authenticated principal, return only its grants), else a loud documented hazard. Fix round 1 dispatched with the four minor items.
+Task 5: fix round 1 done (d28af20): subject-scoped projections (state, from, now); 985 checks. Scoped re-review dispatched.
+Task 5: complete (re-review ALL CLOSED; 985 checks).
+Task 6: dispatched implementer
+Task 6: implementer DONE_WITH_CONCERNS (22ff828): 23 scenario checks, 1008 total, traceability file, evidence file, deferred sentence replaced; 18 of 19 gate mutants killed by scenarios alone. Rulings: the monitor-installed epoch (with_live) is acceptable as a marked monitor action (no public transition changes the live stamp); the unreachable DestinationIsPlans gate stays, marked source-reviewed in traceability; the GRANT-ISSUANCE.md phrase is Task 7's. Reviewer dispatched.
+Task 6: complete (review APPROVED both axes; minor notes carried to Task 7: the GRANT-ISSUANCE.md phrase; GI-003 source-version-only and output-type-only mismatches lack dedicated tests, which Task 7 adds or records).
+Task 7: dispatched implementer
+Task 7: implementer DONE_WITH_CONCERNS (5fe21c8): 1010 checks JS and native (CPU), 12 laws, --verdict refused (no Lean), strict 44; pins listed for re-pin time; tasks.md opening sentence left for landing. Rulings: the two extra GI-003 checks accepted (1010); the tasks.md preface is updated by the controller at merge. Task reviewer and final whole-branch reviewer dispatched in parallel.
+Task 7: review spec APPROVED, record NEEDS_FIXES (one sentence: why openspec-validation.txt moved from 37 to 44 items). Carried into the final fix round together with the final review's findings.
+Final review: Needs fixes before merge. Blocking I-1: anyone can call register and burn an approval pair (availability, not authority). Ruling: Option A, register takes the authenticated from and requires it to be the scope subject (the lane's own rule; does not reverse single-use). Minor: rights do not reach Transfer.admit (document), monotone clock precondition, no grant-level revocation listed as open, stale comment, the 37-to-44 sentence. Final fix round dispatched (Task 7 implementer resumed).
+Final fix round done (7568225): register authenticates the subject (SubjectMismatch), 1014 checks, 12 laws over every from, strict 44. Scoped re-review of the final round dispatched.
+Final re-review: Ready to merge (I-1 closed, scenario g rerun, laws over every from). Complete.
+Merge: to master; re-pin to 1014 on master in the same landing (a known-red CI is not pushed); re-pin again after the host-contract lane.

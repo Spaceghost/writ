@@ -505,7 +505,240 @@ PASS: execution requires execute right as well as read and write
 PASS: closed descriptor cannot commit
 PASS: stale frontend revision cannot commit
 PASS: capability possession cannot override label denial
-Facade: 10 checks passed
+PASS: GI-008 a grant registered by the issuer, projected into the transfer grants and registry, commits through the facade
+PASS: GI-008 after the issuer revokes the write approval the rebuilt projections deny the facade commit and spend no reservation
+Facade: 12 checks passed
+PASS: GI-001 synthetic directory and placements form a valid empty issuer state
+PASS: GI-001 source approval from its read authority is accepted as id 1 and advances the revision once
+PASS: GI-001 forged source issuer: the write-domain-6 principal submitting a source approval for object 10 under its own identity denied NotAuthority
+PASS: GI-001 approval naming the true source authority as issuer but submitted by the write principal denied Unauthenticated
+PASS: GI-001 read-domain-9 authority approving object 10 placed in read domain 5 denied WrongDomain
+PASS: GI-001 source authority submitting a destination-write approval denied NotAuthority
+PASS: GI-001 write-domain-5 authority does not control read domain 5: denied NotAuthority
+PASS: GI-001 read-domain-5 authority does not control write domain 5: denied NotAuthority
+PASS: GI-001 principal absent from the directory denied NotAuthority
+PASS: GI-001 object placed in two read domains resolves to none and is denied WrongDomain
+PASS: GI-001 an object placed twice in one namespace is not a valid state
+PASS: GI-001 the first of two placements does not win: read-domain-9 authority approving object 10 also placed in read domain 9 denied WrongDomain
+PASS: GI-001 source_domain of an object placed twice is None
+PASS: GI-001 the first of two destination placements does not win: write-domain-5 authority approving destination 20v8 also placed in write domain 5 denied WrongDomain
+PASS: GI-001 destination-write approval from its write authority is accepted as id 2
+PASS: GI-001 submitting both approvals registers no grant for the plan
+PASS: GI-001 state after both submissions is structurally valid
+PASS: GI-001 source approval record version 2 denied UnknownVersion
+PASS: GI-001 submission validated at revision 0 against state at revision 1 denied StaleRevision
+PASS: GI-001 source approval with rights 8 denied InvalidRights
+PASS: GI-001 source approval for an object outside the scope manifest denied ScopeMismatch
+PASS: GI-001 source approval whose scope stamp is not the live stamp denied StaleEpoch
+PASS: GI-004 source approval naming subject 0 denied SubjectMismatch
+PASS: GI-001 source approval submitted at its valid_until denied Expired
+PASS: GI-001 repeated (issuer, serial) denied Replay
+PASS: GI-001 write approval for destination version 9 when the plan names version 8 denied ScopeMismatch
+PASS: GI-001 write approval for write domain 6 under a scope naming write domain 9 denied ScopeMismatch
+PASS: GI-001 write-domain-5 authority approving destination 20v8 placed in write domain 6 denied WrongDomain
+PASS: GI-001 write approval naming the true write authority as issuer but submitted by the source principal denied Unauthenticated
+PASS: GI-001 write submission validated at revision 0 against state at revision 1 denied StaleRevision
+PASS: GI-001 the write check list alone is false at a stale revision
+PASS: GI-001 the source check list alone is false at a stale revision
+PASS: GI-001 write approval record version 2 denied UnknownVersion
+PASS: GI-001 write approval whose scope stamp is not the live stamp denied StaleEpoch
+PASS: GI-004 write approval naming subject 0 denied SubjectMismatch
+PASS: GI-001 write approval under a scope with an empty source manifest denied ScopeMismatch
+PASS: GI-001 write approval with rights 8 denied InvalidRights
+PASS: GI-001 write approval submitted at its valid_until denied Expired
+PASS: GI-001 repeated write (issuer, serial) denied Replay
+PASS: GI-002 one-source paired registration is accepted as grant 3 and advances the revision once
+PASS: GI-004 the registered grant binds the approved scope and subject 7, the cited ids, the requested rights and lifetime, and no parent
+PASS: GI-002 registration consumes both cited approvals for grant 3, records no serial, and leaves a valid state
+PASS: GI-003 two-source plan from read domains 5 and 7 is accepted with both source approvals in manifest order
+PASS: GI-003 two-source plan with the source approvals reordered denied ScopeMismatch
+PASS: GI-003 two-source plan citing no approval for object 11 denied MissingApproval
+PASS: GI-003 two-source plan citing a third source approval beyond the manifest denied ScopeMismatch
+PASS: GI-002 missing destination approval: no write approval cited denied MissingApproval
+PASS: GI-002 missing destination approval: cited write approval id does not exist denied MissingApproval
+PASS: GI-002 a source approval cited as the write approval denied MissingApproval
+PASS: GI-003 cited source approval id does not exist denied MissingApproval
+PASS: GI-003 the write approval cited as a source approval denied MissingApproval
+PASS: GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval
+PASS: GI-003 write approval issued for write domain 6 under a request scope naming write domain 9 denied ScopeMismatch
+PASS: GI-003 stored write approval for write domain 6 whose own scope names write domain 9 is revalidated and denied ScopeMismatch
+PASS: GI-003 stored write approval for destination 20v9 under a plan naming 20v8 is revalidated and denied ScopeMismatch
+PASS: GI-003 redirecting an existing read: source approval for 10 to 20v8 with a write approval for 20v9, under the read's scope, denied ScopeMismatch
+PASS: GI-003 redirecting an existing read: the same pair under the redirected write's scope denied ScopeMismatch
+PASS: GI-003 expanded manifest: write approval whose scope adds source 11 denied ScopeMismatch
+PASS: GI-003 approvals differing only in invocation denied ScopeMismatch
+PASS: GI-003 approvals differing only in the eighth code word denied ScopeMismatch
+PASS: GI-003 approvals differing only in operation kind denied ScopeMismatch
+PASS: GI-003 approvals differing only in the source object's version denied ScopeMismatch
+PASS: GI-003 approvals differing only in output type denied ScopeMismatch
+PASS: GI-003 source approval differing from the request scope only in invocation denied ScopeMismatch
+PASS: GI-004 recipient substitution: approvals for subject 7 and a request for subject 8 denied SubjectMismatch
+PASS: GI-004 principal 8, neither an authority nor subject 7, registering subject 7's pair with rights 0 until 101 denied SubjectMismatch, both approvals unconsumed
+PASS: GI-004 the source authority or the write authority registering subject 7's request denied SubjectMismatch
+PASS: GI-004 after principal 8's registration is denied, subject 7 registers the same pair as grant 3
+PASS: GI-004 write approval for subject 8 paired with a source approval and request for subject 7 denied SubjectMismatch
+PASS: GI-004 source approval for subject 8 paired with a write approval and request for subject 7 denied SubjectMismatch
+PASS: GI-003 requested rights 7 exceeding the source approval's 3 denied Widened
+PASS: GI-003 requested rights 7 exceeding the write approval's 3 denied Widened
+PASS: GI-003 requested rights 8 denied InvalidRights
+PASS: GI-002 registration at the write approval's valid_until denied Expired
+PASS: GI-002 registration at the source approval's valid_until denied Expired
+PASS: GI-002 requested valid_until equal to now denied Expired
+PASS: GI-002 requested valid_until equal to both approvals' valid_until is accepted
+PASS: GI-003 requested rights 1, a strict subset of both approvals' 3, are accepted
+PASS: GI-002 requested lifetime beyond the write approval's denied Widened
+PASS: GI-002 requested lifetime beyond the source approval's denied Widened
+PASS: GI-002 a fresh approval pair registers a second grant with a fresh token
+PASS: GI-002 a second registration keeps the first grant in the grant list
+PASS: GI-002 registration leaves an uncited approval unconsumed
+PASS: GI-003 source approval whose scope names write domain 9, paired with a write approval and request for write domain 6, denied ScopeMismatch
+PASS: GI-002 registration with a token a registered grant holds denied DuplicateToken
+PASS: GI-002 a consumed source approval cited by a second registration denied Replay
+PASS: GI-002 a consumed write approval cited by a second registration denied Replay
+PASS: GI-003 one source approval cited for two manifest entries denied Replay
+PASS: GI-002 a revoked write approval denied Revoked
+PASS: GI-002 a revoked source approval denied Revoked
+PASS: GI-001 source authority removed from the directory between submission and registration denied NotAuthority
+PASS: GI-001 write authority removed from the directory between submission and registration denied NotAuthority
+PASS: GI-001 source object moved to read domain 9 between submission and registration denied WrongDomain
+PASS: GI-001 destination moved to write domain 5 between submission and registration denied WrongDomain
+PASS: GI-003 registration after the monitor advanced the authority epoch denied StaleEpoch
+PASS: GI-002 registration request version 2 denied UnknownVersion
+PASS: GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision
+PASS: GI-002 the registration check list alone is false at a stale revision
+PASS: GI-005 approvals 1 and 2 are valid for registration at revision 7
+PASS: GI-005 the source authority revokes approval 1, moving the state to revision 8
+PASS: GI-005 revocation during issuance: registration validated at revision 7 against state at revision 8 denied StaleRevision
+PASS: GI-005 the raced registration exposes no grant for the plan and no current grant
+PASS: GI-005 registration revalidated at revision 8 against the revoked approval denied Revoked
+PASS: GI-005 the registered grant is current at registration time
+PASS: GI-005 the registered grant is not current after its source approval is revoked
+PASS: GI-005 the registered grant is not current after its write approval is revoked
+PASS: GI-005 revocation advances the revision once, keeps the approval's consumption, the grant record and the seen serials, and leaves a valid state
+PASS: GI-005 revoking approval 1 leaves approval 2 unrevoked
+PASS: GI-005 a later revocation keeps an earlier revocation
+PASS: GI-005 after approval 1 and then approval 4 are revoked, grant 3 (backed by approval 1) is still not current
+PASS: GI-005 revocation of source approval 1 by the write authority, not its issuer, denied Unauthenticated
+PASS: GI-005 revocation by the source issuer after the monitor removed it from the directory denied NotAuthority
+PASS: GI-005 revocation by the write issuer after the monitor removed it from the directory denied NotAuthority
+PASS: GI-005 revocation validated at revision 2 against state at revision 3 denied StaleRevision
+PASS: GI-005 the revocation check list alone is false at a stale revision
+PASS: GI-005 revocation of an approval id that does not exist denied MissingApproval
+PASS: GI-005 revoking an already revoked approval denied Revoked
+PASS: GI-005 replay: a second registration citing the consumed approvals denied Replay
+PASS: GI-005 replay: re-submitting a revoked approval's serial denied Replay
+PASS: GI-005 the grant copied into a fresh empty state is not valid and not current
+PASS: GI-005 the grant in a state that lacks its approvals is not valid and not current
+PASS: GI-005 the grant copied into a state whose approvals are unconsumed is not valid and not current
+PASS: GI-005 the grant whose write approval is consumed by another grant is not valid and not current
+PASS: GI-005 the grant whose source approval is consumed by another grant is not valid and not current
+PASS: GI-005 after the monitor advances the authority epoch the old grant is not current
+PASS: GI-005 after the epoch advance a registration with the old scope denied StaleEpoch
+PASS: GI-005 the grant is current before its valid_until and not at it
+PASS: GI-005 a grant record with the registered id but another token is not current
+PASS: GI-005 a grant id registered twice resolves to no grant and is not current
+PASS: GI-005 the grant is not current after the monitor removes its source authority from the directory
+PASS: GI-005 the grant is not current after the monitor removes its write authority from the directory
+PASS: GI-005 the grant is not current after its source object moves to read domain 9
+PASS: GI-005 the grant is not current after its destination moves to write domain 5
+PASS: GI-005 the synthetic backing state reproduces the registered grant as current
+PASS: GI-005 a grant citing one source approval for two manifest entries is not current
+PASS: GI-005 a two-source grant is current, and its record with the source ids reordered is not
+PASS: GI-005 a grant whose stored write approval names destination 20v9 under a plan naming 20v8 is not current
+PASS: GI-005 a grant whose stored write approval for write domain 6 names write domain 9 in its scope is not current
+PASS: GI-005 a grant whose write approval's scope differs in invocation is not current
+PASS: GI-005 a grant whose source approval's scope differs in invocation is not current
+PASS: GI-005 a grant with rights 7 over its source approval's 3 is not current
+PASS: GI-005 a grant with rights 7 over its write approval's 3 is not current
+PASS: GI-005 a grant outliving its write approval is not current at the write approval's valid_until
+PASS: GI-005 a grant outliving its source approval is not current at the source approval's valid_until
+PASS: GI-005 a grant whose scope names subject 0 is not current
+PASS: GI-005 a grant whose scope has an empty source manifest is not current
+PASS: GI-005 a derived grant of the registered grant is current and valid
+PASS: GI-005 revoking the parent's source approval makes the derived grant not current
+PASS: GI-005 a derived grant whose parent does not exist is not current and not valid
+PASS: GI-005 a derived grant that is its own parent is not current and not valid
+PASS: GI-005 a derived grant with rights 7 over its parent's 3 is not current and not valid
+PASS: GI-005 a derived grant outliving its parent is not current and not valid
+PASS: GI-005 a derived grant whose scope differs from its parent's is not current and not valid
+PASS: GI-005 a derived grant is current before its own valid_until and not at it while its parent still is
+PASS: GI-005 a derived grant record that the state never registered is not current
+PASS: GI-006 extending an expiry: a child of a parent expiring at 100 asking for 101 denied Widened
+PASS: GI-006 a child asking for its parent's expiry 100 is accepted and current
+PASS: GI-006 a child asking for expiry 50 under a parent expiring at 100 is accepted and current
+PASS: GI-006 widened rights: a child asking for rights 3 of a parent holding 1 denied Widened
+PASS: GI-006 a child asking for its parent's rights 1 is accepted and current
+PASS: GI-006 a child narrowing rights 3 to 1 is stored with rights 1 and current only as that record
+PASS: GI-006 the source authority, not subject 7, deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 subject 8 deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 subject 6 deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 principal 0 deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 the derived child's plan equals its parent's, and so do its write domain and subject
+PASS: GI-006 derive stores grant 4 with the parent's scope, the requested rights and lifetime, parent 3 and no cited approvals, keeps approvals, seen serials and the parent, and advances the revision once
+PASS: GI-006 a grandchild asking for 130, within its grandparent's 150 but past its parent's 120, denied Widened
+PASS: GI-006 a grandchild within its parent's 120 is accepted, current and valid
+PASS: GI-006 revoking the root's source approval makes the grandchild not current
+PASS: GI-006 revoking the parent's source approval makes both the parent and the child not current
+PASS: GI-007 deriving at the parent's valid_until 150 denied Expired
+PASS: GI-006 deriving from a parent whose source approval is revoked denied Revoked
+PASS: GI-006 derivation record version 2 denied UnknownVersion
+PASS: GI-006 derivation validated at revision 2 against state at revision 3 denied StaleRevision
+PASS: GI-006 a stale derivation that also outlives its parent still reads StaleRevision
+PASS: GI-006 deriving from a grant id that does not exist denied MissingApproval
+PASS: GI-006 derivation asking for rights 8 denied InvalidRights
+PASS: GI-007 derivation whose requested valid_until equals now denied Expired
+PASS: GI-006 derivation with the token the parent holds denied DuplicateToken
+PASS: GI-006 a derived grant record citing source approval 1 is not current and not valid
+PASS: GI-006 a derived grant record citing write approval 2 is not current and not valid
+PASS: GI-006 a forged grant under id 0 over unconsumed approvals is not current and not valid
+PASS: GI-006 deriving from parent id 0 denied MissingApproval
+PASS: GI-007 an approval valid while now < 100 is accepted on submission at 99 and denied Expired at 100
+PASS: GI-007 issuance at the deadline: registration at 100 after both approvals were submitted at 99 denied Expired, no grant registered
+PASS: GI-007 a grant with valid_until 100 is current at 99 and not at 100
+PASS: GI-007 a requested grant lifetime 150 beyond the shorter approval's 100 denied Widened
+PASS: GI-008 grant 3 projects exactly one read of 10v4 in read domain 5, one write of 20v8 in write domain 6 and one capability for subject 7, each bound to TF.plan() until 150
+PASS: GI-008 the two-source grant projects one read per manifest entry, in manifest order, each in its placed read domain
+PASS: GI-008 the read-projection helper gives a source placed twice, or not placed, no read rather than a guessed domain (defensive: no current grant has such a source)
+PASS: GI-008 the projection of registered grant 3 makes T.admit admit TF.plan()
+PASS: GI-008 F.mount, F.open and F.checked_plan resolve grant 3's projected capability for subject 7 to TF.plan()
+PASS: GI-008 revocation after registration: with the write approval revoked the rebuilt projection is empty and T.admit denies Write
+PASS: GI-008 revocation after registration: checked_plan on the descriptor opened while grant 3 was current gives None
+PASS: GI-008 with the source approval revoked the rebuilt read projection denies Read even beside a write list that still permits; both projections rebuilt deny at Write, the first check
+PASS: GI-008 every projection of grant 3 is empty at its valid_until 150 and not at 149
+PASS: GI-008 two current grants both project, newest first
+PASS: GI-008 a withdrawn grant is filtered without dropping the current grant behind it
+PASS: GI-008 a derived child projects its own attenuated rights and lifetime into the registry and the Transfer scopes, and revoking the root's source approval withdraws parent and child together
+PASS: GI-008 an authority epoch advance or a directory change withdraws grant 3 from every projection
+PASS: GI-008 subject-scoped projections: subject 7's current grant 3 projects nothing for principal 8, principal 6 or principal 0
+PASS: GI-008 subject-scoped projections: on a path that runs T.admit without Frontend's caller check, principal 8 gets no admission from subject 7's grant
+PASS: GI-008 subject-scoped projections: with grants for subjects 7 and 8 on one plan, each principal's projections hold exactly its own grant
+PASS: GI-008 the registry layer alone denies another subject: subject 6 presenting grant 3's token on subject 7's descriptor gets no plan
+PASS: GI-008 partial staleness: a rebuilt registry beside stale transfer lists, or a stale registry beside rebuilt lists, still gives no plan after the write revocation
+PASS: scenario current authority: from an empty state the read-domain-5 and read-domain-9 authorities each approve their source of TF.pair_plan(), the write-domain-6 authority approves its destination, and the cited approvals register grant 4 at revision 4
+PASS: scenario current authority: subject 7's rebuilt projections of grant 4 hold one read per source in its own read domain and make T.admit admit TF.pair_plan() under TF.pair_context()'s policies
+PASS: scenario current authority: F.mount, F.open and F.checked_plan resolve grant 4's projected capability for subject 7 to TF.pair_plan()
+PASS: scenario current authority: principal 8's rebuilt projections of the same state admit nothing at Write and give it nothing to mount
+PASS: scenario revocation mid-flow: after the read-domain-9 authority revokes approval 2 at revision 4, registering the pair at revision 4 is denied Revoked, and a registration validated at revision 3 is denied StaleRevision
+PASS: scenario revocation mid-flow: use is denied too, with nothing projected for subject 7, T.admit denying TF.pair_plan() at Write and nothing to mount
+PASS: scenario revocation after derivation: subject 7 derives child 4 (rights 1 until 120) from grant 3, and a descriptor opened from the child's capability resolves TF.plan()
+PASS: scenario revocation after derivation: once the write authority revokes the root's approval 2 the child dies with its parent: neither is current, nothing is projected, the child's descriptor resolves no plan and T.admit denies Write
+PASS: scenario replay: a second registration of grant 3's request with a fresh token denied Replay
+PASS: scenario replay: grant 3's consumed source approval 1 cited by another request beside a fresh write approval denied Replay
+PASS: scenario replay: after its issuer revokes approval 1, resubmitting serial 1 is denied Replay while a fresh serial 2 is accepted as id 5
+PASS: scenario replay: grant 3's consumed write approval 2 cited beside the fresh source approval 5 denied Replay
+PASS: scenario replay: the fresh pair registers grant 6, the only grant projected for subject 7, which T.admit admits while revoked grant 3 is not current
+PASS: scenario forged issuer: the write-domain-6 principal's own source approval for object 10 is denied NotAuthority, its genuine write approval is accepted, a request citing that write approval as the source is denied MissingApproval, and T.admit denies Write
+PASS: scenario forged issuer: once the read-domain-5 authority itself approves object 10, the same plan registers as grant 3 and T.admit admits it
+PASS: scenario redirect: a read of 10 into 20v8 paired with a write approval for 20v9 is denied ScopeMismatch under either scope, nothing is projected, and T.admit denies the redirected plan at Write
+PASS: scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write
+PASS: scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted
+PASS: scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8
+PASS: scenario third-party registration: principal 8 registering subject 7's approved pair with rights 0 until 101 is denied SubjectMismatch and nothing is projected; subject 7 then registers the pair as grant 3 and T.admit admits TF.plan()
+PASS: scenario epoch advance: grant 3 admitted at epoch 3 is not current once the monitor installs epoch 4, nothing is projected, T.admit denies the old plan Stale and a fresh approval of the old scope is denied StaleEpoch
+PASS: scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4
+PASS: scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200
+PASS: scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write
+Issuance: 230 checks passed
 PASS: oracle fixture: disconnected vertices
 PASS: oracle fixture: directed chain
 PASS: oracle fixture: directed cycle
