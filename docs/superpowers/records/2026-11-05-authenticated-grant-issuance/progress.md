@@ -8,3 +8,5 @@ Task 1: review spec APPROVED, security NEEDS_FIXES (write-side denial branches n
 Task 1: fix round 1 done (23270ac): 821 checks; 29 of 31 denial-branch removals now fail a test (the two outer revision matches are duplicated by the inner gate, kept for the Task 3 law); replay identity is the authenticated principal. Scoped re-review dispatched.
 Task 1: complete (re-review ALL CLOSED; 821 checks).
 Task 2: dispatched implementer
+Task 2: implementer DONE_WITH_CONCERNS (b4629ca): 872 checks (+51), 55 of 60 mutants caught, the 5 survivors equivalent. Rulings: the stricter gates stand (all narrow); the grant scope copied from the request only after equality with every cited approval is acceptable if the reviewer confirms the equality gates are complete; no explicit id>0 gate acceptable given no transition issues id 0 (reviewer to confirm). Reviewer dispatched.
+Task 2: review spec APPROVED, security NEEDS_FIXES (three mutants survive: write-domain comparison in scope_equal, consuming uncited approvals, dropping earlier grants). Fix round 1 dispatched.

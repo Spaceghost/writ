@@ -476,6 +476,9 @@ def fresh_pair() -> I.State:
 # change, a revocation, or stored records that submission would not admit),
 # so registration's revalidation of stored records can be shown not to trust
 # them.
+# Each satisfies `valid` except the stored-twice state built inline in the
+# registration section, which `valid` rejects: registration must deny it
+# without relying on `valid`.
 def with_directory(state: I.State, directory: I.Authorities) -> I.State:
   match state:
     case I.State{r, n, l, _, p, a, g, s}:
@@ -582,7 +585,7 @@ def registration() -> IO(Unit):
     Test.check(denied(I.register(both(), 2n, request(scope(), one(99n), 2n), now(), token()), both(), I.MissingApproval{}), "GI-003 cited source approval id does not exist denied MissingApproval")
     Test.check(denied(I.register(both(), 2n, request(scope(), one(2n), 2n), now(), token()), both(), I.MissingApproval{}), "GI-003 the write approval cited as a source approval denied MissingApproval")
     Test.check(denied(I.register(with_approvals(both(), I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, 0n, False{}}, I.approvals(both())}), 2n, good_request(), now(), token()),
-      with_approvals(both(), I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, 0n, False{}}, I.approvals(both())}), I.MissingApproval{}), "GI-003 an approval id stored twice resolves to no approval and is denied MissingApproval")
+      with_approvals(both(), I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, 0n, False{}}, I.approvals(both())}), I.MissingApproval{}), "GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval")
     Test.check(denied(I.register(both(), 2n, request(I.Scope{TF.plan(), write9(), subject()}, one(1n), 2n), now(), token()), both(), I.ScopeMismatch{}), "GI-003 write approval issued for write domain 6 under a request scope naming write domain 9 denied ScopeMismatch")
     Test.check(denied(I.register(stored_pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), write_with(I.Scope{TF.plan(), write9(), subject()}, 3)), 2n, request(I.Scope{TF.plan(), write9(), subject()}, one(1n), 2n), now(), token()),
       stored_pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), write_with(I.Scope{TF.plan(), write9(), subject()}, 3)), I.ScopeMismatch{}), "GI-003 stored write approval for write domain 6 whose own scope names write domain 9 is revalidated and denied ScopeMismatch")
@@ -625,6 +628,12 @@ def registration() -> IO(Unit):
       pair(good_source(), write_for(scope(), 3, 300n)), I.Widened{}), "GI-002 requested lifetime beyond the source approval's denied Widened")
     Test.check(I.Change.accepted(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token()))
       && issued_is(I.Change.issued(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token())), 6n), "GI-002 a fresh approval pair registers a second grant with a fresh token")
+    Test.check(grants_equal(I.grants(I.Change.state(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token()))),
+      I.Grants{I.Grant{6n, other_token(), scope(), 3, 150n, one(4n), 5n, 0n}, I.grants(registered())}), "GI-002 a second registration keeps the first grant in the grant list")
+    Test.check(I.Change.accepted(I.register(two_plus_state(), 4n, request(scope_two(), two(1n, 2n), 3n), now(), token()))
+      && consumed_is(I.approvals(I.Change.state(I.register(two_plus_state(), 4n, request(scope_two(), two(1n, 2n), 3n), now(), token()))), 4n, 0n), "GI-002 registration leaves an uncited approval unconsumed")
+    Test.check(denied(I.register(pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), good_write()), 2n, good_request(), now(), token()),
+      pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), good_write()), I.ScopeMismatch{}), "GI-003 source approval whose scope names write domain 9, paired with a write approval and request for write domain 6, denied ScopeMismatch")
     Test.check(denied(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), token()), fresh_pair(), I.DuplicateToken{}), "GI-002 registration with a token a registered grant holds denied DuplicateToken")
     Test.check(denied(I.register(fresh_pair(), 5n, request(scope(), one(1n), 5n), now(), other_token()), fresh_pair(), I.Replay{}), "GI-002 a consumed source approval cited by a second registration denied Replay")
     Test.check(denied(I.register(fresh_pair(), 5n, request(scope(), one(4n), 2n), now(), other_token()), fresh_pair(), I.Replay{}), "GI-002 a consumed write approval cited by a second registration denied Replay")
@@ -645,4 +654,4 @@ def main() -> IO(Unit):
   do IO<Unit>:
     submission()
     registration()
-    IO.print("Issuance: 90 checks passed")
+    IO.print("Issuance: 93 checks passed")

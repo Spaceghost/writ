@@ -100,7 +100,7 @@ Brief cases, each with its check name:
 - Authority removed by the monitor: "GI-001 source authority removed from the directory between submission and registration denied NotAuthority".
 
 Added to pin branches (the removal map shows which gate each one pins):
-- write-side and kind checks: "GI-002 a source approval cited as the write approval denied MissingApproval", "GI-003 cited source approval id does not exist denied MissingApproval", "GI-003 the write approval cited as a source approval denied MissingApproval" and "GI-003 an approval id stored twice resolves to no approval and is denied MissingApproval";
+- write-side and kind checks: "GI-002 a source approval cited as the write approval denied MissingApproval", "GI-003 cited source approval id does not exist denied MissingApproval", "GI-003 the write approval cited as a source approval denied MissingApproval" and "GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval";
 - the synthetic revalidation pair: "GI-003 stored write approval for write domain 6 whose own scope names write domain 9 is revalidated and denied ScopeMismatch" and "GI-003 stored write approval for destination 20v9 under a plan naming 20v8 is revalidated and denied ScopeMismatch";
 - "GI-003 source approval differing from the request scope only in invocation denied ScopeMismatch";
 - the one-sided subject checks: "GI-004 write approval for subject 8 paired with a source approval and request for subject 7 denied SubjectMismatch" and "GI-004 source approval for subject 8 paired with a write approval and request for subject 7 denied SubjectMismatch";
@@ -158,7 +158,7 @@ KILLED rows name the first failing check. Two boundary mutants were run after th
 | register outer revision match AND gate 1 | GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision |
 | register outer revision branch returns a committed state | GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision |
 | register denial carries committed state | GI-003 two-source plan with the source approvals reordered denied ScopeMismatch |
-| first_stored: first match wins | GI-003 an approval id stored twice resolves to no approval and is denied MissingApproval |
+| first_stored: first match wins | GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval |
 | sources_cover_manifest (OEnd, Ids) arm <- True | GI-003 two-source plan citing a third source approval beyond the manifest denied ScopeMismatch |
 | sources_cover_manifest (OCons, NoIds) arm <- True | SURVIVED (equivalent, see below) |
 | cited_source_is: WriteEntry arm <- True | SURVIVED (equivalent, see below) |
@@ -180,7 +180,7 @@ KILLED rows name the first failing check. Two boundary mutants were run after th
 | commit_grant: parent 1 | GI-004 the registered grant binds the approved scope and subject 7, the cited ids, the requested rights and lifetime, and no parent |
 | commit_grant: revision not advanced | GI-002 one-source paired registration is accepted as grant 3 and advances the revision once |
 | commit_grant: next_id not advanced | GI-002 one-source paired registration is accepted as grant 3 and advances the revision once |
-| find_stored: ambiguity ignored | GI-003 an approval id stored twice resolves to no approval and is denied MissingApproval |
+| find_stored: ambiguity ignored | GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval |
 
 The result is 59 mutants in the first run plus 1 in the rerun, so 60 in total. The strict-lifetime survivor was closed by the new boundary check, which leaves 5 survivors. Each one is equivalent, so no black-box test can kill it:
 - **Outer revision match only.** Gate 1 denies the same input with the same reason and state. This is the same accepted case as Task 1's two survivors. The outer match is kept for the Task 3 law. The inner gate is pinned by "the registration check list alone is false at a stale revision", and the combined removal is killed.
@@ -216,3 +216,38 @@ All denial gates (1-31) are killed by a test with the exact reason.
 3. **The stored grant takes its scope from the request, not from an approval.** Gates 19-22 make the two exactly equal, so this is the authorities' scope and subject. Copying from the write record instead would need a Maybe lookup with an unreachable arm on the commit path.
 4. **Id 0 never cites a record because `empty` starts `next_id` at 1.** No separate `id > 0` gate exists. A synthetic state that stored a record under id 0 could be cited as the write approval, but every other gate would still revalidate it.
 5. **The Revoked and moved-placement tests use synthetic states.** `revoke` arrives in Task 3. `with_revoked` stands in for it and sets only the flag that Task 3's `revoke` will set.
+
+## Fix round 1 (review task-2-review.md: I-1, I-2, I-3, M-1, M-2)
+
+Status: DONE. All five findings were real. The fixes change only tests, comments and records; `Issuance.bend` is unchanged since b4629ca.
+
+Tests added to `registration` (54 checks; `Issuance: 93 checks passed`). I used the review's proposed checks as written:
+- I-1: "GI-003 source approval whose scope names write domain 9, paired with a write approval and request for write domain 6, denied ScopeMismatch". It is denied at gate 22, the source-side whole-scope check. Both of its submissions are admitted, so a fixture failure would show up as MissingApproval.
+- I-2: "GI-002 registration leaves an uncited approval unconsumed". It uses `two_plus_state()`: the registration cites ids 1 and 2 with write approval 3, and approval 4 must keep `consumed_by` 0.
+- I-3: "GI-002 a second registration keeps the first grant in the grant list". After the second registration, the grant list must equal the new grant 6 followed by `I.grants(registered())`.
+
+M-1:
+- The SYNTHETIC MONITOR STATES comment now says that every synthetic state satisfies `valid` except the inline stored-twice state, which registration must deny without relying on `valid`.
+- That check's name now reads "GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval". The earlier sections of this report use the new name.
+
+M-2, count correction: the removal table above has 58 rows. With the `rights_within` equality mutant, which was described only in prose, the earlier total is 59 mutants, 54 killed and 5 equivalent. It is not "60 mutants, 55 killed" as the report header, the b4629ca commit message and the activity log said. Adding this round's 3 gives 62 mutants, 57 killed and 5 equivalent.
+
+### Mutants for this round
+
+The harness is `/tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/55038343-2e0b-4235-a6a8-7c68c6dd1f50/scratchpad/scripts/mutate3.py`, run on a scratch copy in `scratchpad/mut3`.
+
+| Mutant | First failing check |
+|---|---|
+| `scope_equal` without the write domain | GI-003 source approval whose scope names write domain 9, paired with a write approval and request for write domain 6, denied ScopeMismatch |
+| `consume` marks every stored approval | GI-002 registration leaves an uncited approval unconsumed |
+| `commit_grant` drops earlier grants | GI-002 a second registration keeps the first grant in the grant list |
+
+The unmutated scratch copy prints `Issuance: 93 checks passed`.
+
+### Verification (Bend 2.0.39)
+
+- `bend Issuance.bend --check-only`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `bend Tests.bend` (exit 0, 0 FAIL). Last lines: `Issuance: 93 checks passed` ... `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers` / `ALL LIBRARY TESTS PASSED`. The PASS count is 875 (822 `PASS:` + 53 `PASS `), which is 782 + 93.
+- `bend PROOF.bend` (exit 0): `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` The six laws are unchanged. I did not run `--verdict`, a native build or a GPU test.
+
+The informational items (unauthenticated registration as a denial of service, the token-reuse risk, recording that the reasons are monitor-internal in Task 5's trusted-inputs document, and stored version/seen not being rechecked) need no change in this task. They are left for Task 5's document and the controller.
