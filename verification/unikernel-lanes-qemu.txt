@@ -200,3 +200,76 @@ Trace 3 (-smp 2): at the assertion, frame 3:
   and "--threads 2": not built (time box).
 - A corpus image in set lanes (Task 2).
 - More than two lanes or vCPUs; KVM; any device run. Every run is TCG on the CPU.
+
+== Shipped template control (Task 2, 2026-11-05) ==
+
+Set lanes1, made by mkapp.sh from the unmodified template (cmp with
+hosts/unikraft/app/Kraftfile: equal, ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce),
+signals on, CONFIG_UKPLAT_CPU_MAXCOUNT=1. The resolved
+$W/lanes1-unikraft/.config.writ-bend_qemu-x86_64
+(7e108a273b40d74d64f828e72ac1befe0dd05d797d514521486d7115ed369bdd) holds
+CONFIG_UKPLAT_CPU_MAXCOUNT=1 and no SMP line at all (HAVE_SMP unset); CONFIG_LIBPOSIX_FUTEX=y.
+Same generated C as the lanes set ($W/lanes1/gen/lanes.c, copied,
+26d9873efaced5e45f828389384c65637a3872a61062cad7b2f1ef177ffc8fb1).
+
+  hosts/unikraft/scripts/mkapp.sh lanes1
+  hosts/unikraft/scripts/build.sh lanes1 lanes      (exit 0, 44 s)
+    $W/lanes1/images/lanes-qemu      cec64bf8517de01689f8ed8d006e3e83fdb575c2548acb217f9d7d372e353df6
+    $W/lanes1/images/lanes-qemu.dbg  d0dd8b17dd7a6d80b6131dd2db66eb55a826a1d34a76631ee9152287e79ead33
+  hosts/unikraft/scripts/run.sh lanes1 lanes-t2-s1 lanes "+RTS --threads 2 --gpu off" 120 1024 1
+    $ timeout 120 qemu-system-x86_64 -accel tcg -nographic -m 1024 -smp 1 -cpu max -kernel $W/lanes1/images/lanes-qemu -append "+RTS --threads 2 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot  </dev/null; echo $?
+    lanes 2
+    pow2 4194304
+    [    0.311243] CRIT: [libukalloc] <alloc.c @  198> Assertion failure: metadata->base != ((void *) 0)
+    [    0.313515] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+    ... (crash art and register dump; rip: 0008:0000000000129b61)
+    [    0.318448] CRIT:  r13: 0000001000025440 r14: 0000000000000004 r15:000000000020f461
+    253
+    (wall 0.5 s)
+  hosts/unikraft/scripts/run.sh lanes1 lanes-t1-s1 lanes "+RTS --threads 1 --gpu off" 120 1024 1
+    lanes 1
+    pow2 4194304
+    33
+    (wall 0.5 s)
+
+The shipped template crashes the same way: the shutdown assertion does not need
+UKPLAT_CPU_MAXCOUNT=2 or HAVE_SMP. It follows from a second runtime lane (a second musl
+thread) existing at shutdown with the current template. No gdb trace was taken of this
+image; the assertion line and the exit value are the same as in the lanes set.
+
+== Stopping point (Task 2; change task 2.4 stays open) ==
+
+Ruling (controller, 2026-11-05): Task 2 is the stall record; no corpus image was built,
+because a two-lane corpus run would end in the shutdown crash (QEMU 253) and its parity
+result could not be trusted.
+
+1. Two lanes run, but only on vCPU 0. With "+RTS --threads 2", pool_work(arg=1) is
+   entered and calls pool_rows on its own lane stack (gdb trace 2 above), interleaved
+   cooperatively with the main lane on one vCPU. With -smp 2 the second vCPU never runs
+   Unikraft code: gdb lists "Thread 1.2 (CPU#1 [halted ]) 0x00000000000fd5fd" (firmware
+   range) at pool_open, at pool_work, and at the crash, and the hardware breakpoint on
+   uk_lcpu_start is never hit. In the Unikraft 0.21.0 sources the function has no caller:
+     $ cd $W/src/unikraft && grep -rn "uk_lcpu_start\b" --include=*.c --include=*.h .
+     lib/uklcpu/lcpu.c:297:int uk_lcpu_start(const __u64 lcpuidx[], unsigned int *num,
+     lib/uklcpu/include/uk/lcpu/pm.h:118:int uk_lcpu_start(const __u64 lcpuidx[],
+   plat/kvm/x86/setup.c:149-154 calls only uk_lcpu_mp_init under CONFIG_HAVE_SMP.
+2. Every "--threads 2" Lanes run ends in a Unikraft crash after complete, correct program
+   output: "CRIT: [libukalloc] <alloc.c @  198> Assertion failure: metadata->base !=
+   ((void *) 0)", QEMU 253, raised while the idle thread garbage-collects the exited
+   thread "main" (idle_thread_fn -> uk_sched_thread_gc -> uk_thread_release ->
+   uk_free_ifpages). It does not depend on the CPU count: it happens on the lanes set
+   (UKPLAT_CPU_MAXCOUNT=2) on -smp 1 and -smp 2, and on the shipped template
+   (UKPLAT_CPU_MAXCOUNT=1) on -smp 1. "--threads 1" ends with QEMU 33 on both.
+3. What a fix would need (named, not implemented; no Unikraft, runtime, or generated-C
+   change was made):
+   - for parallel lanes: a caller for uk_lcpu_start in Unikraft 0.21.0's boot (plat/kvm)
+     that brings up the secondary LCPUs, and a scheduler per LCPU (ukschedcoop is one
+     cooperative run queue on the boot CPU), so a runtime lane can run on another vCPU;
+   - for a clean end: a thread teardown at shutdown that releases exited helper threads
+     (and the main thread, after them) without the uk_free_ifpages assertion;
+   - alternatively, on the runtime side, a yielding wait in the lane loop. On a
+     cooperative scheduler that would still give turn-taking on one vCPU, not
+     parallelism, and would not by itself remove the shutdown crash.
+4. Not exercised: the corpus on two lanes (no image built); atomics across CPUs (no lane
+   ran on a second vCPU); "--threads" above 2; -smp above 2; KVM. Every run is TCG on
+   the CPU.
