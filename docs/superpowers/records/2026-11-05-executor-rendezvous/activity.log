@@ -41,3 +41,5 @@
 2026-11-05T16:20:53Z	implementer	task 4 fix round 1 started: read task-4-review.md (S1-S3)
 2026-11-05T16:23:15Z	implementer	fix round 1: S1 session_follows_selection, S2 offer and provider keying plus valid binding, S3 same-offer reselection check, S4-S6 docs and names; 154 checks green; mutation sweep (88 mutants) running
 2026-11-05T16:25:07Z	implementer	fix round 1 done: 88 mutants (85 killed, 3 equivalent: P14, P18, T10); Rendezvous 154 checks, Tests.bend 1582 PASS, PROOF.bend ALL PROOFS CHECK at 23 laws; report section and Carried to Task 5 written; committing
+2026-11-05T16:25:28Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T16:27:23Z	controller	task 4 complete; task 5 dispatched (dispatch and invalidation)
