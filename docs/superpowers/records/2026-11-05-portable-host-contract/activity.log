@@ -66,3 +66,8 @@
 2026-11-05T05:56:18Z	implementer	task 5: final mutation run 29 mutants: 25 killed, 3 equivalent fallbacks, 1 survivor (over-determined DataOS plan check); native build running (heartbeat)
 2026-11-05T05:57:32Z	implementer	task 5: report drafted; native build still running (heartbeat)
 2026-11-05T06:01:18Z	implementer	task 5: native (CPU, not GPU) 1173 PASS identical to JS; vector file sha256 0ee8cb48... identical across two JS runs and native; committing
+2026-11-05T06:02:11Z	controller	task 5 reported; ruling: bind the entry plan at issue and publish; fix round 1 dispatched
+2026-11-05T06:02:25Z	implementer	task 5 fix round 1: started (ruling: bind the entry plan at issue and at publish)
+2026-11-05T06:04:51Z	implementer	task 5 fix round 1: issue binds the entry plan to the Frontend handle's plan, publish compares the entry plan with the session's and the committed intent's (PlanMismatch); HostPrimitives 206, HostConformance 36 checks / 30 vectors; running suite
+2026-11-05T06:06:12Z	implementer	task 5 fix round 1: JS 1179 PASS twice, vectors 30 lines sha256 70efda96... cmp-identical; PROOF ALL PROOFS CHECK; 8 mutants on the new checks (7 killed, step-7 intent-plan check equivalent while step 4 stands); native build running (heartbeat)
+2026-11-05T06:08:52Z	implementer	task 5 fix round 1: native (CPU, not GPU) 1179 PASS identical to JS, vector file 70efda96... cmp-identical; committing

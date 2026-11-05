@@ -53,12 +53,16 @@ import ./DataOS.bend as D
 #                  context's time                              -> Identity{reason}
 #                  (so a revocation before this point denies)
 #                  the worker is not `Running`                 -> WrongPhase
+#                  the identity entry's plan is not the
+#                  negotiated session's plan                   -> PlanMismatch
 #   5. replay      the negotiated plan's invocation is already
 #                  recorded                                    -> Replay
 #   6. commit      `DataOS.commit_from_capability` with
 #                  `F.Ref{resolved owner, entry handle}`
 #                  returns Rejected                            -> CommitRejected
-#   7. artifact    the committed intent's ArtifactId is not
+#   7. artifact    the committed intent's plan is not the
+#                  identity entry's plan                       -> PlanMismatch
+#                  the committed intent's ArtifactId is not
 #                  the sealed digest                           -> ArtifactMismatch
 #   then it records `Publication{invocation, digest}` and returns
 #   `Published{state, commit, [Publish{intent}]}`.
@@ -425,6 +429,12 @@ def commit_publication(state: P.State, publication: P.Publication) -> P.State:
       P.State{1n+revision, identity, profiles, bindings, workers, next_worker, seals,
         P.Publications{publication, publications}}
 
+# Implementation helper: the plan a committed intent publishes.
+def intent_plan(intent: B.WriteIntent) -> T.Plan:
+  match intent:
+    case B.WriteIntent{plan, _, _, _, _}:
+      plan
+
 # Implementation helper, step 7 and commit: the committed artifact must be
 # the sealed one; only then is the publication recorded and emitted.
 def p_artifact(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, next: N.Session,
@@ -436,15 +446,29 @@ def p_artifact(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, 
     case False{}:
       refuse(state, attempt, P.ArtifactMismatch{})
 
+# Implementation helper, step 7a: the committed intent's plan must be the
+# identity entry's plan (equal on every path today, since DataOS commits the
+# session's plan, which step 4 compared; kept so the published plan is checked
+# against the entry itself). A mismatch discards the committed session and
+# ledger.
+def p_intent_plan(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, next: N.Session,
+    updated: L.State, +intent: B.WriteIntent) -> PublishResult:
+  match ok:
+    case True{}:
+      p_artifact(B.ArtifactId.equal(B.WriteIntent.artifact(intent), B.ArtifactId{P.sealed_digest(sealed)}),
+        state, sealed, attempt, next, updated, intent)
+    case False{}:
+      refuse(state, attempt, P.PlanMismatch{})
+
 # Implementation helper, step 6's result. A rejection returns the supplied
 # session and ledger.
-def p_committed(result: B.CommitResult, +state: P.State, +sealed: P.Sealed, +attempt: Attempt) -> PublishResult:
+def p_committed(result: B.CommitResult, +state: P.State, +sealed: P.Sealed, +attempt: Attempt,
+    +plan: T.Plan) -> PublishResult:
   match result:
     case B.Rejected{_, _}:
       refuse(state, attempt, P.CommitRejected{})
     case B.Committed{next, updated, +intent}:
-      p_artifact(B.ArtifactId.equal(B.WriteIntent.artifact(intent), B.ArtifactId{P.sealed_digest(sealed)}),
-        state, sealed, attempt, next, updated, intent)
+      p_intent_plan(T.Plan.equal(intent_plan(intent), plan), state, sealed, attempt, next, updated, intent)
 
 # Implementation helper, step 6: the one release route. The Frontend
 # reference is the resolved owner and the entry's handle, from monitor state.
@@ -452,7 +476,8 @@ def p_commit(+state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.En
   match attempt:
     case Attempt{session, expected_session, expected_ledger, ledger, candidate, context, expected_frontend}:
       p_committed(D.commit_from_capability(session, expected_session, expected_ledger, ledger, candidate,
-        F.Ref{caller, I.entry_handle(entry)}, expected_frontend, context), state, sealed, attempt)
+        F.Ref{caller, I.entry_handle(entry)}, expected_frontend, context), state, sealed, attempt,
+        I.entry_plan(entry))
 
 # Implementation helper, step 5 (more than one record for an invocation is
 # unreachable from a valid state, and is a replay too).
@@ -464,14 +489,26 @@ def p_fresh(found: P.PublicationLookup, +state: P.State, +sealed: P.Sealed, +att
     case _:
       refuse(state, attempt, P.Replay{})
 
+# Implementation helper, step 4b: the identity entry's plan must be the
+# negotiated session's plan (exact plan binding, PH-005): an entry, and every
+# child delegated from it, publishes only the plan it was issued for.
+def p_plan(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry,
+    caller: F.Caller) -> PublishResult:
+  match ok:
+    case True{}:
+      p_fresh(P.publication_at(P.publications(state), attempt_invocation(attempt)), state, sealed, attempt, entry,
+        caller)
+    case False{}:
+      refuse(state, attempt, P.PlanMismatch{})
+
 # Implementation helper, step 4: the worker must still be running (after
 # the re-resolution, so a revoked worker is denied by its identity first).
 def p_phase(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry,
     caller: F.Caller) -> PublishResult:
   match ok:
     case True{}:
-      p_fresh(P.publication_at(P.publications(state), attempt_invocation(attempt)), state, sealed, attempt, entry,
-        caller)
+      p_plan(T.Plan.equal(I.entry_plan(entry), N.Session.plan(attempt_session(attempt))), state, sealed, attempt,
+        entry, caller)
     case False{}:
       refuse(state, attempt, P.WrongPhase{})
 

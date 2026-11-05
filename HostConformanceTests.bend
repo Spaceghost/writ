@@ -88,7 +88,8 @@ def open_on(+state: P.State, +adapter: V.Adapter, fact: P.Fact, role: P.Role) ->
   P.Step.state(P.open_session(state, P.revision(state), V.adapter_report(adapter), fact, role))
 
 def issue_on(+state: P.State, handle: Nat, rights: U32) -> P.State:
-  P.Step.state(P.issue(state, P.revision(state), V.session_client(), handle, V.plan(), rights, V.root_expires()))
+  P.Step.state(P.issue(state, P.revision(state), V.session_client(), V.fixture_frontend_state(), handle, V.plan(), rights,
+    V.root_expires()))
 
 # Adapter A's allocation order: an unrelated entry first.
 def prefaced(+state: P.State, prefaced: Bool) -> P.State:
@@ -296,6 +297,7 @@ def reason_name(error: P.Error) -> String:
     case P.Substitution{}: "Substitution"
     case P.Unrecorded{}: "Unrecorded"
     case P.NotQuiesced{}: "NotQuiesced"
+    case P.PlanMismatch{}: "PlanMismatch"
 
 def slot_label(+adapter: V.Adapter, +slot: Nat) -> String:
   V.logical_label(V.logical_of(adapter, slot))
@@ -611,7 +613,7 @@ def destination_publish(+a: V.Adapter) -> H.PublishResult:
 
 def ph005_1_ok(+a: V.Adapter) -> Bool:
   refused_unchanged(destination_publish(a), sealed(a), V.destination_session(), V.destination_ledger(),
-    P.CommitRejected{})
+    P.PlanMismatch{})
 
 def ph005_1_line(+a: V.Adapter) -> String:
   publish_line("PH-005-1", a, destination_publish(a))
@@ -620,7 +622,7 @@ def input_publish(+a: V.Adapter) -> H.PublishResult:
   publish_with(sealed(a), V.input_session(), V.input_ledger())
 
 def ph005_2_ok(+a: V.Adapter) -> Bool:
-  refused_unchanged(input_publish(a), sealed(a), V.input_session(), V.input_ledger(), P.CommitRejected{})
+  refused_unchanged(input_publish(a), sealed(a), V.input_session(), V.input_ledger(), P.PlanMismatch{})
 
 def ph005_2_line(+a: V.Adapter) -> String:
   publish_line("PH-005-2", a, input_publish(a))
@@ -669,6 +671,62 @@ def ph005_6_ok(+a: V.Adapter) -> Bool:
 
 def ph005_6_line(+a: V.Adapter) -> String:
   use_line("PH-005-6", a, root_use(a))
+
+# The client's root issued for destination E's plan on Frontend handle 2,
+# which carries plan D.
+def mismatched_issue(+a: V.Adapter) -> P.Step:
+  +sessions = with_sessions(a)
+  P.issue(sessions, P.revision(sessions), V.session_client(), V.fixture_frontend_state(), V.root_handle(),
+    V.destination_plan(), V.root_rights(), V.root_expires())
+
+def ph005_7_ok(+a: V.Adapter) -> Bool:
+  PT.denied(mismatched_issue(a), with_sessions(a), P.PlanMismatch{})
+
+def ph005_7_line(+a: V.Adapter) -> String:
+  plain_line("PH-005-7", "issue", mismatched_issue(a))
+
+# HAND-BUILT (marked): the identity table of `with_sessions` and the
+# adapter's preface after `HostIdentity.mint` issued the client's root for destination E's plan on
+# handle 2 (plan D) directly, bypassing `issue`'s plan binding, as a monitor
+# without that check would have. It is `valid`; the point is the publication
+# check, which must refuse it on its own. Every later step is a real
+# transition (decoded Delegate, admission, seal).
+def bypassed_root(+a: V.Adapter) -> P.State:
+  +sessions = prefaced(with_sessions(a), V.adapter_prefaced(a))
+  +table = P.identity(sessions)
+  PT.table_on(sessions, 1n+P.revision(sessions), I.Change.state(I.mint(table, I.revision(table), V.session_client(),
+    V.root_handle(), V.destination_plan(), V.root_rights(), V.root_expires())))
+
+def bypassed_sealed(+a: V.Adapter) -> P.State:
+  +delegated = P.Step.state(delegate_on(bypassed_root(a), V.session_client(), input_delegation(a)))
+  sealed_from(P.Step.state(admit_on(delegated, a, V.session_worker(), use_of(a, V.Input{}, V.claim_none()))))
+
+def bypassed_publish(+a: V.Adapter) -> H.PublishResult:
+  publish_on(bypassed_sealed(a))
+
+# The bypassed chain really reached a sealed Running worker.
+def bypass_reached(+a: V.Adapter) -> Bool:
+  PT.phase_of(P.workers(bypassed_sealed(a)), V.worker_id(), P.Running{})
+    && Bool.not(PT.seals_equal(P.seals(bypassed_sealed(a)), P.NoSeals{}))
+
+def ph005_8_ok(+a: V.Adapter) -> Bool:
+  bypass_reached(a) && refused_unchanged(bypassed_publish(a), bypassed_sealed(a), V.fixture_session(),
+    V.fixture_ledger(), P.PlanMismatch{})
+
+def ph005_8_line(+a: V.Adapter) -> String:
+  publish_line("PH-005-8", a, bypassed_publish(a))
+
+# The narrow child (root -> proxy -> narrow, all plan D) used on the session
+# negotiated for destination E.
+def narrow_retargeted(+a: V.Adapter) -> H.PublishResult:
+  publish_with(sealed_from(narrow_admitted(a)), V.destination_session(), V.destination_ledger())
+
+def ph005_9_ok(+a: V.Adapter) -> Bool:
+  refused_unchanged(narrow_retargeted(a), sealed_from(narrow_admitted(a)), V.destination_session(),
+    V.destination_ledger(), P.PlanMismatch{})
+
+def ph005_9_line(+a: V.Adapter) -> String:
+  publish_line("PH-005-9", a, narrow_retargeted(a))
 
 # --- Vectors: caller identity (PH-002, PH-003) --------------------------------------
 
@@ -887,7 +945,7 @@ def ph009_4_line(+a: V.Adapter) -> String:
 
 def lines_for(+a: V.Adapter) -> List<&2, String>:
   [ph009_1_line(a), ph005_1_line(a), ph005_2_line(a), ph005_3_line(a), ph005_4_line(a), ph005_5_line(a),
-    ph005_6_line(a), ph002_1_line(a), ph002_2_line(a), ph002_3_line(a), ph002_4_line(a), ph002_5_line(a),
+    ph005_6_line(a), ph005_7_line(a), ph005_8_line(a), ph005_9_line(a), ph002_1_line(a), ph002_2_line(a), ph002_3_line(a), ph002_4_line(a), ph002_5_line(a),
     ph003_1_line(a), ph003_2_line(a), ph010_1_line(a), ph009_2_line(a), ph010_2_line(a), ph010_3_line(a),
     ph010_4_line(a), ph010_5_line(a), ph010_6_line(a), ph009_3_line(a), ph004_1_line(a), ph004_2_line(a),
     ph004_3_line(a), ph009_4_line(a)]
@@ -942,9 +1000,9 @@ def plan_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(agree(ph009_1_ok(A()), ph009_1_ok(Bd()), ph009_1_line(A()), ph009_1_line(Bd()), V.expected_ph009_1()), "PH-009-1 the baseline delegated input publishes once through DataOS.commit_from_capability on both adapters")
     vector(ph009_1_line(A()))
-    Test.check(agree(ph005_1_ok(A()), ph005_1_ok(Bd()), ph005_1_line(A()), ph005_1_line(Bd()), V.expected_ph005_1()), "PH-005-1 the delegated input used on a session negotiated for destination E is denied CommitRejected with the state, session, and ledger unchanged")
+    Test.check(agree(ph005_1_ok(A()), ph005_1_ok(Bd()), ph005_1_line(A()), ph005_1_line(Bd()), V.expected_ph005_1()), "PH-005-1 the delegated input used on a session negotiated for destination E is denied PlanMismatch with the state, session, and ledger unchanged")
     vector(ph005_1_line(A()))
-    Test.check(agree(ph005_2_ok(A()), ph005_2_ok(Bd()), ph005_2_line(A()), ph005_2_line(Bd()), V.expected_ph005_2()), "PH-005-2 a session negotiated for a changed input object is denied CommitRejected with the state, session, and ledger unchanged")
+    Test.check(agree(ph005_2_ok(A()), ph005_2_ok(Bd()), ph005_2_line(A()), ph005_2_line(Bd()), V.expected_ph005_2()), "PH-005-2 a session negotiated for a changed input object is denied PlanMismatch with the state, session, and ledger unchanged")
     vector(ph005_2_line(A()))
     Test.check(agree(ph005_3_ok(A()), ph005_3_ok(Bd()), ph005_3_line(A()), ph005_3_line(Bd()), V.expected_ph005_3()), "PH-005-3 a decoded Delegate narrows the root to the proxy session")
     vector(ph005_3_line(A()))
@@ -954,6 +1012,15 @@ def plan_checks() -> IO(Unit):
     vector(ph005_5_line(A()))
     Test.check(agree(ph005_6_ok(A()), ph005_6_ok(Bd()), ph005_6_line(A()), ph005_6_line(Bd()), V.expected_ph005_6()), "PH-005-6 after the narrower proxy the broader root still resolves live with all its rights")
     vector(ph005_6_line(A()))
+
+def plan_gap_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(agree(ph005_7_ok(A()), ph005_7_ok(Bd()), ph005_7_line(A()), ph005_7_line(Bd()), V.expected_ph005_7()), "PH-005-7 a root issued for destination E's plan on a plan-D Frontend handle is denied PlanMismatch with the state unchanged")
+    vector(ph005_7_line(A()))
+    Test.check(agree(ph005_8_ok(A()), ph005_8_ok(Bd()), ph005_8_line(A()), ph005_8_line(Bd()), V.expected_ph005_8()), "PH-005-8 a sealed worker on an entry minted for plan E publishing plan D is denied PlanMismatch with the state, session, and ledger unchanged")
+    vector(ph005_8_line(A()))
+    Test.check(agree(ph005_9_ok(A()), ph005_9_ok(Bd()), ph005_9_line(A()), ph005_9_line(Bd()), V.expected_ph005_9()), "PH-005-9 a delegated child cannot publish a plan other than its parent's: denied PlanMismatch with the state, session, and ledger unchanged")
+    vector(ph005_9_line(A()))
 
 def provenance_checks() -> IO(Unit):
   do IO<Unit>:
@@ -1021,9 +1088,10 @@ def main() -> IO(Unit):
   do IO<Unit>:
     setup_checks()
     plan_checks()
+    plan_gap_checks()
     provenance_checks()
     caller_checks()
     revocation_checks()
     replay_checks()
     adapter_checks()
-    IO.print("HostConformance: 33 checks passed, 27 vectors emitted")
+    IO.print("HostConformance: 36 checks passed, 30 vectors emitted")

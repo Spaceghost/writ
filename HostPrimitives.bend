@@ -346,6 +346,7 @@ type Error is Data:
   Substitution{}
   Unrecorded{}
   NotQuiesced{}
+  PlanMismatch{}
 
 # The output of every mutating transition. Only `Admitted` carries effects.
 type Step is Data:
@@ -488,6 +489,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case Substitution{} Substitution{}: True{}
     case Unrecorded{} Unrecorded{}: True{}
     case NotQuiesced{} NotQuiesced{}: True{}
+    case PlanMismatch{} PlanMismatch{}: True{}
     case _ _: False{}
 
 # Public accessor: the resulting state; on denial, the supplied state.
@@ -1121,13 +1123,33 @@ def changed(change: I.Change, +state: State) -> Step:
     case I.Accepted{identity, _}:
       Admitted{with_identity(state, identity), []}
 
-# Implementation helper: issue's gate.
-def m_gate(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
+# Implementation helper: whether the monitor's Frontend state holds handle
+# `handle` and that handle carries exactly `plan`.
+def handle_carries(found: Maybe<&2, F.Handle>, +plan: T.Plan) -> Bool:
+  match found:
+    case Some{handle}:
+      T.Plan.equal(F.handle_plan(handle), plan)
+    case None{}:
+      False{}
+
+# Implementation helper: issue's plan-binding step. An entry is issued only
+# for the plan its Frontend handle carries.
+def m_plan(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
     expires: Nat) -> Step:
   match ok:
     case True{}:
       changed(I.mint(identity(state), I.revision(identity(state)), session, handle, plan, rights, expires),
         state)
+    case False{}:
+      Denied{state, PlanMismatch{}}
+
+# Implementation helper: issue's gate.
+def m_gate(ok: Bool, +state: State, +session: Nat, frontend: F.State, +handle: Nat, +plan: T.Plan, rights: U32,
+    expires: Nat) -> Step:
+  match ok:
+    case True{}:
+      m_plan(handle_carries(F.find_handle(F.handles(frontend), handle), plan), state, session, handle, plan,
+        rights, expires)
     case False{}:
       Denied{state, StaleRevision{}}
 
@@ -1135,11 +1157,16 @@ def m_gate(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, ri
 # `session` for Frontend handle `handle`, which the monitor has already
 # opened after complete admission of `plan`, through `HostIdentity.mint`
 # (the owner is the session's bound caller; only an Authenticated session
-# holds a root). Order: gate, then HostIdentity's own checks
+# holds a root). `frontend` is the monitor's own Frontend state (the record
+# `DataOS.commit_from_capability` later re-resolves the handle in), never a
+# target value. Order: gate; plan binding: the handle must exist in
+# `frontend` and carry exactly `plan` (PlanMismatch: an entry can be issued
+# only for the plan its handle carries, so the entry's plan, which every
+# delegated child copies, is the handle's); then HostIdentity's own checks
 # (`Identity{reason}`). No effect.
-def issue(+state: State, expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
-    expires: Nat) -> Step:
-  m_gate(current(state, expected_revision), state, session, handle, plan, rights, expires)
+def issue(+state: State, expected_revision: Nat, +session: Nat, frontend: F.State, handle: Nat, plan: T.Plan,
+    rights: U32, expires: Nat) -> Step:
+  m_gate(current(state, expected_revision), state, session, frontend, handle, plan, rights, expires)
 
 # Implementation helper: delegate's gate.
 def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rights: U32, +lifetime: Nat,

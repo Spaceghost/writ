@@ -323,8 +323,9 @@ def adapter_b() -> Adapter:
 def root_handle() -> Nat:
   2n
 
+# The descriptor's Session handle (1), which carries the same plan.
 def unrelated_handle() -> Nat:
-  5n
+  1n
 
 def plan() -> T.Plan:
   TF.plan()
@@ -502,6 +503,11 @@ def fixture_context() -> OS.Context:
 def fixture_frontend() -> Nat:
   2n
 
+# The monitor's Frontend state that `issue` binds each entry's plan against:
+# the descriptor the FacadeTests DataOS context holds (subject 7, rights 7).
+def fixture_frontend_state() -> F.State:
+  FF.descriptor(subject(), root_rights())
+
 def invocation() -> Nat:
   T.Plan.invocation(plan())
 
@@ -597,10 +603,10 @@ def expected_ph009_1() -> String:
   "VECTOR PH-009-1 publish accepted invocation=99;input=input"
 
 def expected_ph005_1() -> String:
-  "VECTOR PH-005-1 publish denied CommitRejected"
+  "VECTOR PH-005-1 publish denied PlanMismatch"
 
 def expected_ph005_2() -> String:
-  "VECTOR PH-005-2 publish denied CommitRejected"
+  "VECTOR PH-005-2 publish denied PlanMismatch"
 
 def expected_ph005_3() -> String:
   "VECTOR PH-005-3 delegate accepted slot=proxy"
@@ -613,6 +619,15 @@ def expected_ph005_5() -> String:
 
 def expected_ph005_6() -> String:
   "VECTOR PH-005-6 use accepted slot=root"
+
+def expected_ph005_7() -> String:
+  "VECTOR PH-005-7 issue denied PlanMismatch"
+
+def expected_ph005_8() -> String:
+  "VECTOR PH-005-8 publish denied PlanMismatch"
+
+def expected_ph005_9() -> String:
+  "VECTOR PH-005-9 publish denied PlanMismatch"
 
 def expected_ph002_1() -> String:
   "VECTOR PH-002-1 use accepted slot=input"
@@ -675,11 +690,12 @@ def expected_ph009_4() -> String:
 # `expected_ph012_1` follows them.
 def expected_lines() -> List<&2, String>:
   [expected_ph009_1(), expected_ph005_1(), expected_ph005_2(), expected_ph005_3(), expected_ph005_4(),
-    expected_ph005_5(), expected_ph005_6(), expected_ph002_1(), expected_ph002_2(), expected_ph002_3(),
+    expected_ph005_5(), expected_ph005_6(), expected_ph005_7(), expected_ph005_8(), expected_ph005_9(),
+    expected_ph002_1(), expected_ph002_2(), expected_ph002_3(),
     expected_ph002_4(), expected_ph002_5(), expected_ph003_1(), expected_ph003_2(), expected_ph010_1(),
     expected_ph009_2(), expected_ph010_2(), expected_ph010_3(), expected_ph010_4(), expected_ph010_5(),
     expected_ph010_6(), expected_ph009_3(), expected_ph004_1(), expected_ph004_2(), expected_ph004_3(),
     expected_ph009_4()]
 
 def expected_ph012_1() -> String:
-  "VECTOR PH-012-1 compare accepted vectors=26"
+  "VECTOR PH-012-1 compare accepted vectors=29"

@@ -1197,8 +1197,24 @@ def pub_opened() -> P.State:
   P.Step.state(P.open_session(pub_opened_client(), P.revision(pub_opened_client()), full_report(),
     pub_worker_evidence(), P.WorkerRole{accel_id()}))
 
+# The monitor's Frontend state: the FacadeTests descriptor (handle 2 carries
+# the TransferTests plan).
+def pub_frontend() -> F.State:
+  FF.descriptor(pub_subject(), root_rights())
+
+# A plan naming another destination (object 21) than the handle's plan.
+def other_plan() -> T.Plan:
+  TF.plan_destination(TF.plan(), T.ObjectVersion{21n, 8n})
+
+# A Frontend handle id the descriptor never opened.
+def unopened_handle() -> Nat:
+  9n
+
+def issue_for(+state: P.State, +session: Nat, +handle: Nat, +plan: T.Plan) -> P.Step:
+  P.issue(state, P.revision(state), session, pub_frontend(), handle, plan, root_rights(), root_expires())
+
 def issue_on(+state: P.State, +session: Nat) -> P.Step:
-  P.issue(state, P.revision(state), session, pub_handle(), TF.plan(), root_rights(), root_expires())
+  issue_for(state, session, pub_handle(), TF.plan())
 
 def pub_issued() -> P.State:
   P.Step.state(issue_on(pub_opened(), session_client()))
@@ -1468,6 +1484,12 @@ def wrapper_checks() -> IO(Unit):
       "PH-001 issue commits HostIdentity.mint's table, advances the revision once, and emits nothing")
     Test.check(denied_identity(issue_on(pub_opened(), session_unknown()), pub_opened(), I.UnknownSession{}),
       "PH-001 issue on an unbound session denied Identity UnknownSession")
+    Test.check(denied(issue_for(pub_opened(), session_client(), pub_handle(), other_plan()), pub_opened(),
+      P.PlanMismatch{}), "PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch")
+    Test.check(denied(issue_for(pub_opened(), session_client(), unopened_handle(), TF.plan()), pub_opened(),
+      P.PlanMismatch{}), "PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch")
+    Test.check(denied(issue_for(pub_opened(), session_unknown(), pub_handle(), other_plan()), pub_opened(),
+      P.PlanMismatch{}), "PH-005 order: issue's plan binding precedes HostIdentity's checks")
     Test.check(admitted_as(delegate_on(pub_issued(), session_client(), root_ref(), session_worker()),
       table_on(pub_issued(), 1n+P.revision(pub_issued()), I.Change.state(I.delegate(P.identity(pub_issued()),
         I.revision(P.identity(pub_issued())), session_client(), root_ref(), session_worker(), input_rights(),
@@ -1700,7 +1722,7 @@ def publication_gate_checks() -> IO(Unit):
       "PH-010 reclaim at a stale revision denied StaleRevision")
     Test.check(denied(H.complete(admitted(), 1n+P.revision(admitted()), completion(session_worker(), input_ref()), now()),
       admitted(), P.StaleRevision{}), "PH-010 complete at a stale revision denied StaleRevision")
-    Test.check(denied(P.issue(pub_opened(), 1n+P.revision(pub_opened()), session_client(), pub_handle(), TF.plan(), root_rights(),
+    Test.check(denied(P.issue(pub_opened(), 1n+P.revision(pub_opened()), session_client(), pub_frontend(), pub_handle(), TF.plan(), root_rights(),
       root_expires()), pub_opened(), P.StaleRevision{}), "PH-001 issue at a stale revision denied StaleRevision")
     Test.check(denied(P.delegate(pub_issued(), 1n+P.revision(pub_issued()), session_client(), root_ref(), session_worker(),
       input_rights(), input_lifetime(), pub_now()), pub_issued(), P.StaleRevision{}),
@@ -1772,4 +1794,4 @@ def main() -> IO(Unit):
     completion_checks()
     publication_gate_checks()
     publication_valid_checks()
-    IO.print("HostPrimitives: 203 checks passed")
+    IO.print("HostPrimitives: 206 checks passed")

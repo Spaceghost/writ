@@ -104,7 +104,7 @@ incarnation number, session id, or native value.
 | --- | --- | --- |
 | host, incarnation (restart to) | 51, 73 (74) | 52, 90 (91) |
 | foreign host used by PH-003-2 | 52 | 51 |
-| allocation order | mints an unrelated entry (handle 5, read) before the root, so root 2, input 3, proxy 4, narrow 5 | root 1, input 2, proxy 3, narrow 4 |
+| allocation order | mints an unrelated entry (Session handle 1, read) before the root, so root 2, input 3, proxy 4, narrow 5 | root 1, input 2, proxy 3, narrow 4 |
 | target report | every family, every control (including accelerator isolation) | every family, exactly the profile's CPU controls |
 | route inventory | four mediated routes (descriptor, handle, shared memory, service) | one mediated route (service) |
 
@@ -251,14 +251,17 @@ survivor.
 
 ## Concerns
 
-1. Model gap (not fixed; outside the touch list). The identity entry's `plan`
-   is never compared at publication. `HostPublication.publish` passes
+1. Model gap (FIXED in fix round 1, below). Before the fix, the identity
+   entry's `plan` was never compared at publication. `HostPublication.publish` passes
    `F.Ref{owner, entry handle}` to `DataOS.commit_from_capability`, which
    compares the Frontend handle's plan with the session's; `I.entry_plan` is
    read by no decision. A scratch probe confirmed it: a root issued with
    `destination_plan()` (destination E) on Frontend handle 2 (plan D),
    delegated, admitted, sealed, and published with the plan-D session gives
-   `publish accepted invocation=99;input=input`. So "delegation copies the
+   `publish accepted invocation=99;input=input` (pre-fix tree). After fix
+   round 1 the same probe's `issue` is denied PlanMismatch (vector PH-005-7),
+   and the same table built by bypassing `issue` is refused PlanMismatch at
+   publish (vector PH-005-8). So, before the fix, "delegation copies the
    parent's plan" (PH-005-4, and HostIdentity ruling (a)) is a property of a
    field no check reads, and an `issue` whose plan differs from its Frontend
    handle's plan is not detected. Suggested fix for the controller to rule on
@@ -302,3 +305,94 @@ survivor.
 8. Sizes: 685 and 1029 lines against an estimate of about 250 each (the
    alternative negotiated sessions, the full-intent equality, and one ok/line
    pair per vector); 33 checks against about 30; 27 lines against about 26.
+
+## Fix round 1: exact plan binding at issue and at publish
+
+Controller ruling on concern 1: the gap is real (PH-005, exact plan binding)
+and this lane fixes it, although it touches Task 4's families.
+
+Changes:
+- `HostPrimitives.Error` gains `PlanMismatch` (with its `Error.equal` arm).
+- `HostPrimitives.issue` now takes `frontend: F.State`, the monitor's own
+  Frontend state (the record `DataOS.commit_from_capability` later re-resolves
+  the handle in). Order: gate; plan binding (`m_plan`, `handle_carries`): the
+  handle must exist in `frontend` (`F.find_handle`) and carry exactly the
+  issued plan (`T.Plan.equal(F.handle_plan(handle), plan)`), else
+  PlanMismatch; then HostIdentity's checks. A missing handle is also
+  PlanMismatch (no handle carries the plan).
+- `HostPublication.publish`: step 4 gains `p_plan` after the `Running` check:
+  the identity entry's plan must equal the negotiated session's plan, else
+  PlanMismatch (before the replay check and the commit, so nothing is spent).
+  Step 7 gains `p_intent_plan` before the artifact check: the committed
+  intent's plan (`intent_plan`) must equal the entry's plan, else
+  PlanMismatch with the committed session and ledger discarded. The header's
+  order table lists both.
+- Laws: the new branches use `Denied{state, PlanMismatch{}}` and `refuse`,
+  i.e. the existing `Denied` and `Refused` constructors, so
+  `primitive_denied_preserves_state`, `primitive_denied_emits_nothing`,
+  `publication_refused_preserves_state`, and
+  `publication_refused_emits_nothing` cover them unchanged; LAWS.bend and
+  PROOF.bend are not edited and `bend PROOF.bend` still reports
+  `ALL PROOFS CHECK`.
+- Delegation: `HostIdentity.delegate` already copies the parent's plan; the
+  new vector PH-005-9 checks that a delegated child (root, proxy, narrow, all
+  plan D) cannot publish another plan: denied PlanMismatch.
+
+Tests:
+- `HostPrimitivesTests.bend` (206 checks, +3): `issue_on` passes the
+  FacadeTests descriptor (`pub_frontend`) and the stale-revision issue check
+  passes it too; new checks
+  `PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch`,
+  `PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch`,
+  `PH-005 order: issue's plan binding precedes HostIdentity's checks`.
+- `HostConformanceTests.bend` (36 checks, +3; 30 lines): PH-005-1 and PH-005-2
+  now expect `publish denied PlanMismatch` (the host layer refuses them before
+  DataOS; their check names now say PlanMismatch instead of CommitRejected,
+  the only two renamed PASS lines). New vectors:
+  - PH-005-7 `issue denied PlanMismatch`: the client's root issued for
+    destination E's plan on Frontend handle 2 (plan D), full path, state
+    unchanged;
+  - PH-005-8 `publish denied PlanMismatch`: HAND-BUILT and marked: the root
+    minted for plan E on handle 2 by `HostIdentity.mint` directly (bypassing
+    `issue`, as a monitor without the binding would), then the decoded
+    Delegate, admission, and seal as real transitions; publish with the
+    plan-D session is refused with state, session, and ledger unchanged (the
+    check also asserts the chain reached a sealed Running worker);
+  - PH-005-9 `publish denied PlanMismatch`: delegated child, plan-E session.
+  - PH-012-1 now `compare accepted vectors=29`.
+- The vectors module's unrelated entry for adapter A now names the
+  descriptor's Session handle 1 (handle 5 does not exist in the Frontend
+  state, so `issue` would now deny it); `fixture_frontend_state` added.
+
+Mutation run (scratch `mutate_f1.py`: one-site mutant, run
+HostPrimitivesTests then HostConformanceTests, first FAIL; and a scratch
+program printing all of adapter A's lines, diffed against the vector file):
+
+| Mutant | First failing check | Vector lines changed |
+| --- | --- | --- |
+| issue: plan binding dropped | `PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch` | PH-005-7 becomes `issue accepted` |
+| issue: `handle_carries` ignores the plan | same | PH-005-7 becomes `issue accepted` |
+| issue: missing handle accepted | `PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch` | none |
+| issue: PlanMismatch reason replaced | `PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch` | PH-005-7 becomes `denied WrongPhase` |
+| publish: step 4 plan check dropped | `PH-005-1 ... denied PlanMismatch ...` | PH-005-1, PH-005-2, PH-005-9 become `denied CommitRejected` |
+| publish: step 4 reason replaced | `PH-005-1 ... denied PlanMismatch ...` | PH-005-1, -2, -8, -9 become `denied CommitRejected` |
+| publish: step 7 intent-plan check dropped | SURVIVED (equivalent while step 4 stands: DataOS commits the session's plan, which step 4 already equated with the entry's) | none |
+| both new checks dropped (issue and step 4) | `PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch` | PH-005-1, -2, -7, -9 change (PH-005-8 is still refused by step 7) |
+
+Verification:
+- `bend Tests.bend` (JS), twice: exit 0, 1179 PASS each (782 plus 397 new
+  checks = 1179; fix round 1 adds 6), last line `ALL LIBRARY TESTS PASSED`,
+  no duplicate PASS line; the only PASS lines of the previous run missing are
+  the two renamed PH-005-1/PH-005-2 checks.
+- `verification/portable-host-vectors.txt` regenerated, 30 lines, SHA-256
+  `70efda962bf8ab487085ea2157b86217de0fb117e9d6ecfc5c59a7a18fb5e5b5`,
+  `cmp`-identical across the two JS runs and the native run (`bend Tests.bend -o ...tests-native`, `+RTS --threads 4 --gpu off`: build exit 0, run 1179 PASS identical in order to JS, `ALL LIBRARY TESTS PASSED`; CPU execution, not a GPU test).
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- OpenSpec strict: `Totals: 44 passed, 0 failed (44 items)`.
+- Traceability: the family 1 wrappers row names the issue plan binding and
+  its three checks; the vectors table has PH-005-1/2 as PlanMismatch and rows
+  for PH-005-7 to PH-005-9; the PH-005 requirement row is rewritten.
+
+Remaining notes: `issue`'s signature changed (one new parameter), a Task 4
+public interface; its only callers are this lane's test modules. The step 7
+check is defense in depth, reachable only if step 4 were removed.

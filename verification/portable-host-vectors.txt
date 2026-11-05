@@ -1,10 +1,13 @@
 VECTOR PH-009-1 publish accepted invocation=99;input=input
-VECTOR PH-005-1 publish denied CommitRejected
-VECTOR PH-005-2 publish denied CommitRejected
+VECTOR PH-005-1 publish denied PlanMismatch
+VECTOR PH-005-2 publish denied PlanMismatch
 VECTOR PH-005-3 delegate accepted slot=proxy
 VECTOR PH-005-4 delegate accepted slot=narrow
 VECTOR PH-005-5 publish accepted invocation=99;input=narrow
 VECTOR PH-005-6 use accepted slot=root
+VECTOR PH-005-7 issue denied PlanMismatch
+VECTOR PH-005-8 publish denied PlanMismatch
+VECTOR PH-005-9 publish denied PlanMismatch
 VECTOR PH-002-1 use accepted slot=input
 VECTOR PH-002-2 use accepted slot=input
 VECTOR PH-002-3 publish accepted invocation=99;input=input
@@ -24,4 +27,4 @@ VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
 VECTOR PH-004-2 use accepted slot=root
 VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
 VECTOR PH-009-4 reconcile denied Substitution
-VECTOR PH-012-1 compare accepted vectors=26
+VECTOR PH-012-1 compare accepted vectors=29
