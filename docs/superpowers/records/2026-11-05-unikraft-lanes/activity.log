@@ -15,3 +15,6 @@
 2026-11-05T01:03:19Z	implementer	task 3 started (stall branch): read brief, Global Constraints, task 1 and 2 reports, verification/unikernel-lanes-qemu.txt; editing matrix Threads/Atomics rows and Limits, UNIKERNELS.md item 2 and Open list, UL-005 row
 2026-11-05T01:04:15Z	implementer	records edited (matrix :41 :45 :465-473; UNIKERNELS.md :169-173 :276-288; UL-005 row); OpenSpec strict 44 passed, 0 failed; bend Tests.bend 782 PASS, ALL LIBRARY TESTS PASSED; report written; committing task 3
 2026-11-05T01:04:28Z	controller	task 3 reported; final whole-branch review dispatched
+2026-11-05T01:09:12Z	controller	final review: needs text fixes; fix round dispatched
+2026-11-05T01:09:32Z	implementer	fix round started: read final-review.md; applying I1-I5 (text only); source-sha256.txt left to the controller
+2026-11-05T01:10:27Z	implementer	fix round: I1-I5 applied (lanes-qemu.txt, matrix, UNIKERNELS.md, UL-005 row, tasks.md 2.4 note, INVENTORY.md run.sh/check-corpus.sh rows); OpenSpec strict 44 passed, 0 failed; committing

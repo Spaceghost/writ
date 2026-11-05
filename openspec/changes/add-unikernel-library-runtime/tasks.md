@@ -143,7 +143,7 @@ tasks remain pending.
   runs"; verification/unikernel-effects-qemu.txt). Every run is a QEMU TCG emulated boot on
   the CPU; no GPU test. The scenario states no number, so the spec is unchanged.
 - [ ] 2.4 Enable additional lanes behind the kernel's thread library; show the corpus still matches and record the lane count.
-  Open (2026-11-05, Unikraft lanes lane): a second lane runs but only on vCPU 0, because Unikraft 0.21.0 never calls uk_lcpu_start, and every `--threads 2` run, with the shipped template as well, ends in a shutdown assertion (QEMU 253), so the corpus was not run on two lanes (verification/unikernel-lanes-qemu.txt, "Stopping point").
+  Open (2026-11-05, Unikraft lanes lane): a second lane runs (set `lanes`, `UKPLAT_CPU_MAXCOUNT=2`) but only on vCPU 0, because Unikraft 0.21.0 never calls uk_lcpu_start, and every `--threads 2` run, with the shipped template as well, ends in a shutdown assertion (QEMU 253), so the corpus was not run on two lanes (verification/unikernel-lanes-qemu.txt, "Stopping point").
 
 ## 3. Boots and deployment rules
 

@@ -62,3 +62,51 @@ starting with `PASS`. The summary lines include `Core: 52 checks passed; ...`,
    matrix" heading of the matrix file with "## Matrix" (I had picked the wrong anchor). I
    saw it in the diff, restored the heading, and reran strict validation after the fix.
    The final diff touches only the lines listed above.
+
+## Fix round (final-review.md, findings I1 to I5; text only)
+
+- I1, `verification/unikernel-lanes-qemu.txt` (Result 2 and Stopping point item 1): the
+  phrase "at pool_open, at pool_work and at the crash" now reads "at pool_work and at
+  _uk_crash (trace 1) and at the alloc.c:198 assertion print (trace 2), each from gdb's
+  `info threads`".
+- I2, pointers added; the older sentences are kept:
+  - `verification/unikernel-matrix-unikraft.md:68` (Open questions settled) gains a
+    "Since 2026-11-05" sentence;
+  - the "SMP was not tried" item in the matrix's Limits list gains "(since tried,
+    2026-11-05: see the entry below)";
+  - in the `docs/UNIKERNELS.md` selection matrix, the Threads and Atomics cells gain
+    pointers;
+  - the Process: CPU count cell now reads "`-smp 2` booted (set `lanes`) only with
+    explicit `--threads`; the default count on two vCPUs was not recorded".
+- I3, `verification/unikernel-lanes-qemu.txt`: two Task 1 sentences gain a
+  "(Superseded by Task 2 ...)" note pointing to "Shipped template control". They are
+  Result 3 (shipped template not tried) and the matching "Not exercised" item.
+- I4, attribution and inference:
+  - the Threads "Since" note in the matrix (:41) now credits `pool_work` entered to set
+    `lanes` (`UKPLAT_CPU_MAXCOUNT=2`, `HAVE_SMP=y`) on `-smp 1` and `-smp 2`, and says
+    it was not traced on the shipped template;
+  - in the evidence file, Result 1 now names the confounded E6 comparison (HAVE_SMP and
+    the APIC controller; which change matters was not isolated) and says every trace is
+    of set `lanes`; the shipped-template control showed the same output and crash
+    without a trace;
+  - Stopping point item 1 says the same;
+  - the "It follows from" sentence of the shipped-template control is now marked
+    "Inferred", naming the 33/253 split and the released thread "main" (trace 3);
+  - the UL-005 traceability row and the tasks.md 2.4 note gain "(set `lanes`,
+    `UKPLAT_CPU_MAXCOUNT=2`)"; box 2.4 stays unchecked.
+- I5, `hosts/unikraft/INVENTORY.md`, under the controller's ruling to touch the file:
+  - the `run.sh` row shows `[vcpus]`: `-smp <vcpus>` when given, nothing when omitted
+    (QEMU's default of one vCPU);
+  - the `check-corpus.sh` row shows `[lanes] [vcpus]` (both default 1): when either is
+    given, the script boots once through `run.sh`, then checks the capture under
+    `WRIT_NO_BOOT=1`.
+- Not done:
+  - `verification/source-sha256.txt` is untouched (M1, the merge step);
+  - the minor items m1 to m7 were not applied.
+- `~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive`,
+  final line:
+
+      Totals: 44 passed, 0 failed (44 items)
+
+- `git diff --check`: clean. No `.bend` file changed, so `bend Tests.bend` was not rerun
+  (782 is recorded above).

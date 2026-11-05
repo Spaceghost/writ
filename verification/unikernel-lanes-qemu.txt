@@ -18,11 +18,16 @@ times are indicative only.
    reports "lanes 2", calls pthread_create(pool_work, 1), and pool_work is entered and
    calls pool_rows on its own lane stack (0x10800ad000; the main lane's is
    0x1000069000). This differs from E6 (matrix, earlier image without the signal
-   library and the exit hook), where pool_work was not entered before shutdown. In
+   library and the exit hook, and with UKPLAT_CPU_MAXCOUNT=1, so without HAVE_SMP and the
+   APIC interrupt controller), where pool_work was not entered before shutdown; which
+   change matters was not isolated. Every gdb trace here is of set lanes
+   (UKPLAT_CPU_MAXCOUNT=2, HAVE_SMP=y), on -smp 1 and -smp 2; the shipped-template control
+   (Task 2, below) showed the same output and crash without a trace. In
    the observed order the second lane's pool_rows runs after both of the main lane's
    pool_turn calls; whether it claimed a row was not shown.
 2. The second vCPU is never used. With -smp 2, gdb lists CPU#1 as "halted" at
-   0x00000000000fd5fd (firmware range) at pool_open, at pool_work and at the crash;
+   0x00000000000fd5fd (firmware range) at pool_work and at _uk_crash (trace 1) and at
+   the alloc.c:198 assertion print (trace 2), each from gdb's `info threads`;
    every breakpoint hit is on CPU#0, and uk_lcpu_start (lib/uklcpu/lcpu.c:297) is not
    hit. In the 0.21.0 sources uk_lcpu_start has no caller (only its definition and the
    declaration at lib/uklcpu/include/uk/lcpu/pm.h:118); plat/kvm/x86/setup.c:149-154
@@ -40,7 +45,9 @@ times are indicative only.
    "--threads 1" runs of the same image end with QEMU 33. Not patched (plan: a crash is
    recorded, not patched). Whether the same crash happens with the shipped
    UKPLAT_CPU_MAXCOUNT=1 template (signals on) was not tried: no Lanes image of that
-   template exists and the time box allows no third probe build.
+   template exists and the time box allows no third probe build. (Superseded by Task 2:
+   built and run under the controller's ruling, crashes the same way; see "Shipped
+   template control".)
 4. hello (no parallel call, no pool) prints "hi" and ends with QEMU 33 in all four
    configurations.
 
@@ -197,7 +204,8 @@ Trace 3 (-smp 2): at the assertion, frame 3:
 - Whether the second lane claimed any row of a turn (its pool_rows ran after the main
   lane's two turns; the row counter was not inspected).
 - The shutdown crash on an image built with UKPLAT_CPU_MAXCOUNT=1 (the shipped template)
-  and "--threads 2": not built (time box).
+  and "--threads 2": not built (time box). (Superseded by Task 2: built and run under the
+  controller's ruling, crashes the same way; see "Shipped template control".)
 - A corpus image in set lanes (Task 2).
 - More than two lanes or vCPUs; KVM; any device run. Every run is TCG on the CPU.
 
@@ -233,8 +241,9 @@ Same generated C as the lanes set ($W/lanes1/gen/lanes.c, copied,
     (wall 0.5 s)
 
 The shipped template crashes the same way: the shutdown assertion does not need
-UKPLAT_CPU_MAXCOUNT=2 or HAVE_SMP. It follows from a second runtime lane (a second musl
-thread) existing at shutdown with the current template. No gdb trace was taken of this
+UKPLAT_CPU_MAXCOUNT=2 or HAVE_SMP. Inferred: "--threads 1" ends 33 and "--threads 2" ends
+253 on both images; in the traced (lanes-set) crash the thread being released is "main"
+(trace 3). No gdb trace was taken of this
 image; the assertion line and the exit value are the same as in the lanes set.
 
 == Stopping point (Task 2; change task 2.4 stays open) ==
@@ -243,11 +252,14 @@ Ruling (controller, 2026-11-05): Task 2 is the stall record; no corpus image was
 because a two-lane corpus run would end in the shutdown crash (QEMU 253) and its parity
 result could not be trusted.
 
-1. Two lanes run, but only on vCPU 0. With "+RTS --threads 2", pool_work(arg=1) is
+1. Two lanes run, but only on vCPU 0. On set lanes (UKPLAT_CPU_MAXCOUNT=2, HAVE_SMP=y),
+   on -smp 1 and -smp 2, with "+RTS --threads 2", pool_work(arg=1) is
    entered and calls pool_rows on its own lane stack (gdb trace 2 above), interleaved
-   cooperatively with the main lane on one vCPU. With -smp 2 the second vCPU never runs
+   cooperatively with the main lane on one vCPU; not traced on the shipped template,
+   whose control run showed the same output and crash. With -smp 2 the second vCPU never runs
    Unikraft code: gdb lists "Thread 1.2 (CPU#1 [halted ]) 0x00000000000fd5fd" (firmware
-   range) at pool_open, at pool_work, and at the crash, and the hardware breakpoint on
+   range) at pool_work and at _uk_crash (trace 1) and at the alloc.c:198 assertion print
+   (trace 2), each from gdb's `info threads`, and the hardware breakpoint on
    uk_lcpu_start is never hit. In the Unikraft 0.21.0 sources the function has no caller:
      $ cd $W/src/unikraft && grep -rn "uk_lcpu_start\b" --include=*.c --include=*.h .
      lib/uklcpu/lcpu.c:297:int uk_lcpu_start(const __u64 lcpuidx[], unsigned int *num,
