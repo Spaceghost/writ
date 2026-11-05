@@ -1,13 +1,13 @@
 # Portable host contract tasks
 
-All implementation and native integration tasks remain pending.
+Section 1 (tasks 1.1 to 1.4) has landed as a library model in the shared Bend layer, tested on two synthetic adapters (see `openspec/traceability/portable-host-contract.md`). Section 2, host qualification, is open: no native target is qualified, and every native control, adversarial probe, and per-target runtime record below is pending. The change stays unarchived until section 2 closes.
 
 ## 1. Shared Bend interfaces
 
-- [ ] 1.1 Implement versioned session/resource references and bounded canonical encoding; reject unknown versions, malformed lengths, and out-of-range values.
-- [ ] 1.2 Implement monitor-owned identity, delegation, incarnation, and generation binding; reject forged, ambiguous, inherited, transferred, and stale references outside approved scope.
-- [ ] 1.3 Define the five host primitive interfaces in Bend and prevent target bindings from introducing an alternate policy or publication path.
-- [ ] 1.4 Build shared conformance vectors for exact plan binding, retained provenance, caller identity, revocation, replay, and unchanged state on denial.
+- [x] 1.1 Implement versioned session/resource references and bounded canonical encoding; reject unknown versions, malformed lengths, and out-of-range values. (`HostWire.bend`; checks in `HostWireTests.bend`; traceability in `openspec/traceability/portable-host-contract.md`.)
+- [x] 1.2 Implement monitor-owned identity, delegation, incarnation, and generation binding; reject forged, ambiguous, inherited, transferred, and stale references outside approved scope. (`HostIdentity.bend`; checks in `HostIdentityTests.bend`; law `identity_denied_preserves_state`; traceability in `openspec/traceability/portable-host-contract.md`.)
+- [x] 1.3 Define the five host primitive interfaces in Bend and prevent target bindings from introducing an alternate policy or publication path. (`HostPrimitives.bend`, families 1 and 2, and `HostPublication.bend`, families 3 to 5; checks in `HostPrimitivesTests.bend`, requirement groups for families 1 and 2 and for families 3 to 5; laws `primitive_denied_preserves_state`, `primitive_denied_emits_nothing`, `publication_refused_preserves_state`, `publication_refused_emits_nothing`; traceability in `openspec/traceability/portable-host-contract.md`.)
+- [x] 1.4 Build shared conformance vectors for exact plan binding, retained provenance, caller identity, revocation, replay, and unchanged state on denial. (`HostConformanceVectors.bend`, inputs and expected lines; `HostConformanceTests.bend`, run on two synthetic adapters; lines in `verification/portable-host-vectors.txt`; traceability in `openspec/traceability/portable-host-contract.md`, section "Conformance vectors".)
 
 ## 2. Host qualification
 

@@ -3,6 +3,9 @@ import ./Guard.bend as Guard
 import ./LAWS.bend as Laws
 import ./HostBinding.bend as HostBinding
 import ./Issuance.bend as Issuance
+import ./HostIdentity.bend as HostIdentity
+import ./HostPrimitives.bend as HostPrimitives
+import ./HostPublication.bend as HostPublication
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -96,4 +99,19 @@ def Laws.nat_le_add_successor_false(u, extra):
 def Laws.derived_lifetime_extension_rejects(state, expected_revision, from, parent_id, parent, found, version, rights, extra, now, token):
   %Equal.sym(Maybe<&2, Issuance.Grant>, Issuance.find_grant(Issuance.grants(state), parent_id), Some{parent}, found) : {(Issuance.Change.accepted(Issuance.derive_found(_, state, expected_revision, from, parent_id, Issuance.Derivation{version, rights, Nat.add(Issuance.Grant.valid_until(parent), 1n+extra)}, now, token)), Issuance.Change.state(Issuance.derive_found(_, state, expected_revision, from, parent_id, Issuance.Derivation{version, rights, Nat.add(Issuance.Grant.valid_until(parent), 1n+extra)}, now, token))) == (False{}, state) : Bool & Issuance.State}
   %Equal.sym(Bool, Nat.is_le(Nat.add(Issuance.Grant.valid_until(parent), 1n+extra), Issuance.Grant.valid_until(parent)), False{}, Laws.nat_le_add_successor_false(Issuance.Grant.valid_until(parent), extra)) : {(Issuance.Change.accepted(Issuance.derive_bounded(_, parent, state, expected_revision, from, parent_id, Issuance.Derivation{version, rights, Nat.add(Issuance.Grant.valid_until(parent), 1n+extra)}, now, token)), Issuance.Change.state(Issuance.derive_bounded(_, parent, state, expected_revision, from, parent_id, Issuance.Derivation{version, rights, Nat.add(Issuance.Grant.valid_until(parent), 1n+extra)}, now, token))) == (False{}, state) : Bool & Issuance.State}
+  {==}
+
+def Laws.identity_denied_preserves_state(state, reason):
+  {==}
+
+def Laws.primitive_denied_preserves_state(state, reason):
+  {==}
+
+def Laws.primitive_denied_emits_nothing(state, reason):
+  {==}
+
+def Laws.publication_refused_preserves_state(state, session, ledger, reason):
+  {==}
+
+def Laws.publication_refused_emits_nothing(state, session, ledger, reason):
   {==}
