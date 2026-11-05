@@ -42,3 +42,5 @@ Final review: Needs fixes before merge (F1 a second rendezvous for the same requ
 Final fix round done (f2e4eb9): F1, F2 closed in code with reproducing checks; F3-F5 and record items applied; 1657 checks, 24 laws, byte-identical backends, strict 44. Scoped re-review dispatched.
 Final re-review: ALL CLOSED (F1-F5, record items 1-4); gate-removal mutants killed by named checks. Lane ready to merge.
 Merged to master as 7718403; re-pin 6e49420 (1942 checks, thirty-six laws); pushed to origin/master.
+Ruling: the Genode native run cannot afford the rendezvous corpus (262.5 s host QuickJS, 616k ticks; zero-argument sc_* fixtures recompute their chains exponentially) — fix in the test file only, output byte-identical, no model change — cost if wrong: a wasted test refactor; the model and pins are untouched either way.
+Task 9: dispatched implementer (build scenario stages once per check; brief task-9-brief.md)
