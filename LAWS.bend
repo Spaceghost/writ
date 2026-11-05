@@ -312,3 +312,35 @@ law rendezvous_wrong_provider_evidence_rejects:
   for snapshot: Rendezvous.Snapshot
   for wrong: {Rendezvous.selected_provider_is(state, from) == False{} : Bool}
   {(Rendezvous.Change.accepted(Rendezvous.submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+
+# ER-001, ER-007: only the selection's target is dispatched. For every state,
+# expected revision, offer identity, host state, worker session, Negotiation
+# session, expected session revision, Negotiation context and snapshot, if
+# the offer, the worker session or its binding is not the stored selection's
+# dispatch target (`dispatch_target_selected` is False: no selection, another
+# offer identity, a worker session that is not exactly one non-delegable
+# session of the selected provider, or one bound under another profile),
+# `dispatch` is not accepted and returns exactly the supplied state. So no
+# dispatch can be recorded for a provider, offer or worker session that is
+# not the current selection's, whatever its approvals, evidence or price:
+# that covers a cheaper candidate substituted after selection and an
+# unselected provider alike, and the attempt records nothing and advances no
+# revision. The proof pins `dispatch`'s outer `dispatch_target_selected`
+# match and that its Rejected branch carries the caller's state. It does not
+# prove that an accepted dispatch is correct (the selection's currency, the
+# evidence, the trial binding and replay are the inner gates, which
+# RendezvousTests, section `dispatch`, covers), says nothing about the
+# denial reason, and does not claim that the host executes only recorded
+# dispatches.
+law rendezvous_unselected_dispatch_rejects:
+  for state: Rendezvous.State
+  for expected_revision: Nat
+  for offer: Rendezvous.OfferId
+  for host: HostPrimitives.State
+  for worker_session: Nat
+  for session: Negotiation.Session
+  for expected_session: Nat
+  for n_context: Negotiation.Context
+  for snapshot: Rendezvous.Snapshot
+  for unselected: {Rendezvous.dispatch_target_selected(state, offer, host, worker_session) == False{} : Bool}
+  {(Rendezvous.Change.accepted(Rendezvous.dispatch(state, expected_revision, offer, host, worker_session, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.dispatch(state, expected_revision, offer, host, worker_session, session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}

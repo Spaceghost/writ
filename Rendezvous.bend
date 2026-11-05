@@ -3,6 +3,9 @@ import ./Guard.bend as Guard
 import ./Transfer.bend as T
 import ./Negotiation.bend as N
 import ./Issuance.bend as I
+import ./Frontend.bend as F
+import ./HostIdentity.bend as HI
+import ./HostPrimitives.bend as HP
 
 # EXECUTOR RENDEZVOUS MODEL (change add-executor-rendezvous, ER-001 to
 # ER-008). Negotiation fixes one code identity for a plan; this module records
@@ -55,6 +58,14 @@ import ./Issuance.bend as I
 #   exclusive (now < valid_until), matching Transfer, Frontend and Issuance.
 # - `expected_revision`, the revision the caller validated against; the host
 #   must install an accepted state atomically at that revision.
+# - `dispatch`'s `host: HP.State`, the monitor's CURRENT HostPrimitives state:
+#   its HostIdentity session table (each session's caller is set only by
+#   `bind_session` from authenticated native evidence) and its worker
+#   bindings (the configured profile `open_session` bound each worker session
+#   under). Plan ruling: a HostIdentity session's `F.Caller.subject` is the
+#   authenticated provider identity, the same namespace as `I.Principal.id`.
+#   A stale host state would keep a rebound or restarted session id, which
+#   Bend cannot detect.
 #
 # Constructing a Rendezvous record authenticates nothing. Public Data records
 # (offers, states) are a model, not unforgeable capabilities; a record is
@@ -76,7 +87,11 @@ import ./Issuance.bend as I
 # that match; its gate list therefore holds no revision gate.
 # `submit_evidence` matches `selected_provider_is` outermost, before its gate
 # list (which starts with the revision gate), because the law
-# `rendezvous_wrong_provider_evidence_rejects` pins that match.
+# `rendezvous_wrong_provider_evidence_rejects` pins that match. `dispatch`
+# matches `dispatch_target_selected` outermost, before its gate list (which
+# starts with the revision gate), because the law
+# `rendezvous_unselected_dispatch_rejects` pins that match; its False arm
+# reports the first failing target gate (NotSelected, or WrongProfile).
 #
 # Submission is not eligibility (plan ruling). `submit_offer` checks the
 # offer's identity, plan, backing grant, lifetime and record uniqueness. The
@@ -149,21 +164,54 @@ import ./Issuance.bend as I
 # Sampled under a retired selection still passes `N.approve`, `N.reserve`
 # and `N.start` on a later selection's projection, because those stages
 # never re-check the challenge or sample. Binding the session is the
-# dispatch gate's job (`session_follows_selection`). The challenge window
+# dispatch gate's job: `dispatch` requires `session_follows_selection`
+# (WrongTrial). The challenge window
 # is sound only if the host supplies non-decreasing monitor time across
 # selections and never reuses a challenge id across selections.
 #
+# Dispatch (ER-007, ER-006, ER-001). `dispatch` records that the current
+# selection runs on one worker session. Outermost, the target must be the
+# stored selection's: its offer identity, a single host session whose
+# authenticated caller is the selected provider, non-delegable, and bound as
+# a worker under exactly the selected offer's profile. Then, from the state,
+# snapshot, session and host supplied at the call: the revision; a Running,
+# live Negotiation session carrying exactly the rendezvous request (so a
+# change to the operation identity, manifest, destination or billing is a
+# ScopeMismatch, and a rendezvous opened for the new request has no offers,
+# approvals or evidence); the selection's currency, which re-runs every
+# eligibility gate (so a revocation, expiry or epoch advance of the grant,
+# or an origin's withdrawal, between selection and dispatch denies with its
+# own reason); stored evidence for this selection; the session's trial is
+# that evidence's; and one dispatch per selection. A substituted candidate
+# is never dispatched: a cheaper newcomer does not displace the selection,
+# and after `abandon` a new selection gets a new id, for which the old
+# selection's evidence and dispatch record do not count, and its provider
+# needs its own origin approvals.
+#
+# Provider registry (plan ruling: no use-time hook). `provider_registry` is
+# the Frontend registry from which the monitor opens the dispatched worker's
+# input handle, the handle `HostPrimitives.issue` binds the worker's input
+# reference to: Issuance's registry for the selected provider filtered to
+# the selected grant's token, and empty unless the selection is current and
+# dispatched at this call. The monitor must open the worker's input from
+# this projection, rebuilt for every use, and never from the raw issuer
+# registry or a cached projection; Bend cannot detect either. An identity
+# entry the monitor already issued is not retired here (HostPublication's
+# revocation family does that); once the projection is empty, no new mount
+# opens and a Frontend use judged against the rebuilt registry is denied.
+#
 # Public entry points: `open`, `submit_offer`, `submit_approval`,
 # `withdraw_approval`, `select`, `abandon` (a monitor action),
-# `withdraw_offer`, `submit_evidence`, the projection
-# `negotiation_context`, the read-only diagnostic `ineligibility`, `valid`,
-# the `Change.*` accessors and the state, snapshot and record accessors.
-# Every other def (`selection_current` and `selected_provider_is` included)
-# is an exported implementation helper; calling one does not perform a
-# transition's checks.
+# `withdraw_offer`, `submit_evidence`, `dispatch`, the projections
+# `negotiation_context` and `provider_registry`, the read-only diagnostic
+# `ineligibility`, `valid`, the `Change.*` accessors and the state, snapshot
+# and record accessors. Every other def (`selection_current`,
+# `selected_provider_is`, `session_follows_selection` and
+# `dispatch_target_selected` included) is an exported implementation helper;
+# calling one does not perform a transition's checks.
 #
 # Laws. The module relies on the existing law `failed_check_denies` through
-# its gate structure, without modifying it, and adds four (LAWS.bend):
+# its gate structure, without modifying it, and adds five (LAWS.bend):
 # - `offer_order_irreflexive`: `before(a, a)` is False for every offer, so
 #   the ER-003 comparator is strict on its diagonal and an offer is never
 #   ranked ahead of an identical record; a `<=`-style comparator, which would
@@ -188,6 +236,15 @@ import ./Issuance.bend as I
 #   `selected_provider_is` match. It does not cover substitutions by the
 #   selected provider itself (the `trials` tests do), the selection's
 #   currency, or the projection.
+# - `rendezvous_unselected_dispatch_rejects`: when the offer, worker session
+#   or its binding is not the stored selection's dispatch target
+#   (`dispatch_target_selected` is False, including when there is no
+#   selection), `dispatch` is not accepted and returns exactly the supplied
+#   state, whatever approvals, evidence or price stand behind it (ER-001,
+#   ER-007). It pins the outer target match. It does not prove that an
+#   accepted dispatch is correct (the `dispatch` tests cover currency,
+#   evidence, the trial and replay), or that the host executes only
+#   recorded dispatches.
 # Two auxiliary arithmetic laws, `nat_lt_irreflexive` and
 # `nat_eq_reflexive`, are what the irreflexivity proof needs.
 
@@ -266,7 +323,9 @@ type Evidences is Data:
   NoEvidence{}
   Evidences{head: StoredEvidence, tail: Evidences}
 
-# One recorded dispatch of a selection to a worker session (a later task).
+# One recorded dispatch of a selection to a worker session (`dispatch`): the
+# selection's id and the HostIdentity session id of the worker it was
+# dispatched to. It authorizes nothing by itself.
 type Dispatch is Data:
   Dispatch{selection: Nat, worker_session: Nat}
 
@@ -1907,8 +1966,8 @@ def session_follows(selection: Selection, +state: State, +session: N.Session) ->
 # with no selection or no evidence. The projection does not take the
 # session, and `N.approve`, `N.reserve` and `N.start` never re-check the
 # challenge or sample, so a session that reached Sampled under a retired
-# selection still passes them on a later selection's projection; the
-# dispatch gate must require this predicate. It relies on the host never
+# selection still passes them on a later selection's projection, so
+# `dispatch` requires this predicate (WrongTrial). It relies on the host never
 # reusing a challenge id across selections. Exported implementation helper.
 def session_follows_selection(+state: State, +session: N.Session) -> Bool:
   session_follows(selection(state), state, session)
@@ -2097,6 +2156,263 @@ def current_context(current: Bool, +state: State, n_context: N.Context, +snapsho
 # selections and challenge ids are not reused across selections.
 def negotiation_context(+state: State, n_context: N.Context, +snapshot: Snapshot) -> N.Context:
   current_context(selection_current(state, snapshot), state, n_context, snapshot)
+
+# --- Dispatch (ER-007, ER-006 dispatch, ER-001 dispatch) -------------------
+
+# The identity table's sessions under `worker_session`, counted. The host
+# state is a trusted input: the monitor's current HostPrimitives state.
+def worker_lookup(host: HP.State, +worker_session: Nat) -> HI.SessionLookup:
+  HI.session_at(HI.sessions(HP.identity(host)), worker_session)
+
+# Whether the lookup found exactly one session whose authenticated caller
+# subject is `provider`'s principal id. The HostIdentity caller is set only
+# by `bind_session` from authenticated native evidence and is the same
+# namespace as `I.Principal.id` (plan ruling, as the Issuance header states
+# for `F.Caller.subject`), so this compares the worker's authenticated
+# identity with the provider the selection names. No session, or two under
+# one id, is not the selected provider's.
+def worker_caller_is(found: HI.SessionLookup, +provider: I.Principal) -> Bool:
+  match found:
+    case HI.NoSession{}:
+      False{}
+    case HI.OneSession{session}:
+      Nat.is_eq(HI.caller_subject(HI.session_caller(session)), I.Principal.id(provider))
+    case HI.ManySessions{}:
+      False{}
+
+# Whether the binding lookup found exactly one binding, naming `profile`. A
+# session with no worker binding (a client session), or two, names none.
+def binding_names(found: HP.BindingLookup, +profile: Nat) -> Bool:
+  match found:
+    case HP.NoBinding{}:
+      False{}
+    case HP.OneBinding{bound}:
+      Nat.is_eq(bound, profile)
+    case HP.ManyBindings{}:
+      False{}
+
+# The dispatch target is the stored selection's, in denial order: a
+# selection exists and its offer's identity is `offer` (NotSelected); the
+# identity table holds exactly one session under `worker_session`, whose
+# authenticated caller is the selected offer's provider (NotSelected); that
+# session is non-delegable (NotSelected: a client session that could pass
+# its inputs on is never a worker target); and the worker binding recorded
+# for that session names exactly the selected offer's profile
+# (WrongProfile). It reads only the stored selection and the host state; the
+# selection's currency is `dispatch_gates`' job. Exported implementation
+# helper of `dispatch`.
+def target_gates(selection: Selection, +offer: OfferId, +host: HP.State, +worker_session: Nat) -> Gates:
+  match selection:
+    case NoSelection{}:
+      Gate{False{}, NotSelected{}, Open{}}
+    case Selection{_, +selected, _, _, _, _}:
+      Gate{OfferId.equal(Offer.id(selected), offer), NotSelected{},
+      Gate{worker_caller_is(worker_lookup(host, worker_session), Offer.provider(selected)), NotSelected{},
+      Gate{HP.non_delegable_session(worker_lookup(host, worker_session)), NotSelected{},
+      Gate{binding_names(HP.binding_at(HP.bindings(host), worker_session), Offer.profile(selected)),
+        WrongProfile{},
+      Open{}}}}}
+
+# Whether `offer`, the worker session `worker_session` and its binding in
+# `host` are the stored selection's dispatch target (`target_gates`). False
+# with no selection. The law `rendezvous_unselected_dispatch_rejects` pins
+# the outer match on it. It says nothing about currency.
+def dispatch_target_selected(+state: State, +offer: OfferId, +host: HP.State, +worker_session: Nat) -> Bool:
+  Guard.all(Gates.checks(target_gates(selection(state), offer, host, worker_session)))
+
+# Whether evidence stored under selection `id` names the selected offer's
+# identity and provider claim. Compared as well as the id, as in the
+# projection, so a monitor-installed record under the current id for
+# another offer or provider is not this selection's evidence.
+def evidence_for(evidences: Evidences, +id: Nat, +offer: Offer) -> Bool:
+  match evidences:
+    case NoEvidence{}:
+      False{}
+    case Evidences{StoredEvidence{selection, Evidence{_, _, provider, named_offer, _, _}}, tail}:
+      (Nat.is_eq(selection, id) && OfferId.equal(named_offer, Offer.id(offer))
+        && I.Principal.equal(provider, Offer.provider(offer)))
+        || evidence_for(tail, id, offer)
+
+# Whether a dispatch is recorded for selection `id`. Records are never
+# removed, and a retired selection's id is never reused, so a record for
+# an earlier selection does not count for a later one.
+def dispatch_recorded(dispatches: Dispatches, +id: Nat) -> Bool:
+  match dispatches:
+    case NoDispatches{}:
+      False{}
+    case Dispatches{Dispatch{selection, _}, tail}:
+      Nat.is_eq(selection, id) || dispatch_recorded(tail, id)
+
+# The gates that bind the dispatch to the stored selection's trial, after its
+# currency, in denial order: evidence for this selection, offer and provider
+# is stored (MissingEvidence); the Negotiation session's recorded challenge
+# is that evidence's (`session_follows_selection`; WrongTrial: a session
+# whose trial ran under a retired selection); and no dispatch is recorded
+# for this selection (Replay). The NoSelection arm is unreachable after
+# `current_gates`. Exported implementation helper of `dispatch`.
+def run_gates(selection: Selection, +state: State, +session: N.Session) -> Gates:
+  match selection:
+    case NoSelection{}:
+      Gate{False{}, NotSelected{}, Open{}}
+    case Selection{+id, +offer, _, _, _, _}:
+      Gate{evidence_for(evidence(state), id, offer), MissingEvidence{},
+      Gate{session_follows_selection(state, session), WrongTrial{},
+      Gate{Bool.not(dispatch_recorded(dispatched(state), id)), Replay{},
+      Open{}}}}
+
+# Every check a dispatch must pass after the outer target match, in denial
+# order: the race (revision); the Negotiation session is at
+# `expected_session`, at Running and live under `n_context` (WrongStage); its
+# request is exactly the rendezvous request, so the operation identity,
+# manifest, destination, code, reader, quote and units are the ones the
+# selection was made for (ScopeMismatch); the selection's currency
+# (`current_gates`: the selected record still stored and unambiguous, the
+# request, the live stamp, and every eligibility gate re-run against the
+# snapshot, so the grant's revocation, expiry and epoch and every origin's
+# approval are re-checked here with their own reasons); then `run_gates`.
+def dispatch_gates(+state: State, +expected_revision: Nat, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Gates:
+  Gate{revision_current(state, expected_revision), StaleRevision{},
+  Gate{N.ready(session, expected_session, N.Running{}, n_context), WrongStage{},
+  Gate{N.Request.equal(N.Session.request(session), request(state)), ScopeMismatch{},
+  Gates.append(current_gates(selection(state), state, snapshot), run_gates(selection(state), state, session))}}}
+
+def dispatch_checks(+state: State, +expected_revision: Nat, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Guard.Checks:
+  Gates.checks(dispatch_gates(state, expected_revision, session, expected_session, n_context, snapshot))
+
+# Record Dispatch{selection id, worker_session} and advance the revision
+# once; the change id is the selection id. Called only after every gate
+# held, so a selection exists and has no dispatch yet.
+def commit_dispatch(state: State, worker_session: Nat) -> Change:
+  match state:
+    case State{revision, next_id, request, constraint, offers, approvals, +selection, retired,
+        evidence, dispatched, seen}:
+      Changed{State{1n+revision, next_id, request, constraint, offers, approvals, selection, retired,
+        evidence, Dispatches{Dispatch{selection_id(selection), worker_session}, dispatched}, seen},
+        selection_id(selection)}
+
+def dispatch_checked(ok: Bool, +state: State, +expected_revision: Nat, +worker_session: Nat,
+    +session: N.Session, +expected_session: Nat, +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the fallback is unreachable here.
+      Rejected{state, Gates.reason(dispatch_gates(state, expected_revision, session, expected_session,
+        n_context, snapshot), StaleRevision{})}
+    case True{}:
+      commit_dispatch(state, worker_session)
+
+# The target match stays outermost (law rendezvous_unselected_dispatch_rejects):
+# a provider, offer or worker session that is not the stored selection's is
+# refused before its revision, session or evidence is read. Its reason is the
+# first failing target gate's (NotSelected, or WrongProfile for the binding).
+def dispatch_by(selected: Bool, +state: State, +expected_revision: Nat, +offer: OfferId, +host: HP.State,
+    +worker_session: Nat, +session: N.Session, +expected_session: Nat, +n_context: N.Context,
+    +snapshot: Snapshot) -> Change:
+  match selected:
+    case False{}:
+      Rejected{state, Gates.reason(target_gates(selection(state), offer, host, worker_session), NotSelected{})}
+    case True{}:
+      dispatch_checked(Guard.all(dispatch_checks(state, expected_revision, session, expected_session, n_context,
+        snapshot)), state, expected_revision, worker_session, session, expected_session, n_context, snapshot)
+
+# Public entry point (ER-007, ER-006, ER-001): the monitor records that the
+# current selection is dispatched to one worker session. `host` is the
+# monitor's current HostPrimitives state (its identity table and worker
+# bindings), `session` the Negotiation session the dispatch runs under, and
+# `n_context` the Negotiation context it is judged live under; all three are
+# trusted host inputs. Accepted only when `offer` is the stored selection's
+# offer identity, `worker_session` names exactly one session whose
+# authenticated caller is the selected provider, that session is
+# non-delegable and its worker binding names exactly the selected offer's
+# profile (outermost); the state is at `expected_revision`; the Negotiation
+# session is at `expected_session` and Running and live; its request is the
+# rendezvous request; the selection is current against the snapshot
+# (`current_gates`, every eligibility gate included); evidence for this
+# selection, offer and provider is stored; the session's trial is that
+# evidence's (`session_follows_selection`); and the selection is not yet
+# dispatched. It then records Dispatch{selection id, worker_session} and
+# advances the revision once; the change id is the selection id. A dispatch
+# record authorizes nothing by itself: it only opens `provider_registry`,
+# which is still re-derived at every call. Denial order: NotSelected (offer,
+# worker caller, delegable session), WrongProfile (binding), StaleRevision,
+# WrongStage, ScopeMismatch, NotSelected or the currency reason (StaleEpoch,
+# or an eligibility reason such as Revoked, Expired or MissingApproval),
+# MissingEvidence, WrongTrial, Replay; the state is returned unchanged.
+def dispatch(+state: State, +expected_revision: Nat, +offer: OfferId, +host: HP.State, +worker_session: Nat,
+    +session: N.Session, +expected_session: Nat, +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  dispatch_by(dispatch_target_selected(state, offer, host, worker_session), state, expected_revision, offer,
+    host, worker_session, session, expected_session, n_context, snapshot)
+
+# --- Provider registry projection (ER-007, ER-001) -------------------------
+
+def keep_capability(ok: Bool, capability: F.Capability, rest: F.Registry) -> F.Registry:
+  match ok:
+    case True{}:
+      F.Registered{capability, rest}
+    case False{}:
+      rest
+
+# The capabilities in `registry` under exactly `token`, in supplied order.
+# Exported implementation helper of `provider_registry`.
+def registry_for_token(registry: F.Registry, +token: T.CodeId) -> F.Registry:
+  match registry:
+    case F.EmptyRegistry{}:
+      F.EmptyRegistry{}
+    case F.Registered{+capability, rest}:
+      keep_capability(T.CodeId.equal(F.token(capability), token), capability, registry_for_token(rest, token))
+
+# Issuance's registry for the provider at `now`, filtered to the backing
+# grant's token. The None arm (no unambiguous grant under the offer's id) is
+# unreachable while the selection is current, and projects nothing.
+def granted_registry(found: Maybe<&2, I.Grant>, +issuer: I.State, +provider: I.Principal, +now: Nat) -> F.Registry:
+  match found:
+    case None{}:
+      F.EmptyRegistry{}
+    case Some{grant}:
+      registry_for_token(I.registry(issuer, provider, now), I.Grant.token(grant))
+
+def selected_registry(selection: Selection, +snapshot: Snapshot) -> F.Registry:
+  match selection:
+    case NoSelection{}:
+      F.EmptyRegistry{}
+    case Selection{_, +offer, _, _, _, _}:
+      granted_registry(grant_for(Snapshot.issuer(snapshot), Offer.grant(offer)), Snapshot.issuer(snapshot),
+        Offer.provider(offer), Snapshot.now(snapshot))
+
+# Whether a dispatch is recorded for the stored selection. False with none.
+def selection_dispatched(selection: Selection, +state: State) -> Bool:
+  match selection:
+    case NoSelection{}:
+      False{}
+    case Selection{id, _, _, _, _, _}:
+      dispatch_recorded(dispatched(state), id)
+
+def registry_open(open: Bool, +selection: Selection, +snapshot: Snapshot) -> F.Registry:
+  match open:
+    case False{}:
+      F.EmptyRegistry{}
+    case True{}:
+      selected_registry(selection, snapshot)
+
+# Public entry point (ER-007, ER-001): the Frontend registry from which the
+# monitor opens the dispatched worker's input handle (the handle
+# `HostPrimitives.issue` binds the worker's input reference to). It is
+# `I.registry(issuer, selected provider, now)` filtered to the token of the
+# selected offer's backing grant, so it holds at most that one capability,
+# and it is produced only while the selection is current at this call
+# (`selection_current`) and a dispatch is recorded for it; otherwise it is
+# empty. So after abandonment or withdrawal, a revocation, an expiry, an
+# epoch advance or an origin's withdrawal, and before dispatch, the
+# unchanged `F.mount`, `F.open` and `F.checked_plan` find no capability.
+# The monitor must rebuild it from the current rendezvous and issuer states
+# for every use and must never open the worker's input from the raw issuer
+# registry (which also holds the provider's other grants) or from a cached
+# projection; Bend cannot detect either.
+def provider_registry(+state: State, +snapshot: Snapshot) -> F.Registry:
+  registry_open(selection_current(state, snapshot) && selection_dispatched(selection(state), state),
+    selection(state), snapshot)
 
 # --- Structural validity -----------------------------------------------------
 

@@ -43,3 +43,7 @@
 2026-11-05T16:25:07Z	implementer	fix round 1 done: 88 mutants (85 killed, 3 equivalent: P14, P18, T10); Rendezvous 154 checks, Tests.bend 1582 PASS, PROOF.bend ALL PROOFS CHECK at 23 laws; report section and Carried to Task 5 written; committing
 2026-11-05T16:25:28Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T16:27:23Z	controller	task 4 complete; task 5 dispatched (dispatch and invalidation)
+2026-11-05T16:34:26Z	implementer	task 5 started: read brief, plan constraints, task 4 report and re-review (carried WrongTrial gate, 1191 wrap), Rendezvous, HostIdentity, HostPrimitives, Issuance registry, laws
+2026-11-05T16:42:08Z	implementer	dispatch, target_gates/run_gates, provider_registry, law rendezvous_unselected_dispatch_rejects and 25 dispatch checks written; RendezvousTests 179 checks pass, PROOF.bend checks; starting mutation sweep in scratchpad executor-rendezvous-t5/
+2026-11-05T16:45:26Z	implementer	mutation sweep: 43 mutants, 41 killed, 2 equivalent (G5, P5); added kill checks for T6/T8 (worker_caller_is direct) and E1 (reselected same offer); running Tests.bend and PROOF.bend
+2026-11-05T16:48:15Z	implementer	verification green: Rendezvous 183 checks, Tests.bend 1611 PASS 0 FAIL (ALL LIBRARY TESTS PASSED), PROOF.bend ALL PROOFS CHECK at 24 laws; box 1.4 checked; task-5-report.md and task-5-mutants.md written; committing
