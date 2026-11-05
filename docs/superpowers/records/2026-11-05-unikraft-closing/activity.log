@@ -30,3 +30,5 @@
 2026-11-05T01:33:26Z	implementer	drill comparison: image sizes equal (1193040), 6 differing bytes all inside the 25-byte build-time string in .uk_libinfo (offset 1116868); masked images byte-identical; nm inventory identical (4523 symbols); size -A identical; check-binary.sh IO.print PASS exit 0 both; link set 55 objects identical; .config differs only in CONFIG_UK_APP. One TCG boot check-image PASS (hi, 33, 0.3 s) and one KVM boot PASS (hi, 33, 1.1 s). Writing verification/unikernel-appliance-rules.md
 2026-11-05T01:34:07Z	implementer	TCG boots through the tightened scripts (die, exit, hello, exhaust, overflow, corpus): dropped 0 PASS. Evidence Fix round 2 section, top table labelled pre-rule, INVENTORY and 3.1 note reworded; OpenSpec strict 44 passed; report fix round 2 appended; committing
 2026-11-05T01:34:33Z	implementer	report self-test output corrected (first capture ran without W exported); commit amended
+2026-11-05T01:34:49Z	controller	task 1 fix round 2 reported; scoped re-review dispatched
+2026-11-05T01:36:03Z	controller	task 1 complete (re-review all closed)
