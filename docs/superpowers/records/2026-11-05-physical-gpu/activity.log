@@ -16,3 +16,4 @@
 2026-11-05T03:07:28Z	controller	review: evidence wording fixes; fix round 1 dispatched
 2026-11-05T03:07:59Z	implementer	fix round 1 started: read task-1-review.md; quoted rebuild and -lcuda grep
 2026-11-05T03:08:34Z	implementer	fix round 1: evidence and report updated (load average, quoted rebuild, Execution line, -lcuda grep); committing
+2026-11-05T03:08:49Z	controller	task 1 complete; task 2 dispatched (run record, gate, negative controls)
