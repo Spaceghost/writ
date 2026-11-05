@@ -1480,6 +1480,236 @@ PASS: AU-007 no Events, Metric or Alert emission word equals a Task 1 payload, e
 PASS: AU-007 no fallback: Transmission has only Sent and Withheld (an exhaustive match without a wildcard), and Withheld carries nothing
 PASS: AU-007 no grant, an unregistered sink, revoked, expired, other-epoch, unknown version and stale revision all give exactly Withheld{} with no effects
 Audit: 285 checks passed
+PASS: ER-001 open: a fresh rendezvous for NT.request() is valid at revision 0 with no offers
+PASS: ER-001 synthetic issuer: grants 3 (A), 6 (B) and 9 (D) are registered through Issuance and current at 100
+PASS: ER-001 grant_backs: grant 3 backs A for TF.plan() and neither B nor the two-source plan
+PASS: ER-001 provider A's offer backed by its current grant 3 is stored at revision 1 and (A, serial 1) is recorded as seen
+PASS: ER-001 an offer valid until 150, exactly grant 3's own valid_until, is accepted
+PASS: ER-001 same code different provider: B's offer with A's code, plan, profile and quote is stored as a second record
+PASS: ER-001 same code different provider: the two offers share a code identity but are not equal records and have distinct identities
+PASS: ER-008 valid: an offer whose identity names another provider, or a serial recorded twice, is not a valid state
+PASS: ER-008 valid: A's offer serial 1 beside an approval serial 1 from the same principal is valid, the two namespaces being separate
+PASS: ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1)
+PASS: ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139
+PASS: ER-001 projection agreement: grant 3 behind A's accepted offer passes I.usable_by for A, the filter of I.registry, and not for B
+PASS: ER-001 unauthenticated provider: from B submitting an offer claiming provider A denied Unauthenticated
+PASS: ER-008 from A submitting under OfferId{202, 1}, B's identity namespace, denied Unauthenticated
+PASS: ER-001 provider C with no registered grant denied NoGrant
+PASS: ER-001 provider B citing A's grant 3, whose subject is not B, denied NoGrant
+PASS: ER-001 scope narrower than the plan: A's grant 3 for the one-source plan behind an offer for the two-source request denied ScopeMismatch
+PASS: ER-001 an offer whose plan drops object 11 from the two-source request's manifest denied ScopeMismatch
+PASS: ER-001 an offer whose plan names destination 20v9 instead of the request's 20v8 denied ScopeMismatch
+PASS: ER-001 an offer whose plan differs from the request's in one code word denied ScopeMismatch
+PASS: ER-001 after object 10's read authority revokes the source approval behind grant 3, A's offer is denied Revoked
+PASS: ER-001 A's offer at 150, when grant 3 (valid while now < 150) has expired, denied Expired
+PASS: ER-001 once the monitor installs authority epoch 5 in the issuer, A's grant scoped at epoch 3 is stale: denied StaleEpoch
+PASS: ER-001 provider D's current grant 9 with rights 1 does not cover read plus execute: denied RightsNotHeld
+PASS: ER-001 an offer valid until 160, past grant 3's 150, denied Expired
+PASS: ER-001 an offer submitted at its own valid_until 100 denied Expired
+PASS: ER-001 an offer quoting 0 names no billing term: denied OverBudget
+PASS: ER-008 a second identical record under OfferId{201, 1} denied DuplicateOffer
+PASS: ER-008 a second record under OfferId{201, 1} quoting 35 instead of 40 denied DuplicateOffer
+PASS: ER-008 A's serial 1 already seen with no record stored under it (the shape a withdrawal leaves) denied Replay
+PASS: ER-001 offer record version 2 denied UnknownVersion
+PASS: ER-001 offer record version 0 denied UnknownVersion
+PASS: ER-008 A's serial 7 already seen with no record stored under it: an offer under OfferId{201, 7} denied Replay
+PASS: ER-001 B's offer validated at revision 0 against the state at revision 1 denied StaleRevision
+PASS: ER-006 object 10's read authority 101 approves provider A at profile 1 for TF.plan(): stored unwithdrawn under id 1 at revision 1, (101, serial 12) seen
+PASS: ER-006 101's second approval, serial 13 for provider B at profile 3, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)
+PASS: ER-006 object 11's authority 104 may use serial 12 after 101 used it: replay is per issuer
+PASS: ER-006 an offer serial 12 recorded for 101 does not replay 101's approval serial 12: separate namespaces
+PASS: ER-006 an approval valid until 101 is accepted at 100
+PASS: ER-006 101 withdraws approval 1: the record stays in place marked withdrawn, its serial stays seen, revision 2
+PASS: ER-006 withdrawing approval 1 leaves approval 2 unwithdrawn, and withdrawing 2 later keeps 1 withdrawn
+PASS: ER-006 after the withdrawal a new approval for object 10 and A under serial 15 is a new record, id 2, and approves A again
+PASS: ER-006 unauthenticated approver: from the write authority 102, an approval claiming object 10's authority 101 denied Unauthenticated
+PASS: ER-006 the write authority 102 approving object 10 under its own identity denied NotAuthority
+PASS: ER-006 read authority 103 for read domain 9, where object 10 is not placed, approving object 10 denied NotAuthority
+PASS: ER-006 the inherited origin 30v6, listed by T.required_origins but placed nowhere in the issuer, denied WrongDomain
+PASS: ER-006 object 10 placed twice in the issuer is in no domain: denied WrongDomain
+PASS: ER-006 an approval for a plan that differs from the request's in invocation (98, not 99) denied ScopeMismatch
+PASS: ER-006 an approval for object 11, which TF.plan() does not need, denied ScopeMismatch; with a stale transfer context (Missing lookup), denied ScopeMismatch
+PASS: ER-006 an approval submitted at its own valid_until 100 denied Expired
+PASS: ER-006 101 reusing serial 12 for a different approval (provider B, profile 2) denied Replay
+PASS: ER-006 101's serial 12, recorded behind its serial 13, denied Replay
+PASS: ER-006 resubmitting withdrawn approval serial 12 denied Replay
+PASS: ER-006 approval record versions 2 and 0 denied UnknownVersion
+PASS: ER-006 an approval validated at revision 0 against the state at revision 1 denied StaleRevision
+PASS: ER-006 withdrawal of approval 1 by 103, not its issuer, denied Unauthenticated
+PASS: ER-006 withdrawal by 101 after the monitor removed it from the directory denied NotAuthority
+PASS: ER-006 withdrawal by 101 after the monitor moved object 10 to read domain 9 denied NotAuthority
+PASS: ER-006 a withdrawal validated at revision 0 against the state at revision 1 denied StaleRevision
+PASS: ER-006 withdrawal of an absent id 5, or of id 1 held by two records with id 2 between them (synthetic, not valid), denied MissingApproval
+PASS: ER-006 withdrawal helpers behind the MissingApproval gate: a missing approval has no issuer, no authority and no unwithdrawn flag
+PASS: ER-006 a second withdrawal of approval 1 denied Revoked: withdrawal is single use
+PASS: ER-006 origin_approved: object 10 approved for A at profile 1 at 100 and 129, also with B's approval stored ahead of it, and for B at profile 3
+PASS: ER-006 origin_approved is false once the issuer installs a new live stamp (epoch 5)
+PASS: ER-006 origin_approved is false for provider B and for profile 2 when only A at profile 1 was approved
+PASS: ER-006 origin_approved is false for another plan and for another origin (object 11)
+PASS: ER-006 origin_approved is false after withdrawal
+PASS: ER-006 origin_approved is false at now = valid_until 130
+PASS: ER-006 origin_approved re-reads the issuer: false once 101 leaves the directory, once object 10 moves to read domain 9, or once object 10 is placed twice
+PASS: ER-006 origins_approved: true for TF.plan() with object 10 approved; false for a Missing lookup (also via a stale context) and for an empty one
+PASS: ER-006 two-source plan: approval of object 10 only leaves origins_approved false; approving object 11 too makes it true
+PASS: ER-006 the inherited origin 30v6 listed by T.required_origins but unapproved leaves origins_approved false
+PASS: ER-002 cheapest offer violates an origin: B quotes 30 without object 10's approval, A quotes 40 with it; A is selected and ineligibility(B) is MissingApproval
+PASS: ER-003 the selection record is Selection{2, A's complete offer, the request, the live stamp, 100, ranking profile 1}; id 2 issued, revision 4, next_id 3, offers and approvals unchanged
+PASS: ER-003 the first ranking profile is 1, and a first selection retires nothing
+PASS: ER-002 over the ceiling: B quoting 43 against the reader's ceiling 42 is excluded OverBudget and A is selected; B quoting exactly 42 is eligible
+PASS: ER-002 a monitor-installed B offer quoting 0 names no billing term: ineligible OverBudget
+PASS: ER-002 a profile outside the constraint: B quoting 30 at profile 2 (approved at profile 2) against the constraint {1} is excluded Constraint and A is selected
+PASS: ER-002 a grant revoked after submission: B quoting 30, eligible when submitted, is excluded Revoked once 101 revokes the source approval behind grant 6, and A is selected
+PASS: ER-002 an expired offer: B quoting 30 valid until 101 is eligible at 100, excluded Expired at 101, and A is selected
+PASS: ER-002 a monitor-installed B offer valid until 160, past grant 6's 150, is ineligible Expired
+PASS: ER-002 a grant narrower than the request (monitor-installed): B quoting 30 for the two-source request on its one-source grant 6 is excluded ScopeMismatch, and A on its two-source grant 13 is selected
+PASS: ER-002 an offer record of version 2 is ineligible UnknownVersion
+PASS: ER-008 an offer under A's identity carrying B's claim and grant is ineligible Unauthenticated
+PASS: ER-002 an offer whose plan differs from the request in one code word is ineligible ScopeMismatch
+PASS: ER-002 B citing A's grant 3, and C citing the absent grant 99, are ineligible NoGrant
+PASS: ER-002 A's offer is ineligible StaleEpoch once the issuer is at epoch 5, and Expired at 150 when grant 3 has expired
+PASS: ER-002 D's offer on its read-only grant 9 is ineligible RightsNotHeld
+PASS: ER-002 profile_admitted: nothing is admitted by an empty constraint, and a profile listed second is admitted
+PASS: ER-003 equal approved quotes: A (201) and B (202) both quote 40 and are eligible; A is selected in both submission orders and the two runs give the same selection
+PASS: ER-003 one provider, two equally priced candidates: A's serials 1 (profile 1) and 2 (profile 2) both quote 40 and are admitted; serial 1 is selected in both orders
+PASS: ER-008 offers equal in every field but OfferId are ranked by identity alone: {201, 1} before {201, 7} and before {202, 1}, never the reverse, and before is false both ways only for the same identity
+PASS: ER-003 a lower quote beats a lower provider id: B at 35 ranks ahead of A at 40
+PASS: ER-003 a lower provider id beats a lower serial: A's serial 9 ranks ahead of B's serial 1 at equal quotes
+PASS: ER-003 best: the first-ranked of three offers wherever it sits, and nothing from an empty list
+PASS: ER-008 conflicting offer identity: two records under OfferId{201, 1} quoting 40 and 35, with B's record between them or ahead of them, deny ConflictingOffer
+PASS: ER-008 offers_unambiguous: false for one identity under two contents, true for three distinct identities
+PASS: ER-008 the same snapshot holding two identical records under OfferId{201, 1} selects normally (A)
+PASS: ER-008 A's withdraw_offer of OfferId{201, 1} removes both records under it and keeps every serial; select then proceeds and picks B
+PASS: ER-008 after the withdrawal, A resubmitting under serial 1 is denied Replay
+PASS: ER-008 a withdrawal of OfferId{201, 1} by B denied Unauthenticated
+PASS: ER-008 withdrawing OfferId{201, 1} a second time, or A's never-stored serial 7, denied Revoked: withdrawal is single use
+PASS: ER-008 a withdrawal validated at revision 3 against the state at revision 4 denied StaleRevision
+PASS: ER-002 selection racing revocation: A's grant revoked in the issuer before select commits; with B also eligible, B is selected in both submission orders
+PASS: ER-002 selection racing revocation with no other offer: denied NoEligibleOffer, and the select gate list itself fails
+PASS: ER-003 an offer submitted after the snapshot was ranked at revision 4 moves the state to 5; select at 4 is denied StaleRevision with the state unchanged
+PASS: ER-003 select while a selection exists denied AlreadySelected
+PASS: ER-003 abandon retires selection 3: no selection, retired 3, next_id 4 kept, revision 6, offers kept
+PASS: ER-003 after abandon a new selection gets the new id 4 and selection 3 stays retired
+PASS: ER-003 abandon with no selection denied NotSelected (single use); abandon at revision 4 against revision 5 denied StaleRevision
+PASS: ER-003 select on a Negotiation session at Proposed, or at the wrong session revision, denied WrongStage
+PASS: ER-003 a session whose request differs in quote (41, not 42) denied ScopeMismatch
+PASS: ER-008 withdrawing the selected offer retires selection 3 and leaves only B's record
+PASS: ER-008 B withdrawing its unselected offer keeps A's selection and retires nothing
+PASS: ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3
+PASS: ER-003 a selection of A's profile-2 offer records ranking profile 1, not the offer's profile: Selection{3, the offer, the request, the live stamp, 100, 1}
+PASS: ER-006 an approval submitted while the issuer is at epoch 5 and the transfer context still at the plan's epoch 3 denied StaleEpoch
+PASS: ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110
+PASS: ER-004 the projection for selection 3 carries exactly challenges 21 and 24, no sample, one approval for 10v4 valid until 113 (the offer's end, before approval 130 and grant 150), and the supplied budgets and transfer
+PASS: ER-004 happy path: N.challenge with 21 advances on the projected context
+PASS: ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed
+PASS: ER-005 after the evidence the projection carries exactly sample 31 for challenge 21 and the selected plan; N.sample with 31 is rejected before the evidence and advances after it
+PASS: ER-006 happy path: N.approve and then N.reserve advance on the projected context for the selected provider
+PASS: ER-004 before any selection the projection has no approvals, challenges or samples, so N.challenge with 21 is rejected on it though the raw context admits it
+PASS: ER-005 evidence with no selection denied NotSelected
+PASS: ER-005 epoch substitution: once the issuer's live stamp advances to epoch 5 the selection is not current; evidence denied StaleEpoch and the projection is empty
+PASS: ER-006 once 101 revokes the source approval behind A's grant 3, evidence is denied Revoked and the projection carries no approval, challenge or sample
+PASS: ER-004 a monitor-installed selection recorded at epoch 5 while the issuer and grant are at epoch 3 is not current: StaleEpoch; at the live stamp it is current
+PASS: ER-004 a monitor-installed selection made for a request with quote 41 is not current for the rendezvous request: NotSelected
+PASS: ER-004 a selection whose offer record is no longer stored (no records, or only B's), or whose identity also carries a record quoting 37, is not current: NotSelected
+PASS: ER-005 field substitution: version 2 denied UnknownVersion; provider claim B from A denied Unauthenticated
+PASS: ER-005 offer substitution: A's evidence naming OfferId{201, 9} or B's OfferId{202, 5} denied NotSelected
+PASS: ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31
+PASS: ER-005 challenge substitution: evidence naming 24 on a session challenged with 21, or a session at 23 (the other plan's challenge) or at the absent 29, denied WrongTrial
+PASS: ER-004 a challenge issued at 103, the selection's own time: absent from the projection, so N.challenge with 22 is rejected there (the raw context admits it); evidence naming it denied ChallengeBeforeFixation
+PASS: ER-005 sample substitution: the absent sample 39, or sample 32 for the plan with the other code (another input scope), denied WrongTrial
+PASS: ER-005 a failed sample (34), one expiring at 110 (35), one carrying challenge 24's nonce (37), or one answering challenge 22 (38) denied WrongTrial
+PASS: ER-005 a second evidence for selection 3 denied Replay
+PASS: ER-005 evidence at revision 4 against 5 denied StaleRevision; a session at CandidateFixed or at Sampled denied WrongStage
+PASS: ER-004 challenge_posted: a challenge 22 issued at 107 for the other plan does not follow fixation for TF.plan(); one for TF.plan() at 104 does
+PASS: ER-005 nonce_posted: nonce 6 of another plan's challenge 21, or challenge 22's nonce at fixation time, does not answer; challenge 21's nonce 1 does
+PASS: ER-005 selected_provider_is: false with no selection, true only for A while A is selected
+PASS: ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)
+PASS: ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial
+PASS: ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected
+PASS: ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected
+PASS: ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but session_follows_selection rejects it and its approved successor; it holds for B's session and for A's under selection 3, and not before evidence, with no selection, or for a session with quote 41
+PASS: ER-005 evidence under A's selection id 3 naming B's offer, or A's offer with B's claim, is not a valid state and projects no sample
+PASS: ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)
+PASS: ER-006 partial owner agreement: with only object 10's authority approving A for the two-source plan, A's offer is ineligible MissingApproval
+PASS: ER-006 with both objects approved A is selected; the projection carries one approval each for 10v4 and 11v4 (until 130) and N.approve advances on it
+PASS: ER-006 after object 11's approval is withdrawn the projection carries no approvals and N.approve on it is rejected
+PASS: ER-006 reader terms: a session whose request differs from the rendezvous request in quote (41), units (31) or reader (8) denied ScopeMismatch
+PASS: ER-006 the projection keeps the supplied budgets, so N.reserve on it still binds the exact reader: a budget naming payer 8 is rejected
+PASS: ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names challenge 21 for B's offer {202, 5}, or for A's offer under B's provider claim, A's session challenged with 21 does not follow selection 3; on A's own stored evidence it does; and once A's same offer is reselected as selection 4, retired selection 3's evidence does not make it follow
+PASS: ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed
+PASS: ER-001 provider_registry after dispatch holds exactly grant 3's capability for A, and F.mount, F.open and F.checked_plan resolve it to TF.plan() for caller A
+PASS: ER-007 before dispatch provider_registry is empty, though Issuance projects grant 3 for A, so F.mount finds no capability
+PASS: ER-001 with A also holding grant 12 (token word 17), the raw registry for A has two capabilities but provider_registry keeps only the selected grant 3's token
+PASS: ER-001 dispatch to an unselected provider: A's offer with B's worker session 7, B's offer {202, 5} with B's or A's worker session, or A's unknown offer {201, 9}, denied NotSelected
+PASS: ER-001 a worker session of C (3), an unbound session id 9, a session id 6 the identity table holds twice, or A's delegable client session 1, denied NotSelected
+PASS: ER-001 A's worker session 4 bound under profile 2, A's non-delegable client session 2 with no worker binding, or a session 6 bound twice, denied WrongProfile
+PASS: ER-001 worker_caller_is: no session under id 9, or two sessions under id 6 both with caller A, is not A's worker; the one session 6 is
+PASS: ER-001 dispatch_target_selected is false with no selection and true for A's offer on A's worker session 6; with no selection a dispatch at a stale revision is denied NotSelected first
+PASS: ER-007 dispatch at revision 5 against 6 denied StaleRevision
+PASS: ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision
+PASS: ER-007 a host state that is not HP.valid at its own revision (sessions of incarnation 57 under incarnation 58, or bindings to unconfigured profiles) denied StaleRevision; the twin-session and twin-binding hosts are not valid either
+PASS: ER-001 A's worker session 8 authenticated under another token (word 3) is A's subject at profile 1 but not grant 3's holder: denied NotSelected; A's session 6 on the same host dispatches
+PASS: ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected
+PASS: ER-001 the binding is compared with the selected offer's profile: with A's profile-2 offer {201, 2} selected, A's worker session 4 (profile 2) is its target and session 6 (profile 1) is not, WrongProfile
+PASS: ER-007 a session at Reserved, or a Running session at revision 6 named as 5, denied WrongStage
+PASS: ER-007 a second dispatch of selection 3 denied Replay
+PASS: ER-005 dispatch with no evidence for selection 3, or with evidence under id 3 naming B's offer or B's claim, denied MissingEvidence
+PASS: ER-005 A's same offer {201, 4} reselected as selection 4: retired selection 3's evidence for that offer and provider does not count, so dispatch is denied MissingEvidence
+PASS: ER-007 the evidence and dispatch lookups read the whole list: A's evidence for selection 3 behind a record for selection 2 still dispatches, and Dispatch{3, 6} behind a record for selection 2 still denies Replay
+PASS: ER-005 A's session sampled under retired selection 3 and advanced to Running on B's projection is denied WrongTrial for B's selection 4; B's own Running session dispatches
+PASS: ER-001 while B is selected, B's worker session 5 bound under profile 2 is denied WrongProfile, and A's offer on A's worker session is denied NotSelected
+PASS: ER-007 selection racing revocation: once 101 revokes the source approval behind A's grant 3, dispatch is denied Revoked, the projection carries no approvals so N.start is rejected on it (it advances on the earlier one), and the dispatched selection's provider_registry is empty
+PASS: ER-007 epoch change between selection and dispatch: once the issuer's live stamp advances to epoch 5, dispatch is denied StaleEpoch and the dispatched selection's provider_registry is empty
+PASS: ER-006 after dispatch, provider_registry is empty once object 10's approval of A is withdrawn, or at 113 when A's offer has expired, though grant 3 is still current and projected for A
+PASS: ER-007 a grant that expires before dispatch: A's grant 12 and its offer {201, 6} both end at 130 (an offer cannot outlive its grant); selected at 110 and current at 120, dispatch at 130 is denied Expired, the grant's currency gate reporting first
+PASS: ER-007 the projected approval ends at 130 (the grant's and offer's end, before approval 145), so N.start at 130 is rejected even on a projection built at 120 (at 129 it advances), and the projection at 130 is empty
+PASS: ER-007 a Running session whose request differs in invocation (98), manifest (source 10v5), destination (20v9) or quote (41) denied ScopeMismatch; the same session with the rendezvous request dispatches
+PASS: ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected
+PASS: ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal
+PASS: ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected
+PASS: ER-007 after abandon, A's approval does not count for B: B's offer is ineligible MissingApproval and select finds no eligible offer at 114 (A's expired at 113) until 101 approves B
+PASS: ER-007 B reselected as selection 5: A's evidence does not follow (dispatch with A's Running session denied MissingEvidence), and A's dispatch record of selection 3 opens no provider_registry for B
+PASS: ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6
+PASS: integration a dispatched, sampled execution commits through Backplane.commit on the projected context: Committed, the write intent keeps the plan, origins and label, and the ledger advances to revision 2
+PASS: integration the same execution commits through DataOS.commit_from_capability with reader 7's execute descriptor
+PASS: integration with the selection current and dispatched, the reader's transfer write grant revoked: T.admit denies, Backplane and the facade reject and spend no reservation
+PASS: integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation
+PASS: integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation
+PASS: integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation
+PASS: integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation
+PASS: integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched
+PASS: integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected
+PASS: integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)
+PASS: integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)
+PASS: integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on the pre-restart host() named at that revision carries no approvals and Backplane.commit rejects and spends no reservation (the final review's scenario e5), while host() named at its own revision commits
+PASS: integration commit_context requires HP.valid: a host with A's worker session 6 at incarnation 57 whose bindings name unconfigured profiles, named at its own revision, yields no commit context and the commit is rejected and spends no reservation
+PASS: integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings, so A's worker session 6 exists there, named at its own revision, yields no commit context for selection 5 dispatched in incarnation 57, and the commit is rejected and spends no reservation
+PASS: scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5
+PASS: scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6
+PASS: scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2
+PASS: scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6
+PASS: scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected
+PASS: scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty
+PASS: scenario revocation between dispatch and commit: once 101 revokes approval 5 after selection 5 is dispatched, Backplane.commit on the rebuilt projection rejects and spends no reservation, provider_registry is empty, and HostPrimitives.issue finds no handle to bind the worker's input to
+PASS: scenario replay: B's offer serial 1 resubmitted after B withdraws it is denied Replay, 101's approval serial 31 resubmitted is denied Replay, and after 104 withdraws approval 2 its serial 31 is denied Replay while a fresh serial 33 is accepted as id 5
+PASS: scenario replay: after dispatch, A's evidence for selection 5 resubmitted is denied Replay and a second dispatch of selection 5 to A's worker session 6 is denied Replay, the state kept each time
+PASS: scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5
+PASS: scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is
+PASS: scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12
+PASS: scenario unauthenticated provider: principal C submitting an offer under A's claim, or A's identity under its own claim, is denied Unauthenticated, its own offer citing A's grant 8 is denied NoGrant, and an approval it submits as 101 is denied Unauthenticated; the state is kept and A is selected
+PASS: scenario scope narrower than the plan: D's grant 15 covers only the one-source TF.plan(), so D's offer of the two-source plan on it, and its offer of TF.plan() itself, are denied ScopeMismatch, as is 101's approval of D for TF.plan(); A is selected
+PASS: scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B
+PASS: scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals
+PASS: scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval, and withdrawn after dispatch, Backplane.commit on the rebuilt commit_context rejects and spends no reservation
+PASS: scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches
+PASS: scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)
+PASS: scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched
+PASS: scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits
+PASS: scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits
+PASS: scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits
+PASS: scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits
+PASS: F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding that request, and a second R.open of the same request on that index is denied AlreadyOpen with the index unchanged, so the second rendezvous of the final review's scenario (b), in which B counted A's challenge 41 and sample 51 as its own, cannot be opened
+PASS: F1 scenario one rendezvous per request: a request differing only in units (31) opens beside it; with both in the index, the scenario request (second entry) and the units-31 request (first entry, with another constraint) are denied AlreadyOpen with the index unchanged; NT.request() opens on the empty index
+Rendezvous: 229 checks passed
 PASS: oracle fixture: disconnected vertices
 PASS: oracle fixture: directed chain
 PASS: oracle fixture: directed cycle
