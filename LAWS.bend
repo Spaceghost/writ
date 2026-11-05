@@ -15,6 +15,7 @@ import ./DataOS.bend as DataOS
 import ./AuditEvent.bend as AuditEvent
 import ./Dlm.bend as Dlm
 import ./AuditQuery.bend as AuditQuery
+import ./AuditExport.bend as AuditExport
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -436,3 +437,46 @@ law audit_refusal_is_constant:
   for current: {AuditQuery.revision_current(state, expected_revision) == True{} : Bool}
   for refused: {Guard.all(AuditQuery.query_gates(state, from, query, sink_id, now)) == False{} : Bool}
   {AuditQuery.respond(state, expected_revision, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+
+# AU-007 "Remote telemetry has no grant": whenever no export grant names
+# exactly this exporter, the request's owner, its sink and its channel
+# (`find_export_grant`, the lookup `transmit` performs, is None), `transmit`
+# emits nothing, for every state, expected revision, exporter, request and
+# time. Audit needs this because export is the one route by which events
+# leave the monitor without a reader asking: without an explicit grant
+# nothing is emitted, on any sink, by any default channel or fallback. The
+# proof pins `transmit`'s grant lookup and its None branch, as
+# `derived_lifetime_extension_rejects` pins `find_grant`; a None branch that
+# emits to a default sink breaks it. It does not claim that the grant
+# registry is correct, that a grant for another exporter, owner, sink or
+# channel fails the lookup (AuditTests' export section shows each), or that
+# a host sends nothing outside `transmit` (a host obligation).
+law audit_ungranted_export_emits_nothing:
+  for state: AuditExport.State
+  for expected_revision: Nat
+  for from: Nat
+  for request: AuditExport.ExportRequest
+  for now: Nat
+  for missing: {AuditExport.find_export_grant(AuditExport.grants(state), from, request) == None{} : Maybe<&2, AuditExport.ExportGrant>}
+  {AuditExport.Transmission.effects(AuditExport.transmit(state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+
+# AU-007 "Export authority is revoked": whenever the export grant `transmit`
+# finds for this exporter and request is revoked, `transmit` emits nothing,
+# for every state, expected revision, exporter, request and time. A revoked
+# exporter's later transmissions are denied, not rerouted to another sink or
+# channel. The proof rewrites `transmit`'s grant lookup to the found grant
+# and then the revocation match that follows it; a revoked branch that falls
+# through to the content, or that emits elsewhere, breaks it. It does not
+# claim that `revoke_export` sets the flag (AuditTests shows it, with the
+# stale-revision and later-revision cases), or anything about expiry or an
+# epoch change, which the gates withhold and the tests show.
+law audit_revoked_export_emits_nothing:
+  for state: AuditExport.State
+  for expected_revision: Nat
+  for from: Nat
+  for request: AuditExport.ExportRequest
+  for now: Nat
+  for g: AuditExport.ExportGrant
+  for found: {AuditExport.find_export_grant(AuditExport.grants(state), from, request) == Some{g} : Maybe<&2, AuditExport.ExportGrant>}
+  for revoked: {AuditExport.ExportGrant.revoked(g) == True{} : Bool}
+  {AuditExport.Transmission.effects(AuditExport.transmit(state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}

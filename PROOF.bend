@@ -9,6 +9,7 @@ import ./HostPublication.bend as HostPublication
 import ./AuditEvent.bend as AuditEvent
 import ./Dlm.bend as Dlm
 import ./AuditQuery.bend as AuditQuery
+import ./AuditExport.bend as AuditExport
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -202,4 +203,21 @@ def Laws.audit_stale_query_refused(state, from, query, sink_id, now):
 def Laws.audit_refusal_is_constant(state, expected_revision, from, query, sink_id, now, current, refused):
   %Equal.sym(Bool, AuditQuery.revision_current(state, expected_revision), True{}, current) : {AuditQuery.respond_current(_, state, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
   %Equal.sym(Bool, Guard.all(AuditQuery.query_gates(state, from, query, sink_id, now)), False{}, refused) : {AuditQuery.respond_checked(_, state, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+  {==}
+
+# `transmit` unfolds to `transmit_found(find_export_grant(grants(state),
+# from, request), ...)`. Rewriting that lookup to None{} with the hypothesis
+# (reversed) selects `transmit_found`'s None branch, `Withheld{}`, whose
+# effects are [] by computation.
+def Laws.audit_ungranted_export_emits_nothing(state, expected_revision, from, request, now, missing):
+  %Equal.sym(Maybe<&2, AuditExport.ExportGrant>, AuditExport.find_export_grant(AuditExport.grants(state), from, request), None{}, missing) : {AuditExport.Transmission.effects(AuditExport.transmit_found(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+  {==}
+
+# Two rewrites: the lookup hypothesis (reversed) selects `transmit_found`'s
+# Some branch, `transmit_unrevoked(ExportGrant.revoked(g), ...)`; the
+# revocation hypothesis (reversed) selects its True{} branch, `Withheld{}`,
+# whose effects are [] by computation.
+def Laws.audit_revoked_export_emits_nothing(state, expected_revision, from, request, now, g, found, revoked):
+  %Equal.sym(Maybe<&2, AuditExport.ExportGrant>, AuditExport.find_export_grant(AuditExport.grants(state), from, request), Some{g}, found) : {AuditExport.Transmission.effects(AuditExport.transmit_found(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
+  %Equal.sym(Bool, AuditExport.ExportGrant.revoked(g), True{}, revoked) : {AuditExport.Transmission.effects(AuditExport.transmit_unrevoked(_, state, expected_revision, from, request, now)) == [] : List<&2, AuditExport.Emit>}
   {==}

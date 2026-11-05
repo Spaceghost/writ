@@ -11,6 +11,7 @@ import ./DataOS.bend as OS
 import ./FacadeTests.bend as FT
 import ./AuditEvent.bend as AE
 import ./AuditQuery.bend as AQ
+import ./AuditExport.bend as AX
 import ./Dlm.bend as D
 import ./Test.bend as Test
 
@@ -43,6 +44,11 @@ import ./Test.bend as Test
 #   MONITOR STATE, and every stored event comes from a wrapper. Each of the
 #   nine query gates has a check that changes one fact of the accepted
 #   baseline and names the failing gate with `first_failed_gate`.
+# - export (Task 5): AU-007 no ambient telemetry export. The export states,
+#   export grants, exporters and requests are SYNTHETIC MONITOR STATE, every
+#   stored event comes from a wrapper, and the query state under them holds
+#   no read grant. Each export gate has a check that changes one fact of the
+#   accepted baseline, and every denial is exactly `Withheld{}`.
 
 # --- Sentinels and synthetic inputs ------------------------------------------
 
@@ -2589,7 +2595,8 @@ def distinct_reasons() -> IO(Unit):
   do IO<Unit>:
     Test.check(all_public_refusals(refusal_list()) && Nat.is_eq(responses_count(refusal_list()), 9n),
       "AU-008 distinct secret denial reasons: unknown version, no grant, wrong sink, revoked, expired, bad cursor, limit 0, limit 17 and an exhausted budget all give Refused{public_denial()}")
-    Test.check(refused_at(q_state(visible_five()), alice_reader(), AQ.Query{2n, alice(), None{}, AQ.max_page(), 100n}, 1n, AQ.UnknownVersion{}),
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), AQ.Query{2n, alice(), None{}, AQ.max_page(), 100n}, 1n, AQ.UnknownVersion{}) &&
+      refused_at(q_state(visible_five()), alice_reader(), AQ.Query{0n, alice(), None{}, AQ.max_page(), 100n}, 1n, AQ.UnknownVersion{}),
       "AU-008 an unknown query format version is refused (UnknownVersion)")
     Test.check(refused_at(q_state(visible_five()), alice_reader(), query_of(alice(), None{}, 0n, 100n), 1n, AQ.LimitOutOfRange{}) &&
       refused_at(q_state(visible_five()), alice_reader(), query_of(alice(), None{}, 17n, 100n), 1n, AQ.LimitOutOfRange{}),
@@ -2640,10 +2647,454 @@ def query() -> IO(Unit):
     work_budget()
     both_owners_baseline()
 
+# --- export (Task 5): AU-007 no ambient telemetry export -----------------------
+# Every export state, export grant, exporter and request below is SYNTHETIC
+# MONITOR STATE, not an authenticated issuer, and every stored event comes
+# from `AE.audited_admit` or `AE.audited_commit`. Exporter ids (60 to 63) are
+# distinct from the readers (30 to 34), the owners (0 to 2) and the sinks
+# (1 to 4, 9); export grant ids are 201 to 206. The query state under the
+# export state holds NO read grant, so nothing here is visible through a
+# query: an export is authorized by its export grant alone.
+
+def x_revision() -> Nat:
+  7n
+
+# Alice's exporter (holds her Events, Metric and Alert grants for sink 1).
+def alice_exporter() -> Nat:
+  60n
+
+# Bob's exporter (Bob's stream to sink 2).
+def bob_exporter() -> Nat:
+  61n
+
+# Alice's stream to the both-owners sink 3.
+def both_exporter() -> Nat:
+  62n
+
+# Holds no grant at all.
+def stray_exporter() -> Nat:
+  63n
+
+def x_grant(id: Nat, exporter: Nat, owner: D.Principal, sink: Nat, channel: AX.Channel) -> AX.ExportGrant:
+  AX.ExportGrant{id, exporter, owner, sink, channel, policy_epoch(), q_until(), False{}}
+
+def events_grant() -> AX.ExportGrant:
+  x_grant(201n, alice_exporter(), alice(), 1n, AX.Events{})
+
+def metric_grant() -> AX.ExportGrant:
+  x_grant(202n, alice_exporter(), alice(), 1n, AX.Metric{})
+
+def alert_grant() -> AX.ExportGrant:
+  x_grant(203n, alice_exporter(), alice(), 1n, AX.Alert{})
+
+def x_grants_of(xs: List<&2, AX.ExportGrant>) -> AX.ExportGrants:
+  match xs:
+    case []:
+      AX.NoExportGrants{}
+    case g <> rest:
+      AX.ExportGranted{g, x_grants_of(rest)}
+
+def x_grants() -> AX.ExportGrants:
+  x_grants_of([events_grant(), metric_grant(), alert_grant(),
+    x_grant(204n, bob_exporter(), bob(), 2n, AX.Events{}),
+    x_grant(205n, alice_exporter(), alice(), 9n, AX.Events{}),
+    x_grant(206n, both_exporter(), alice(), 3n, AX.Events{})])
+
+# The query state an export reads: the registered sinks and the log, at the
+# policy epoch, with no read grants.
+def xq_state(+epoch: Nat, xs: List<&2, AE.Recorded>) -> AQ.State:
+  AQ.State{q_revision(), epoch, snapshot(), q_sinks(), AQ.NoReadGrants{}, log_of(xs)}
+
+def x_state_full(+epoch: Nat, grants: AX.ExportGrants, xs: List<&2, AE.Recorded>) -> AX.State:
+  AX.State{x_revision(), xq_state(epoch, xs), grants}
+
+def x_state(xs: List<&2, AE.Recorded>) -> AX.State:
+  x_state_full(policy_epoch(), x_grants(), xs)
+
+def x_only(g: AX.ExportGrant, xs: List<&2, AE.Recorded>) -> AX.State:
+  x_state_full(policy_epoch(), x_grants_of([g]), xs)
+
+def x_request(+owner: D.Principal, channel: AX.Channel, sink: Nat, rule: AE.EventKind) -> AX.ExportRequest:
+  AX.ExportRequest{AX.export_format_version(), owner, channel, sink, rule}
+
+def events_request(+owner: D.Principal, sink: Nat) -> AX.ExportRequest:
+  x_request(owner, AX.Events{}, sink, AE.AdmissionDenied{})
+
+def denied_rule(channel: AX.Channel) -> AX.ExportRequest:
+  x_request(alice(), channel, 1n, AE.AdmissionDenied{})
+
+def send(+state: AX.State, +from: Nat, +request: AX.ExportRequest) -> AX.Transmission:
+  AX.transmit(state, x_revision(), from, request, q_now())
+
+def x_gate_of(+state: AX.State, +from: Nat, +request: AX.ExportRequest) -> Maybe<&2, AQ.Gate>:
+  AX.first_failed_gate(state, from, request, q_now())
+
+# The no-fallback shape: an exhaustive match over the two constructors, with
+# no wildcard arm, so a third constructor would not compile; `Withheld{}`
+# binds no field, so a withheld transmission carries nothing.
+def transmission_shape(t: AX.Transmission) -> Nat:
+  match t:
+    case AX.Sent{_}:
+      1n
+    case AX.Withheld{}:
+      2n
+
+# Withheld, with no effects, under the exhaustive match.
+def withheld(+t: AX.Transmission) -> Bool:
+  Nat.is_eq(transmission_shape(t), 2n) && AX.Transmission.equal(t, AX.Withheld{}) &&
+    AX.Emissions.equal(AX.Transmission.effects(t), [])
+
+# Withheld, and the first failing export gate is `g`.
+def withheld_at(+state: AX.State, +from: Nat, +request: AX.ExportRequest, +g: AQ.Gate) -> Bool:
+  withheld(send(state, from, request)) && gate_is(x_gate_of(state, from, request), g)
+
+def sent_as(+t: AX.Transmission, effects: List<&2, AX.Emit>) -> Bool:
+  Nat.is_eq(transmission_shape(t), 1n) && AX.Transmission.equal(t, AX.Sent{effects})
+
+def x_channels() -> List<&2, AX.Channel>:
+  [AX.Events{}, AX.Metric{}, AX.Alert{}]
+
+def x_sink_ids() -> List<&2, Nat>:
+  [1n, 2n, 3n, 4n, 9n]
+
+# Every channel to every sink, for either owner, at the state's own revision
+# (so the revision gate is not what withholds).
+def all_sinks_withheld(+state: AX.State, +from: Nat, +channel: AX.Channel, sinks: List<&2, Nat>) -> Bool:
+  match sinks:
+    case []:
+      True{}
+    case +s <> rest:
+      withheld(AX.transmit(state, AX.revision(state), from, x_request(alice(), channel, s, AE.AdmissionDenied{}), q_now())) &&
+        withheld(AX.transmit(state, AX.revision(state), from, x_request(bob(), channel, s, AE.AdmissionDenied{}), q_now())) &&
+        all_sinks_withheld(state, from, channel, rest)
+
+def all_channels_withheld(+state: AX.State, +from: Nat, channels: List<&2, AX.Channel>) -> Bool:
+  match channels:
+    case []:
+      True{}
+    case c <> rest:
+      all_sinks_withheld(state, from, c, x_sink_ids()) && all_channels_withheld(state, from, rest)
+
+# The view encoding a test expects, built from the event's Task 2 encoding
+# (not from the export encoder): the header with the body length three
+# words shorter, then the body without the leading event id field (tag 1,
+# length 1, the id).
+def strip_event_id(words: List<&2, U32>) -> List<&2, U32>:
+  match words:
+    case v <> k <> n <> t <> l <> i <> rest:
+      v <> k <> U32.from_nat(Nat.sub(U32.to_nat(n), 3n)) <> rest
+    case _:
+      []
+
+def expected_view_words(r: AE.Recorded) -> List<&2, U32>:
+  strip_event_id(encoded(AE.Recorded.event(r)))
+
+def expected_words(xs: List<&2, AE.Recorded>) -> List<&2, U32>:
+  match xs:
+    case []:
+      []
+    case r <> rest:
+      cat(expected_view_words(r), expected_words(rest))
+
+def expected_alerts(+sink: Nat, xs: List<&2, AE.Recorded>) -> List<&2, AX.Emit>:
+  match xs:
+    case []:
+      []
+    case r <> rest:
+      AX.Emission{sink, expected_view_words(r)} <> expected_alerts(sink, rest)
+
+def one_emission(+sink: Nat, words: List<&2, U32>) -> List<&2, AX.Emit>:
+  [AX.Emission{sink, words}]
+
+def emission_words(xs: List<&2, AX.Emit>) -> List<&2, U32>:
+  match xs:
+    case []:
+      []
+    case e <> rest:
+      match e:
+        case AX.Emission{_, w}:
+          cat(w, emission_words(rest))
+
+def transmitted_words(t: AX.Transmission) -> List<&2, U32>:
+  emission_words(AX.Transmission.effects(t))
+
+# --- export: "Remote telemetry has no grant" -------------------------------------
+
+def no_grant() -> IO(Unit):
+  +granted = x_only(events_grant(), visible_five())
+  do IO<Unit>:
+    Test.check(all_channels_withheld(AX.empty(xq_state(policy_epoch(), visible_five())), alice_exporter(), x_channels()) &&
+      all_channels_withheld(AX.empty(xq_state(policy_epoch(), visible_five())), stray_exporter(), x_channels()),
+      "AU-007 remote telemetry has no grant: from empty(...) every channel to every sink, for either owner and any exporter, is Withheld{} with no effects")
+    Test.check(sent_as(send(granted, alice_exporter(), events_request(alice(), 1n)), one_emission(1n, expected_words(visible_five()))) &&
+      no_failed_gate(x_gate_of(granted, alice_exporter(), events_request(alice(), 1n))),
+      "AU-007 baseline: Alice's exporter with her Events grant for sink 1 is Sent one emission to sink 1 holding her five visible views")
+    Test.check(withheld_at(granted, alice_exporter(), events_request(alice(), 2n), AQ.NoGrant{}),
+      "AU-007 a grant for another sink does not answer: the same Events export to registered sink 2 is withheld")
+    Test.check(withheld_at(x_only(metric_grant(), visible_five()), alice_exporter(), events_request(alice(), 1n), AQ.NoGrant{}) &&
+      sent_as(send(x_only(metric_grant(), visible_five()), alice_exporter(), denied_rule(AX.Metric{})), one_emission(1n, [4])),
+      "AU-007 a grant for another channel does not answer: a Metric grant used for Events is withheld, while the Metric export it names is sent")
+    Test.check(withheld_at(granted, stray_exporter(), events_request(alice(), 1n), AQ.NoGrant{}) &&
+      withheld_at(granted, bob_exporter(), events_request(alice(), 1n), AQ.NoGrant{}),
+      "AU-007 a grant for another exporter does not answer: exporters 63 and 61 sending Alice's stream to sink 1 are withheld")
+    Test.check(withheld_at(granted, alice_exporter(), events_request(bob(), 1n), AQ.NoGrant{}),
+      "AU-007 a grant for another owner does not answer: Alice's exporter sending Bob's stream to sink 1 is withheld")
+    Test.check(withheld_at(x_state(visible_five()), alice_exporter(), events_request(alice(), 9n), AQ.SinkUnregistered{}),
+      "AU-007 an unregistered sink is withheld although grant 205 names sink 9")
+    Test.check(withheld_at(x_state_full(policy_epoch(), x_grants_of([events_grant(), events_grant()]), visible_five()),
+      alice_exporter(), events_request(alice(), 1n), AQ.NoGrant{}) &&
+      Maybe.is_none(&2, AX.ExportGrant, AX.find_export_grant(x_grants_of([events_grant(), events_grant()]), alice_exporter(), events_request(alice(), 1n))),
+      "AU-007 two export grants naming one exporter, owner, sink and channel are ambiguous and withheld")
+    Test.check(withheld_at(granted, alice_exporter(), AX.ExportRequest{0n, alice(), AX.Events{}, 1n, AE.AdmissionDenied{}}, AQ.UnknownVersion{}) &&
+      withheld_at(granted, alice_exporter(), AX.ExportRequest{2n, alice(), AX.Events{}, 1n, AE.AdmissionDenied{}}, AQ.UnknownVersion{}),
+      "AU-007 an export request of format version 0 or 2 is withheld (UnknownVersion)")
+
+# --- export: "Export authority is revoked" ---------------------------------------
+
+def x_revoked_change() -> AX.Change:
+  AX.revoke_export(x_state(visible_five()), x_revision(), 201n)
+
+def x_revoked_state() -> AX.State:
+  AX.Change.state(x_revoked_change())
+
+def x_with(id: Nat, epoch: Nat, until: Nat, revoked: Bool) -> AX.ExportGrants:
+  x_grants_of([AX.ExportGrant{id, alice_exporter(), alice(), 1n, AX.Events{}, epoch, until, revoked}])
+
+def revoked_export() -> IO(Unit):
+  +st = x_revoked_state()
+  do IO<Unit>:
+    Test.check(sent_as(send(x_state(visible_five()), alice_exporter(), events_request(alice(), 1n)), one_emission(1n, expected_words(visible_five()))) &&
+      AX.Change.accepted(x_revoked_change()) && Nat.is_eq(AX.revision(st), 1n+x_revision()),
+      "AU-007 export authority is revoked: at revision r the export is Sent, and revoke_export moves the state to r+1")
+    Test.check(withheld(AX.transmit(st, 1n+x_revision(), alice_exporter(), events_request(alice(), 1n), q_now())) &&
+      gate_is(AX.first_failed_gate(st, alice_exporter(), events_request(alice(), 1n), q_now()), AQ.GrantRevoked{}),
+      "AU-007 after revoke_export the export at revision r+1 is withheld and first_failed_gate names GrantRevoked")
+    Test.check(withheld(AX.transmit(st, x_revision(), alice_exporter(), events_request(alice(), 1n), q_now())),
+      "AU-007 after revoke_export the export validated at revision r is withheld (stale)")
+    Test.check(withheld(AX.transmit(x_state(visible_five()), 1n+x_revision(), alice_exporter(), events_request(alice(), 1n), q_now())) &&
+      withheld(AX.transmit(x_state(visible_five()), 6n, alice_exporter(), events_request(alice(), 1n), q_now())),
+      "AU-007 an export at an older or a later revision than the state's is withheld")
+    Test.check(withheld(AX.transmit(st, 1n+x_revision(), alice_exporter(), events_request(alice(), 2n), q_now())) &&
+      withheld(AX.transmit(st, 1n+x_revision(), alice_exporter(), events_request(alice(), 3n), q_now())) &&
+      withheld(AX.transmit(st, 1n+x_revision(), alice_exporter(), events_request(alice(), 4n), q_now())),
+      "AU-007 a revoked exporter is not rerouted: its Events export to sinks 2, 3 and 4 is withheld too")
+    Test.check(sent_as(AX.transmit(st, 1n+x_revision(), alice_exporter(), denied_rule(AX.Metric{}), q_now()), one_emission(1n, [4])) &&
+      Bool.not(AX.ExportGrant.revoked(Maybe.default(&2, AX.ExportGrant,
+        AX.find_export_grant(AX.grants(st), alice_exporter(), denied_rule(AX.Metric{})), events_grant()))),
+      "AU-007 revoke_export marks only the named grant: Alice's Metric grant 202 still sends")
+    Test.check(withheld(AX.transmit(x_state_full(policy_epoch(), x_with(201n, policy_epoch(), q_until(), False{}), visible_five()),
+        x_revision(), alice_exporter(), events_request(alice(), 1n), q_until())) &&
+      gate_is(AX.first_failed_gate(x_state_full(policy_epoch(), x_with(201n, policy_epoch(), q_until(), False{}), visible_five()),
+        alice_exporter(), events_request(alice(), 1n), q_until()), AQ.GrantExpired{}) &&
+      AX.Transmission.sent(AX.transmit(x_state_full(policy_epoch(), x_with(201n, policy_epoch(), q_until(), False{}), visible_five()),
+        x_revision(), alice_exporter(), events_request(alice(), 1n), 49n)),
+      "AU-007 an expired export grant is withheld at now == valid_until (GrantExpired) and sends one tick before")
+    Test.check(withheld_at(x_state_full(4n, x_grants(), visible_five()), alice_exporter(), events_request(alice(), 1n), AQ.GrantEpoch{}) &&
+      withheld_at(x_state_full(policy_epoch(), x_with(201n, 2n, q_until(), False{}), visible_five()),
+        alice_exporter(), events_request(alice(), 1n), AQ.GrantEpoch{}),
+      "AU-007 an epoch advance withdraws an export grant of the old epoch, and a grant of an earlier epoch is withheld (GrantEpoch)")
+    Test.check(withheld(send(x_state_full(policy_epoch(), x_with(201n, policy_epoch(), q_until(), True{}), visible_five()),
+        alice_exporter(), events_request(alice(), 1n))) &&
+      gate_is(x_gate_of(x_state_full(policy_epoch(), x_with(201n, policy_epoch(), q_until(), True{}), visible_five()),
+        alice_exporter(), events_request(alice(), 1n)), AQ.GrantRevoked{}),
+      "AU-007 an installed grant whose revoked flag is set is withheld (GrantRevoked)")
+    Test.check(Bool.not(AX.Change.accepted(AX.revoke_export(x_state([]), 1n+x_revision(), 201n))) &&
+      Nat.is_eq(AX.revision(AX.Change.state(AX.revoke_export(x_state([]), 1n+x_revision(), 201n))), x_revision()) &&
+      Bool.not(AX.Change.accepted(AX.revoke_export(x_state([]), x_revision(), 999n))) &&
+      Bool.not(AX.Change.accepted(AX.revoke_export(x_state_full(policy_epoch(), x_grants_of([events_grant(), events_grant()]), []), x_revision(), 201n))) &&
+      Bool.not(AX.Change.accepted(AX.revoke_export(st, 1n+x_revision(), 201n))),
+      "AU-007 revoke_export is rejected at a stale revision (keeping it), for an unknown or ambiguous id, and for an already revoked grant")
+    Test.check(withheld(AX.transmit(AX.Change.state(AX.revoke_export(st, 1n+x_revision(), 202n)), 2n+x_revision(),
+        alice_exporter(), events_request(alice(), 1n), q_now())) &&
+      withheld(AX.transmit(AX.Change.state(AX.revoke_export(st, 1n+x_revision(), 202n)), 2n+x_revision(),
+        alice_exporter(), denied_rule(AX.Metric{}), q_now())),
+      "AU-007 a later revocation of another export grant keeps the earlier revocation in force")
+
+# --- export: content stays policy-gated with a grant ------------------------------
+
+# Three visible AdmissionDenied events (Origin, Payment, Schema), one visible
+# admission, and two hidden denials (the mixed Origin denial and Mallory's
+# early denial naming Alice's objects).
+def metric_log() -> List<&2, AE.Recorded>:
+  [v_origin(), h_mixed(), v_payment(), v_admitted(), h_mallory(), v_schema()]
+
+def metric_log_visible() -> List<&2, AE.Recorded>:
+  [v_origin(), v_payment(), v_admitted(), v_schema()]
+
+def metric_of(xs: List<&2, AE.Recorded>, rule: AE.EventKind) -> AX.Transmission:
+  send(x_state(xs), alice_exporter(), x_request(alice(), AX.Metric{}, 1n, rule))
+
+def alerts_of(xs: List<&2, AE.Recorded>) -> AX.Transmission:
+  send(x_state(xs), alice_exporter(), denied_rule(AX.Alert{}))
+
+def events_of(xs: List<&2, AE.Recorded>) -> AX.Transmission:
+  send(x_state(xs), alice_exporter(), events_request(alice(), 1n))
+
+def content_gated() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(sent_as(events_of([v_admitted(), h_mixed(), v_origin()]), one_emission(1n, expected_words([v_admitted(), v_origin()]))) &&
+      AX.Transmission.equal(events_of([v_admitted(), h_mixed(), v_origin()]), events_of([v_admitted(), v_origin()])),
+      "AU-007 the Events emission for Alice's sink 1 omits the mixed Bob event, and its words equal those for a log without it")
+    Test.check(AX.Transmission.equal(events_of(interleaved()), events_of(visible_five())) &&
+      sent_as(events_of([h_bob(), h_commit(), h_mallory()]), one_emission(1n, [])),
+      "AU-007 Bob's own event, a commit by subject 7 and Mallory's early denial change no Events word; a log of only hidden events sends an empty batch")
+    Test.check(sent_as(send(x_state([v_admitted(), h_mixed()]), both_exporter(), events_request(alice(), 3n)),
+        one_emission(3n, expected_words([v_admitted(), h_mixed()]))),
+      "AU-007 through the both-owners sink 3 the mixed event is releasable and its view is emitted to sink 3")
+    Test.check(sent_as(metric_of(metric_log(), AE.AdmissionDenied{}), one_emission(1n, [3])) &&
+      AX.Transmission.equal(metric_of(metric_log(), AE.AdmissionDenied{}), metric_of(metric_log_visible(), AE.AdmissionDenied{})),
+      "AU-007 the metric over a log with three visible matching events and two hidden ones is 3, equal to the metric over the log without the hidden ones")
+    Test.check(sent_as(metric_of(metric_log(), AE.AdmissionAdmitted{}), one_emission(1n, [1])) &&
+      sent_as(metric_of([h_mixed(), h_mallory()], AE.AdmissionDenied{}), one_emission(1n, [0])) &&
+      sent_as(metric_of(metric_log(), AE.CommitAccepted{}), one_emission(1n, [0])),
+      "AU-007 the metric counts only visible events of the rule's kind: 1 admission, 0 when every denial is hidden, 0 commits")
+    Test.check(Nat.is_eq(AX.metric_count(AX.export_view(x_state(metric_log()), alice(), sink_alice()), AE.AdmissionDenied{}), 3n) &&
+      Maybe.is_none(&2, List<&2, U32>, AX.metric_words(AE.word_limit())) &&
+      Maybe.is_some(&2, List<&2, U32>, AX.metric_words(4294967295n)),
+      "AU-007 metric_count is a count over the visible view, and a count of 2^32 is withheld rather than wrapped")
+    Test.check(sent_as(alerts_of([h_mixed()]), []) &&
+      AX.Transmission.equal(alerts_of([h_mixed()]), alerts_of([])) &&
+      AX.Transmission.equal(alerts_of([v_admitted(), h_mixed(), h_mallory()]), alerts_of([v_admitted()])),
+      "AU-007 an alert rule matching AdmissionDenied emits nothing for a hidden denial, and the result equals that for a log without it")
+    Test.check(sent_as(alerts_of([v_origin()]), expected_alerts(1n, [v_origin()])) &&
+      sent_as(alerts_of(metric_log()), expected_alerts(1n, [v_origin(), v_payment(), v_schema()])),
+      "AU-007 an alert rule matching AdmissionDenied emits one alert for a visible denial, one per visible matching event in append order")
+    Test.check(Bool.not(AE.DecodeResult.equal(AE.decode(expected_view_words(v_origin())), AE.Decoded{AE.Recorded.event(v_origin())})) &&
+      AE.DecodeResult.equal(AE.decode(expected_view_words(v_origin())), AE.Malformed{AE.OutOfOrder{}}) &&
+      Maybe.is_none(&2, List<&2, U32>, AX.view_field_values(AE.field_event_id(), AQ.view_of(AE.Recorded.event(v_origin())))),
+      "AU-007 a view encoding has no event id field and is rejected by the event decoder (OutOfOrder), so it never passes as a stored event")
+    Test.check(AX.Transmission.equal(
+        send(x_state([alice_event_id(bob_admitted_context(), 41n), alice_event_id(bob_origin_context(), 42n)]), alice_exporter(), events_request(alice(), 1n)),
+        send(x_state([alice_event_id(bob_admitted_context(), 77n), alice_event_id(bob_origin_context(), 78n)]), alice_exporter(), events_request(alice(), 1n))),
+      "AU-007 exports never carry event_id: Events of two logs whose events differ only in event_id are equal")
+
+# --- export: the view encoder refuses what no wrapper produces -------------------
+# The views below are hand-written SYNTHETIC records (as Task 2's decoder
+# tests allow): each differs from the projected admission's view in one
+# field, so a dropped coherence or width condition shows.
+
+def admitted_scope() -> AE.Scope:
+  AE.EventRecord.scope(AE.Recorded.event(v_admitted()))
+
+def scope_with_invocation(x: AE.Scope, n: Nat) -> AE.Scope:
+  match x:
+    case AE.ScopeRead{_, xs, d, st, c, op}:
+      AE.ScopeRead{n, xs, d, st, c, op}
+    case AE.ScopeNotRead{}:
+      AE.ScopeNotRead{}
+
+def objects_of_length(n: Nat) -> T.Objects:
+  match n:
+    case 0n:
+      T.OEnd{}
+    case 1n+p:
+      T.OCons{bob_source(), objects_of_length(p)}
+
+def scope_with_sources(x: AE.Scope, xs: T.Objects) -> AE.Scope:
+  match x:
+    case AE.ScopeRead{n, _, d, st, c, op}:
+      AE.ScopeRead{n, xs, d, st, c, op}
+    case AE.ScopeNotRead{}:
+      AE.ScopeNotRead{}
+
+def scope_invocation(n: Nat) -> AE.Scope:
+  scope_with_invocation(admitted_scope(), n)
+
+def scope_sources(xs: T.Objects) -> AE.Scope:
+  scope_with_sources(admitted_scope(), xs)
+
+def synthetic_view(+version: Nat, kind: AE.EventKind, subject: Nat, phase: AE.Phase, scope: AE.Scope,
+    artifact: Maybe<&2, B.ArtifactId>, outcome: AE.Outcome) -> AQ.View:
+  AQ.View{version, kind, subject, phase, scope, artifact, outcome}
+
+def encodes(+v: AQ.View) -> Bool:
+  Maybe.is_some(&2, List<&2, U32>, AX.view_encode(v))
+
+def view_encoder() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, admitted_scope(), None{}, AE.Admitted{})) &&
+      words_equal(Maybe.default(&2, List<&2, U32>, AX.view_encode(AQ.view_of(AE.Recorded.event(v_admitted()))), []), expected_view_words(v_admitted())) &&
+      Bool.not(encodes(synthetic_view(2n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, admitted_scope(), None{}, AE.Admitted{}))) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionDenied{}, 0n, AE.Admission{}, admitted_scope(), None{}, AE.Admitted{}))) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Commit{}, admitted_scope(), None{}, AE.Admitted{}))) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, admitted_scope(), Some{B.ArtifactId{TF.code()}}, AE.Admitted{}))) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, AE.ScopeNotRead{}, None{}, AE.Admitted{}))) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, AE.word_limit(), AE.Admission{}, admitted_scope(), None{}, AE.Admitted{}))) &&
+      encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, scope_sources(objects_of_length(AE.max_sources())), None{}, AE.Admitted{})) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, scope_invocation(AE.word_limit()), None{}, AE.Admitted{}))) &&
+      Bool.not(encodes(synthetic_view(1n, AE.AdmissionAdmitted{}, 0n, AE.Admission{}, scope_sources(objects_of_length(1n+AE.max_sources())), None{}, AE.Admitted{}))),
+      "AU-007 view_encode is Task 2's encoding without the event id, and is None for a wrong version, kind, phase, artifact or scope, a subject or invocation of 2^32, or more than max_sources() sources")
+
+def bad_view() -> AQ.View:
+  synthetic_view(1n, AE.AdmissionAdmitted{}, AE.word_limit(), AE.Admission{}, admitted_scope(), None{}, AE.Admitted{})
+
+def good_view() -> AQ.View:
+  AQ.view_of(AE.Recorded.event(v_admitted()))
+
+def views_with_bad() -> AQ.Views:
+  AQ.Viewed{good_view(), AQ.Viewed{bad_view(), AQ.NoViews{}}}
+
+def content_refusal() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Maybe.is_none(&2, List<&2, AX.Emit>, AX.channel_content(AX.Events{}, 1n, views_with_bad(), AE.AdmissionDenied{})) &&
+      Maybe.is_none(&2, List<&2, AX.Emit>, AX.channel_content(AX.Alert{}, 1n, views_with_bad(), AE.AdmissionAdmitted{})) &&
+      Maybe.is_some(&2, List<&2, AX.Emit>, AX.channel_content(AX.Alert{}, 1n, views_with_bad(), AE.AdmissionDenied{})) &&
+      withheld(AX.sent(None{})),
+      "AU-007 content with a view that does not encode is withheld, never sent truncated, partial or as an empty batch")
+
+# --- export: no emission word is a Task 1 sentinel ----------------------------------
+
+# Alice's own requests recorded with every sentinel in the diagnostic and
+# the caller token, admitted and Origin-denied: visible through sink 1.
+def sentinel_recorded(context: T.Context) -> AE.Recorded:
+  recorded_of(AE.audited_admit(bob_plan(), context, alice_labels(), F.Caller{0n, caller_token()}, sentinel_diagnostic(), event_id()))
+
+def sentinel_log() -> List<&2, AE.Recorded>:
+  [sentinel_recorded(bob_admitted_context()), sentinel_recorded(bob_origin_context())]
+
+def no_sentinels() -> IO(Unit):
+  +st = x_state(sentinel_log())
+  do IO<Unit>:
+    Test.check(Nat.is_eq(transmission_shape(send(st, alice_exporter(), events_request(alice(), 1n))), 1n) &&
+      none_of(sentinel_words(), transmitted_words(send(st, alice_exporter(), events_request(alice(), 1n)))) &&
+      none_of(sentinel_words(), transmitted_words(send(st, alice_exporter(), denied_rule(AX.Metric{})))) &&
+      none_of(sentinel_words(), transmitted_words(send(st, alice_exporter(), denied_rule(AX.Alert{})))) &&
+      Bool.not(words_equal(transmitted_words(send(st, alice_exporter(), denied_rule(AX.Alert{}))), [])),
+      "AU-007 no Events, Metric or Alert emission word equals a Task 1 payload, error-text, credential or caller-token sentinel")
+
+# --- export: no fallback ---------------------------------------------------------
+
+def no_fallback() -> IO(Unit):
+  +st = x_state(visible_five())
+  do IO<Unit>:
+    Test.check(Nat.is_eq(transmission_shape(AX.Withheld{}), 2n) &&
+      AX.Emissions.equal(AX.Transmission.effects(AX.Withheld{}), []) &&
+      Nat.is_eq(transmission_shape(send(st, alice_exporter(), events_request(alice(), 1n))), 1n),
+      "AU-007 no fallback: Transmission has only Sent and Withheld (an exhaustive match without a wildcard), and Withheld carries nothing")
+    Test.check(withheld(send(st, stray_exporter(), events_request(alice(), 1n))) &&
+      withheld(send(st, alice_exporter(), events_request(alice(), 9n))) &&
+      withheld(AX.transmit(x_revoked_state(), 1n+x_revision(), alice_exporter(), events_request(alice(), 1n), q_now())) &&
+      withheld(AX.transmit(st, x_revision(), alice_exporter(), events_request(alice(), 1n), q_until())) &&
+      withheld(send(x_state_full(4n, x_grants(), visible_five()), alice_exporter(), events_request(alice(), 1n))) &&
+      withheld(send(st, alice_exporter(), AX.ExportRequest{2n, alice(), AX.Events{}, 1n, AE.AdmissionDenied{}})) &&
+      withheld(AX.transmit(st, 1n+x_revision(), alice_exporter(), events_request(alice(), 1n), q_now())),
+      "AU-007 no grant, an unregistered sink, revoked, expired, other-epoch, unknown version and stale revision all give exactly Withheld{} with no effects")
+
+def export() -> IO(Unit):
+  do IO<Unit>:
+    no_grant()
+    revoked_export()
+    content_gated()
+    view_encoder()
+    content_refusal()
+    no_sentinels()
+    no_fallback()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     event_projection()
     event_format()
     event_policy()
     query()
-    IO.print("Audit: 248 checks passed")
+    export()
+    IO.print("Audit: 283 checks passed")

@@ -46,3 +46,7 @@
 2026-11-05T16:55:02Z	implementer	correction: batch 2 is 74 mutants, 68 killed, 6 equivalent (earlier line miscounted 70/64); Tests.bend 1428 plus 248 = 1676 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (26 laws); openspec 44 passed; box 1.3 checked; report written; committing
 2026-11-05T16:55:50Z	controller	task 4 reported; reviewer dispatched
 2026-11-05T17:03:11Z	controller	task 4 review APPROVED; task 5 dispatched (exports)
+2026-11-05T17:07:19Z	implementer	task 5 started: read brief, plan Global Constraints and rulings, Task 4 report and review (carried M1: version-0 check), AuditQuery.bend, AuditEvent records and encoder, LAWS/PROOF style
+2026-11-05T17:13:43Z	implementer	AuditExport.bend written (checks), two laws proved (28 laws, PROOF green); export section 34 checks plus the carried version-0 conjunct; Audit 282; starting mutation batch
+2026-11-05T17:18:08Z	implementer	mutation batch 1 (70 mutants): survivors S1 (empty test ran at a stale revision), T10, W13, W5 got checks or a sharpened fixture (Audit 283); batch 2: 65 killed (T2, T4 by the revoked law only), 5 equivalent (E4 E5 E6 K4 T9); running full validation
+2026-11-05T17:20:36Z	implementer	validation green: check-only x3 ALL PROOFS CHECK; Audit 283; Tests.bend 1428 plus 283 = 1711 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (28 laws); openspec 44 passed; box 1.4 checked; report written; committing
