@@ -21,3 +21,4 @@
 2026-11-05T03:30:30Z	implementer	task 2 fix round 1 started: read task-2-review.md (I-1 source write-domain binding, I-2 over-consumption, I-3 grant history, M-1, M-2)
 2026-11-05T03:31:00Z	implementer	fix round 1: 3 checks added (Issuance 93), M-1 comment and check-name note; 3 review mutants each killed by its new check; running bend Tests.bend and bend PROOF.bend
 2026-11-05T03:31:21Z	implementer	fix round 1: bend Tests.bend ALL LIBRARY TESTS PASSED 875 PASS (782 + 93); bend PROOF.bend ALL PROOFS CHECK; report section appended (mutant count corrected to 59 before this round, 62 with it: 57 killed, 5 equivalent); committing
+2026-11-05T03:31:35Z	controller	task 2 complete; task 3 dispatched (revoke, current, three laws)

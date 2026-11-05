@@ -10,3 +10,5 @@ Task 1: complete (re-review ALL CLOSED; 821 checks).
 Task 2: dispatched implementer
 Task 2: implementer DONE_WITH_CONCERNS (b4629ca): 872 checks (+51), 55 of 60 mutants caught, the 5 survivors equivalent. Rulings: the stricter gates stand (all narrow); the grant scope copied from the request only after equality with every cited approval is acceptable if the reviewer confirms the equality gates are complete; no explicit id>0 gate acceptable given no transition issues id 0 (reviewer to confirm). Reviewer dispatched.
 Task 2: review spec APPROVED, security NEEDS_FIXES (three mutants survive: write-domain comparison in scope_equal, consuming uncited approvals, dropping earlier grants). Fix round 1 dispatched.
+Task 2: fix round 1 verified by the controller (tests only, three mutants now killed, 875 checks); complete.
+Task 3: dispatched implementer
