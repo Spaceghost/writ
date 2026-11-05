@@ -162,3 +162,5 @@
 2026-11-05T05:01:50Z	implementer	supplementary: compute-sanitizer over the off-capture options (--threads 4 --gpu off), expecting no launch
 2026-11-05T05:01:50Z	implementer	off sanitizer run finished
 2026-11-05T05:03:00Z	implementer	evidence and report written: 782/782 on and off, three diffs empty, 4915 bend_dev launches, gate PASS; committing
+2026-11-05T05:03:16Z	controller	task 6 reported: corpus 782 on and off, 4915 launches; reviewer dispatched
+2026-11-05T05:04:10Z	controller	task 6 review APPROVED; task 7 dispatched (whole-pipeline measurement)

@@ -22,3 +22,6 @@ Task 5: implementer DONE_WITH_CONCERNS (e337527): 11 injected faults, all denied
 Task 5: review spec APPROVED, evidence NEEDS_FIXES (text: the digest collision is structural at every power-of-two size from 256 leaves, so no digest is equality evidence; the typed comparisons are the record; Task 3 cross-process comparisons at 16384 show equal counts only, reconciled in Task 9). Core.sink_gate printed call kept (reviewer: in bounds). Fix round 1 dispatched.
 Task 5: fix round 1 verified by the controller (text only; digest finding stated as structural, typed comparisons the record); complete.
 Task 6: dispatched implementer
+Task 6: implementer DONE_WITH_CONCERNS (765d743): 782 on and off, byte-identical to the reference; 4915 bend_dev launches attributed, gate PASS; GPU evidence for the solver bang only. Rulings: the gate pair at default threads plus a separate sanitizer run at --threads 4 is acceptable if both are labelled (the --threads 4 capture itself is not an observed run); the off configuration under the sanitizer matching control (b) is recorded. Reviewer dispatched.
+Task 6: complete (review APPROVED both axes; one Limits bullet about label/transfer paths carried to Task 9).
+Task 7: dispatched implementer (Nsight absent and the host loaded: the split is recorded as missing and the load stated, per plan)
