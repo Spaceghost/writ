@@ -22,3 +22,5 @@
 2026-11-05T03:37:17Z	implementer	task 2 fix round 1: read task-2-review.md and the controller holder ruling; applying finding 1 per ruling and minor findings 2-5 (nits 6-7)
 2026-11-05T03:43:26Z	implementer	task 2 fix round 1: holder ruling applied (owner is the minting caller, resolve reports it), valid gains holder and delegation clauses, literals named, fixtures distinct; HostIdentity 92 checks standalone; 69 mutants all killed; running suites
 2026-11-05T03:46:43Z	implementer	task 2 fix round 1: JS and native 937 PASS (782 + 63 + 92), identical, 0 missing; PROOF ALL PROOFS CHECK; openspec 44 passed; report section appended; committing
+2026-11-05T03:47:01Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T03:49:12Z	controller	task 2 complete; task 3 dispatched (HostPrimitives: session binding, worker domains)
