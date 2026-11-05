@@ -7,6 +7,7 @@ import ../../../HostIdentityTests.bend as IT
 import ../../../HostWire.bend as W
 import ../../../HostIdentity.bend as I
 import ../../../HostPrimitives.bend as P
+import ../../../HostPublication.bend as H
 import ../../../Frontend.bend as F
 import ../../../Transfer.bend as T
 import ../../../Test.bend as Test
@@ -39,6 +40,10 @@ import ../../../Test.bend as Test
 # `grep '^VECTOR PH-'` of the suite output still yields exactly
 # verification/portable-host-vectors.txt, and
 # `grep '^LINUX VECTOR ' | cut -c7-` yields the Linux replay for `cmp`.
+# The replay is the shared harness run with the Linux fixture's identity,
+# report, and inventory; it does not pass through `LH.dispatch`, whose launch
+# check, session check, Barrier routing, and channel split are covered by the
+# dispatch checks, not by the replay.
 #
 # Not tested here, by nature: that the native broker reports true
 # credentials, controls, and inventories, or executes only returned effects
@@ -63,25 +68,34 @@ def launch_token() -> T.CodeId:
 def launch_caller() -> F.Caller:
   F.Caller{subject_a(), launch_token()}
 
-# The credential the launch record expects (uid 1000, pid 4242, start 917),
-# and four peers that are not it: the parent that created a socketpair, a
-# process reusing pid 4242 later, the same pid under another uid, and another
-# pid that obtained the endpoint.
+# The credential the launch record expects (uid 1000, gid 1000, pid 4242,
+# start 917), and five peers that are not it: the parent that created a
+# socketpair, a process reusing pid 4242 later, the same pid under another
+# uid, the same pid under another gid, and another pid that obtained the
+# endpoint.
 def launch_credential() -> LH.Credential:
-  LH.Credential{1000n, 4242n, 917n}
+  LH.Credential{1000n, 1000n, 4242n, 917n}
 
 def parent_credential() -> LH.Credential:
-  LH.Credential{1000n, 4200n, 900n}
+  LH.Credential{1000n, 1000n, 4200n, 900n}
 
 def reused_pid_credential() -> LH.Credential:
-  LH.Credential{1000n, 4242n, 999n}
+  LH.Credential{1000n, 1000n, 4242n, 999n}
 
 def other_uid_credential() -> LH.Credential:
-  LH.Credential{1001n, 4242n, 917n}
+  LH.Credential{1001n, 1000n, 4242n, 917n}
 
-# Another process holding the endpoint: same uid and start time, another pid.
+def other_gid_credential() -> LH.Credential:
+  LH.Credential{1000n, 1001n, 4242n, 917n}
+
+# Another process holding the endpoint: same uid, gid, and start time,
+# another pid.
 def other_pid_credential() -> LH.Credential:
-  LH.Credential{1000n, 4243n, 917n}
+  LH.Credential{1000n, 1000n, 4243n, 917n}
+
+# A self-consistent credential of another process (uid 2000, pid 5555).
+def foreign_credential() -> LH.Credential:
+  LH.Credential{2000n, 2000n, 5555n, 41n}
 
 # Descriptor kinds (descriptive only) and the worker's inventory: the private
 # result channel, the broker session socket, and the input descriptor
@@ -128,10 +142,34 @@ def endpoint_fact(endpoint: LH.Endpoint) -> LH.LinuxFact:
   fact_with(LH.linux_incarnation(), launch_credential(), endpoint, P.all_families(), LH.required_controls(),
     broker_routes())
 
-# A launch record from the incarnation after this one.
+# A launch record naming incarnation 5, which is no session, profile, or
+# successor id of these fixtures.
+def stale_incarnation() -> Nat:
+  5n
+
 def stale_fact() -> LH.LinuxFact:
-  fact_with(1n+LH.linux_incarnation(), launch_credential(), LH.Launched{}, P.all_families(), LH.required_controls(),
+  fact_with(stale_incarnation(), launch_credential(), LH.Launched{}, P.all_families(), LH.required_controls(),
     broker_routes())
+
+# The incarnation after restart: 7, which is no session or profile id here.
+def linux_successor() -> Nat:
+  7n
+
+# A launch record of the successor incarnation (after restart).
+def successor_fact() -> LH.LinuxFact:
+  fact_with(linux_successor(), launch_credential(), LH.Launched{}, P.all_families(), LH.required_controls(),
+    broker_routes())
+
+# The reviewer's probe: another subject (99) with the client's token and a
+# self-consistent credential of another process.
+def foreign_fact() -> LH.LinuxFact:
+  LH.LinuxFact{99n, token_of(V.client_caller()), LH.linux_incarnation(), foreign_credential(), foreign_credential(),
+    LH.Launched{}, P.all_families(), LH.required_controls(), broker_routes()}
+
+# The launch subject with another token (the client's).
+def other_token_fact() -> LH.LinuxFact:
+  LH.LinuxFact{subject_a(), token_of(V.client_caller()), LH.linux_incarnation(), launch_credential(),
+    launch_credential(), LH.Launched{}, P.all_families(), LH.required_controls(), broker_routes()}
 
 def leaky_fact() -> LH.LinuxFact:
   fact_with(LH.linux_incarnation(), launch_credential(), LH.Launched{}, P.all_families(), LH.required_controls(),
@@ -204,9 +242,6 @@ def inventory_is(fact: P.Fact, expected: +List<P.RouteFact>) -> Bool:
       False{}
 
 # --- The Linux adapter fixture for the conformance vectors --------------------------
-
-def linux_successor() -> Nat:
-  1n+LH.linux_incarnation()
 
 # The third binding: the Linux host and incarnation, adapter A's host as the
 # foreign one, no prefaced entry, and the broker-shaped report and inventory.
@@ -355,8 +390,9 @@ def unrouted(+outcome: LH.Outcome, +input: P.State) -> Bool:
 
 def checked_as(outcome: LH.Outcome, +input: P.State, +slot: Nat, caller: F.Caller) -> Bool:
   match outcome:
-    case LH.Checked{state, P.Granted{entry, got}}:
+    case LH.Checked{state, P.Granted{+entry, got}}:
       PT.state_equal(state, input) && Nat.is_eq(I.entry_slot(entry), slot) && I.caller_equal(got, caller)
+        && W.Ref.equal(P.entry_ref(P.identity(input), entry), input_ref())
     case _:
       False{}
 
@@ -502,6 +538,7 @@ def translator_checks() -> IO(Unit):
     Test.check(evidence_rejected(LH.session_evidence_of(peer_fact(reused_pid_credential()), LH.linux_incarnation()), LH.PeerMismatch{}), "LH-002 session_evidence_of rejects a reused pid with another start time PeerMismatch")
     Test.check(evidence_rejected(LH.session_evidence_of(peer_fact(other_uid_credential()), LH.linux_incarnation()), LH.PeerMismatch{}), "LH-002 session_evidence_of rejects a peer under another uid PeerMismatch")
     Test.check(evidence_rejected(LH.session_evidence_of(peer_fact(other_pid_credential()), LH.linux_incarnation()), LH.PeerMismatch{}), "LH-002 session_evidence_of rejects an endpoint held by another pid PeerMismatch")
+    Test.check(evidence_rejected(LH.session_evidence_of(peer_fact(other_gid_credential()), LH.linux_incarnation()), LH.PeerMismatch{}), "LH-002 session_evidence_of rejects a peer under another gid PeerMismatch")
     Test.check(report_is(LH.report_of(full_fact()), P.all_families(), LH.required_controls()), "LH-001 report_of copies the binding's families and established controls exactly")
     Test.check(report_rejected(LH.report_of(families_fact(with_bit(P.all_families(), unnamed_bit()))), LH.UnknownFamily{}), "LH-001 report_of rejects a family bit outside all_families UnknownFamily")
     Test.check(report_rejected(LH.report_of(controls_fact(with_bit(LH.required_controls(), P.control_accelerator_isolation()))), LH.UncreditedControl{}), "LH-001 report_of rejects an accelerator isolation bit the Linux broker cannot credit UncreditedControl")
@@ -522,6 +559,33 @@ def usage_ok() -> Bool:
   admitted_with(frame(admitted(), LH.Usage{worker(), 1000n}), 1n+P.revision(admitted()), [])
     && Nat.is_eq(quota_used(P.worker_at(P.workers(charged()), worker())), 1000n)
 
+# The monitor restarted as `linux_successor()` from the admitted state.
+def restarted() -> P.State:
+  +s = admitted()
+  P.Step.state(H.restart(s, P.revision(s), linux_successor()))
+
+def restart_ok() -> Bool:
+  Nat.is_eq(I.incarnation(P.identity(restarted())), linux_successor())
+    && admitted_with(frame(restarted(), LH.Launch{successor_fact()}), 1n+P.revision(restarted()), [])
+    && session_is(I.session_at(I.sessions(P.identity(after(frame(restarted(), LH.Launch{successor_fact()})))),
+      I.first_slot()), launch_caller())
+
+def barrier_session(session: Nat) -> LH.Outcome:
+  frame(delegated(), LH.Barrier{session, full_fact(), input_use(V.claim_none())})
+
+def restart_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(untranslated(frame(restarted(), LH.Launch{full_fact()}), restarted(), LH.StaleLaunch{}), "LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect")
+    Test.check(restart_ok(), "LH-002 after a restart a Launch carrying the successor incarnation's launch record opens a worker session with the launch caller and no effect")
+    Test.check(untranslated(frame(restarted(), barrier_of(full_fact(), input_use(V.claim_none()))), restarted(), LH.StaleLaunch{}), "LH-002 LH-008 after a restart a Barrier carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect")
+
+def session_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(untranslated(barrier_on(delegated(), foreign_fact()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the state unchanged and no effect")
+    Test.check(untranslated(barrier_on(delegated(), other_token_fact()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier whose fact names the session's subject with another token is refused SessionMismatch with the state unchanged and no effect")
+    Test.check(untranslated(barrier_session(V.session_client()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier attributing the worker's fact to the client session is refused SessionMismatch with the state unchanged and no effect")
+    Test.check(untranslated(barrier_session(9n), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier naming a session the identity table does not hold is refused SessionMismatch with the state unchanged and no effect")
+
 def launch_dispatch_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(launch_ok(), "LH-002 a broker Launch opens one non-delegable worker session with the launch caller bound to linux-worker-v1 and no effect")
@@ -541,13 +605,13 @@ def barrier_dispatch_checks() -> IO(Unit):
 
 def worker_dispatch_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(checked_at(worker_frame(admitted(), V.session_worker(), input_use(V.claim_other())), admitted(), V.slot_of(L(), V.Input{}), V.client_caller()) && checked_at(worker_frame(admitted(), V.session_worker(), input_use(V.claim_none())), admitted(), V.slot_of(L(), V.Input{}), V.client_caller()), "LH-002 a worker Use claiming subject B on A's session resolves to A's entry and owner, as with no claim, read-only with no effect")
+    Test.check(checked_at(worker_frame(admitted(), V.session_worker(), input_use(V.claim_other())), admitted(), V.slot_of(L(), V.Input{}), V.client_caller()) && checked_at(worker_frame(admitted(), V.session_worker(), input_use(V.claim_none())), admitted(), V.slot_of(L(), V.Input{}), V.client_caller()), "LH-002 a worker Use claiming subject B on A's session resolves to A's entry, reference, and owner, as with no claim, read-only with no effect")
     Test.check(identity_denied(worker_frame(admitted(), V.session_worker(), worker_delegation()), admitted(), I.NotDelegable{}), "LH-007 a worker Delegate from the worker session is denied NotDelegable with the state unchanged and no effect")
     Test.check(undecoded(worker_frame(admitted(), V.session_worker(), short_bytes()), admitted(), W.BadLength{}), "LH-006 worker bytes that are not a whole frame are Undecoded with the state unchanged and no effect")
     Test.check(unrouted(worker_frame(admitted(), V.session_worker(), V.complete_bytes(input_ref())), admitted()) && unrouted(worker_frame(admitted(), V.session_worker(), release_bytes(input_ref())), admitted()), "LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the state unchanged and no effect")
-    Test.check(usage_ok(), "LH-001 a broker Usage within quota_limit is charged once with no effect")
-    Test.check(denied_as(frame(charged(), LH.Usage{worker(), 25n}), charged(), P.QuotaExhausted{}), "LH-001 a broker Usage past quota_limit is denied QuotaExhausted with the state unchanged and no effect")
-    Test.check(denied_as(frame(admitted(), LH.Emission{worker(), True{}}), admitted(), P.DiagnosticSink{}) && admitted_with(frame(admitted(), LH.Emission{worker(), False{}}), 1n+P.revision(admitted()), []), "LH-004 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect")
+    Test.check(usage_ok(), "PH-007 a broker Usage within quota_limit is charged once with no effect")
+    Test.check(denied_as(frame(charged(), LH.Usage{worker(), 25n}), charged(), P.QuotaExhausted{}), "PH-007 a broker Usage past quota_limit is denied QuotaExhausted with the state unchanged and no effect")
+    Test.check(denied_as(frame(admitted(), LH.Emission{worker(), True{}}), admitted(), P.DiagnosticSink{}) && admitted_with(frame(admitted(), LH.Emission{worker(), False{}}), 1n+P.revision(admitted()), []), "LH-009 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect")
 
 # --- Conformance replay through the Linux adapter -----------------------------------
 
@@ -647,6 +711,8 @@ def main() -> IO(Unit):
     translator_checks()
     launch_dispatch_checks()
     barrier_dispatch_checks()
+    session_checks()
+    restart_checks()
     worker_dispatch_checks()
     replay_plan_checks()
     replay_gap_checks()
@@ -654,4 +720,4 @@ def main() -> IO(Unit):
     replay_revocation_checks()
     replay_restart_checks()
     replay_compare_checks()
-    IO.print("LinuxHost: 83 checks passed")
+    IO.print("LinuxHost: 91 checks passed")

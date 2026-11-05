@@ -42,12 +42,16 @@ import ../../../Transfer.bend as T
 # untouched because no transition runs):
 #   `session_evidence_of`  launch record from another monitor incarnation
 #                                                   -> StaleLaunch
-#                          peer credential (uid, pid, start time) differs
-#                          from the launch record's -> PeerMismatch
+#                          peer credential (uid, gid, pid, start time)
+#                          differs from the launch record's -> PeerMismatch
 #                          (a parent-created socketpair reports the parent;
 #                          a reused pid reports another start time, LH-002)
 #                          else `SessionEvidence{launch caller, origin,
 #                          delegable = False}`
+#   `session_check`        (Barrier only) the barrier's session is not
+#                          exactly one session of the identity table, or
+#                          its caller is not the fact's launch subject and
+#                          token                    -> SessionMismatch
 #   `report_of`            a family bit outside `P.all_families()`
 #                                                   -> UnknownFamily
 #                          a control bit outside `linux_controls()` (the
@@ -99,10 +103,27 @@ import ../../../Transfer.bend as T
 # and the claimed subject is never read (the Use pattern below discards it,
 # and `P.use` ignores it).
 #
+# Barrier binding. A Barrier's fact must name the caller of the session it
+# admits (`session_check`, else SessionMismatch), so a barrier the broker
+# attributed to the wrong worker's session is refused. The monitor stores no
+# launch credential, so the barrier's `launch`/`peer` comparison is a
+# consistency check on the frame: that the barrier credential is the
+# session's launch credential is a broker obligation (Task 2). The endpoint is
+# fixed at Launch (`open_session` records the origin) and ignored at the
+# Barrier. The request snapshot is the only request admission reads: only
+# its reference is used and it must resolve on the barrier's session, so a
+# snapshot that diverges from the worker's own frame admits at most an entry
+# that session already holds. A `Checked`/`Granted` result authorizes no
+# broker action in section 1; Task 4's resource lookup must act on the
+# monitor's resolution, never on worker bytes. The adapter implements no
+# replay rule: a repeated Launch opens another session, so the broker issues
+# one Launch per launch-record generation (Task 2 frames the generation).
+#
 # Dispatch. `dispatch` applies at most one shared transition per framed input:
 #   Launch{fact}            -> `session_evidence_of`, `report_of`, then
 #                              `P.open_session` with `worker_role()`
-#   Barrier{s, fact, bytes} -> the launch check, `report_of`, `inventory_of`,
+#   Barrier{s, fact, bytes} -> the launch check, `session_check`, `report_of`,
+#                              `inventory_of`,
 #                              `W.decode_bytes`; a Use's reference goes to
 #                              `P.admit_worker` on session `s`
 #   Usage{worker, amount}   -> `P.charge`
@@ -137,7 +158,7 @@ import ../../../Transfer.bend as T
 # `linux_worker_profile`, `profiles`, `worker_role`, `initial`; the types
 # `Credential`, `Endpoint`, `LinuxRoute`, `LinuxFact`, `Rejection`,
 # `EvidenceResult`, `ReportResult`, `BrokerFrame`, `Input`, `Outcome`; the
-# translators `launch_check`, `session_evidence_of`, `report_of`,
+# translators `launch_check`, `session_check`, `session_evidence_of`, `report_of`,
 # `inventory_of`; `dispatch`, `Outcome.state`, `Outcome.effects`, and
 # `Rejection.equal`. Every other def is an implementation helper.
 
@@ -195,10 +216,11 @@ def initial() -> P.State:
 
 # --- Native facts (what the broker frames) ----------------------------------------
 
-# A process credential: uid, pid, and process start time (from
-# `/proc/PID/stat`, matched through a pidfd). Local facts only.
+# A process credential: uid, gid, pid, and process start time (from
+# `SO_PEERCRED` and `/proc/PID/stat`, matched through a pidfd). Local facts
+# only.
 type Credential is Data:
-  Credential{uid: Nat, pid: Nat, start: Nat}
+  Credential{uid: Nat, gid: Nat, pid: Nat, start: Nat}
 
 # How the worker's session endpoint arrived, as the broker observed it.
 type Endpoint is Data:
@@ -228,6 +250,7 @@ type LinuxFact is Data:
 type Rejection is Data:
   StaleLaunch{}
   PeerMismatch{}
+  SessionMismatch{}
   UnknownFamily{}
   UncreditedControl{}
 
@@ -243,17 +266,18 @@ def Rejection.equal(a: Rejection, b: Rejection) -> Bool:
   match a b:
     case StaleLaunch{} StaleLaunch{}: True{}
     case PeerMismatch{} PeerMismatch{}: True{}
+    case SessionMismatch{} SessionMismatch{}: True{}
     case UnknownFamily{} UnknownFamily{}: True{}
     case UncreditedControl{} UncreditedControl{}: True{}
     case _ _: False{}
 
 # --- Translators ------------------------------------------------------------------
 
-# Implementation helper: the same uid, pid, and start time.
+# Implementation helper: the same uid, gid, pid, and start time.
 def credential_equal(a: Credential, b: Credential) -> Bool:
   match a b:
-    case Credential{au, ap, ast} Credential{bu, bp, bst}:
-      Nat.is_eq(au, bu) && Nat.is_eq(ap, bp) && Nat.is_eq(ast, bst)
+    case Credential{au, ag, ap, ast} Credential{bu, bg, bp, bst}:
+      Nat.is_eq(au, bu) && Nat.is_eq(ag, bg) && Nat.is_eq(ap, bp) && Nat.is_eq(ast, bst)
 
 # Implementation helper: `reason` when `failed`, else `rest`.
 def reject_if(failed: Bool, reason: Rejection, rest: Maybe<&2, Rejection>) -> Maybe<&2, Rejection>:
@@ -263,15 +287,42 @@ def reject_if(failed: Bool, reason: Rejection, rest: Maybe<&2, Rejection>) -> Ma
     case False{}:
       rest
 
-# The launch check, shared by `Launch` and `Barrier`: the fact is about a
-# process this monitor incarnation launched (else StaleLaunch), and the
-# kernel's peer credential is the launch record's (else PeerMismatch). It
-# authenticates nothing itself; it refuses a fact whose own fields disagree.
+# The launch check, shared by `Launch` and `Barrier`: the fact's launch
+# record names this monitor's current incarnation (else StaleLaunch), and the
+# peer credential it carries equals the launch credential it carries (else
+# PeerMismatch). Both are comparisons inside one frame: it authenticates
+# nothing and binds the fact to no session (`session_check` does that for a
+# Barrier); it refuses a fact whose own fields disagree.
 def launch_check(+fact: LinuxFact, +incarnation: Nat) -> Maybe<&2, Rejection>:
   match fact:
     case LinuxFact{_, _, launched, launch, peer, _, _, _, _}:
       reject_if(Bool.not(Nat.is_eq(launched, incarnation)), StaleLaunch{},
         reject_if(Bool.not(credential_equal(peer, launch)), PeerMismatch{}, None{}))
+
+# Implementation helper: whether the one session found has `caller`.
+def session_caller_is(found: I.SessionLookup, caller: F.Caller) -> Bool:
+  match found:
+    case I.OneSession{bound}:
+      I.caller_equal(I.session_caller(bound), caller)
+    case _:
+      False{}
+
+# The Barrier's session check: `session` is exactly one session of
+# `identity` and its caller is the fact's launch subject and token (else
+# SessionMismatch). A comparison only; it binds and grants nothing.
+def session_check(+fact: LinuxFact, +identity: I.State, +session: Nat) -> Maybe<&2, Rejection>:
+  match fact:
+    case LinuxFact{subject, token, _, _, _, _, _, _, _}:
+      reject_if(Bool.not(session_caller_is(I.session_at(I.sessions(identity), session), F.Caller{subject, token})),
+        SessionMismatch{}, None{})
+
+# Implementation helper: the first rejection of two checks.
+def first_of(first: Maybe<&2, Rejection>, second: Maybe<&2, Rejection>) -> Maybe<&2, Rejection>:
+  match first:
+    case Some{reason}:
+      Some{reason}
+    case None{}:
+      second
 
 # Implementation helper: the contract origin of an observed endpoint.
 def origin_of(endpoint: Endpoint) -> I.Origin:
@@ -441,7 +492,8 @@ def on_broker(+state: P.State, frame: BrokerFrame, +now: Nat) -> Outcome:
     case Launch{+fact}:
       launch_with(session_evidence_of(fact, current_incarnation(state)), report_of(fact), state)
     case Barrier{+session, +fact, request}:
-      barrier_with(launch_check(fact, current_incarnation(state)), report_of(fact), inventory_of(fact), state,
+      barrier_with(first_of(launch_check(fact, current_incarnation(state)),
+        session_check(fact, P.identity(state), session)), report_of(fact), inventory_of(fact), state,
         session, W.decode_bytes(request), now)
     case Usage{worker, amount}:
       Stepped{P.charge(state, P.revision(state), P.ResourceRequest{worker, amount}, now)}

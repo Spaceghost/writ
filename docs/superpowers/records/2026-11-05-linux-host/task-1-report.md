@@ -230,3 +230,121 @@ Count before: 1428. After: 1428 plus 83 new checks = 1511. Every one of the
    with the Linux identity and the translated report and inventory; it does
    not route the vectors through `dispatch` (the dispatch has its own checks).
    It is model evidence only; no native broker exists.
+
+## Fix round 1
+
+Against `task-1-review.md` (both verdicts NEEDS_FIXES).
+
+- I1 (blocking), the Barrier is now bound to its session. There is a new
+  adapter `Rejection` `SessionMismatch`. `session_check(fact, identity,
+  session)` looks up `I.session_at(I.sessions(...), session)` and refuses the
+  fact unless there is exactly one session and its caller is
+  `F.Caller{fact.subject, fact.token}`. It runs on the Barrier path after
+  `launch_check` (`first_of`). It is not a transition and not a contract
+  `Error`. The reviewer's probe is reproduced as `LH-002 a Barrier on the
+  worker session whose fact names another subject, token, and process is
+  refused SessionMismatch with the state unchanged and no effect`. Three more
+  checks cover another token, the worker's fact attributed to the client
+  session, and an unknown session (9). The header and INVENTORY.md now state
+  three things: the barrier credential is the session's launch credential (a
+  broker obligation, since the monitor stores none); the endpoint is fixed at
+  Launch and ignored at a Barrier; and `launch_check` is a check inside one
+  frame, not a binding (its comment was reworded).
+- I2, StaleLaunch across a restart. `restarted()` is `H.restart(admitted(),
+  ..., linux_successor())`, with the successor now 7. Three new checks:
+  - a Launch carrying incarnation 1 after the restart is refused StaleLaunch,
+    state unchanged;
+  - a Launch carrying the successor opens a session with the launch caller;
+  - a Barrier carrying incarnation 1 after the restart is refused StaleLaunch.
+
+  `stale_fact` now carries incarnation 5, which matches no session, profile,
+  or successor id. The reviewer's X1 and X2 mutants are now killed.
+- I3, INVENTORY.md has a "Facts the broker reports" table (fact, native
+  source, frame field, contract destination, why it is not authority). It
+  covers every `LinuxFact` field and `Barrier.session`, `Barrier.request`,
+  `Usage`, `Emission`, and `FromWorker.session`. Rows marked Task 2, 3, or 4
+  cover the session generation, the Landlock rights / `no_new_privs` /
+  privilege drop, and the resolved stable handle. It also has an eight-item
+  broker obligation list, and states that none of these facts is an
+  authority fact.
+- Box 1.1 is unchecked. Its parenthetical reads "Model half delivered: ...;
+  the box is checked when Tasks 2 and 3 land the native pins." The header
+  line is unchanged.
+- m1, m2: header sentences on the request snapshot (the only request
+  admission reads; a divergence admits at most an entry the session already
+  holds), on `Checked` authorizing no broker action in section 1, and on the
+  absence of a replay rule (one Launch per launch-record generation). The
+  last two are also broker obligations in INVENTORY.md.
+- m3: the test header says the replay is the shared harness with the Linux
+  fixture and does not exercise `dispatch`. There is a new traceability row,
+  LH-010, with the same boundary.
+- m4: the two Usage checks are relabelled `PH-007 ...` and the Emission check
+  `LH-009 ...`.
+- m5: `Credential` now has `gid`, compared in `credential_equal`, with a new
+  fixture and check `LH-002 session_evidence_of rejects a peer under another
+  gid PeerMismatch`.
+- m6: `checked_as` also compares `P.entry_ref(identity, entry)` with
+  `input_ref()`. The check name now says "entry, reference, and owner".
+
+Counts: LinuxHost goes from 83 to 91 checks (8 new: gid, four
+SessionMismatch, three restart). The suite is 1428 plus 91 = 1519 PASS,
+0 FAIL. None of the 1428 prior PASS lines is missing and no PASS name is
+duplicated.
+
+Mutation pass, rerun on a scratch copy under
+`../writ-build/linux-host/mut/`: 38 mutants, all 38 killed. That is the
+original 31 with patterns updated for the gid field and `first_of`, plus
+M03b, M32 to M35, X1, and X2. The first failing check per mutant:
+
+    BASELINE rc 0 LinuxHost: 91 checks passed
+    M01 launch_check StaleLaunch removed KILLED by FAIL: LH-002 session_evidence_of rejects a launch record from another monitor incarnation StaleLaunch
+    M02 launch_check PeerMismatch removed KILLED by FAIL: LH-002 session_evidence_of rejects a parent-created socketpair peer PeerMismatch
+    M03 credential_equal ignores uid KILLED by FAIL: LH-002 session_evidence_of rejects a peer under another uid PeerMismatch
+    M03b credential_equal ignores gid KILLED by FAIL: LH-002 session_evidence_of rejects a peer under another gid PeerMismatch
+    M04 credential_equal ignores pid KILLED by FAIL: LH-002 session_evidence_of rejects an endpoint held by another pid PeerMismatch
+    M05 credential_equal ignores start time KILLED by FAIL: LH-002 session_evidence_of rejects a reused pid with another start time PeerMismatch
+    M06 report_of UnknownFamily removed KILLED by FAIL: LH-001 report_of rejects a family bit outside all_families UnknownFamily
+    M07 report_of UncreditedControl removed KILLED by FAIL: LH-001 report_of rejects an accelerator isolation bit the Linux broker cannot credit UncreditedControl
+    M08 linux_controls admits accelerator isolation KILLED by FAIL: LH-001 report_of rejects an accelerator isolation bit the Linux broker cannot credit UncreditedControl
+    M09 evidence delegable True KILLED by FAIL: LH-002 session_evidence_of gives the launch record's subject and token, Authenticated, non-delegable
+    M10 origin_of Inherited as Authenticated KILLED by FAIL: LH-007 session_evidence_of reports an inherited or transferred endpoint as Inherited or Transferred from that session
+    M11 origin_of Transferred as Authenticated KILLED by FAIL: LH-007 session_evidence_of reports an inherited or transferred endpoint as Inherited or Transferred from that session
+    M12 launch_report NoReport opens anyway KILLED by FAIL: LH-001 a Launch reporting an unknown family bit is refused UnknownFamily with the state unchanged and no effect
+    M13 launch_with NoEvidence not refused KILLED by FAIL: LH-002 a Launch from a socketpair parent is refused PeerMismatch before any transition with the state unchanged and no effect
+    M14 barrier_with launch check skipped KILLED by FAIL: LH-002 a Barrier with another incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+    M15 barrier_report NoReport proceeds KILLED by FAIL: LH-001 a Barrier crediting an unnamed control is refused UncreditedControl with the state unchanged and no effect
+    M16 barrier_request Malformed unrouted KILLED by FAIL: LH-006 a Barrier whose request snapshot is not a whole frame is Undecoded with the state unchanged and no effect
+    M17 barrier_use admits a Delegate's ref KILLED by FAIL: LH-006 a Barrier whose request is not a Use admits nothing: Unrouted with the state unchanged and no effect
+    M18 worker Delegate unrouted KILLED by FAIL: LH-007 a worker Delegate from the worker session is denied NotDelegable with the state unchanged and no effect
+    M19 worker Complete/Release routed to use KILLED by FAIL: LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the state unchanged and no effect
+    M20 on_worker Malformed unrouted KILLED by FAIL: LH-006 worker bytes that are not a whole frame are Undecoded with the state unchanged and no effect
+    M21 Usage not charged KILLED by FAIL: PH-007 a broker Usage within quota_limit is charged once with no effect
+    M22 Emission not routed to diagnostic KILLED by FAIL: LH-009 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect
+    M23 Outcome.effects drops admitted effects KILLED by FAIL: LH-001 LH-003 a barrier report with every required control admits once and its only effect, in the step and in Outcome.effects, is one DeliverInputs naming the worker's input
+    M24 required_controls drops quota KILLED by FAIL: LH-001 initial() is a valid empty state on the Linux host and incarnation whose only configured profile is linux-worker-v1: every family, every control but accelerator isolation, Cpu, quota_limit
+    M25 profile backend Accelerator KILLED by FAIL: LH-001 initial() is a valid empty state on the Linux host and incarnation whose only configured profile is linux-worker-v1: every family, every control but accelerator isolation, Cpu, quota_limit
+    M26 worker_role names another profile KILLED by FAIL: LH-005 a barrier report without control_address_isolation is denied MissingControl with the state unchanged and no effect
+    M27 inventory_of marks every route mediated KILLED by FAIL: LH-004 a barrier inventory with an unmediated inherited descriptor is denied UnmediatedRoute with the state unchanged and no effect
+    M28 Launch opens as a delegable client KILLED by FAIL: LH-005 a barrier report without control_address_isolation is denied MissingControl with the state unchanged and no effect
+    M29 Barrier checks the launch record against incarnation 0 KILLED by FAIL: LH-005 a barrier report without control_address_isolation is denied MissingControl with the state unchanged and no effect
+    M30 profile requires no family_revocation KILLED by FAIL: LH-001 initial() is a valid empty state on the Linux host and incarnation whose only configured profile is linux-worker-v1: every family, every control but accelerator isolation, Cpu, quota_limit
+    M31 Launch checks the launch record against incarnation 0 KILLED by FAIL: LH-005 a barrier report without control_address_isolation is denied MissingControl with the state unchanged and no effect
+    M32 Barrier session_check removed KILLED by FAIL: LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the state unchanged and no effect
+    M33 session_caller_is ignores the caller KILLED by FAIL: LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the state unchanged and no effect
+    M34 session_caller_is accepts a missing session KILLED by FAIL: LH-002 a Barrier naming a session the identity table does not hold is refused SessionMismatch with the state unchanged and no effect
+    M35 first_of drops the second check KILLED by FAIL: LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the state unchanged and no effect
+    X1 current_incarnation returns linux_incarnation() KILLED by FAIL: LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+    X2 current_incarnation returns linux_worker_v1() KILLED by FAIL: LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+
+Runs:
+- `bend Tests.bend`: exit 0, 1519 PASS, `LinuxHost: 91 checks passed`, ending
+  `ALL LIBRARY TESTS PASSED`.
+- Replay: `grep '^LINUX VECTOR ' | cut -c7-` is `cmp`-identical to
+  `verification/portable-host-vectors.txt`, SHA-256
+  `37816dd7d768c21e730f780cbc98b66cadbba087c972d18e731b670219caf24f`. The
+  `VECTOR PH-` and `VECTOR GA-` captures are unchanged.
+- `bend PROOF.bend`: `ALL PROOFS CHECK`. `git diff master -- LAWS.bend
+  PROOF.bend` is empty. `--verdict` is still unavailable (no Lean).
+- OpenSpec 1.16.0 strict: 44 passed, 0 failed.
+- The native backend was not rebuilt in this round. Its last run is the one
+  above, at 1511.
