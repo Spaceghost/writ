@@ -1,8 +1,8 @@
-Executor rendezvous evidence (change add-executor-rendezvous, task 2.1; task 2.2 appends the full runs)
+Executor rendezvous evidence (change add-executor-rendezvous, tasks 2.1 and 2.2)
 Bend version: bend 2.0.39 (from `bend version`)
 Host: Linux 7.2.9-1-MANJARO x86_64
 Date: 2026-11-05 (UTC)
-Lane: lane/executor-rendezvous, based on master 78449c9 (the lane's first commit, ea8144a, adds only records); the tree recorded here is task 7's fix round 1 commit (on 182970d, the task 7 commit on c9be27a).
+Lane: lane/executor-rendezvous, based on master 78449c9 (the lane's first commit, ea8144a, adds only records); the sections up to "Not exercised" record task 7's fix round 1 tree (56f091b, on 182970d); the section "Task 2.2: full verification" at the end records the task 8 tree, which differs from it only in comments of Rendezvous.bend and in RendezvousTests.bend's native-arity split (no check added, removed or renamed).
 Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1; commands run from the worktree root
 Execution: the default `bend <file>` check-and-run on the CPU. No device code ran; nothing here is GPU evidence, and a CPU run is not a GPU test.
 Scope: the Bend rendezvous model (Rendezvous.bend, including the commit projection commit_context added in task 7's fix round 1) and its tests (RendezvousTests.bend). The change is proposed; no host adapter, facade entry or acceptance scenario is implemented, and the path stays disabled.
@@ -116,8 +116,8 @@ Task 6 (final commit, integration driver): 11 mutants, 10 killed, 1 equivalent (
 Task 7 (scenarios, confirmatory sweep): 13 mutants, 13 killed, 0 equivalent; rerun after fix round 1, all 13 still killed.
 Task 7 fix round 1 (commit_context, the new branches): 8 mutants, 8 killed, 0 equivalent.
 Total: 366 mutants, 351 killed, 15 equivalent, each equivalence argued in its
-task's table and accepted on review (task 7's has none). Task 2.2 re-runs the
-full sweep on the final tree.
+task's table and accepted on review (task 7's has none). Task 2.2 reran the
+full sweep on the final tree (results in "Task 2.2: full verification").
 
 ## Scenario checks (RendezvousTests.bend section `scenarios`, 24 checks, all PASS)
 
@@ -205,8 +205,8 @@ behind it; a case under C's own identity with A's claim was added and kills it.
 - Concurrent hosts: there is no serialization of installs between hosts or
   processes. Races are modeled by the revision check only.
 - Per-use projection rebuilding by a host: the tests rebuild
-  negotiation_context and provider_registry at each use themselves; no host
-  does.
+  negotiation_context, commit_context and provider_registry at each use
+  themselves; no host does.
 - Trial metering: add-metered-sample-execution is not implemented; trial
   compute is unmetered, as in Negotiation.
 - Settlement: the selected quote is not settled against the ledger hold; the
@@ -219,6 +219,93 @@ behind it; a case under C's own identity with A's claim was added and kills it.
   must run only the worker it admitted, report its session truthfully, and
   pass commit_context, rebuilt, to every commit (reviewed-only in the
   traceability).
+- The same session at the commit: the host passes the same Negotiation
+  session to commit_context and to the commit; Bend cannot tie them, because
+  the commit takes its session separately (Backplane.commit and
+  DataOS.commit_from_capability read their own session argument), so
+  session_follows_selection protects only the session commit_context is
+  given (reviewed-only; task 7 re-review item R1).
 - Any native host: no Genode, Unikraft, Linux, Windows or rclone binding runs
   the rendezvous. The HostPrimitives leg is the Bend model only.
 - GPU: no device code ran; this CPU run is not a GPU test.
+
+## Task 2.2: full verification (task 8 tree)
+
+Tree: lane/executor-rendezvous at the task 8 commit (on 70861cb), based on
+master 78449c9; master is now at f970496, whose later commits add only a
+plan and question records. Toolchain: Bend 2.0.39, Node v26.10.0, clang
+23.1.1, Linux 7.2.9-1-MANJARO x86_64. Build outputs in
+../writ-build/executor-rendezvous/ (not committed).
+
+Changes from the task 7 tree:
+- Rendezvous.bend: comments only (the R1 sentence in the header's commit
+  projection paragraph and in the commit_context comment). Its non-comment
+  lines are identical to 56f091b (compared with comment lines stripped).
+- RendezvousTests.bend: the first native build failed with
+  "Error: an arity over 247" (exit 1 after 56 s), Bend's native
+  function-arity limit (the note above HostBindingTests.main). Emitting C for
+  one driver per check located 33 of the 223 checks whose condition, as one
+  def, exceeds the limit. Each of the 33 is now a conjunction of named Bool
+  defs, one per original conjunct, unchanged and in order (180 defs, named
+  <group>_<K>_<J>). Inlining those defs back gives exactly the earlier
+  tokens (comments stripped). No check was added, removed or renamed, and
+  the Node output is byte-identical to the run before the split.
+
+1. JavaScript (Node):
+$ bend Tests.bend -o ../writ-build/executor-rendezvous/tests.js && node ../writ-build/executor-rendezvous/tests.js
+[build exit 0; run exit 0; 0 FAIL lines]
+Rendezvous: 223 checks passed
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+PASS lines: 1651 (1598 "PASS: " plus 53 "PASS "), each label unique.
+The embedded-runtime run (`bend Tests.bend`) is byte-identical to it.
+
+2. Native CPU (not a GPU test):
+$ bend Tests.bend -o ../writ-build/executor-rendezvous/tests-native
+[exit 0; real 12m11.716s, while the mutation sweep shared the machine]
+$ ../writ-build/executor-rendezvous/tests-native +RTS --threads 4 --gpu off
+[exit 0; real 0m9.157s; 0 FAIL lines; 1651 PASS lines; same last lines]
+$ cmp tests-native.txt tests-js.txt
+[no output: byte-identical]
+SHA-256 of both outputs:
+df544bc6b11ceab2343425e6e894e6418f4febb1e7ef549977c02d80a491131f
+This is a CPU run with --gpu off. No device code ran; it is not GPU evidence.
+Total: 1428 checks at master 78449c9 plus 223 Rendezvous checks = 1651,
+recorded, not pinned (the controller re-pins after the parallel lanes merge).
+
+3. Ordinary proofs:
+$ bend PROOF.bend
+[exit 0]
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.
+LAWS.bend holds 24 laws (grep -c '^law ' LAWS.bend): the 17 at master plus
+this change's 7. `git diff 78449c9 -- LAWS.bend PROOF.bend Tests.bend` has
+no removed line. `bend Rendezvous.bend --check-only` also prints
+ALL PROOFS CHECK.
+
+4. Kernel verdict, one attempt:
+$ bend PROOF.bend --verdict
+[exit 1]
+Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
+NOT VERIFIED: neither lean nor elan is installed. No Lean verdict is claimed
+for any law.
+
+5. OpenSpec, structural only:
+$ ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+[exit 0]
+Totals: 44 passed, 0 failed (44 items)
+This is structural validation, separate from the tests and proofs.
+
+Final mutation sweep (table in
+docs/superpowers/records/2026-11-05-executor-rendezvous/task-8-mutants.md;
+scratch copies only, the full RendezvousTests driver, PROOF.bend on every
+survivor):
+- every Gate constructed in Rendezvous.bend, its condition replaced by
+  True{}: 83 mutants, 81 killed, 2 equivalent (the NoSelection arms of
+  trial_gates and run_gates, the gate-level twins of task 4's T10 and task
+  5's G5);
+- every task 1 to 7 mutant re-applied to the final tree (nine re-anchored
+  to the def they were written for): 365 mutants, 350 killed, 15
+  equivalent (the same 15 accepted in tasks 2 to 6: A6, A6b, W19, W19b, S8,
+  F2, R2, P14, P18, T10, G5, P5, K3, K4, B4; A6 and W19 do not build).
+Total: 448 mutants, 431 killed, 17 equivalent; no new survivor.

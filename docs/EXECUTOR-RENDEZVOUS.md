@@ -307,7 +307,10 @@ and `scenarios` checks "before dispatch", "with a retired trial", "from
 another worker", "under a reselected offer"). What still rests on the host
 is that the worker it reports is the one that ran and produced the
 candidate: Bend checks the reported worker session against the dispatch
-record, not the output's origin. `negotiation_context` stays the projection
+record, not the output's origin. The host also passes the same Negotiation
+session to `commit_context` and to the commit; Bend cannot tie them, because
+the commit takes its session separately, so `session_follows_selection`
+protects only the session `commit_context` is given. `negotiation_context` stays the projection
 for `N.challenge` to `N.start` and `dispatch`, and the host must never pass
 it to a commit. Each denial below is the commit path's own check. Each
 denied commit returns the Running session and the ledger with its hold, so
@@ -549,30 +552,76 @@ movement cost and no proximity input.
 
 ## Remaining host preconditions
 
-1. Authenticated `from` on every transition, from transport identity
-   verification. A bearer handle is not enough.
-2. A current, monitor-installed issuer state that meets every precondition
-   in [GRANT-ISSUANCE.md](GRANT-ISSUANCE.md).
-3. Current, consistent transfer contexts, a trusted non-decreasing clock,
-   and challenge ids that are never reused across selections.
-4. The genuine pinned request and the monitor's configured profile
-   constraint at `open`.
-5. Genuine Negotiation sessions and receipts, and a current, valid
-   HostPrimitives state at the named revision.
-6. Per-use rebuilding of `negotiation_context`, `commit_context` and
-   `provider_registry`, with `commit_context` the only context passed to a
-   commit, reporting the worker session the output truly came from. The
-   worker's input is opened only from `provider_registry`.
-7. Atomic, serialized, durable installation at `expected_revision`, with no
-   rollback of `seen`, `retired`, withdrawal flags, evidence or dispatch
-   records.
-8. Confinement of the dispatched worker, and independent final validation
-   through the unchanged `DataOS.commit_from_capability`.
-9. Metered and funded trial compute (`add-metered-sample-execution`, unmet),
-   and a settled quote semantics (q18, open).
-10. A host adapter that negotiates the rendezvous capability and record
-    versions, rejects unknown versions, and stays disabled until native
-    acceptance tests show preconditions 1 to 8 on that host.
+The path stays disabled until every precondition below holds on a host and
+that host's native acceptance tests show it. Bend checks none of them; each
+is a trusted input or an obligation of the host adapter. Where a requirement
+or the design names the obligation, its words are quoted.
+
+1. **Transport identity for providers and approvers.** ER-001 asks for "an
+   authenticated provider", and ER-006 for "current approval from every
+   contributing origin". Every transition's `from` must come from transport
+   identity verification (a Genode route, a Linux peer credential, a
+   Windows token). A bearer handle or a native descriptor is not enough.
+2. **Signature verification for off-host offers and approvals.** An offer or
+   an origin approval carried from another host must be verified before
+   `submit_offer` or `submit_approval` sees it. Bend verifies no signature.
+3. **Grants installed by the monitor, with the issuance directory.** The
+   monitor installs the current Issuance state (`Snapshot.issuer`): the
+   grants, the directory of who speaks for each origin and its placements,
+   and the live stamp. It must meet every precondition in
+   [GRANT-ISSUANCE.md](GRANT-ISSUANCE.md). A stale or forged issuer state
+   makes a revoked grant or a replaced authority look current.
+4. **The clock and the trial receipts.** A trusted, non-decreasing monitor
+   clock (`Snapshot.now`, `now` in the Negotiation context), current and
+   consistent transfer contexts, and challenge ids never reused across
+   selections, so that challenges are "generated after the candidate and
+   provider scope are fixed" (ER-004).
+5. **The genuine request at `open`.** The pinned negotiation request and the
+   monitor's configured profile constraint, and genuine Negotiation sessions
+   and receipts at every call.
+6. **The host state current at dispatch.** A current, valid HostPrimitives
+   state at `expected_host_revision`, whose session table binds each
+   worker's caller only from authenticated native evidence
+   (`bind_session`), and whose native-session mapping does not survive a
+   restart (HostIdentity's restart obligation).
+7. **Durable, serialized rendezvous state.** Atomic installation of each
+   accepted state at `expected_revision`, transitions serialized across
+   hosts and processes, and durable storage with no rollback of `seen`,
+   `retired`, withdrawal flags, evidence or dispatch records. The design's
+   rollback rule applies: rollback "never restores old authority epochs or
+   forgets consumed receipts".
+8. **Per-use projection rebuilding.** `negotiation_context` for every
+   `N.*` call and dispatch, `commit_context` for every `Backplane.commit` or
+   facade commit, and `provider_registry` for every Frontend mount, open or
+   use, each rebuilt from the current rendezvous, issuer and transfer
+   states. None may be cached, reused or accepted from a caller.
+9. **The same session at the commit.** `commit_context`, never
+   `negotiation_context`, is the only context passed to a commit, and the
+   host passes the same Negotiation session to `commit_context` and to the
+   commit. Bend cannot tie them, because the commit takes its session
+   separately.
+10. **An adapter that admits workers only from `provider_registry` after a
+    recorded dispatch.** It opens the worker's input only from
+    `provider_registry`, never from the raw issuer registry. The worker it
+    admitted is the one it runs: it confines that worker, reports that
+    worker's session truthfully as `worker_session` at the commit, and
+    leaves final validation to the unchanged
+    `DataOS.commit_from_capability`.
+11. **Enablement and capability negotiation.** The design's rule: "Introduce
+    versioned records and explicit capability negotiation. Keep the new
+    path disabled until its acceptance tests and host preconditions hold.
+    Reject unknown record versions." No host adapter or facade entry exists.
+12. **Trial metering.** Trial compute is unmetered and unfunded, as in
+    Negotiation. It needs `add-metered-sample-execution`, which is not
+    implemented.
+13. **Quote settlement.** The reader's quote is a ceiling and the selection
+    records the agreed quote. Settling it against the ledger hold, and the
+    exact-versus-ceiling semantics, are pending Spaceghost (q18).
+
+Not a host precondition, but open before this change is merged: the count
+re-pin by the controller. This lane records its own counts (1651 checks, 24
+laws) and changes no pin; the controller re-pins every count and law total
+once, after the parallel lanes merge.
 
 ## What this document does not claim
 

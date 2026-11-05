@@ -380,6 +380,62 @@ def offers_count(offers: R.Offers) -> Nat:
 
 # --- Section 1.1: offers (ER-001, ER-008 record half) ------------------------
 
+# Native arity: each check of `offer_records` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `offer_records_K_J` is conjunct J of the K-th check of `offer_records`, counting
+# from 0.
+def offer_records_3_0() -> Bool:
+  R.Change.accepted(a_change())
+
+def offer_records_3_1() -> Bool:
+  issued_is(R.Change.issued(a_change()), 1n)
+
+def offer_records_3_2() -> Bool:
+  Nat.is_eq(R.revision(with_a()), 1n)
+
+def offer_records_3_3() -> Bool:
+  offers_equal(R.offers(with_a()), R.Offers{offer_a(), R.NoOffers{}})
+
+def offer_records_3_4() -> Bool:
+  serials_equal(R.seen(with_a()), R.Serials{R.OfferSerial{provider_a(), 1n}, R.NoSerials{}})
+
+def offer_records_3_5() -> Bool:
+  R.valid(with_a())
+
+def offer_records_5_0() -> Bool:
+  R.Change.accepted(b_change())
+
+def offer_records_5_1() -> Bool:
+  Nat.is_eq(R.revision(with_both()), 2n)
+
+def offer_records_5_2() -> Bool:
+  Nat.is_eq(offers_count(R.offers(with_both())), 2n)
+
+def offer_records_5_3() -> Bool:
+  offers_hold(R.offers(with_both()), offer_a())
+
+def offer_records_5_4() -> Bool:
+  offers_hold(R.offers(with_both()), offer_b())
+
+def offer_records_5_5() -> Bool:
+  R.valid(with_both())
+
+def offer_records_9_0() -> Bool:
+  R.Change.accepted(a7_change())
+
+def offer_records_9_1() -> Bool:
+  issued_is(R.Change.issued(a7_change()), 7n)
+
+def offer_records_9_2() -> Bool:
+  offers_equal(R.offers(R.Change.state(a7_change())), R.Offers{offer_a7(), R.Offers{offer_a(), R.NoOffers{}}})
+
+def offer_records_9_3() -> Bool:
+  serials_equal(R.seen(R.Change.state(a7_change())),
+    R.Serials{R.OfferSerial{provider_a(), 7n}, R.Serials{R.OfferSerial{provider_a(), 1n}, R.NoSerials{}}})
+
 # The fixtures themselves, and the accepting path.
 def offer_records() -> IO(Unit):
   do IO<Unit>:
@@ -392,25 +448,19 @@ def offer_records() -> IO(Unit):
     Test.check(grant_backs_found(grant_record(issuer(), 3n), provider_a(), TF.plan())
       && Bool.not(grant_backs_found(grant_record(issuer(), 3n), provider_b(), TF.plan()))
       && Bool.not(grant_backs_found(grant_record(issuer(), 3n), provider_a(), IT.plan_two())), "ER-001 grant_backs: grant 3 backs A for TF.plan() and neither B nor the two-source plan")
-    Test.check(R.Change.accepted(a_change()) && issued_is(R.Change.issued(a_change()), 1n)
-      && Nat.is_eq(R.revision(with_a()), 1n) && offers_equal(R.offers(with_a()), R.Offers{offer_a(), R.NoOffers{}})
-      && serials_equal(R.seen(with_a()), R.Serials{R.OfferSerial{provider_a(), 1n}, R.NoSerials{}})
-      && R.valid(with_a()), "ER-001 provider A's offer backed by its current grant 3 is stored at revision 1 and (A, serial 1) is recorded as seen")
+    Test.check(offer_records_3_0() && offer_records_3_1() && offer_records_3_2()
+      && offer_records_3_3() && offer_records_3_4() && offer_records_3_5(), "ER-001 provider A's offer backed by its current grant 3 is stored at revision 1 and (A, serial 1) is recorded as seen")
     Test.check(R.Change.accepted(R.submit_offer(opened(), 0n, provider_a(),
         offer_with(R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), quote(), 150n), snapshot())), "ER-001 an offer valid until 150, exactly grant 3's own valid_until, is accepted")
-    Test.check(R.Change.accepted(b_change()) && Nat.is_eq(R.revision(with_both()), 2n)
-      && Nat.is_eq(offers_count(R.offers(with_both())), 2n)
-      && offers_hold(R.offers(with_both()), offer_a()) && offers_hold(R.offers(with_both()), offer_b())
-      && R.valid(with_both()), "ER-001 same code different provider: B's offer with A's code, plan, profile and quote is stored as a second record")
+    Test.check(offer_records_5_0() && offer_records_5_1() && offer_records_5_2()
+      && offer_records_5_3() && offer_records_5_4() && offer_records_5_5(), "ER-001 same code different provider: B's offer with A's code, plan, profile and quote is stored as a second record")
     Test.check(T.CodeId.equal(T.Plan.code(R.Offer.plan(offer_a())), T.Plan.code(R.Offer.plan(offer_b())))
       && Bool.not(R.offer_equal(offer_a(), offer_b()))
       && Bool.not(R.OfferId.equal(R.Offer.id(offer_a()), R.Offer.id(offer_b()))), "ER-001 same code different provider: the two offers share a code identity but are not equal records and have distinct identities")
     Test.check(Bool.not(R.valid(misowned())) && Bool.not(R.valid(double_seen())), "ER-008 valid: an offer whose identity names another provider, or a serial recorded twice, is not a valid state")
     Test.check(R.valid(both_namespaces()), "ER-008 valid: A's offer serial 1 beside an approval serial 1 from the same principal is valid, the two namespaces being separate")
-    Test.check(R.Change.accepted(a7_change()) && issued_is(R.Change.issued(a7_change()), 7n)
-      && offers_equal(R.offers(R.Change.state(a7_change())), R.Offers{offer_a7(), R.Offers{offer_a(), R.NoOffers{}}})
-      && serials_equal(R.seen(R.Change.state(a7_change())),
-        R.Serials{R.OfferSerial{provider_a(), 7n}, R.Serials{R.OfferSerial{provider_a(), 1n}, R.NoSerials{}}}), "ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1)")
+    Test.check(offer_records_9_0() && offer_records_9_1() && offer_records_9_2()
+      && offer_records_9_3(), "ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1)")
     Test.check(R.offer_equal(offer_a(), offer_a())
       && Bool.not(R.offer_equal(offer_a(), R.Offer{2n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), profile(), quote(), offer_until()}))
       && Bool.not(R.offer_equal(offer_a(), R.Offer{1n, R.OfferId{201n, 1n}, provider_a(), 4n, TF.plan(), profile(), quote(), offer_until()}))
@@ -653,41 +703,123 @@ def origins_for(state: R.State, +plan: T.Plan, context: T.Context) -> Bool:
   R.origins_approved(T.required_origins(plan, context), R.approvals(state), provider_a(),
     profile(), plan, issuer(), IT.now())
 
+# Native arity: each check of `approval_records` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `approval_records_K_J` is conjunct J of the K-th check of `approval_records`, counting
+# from 0.
+def approval_records_0_0() -> Bool:
+  R.Change.accepted(approve_change())
+
+def approval_records_0_1() -> Bool:
+  issued_is(R.Change.issued(approve_change()), 1n)
+
+def approval_records_0_2() -> Bool:
+  Nat.is_eq(R.revision(approved()), 1n)
+
+def approval_records_0_3() -> Bool:
+  Nat.is_eq(R.next_id(approved()), 2n)
+
+def approval_records_0_4() -> Bool:
+  approvals_equal(R.approvals(approved()), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}})
+
+def approval_records_0_5() -> Bool:
+  serials_equal(R.seen(approved()), R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}})
+
+def approval_records_0_6() -> Bool:
+  R.valid(approved())
+
+def approval_records_1_0() -> Bool:
+  R.Change.accepted(approve_b2_change())
+
+def approval_records_1_1() -> Bool:
+  issued_is(R.Change.issued(approve_b2_change()), 2n)
+
+def approval_records_1_2() -> Bool:
+  Nat.is_eq(R.revision(approved_two()), 2n)
+
+def approval_records_1_3() -> Bool:
+  Nat.is_eq(R.next_id(approved_two()), 3n)
+
+def approval_records_1_4() -> Bool:
+  approvals_equal(R.approvals(approved_two()),
+    R.Approvals{stored(2n, approval_b2(), False{}), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}}})
+
+def approval_records_1_5() -> Bool:
+  serials_equal(R.seen(approved_two()),
+    R.Serials{R.ApprovalSerial{IT.source_authority(), 13n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}})
+
+def approval_records_1_6() -> Bool:
+  R.valid(approved_two())
+
+def approval_records_2_0() -> Bool:
+  R.Change.accepted(two_eleven_change())
+
+def approval_records_2_1() -> Bool:
+  issued_is(R.Change.issued(two_eleven_change()), 2n)
+
+def approval_records_2_2() -> Bool:
+  serials_equal(R.seen(two_both()),
+    R.Serials{R.ApprovalSerial{IT.second_source_authority(), 12n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}})
+
+def approval_records_5_0() -> Bool:
+  R.Change.accepted(withdraw_change())
+
+def approval_records_5_1() -> Bool:
+  issued_is(R.Change.issued(withdraw_change()), 1n)
+
+def approval_records_5_2() -> Bool:
+  Nat.is_eq(R.revision(withdrawn()), 2n)
+
+def approval_records_5_3() -> Bool:
+  Nat.is_eq(R.next_id(withdrawn()), 2n)
+
+def approval_records_5_4() -> Bool:
+  approvals_equal(R.approvals(withdrawn()), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}})
+
+def approval_records_5_5() -> Bool:
+  serials_equal(R.seen(withdrawn()), R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}})
+
+def approval_records_5_6() -> Bool:
+  R.valid(withdrawn())
+
+def approval_records_7_0() -> Bool:
+  R.Change.accepted(reapprove_change())
+
+def approval_records_7_1() -> Bool:
+  issued_is(R.Change.issued(reapprove_change()), 2n)
+
+def approval_records_7_2() -> Bool:
+  approvals_equal(R.approvals(R.Change.state(reapprove_change())),
+    R.Approvals{stored(2n, approval_a15(), False{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}})
+
+def approval_records_7_3() -> Bool:
+  a_approved(R.Change.state(reapprove_change()), issuer(), IT.now())
+
 # The accepting paths and the stored records.
 def approval_records() -> IO(Unit):
   do IO<Unit>:
-    Test.check(R.Change.accepted(approve_change()) && issued_is(R.Change.issued(approve_change()), 1n)
-      && Nat.is_eq(R.revision(approved()), 1n) && Nat.is_eq(R.next_id(approved()), 2n)
-      && approvals_equal(R.approvals(approved()), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}})
-      && serials_equal(R.seen(approved()), R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}})
-      && R.valid(approved()), "ER-006 object 10's read authority 101 approves provider A at profile 1 for TF.plan(): stored unwithdrawn under id 1 at revision 1, (101, serial 12) seen")
-    Test.check(R.Change.accepted(approve_b2_change()) && issued_is(R.Change.issued(approve_b2_change()), 2n)
-      && Nat.is_eq(R.revision(approved_two()), 2n) && Nat.is_eq(R.next_id(approved_two()), 3n)
-      && approvals_equal(R.approvals(approved_two()),
-        R.Approvals{stored(2n, approval_b2(), False{}), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}}})
-      && serials_equal(R.seen(approved_two()),
-        R.Serials{R.ApprovalSerial{IT.source_authority(), 13n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}})
-      && R.valid(approved_two()), "ER-006 101's second approval, serial 13 for provider B at profile 3, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)")
-    Test.check(R.Change.accepted(two_eleven_change()) && issued_is(R.Change.issued(two_eleven_change()), 2n)
-      && serials_equal(R.seen(two_both()),
-        R.Serials{R.ApprovalSerial{IT.second_source_authority(), 12n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}}), "ER-006 object 11's authority 104 may use serial 12 after 101 used it: replay is per issuer")
+    Test.check(approval_records_0_0() && approval_records_0_1() && approval_records_0_2()
+      && approval_records_0_3() && approval_records_0_4() && approval_records_0_5()
+      && approval_records_0_6(), "ER-006 object 10's read authority 101 approves provider A at profile 1 for TF.plan(): stored unwithdrawn under id 1 at revision 1, (101, serial 12) seen")
+    Test.check(approval_records_1_0() && approval_records_1_1() && approval_records_1_2()
+      && approval_records_1_3() && approval_records_1_4() && approval_records_1_5()
+      && approval_records_1_6(), "ER-006 101's second approval, serial 13 for provider B at profile 3, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)")
+    Test.check(approval_records_2_0() && approval_records_2_1() && approval_records_2_2(), "ER-006 object 11's authority 104 may use serial 12 after 101 used it: replay is per issuer")
     Test.check(R.Change.accepted(R.submit_approval(offer_serial_12(), 0n, IT.source_authority(), approval_a(), snapshot())), "ER-006 an offer serial 12 recorded for 101 does not replay 101's approval serial 12: separate namespaces")
     Test.check(R.Change.accepted(R.submit_approval(opened(), 0n, IT.source_authority(),
         approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), 101n), snapshot())), "ER-006 an approval valid until 101 is accepted at 100")
-    Test.check(R.Change.accepted(withdraw_change()) && issued_is(R.Change.issued(withdraw_change()), 1n)
-      && Nat.is_eq(R.revision(withdrawn()), 2n) && Nat.is_eq(R.next_id(withdrawn()), 2n)
-      && approvals_equal(R.approvals(withdrawn()), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}})
-      && serials_equal(R.seen(withdrawn()), R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}})
-      && R.valid(withdrawn()), "ER-006 101 withdraws approval 1: the record stays in place marked withdrawn, its serial stays seen, revision 2")
+    Test.check(approval_records_5_0() && approval_records_5_1() && approval_records_5_2()
+      && approval_records_5_3() && approval_records_5_4() && approval_records_5_5()
+      && approval_records_5_6(), "ER-006 101 withdraws approval 1: the record stays in place marked withdrawn, its serial stays seen, revision 2")
     Test.check(approvals_equal(R.approvals(withdrawn_one_of_two()),
         R.Approvals{stored(2n, approval_b2(), False{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}})
       && approvals_equal(R.approvals(R.Change.state(R.withdraw_approval(withdrawn_one_of_two(), 3n, IT.source_authority(), 2n, snapshot()))),
         R.Approvals{stored(2n, approval_b2(), True{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}}), "ER-006 withdrawing approval 1 leaves approval 2 unwithdrawn, and withdrawing 2 later keeps 1 withdrawn")
-    Test.check(R.Change.accepted(reapprove_change()) && issued_is(R.Change.issued(reapprove_change()), 2n)
-      && approvals_equal(R.approvals(R.Change.state(reapprove_change())),
-        R.Approvals{stored(2n, approval_a15(), False{}), R.Approvals{stored(1n, approval_a(), True{}), R.NoApprovals{}}})
-      && a_approved(R.Change.state(reapprove_change()), issuer(), IT.now()), "ER-006 after the withdrawal a new approval for object 10 and A under serial 15 is a new record, id 2, and approves A again")
-
+    Test.check(approval_records_7_0() && approval_records_7_1() && approval_records_7_2()
+      && approval_records_7_3(), "ER-006 after the withdrawal a new approval for object 10 and A under serial 15 is a new record, id 2, and approves A again")
 # Every submit_approval and withdraw_approval gate, each denial with its exact
 # reason and the supplied state returned unchanged.
 def approval_denials() -> IO(Unit):
@@ -1015,6 +1147,38 @@ def maybe_offer_is(value: Maybe<&2, R.Offer>, wanted: R.Offer) -> Bool:
     case Some{offer}:
       R.offer_equal(offer, wanted)
 
+# Native arity: each check of `selection_records` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `selection_records_K_J` is conjunct J of the K-th check of `selection_records`, counting
+# from 0.
+def selection_records_1_0() -> Bool:
+  issued_is(R.Change.issued(select_now(cheap_unapproved())), 2n)
+
+def selection_records_1_1() -> Bool:
+  selection_equal(R.selection(R.Change.state(select_now(cheap_unapproved()))),
+    R.Selection{2n, offer_a(), NT.request(), I.live(issuer()), IT.now(), 1n})
+
+def selection_records_1_2() -> Bool:
+  T.Stamp.equal(I.live(issuer()), T.Plan.stamp(TF.plan()))
+
+def selection_records_1_3() -> Bool:
+  Nat.is_eq(R.revision(R.Change.state(select_now(cheap_unapproved()))), 4n)
+
+def selection_records_1_4() -> Bool:
+  Nat.is_eq(R.next_id(R.Change.state(select_now(cheap_unapproved()))), 3n)
+
+def selection_records_1_5() -> Bool:
+  offers_equal(R.offers(R.Change.state(select_now(cheap_unapproved()))), R.offers(cheap_unapproved()))
+
+def selection_records_1_6() -> Bool:
+  approvals_equal(R.approvals(R.Change.state(select_now(cheap_unapproved()))), R.approvals(cheap_unapproved()))
+
+def selection_records_1_7() -> Bool:
+  R.valid(R.Change.state(select_now(cheap_unapproved())))
+
 # The cheapest offer violates an origin (ER-002), the record and the
 # accepting path.
 def selection_records() -> IO(Unit):
@@ -1023,15 +1187,9 @@ def selection_records() -> IO(Unit):
       && reason_is(R.ineligibility(offer_b30(), cheap_unapproved(), snapshot()), R.MissingApproval{})
       && eligible_now(R.ineligibility(offer_a(), cheap_unapproved(), snapshot()))
       && selected(select_now(cheap_unapproved()), offer_a()), "ER-002 cheapest offer violates an origin: B quotes 30 without object 10's approval, A quotes 40 with it; A is selected and ineligibility(B) is MissingApproval")
-    Test.check(issued_is(R.Change.issued(select_now(cheap_unapproved())), 2n)
-      && selection_equal(R.selection(R.Change.state(select_now(cheap_unapproved()))),
-        R.Selection{2n, offer_a(), NT.request(), I.live(issuer()), IT.now(), 1n})
-      && T.Stamp.equal(I.live(issuer()), T.Plan.stamp(TF.plan()))
-      && Nat.is_eq(R.revision(R.Change.state(select_now(cheap_unapproved()))), 4n)
-      && Nat.is_eq(R.next_id(R.Change.state(select_now(cheap_unapproved()))), 3n)
-      && offers_equal(R.offers(R.Change.state(select_now(cheap_unapproved()))), R.offers(cheap_unapproved()))
-      && approvals_equal(R.approvals(R.Change.state(select_now(cheap_unapproved()))), R.approvals(cheap_unapproved()))
-      && R.valid(R.Change.state(select_now(cheap_unapproved()))), "ER-003 the selection record is Selection{2, A's complete offer, the request, the live stamp, 100, ranking profile 1}; id 2 issued, revision 4, next_id 3, offers and approvals unchanged")
+    Test.check(selection_records_1_0() && selection_records_1_1() && selection_records_1_2()
+      && selection_records_1_3() && selection_records_1_4() && selection_records_1_5()
+      && selection_records_1_6() && selection_records_1_7(), "ER-003 the selection record is Selection{2, A's complete offer, the request, the live stamp, 100, ranking profile 1}; id 2 issued, revision 4, next_id 3, offers and approvals unchanged")
     Test.check(Nat.is_eq(R.ranking_profile(), 1n) && Nat.is_eq(R.retired(R.Change.state(select_now(cheap_unapproved()))), 0n), "ER-003 the first ranking profile is 1, and a first selection retires nothing")
 
 # Every other eligibility gate excludes a cheaper offer with its exact
@@ -1079,16 +1237,53 @@ def selection_gate_reasons() -> IO(Unit):
     Test.check(Bool.not(R.profile_admitted(R.NoProfiles{}, profile()))
       && R.profile_admitted(R.Profiles{3n, R.Profiles{profile(), R.NoProfiles{}}}, profile()), "ER-002 profile_admitted: nothing is admitted by an empty constraint, and a profile listed second is admitted")
 
+# Native arity: each check of `selection_ranking` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `selection_ranking_K_J` is conjunct J of the K-th check of `selection_ranking`, counting
+# from 0.
+def selection_ranking_0_0() -> Bool:
+  Nat.is_eq(R.revision(state_ab()), 4n)
+
+def selection_ranking_0_1() -> Bool:
+  Nat.is_eq(R.revision(state_ba()), 4n)
+
+def selection_ranking_0_2() -> Bool:
+  selected(select_now(state_ab()), offer_a())
+
+def selection_ranking_0_3() -> Bool:
+  selected(select_now(state_ba()), offer_a())
+
+def selection_ranking_0_4() -> Bool:
+  selection_equal(R.selection(R.Change.state(select_now(state_ab()))), R.selection(R.Change.state(select_now(state_ab()))))
+
+def selection_ranking_0_5() -> Bool:
+  selection_equal(R.selection(R.Change.state(select_now(state_ab()))), R.selection(R.Change.state(select_now(state_ba()))))
+
+def selection_ranking_1_0() -> Bool:
+  Nat.is_eq(R.revision(state_a12()), 4n)
+
+def selection_ranking_1_1() -> Bool:
+  Nat.is_eq(R.revision(state_a21()), 4n)
+
+def selection_ranking_1_2() -> Bool:
+  eligible_now(R.ineligibility(offer_a2_p2(), state_a12(), snapshot()))
+
+def selection_ranking_1_3() -> Bool:
+  selected(select_now(state_a12()), offer_a())
+
+def selection_ranking_1_4() -> Bool:
+  selected(select_now(state_a21()), offer_a())
+
 # Ranking: ties, identity order and order independence (ER-003).
 def selection_ranking() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Nat.is_eq(R.revision(state_ab()), 4n) && Nat.is_eq(R.revision(state_ba()), 4n)
-      && selected(select_now(state_ab()), offer_a()) && selected(select_now(state_ba()), offer_a())
-      && selection_equal(R.selection(R.Change.state(select_now(state_ab()))), R.selection(R.Change.state(select_now(state_ab()))))
-      && selection_equal(R.selection(R.Change.state(select_now(state_ab()))), R.selection(R.Change.state(select_now(state_ba())))), "ER-003 equal approved quotes: A (201) and B (202) both quote 40 and are eligible; A is selected in both submission orders and the two runs give the same selection")
-    Test.check(Nat.is_eq(R.revision(state_a12()), 4n) && Nat.is_eq(R.revision(state_a21()), 4n)
-      && eligible_now(R.ineligibility(offer_a2_p2(), state_a12(), snapshot()))
-      && selected(select_now(state_a12()), offer_a()) && selected(select_now(state_a21()), offer_a()), "ER-003 one provider, two equally priced candidates: A's serials 1 (profile 1) and 2 (profile 2) both quote 40 and are admitted; serial 1 is selected in both orders")
+    Test.check(selection_ranking_0_0() && selection_ranking_0_1() && selection_ranking_0_2()
+      && selection_ranking_0_3() && selection_ranking_0_4() && selection_ranking_0_5(), "ER-003 equal approved quotes: A (201) and B (202) both quote 40 and are eligible; A is selected in both submission orders and the two runs give the same selection")
+    Test.check(selection_ranking_1_0() && selection_ranking_1_1() && selection_ranking_1_2()
+      && selection_ranking_1_3() && selection_ranking_1_4(), "ER-003 one provider, two equally priced candidates: A's serials 1 (profile 1) and 2 (profile 2) both quote 40 and are admitted; serial 1 is selected in both orders")
     Test.check(R.before(offer_a(), offer_a7()) && Bool.not(R.before(offer_a7(), offer_a()))
       && R.before(offer_a(), offer_with(R.OfferId{202n, 1n}, provider_a(), 3n, TF.plan(), quote(), offer_until()))
       && Bool.not(R.before(offer_with(R.OfferId{202n, 1n}, provider_a(), 3n, TF.plan(), quote(), offer_until()), offer_a()))
@@ -1102,25 +1297,97 @@ def selection_ranking() -> IO(Unit):
       && maybe_offer_is(R.best(R.Offers{offer_a7(), R.Offers{offer_b30(), R.Offers{offer_a(), R.NoOffers{}}}}), offer_b30())
       && Bool.not(maybe_offer_is(R.best(R.NoOffers{}), offer_a())), "ER-003 best: the first-ranked of three offers wherever it sits, and nothing from an empty list")
 
+# Native arity: each check of `selection_conflicts` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `selection_conflicts_K_J` is conjunct J of the K-th check of `selection_conflicts`, counting
+# from 0.
+def selection_conflicts_0_0() -> Bool:
+  Nat.is_eq(R.revision(conflict_base()), 4n)
+
+def selection_conflicts_0_1() -> Bool:
+  denied(select_now(conflicted()), conflicted(), R.ConflictingOffer{})
+
+def selection_conflicts_0_2() -> Bool:
+  denied(select_now(conflicted_late()), conflicted_late(), R.ConflictingOffer{})
+
+def selection_conflicts_3_0() -> Bool:
+  R.Change.accepted(resolve_change())
+
+def selection_conflicts_3_1() -> Bool:
+  issued_is(R.Change.issued(resolve_change()), 1n)
+
+def selection_conflicts_3_2() -> Bool:
+  Nat.is_eq(R.revision(resolved()), 5n)
+
+def selection_conflicts_3_3() -> Bool:
+  offers_equal(R.offers(resolved()), R.Offers{offer_b(), R.NoOffers{}})
+
+def selection_conflicts_3_4() -> Bool:
+  serials_equal(R.seen(resolved()), R.seen(conflicted()))
+
+def selection_conflicts_3_5() -> Bool:
+  selected(select_now(resolved()), offer_b())
+
 # Conflicting identities and their resolution (ER-008).
 def selection_conflicts() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Nat.is_eq(R.revision(conflict_base()), 4n)
-      && denied(select_now(conflicted()), conflicted(), R.ConflictingOffer{})
-      && denied(select_now(conflicted_late()), conflicted_late(), R.ConflictingOffer{}), "ER-008 conflicting offer identity: two records under OfferId{201, 1} quoting 40 and 35, with B's record between them or ahead of them, deny ConflictingOffer")
+    Test.check(selection_conflicts_0_0() && selection_conflicts_0_1() && selection_conflicts_0_2(), "ER-008 conflicting offer identity: two records under OfferId{201, 1} quoting 40 and 35, with B's record between them or ahead of them, deny ConflictingOffer")
     Test.check(Bool.not(R.offers_unambiguous(R.Offers{offer_a(), R.Offers{offer_a35(), R.NoOffers{}}}))
       && R.offers_unambiguous(R.Offers{offer_a(), R.Offers{offer_a7(), R.Offers{offer_b(), R.NoOffers{}}}}), "ER-008 offers_unambiguous: false for one identity under two contents, true for three distinct identities")
     Test.check(selected(select_now(identical_dups()), offer_a()), "ER-008 the same snapshot holding two identical records under OfferId{201, 1} selects normally (A)")
-    Test.check(R.Change.accepted(resolve_change()) && issued_is(R.Change.issued(resolve_change()), 1n)
-      && Nat.is_eq(R.revision(resolved()), 5n)
-      && offers_equal(R.offers(resolved()), R.Offers{offer_b(), R.NoOffers{}})
-      && serials_equal(R.seen(resolved()), R.seen(conflicted()))
-      && selected(select_now(resolved()), offer_b()), "ER-008 A's withdraw_offer of OfferId{201, 1} removes both records under it and keeps every serial; select then proceeds and picks B")
+    Test.check(selection_conflicts_3_0() && selection_conflicts_3_1() && selection_conflicts_3_2()
+      && selection_conflicts_3_3() && selection_conflicts_3_4() && selection_conflicts_3_5(), "ER-008 A's withdraw_offer of OfferId{201, 1} removes both records under it and keeps every serial; select then proceeds and picks B")
     Test.check(denied(R.submit_offer(resolved(), 5n, provider_a(), offer_a(), snapshot()), resolved(), R.Replay{}), "ER-008 after the withdrawal, A resubmitting under serial 1 is denied Replay")
     Test.check(denied(R.withdraw_offer(conflicted(), 4n, provider_b(), R.OfferId{201n, 1n}), conflicted(), R.Unauthenticated{}), "ER-008 a withdrawal of OfferId{201, 1} by B denied Unauthenticated")
     Test.check(denied(R.withdraw_offer(resolved(), 5n, provider_a(), R.OfferId{201n, 1n}), resolved(), R.Revoked{})
       && denied(R.withdraw_offer(state_ab(), 4n, provider_a(), R.OfferId{201n, 7n}), state_ab(), R.Revoked{}), "ER-008 withdrawing OfferId{201, 1} a second time, or A's never-stored serial 7, denied Revoked: withdrawal is single use")
     Test.check(denied(R.withdraw_offer(conflicted(), 3n, provider_a(), R.OfferId{201n, 1n}), conflicted(), R.StaleRevision{}), "ER-008 a withdrawal validated at revision 3 against the state at revision 4 denied StaleRevision")
+
+# Native arity: each check of `selection_races` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `selection_races_K_J` is conjunct J of the K-th check of `selection_races`, counting
+# from 0.
+def selection_races_4_0() -> Bool:
+  R.Change.accepted(abandon_change())
+
+def selection_races_4_1() -> Bool:
+  issued_is(R.Change.issued(abandon_change()), 3n)
+
+def selection_races_4_2() -> Bool:
+  selection_equal(R.selection(abandoned()), R.NoSelection{})
+
+def selection_races_4_3() -> Bool:
+  Nat.is_eq(R.retired(abandoned()), 3n)
+
+def selection_races_4_4() -> Bool:
+  Nat.is_eq(R.next_id(abandoned()), 4n)
+
+def selection_races_4_5() -> Bool:
+  Nat.is_eq(R.revision(abandoned()), 6n)
+
+def selection_races_4_6() -> Bool:
+  offers_equal(R.offers(abandoned()), R.offers(selected_ab()))
+
+def selection_races_4_7() -> Bool:
+  R.valid(abandoned())
+
+def selection_races_5_0() -> Bool:
+  selected(reselect_change(), offer_a())
+
+def selection_races_5_1() -> Bool:
+  issued_is(R.Change.issued(reselect_change()), 4n)
+
+def selection_races_5_2() -> Bool:
+  selection_id_is(R.selection(R.Change.state(reselect_change())), 4n)
+
+def selection_races_5_3() -> Bool:
+  Nat.is_eq(R.retired(R.Change.state(reselect_change())), 3n)
 
 # Selection racing revocation, stale ranking, and the selection lifecycle.
 def selection_races() -> IO(Unit):
@@ -1136,13 +1403,11 @@ def selection_races() -> IO(Unit):
         put_offer(state_ab(), provider_a(), offer_a7()), R.StaleRevision{})
       && Nat.is_eq(R.revision(put_offer(state_ab(), provider_a(), offer_a7())), 5n), "ER-003 an offer submitted after the snapshot was ranked at revision 4 moves the state to 5; select at 4 is denied StaleRevision with the state unchanged")
     Test.check(denied(select_now(selected_ab()), selected_ab(), R.AlreadySelected{}), "ER-003 select while a selection exists denied AlreadySelected")
-    Test.check(R.Change.accepted(abandon_change()) && issued_is(R.Change.issued(abandon_change()), 3n)
-      && selection_equal(R.selection(abandoned()), R.NoSelection{}) && Nat.is_eq(R.retired(abandoned()), 3n)
-      && Nat.is_eq(R.next_id(abandoned()), 4n) && Nat.is_eq(R.revision(abandoned()), 6n)
-      && offers_equal(R.offers(abandoned()), R.offers(selected_ab())) && R.valid(abandoned()), "ER-003 abandon retires selection 3: no selection, retired 3, next_id 4 kept, revision 6, offers kept")
-    Test.check(selected(reselect_change(), offer_a()) && issued_is(R.Change.issued(reselect_change()), 4n)
-      && selection_id_is(R.selection(R.Change.state(reselect_change())), 4n)
-      && Nat.is_eq(R.retired(R.Change.state(reselect_change())), 3n), "ER-003 after abandon a new selection gets the new id 4 and selection 3 stays retired")
+    Test.check(selection_races_4_0() && selection_races_4_1() && selection_races_4_2()
+      && selection_races_4_3() && selection_races_4_4() && selection_races_4_5()
+      && selection_races_4_6() && selection_races_4_7(), "ER-003 abandon retires selection 3: no selection, retired 3, next_id 4 kept, revision 6, offers kept")
+    Test.check(selection_races_5_0() && selection_races_5_1() && selection_races_5_2()
+      && selection_races_5_3(), "ER-003 after abandon a new selection gets the new id 4 and selection 3 stays retired")
     Test.check(denied(R.abandon(abandoned(), 6n), abandoned(), R.NotSelected{})
       && denied(R.abandon(selected_ab(), 4n), selected_ab(), R.StaleRevision{}), "ER-003 abandon with no selection denied NotSelected (single use); abandon at revision 4 against revision 5 denied StaleRevision")
     Test.check(denied(select_with(state_ab(), NT.proposed(), snapshot()), state_ab(), R.WrongStage{})
@@ -1160,6 +1425,25 @@ def p2_state() -> R.State:
 def b_withdraws_after_reselect() -> R.Change:
   R.withdraw_offer(R.Change.state(reselect_change()), 7n, provider_b(), R.OfferId{202n, 1n})
 
+# Native arity: each check of `selection_withdrawals` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `selection_withdrawals_K_J` is conjunct J of the K-th check of `selection_withdrawals`, counting
+# from 0.
+def selection_withdrawals_2_0() -> Bool:
+  Nat.is_eq(R.retired(R.Change.state(reselect_change())), 3n)
+
+def selection_withdrawals_2_1() -> Bool:
+  R.Change.accepted(b_withdraws_after_reselect())
+
+def selection_withdrawals_2_2() -> Bool:
+  Nat.is_eq(R.retired(R.Change.state(b_withdraws_after_reselect())), 3n)
+
+def selection_withdrawals_2_3() -> Bool:
+  selection_id_is(R.selection(R.Change.state(b_withdraws_after_reselect())), 4n)
+
 # withdraw_offer and the selection, and the approval live-stamp gate.
 def selection_withdrawals() -> IO(Unit):
   do IO<Unit>:
@@ -1171,10 +1455,8 @@ def selection_withdrawals() -> IO(Unit):
       && Nat.is_eq(R.retired(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), 0n)
       && offers_equal(R.offers(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), R.Offers{offer_a(), R.NoOffers{}})
       && Nat.is_eq(R.revision(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), 6n), "ER-008 B withdrawing its unselected offer keeps A's selection and retires nothing")
-    Test.check(Nat.is_eq(R.retired(R.Change.state(reselect_change())), 3n)
-      && R.Change.accepted(b_withdraws_after_reselect())
-      && Nat.is_eq(R.retired(R.Change.state(b_withdraws_after_reselect())), 3n)
-      && selection_id_is(R.selection(R.Change.state(b_withdraws_after_reselect())), 4n), "ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3")
+    Test.check(selection_withdrawals_2_0() && selection_withdrawals_2_1() && selection_withdrawals_2_2()
+      && selection_withdrawals_2_3(), "ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3")
     Test.check(Nat.is_eq(R.revision(p2_state()), 3n)
       && selection_equal(R.selection(R.Change.state(select_now(p2_state()))),
         R.Selection{3n, offer_a2_p2_35(), NT.request(), I.live(issuer()), IT.now(), 1n}), "ER-003 a selection of A's profile-2 offer records ranking profile 1, not the offer's profile: Selection{3, the offer, the request, the live stamp, 100, 1}")
@@ -1431,22 +1713,67 @@ def post_fixation() -> N.Challenges:
   N.Challenges{challenge_rec(21n, TF.plan(), nonce_of(1), 105n),
   N.Challenges{challenge_rec(24n, TF.plan(), nonce_of(4), 104n), N.NoChallenges{}}}
 
+# Native arity: each check of `trial_happy` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `trial_happy_K_J` is conjunct J of the K-th check of `trial_happy`, counting
+# from 0.
+def trial_happy_0_0() -> Bool:
+  R.Change.accepted(trial_select())
+
+def trial_happy_0_1() -> Bool:
+  Nat.is_eq(R.revision(selected_t()), 5n)
+
+def trial_happy_0_2() -> Bool:
+  selection_equal(R.selection(selected_t()), R.Selection{3n, offer_ta(), NT.request(), I.live(issuer()), 103n, 1n})
+
+def trial_happy_0_3() -> Bool:
+  R.selection_current(selected_t(), trial_snapshot())
+
+def trial_happy_3_0() -> Bool:
+  R.Change.accepted(evidence_change())
+
+def trial_happy_3_1() -> Bool:
+  issued_is(R.Change.issued(evidence_change()), 3n)
+
+def trial_happy_3_2() -> Bool:
+  Nat.is_eq(R.revision(evidenced()), 6n)
+
+def trial_happy_3_3() -> Bool:
+  Nat.is_eq(R.next_id(evidenced()), 4n)
+
+def trial_happy_3_4() -> Bool:
+  evidence_equal(R.evidence(evidenced()), R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}})
+
+def trial_happy_3_5() -> Bool:
+  selection_equal(R.selection(evidenced()), R.selection(selected_t()))
+
+def trial_happy_3_6() -> Bool:
+  offers_equal(R.offers(evidenced()), R.offers(selected_t()))
+
+def trial_happy_3_7() -> Bool:
+  approvals_equal(R.approvals(evidenced()), R.approvals(selected_t()))
+
+def trial_happy_3_8() -> Bool:
+  serials_equal(R.seen(evidenced()), R.seen(selected_t()))
+
+def trial_happy_3_9() -> Bool:
+  R.valid(evidenced())
+
 # The happy path: the projection, the evidence and Negotiation's stages.
 def trial_happy() -> IO(Unit):
   do IO<Unit>:
-    Test.check(R.Change.accepted(trial_select()) && Nat.is_eq(R.revision(selected_t()), 5n)
-      && selection_equal(R.selection(selected_t()), R.Selection{3n, offer_ta(), NT.request(), I.live(issuer()), 103n, 1n})
-      && R.selection_current(selected_t(), trial_snapshot()), "ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110")
+    Test.check(trial_happy_0_0() && trial_happy_0_1() && trial_happy_0_2()
+      && trial_happy_0_3(), "ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110")
     Test.check(context_is(proj0(), a_approvals(113n), post_fixation(), N.NoSamples{}, trial_budgets(), 110n), "ER-004 the projection for selection 3 carries exactly challenges 21 and 24, no sample, one approval for 10v4 valid until 113 (the offer's end, before approval 130 and grant 150), and the supplied budgets and transfer")
     Test.check(N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, proj0()))
       && Nat.is_eq(R.session_challenge(challenged_t()), 21n), "ER-004 happy path: N.challenge with 21 advances on the projected context")
-    Test.check(R.Change.accepted(evidence_change()) && issued_is(R.Change.issued(evidence_change()), 3n)
-      && Nat.is_eq(R.revision(evidenced()), 6n) && Nat.is_eq(R.next_id(evidenced()), 4n)
-      && evidence_equal(R.evidence(evidenced()), R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}})
-      && selection_equal(R.selection(evidenced()), R.selection(selected_t()))
-      && offers_equal(R.offers(evidenced()), R.offers(selected_t()))
-      && approvals_equal(R.approvals(evidenced()), R.approvals(selected_t()))
-      && serials_equal(R.seen(evidenced()), R.seen(selected_t())) && R.valid(evidenced()), "ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed")
+    Test.check(trial_happy_3_0() && trial_happy_3_1() && trial_happy_3_2()
+      && trial_happy_3_3() && trial_happy_3_4() && trial_happy_3_5()
+      && trial_happy_3_6() && trial_happy_3_7() && trial_happy_3_8()
+      && trial_happy_3_9(), "ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed")
     Test.check(context_is(proj1(), a_approvals(113n), post_fixation(), N.Samples{good_sample(), N.NoSamples{}}, trial_budgets(), 110n)
       && Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
       && N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj1())), "ER-005 after the evidence the projection carries exactly sample 31 for challenge 21 and the selected plan; N.sample with 31 is rejected before the evidence and advances after it")
@@ -1506,6 +1833,22 @@ def trial_substitutions() -> IO(Unit):
       && trial_denied(good_evidence(), NT.pinned(), R.WrongStage{})
       && trial_denied(good_evidence(), sampled_t(), R.WrongStage{}), "ER-005 evidence at revision 4 against 5 denied StaleRevision; a session at CandidateFixed or at Sampled denied WrongStage")
 
+# Native arity: each check of `trial_helpers` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `trial_helpers_K_J` is conjunct J of the K-th check of `trial_helpers`, counting
+# from 0.
+def trial_helpers_2_0() -> Bool:
+  Bool.not(R.selected_provider_is(trial_offers(), provider_a()))
+
+def trial_helpers_2_1() -> Bool:
+  R.selected_provider_is(selected_t(), provider_a())
+
+def trial_helpers_2_2() -> Bool:
+  Bool.not(R.selected_provider_is(selected_t(), provider_b()))
+
 # Exported helpers whose conjuncts an earlier gate masks at the entry point.
 def trial_helpers() -> IO(Unit):
   do IO<Unit>:
@@ -1514,9 +1857,7 @@ def trial_helpers() -> IO(Unit):
     Test.check(Bool.not(R.nonce_posted(N.Challenges{challenge_rec(21n, IT.plan_code(), nonce_of(6), 108n), N.NoChallenges{}}, 21n, TF.plan(), nonce_of(6), 103n))
       && Bool.not(R.nonce_posted(trial_challenges(), 22n, TF.plan(), nonce_of(2), 103n))
       && R.nonce_posted(trial_challenges(), 21n, TF.plan(), nonce_of(1), 103n), "ER-005 nonce_posted: nonce 6 of another plan's challenge 21, or challenge 22's nonce at fixation time, does not answer; challenge 21's nonce 1 does")
-    Test.check(Bool.not(R.selected_provider_is(trial_offers(), provider_a()))
-      && R.selected_provider_is(selected_t(), provider_a()) && Bool.not(R.selected_provider_is(selected_t(), provider_b())), "ER-005 selected_provider_is: false with no selection, true only for A while A is selected")
-
+    Test.check(trial_helpers_2_0() && trial_helpers_2_1() && trial_helpers_2_2(), "ER-005 selected_provider_is: false with no selection, true only for A while A is selected")
 # Phase 2: A's selection abandoned, B selected at 116, B's trial at 120 with
 # challenge 26 (issued 118, nonce 6) and sample 36, beside A's records.
 def abandoned_t() -> R.State:
@@ -1598,25 +1939,53 @@ def trial_bindings() -> IO(Unit):
     Test.check(selected(reselected_a(), offer_ta()) && issued_is(R.Change.issued(reselected_a()), 4n)
       && context_is(proj_on(R.Change.state(reselected_a())), a_approvals(113n), N.NoChallenges{}, N.NoSamples{}, trial_budgets(), 110n), "ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)")
 
+# Native arity: each check of `trial_reuse` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `trial_reuse_K_J` is conjunct J of the K-th check of `trial_reuse`, counting
+# from 0.
+def trial_reuse_0_0() -> Bool:
+  selection_equal(R.selection(selected_b()), R.Selection{4n, offer_tb(), NT.request(), I.live(issuer()), 116n, 1n})
+
+def trial_reuse_0_1() -> Bool:
+  Nat.is_eq(R.retired(selected_b()), 3n)
+
+def trial_reuse_0_2() -> Bool:
+  Nat.is_eq(R.revision(selected_b()), 8n)
+
+def trial_reuse_0_3() -> Bool:
+  context_is(proj_b(selected_b()), b_approvals(),
+    N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}}, N.NoSamples{}, trial_budgets(), 120n)
+
+def trial_reuse_3_0() -> Bool:
+  R.Change.accepted(b_evidence_change())
+
+def trial_reuse_3_1() -> Bool:
+  issued_is(R.Change.issued(b_evidence_change()), 4n)
+
+def trial_reuse_3_2() -> Bool:
+  evidence_equal(R.evidence(R.Change.state(b_evidence_change())),
+    R.Evidences{R.StoredEvidence{4n, ev_b(36n, 26n)}, R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}}})
+
+def trial_reuse_3_3() -> Bool:
+  context_is(proj_b(R.Change.state(b_evidence_change())), b_approvals(),
+    N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}},
+    N.Samples{sample_rec(36n, TF.plan(), 26n, nonce_of(6), True{}, 160n), N.NoSamples{}}, trial_budgets(), 120n)
+
 def trial_reuse() -> IO(Unit):
   do IO<Unit>:
-    Test.check(selection_equal(R.selection(selected_b()), R.Selection{4n, offer_tb(), NT.request(), I.live(issuer()), 116n, 1n})
-      && Nat.is_eq(R.retired(selected_b()), 3n) && Nat.is_eq(R.revision(selected_b()), 8n)
-      && context_is(proj_b(selected_b()), b_approvals(),
-        N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}}, N.NoSamples{}, trial_budgets(), 120n), "ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)")
+    Test.check(trial_reuse_0_0() && trial_reuse_0_1() && trial_reuse_0_2()
+      && trial_reuse_0_3(), "ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)")
     Test.check(N.Step.accepted(N.challenge(session2(), 1n, 26n, proj_b(selected_b())))
       && denied(submit_2(provider_b(), ev_b(31n, 21n)), selected_b(), R.WrongTrial{})
       && denied(submit_2(provider_b(), ev_b(31n, 26n)), selected_b(), R.WrongTrial{}), "ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial")
     Test.check(denied(submit_2(provider_b(), good_evidence()), selected_b(), R.Unauthenticated{})
       && denied(submit_2(provider_a(), good_evidence()), selected_b(), R.NotSelected{})
       && denied(submit_2(provider_a(), ev_b(36n, 26n)), selected_b(), R.NotSelected{}), "ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected")
-    Test.check(R.Change.accepted(b_evidence_change()) && issued_is(R.Change.issued(b_evidence_change()), 4n)
-      && evidence_equal(R.evidence(R.Change.state(b_evidence_change())),
-        R.Evidences{R.StoredEvidence{4n, ev_b(36n, 26n)}, R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}}})
-      && context_is(proj_b(R.Change.state(b_evidence_change())), b_approvals(),
-        N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}},
-        N.Samples{sample_rec(36n, TF.plan(), 26n, nonce_of(6), True{}, 160n), N.NoSamples{}}, trial_budgets(), 120n), "ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected")
-
+    Test.check(trial_reuse_3_0() && trial_reuse_3_1() && trial_reuse_3_2()
+      && trial_reuse_3_3(), "ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected")
 # Partial owner agreement (ER-006) on the two-source plan, and the reader
 # terms. The two-source fixtures are Task 3's: grant 13 for A over
 # IT.plan_two(), approvals by 101 (object 10, id 1) and 104 (object 11, id 2).
@@ -1889,18 +2258,60 @@ def short_issuer() -> I.State:
   I.Change.state(I.register(s2, I.revision(s2), provider_a(),
     I.Request{1n, scope, IT.one(10n), 11n, 5, 130n}, IT.now(), token_a12()))
 
+# Native arity: each check of `dispatch_happy` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `dispatch_happy_K_J` is conjunct J of the K-th check of `dispatch_happy`, counting
+# from 0.
+def dispatch_happy_0_0() -> Bool:
+  N.Session.is(running_t(), N.Running{})
+
+def dispatch_happy_0_1() -> Bool:
+  Nat.is_eq(N.Session.revision(running_t()), 6n)
+
+def dispatch_happy_0_2() -> Bool:
+  R.Change.accepted(dispatch_change())
+
+def dispatch_happy_0_3() -> Bool:
+  issued_is(R.Change.issued(dispatch_change()), 3n)
+
+def dispatch_happy_0_4() -> Bool:
+  Nat.is_eq(R.revision(dispatched_t()), 7n)
+
+def dispatch_happy_0_5() -> Bool:
+  Nat.is_eq(R.next_id(dispatched_t()), 4n)
+
+def dispatch_happy_0_6() -> Bool:
+  dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+
+def dispatch_happy_0_7() -> Bool:
+  selection_equal(R.selection(dispatched_t()), R.selection(evidenced()))
+
+def dispatch_happy_0_8() -> Bool:
+  evidence_equal(R.evidence(dispatched_t()), R.evidence(evidenced()))
+
+def dispatch_happy_0_9() -> Bool:
+  offers_equal(R.offers(dispatched_t()), R.offers(evidenced()))
+
+def dispatch_happy_0_10() -> Bool:
+  approvals_equal(R.approvals(dispatched_t()), R.approvals(evidenced()))
+
+def dispatch_happy_0_11() -> Bool:
+  serials_equal(R.seen(dispatched_t()), R.seen(evidenced()))
+
+def dispatch_happy_0_12() -> Bool:
+  R.valid(dispatched_t())
+
 # The accepting path, the registry it opens, and the unselected targets.
 def dispatch_happy() -> IO(Unit):
   do IO<Unit>:
-    Test.check(N.Session.is(running_t(), N.Running{}) && Nat.is_eq(N.Session.revision(running_t()), 6n)
-      && R.Change.accepted(dispatch_change()) && issued_is(R.Change.issued(dispatch_change()), 3n)
-      && Nat.is_eq(R.revision(dispatched_t()), 7n) && Nat.is_eq(R.next_id(dispatched_t()), 4n)
-      && dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
-      && selection_equal(R.selection(dispatched_t()), R.selection(evidenced()))
-      && evidence_equal(R.evidence(dispatched_t()), R.evidence(evidenced()))
-      && offers_equal(R.offers(dispatched_t()), R.offers(evidenced()))
-      && approvals_equal(R.approvals(dispatched_t()), R.approvals(evidenced()))
-      && serials_equal(R.seen(dispatched_t()), R.seen(evidenced())) && R.valid(dispatched_t()), "ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed")
+    Test.check(dispatch_happy_0_0() && dispatch_happy_0_1() && dispatch_happy_0_2()
+      && dispatch_happy_0_3() && dispatch_happy_0_4() && dispatch_happy_0_5()
+      && dispatch_happy_0_6() && dispatch_happy_0_7() && dispatch_happy_0_8()
+      && dispatch_happy_0_9() && dispatch_happy_0_10() && dispatch_happy_0_11()
+      && dispatch_happy_0_12(), "ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed")
     Test.check(single_token_is(R.provider_registry(dispatched_t(), trial_snapshot()), token_a())
       && IT.registry_equal(R.provider_registry(dispatched_t(), trial_snapshot()), I.registry(issuer(), provider_a(), 110n))
       && IT.plan_is(a_read(R.provider_registry(dispatched_t(), trial_snapshot())), TF.plan()), "ER-001 provider_registry after dispatch holds exactly grant 3's capability for A, and F.mount, F.open and F.checked_plan resolve it to TF.plan() for caller A")
@@ -2126,23 +2537,67 @@ def sub_dispatch(+state: R.State, +session: N.Session) -> R.Change:
 def sub_dispatched() -> R.Change:
   sub_dispatch(sub_evidenced(), sub_running())
 
+# Native arity: each check of `dispatch_substitution` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `dispatch_substitution_K_J` is conjunct J of the K-th check of `dispatch_substitution`, counting
+# from 0.
+def dispatch_substitution_0_0() -> Bool:
+  Nat.is_eq(R.revision(sub_offered()), 9n)
+
+def dispatch_substitution_0_1() -> Bool:
+  offers_hold(R.offers(sub_offered()), offer_b20())
+
+def dispatch_substitution_0_2() -> Bool:
+  denied(R.dispatch(sub_offered(), 9n, offer_id_b20(), host(), HP.revision(host()), worker_b(), running_t(), 6n, proj1(), snapshot_with(issuer(), 112n)), sub_offered(), R.NotSelected{})
+
+def dispatch_substitution_0_3() -> Bool:
+  denied(R.select(sub_offered(), 9n, NT.pinned(), 1n, NT.context(112n), snapshot_with(issuer(), 112n)), sub_offered(), R.AlreadySelected{})
+
+def dispatch_substitution_2_0() -> Bool:
+  selected(sub_select(), offer_b20())
+
+def dispatch_substitution_2_1() -> Bool:
+  issued_is(R.Change.issued(sub_select()), 5n)
+
+def dispatch_substitution_2_2() -> Bool:
+  denied(sub_dispatch(sub_selected(), running_t()), sub_selected(), R.MissingEvidence{})
+
+def dispatch_substitution_2_3() -> Bool:
+  registry_empty(R.provider_registry(sub_selected(), snapshot2()))
+
+def dispatch_substitution_3_0() -> Bool:
+  Nat.is_eq(R.revision(sub_evidenced()), 13n)
+
+def dispatch_substitution_3_1() -> Bool:
+  N.Session.is(sub_running(), N.Running{})
+
+def dispatch_substitution_3_2() -> Bool:
+  R.Change.accepted(sub_dispatched())
+
+def dispatch_substitution_3_3() -> Bool:
+  issued_is(R.Change.issued(sub_dispatched()), 5n)
+
+def dispatch_substitution_3_4() -> Bool:
+  dispatches_equal(R.dispatched(R.Change.state(sub_dispatched())),
+    R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_b()}, R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}}})
+
+def dispatch_substitution_3_5() -> Bool:
+  single_token_is(R.provider_registry(R.Change.state(sub_dispatched()), snapshot2()), token_b())
+
 def dispatch_substitution() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Nat.is_eq(R.revision(sub_offered()), 9n) && offers_hold(R.offers(sub_offered()), offer_b20())
-      && denied(R.dispatch(sub_offered(), 9n, offer_id_b20(), host(), HP.revision(host()), worker_b(), running_t(), 6n, proj1(), snapshot_with(issuer(), 112n)), sub_offered(), R.NotSelected{})
-      && denied(R.select(sub_offered(), 9n, NT.pinned(), 1n, NT.context(112n), snapshot_with(issuer(), 112n)), sub_offered(), R.AlreadySelected{}), "ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected")
+    Test.check(dispatch_substitution_0_0() && dispatch_substitution_0_1() && dispatch_substitution_0_2()
+      && dispatch_substitution_0_3(), "ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected")
     Test.check(reason_is(R.ineligibility(offer_b20(), sub_abandoned(), snapshot_with(issuer(), 114n)), R.MissingApproval{})
       && denied(R.select(sub_abandoned(), 10n, session2(), 1n, NT.context(114n), snapshot_with(issuer(), 114n)), sub_abandoned(), R.NoEligibleOffer{})
       && eligible_now(R.ineligibility(offer_b20(), sub_approved(), snapshot_with(issuer(), 114n))), "ER-007 after abandon, A's approval does not count for B: B's offer is ineligible MissingApproval and select finds no eligible offer at 114 (A's expired at 113) until 101 approves B")
-    Test.check(selected(sub_select(), offer_b20()) && issued_is(R.Change.issued(sub_select()), 5n)
-      && denied(sub_dispatch(sub_selected(), running_t()), sub_selected(), R.MissingEvidence{})
-      && registry_empty(R.provider_registry(sub_selected(), snapshot2())), "ER-007 B reselected as selection 5: A's evidence does not follow (dispatch with A's Running session denied MissingEvidence), and A's dispatch record of selection 3 opens no provider_registry for B")
-    Test.check(Nat.is_eq(R.revision(sub_evidenced()), 13n) && N.Session.is(sub_running(), N.Running{})
-      && R.Change.accepted(sub_dispatched()) && issued_is(R.Change.issued(sub_dispatched()), 5n)
-      && dispatches_equal(R.dispatched(R.Change.state(sub_dispatched())),
-        R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_b()}, R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}}})
-      && single_token_is(R.provider_registry(R.Change.state(sub_dispatched()), snapshot2()), token_b()), "ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6")
-
+    Test.check(dispatch_substitution_2_0() && dispatch_substitution_2_1() && dispatch_substitution_2_2()
+      && dispatch_substitution_2_3(), "ER-007 B reselected as selection 5: A's evidence does not follow (dispatch with A's Running session denied MissingEvidence), and A's dispatch record of selection 3 opens no provider_registry for B")
+    Test.check(dispatch_substitution_3_0() && dispatch_substitution_3_1() && dispatch_substitution_3_2()
+      && dispatch_substitution_3_3() && dispatch_substitution_3_4() && dispatch_substitution_3_5(), "ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6")
 def dispatch() -> IO(Unit):
   do IO<Unit>:
     dispatch_happy()
@@ -2270,12 +2725,30 @@ def integration_dispatch() -> IO(Unit):
     Test.check(B.accepted(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot()))))
       && kept(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), worker_b(), trial_raw(), trial_snapshot())))), "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected")
 
+# Native arity: each check of `integration_samples` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `integration_samples_K_J` is conjunct J of the K-th check of `integration_samples`, counting
+# from 0.
+def integration_samples_0_0() -> Bool:
+  N.Session.is(sampled_t(), N.Sampled{})
+
+def integration_samples_0_1() -> Bool:
+  Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
+
+def integration_samples_0_2() -> Bool:
+  Bool.not(N.Step.accepted(N.approve(challenged_t(), 2n, proj1())))
+
+def integration_samples_0_3() -> Bool:
+  Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(),
+    final_context(R.commit_context(dispatched_t(), sampled_t(), host(), worker_a(), trial_raw(), trial_snapshot())))))
+
 def integration_samples() -> IO(Unit):
   do IO<Unit>:
-    Test.check(N.Session.is(sampled_t(), N.Sampled{}) && Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
-      && Bool.not(N.Step.accepted(N.approve(challenged_t(), 2n, proj1())))
-      && Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(),
-        final_context(R.commit_context(dispatched_t(), sampled_t(), host(), worker_a(), trial_raw(), trial_snapshot()))))), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
+    Test.check(integration_samples_0_0() && integration_samples_0_1() && integration_samples_0_2()
+      && integration_samples_0_3(), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
     Test.check(Bool.not(N.Step.accepted(N.approve(sampled_t(), 3n, unapproved_proj())))
       && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, unapproved_proj(), ledger_t())))
       && N.Step.accepted(N.start(reserved_t(), 5n, proj1(), ledger_t())), "integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)")
@@ -2603,18 +3076,49 @@ def sc_accepted(+step: HP.Step) -> Bool:
     case HP.Denied{_, _}:
       False{}
 
+# Native arity: each check of `scenario_current` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `scenario_current_K_J` is conjunct J of the K-th check of `scenario_current`, counting
+# from 0.
+def scenario_current_1_0() -> Bool:
+  N.Session.is(sc_challenged(), N.Challenged{})
+
+def scenario_current_1_1() -> Bool:
+  R.Change.accepted(sc_evidence_change())
+
+def scenario_current_1_2() -> Bool:
+  N.Session.is(sc_sampled(), N.Sampled{})
+
+def scenario_current_1_3() -> Bool:
+  N.Session.is(sc_owners(), N.OwnersApproved{})
+
+def scenario_current_1_4() -> Bool:
+  N.Session.is(sc_reserved(), N.Reserved{})
+
+def scenario_current_1_5() -> Bool:
+  N.Session.is(sc_running(), N.Running{})
+
+def scenario_current_1_6() -> Bool:
+  R.Change.accepted(sc_dispatch())
+
+def scenario_current_1_7() -> Bool:
+  dispatches_equal(R.dispatched(sc_dispatched()), R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+
+def scenario_current_1_8() -> Bool:
+  R.valid(sc_dispatched())
+
 def scenario_current() -> IO(Unit):
   do IO<Unit>:
     Test.check(Nat.is_eq(R.revision(sc_approved()), 6n) && R.valid(sc_approved())
       && eligible_now(R.ineligibility(sc_offer_a(), sc_approved(), sc_snap(sc_issuer(), 103n)))
       && eligible_now(R.ineligibility(sc_offer_b(), sc_approved(), sc_snap(sc_issuer(), 103n)))
       && selected(sc_select(), sc_offer_a()) && issued_is(R.Change.issued(sc_select()), 5n), "scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5")
-    Test.check(N.Session.is(sc_challenged(), N.Challenged{}) && R.Change.accepted(sc_evidence_change())
-      && N.Session.is(sc_sampled(), N.Sampled{}) && N.Session.is(sc_owners(), N.OwnersApproved{})
-      && N.Session.is(sc_reserved(), N.Reserved{}) && N.Session.is(sc_running(), N.Running{})
-      && R.Change.accepted(sc_dispatch())
-      && dispatches_equal(R.dispatched(sc_dispatched()), R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_a()}, R.NoDispatches{}})
-      && R.valid(sc_dispatched()), "scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6")
+    Test.check(scenario_current_1_0() && scenario_current_1_1() && scenario_current_1_2()
+      && scenario_current_1_3() && scenario_current_1_4() && scenario_current_1_5()
+      && scenario_current_1_6() && scenario_current_1_7() && scenario_current_1_8(), "scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6")
     Test.check(B.accepted(sc_commit()) && sc_retained(sc_commit()) && N.Session.is(B.session(sc_commit()), N.Committed{})
       && Nat.is_eq(L.revision(B.ledger(sc_commit())), 2n), "scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2")
     Test.check(single_token_is(sc_registry(), token_a()) && IT.plan_is(sc_checked(), sc_plan())
@@ -2634,12 +3138,30 @@ def sc_select_b() -> R.Change:
 def sc_approvals_of(+context: N.Context) -> N.Approvals:
   approvals_of(context)
 
+# Native arity: each check of `scenario_revocation` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `scenario_revocation_K_J` is conjunct J of the K-th check of `scenario_revocation`, counting
+# from 0.
+def scenario_revocation_0_0() -> Bool:
+  reason_is(R.ineligibility(sc_offer_a(), sc_unapproved_a(), sc_snap(sc_issuer(), 103n)), R.MissingApproval{})
+
+def scenario_revocation_0_1() -> Bool:
+  selected(sc_select_b(), sc_offer_b())
+
+def scenario_revocation_0_2() -> Bool:
+  issued_is(R.Change.issued(sc_select_b()), 5n)
+
+def scenario_revocation_0_3() -> Bool:
+  denied(sc_dispatch_on(R.Change.state(sc_select_b()), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n),
+    R.Change.state(sc_select_b()), R.NotSelected{})
+
 def scenario_revocation() -> IO(Unit):
   do IO<Unit>:
-    Test.check(reason_is(R.ineligibility(sc_offer_a(), sc_unapproved_a(), sc_snap(sc_issuer(), 103n)), R.MissingApproval{})
-      && selected(sc_select_b(), sc_offer_b()) && issued_is(R.Change.issued(sc_select_b()), 5n)
-      && denied(sc_dispatch_on(R.Change.state(sc_select_b()), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n),
-        R.Change.state(sc_select_b()), R.NotSelected{}), "scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected")
+    Test.check(scenario_revocation_0_0() && scenario_revocation_0_1() && scenario_revocation_0_2()
+      && scenario_revocation_0_3(), "scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected")
     Test.check(denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_revoked(), 110n), sc_evidenced(), R.Revoked{})
       && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_revoked(), 110n)), N.NoApprovals{})
       && Bool.not(N.Step.accepted(N.start(sc_reserved(), 5n, sc_proj(sc_evidenced(), sc_revoked(), 110n), sc_ledger())))
@@ -2728,20 +3250,66 @@ def sc_challenges_of(+context: N.Context) -> N.Challenges:
     case N.Context{_, _, challenges, _, _}:
       challenges
 
+# Native arity: each check of `scenario_reselect` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `scenario_reselect_K_J` is conjunct J of the K-th check of `scenario_reselect`, counting
+# from 0.
+def scenario_reselect_0_0() -> Bool:
+  Nat.is_eq(R.revision(sc_newcomer()), 9n)
+
+def scenario_reselect_0_1() -> Bool:
+  denied(R.select(sc_newcomer(), 9n, sc_pinned(), 1n, sc_raw(sc_issuer(), 112n), sc_snap(sc_issuer(), 112n)), sc_newcomer(), R.AlreadySelected{})
+
+def scenario_reselect_0_2() -> Bool:
+  denied(sc_dispatch_on(sc_newcomer(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 112n), sc_newcomer(), R.NotSelected{})
+
+def scenario_reselect_0_3() -> Bool:
+  selection_offer_is(R.selection(sc_newcomer()), sc_offer_a())
+
+def scenario_reselect_1_0() -> Bool:
+  selected(sc_reselect(), sc_offer_b2())
+
+def scenario_reselect_1_1() -> Bool:
+  issued_is(R.Change.issued(sc_reselect()), 6n)
+
+def scenario_reselect_1_2() -> Bool:
+  Nat.is_eq(R.retired(sc_reselected()), 5n)
+
+def scenario_reselect_1_3() -> Bool:
+  denied(sc_dispatch_on(sc_reselected(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_reselected(), R.MissingEvidence{})
+
+def scenario_reselect_1_4() -> Bool:
+  Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_reselected(), sc_issuer(), 116n))))
+
+def scenario_reselect_1_5() -> Bool:
+  N.Session.is(sc_b_challenged(), N.Challenged{})
+
+def scenario_reselect_2_0() -> Bool:
+  denied(sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_b_evidenced(), R.WrongTrial{})
+
+def scenario_reselect_2_1() -> Bool:
+  R.Change.accepted(sc_b_dispatch())
+
+def scenario_reselect_2_2() -> Bool:
+  B.accepted(sc_b_commit())
+
+def scenario_reselect_2_3() -> Bool:
+  sc_retained(sc_b_commit())
+
+def scenario_reselect_2_4() -> Bool:
+  single_token_is(R.provider_registry(R.Change.state(sc_b_dispatch()), sc_snap(sc_issuer(), 116n)), token_b())
+
 def scenario_reselect() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Nat.is_eq(R.revision(sc_newcomer()), 9n)
-      && denied(R.select(sc_newcomer(), 9n, sc_pinned(), 1n, sc_raw(sc_issuer(), 112n), sc_snap(sc_issuer(), 112n)), sc_newcomer(), R.AlreadySelected{})
-      && denied(sc_dispatch_on(sc_newcomer(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 112n), sc_newcomer(), R.NotSelected{})
-      && selection_offer_is(R.selection(sc_newcomer()), sc_offer_a()), "scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5")
-    Test.check(selected(sc_reselect(), sc_offer_b2()) && issued_is(R.Change.issued(sc_reselect()), 6n) && Nat.is_eq(R.retired(sc_reselected()), 5n)
-      && denied(sc_dispatch_on(sc_reselected(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_reselected(), R.MissingEvidence{})
-      && Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_reselected(), sc_issuer(), 116n))))
-      && N.Session.is(sc_b_challenged(), N.Challenged{}), "scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is")
-    Test.check(denied(sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_b_evidenced(), R.WrongTrial{})
-      && R.Change.accepted(sc_b_dispatch()) && B.accepted(sc_b_commit()) && sc_retained(sc_b_commit())
-      && single_token_is(R.provider_registry(R.Change.state(sc_b_dispatch()), sc_snap(sc_issuer(), 116n)), token_b()), "scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12")
-
+    Test.check(scenario_reselect_0_0() && scenario_reselect_0_1() && scenario_reselect_0_2()
+      && scenario_reselect_0_3(), "scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5")
+    Test.check(scenario_reselect_1_0() && scenario_reselect_1_1() && scenario_reselect_1_2()
+      && scenario_reselect_1_3() && scenario_reselect_1_4() && scenario_reselect_1_5(), "scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is")
+    Test.check(scenario_reselect_2_0() && scenario_reselect_2_1() && scenario_reselect_2_2()
+      && scenario_reselect_2_3() && scenario_reselect_2_4(), "scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12")
 # --- Scenarios: denial cases ----------------------------------------------------
 
 # Principal C (203, authenticated, holding no grant) and D (204, holding
@@ -2784,15 +3352,29 @@ def sc_partial_dispatched() -> R.State:
 def sc_origin_approved(+state: R.State, +origin: T.ObjectVersion) -> Bool:
   R.origin_approved(R.approvals(state), origin, provider_a(), profile(), sc_plan(), sc_issuer(), 110n)
 
+# Native arity: each check of `scenario_currency` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `scenario_currency_K_J` is conjunct J of the K-th check of `scenario_currency`, counting
+# from 0.
+def scenario_currency_1_0() -> Bool:
+  R.Change.accepted(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 124n))
+
+def scenario_currency_1_1() -> Bool:
+  denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 125n), sc_evidenced(), R.Expired{})
+
+def scenario_currency_1_2() -> Bool:
+  n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_issuer(), 125n)), N.NoApprovals{})
+
 def scenario_currency() -> IO(Unit):
   do IO<Unit>:
     Test.check(denied(sc_submit_on(sc_selected(), provider_a(), sc_evidence_a(), sc_challenged(), sc_revoked(), 110n), sc_selected(), R.Revoked{})
       && Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_selected(), sc_revoked(), 110n))))
       && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_revoked(), 110n), sc_evidenced(), R.Revoked{})
       && selected(sc_raced_select(), sc_offer_b()), "scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B")
-    Test.check(R.Change.accepted(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 124n))
-      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 125n), sc_evidenced(), R.Expired{})
-      && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_issuer(), 125n)), N.NoApprovals{}), "scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals")
+    Test.check(scenario_currency_1_0() && scenario_currency_1_1() && scenario_currency_1_2(), "scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals")
     Test.check(denied(sc_dispatch_on(sc_partial(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n), sc_partial(), R.MissingApproval{})
       && sc_kept(sc_commit_on(sc_partial_dispatched(), sc_issuer(), 110n))
       && sc_origin_approved(sc_partial(), TF.source_object()) && Bool.not(sc_origin_approved(sc_partial(), IT.second_source()))
@@ -2867,6 +3449,28 @@ def sc_a2_running() -> N.Session:
 def sc_a2_dispatched() -> R.State:
   R.Change.state(sc_dispatch_on(sc_a2_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_a2_running(), sc_issuer(), 116n))
 
+# Native arity: each check of `scenario_commit` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `scenario_commit_K_J` is conjunct J of the K-th check of `scenario_commit`, counting
+# from 0.
+def scenario_commit_4_0() -> Bool:
+  selection_offer_is(R.selection(sc_a_reselected()), sc_offer_a())
+
+def scenario_commit_4_1() -> Bool:
+  issued_is(R.Change.issued(sc_select_on(sc_dispatched_abandoned(), sc_issuer(), 112n)), 6n)
+
+def scenario_commit_4_2() -> Bool:
+  N.Session.is(sc_a2_running(), N.Running{})
+
+def scenario_commit_4_3() -> Bool:
+  sc_kept_with(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_evidenced(), host(), worker_a(), sc_issuer(), 116n), sc_a2_ledger(), sc_a2_running())
+
+def scenario_commit_4_4() -> Bool:
+  B.accepted(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_dispatched(), host(), worker_a(), sc_issuer(), 116n))
+
 def scenario_commit() -> IO(Unit):
   do IO<Unit>:
     Test.check(sc_kept(sc_commit_on(sc_evidenced(), sc_issuer(), 110n)) && sc_kept(sc_commit_on(sc_selected(), sc_issuer(), 110n))
@@ -2878,11 +3482,8 @@ def scenario_commit() -> IO(Unit):
       && B.accepted(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), host(), worker_a(), sc_issuer(), 110n)), "scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits")
     Test.check(sc_kept(sc_commit_on(sc_dispatched_abandoned(), sc_issuer(), 110n))
       && sc_kept(sc_commit_on(sc_dispatched(), sc_issuer(), 125n)) && B.accepted(sc_commit_on(sc_dispatched(), sc_issuer(), 124n)), "scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits")
-    Test.check(selection_offer_is(R.selection(sc_a_reselected()), sc_offer_a()) && issued_is(R.Change.issued(sc_select_on(sc_dispatched_abandoned(), sc_issuer(), 112n)), 6n)
-      && N.Session.is(sc_a2_running(), N.Running{})
-      && sc_kept_with(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_evidenced(), host(), worker_a(), sc_issuer(), 116n), sc_a2_ledger(), sc_a2_running())
-      && B.accepted(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_dispatched(), host(), worker_a(), sc_issuer(), 116n)), "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits")
-
+    Test.check(scenario_commit_4_0() && scenario_commit_4_1() && scenario_commit_4_2()
+      && scenario_commit_4_3() && scenario_commit_4_4(), "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits")
 def scenarios() -> IO(Unit):
   do IO<Unit>:
     scenario_current()

@@ -213,7 +213,9 @@ import ./HostPrimitives.bend as HP
 # further gated on a dispatch of the current selection to the reported
 # worker session at the host's incarnation, and on the committing session
 # following the selection's trial. It must be rebuilt for every commit;
-# `negotiation_context` is never passed to a commit.
+# `negotiation_context` is never passed to a commit. The host passes the same
+# Negotiation session to `commit_context` and to the commit; Bend cannot tie
+# them, because the commit takes its session separately.
 #
 # Public entry points: `open`, `submit_offer`, `submit_approval`,
 # `withdraw_approval`, `select`, `abandon` (a monitor action),
@@ -2519,6 +2521,11 @@ def selection_dispatched_to(selection: Selection, +state: State, +incarnation: N
 # for `N.challenge` to `N.start` and `dispatch` (N.start needs approvals
 # before a dispatch can exist); the host must never pass it to a commit, and
 # must rebuild `commit_context` from the current states for every commit.
+# The host passes the same Negotiation session to `commit_context` and to the
+# commit; Bend cannot tie them, because the commit takes its session
+# separately (`Backplane.commit` and `DataOS.commit_from_capability` read
+# their own `session` argument, so the `session_follows_selection` gate here
+# protects only the session it is given).
 def commit_context(+state: State, +session: N.Session, +host: HP.State, +worker_session: Nat,
     n_context: N.Context, +snapshot: Snapshot) -> N.Context:
   current_context(selection_current(state, snapshot)

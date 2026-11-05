@@ -74,3 +74,16 @@
 2026-11-05T18:00:28Z	implementer	fix round 1 green: Tests.bend 1651 PASS ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK (24 laws); report and mutants table extended; committing
 2026-11-05T18:00:50Z	controller	fix round 1 reported (commit_context); scoped re-review dispatched
 2026-11-05T18:04:05Z	controller	task 7 complete (R1 carried); task 8 dispatched (final verification)
+2026-11-05T18:05:35Z	implementer	task 8 started: read brief, plan constraints, task 7 records (R1); starting JS and native builds in ../writ-build/executor-rendezvous
+2026-11-05T18:06:05Z	implementer	R1 sentence added to the Rendezvous.bend header and commit_context comment (comment only; non-comment lines identical to 56f091b); native build started
+2026-11-05T18:06:46Z	implementer	JS 1651 PASS (Node == embedded, byte-identical), check-only and PROOF.bend ALL PROOFS CHECK (24 laws), --verdict refused (lean not found), OpenSpec strict run; native build still running
+2026-11-05T18:07:26Z	implementer	native CPU build and run done (--threads 4 --gpu off): 1651 PASS, byte-identical to JS (cmp); starting the final mutation sweep
+2026-11-05T18:07:32Z	implementer	native build FAILED: "Error: an arity over 247" (exit 1, 56 s); locating the def that exceeds the native arity limit
+2026-11-05T18:14:57Z	implementer	arity bisect: Rendezvous.bend builds natively alone; 21 of 35 RendezvousTests check groups fail; splitting a failing check's conjunction into named Bool defs builds (per-def frame limit); probing every check of the failing groups
+2026-11-05T18:16:21Z	implementer	heartbeat: per-check native probe running (16 parallel builds); R1 sentences and the host-preconditions section written meanwhile
+2026-11-05T18:20:29Z	implementer	probe (C emission, 2 min): 33 of 223 Rendezvous checks exceed the native arity limit; splitting their conjunctions into named Bool defs in a scratch copy
+2026-11-05T18:22:15Z	implementer	33 checks split into 180 conjunct defs (token-equal after inlining, labels unchanged); JS output byte-identical to the pre-split run; native build restarted
+2026-11-05T18:24:37Z	implementer	final mutation sweep started on the final tree (scratch scratchpad/executor-rendezvous-t8/mutant): 83 gate-condition mutants (every Gate in Rendezvous.bend) plus the 365 task 1-7 mutants, full RendezvousTests driver, PROOF.bend on survivors
+2026-11-05T18:25:02Z	implementer	heartbeat: native build (after the split) and mutation sweep running; tasks.md box 2.2 and preface written
+2026-11-05T18:34:50Z	implementer	native CPU build and run (+RTS --threads 4 --gpu off) green: 1651 PASS, byte-identical to Node; final sweep done: 448 mutants, 433 killed, 15 equivalent (the accepted ones plus two gate-level duplicates of T10 and G5)
+2026-11-05T18:37:37Z	implementer	report and mutation table written; box 2.2 checked; OpenSpec strict rerun 44 passed; committing task 8
