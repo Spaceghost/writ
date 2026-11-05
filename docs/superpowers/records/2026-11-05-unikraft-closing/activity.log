@@ -19,3 +19,4 @@
 2026-11-05T01:25:08Z	implementer	rechecked all 23 existing KVM captures with the fragment rule: all PASS; dropped 1 on the 13 that failed before, 0 on the rest. Fresh KVM reruns and TCG controls next
 2026-11-05T01:26:43Z	implementer	fresh KVM reruns all PASS (hello x2, die x3, exit x3, corpus x2, exhaust, overflow); TCG hello and corpus through changed scripts PASS, dropped 0. kvmfix-overflow1 dropped a timestamp-only fragment '[    2.27112' cut from the crash screen, not a pm.c line: noted. Negative controls (fragment not last, other pm.c line, two fragments) FAIL as required. Load average 31-47
 2026-11-05T01:27:39Z	implementer	fix round: INVENTORY rows (env.sh, run.sh accel, check-image/corpus/fault fragment rule), unikernel-kvm.txt Fix round section, box 3.1 checked, OpenSpec strict 44 passed; report fix-round section appended; committing
+2026-11-05T01:28:05Z	controller	task 1 fix round reported, 3.1 checked; reviewer and task 2 dispatched
