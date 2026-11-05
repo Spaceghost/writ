@@ -490,6 +490,27 @@ def sentinel_token_commit() -> AE.AuditedCommit:
 def receipt_admission() -> AE.EventRecord:
   admission_event(TF.plan(), receipt_context())
 
+# Native arity: each check of `protected_content` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `protected_content_K_J` is conjunct J of the K-th check of `protected_content`, counting
+# from 0.
+
+# Native arity: each check of `protected_content` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `protected_content_K_J` is conjunct J of the K-th check of `protected_content`, counting
+# from 0.
+def protected_content_5_0() -> Bool:
+  Bool.not(B.accepted(AE.AuditedCommit.result(sentinel_token_commit())))
+
+def protected_content_5_1() -> Bool:
+  has_kind(AE.AuditedCommit.event(sentinel_token_commit()), 3n, 1n, 3n)
+
 def protected_content() -> IO(Unit):
   do IO<Unit>:
     Test.check(AE.EventRecord.equal(sentinel_admission(), clean_admission()),
@@ -504,8 +525,7 @@ def protected_content() -> IO(Unit):
     Test.check(none_of(sentinel_words(), event_words(sentinel_commit())) &&
       none_of(sentinel_words(), event_words(AE.AuditedCommit.event(sentinel_token_commit()))),
       "AU-001 no diagnostic or Ref-token sentinel occurs in a commit event, accepted or rejected")
-    Test.check(Bool.not(B.accepted(AE.AuditedCommit.result(sentinel_token_commit()))) &&
-      has_kind(AE.AuditedCommit.event(sentinel_token_commit()), 3n, 1n, 3n),
+    Test.check(protected_content_5_0() && protected_content_5_1(),
       "AU-001 a Ref carrying an unregistered token is rejected by the facade and recorded as CommitRejected")
     Test.check(T.accepted(AE.AuditedAdmission.decision(admit_as(TF.plan(), receipt_context(),
       FT.caller(7n), empty_diagnostic(), event_id()))) &&
@@ -522,10 +542,39 @@ def protected_content() -> IO(Unit):
 def committed_event() -> AE.EventRecord:
   AE.AuditedCommit.event(accepted_commit())
 
+# Native arity: each check of `committed_recorded` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `committed_recorded_K_J` is conjunct J of the K-th check of `committed_recorded`, counting
+# from 0.
+
+# Native arity: each check of `committed_recorded` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `committed_recorded_K_J` is conjunct J of the K-th check of `committed_recorded`, counting
+# from 0.
+def committed_recorded_0_0() -> Bool:
+  B.accepted(AE.AuditedCommit.result(accepted_commit()))
+
+def committed_recorded_0_1() -> Bool:
+  result_equal(AE.AuditedCommit.result(accepted_commit()), FT.run(FT.context(), 7n, 2n))
+
+def committed_recorded_10_0() -> Bool:
+  Bool.not(B.accepted(AE.AuditedCommit.result(moved_session_commit())))
+
+def committed_recorded_10_1() -> Bool:
+  destination_is(AE.AuditedCommit.event(moved_session_commit()), T.ObjectVersion{20n, 9n})
+
+def committed_recorded_10_2() -> Bool:
+  sources_is(AE.AuditedCommit.event(moved_session_commit()), T.Plan.sources(moved_plan()))
+
 def committed_recorded() -> IO(Unit):
   do IO<Unit>:
-    Test.check(B.accepted(AE.AuditedCommit.result(accepted_commit())) &&
-      result_equal(AE.AuditedCommit.result(accepted_commit()), FT.run(FT.context(), 7n, 2n)),
+    Test.check(committed_recorded_0_0() && committed_recorded_0_1(),
       "AU-001 committed operation: the wrapper returns the facade's accepted result")
     Test.check(has_kind(committed_event(), 2n, 1n, 2n),
       "AU-001 committed operation: kind CommitAccepted, phase Commit, outcome Committed")
@@ -549,11 +598,8 @@ def committed_recorded() -> IO(Unit):
       "AU-001 committed operation: authenticated subject 7, monitor event id and format version")
     Test.check(artifact_is(AE.AuditedCommit.event(commit_subject(other_artifact_context(), 7n)), BF.other_artifact()),
       "AU-001 committed operation: the artifact follows the binding, not a constant")
-    Test.check(Bool.not(B.accepted(AE.AuditedCommit.result(moved_session_commit()))) &&
-      destination_is(AE.AuditedCommit.event(moved_session_commit()), T.ObjectVersion{20n, 9n}) &&
-      sources_is(AE.AuditedCommit.event(moved_session_commit()), T.Plan.sources(moved_plan())),
+    Test.check(committed_recorded_10_0() && committed_recorded_10_1() && committed_recorded_10_2(),
       "AU-001 commit scope is the session's negotiated plan")
-
 # A SYNTHETIC monitor context that vouches for `p`: live stamp, destination,
 # operation and a write grant all bound to the plan's exact scope, one source
 # policy per manifest entry, and no read grant. `T.admit` therefore passes the
@@ -1249,17 +1295,25 @@ def all_allowed(ts: List<&2, Nat>) -> Bool:
 
 # --- event_format: projected events (from the wrappers) ------------------------
 
-def projected_denials() -> List<&2, AE.EventRecord>:
-  [admission_event(TF.plan(), TF.with_live(TF.context(), T.Stamp{2n, 2n, 3n})),
-    admission_event(TF.plan(), TF.with_sources(TF.context(), T.SEnd{})),
-    admission_event(TF.plan(), TF.with_reads(TF.context(), T.ReadEnd{})),
-    admission_event(TF.plan(), TF.with_writes(TF.context(), T.WriteEnd{})),
-    admission_event(TF.plan(), TF.with_sources(TF.context(), T.SCons{TF.invalid_schema_source(), T.SEnd{}})),
-    admission_event(TF.plan(), operation_denied()),
+# Native arity: a list literal of 10 AE.EventRecord values held in one def
+# exceeded the native backend's 247-word function-arity limit ("Error: an arity
+# over 247" from `bend Tests.bend -o <binary>`). The list is the same elements
+# in the same order: the first five are consed onto the `_rest` def, which
+# holds the remainder.
+def projected_denials_rest() -> List<&2, AE.EventRecord>:
+  [admission_event(TF.plan(), operation_denied()),
     admission_event(TF.plan(), origin_denied()),
     admission_event(TF.plan(), TF.with_payments(TF.context(), T.PayEnd{})),
     admission_event(TF.plan(), TF.destination_clearance(T.Bits64{0, 0}, T.Bits64{2, 0}, 7)),
     admission_event(TF.plan(), TF.with_origin(TF.context(), T.REnd{}, 7))]
+
+def projected_denials() -> List<&2, AE.EventRecord>:
+  admission_event(TF.plan(), TF.with_live(TF.context(), T.Stamp{2n, 2n, 3n})) <>
+    admission_event(TF.plan(), TF.with_sources(TF.context(), T.SEnd{})) <>
+    admission_event(TF.plan(), TF.with_reads(TF.context(), T.ReadEnd{})) <>
+    admission_event(TF.plan(), TF.with_writes(TF.context(), T.WriteEnd{})) <>
+    admission_event(TF.plan(), TF.with_sources(TF.context(), T.SCons{TF.invalid_schema_source(), T.SEnd{}})) <>
+    projected_denials_rest()
 
 def rejected_event() -> AE.EventRecord:
   AE.AuditedCommit.event(commit_subject(revoked_context(), 7n))
@@ -2088,6 +2142,18 @@ def commit_sink_mallory() -> AE.Sink:
 def commit_releasable(policy: AE.EventPolicy, sink: AE.Sink) -> Bool:
   AE.releasable(eight_principals(), 3n, policy, sink)
 
+# Native arity: the 5th check of `binding_checks` (counting from 0) is a single
+# conjunct whose two operands, written inline in one def, exceeded the native
+# backend's 247-word function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# `binding_checks_5_0_J` is operand J of that check's `AE.EventRecord.equal`,
+# unchanged and in the original order.
+def binding_checks_5_0_0() -> AE.EventRecord:
+  AE.Recorded.event(AE.AuditedCommit.recorded(commit_labelled(FT.context(), 7n)))
+
+def binding_checks_5_0_1() -> AE.EventRecord:
+  AE.AuditedCommit.event(commit_labelled(FT.context(), 7n))
+
 def binding_checks() -> IO(Unit):
   +xs = AE.EventPolicy.influences(commit_policy_of(FT.context(), 7n))
   +mx = AE.EventPolicy.influences(commit_policy_of(mallory_binding_context(), 7n))
@@ -2111,8 +2177,7 @@ def binding_checks() -> IO(Unit):
       T.Bits64.equal(AE.EventPolicy.secrecy(commit_policy_of(FT.context(), 7n)), source_secrecy()) &&
       T.Bits64.equal(AE.EventPolicy.untrusted(commit_policy_of(FT.context(), 7n)), source_untrusted()),
       "AU-002 a commit event carries the requester, the session plan's objects and the transfer context's secrecy and untrusted sets")
-    Test.check(AE.EventRecord.equal(AE.Recorded.event(AE.AuditedCommit.recorded(commit_labelled(FT.context(), 7n))),
-      AE.AuditedCommit.event(commit_labelled(FT.context(), 7n))),
+    Test.check(AE.EventRecord.equal(binding_checks_5_0_0(), binding_checks_5_0_1()),
       "AU-002 the commit record holds the same event the wrapper returns")
     Test.check(influences_eq(xs,
       AE.Influenced{data_of(bob()), AE.Influenced{data_of(alice()),
@@ -2145,12 +2210,37 @@ def owners_has(xs: AE.Owners, +p: D.Principal) -> Bool:
     case AE.Owned{h, t}:
       principal_eq(h, p) || owners_has(t, p)
 
+# Native arity: each check of `stream_checks` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `stream_checks_K_J` is conjunct J of the K-th check of `stream_checks`, counting
+# from 0.
+
+# Native arity: each check of `stream_checks` named below is split into one def
+# per conjunct, unchanged and in the original order. Written inline in
+# one def, each of these checks exceeded the native backend's 247-word
+# function-arity limit ("Error: an arity over 247" from
+# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# A def named `stream_checks_K_J` is conjunct J of the K-th check of `stream_checks`, counting
+# from 0.
+def stream_checks_0_0() -> Bool:
+  TF.denied_as(AE.AuditedAdmission.decision(stale_by(2n)), T.Stale{})
+
+def stream_checks_0_1() -> Bool:
+  no_scope(AE.AuditedAdmission.event(stale_by(2n)))
+
+def stream_checks_0_2() -> Bool:
+  owners_has(AE.event_owners(AE.EventPolicy.influences(admission_policy_of(stale_by(2n)))), bob())
+
+def stream_checks_0_3() -> Bool:
+  owners_eq(streams_of(stale_by(2n)), AE.Owned{mallory(), AE.NoOwners{}})
+
 def stream_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(TF.denied_as(AE.AuditedAdmission.decision(stale_by(2n)), T.Stale{}) &&
-      no_scope(AE.AuditedAdmission.event(stale_by(2n))) &&
-      owners_has(AE.event_owners(AE.EventPolicy.influences(admission_policy_of(stale_by(2n)))), bob()) &&
-      owners_eq(streams_of(stale_by(2n)), AE.Owned{mallory(), AE.NoOwners{}}),
+    Test.check(stream_checks_0_0() && stream_checks_0_1() && stream_checks_0_2()
+      && stream_checks_0_3(),
       "AU-002 an early-denied (ScopeNotRead) event joins only the requester's stream, whatever objects the plan names")
     Test.check(owners_eq(streams_of(bob_audited(bob_origin_context())),
       AE.event_owners(AE.EventPolicy.influences(bob_policy(bob_origin_context())))) &&
@@ -2341,8 +2431,16 @@ def h_mallory() -> AE.Recorded:
   recorded_of(admit_labelled(stale_alice_plan(), bob_admitted_context(), alice_labels(), 2n))
 
 # The five visible events with the three hidden ones interleaved.
+# Native arity: a list literal of 8 AE.Recorded values held in one def exceeded
+# the native backend's 247-word function-arity limit ("Error: an arity over 247"
+# from `bend Tests.bend -o <binary>`; seven AE.Recorded values in one list
+# already do). The list is the same elements in the same order: the first four
+# are consed onto the `_rest` def, which holds the remainder.
+def interleaved_rest() -> List<&2, AE.Recorded>:
+  [h_bob(), v_schema(), h_commit(), v_stale()]
+
 def interleaved() -> List<&2, AE.Recorded>:
-  [v_admitted(), h_mixed(), v_origin(), v_payment(), h_bob(), v_schema(), h_commit(), v_stale()]
+  v_admitted() <> h_mixed() <> v_origin() <> v_payment() <> interleaved_rest()
 
 def views_of(xs: List<&2, AE.Recorded>) -> AQ.Views:
   match xs:

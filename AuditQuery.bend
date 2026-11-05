@@ -62,11 +62,12 @@ import ./AuditEvent.bend as AE
 # (revocation, epoch, exclusive expiry, which together are `grant_current`);
 # the cursor once the authority it must match is fixed; the limit before the
 # work gate, which is the only gate that walks the log (through the visible
-# view) and needs the offset and limit. Absence denies at every dependent
-# gate as well (no sink or no grant makes gates 4 to 6 and 9 false), as in
-# Issuance. The order is monitor-internal: `first_failed_gate` names the
-# first failing gate for tests and monitor diagnostics only, `Gate` is never
-# part of a `Response`, and every refusal is the same public value.
+# view) and needs the offset and limit. Absence denies at the dependent
+# gates as well (no grant makes gates 4 to 6 false; no registered sink makes
+# gate 9 false), as in Issuance. The order is monitor-internal:
+# `first_failed_gate` names the first failing gate for tests and monitor
+# diagnostics only, `Gate` is never part of a `Response`, and every refusal
+# is the same public value.
 #
 # One public refusal (AU-008). Every refusal is `Refused{public_denial()}`,
 # and `PublicDenial` has exactly one constructor, `Unavailable{}`: a stale
@@ -167,6 +168,15 @@ type Sinks is Data:
 # read `owner`'s stream through sink `sink` while `epoch` is the live epoch,
 # `now < valid_until` and `revoked` is False. Monitor state, never caller
 # input; usability is re-derived at every query, never stored.
+# A revoked record is kept (`revoke_read` sets its flag), and the lookup
+# matches reader, owner and sink without reading the epoch, so a grant
+# re-installed with the same three names beside its revoked record is
+# ambiguous and refused (NoGrant), in every epoch, until the monitor prunes
+# the revoked record: an epoch advance alone does not lift the refusal. This
+# fails closed. A grant naming owner `D.Top{}` is accepted: the events the
+# fail-closed rules place in Top's stream carry the maximal-restriction
+# influence and reach no sink, so "Top's stream is nobody's" holds only while
+# the monitor's label table names no object owner as Top (a convention).
 type ReadGrant is Data:
   ReadGrant{id: Nat, reader: Nat, owner: D.Principal, sink: Nat, epoch: Nat,
     valid_until: Nat, revoked: Bool}

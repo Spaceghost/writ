@@ -57,3 +57,31 @@
 2026-11-05T17:32:19Z	implementer	fix round 1 validation green: Audit 285; Tests.bend 1428 plus 285 = 1713 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (29 laws); 73 mutants, 68 killed, 5 equivalent; openspec 44 passed; report section appended; committing
 2026-11-05T17:32:38Z	controller	fix round 1 reported (owner-stream law); scoped re-review dispatched
 2026-11-05T17:34:12Z	controller	task 5 complete; task 6 dispatched (documentation and verification)
+2026-11-05T17:34:58Z	implementer	task 6 started: read brief, plan Global Constraints and cross-lane ruling (no count pins; pins table in report)
+2026-11-05T17:35:03Z	implementer	native build started (bend Tests.bend -o tests-native); JS run alongside
+2026-11-05T17:35:30Z	implementer	JS: 1713 PASS, Audit 285, ALL LIBRARY TESTS PASSED; PROOF ALL PROOFS CHECK; --verdict refused (no lean); openspec 44 passed; native build still running
+2026-11-05T17:36:11Z	implementer	native CPU build FAILED: "Error: an arity over 247" (bend Tests.bend -o tests-native, exit 1, real 0m51.9s); diagnosing (AuditTests grouping vs the native arity limit)
+2026-11-05T18:39:52Z	controller	task 6 implementer stalled at the arity limit and was stopped; re-dispatched
+2026-11-05T18:40:35Z	implementer	task 6 resumed (re-dispatch): read brief and activity log; kept the stalled attempt's lines
+2026-11-05T18:41:59Z	implementer	arity bisect: AuditTests.bend alone reproduces (emit C, 9 s); probing each check group by emitting C for a one-group driver
+2026-11-05T18:42:33Z	implementer	arity bisect: 9 of 50 groups fail (protected_content committed_recorded format_round_trips binding_checks stream_checks totals_and_empty pagination work_budget content_gated); probing each of their statements
+2026-11-05T18:50:32Z	implementer	arity cause found: not conjunction length; the limit counts the words live in one def (records are unboxed). Failing sites: interleaved() (8 AE.Recorded in one list literal; 7 already fail), projected_denials() (10 events), 4 checks with several commit/admission fixtures (protected_content 5, committed_recorded 0 and 10, stream_checks 0), and binding_checks 5 (one conjunct, two commit fixtures)
+2026-11-05T18:50:32Z	implementer	fix: 4 checks split per conjunct (11 Bool defs), binding_checks 5 per operand (2 defs), the two lists consed onto a _rest def; token check (inline defs, fold lists) equal; 285 check names identical before and after; AuditTests emits C (23 s)
+2026-11-05T18:50:41Z	implementer	JS after the split: byte-identical to the run before it; native CPU build started (nohup)
+2026-11-05T18:51:59Z	implementer	heartbeat: native build in the clang phase; running PROOF.bend, one --verdict attempt and OpenSpec strict alongside
+2026-11-05T18:52:10Z	implementer	PROOF.bend ALL PROOFS CHECK (29 laws); --verdict exit 1, lean not found (NOT VERIFIED); OpenSpec strict 44 passed
+2026-11-05T18:52:48Z	implementer	AuditQuery header, comment only (tokens equal): Task 4 M2 dependent-gate clause corrected; read-grant re-install refusal (Task 4 M3, epoch advance does not lift it) and the Top-stream convention (A3) stated; heartbeat: native build still compiling
+2026-11-05T18:53:39Z	implementer	heartbeat: native build running; writing docs/AUDIT.md
+2026-11-05T18:55:27Z	implementer	docs/AUDIT.md written; heartbeat: native build still running; writing the traceability file
+2026-11-05T18:57:06Z	implementer	native CPU build exit 0 (364 s); running it with --threads 4 --gpu off
+2026-11-05T18:57:24Z	implementer	native run exit 0: 1713 PASS (1660 PASS: plus 53 PASS), 0 FAIL, Audit 285, ALL LIBRARY TESTS PASSED; cmp with the Node capture: identical, sha256 0851dc61399c52211be5a513614c81afbd4960837a7a2cb917be533fde96acf3 (also the pre-split JS hash); CPU, --gpu off, not a GPU test. Rebuilding natively on the final .bend tree (the first build predates the comment-only AuditQuery edit)
+2026-11-05T18:59:09Z	implementer	traceability, verification/policy-aware-audit.txt and tasks.md (first line, section 1 citations, section 2 and 3 reasons) written; captures copied to the record directory; heartbeat: final-tree native rebuild running
+2026-11-05T18:59:49Z	implementer	heartbeat: final-tree native rebuild running (poll 1)
+2026-11-05T19:00:19Z	implementer	heartbeat: final-tree native rebuild running (poll 2)
+2026-11-05T19:00:49Z	implementer	heartbeat: final-tree native rebuild running (poll 3)
+2026-11-05T19:01:19Z	implementer	heartbeat: final-tree native rebuild running (poll 4)
+2026-11-05T19:01:50Z	implementer	heartbeat: final-tree native rebuild running (poll 5)
+2026-11-05T19:02:20Z	implementer	heartbeat: final-tree native rebuild running (poll 6)
+2026-11-05T19:02:50Z	implementer	heartbeat: final-tree native rebuild running (poll 7)
+2026-11-05T19:03:20Z	implementer	heartbeat: final-tree native rebuild running (poll 8)
+2026-11-05T19:04:08Z	implementer	final-tree native rebuild exit 0 (363 s), run exit 0, 1713 PASS, output cmp-identical to the first native capture and the Node capture; report written; committing

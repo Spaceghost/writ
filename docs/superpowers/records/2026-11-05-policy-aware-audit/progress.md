@@ -24,3 +24,4 @@ Task 5: review NEEDS_FIXES both axes (no leak in the code, but removing the expo
 Task 5: fix round 1 done (607fd05): owner-stream filter pinned by a check and the new law audit_export_outside_stream_unobservable; header corrections; 1713 checks, 29 laws; 68 of 73 mutants killed, 5 equivalent. Scoped re-review dispatched.
 Task 5: complete (re-review ALL CLOSED; 1713 checks, 29 laws).
 Task 6: dispatched implementer (docs/AUDIT.md, traceability, full verification; no count pins, pins table instead)
+Task 6: first implementer stalled after the native build failed on the arity limit (last activity 17:36 UTC, no process, stopped 18:40 UTC); re-dispatched with the uncommitted work and the rendezvous lane's fix (split long test conjunctions into named Bool defs).
