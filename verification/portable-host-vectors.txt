@@ -10,6 +10,9 @@ VECTOR PH-005-8 publish denied PlanMismatch
 VECTOR PH-005-9 publish denied PlanMismatch
 VECTOR PH-005-10 issue denied PlanMismatch
 VECTOR PH-005-11 issue denied PlanMismatch
+VECTOR PH-005-12 issue denied OwnerMismatch
+VECTOR PH-005-13 issue denied RightsNotHeld
+VECTOR PH-005-14 issue denied LeaseExceeded
 VECTOR PH-002-1 use accepted slot=input
 VECTOR PH-002-2 use accepted slot=input
 VECTOR PH-002-3 publish accepted invocation=99;input=input
@@ -30,4 +33,5 @@ VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
 VECTOR PH-004-2 use accepted slot=root
 VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
 VECTOR PH-009-4 reconcile denied Substitution
-VECTOR PH-012-1 compare accepted vectors=32
+VECTOR PH-009-5 reconcile denied Substitution
+VECTOR PH-012-1 compare accepted vectors=36

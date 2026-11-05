@@ -39,9 +39,10 @@ import ./Transfer.bend as T
 #   only compared against the bound profile.
 # - Delegability is monitor state: `open_session` binds a worker session
 #   non-delegable by construction, and admission reads the delegability the
-#   identity table stored. The `delegable` flag in `SessionEvidence` can
-#   only narrow (a client session it reports non-delegable is bound so); it
-#   never makes a session delegable that the monitor's role does not allow.
+#   identity table stored. A client session is delegable only when the
+#   monitor's `ClientRole{delegable}` allows it and the evidence's flag
+#   agrees (AND): the evidence can only narrow, never make a session
+#   delegable that the monitor's role does not allow.
 # - `Effect` is closed. It has no native write, publish, recall, or
 #   diagnostic variant, and `native_write_offered` has no accepting branch,
 #   so the fast publication route has no value to return. The publication
@@ -55,8 +56,15 @@ import ./Transfer.bend as T
 # `Effect` is not authorization; the binding must execute only effects taken
 # from an `Admitted` step this monitor returned. (b) The `Role` passed to
 # `open_session` is the monitor's own decision from its admitted request
-# (which sessions are workers, and under which configured profile), never a
-# value the binding chose.
+# (which sessions are workers, and under which configured profile, and
+# whether a client session may delegate), never a value the binding chose.
+# (c) The monitor's clock is trusted and monotone: every `now` passed to
+# `use`, `delegate`, `admit_worker`, `charge`, `diagnostic`, and
+# HostPublication's `seal` and `complete` is monitor time, and nothing here
+# checks that it never moves backwards (a clock that did would revive an
+# expired entry for those checks; `publish` reads the DataOS context's
+# clock). (d) `issue`'s `frontend` is the monitor's own Frontend state
+# (see `issue`).
 #
 # Authority. `State` is monitor state: the HostIdentity table (sessions and
 # entries, changed only through this layer's transitions: `open_session`,
@@ -74,7 +82,12 @@ import ./Transfer.bend as T
 # `HostIdentity.delegate` from a worker session is always denied
 # NotDelegable and a worker cannot pass its inputs on, whatever the target
 # reported.
-# Each input entry feeds at most one worker that is not `Reclaimed`.
+# Each identity entry feeds at most one worker that is not `Reclaimed`
+# (occupancy compares host, incarnation, and slot). This is one worker per
+# entry, not per Frontend handle or root: two children delegated from one
+# root are two entries and may feed two confined workers over the same
+# handle and plan; publication still releases at most one of them for the
+# plan's invocation (the second is denied Replay).
 # Host obligations (section 2): the adapter identifies the worker a runtime
 # fact came from (as it identifies the session a message arrived on); the
 # inventory it reports is the worker's complete native route set; it removes
@@ -235,9 +248,13 @@ type Fact is Data:
 # an admitted transition. `DeliverInputs` delivers the protected inputs of the
 # identity entry `input` (its full reference, as the monitor rebuilt it) into
 # `worker`'s confined domain. `Reconcile` tells the binding that the
-# publication this monitor recorded for `invocation`, of artifact `digest`, is
-# the outcome to finish or confirm after a crash; both fields are copied from
-# the monitor's record, so it can only repeat a recorded publication.
+# publication this monitor recorded for `invocation`, of artifact `digest`, to
+# destination object version `destination`, is the outcome to finish or
+# confirm after a crash. All three fields are copied from the monitor's
+# record, and `HostPublication.reconcile` emits it only when the binding's
+# logged digest and destination equal the recorded ones. The record does not
+# hold the committed intent's output policy, label, or backend, so those are
+# not checked at recovery (host obligation, section 2.3).
 # `StopEffects` stops every future native effect of `worker` (it recalls and
 # erases nothing). `Reclaim` releases `worker`'s quiesced native resources.
 # There is deliberately no publish variant: a publication effect is
@@ -245,7 +262,7 @@ type Fact is Data:
 # header), and there is no recall or erase variant.
 type Effect is Data:
   DeliverInputs{worker: Nat, input: W.Ref}
-  Reconcile{invocation: Nat, digest: T.CodeId}
+  Reconcile{invocation: Nat, digest: T.CodeId, destination: T.ObjectVersion}
   StopEffects{worker: Nat}
   Reclaim{worker: Nat}
 
@@ -274,11 +291,12 @@ type Workers is Data:
   Workers{head: Worker, tail: Workers}
 
 # The monitor's decision, at bind time, of what a new session is for: a
-# client session, or a worker session bound under configured profile
+# client session (`delegable` False makes it non-delegable whatever the
+# evidence reports), or a worker session bound under configured profile
 # `profile`. The monitor takes it from its own admitted request; it is never
 # target evidence.
 type Role is Data:
-  ClientRole{}
+  ClientRole{delegable: Bool}
   WorkerRole{profile: Nat}
 
 # The configured profile a worker session was bound under.
@@ -299,11 +317,12 @@ type Seals is Data:
   NoSeals{}
   Seals{head: Sealed, tail: Seals}
 
-# One recorded publication (family 4): the negotiated plan's invocation and
-# the sealed digest that `HostPublication.publish` released for it. Monitor
-# state; only `publish` writes it, and no transition removes it.
+# One recorded publication (family 4): the negotiated plan's invocation, the
+# sealed digest that `HostPublication.publish` released for it, and the
+# committed intent's destination object version. Monitor state; only
+# `publish` writes it, and no transition removes it.
 type Publication is Data:
-  Publication{invocation: Nat, digest: T.CodeId}
+  Publication{invocation: Nat, digest: T.CodeId, destination: T.ObjectVersion}
 
 type Publications is Data:
   NoPublications{}
@@ -347,6 +366,8 @@ type Error is Data:
   Unrecorded{}
   NotQuiesced{}
   PlanMismatch{}
+  OwnerMismatch{}
+  LeaseExceeded{}
 
 # The output of every mutating transition. Only `Admitted` carries effects.
 type Step is Data:
@@ -490,6 +511,8 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case Unrecorded{} Unrecorded{}: True{}
     case NotQuiesced{} NotQuiesced{}: True{}
     case PlanMismatch{} PlanMismatch{}: True{}
+    case OwnerMismatch{} OwnerMismatch{}: True{}
+    case LeaseExceeded{} LeaseExceeded{}: True{}
     case _ _: False{}
 
 # Public accessor: the resulting state; on denial, the supplied state.
@@ -638,13 +661,18 @@ def sealed_digest(sealed: Sealed) -> T.CodeId:
 
 def publication_invocation(publication: Publication) -> Nat:
   match publication:
-    case Publication{invocation, _}:
+    case Publication{invocation, _, _}:
       invocation
 
 def publication_digest(publication: Publication) -> T.CodeId:
   match publication:
-    case Publication{_, digest}:
+    case Publication{_, digest, _}:
       digest
+
+def publication_destination(publication: Publication) -> T.ObjectVersion:
+  match publication:
+    case Publication{_, _, destination}:
+      destination
 
 def report_families(report: TargetReport) -> U32:
   match report:
@@ -1003,8 +1031,9 @@ def o_worker(found: ProfileLookup, +state: State, +profile: Nat, caller: F.Calle
 # deny it: the evidence's flag can only narrow, never grant.
 def o_role(role: Role, +state: State, caller: F.Caller, +origin: I.Origin, delegable: Bool) -> Step:
   match role:
-    case ClientRole{}:
-      o_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, delegable), state)
+    case ClientRole{allowed}:
+      o_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, allowed && delegable),
+        state)
     case WorkerRole{+profile}:
       o_worker(profile_at(profiles(state), profile), state, profile, caller, origin)
 
@@ -1123,33 +1152,79 @@ def changed(change: I.Change, +state: State) -> Step:
     case I.Accepted{identity, _}:
       Admitted{with_identity(state, identity), []}
 
-# Implementation helper: whether the monitor's Frontend state holds handle
-# `handle` and that handle carries exactly `plan`.
-def handle_carries(found: Maybe<&2, F.Handle>, +plan: T.Plan) -> Bool:
-  match found:
-    case Some{handle}:
-      T.Plan.equal(F.handle_plan(handle), plan)
-    case None{}:
-      False{}
+# Implementation helper: whether Frontend handle `handle` is owned by
+# `caller` (the same subject and the same token).
+def owned_by(handle: F.Handle, +caller: F.Caller) -> Bool:
+  match handle:
+    case F.Handle{_, _, subject, token, _, _, _, _, _}:
+      Nat.is_eq(subject, I.caller_subject(caller)) && T.CodeId.equal(token, F.caller_token(caller))
 
-# Implementation helper: issue's plan-binding step. An entry is issued only
-# for the plan its Frontend handle carries.
-def m_plan(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
+# Implementation helper: issue's owner comparison. The session lookup must
+# name one session whose bound caller owns the handle. An unbound or
+# ambiguous session passes this step only to be denied by `HostIdentity.mint`
+# (UnknownSession, Ambiguous), which needs the same lookup.
+def owner_matches(found: I.SessionLookup, handle: F.Handle) -> Bool:
+  match found:
+    case I.OneSession{session}:
+      owned_by(handle, I.session_caller(session))
+    case I.NoSession{}:
+      True{}
+    case I.ManySessions{}:
+      True{}
+
+def handle_expires(handle: F.Handle) -> Nat:
+  match handle:
+    case F.Handle{_, _, _, _, _, _, _, expires, _}:
+      expires
+
+# Implementation helper: the first failing binding field, in order plan,
+# owner, rights, lease; None when all four hold.
+def first_unbound(plan_ok: Bool, owner_ok: Bool, rights_ok: Bool, lease_ok: Bool) -> Maybe<&2, Error>:
+  match plan_ok owner_ok rights_ok lease_ok:
+    case False{} _ _ _:
+      Some{PlanMismatch{}}
+    case True{} False{} _ _:
+      Some{OwnerMismatch{}}
+    case True{} True{} False{} _:
+      Some{RightsNotHeld{}}
+    case True{} True{} True{} False{}:
+      Some{LeaseExceeded{}}
+    case True{} True{} True{} True{}:
+      None{}
+
+# Implementation helper: issue's binding of the new entry to Frontend handle
+# `found`: a handle the monitor's Frontend state does not hold is
+# PlanMismatch; otherwise the handle must carry exactly `plan`
+# (PlanMismatch), be owned by the session's caller (OwnerMismatch), hold
+# every right in `rights` (RightsNotHeld), and expire no earlier than
+# `expires` (LeaseExceeded; both clocks are exclusive, `now < expires`).
+def unbound(found: Maybe<&2, F.Handle>, owner: I.SessionLookup, +plan: T.Plan, +rights: U32, +expires: Nat)
+    -> Maybe<&2, Error>:
+  match found:
+    case Some{+handle}:
+      first_unbound(T.Plan.equal(F.handle_plan(handle), plan), owner_matches(owner, handle),
+        T.word_subset(rights, F.handle_rights(handle)), Nat.is_le(expires, handle_expires(handle)))
+    case None{}:
+      Some{PlanMismatch{}}
+
+# Implementation helper: issue's binding step. An entry is issued only with
+# the plan, owner, rights, and lease its Frontend handle carries.
+def m_bind(failed: Maybe<&2, Error>, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
     expires: Nat) -> Step:
-  match ok:
-    case True{}:
+  match failed:
+    case None{}:
       changed(I.mint(identity(state), I.revision(identity(state)), session, handle, plan, rights, expires),
         state)
-    case False{}:
-      Denied{state, PlanMismatch{}}
+    case Some{reason}:
+      Denied{state, reason}
 
 # Implementation helper: issue's gate.
-def m_gate(ok: Bool, +state: State, +session: Nat, frontend: F.State, +handle: Nat, +plan: T.Plan, rights: U32,
-    expires: Nat) -> Step:
+def m_gate(ok: Bool, +state: State, +session: Nat, frontend: F.State, +handle: Nat, +plan: T.Plan, +rights: U32,
+    +expires: Nat) -> Step:
   match ok:
     case True{}:
-      m_plan(handle_carries(F.find_handle(F.handles(frontend), handle), plan), state, session, handle, plan,
-        rights, expires)
+      m_bind(unbound(F.find_handle(F.handles(frontend), handle), I.session_at(I.sessions(identity(state)), session),
+        plan, rights, expires), state, session, handle, plan, rights, expires)
     case False{}:
       Denied{state, StaleRevision{}}
 
@@ -1157,19 +1232,25 @@ def m_gate(ok: Bool, +state: State, +session: Nat, frontend: F.State, +handle: N
 # `session` for Frontend handle `handle`, which the monitor has already
 # opened after complete admission of `plan`, through `HostIdentity.mint`
 # (the owner is the session's bound caller; only an Authenticated session
-# holds a root). `frontend` must be the monitor's own Frontend state (the
-# record `DataOS.commit_from_capability` later re-resolves the handle in).
-# Nothing here enforces that: `frontend` carries no expected revision and is
-# not tied to the Frontend state publication later uses, so this check trusts
-# the Frontend state the monitor passes (a host obligation) and is defense in
-# depth. The binding of record is publication, which re-binds independently:
+# holds a root). The new entry is bound to the handle field by field: the
+# handle must exist in `frontend` and carry exactly `plan` (compared whole
+# with `T.Plan.equal`; PlanMismatch), its owner (subject and token) must be
+# the session's bound caller (OwnerMismatch), `rights` must be within the
+# handle's rights (RightsNotHeld), and `expires` must not be later than the
+# handle's expiry (LeaseExceeded). So the entry's plan, owner, rights, and
+# lifetime, which every delegated child copies or narrows, are within the
+# handle's. The issue check trusts the monitor's Frontend state;
+# publication re-binds independently. `frontend` must be the monitor's own
+# Frontend state (the record `DataOS.commit_from_capability` later
+# re-resolves the handle in), but it carries no expected revision and is not
+# tied to the state publication later uses, so this check is defense in
+# depth, a host obligation on the monitor that passes it.
 # `HostPublication.publish` step 4 compares the entry's plan with the
-# negotiated session's, and DataOS compares the session's plan with the
-# re-resolved handle's. Order: gate; plan binding: the handle must exist in
-# `frontend` and carry exactly `plan`, compared whole with `T.Plan.equal`
-# (PlanMismatch: an entry can be issued only for the plan its handle carries,
-# so the entry's plan, which every delegated child copies, is the handle's);
-# then HostIdentity's own checks (`Identity{reason}`). No effect.
+# negotiated session's, and DataOS re-resolves the handle through
+# `Frontend.checked_plan` for the entry's owner (owner, token, live scope,
+# and the request's rights). The handle's authority epoch and closed flag are
+# not checked here; publication checks the live scope. Order: gate; binding (plan, owner, rights, lease); then
+# HostIdentity's own checks (`Identity{reason}`). No effect.
 def issue(+state: State, expected_revision: Nat, +session: Nat, frontend: F.State, handle: Nat, plan: T.Plan,
     rights: U32, expires: Nat) -> Step:
   m_gate(current(state, expected_revision), state, session, frontend, handle, plan, rights, expires)

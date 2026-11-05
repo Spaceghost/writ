@@ -28,6 +28,14 @@ import ./Transfer.bend as T
 # that reuses its id. `valid` cannot observe this, because the earlier
 # incarnation's sessions are no longer in the state.
 #
+# Host obligation (section 2): the monitor's clock is trusted and monotone.
+# `resolve`, `delegate`, and every caller pass monitor time `now`, and
+# nothing here checks that it never moves backwards; a clock that did would
+# make an expired entry resolve again. There is no session close or unbind
+# transition: a bound session stays bound until `restart` (ids are never
+# reused within an incarnation, so this causes no id reuse, but a native
+# session that ended has no model counterpart; section 2 or later).
+#
 # Holder ruling (controller, PH-002 to PH-005): an entry's holder is the
 # session the monitor bound it to (that session's token and subject together,
 # as the monitor recorded them), not the subject alone. So (1) a reference

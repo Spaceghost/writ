@@ -64,7 +64,8 @@ import ./DataOS.bend as D
 #                  identity entry's plan                       -> PlanMismatch
 #                  the committed intent's ArtifactId is not
 #                  the sealed digest                           -> ArtifactMismatch
-#   then it records `Publication{invocation, digest}` and returns
+#   then it records `Publication{invocation, digest, destination}` (the
+#   committed intent's plan destination) and returns
 #   `Published{state, commit, [Publish{intent}]}`.
 # Every refusal returns `Refused{state, session, ledger, reason}` with the
 # supplied primitive state, Negotiation session, and ledger, so a denied or
@@ -82,8 +83,8 @@ import ./DataOS.bend as D
 # accepting arm, whose intent is the one `DataOS.commit_from_capability`
 # returned in step 6 (no parameter of `publish` has type `B.WriteIntent` or
 # `B.CommitResult`). (c) `Refused` has no effects field (laws below).
-# (d) `reconcile` emits `P.Reconcile{invocation, digest}`, which carries no
-# intent and whose fields are copied from the monitor's own record.
+# (d) `reconcile` emits `P.Reconcile{invocation, digest, destination}`, which
+# carries no intent and whose fields are copied from the monitor's own record.
 # (e) `P.native_write_offered` has no accepting branch. Remaining gap,
 # reviewed-only (section 2, as for every `Effect`): Bend datatypes are public,
 # so a target could construct a `Publish` itself; a target-constructed effect
@@ -91,12 +92,18 @@ import ./DataOS.bend as D
 # result this monitor returned.
 #
 # Recovery (PH-009, "Crash recovery repeats a publication attempt").
-# `reconcile(state, rev, invocation, digest)` never authorizes: it commits
-# nothing and spends nothing. For a recorded invocation whose recorded digest
-# equals `digest` it emits `Reconcile` with the recorded values; a different
-# digest is denied Substitution and an unrecorded invocation Unrecorded. So it
-# can only repeat a publication the record already holds. Publication records
-# survive revocation and restart (no transition removes one).
+# `reconcile(state, rev, invocation, digest, destination)` never authorizes:
+# it commits nothing and spends nothing. The binding presents the invocation,
+# digest, and destination object version its durable log holds. For a
+# recorded invocation whose recorded digest equals `digest` and whose
+# recorded destination equals `destination` it emits `Reconcile` with the
+# recorded values; a different digest or a different destination (a
+# retargeted log) is denied Substitution, and an unrecorded invocation
+# Unrecorded. What is checked is exactly these three fields: the record does
+# not hold the committed intent's output policy, label, or backend, so a log
+# that changed only those is not detected here (host obligation, section
+# 2.3). Publication records survive revocation and restart (no transition
+# removes one).
 #
 # Family 5, revocation (PH-010). The order is revoke, then quiesce, then
 # reclaim, each a transition that denies out of order.
@@ -114,6 +121,10 @@ import ./DataOS.bend as D
 #   generation, one more than the worker's input reference generation
 #   (Identity{StaleGeneration}); retirement advances a generation exactly once,
 #   and a slot is never live again. The phase becomes `Quiesced`. No effect.
+#   A worker revoked by `restart` is quiesced the same way, with input
+#   generation + 1, although restart advances no generation (the old
+#   incarnation's entries are dropped, not retired); `quiesce` does not
+#   compare incarnations.
 # - `reclaim(state, rev, worker)`: exactly one worker (UnknownWorker), phase
 #   `Quiesced` (NotQuiesced), then the phase becomes `Reclaimed` with one
 #   `Reclaim{worker}`.
@@ -123,7 +134,11 @@ import ./DataOS.bend as D
 #   slot, and an old incarnation StaleIncarnation); exactly one worker that is
 #   not `Reclaimed` holds that entry (UnknownWorker); and it must be `Running`
 #   (WrongPhase). An accepted completion advances the revision and emits
-#   nothing.
+#   nothing. `complete` reads neither the wire `sequence` nor `status` and
+#   records no outstanding operation, so a replayed or re-sequenced
+#   completion is accepted like the first while the worker is `Running`
+#   (also after its publication). An accepted completion grants nothing;
+#   per-sequence matching is a host obligation (section 2.3).
 # Revocation stops future effects only. It does not recall a publication,
 # erase a copy a reader already made, or remove a publication record: there
 # is no recall or erase effect (plan ruling; PH-010's second scenario is
@@ -133,8 +148,10 @@ import ./DataOS.bend as D
 # writer, mapping, and device writer of the object (native alias
 # elimination); it stops DMA and IO before reporting `QuiescedFact`; it makes
 # a publication durable together with the updated session and ledger, and
-# after a crash presents only the invocation and digest its durable log
-# holds; and it identifies the worker and session a fact came from.
+# after a crash presents the invocation, digest, and destination its durable
+# log holds and finishes only the recorded outcome (the output policy,
+# label, and backend are not in the record); and it identifies the worker
+# and session a fact came from.
 #
 # Failure behavior: every transition first requires the expected revision and
 # a `P.valid` state (StaleRevision). A `P.Step` denial is `P.Denied{state,
@@ -422,7 +439,8 @@ def attempt_invocation(attempt: Attempt) -> Nat:
 def refuse(state: P.State, +attempt: Attempt, reason: P.Error) -> PublishResult:
   Refused{state, attempt_session(attempt), attempt_ledger(attempt), reason}
 
-# Implementation helper: record the released invocation and its digest.
+# Implementation helper: record the released invocation, its digest, and its
+# destination.
 def commit_publication(state: P.State, publication: P.Publication) -> P.State:
   match state:
     case P.State{revision, identity, profiles, bindings, workers, next_worker, seals, publications}:
@@ -441,8 +459,8 @@ def p_artifact(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, 
     updated: L.State, +intent: B.WriteIntent) -> PublishResult:
   match ok:
     case True{}:
-      Published{commit_publication(state, P.Publication{attempt_invocation(attempt), P.sealed_digest(sealed)}),
-        B.Committed{next, updated, intent}, [Publish{intent}]}
+      Published{commit_publication(state, P.Publication{attempt_invocation(attempt), P.sealed_digest(sealed),
+        T.Plan.destination(intent_plan(intent))}), B.Committed{next, updated, intent}, [Publish{intent}]}
     case False{}:
       refuse(state, attempt, P.ArtifactMismatch{})
 
@@ -577,40 +595,46 @@ def publish(+state: P.State, expected_revision: Nat, +worker: Nat, +current: Art
   p_gate(P.current(state, expected_revision), state, worker, current,
     Attempt{session, expected_session, expected_ledger, ledger, candidate, context, expected_frontend})
 
-# Implementation helper: reconcile's digest step. The effect's fields are the
-# record's own.
+# Implementation helper: reconcile's comparison step. The effect's fields are
+# the record's own.
 def r_digest(ok: Bool, +state: P.State, +publication: P.Publication) -> P.Step:
   match ok:
     case True{}:
       P.Admitted{P.advanced(state), [P.Reconcile{P.publication_invocation(publication),
-        P.publication_digest(publication)}]}
+        P.publication_digest(publication), P.publication_destination(publication)}]}
     case False{}:
       P.Denied{state, P.Substitution{}}
 
 # Implementation helper: reconcile's record step (more than one record is
-# unreachable from a valid state).
-def r_recorded(found: P.PublicationLookup, +state: P.State, +digest: T.CodeId) -> P.Step:
+# unreachable from a valid state). The logged digest and destination must
+# both equal the record's.
+def r_recorded(found: P.PublicationLookup, +state: P.State, +digest: T.CodeId, +destination: T.ObjectVersion)
+    -> P.Step:
   match found:
     case P.OnePublication{+publication}:
-      r_digest(T.CodeId.equal(P.publication_digest(publication), digest), state, publication)
+      r_digest(T.CodeId.equal(P.publication_digest(publication), digest)
+          && T.ObjectVersion.equal(P.publication_destination(publication), destination), state, publication)
     case _:
       P.Denied{state, P.Unrecorded{}}
 
 # Implementation helper: reconcile's gate.
-def r_gate(ok: Bool, +state: P.State, +invocation: Nat, +digest: T.CodeId) -> P.Step:
+def r_gate(ok: Bool, +state: P.State, +invocation: Nat, +digest: T.CodeId, +destination: T.ObjectVersion)
+    -> P.Step:
   match ok:
     case True{}:
-      r_recorded(P.publication_at(P.publications(state), invocation), state, digest)
+      r_recorded(P.publication_at(P.publications(state), invocation), state, digest, destination)
     case False{}:
       P.Denied{state, P.StaleRevision{}}
 
 # Public entry point, family 4, recovery: the binding presents the
-# invocation and digest its durable log holds after a crash. It never
-# authorizes and never commits or spends: a recorded invocation with an equal
-# digest gives `Reconcile` with the recorded values; otherwise Substitution or
+# invocation, digest, and destination object version its durable log holds
+# after a crash. It never authorizes and never commits or spends: a recorded
+# invocation with an equal digest and an equal destination gives `Reconcile`
+# with the recorded values; otherwise Substitution (either field differs) or
 # Unrecorded.
-def reconcile(+state: P.State, expected_revision: Nat, +invocation: Nat, +digest: T.CodeId) -> P.Step:
-  r_gate(P.current(state, expected_revision), state, invocation, digest)
+def reconcile(+state: P.State, expected_revision: Nat, +invocation: Nat, +digest: T.CodeId,
+    +destination: T.ObjectVersion) -> P.Step:
+  r_gate(P.current(state, expected_revision), state, invocation, digest, destination)
 
 # --- Family 5: revocation (public: revoke, restart, quiesce, reclaim, complete) -----------
 

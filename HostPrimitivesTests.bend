@@ -373,7 +373,7 @@ def seed_state() -> P.State:
 # The monitor opens the client session (301) and then the worker session
 # (302) under the accelerator profile.
 def opened_client() -> P.State:
-  P.Step.state(P.open_session(seed_state(), P.revision(seed_state()), full_report(), client_evidence(), P.ClientRole{}))
+  P.Step.state(P.open_session(seed_state(), P.revision(seed_state()), full_report(), client_evidence(), P.ClientRole{True{}}))
 
 def open_worker(+evidence: P.Fact) -> P.State:
   P.Step.state(P.open_session(opened_client(), P.revision(opened_client()), full_report(), evidence,
@@ -653,8 +653,8 @@ def seals_equal(a: P.Seals, b: P.Seals) -> Bool:
 
 def publication_equal(a: P.Publication, b: P.Publication) -> Bool:
   match a b:
-    case P.Publication{ai, ad} P.Publication{bi, bd}:
-      Nat.is_eq(ai, bi) && T.CodeId.equal(ad, bd)
+    case P.Publication{ai, ad, ao} P.Publication{bi, bd, bo}:
+      Nat.is_eq(ai, bi) && T.CodeId.equal(ad, bd) && T.ObjectVersion.equal(ao, bo)
 
 def publications_equal(a: P.Publications, b: P.Publications) -> Bool:
   match a b:
@@ -677,8 +677,8 @@ def effect_equal(a: P.Effect, b: P.Effect) -> Bool:
   match a b:
     case P.DeliverInputs{aw, ai} P.DeliverInputs{bw, bi}:
       Nat.is_eq(aw, bw) && W.Ref.equal(ai, bi)
-    case P.Reconcile{ai, ad} P.Reconcile{bi, bd}:
-      Nat.is_eq(ai, bi) && T.CodeId.equal(ad, bd)
+    case P.Reconcile{ai, ad, ao} P.Reconcile{bi, bd, bo}:
+      Nat.is_eq(ai, bi) && T.CodeId.equal(ad, bd) && T.ObjectVersion.equal(ao, bo)
     case P.StopEffects{aw} P.StopEffects{bw}:
       Nat.is_eq(aw, bw)
     case P.Reclaim{aw} P.Reclaim{bw}:
@@ -951,15 +951,15 @@ def fastpath_checks() -> IO(Unit):
 # Session binding (family 1).
 def session_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{}),
+    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{True{}}),
       P.State{1n, direct_client(), table(), P.NoBindings{}, P.NoWorkers{}, P.first_worker(), P.NoSeals{}, P.NoPublications{}}, []),
       "PH-002 open_session binds the evidence's caller through HostIdentity with no effect")
-    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, no_session_report(), client_evidence(), P.ClientRole{}), P.empty(seed_identity(), table()), P.UnsupportedFamily{}),
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, no_session_report(), client_evidence(), P.ClientRole{True{}}), P.empty(seed_identity(), table()), P.UnsupportedFamily{}),
       "PH-001 open_session on a target without the session family denied UnsupportedFamily")
-    Test.check(denied_identity(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), P.SessionEvidence{caller_client(), I.Inherited{session_unknown()}, True{}}, P.ClientRole{}),
+    Test.check(denied_identity(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), P.SessionEvidence{caller_client(), I.Inherited{session_unknown()}, True{}}, P.ClientRole{True{}}),
       P.empty(seed_identity(), table()), I.UnknownSession{}),
       "PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession")
-    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), mediated_inventory(), P.ClientRole{}), P.empty(seed_identity(), table()), P.WrongPhase{}),
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), mediated_inventory(), P.ClientRole{True{}}), P.empty(seed_identity(), table()), P.WrongPhase{}),
       "PH-001 open_session given a fact other than SessionEvidence denied WrongPhase")
     Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), claiming_worker_evidence(), P.WorkerRole{cpu_id()}),
       P.State{1n, I.Change.state(I.bind_session(seed_identity(), I.revision(seed_identity()), caller_worker(), I.Authenticated{}, False{})),
@@ -969,10 +969,14 @@ def session_checks() -> IO(Unit):
       I.revision(input_on(P.identity(open_worker(claiming_worker_evidence())))), session_worker(), input_ref(), session_client(),
       input_rights(), input_lifetime(), now()), I.NotDelegable{}),
       "PH-007 a worker session the target reported delegable still cannot delegate")
-    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), nondelegable_client_evidence(), P.ClientRole{}),
+    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), nondelegable_client_evidence(), P.ClientRole{True{}}),
       P.State{1n, I.Change.state(I.bind_session(seed_identity(), I.revision(seed_identity()), caller_client(), I.Authenticated{}, False{})),
         table(), P.NoBindings{}, P.NoWorkers{}, P.first_worker(), P.NoSeals{}, P.NoPublications{}}, []),
       "PH-002 a client session the evidence reports non-delegable is bound non-delegable")
+    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{False{}}),
+      P.State{1n, I.Change.state(I.bind_session(seed_identity(), I.revision(seed_identity()), caller_client(), I.Authenticated{}, False{})),
+        table(), P.NoBindings{}, P.NoWorkers{}, P.first_worker(), P.NoSeals{}, P.NoPublications{}}, []),
+      "PH-002 a client session the monitor's role makes non-delegable is bound non-delegable even when the evidence reports it delegable")
     Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), worker_evidence(), P.WorkerRole{unknown_profile_id()}),
       P.empty(seed_identity(), table()), P.UnknownProfile{}),
       "PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile")
@@ -1012,7 +1016,7 @@ def use_checks() -> IO(Unit):
 # Every transition at a stale revision.
 def revision_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 1n+P.revision(P.empty(seed_identity(), table())), full_report(), client_evidence(), P.ClientRole{}), P.empty(seed_identity(), table()), P.StaleRevision{}),
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 1n+P.revision(P.empty(seed_identity(), table())), full_report(), client_evidence(), P.ClientRole{True{}}), P.empty(seed_identity(), table()), P.StaleRevision{}),
       "PH-001 open_session at a stale revision denied StaleRevision")
     Test.check(refused(P.use(base(), 1n+P.revision(base()), session_client(), claiming_use(), now()), P.StaleRevision{}),
       "PH-001 use at a stale revision denied StaleRevision")
@@ -1031,7 +1035,7 @@ def valid_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(P.valid(base()) && P.valid(admitted()) && P.valid(charged()) && P.valid(retired())
       && P.valid(P.Step.state(diagnose(admitted(), P.Diagnostic{worker_id(), False{}})))
-      && P.valid(P.Step.state(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{})))
+      && P.valid(P.Step.state(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{True{}})))
       && P.valid(reclaimed_and_running()),
       "PH-001 states built by the transitions satisfy valid")
     Test.check(Bool.not(P.valid(invalid_identity())), "PH-001 valid rejects a state whose identity table is not valid")
@@ -1050,7 +1054,7 @@ def gate_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(denied(admit_on(invalid_identity(), full_report(), mediated_inventory()), invalid_identity(), P.StaleRevision{}),
       "PH-006 an admission over an identity table that is not valid denied StaleRevision")
-    Test.check(denied(P.open_session(invalid_identity(), P.revision(invalid_identity()), full_report(), client_evidence(), P.ClientRole{}), invalid_identity(), P.StaleRevision{}),
+    Test.check(denied(P.open_session(invalid_identity(), P.revision(invalid_identity()), full_report(), client_evidence(), P.ClientRole{True{}}), invalid_identity(), P.StaleRevision{}),
       "PH-001 open_session on a state that is not valid denied StaleRevision")
     Test.check(refused(use_on(invalid_identity(), session_client(), claiming_use()), P.StaleRevision{}),
       "PH-001 use on a state that is not valid denied StaleRevision")
@@ -1191,7 +1195,7 @@ def pub_worker_evidence() -> P.Fact:
 
 def pub_opened_client() -> P.State:
   P.Step.state(P.open_session(seed_state(), P.revision(seed_state()), full_report(), pub_client_evidence(),
-    P.ClientRole{}))
+    P.ClientRole{True{}}))
 
 def pub_opened() -> P.State:
   P.Step.state(P.open_session(pub_opened_client(), P.revision(pub_opened_client()), full_report(),
@@ -1210,8 +1214,32 @@ def other_plan() -> T.Plan:
 def unopened_handle() -> Nat:
   9n
 
+# The destination object version the publication chain's plan writes, and
+# another one (object 21), as a retargeted recovery log would name it.
+def destination() -> T.ObjectVersion:
+  T.Plan.destination(TF.plan())
+
+def other_destination() -> T.ObjectVersion:
+  T.Plan.destination(other_plan())
+
+# Another Writ subject, and read-only rights, for Frontend handles that do not
+# match the issued entry's owner or rights.
+def other_subject() -> Nat:
+  8n
+
+def read_rights() -> U32:
+  1
+
+# The root's expiry on the publication chain: exactly the FacadeTests
+# handle's expiry (its capability's, 180), the latest `issue` accepts.
+def pub_root_expires() -> Nat:
+  180n
+
+def issue_in(+state: P.State, +session: Nat, frontend: F.State, +rights: U32, +expires: Nat) -> P.Step:
+  P.issue(state, P.revision(state), session, frontend, pub_handle(), TF.plan(), rights, expires)
+
 def issue_for(+state: P.State, +session: Nat, +handle: Nat, +plan: T.Plan) -> P.Step:
-  P.issue(state, P.revision(state), session, pub_frontend(), handle, plan, root_rights(), root_expires())
+  P.issue(state, P.revision(state), session, pub_frontend(), handle, plan, root_rights(), pub_root_expires())
 
 def issue_on(+state: P.State, +session: Nat) -> P.Step:
   issue_for(state, session, pub_handle(), TF.plan())
@@ -1257,7 +1285,7 @@ def published() -> P.State:
   H.PublishResult.state(publish_on(pub_sealed(), clean_fact()))
 
 def publication_record() -> P.Publications:
-  P.Publications{P.Publication{invocation(), sealed_digest()}, P.NoPublications{}}
+  P.Publications{P.Publication{invocation(), sealed_digest(), destination()}, P.NoPublications{}}
 
 # DataOS contexts each failing one commit check, and one binding a different
 # artifact (all synthetic, from FacadeTests and BackplaneTests).
@@ -1277,8 +1305,11 @@ def expired_context() -> OS.Context:
   OS.Context{BF.with_negotiation(BF.context(), NF.context(pub_expiry())), FF.descriptor(pub_subject(), root_rights()),
     FF.registry(pub_subject(), root_rights())}
 
+def reconcile_with(+state: P.State, +invocation: Nat, +digest: T.CodeId, +destination: T.ObjectVersion) -> P.Step:
+  H.reconcile(state, P.revision(state), invocation, digest, destination)
+
 def reconcile_on(+state: P.State, +invocation: Nat, +digest: T.CodeId) -> P.Step:
-  H.reconcile(state, P.revision(state), invocation, digest)
+  reconcile_with(state, invocation, digest, destination())
 
 def revoke_on(+state: P.State, +slot: Nat) -> P.Step:
   H.revoke(state, P.revision(state), slot)
@@ -1394,7 +1425,7 @@ def sealed_twice() -> P.State:
 
 def recorded_twice() -> P.State:
   records_on(published(), P.revision(published()), P.seals(published()), P.Publications{P.Publication{invocation(),
-    sealed_digest()}, publication_record()})
+    sealed_digest(), destination()}, publication_record()})
 
 # A context whose registry was revoked and whose binding names another artifact.
 def rejected_other_artifact_context() -> OS.Context:
@@ -1461,7 +1492,7 @@ def phase_of(workers: P.Workers, +id: Nat, expected: P.Phase) -> Bool:
   found_phase(P.worker_at(workers, id), expected)
 
 def reconciled() -> +List<P.Effect>:
-  [P.Reconcile{invocation(), sealed_digest()}]
+  [P.Reconcile{invocation(), sealed_digest(), destination()}]
 
 def stop_81() -> +List<P.Effect>:
   [P.StopEffects{worker_id()}]
@@ -1480,7 +1511,7 @@ def wrapper_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(admitted_as(issue_on(pub_opened(), session_client()), table_on(pub_opened(), 1n+P.revision(pub_opened()),
       I.Change.state(I.mint(P.identity(pub_opened()), I.revision(P.identity(pub_opened())), session_client(), pub_handle(),
-        TF.plan(), root_rights(), root_expires()))), []),
+        TF.plan(), root_rights(), pub_root_expires()))), []),
       "PH-001 issue commits HostIdentity.mint's table, advances the revision once, and emits nothing")
     Test.check(denied_identity(issue_on(pub_opened(), session_unknown()), pub_opened(), I.UnknownSession{}),
       "PH-001 issue on an unbound session denied Identity UnknownSession")
@@ -1490,6 +1521,26 @@ def wrapper_checks() -> IO(Unit):
       P.PlanMismatch{}), "PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch")
     Test.check(denied(issue_for(pub_opened(), session_unknown(), pub_handle(), other_plan()), pub_opened(),
       P.PlanMismatch{}), "PH-005 order: issue's plan binding precedes HostIdentity's checks")
+    Test.check(denied(issue_in(pub_opened(), session_worker(), pub_frontend(), root_rights(), pub_root_expires()), pub_opened(),
+      P.OwnerMismatch{}), "PH-005 issue on a session whose caller has another token than the Frontend handle's owner denied OwnerMismatch")
+    Test.check(denied(issue_in(pub_opened(), session_client(), FF.descriptor(other_subject(), root_rights()), root_rights(),
+      pub_root_expires()), pub_opened(), P.OwnerMismatch{}),
+      "PH-005 issue on a session whose caller has another subject than the Frontend handle's owner denied OwnerMismatch")
+    Test.check(denied(issue_in(pub_opened(), session_client(), FF.descriptor(pub_subject(), read_rights()), root_rights(),
+      pub_root_expires()), pub_opened(), P.RightsNotHeld{}),
+      "PH-005 issue with rights wider than the Frontend handle's denied RightsNotHeld")
+    Test.check(admitted_as(issue_in(pub_opened(), session_client(), pub_frontend(), read_rights(), pub_root_expires()),
+      table_on(pub_opened(), 1n+P.revision(pub_opened()), I.Change.state(I.mint(P.identity(pub_opened()),
+        I.revision(P.identity(pub_opened())), session_client(), pub_handle(), TF.plan(), read_rights(), pub_root_expires()))), []),
+      "PH-005 issue with rights narrower than the Frontend handle's is accepted")
+    Test.check(denied(issue_in(pub_opened(), session_client(), pub_frontend(), root_rights(), 1n+pub_root_expires()), pub_opened(),
+      P.LeaseExceeded{}), "PH-005 issue expiring after the Frontend handle denied LeaseExceeded")
+    Test.check(denied(issue_in(pub_opened(), session_worker(), FF.descriptor(pub_subject(), read_rights()), root_rights(),
+      1n+pub_root_expires()), pub_opened(), P.OwnerMismatch{}),
+      "PH-005 order: issue's owner binding precedes its rights and lease bindings")
+    Test.check(denied(issue_in(pub_opened(), session_client(), FF.descriptor(pub_subject(), read_rights()), root_rights(),
+      1n+pub_root_expires()), pub_opened(), P.RightsNotHeld{}),
+      "PH-005 order: issue's rights binding precedes its lease binding")
     Test.check(admitted_as(delegate_on(pub_issued(), session_client(), root_ref(), session_worker()),
       table_on(pub_issued(), 1n+P.revision(pub_issued()), I.Change.state(I.delegate(P.identity(pub_issued()),
         I.revision(P.identity(pub_issued())), session_client(), root_ref(), session_worker(), input_rights(),
@@ -1610,6 +1661,10 @@ def reconcile_checks() -> IO(Unit):
       "PH-009 reconcile of a recorded invocation with its digest emits Reconcile with no commit and no spending")
     Test.check(denied(reconcile_on(published(), invocation(), other_digest()), published(), P.Substitution{}),
       "PH-009 reconcile with a different digest denied Substitution")
+    Test.check(denied(reconcile_with(published(), invocation(), sealed_digest(), other_destination()), published(), P.Substitution{}),
+      "PH-009 reconcile with a logged destination other than the recorded one denied Substitution")
+    Test.check(publications_equal(P.publications(published()), publication_record()),
+      "PH-009 publish records the invocation, the sealed digest, and the committed intent's destination")
     Test.check(denied(reconcile_on(published(), unknown_invocation(), sealed_digest()), published(), P.Unrecorded{}),
       "PH-009 reconcile of an unrecorded invocation denied Unrecorded")
     Test.check(denied(reconcile_on(pub_sealed(), invocation(), sealed_digest()), pub_sealed(), P.Unrecorded{}),
@@ -1710,7 +1765,7 @@ def publication_gate_checks() -> IO(Unit):
     Test.check(refused_as(H.publish(pub_sealed(), 1n+P.revision(pub_sealed()), worker_id(), clean_fact(), NF.running(),
       expected_session(), expected_ledger(), NF.held_ledger(), BF.candidate(), FF.context(), frontend_revision()), pub_sealed(),
       P.StaleRevision{}), "PH-009 publish at a stale revision denied StaleRevision")
-    Test.check(denied(H.reconcile(published(), 1n+P.revision(published()), invocation(), sealed_digest()), published(),
+    Test.check(denied(H.reconcile(published(), 1n+P.revision(published()), invocation(), sealed_digest(), destination()), published(),
       P.StaleRevision{}), "PH-009 reconcile at a stale revision denied StaleRevision")
     Test.check(denied(H.revoke(admitted(), 1n+P.revision(admitted()), input_slot()), admitted(), P.StaleRevision{}),
       "PH-010 revoke at a stale revision denied StaleRevision")
@@ -1723,7 +1778,7 @@ def publication_gate_checks() -> IO(Unit):
     Test.check(denied(H.complete(admitted(), 1n+P.revision(admitted()), completion(session_worker(), input_ref()), now()),
       admitted(), P.StaleRevision{}), "PH-010 complete at a stale revision denied StaleRevision")
     Test.check(denied(P.issue(pub_opened(), 1n+P.revision(pub_opened()), session_client(), pub_frontend(), pub_handle(), TF.plan(), root_rights(),
-      root_expires()), pub_opened(), P.StaleRevision{}), "PH-001 issue at a stale revision denied StaleRevision")
+      pub_root_expires()), pub_opened(), P.StaleRevision{}), "PH-001 issue at a stale revision denied StaleRevision")
     Test.check(denied(P.delegate(pub_issued(), 1n+P.revision(pub_issued()), session_client(), root_ref(), session_worker(),
       input_rights(), input_lifetime(), pub_now()), pub_issued(), P.StaleRevision{}),
       "PH-005 the primitive delegate at a stale revision denied StaleRevision")
@@ -1794,4 +1849,4 @@ def main() -> IO(Unit):
     completion_checks()
     publication_gate_checks()
     publication_valid_checks()
-    IO.print("HostPrimitives: 206 checks passed")
+    IO.print("HostPrimitives: 216 checks passed")

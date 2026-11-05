@@ -295,7 +295,7 @@ def profiles() -> P.Profiles:
 
 # The monitor's role decisions (from its admitted request, never target input).
 def client_role() -> P.Role:
-  P.ClientRole{}
+  P.ClientRole{True{}}
 
 def worker_role() -> P.Role:
   P.WorkerRole{profile_id()}
@@ -349,8 +349,14 @@ def narrow_rights() -> U32:
 def use_rights() -> U32:
   4
 
+# The root's expiry: exactly the fixture Frontend handle's expiry (the
+# FacadeTests capability's, 180), the latest `issue` accepts.
 def root_expires() -> Nat:
-  400n
+  180n
+
+# One past the handle's expiry, which `issue` denies LeaseExceeded.
+def late_expires() -> Nat:
+  181n
 
 def input_lifetime() -> U32:
   50
@@ -529,6 +535,15 @@ def invocation() -> Nat:
 def other_destination() -> T.ObjectVersion:
   T.ObjectVersion{21n, 8n}
 
+# The destination the fixture plan writes, which publication records.
+def destination() -> T.ObjectVersion:
+  T.Plan.destination(plan())
+
+# The fixture Frontend state with read-only handles (rights 1), narrower than
+# the root rights `issue` asks for.
+def narrow_frontend_state() -> F.State:
+  FF.descriptor(subject(), unrelated_rights())
+
 def other_source() -> T.ObjectVersion:
   T.ObjectVersion{11n, 4n}
 
@@ -639,6 +654,15 @@ def expected_ph005_10() -> String:
 def expected_ph005_11() -> String:
   "VECTOR PH-005-11 issue denied PlanMismatch"
 
+def expected_ph005_12() -> String:
+  "VECTOR PH-005-12 issue denied OwnerMismatch"
+
+def expected_ph005_13() -> String:
+  "VECTOR PH-005-13 issue denied RightsNotHeld"
+
+def expected_ph005_14() -> String:
+  "VECTOR PH-005-14 issue denied LeaseExceeded"
+
 def expected_ph002_1() -> String:
   "VECTOR PH-002-1 use accepted slot=input"
 
@@ -699,17 +723,20 @@ def expected_ph004_3() -> String:
 def expected_ph009_4() -> String:
   "VECTOR PH-009-4 reconcile denied Substitution"
 
+def expected_ph009_5() -> String:
+  "VECTOR PH-009-5 reconcile denied Substitution"
+
 # The decision vectors above, in emission order; the comparison vector
 # `expected_ph012_1` follows them.
 def expected_lines() -> List<&2, String>:
   [expected_ph009_1(), expected_ph005_1(), expected_ph005_2(), expected_ph005_3(), expected_ph005_4(),
     expected_ph005_5(), expected_ph005_6(), expected_ph005_7(), expected_ph005_8(), expected_ph005_9(),
-    expected_ph005_10(), expected_ph005_11(),
+    expected_ph005_10(), expected_ph005_11(), expected_ph005_12(), expected_ph005_13(), expected_ph005_14(),
     expected_ph002_1(), expected_ph002_2(), expected_ph002_3(),
     expected_ph002_4(), expected_ph002_5(), expected_ph003_1(), expected_ph003_2(), expected_ph003_3(), expected_ph010_1(),
     expected_ph009_2(), expected_ph010_2(), expected_ph010_3(), expected_ph010_4(), expected_ph010_5(),
     expected_ph010_6(), expected_ph009_3(), expected_ph004_1(), expected_ph004_2(), expected_ph004_3(),
-    expected_ph009_4()]
+    expected_ph009_4(), expected_ph009_5()]
 
 def expected_ph012_1() -> String:
-  "VECTOR PH-012-1 compare accepted vectors=32"
+  "VECTOR PH-012-1 compare accepted vectors=36"

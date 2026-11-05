@@ -5,6 +5,7 @@ import ./HostIdentity.bend as I
 import ./HostPrimitives.bend as P
 import ./HostPublication.bend as H
 import ./Transfer.bend as T
+import ./Frontend.bend as F
 import ./Negotiation.bend as N
 import ./Ledger.bend as L
 import ./Backplane.bend as B
@@ -299,6 +300,8 @@ def reason_name(error: P.Error) -> String:
     case P.Unrecorded{}: "Unrecorded"
     case P.NotQuiesced{}: "NotQuiesced"
     case P.PlanMismatch{}: "PlanMismatch"
+    case P.OwnerMismatch{}: "OwnerMismatch"
+    case P.LeaseExceeded{}: "LeaseExceeded"
 
 def slot_label(+adapter: V.Adapter, +slot: Nat) -> String:
   V.logical_label(V.logical_of(adapter, slot))
@@ -362,7 +365,7 @@ def plain_line(id: String, primitive: String, step: P.Step) -> String:
 
 def reconcile_detail(effects: +List<P.Effect>) -> String:
   match effects:
-    case Con{P.Reconcile{invocation, _}, Nil{}}:
+    case Con{P.Reconcile{invocation, _, _}, Nil{}}:
       "invocation=" ++ Nat.show(invocation)
     case _:
       "unexpected"
@@ -527,7 +530,7 @@ def published_ok(result: H.PublishResult, +input: P.State, +ledger: L.State) -> 
     case H.Published{+state, commit, effects}:
       PT.one_publish(effects, BF.artifact()) && Nat.is_eq(P.revision(state), 1n+P.revision(input))
         && PT.state_equal(state, PT.records_on(input, 1n+P.revision(input), P.seals(input),
-          P.Publications{P.Publication{V.invocation(), V.sealed_digest()}, P.publications(input)}))
+          P.Publications{P.Publication{V.invocation(), V.sealed_digest(), V.destination()}, P.publications(input)}))
         && Nat.is_eq(L.revision(B.ledger(commit)), 1n+L.revision(ledger))
     case H.Refused{_, _, _, _}:
       False{}
@@ -711,6 +714,46 @@ def ph005_11_ok(+a: V.Adapter) -> Bool:
 def ph005_11_line(+a: V.Adapter) -> String:
   plain_line("PH-005-11", "issue", issue_unopened(a))
 
+# The client's root issued on handle 2 for plan D on session `session`, with
+# Frontend state `frontend`, `rights`, and expiry `expires`.
+def issue_bound(+a: V.Adapter, +session: Nat, frontend: F.State, +rights: U32, +expires: Nat) -> P.Step:
+  +sessions = prefaced(with_sessions(a), V.adapter_prefaced(a))
+  P.issue(sessions, P.revision(sessions), session, frontend, V.root_handle(), V.plan(), rights, expires)
+
+def before_issue(+a: V.Adapter) -> P.State:
+  prefaced(with_sessions(a), V.adapter_prefaced(a))
+
+# The worker session (the client's subject, another token) asks for a root on
+# the client's handle: its caller does not own the handle.
+def issue_foreign_owner(+a: V.Adapter) -> P.Step:
+  issue_bound(a, V.session_worker(), V.fixture_frontend_state(), V.root_rights(), V.root_expires())
+
+def ph005_12_ok(+a: V.Adapter) -> Bool:
+  PT.denied(issue_foreign_owner(a), before_issue(a), P.OwnerMismatch{})
+
+def ph005_12_line(+a: V.Adapter) -> String:
+  plain_line("PH-005-12", "issue", issue_foreign_owner(a))
+
+# Root rights 7 on a handle opened with rights 1.
+def issue_widened(+a: V.Adapter) -> P.Step:
+  issue_bound(a, V.session_client(), V.narrow_frontend_state(), V.root_rights(), V.root_expires())
+
+def ph005_13_ok(+a: V.Adapter) -> Bool:
+  PT.denied(issue_widened(a), before_issue(a), P.RightsNotHeld{})
+
+def ph005_13_line(+a: V.Adapter) -> String:
+  plain_line("PH-005-13", "issue", issue_widened(a))
+
+# A root expiring one tick after the handle.
+def issue_outliving(+a: V.Adapter) -> P.Step:
+  issue_bound(a, V.session_client(), V.fixture_frontend_state(), V.root_rights(), V.late_expires())
+
+def ph005_14_ok(+a: V.Adapter) -> Bool:
+  PT.denied(issue_outliving(a), before_issue(a), P.LeaseExceeded{})
+
+def ph005_14_line(+a: V.Adapter) -> String:
+  plain_line("PH-005-14", "issue", issue_outliving(a))
+
 # HAND-BUILT (marked): the identity table of `with_sessions` and the
 # adapter's preface after `HostIdentity.mint` issued the client's root for destination E's plan on
 # handle 2 (plan D) directly, bypassing `issue`'s plan binding, as a monitor
@@ -871,10 +914,10 @@ def ph010_2_line(+a: V.Adapter) -> String:
   revoke_line("PH-010-2", a, V.slot_of(a, V.Root{}), late_revoke(a))
 
 def late_reconcile(+a: V.Adapter) -> P.Step:
-  H.reconcile(late_revoked(a), P.revision(late_revoked(a)), V.invocation(), V.sealed_digest())
+  H.reconcile(late_revoked(a), P.revision(late_revoked(a)), V.invocation(), V.sealed_digest(), V.destination())
 
 def ph010_3_ok(+a: V.Adapter) -> Bool:
-  admitted_effects(late_reconcile(a), [P.Reconcile{V.invocation(), V.sealed_digest()}],
+  admitted_effects(late_reconcile(a), [P.Reconcile{V.invocation(), V.sealed_digest(), V.destination()}],
     1n+P.revision(late_revoked(a)))
 
 def ph010_3_line(+a: V.Adapter) -> String:
@@ -968,7 +1011,7 @@ def ph004_3_line(+a: V.Adapter) -> String:
   plain_line("PH-004-3", "admit_worker", prior_admit(a))
 
 def substituted(+a: V.Adapter) -> P.Step:
-  H.reconcile(published(a), P.revision(published(a)), V.invocation(), V.other_digest())
+  H.reconcile(published(a), P.revision(published(a)), V.invocation(), V.other_digest(), V.destination())
 
 def ph009_4_ok(+a: V.Adapter) -> Bool:
   PT.denied(substituted(a), published(a), P.Substitution{})
@@ -976,15 +1019,27 @@ def ph009_4_ok(+a: V.Adapter) -> Bool:
 def ph009_4_line(+a: V.Adapter) -> String:
   reconcile_line("PH-009-4", substituted(a))
 
+# Recovery from a retargeted log: the recorded invocation and digest, but the
+# destination object version of plan E (object 21) instead of the recorded
+# plan-D destination.
+def retargeted_recovery(+a: V.Adapter) -> P.Step:
+  H.reconcile(published(a), P.revision(published(a)), V.invocation(), V.sealed_digest(), V.other_destination())
+
+def ph009_5_ok(+a: V.Adapter) -> Bool:
+  PT.denied(retargeted_recovery(a), published(a), P.Substitution{})
+
+def ph009_5_line(+a: V.Adapter) -> String:
+  reconcile_line("PH-009-5", retargeted_recovery(a))
+
 # --- Two adapters (PH-012, PH-001) ---------------------------------------------------
 
 def lines_for(+a: V.Adapter) -> List<&2, String>:
   [ph009_1_line(a), ph005_1_line(a), ph005_2_line(a), ph005_3_line(a), ph005_4_line(a), ph005_5_line(a),
     ph005_6_line(a), ph005_7_line(a), ph005_8_line(a), ph005_9_line(a), ph005_10_line(a),
-    ph005_11_line(a), ph002_1_line(a), ph002_2_line(a), ph002_3_line(a), ph002_4_line(a), ph002_5_line(a),
+    ph005_11_line(a), ph005_12_line(a), ph005_13_line(a), ph005_14_line(a), ph002_1_line(a), ph002_2_line(a), ph002_3_line(a), ph002_4_line(a), ph002_5_line(a),
     ph003_1_line(a), ph003_2_line(a), ph003_3_line(a), ph010_1_line(a), ph009_2_line(a), ph010_2_line(a), ph010_3_line(a),
     ph010_4_line(a), ph010_5_line(a), ph010_6_line(a), ph009_3_line(a), ph004_1_line(a), ph004_2_line(a),
-    ph004_3_line(a), ph009_4_line(a)]
+    ph004_3_line(a), ph009_4_line(a), ph009_5_line(a)]
 
 def compare_outcome(ok: Bool, +count: Nat) -> String:
   match ok:
@@ -1061,6 +1116,12 @@ def plan_gap_checks() -> IO(Unit):
     vector(ph005_10_line(A()))
     Test.check(agree(ph005_11_ok(A()), ph005_11_ok(Bd()), ph005_11_line(A()), ph005_11_line(Bd()), V.expected_ph005_11()), "PH-005-11 a root issued on a Frontend handle the monitor's Frontend state does not hold is denied PlanMismatch with the state unchanged")
     vector(ph005_11_line(A()))
+    Test.check(agree(ph005_12_ok(A()), ph005_12_ok(Bd()), ph005_12_line(A()), ph005_12_line(Bd()), V.expected_ph005_12()), "PH-005-12 a root issued on a session whose caller does not own the Frontend handle is denied OwnerMismatch with the state unchanged")
+    vector(ph005_12_line(A()))
+    Test.check(agree(ph005_13_ok(A()), ph005_13_ok(Bd()), ph005_13_line(A()), ph005_13_line(Bd()), V.expected_ph005_13()), "PH-005-13 a root issued with rights wider than the Frontend handle's is denied RightsNotHeld with the state unchanged")
+    vector(ph005_13_line(A()))
+    Test.check(agree(ph005_14_ok(A()), ph005_14_ok(Bd()), ph005_14_line(A()), ph005_14_line(Bd()), V.expected_ph005_14()), "PH-005-14 a root expiring after the Frontend handle is denied LeaseExceeded with the state unchanged")
+    vector(ph005_14_line(A()))
 
 def provenance_checks() -> IO(Unit):
   do IO<Unit>:
@@ -1116,6 +1177,8 @@ def replay_checks() -> IO(Unit):
     vector(ph004_3_line(A()))
     Test.check(agree(ph009_4_ok(A()), ph009_4_ok(Bd()), ph009_4_line(A()), ph009_4_line(Bd()), V.expected_ph009_4()), "PH-009-4 reconcile with a substituted digest is denied Substitution with the state unchanged")
     vector(ph009_4_line(A()))
+    Test.check(agree(ph009_5_ok(A()), ph009_5_ok(Bd()), ph009_5_line(A()), ph009_5_line(Bd()), V.expected_ph009_5()), "PH-009-5 recovery from a log naming another destination than the recorded publication is denied Substitution with the state unchanged")
+    vector(ph009_5_line(A()))
 
 def adapter_checks() -> IO(Unit):
   do IO<Unit>:
@@ -1136,4 +1199,4 @@ def main() -> IO(Unit):
     revocation_checks()
     replay_checks()
     adapter_checks()
-    IO.print("HostConformance: 39 checks passed, 33 vectors emitted")
+    IO.print("HostConformance: 43 checks passed, 37 vectors emitted")

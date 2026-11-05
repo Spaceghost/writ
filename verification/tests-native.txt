@@ -495,6 +495,461 @@ PASS: GA-011 revoking a delegatee destroys the delegator's object too
 VECTOR GA-011-7 delegate denied StaleGeneration
 PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
 HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+PASS: PH-011 Use decode of encode is the same message
+PASS: PH-011 Use words decode and re-encode to the same words
+PASS: PH-011 Delegate decode of encode is the same message
+PASS: PH-011 Delegate words decode and re-encode to the same words
+PASS: PH-011 Complete decode of encode is the same message
+PASS: PH-011 Complete words decode and re-encode to the same words
+PASS: PH-011 Release decode of encode is the same message
+PASS: PH-011 Release words decode and re-encode to the same words
+PASS: PH-011 a byte-level round trip of a 40-byte Delegate is the same message
+PASS: PH-011 a byte-level round trip of a Use is the same message
+PASS: PH-011 a byte-level round trip of a Complete is the same message
+PASS: PH-011 byte transport carries each word little-endian
+PASS: PH-011 operation execute with rights equal to the mask is in bounds
+PASS: PH-011 lifetime equal to max_lifetime is in bounds
+PASS: PH-011 version 0 denied UnknownVersion
+PASS: PH-011 version 2 denied UnknownVersion
+PASS: PH-011 version 0xFFFFFFFF denied UnknownVersion
+PASS: PH-011 tag 0 denied UnknownTag
+PASS: PH-011 tag 5 denied UnknownTag
+PASS: PH-011 tag 0xFFFFFFFF denied UnknownTag
+PASS: PH-011 a tag-5 record shaped like a Context, Ledger, and caller denied UnknownTag
+PASS: PH-011 no record is built from a serialized trusted context
+PASS: PH-011 empty input denied BadLength
+PASS: PH-011 version word only denied BadLength
+PASS: PH-011 version and tag only denied BadLength
+PASS: PH-011 header only denied BadLength
+PASS: PH-011 Use header length one short denied BadLength
+PASS: PH-011 Use header length one long denied BadLength
+PASS: PH-011 Delegate header length one short denied BadLength
+PASS: PH-011 Delegate header length one long denied BadLength
+PASS: PH-011 Complete header length one short denied BadLength
+PASS: PH-011 Complete header length one long denied BadLength
+PASS: PH-011 Release header length one short denied BadLength
+PASS: PH-011 Release header length one long denied BadLength
+PASS: PH-011 correct header with a truncated body denied BadLength
+PASS: PH-011 one trailing word denied BadLength
+PASS: PH-011 11 words denied TooLong
+PASS: PH-011 3 bytes denied BadLength
+PASS: PH-011 5 bytes denied BadLength
+PASS: PH-011 41 bytes denied TooLong
+PASS: PH-011 zero host denied OutOfRange
+PASS: PH-011 zero slot denied OutOfRange
+PASS: PH-011 zero sequence denied OutOfRange
+PASS: PH-011 zero target_session denied OutOfRange
+PASS: PH-011 operation 0 denied OutOfRange
+PASS: PH-011 operation 4 denied OutOfRange
+PASS: PH-011 rights 0 denied OutOfRange
+PASS: PH-011 rights 8 denied OutOfRange
+PASS: PH-011 lifetime 0 denied OutOfRange
+PASS: PH-011 lifetime max_lifetime plus 1 denied OutOfRange
+PASS: PH-011 status 0 denied OutOfRange
+PASS: PH-011 status 3 denied OutOfRange
+PASS: PH-011 a byte value of 256 denied OutOfRange
+PASS: PH-011 order: the length cap precedes the version
+PASS: PH-011 order: the version precedes the tag
+PASS: PH-011 order: the tag precedes the header length
+PASS: PH-011 order: the body count precedes field bounds
+PASS: PH-003 a Use naming another session's slot decodes to a Ref of four identity words only
+PASS: PH-003 the guessed Use's subject stays a ClaimedSubject, untrusted
+PASS: PH-004 zero incarnation denied OutOfRange
+PASS: PH-004 zero generation denied OutOfRange
+PASS: PH-004 references differing only in incarnation encode and decode differently
+PASS: PH-004 references differing only in generation encode and decode differently
+HostWire: 63 checks passed
+PASS: PH-002 bind_session records the authenticated caller under a monitor-allocated id
+PASS: PH-003 mint records a root entry owned by the session's authenticated caller
+PASS: PH-003 resolve returns the holder's entry and its authenticated caller
+PASS: PH-005 delegate records a child with the same plan, narrower rights, and a shorter lifetime
+PASS: PH-005 the delegated child resolves for its holder with the narrowed rights
+PASS: PH-005 a child expiring exactly at the parent's expiry is accepted
+PASS: PH-004 retire advances the generation and clears live
+PASS: PH-004 restart starts a greater incarnation with an empty table
+PASS: PH-003 slot 0 denied Forged
+PASS: PH-003 a slot equal to next_slot denied Forged
+PASS: PH-003 another session presenting A's slot and generation denied NotHolder
+PASS: PH-003 another session of the same subject and token presenting the root's reference denied NotHolder
+PASS: PH-003 a same-subject session with another token presenting the root's reference denied NotHolder
+PASS: PH-003 an unbound presenting session denied UnknownSession
+PASS: PH-003 a reference naming another host denied ForeignHost
+PASS: PH-004 a live slot presented with another generation denied StaleGeneration
+PASS: PH-004 after retire the old reference denied Retired
+PASS: PH-004 after retire the bumped generation at the old slot denied Retired
+PASS: PH-004 the handle minted again resolves at its new slot and the old reference stays denied
+PASS: PH-004 after restart a prior-incarnation reference to the reused slot denied StaleIncarnation
+PASS: PH-004 after restart the new incarnation's reference to the reused slot resolves
+PASS: PH-004 a reference naming a later incarnation denied StaleIncarnation
+PASS: PH-004 restart to the current incarnation denied StaleIncarnation
+PASS: PH-004 restart to an earlier incarnation denied StaleIncarnation
+PASS: PH-004 two live entries for one slot denied Ambiguous and the state is not valid
+PASS: PH-004 two sessions under one id denied Ambiguous and the state is not valid
+PASS: PH-002 a transferred endpoint without a delegation edge denied TransferredEndpoint
+PASS: PH-002 a transferred endpoint with a delegation edge to it resolves
+PASS: PH-002 an endpoint transferred from another session denied NotHolder
+PASS: PH-002 an inherited endpoint without a delegation edge denied InheritedEndpoint
+PASS: PH-002 an inherited endpoint with a delegation edge to it resolves
+PASS: PH-002 an inherited session holding a root entry outside any edge denied InheritedEndpoint
+PASS: PH-002 an inherited endpoint presenting another session's reference denied NotHolder
+PASS: PH-002 an inherited endpoint presenting an entry delegated to its parent session denied InheritedEndpoint
+PASS: PH-002 a transferred endpoint's delegated entry at its expiry denied Expired
+PASS: PH-002 mint to a transferred session denied TransferredEndpoint
+PASS: PH-002 mint to an inherited session denied InheritedEndpoint
+PASS: PH-002 a Use claiming subject B on A's session resolves to caller A
+PASS: PH-002 Uses differing only in claimed subject resolve identically
+PASS: PH-005 delegation to another subject's session denied SubjectChanged
+PASS: PH-005 delegation with wider rights denied WidenedRights
+PASS: PH-005 delegation outliving the parent denied WidenedLifetime
+PASS: PH-005 delegation from a non-delegable worker session denied NotDelegable
+PASS: PH-005 delegation from a retired parent denied Retired
+PASS: PH-005 delegation from a stale-generation parent denied StaleGeneration
+PASS: PH-005 delegation to an unbound session denied UnknownSession
+PASS: PH-005 delegation to a same-subject session with another token records that session as holder and keeps the owner's caller
+PASS: PH-005 the child delegated to a session with another token resolves there with the owner's caller
+PASS: PH-005 the child delegated to one session is denied NotHolder from the parent's holder and from another same-subject session
+PASS: PH-005 after a narrower proxy the parent still resolves with full rights and stays live
+PASS: PH-004 retiring the parent retires the child
+PASS: PH-004 retiring the parent retires the grandchild
+PASS: PH-004 retiring a subtree leaves unrelated entries live
+PASS: PH-004 retiring the child leaves the parent live
+PASS: PH-004 retiring the child retires the grandchild
+PASS: PH-004 retiring an already retired slot denied Retired
+PASS: PH-004 retiring the parent after the child leaves the retired child's generation unchanged
+PASS: PH-004 retiring slot 0 denied Forged
+PASS: PH-004 retiring a slot equal to next_slot denied Forged
+PASS: PH-003 a use at the expiry denied Expired
+PASS: PH-003 a use just before the expiry resolves
+PASS: PH-002 bind_session at a stale revision denied StaleRevision
+PASS: PH-003 mint at a stale revision denied StaleRevision
+PASS: PH-003 resolve at a stale revision denied StaleRevision
+PASS: PH-005 delegate at a stale revision denied StaleRevision
+PASS: PH-004 retire at a stale revision denied StaleRevision
+PASS: PH-004 restart at a stale revision denied StaleRevision
+PASS: PH-002 bind_session inheriting from an unbound session denied UnknownSession
+PASS: PH-002 bind_session transferred from an unbound session denied UnknownSession
+PASS: PH-003 mint to an unbound session denied UnknownSession
+PASS: PH-004 a transition on a state that is not valid denied StaleRevision
+PASS: PH-004 valid rejects an entry at a slot not below next_slot
+PASS: PH-004 valid rejects an entry at slot 0
+PASS: PH-003 valid rejects an entry held by an unbound session
+PASS: PH-005 valid rejects a parent link that does not name a lower slot
+PASS: PH-004 valid rejects a session from another incarnation
+PASS: PH-002 valid rejects session id 0
+PASS: PH-004 valid rejects two sessions under one id that holds no entry
+PASS: PH-005 states built by delegation and retirement satisfy valid
+PASS: PH-002 valid rejects an entry whose owner's subject is not its holder's
+PASS: PH-002 valid rejects a root entry whose owner is not exactly its holder's caller
+PASS: PH-005 valid rejects a child whose parent slot holds no entry
+PASS: PH-005 valid rejects a child with rights outside its parent's
+PASS: PH-005 valid rejects a child expiring after its parent
+PASS: PH-005 valid rejects a child with another plan than its parent
+PASS: PH-005 valid rejects a child with another handle than its parent
+PASS: PH-005 valid rejects a child with another owner than its parent
+PASS: PH-004 valid rejects a live child of a retired parent
+PASS: PH-004 order: the host precedes the incarnation
+PASS: PH-004 order: the incarnation precedes forgery
+PASS: PH-004 order: the generation precedes the holder
+PASS: PH-002 order: the origin precedes expiry
+HostIdentity: 92 checks passed
+PASS: PH-006 an admission with every control established records the worker Running and delivers only its input reference
+PASS: PH-014 a CPU admission without accelerator isolation records backend Cpu
+PASS: PH-006 the lower report meets the lower profile when that profile is the admitted one
+PASS: PH-014 the same accelerator profile is admitted once isolation is established
+PASS: PH-006 an input whose earlier worker was reclaimed admits a new worker
+PASS: PH-006 address isolation missing alone denied MissingControl with no effect
+PASS: PH-006 no ambient network missing alone denied MissingControl with no effect
+PASS: PH-006 output mediation missing alone denied MissingControl with no effect
+PASS: PH-006 quota control missing alone denied MissingControl with no effect
+PASS: PH-006 no inherited routes missing alone denied MissingControl with no effect
+PASS: PH-006 accelerator isolation missing alone denied MissingControl with no effect
+PASS: PH-001 an admission on a non-delegable session with no bound profile denied UnknownProfile
+PASS: PH-001 a later request cannot switch profiles: a session bound under the accelerator profile is denied on a CPU-only report that the CPU profile accepts
+PASS: PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile
+PASS: PH-006 a profile not listing the worker family denied MissingControl with no effect
+PASS: PH-006 a profile requiring no controls admits nothing
+PASS: PH-006 a report without the publication family denied UnsupportedFamily with the monitor profile unchanged
+PASS: PH-006 a report meeting only a lower profile denied for the admitted profile with the monitor profile unchanged
+PASS: PH-006 a report with every family but only the lower profile's controls denied MissingControl
+PASS: PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs
+PASS: PH-006 an unmediated first route denied UnmediatedRoute
+PASS: PH-006 an admission given a fact other than an Inventory denied WrongPhase
+PASS: PH-014 an accelerator profile not listing isolation, on a target without it, denied UnisolatedAccelerator and not downgraded
+PASS: PH-006 an admission presenting an input reference the worker session does not hold denied Identity NotHolder
+PASS: PH-006 an admission presenting the worker's input reference on the client session denied Identity NotHolder
+PASS: PH-007 an admission on a delegable session denied DelegableSession with no effect
+PASS: PH-007 after admission a delegation from the worker session denied NotDelegable
+PASS: PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs
+PASS: PH-006 an input held by a running worker listed after a reclaimed one denied SlotOccupied
+PASS: PH-006 a worker on another slot does not block admission on the input
+PASS: PH-007 a charge within the quota adds only to quota_used and emits nothing
+PASS: PH-007 a charge reaching exactly the quota limit is accepted
+PASS: PH-007 a charge beyond the quota denied QuotaExhausted with the state unchanged and no effect
+PASS: PH-007 after exhaustion the worker's phase and its input entry's rights are unchanged
+PASS: PH-007 a charge for a worker never admitted denied UnknownWorker
+PASS: PH-007 a charge from a revoked worker denied WrongPhase
+PASS: PH-007 a charge from a prepared worker denied WrongPhase
+PASS: PH-007 a charge given a fact other than a ResourceRequest denied WrongPhase
+PASS: PH-007 a charge after the worker's input was retired denied Identity Retired
+PASS: PH-007 a charge at the input's expiry denied Identity Expired
+PASS: PH-007 a public diagnostic from a running worker denied DiagnosticSink
+PASS: PH-007 a non-public diagnostic is accepted with no effect
+PASS: PH-007 a diagnostic from a worker never admitted denied UnknownWorker
+PASS: PH-007 a diagnostic from a revoked worker denied WrongPhase
+PASS: PH-007 a diagnostic given a fact other than a Diagnostic denied WrongPhase
+PASS: PH-007 a diagnostic after the worker's input was retired denied Identity Retired
+PASS: PH-001 a native write offer for an admitted worker denied FastPathUnavailable
+PASS: PH-001 a native write offer given another fact denied WrongPhase
+PASS: PH-002 open_session binds the evidence's caller through HostIdentity with no effect
+PASS: PH-001 open_session on a target without the session family denied UnsupportedFamily
+PASS: PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession
+PASS: PH-001 open_session given a fact other than SessionEvidence denied WrongPhase
+PASS: PH-002 open_session as a worker binds the session non-delegable under its profile even when the target reports it delegable
+PASS: PH-007 a worker session the target reported delegable still cannot delegate
+PASS: PH-002 a client session the evidence reports non-delegable is bound non-delegable
+PASS: PH-002 a client session the monitor's role makes non-delegable is bound non-delegable even when the evidence reports it delegable
+PASS: PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile
+PASS: PH-002 open_session as a worker with evidence inherited from an unbound session denied Identity UnknownSession
+PASS: PH-002 open_session records the worker session's profile binding used by the fixtures
+PASS: PH-001 Error.equal compares the HostIdentity reason inside Identity
+PASS: PH-002 a Use claiming another subject on the client's session resolves to the client's caller
+PASS: PH-002 the worker's Use of its input resolves to the owner's caller, not the worker session's
+PASS: PH-002 a read and a write within the root's rights are granted
+PASS: PH-002 a Use requesting rights the entry lacks denied RightsNotHeld
+PASS: PH-002 a Use for a write outside its requested rights denied OperationNotPermitted
+PASS: PH-002 a Use for a read outside its requested rights denied OperationNotPermitted
+PASS: PH-002 a Use naming an operation outside the wire's set denied OperationNotPermitted
+PASS: PH-001 use given a Delegate message denied WrongPhase
+PASS: PH-002 a Use of the worker's input on the client session denied Identity NotHolder
+PASS: PH-001 open_session at a stale revision denied StaleRevision
+PASS: PH-001 use at a stale revision denied StaleRevision
+PASS: PH-006 admit_worker at a stale revision denied StaleRevision
+PASS: PH-007 charge at a stale revision denied StaleRevision
+PASS: PH-007 diagnostic at a stale revision denied StaleRevision
+PASS: PH-001 native_write_offered at a stale revision denied StaleRevision
+PASS: PH-001 states built by the transitions satisfy valid
+PASS: PH-001 valid rejects a state whose identity table is not valid
+PASS: PH-001 valid rejects worker id 0
+PASS: PH-001 valid rejects a worker id not below next_worker
+PASS: PH-001 valid rejects two workers under one id
+PASS: PH-006 valid rejects two unreclaimed workers on one input
+PASS: PH-001 valid rejects a profile id configured twice
+PASS: PH-001 valid rejects a profile binding for a session not in the identity table
+PASS: PH-007 valid rejects a profile binding for a delegable session
+PASS: PH-001 valid rejects a session bound to two profiles
+PASS: PH-001 valid rejects a binding to a profile id not configured
+PASS: PH-006 an admission over an identity table that is not valid denied StaleRevision
+PASS: PH-001 open_session on a state that is not valid denied StaleRevision
+PASS: PH-001 use on a state that is not valid denied StaleRevision
+PASS: PH-007 a charge on a state that is not valid denied StaleRevision
+PASS: PH-007 a diagnostic on a state that is not valid denied StaleRevision
+PASS: PH-001 a native write offer on a state that is not valid denied StaleRevision
+PASS: PH-001 order: the input reference precedes the bound profile
+PASS: PH-006 order: the input reference precedes the protected-profile check
+PASS: PH-006 order: the protected-profile check precedes the occupied slot
+PASS: PH-007 order: the delegable session precedes the occupied slot
+PASS: PH-006 order: the occupied slot precedes the inventory fact
+PASS: PH-006 order: the input reference precedes the inventory fact
+PASS: PH-006 order: the inventory fact precedes the families
+PASS: PH-014 order: accelerator isolation precedes the route inventory
+PASS: PH-007 order: the worker's phase precedes its quota
+PASS: PH-007 order: the input's re-resolution precedes the quota
+PASS: PH-007 order: the worker's phase precedes the diagnostic sink
+PASS: PH-007 order: the input's re-resolution precedes the diagnostic sink
+PASS: PH-002 order: the held rights precede the operation
+PASS: PH-001 issue commits HostIdentity.mint's table, advances the revision once, and emits nothing
+PASS: PH-001 issue on an unbound session denied Identity UnknownSession
+PASS: PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch
+PASS: PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch
+PASS: PH-005 order: issue's plan binding precedes HostIdentity's checks
+PASS: PH-005 issue on a session whose caller has another token than the Frontend handle's owner denied OwnerMismatch
+PASS: PH-005 issue on a session whose caller has another subject than the Frontend handle's owner denied OwnerMismatch
+PASS: PH-005 issue with rights wider than the Frontend handle's denied RightsNotHeld
+PASS: PH-005 issue with rights narrower than the Frontend handle's is accepted
+PASS: PH-005 issue expiring after the Frontend handle denied LeaseExceeded
+PASS: PH-005 order: issue's owner binding precedes its rights and lease bindings
+PASS: PH-005 order: issue's rights binding precedes its lease binding
+PASS: PH-005 delegate commits HostIdentity.delegate's table, advances the revision once, and emits nothing
+PASS: PH-007 a delegation from the worker session through the primitive layer denied Identity NotDelegable
+PASS: PH-008 a seal with zero writers records the exact object, version, and digest with no effect
+PASS: PH-008 a seal with one CPU writer denied LiveWriter
+PASS: PH-008 a read-only seal with one writable mapping left denied LiveWriter
+PASS: PH-008 a seal with one device writer denied LiveWriter
+PASS: PH-008 a seal for a worker never admitted denied UnknownWorker
+PASS: PH-008 a seal from a revoked worker denied WrongPhase
+PASS: PH-008 a seal after the worker's input was retired denied Identity Retired
+PASS: PH-008 a second seal for a sealed worker denied WrongPhase and the record is not replaced
+PASS: PH-008 order: the once-only seal precedes the writer counts
+PASS: PH-008 order: the worker's phase precedes the writer counts
+PASS: PH-009 a publication through DataOS.commit_from_capability emits exactly one Publish of the sealed digest and spends the ledger once
+PASS: PH-009 a publication before any seal denied NotSealed
+PASS: PH-009 another worker's sealed record does not seal this worker's publication: denied NotSealed
+PASS: PH-008 a path retargeted to another object denied Retargeted
+PASS: PH-008 a path retargeted to another version denied Retargeted
+PASS: PH-008 a path retargeted to another digest denied Retargeted
+PASS: PH-008 a current fact naming another worker denied Retargeted
+PASS: PH-008 a writable mapping reappearing before publication denied LiveWriter
+PASS: PH-008 order: the retarget check precedes the writer counts
+PASS: PH-009 a publication for a worker not Running denied WrongPhase
+PASS: PH-009 order: the writer counts precede the worker's phase
+PASS: PH-009 a publication at the input's expiry on the DataOS context's clock denied Identity Expired
+PASS: PH-001 a publication whose capability registry was revoked denied CommitRejected with the session and ledger returned
+PASS: PH-001 a publication at a stale frontend revision denied CommitRejected with the session and ledger returned
+PASS: PH-001 a publication to a public label denied CommitRejected with the session and ledger returned
+PASS: PH-009 a committed binding naming another artifact denied ArtifactMismatch with the session and ledger returned
+PASS: PH-009 order: the commit precedes the artifact binding
+PASS: PH-009 revocation of the input before authorization denies the publication Identity Retired
+PASS: PH-009 revocation of the client's root before authorization denies the publication Identity Retired
+PASS: PH-009 order: the current artifact precedes the re-resolution
+PASS: PH-009 a second publication of the same invocation denied Replay with no second spend
+PASS: PH-009 order: the replay check precedes the commit
+PASS: PH-009 order: the re-resolution precedes the replay check
+PASS: PH-009 reconcile of a recorded invocation with its digest emits Reconcile with no commit and no spending
+PASS: PH-009 reconcile with a different digest denied Substitution
+PASS: PH-009 reconcile with a logged destination other than the recorded one denied Substitution
+PASS: PH-009 publish records the invocation, the sealed digest, and the committed intent's destination
+PASS: PH-009 reconcile of an unrecorded invocation denied Unrecorded
+PASS: PH-009 reconcile before any publication denied Unrecorded and authorizes nothing
+PASS: PH-010 after revocation the recorded publication still reconciles to the same outcome
+PASS: PH-010 revocation after publication leaves the record unchanged and emits only StopEffects, no recall
+PASS: PH-009 after a restart the recorded publication still reconciles to the same outcome
+PASS: PH-010 revoke retires the input, moves its worker to Revoked, and emits StopEffects for it
+PASS: PH-010 revoking the client's root revokes the worker on the delegated input
+PASS: PH-010 revoking one input leaves a worker on another entry Running
+PASS: PH-010 a later revocation does not stop an already revoked worker again
+PASS: PH-010 a revocation stops every running worker whose input reference is not live at its host, incarnation, and generation
+PASS: PH-010 a later revocation leaves a quiesced worker Quiesced
+PASS: PH-010 quiescing one worker leaves another worker's phase unchanged
+PASS: PH-010 revoke of a slot never allocated denied Identity Forged
+PASS: PH-010 revoke of an already retired slot denied Identity Retired
+PASS: PH-010 reclaim after revoke but before quiesce denied NotQuiesced
+PASS: PH-010 reclaim of a running worker denied NotQuiesced
+PASS: PH-010 quiesce naming the pre-revocation generation denied Identity StaleGeneration
+PASS: PH-010 order: quiesce of a running worker denied WrongPhase before its generation
+PASS: PH-010 quiesce of a worker never admitted denied UnknownWorker
+PASS: PH-010 quiesce with the retired generation moves the worker to Quiesced with no effect
+PASS: PH-010 the order revoke, quiesce, reclaim is accepted and reclaim emits only Reclaim
+PASS: PH-010 reclaim of a worker never admitted denied UnknownWorker
+PASS: PH-010 a second quiesce denied WrongPhase
+PASS: PH-010 a second reclaim denied NotQuiesced
+PASS: PH-010 restart drops the bindings, moves running workers to Revoked, and emits StopEffects
+PASS: PH-010 restart to an incarnation not greater denied Identity StaleIncarnation
+PASS: PH-010 a worker revoked by restart is quiesced and reclaimed in order
+PASS: PH-010 a completion for the running worker's live input is accepted with no effect
+PASS: PH-010 a completion after revoke with the old generation denied Identity Retired
+PASS: PH-010 a completion after restart with the old incarnation denied Identity StaleIncarnation
+PASS: PH-010 a completion fact carrying a Use message denied WrongPhase
+PASS: PH-010 a completion for a revoked worker whose entry is still live denied WrongPhase
+PASS: PH-010 a completion naming an entry no worker holds denied UnknownWorker
+PASS: PH-010 a completion for an entry held only by a reclaimed worker denied UnknownWorker
+PASS: PH-010 a completion for the worker's input on the client session denied Identity NotHolder
+PASS: PH-008 seal at a stale revision denied StaleRevision
+PASS: PH-009 publish at a stale revision denied StaleRevision
+PASS: PH-009 reconcile at a stale revision denied StaleRevision
+PASS: PH-010 revoke at a stale revision denied StaleRevision
+PASS: PH-010 restart at a stale revision denied StaleRevision
+PASS: PH-010 quiesce at a stale revision denied StaleRevision
+PASS: PH-010 reclaim at a stale revision denied StaleRevision
+PASS: PH-010 complete at a stale revision denied StaleRevision
+PASS: PH-001 issue at a stale revision denied StaleRevision
+PASS: PH-005 the primitive delegate at a stale revision denied StaleRevision
+PASS: PH-001 states built by the family 1 and 3 to 5 transitions satisfy valid
+PASS: PH-008 valid rejects a sealed record naming no worker
+PASS: PH-008 valid rejects a worker sealed twice
+PASS: PH-009 valid rejects an invocation recorded twice
+PASS: PH-008 a seal on a state that is not valid denied StaleRevision
+PASS: PH-009 a publication on a state that is not valid denied StaleRevision
+PASS: PH-009 reconcile on a state that is not valid denied StaleRevision
+PASS: PH-010 revoke on a state that is not valid denied StaleRevision
+PASS: PH-010 restart on a state that is not valid denied StaleRevision
+PASS: PH-010 quiesce on a state that is not valid denied StaleRevision
+PASS: PH-010 reclaim on a state that is not valid denied StaleRevision
+PASS: PH-010 complete on a state that is not valid denied StaleRevision
+PASS: PH-001 issue on a state that is not valid denied StaleRevision
+PASS: PH-005 the primitive delegate on a state that is not valid denied StaleRevision
+PASS: PH-001 Error.equal distinguishes the publication and revocation reasons
+HostPrimitives: 216 checks passed
+PASS: PH-012 the two adapters differ in host, incarnation, slot allocation, and target report
+PASS: PH-012 every vector's raw bytes decode through HostWire.decode_bytes on both adapters
+PASS: PH-005 the destination-E and changed-input sessions are Running at the baseline revisions with another plan
+PASS: PH-009-1 the baseline delegated input publishes once through DataOS.commit_from_capability on both adapters
+VECTOR PH-009-1 publish accepted invocation=99;input=input
+PASS: PH-005-1 the delegated input used on a session negotiated for destination E is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-1 publish denied PlanMismatch
+PASS: PH-005-2 a session negotiated for a changed input object is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-2 publish denied PlanMismatch
+PASS: PH-005-3 a decoded Delegate narrows the root to the proxy session
+VECTOR PH-005-3 delegate accepted slot=proxy
+PASS: PH-005-4 the proxy delegates a narrower entry to the worker and the delegation copies the parent's plan unchanged
+VECTOR PH-005-4 delegate accepted slot=narrow
+PASS: PH-005-5 the narrower delegated use of the same plan publishes the same full intent as the baseline
+VECTOR PH-005-5 publish accepted invocation=99;input=narrow
+PASS: PH-005-6 after the narrower proxy the broader root still resolves live with all its rights
+VECTOR PH-005-6 use accepted slot=root
+PASS: PH-005-7 a root issued for destination E's plan on a plan-D Frontend handle is denied PlanMismatch with the state unchanged
+VECTOR PH-005-7 issue denied PlanMismatch
+PASS: PH-005-8 a sealed worker on an entry minted for plan E publishing plan D is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-8 publish denied PlanMismatch
+PASS: PH-005-9 a delegated child cannot publish a plan other than its parent's: denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-9 publish denied PlanMismatch
+PASS: PH-005-10 a root issued for a plan with a changed input object on handle 2 is denied PlanMismatch with the state unchanged
+VECTOR PH-005-10 issue denied PlanMismatch
+PASS: PH-005-11 a root issued on a Frontend handle the monitor's Frontend state does not hold is denied PlanMismatch with the state unchanged
+VECTOR PH-005-11 issue denied PlanMismatch
+PASS: PH-005-12 a root issued on a session whose caller does not own the Frontend handle is denied OwnerMismatch with the state unchanged
+VECTOR PH-005-12 issue denied OwnerMismatch
+PASS: PH-005-13 a root issued with rights wider than the Frontend handle's is denied RightsNotHeld with the state unchanged
+VECTOR PH-005-13 issue denied RightsNotHeld
+PASS: PH-005-14 a root expiring after the Frontend handle is denied LeaseExceeded with the state unchanged
+VECTOR PH-005-14 issue denied LeaseExceeded
+PASS: PH-009 the accepted intent retains the source labels and origins (BackplaneTests.retained) on both adapters
+PASS: PH-005 the delegated path's intent label and full origin records equal the root path's
+PASS: PH-005 delegation copies the parent's plan unchanged
+PASS: PH-002-1 a Use claiming subject B on the worker session resolves to the owner's caller
+VECTOR PH-002-1 use accepted slot=input
+PASS: PH-002-2 the same Use with no claim resolves to the same entry and caller
+VECTOR PH-002-2 use accepted slot=input
+PASS: PH-002-3 admission on the claiming Use publishes the same full intent as with no claim
+VECTOR PH-002-3 publish accepted invocation=99;input=input
+PASS: PH-002-4 a transferred endpoint with no delegation edge is denied TransferredEndpoint with the state unchanged
+VECTOR PH-002-4 admit_worker denied Identity.TransferredEndpoint
+PASS: PH-002-5 an inherited endpoint is denied InheritedEndpoint with the state unchanged
+VECTOR PH-002-5 admit_worker denied Identity.InheritedEndpoint
+PASS: PH-003-1 a slot guessed from another session is denied NotHolder with the state unchanged
+VECTOR PH-003-1 admit_worker denied Identity.NotHolder
+PASS: PH-003-2 a reference naming the other adapter's host is denied ForeignHost with the state unchanged
+VECTOR PH-003-2 admit_worker denied Identity.ForeignHost
+PASS: PH-003-3 a proxy session with the client's subject and token presenting the client's root is denied NotHolder with the state unchanged
+VECTOR PH-003-3 admit_worker denied Identity.NotHolder
+PASS: PH-010-1 revoking the resolved input before authorization stops its worker
+VECTOR PH-010-1 revoke accepted slot=input;stopped=input
+PASS: PH-009-2 a publication after the revocation is denied Identity Retired with the state, session, and ledger unchanged
+VECTOR PH-009-2 publish denied Identity.Retired
+PASS: PH-010-2 revoking the root after publication stops the worker and keeps the publication record
+VECTOR PH-010-2 revoke accepted slot=root;stopped=input
+PASS: PH-010-3 after revocation reconcile returns the same invocation and digest
+VECTOR PH-010-3 reconcile accepted invocation=99
+PASS: PH-010-4 the revoked worker is quiesced at the retired generation
+VECTOR PH-010-4 quiesce accepted slot=input
+PASS: PH-010-5 the quiesced worker is reclaimed
+VECTOR PH-010-5 reclaim accepted slot=input
+PASS: PH-010-6 a stale completion after teardown is denied Identity Retired with the state unchanged
+VECTOR PH-010-6 complete denied Identity.Retired
+PASS: PH-009-3 a second publication is denied Replay with the state, session, and ledger unchanged
+VECTOR PH-009-3 publish denied Replay
+PASS: PH-004-1 restart moves to the next incarnation and stops the running worker
+VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
+PASS: PH-004-2 after restart the reissued root has the old slot and generation in the next incarnation
+VECTOR PH-004-2 use accepted slot=root
+PASS: PH-004-3 the prior-incarnation reference to that slot is denied StaleIncarnation with the state unchanged
+VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
+PASS: PH-009-4 reconcile with a substituted digest is denied Substitution with the state unchanged
+VECTOR PH-009-4 reconcile denied Substitution
+PASS: PH-009-5 recovery from a log naming another destination than the recorded publication is denied Substitution with the state unchanged
+VECTOR PH-009-5 reconcile denied Substitution
+PASS: PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector
+VECTOR PH-012-1 compare accepted vectors=36
+HostConformance: 43 checks passed, 37 vectors emitted
 PASS: facade links capability descriptor through complete commit
 PASS: facade preserves output provenance
 PASS: capability revocation is checked at commit

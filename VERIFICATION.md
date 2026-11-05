@@ -36,8 +36,8 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | Issuance | 230 | Authenticated approval submission, exact paired-scope registration (subject-only caller), revision-checked revocation and replay, attenuation-only derivation, exclusive expiry, subject-scoped per-use projections into T.admit and F.checked_plan (model only; not wired to a host) |
 | HostWire | 63 | Versioned, bounded, canonical wire schema (four tags, fixed widths, little-endian bytes): word and byte round trips, unknown versions and tags (a tag-5 record shaped like a serialized Context, Ledger, and caller included), malformed lengths, out-of-range fields, fixed check order; decoding yields descriptions, never authority (model only) |
 | HostIdentity | 92 | Monitor-owned identity table: authenticated session binding, minting, resolution order (revision, host, incarnation, forged, ambiguity, generation, holder, origin, expiry), the holder is the bound session rather than the subject, an untrusted claimed subject never changes the caller, inherited and transferred endpoints, non-widening delegation that never changes the subject, restart incarnations, retire cascade, exact state on every denial (model only) |
-| HostPrimitives | 206 | The five primitive families (`HostPrimitives.bend` and `HostPublication.bend`): session binding with issue and delegate wrappers, worker admission under a monitor-bound profile (controls, families, accelerator isolation, route inventory, one reader per input), quotas and gated diagnostics, sealing against live writers and retargeting, publication only through `DataOS.commit_from_capability` with exact plan binding, replay and reconcile, revoke, restart, quiesce, reclaim and complete; full state equality and no effects on every denial (model only; no native binding) |
-| HostConformance | 39 | 32 shared conformance vectors plus one comparison line, run on two synthetic adapters: exact plan binding at issue and publication, retained provenance, caller identity and session holding, revocation, replay, restart, substitution, unchanged state on denial; identical decision lines on both adapters (the decision half of PH-012 only; no native adapter replays them) |
+| HostPrimitives | 216 | The five primitive families (`HostPrimitives.bend` and `HostPublication.bend`): session binding with monitor-decided client delegability, issue bound to its Frontend handle's plan, owner, rights, and lease, and delegate wrappers, worker admission under a monitor-bound profile (controls, families, accelerator isolation, route inventory, one worker per identity entry), quotas and gated diagnostics, sealing against live writers and retargeting, publication only through `DataOS.commit_from_capability` with exact plan binding, replay and reconcile bound to the recorded digest and destination, revoke, restart, quiesce, reclaim and complete; full state equality and no effects on every denial (model only; no native binding) |
+| HostConformance | 43 | 36 shared conformance vectors plus one comparison line, run on two synthetic adapters: exact plan, owner, rights, and lease binding at issue and plan binding at publication, retained provenance, caller identity and session holding, revocation, replay, restart, digest and destination substitution at recovery, unchanged state on denial; identical decision lines on both adapters (the decision half of PH-012 only; no native adapter replays them) |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
 | **Total per backend** | **1014** | **Both complete runs passed** |
 
@@ -96,19 +96,20 @@ replays those vectors against native capability transitions.
 
 ### Portable host vectors
 
-`HostConformanceTests.bend` prints 33 `VECTOR <vector-id> <transition>
-<outcome> <reason-or-result>` lines: 32 vectors and the PH-012-1 comparison
-line `compare accepted vectors=32`. Each is rendered from adapter A's actual
+`HostConformanceTests.bend` prints 37 `VECTOR <vector-id> <transition>
+<outcome> <reason-or-result>` lines: 36 vectors and the PH-012-1 comparison
+line `compare accepted vectors=36`. Each is rendered from adapter A's actual
 result after a check requires adapter B's line to be equal and both to equal
 the expected line in `HostConformanceVectors.bend`. Slots are printed as
 logical names, so the adapters' different hosts, incarnations, and slot
 numbers do not appear. The lines are in
 [portable-host-vectors.txt](verification/portable-host-vectors.txt). On the
-portable-host-contract lane's final tree (2026-11-05, Bend 2.0.39, clang
+portable-host-contract lane's tree after the final fix round and the merge of
+master (2026-11-05, Bend 2.0.39, clang
 23.1.1, Node v26.10.0; CPU only, `--threads 4 --gpu off`; no GPU was used),
 the `VECTOR PH-` lines of the Node run (`tests-js.txt`) and of the native run
 (`tests-native.txt`) were both `cmp`-identical to that file, SHA-256
-`fb85d405c08e9ad46727ffe0d69bf9f7d5cc241281226d8c1740a4a9f094d30d`, and the
+`37816dd7d768c21e730f780cbc98b66cadbba087c972d18e731b670219caf24f`, and the
 41 HostBinding lines were unchanged:
 
 ```bash

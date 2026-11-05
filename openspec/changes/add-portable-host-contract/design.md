@@ -96,6 +96,21 @@ native handle values, scheduling, or timing. Record exact target and runtime pin
 Report library, protocol, isolation, durable-publication, and accelerator milestones
 separately. Section 1 (the shared Bend interfaces and conformance vectors) is implemented as a library model; section 2 (host qualification: feature negotiation, native adversarial probes, alias elimination and durable publication under revocation and crash, and per-target runtime evidence) remains pending.
 
+The section 1 model implements these rulings. The holder of an identity entry
+is the bound session, not the subject: another session of the same subject and
+token holds nothing. Execution profiles, session roles, and client
+delegability are monitor state. A target's facts can only narrow them, never
+name a profile, and worker sessions are bound non-delegable. Admission allows
+one unreclaimed worker per identity entry. Identity slots are never reused
+within an incarnation, and a retired reference is denied `Retired`. `issue`
+binds a root to its Frontend handle's plan, owner (subject and token), rights,
+and lease. The only publication route is `HostPublication.publish` through
+`DataOS.commit_from_capability`, which re-binds the plan. Recovery repeats only
+the recorded invocation, digest, and destination. Revocation proceeds as
+revoke, then quiesce, then reclaim, and recalls nothing. The traceability file
+[portable-host-contract.md](../../traceability/portable-host-contract.md) maps
+each ruling to its checks and to the gaps that remain.
+
 ## Migration and rollback
 
 Introduce versioned profiles without changing existing library semantics. Disable
