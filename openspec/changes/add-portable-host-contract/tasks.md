@@ -1,11 +1,11 @@
 # Portable host contract tasks
 
-Task 1.1 is implemented in the shared Bend layer; all other implementation and native integration tasks remain pending.
+Tasks 1.1 and 1.2 are implemented in the shared Bend layer; all other implementation and native integration tasks remain pending.
 
 ## 1. Shared Bend interfaces
 
 - [x] 1.1 Implement versioned session/resource references and bounded canonical encoding; reject unknown versions, malformed lengths, and out-of-range values. (`HostWire.bend`; checks in `HostWireTests.bend`; traceability in `openspec/traceability/portable-host-contract.md`.)
-- [ ] 1.2 Implement monitor-owned identity, delegation, incarnation, and generation binding; reject forged, ambiguous, inherited, transferred, and stale references outside approved scope.
+- [x] 1.2 Implement monitor-owned identity, delegation, incarnation, and generation binding; reject forged, ambiguous, inherited, transferred, and stale references outside approved scope. (`HostIdentity.bend`; checks in `HostIdentityTests.bend`; law `identity_denied_preserves_state`; traceability in `openspec/traceability/portable-host-contract.md`.)
 - [ ] 1.3 Define the five host primitive interfaces in Bend and prevent target bindings from introducing an alternate policy or publication path.
 - [ ] 1.4 Build shared conformance vectors for exact plan binding, retained provenance, caller identity, revocation, replay, and unchanged state on denial.
 

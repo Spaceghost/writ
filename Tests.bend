@@ -8,6 +8,7 @@ import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
+import ./HostIdentityTests.bend as HostIdentity
 import ./FacadeTests.bend as Facade
 import ./PropertyTests.bend as Properties
 
@@ -22,6 +23,7 @@ def main() -> IO(Unit):
     Frontend.main()
     HostBinding.main()
     HostWire.main()
+    HostIdentity.main()
     Facade.main()
     Properties.main()
     IO.print("ALL LIBRARY TESTS PASSED")

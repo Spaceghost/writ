@@ -2,6 +2,7 @@ import Base
 import ./Guard.bend as Guard
 import ./LAWS.bend as Laws
 import ./HostBinding.bend as HostBinding
+import ./HostIdentity.bend as HostIdentity
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -38,3 +39,6 @@ def Laws.generation_bump_monotone(object):
   match object:
     case HostBinding.Object{id, generation, owner, kind, derived_from, service}:
       Laws.nat_lt_successor(generation)
+
+def Laws.identity_denied_preserves_state(state, reason):
+  {==}

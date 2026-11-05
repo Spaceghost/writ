@@ -2,6 +2,7 @@ import Base
 import ./Guard.bend as Guard
 import ./Ledger.bend as Ledger
 import ./HostBinding.bend as HostBinding
+import ./HostIdentity.bend as HostIdentity
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -53,3 +54,15 @@ law generation_bump_monotone:
   for object: HostBinding.Object
   {Nat.is_lt(HostBinding.object_generation(object),
      HostBinding.object_generation(HostBinding.bumped(True{}, object))) == True{} : Bool}
+
+# A rejected host-identity change carries the supplied state unchanged, for
+# any state and any closed-type reason. This holds by computation of the
+# `Change.state` accessor; it is stated to fix the contract every HostIdentity
+# transition's denial path relies on (deny by returning `Rejected{state, r}`
+# with the caller's own state). It does not assert that any transition chose
+# the denial path, that the reason is the right one, or that an accepted
+# change is valid; those are covered by HostIdentityTests.
+law identity_denied_preserves_state:
+  for state: HostIdentity.State
+  for reason: HostIdentity.Error
+  {HostIdentity.Change.state(HostIdentity.Rejected{state, reason}) == state : HostIdentity.State}
