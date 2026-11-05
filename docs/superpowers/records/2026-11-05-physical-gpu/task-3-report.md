@@ -23,7 +23,7 @@ All device rounds come first, then an IO step, then the CPU reference without `!
 
 The solver probe also has a denied control: Core.verify must refuse the unsolved seed assignment with InvalidCandidate.
 
-The output is one PASS/FAIL line per check, and any FAIL exits 1. stdout says nothing about the device. With at most 16 leaves the probe prints the full last device result, so the `--gpu off` stdout diff compares every field at SIZE 16. At the larger sizes the diff compares counts and an all-field digest. `ROUNDS` goes beyond the brief's `run SIZE`. It only repeats the device call, and it is used only to make the label and transfer runs last at least 10 s.
+The output is one PASS/FAIL line per check, and any FAIL exits 1. stdout says nothing about the device. With at most 16 leaves the probe prints the full last device result, so the `--gpu off` stdout diff compares every field at SIZE 16. At the larger sizes the diff compares counts and a digest. The digest covers every field for the solver and labels. For transfers it covers only the shape, the denial codes, the ticket invocation, the output schema, labels and kinds, and each origin's object, version, labels and kinds. It omits the plan's stamp, sources, destination, code, kind and output_type, and the origins' codes and payment terms. Transfers.bend's header wrongly says the hash covers every field; that is a known defect, left unedited so the records stay bound to its hash. `ROUNDS` goes beyond the brief's `run SIZE`. It only repeats the device call, and it is used only to make the label and transfer runs last at least 10 s.
 
 ## Build (all exit 0, stderr empty)
 | Probe | BANGS | binary sha256 | .gpu sha256 | cubin |
@@ -86,4 +86,13 @@ The "complete three-path" sentence in gpu-paths.txt is scoped to device GPU-0188
 2. The cross-process `--gpu off` comparison checks every field only at SIZE 16. At 16384 it compares counts plus a 32-bit digest. The in-process comparison checks every field at every size.
 3. The independent checks run in the same process and use the library's own evaluators. They are a logical replay, not a separate protection domain.
 4. The probes were uncommitted when the evidence was captured, so every record's lane_commit is 16bf000 with "uncommitted: ?? ...". Their hashes in the records equal the committed files.
-5. pmon samples are sparse (1 to 3 numeric rows per long run). They meet the gate's rule of at least one SM sample above 0, but only just.
+5. The label and transfer probes have no case where the verifier rejects a wrong answer (deferred to Task 5's injected faults), and their replays are the same computation as the CPU-reference comparison.
+6. pmon samples are sparse (1 to 3 numeric rows per long run). They meet the gate's rule of at least one SM sample above 0, but only just.
+
+## Fix round 1
+Review: task-3-review.md. The central claim holds; the fixes are text only, with no rerun and no probe change.
+1. Transfer digest: gpu-paths.txt (Probes paragraph and Limits) and this report now state exactly which fields the transfer digest covers and which it omits, and that the solver and label digests cover every field. Limits adds that a full-field transfer digest is left for Task 4's parity cases. The stale Transfers.bend header comment is recorded as a known defect. The probe is unchanged (sha256 f7073cb4...), so the records stay bound.
+2. Limits adds that the label and transfer probes have no case where the verifier rejects a wrong answer, so an always-true replay would pass them. This is deferred to Task 5's injected faults. Limits also notes that the batch replays are the same computation as the CPU-reference comparison.
+3. Limits adds the pre-commit capture (lane_commit 16bf000, probes uncommitted, source hashes equal to the committed files). The Harness paragraph now names the source of each exit status: the plain record's `exit_status` is the probe's, the observed record's is compute-sanitizer's, and the `[exit status]` after observe.sh is the gate verdict.
+
+Nothing was rerun. The commit also carries the controller's task-3-review.md and progress.md, which are in the record directory staged by `git add -A`.

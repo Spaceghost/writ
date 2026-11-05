@@ -76,3 +76,7 @@
 2026-11-05T03:47:11Z	implementer	gpu off run Transfers long (run 16384 200)
 2026-11-05T03:47:19Z	implementer	gpu off run GpuExample combined ()
 2026-11-05T03:49:40Z	implementer	evidence written (verification/gpu-paths.txt): solver 15, labels 5/6000, transfers 5/1000 launches, gate PASS at 16384 and long; SIZE 16 pairs gate FAIL on compute_app_seen (recorded); report written; committing task 3
+2026-11-05T03:50:05Z	controller	task 3 reported: three paths on the device; reviewer dispatched
+2026-11-05T03:55:19Z	controller	review: text fixes to gpu-paths.txt; fix round 1 dispatched
+2026-11-05T03:55:42Z	implementer	fix round 1: transfer digest coverage stated, verifier-denial and pre-commit Limits added, exit-status sources named (text only, no rerun); committing
+2026-11-05T03:56:06Z	implementer	fix round 1: report digest wording, concern and fix-round section added; amended the fix-round commit (not pushed)
