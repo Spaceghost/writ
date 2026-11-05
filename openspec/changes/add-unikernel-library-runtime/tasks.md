@@ -9,8 +9,10 @@ compat observation only (a Linux PIE through OSv's ELF loader), recorded so the 
 has two candidates. All boot runs are QEMU TCG emulated boots except the KVM boots of 3.1, recorded only in verification/unikernel-kvm.txt (the one `linuxu` run was process execution, and native calibration runs on Linux). Of the port tasks 2.2 (single-lane
 corpus parity under QEMU TCG) and 2.3 (the fault message, with arena exhaustion's missing
 distinct code kept as a recorded limit) are checked; 3.1, 3.2 and 3.3 are checked. The
-change is not finished: 1.3, 2.1 and 2.4 are open (each box says why), and UL-008 is not
-met (3.2 is a checklist of its gaps).
+change is not finished: 1.3 and 2.4 were checked as recorded outcomes by ruling on
+2026-11-05 (the boxes say what was found and what is not met); 2.1 is open and goes to the
+Spaceghost conversation for the transport decision; UL-008 is not met (3.2 is a checklist
+of its gaps). The change is held from archive until 2.1 is built (the same ruling).
 
 ## 1. Selection
 
@@ -18,7 +20,7 @@ met (3.2 is a checklist of its gaps).
   Checked with OSv as a recorded outcome, not a native build: OSv's documentation describes no mode that links
   application C into its kernel (unverified; no native-link attempt was made, and it is not a reason for the choice, which rests on Unikraft's executed native-link cells), so its build is a compat PIE (unikernel-matrix-osv.md).
 - [x] 1.2 Fill the selection matrix, one row per runtime inventory item per candidate, by executing each primitive (reservation with guard, threads or single lane, fault path, clock, self-pipe, environment, exit); publish the matrix and the chosen kernel with reasons.
-- [ ] 1.3 If Unikraft is chosen, run the reference program under its `linuxu` platform and record it as process execution, not a boot.
+- [x] 1.3 If Unikraft is chosen, run the reference program under its `linuxu` platform and record it as process execution, not a boot. Checked as a recorded outcome by ruling (Josh, board question q17, 2026-11-05): Unikraft 0.21.0 has no `linuxu`; the 0.16.3 `linuxu` image stops at the runtime's fixed 8 GiB heap reservation (the platform heap is a 32-bit byte count, 4095 MiB at most) after three attempts, so the reference program does not run as a process on this kernel; evidence `verification/unikernel-linuxu.txt`. The process row of UL-007 remains the native Linux reference, not a `linuxu` execution.
   Unchecked: the chosen pin (0.21.0) has no `linuxu` platform. The 0.16.3 `linuxu` image
   was run and recorded as process execution, but it stops at `bend: reservation failed`
   before the program's first output (unikernel-matrix-unikraft.md, E10), so the reference
@@ -143,7 +145,7 @@ met (3.2 is a checklist of its gaps).
   shutdown, which no shipped image is (verification/unikernel-fault-qemu.txt, "Exit map
   runs"; verification/unikernel-effects-qemu.txt). Every run is a QEMU TCG emulated boot on
   the CPU; no GPU test. The scenario states no number, so the spec is unchanged.
-- [ ] 2.4 Enable additional lanes behind the kernel's thread library; show the corpus still matches and record the lane count.
+- [x] 2.4 Enable additional lanes behind the kernel's thread library; show the corpus still matches and record the lane count. Checked as a recorded outcome by ruling (Josh, board question q17, 2026-11-05): a second lane runs but only on vCPU 0 (nothing in Unikraft 0.21.0 starts a second vCPU), and every `--threads 2` run crashes at shutdown (alloc.c:198, QEMU 253) on the shipped template as well, so no corpus parity on two lanes was recorded and the lane count stays 1; evidence `verification/unikernel-lanes-qemu.txt` ("Stopping point", "Shipped template control"). The shipped configuration is single-lane by declaration (UL-005).
   Open (2026-11-05, Unikraft lanes lane): a second lane runs (set `lanes`, `UKPLAT_CPU_MAXCOUNT=2`) but only on vCPU 0, because Unikraft 0.21.0 never calls uk_lcpu_start, and every `--threads 2` run, with the shipped template as well, ends in a shutdown assertion (QEMU 253), so the corpus was not run on two lanes (verification/unikernel-lanes-qemu.txt, "Stopping point").
 
 ## 3. Boots and deployment rules

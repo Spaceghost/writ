@@ -69,8 +69,10 @@ in the trusted base as the appliance change states.
 
 The matrix below records the kernels **before** the port; where a cell has since changed,
 it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one lane, except
-the KVM bullet. The change is **not finished**: tasks 1.3, 2.1 and 2.4 are open (the
-Open bullets below); the closing lane (2026-11-05) is the last planned Unikraft lane.
+the KVM bullet. The change is **not finished**: task 2.1 is open (the transport decision
+goes to Spaceghost); 1.3 and 2.4 were checked as recorded outcomes by ruling on 2026-11-05,
+and their limits stand (the Open bullets below); the closing lane (2026-11-05) is the last
+planned Unikraft lane; the archive is held until 2.1 is built.
 
 - **Corpus parity:** `Tests.bend` (782 checks, merged tree aaa6885) prints 782 PASS lines
   and `ALL LIBRARY TESTS PASSED` with QEMU exit 33 (1 under the first exit map), its console identical line for line to a
@@ -195,8 +197,10 @@ Open bullets below); the closing lane (2026-11-05) is the last planned Unikraft 
   UA-004, UA-005, UA-006 and UA-008 are gaps and UA-001 and UA-007 partial, so UL-008 is
   unmet ([unikernel-appliance-rules.md](../verification/unikernel-appliance-rules.md),
   "Checklist").
-- **Open, three change tasks:** 1.3 (above), 2.1 (the `IO.print` twin and an authenticated
-  ingress subject; the subject needs a transport decision first) and 2.4 (a second lane
+- **Open, one change task; two recorded outcomes:** 2.1 is open (the `IO.print` twin and an
+  authenticated ingress subject; the subject needs a transport decision first, now with
+  Spaceghost). 1.3 (above) and 2.4 were checked as recorded outcomes by ruling on
+  2026-11-05 (board question q17); what they found stands as limits: 2.4 (a second lane
   runs on one vCPU only, and `--threads 2` crashes at shutdown even on the shipped
   template; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
   "Stopping point"). Boxes 3.1, 3.2 and 3.3 are checked; the change is not finished.
@@ -327,7 +331,7 @@ changed, which the lane does not do. After the failure the process does not exit
    must not be configured ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
    "Shipped template control", "Stopping point" item 2). A fix would need a
    `uk_lcpu_start` caller and a scheduler per LCPU for parallel lanes, and a clean thread
-   teardown at shutdown; none was made, and 2.4 stays open
+   teardown at shutdown; none was made, and 2.4 is checked as a recorded outcome, not as parallel lanes
    ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point"
    item 3).
 3. **The fault halt to carry the runtime's message (done for a stack overflow).** With
