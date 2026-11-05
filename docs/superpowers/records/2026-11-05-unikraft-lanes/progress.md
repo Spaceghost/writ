@@ -11,3 +11,4 @@ Task 3: implementer DONE (57204a9); two stale E6 passages outside the touch list
 Final review: Needs fixes before merge (five text fixes: evidence wording, stale E6 pointers, pool_work credit, INVENTORY rows). Fix round 1 dispatched (Task 3 implementer resumed).
 Fix round 1: verified by the controller (wording, pointers, credit, INVENTORY rows; strict 44; no .bend/Kraftfile/host C diff). Final review resolved; complete.
 Merge: to master
+Merge: merged to master as cd7b18a
