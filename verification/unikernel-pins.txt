@@ -51,6 +51,40 @@ Checked out commits, confirmed 2026-11-03:
 Platforms present in 0.21.0 plat/: common kvm native xen  (no linuxu)
 posix-mmap, posix-process, posix-fdtab, posix-sysinfo all present in lib/.
 
+== Unikraft image configuration pins (added 2026-11-04, Unikraft signals lane) ==
+Every qemu/x86_64 image made from hosts/unikraft/app/ is built with these two settings;
+they are pins in the same sense as the versions above (changing either changes what the
+images contain and what the recorded evidence shows):
+  1. The experimental posix signal library, in the template Kconfig:
+     hosts/unikraft/app/Kraftfile   CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y'
+       ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce  hosts/unikraft/app/Kraftfile
+     Kconfig entry in the pinned core: $W/src/unikraft/lib/posix-process/Config.uk:78
+       config LIBPOSIX_PROCESS_SIGNAL / bool "POSIX signals (EXPERIMENTAL)", which selects
+       LIBPOSIX_PROCESS_MULTITHREADING, LIBPOSIX_PROCESS_EXECVE, LIBUKLOCK and
+       LIBUKLOCK_SEMAPHORE. Resolved .config in every set built with it:
+       CONFIG_LIBPOSIX_PROCESS_SIGNAL=y, CONFIG_LIBPOSIX_PROCESS_EXECVE=y, CONFIG_LIBUKBINFMT=y,
+       "# CONFIG_LIBPOSIX_PROCESS_SIGNALFD is not set".
+  2. The build flag, in hosts/unikraft/scripts/build.sh:
+     UK_CFLAGS="-std=gnu11 -include uk/config.h"
+       67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817  hosts/unikraft/scripts/build.sh
+     -std=gnu11 as before; -include uk/config.h works around 0.21.0's include order in
+     lib/posix-process/shutdown.c (signal/signal.h at :11 before <uk/config.h> at :14, so
+     signal.h:116's CONFIG_LIBPOSIX_PROCESS_MULTITHREADING guard reads 0 and the
+     pprocess_signal_send declaration at :287 is skipped; shutdown.c:63 then fails to build).
+     No Unikraft source is patched. The flag applies to every compilation unit of every image.
+Sets built with both (all in $W, made by mkapp.sh from the template):
+  sigfault, sigcodes (Task 1: verification/unikernel-fault-qemu.txt)
+  sigeffects (verification/unikernel-effects-qemu.txt), sigchannel
+  (verification/unikernel-channel-qemu.txt), sigcorpus and sigcorpustests
+  (verification/unikernel-corpus-qemu.txt, unikernel-binary-check.txt)
+Every clean build fetches the musl tarball again from musl-libc.org (lib-musl's build); in
+the signals lane's sets it had the sha256 recorded above,
+7d5b0b6062521e4627e099e4c9dc8248d32a30285e959b7eecaa780cf8cfd4a4 (checked in sigeffects,
+sigchannel, sigcorpus, sigcorpustests). The fetch is slow and sometimes fails (Task 1: three
+of five first builds failed on it, each passed on retry); a failed fetch is not a compile
+failure. Image hashes are per build: Unikraft embeds the build time, so clean builds of the
+same inputs give different image hashes.
+
 == Unikraft core, secondary pin (linuxu only) ==
 linuxu was removed from the core tree after the 0.16 series (plat/ listing via the GitHub
 contents API: 0.16.0 has linuxu; 0.17.0, 0.18.0, 0.19.x, 0.20.0, 0.21.0 do not).

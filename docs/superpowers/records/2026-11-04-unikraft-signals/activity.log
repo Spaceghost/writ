@@ -10,3 +10,32 @@
 2026-11-04T21:42:55Z	implementer	exit-codes.txt refreshed; report written; committing task 1 (DONE_WITH_CONCERNS)
 2026-11-04T21:43:18Z	controller	task 1 reported DONE_WITH_CONCERNS; rulings on the template file and set names; reviewer dispatched
 2026-11-04T21:45:03Z	controller	task 1 review APPROVED; task 2 dispatched (corpus, effects, channel rebuilds)
+2026-11-04T21:47:08Z	implementer	task 2 started: read brief, plan constraints, task 1 report/review, scripts, evidence files; making sets sigcorpus, sigcorpustests, sigeffects, sigchannel with mkapp.sh
+2026-11-04T21:48:11Z	implementer	tests.c emitted (b50856fb..., identical to corpus3's); corpus build started in set sigcorpustests (build.sh, expect 95+ min)
+2026-11-04T21:48:56Z	implementer	example, probe, probefail (scratch), hello, monitor C emitted (examples and monitor byte-identical to earlier; probe.c differs from effects2's in a twin comment only, tokens identical); builds started: sigcorpus (4 examples), sigeffects (probe, probefail, hello), sigchannel (monitor)
+2026-11-04T21:56:11Z	implementer	probe (192 s), probefail (132 s), flow (184 s), transfer (106 s) built first try; booting the effects probe
+2026-11-04T21:57:09Z	implementer	effects: probe 3x check-image PASS (QEMU 33, deltas 103-105 ms, no shutdown hang), run.sh 33; probefail QEMU 35, check FAIL exit 1 as required; hello 33 PASS; monitor still building
+2026-11-04T21:58:13Z	implementer	heartbeat: 4 build wrappers running, 6 builds finished, corpus build running, load 54.98
+2026-11-04T22:07:14Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 27.59
+2026-11-04T22:16:14Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 30.89
+2026-11-04T22:21:02Z	implementer	channel: monitor built (492 s); check-channel accepted and denied PASS (QEMU 33, no shutdown hang), negative control FAIL exit 1, no-port 17, flood 8 refusals 4 decisions QEMU 33, replies == MonitorCheck; writing channel and effects evidence while examples and corpus build
+2026-11-04T22:21:27Z	implementer	examples: flow, transfer, example, gpuexample check-image PASS (QEMU 33, PASS 4/4/16/5, diffs empty), negative control FAIL exit 1, binary checks IO.print PASS; corpus still building
+2026-11-04T22:24:43Z	implementer	effects and channel evidence sections written (current record first, earlier record kept as history); pins gain the signal library and the build flag; corpus cc1 on tests.c still running (about 40 min in)
+2026-11-04T22:25:14Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 26.66
+2026-11-04T22:34:15Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 82.68
+2026-11-04T22:43:16Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 61.82
+2026-11-04T22:52:16Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 263.09
+2026-11-04T23:01:17Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 270.55
+2026-11-04T23:10:18Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 269.21
+2026-11-04T23:19:20Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 221.70
+2026-11-04T23:28:21Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 60.59
+2026-11-04T23:37:22Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 60.51
+2026-11-04T23:46:22Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 42.75
+2026-11-04T23:55:23Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 30.81
+2026-11-05T00:04:23Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 38.35
+2026-11-05T00:13:24Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 31.39
+2026-11-05T00:22:24Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 30.51
+2026-11-05T00:31:25Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 26.77
+2026-11-05T00:31:52Z	implementer	corpus image built (see bwrap log); booting check-corpus.sh at -m 4096 and -m 32
+2026-11-05T00:34:14Z	implementer	corpus: check-corpus.sh PASS at -m 4096 and -m 32 (782 PASS, diff empty, QEMU 33; build 9795 s first try); count negative control FAIL; binary checks on all nine new .dbg as expected; corpus and binary-check evidence written
+2026-11-05T00:35:06Z	implementer	task 2 report written; committing (DONE_WITH_CONCERNS)
