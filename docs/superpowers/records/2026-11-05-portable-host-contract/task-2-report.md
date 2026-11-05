@@ -328,3 +328,167 @@ Commands and results:
 9. `HostIdentity.bend` and `HostIdentityTests.bend` are not in
    `verification/source-sha256.txt`. That is Task 6, and no count pin was
    touched.
+
+## Fix round 1
+
+Source: task-2-review.md. Verdict 1 (spec compliance) was APPROVED.
+Verdict 2 was NEEDS_FIXES. I applied the controller's holder ruling to
+finding 1, and applied Minor findings 2 to 5 and Nits 6 and 7.
+
+### Finding 1, under the holder ruling (controller, PH-002 to PH-005)
+
+The ruling: an entry's holder is the session the monitor bound it to (that
+session's token and subject as recorded), not the subject alone. The module
+header records the ruling with its reason: without it, any session of a
+subject would hold ambient authority over every other session's references,
+which is the transfer PH-004 forbids.
+
+Code changes:
+- `Entry.owner` is now an `F.Caller`, the minting session's whole caller.
+  `mint` stores `session_caller(bound)`, and `child_of` copies it.
+- `resolve` returns `Resolved{entry, entry_owner(entry)}`. The effective
+  caller is the owner and never the presenting session's own caller.
+  Delegation moves the holder but cannot change the subject or the token a
+  use acts as. This closes the reviewer's probe: a child held by a session
+  with another token now resolves with the owner's token, not that session's.
+- `d_subject` compares the target's subject with the owner's subject. A
+  same-subject target with another token is admitted as an explicit,
+  narrowed delegation, as ruling (3) says. A different subject is still
+  denied `SubjectChanged`.
+
+The holder check was already by session id. The new checks pin all three
+consequences of the ruling:
+
+(1) Presenting the parent's reference from another session is denied:
+- `PH-003 another session of the same subject and token presenting the root's reference denied NotHolder`
+- `PH-003 a same-subject session with another token presenting the root's reference denied NotHolder`
+
+(2) The child is held by exactly the target session and resolves only from
+it, with the owner's caller:
+- `PH-005 delegation to a same-subject session with another token records that session as holder and keeps the owner's caller`
+  (full entry equality, plus `valid`)
+- `PH-005 the child delegated to a session with another token resolves there with the owner's caller`
+  (full resolution equality, token `TF.code()`)
+- `PH-005 the child delegated to one session is denied NotHolder from the parent's holder and from another same-subject session`
+
+(3) A target with a different subject is denied: the existing `PH-005
+delegation to another subject's session denied SubjectChanged`. Session B
+uses the owner's token, so only the subject differs.
+
+### Minor findings
+
+- **Finding 2, session ids across restarts.** The module header now states a
+  section 2 host obligation, and the traceability PH-004 restart row repeats
+  it. Session ids are unique within an incarnation only, so the adapter must
+  discard every native-session-to-id mapping at a restart and bind each
+  surviving native session again. `valid` cannot observe this, because the
+  earlier incarnation's sessions are gone. The restart fixture now shows A
+  reissued as 202.
+- **Finding 3, delegation invariants in `valid`.** New helpers `holder_valid`,
+  `entry_lookup`, `edge_valid`, and `link_valid` encode the clauses below.
+  The header lists them and says why `resolve` still does not check `valid`.
+  The clauses, each with its own named check:
+  - the holder is bound once, and its caller's subject is the owner's
+    subject;
+  - a root's owner is exactly its holder's caller;
+  - a child's parent slot holds an entry;
+  - the child has the parent's owner, handle, and plan;
+  - the child's rights are a subset of the parent's;
+  - the child's expiry is no later than the parent's;
+  - the child is live only while its parent is live.
+
+  `PH-005 states built by delegation and retirement satisfy valid` checks
+  that the transitions preserve them.
+- **Finding 4, named literals.** New public constants: `first_slot()` (1),
+  `root_parent()` (0), and `no_id()` (0). They are used in `empty`,
+  `commit_restart`, `allocated`, `sessions_valid`, `max_session`,
+  `parent_of`, `is_root`, and `mint`. The only bare literals left are the
+  constant bodies, the revision start `0n`, the `1n+` counter increments, and
+  the `0n` fuel pattern.
+- **Finding 5, distinct fixtures.**
+  - A hand-built, valid seed (a supervisor session at 200, slot counter at
+    11) makes sessions 201 to 210 and slots 11 to 15. Host is 37, foreign host
+    38, and incarnations 60 to 62. Rights are 6, 4, and 7. Subjects are 21 to
+    23.
+  - Reference words are derived from the named fixtures (`word`,
+    `wire_ref`), and the hard-coded `7n` next-slot values are gone.
+  - One token-varied caller (`caller_a_other_token`, the twin session) was
+    added.
+  - The remaining overlaps are the brief's restart case (slot 1 at
+    generation 1) and generations 1 and 2.
+- **Nit 6:** each step helper carries its own "Implementation helper" marker.
+- **Nit 7:** each `Ambiguous` branch in `m_session`, `d_target`, and `t_live`,
+  and each `NoSession`/`ManySessions` branch in `delegable_lookup`, now has
+  the comment "Unreachable ...; kept for totality".
+
+Check renamed: `PH-003 mint records a root entry owned by the session's caller subject`
+is now `PH-003 mint records a root entry owned by the session's authenticated caller`.
+The owner is now the whole caller.
+
+New checks (16):
+- the five ruling checks listed under Finding 1;
+- `PH-005 states built by delegation and retirement satisfy valid`;
+- `PH-002 valid rejects an entry whose owner's subject is not its holder's`;
+- `PH-002 valid rejects a root entry whose owner is not exactly its holder's caller`;
+- `PH-005 valid rejects a child whose parent slot holds no entry`;
+- `PH-005 valid rejects a child with rights outside its parent's`;
+- `PH-005 valid rejects a child expiring after its parent`;
+- `PH-005 valid rejects a child with another plan than its parent`;
+- `PH-005 valid rejects a child with another handle than its parent`;
+- `PH-005 valid rejects a child with another owner than its parent`;
+- `PH-004 valid rejects a live child of a retired parent`;
+- `PH-004 valid rejects two sessions under one id that holds no entry`.
+
+The suite is now 92 checks (`HostIdentity: 92 checks passed`). The
+traceability lists all 92 exactly once (the sorted diff is empty).
+
+### Removal map, round 1
+
+I updated the scratch mutation script for the changed code and added 14
+mutants for the new branches, 69 in all. Every one was killed. The first run
+found two gaps, and each was closed:
+- Uniqueness removed from `sessions_valid` survived. The new `holder_valid`
+  also rejected the duplicate, because that session held an entry. Added
+  `PH-004 valid rejects two sessions under one id that holds no entry`.
+- The holder-subject clause removed survived. The fixture also broke the
+  root-exact clause. `foreign_owner` is now a delegated child held by B, so
+  only the subject clause rejects it.
+
+New mutants and their first failing check:
+
+| Mutant | First failing check |
+| --- | --- |
+| resolve returns presenting session's caller | `PH-005 the child delegated to a session with another token resolves there with the owner's caller` |
+| holder by subject | `PH-003 another session of the same subject and token presenting the root's reference denied NotHolder` |
+| delegate requires whole caller | `PH-005 delegation to a same-subject session with another token records that session as holder and keeps the owner's caller` |
+| delegate holder is delegator | `PH-005 delegate records a child with the same plan, narrower rights, and a shorter lifetime` |
+| mint owner token dropped | `PH-002 bind_session records the authenticated caller under a monitor-allocated id` |
+| valid holder subject | `PH-002 valid rejects an entry whose owner's subject is not its holder's` |
+| valid root owner exact | `PH-002 valid rejects a root entry whose owner is not exactly its holder's caller` |
+| valid parent exists | `PH-005 valid rejects a child whose parent slot holds no entry` |
+| valid child owner | `PH-005 valid rejects a child with another owner than its parent` |
+| valid child handle | `PH-005 valid rejects a child with another handle than its parent` |
+| valid child plan | `PH-005 valid rejects a child with another plan than its parent` |
+| valid child rights | `PH-005 valid rejects a child with rights outside its parent's` |
+| valid child expiry | `PH-005 valid rejects a child expiring after its parent` |
+| valid child live | `PH-004 valid rejects a live child of a retired parent` |
+
+The 55 earlier mutants, with patterns updated where the code moved, still
+fail the same named checks, except where a new, earlier check now fails first.
+
+### Verification after the fixes
+
+Count: 937 PASS (782 + 63 + 92). This task now adds 92. None of the 782
+pre-existing PASS lines is missing, and no PASS line is duplicated. No count
+pin was touched.
+
+- `bend Tests.bend` (JS): exit 0, 937 PASS. The last lines are
+  `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers`
+  and `ALL LIBRARY TESTS PASSED`.
+- Native CPU run (`--threads 4 --gpu off`): exit 0, 937 PASS. Its PASS lines
+  are identical, in order, to the JS run's. This is not a GPU test.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+  The law `identity_denied_preserves_state` still checks, and LAWS.bend and
+  PROOF.bend are unchanged in this round. `--verdict` is still unavailable
+  because Lean is absent.
+- OpenSpec 1.16.0 strict: `Totals: 44 passed, 0 failed (44 items)`.

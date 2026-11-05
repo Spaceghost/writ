@@ -17,3 +17,8 @@
 2026-11-05T03:26:21Z	implementer	task 2: law added to LAWS.bend and PROOF.bend, PROOF ALL PROOFS CHECK; Tests.bend registration added; JS and native suites running; writing traceability
 2026-11-05T03:28:18Z	implementer	task 2: heartbeat: traceability and tasks.md 1.2 written, openspec strict 44 passed; report drafted; waiting on JS and native suites
 2026-11-05T03:29:20Z	implementer	task 2: JS and native 921 PASS (782 + 139; this task 76), PASS lines identical, 0 pre-existing missing; PROOF ALL PROOFS CHECK; --verdict unavailable (no lean); report complete; committing
+2026-11-05T03:29:46Z	controller	task 2 reported; rulings; reviewer dispatched
+2026-11-05T03:35:59Z	controller	review: holder must be the session, not the subject (ruling); fix round 1 dispatched
+2026-11-05T03:37:17Z	implementer	task 2 fix round 1: read task-2-review.md and the controller holder ruling; applying finding 1 per ruling and minor findings 2-5 (nits 6-7)
+2026-11-05T03:43:26Z	implementer	task 2 fix round 1: holder ruling applied (owner is the minting caller, resolve reports it), valid gains holder and delegation clauses, literals named, fixtures distinct; HostIdentity 92 checks standalone; 69 mutants all killed; running suites
+2026-11-05T03:46:43Z	implementer	task 2 fix round 1: JS and native 937 PASS (782 + 63 + 92), identical, 0 missing; PROOF ALL PROOFS CHECK; openspec 44 passed; report section appended; committing

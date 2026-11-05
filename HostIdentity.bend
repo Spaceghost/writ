@@ -15,26 +15,58 @@ import ./Transfer.bend as T
 # No field is ever a value a request claims. A wire `Ref` is a description
 # that `resolve` checks against this table; it is never a credential, and a
 # wire `ClaimedSubject` is never an input to any transition here, so the
-# effective subject always comes from `Session.caller`, which only
-# `bind_session` sets. Public Data records are a model, not unforgeable
-# capabilities: `valid` checks structure only and does not authenticate the
-# supplied state.
+# effective caller always comes from monitor state: `Entry.owner`, copied
+# from the minting session's `Session.caller`, which only `bind_session`
+# sets. Public Data records are a model, not unforgeable capabilities:
+# `valid` checks structure only and does not authenticate the supplied state.
+#
+# Host obligation (section 2): session ids are unique within an incarnation
+# only. `restart` drops every session and `bind_session` issues ids from 1
+# again, so the adapter must discard every native-session-to-id mapping at a
+# restart and bind each surviving native session again; a mapping kept across
+# a restart would let a pre-restart native session act as the new session
+# that reuses its id. `valid` cannot observe this, because the earlier
+# incarnation's sessions are no longer in the state.
+#
+# Holder ruling (controller, PH-002 to PH-005): an entry's holder is the
+# session the monitor bound it to (that session's token and subject together,
+# as the monitor recorded them), not the subject alone. So (1) a reference
+# presented on any other session is denied NotHolder, even when that session
+# has the same subject; (2) delegation targets one session, the child's holder
+# is exactly that session, and the child keeps the parent's effective caller
+# (`owner`), so a target with a different subject is denied SubjectChanged;
+# (3) another session of the same subject reaches the entry only through an
+# explicit delegation with narrowed rights and lifetime, never by presenting
+# the parent's reference. Reason: if holding were by subject, any session of
+# a subject would hold ambient authority over every other session's
+# references, which is the transfer PH-004 forbids.
 #
 # Edge direction: HostWire decode -> `resolve` / `delegate` (with the native
 # session the message arrived on) -> the monitor's Writ checks. Parent edges
 # point from a delegated child entry to the entry it was delegated from
-# (`Entry.parent`); a root entry has parent 0, which is never a slot.
+# (`Entry.parent`); a root entry has parent `root_parent()` (0), which is
+# never a slot.
 #
 # Invariants (`valid`):
 # - every session id is nonzero and names one session, and every session's
 #   incarnation is the state's incarnation;
 # - every entry's slot is nonzero, below `next_slot`, and names one entry, so
 #   at most one live entry exists per slot;
-# - every entry's holder is a known session;
-# - every parent link is 0 (a root) or names a lower slot.
+# - every entry's holder is a known session whose caller subject is the
+#   entry owner's subject, and a root entry's owner is exactly its holder's
+#   caller (subject and token);
+# - every parent link is `root_parent()` or names a lower slot that holds an
+#   entry, and a delegated child has its parent's owner, handle, and plan,
+#   rights that are a subset of the parent's, an expiry no later than the
+#   parent's, and is live only while its parent is live.
+# These delegation clauses restate what `delegate` and `retire` maintain, so
+# a hand-built state that widens a child is rejected by every mutating
+# transition; `resolve` does not check `valid` (see Failure behavior) and
+# relies on the table being one this monitor committed.
 # Slots are never reused within an incarnation: `mint` and `delegate`
 # allocate `next_slot`, and `retire` keeps the entry (not live, generation
-# advanced). After `restart` the numbering starts again at 1 under a strictly
+# advanced). After `restart` the numbering starts again at `first_slot()`
+# (1) under a strictly
 # greater incarnation, so an old reference differs in its incarnation.
 #
 # Resolution order (`resolve`, and the parent step of `delegate`), first
@@ -60,11 +92,15 @@ import ./Transfer.bend as T
 # session's correct reference passes step 6 and is denied at step 7; only a
 # delegation edge naming it lets it act.
 #
-# Delegation rulings. (a) The child copies the parent's plan, owner, and
-# Frontend handle exactly; `delegate` has no plan parameter, so a changed plan
-# cannot be expressed as an attenuation. (b) The target session's caller
-# subject must equal the entry owner, or SubjectChanged: a changed subject
-# needs a fresh `mint` after complete admission and is never a delegation.
+# Delegation rulings. (a) The child copies the parent's plan, owner (the
+# effective caller), and Frontend handle exactly; `delegate` has no plan
+# parameter, so a changed plan cannot be expressed as an attenuation. (b) The
+# target session's caller subject must equal the owner's subject, or
+# SubjectChanged: a changed subject needs a fresh `mint` after complete
+# admission and is never a delegation. A same-subject target with another
+# token is admitted; it becomes the holder, while the effective caller that
+# `resolve` reports stays the owner's, so the token is never changed by
+# delegation either.
 # (c) The delegating session must be `delegable`; worker sessions in the first
 # topology are bound non-delegable, so a worker cannot re-delegate its inputs.
 # (d) Rights must be a subset of the parent's, and the child's expiry
@@ -92,7 +128,7 @@ import ./Transfer.bend as T
 # Public entry points: `empty`, `valid`, `bind_session`, `mint`, `resolve`,
 # `delegate`, `retire`, `restart`; the types `Origin`, `Session`, `Entry`,
 # `Sessions`, `Entries`, `State`, `Error`, `Change`, `Resolution`; the named
-# constant `first_generation`; and the accessors and `Error.equal` marked
+# constants `first_generation`, `first_slot`, `root_parent`, and `no_id`; and the accessors and `Error.equal` marked
 # "Public". Every other def is an implementation helper.
 
 # --- Types -------------------------------------------------------------------
@@ -113,12 +149,13 @@ type Session is Data:
   Session{id: Nat, incarnation: Nat, caller: F.Caller, origin: Origin, delegable: Bool}
 
 # One table entry. `holder` is the session id allowed to present it, `owner`
-# the Writ subject it was minted for, `handle` the Frontend handle id the
+# the authenticated caller (Writ subject and token) of the session it was
+# minted for, which is the effective caller of every use, `handle` the Frontend handle id the
 # monitor already opened, `plan` the exact plan, `rights` the protocol rights,
 # `expires` the exclusive expiry, `parent` 0 for a root or the slot it was
 # delegated from, and `live` false once retired.
 type Entry is Data:
-  Entry{slot: Nat, generation: Nat, holder: Nat, owner: Nat, handle: Nat,
+  Entry{slot: Nat, generation: Nat, holder: Nat, owner: F.Caller, handle: Nat,
     plan: T.Plan, rights: U32, expires: Nat, parent: Nat, live: Bool}
 
 type Sessions is Data:
@@ -161,8 +198,8 @@ type Change is Data:
   Rejected{state: State, reason: Error}
   Accepted{state: State, issued: Nat}
 
-# The read-only result of `resolve`: the entry and the presenting session's
-# authenticated caller, or one reason.
+# The read-only result of `resolve`: the entry and its effective caller (the
+# entry's owner, as the monitor recorded it), or one reason.
 type Resolution is Data:
   Resolved{entry: Entry, caller: F.Caller}
   Unresolved{reason: Error}
@@ -185,10 +222,23 @@ type SessionLookup is Data:
 def first_generation() -> Nat:
   1n
 
+# The first slot of every incarnation.
+def first_slot() -> Nat:
+  1n
+
+# The parent link of a root entry. It is never an allocated slot.
+def root_parent() -> Nat:
+  0n
+
+# The number never allocated as a slot or session id, so an all-zero record
+# names nothing.
+def no_id() -> Nat:
+  0n
+
 # Public entry point: an empty table for monitor instance `host` in
 # `incarnation`. Slot and session id 0 are never allocated.
 def empty(host: Nat, incarnation: Nat) -> State:
-  State{0n, host, incarnation, 1n, NoSessions{}, NoEntries{}}
+  State{0n, host, incarnation, first_slot(), NoSessions{}, NoEntries{}}
 
 # --- Accessors and equality (public) ------------------------------------------
 
@@ -252,7 +302,7 @@ def Resolution.entry(resolution: Resolution) -> Maybe<&2, Entry>:
     case Unresolved{_}:
       None{}
 
-# Public accessor: the presenting session's authenticated caller.
+# Public accessor: the effective caller (the entry's owner).
 def Resolution.caller(resolution: Resolution) -> Maybe<&2, F.Caller>:
   match resolution:
     case Resolved{_, caller}:
@@ -328,6 +378,12 @@ def caller_subject(caller: F.Caller) -> Nat:
     case F.Caller{subject, _}:
       subject
 
+# Public: whether two callers are the same subject with the same token.
+def caller_equal(a: F.Caller, b: F.Caller) -> Bool:
+  match a b:
+    case F.Caller{as, at} F.Caller{bs, bt}:
+      Nat.is_eq(as, bs) && T.CodeId.equal(at, bt)
+
 def entry_slot(entry: Entry) -> Nat:
   match entry:
     case Entry{slot, _, _, _, _, _, _, _, _, _}:
@@ -343,10 +399,20 @@ def entry_holder(entry: Entry) -> Nat:
     case Entry{_, _, holder, _, _, _, _, _, _, _}:
       holder
 
-def entry_owner(entry: Entry) -> Nat:
+def entry_owner(entry: Entry) -> F.Caller:
   match entry:
     case Entry{_, _, _, owner, _, _, _, _, _, _}:
       owner
+
+def entry_handle(entry: Entry) -> Nat:
+  match entry:
+    case Entry{_, _, _, _, handle, _, _, _, _, _}:
+      handle
+
+def entry_plan(entry: Entry) -> T.Plan:
+  match entry:
+    case Entry{_, _, _, _, _, plan, _, _, _, _}:
+      plan
 
 def entry_rights(entry: Entry) -> U32:
   match entry:
@@ -432,6 +498,7 @@ def session_at(sessions: Sessions, +id: Nat) -> SessionLookup:
     case Sessions{+session, rest}:
       count_session(Nat.is_eq(session_id(session), id), session, session_at(rest, id))
 
+# Implementation helper: whether a session id is bound.
 def session_exists(sessions: Sessions, +id: Nat) -> Bool:
   match sessions:
     case NoSessions{}:
@@ -439,6 +506,7 @@ def session_exists(sessions: Sessions, +id: Nat) -> Bool:
     case Sessions{session, rest}:
       Nat.is_eq(session_id(session), id) || session_exists(rest, id)
 
+# Implementation helper: whether a slot holds an entry.
 def slot_exists(entries: Entries, +slot: Nat) -> Bool:
   match entries:
     case NoEntries{}:
@@ -446,6 +514,7 @@ def slot_exists(entries: Entries, +slot: Nat) -> Bool:
     case Entries{entry, rest}:
       Nat.is_eq(entry_slot(entry), slot) || slot_exists(rest, slot)
 
+# Implementation helper: choose a number.
 def pick_nat(ok: Bool, chosen: Nat, otherwise: Nat) -> Nat:
   match ok:
     case True{}:
@@ -457,21 +526,21 @@ def pick_nat(ok: Bool, chosen: Nat, otherwise: Nat) -> Nat:
 def larger(+a: Nat, +b: Nat) -> Nat:
   pick_nat(Nat.is_gt(a, b), a, b)
 
-# Implementation helper: the largest session id, or 0 for none.
+# Implementation helper: the largest session id, or `no_id()` for none.
 def max_session(sessions: Sessions) -> Nat:
   match sessions:
     case NoSessions{}:
-      0n
+      no_id()
     case Sessions{session, rest}:
       larger(session_id(session), max_session(rest))
 
-# Implementation helper: the parent slot of the entry at `slot`, or 0 when
-# there is none. `valid` gives each slot one entry, so the first match is the
-# only match.
+# Implementation helper: the parent slot of the entry at `slot`, or
+# `root_parent()` when there is none. `valid` gives each slot one entry, so
+# the first match is the only match.
 def parent_of(entries: Entries, +slot: Nat) -> Nat:
   match entries:
     case NoEntries{}:
-      0n
+      root_parent()
     case Entries{+entry, rest}:
       pick_nat(Nat.is_eq(entry_slot(entry), slot), entry_parent(entry), parent_of(rest, slot))
 
@@ -479,7 +548,7 @@ def parent_of(entries: Entries, +slot: Nat) -> Nat:
 
 # Implementation helper: an allocated number is positive and below its counter.
 def allocated(+n: Nat, next: Nat) -> Bool:
-  Nat.is_gt(n, 0n) && Nat.is_lt(n, next)
+  Nat.is_gt(n, no_id()) && Nat.is_lt(n, next)
 
 # Implementation helper: session ids are nonzero and unique, and every session
 # belongs to the current incarnation.
@@ -488,34 +557,85 @@ def sessions_valid(sessions: Sessions, +incarnation: Nat) -> Bool:
     case NoSessions{}:
       True{}
     case Sessions{+session, +rest}:
-      Nat.is_gt(session_id(session), 0n) && Bool.not(session_exists(rest, session_id(session)))
+      Nat.is_gt(session_id(session), no_id()) && Bool.not(session_exists(rest, session_id(session)))
         && Nat.is_eq(session_incarnation(session), incarnation) && sessions_valid(rest, incarnation)
 
-# Implementation helper: a parent link is a root (0) or names a lower slot,
-# so parent chains are acyclic and `retire`'s walk ends within `next_slot`.
-def parent_valid(+parent: Nat, slot: Nat) -> Bool:
-  Nat.is_eq(parent, 0n) || Nat.is_lt(parent, slot)
+# Implementation helper: whether `entry` is a root.
+def is_root(+entry: Entry) -> Bool:
+  Nat.is_eq(entry_parent(entry), root_parent())
+
+# Implementation helper: the holder is bound once, its caller subject is the
+# owner's subject, and a root's owner is exactly its holder's caller (subject
+# and token): a root is minted only for the session that holds it.
+def holder_valid(found: SessionLookup, +entry: Entry) -> Bool:
+  match found:
+    case OneSession{+session}:
+      Nat.is_eq(caller_subject(session_caller(session)), caller_subject(entry_owner(entry)))
+        && (Bool.not(is_root(entry)) || caller_equal(session_caller(session), entry_owner(entry)))
+    case NoSession{}:
+      False{}
+    case ManySessions{}:
+      False{}
+
+# Implementation helper: entry_lookup's choice.
+def choose_entry(ok: Bool, entry: Entry, rest: Maybe<&2, Entry>) -> Maybe<&2, Entry>:
+  match ok:
+    case True{}:
+      Some{entry}
+    case False{}:
+      rest
+
+# Implementation helper: the entry at `slot`. `valid` gives each slot one
+# entry, so the first match is the only match.
+def entry_lookup(entries: Entries, +slot: Nat) -> Maybe<&2, Entry>:
+  match entries:
+    case NoEntries{}:
+      None{}
+    case Entries{+entry, rest}:
+      choose_entry(Nat.is_eq(entry_slot(entry), slot), entry, entry_lookup(rest, slot))
+
+# Implementation helper: a delegated child against its parent entry. The
+# parent exists; the child has the parent's owner, handle, and plan, rights
+# that are a subset, an expiry no later, and is live only while the parent is.
+def edge_valid(found: Maybe<&2, Entry>, +child: Entry) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{+parent}:
+      caller_equal(entry_owner(child), entry_owner(parent))
+        && Nat.is_eq(entry_handle(child), entry_handle(parent))
+        && T.Plan.equal(entry_plan(child), entry_plan(parent))
+        && T.word_subset(entry_rights(child), entry_rights(parent))
+        && Nat.is_le(entry_expires(child), entry_expires(parent))
+        && (Bool.not(entry_live(child)) || entry_live(parent))
+
+# Implementation helper: a parent link is `root_parent()`, or names a lower
+# slot (so parent chains are acyclic and `retire`'s walk ends within
+# `next_slot`) whose entry the child is a valid delegation of.
+def link_valid(+entry: Entry, +all: Entries) -> Bool:
+  is_root(entry) || (Nat.is_lt(entry_parent(entry), entry_slot(entry))
+    && edge_valid(entry_lookup(all, entry_parent(entry)), entry))
 
 # Implementation helper: each entry's slot is allocated and names one entry
-# (so at most one live entry exists per slot), its holder is a known session,
-# and its parent link names a lower slot.
-def entries_valid(entries: Entries, +sessions: Sessions, +next: Nat) -> Bool:
+# (so at most one live entry exists per slot), its holder is valid, and its
+# parent link is valid against `all`, the complete entry list.
+def entries_valid(entries: Entries, +all: Entries, +sessions: Sessions, +next: Nat) -> Bool:
   match entries:
     case NoEntries{}:
       True{}
     case Entries{+entry, +rest}:
       allocated(entry_slot(entry), next) && Bool.not(slot_exists(rest, entry_slot(entry)))
-        && session_exists(sessions, entry_holder(entry))
-        && parent_valid(entry_parent(entry), entry_slot(entry))
-        && entries_valid(rest, sessions, next)
+        && holder_valid(session_at(sessions, entry_holder(entry)), entry)
+        && link_valid(entry, all)
+        && entries_valid(rest, all, sessions, next)
 
 # Public entry point: the structural invariant every mutating transition
 # requires of its input and preserves on success (clauses in the header). It
 # is total, checks shape only, and does not authenticate the state.
 def valid(state: State) -> Bool:
   match state:
-    case State{_, _, +incarnation, +next_slot, +sessions, entries}:
-      sessions_valid(sessions, incarnation) && entries_valid(entries, sessions, next_slot)
+    case State{_, _, +incarnation, +next_slot, +sessions, +entries}:
+      sessions_valid(sessions, incarnation) && entries_valid(entries, entries, sessions, next_slot)
 
 # Implementation helper: the mutating transitions' first gate.
 def current(+state: State, expected_revision: Nat) -> Bool:
@@ -523,24 +643,26 @@ def current(+state: State, expected_revision: Nat) -> Bool:
 
 # --- Resolution (public: resolve) ----------------------------------------------
 
-# Implementation helper, step 8: exclusive expiry.
-def r_expiry(ok: Bool, entry: Entry, session: Session) -> Resolution:
+# Implementation helper, step 8: exclusive expiry. The effective caller is the
+# entry's owner, never the presenting session's own caller: delegation moves
+# the holder but cannot change the caller a use acts as.
+def r_expiry(ok: Bool, +entry: Entry) -> Resolution:
   match ok:
     case True{}:
-      Resolved{entry, session_caller(session)}
+      Resolved{entry, entry_owner(entry)}
     case False{}:
       Unresolved{Expired{}}
 
 # Implementation helper: whether `entry` was delegated to session `id`, that
 # is, a delegation edge (nonzero parent) names it as holder.
 def delegated_to(+entry: Entry, +id: Nat) -> Bool:
-  Nat.is_eq(entry_holder(entry), id) && Nat.is_ne(entry_parent(entry), 0n)
+  Nat.is_eq(entry_holder(entry), id) && Bool.not(is_root(entry))
 
 # Implementation helper, step 7 for an Inherited or Transferred session.
 def r_edge(ok: Bool, reason: Error, +entry: Entry, +session: Session, +now: Nat) -> Resolution:
   match ok:
     case True{}:
-      r_expiry(Nat.is_lt(now, entry_expires(entry)), entry, session)
+      r_expiry(Nat.is_lt(now, entry_expires(entry)), entry)
     case False{}:
       Unresolved{reason}
 
@@ -549,7 +671,7 @@ def r_edge(ok: Bool, reason: Error, +entry: Entry, +session: Session, +now: Nat)
 def r_origin(origin: Origin, +entry: Entry, +session: Session, +now: Nat) -> Resolution:
   match origin:
     case Authenticated{}:
-      r_expiry(Nat.is_lt(now, entry_expires(entry)), entry, session)
+      r_expiry(Nat.is_lt(now, entry_expires(entry)), entry)
     case Inherited{_}:
       r_edge(delegated_to(entry, session_id(session)), InheritedEndpoint{}, entry, session, now)
     case Transferred{_}:
@@ -639,9 +761,9 @@ def r_revision(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, +now: Nat) -
 
 # Public entry point, read-only: resolve wire reference `ref`, presented on
 # the native session the adapter identified as `session`, at monitor time
-# `now`, in the documented order. On success it returns the entry and that
-# session's authenticated caller, which is the effective subject; no claimed
-# subject is an input.
+# `now`, in the documented order. On success it returns the entry and its
+# effective caller, the owner the monitor recorded at mint (for a root, the
+# holder's own caller); no claimed subject is an input.
 def resolve(+state: State, expected_revision: Nat, +session: Nat, +ref: W.Ref, +now: Nat) -> Resolution:
   r_revision(Nat.is_eq(revision(state), expected_revision), state, session, ref, now)
 
@@ -664,6 +786,7 @@ def commit_session(+state: State, +id: Nat, caller: F.Caller, origin: Origin, de
       State{1n+revision, host, incarnation, next_slot,
         Sessions{Session{id, incarnation, caller, origin, delegable}, sessions}, entries}
 
+# Implementation helper: bind_session's origin step.
 def b_origin(ok: Bool, +state: State, caller: F.Caller, origin: Origin, delegable: Bool) -> Change:
   match ok:
     case True{}:
@@ -672,6 +795,7 @@ def b_origin(ok: Bool, +state: State, caller: F.Caller, origin: Origin, delegabl
     case False{}:
       Rejected{state, UnknownSession{}}
 
+# Implementation helper: bind_session's gate.
 def b_gate(ok: Bool, +state: State, caller: F.Caller, +origin: Origin, delegable: Bool) -> Change:
   match ok:
     case True{}:
@@ -695,28 +819,32 @@ def commit_entry(+state: State, entry: Entry) -> State:
     case State{revision, host, incarnation, next_slot, sessions, entries}:
       State{1n+revision, host, incarnation, 1n+next_slot, sessions, Entries{entry, entries}}
 
+# Implementation helper: mint's origin step.
 def m_origin(origin: Origin, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
-    expires: Nat, owner: Nat) -> Change:
+    expires: Nat, owner: F.Caller) -> Change:
   match origin:
     case Authenticated{}:
       Accepted{commit_entry(state, Entry{next_slot(state), first_generation(), session, owner, handle,
-        plan, rights, expires, 0n, True{}}), next_slot(state)}
+        plan, rights, expires, root_parent(), True{}}), next_slot(state)}
     case Inherited{_}:
       Rejected{state, InheritedEndpoint{}}
     case Transferred{_}:
       Rejected{state, TransferredEndpoint{}}
 
+# Implementation helper: mint's session lookup.
 def m_session(found: SessionLookup, +state: State, +session: Nat, handle: Nat, plan: T.Plan,
     rights: U32, expires: Nat) -> Change:
   match found:
     case NoSession{}:
       Rejected{state, UnknownSession{}}
     case ManySessions{}:
+      # Unreachable from a valid state; kept for totality.
       Rejected{state, Ambiguous{}}
     case OneSession{+bound}:
       m_origin(session_origin(bound), state, session, handle, plan, rights, expires,
-        caller_subject(session_caller(bound)))
+        session_caller(bound))
 
+# Implementation helper: mint's gate.
 def m_gate(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
     expires: Nat) -> Change:
   match ok:
@@ -727,8 +855,8 @@ def m_gate(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, ri
 
 # Public entry point: a root entry, held by `session`, for Frontend handle
 # `handle` that the monitor has already opened after complete admission of
-# `plan`. The owner is the session's authenticated caller subject, never a
-# parameter. Only an Authenticated session may hold a root entry. Issues the
+# `plan`. The owner is the session's authenticated caller (subject and
+# token), never a parameter. Only an Authenticated session may hold a root entry. Issues the
 # new slot.
 def mint(+state: State, expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan,
     rights: U32, expires: Nat) -> Change:
@@ -743,6 +871,7 @@ def child_of(+slot: Nat, parent: Entry, target: Nat, rights: U32, expires: Nat) 
     case Entry{parent_slot, _, _, owner, handle, plan, _, _, _, _}:
       Entry{slot, first_generation(), target, owner, handle, plan, rights, expires, parent_slot, True{}}
 
+# Implementation helper: delegate's lifetime step.
 def d_lifetime(ok: Bool, +state: State, entry: Entry, target: Nat, rights: U32, expires: Nat) -> Change:
   match ok:
     case True{}:
@@ -750,6 +879,7 @@ def d_lifetime(ok: Bool, +state: State, entry: Entry, target: Nat, rights: U32, 
     case False{}:
       Rejected{state, WidenedLifetime{}}
 
+# Implementation helper: delegate's rights step.
 def d_rights(ok: Bool, +state: State, +entry: Entry, target: Nat, rights: U32, +expires: Nat) -> Change:
   match ok:
     case True{}:
@@ -757,6 +887,7 @@ def d_rights(ok: Bool, +state: State, +entry: Entry, target: Nat, rights: U32, +
     case False{}:
       Rejected{state, WidenedRights{}}
 
+# Implementation helper: delegate's subject step.
 def d_subject(ok: Bool, +state: State, +entry: Entry, target: Nat, +rights: U32, expires: Nat) -> Change:
   match ok:
     case True{}:
@@ -764,15 +895,17 @@ def d_subject(ok: Bool, +state: State, +entry: Entry, target: Nat, +rights: U32,
     case False{}:
       Rejected{state, SubjectChanged{}}
 
+# Implementation helper: delegate's target lookup.
 def d_target(found: SessionLookup, +state: State, +entry: Entry, target: Nat, rights: U32,
     expires: Nat) -> Change:
   match found:
     case NoSession{}:
       Rejected{state, UnknownSession{}}
     case ManySessions{}:
+      # Unreachable from a valid state; kept for totality.
       Rejected{state, Ambiguous{}}
     case OneSession{bound}:
-      d_subject(Nat.is_eq(caller_subject(session_caller(bound)), entry_owner(entry)), state, entry,
+      d_subject(Nat.is_eq(caller_subject(session_caller(bound)), caller_subject(entry_owner(entry))), state, entry,
         target, rights, expires)
 
 # Implementation helper: whether session `id` is bound once and delegable.
@@ -781,10 +914,13 @@ def delegable_lookup(found: SessionLookup) -> Bool:
     case OneSession{session}:
       session_delegable(session)
     case NoSession{}:
+      # Unreachable after the parent re-resolved; kept for totality.
       False{}
     case ManySessions{}:
+      # Unreachable from a valid state; kept for totality.
       False{}
 
+# Implementation helper: delegate's delegable step.
 def d_delegable(ok: Bool, +state: State, +entry: Entry, +target: Nat, rights: U32, expires: Nat) -> Change:
   match ok:
     case True{}:
@@ -792,6 +928,7 @@ def d_delegable(ok: Bool, +state: State, +entry: Entry, +target: Nat, rights: U3
     case False{}:
       Rejected{state, NotDelegable{}}
 
+# Implementation helper: delegate's parent re-resolution.
 def d_resolved(resolution: Resolution, +state: State, +session: Nat, target: Nat, rights: U32,
     expires: Nat) -> Change:
   match resolution:
@@ -801,6 +938,7 @@ def d_resolved(resolution: Resolution, +state: State, +session: Nat, target: Nat
       d_delegable(delegable_lookup(session_at(sessions(state), session)), state, entry, target,
         rights, expires)
 
+# Implementation helper: delegate's gate.
 def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rights: U32,
     +lifetime: Nat, +now: Nat) -> Change:
   match ok:
@@ -814,7 +952,7 @@ def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rig
 # session `target` with `rights` until `now + lifetime`. The parent is
 # re-resolved in the full resolution order; then, in order: the delegating
 # session must be delegable (NotDelegable), the target must be bound
-# (UnknownSession), its caller subject must be the entry's owner
+# (UnknownSession), its caller subject must be the owner's subject
 # (SubjectChanged), rights must be a subset (WidenedRights), and the child's
 # expiry must not exceed the parent's (WidenedLifetime). The parent entry is
 # left unchanged. Issues the child's slot.
@@ -853,21 +991,25 @@ def retire_entries(entries: Entries, +all: Entries, +fuel: Nat, +target: Nat) ->
       Entries{doomed(entry_live(entry) && under(fuel, all, entry_slot(entry), target), entry),
         retire_entries(rest, all, fuel, target)}
 
+# Implementation helper: retire's commit.
 def commit_retire(state: State, +target: Nat) -> State:
   match state:
     case State{revision, host, incarnation, +next_slot, sessions, +entries}:
       State{1n+revision, host, incarnation, next_slot, sessions,
         retire_entries(entries, entries, next_slot, target)}
 
+# Implementation helper: retire's live step.
 def t_live(found: EntryLookup, +state: State, +slot: Nat) -> Change:
   match found:
     case NoEntry{}:
       Rejected{state, Retired{}}
     case ManyEntries{}:
+      # Unreachable from a valid state; kept for totality.
       Rejected{state, Ambiguous{}}
     case OneEntry{_}:
       Accepted{commit_retire(state, slot), slot}
 
+# Implementation helper: retire's forged step.
 def t_forged(ok: Bool, +state: State, +slot: Nat) -> Change:
   match ok:
     case True{}:
@@ -875,6 +1017,7 @@ def t_forged(ok: Bool, +state: State, +slot: Nat) -> Change:
     case False{}:
       Rejected{state, Forged{}}
 
+# Implementation helper: retire's gate.
 def t_gate(ok: Bool, +state: State, +slot: Nat) -> Change:
   match ok:
     case True{}:
@@ -896,8 +1039,9 @@ def retire(+state: State, expected_revision: Nat, +slot: Nat) -> Change:
 def commit_restart(state: State, successor: Nat) -> State:
   match state:
     case State{revision, host, _, _, _, _}:
-      State{1n+revision, host, successor, 1n, NoSessions{}, NoEntries{}}
+      State{1n+revision, host, successor, first_slot(), NoSessions{}, NoEntries{}}
 
+# Implementation helper: restart's incarnation step.
 def s_newer(ok: Bool, +state: State, +successor: Nat) -> Change:
   match ok:
     case True{}:
@@ -905,6 +1049,7 @@ def s_newer(ok: Bool, +state: State, +successor: Nat) -> Change:
     case False{}:
       Rejected{state, StaleIncarnation{}}
 
+# Implementation helper: restart's gate.
 def s_gate(ok: Bool, +state: State, +successor: Nat) -> Change:
   match ok:
     case True{}:
