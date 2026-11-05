@@ -58,3 +58,29 @@ A first attempt at the Bend runs used `/usr/bin/time`, which is not installed (r
 
 1. UL-008 executed column: I kept the literal "none" as its first word. The checklist work follows, labelled as work that does not meet the requirement, because the brief asks that rows which gained executed evidence in 3.2 cite the file and section. If the reviewer wants the column to be the bare word "none", that checklist text can move to the gap column unchanged.
 2. The `PROOF.bend` result has no `--verdict`, because no Lean toolchain is on this host.
+
+## Fix round (final-review.md)
+
+Status: DONE. This round changes text only. No boots or Bend runs were repeated, and no script logic changed.
+
+Blocking findings:
+
+- **B1.** `hosts/unikraft/scripts/env.sh` and `verification/unikernel-kvm.txt` ("Fix round 2"): the accepted limit now says what the rule actually drops. That is an unterminated final program line whose text matches the timestamp form, whole or cut off (for example `[`, `[ 1`, `[    1.5` or `[    0.173610]`), or a timestamp followed by a prefix of the pm.c:69 text. NUL, escape and CR bytes are removed from the line before the match. Such a line would be dropped and counted as "dropped 1". The kvm.txt text adds that the drop cannot mask the QEMU status, the PASS count, the last-line check, the crash screen or the fault message.
+  - The env.sh self-test drop list gains `[ 1` and `[    1.5`, marked as coming from the review's rerun.
+  - The env.sh edit is comment-only: its non-comment lines are identical to HEAD (`diff` with comment lines removed), and `bash -n` passes.
+- **B2.** The tasks.md 3.3 note now reads "782 PASS lines (`^PASS[: ]`, as the check scripts count: 729 `PASS:` plus 53 `PASS ` lines)". I recounted on the saved output (sha256 fc3a08aa...): 729, 53 and 782. Correction to this report's "Results" item 1: the 782 lines match `^PASS[: ]`. They do not all begin with `PASS:`.
+- **B3.** `docs/UNIKERNELS.md`, Open bullet: "cause unknown" is replaced. The gpuexample "PM driver failed" line is now described as the same post-write guest run seen under KVM, now tolerated as a counted trailing fragment. It points to `unikernel-kvm.txt`, "Finding: the guest runs on after the exit-device write (KVM)", and to the halt follow-up.
+- **B4.** `hosts/unikraft/INVENTORY.md`:
+  - check-image.sh: "three `mktemp` files (plus `<first>.m` while masking)".
+  - check-fault.sh: "one `mktemp` file (plus `<it>.f` while filtering; not removed by the exit trap, so an interrupted run can leave it)".
+  - The optional trap change in check-fault.sh was not made, because this round is text only.
+
+Task 2 nits (`verification/unikernel-appliance-rules.md`):
+
+- UA-009 is labelled "met (document); scenario precondition partly met". The row quotes the spec's "a passing drill and corpus under KVM" and says the drill here is not UA-007's.
+- UA-003 adds: the fault record does not use the phrase "failed qualification".
+- The trusted-base section cites `Config.uk:78-79`.
+
+Not done: N1, N2, N4 and N5 (optional), and the UL-006 traceability row's older `:78`.
+
+OpenSpec 1.16.0 `validate --all --strict --no-interactive`, rerun after the edits: exit 0, `Totals: 44 passed, 0 failed (44 items)`. `git diff --stat master -- '*.bend'` is still empty.

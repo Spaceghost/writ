@@ -278,8 +278,14 @@ after the exit write (a cut-off timestamp, or the pm.c:69 line), counted every t
       operation: -5. Falling back on busy loop...";
   (c) nothing else.
 check-fault.sh drops its last program line only when it equals that fragment of the raw
-capture. Accepted limit: "[" alone (or "[" and spaces) cannot be told from program text by
-shape; (a) is what keeps a program line out. An uptime of 10000 s or more, or an empty
+capture. Accepted limit: an unterminated final program line whose text, after its NUL,
+escape and CR bytes are removed (writ_strip_serial), matches the timestamp form whole or
+cut off (for example "[", "[ 1", "[    1.5", "[    0.173610]"), or a timestamp followed by
+a prefix of the pm.c:69 text, cannot be told from a kernel fragment and would be dropped,
+always shown as "dropped 1"; (a) is what keeps a terminated program line out. The drop
+cannot mask the QEMU status, the PASS count, the corpus last-line check, the crash screen
+or the fault message (final review, docs/superpowers/records/2026-11-05-unikraft-closing/
+final-review.md, B1, which also saw "[ 1" and "[    1.5" dropped). An uptime of 10000 s or more, or an empty
 unterminated last line (NUL or CR only), is not dropped and so fails the check (the safe
 direction).
 

@@ -42,3 +42,6 @@
 2026-11-05T01:41:28Z	implementer	tasks.md 3.3 checked, traceability UL-007/UL-008 and footer, UNIKERNELS.md KVM bullet and final Open list; OpenSpec 1.16.0 strict rerun on the edited tree: 44 passed, 0 failed
 2026-11-05T01:41:59Z	implementer	task 3 report written; committing
 2026-11-05T01:42:18Z	controller	task 3 reported; final whole-branch review dispatched
+2026-11-05T01:49:16Z	controller	final review: four wording fixes; fix round dispatched
+2026-11-05T01:49:21Z	implementer	final-review fix round started (B1-B4, three task 2 nits)
+2026-11-05T01:50:33Z	implementer	fix round: B1 (env.sh comment, kvm.txt limit), B2 (tasks.md 3.3 ^PASS[: ] 729+53), B3 (UNIKERNELS.md gpuexample to KVM finding), B4 (INVENTORY temp files), nits UA-009/UA-003/Config.uk:78-79; OpenSpec strict 44 passed, 0 failed; committing

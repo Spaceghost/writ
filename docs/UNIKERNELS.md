@@ -180,9 +180,11 @@ Open bullets below); the closing lane (2026-11-05) is the last planned Unikraft 
   helper thread; a program that ignored SIGTERM would run until the harness timeout); statuses
   above 108 share 0x7f (QEMU 255); `timeout`'s own 125 and 127 equal the QEMU codes of
   program statuses 46 and 47; one gpuexample boot (of three) printed Unikraft's "PM driver
-  failed the operation: -5" after the exit hook's port write, before QEMU exited with 33,
-  cause unknown ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt),
-  Task 3 rerun); more lanes (2.4: a second lane runs on vCPU 0 only, since Unikraft 0.21.0
+  failed the operation: -5" after the exit hook's port write, before QEMU exited with 33
+  ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt), Task 3 rerun):
+  the same post-write guest run seen under KVM, now tolerated as a counted trailing
+  fragment ([unikernel-kvm.txt](../verification/unikernel-kvm.txt), "Finding: the guest
+  runs on after the exit-device write (KVM)"; the halt follow-up below); more lanes (2.4: a second lane runs on vCPU 0 only, since Unikraft 0.21.0
   never calls `uk_lcpu_start`, and every `--threads 2` run, with the shipped template as
   well, ends in the `alloc.c @ 198` shutdown assertion, QEMU 253, so the corpus was not
   run on two lanes; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),

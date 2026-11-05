@@ -40,9 +40,11 @@ writ_strip_serial() {
 # is the start of a timestamped kernel line: a nonempty prefix of Unikraft's timestamp
 # "[%5lu.%06lu] " (a 5-wide field of spaces then digits, with at least one space, i.e.
 # an uptime below 10000 s; ".", exactly 6 digits, "] "), or that complete timestamp
-# followed by a prefix of the pm.c:69 text above. Accepted limit: "[" alone, or "[" and
-# spaces, cannot be told from program text; condition (a) below is what keeps a program
-# line out.
+# followed by a prefix of the pm.c:69 text above. Accepted limit: an unterminated final
+# program line whose text, after its NUL, escape and CR bytes are removed, is itself such
+# a prefix, whole or cut off (e.g. "[", "[ 1", "[    1.5", "[    0.173610]"), cannot be
+# told from a kernel fragment and would be dropped (counted, "dropped 1"); condition (a)
+# below is what keeps a terminated program line out.
 # writ_kernel_fragment <raw capture>: prints the stripped last line and returns true only
 # when (a) the capture does not end with a newline (the guest stopped mid-line; a
 # program's lines are printed with a terminator) and (b) that last line, after
@@ -51,8 +53,9 @@ writ_strip_serial() {
 # the check then fails (the safe direction). Callers drop at most that one line and print
 # "kernel shutdown fragment after exit: dropped <0|1>" on every run.
 # Self-test (run in the Task 1 report, fix round 2), text only, expected result:
-#   drop: "[", "[   ", "[    2", "[    2.27112", "[    2.271123] ",
+#   drop: "[", "[   ", "[ 1", "[    1.5", "[    2", "[    2.27112", "[    2.271123] ",
 #         "[    0.117238] ERR:  [li", the whole pm.c:69 line above
+#         ("[ 1" and "[    1.5" from the final review's rerun, not the 26-case run)
 #   keep: "[1.5]", "[12", "[1", "[5.25]", "[ 1.0]", "[3.0] E", "[1, 2]", "hi",
 #         "[    0.1] ERR:", "[    0.173610] CRIT: x", the whole pm.c line plus "x"
 #   and as a capture: "[" or "[1.5]" with a final newline is kept.
