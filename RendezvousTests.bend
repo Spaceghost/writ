@@ -12,11 +12,16 @@ import ./HostIdentity.bend as HI
 import ./HostPrimitives.bend as HP
 import ./Ledger.bend as L
 import ./Guard.bend as Guard
+import ./Core.bend as C
+import ./Backplane.bend as B
+import ./DataOS.bend as OS
+import ./BackplaneTests.bend as BF
+import ./FacadeTests.bend as FT
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
 # Sections follow the change's tasks; this file holds `offers` (1.1),
 # `approvals` (1.2, first half), `selection` (1.2, second half), `trials`
-# (1.3) and `dispatch` (1.4). Every denial check asserts the exact Error
+# (1.3), `dispatch` (1.4) and `integration` (1.5). Every denial check asserts the exact Error
 # and that the returned state equals the supplied one, field by field,
 # through `denied`.
 #
@@ -2141,6 +2146,126 @@ def dispatch() -> IO(Unit):
     dispatch_invalidation()
     dispatch_substitution()
 
+# --- Section 1.5: samples never bypass the final commit (integration) --------
+
+# The rendezvous decides who may run the plan; it never widens what the
+# commit path admits. These checks drive the unchanged `Backplane.commit`
+# and `DataOS.commit_from_capability` with a Backplane context whose
+# Negotiation context is `negotiation_context` rebuilt at 110 from the
+# dispatched state (selection 3 of A's offer, A's passing trial evidence
+# stored, Dispatch{3, 57, 6}), and with A's Running trial session (revision
+# 6, receipt 11) and the ledger holding its reservation (revision 1). The
+# Backplane binding, graph, candidate and principals are the BackplaneTests
+# fixtures; the facade descriptor and registry are the FacadeTests fixtures
+# for reader 7. All of it is SYNTHETIC MONITOR STATE. Each denial is the
+# commit path's own check, and a denied commit returns the Running session
+# and the ledger with its hold, so no reservation is spent.
+
+def final_proj(+raw: N.Context, +snapshot: R.Snapshot) -> N.Context:
+  R.negotiation_context(dispatched_t(), raw, snapshot)
+
+def final_context(+negotiation: N.Context) -> B.Context:
+  BF.with_negotiation(BF.context(), negotiation)
+
+# The Backplane context on the dispatched selection's projection at 110.
+def dispatched_context() -> B.Context:
+  final_context(final_proj(trial_raw(), trial_snapshot()))
+
+def final_commit_with(+context: B.Context, candidate: C.Candidate) -> B.CommitResult:
+  B.commit(running_t(), 6n, 1n, ledger_t(), candidate, context)
+
+def final_commit(+context: B.Context) -> B.CommitResult:
+  final_commit_with(context, BF.candidate())
+
+# The DataOS facade path: reader 7 commits through its execute descriptor
+# (handle 2, frontend revision 2), which re-resolves the capability and then
+# runs the whole Backplane commit.
+def facade_commit(+context: B.Context) -> B.CommitResult:
+  OS.commit_from_capability(running_t(), 6n, 1n, ledger_t(), BF.candidate(),
+    F.Ref{FT.caller(7n), 2n}, 2n, OS.Context{context, FT.descriptor(7n, 7), FT.registry(7n, 7)})
+
+# A rejection that keeps A's Running session and the reserved ledger: same
+# ledger revision and reader balance, and the hold for receipt 11 still live.
+def kept(+result: B.CommitResult) -> Bool:
+  Bool.not(B.accepted(result)) && N.Session.is(B.session(result), N.Running{})
+    && Nat.is_eq(N.Session.revision(B.session(result)), 6n)
+    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(ledger_t()))
+    && Nat.is_eq(L.balance(B.ledger(result), 7n), L.balance(ledger_t(), 7n))
+    && N.hold_live(B.ledger(result), running_t(), 110n)
+
+# The rendezvous side passed: selection 3 is current at 110, A's evidence is
+# stored under it and the dispatch is recorded.
+def rendezvous_passed() -> Bool:
+  R.selection_current(dispatched_t(), trial_snapshot())
+    && evidence_equal(R.evidence(dispatched_t()), R.evidence(evidenced()))
+    && dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+
+def successful_final() -> B.CommitResult:
+  final_commit(dispatched_context())
+
+def successful_facade() -> B.CommitResult:
+  facade_commit(dispatched_context())
+
+# SYNTHETIC MONITOR STATE: the reader's transfer write grant revoked (the
+# write list empty) in the unprojected context the projection keeps.
+def write_revoked_context() -> B.Context:
+  final_context(final_proj(NT.with_transfer(trial_raw(), TF.with_writes(TF.with_now(TF.context(), 110n), T.WriteEnd{})), trial_snapshot()))
+
+# The issuer revokes the source approval behind A's grant 3 after dispatch.
+def provider_revoked_context() -> B.Context:
+  final_context(final_proj(trial_raw(), revoked_snapshot()))
+
+# The issuer's live stamp advances to authority epoch 5 after dispatch.
+def epoch_context() -> B.Context:
+  final_context(final_proj(trial_raw(), snapshot_with(epoch_issuer(), 110n)))
+
+# The graph and sink carry control label 3, so the combined output policy
+# does not fit the destination's clearance, though every grant is current.
+def wide_output_context() -> B.Context:
+  BF.with_binding(dispatched_context(), BF.extra_control_binding())
+
+def wide_output_candidate() -> C.Candidate:
+  BF.candidate_result(C.solve_cpu(BF.graph_labels(C.Bits64{3, 0}), 0n))
+
+# SYNTHETIC MONITOR STATE: the reader's budget funds quote 41, one short of
+# the request's 42, so no budget matches the session.
+def short_budget_context() -> B.Context:
+  final_context(final_proj(raw_with(110n, trial_challenges(), trial_samples(),
+    N.Budgets{N.Budget{11n, TF.plan(), 7n, 41n, 30n, 180n}, N.NoBudgets{}}), trial_snapshot()))
+
+# The projection once object 10's authority withdraws A's approval (id 2)
+# before approval: the selection is no longer current.
+def unapproved_proj() -> N.Context:
+  R.negotiation_context(R.Change.state(R.withdraw_approval(evidenced(), 6n, IT.source_authority(), 2n, trial_snapshot())),
+    trial_raw(), trial_snapshot())
+
+def integration_commits() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rendezvous_passed() && B.accepted(successful_final()) && BF.retained(successful_final())
+      && N.Session.is(B.session(successful_final()), N.Committed{})
+      && Nat.is_eq(L.revision(B.ledger(successful_final())), 2n), "integration a dispatched, sampled execution commits through Backplane.commit on the projected context: Committed, the write intent keeps the plan, origins and label, and the ledger advances to revision 2")
+    Test.check(B.accepted(successful_facade()) && BF.retained(successful_facade()), "integration the same execution commits through DataOS.commit_from_capability with reader 7's execute descriptor")
+    Test.check(rendezvous_passed() && kept(final_commit(write_revoked_context())) && kept(facade_commit(write_revoked_context())), "integration with the selection current and dispatched, the reader's transfer write grant revoked: T.admit denies, Backplane and the facade reject and spend no reservation")
+    Test.check(kept(final_commit(provider_revoked_context())) && kept(facade_commit(provider_revoked_context()))
+      && n_approvals_equal(approvals_of(R.negotiation_context(dispatched_t(), trial_raw(), revoked_snapshot())), N.NoApprovals{}), "integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation")
+    Test.check(kept(final_commit(epoch_context())) && kept(facade_commit(epoch_context())), "integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation")
+    Test.check(rendezvous_passed() && kept(final_commit_with(wide_output_context(), wide_output_candidate())), "integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation")
+    Test.check(rendezvous_passed() && kept(final_commit(short_budget_context())) && kept(facade_commit(short_budget_context())), "integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation")
+
+def integration_samples() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(N.Session.is(sampled_t(), N.Sampled{}) && Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
+      && Bool.not(N.Step.accepted(N.approve(challenged_t(), 2n, proj1())))
+      && Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(), final_context(proj1())))), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
+    Test.check(Bool.not(N.Step.accepted(N.approve(sampled_t(), 3n, unapproved_proj())))
+      && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, unapproved_proj(), ledger_t())))
+      && N.Step.accepted(N.start(reserved_t(), 5n, proj1(), ledger_t())), "integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)")
+
+def integration() -> IO(Unit):
+  do IO<Unit>:
+    integration_commits()
+    integration_samples()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     offers()
@@ -2148,4 +2273,5 @@ def main() -> IO(Unit):
     selection()
     trials()
     dispatch()
-    IO.print("Rendezvous: 188 checks passed")
+    integration()
+    IO.print("Rendezvous: 197 checks passed")

@@ -53,3 +53,7 @@
 2026-11-05T17:05:08Z	implementer	fix round 1 done: expected_host_revision + HP.current gate, Dispatch records incarnation, caller-token gate, p2 profile and subject-swap checks, S5 rename; 53 mutants (49 killed, 4 equivalent: G5, P5, K3, K4); Rendezvous 188 checks, Tests.bend 1616 PASS 0 FAIL, PROOF.bend ALL PROOFS CHECK at 24 laws; committing
 2026-11-05T17:05:30Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T17:07:57Z	controller	task 5 complete; task 6 dispatched (document, final-commit tests)
+2026-11-05T17:08:36Z	implementer	task 6 started: read brief, plan global constraints and task 6
+2026-11-05T17:14:07Z	implementer	integration section added (9 checks, Rendezvous 197); mutation sweep: 11 runs, 10 killed, B4 equivalent (output_policy re-derives T.admit); running Tests.bend and PROOF.bend
+2026-11-05T17:15:19Z	implementer	Tests.bend 1625 PASS ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK; writing docs/EXECUTOR-RENDEZVOUS.md
+2026-11-05T17:18:31Z	implementer	doc, mutants table and report written; box 1.5 checked; committing
