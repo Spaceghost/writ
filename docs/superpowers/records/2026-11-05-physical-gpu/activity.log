@@ -229,3 +229,4 @@
 2026-11-05T07:50:27Z	controller	task 8 review: wording fixes; fix round 1 dispatched
 2026-11-05T07:50:29Z	implementer	task 8 fix round 1 started: read task-8-review.md (8 findings, text only)
 2026-11-05T07:51:06Z	implementer	task 8 fix round 1: eight review findings applied to gpu-trust-profile.md (timer limit, trusted list additions, proof wording, detection wording, binary_sha256 quote, Build citation, client names, validates wording); openspec strict 44 passed; committing
+2026-11-05T07:51:19Z	controller	task 8 complete; task 9 dispatched

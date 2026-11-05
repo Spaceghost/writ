@@ -31,3 +31,5 @@ Task 7: complete (review APPROVED both axes; two low wording items carried to Ta
 Task 8: dispatched implementer (trust profile)
 Task 8: implementer DONE_WITH_CONCERNS (c0ff001): verification/gpu-trust-profile.md (GT-1 trusted device), 4.1 checked, 4.2 left open with the exclusion stated as a limit (ruling upheld over the brief); the gpu_map reading is a fresh reading from the pinned binary, marked. Reviewer dispatched.
 Task 8: review spec APPROVED, honesty NEEDS_FIXES (1 ms timer limit omitted; trusted list omits the Ledger/Frontend/Backplane/Negotiation modules, Bend Base incl. effs/now.c, and the host tools; six precision items). Fix round 1 dispatched, text only.
+Task 8: fix round 1 verified by the controller (text only; timer limit, trusted list, precision items); complete.
+Task 9: dispatched implementer (publish, trace, final checks)
