@@ -10,3 +10,4 @@
 2026-11-05T00:59:32Z	controller	task 1 reported; ruling: task 2 records the stall (one probe build, no corpus); reviewer and task 2 dispatched
 2026-11-05T01:00:12Z	implementer	task 2 started (ruling: stall record, no corpus build); mkapp.sh lanes1 from the unmodified template, Lanes probe build started
 2026-11-05T01:01:36Z	implementer	lanes1 (shipped template, MAXCOUNT 1, no HAVE_SMP) build rc 0 in 44 s (cec64bf8...); --threads 2 -smp 1: lanes 2, pow2 4194304, alloc.c:198 assertion, QEMU 253; --threads 1: 33; crash does not need MAXCOUNT 2; appended shipped-template control and Stopping point to unikernel-lanes-qemu.txt; box 2.4 note in tasks.md
+2026-11-05T01:02:09Z	controller	task 2 reported: stall recorded; shipped template crashes the same way on --threads 2
