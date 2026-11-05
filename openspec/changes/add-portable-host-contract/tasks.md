@@ -1,6 +1,6 @@
 # Portable host contract tasks
 
-Tasks 1.1 to 1.4 are implemented in the shared Bend layer; all other implementation and native integration tasks remain pending.
+Section 1 (tasks 1.1 to 1.4) has landed as a library model in the shared Bend layer, tested on two synthetic adapters (see `openspec/traceability/portable-host-contract.md`). Section 2, host qualification, is open: no native target is qualified, and every native control, adversarial probe, and per-target runtime record below is pending. The change stays unarchived until section 2 closes.
 
 ## 1. Shared Bend interfaces
 

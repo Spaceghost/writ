@@ -120,6 +120,12 @@ authenticated, scoped grant. Serialization does not transfer native authority.
 Any authoritative encoding must be versioned, canonical, bounded, and explicit
 about integer widths and unknown variants; JSON is not the core fact format.
 
+The library model of this contract is `HostWire.bend`, `HostIdentity.bend`,
+`HostPrimitives.bend` (with `HostPublication.bend` for families 3 to 5), and
+`HostConformanceVectors.bend`, tested in Bend on two synthetic adapters; native
+qualification of every target is pending in section 2 of the [portable host
+contract tasks](../openspec/changes/add-portable-host-contract/tasks.md).
+
 ## Reference component topology
 
 This is the proposed topology for protected transformations. The canary mounts do not

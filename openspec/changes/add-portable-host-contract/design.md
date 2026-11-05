@@ -94,7 +94,7 @@ Passing the pure vectors is necessary but not sufficient for protected operation
 Compare logical outcomes and retained policy across hosts; do not require identical
 native handle values, scheduling, or timing. Record exact target and runtime pins.
 Report library, protocol, isolation, durable-publication, and accelerator milestones
-separately. All implementation tasks remain pending.
+separately. Section 1 (the shared Bend interfaces and conformance vectors) is implemented as a library model; section 2 (host qualification: feature negotiation, native adversarial probes, alias elimination and durable publication under revocation and crash, and per-target runtime evidence) remains pending.
 
 ## Migration and rollback
 

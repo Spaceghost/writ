@@ -33,6 +33,10 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | Frontend | 70 | Mount/open/dup/attenuate/close protocol, subject/token/plan binding, all token words, current grants, descriptor revocation, malformed registries |
 | Facade | 10 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
 | HostBinding | 144 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, destroy authority (no close through a delegated copy), derived Frontend handles closed with their Session, holder versus subject, non-holders told UnknownAlias, delegation withdrawn with the delegator's route, no delegation to another subject's domain, non-widening delegation trees, quota before authority and refunds on close and revoke, exact state preservation on every denial |
+| HostWire | 63 | Versioned, bounded, canonical wire schema (four tags, fixed widths, little-endian bytes): word and byte round trips, unknown versions and tags (a tag-5 record shaped like a serialized Context, Ledger, and caller included), malformed lengths, out-of-range fields, fixed check order; decoding yields descriptions, never authority (model only) |
+| HostIdentity | 92 | Monitor-owned identity table: authenticated session binding, minting, resolution order (revision, host, incarnation, forged, ambiguity, generation, holder, origin, expiry), the holder is the bound session rather than the subject, an untrusted claimed subject never changes the caller, inherited and transferred endpoints, non-widening delegation that never changes the subject, restart incarnations, retire cascade, exact state on every denial (model only) |
+| HostPrimitives | 206 | The five primitive families (`HostPrimitives.bend` and `HostPublication.bend`): session binding with issue and delegate wrappers, worker admission under a monitor-bound profile (controls, families, accelerator isolation, route inventory, one reader per input), quotas and gated diagnostics, sealing against live writers and retargeting, publication only through `DataOS.commit_from_capability` with exact plan binding, replay and reconcile, revoke, restart, quiesce, reclaim and complete; full state equality and no effects on every denial (model only; no native binding) |
+| HostConformance | 39 | 32 shared conformance vectors plus one comparison line, run on two synthetic adapters: exact plan binding at issue and publication, retained provenance, caller identity and session holding, revocation, replay, restart, substitution, unchanged state on denial; identical decision lines on both adapters (the decision half of PH-012 only; no native adapter replays them) |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
 | **Total per backend** | **782** | **Both complete runs passed** |
 
@@ -88,6 +92,35 @@ each vector id and the requirement mapping are in the
 [traceability table](openspec/traceability/genode-capability-adoption.md).
 Native canary runtimes execute the model corpus, but no host binding yet
 replays those vectors against native capability transitions.
+
+### Portable host vectors
+
+`HostConformanceTests.bend` prints 33 `VECTOR <vector-id> <transition>
+<outcome> <reason-or-result>` lines: 32 vectors and the PH-012-1 comparison
+line `compare accepted vectors=32`. Each is rendered from adapter A's actual
+result after a check requires adapter B's line to be equal and both to equal
+the expected line in `HostConformanceVectors.bend`. Slots are printed as
+logical names, so the adapters' different hosts, incarnations, and slot
+numbers do not appear. The lines are in
+[portable-host-vectors.txt](verification/portable-host-vectors.txt). On the
+portable-host-contract lane's final tree (2026-11-05, Bend 2.0.39, clang
+23.1.1, Node v26.10.0; CPU only, `--threads 4 --gpu off`; no GPU was used),
+the `VECTOR PH-` lines of the Node run (`tests-js.txt`) and of the native run
+(`tests-native.txt`) were both `cmp`-identical to that file, SHA-256
+`fb85d405c08e9ad46727ffe0d69bf9f7d5cc241281226d8c1740a4a9f094d30d`, and the
+41 HostBinding lines were unchanged:
+
+```bash
+grep '^VECTOR PH-' verification/tests-js.txt | cmp - verification/portable-host-vectors.txt
+grep '^VECTOR PH-' verification/tests-native.txt | cmp - verification/portable-host-vectors.txt
+grep '^VECTOR GA-' verification/tests-js.txt | cmp - verification/host-binding-vectors.txt
+```
+
+The inputs behind each vector id and the requirement mapping are in the
+[traceability table](openspec/traceability/portable-host-contract.md). Both
+adapters are Bend fixtures of the same interfaces, not native bindings. No
+native host replays these vectors yet; that is section 2 of the
+[portable host contract tasks](openspec/changes/add-portable-host-contract/tasks.md).
 
 A native compiler arity limit encountered in a large test driver was resolved by
 moving large cached fixtures into small helper functions. The final source and
@@ -162,6 +195,31 @@ can fall back to CPU execution; success does not establish the physical backend.
 5. `nat_lt_successor`: every natural number is below its successor (auxiliary).
 6. `generation_bump_monotone`: the destroy bump strictly raises an object's
    generation. That no transition lowers a generation is not stated.
+
+The portable-host-contract lane adds five laws to the list above. Each fixes
+the denial contract of one host-contract module and holds by computation of an
+accessor; its rationale is in that module's header and above the law:
+
+- `identity_denied_preserves_state` (`HostIdentity`): a rejected identity
+  change carries the supplied state.
+- `primitive_denied_preserves_state` (`HostPrimitives`): a denied primitive
+  step carries the supplied state.
+- `primitive_denied_emits_nothing` (`HostPrimitives`): a denied primitive step
+  carries no effect.
+- `publication_refused_preserves_state` (`HostPublication`): a refused
+  publication carries the supplied primitive state.
+- `publication_refused_emits_nothing` (`HostPublication`): a refused
+  publication carries no `Publish` effect.
+
+None of them asserts which transitions deny, that a reason is the right one,
+that a refused publication returns the input session and ledger, or that an
+accepted step or published intent is correct; the named checks in
+`HostIdentityTests.bend` and `HostPrimitivesTests.bend` and the conformance
+vectors cover those. That a binding executes only effects the monitor
+returned is a host obligation. On that lane's final tree, `bend PROOF.bend`
+printed `ALL PROOFS CHECK` for the earlier laws and these five, and
+`bend PROOF.bend --verdict` exited 1 with the same `lean: Executable not found`
+error shown below, so none of the five has a Lean-kernel verdict.
 
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
