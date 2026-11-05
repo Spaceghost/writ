@@ -20,25 +20,55 @@ import ./Test.bend as Test
 # hand-written record. Sections follow the plan's task order:
 # - event_projection (Task 1): AU-001 minimal scoped event records and the
 #   model part of AU-005 (recording a denial keeps the rejected state).
+#   It includes the early-denial rule: an admission denied before its write
+#   grant bound the plan carries ScopeNotRead and none of the plan's words.
 
 # --- Sentinels and synthetic inputs ------------------------------------------
 
-# Protected failure material. The eight values appear in no fixture field, so
-# finding one in an event means an excluded input reached it. They are
-# 0xA0D17001 to 0xA0D17008 in decimal (Bend has no hex literal).
+# Protected failure material, one distinct range per excluded input so a
+# failure names the input that leaked. None of these values appears in any
+# fixture field. Bend has no hex literal; the decimal values are:
+# payload 0xA0D17001-02, error text 0xA0D17003-04, credential 0xA0D17005-06,
+# Diagnostic token 0xA0D17101-08, caller (and Ref) token 0xA0D17201-08.
+def payload_words() -> List<&2, U32>:
+  [2698080257, 2698080258]
+
+def error_text_words() -> List<&2, U32>:
+  [2698080259, 2698080260]
+
+def credential_words() -> List<&2, U32>:
+  [2698080261, 2698080262]
+
+def diagnostic_token() -> T.CodeId:
+  T.CodeId{2698080513, 2698080514, 2698080515, 2698080516,
+    2698080517, 2698080518, 2698080519, 2698080520}
+
+def caller_token() -> T.CodeId:
+  T.CodeId{2698080769, 2698080770, 2698080771, 2698080772,
+    2698080773, 2698080774, 2698080775, 2698080776}
+
+# The union of every excluded-input sentinel above.
 def sentinel_words() -> List<&2, U32>:
-  [2698080257, 2698080258, 2698080259, 2698080260,
-    2698080261, 2698080262, 2698080263, 2698080264]
+  [2698080257, 2698080258, 2698080259, 2698080260, 2698080261, 2698080262,
+    2698080513, 2698080514, 2698080515, 2698080516,
+    2698080517, 2698080518, 2698080519, 2698080520,
+    2698080769, 2698080770, 2698080771, 2698080772,
+    2698080773, 2698080774, 2698080775, 2698080776]
 
-def sentinel_token() -> T.CodeId:
-  T.CodeId{2698080257, 2698080258, 2698080259, 2698080260,
-    2698080261, 2698080262, 2698080263, 2698080264}
-
-# A diagnostic whose payload, error text, credential and token are all the
-# sentinels (the spec's "execution error contains source text and a
-# capability token").
+# A diagnostic carrying each sentinel range in its own field (the spec's
+# "execution error contains source text and a capability token").
 def sentinel_diagnostic() -> AE.Diagnostic:
-  AE.Diagnostic{sentinel_words(), sentinel_words(), sentinel_words(), sentinel_token()}
+  AE.Diagnostic{payload_words(), error_text_words(), credential_words(), diagnostic_token()}
+
+# Caller-written scope values for early-denied plans, 0xA0D17301-08. A plan
+# can name any numbers, so these stand for data a caller might hide in one.
+def plan_words() -> List<&2, U32>:
+  [2698081025, 2698081026, 2698081027, 2698081028,
+    2698081029, 2698081030, 2698081031, 2698081032]
+
+def plan_code() -> T.CodeId:
+  T.CodeId{2698081025, 2698081026, 2698081027, 2698081028,
+    2698081029, 2698081030, 2698081031, 2698081032}
 
 def empty_diagnostic() -> AE.Diagnostic:
   AE.Diagnostic{[], [], [], T.CodeId{0, 0, 0, 0, 0, 0, 0, 0}}
@@ -63,7 +93,7 @@ def receipt_context() -> T.Context:
 
 # Grant-scope and payment values in TF.context() that are not plan fields:
 # read domain 5, write domain 6, quote 42, grant and witness expiry 200.
-def scope_words() -> List<&2, U32>:
+def grant_scope_words() -> List<&2, U32>:
   [5, 6, 42, 200]
 
 # --- Wrapper calls -------------------------------------------------------------
@@ -218,13 +248,97 @@ def outcome_words(o: AE.Outcome) -> List<&2, U32>:
     case _:
       nat_word(outcome_code(o))
 
+def scope_words(x: AE.Scope) -> List<&2, U32>:
+  match x:
+    case AE.ScopeNotRead{}:
+      [0]
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      cat([1, U32.from_nat(n)], cat(objects_words(xs), cat(version_words(d),
+        cat(stamp_words(st), cat(code_words(c), [T.OpKind.bit(op)])))))
+
 def event_words(e: AE.EventRecord) -> List<&2, U32>:
   match e:
-    case AE.EventRecord{v, k, i, s, p, n, x, d, st, c, op, a, o}:
+    case AE.EventRecord{v, k, i, s, p, x, a, o}:
       cat([U32.from_nat(v), U32.from_nat(kind_code(k)), U32.from_nat(i), U32.from_nat(s),
-        U32.from_nat(phase_code(p)), U32.from_nat(n)],
-        cat(objects_words(x), cat(version_words(d), cat(stamp_words(st),
-          cat(code_words(c), T.OpKind.bit(op) <> cat(artifact_words(a), outcome_words(o)))))))
+        U32.from_nat(phase_code(p))],
+        cat(scope_words(x), cat(artifact_words(a), outcome_words(o))))
+
+# Test-side reads of the scope. Every one is False on ScopeNotRead.
+def scope_absent(x: AE.Scope) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      True{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      False{}
+
+def s_invocation_is(x: AE.Scope, +want: Nat) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      False{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      Nat.is_eq(n, want)
+
+def s_sources_is(x: AE.Scope, want: T.Objects) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      False{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      T.Objects.equal(xs, want)
+
+def s_destination_is(x: AE.Scope, want: T.ObjectVersion) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      False{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      T.ObjectVersion.equal(d, want)
+
+def s_stamp_is(x: AE.Scope, want: T.Stamp) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      False{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      T.Stamp.equal(st, want)
+
+def s_code_is(x: AE.Scope, want: T.CodeId) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      False{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      T.CodeId.equal(c, want)
+
+def s_op_is(x: AE.Scope, want: T.OpKind) -> Bool:
+  match x:
+    case AE.ScopeNotRead{}:
+      False{}
+    case AE.ScopeRead{n, xs, d, st, c, op}:
+      T.OpKind.equal(op, want)
+
+def no_scope(e: AE.EventRecord) -> Bool:
+  scope_absent(AE.EventRecord.scope(e))
+
+def invocation_is(e: AE.EventRecord, +want: Nat) -> Bool:
+  s_invocation_is(AE.EventRecord.scope(e), want)
+
+def sources_is(e: AE.EventRecord, want: T.Objects) -> Bool:
+  s_sources_is(AE.EventRecord.scope(e), want)
+
+def destination_is(e: AE.EventRecord, want: T.ObjectVersion) -> Bool:
+  s_destination_is(AE.EventRecord.scope(e), want)
+
+def stamp_is(e: AE.EventRecord, want: T.Stamp) -> Bool:
+  s_stamp_is(AE.EventRecord.scope(e), want)
+
+def code_is(e: AE.EventRecord, want: T.CodeId) -> Bool:
+  s_code_is(AE.EventRecord.scope(e), want)
+
+def op_is(e: AE.EventRecord, want: T.OpKind) -> Bool:
+  s_op_is(AE.EventRecord.scope(e), want)
+
+# Every scope field of the event equals the plan's.
+def scope_is(+e: AE.EventRecord, +p: T.Plan) -> Bool:
+  invocation_is(e, T.Plan.invocation(p)) && sources_is(e, T.Plan.sources(p)) &&
+    destination_is(e, T.Plan.destination(p)) && stamp_is(e, T.Plan.stamp(p)) &&
+    code_is(e, T.Plan.code(p)) && op_is(e, T.Plan.kind(p))
 
 def contains(xs: List<&2, U32>, +w: U32) -> Bool:
   match xs:
@@ -314,10 +428,17 @@ def result_equal(a: B.CommitResult, b: B.CommitResult) -> Bool:
     case _ _:
       False{}
 
+def scope_expected(+e: AE.EventRecord, reads_scope: Bool) -> Bool:
+  match reads_scope:
+    case True{}:
+      scope_is(e, TF.plan())
+    case False{}:
+      no_scope(e)
+
 # --- event_projection: AU-001 "Error includes protected content" --------------
 
 def sentinel_admission() -> AE.EventRecord:
-  AE.AuditedAdmission.event(admit_as(TF.plan(), TF.context(), F.Caller{7n, sentinel_token()},
+  AE.AuditedAdmission.event(admit_as(TF.plan(), TF.context(), F.Caller{7n, caller_token()},
     sentinel_diagnostic(), event_id()))
 
 def clean_admission() -> AE.EventRecord:
@@ -326,7 +447,7 @@ def clean_admission() -> AE.EventRecord:
 
 def sentinel_denial() -> AE.EventRecord:
   AE.AuditedAdmission.event(admit_as(TF.plan(), TF.with_reads(TF.context(), T.ReadEnd{}),
-    F.Caller{7n, sentinel_token()}, sentinel_diagnostic(), event_id()))
+    F.Caller{7n, caller_token()}, sentinel_diagnostic(), event_id()))
 
 def clean_denial() -> AE.EventRecord:
   AE.AuditedAdmission.event(admit_as(TF.plan(), TF.with_reads(TF.context(), T.ReadEnd{}),
@@ -337,7 +458,7 @@ def sentinel_commit() -> AE.EventRecord:
 
 # The Ref's token itself is the sentinel; the facade rejects it (no capability).
 def sentinel_token_commit() -> AE.AuditedCommit:
-  commit_as(FT.context(), F.Caller{7n, sentinel_token()}, 2n, sentinel_diagnostic())
+  commit_as(FT.context(), F.Caller{7n, caller_token()}, 2n, sentinel_diagnostic())
 
 def receipt_admission() -> AE.EventRecord:
   admission_event(TF.plan(), receipt_context())
@@ -363,7 +484,7 @@ def protected_content() -> IO(Unit):
       FT.caller(7n), empty_diagnostic(), event_id()))) &&
       none_of([U32.from_nat(receipt_marker())], event_words(receipt_admission())),
       "AU-001 the payment receipt number of an admitted transfer is absent from its event")
-    Test.check(none_of(scope_words(), event_words(receipt_admission())),
+    Test.check(none_of(grant_scope_words(), event_words(receipt_admission())),
       "AU-001 grant scope domains, quote and expiry are absent from the event")
     Test.check(none_of(code_words(FT.token()), event_words(receipt_admission())) &&
       none_of(code_words(FT.token()), event_words(AE.AuditedCommit.event(accepted_commit()))),
@@ -381,16 +502,16 @@ def committed_recorded() -> IO(Unit):
       "AU-001 committed operation: the wrapper returns the facade's accepted result")
     Test.check(has_kind(committed_event(), 2n, 1n, 2n),
       "AU-001 committed operation: kind CommitAccepted, phase Commit, outcome Committed")
-    Test.check(Nat.is_eq(AE.EventRecord.invocation(committed_event()), T.Plan.invocation(TF.plan())),
+    Test.check(invocation_is(committed_event(), T.Plan.invocation(TF.plan())),
       "AU-001 committed operation: invocation is the plan's")
-    Test.check(T.Objects.equal(AE.EventRecord.sources(committed_event()), TF.source_manifest()),
+    Test.check(sources_is(committed_event(), TF.source_manifest()),
       "AU-001 committed operation: exact ordered source versions")
-    Test.check(T.ObjectVersion.equal(AE.EventRecord.destination(committed_event()), TF.destination_object()),
+    Test.check(destination_is(committed_event(), TF.destination_object()),
       "AU-001 committed operation: exact destination version")
-    Test.check(T.Stamp.equal(AE.EventRecord.stamp(committed_event()), T.Plan.stamp(TF.plan())),
+    Test.check(stamp_is(committed_event(), T.Plan.stamp(TF.plan())),
       "AU-001 committed operation: graph, policy and authority epochs are the plan's")
-    Test.check(T.CodeId.equal(AE.EventRecord.code(committed_event()), TF.code()) &&
-      T.OpKind.equal(AE.EventRecord.op(committed_event()), T.Summarize{}),
+    Test.check(code_is(committed_event(), TF.code()) &&
+      op_is(committed_event(), T.Summarize{}),
       "AU-001 committed operation: code and operation kind")
     Test.check(artifact_is(committed_event(), BF.artifact()),
       "AU-001 committed operation: the sealed artifact from the committed WriteIntent")
@@ -402,9 +523,51 @@ def committed_recorded() -> IO(Unit):
     Test.check(artifact_is(AE.AuditedCommit.event(commit_subject(other_artifact_context(), 7n)), BF.other_artifact()),
       "AU-001 committed operation: the artifact follows the binding, not a constant")
     Test.check(Bool.not(B.accepted(AE.AuditedCommit.result(moved_session_commit()))) &&
-      T.ObjectVersion.equal(AE.EventRecord.destination(AE.AuditedCommit.event(moved_session_commit())), T.ObjectVersion{20n, 9n}) &&
-      T.Objects.equal(AE.EventRecord.sources(AE.AuditedCommit.event(moved_session_commit())), T.Plan.sources(moved_plan())),
+      destination_is(AE.AuditedCommit.event(moved_session_commit()), T.ObjectVersion{20n, 9n}) &&
+      sources_is(AE.AuditedCommit.event(moved_session_commit()), T.Plan.sources(moved_plan())),
       "AU-001 commit scope is the session's negotiated plan")
+
+# A SYNTHETIC monitor context that vouches for `p`: live stamp, destination,
+# operation and a write grant all bound to the plan's exact scope, one source
+# policy per manifest entry, and no read grant. `T.admit` therefore passes the
+# whole header (so every scope field is bound by the write grant) and denies
+# Read, a reason whose event carries the scope.
+def sources_for(xs: T.Objects, +epoch: Nat) -> T.Sources:
+  match xs:
+    case T.OEnd{}:
+      T.SEnd{}
+    case T.OCons{+h, t}:
+      T.SCons{T.SourcePolicy{h, T.ReadDomain{5n}, 1, epoch, T.Bits64{1, 0}, T.Bits64{2, 0}, 7,
+        T.RCons{T.OriginRule{h, T.Bits64{1, 0}, T.Bits64{2, 0}, 7, TF.one_code(TF.code()), T.Free{}}, T.REnd{}}},
+        sources_for(t, epoch)}
+
+def types_for(xs: T.Objects) -> T.Types:
+  match xs:
+    case T.OEnd{}:
+      T.TEnd{}
+    case T.OCons{h, t}:
+      T.TCons{1, types_for(t)}
+
+def vouched_context(+p: T.Plan) -> T.Context:
+  +live = T.Plan.stamp(p)
+  +epoch = T.Stamp.policy(live)
+  +dst = T.Plan.destination(p)
+  T.Context{live, 100n, sources_for(T.Plan.sources(p), epoch),
+    T.DestinationPolicy{dst, T.WriteDomain{6n}, epoch, 2, T.Bits64{1, 0}, T.Bits64{2, 0}, 7},
+    T.ApprovedOperation{T.Plan.code(p), T.Plan.kind(p), epoch, types_for(T.Plan.sources(p)), 2},
+    T.ReadEnd{},
+    T.WriteCons{T.WriteGrant{dst, T.WriteDomain{6n}, TF.scope_for(p, T.WriteDomain{6n}, 200n)}, T.WriteEnd{}},
+    T.PayEnd{}}
+
+def vouched(+p: T.Plan) -> AE.AuditedAdmission:
+  admission(p, vouched_context(p))
+
+def vouched_event(+p: T.Plan) -> AE.EventRecord:
+  AE.AuditedAdmission.event(vouched(p))
+
+# The vouched fixture is a Read denial whose event carries the plan's scope.
+def vouched_reads(+p: T.Plan) -> Bool:
+  TF.denied_as(AE.AuditedAdmission.decision(vouched(p)), T.Read{}) && scope_is(vouched_event(p), p)
 
 # Second fixtures: one field of the plan changed at a time.
 def source_moved() -> T.Plan:
@@ -415,19 +578,19 @@ def with_stamp(s: T.Stamp) -> T.Plan:
   T.Plan{s, 99n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Summarize{}, 2}
 
 def stamp_moved(+s: T.Stamp) -> Bool:
-  +e = admission_event(with_stamp(s), TF.context())
-  T.Stamp.equal(AE.EventRecord.stamp(e), s) &&
-    Bool.not(T.Stamp.equal(AE.EventRecord.stamp(e), TF.stamp()))
+  +e = vouched_event(with_stamp(s))
+  stamp_is(e, s) &&
+    Bool.not(stamp_is(e, TF.stamp()))
 
 def field_changes() -> IO(Unit):
-  +moved = admission_event(source_moved(), TF.context())
-  +dest = admission_event(TF.plan_destination(TF.plan(), T.ObjectVersion{20n, 9n}), TF.context())
+  +moved = vouched_event(source_moved())
+  +dest = vouched_event(TF.plan_destination(TF.plan(), T.ObjectVersion{20n, 9n}))
   do IO<Unit>:
-    Test.check(T.Objects.equal(AE.EventRecord.sources(moved), T.Plan.sources(source_moved())) &&
-      Bool.not(T.Objects.equal(AE.EventRecord.sources(moved), TF.source_manifest())),
+    Test.check(sources_is(moved, T.Plan.sources(source_moved())) &&
+      Bool.not(sources_is(moved, TF.source_manifest())),
       "AU-001 a changed source version changes the event's sources")
-    Test.check(T.ObjectVersion.equal(AE.EventRecord.destination(dest), T.ObjectVersion{20n, 9n}) &&
-      Bool.not(T.ObjectVersion.equal(AE.EventRecord.destination(dest), TF.destination_object())),
+    Test.check(destination_is(dest, T.ObjectVersion{20n, 9n}) &&
+      Bool.not(destination_is(dest, TF.destination_object())),
       "AU-001 a changed destination version changes the event's destination")
     Test.check(stamp_moved(T.Stamp{2n, 2n, 3n}), "AU-001 a changed graph epoch changes the event's stamp")
     Test.check(stamp_moved(T.Stamp{1n, 3n, 3n}), "AU-001 a changed policy epoch changes the event's stamp")
@@ -444,37 +607,120 @@ def operation_denied() -> T.Context:
     T.ApprovedOperation{TF.other_code(), T.Summarize{}, 2n, T.TCons{1, T.TEnd{}}, 2})
 
 # The wrapper's decision is the library's denial and its event records it.
-def recorded_denial(context: T.Context, +reason: T.Denial) -> Bool:
+# Read, Origin and Payment arise after the write grant bound the plan, so the
+# event carries TF.plan()'s scope; every other reason carries no scope.
+def recorded_denial(context: T.Context, +reason: T.Denial, reads_scope: Bool) -> Bool:
   +audited = admission(TF.plan(), context)
   +e = AE.AuditedAdmission.event(audited)
   TF.denied_as(AE.AuditedAdmission.decision(audited), reason) &&
-    has_kind(e, 1n, 0n, 1n) && denied_for(AE.EventRecord.outcome(e), reason) && no_artifact(e)
+    has_kind(e, 1n, 0n, 1n) && denied_for(AE.EventRecord.outcome(e), reason) && no_artifact(e) &&
+    scope_expected(e, reads_scope)
 
 def denials_first() -> IO(Unit):
   do IO<Unit>:
-    Test.check(recorded_denial(TF.with_live(TF.context(), T.Stamp{2n, 2n, 3n}), T.Stale{}),
-      "AU-001 Stale denial is returned unchanged and recorded as AdmissionDenied DeniedFor Stale")
-    Test.check(recorded_denial(TF.with_sources(TF.context(), T.SEnd{}), T.Source{}),
-      "AU-001 Source denial is returned unchanged and recorded as AdmissionDenied DeniedFor Source")
-    Test.check(recorded_denial(TF.with_reads(TF.context(), T.ReadEnd{}), T.Read{}),
-      "AU-001 Read denial is returned unchanged and recorded as AdmissionDenied DeniedFor Read")
-    Test.check(recorded_denial(TF.with_writes(TF.context(), T.WriteEnd{}), T.Write{}),
-      "AU-001 Write denial is returned unchanged and recorded as AdmissionDenied DeniedFor Write")
-    Test.check(recorded_denial(TF.with_sources(TF.context(), T.SCons{TF.invalid_schema_source(), T.SEnd{}}), T.Schema{}),
-      "AU-001 Schema denial is returned unchanged and recorded as AdmissionDenied DeniedFor Schema")
+    Test.check(recorded_denial(TF.with_live(TF.context(), T.Stamp{2n, 2n, 3n}), T.Stale{}, False{}),
+      "AU-001 Stale denial is returned unchanged and recorded as AdmissionDenied DeniedFor Stale with no scope")
+    Test.check(recorded_denial(TF.with_sources(TF.context(), T.SEnd{}), T.Source{}, False{}),
+      "AU-001 Source denial is returned unchanged and recorded as AdmissionDenied DeniedFor Source with no scope")
+    Test.check(recorded_denial(TF.with_reads(TF.context(), T.ReadEnd{}), T.Read{}, True{}),
+      "AU-001 Read denial is returned unchanged and recorded as AdmissionDenied DeniedFor Read with the plan scope")
+    Test.check(recorded_denial(TF.with_writes(TF.context(), T.WriteEnd{}), T.Write{}, False{}),
+      "AU-001 Write denial is returned unchanged and recorded as AdmissionDenied DeniedFor Write with no scope")
+    Test.check(recorded_denial(TF.with_sources(TF.context(), T.SCons{TF.invalid_schema_source(), T.SEnd{}}), T.Schema{}, False{}),
+      "AU-001 Schema denial is returned unchanged and recorded as AdmissionDenied DeniedFor Schema with no scope")
 
 def denials_second() -> IO(Unit):
   do IO<Unit>:
-    Test.check(recorded_denial(operation_denied(), T.Operation{}),
-      "AU-001 Operation denial is returned unchanged and recorded as AdmissionDenied DeniedFor Operation")
-    Test.check(recorded_denial(origin_denied(), T.Origin{}),
-      "AU-001 Origin denial is returned unchanged and recorded as AdmissionDenied DeniedFor Origin")
-    Test.check(recorded_denial(TF.with_payments(TF.context(), T.PayEnd{}), T.Payment{}),
-      "AU-001 Payment denial is returned unchanged and recorded as AdmissionDenied DeniedFor Payment")
-    Test.check(recorded_denial(TF.destination_clearance(T.Bits64{0, 0}, T.Bits64{2, 0}, 7), T.Destination{}),
-      "AU-001 Destination denial is returned unchanged and recorded as AdmissionDenied DeniedFor Destination")
-    Test.check(recorded_denial(TF.with_origin(TF.context(), T.REnd{}, 7), T.InvalidPolicy{}),
-      "AU-001 InvalidPolicy denial is returned unchanged and recorded as AdmissionDenied DeniedFor InvalidPolicy")
+    Test.check(recorded_denial(operation_denied(), T.Operation{}, False{}),
+      "AU-001 Operation denial is returned unchanged and recorded as AdmissionDenied DeniedFor Operation with no scope")
+    Test.check(recorded_denial(origin_denied(), T.Origin{}, True{}),
+      "AU-001 Origin denial is returned unchanged and recorded as AdmissionDenied DeniedFor Origin with the plan scope")
+    Test.check(recorded_denial(TF.with_payments(TF.context(), T.PayEnd{}), T.Payment{}, True{}),
+      "AU-001 Payment denial is returned unchanged and recorded as AdmissionDenied DeniedFor Payment with the plan scope")
+    Test.check(recorded_denial(TF.destination_clearance(T.Bits64{0, 0}, T.Bits64{2, 0}, 7), T.Destination{}, False{}),
+      "AU-001 Destination denial is returned unchanged and recorded as AdmissionDenied DeniedFor Destination with no scope")
+    Test.check(recorded_denial(TF.with_origin(TF.context(), T.REnd{}, 7), T.InvalidPolicy{}, False{}),
+      "AU-001 InvalidPolicy denial is returned unchanged and recorded as AdmissionDenied DeniedFor InvalidPolicy with no scope")
+
+def copy_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Copy{}, 2}
+
+def other_code_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, TF.source_manifest(), TF.destination_object(), TF.other_code(), T.Summarize{}, 2}
+
+def other_invocation_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 100n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Summarize{}, 2}
+
+# --- event_projection: early denials carry no caller-written scope ----------
+
+# Plans whose scope fields are the caller-chosen values 0xA0D17301-08. Each is
+# denied by T.admit before its write-grant check, for the named reason, so
+# nothing has bound any of these numbers.
+def stuffed_source_object() -> T.ObjectVersion:
+  T.ObjectVersion{2698081029n, 2698081030n}
+
+def stuffed_destination() -> T.ObjectVersion:
+  T.ObjectVersion{2698081031n, 2698081032n}
+
+def stuffed_manifest() -> T.Objects:
+  T.OCons{stuffed_source_object(), T.OEnd{}}
+
+# Stale: the stamp itself is caller-written and matches no live epoch.
+def stuffed_stale() -> T.Plan:
+  T.Plan{T.Stamp{2698081025n, 2698081026n, 2698081027n}, 2698081028n, stuffed_manifest(),
+    stuffed_destination(), plan_code(), T.Summarize{}, 2}
+
+# Source: a two-entry manifest against a one-source context.
+def stuffed_source() -> T.Plan:
+  T.Plan{TF.stamp(), 2698081028n, T.OCons{stuffed_source_object(), T.OCons{stuffed_destination(), T.OEnd{}}},
+    stuffed_destination(), plan_code(), T.Summarize{}, 2}
+
+# Destination: a destination object the context's policy does not name.
+def stuffed_destination_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 2698081028n, stuffed_manifest(), stuffed_destination(), plan_code(), T.Summarize{}, 2}
+
+# Operation: a code the approved operation does not name.
+def stuffed_operation() -> T.Plan:
+  T.Plan{TF.stamp(), 2698081028n, stuffed_manifest(), TF.destination_object(), plan_code(), T.Summarize{}, 2}
+
+# Schema: an output type the operation does not produce.
+def stuffed_schema() -> T.Plan:
+  T.Plan{TF.stamp(), 2698081028n, stuffed_manifest(), TF.destination_object(), TF.code(), T.Summarize{}, 4}
+
+# Write: everything checked before the grant matches, but no write grant
+# names this invocation and manifest.
+def stuffed_write() -> T.Plan:
+  T.Plan{TF.stamp(), 2698081028n, stuffed_manifest(), TF.destination_object(), TF.code(), T.Summarize{}, 2}
+
+# Denied for `reason`, recorded with the ScopeNotRead marker, and no
+# caller-written plan word occurs anywhere in the event.
+def early_denial(+p: T.Plan, +reason: T.Denial) -> Bool:
+  +audited = admission(p, TF.context())
+  +e = AE.AuditedAdmission.event(audited)
+  TF.denied_as(AE.AuditedAdmission.decision(audited), reason) && denied_for(AE.EventRecord.outcome(e), reason) &&
+    no_scope(e) && none_of(plan_words(), event_words(e))
+
+def early_denials() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(early_denial(stuffed_stale(), T.Stale{}),
+      "AU-001 a Stale-denied plan's caller-written stamp, invocation, sources, destination and code are absent from its event")
+    Test.check(early_denial(stuffed_source(), T.Source{}),
+      "AU-001 a Source-denied plan's caller-written scope is absent from its event")
+    Test.check(early_denial(stuffed_destination_plan(), T.Destination{}),
+      "AU-001 a Destination-denied plan's caller-written scope is absent from its event")
+    Test.check(early_denial(stuffed_operation(), T.Operation{}),
+      "AU-001 an Operation-denied plan's caller-written scope is absent from its event")
+    Test.check(early_denial(stuffed_schema(), T.Schema{}),
+      "AU-001 a Schema-denied plan's caller-written scope is absent from its event")
+    Test.check(early_denial(stuffed_write(), T.Write{}),
+      "AU-001 a Write-denied plan's caller-written scope is absent from its event")
+    Test.check(AE.EventRecord.equal(admission_event(stuffed_stale(), TF.context()),
+      admission_event(TF.plan(), TF.with_live(TF.context(), T.Stamp{9n, 9n, 9n}))) &&
+      AE.EventRecord.equal(admission_event(stuffed_write(), TF.context()),
+        admission_event(TF.plan(), TF.with_writes(TF.context(), T.WriteEnd{}))),
+      "AU-001 an early-denied event is the same whatever the plan contains")
+    Test.check(vouched_reads(TF.plan()) && vouched_reads(copy_plan()) && vouched_reads(source_moved()),
+      "AU-001 once the write grant has bound the plan, a Read denial records the plan's scope")
 
 def admitted_recorded() -> IO(Unit):
   +audited = admission(TF.plan(), TF.context())
@@ -485,6 +731,8 @@ def admitted_recorded() -> IO(Unit):
       "AU-001 an admitted decision is returned with its ticket")
     Test.check(has_kind(e, 0n, 0n, 0n) && no_artifact(e) && Nat.is_eq(AE.EventRecord.subject(e), 7n),
       "AU-001 an admitted decision is recorded as AdmissionAdmitted with no artifact")
+    Test.check(scope_is(e, TF.plan()),
+      "AU-001 an admitted decision's event carries the plan's scope")
 
 # --- event_projection: AU-005 "Denial is recorded successfully" (model part) --
 
@@ -507,48 +755,34 @@ def denial_recorded() -> IO(Unit):
 
 # --- event_projection: equality separates every varying field -----------------
 
-# All of these are denied Stale first (the live stamp matches no plan), so
-# each pair below differs in exactly one event field.
-def stale_context() -> T.Context:
-  TF.with_live(TF.context(), T.Stamp{9n, 9n, 9n})
-
-def stale_event(plan: T.Plan) -> AE.EventRecord:
-  admission_event(plan, stale_context())
-
-def copy_plan() -> T.Plan:
-  T.Plan{TF.stamp(), 99n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Copy{}, 2}
-
-def other_code_plan() -> T.Plan:
-  T.Plan{TF.stamp(), 99n, TF.source_manifest(), TF.destination_object(), TF.other_code(), T.Summarize{}, 2}
-
-def other_invocation_plan() -> T.Plan:
-  T.Plan{TF.stamp(), 100n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Summarize{}, 2}
+# All of these are vouched Read denials (scope read), so each pair below
+# differs in exactly one event field.
 
 def differs(a: AE.EventRecord, b: AE.EventRecord) -> Bool:
   Bool.not(AE.EventRecord.equal(a, b))
 
 def equality_scope() -> IO(Unit):
-  +base = stale_event(TF.plan())
+  +base = vouched_event(TF.plan())
   do IO<Unit>:
-    Test.check(AE.EventRecord.equal(base, stale_event(TF.plan())),
+    Test.check(AE.EventRecord.equal(base, vouched_event(TF.plan())),
       "AU-001 EventRecord.equal holds for two projections of the same decision")
-    Test.check(differs(base, AE.AuditedAdmission.event(admit_as(TF.plan(), stale_context(), FT.caller(7n), empty_diagnostic(), other_event_id()))) &&
-      differs(base, AE.AuditedAdmission.event(admit_as(TF.plan(), stale_context(), FT.caller(8n), empty_diagnostic(), event_id()))),
+    Test.check(differs(base, AE.AuditedAdmission.event(admit_as(TF.plan(), vouched_context(TF.plan()), FT.caller(7n), empty_diagnostic(), other_event_id()))) &&
+      differs(base, AE.AuditedAdmission.event(admit_as(TF.plan(), vouched_context(TF.plan()), FT.caller(8n), empty_diagnostic(), event_id()))),
       "AU-001 EventRecord.equal separates event id and subject")
-    Test.check(differs(base, stale_event(other_invocation_plan())) && differs(base, stale_event(source_moved())) &&
-      differs(base, stale_event(TF.plan_destination(TF.plan(), T.ObjectVersion{20n, 9n}))),
+    Test.check(differs(base, vouched_event(other_invocation_plan())) && differs(base, vouched_event(source_moved())) &&
+      differs(base, vouched_event(TF.plan_destination(TF.plan(), T.ObjectVersion{20n, 9n}))),
       "AU-001 EventRecord.equal separates invocation, sources and destination")
-    Test.check(differs(base, stale_event(with_stamp(T.Stamp{2n, 2n, 3n}))) &&
-      differs(base, stale_event(with_stamp(T.Stamp{1n, 3n, 3n}))) &&
-      differs(base, stale_event(with_stamp(T.Stamp{1n, 2n, 4n}))),
+    Test.check(differs(base, vouched_event(with_stamp(T.Stamp{2n, 2n, 3n}))) &&
+      differs(base, vouched_event(with_stamp(T.Stamp{1n, 3n, 3n}))) &&
+      differs(base, vouched_event(with_stamp(T.Stamp{1n, 2n, 4n}))),
       "AU-001 EventRecord.equal separates each of the three epochs")
-    Test.check(differs(base, stale_event(other_code_plan())) && differs(base, stale_event(copy_plan())),
+    Test.check(differs(base, vouched_event(other_code_plan())) && differs(base, vouched_event(copy_plan())),
       "AU-001 EventRecord.equal separates code and operation kind")
 
 def equality_outcome() -> IO(Unit):
   do IO<Unit>:
     Test.check(differs(admission_event(TF.plan(), TF.with_reads(TF.context(), T.ReadEnd{})),
-      admission_event(TF.plan(), TF.with_writes(TF.context(), T.WriteEnd{}))),
+      admission_event(TF.plan(), TF.with_payments(TF.context(), T.PayEnd{}))),
       "AU-001 EventRecord.equal separates two denial reasons")
     Test.check(differs(committed_event(), AE.AuditedCommit.event(commit_subject(other_artifact_context(), 7n))),
       "AU-001 EventRecord.equal separates the sealed artifact")
@@ -557,6 +791,32 @@ def equality_outcome() -> IO(Unit):
       Bool.not(AE.Outcome.equal(AE.Admitted{}, AE.Committed{})) &&
       AE.Outcome.equal(AE.DeniedFor{T.Payment{}}, AE.DeniedFor{T.Payment{}}),
       "AU-001 Outcome.equal separates the four outcomes")
+
+def all_reasons() -> List<&2, T.Denial>:
+  [T.InvalidPolicy{}, T.Stale{}, T.Source{}, T.Read{}, T.Write{}, T.Schema{},
+    T.Operation{}, T.Origin{}, T.Payment{}, T.Destination{}]
+
+def same_bool(a: Bool, b: Bool) -> Bool:
+  match a:
+    case True{}:
+      b
+    case False{}:
+      Bool.not(b)
+
+# denial_equal holds for `r` against itself and fails against every other.
+def separates(+r: T.Denial, xs: List<&2, T.Denial>) -> Bool:
+  match xs:
+    case []:
+      True{}
+    case +h <> t:
+      same_bool(AE.denial_equal(r, h), U32.is_eq(TF.denial_code(r), TF.denial_code(h))) && separates(r, t)
+
+def all_separated(xs: List<&2, T.Denial>) -> Bool:
+  match xs:
+    case []:
+      True{}
+    case h <> t:
+      separates(h, all_reasons()) && all_separated(t)
 
 # The exported equality helpers separate the constructors they compare. Kind
 # and phase are functions of the outcome in every projected event, so these
@@ -572,6 +832,12 @@ def equality_helpers() -> IO(Unit):
     Test.check(Bool.not(AE.artifact_equal(None{}, Some{BF.artifact()})) &&
       Bool.not(AE.artifact_equal(Some{BF.artifact()}, None{})) && AE.artifact_equal(None{}, None{}),
       "AU-001 artifact_equal separates a missing from a present artifact")
+    Test.check(Bool.not(AE.Scope.equal(AE.EventRecord.scope(vouched_event(TF.plan())), AE.ScopeNotRead{})) &&
+      Bool.not(AE.Scope.equal(AE.ScopeNotRead{}, AE.EventRecord.scope(vouched_event(TF.plan())))) &&
+      AE.Scope.equal(AE.ScopeNotRead{}, AE.ScopeNotRead{}),
+      "AU-001 Scope.equal separates the not-read marker from a read scope")
+    Test.check(all_separated(all_reasons()),
+      "AU-001 denial_equal separates all ten denial reasons")
 
 def event_projection() -> IO(Unit):
   do IO<Unit>:
@@ -580,6 +846,7 @@ def event_projection() -> IO(Unit):
     field_changes()
     denials_first()
     denials_second()
+    early_denials()
     admitted_recorded()
     denial_recorded()
     equality_scope()
@@ -589,4 +856,4 @@ def event_projection() -> IO(Unit):
 def main() -> IO(Unit):
   do IO<Unit>:
     event_projection()
-    IO.print("Audit: 49 checks passed")
+    IO.print("Audit: 60 checks passed")

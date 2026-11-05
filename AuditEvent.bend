@@ -1,5 +1,4 @@
 import Base
-import ./Guard.bend as Guard
 import ./Core.bend as C
 import ./Transfer.bend as T
 import ./Ledger.bend as L
@@ -23,23 +22,68 @@ import ./DataOS.bend as OS
 # - The returned decision or commit result is the variable bound to the single
 #   library call; the record holding it is built from that variable.
 # - The projections consume the library value and return only `Outcome`,
-#   `Maybe<ArtifactId>` or `EventRecord`. None of those types holds a Decision,
-#   a CommitResult, a session or a ledger, so nothing computed while projecting
-#   can flow back into what the wrapper returns.
+#   `Scope`, `Maybe<ArtifactId>` or `EventRecord`. None of those types holds a
+#   Decision, a CommitResult, a session or a ledger, so nothing computed while
+#   projecting can flow back into what the wrapper returns.
 # - No def in this module constructs a `T.Decision` or `B.CommitResult`; those
 #   constructors appear here only as match patterns.
 # - The laws `audit_admit_returns_library_decision` and
 #   `audit_commit_returns_library_result` state the equality for all inputs.
 #
-# Allowlist. An event holds exactly the fields of `EventRecord`: format version,
-# kind, monitor event id, authenticated subject, phase, invocation, the exact
-# ordered source versions, destination version, the stamp's three epochs
-# (graph, policy, authority), code, operation kind, the sealed artifact id of
-# an accepted commit, and the outcome. There is deliberately no field that
-# could hold payload bytes, error text, a credential, a capability or caller
-# token, a grant or grant scope, a payment witness or receipt, a request body
-# or free text. A commit rejection carries no reason: `Backplane.Rejected`
-# exposes none, and finding one would mean re-running the gates.
+# Allowlist: what each field is and the check under which it entered the
+# event. The type is the allowlist; nothing else can be stored.
+# - `version`: the constant `event_format_version()`.
+# - `kind`, `phase`: functions of `outcome` (`kind_of`, `phase_of`).
+# - `event_id`: the monitor's fresh identifier, a trusted parameter.
+# - `subject`: the frontend-authenticated subject (`F.Caller.subject`, or the
+#   Ref's caller subject via `OS.subject`). On commit the facade additionally
+#   requires that subject to own the descriptor and to be the negotiated
+#   reader; on admission it is the host's transport-verified identity, which
+#   `T.admit` does not consult. The caller token is never read.
+# - `scope` (invocation, ordered source versions, destination version, the
+#   stamp's graph, policy and authority epochs, code, operation kind). These
+#   are fields of a plan, so they can carry arbitrary caller-chosen numbers
+#   and are NOT free of caller text by type. They are admitted only when a
+#   monitor-installed authority has bound them:
+#   - Admission: `T.admit` checks, in order, the stamp against the live epochs
+#     (Stale), the manifest shape (Source), the destination object
+#     (Destination), code and kind (Operation), output schema (Schema), the
+#     destination's kinds (Destination) and finally a write grant whose scope
+#     names the plan's exact invocation, ordered inputs, destination, code,
+#     kind and stamp (Write). Only once that write grant matched is every
+#     scope field bound to a monitor-installed grant. `Read`, `Origin` and
+#     `Payment` arise only after that point, so their events and admitted
+#     events carry `ScopeRead`. Every reason that can arise earlier (`Stale`,
+#     `Source`, `Destination`, `Operation`, `Schema`, `Write`) carries
+#     `ScopeNotRead{}`, which has no fields, so nothing the caller wrote can
+#     appear. `InvalidPolicy` also carries `ScopeNotRead{}` (controller
+#     ruling, fail closed). The classification is by the reason the library
+#     returned (`denial_reads_scope`), never by re-running a check; a reason
+#     that can occur both early and late is treated as early.
+#   - Commit: the plan of the session the facade was given, which is
+#     monitor-owned negotiated state (owner approvals, budget, hold), not a
+#     proposal made at this call. It is recorded for accepted and rejected
+#     commits alike.
+# - `artifact`: on an accepted commit only, the sealed artifact id from the
+#   WriteIntent. It is a digest DERIVED FROM THE OUTPUT'S CONTENT, so it
+#   enables confirmation of low-entropy outputs.
+# - `outcome`: a closed constructor; `DeniedFor` carries the closed `T.Denial`
+#   the library returned, never text. A commit rejection carries no reason:
+#   `Backplane.Rejected` exposes none, and finding one would re-run the gates.
+# Excluded by construction (no field can hold them): payload bytes, error
+# text, credentials, the capability or caller token, grants and grant scope
+# objects, payment witnesses and receipts, request bodies, the plan's output
+# type.
+#
+# Confidentiality of the allowed fields is the event policy's job (Task 3),
+# not the type's. Task 3 obligations recorded here:
+# 1. Every admission event's policy includes the requesting subject's
+#    influence (a control edge with the requester's label or clearance), or
+#    the event fails closed: even a vouched scope and the denial reason are
+#    shaped by what the requester chose to ask.
+# 2. Every commit event's policy includes the resolved `Backplane.Binding`'s
+#    source and destination labels and is never released below the output's
+#    label, because `artifact` is a digest of the sealed content.
 #
 # Trusted inputs (supplied by the monitor, never by the caller):
 # - `event_id`, a fresh identifier (Bend generates none); query views and
@@ -48,12 +92,11 @@ import ./DataOS.bend as OS
 #   unused by these projections).
 # - The transfer context and the DataOS context, exactly as the library's own
 #   entry points require them.
-# - The caller's subject as already authenticated by the frontend
-#   (`F.Caller.subject`, `OS.subject(ref)`). The caller's token is never read
-#   by any projection; it reaches only the library call that checks it.
+# - The caller's subject as already authenticated by the frontend.
 # `Diagnostic` is the raw failure material a host may hold (payload, error
 # text, credential, token). The wrappers take it, and the caller, as
-# parameters so that the laws can show both are dropped.
+# parameters so that the laws can show both are dropped; this module has no
+# accessor for it, so `grep -c 'Diagnostic[.]' AuditEvent.bend` is 0.
 #
 # Constructing an audit record authenticates nothing. `EventRecord`, `Diagnostic`,
 # `AuditedAdmission` and `AuditedCommit` are public Data records, a model, not
@@ -65,9 +108,10 @@ import ./DataOS.bend as OS
 #
 # Public entry points: `audited_admit` and `audited_commit`, plus the record
 # accessors and `EventRecord.equal`. Every other def (`outcome_of_decision`,
-# `outcome_of_commit`, `admission_event`, `commit_event`, `project`, the tag
-# and equality helpers) is an exported implementation helper; calling one
-# performs none of the library's checks and records no decision.
+# `outcome_of_commit`, `denial_reads_scope`, `admission_scope`,
+# `admission_event`, `commit_event`, `project`, the tag and equality helpers)
+# is an exported implementation helper; calling one performs none of the
+# library's checks and records no decision.
 #
 # Laws (LAWS.bend):
 # - `audit_admission_event_ignores_diagnostic`: for every plan, context,
@@ -85,7 +129,8 @@ import ./DataOS.bend as OS
 #   the library returned, so a denied transfer stays denied with its reason,
 #   and a rejected commit keeps the caller's session and ledger.
 # None of them claims durability, append success, or that a host calls the
-# wrapper at all; those are section 2 and host obligations.
+# wrapper at all; those are section 2 and host obligations. The scope rule is
+# tested (AuditTests), not proved.
 
 # --- Records -----------------------------------------------------------------
 # Naming: the design's `Event` and `Kind` are `EventRecord` and `EventKind`
@@ -102,21 +147,25 @@ type Phase is Data:
   Commit{}
 
 # Projected from the library value by outcome_of_decision/outcome_of_commit
-# only. DeniedFor carries the reason T.admit itself returned.
+# only. DeniedFor carries the reason the library itself returned.
 type Outcome is Data:
   Admitted{}
   DeniedFor{reason: T.Denial}
   Committed{}
   NotCommitted{}
 
-# The allowlisted event. Every field is either a monitor-supplied identifier,
-# the authenticated subject, a field of the plan the library decided on, the
-# sealed artifact of an accepted commit, or the projected outcome.
+# The plan fields an event may carry. `ScopeNotRead` is the explicit marker
+# for an admission denied before a write grant bound the plan; it has no
+# fields, so an early-denied event cannot hold any caller-written scope.
+type Scope is Data:
+  ScopeNotRead{}
+  ScopeRead{invocation: Nat, sources: T.Objects, destination: T.ObjectVersion,
+    stamp: T.Stamp, code: T.CodeId, op: T.OpKind}
+
+# The allowlisted event (see the header for each field's admission check).
 type EventRecord is Data:
-  EventRecord{version: Nat, kind: EventKind, event_id: Nat, subject: Nat, phase: Phase,
-    invocation: Nat, sources: T.Objects, destination: T.ObjectVersion,
-    stamp: T.Stamp, code: T.CodeId, op: T.OpKind,
-    artifact: Maybe<&2, B.ArtifactId>, outcome: Outcome}
+  EventRecord{version: Nat, kind: EventKind, event_id: Nat, subject: Nat,
+    phase: Phase, scope: Scope, artifact: Maybe<&2, B.ArtifactId>, outcome: Outcome}
 
 # Raw failure material a host holds when it calls audit. No field of it is
 # ever read by a projection; it is a parameter so the laws can quantify it.
@@ -202,7 +251,7 @@ def outcome_tag(outcome: Outcome) -> Nat:
 # --- Projection --------------------------------------------------------------
 
 # The ONLY place an admission outcome is derived: it matches the Decision that
-# T.admit returned and copies its reason. It evaluates no check.
+# the transfer admission check returned and copies its reason. It evaluates no check.
 def outcome_of_decision(decision: T.Decision) -> Outcome:
   match decision:
     case T.Denied{reason}:
@@ -220,7 +269,8 @@ def outcome_of_commit(result: B.CommitResult) -> Outcome:
       NotCommitted{}
 
 # The sealed artifact of an accepted commit, read from its WriteIntent; a
-# rejection names no artifact.
+# rejection names no artifact. The id is a digest derived from the output's
+# content (Task 3 labels it with the binding's labels).
 def artifact_of_commit(result: B.CommitResult) -> Maybe<&2, B.ArtifactId>:
   match result:
     case B.Committed{session, ledger, intent}:
@@ -261,29 +311,77 @@ def caller_subject(caller: F.Caller) -> Nat:
     case F.Caller{subject, _}:
       subject
 
-# Builds the event from the plan the library decided on. The plan's output
-# type is not on the allowlist and is dropped; no other input exists.
-def project(plan: T.Plan, subject: Nat, +outcome: Outcome,
-    artifact: Maybe<&2, B.ArtifactId>, event_id: Nat) -> EventRecord:
+# The scope fields of a plan the monitor has bound. The output type is not on
+# the allowlist and is dropped.
+def scope_of_plan(plan: T.Plan) -> Scope:
   match plan:
     case T.Plan{stamp, invocation, sources, destination, code, op, _}:
-      +kind = kind_of(outcome)
-      EventRecord{event_format_version(), kind, event_id, subject, phase_of(kind),
-        invocation, sources, destination, stamp, code, op, artifact, outcome}
+      ScopeRead{invocation, sources, destination, stamp, code, op}
 
-# Scope from the admitted plan, subject from the authenticated caller, outcome
-# from the decision the library returned.
-def admission_event(plan: T.Plan, decision: T.Decision, caller: F.Caller,
+# Named policy bit per closed denial reason: True only for the reasons that
+# T.admit can return only after the header's write-grant check bound every
+# scope field (Read, Origin, Payment). Every reason that can arise in the
+# header, and InvalidPolicy (ruling), is False: its event carries no scope.
+def denial_reads_scope(reason: T.Denial) -> Bool:
+  match reason:
+    case T.InvalidPolicy{}:
+      False{}
+    case T.Stale{}:
+      False{}
+    case T.Source{}:
+      False{}
+    case T.Read{}:
+      True{}
+    case T.Write{}:
+      False{}
+    case T.Schema{}:
+      False{}
+    case T.Operation{}:
+      False{}
+    case T.Origin{}:
+      True{}
+    case T.Payment{}:
+      True{}
+    case T.Destination{}:
+      False{}
+
+# Fail closed: a reason that does not vouch for the plan yields the marker.
+def scope_gate(reads: Bool, plan: T.Plan) -> Scope:
+  match reads:
+    case True{}:
+      scope_of_plan(plan)
+    case False{}:
+      ScopeNotRead{}
+
+# The scope an admission event may carry, chosen from the Decision the library
+# returned. It reads the plan only when the decision vouches for it.
+def admission_scope(plan: T.Plan, decision: T.Decision) -> Scope:
+  match decision:
+    case T.Denied{reason}:
+      scope_gate(denial_reads_scope(reason), plan)
+    case T.Admitted{ticket}:
+      scope_of_plan(plan)
+
+# The single record constructor.
+def project(subject: Nat, scope: Scope, +outcome: Outcome,
+    artifact: Maybe<&2, B.ArtifactId>, event_id: Nat) -> EventRecord:
+  +kind = kind_of(outcome)
+  EventRecord{event_format_version(), kind, event_id, subject, phase_of(kind),
+    scope, artifact, outcome}
+
+# Subject from the authenticated caller, scope and outcome from the decision
+# the library returned.
+def admission_event(plan: T.Plan, +decision: T.Decision, caller: F.Caller,
     event_id: Nat) -> EventRecord:
-  project(plan, caller_subject(caller), outcome_of_decision(decision),
-    no_artifact(), event_id)
+  project(caller_subject(caller), admission_scope(plan, decision),
+    outcome_of_decision(decision), no_artifact(), event_id)
 
 # Scope from the negotiated plan of the session the facade was given, subject
 # from the Ref's authenticated caller, outcome and artifact from the result.
 def commit_event(session: N.Session, ref: F.Ref, +result: B.CommitResult,
     event_id: Nat) -> EventRecord:
-  project(N.Session.plan(session), OS.subject(ref), outcome_of_commit(result),
-    artifact_of_commit(result), event_id)
+  project(OS.subject(ref), scope_of_plan(N.Session.plan(session)),
+    outcome_of_commit(result), artifact_of_commit(result), event_id)
 
 # --- Public entry points -----------------------------------------------------
 
@@ -310,7 +408,7 @@ def audited_commit(+session: N.Session, expected_session: Nat,
     ledger, candidate, ref, expected_frontend, context)
   AuditedCommit{result, commit_event(session, ref, result, event_id)}
 
-# --- Accessors ---------------------------------------------------------------
+# --- Accessors (public entry points) ------------------------------------------
 
 def AuditedAdmission.decision(a: AuditedAdmission) -> T.Decision:
   match a:
@@ -334,88 +432,43 @@ def AuditedCommit.event(a: AuditedCommit) -> EventRecord:
 
 def EventRecord.version(e: EventRecord) -> Nat:
   match e:
-    case EventRecord{v, _, _, _, _, _, _, _, _, _, _, _, _}:
+    case EventRecord{v, _, _, _, _, _, _, _}:
       v
 
 def EventRecord.kind(e: EventRecord) -> EventKind:
   match e:
-    case EventRecord{_, k, _, _, _, _, _, _, _, _, _, _, _}:
+    case EventRecord{_, k, _, _, _, _, _, _}:
       k
 
 def EventRecord.event_id(e: EventRecord) -> Nat:
   match e:
-    case EventRecord{_, _, i, _, _, _, _, _, _, _, _, _, _}:
+    case EventRecord{_, _, i, _, _, _, _, _}:
       i
 
 def EventRecord.subject(e: EventRecord) -> Nat:
   match e:
-    case EventRecord{_, _, _, s, _, _, _, _, _, _, _, _, _}:
+    case EventRecord{_, _, _, s, _, _, _, _}:
       s
 
 def EventRecord.phase(e: EventRecord) -> Phase:
   match e:
-    case EventRecord{_, _, _, _, p, _, _, _, _, _, _, _, _}:
+    case EventRecord{_, _, _, _, p, _, _, _}:
       p
 
-def EventRecord.invocation(e: EventRecord) -> Nat:
+def EventRecord.scope(e: EventRecord) -> Scope:
   match e:
-    case EventRecord{_, _, _, _, _, i, _, _, _, _, _, _, _}:
-      i
-
-def EventRecord.sources(e: EventRecord) -> T.Objects:
-  match e:
-    case EventRecord{_, _, _, _, _, _, x, _, _, _, _, _, _}:
+    case EventRecord{_, _, _, _, _, x, _, _}:
       x
-
-def EventRecord.destination(e: EventRecord) -> T.ObjectVersion:
-  match e:
-    case EventRecord{_, _, _, _, _, _, _, d, _, _, _, _, _}:
-      d
-
-def EventRecord.stamp(e: EventRecord) -> T.Stamp:
-  match e:
-    case EventRecord{_, _, _, _, _, _, _, _, s, _, _, _, _}:
-      s
-
-def EventRecord.code(e: EventRecord) -> T.CodeId:
-  match e:
-    case EventRecord{_, _, _, _, _, _, _, _, _, c, _, _, _}:
-      c
-
-def EventRecord.op(e: EventRecord) -> T.OpKind:
-  match e:
-    case EventRecord{_, _, _, _, _, _, _, _, _, _, k, _, _}:
-      k
 
 def EventRecord.artifact(e: EventRecord) -> Maybe<&2, B.ArtifactId>:
   match e:
-    case EventRecord{_, _, _, _, _, _, _, _, _, _, _, a, _}:
+    case EventRecord{_, _, _, _, _, _, a, _}:
       a
 
 def EventRecord.outcome(e: EventRecord) -> Outcome:
   match e:
-    case EventRecord{_, _, _, _, _, _, _, _, _, _, _, _, o}:
+    case EventRecord{_, _, _, _, _, _, _, o}:
       o
-
-def Diagnostic.payload(d: Diagnostic) -> List<&2, U32>:
-  match d:
-    case Diagnostic{p, _, _, _}:
-      p
-
-def Diagnostic.error_text(d: Diagnostic) -> List<&2, U32>:
-  match d:
-    case Diagnostic{_, e, _, _}:
-      e
-
-def Diagnostic.credential(d: Diagnostic) -> List<&2, U32>:
-  match d:
-    case Diagnostic{_, _, c, _}:
-      c
-
-def Diagnostic.token(d: Diagnostic) -> T.CodeId:
-  match d:
-    case Diagnostic{_, _, _, t}:
-      t
 
 # --- Equality ----------------------------------------------------------------
 
@@ -435,6 +488,17 @@ def Outcome.equal(a: Outcome, b: Outcome) -> Bool:
     case _ _:
       Nat.is_eq(outcome_tag(a), outcome_tag(b))
 
+def Scope.equal(a: Scope, b: Scope) -> Bool:
+  match a b:
+    case ScopeNotRead{} ScopeNotRead{}:
+      True{}
+    case ScopeRead{an, ax, ad, at, ac, ao} ScopeRead{bn, bx, bd, bt, bc, bo}:
+      Nat.is_eq(an, bn) && T.Objects.equal(ax, bx) &&
+        T.ObjectVersion.equal(ad, bd) && T.Stamp.equal(at, bt) &&
+        T.CodeId.equal(ac, bc) && T.OpKind.equal(ao, bo)
+    case _ _:
+      False{}
+
 def artifact_equal(a: Maybe<&2, B.ArtifactId>, b: Maybe<&2, B.ArtifactId>) -> Bool:
   match a b:
     case None{} None{}:
@@ -447,10 +511,8 @@ def artifact_equal(a: Maybe<&2, B.ArtifactId>, b: Maybe<&2, B.ArtifactId>) -> Bo
 # Public entry point. Field-by-field equality over every allowlisted field.
 def EventRecord.equal(a: EventRecord, b: EventRecord) -> Bool:
   match a b:
-    case EventRecord{av, ak, ai, as, ap, an, ax, ad, at, ac, ao, aa, au}
-      EventRecord{bv, bk, bi, bs, bp, bn, bx, bd, bt, bc, bo, ba, bu}:
+    case EventRecord{av, ak, ai, as, ap, ax, aa, au}
+      EventRecord{bv, bk, bi, bs, bp, bx, ba, bu}:
       Nat.is_eq(av, bv) && EventKind.equal(ak, bk) && Nat.is_eq(ai, bi) &&
-        Nat.is_eq(as, bs) && Phase.equal(ap, bp) && Nat.is_eq(an, bn) &&
-        T.Objects.equal(ax, bx) && T.ObjectVersion.equal(ad, bd) &&
-        T.Stamp.equal(at, bt) && T.CodeId.equal(ac, bc) &&
-        T.OpKind.equal(ao, bo) && artifact_equal(aa, ba) && Outcome.equal(au, bu)
+        Nat.is_eq(as, bs) && Phase.equal(ap, bp) && Scope.equal(ax, bx) &&
+        artifact_equal(aa, ba) && Outcome.equal(au, bu)
