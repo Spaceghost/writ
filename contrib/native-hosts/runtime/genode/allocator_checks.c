@@ -14,7 +14,7 @@ static int preserved(unsigned char const *p, unsigned n)
 int writ_qjs_allocator_checks(void)
 {
     unsigned checks = 0;
-    size_t const limit = 64U * 1024U * 1024U;
+    size_t const limit = 128U * 1024U * 1024U;
     CHECK(!writ_qjs_live_bytes() && !writ_qjs_reserved_bytes());
     CHECK(!writ_qjs_malloc(0) && !writ_qjs_usable_size(NULL));
     CHECK(!writ_qjs_malloc(SIZE_MAX) && !writ_qjs_reserved_bytes());

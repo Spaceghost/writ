@@ -375,3 +375,11 @@ Lesson for later lanes: a parameterized fixture def placed after its
 zero-argument caller (`host()` calling `host_at(...)` defined below it)
 failed the checker with "expected : a filled definition"; moving the
 caller below the def fixed it.
+
+Merged tree (master, after lane/policy-aware-audit landed first at 1713 / 29)
+----------------------------------------------------------------------------
+The lane's own totals above are relative to master 78449c9 (1428 / 17). On the
+merged master tree the suite is 1942 checks (1713 plus 229 Rendezvous) on both
+backends, byte-identical, and LAWS.bend holds 36 laws (29 plus the 7 above);
+`bend PROOF.bend` ALL PROOFS CHECK; `--verdict` still refused (no Lean). See
+VERIFICATION.md and verification/environment.txt for the merged numbers.

@@ -54,7 +54,7 @@ passed the clean build and three native boots at
 | Actual libc/VFS mount | Eight assertions passed through `open`, `read`, `lseek`, `fstat` and `close`, with write/unknown-object denial |
 
 The service executes the unchanged Bend-generated `mount.mjs` inside native
-QuickJS, with private policy state, a 64 MiB reservation limit and active stack
+QuickJS, with private policy state, a 128 MiB reservation limit and active stack
 checks. The C/C++ session/packet binding and bounded allocator adaptation stay
 under the approved `contrib/native-hosts/` boundary; policy and release decisions
 remain in Bend. Native Node provides the corresponding generated-module path

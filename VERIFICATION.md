@@ -35,12 +35,14 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | Facade | 12 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
 | HostBinding | 144 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, destroy authority (no close through a delegated copy), derived Frontend handles closed with their Session, holder versus subject, non-holders told UnknownAlias, delegation withdrawn with the delegator's route, no delegation to another subject's domain, non-widening delegation trees, quota before authority and refunds on close and revoke, exact state preservation on every denial |
 | Issuance | 230 | Authenticated approval submission, exact paired-scope registration (subject-only caller), revision-checked revocation and replay, attenuation-only derivation, exclusive expiry, subject-scoped per-use projections into T.admit and F.checked_plan (model only; not wired to a host) |
+| Rendezvous | 229 | Executor rendezvous (`Rendezvous.bend`): offers gated on a current Issuance grant and the exact negotiated plan, origin approvals re-checked against the directory and the issuer's live stamp, eligibility gates and strict ranking, one rendezvous per request, trial binding with the session following the selection, evidence accepted only from the selected provider, dispatch and commit projection gated on host currency and the stored selection, lifecycle scenarios; exact state on every denial (model only; no host) |
 | HostWire | 63 | Versioned, bounded, canonical wire schema (four tags, fixed widths, little-endian bytes): word and byte round trips, unknown versions and tags (a tag-5 record shaped like a serialized Context, Ledger, and caller included), malformed lengths, out-of-range fields, fixed check order; decoding yields descriptions, never authority (model only) |
 | HostIdentity | 92 | Monitor-owned identity table: authenticated session binding, minting, resolution order (revision, host, incarnation, forged, ambiguity, generation, holder, origin, expiry), the holder is the bound session rather than the subject, an untrusted claimed subject never changes the caller, inherited and transferred endpoints, non-widening delegation that never changes the subject, restart incarnations, retire cascade, exact state on every denial (model only) |
 | HostPrimitives | 216 | The five primitive families (`HostPrimitives.bend` and `HostPublication.bend`): session binding with monitor-decided client delegability, issue bound to its Frontend handle's plan, owner, rights, and lease, and delegate wrappers, worker admission under a monitor-bound profile (controls, families, accelerator isolation, route inventory, one worker per identity entry), quotas and gated diagnostics, sealing against live writers and retargeting, publication only through `DataOS.commit_from_capability` with exact plan binding, replay and reconcile bound to the recorded digest and destination, revoke, restart, quiesce, reclaim and complete; full state equality and no effects on every denial (model only; no native binding) |
 | HostConformance | 43 | 36 shared conformance vectors plus one comparison line, run on two synthetic adapters: exact plan, owner, rights, and lease binding at issue and plan binding at publication, retained provenance, caller identity and session holding, revocation, replay, restart, digest and destination substitution at recovery, unchanged state on denial; identical decision lines on both adapters (the decision half of PH-012 only; no native adapter replays them) |
+| Audit | 285 | Policy-aware audit section 1 (`AuditEvent.bend`, `AuditQuery.bend`, `AuditExport.bend`): allowlisted events projected from library results, `ScopeNotRead{}` for early denials, event policy as the join of every influence failing closed, owner-scoped queries with one fixed public refusal, cursors bound to owner, sink and epoch, bounded work charged to the visible view only, export, metric and alert channels under explicit grant, revocation and re-grant refusal, canonical encoding (model only; no durable log, no host) |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
-| **Total per backend** | **1428** | **Both complete runs passed** |
+| **Total per backend** | **1942** | **Both complete runs passed** |
 
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
@@ -52,7 +54,7 @@ proof for arbitrary graph sizes.
 
 Evidence is in `verification/tests-js.txt` and `verification/tests-native.txt`.
 The transfer test driver prints `PASS ` while other drivers print `PASS:`;
-counting both forms yields 1428 per file. The two files are byte-identical.
+counting both forms yields 1942 per file. The two files are byte-identical.
 
 Reproduction:
 
@@ -243,7 +245,7 @@ exclusion"). The label and transfer checks reuse the producers' evaluators. No
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for seventeen declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for thirty-six declared laws:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
@@ -306,6 +308,78 @@ printed `ALL PROOFS CHECK` for the earlier laws and these five, and
 `bend PROOF.bend --verdict` exited 1 with the same `lean: Executable not found`
 error shown below, so none of the five has a Lean-kernel verdict.
 
+The policy-aware-audit lane (section 1 of `add-policy-aware-audit`; model
+only, no durable log and no host) adds twelve further laws, checked by the same
+`bend PROOF.bend`; each law's rationale and limits are in its `LAWS.bend`
+comment and in the module header, and `verification/policy-aware-audit.txt`
+records the run:
+
+- `audit_admission_event_ignores_diagnostic` and
+  `audit_commit_event_ignores_diagnostic`: the recorded event never depends on
+  the caller token or the diagnostic (the token may still change the decision,
+  and reaches the event only through it).
+- `audit_admit_returns_library_decision` and
+  `audit_commit_returns_library_result`: the wrappers return exactly the
+  library decision or facade result, so a denied transfer stays denied and a
+  rejected commit keeps the caller's session and ledger.
+- `audit_failed_influence_withholds`: one influence that does not flow to the
+  sink label makes the flow check false at any position (does not claim
+  `releasable` is the only route to a sink).
+- `audit_outcome_never_lowers_policy`: the recorded admission policy is the
+  same function of plan, context, labels and subject for every token,
+  diagnostic and event id, hence for every decision.
+- `audit_invisible_event_unobservable` and
+  `audit_export_outside_stream_unobservable`: inserting an event the caller may
+  not see, or outside the owner's stream, anywhere in the log leaves the query
+  view and the export view unchanged (that `respond` and `transmit` read the
+  log only through those views is structural and tested, not proved; timing is
+  not covered).
+- `audit_stale_query_refused`: a query at the successor revision is the public
+  refusal (successor revision only; host serialization is not claimed).
+- `audit_refusal_is_constant`: whenever the revision is current and some query
+  gate fails, the response is exactly the one public refusal (the gate list's
+  completeness is pinned by tests, not proved).
+- `audit_ungranted_export_emits_nothing` and
+  `audit_revoked_export_emits_nothing`: with no grant naming exactly this
+  exporter, owner, sink and channel, or with the grant found revoked, `transmit`
+  emits nothing (the grant registry's correctness and that a host sends nothing
+  outside `transmit` are host obligations).
+
+On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for all
+twenty-nine laws, and `bend PROOF.bend --verdict` exited 1 with the same
+missing-`lean` error, so none of the twelve has a Lean-kernel verdict.
+
+The executor-rendezvous lane (`add-executor-rendezvous`; model only, no host)
+adds seven further laws, checked by the same `bend PROOF.bend`; each law's
+rationale and limits are in its `LAWS.bend` comment and in the module header,
+and `verification/executor-rendezvous.txt` records the run:
+
+- `nat_lt_irreflexive` and `nat_eq_reflexive`: auxiliary arithmetic for the
+  offer order (say nothing about the rendezvous by themselves).
+- `offer_order_irreflexive` (ER-003): the offer comparator is strict on its
+  diagonal at all three levels (quote, provider id, serial), so list order
+  cannot pick among records under one identity (transitivity, totality on
+  distinct identities and that `best` returns the minimum are not proved).
+- `rendezvous_ineligible_offer_dropped` (ER-002): an ineligible offer, at any
+  position and whatever its quote, leaves the ranked eligible list unchanged
+  when removed (that `select` ranks only that list is structural and tested).
+- `rendezvous_stale_selection_keeps_state`: a selection at the successor
+  revision is not accepted and returns exactly the supplied state (successor
+  revision only; host serialization is not claimed).
+- `rendezvous_wrong_provider_evidence_rejects` (ER-005): evidence from a
+  provider other than the stored selection's, or with no selection, is not
+  accepted and returns exactly the supplied state (outer match only).
+- `rendezvous_unselected_dispatch_rejects` (ER-001, ER-007): a dispatch whose
+  offer, worker session or binding is not the stored selection's target, or
+  with no selection, is not accepted and returns exactly the supplied state
+  (outer match only; host currency, selection currency, caller token,
+  evidence, trial and replay are tested, not proved).
+
+On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for its
+twenty-four laws, and on the merged tree for all thirty-six;
+`bend PROOF.bend --verdict` exited 1 with the same missing-`lean` error, so
+none of the seven has a Lean-kernel verdict.
+
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
 dependency completeness, cryptographic authentication, the compiler, or the OS.
@@ -327,7 +401,7 @@ with:
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 ```
 
-No Lean-kernel verdict exists for any of the seventeen laws. `kernel-verdict.txt`
+No Lean-kernel verdict exists for any of the thirty-six laws. `kernel-verdict.txt`
 keeps the earlier three-law note and records the latest attempt verbatim.
 Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
@@ -499,8 +573,8 @@ bounded handles and supervisor revocation.
 
 The [execution record](contrib/native-hosts/VERIFICATION.md) captures 69 mount
 vectors plus a count-consistency check: 70 PASS lines on each local backend.
-The integrated core passes 1428 checks, 41 HostBinding vectors and 37
-portable-host vector lines on both CPU backends; all seventeen ordinary laws pass. Linux native CI passes its actual mounts, fixed
+The integrated core passes 1942 checks, 41 HostBinding vectors and 37
+portable-host vector lines on both CPU backends; all thirty-six ordinary laws pass. Linux native CI passes its actual mounts, fixed
 worker probes, revocation, interpreter/broker failure and owned cleanup.
 Genode clean CI passes the 782-core and 69-mount corpus, 24 allocator checks
 on host and guest, 56 filesystem checks and eight libc/VFS checks.

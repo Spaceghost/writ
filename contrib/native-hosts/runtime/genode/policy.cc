@@ -17,7 +17,7 @@ Writ::Javascript::Javascript()
 {
     _runtime = JS_NewRuntime();
     if (!_runtime) { writ_qjs_trim(); throw Failed(); }
-    JS_SetMemoryLimit(_runtime, 64U * 1024U * 1024U);
+    JS_SetMemoryLimit(_runtime, 128U * 1024U * 1024U);
     JS_SetMaxStackSize(_runtime, 512U * 1024U);
     JS_SetInterruptHandler(_runtime, interrupt, this);
     _context = JS_NewContext(_runtime);

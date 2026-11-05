@@ -26,7 +26,7 @@ static bool exact(Rpc_in_buffer<MAX> const &input, char const *expected)
 
 static size_t text_size(Attached_rom_dataspace const &rom)
 {
-    if (!rom.valid() || rom.size() > 2U * 1024U * 1024U) throw Writ::Javascript::Failed();
+    if (!rom.valid() || rom.size() > 8U * 1024U * 1024U) throw Writ::Javascript::Failed();
     char const *text = rom.local_addr<char>();
     size_t n = 0;
     while (n < rom.size() && text[n]) ++n;

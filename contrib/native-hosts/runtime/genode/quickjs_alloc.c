@@ -15,7 +15,7 @@
  * still have their own slab/metadata overhead, bounded by the component quota.
  */
 enum { CACHE_BUCKETS = 11, CACHE_PER_BUCKET = 2, LIBC_RESERVE = 32 };
-static size_t const byte_limit = 64U * 1024U * 1024U;
+static size_t const byte_limit = 128U * 1024U * 1024U;
 static size_t const first_bucket = 64U * 1024U;
 static size_t const cache_threshold = 32U * 1024U;
 

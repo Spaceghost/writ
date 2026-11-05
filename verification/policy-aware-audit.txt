@@ -1,0 +1,104 @@
+Policy-aware audit evidence (change add-policy-aware-audit, section 1: tasks 1.1 to 1.4)
+Bend version: bend 2.0.39 (from `bend version`)
+Node: v26.10.0
+Host: Linux 7.2.9-1-MANJARO x86_64
+Date: 2026-11-05 (UTC)
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1; commands run from the repository root
+Scope: the Bend audit model (AuditEvent.bend, AuditQuery.bend, AuditExport.bend) and its tests (AuditTests.bend). The change is proposed. Section 1 is modeled; sections 2 and 3, every host adapter and every acceptance scenario are not implemented.
+Captures: docs/superpowers/records/2026-11-05-policy-aware-audit/task-6-tests-js.txt, task-6-tests-native.txt, task-6-proof.txt, task-6-verdict.txt, task-6-openspec.txt. The shared verification/*.txt captures are not changed by this lane.
+
+## Commands and results
+
+$ bend AuditEvent.bend --check-only; bend AuditQuery.bend --check-only; bend AuditExport.bend --check-only
+[exit status: 0 each]
+ALL PROOFS CHECK (each)
+
+$ bend Tests.bend -o ../writ-build/policy-aware-audit/tests.js && node ../writ-build/policy-aware-audit/tests.js > ../writ-build/policy-aware-audit/tests-js.txt
+[exit status: 0 (build), 0 (run); 0 FAIL lines]
+
+$ bend Tests.bend -o ../writ-build/policy-aware-audit/tests-native && ../writ-build/policy-aware-audit/tests-native +RTS --threads 4 --gpu off > ../writ-build/policy-aware-audit/tests-native.txt
+[exit status: 0 (build, 364 s), 0 (run); 0 FAIL lines]
+Rebuilt on the final .bend tree (exit 0, 363 s); that binary's output is cmp-identical to this capture.
+This is a native CPU run with `--gpu off`. It is not a GPU test, and no device code ran.
+
+Audit summary line (both captures):
+Audit: 285 checks passed
+Last lines (both captures):
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+
+PASS lines, counting both forms the corpus prints (each capture):
+$ grep -cE '^PASS[: ]'   1713
+$ grep -c '^PASS: '      1660
+$ grep -c '^PASS '       53
+No PASS label occurs twice.
+Total: 1428 plus 285 = 1713 (1428 checks on master before this change, plus 285 Audit checks).
+Per the cross-lane ruling this lane changes no recorded count pin; the controller re-pins counts after the parallel lanes merge.
+
+$ cmp ../writ-build/policy-aware-audit/tests-js.txt ../writ-build/policy-aware-audit/tests-native.txt
+[exit status: 0; byte-identical]
+SHA-256 of both: 0851dc61399c52211be5a513614c81afbd4960837a7a2cb917be533fde96acf3
+The embedded-runtime `bend Tests.bend` output is byte-identical as well.
+
+$ bend PROOF.bend
+[exit status: 0]
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.
+$ grep -c '^law ' LAWS.bend
+29   (17 on master plus 12 audit laws)
+
+$ bend PROOF.bend --verdict
+[exit status: 1]
+Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
+NOT VERIFIED: neither `lean` nor `elan` is on PATH. The proofs are checked by ordinary `bend PROOF.bend` only, not kernel verified.
+
+$ ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive
+[exit status: 0]
+Totals: 44 passed, 0 failed (44 items)
+This is structural validation, separate from the Bend tests and proof checks.
+
+## Native arity layout (AuditTests.bend)
+
+The first native build of this tree failed with `Error: an arity over 247`
+(`bend Tests.bend` and the JavaScript build do not show it). The native
+backend limits a def or continuation to 247 words, and records are unboxed,
+so the words of every record live in one def count. Seven `AE.Recorded`
+values in one list literal already exceed it. The sites were two fixture lists
+(`interleaved`, 8 records; `projected_denials`, 10 events) and five checks
+that hold several commit or admission fixtures in one def. The fix keeps
+every check, name and order: the four multi-conjunct checks are split into one
+named Bool def per conjunct, the one single-conjunct check into one def per
+operand, and the two lists are consed onto a `_rest` def holding the
+remainder. Inlining the new defs and folding the lists back gives the earlier
+tokens exactly; the 285 check names are identical before and after; the
+JavaScript output is byte-identical to the run before the change (the SHA-256
+above).
+
+## Laws added (LAWS.bend, proved in PROOF.bend)
+
+- audit_admission_event_ignores_diagnostic: for every plan, context, labels, subject, two caller tokens, two diagnostics and event id, the admission events are equal. Limits: says nothing about which fields are sensitive (the event policy's job).
+- audit_commit_event_ignores_diagnostic: the commit event equals the projection of the facade's result without any diagnostic and with any other caller token. Limits: the token may change the decision, and reaches the event only through it.
+- audit_admit_returns_library_decision: audited_admit returns exactly Transfer.admit's decision, so a denied transfer stays denied with its reason. Limits: no durability or append.
+- audit_commit_returns_library_result: audited_commit returns exactly the facade's result, so a rejected commit keeps the caller's session and ledger. Limits: no durability or append.
+- audit_failed_influence_withholds: one influence that does not flow to the sink label makes influences_flow False at any position. Limits: does not claim releasable is the only route to a sink.
+- audit_outcome_never_lowers_policy: the recorded admission policy is admission_policy(plan, context, labels, subject) for every token, diagnostic and event id, hence every decision. Limits: does not claim the influence list is complete.
+- audit_invisible_event_unobservable: inserting an event the caller may not see anywhere in the log leaves view unchanged. Limits: does not claim respond reads the log only through view (structure, tested), or anything about timing.
+- audit_stale_query_refused: respond at the successor revision is the public refusal. Limits: successor revision only; host serialization of installs is not claimed.
+- audit_refusal_is_constant: whenever the revision is current and some query gate fails, respond returns exactly Refused{Unavailable{}}. Limits: does not claim the gate list is complete (tests pin each gate).
+- audit_ungranted_export_emits_nothing: with no grant naming exactly this exporter, owner, sink and channel, transmit emits nothing. Limits: does not claim the grant registry is correct or that a host sends nothing outside transmit.
+- audit_revoked_export_emits_nothing: when the grant found is revoked, transmit emits nothing. Limits: does not claim revoke_export sets the flag (tested), or anything about expiry or epoch (tested).
+- audit_export_outside_stream_unobservable: inserting an event outside the owner's stream leaves export_log_view unchanged. Limits: does not claim transmit reads the log only through export_log_view (structure, tested).
+
+Tested, not proved: the canonical encoding and decoding (U32 words are not
+inductive), the scope rule, the influence derivation, the stream rule and the
+query and export gate pins.
+
+## Not exercised
+
+Durability (no append, durable or otherwise), crash injection and recovery,
+history verification (authenticated predecessors, trusted head, idempotency),
+the required-event queue, denial-append failure, any native host (Genode,
+Unikraft, Linux, Windows, rclone), transport authentication of `from` and of
+the caller subject, and the GPU. The timing, scheduling and traffic-volume
+channels and the one-bit label-table channel are stated in docs/AUDIT.md and
+are not closed.

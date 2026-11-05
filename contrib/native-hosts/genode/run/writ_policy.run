@@ -11,7 +11,7 @@ set expected_core $env(WRIT_CORE_EXPECTED)
 install_config {
 config
 } [writ_parent_services] {
-+ start test_writ_policy | caps: 256 | ram: 128M
++ start test_writ_policy | caps: 256 | ram: 256M
   + config | expected_core: } $expected_core {
     + libc | stdout: /dev/log | stderr: /dev/log
     + vfs | + dir dev | + log

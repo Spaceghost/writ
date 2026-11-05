@@ -73,9 +73,9 @@ to be a general Bend C runtime port.
 | Session packet buffer | 4,096–131,072 bytes |
 | Individual native read | At most 65,536 bytes, checked before U32 conversion |
 | Packet processing | At most one protocol queue batch per dispatch |
-| Generated source ROM | At most 2 MiB per module/script |
-| Tracked QuickJS reservations | 64 MiB, including retained cache capacity and private allocation headers |
-| Large-allocation reuse | At most two free reservations per size class; all remain charged to the same 64 MiB limit |
+| Generated source ROM | At most 8 MiB per module/script (the generated core corpus passed 2 MiB at 1942 checks) |
+| Tracked QuickJS reservations | 128 MiB (raised from 64 MiB when the 1942-check corpus passed a 60.7 MB peak), including retained cache capacity and private allocation headers |
+| Large-allocation reuse | At most two free reservations per size class; all remain charged to the same 128 MiB limit |
 | QuickJS stack limit | 512 KiB; stack checking remains enabled |
 | Component stack | 768 KiB, leaving the native stack slot's guard and metadata intact |
 | Service/test component RAM quota | 128 MiB in the supplied supervisor configs |
@@ -132,7 +132,7 @@ sudo apt-get install --yes --no-install-recommends \
   curl xz-utils unzip rsync
 
 # Put the verified Bend 2.0.39 compiler on PATH first.
-WRIT_CORE_EXPECTED=1428 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
+WRIT_CORE_EXPECTED=1942 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
 ```
 
 The script first runs the allocator checks with host AddressSanitizer,
@@ -146,7 +146,7 @@ the chosen build directory. Use a fresh directory for a clean qualification
 run; existing extracted input trees are developer build caches.
 
 The required core assertion count is an explicit, reviewed build input. The
-workflow pins it to 1428 for the integrated source. The native probe requires
+workflow pins it to 1942 for the integrated source. The native probe requires
 that exact number of successful assertions, the complete corpus summary, and a
 single successful exit; it does not infer success from whatever output appears.
 
@@ -159,7 +159,7 @@ build hashes, supervisor configurations, and serial logs.
 
 | QEMU boot | Native checks |
 | --- | --- |
-| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the unchanged generated core tests (1428 in the current workflow); all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
+| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the unchanged generated core tests (1942 in the current workflow); all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
 | `writfs` | Actual filesystem RPCs and packet streams; exact contents and ranges; directory metadata; EOF; write, traversal, and malformed-name denial; malformed lengths, negative/overflowing shared-memory descriptors, and oversized file offsets; stat-only, closed, and foreign-session handles; 32-handle exhaustion; unadmitted components; forged label suffix; denied direct ROM/admin routes; revocation of retained handles |
 | `writfs_vfs` | A separate native libc consumer mounting the service through VFS; `open`, full/ranged `read`, `lseek`, `fstat`, rejected write-open, rejected unknown object, and `close` |
 

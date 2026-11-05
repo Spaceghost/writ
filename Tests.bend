@@ -13,6 +13,7 @@ import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostConformanceTests.bend as HostConformance
 import ./FacadeTests.bend as Facade
 import ./IssuanceTests.bend as Issuance
+import ./AuditTests.bend as Audit
 import ./RendezvousTests.bend as Rendezvous
 import ./PropertyTests.bend as Properties
 
@@ -32,6 +33,7 @@ def main() -> IO(Unit):
     HostConformance.main()
     Facade.main()
     Issuance.main()
+    Audit.main()
     Rendezvous.main()
     Properties.main()
     IO.print("ALL LIBRARY TESTS PASSED")
