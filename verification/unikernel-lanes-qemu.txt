@@ -1,0 +1,287 @@
+Unikraft lanes lane, Task 1 (change task 2.4, UL-005): a second runtime lane on a
+two-vCPU Unikraft image, chased with the hello and Lanes probes.
+Recorded 2026-11-05 (UTC) on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Every run below is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine pc,
+-cpu max, -no-reboot, the isa-debug-exit device at 0xf4, -m 1024, through
+hosts/unikraft/scripts/run.sh unless stated; -smp and "+RTS --threads N --gpu off" as
+stated. Every run is TCG on the CPU: not native, not an accelerated boot, and no GPU was
+used or tested. With -smp 2 QEMU's TCG emulates two vCPUs; nothing here measures host
+parallelism. Unikraft 0.21.0 (7351f8b), kraft 0.12.16, Bend 2.0.39 (pins:
+verification/unikernel-pins.txt). W = realpath ../writ-unikernel from the repository
+root; nothing built is in the tree. The host was loaded (load average 26 to 76); wall
+times are indicative only.
+
+== Result ==
+
+1. The second lane runs, but only on the boot vCPU. With "+RTS --threads 2" the runtime
+   reports "lanes 2", calls pthread_create(pool_work, 1), and pool_work is entered and
+   calls pool_rows on its own lane stack (0x10800ad000; the main lane's is
+   0x1000069000). This differs from E6 (matrix, earlier image without the signal
+   library and the exit hook, and with UKPLAT_CPU_MAXCOUNT=1, so without HAVE_SMP and the
+   APIC interrupt controller), where pool_work was not entered before shutdown; which
+   change matters was not isolated. Every gdb trace here is of set lanes
+   (UKPLAT_CPU_MAXCOUNT=2, HAVE_SMP=y), on -smp 1 and -smp 2; the shipped-template control
+   (Task 2, below) showed the same output and crash without a trace. In
+   the observed order the second lane's pool_rows runs after both of the main lane's
+   pool_turn calls; whether it claimed a row was not shown.
+2. The second vCPU is never used. With -smp 2, gdb lists CPU#1 as "halted" at
+   0x00000000000fd5fd (firmware range) at pool_work and at _uk_crash (trace 1) and at
+   the alloc.c:198 assertion print (trace 2), each from gdb's `info threads`;
+   every breakpoint hit is on CPU#0, and uk_lcpu_start (lib/uklcpu/lcpu.c:297) is not
+   hit. In the 0.21.0 sources uk_lcpu_start has no caller (only its definition and the
+   declaration at lib/uklcpu/include/uk/lcpu/pm.h:118); plat/kvm/x86/setup.c:149-154
+   calls only uk_lcpu_mp_init under CONFIG_HAVE_SMP. ukschedcoop is one cooperative
+   run queue. So two lanes ran, interleaved cooperatively on one vCPU; two lanes on two
+   vCPUs did not happen.
+3. Every "--threads 2" Lanes run ends in a Unikraft crash after complete program output:
+   "lanes 2", "pow2 4194304" (correct, 2^22), then
+   "CRIT: [libukalloc] <alloc.c @  198> Assertion failure: metadata->base != ((void *) 0)"
+   and QEMU 253 (the exit hook's crash value), on -smp 1 and on -smp 2 alike. gdb places
+   it in the idle thread's garbage collection of the exited thread named "main":
+   _uk_printk <- uk_free_ifpages (lib/ukalloc/alloc.c:198) <- uk_thread_release
+   (lib/uksched/thread.c:1023, uk_thread_uktcb_fini) <- uk_sched_thread_gc
+   (lib/uksched/sched.c:282) <- idle_thread_fn (lib/ukschedcoop/schedcoop.c:199).
+   "--threads 1" runs of the same image end with QEMU 33. Not patched (plan: a crash is
+   recorded, not patched). Whether the same crash happens with the shipped
+   UKPLAT_CPU_MAXCOUNT=1 template (signals on) was not tried: no Lanes image of that
+   template exists and the time box allows no third probe build. (Superseded by Task 2:
+   built and run under the controller's ruling, crashes the same way; see "Shipped
+   template control".)
+4. hello (no parallel call, no pool) prints "hi" and ends with QEMU 33 in all four
+   configurations.
+
+| Probe | --threads | -smp | Program lines | QEMU | Wall |
+| --- | --- | --- | --- | --- | --- |
+| hello | 1 | 1 | hi (complete) | 33 | 0.4 s |
+| hello | 1 | 2 | hi (complete) | 33 | 0.4 s |
+| hello | 2 | 1 | hi (complete) | 33 | 0.3 s |
+| hello | 2 | 2 | hi (complete) | 33 | 0.3 s |
+| lanes | 1 | 1 | lanes 1, pow2 4194304 (complete) | 33 | 1.2 s |
+| lanes | 1 | 2 | lanes 1, pow2 4194304 (complete) | 33 | 0.9 s |
+| lanes | 2 | 1 | lanes 2, pow2 4194304 (complete), then crash | 253 | 0.9 s |
+| lanes | 2 | 2 | lanes 2, pow2 4194304 (complete), then crash | 253 | 1.0 s |
+
+No run hung; no run reached the 120 s timeout (124).
+
+== Configuration ==
+
+Set lanes, made by mkapp.sh from the template, then one line changed in the set's copy
+($W/lanes-unikraft/Kraftfile, c5ce5a37b387cea2b83d1865ef1dc25936477868070fb406f39a9626ff208eaf;
+template hosts/unikraft/app/Kraftfile unchanged,
+ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce):
+  -    CONFIG_UKPLAT_CPU_MAXCOUNT: 1
+  +    CONFIG_UKPLAT_CPU_MAXCOUNT: 2
+(the comment above it in the set copy still reads "Single lane (UL-005): one virtual CPU").
+CONFIG_LIBPOSIX_FUTEX was not added: it already resolves to y.
+Resolved $W/lanes-unikraft/.config.writ-bend_qemu-x86_64
+(2091895ebb95bf8e81d38c7e919b38ec401728ad777b510d491664030f2b44d9):
+  CONFIG_UKPLAT_CPU_MAXCOUNT=2
+  CONFIG_HAVE_SMP=y            (plat/Config.uk:23, "default y if UKPLAT_CPU_MAXCOUNT > 1")
+  CONFIG_LIBUKINTCTLR_APIC=y   (selected by HAVE_SMP on x86_64)
+  CONFIG_LIBUKACPI=y
+  CONFIG_LIBPOSIX_FUTEX=y
+  CONFIG_LIBUKLCPU=y, CONFIG_LIBUKLCPU_RUN_IRQ=13, CONFIG_LIBUKLCPU_WAKEUP_IRQ=14
+  CONFIG_LIBUKSCHEDCOOP=y
+
+Scripts (in the tree):
+  hosts/unikraft/scripts/run.sh (d42e928fdd9a4034f0d506ff2d36d362d00c7c97479821613607349fdc2dcb53):
+    optional 7th argument vcpus; when given, "-smp <vcpus>" is passed and logged; when
+    omitted nothing is added (a call without it logs "-m 1024 -cpu max", as before).
+  hosts/unikraft/scripts/check-corpus.sh (cf20cee2f5ca1105aeb17e61f3d060df762f00b3c7c099fa9dfae292b1860708):
+    optional [lanes] [vcpus]; when either is given it boots once through run.sh with
+    "+RTS --threads <lanes> --gpu off" and -smp <vcpus>, then checks that capture with
+    check-image.sh under WRIT_NO_BOOT=1; without them it execs check-image.sh as before.
+  hosts/unikraft/scripts/build.sh unchanged (67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817).
+
+== Commands ==
+
+  export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1
+  hosts/unikraft/scripts/mkapp.sh lanes
+  sed -i 's/^    CONFIG_UKPLAT_CPU_MAXCOUNT: 1$/    CONFIG_UKPLAT_CPU_MAXCOUNT: 2/' $W/lanes-unikraft/Kraftfile
+  bend scripts/unikernel/Hello.bend -o $W/lanes/gen/hello.c
+  bend scripts/unikernel/Lanes.bend -o $W/lanes/gen/lanes.c
+  hosts/unikraft/scripts/build.sh lanes hello     (exit 0, 89 s)
+  hosts/unikraft/scripts/build.sh lanes lanes     (exit 0, 70 s)
+  hosts/unikraft/scripts/run.sh lanes <probe>-t<N>-s<V> <probe> "+RTS --threads <N> --gpu off" 120 1024 <V>
+    for probe in hello, lanes; N in 1, 2; V in 1, 2
+  hosts/unikraft/scripts/console.sh $W/lanes/logs/run-<label>.raw   (for each run)
+
+Inputs and outputs (sha256):
+  scripts/unikernel/Hello.bend  c70559d49042fb846d8ff84652daac45ff848b2204a9d29f5594235c840b1bb2
+  scripts/unikernel/Lanes.bend  105cc2d0cc406861ebc92cdbcb35e2a80b483553935ec8f19b32ca1c787728a8
+  $W/lanes/gen/hello.c          260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf
+                                (equal to $W/sigcodes/gen/hello.c)
+  $W/lanes/gen/lanes.c          26d9873efaced5e45f828389384c65637a3872a61062cad7b2f1ef177ffc8fb1
+                                (equal to $W/gen/lanes.c, the E5/E6 generation)
+  $W/lanes/images/hello-qemu    212b40900a6c962fd54d7d7cd6eab4544acce01c5143b41df1aff237ee0fe621
+  $W/lanes/images/hello-qemu.dbg eb06c613b85fb84af81350e3f282e5c5ebfadd481a8f9b221c57514cb44a7146
+  $W/lanes/images/lanes-qemu    d0fcf6a18ec2e5d08707fb37cd4e75a83d3eb7d8de32975e526c882c02df9818
+  $W/lanes/images/lanes-qemu.dbg 07644106607cb852c413e23ee7bece72600770a0e385a3d0f5d700bd1daca276
+
+== Console lines ==
+
+Every run's console.sh output begins after Unikraft's banner (" Ijiraq 0.21.0~7351f8b").
+
+hello, all four (t1-s1, t1-s2, t2-s1, t2-s2): console.sh prints exactly
+  hi
+run.sh log tail: 33, (wall 0.4 s / 0.4 s / 0.3 s / 0.3 s).
+Logged command for t2-s2:
+  $ timeout 120 qemu-system-x86_64 -accel tcg -nographic -m 1024 -smp 2 -cpu max -kernel $W/lanes/images/hello-qemu -append "+RTS --threads 2 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot  </dev/null; echo $?
+
+lanes t1-s1 and t1-s2: console.sh prints exactly
+  lanes 1
+  pow2 4194304
+run.sh log tail: 33, (wall 1.2 s) and 33, (wall 0.9 s).
+
+lanes t2-s1 and t2-s2: console.sh refuses the capture (the crash screen carries NUL
+bytes: "after the banner ... has NUL=28 ESC=0 CR=17 (CR LF=17)"). run.sh's log, t2-s2
+(t2-s1 equal apart from the -smp value, the timestamps and the wall time):
+  lanes 2
+  pow2 4194304
+  [    0.386060] CRIT: [libukalloc] <alloc.c @  198> Assertion failure: metadata->base != ((void *) 0)
+  [    0.388628] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+  ... (crash art and register dump)
+  [    0.391018] CRIT:  rip: 0008:0000000000129e21
+  [    0.391241] CRIT:  rsp: 0000:0000001000025360 eflags: 00010287 orig_rax: 0000000000000000
+  [    0.410011] CRIT:  r13: 0000001000025440 r14: 0000000000000004 r15:0000000000211617
+  253
+  (wall 1.0 s)
+The last console line before QEMU ended is the r13/r14/r15 register line; QEMU 253.
+
+== gdb traces (Lanes, --threads 2) ==
+
+Not through run.sh (it has no gdb option); same QEMU command plus a gdb stub, -S:
+  timeout 120 qemu-system-x86_64 -accel tcg -nographic -m 1024 -smp <V> -cpu max \
+    -kernel $W/lanes/images/lanes-qemu -append "+RTS --threads 2 --gpu off" \
+    -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot -gdb tcp::<port> -S </dev/null
+  timeout 110 gdb -q -batch -x <cmd> $W/lanes/images/lanes-qemu.dbg
+Command files and logs: $W/lanes/gdb-lanes-s{1,2}.cmd, gdb-lanes2-s{1,2}.cmd,
+gdb-lanes3-s2.cmd; $W/lanes/logs/gdb-lanes-t2-s{1,2}.log, gdb2-lanes-t2-s{1,2}.log,
+gdb3-lanes-t2-s2.log. QEMU ended 253 under the first trace (gdb rc 1: the script ran
+past the end), 0 under the traces that kill the guest at the crash.
+
+Trace 1 (hbreak pool_open, pool_work, uk_lcpu_start, _uk_crash), -smp 2:
+  Thread 1 hit Breakpoint 1, pool_open () at .../lanes-unikraft/app.c:2212
+  Thread 1 hit Breakpoint 2, pool_work (arg=0x1) at .../lanes-unikraft/app.c:2202
+  #1  start (p=0x1080097aa8) at .../musl-1.2.3//src/thread/pthread_create.c:213
+  #2  __clone () at .../musl/arch/x86_64/__clone.S:63
+  * 1    Thread 1.1 (CPU#0 [running]) pool_work (arg=0x1) at .../app.c:2202
+    2    Thread 1.2 (CPU#1 [halted ]) 0x00000000000fd5fd in ?? ()
+  Thread 1 hit Breakpoint 4, _uk_crash (...) at .../lib/ukdebug/crash.c:94
+    2    Thread 1.2 (CPU#1 [halted ]) 0x00000000000fd5fd in ?? ()
+  Breakpoint 3 (uk_lcpu_start) never hit.
+  -smp 1: the same order (pool_open, pool_work arg 0x1 on CPU#0, _uk_crash); one CPU listed.
+
+Trace 2 (hbreak pool_rows printing its caller, _uk_printk), -smp 1 and -smp 2 alike:
+  pool_rows from lane-stack 0x1000069000   #1 pool_turn (grow=true, rows=2) at app.c:2263
+  pool_rows from lane-stack 0x1000069000   #1 pool_turn (grow=false, rows=2) at app.c:2263
+  pool_rows from lane-stack 0x10800ad000   #1 pool_work (arg=<optimized out>) at app.c:2206
+  _uk_printk (... srcname="alloc.c", srcline=198, fmt="Assertion failure: %s\n")
+  #1 uk_free_ifpages at lib/ukalloc/alloc.c:198
+  #3 uk_thread_release (t=0x400008020) at lib/uksched/thread.c:1023
+  #4 uk_sched_thread_gc (sched=0x400019020) at lib/uksched/sched.c:282
+  #5 idle_thread_fn (argp=0x400019020) at lib/ukschedcoop/schedcoop.c:199
+
+Trace 3 (-smp 2): at the assertion, frame 3:
+  released thread 0x400008020 name main
+
+== Script compatibility checks ==
+
+  WRIT_NO_BOOT=1 hosts/unikraft/scripts/check-corpus.sh sigcorpustests tests-m4096
+    -> diff: empty / PASS lines: 782 / last line: ALL LIBRARY TESTS PASSED / QEMU exit: 33 / PASS
+       (the default path: an existing signals-template capture, unchanged behaviour)
+  hosts/unikraft/scripts/check-corpus.sh lanes nocorpus 60 1024 2 2
+    -> run.sh exit 2 (no image $W/lanes/images/tests-qemu), "log: missing", "result: FAIL", exit 1
+       (the lanes path refuses rather than checking a stale capture; no corpus image built here)
+  hosts/unikraft/scripts/run.sh lanes hello-default hello "+RTS --threads 1 --gpu off" 120 1024
+    -> 33; logged command has no -smp ("-m 1024 -cpu max"), as run-hello1.log of set sigcodes.
+
+== Not exercised ==
+
+- Two lanes on two vCPUs: the second vCPU stays halted in firmware (above); no lane ran
+  on it, so atomics under cross-CPU contention remain unexercised.
+- Whether the second lane claimed any row of a turn (its pool_rows ran after the main
+  lane's two turns; the row counter was not inspected).
+- The shutdown crash on an image built with UKPLAT_CPU_MAXCOUNT=1 (the shipped template)
+  and "--threads 2": not built (time box). (Superseded by Task 2: built and run under the
+  controller's ruling, crashes the same way; see "Shipped template control".)
+- A corpus image in set lanes (Task 2).
+- More than two lanes or vCPUs; KVM; any device run. Every run is TCG on the CPU.
+
+== Shipped template control (Task 2, 2026-11-05) ==
+
+Set lanes1, made by mkapp.sh from the unmodified template (cmp with
+hosts/unikraft/app/Kraftfile: equal, ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce),
+signals on, CONFIG_UKPLAT_CPU_MAXCOUNT=1. The resolved
+$W/lanes1-unikraft/.config.writ-bend_qemu-x86_64
+(7e108a273b40d74d64f828e72ac1befe0dd05d797d514521486d7115ed369bdd) holds
+CONFIG_UKPLAT_CPU_MAXCOUNT=1 and no SMP line at all (HAVE_SMP unset); CONFIG_LIBPOSIX_FUTEX=y.
+Same generated C as the lanes set ($W/lanes1/gen/lanes.c, copied,
+26d9873efaced5e45f828389384c65637a3872a61062cad7b2f1ef177ffc8fb1).
+
+  hosts/unikraft/scripts/mkapp.sh lanes1
+  hosts/unikraft/scripts/build.sh lanes1 lanes      (exit 0, 44 s)
+    $W/lanes1/images/lanes-qemu      cec64bf8517de01689f8ed8d006e3e83fdb575c2548acb217f9d7d372e353df6
+    $W/lanes1/images/lanes-qemu.dbg  d0dd8b17dd7a6d80b6131dd2db66eb55a826a1d34a76631ee9152287e79ead33
+  hosts/unikraft/scripts/run.sh lanes1 lanes-t2-s1 lanes "+RTS --threads 2 --gpu off" 120 1024 1
+    $ timeout 120 qemu-system-x86_64 -accel tcg -nographic -m 1024 -smp 1 -cpu max -kernel $W/lanes1/images/lanes-qemu -append "+RTS --threads 2 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot  </dev/null; echo $?
+    lanes 2
+    pow2 4194304
+    [    0.311243] CRIT: [libukalloc] <alloc.c @  198> Assertion failure: metadata->base != ((void *) 0)
+    [    0.313515] CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)
+    ... (crash art and register dump; rip: 0008:0000000000129b61)
+    [    0.318448] CRIT:  r13: 0000001000025440 r14: 0000000000000004 r15:000000000020f461
+    253
+    (wall 0.5 s)
+  hosts/unikraft/scripts/run.sh lanes1 lanes-t1-s1 lanes "+RTS --threads 1 --gpu off" 120 1024 1
+    lanes 1
+    pow2 4194304
+    33
+    (wall 0.5 s)
+
+The shipped template crashes the same way: the shutdown assertion does not need
+UKPLAT_CPU_MAXCOUNT=2 or HAVE_SMP. Inferred: "--threads 1" ends 33 and "--threads 2" ends
+253 on both images; in the traced (lanes-set) crash the thread being released is "main"
+(trace 3). No gdb trace was taken of this
+image; the assertion line and the exit value are the same as in the lanes set.
+
+== Stopping point (Task 2; change task 2.4 stays open) ==
+
+Ruling (controller, 2026-11-05): Task 2 is the stall record; no corpus image was built,
+because a two-lane corpus run would end in the shutdown crash (QEMU 253) and its parity
+result could not be trusted.
+
+1. Two lanes run, but only on vCPU 0. On set lanes (UKPLAT_CPU_MAXCOUNT=2, HAVE_SMP=y),
+   on -smp 1 and -smp 2, with "+RTS --threads 2", pool_work(arg=1) is
+   entered and calls pool_rows on its own lane stack (gdb trace 2 above), interleaved
+   cooperatively with the main lane on one vCPU; not traced on the shipped template,
+   whose control run showed the same output and crash. With -smp 2 the second vCPU never runs
+   Unikraft code: gdb lists "Thread 1.2 (CPU#1 [halted ]) 0x00000000000fd5fd" (firmware
+   range) at pool_work and at _uk_crash (trace 1) and at the alloc.c:198 assertion print
+   (trace 2), each from gdb's `info threads`, and the hardware breakpoint on
+   uk_lcpu_start is never hit. In the Unikraft 0.21.0 sources the function has no caller:
+     $ cd $W/src/unikraft && grep -rn "uk_lcpu_start\b" --include=*.c --include=*.h .
+     lib/uklcpu/lcpu.c:297:int uk_lcpu_start(const __u64 lcpuidx[], unsigned int *num,
+     lib/uklcpu/include/uk/lcpu/pm.h:118:int uk_lcpu_start(const __u64 lcpuidx[],
+   plat/kvm/x86/setup.c:149-154 calls only uk_lcpu_mp_init under CONFIG_HAVE_SMP.
+2. Every "--threads 2" Lanes run ends in a Unikraft crash after complete, correct program
+   output: "CRIT: [libukalloc] <alloc.c @  198> Assertion failure: metadata->base !=
+   ((void *) 0)", QEMU 253, raised while the idle thread garbage-collects the exited
+   thread "main" (idle_thread_fn -> uk_sched_thread_gc -> uk_thread_release ->
+   uk_free_ifpages). It does not depend on the CPU count: it happens on the lanes set
+   (UKPLAT_CPU_MAXCOUNT=2) on -smp 1 and -smp 2, and on the shipped template
+   (UKPLAT_CPU_MAXCOUNT=1) on -smp 1. "--threads 1" ends with QEMU 33 on both.
+3. What a fix would need (named, not implemented; no Unikraft, runtime, or generated-C
+   change was made):
+   - for parallel lanes: a caller for uk_lcpu_start in Unikraft 0.21.0's boot (plat/kvm)
+     that brings up the secondary LCPUs, and a scheduler per LCPU (ukschedcoop is one
+     cooperative run queue on the boot CPU), so a runtime lane can run on another vCPU;
+   - for a clean end: a thread teardown at shutdown that releases exited helper threads
+     (and the main thread, after them) without the uk_free_ifpages assertion;
+   - alternatively, on the runtime side, a yielding wait in the lane loop. On a
+     cooperative scheduler that would still give turn-taking on one vCPU, not
+     parallelism, and would not by itself remove the shutdown crash.
+4. Not exercised: the corpus on two lanes (no image built); atomics across CPUs (no lane
+   ran on a second vCPU); "--threads" above 2; -smp above 2; KVM. Every run is TCG on
+   the CPU.

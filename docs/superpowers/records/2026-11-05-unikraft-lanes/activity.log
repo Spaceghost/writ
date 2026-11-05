@@ -1,0 +1,21 @@
+2026-11-05T00:48:15Z	controller	lane created from master 7bc3811 after unikraft-signals landed
+2026-11-05T00:50:00Z	implementer	task 1 started: read brief, plan constraints, scripts, Kraftfile, plat/Config.uk:18-26 (HAVE_SMP defaults y when UKPLAT_CPU_MAXCOUNT > 1), ukschedcoop, posix-futex; uk_lcpu_start is called nowhere outside lib/uklcpu/lcpu.c
+2026-11-05T00:52:00Z	implementer	run.sh gains optional 7th arg vcpus (-smp N, omitted by default); check-corpus.sh gains [lanes] [vcpus] (boots via run.sh then check-image.sh WRIT_NO_BOOT=1); mkapp.sh lanes, set Kraftfile CONFIG_UKPLAT_CPU_MAXCOUNT 2 (c5ce5a37...); gen hello.c 260b70a3..., lanes.c 26d9873e... (equal to earlier gens); hello build started
+2026-11-05T00:53:40Z	implementer	hello build rc 0 in 89 s, image 212b4090...; .config: UKPLAT_CPU_MAXCOUNT=2 HAVE_SMP=y LIBUKINTCTLR_APIC=y LIBPOSIX_FUTEX=y (already resolved, no Kraftfile line); starting four hello runs
+2026-11-05T00:53:52Z	implementer	hello four runs (t1s1 t1s2 t2s1 t2s2): each prints hi, QEMU 33, wall 0.3-0.4 s; lanes probe build started
+2026-11-05T00:56:06Z	implementer	lanes build rc 0 in 70 s (d0fcf6a1...); lanes runs: t1 s1/s2 print lanes 1, pow2 4194304, QEMU 33; t2 s1/s2 print lanes 2, pow2 4194304 then libukalloc alloc.c:198 assertion crash, QEMU 253; gdb: pool_work entered (arg 1) on CPU#0 on both; with -smp 2 CPU#1 halted at 0xfd5fd, uk_lcpu_start not hit; tracing pool_rows callers and the crash site
+2026-11-05T00:57:18Z	implementer	gdb: second lane (pool_work arg 1) calls pool_rows on its own stack 0x10800ad000 after the main lane's two turns, on CPU#0; crash is uk_free_ifpages <- uk_thread_release(thread 'main') <- uk_sched_thread_gc <- idle_thread_fn (schedcoop.c:199); compat checks: check-corpus default WRIT_NO_BOOT on sigcorpustests PASS 782, lanes path with no image FAIL log missing, run.sh without vcpus logs no -smp; writing evidence
+2026-11-05T00:58:23Z	implementer	wrote verification/unikernel-lanes-qemu.txt; writing report
+2026-11-05T00:58:56Z	implementer	report written; committing task 1 (DONE_WITH_CONCERNS: second lane runs on vCPU 0 only; two-lane runs crash at shutdown, QEMU 253)
+2026-11-05T00:59:32Z	controller	task 1 reported; ruling: task 2 records the stall (one probe build, no corpus); reviewer and task 2 dispatched
+2026-11-05T01:00:12Z	implementer	task 2 started (ruling: stall record, no corpus build); mkapp.sh lanes1 from the unmodified template, Lanes probe build started
+2026-11-05T01:01:36Z	implementer	lanes1 (shipped template, MAXCOUNT 1, no HAVE_SMP) build rc 0 in 44 s (cec64bf8...); --threads 2 -smp 1: lanes 2, pow2 4194304, alloc.c:198 assertion, QEMU 253; --threads 1: 33; crash does not need MAXCOUNT 2; appended shipped-template control and Stopping point to unikernel-lanes-qemu.txt; box 2.4 note in tasks.md
+2026-11-05T01:02:09Z	controller	task 2 reported: stall recorded; shipped template crashes the same way on --threads 2
+2026-11-05T01:02:52Z	controller	task 1 review APPROVED; wording fix carried to the final round
+2026-11-05T01:03:19Z	implementer	task 3 started (stall branch): read brief, Global Constraints, task 1 and 2 reports, verification/unikernel-lanes-qemu.txt; editing matrix Threads/Atomics rows and Limits, UNIKERNELS.md item 2 and Open list, UL-005 row
+2026-11-05T01:04:15Z	implementer	records edited (matrix :41 :45 :465-473; UNIKERNELS.md :169-173 :276-288; UL-005 row); OpenSpec strict 44 passed, 0 failed; bend Tests.bend 782 PASS, ALL LIBRARY TESTS PASSED; report written; committing task 3
+2026-11-05T01:04:28Z	controller	task 3 reported; final whole-branch review dispatched
+2026-11-05T01:09:12Z	controller	final review: needs text fixes; fix round dispatched
+2026-11-05T01:09:32Z	implementer	fix round started: read final-review.md; applying I1-I5 (text only); source-sha256.txt left to the controller
+2026-11-05T01:10:27Z	implementer	fix round: I1-I5 applied (lanes-qemu.txt, matrix, UNIKERNELS.md, UL-005 row, tasks.md 2.4 note, INVENTORY.md run.sh/check-corpus.sh rows); OpenSpec strict 44 passed, 0 failed; committing
+2026-11-05T01:11:06Z	controller	fix round verified; merging to master

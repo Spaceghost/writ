@@ -166,7 +166,11 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   program statuses 46 and 47; one gpuexample boot (of three) printed Unikraft's "PM driver
   failed the operation: -5" after the exit hook's port write, before QEMU exited with 33,
   cause unknown ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt),
-  Task 3 rerun); more lanes (2.4); accelerated boots (3.1).
+  Task 3 rerun); more lanes (2.4: a second lane runs on vCPU 0 only, since Unikraft 0.21.0
+  never calls `uk_lcpu_start`, and every `--threads 2` run, with the shipped template as
+  well, ends in the `alloc.c @ 198` shutdown assertion, QEMU 253, so the corpus was not
+  run on two lanes; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
+  "Stopping point"); accelerated boots (3.1).
 
 ## Selection matrix, 2026-11
 
@@ -191,14 +195,14 @@ built here).
 | Memory | **supplied**, lazy: 8 GiB heap, first hint taken (inferred from no further calls; E2 printed the mmap arguments, not return values), and 2 GiB+guard stack; boots at `-m 8` (E1, E2) | **supplied**, lazy: heap at the third hint `1<<43`, stack mapped; boots at `-m 32` (O-E1, O-E2) |
 | Faults | **substituted**: guard hit gives `CRIT: Unikraft Crash` and, inferred, a halt; the runtime's handler never runs; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred) (E4) | **supplied**: the runtime's `bend: memory fault` message, then OSv powers off (`Uncaught signal 11` with `--verbose`); QEMU 0 (O-E4) |
 | Guest RAM exhaustion (stack growth) | **substituted**: the same Unikraft crash; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred); arena exhaustion not induced (E4, `-m 1024`, Overflow) | **substituted**: OSv kernel `Aborted` in its page pool; halts without power-off, killed (O-E4, `-m 1024`) |
-| Threads | **substituted** by a single lane: `pthread_create` returns 0, `pool_work` was not entered before shutdown in a non-yielding program (E6); behaviour when the main lane yields not tried; one CPU, cooperative (E5, E6) | **supplied**: second lane runs on one and on two vCPUs, correct results (O-E5, O-E6); but shutdown with an open pool **missing**: guest idles after `main` returns (O-E6) |
+| Threads | **substituted** by a single lane: `pthread_create` returns 0, `pool_work` was not entered before shutdown in a non-yielding program (E6); behaviour when the main lane yields not tried; one CPU, cooperative (E5, E6). Since 2026-11-05: second lane entered, vCPU 0 only (set `lanes`, `UKPLAT_CPU_MAXCOUNT=2`); `--threads 2` crashes at shutdown, QEMU 253 ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point") | **supplied**: second lane runs on one and on two vCPUs, correct results (O-E5, O-E6); but shutdown with an open pool **missing**: guest idles after `main` returns (O-E6) |
 | Clock | **supplied** (E7) | **supplied** (O-E7) |
 | Event loop | **supplied** with `posix-pipe` and `posix-poll` (A3); **missing** without them (E1, Task 1 A1+A2 run); the helper-thread wake path was exercised later and works, but the never-ending helper thread turned success into QEMU 255 at shutdown under the first exit map (19, a signal death, under the current map; not rerun) ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1) | **supplied** (O-E1, O-E7); the helper-thread wake path was not exercised |
 | Process: argv | **supplied** via `-append` (E3) | **supplied** via the kernel command line (O-E3) |
 | Process: `BENDRTS` | **substituted**: build-time only, compiled into the environment (E8) | **supplied** at boot with `--env=` (O-E8) |
 | Process: exit status | (matrix, before the port; see [unikernel-exit-codes.txt](../verification/unikernel-exit-codes.txt)) **missing**: return from `main` ends the run with QEMU 0 whatever it returned (power-off inferred; QEMU exits 0 under -no-reboot; power-off vs reset not distinguished (inferred)); `exit`/`_exit` leave the guest idle until killed (E3, E9) | **substituted** (single lane): every exit path powers off with QEMU 0; the status appears only on the console with `--verbose` (O-E3, O-E9). The multi-lane hang is in the Threads cell; `IO.exit` with an open pool was not tried |
-| Process: CPU count | **consistent with supplied**; not distinguishable from the runtime's fallback at one CPU (default `lanes 1`, E5); SMP not tried | **supplied**: 1 on `-smp 1`, 2 on `-smp 2` (O-E5) |
-| Atomics | **supplied** by GCC's `stdatomic.h` (A1); exercised on one lane and one CPU only (E5, E9) | **supplied** by clang's `stdatomic.h`; exercised with two lanes on two vCPUs (TCG) (O-E5, O-E6) |
+| Process: CPU count | **consistent with supplied**; not distinguishable from the runtime's fallback at one CPU (default `lanes 1`, E5); `-smp 2` booted (set `lanes`) only with explicit `--threads`; the default count on two vCPUs was not recorded ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Result") | **supplied**: 1 on `-smp 1`, 2 on `-smp 2` (O-E5) |
+| Atomics | **supplied** by GCC's `stdatomic.h` (A1); exercised on one lane and one CPU only (E5, E9) (2026-11-05: a second lane ran on vCPU 0 only, cooperatively; atomics across CPUs still unexercised; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point" items 1 and 4) | **supplied** by clang's `stdatomic.h`; exercised with two lanes on two vCPUs (TCG) (O-E5, O-E6) |
 | Device dispatch | **missing** by construction: no accelerator code compiled, no `!` program run (E2) | **missing** by construction, the same (O-E2) |
 | Rebuild-stable image (not UL-008 reproducibility) | (matrix, before the port; see [unikernel-crash-action.txt](../verification/unikernel-crash-action.txt), Images) **incremental** rebuilds on one host and path gave identical image hashes (unikernel-matrix-unikraft.md, "Build and run harness (outside the tree)", image hash table), but **clean builds are not hash-stable**: Unikraft embeds the build time (`HOSTUTC`, `lib/uklibid`), and two clean builds differ in those bytes | **rebuild-stable on one host and path**: the probes image rebuilt to the same hash (unikernel-matrix-osv.md, "Image and executable hashes", rebuild line) |
 
@@ -269,7 +273,19 @@ changed, which the lane does not do. After the failure the process does not exit
    (UL-005). On this kernel `--threads 2` creates a lane whose `pool_work` was not entered before shutdown in a non-yielding program (E6; behaviour when the main lane yields not tried), so a
    multi-lane build must not be configured by accident. `UKPLAT_CPU_MAXCOUNT=1` is now set explicitly in the Kraftfile (done: `hosts/unikraft/app/Kraftfile`; in the matrix it was only a resolved default, matrix ~565); SMP is a later task (2.4), and
    the OSv hang at shutdown with more than one lane (cause inferred, O-E6) should be
-   investigated as part of it.
+   investigated as part of it. Since (Unikraft lanes lane, 2026-11-05): the shipped
+   template stays single-lane, and the `lanes` set (`UKPLAT_CPU_MAXCOUNT=2`, built outside
+   the tree) is the multi-lane evidence: a second lane now runs, but only on vCPU 0,
+   because nothing in Unikraft 0.21.0 calls `uk_lcpu_start`
+   ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point"
+   item 1). `--threads 2` on the shipped image crashes at shutdown (the `alloc.c @ 198`
+   assertion, QEMU 253) after complete output, as on the `lanes` set, so a multi-lane build
+   must not be configured ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
+   "Shipped template control", "Stopping point" item 2). A fix would need a
+   `uk_lcpu_start` caller and a scheduler per LCPU for parallel lanes, and a clean thread
+   teardown at shutdown; none was made, and 2.4 stays open
+   ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point"
+   item 3).
 3. **The fault halt to carry the runtime's message (done for a stack overflow).** With
    the experimental posix signal library in the template (adopted 2026-11-04, Unikraft
    signals lane; `build.sh` carries the compile workaround) the runtime's `SIGSEGV`
