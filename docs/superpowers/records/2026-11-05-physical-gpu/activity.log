@@ -81,3 +81,37 @@
 2026-11-05T03:55:42Z	implementer	fix round 1: transfer digest coverage stated, verifier-denial and pre-commit Limits added, exit-status sources named (text only, no rerun); committing
 2026-11-05T03:56:06Z	implementer	fix round 1: report digest wording, concern and fix-round section added; amended the fix-round commit (not pushed)
 2026-11-05T03:56:19Z	controller	task 3 complete; task 4 dispatched (parity cases)
+2026-11-05T04:00:08Z	implementer	task 4 started: read brief, plan constraints, task 3 report/review, probes and harness; designing parity mode (per-case runs for launch counts)
+2026-11-05T04:06:45Z	implementer	solver parity mode written (10 cases + comparator control); dev build passes --gpu on and off with identical stdout; writing labels parity
+2026-11-05T04:09:21Z	implementer	labels parity mode written (4 cases + comparator control, tree shape printed); writing transfers parity and the all-field transfer digest from the task 3 review
+2026-11-05T04:14:35Z	implementer	transfers parity mode written (6 cases + comparator control); transfer digest now covers every field (task 3 review item 1); all three probes pass parity all with identical --gpu on/off stdout in dev builds; starting evidence builds and runs
+2026-11-05T04:14:46Z	implementer	task 4 builds start (solver, labels, transfers to ../writ-build/physical-gpu/task4)
+2026-11-05T04:16:02Z	implementer	task 4 builds done
+2026-11-05T04:16:12Z	implementer	run solver-all (solver parity parity all): launches 90; gate: PASS
+2026-11-05T04:16:23Z	implementer	run labels-all (labels parity parity all): launches 20; gate: PASS
+2026-11-05T04:16:34Z	implementer	run transfers-all (transfers parity parity all): launches 30; gate: PASS
+2026-11-05T04:16:44Z	implementer	run solver-bit31-secrecy (solver parity parity bit31-secrecy): launches 15; gate: PASS
+2026-11-05T04:16:54Z	implementer	run solver-bit32-untrusted (solver parity parity bit32-untrusted): launches 15; gate: PASS
+2026-11-05T04:17:05Z	implementer	run solver-bit63-effects (solver parity parity bit63-effects): launches 15; gate: PASS
+2026-11-05T04:17:16Z	implementer	run solver-wide-dimensions (solver parity parity wide-dimensions): launches 10; gate: PASS
+2026-11-05T04:17:27Z	implementer	run solver-cycle (solver parity parity cycle): launches 15; gate: PASS
+2026-11-05T04:17:39Z	implementer	run solver-empty (solver parity parity empty): launches 0; gate: FAIL (launches: 0 bend_dev launches attributed to solver)
+2026-11-05T04:17:53Z	implementer	run solver-type-conflict (solver parity parity type-conflict): launches 5; gate: PASS
+2026-11-05T04:18:05Z	implementer	run solver-invalid-flow (solver parity parity invalid-flow): launches 0; gate: FAIL (launches: 0 bend_dev launches attributed to solver)
+2026-11-05T04:18:15Z	implementer	run solver-budget-1 (solver parity parity budget-1): launches 5; gate: PASS
+2026-11-05T04:18:27Z	implementer	run solver-budget-2 (solver parity parity budget-2): launches 10; gate: PASS
+2026-11-05T04:18:38Z	implementer	run labels-allow-deny (labels parity parity allow-deny): launches 5; gate: PASS
+2026-11-05T04:18:48Z	implementer	run labels-stale-epoch (labels parity parity stale-epoch): launches 5; gate: PASS
+2026-11-05T04:18:57Z	implementer	run labels-missing-principal (labels parity parity missing-principal): launches 5; gate: PASS
+2026-11-05T04:19:07Z	implementer	run labels-empty-batch (labels parity parity empty-batch): launches 5; gate: PASS
+2026-11-05T04:19:18Z	implementer	run transfers-paired-admitted (transfers parity parity paired-admitted): launches 5; gate: FAIL (compute_app_seen: probe pid '2036808' never listed by --query-compute-apps)
+2026-11-05T04:19:28Z	implementer	run transfers-missing-read (transfers parity parity missing-read): launches 5; gate: PASS
+2026-11-05T04:19:38Z	implementer	run transfers-missing-write (transfers parity parity missing-write): launches 5; gate: PASS
+2026-11-05T04:19:48Z	implementer	run transfers-missing-payment (transfers parity parity missing-payment): launches 5; gate: PASS
+2026-11-05T04:19:59Z	implementer	run transfers-stale-context (transfers parity parity stale-context): launches 5; gate: PASS
+2026-11-05T04:20:09Z	implementer	run transfers-empty-batch (transfers parity parity empty-batch): launches 5; gate: PASS
+2026-11-05T04:20:09Z	implementer	task 4 single-round runs done
+2026-11-05T04:20:58Z	implementer	run transfers-paired-admitted-r400 (transfers parity parity paired-admitted 400): launches 2000; gate: PASS
+2026-11-05T04:20:58Z	implementer	task 4 ROUNDS 400 runs done
+2026-11-05T04:22:53Z	implementer	verification/gpu-parity.txt assembled (24 observed runs, all off-diffs empty, 18/20 cases device-validated, no differences); writing report
+2026-11-05T04:23:40Z	implementer	task 4 report written; committing (no push)

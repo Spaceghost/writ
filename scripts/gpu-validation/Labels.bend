@@ -1,8 +1,11 @@
-# Label-batch path probe for physical GPU validation (GV-001, GV-002; Task 3).
+# Label-batch path probe for physical GPU validation (GV-001, GV-002; Task 3),
+# with differential parity cases (GV-003; Task 4).
 #
 # Usage (native build; one GPU path per binary):
 #   bend scripts/gpu-validation/Labels.bend -o ../writ-build/physical-gpu/labels
 #   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS run SIZE [ROUNDS]
+#   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS parity CASE [ROUNDS]
+#     (CASE is `all` or one case name; see "Parity mode" below)
 #
 # SYNTHETIC MONITOR STATE. The snapshot and labels are the
 # examples/Scenario.bend fixtures (the incident team and report owner); no
@@ -272,10 +275,303 @@ def Labels.go(+size: U32, +rounds: U32) -> IO(Unit):
     queries : Dlm.Batch <- IO.pure(Dlm.Batch, Labels.tree(Labels.depth(size), 0))
     Labels.stage(queries, snapshot, Labels.depth(size), rounds)
 
+
 def Labels.usage() -> IO(Unit):
   do IO<Unit>:
     IO.print_err("usage: labels [+RTS ... -RTS] run SIZE [ROUNDS]  (SIZE 1..4194304, ROUNDS 1..100000)")
+    IO.print_err("       labels [+RTS ... -RTS] parity CASE [ROUNDS]  (CASE all or a case name, ROUNDS 1..100000)")
     IO.exit(2)
+
+# ---- Parity mode (Task 4; GV-003) ------------------------------------------
+#
+#   labels [+RTS ... -RTS] parity CASE [ROUNDS]     CASE: a name below, or all
+#
+# A fixed list of SYNTHETIC cases over the Scenario principal snapshot
+# (authority epoch 3; Named{0} report owner, Named{1} incident team; two names,
+# so Named{2} and above are not registered). Each case is a small query tree.
+# Per case: ROUNDS device batches (GPU.label_batch), each behind its own
+# IO.now() step; an IO step; then the CPU reference Dlm.batch (no `!`) on the
+# same immutable queries and snapshot. Then, each one PASS or FAIL line:
+#   parity    every device answer tree equals the CPU reference field by
+#             field: the tree shape at every position and every leaf's allowed
+#             value. `FAIL parity CASE: FIELD (device X, CPU Y)` names the
+#             first differing field of the first differing round. The line
+#             passes only if Dlm.answers_equal and the field walk agree.
+#   expected  the CPU reference and every device tree equal the tree stated
+#             with the case (each leaf's outcome is given and explained below).
+#   verify    Dlm.verify_batch on the ORIGINAL queries and snapshot accepts
+#             every device tree. (It replays Dlm.batch, so it is the same
+#             computation as the CPU reference; Task 5 shows it refusing.)
+# The last device tree and the CPU reference are printed leaf by leaf, so a
+# `--gpu off` run's stdout is compared with every field across processes.
+
+type Case is Data:
+  Case{name: String, about: String, queries: Dlm.Batch, expect: Dlm.Answers}
+
+def Labels.live(+source: Dlm.Label, +destination: Dlm.Label) -> Dlm.Query:
+  Dlm.Query{Labels.epoch(), source, destination}
+
+def Labels.pair(a: Dlm.Query, b: Dlm.Query) -> Dlm.Batch:
+  Dlm.SplitQueries{Dlm.OneQuery{a}, Dlm.OneQuery{b}}
+
+def Labels.four(a: Dlm.Query, b: Dlm.Query, c: Dlm.Query, d: Dlm.Query) -> Dlm.Batch:
+  Dlm.SplitQueries{Labels.pair(a, b), Labels.pair(c, d)}
+
+def Labels.answers(a: Bool, b: Bool, c: Bool, d: Bool) -> Dlm.Answers:
+  Dlm.SplitAnswers{Dlm.SplitAnswers{Dlm.OneAnswer{a}, Dlm.OneAnswer{b}},
+    Dlm.SplitAnswers{Dlm.OneAnswer{c}, Dlm.OneAnswer{d}}}
+
+# A label naming one principal as owner, `reader` as reader, no integrity
+# restriction; used with a principal outside the registry.
+def Labels.rule(owner: Dlm.Principal, reader: Dlm.Principal) -> Dlm.Label:
+  Dlm.Label{Dlm.Rule{owner, reader}, Dlm.Rule{Dlm.Bottom{}, Dlm.Bottom{}}}
+
+# Leaves: internal -> internal (same policy, allowed); internal -> public
+# (adds readers, denied); public -> internal (removes readers, allowed);
+# public -> public (allowed).
+def Labels.case.allow_deny() -> Case:
+  Case{"allow-deny", "internal->internal allow, internal->public deny, public->internal allow, public->public allow",
+    Labels.four(Labels.live(Scenario.internal_label(), Scenario.internal_label()),
+      Labels.live(Scenario.internal_label(), Dlm.public_untrusted()),
+      Labels.live(Dlm.public_untrusted(), Scenario.internal_label()),
+      Labels.live(Dlm.public_untrusted(), Dlm.public_untrusted())),
+    Labels.answers(True{}, False{}, True{}, True{})}
+
+# The same allowed query at the live epoch 3 (control), at the older epoch 2
+# (an old epoch presented as current) and at the newer epoch 4; and the
+# always-allowed public -> public query at epoch 2. Only the control passes.
+def Labels.case.stale() -> Case:
+  Case{"stale-epoch", "internal->internal at live epoch 3 allow; at old epoch 2 deny; at epoch 4 deny; public->public at epoch 2 deny",
+    Labels.four(Labels.live(Scenario.internal_label(), Scenario.internal_label()),
+      Dlm.Query{2n, Scenario.internal_label(), Scenario.internal_label()},
+      Dlm.Query{4n, Scenario.internal_label(), Scenario.internal_label()},
+      Dlm.Query{2n, Dlm.public_untrusted(), Dlm.public_untrusted()}),
+    Labels.answers(True{}, False{}, False{}, False{})}
+
+# Named{2} and Named{5} are outside the two-name registry and Unsupported is
+# outside every registry: each query naming one is denied, wherever it
+# appears. The control, internal -> internal, is allowed.
+def Labels.case.missing() -> Case:
+  Case{"missing-principal", "destination reader Named{2} deny; source owner Named{5} deny; Unsupported reader deny; control internal->internal allow",
+    Labels.four(Labels.live(Scenario.internal_label(), Labels.rule(Dlm.Named{0}, Dlm.Named{2})),
+      Labels.live(Labels.rule(Dlm.Named{5}, Dlm.Named{1}), Scenario.internal_label()),
+      Labels.live(Scenario.internal_label(), Labels.rule(Dlm.Named{0}, Dlm.Unsupported{})),
+      Labels.live(Scenario.internal_label(), Scenario.internal_label())),
+    Labels.answers(False{}, False{}, False{}, True{})}
+
+def Labels.case.empty() -> Case:
+  Case{"empty-batch", "no queries; the answer tree must be NoAnswers", Dlm.NoQueries{}, Dlm.NoAnswers{}}
+
+def Labels.cases() -> +List<Case>:
+  [Labels.case.allow_deny(), Labels.case.stale(), Labels.case.missing(), Labels.case.empty()]
+
+# ---- Parity: field walk ----------------------------------------------------
+
+def Labels.or(a: String, b: String) -> String:
+  match a:
+    case SNil{}:
+      b
+    case SCon{h, t}:
+      SCon{h, t}
+
+def Labels.when(ok: Bool, msg: String) -> String:
+  match ok:
+    case True{}:
+      ""
+    case False{}:
+      msg
+
+def Labels.field(+name: String, +a: String, +b: String) -> String:
+  Labels.when(String.eq(a, b), name ++ " (device " ++ a ++ ", CPU " ++ b ++ ")")
+
+def Labels.shape(a: Dlm.Answers) -> String:
+  match a:
+    case Dlm.NoAnswers{}:
+      "NoAnswers"
+    case Dlm.OneAnswer{_}:
+      "OneAnswer"
+    case Dlm.SplitAnswers{_, _}:
+      "SplitAnswers"
+
+# Device tree `a` against CPU tree `b` at `path` (root, then .left/.right).
+def Labels.diff(a: Dlm.Answers, b: Dlm.Answers, +path: String) -> String:
+  match a b:
+    case Dlm.NoAnswers{} Dlm.NoAnswers{}:
+      ""
+    case Dlm.OneAnswer{x} Dlm.OneAnswer{y}:
+      Labels.field("allowed at " ++ path, Bool.show(x), Bool.show(y))
+    case Dlm.SplitAnswers{al, ar} Dlm.SplitAnswers{bl, br}:
+      Labels.or(Labels.diff(al, bl, path ++ ".left"), Labels.diff(ar, br, path ++ ".right"))
+    case Dlm.NoAnswers{} y:
+      "shape at " ++ path ++ " (device NoAnswers, CPU " ++ Labels.shape(y) ++ ")"
+    case Dlm.OneAnswer{_} y:
+      "shape at " ++ path ++ " (device OneAnswer, CPU " ++ Labels.shape(y) ++ ")"
+    case Dlm.SplitAnswers{_, _} y:
+      "shape at " ++ path ++ " (device SplitAnswers, CPU " ++ Labels.shape(y) ++ ")"
+
+def Labels.first_diff(rounds: +List<Dlm.Answers>, +reference: Dlm.Answers) -> String:
+  match rounds:
+    case Nil{}:
+      ""
+    case Con{r, rest}:
+      Labels.or(Labels.diff(r, reference, "root"), Labels.first_diff(rest, reference))
+
+def Labels.count_same(rounds: +List<Dlm.Answers>, +reference: Dlm.Answers) -> U32:
+  match rounds:
+    case Nil{}:
+      0
+    case Con{r, rest}:
+      (Labels.b2u(Dlm.answers_equal(r, reference)) + Labels.count_same(rest, reference) : U32)
+
+def Labels.count_replay(rounds: +List<Dlm.Answers>, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot) -> U32:
+  match rounds:
+    case Nil{}:
+      0
+    case Con{r, rest}:
+      (Labels.b2u(Dlm.verify_batch(queries, snapshot, r)) + Labels.count_replay(rest, queries, snapshot) : U32)
+
+def Labels.all_expected(rounds: +List<Dlm.Answers>, +expect: Dlm.Answers) -> Bool:
+  match rounds:
+    case Nil{}:
+      True{}
+    case Con{r, rest}:
+      Dlm.answers_equal(r, expect) && Labels.all_expected(rest, expect)
+
+def Labels.n_rounds(rounds: +List<Dlm.Answers>) -> U32:
+  match rounds:
+    case Nil{}:
+      0
+    case Con{_, rest}:
+      (1 + Labels.n_rounds(rest) : U32)
+
+# Comparator control: two trees that differ in one leaf must be reported by
+# the field walk with that leaf's path and both values, and refused by
+# Dlm.answers_equal; a walk that always answered "no difference" fails here.
+def Labels.comparator_control() -> IO(Bool):
+  Labels.line(String.eq(Labels.diff(Labels.answers(True{}, False{}, True{}, True{}),
+        Labels.answers(True{}, True{}, True{}, True{}), "root"),
+      "allowed at root.left.right (device False, CPU True)") &&
+      Bool.not(Dlm.answers_equal(Labels.answers(True{}, False{}, True{}, True{}),
+        Labels.answers(True{}, True{}, True{}, True{}))),
+    "comparator control: one flipped leaf is named as allowed at root.left.right (device False, CPU True)")
+
+# ---- Parity: output and driver ---------------------------------------------
+
+def Labels.tf(x: Bool) -> String:
+  match x:
+    case True{}:
+      "T"
+    case False{}:
+      "F"
+
+# The whole tree on one line: `-` NoAnswers, `T`/`F` a leaf, `(l r)` a split.
+def Labels.render(a: Dlm.Answers) -> String:
+  match a:
+    case Dlm.NoAnswers{}:
+      "-"
+    case Dlm.OneAnswer{x}:
+      Labels.tf(x)
+    case Dlm.SplitAnswers{l, r}:
+      "(" ++ Labels.render(l) ++ " " ++ Labels.render(r) ++ ")"
+
+def Labels.print_tree(+label: String, +a: Dlm.Answers) -> IO(Unit):
+  do IO<Unit>:
+    IO.print(label ++ ": shape " ++ Labels.render(a))
+    _n : U32 <- Labels.leaves(a, 0)
+    IO.pure(Unit, Unit{})
+
+def Labels.print_device(rounds: +List<Dlm.Answers>) -> IO(Unit):
+  match rounds:
+    case Nil{}:
+      IO.print("device path: no rounds")
+    case Con{r, _}:
+      Labels.print_tree("device path (last round)", r)
+
+def Labels.parity_close(ok: Bool, +name: String, +same: U32, +n: U32) -> IO(Bool):
+  match ok:
+    case True{}:
+      Labels.line(True{}, "parity " ++ name ++ Labels.of(same, n))
+    case False{}:
+      Labels.line(False{}, "parity " ++ name ++ ": typed answer comparison differs but no field difference was rendered" ++ Labels.of(same, n))
+
+def Labels.parity_verdict(d: String, +name: String, +same: U32, +n: U32) -> IO(Bool):
+  match d:
+    case SNil{}:
+      Labels.parity_close(U32.is_eq(same, n) && U32.is_ne(n, 0), name, same, n)
+    case SCon{h, t}:
+      Labels.line(False{}, "parity " ++ name ++ ": " ++ SCon{h, t} ++ Labels.of(same, n))
+
+def Labels.parity_check(+name: String, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +expect: Dlm.Answers, +device: +List<Dlm.Answers>, +reference: Dlm.Answers) -> IO(Bool):
+  do IO<Bool>:
+    Labels.print_device(device)
+    Labels.print_tree("CPU reference", reference)
+    Labels.print_tree("expected", expect)
+    a : Bool <- Labels.parity_verdict(Labels.first_diff(device, reference), name, Labels.count_same(device, reference), Labels.n_rounds(device))
+    b : Bool <- Labels.line(Dlm.answers_equal(reference, expect) && Labels.all_expected(device, expect),
+      "expected " ++ name ++ ": the CPU reference and every device tree equal the stated tree")
+    c : Bool <- Labels.line(U32.is_eq(Labels.count_replay(device, queries, snapshot), Labels.n_rounds(device)),
+      "verify " ++ name ++ ": Dlm.verify_batch on the original queries and snapshot accepts the device tree" ++
+        Labels.of(Labels.count_replay(device, queries, snapshot), Labels.n_rounds(device)))
+    IO.pure(Bool, a && b && c)
+
+def Labels.parity_case(c: Case, +snapshot: Dlm.Snapshot, +rounds: U32) -> IO(Bool):
+  match c:
+    case Case{+name, about, +queries, +expect}:
+      do IO<Bool>:
+        IO.print("case " ++ name ++ ": " ++ about ++ "; device rounds " ++ U32.show(rounds))
+        device : +List<Dlm.Answers> <- Labels.device_rounds(U32.to_nat(rounds), queries, snapshot, Nil{})
+        _now : Nat <- IO.now()
+        reference : Dlm.Answers <- IO.pure(Dlm.Answers, Dlm.batch(queries, snapshot))
+        Labels.parity_check(name, queries, snapshot, expect, device, reference)
+
+def Labels.parity_all(cases: +List<Case>, +snapshot: Dlm.Snapshot, +rounds: U32, ok: Bool) -> IO(Bool):
+  match cases:
+    case Nil{}:
+      IO.pure(Bool, ok)
+    case Con{c, rest}:
+      do IO<Bool>:
+        r : Bool <- Labels.parity_case(c, snapshot, rounds)
+        Labels.parity_all(rest, snapshot, rounds, ok && r)
+
+def Labels.keep(ok: Bool, c: Case, rest: +List<Case>) -> +List<Case>:
+  match ok:
+    case True{}:
+      Con{c, rest}
+    case False{}:
+      rest
+
+def Labels.select(cases: +List<Case>, +want: String, +every: Bool) -> +List<Case>:
+  match cases:
+    case Nil{}:
+      Nil{}
+    case Con{Case{+n, a, q, e}, rest}:
+      Labels.keep(every || String.eq(n, want), Case{n, a, q, e}, Labels.select(rest, want, every))
+
+def Labels.parity_run(selected: +List<Case>, +rounds: U32) -> IO(Unit):
+  match selected:
+    case Nil{}:
+      Labels.usage()
+    case Con{h, t}:
+      do IO<Unit>:
+        IO.print("SYNTHETIC label parity cases: Scenario principals and labels; no principal is authenticated")
+        snapshot : Dlm.Snapshot <- Labels.snapshot(Scenario.principals())
+        k : Bool <- Labels.comparator_control()
+        ok : Bool <- Labels.parity_all(Con{h, t}, snapshot, rounds, True{})
+        Labels.finish(k && ok)
+
+def Labels.parity.go(ok: Bool, +name: String, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Labels.parity_run(Labels.select(Labels.cases(), name, String.eq(name, "all")), r)
+    case False{}:
+      Labels.usage()
+
+def Labels.parity(+name: String, rounds: Maybe<&2, U32>) -> IO(Unit):
+  match rounds:
+    case Some{+r}:
+      Labels.parity.go(U32.is_ne(r, 0) && U32.is_le(r, 100000), name, r)
+    case None{}:
+      Labels.usage()
 
 def Labels.bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
   match ok:
@@ -297,6 +593,10 @@ def Labels.main(args: List<String>) -> IO(Unit):
       Labels.bounded(U32.read(size), Some{1})
     case Con{_, Con{"run", Con{size, Con{rounds, Nil{}}}}}:
       Labels.bounded(U32.read(size), U32.read(rounds))
+    case Con{_, Con{"parity", Con{name, Nil{}}}}:
+      Labels.parity(name, Some{1})
+    case Con{_, Con{"parity", Con{name, Con{rounds, Nil{}}}}}:
+      Labels.parity(name, U32.read(rounds))
     case _:
       Labels.usage()
 
