@@ -10,6 +10,7 @@ import ./Frontend.bend as F
 import ./DataOS.bend as OS
 import ./FacadeTests.bend as FT
 import ./AuditEvent.bend as AE
+import ./AuditQuery.bend as AQ
 import ./Dlm.bend as D
 import ./Test.bend as Test
 
@@ -36,6 +37,12 @@ import ./Test.bend as Test
 #   (or, to pin a helper, from that helper over the same fixtures). Alice,
 #   Bob and Mallory each have a distinct label, so a derivation or join that
 #   drops one owner shows; the label tables and sinks are SYNTHETIC.
+# - query (Task 4): AU-003 current owner-scoped query authority, AU-008
+#   policy-safe observable metadata and the query half of AU-009. The query
+#   states, sink registries, read grants, readers and cursors are SYNTHETIC
+#   MONITOR STATE, and every stored event comes from a wrapper. Each of the
+#   nine query gates has a check that changes one fact of the accepted
+#   baseline and names the failing gate with `first_failed_gate`.
 
 # --- Sentinels and synthetic inputs ------------------------------------------
 
@@ -2158,9 +2165,485 @@ def event_policy() -> IO(Unit):
     binding_checks()
     stream_checks()
 
+# --- query (Task 4): AU-003, AU-008 and the query half of AU-009 ---------------
+# Every query state, sink registry, read grant, reader and cursor below is
+# SYNTHETIC MONITOR STATE, not an authenticated issuer. Every stored event
+# comes from `AE.audited_admit` or `AE.audited_commit`. Reader ids (30 to 34)
+# are deliberately distinct from the owner principals' ids (Alice 0, Bob 1,
+# Mallory 2), from the sink ids (1 to 4, 9) and from the grant ids (101 to
+# 107), so a gate that compares the wrong field shows.
+
+def q_revision() -> Nat:
+  5n
+
+def q_now() -> Nat:
+  10n
+
+def q_until() -> Nat:
+  50n
+
+def alice_reader() -> Nat:
+  30n
+
+def bob_reader() -> Nat:
+  31n
+
+# Holds grants for Alice's and for Bob's stream, both through sink 1.
+def dual_reader() -> Nat:
+  32n
+
+# Reads Alice's stream through the both-owners sink 3.
+def both_reader() -> Nat:
+  33n
+
+# Reads Alice's stream through the all-principals sink 4.
+def wide_reader() -> Nat:
+  34n
+
+def read_grant(id: Nat, reader: Nat, owner: D.Principal, sink: Nat) -> AQ.ReadGrant:
+  AQ.ReadGrant{id, reader, owner, sink, policy_epoch(), q_until(), False{}}
+
+def alice_grant() -> AQ.ReadGrant:
+  read_grant(101n, alice_reader(), alice(), 1n)
+
+def q_grants() -> AQ.ReadGrants:
+  AQ.Granted{alice_grant(),
+  AQ.Granted{read_grant(102n, bob_reader(), bob(), 2n),
+  AQ.Granted{read_grant(103n, dual_reader(), alice(), 1n),
+  AQ.Granted{read_grant(104n, dual_reader(), bob(), 1n),
+  AQ.Granted{read_grant(105n, both_reader(), alice(), 3n),
+  AQ.Granted{read_grant(106n, wide_reader(), alice(), 4n),
+  AQ.Granted{read_grant(107n, alice_reader(), alice(), 9n),
+  AQ.NoReadGrants{}}}}}}}}
+
+# Sinks 1 (Alice), 2 (Bob), 3 (both) and 4 (all three) are registered;
+# sink 9 is not, although grant 107 names it.
+def q_sinks() -> AQ.Sinks:
+  AQ.Registered{sink_alice(), AQ.Registered{sink_bob(),
+    AQ.Registered{sink_both(), AQ.Registered{sink_all(), AQ.NoSinks{}}}}}
+
+def log_of(xs: List<&2, AE.Recorded>) -> AQ.Stored:
+  match xs:
+    case []:
+      AQ.NoRecords{}
+    case r <> rest:
+      AQ.Logged{r, log_of(rest)}
+
+def q_state_full(+epoch: Nat, sinks: AQ.Sinks, grants: AQ.ReadGrants, xs: List<&2, AE.Recorded>) -> AQ.State:
+  AQ.State{q_revision(), epoch, snapshot(), sinks, grants, log_of(xs)}
+
+def q_state(xs: List<&2, AE.Recorded>) -> AQ.State:
+  q_state_full(policy_epoch(), q_sinks(), q_grants(), xs)
+
+def q_state_grants(grants: AQ.ReadGrants, xs: List<&2, AE.Recorded>) -> AQ.State:
+  q_state_full(policy_epoch(), q_sinks(), grants, xs)
+
+def query_of(+owner: D.Principal, cursor: Maybe<&2, AQ.Cursor>, limit: Nat, work: Nat) -> AQ.Query:
+  AQ.Query{AQ.query_format_version(), owner, cursor, limit, work}
+
+def full_query(+owner: D.Principal) -> AQ.Query:
+  query_of(owner, None{}, AQ.max_page(), 100n)
+
+def ask(+state: AQ.State, +from: Nat, +query: AQ.Query, +sink: Nat) -> AQ.Response:
+  AQ.respond(state, q_revision(), from, query, sink, q_now())
+
+def gate_of(+state: AQ.State, +from: Nat, +query: AQ.Query, +sink: Nat) -> Maybe<&2, AQ.Gate>:
+  AQ.first_failed_gate(state, from, query, sink, q_now())
+
+def gate_is(m: Maybe<&2, AQ.Gate>, +g: AQ.Gate) -> Bool:
+  match m:
+    case Some{x}:
+      AQ.Gate.equal(x, g)
+    case None{}:
+      False{}
+
+def no_failed_gate(m: Maybe<&2, AQ.Gate>) -> Bool:
+  Maybe.is_none(&2, AQ.Gate, m)
+
+def q_refused(r: AQ.Response) -> Bool:
+  AQ.Response.equal(r, AQ.Refused{AQ.public_denial()})
+
+# Refused with the public value, and the first failing gate is `g`.
+def refused_at(+state: AQ.State, +from: Nat, +query: AQ.Query, +sink: Nat, +g: AQ.Gate) -> Bool:
+  q_refused(ask(state, from, query, sink)) && gate_is(gate_of(state, from, query, sink), g)
+
+def alice_asks(xs: List<&2, AE.Recorded>) -> AQ.Response:
+  ask(q_state(xs), alice_reader(), full_query(alice()), 1n)
+
+# --- query: the stored events (each from a wrapper) -----------------------------
+
+# Objects 11 and 20 are both Alice's here; Bob owns both in bob_own_labels.
+def alice_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{bob_source(), alice(), owner_label(alice())},
+    AE.Labelled{AE.ObjectLabel{TF.destination_object(), alice(), owner_label(alice())}, AE.NoLabels{}}}
+
+def bob_own_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{bob_source(), bob(), owner_label(bob())},
+    AE.Labelled{AE.ObjectLabel{TF.destination_object(), bob(), owner_label(bob())}, AE.NoLabels{}}}
+
+# bob_plan under a stale stamp: denied Stale, before any grant vouched for it.
+def stale_alice_plan() -> T.Plan:
+  T.Plan{T.Stamp{9n, 9n, 9n}, 99n, T.OCons{bob_source(), T.OEnd{}}, TF.destination_object(),
+    TF.code(), T.Summarize{}, 2}
+
+def recorded_of(a: AE.AuditedAdmission) -> AE.Recorded:
+  AE.AuditedAdmission.recorded(a)
+
+def alice_event_id(context: T.Context, id: Nat) -> AE.Recorded:
+  recorded_of(AE.audited_admit(bob_plan(), context, alice_labels(), FT.caller(0n), empty_diagnostic(), id))
+
+def alice_event(context: T.Context) -> AE.Recorded:
+  alice_event_id(context, event_id())
+
+# Five events visible to Alice's stream through sink 1, each with a distinct
+# outcome: Alice asks about her own objects.
+def v_admitted() -> AE.Recorded:
+  alice_event(bob_admitted_context())
+
+def v_origin() -> AE.Recorded:
+  alice_event(bob_origin_context())
+
+def v_payment() -> AE.Recorded:
+  alice_event(bob_payment_context())
+
+def v_schema() -> AE.Recorded:
+  alice_event(bob_schema_context())
+
+def v_stale() -> AE.Recorded:
+  recorded_of(admit_labelled(stale_alice_plan(), bob_admitted_context(), alice_labels(), 0n))
+
+def visible_five() -> List<&2, AE.Recorded>:
+  [v_admitted(), v_origin(), v_payment(), v_schema(), v_stale()]
+
+# Hidden from Alice's stream through sink 1:
+# - the mixed denial: Alice asks for Bob's object 11 (Origin), in both
+#   streams, releasable only to a sink satisfying both owners;
+# - Bob's own admitted request for his objects, in Bob's stream only;
+# - a commit by subject 7 (not a registered principal of `snapshot()`);
+# - Mallory's early-denied request naming Alice's objects, which joins only
+#   Mallory's stream although its policy is releasable to sink 4.
+def h_mixed() -> AE.Recorded:
+  recorded_of(bob_audited(bob_origin_context()))
+
+def h_bob() -> AE.Recorded:
+  recorded_of(admit_labelled(bob_plan(), bob_admitted_context(), bob_own_labels(), 1n))
+
+def h_commit() -> AE.Recorded:
+  AE.AuditedCommit.recorded(commit_labelled(FT.context(), 7n))
+
+def h_mallory() -> AE.Recorded:
+  recorded_of(admit_labelled(stale_alice_plan(), bob_admitted_context(), alice_labels(), 2n))
+
+# The five visible events with the three hidden ones interleaved.
+def interleaved() -> List<&2, AE.Recorded>:
+  [v_admitted(), h_mixed(), v_origin(), v_payment(), h_bob(), v_schema(), h_commit(), v_stale()]
+
+def views_of(xs: List<&2, AE.Recorded>) -> AQ.Views:
+  match xs:
+    case []:
+      AQ.NoViews{}
+    case r <> rest:
+      AQ.Viewed{AQ.view_of(AE.Recorded.event(r)), views_of(rest)}
+
+def page_is(r: AQ.Response, xs: List<&2, AE.Recorded>, next: Maybe<&2, AQ.Cursor>) -> Bool:
+  AQ.Response.equal(r, AQ.Page{views_of(xs), next})
+
+def views_length(xs: AQ.Views) -> Nat:
+  match xs:
+    case AQ.NoViews{}:
+      0n
+    case AQ.Viewed{_, t}:
+      1n+views_length(t)
+
+def page_length(r: AQ.Response) -> Nat:
+  match r:
+    case AQ.Page{views, _}:
+      views_length(views)
+    case AQ.Refused{_}:
+      0n
+
+def empty_page() -> AQ.Response:
+  AQ.Page{AQ.NoViews{}, None{}}
+
+def alice_cursor(offset: Nat) -> Maybe<&2, AQ.Cursor>:
+  Some{AQ.Cursor{alice_reader(), alice(), policy_epoch(), offset}}
+
+def view_has_outcome(r: AQ.Response, reason: T.Denial) -> Bool:
+  match r:
+    case AQ.Page{views, _}:
+      match views:
+        case AQ.Viewed{h, _}:
+          match h:
+            case AQ.View{_, _, _, _, _, _, outcome}:
+              denied_for(outcome, reason)
+        case AQ.NoViews{}:
+          False{}
+    case AQ.Refused{_}:
+      False{}
+
+# --- query: "Owner queries another owner's stream" ------------------------------
+
+def five_bob() -> List<&2, AE.Recorded>:
+  [h_bob(), h_bob(), h_bob(), h_bob(), h_bob()]
+
+def other_owner() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(refused_at(q_state([]), alice_reader(), full_query(bob()), 1n, AQ.NoGrant{}) &&
+      AQ.Response.equal(ask(q_state([]), alice_reader(), full_query(bob()), 1n),
+        ask(q_state(five_bob()), alice_reader(), full_query(bob()), 1n)),
+      "AU-003 owner queries another owner's stream: Alice's query of Bob's stream is refused, identically with zero and with five Bob events")
+    Test.check(page_is(alice_asks([v_admitted(), h_bob(), h_mixed(), v_origin()]), [v_admitted(), v_origin()], None{}),
+      "AU-003 an Alice-stream query omits Bob-only events and withholds the mixed event through Alice's sink 1")
+    Test.check(page_is(ask(q_state([v_admitted(), h_mixed(), h_bob()]), dual_reader(), full_query(alice()), 1n), [v_admitted()], None{}) &&
+      page_is(ask(q_state([v_admitted(), h_mixed(), h_bob()]), dual_reader(), full_query(bob()), 1n), [], None{}),
+      "AU-003 a reader holding Alice and Bob grants through sink 1 sees no mixed event in either stream: there is no operator widening")
+    Test.check(page_is(ask(q_state([h_bob(), v_admitted(), h_mixed()]), bob_reader(), full_query(bob()), 2n), [h_bob()], None{}),
+      "AU-003 Bob's reader sees Bob's own event through Bob's sink 2 and neither Alice's nor the mixed one")
+    Test.check(AE.releasable(snapshot(), policy_epoch(), AE.Recorded.policy(h_mallory()), sink_all()) &&
+      Bool.not(AQ.in_stream(alice(), h_mallory())) && AQ.in_stream(mallory(), h_mallory()) &&
+      AQ.Response.equal(ask(q_state([h_mallory()]), wide_reader(), full_query(alice()), 4n),
+        ask(q_state([]), wide_reader(), full_query(alice()), 4n)) &&
+      page_is(ask(q_state([h_mallory()]), wide_reader(), full_query(alice()), 4n), [], None{}),
+      "AU-008 Mallory's early-denied request naming Alice's objects is releasable to sink 4 yet absent from Alice's stream: the response equals the one for an empty log")
+    Test.check(page_is(ask(q_state([h_mallory(), v_stale(), h_mallory()]), wide_reader(), full_query(alice()), 4n), [v_stale()], None{}),
+      "AU-008 Alice's own early-denied request joins her stream while Mallory's, naming the same objects, does not")
+
+# --- query: "Authorized reader uses an unauthorized sink" ----------------------
+
+def unauthorized_sink() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(page_is(alice_asks(visible_five()), visible_five(), None{}) &&
+      no_failed_gate(gate_of(q_state(visible_five()), alice_reader(), full_query(alice()), 1n)),
+      "AU-003 baseline: Alice's reader with her current grant through sink 1 receives her five visible events")
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), full_query(alice()), 2n, AQ.NoGrant{}),
+      "AU-003 an authorized reader uses an unauthorized sink: the same query through registered sink 2, which her grant does not name, is refused")
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), full_query(alice()), 9n, AQ.SinkUnregistered{}),
+      "AU-003 the same query through unregistered sink 9 is refused although grant 107 names sink 9")
+    Test.check(refused_at(q_state_full(policy_epoch(), AQ.Registered{sink_alice(), q_sinks()}, q_grants(), visible_five()),
+      alice_reader(), full_query(alice()), 1n, AQ.SinkUnregistered{}) &&
+      Maybe.is_none(&2, AE.Sink, AQ.find_sink(AQ.Registered{sink_alice(), q_sinks()}, 1n)),
+      "AU-003 a sink id registered twice is ambiguous and refused")
+
+# --- query: "Query grant is revoked" -----------------------------------------------
+
+def revoked_change() -> AQ.Change:
+  AQ.revoke_read(q_state(visible_five()), q_revision(), 101n)
+
+def revoked_state() -> AQ.State:
+  AQ.Change.state(revoked_change())
+
+def grant_with(id: Nat, reader: Nat, owner: D.Principal, sink: Nat, epoch: Nat, until: Nat, revoked: Bool) -> AQ.ReadGrants:
+  AQ.Granted{AQ.ReadGrant{id, reader, owner, sink, epoch, until, revoked}, AQ.NoReadGrants{}}
+
+def revoked_grant() -> IO(Unit):
+  +st = revoked_state()
+  do IO<Unit>:
+    Test.check(page_is(alice_asks(visible_five()), visible_five(), None{}) &&
+      AQ.Change.accepted(revoked_change()) && Nat.is_eq(AQ.revision(st), 1n+q_revision()),
+      "AU-003 query grant is revoked: at revision r the page is released, and revoke_read moves the state to r+1")
+    Test.check(q_refused(AQ.respond(st, q_revision(), alice_reader(), full_query(alice()), 1n, q_now())),
+      "AU-003 a query validated at revision r is refused after the revocation moved the state to r+1 (stale)")
+    Test.check(q_refused(AQ.respond(st, 1n+q_revision(), alice_reader(), full_query(alice()), 1n, q_now())) &&
+      gate_is(AQ.first_failed_gate(st, alice_reader(), full_query(alice()), 1n, q_now()), AQ.GrantRevoked{}),
+      "AU-003 the same query at revision r+1 is refused and first_failed_gate names GrantRevoked")
+    Test.check(page_is(AQ.respond(st, 1n+q_revision(), bob_reader(), full_query(bob()), 2n, q_now()), [], None{}) &&
+      AQ.Change.accepted(AQ.revoke_read(q_state([]), q_revision(), 102n)),
+      "AU-003 revoke_read marks only the named grant: Bob's grant 102 still answers")
+    Test.check(Bool.not(AQ.Change.accepted(AQ.revoke_read(q_state([]), 1n+q_revision(), 101n))) &&
+      Nat.is_eq(AQ.revision(AQ.Change.state(AQ.revoke_read(q_state([]), 1n+q_revision(), 101n))), q_revision()) &&
+      Bool.not(AQ.Change.accepted(AQ.revoke_read(q_state([]), 999n, 101n))),
+      "AU-003 revoke_read at a stale revision is rejected and keeps the revision")
+    Test.check(Bool.not(AQ.Change.accepted(AQ.revoke_read(q_state([]), q_revision(), 999n))) &&
+      Bool.not(AQ.Change.accepted(AQ.revoke_read(q_state_grants(AQ.Granted{alice_grant(), AQ.Granted{alice_grant(), AQ.NoReadGrants{}}}, []), q_revision(), 101n))),
+      "AU-003 revoke_read of an unknown or ambiguous grant id is rejected")
+    Test.check(Bool.not(AQ.Change.accepted(AQ.revoke_read(st, 1n+q_revision(), 101n))),
+      "AU-003 revoking an already revoked grant is rejected and advances no revision")
+    Test.check(q_refused(AQ.respond(AQ.Change.state(AQ.revoke_read(st, 1n+q_revision(), 102n)), 2n+q_revision(),
+        alice_reader(), full_query(alice()), 1n, q_now())) &&
+      Nat.is_eq(AQ.revision(AQ.Change.state(AQ.revoke_read(st, 1n+q_revision(), 102n))), 2n+q_revision()),
+      "AU-003 a later revocation of another grant keeps the earlier revocation in force")
+
+# The query state at epoch 4 with Alice's grant re-installed at epoch 4 and
+# the given DLM snapshot.
+def epoch_four(snap: D.Snapshot) -> AQ.State:
+  AQ.State{q_revision(), 4n, snap, q_sinks(),
+    grant_with(101n, alice_reader(), alice(), 1n, 4n, q_until(), False{}), log_of(visible_five())}
+
+# Expiry, another reader and an epoch change, each the only fact changed
+# from the accepted baseline.
+def grant_currency() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(q_refused(AQ.respond(q_state(visible_five()), q_revision(), alice_reader(), full_query(alice()), 1n, q_until())) &&
+      gate_is(AQ.first_failed_gate(q_state(visible_five()), alice_reader(), full_query(alice()), 1n, q_until()), AQ.GrantExpired{}) &&
+      page_is(AQ.respond(q_state(visible_five()), q_revision(), alice_reader(), full_query(alice()), 1n, 49n), visible_five(), None{}),
+      "AU-003 a grant is expired at now == valid_until (refused, GrantExpired) and still current one tick before")
+    Test.check(refused_at(q_state(visible_five()), bob_reader(), full_query(alice()), 1n, AQ.NoGrant{}),
+      "AU-003 a grant for another reader does not answer: Bob's reader asking for Alice's stream through sink 1 is refused")
+    Test.check(refused_at(q_state_grants(grant_with(101n, alice_reader(), alice(), 1n, 2n, q_until(), False{}), visible_five()),
+      alice_reader(), full_query(alice()), 1n, AQ.GrantEpoch{}),
+      "AU-003 a grant issued at an earlier epoch is refused (GrantEpoch)")
+    Test.check(refused_at(q_state_full(4n, q_sinks(), q_grants(), visible_five()), alice_reader(), full_query(alice()), 1n, AQ.GrantEpoch{}),
+      "AU-003 an epoch advance withdraws a grant of the old epoch (GrantEpoch)")
+    Test.check(page_is(ask(epoch_four(D.fixture(4n)), alice_reader(), full_query(alice()), 1n), visible_five(), None{}) &&
+      page_is(ask(epoch_four(snapshot()), alice_reader(), full_query(alice()), 1n), [], None{}),
+      "AU-003 visibility is judged at the state's epoch: with grants and snapshot at epoch 4 the events show, with the snapshot still at epoch 3 none does")
+    Test.check(refused_at(q_state_grants(AQ.Granted{alice_grant(), AQ.Granted{alice_grant(), AQ.NoReadGrants{}}}, visible_five()),
+      alice_reader(), full_query(alice()), 1n, AQ.NoGrant{}) &&
+      Maybe.is_none(&2, AQ.ReadGrant, AQ.find_read_grant(AQ.Granted{alice_grant(), AQ.Granted{alice_grant(), AQ.NoReadGrants{}}}, alice_reader(), alice(), 1n)),
+      "AU-003 two grants matching one reader, owner and sink are ambiguous and refused")
+    Test.check(AQ.grant_current(alice_grant(), q_state([]), q_now()) &&
+      Bool.not(AQ.grant_current(AQ.ReadGrant{101n, alice_reader(), alice(), 1n, policy_epoch(), q_until(), True{}}, q_state([]), q_now())) &&
+      Bool.not(AQ.grant_current(alice_grant(), q_state_full(4n, q_sinks(), q_grants(), []), q_now())) &&
+      Bool.not(AQ.grant_current(alice_grant(), q_state([]), q_until())),
+      "AU-003 grant_current is unrevoked, of the state's epoch and unexpired, re-derived from the state at the call")
+    Test.check(q_refused(AQ.respond(q_state(visible_five()), 4n, alice_reader(), full_query(alice()), 1n, q_now())) &&
+      q_refused(AQ.respond(q_state(visible_five()), 1n+q_revision(), alice_reader(), full_query(alice()), 1n, q_now())),
+      "AU-003 a query at an older or a later revision than the state's is refused")
+
+# --- query: totals and empty results -------------------------------------------------
+
+def totals_and_empty() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(page_length(alice_asks(interleaved())), 5n),
+      "AU-008 Response has no total field; the page holds exactly the five visible events of eight stored")
+    Test.check(AQ.Response.equal(alice_asks([h_mixed()]), empty_page()) &&
+      AQ.Response.equal(alice_asks([h_mixed()]), alice_asks([])),
+      "AU-008 Alice's stream holding only a hidden mixed denial gives exactly Page{[], None}, the response for no events at all")
+    Test.check(AQ.Response.equal(alice_asks([h_mixed(), v_admitted(), v_origin()]), alice_asks([v_admitted(), v_origin()])),
+      "AU-008 a hidden denial placed first changes nothing in the response")
+    Test.check(AQ.Response.equal(alice_asks([v_admitted(), h_mixed(), v_origin()]), alice_asks([v_admitted(), v_origin()])),
+      "AU-008 a hidden denial placed in the middle changes nothing in the response")
+    Test.check(AQ.Response.equal(alice_asks([v_admitted(), v_origin(), h_mixed()]), alice_asks([v_admitted(), v_origin()])),
+      "AU-008 a hidden denial placed last changes nothing in the response")
+
+# --- query: "Pagination would reveal another owner" -----------------------------------
+
+def page_at(xs: List<&2, AE.Recorded>, cursor: Maybe<&2, AQ.Cursor>) -> AQ.Response:
+  ask(q_state(xs), alice_reader(), query_of(alice(), cursor, 2n, 100n), 1n)
+
+def with_cursor(c: AQ.Cursor) -> AQ.Query:
+  query_of(alice(), Some{c}, 2n, 100n)
+
+def pagination() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(page_is(page_at(interleaved(), None{}), [v_admitted(), v_origin()], alice_cursor(2n)) &&
+      AQ.Response.equal(page_at(interleaved(), None{}), page_at(visible_five(), None{})),
+      "AU-008 pagination: page 1 of limit 2 holds the first two visible events and a cursor at view offset 2, equal to the run without hidden events")
+    Test.check(page_is(page_at(interleaved(), alice_cursor(2n)), [v_payment(), v_schema()], alice_cursor(4n)) &&
+      AQ.Response.equal(page_at(interleaved(), alice_cursor(2n)), page_at(visible_five(), alice_cursor(2n))),
+      "AU-008 pagination: page 2 from that cursor holds the next two visible events and a cursor at view offset 4, equal to the run without hidden events")
+    Test.check(page_is(page_at(interleaved(), alice_cursor(4n)), [v_stale()], None{}) &&
+      AQ.Response.equal(page_at(interleaved(), alice_cursor(4n)), page_at(visible_five(), alice_cursor(4n))),
+      "AU-008 pagination: the last page holds the fifth visible event and no cursor, equal to the run without hidden events")
+    Test.check(refused_at(q_state(interleaved()), alice_reader(), with_cursor(AQ.Cursor{bob_reader(), alice(), policy_epoch(), 2n}), 1n, AQ.CursorMismatch{}),
+      "AU-008 a cursor issued to another reader (Bob's) is refused")
+    Test.check(refused_at(q_state(interleaved()), alice_reader(), with_cursor(AQ.Cursor{alice_reader(), bob(), policy_epoch(), 2n}), 1n, AQ.CursorMismatch{}),
+      "AU-008 a cursor for another owner's stream is refused")
+    Test.check(refused_at(q_state(interleaved()), alice_reader(), with_cursor(AQ.Cursor{alice_reader(), alice(), 2n, 2n}), 1n, AQ.CursorMismatch{}),
+      "AU-008 a cursor from an older epoch is refused")
+    Test.check(AQ.Views.equal(AQ.view(q_state([]), alice(), sink_alice(),
+        log_of([alice_event_id(bob_admitted_context(), 41n), alice_event_id(bob_origin_context(), 42n)])),
+      AQ.view(q_state([]), alice(), sink_alice(),
+        log_of([alice_event_id(bob_admitted_context(), 77n), alice_event_id(bob_origin_context(), 78n)]))) &&
+      Bool.not(AE.EventRecord.equal(AE.Recorded.event(alice_event_id(bob_admitted_context(), 41n)),
+        AE.Recorded.event(alice_event_id(bob_admitted_context(), 77n)))),
+      "AU-008 a view never contains event_id: the views of two logs whose events differ only in event_id are equal")
+
+# --- query: no sort input --------------------------------------------------------
+
+def sort_order() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(page_is(alice_asks([v_payment(), v_admitted(), v_origin()]), [v_payment(), v_admitted(), v_origin()], None{}) &&
+      Bool.not(AQ.Response.equal(alice_asks([v_payment(), v_admitted(), v_origin()]), alice_asks([v_admitted(), v_origin(), v_payment()]))),
+      "AU-008 the page follows the visible view's append order; Query has no sort input")
+
+# --- query: "Distinct secret denial reasons" -------------------------------------------
+
+def refusal_list() -> List<&2, AQ.Response>:
+  +st = q_state(visible_five())
+  [ask(st, alice_reader(), AQ.Query{2n, alice(), None{}, AQ.max_page(), 100n}, 1n),
+    ask(st, alice_reader(), full_query(bob()), 1n),
+    ask(st, alice_reader(), full_query(alice()), 2n),
+    AQ.respond(revoked_state(), 1n+q_revision(), alice_reader(), full_query(alice()), 1n, q_now()),
+    AQ.respond(st, q_revision(), alice_reader(), full_query(alice()), 1n, q_until()),
+    ask(st, alice_reader(), with_cursor(AQ.Cursor{bob_reader(), alice(), policy_epoch(), 2n}), 1n),
+    ask(st, alice_reader(), query_of(alice(), None{}, 0n, 100n), 1n),
+    ask(st, alice_reader(), query_of(alice(), None{}, 17n, 100n), 1n),
+    ask(st, alice_reader(), query_of(alice(), None{}, 5n, 3n), 1n)]
+
+def all_public_refusals(xs: List<&2, AQ.Response>) -> Bool:
+  match xs:
+    case []:
+      True{}
+    case r <> rest:
+      q_refused(r) && all_public_refusals(rest)
+
+def responses_count(xs: List<&2, AQ.Response>) -> Nat:
+  match xs:
+    case []:
+      0n
+    case _ <> rest:
+      1n+responses_count(rest)
+
+def distinct_reasons() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(all_public_refusals(refusal_list()) && Nat.is_eq(responses_count(refusal_list()), 9n),
+      "AU-008 distinct secret denial reasons: unknown version, no grant, wrong sink, revoked, expired, bad cursor, limit 0, limit 17 and an exhausted budget all give Refused{public_denial()}")
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), AQ.Query{2n, alice(), None{}, AQ.max_page(), 100n}, 1n, AQ.UnknownVersion{}),
+      "AU-008 an unknown query format version is refused (UnknownVersion)")
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), query_of(alice(), None{}, 0n, 100n), 1n, AQ.LimitOutOfRange{}) &&
+      refused_at(q_state(visible_five()), alice_reader(), query_of(alice(), None{}, 17n, 100n), 1n, AQ.LimitOutOfRange{}),
+      "AU-009 a page limit of 0 or of max_page()+1 is refused (LimitOutOfRange)")
+    Test.check(page_is(ask(q_state(visible_five()), alice_reader(), query_of(alice(), None{}, 1n, 100n), 1n), [v_admitted()], alice_cursor(1n)) &&
+      page_is(ask(q_state(visible_five()), alice_reader(), query_of(alice(), None{}, 16n, 100n), 1n), visible_five(), None{}),
+      "AU-009 limits 1 and max_page() are accepted")
+
+# --- query: "Query exceeds its work budget" --------------------------------------------
+
+def budget_query(cursor: Maybe<&2, AQ.Cursor>, limit: Nat, work: Nat) -> AQ.Query:
+  query_of(alice(), cursor, limit, work)
+
+def work_budget() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), budget_query(None{}, 5n, 3n), 1n, AQ.WorkExhausted{}),
+      "AU-009 query exceeds its work budget: work 3 over five visible events with limit 5 is refused, with no partial page")
+    Test.check(page_is(ask(q_state(visible_five()), alice_reader(), budget_query(None{}, 5n, 5n), 1n), visible_five(), None{}),
+      "AU-009 the same query with work 5 succeeds")
+    Test.check(page_is(ask(q_state(interleaved()), alice_reader(), budget_query(None{}, 5n, 5n), 1n), visible_five(), None{}),
+      "AU-009 hidden events consume no work: with three hidden events added, work 5 still succeeds")
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), budget_query(alice_cursor(2n), 3n, 4n), 1n, AQ.WorkExhausted{}) &&
+      page_is(ask(q_state(interleaved()), alice_reader(), budget_query(alice_cursor(2n), 3n, 5n), 1n), [v_payment(), v_schema(), v_stale()], None{}),
+      "AU-009 skipping to a cursor charges one unit per visible event skipped: offset 2 and limit 3 need work 5")
+    Test.check(refused_at(q_state(visible_five()), alice_reader(), budget_query(alice_cursor(4n), 1n, 2n), 1n, AQ.WorkExhausted{}),
+      "AU-009 a budget that runs out while skipping to the cursor is refused, not answered with an empty page")
+    Test.check(page_is(ask(q_state(visible_five()), alice_reader(), budget_query(None{}, 2n, 2n), 1n), [v_admitted(), v_origin()], alice_cursor(2n)),
+      "AU-009 seeing that visible events remain after a full page costs no work")
+
+# --- query: accepted baseline through a sink satisfying both owners ------------------
+
+def both_owners_baseline() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(page_is(ask(q_state([h_mixed()]), both_reader(), full_query(alice()), 3n), [h_mixed()], None{}) &&
+      view_has_outcome(ask(q_state([h_mixed()]), both_reader(), full_query(alice()), 3n), T.Origin{}),
+      "AU-003 a reader whose sink satisfies both owners sees the mixed denial event with DeniedFor{Origin{}}")
+
+def query() -> IO(Unit):
+  do IO<Unit>:
+    other_owner()
+    unauthorized_sink()
+    revoked_grant()
+    grant_currency()
+    totals_and_empty()
+    pagination()
+    sort_order()
+    distinct_reasons()
+    work_budget()
+    both_owners_baseline()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     event_projection()
     event_format()
     event_policy()
-    IO.print("Audit: 198 checks passed")
+    query()
+    IO.print("Audit: 248 checks passed")

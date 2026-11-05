@@ -8,6 +8,7 @@ import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
 import ./AuditEvent.bend as AuditEvent
 import ./Dlm.bend as Dlm
+import ./AuditQuery.bend as AuditQuery
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -167,4 +168,38 @@ def Laws.audit_failed_influence_withholds(snapshot, epoch, before, after, i, sin
 # which takes no decision; `caller_subject` reduces on the literal
 # `Frontend.Caller{subject, token}` to `subject`.
 def Laws.audit_outcome_never_lowers_policy(plan, context, labels, subject, token, diagnostic, event_id):
+  {==}
+
+# Induction on `before`. Empty: both sides unfold to the view of
+# `Logged{e, after}` and of `after`; the left is `view_step(visible(state,
+# owner, sink, e), e, view(.., after))`, whose scrutinee the hypothesis
+# (reversed) rewrites to False{}, and `view_step(False{}, _, rest)` is
+# `rest`. Cons: both sides are `view_step` of the same head and visibility,
+# and the induction hypothesis (reversed) rewrites the left tail into the
+# right one.
+def Laws.audit_invisible_event_unobservable(state, owner, sink, before, after, e, hidden):
+  match before:
+    case AuditQuery.NoRecords{}:
+      %Equal.sym(Bool, AuditQuery.visible(state, owner, sink, e), False{}, hidden) : {AuditQuery.view_step(_, e, AuditQuery.view(state, owner, sink, after)) == AuditQuery.view(state, owner, sink, after) : AuditQuery.Views}
+      {==}
+    case AuditQuery.Logged{h, t}:
+      %Equal.sym(AuditQuery.Views, AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(t, AuditQuery.Stored.cons(e, after))), AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(t, after)), Laws.audit_invisible_event_unobservable(state, owner, sink, t, after, e, hidden)) : {AuditQuery.view_step(AuditQuery.visible(state, owner, sink, h), h, _) == AuditQuery.view_step(AuditQuery.visible(state, owner, sink, h), h, AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(t, after))) : AuditQuery.Views}
+      {==}
+
+# Matching exposes the revision field, so `respond` unfolds to
+# `respond_current(Nat.is_eq(revision, 1n+revision), ...)`. Rewriting that
+# scrutinee to False{} with nat_eq_successor_false (reversed) selects the
+# refusal branch, `Refused{public_denial()}`, which computes to the goal.
+def Laws.audit_stale_query_refused(state, from, query, sink_id, now):
+  match state:
+    case AuditQuery.State{revision, epoch, snapshot, sinks, grants, log}:
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {AuditQuery.respond_current(_, AuditQuery.State{revision, epoch, snapshot, sinks, grants, log}, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+      {==}
+
+# Two rewrites: the revision hypothesis (reversed) selects `respond_current`'s
+# True{} branch, `respond_checked(Guard.all(query_gates(..)), ..)`; the gate
+# hypothesis (reversed) selects its False{} branch, the public refusal.
+def Laws.audit_refusal_is_constant(state, expected_revision, from, query, sink_id, now, current, refused):
+  %Equal.sym(Bool, AuditQuery.revision_current(state, expected_revision), True{}, current) : {AuditQuery.respond_current(_, state, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+  %Equal.sym(Bool, Guard.all(AuditQuery.query_gates(state, from, query, sink_id, now)), False{}, refused) : {AuditQuery.respond_checked(_, state, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
   {==}

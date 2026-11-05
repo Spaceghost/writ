@@ -14,6 +14,7 @@ import ./Backplane.bend as Backplane
 import ./DataOS.bend as DataOS
 import ./AuditEvent.bend as AuditEvent
 import ./Dlm.bend as Dlm
+import ./AuditQuery.bend as AuditQuery
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -371,3 +372,67 @@ law audit_outcome_never_lowers_policy:
   for diagnostic: AuditEvent.Diagnostic
   for event_id: Nat
   {AuditEvent.Recorded.policy(AuditEvent.AuditedAdmission.recorded(AuditEvent.audited_admit(plan, context, labels, Frontend.Caller{subject, token}, diagnostic, event_id))) == AuditEvent.admission_policy(plan, context, labels, subject) : AuditEvent.EventPolicy}
+
+# AU-008 "Pagination would reveal another owner" and the carried stream item:
+# inserting an event the caller may not see (`visible` False for this state,
+# owner and sink) anywhere in a log, between any `before` and any `after`,
+# leaves the caller's visible view exactly as it was, for every state, owner
+# and sink. A page, its cursor and its work charge are built from that view
+# only, so a hidden event, including a denied attempt or another owner's
+# early-denied event, changes nothing a response is built from: neither its
+# content nor its existence reaches the caller, and neither does its absence.
+# The proof is by induction on `before`; the empty case rewrites the
+# hypothesis into `view_step`'s scrutinee. A filter that keeps an invisible
+# event as a placeholder breaks it. It does not claim that `respond` reads
+# the log only through `view` (that is AuditQuery's structure, shown by
+# AuditTests' query section), that `visible` is the right predicate (tested),
+# or anything about compute time (a timing channel the design leaves to each
+# deployment).
+law audit_invisible_event_unobservable:
+  for +state: AuditQuery.State
+  for +owner: Dlm.Principal
+  for +sink: AuditEvent.Sink
+  for before: AuditQuery.Stored
+  for +after: AuditQuery.Stored
+  for +e: AuditEvent.Recorded
+  for hidden: {AuditQuery.visible(state, owner, sink, e) == False{} : Bool}
+  {AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(before, AuditQuery.Stored.cons(e, after))) == AuditQuery.view(state, owner, sink, AuditQuery.Stored.append(before, after)) : AuditQuery.Views}
+
+# AU-003 "Query grant is revoked": a query whose expected revision is one
+# past the state's is refused with the public value, for every state, reader,
+# query, sink and time. A response prepared before a revocation, or before
+# any other state change, cannot be released afterwards. It relies on
+# `respond` matching on `revision_current` before any other gate, which is
+# why that outer match stays. It covers the successor revision only (other
+# stale revisions are refused by the same match and shown by AuditTests),
+# and does not claim that the host serializes installs (AB-006).
+law audit_stale_query_refused:
+  for state: AuditQuery.State
+  for from: Nat
+  for query: AuditQuery.Query
+  for sink_id: Nat
+  for now: Nat
+  {AuditQuery.respond(state, 1n+AuditQuery.revision(state), from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
+
+# AU-008 "Distinct secret denial reasons": whenever the revision is current
+# and any query gate fails, `respond` returns exactly
+# `Refused{Unavailable{}}`, for every state, reader, query, sink and time.
+# So every refusal is one public value: an unknown version, a missing,
+# foreign, revoked, expired or other-epoch grant, an unregistered or wrong
+# sink, a bad cursor, a limit out of range and an exhausted budget are
+# indistinguishable to the caller, and an authorized but exhausted caller
+# learns nothing a stranger does not. The proof rewrites the two scrutinees
+# `respond` matches on. Returning any other value for any one cause (for
+# example an empty page for a revoked grant) breaks it. It does not claim
+# that the nine gates are the right ones (AuditTests pins each), and the
+# stale-revision refusal is the separate law above.
+law audit_refusal_is_constant:
+  for +state: AuditQuery.State
+  for +expected_revision: Nat
+  for +from: Nat
+  for +query: AuditQuery.Query
+  for +sink_id: Nat
+  for +now: Nat
+  for current: {AuditQuery.revision_current(state, expected_revision) == True{} : Bool}
+  for refused: {Guard.all(AuditQuery.query_gates(state, from, query, sink_id, now)) == False{} : Bool}
+  {AuditQuery.respond(state, expected_revision, from, query, sink_id, now) == AuditQuery.Refused{AuditQuery.Unavailable{}} : AuditQuery.Response}
