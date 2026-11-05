@@ -6,9 +6,10 @@ Selection (1.1, 1.2) is recorded in docs/UNIKERNELS.md ("Selection matrix, 2026-
 verification/unikernel-matrix-unikraft.md, verification/unikernel-matrix-osv.md, and
 verification/unikernel-pins.txt. Unikraft 0.21.0 is a native link; OSv 0.57.0 is a
 compat observation only (a Linux PIE through OSv's ELF loader), recorded so the matrix
-has two candidates. All boot runs are QEMU TCG emulated boots (the one `linuxu` run was process execution, and native calibration runs on Linux). Of the port tasks only 2.2 (single-lane
-corpus parity under QEMU TCG) is complete; the other port tasks and the boot tasks remain
-pending.
+has two candidates. All boot runs are QEMU TCG emulated boots (the one `linuxu` run was process execution, and native calibration runs on Linux). Of the port tasks 2.2 (single-lane
+corpus parity under QEMU TCG) and 2.3 (the fault message, with arena exhaustion's missing
+distinct code kept as a recorded limit) are checked; the other port tasks and the boot
+tasks remain pending.
 
 ## 1. Selection
 
@@ -100,23 +101,41 @@ pending.
   history in the evidence, verification/runtime-profile-parity-1.txt is the older 638-check
   record, and the "638 count" in UL-005's scenario predates the current corpus. Emulated
   boots only, one lane.
-- [ ] 2.3 Install the halting fault handler; force a stack overflow and an arena exhaustion; record the console message and distinct exit codes.
-  Unchecked (effect-twins lane, Task 3, verification/unikernel-fault-qemu.txt). Fault
-  message: in the delivered configuration the forced stack overflow is a Unikraft crash
-  with QEMU 253 and no runtime message. Unikraft 0.21.0's posix-process can deliver SIGSEGV
-  to a handler on an alternate stack (lib/posix-process/signal/system_error.c,
-  deliver.c), and with `CONFIG_LIBPOSIX_PROCESS_SIGNAL=y` the runtime's handler does print
-  `bend: memory fault (machine stack overflow?)`, after which the image crashes (QEMU 253,
-  no resume); that library is experimental and needs `-include uk/config.h` to compile, so
-  it was a trial, not adopted. Codes: the exit hook now writes program statuses as s + 0x10
-  (success 33, `IO.die` 35) and a runtime or host-layer `_exit(1)` as 17, told from
-  `exit()` by an atexit mark. Arena exhaustion, forced with `scripts/unikernel/Exhaust.bend`
-  at three memory sizes, is a Unikraft crash (253) when the guest runs out of memory to back
-  the arena, before the runtime's own bound; it therefore has no code distinct from a fault,
-  which UL-006 requires. Corpus failure (`Test.bend` `check` ends a failing test with
-  `IO.die(Unit, 1, ...)`) is QEMU 35, distinct from both. The UL-006 gap has two independent halves: enabling the
-  signal library would close only the message half; arena exhaustion would still share
-  253 with a fault. The scenario states no number, so the spec is unchanged.
+- [x] 2.3 Install the halting fault handler; force a stack overflow and an arena exhaustion; record the console message and distinct exit codes.
+  Checked (Unikraft signals lane, Task 3, 2026-11-04) with arena exhaustion's code recorded
+  as a limit, not met. Handler and message: the template now enables Unikraft 0.21.0's
+  posix signal library (`CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y'` in hosts/unikraft/app/Kraftfile;
+  EXPERIMENTAL, lib/posix-process/Config.uk:78) and hosts/unikraft/scripts/build.sh passes
+  `UK_CFLAGS="-std=gnu11 -include uk/config.h"`, which works around 0.21.0's include order in
+  lib/posix-process/shutdown.c (signal.h:116/287); both are pins
+  (verification/unikernel-pins.txt, "Unikraft image configuration pins"). The runtime's
+  handler runs on its alternate stack: the forced stack overflow
+  (`scripts/unikernel/Overflow.bend`) prints `bend: memory fault (machine stack overflow?)`
+  before the Unikraft crash screen, then the image crashes (deliver.c:428) with the hook's
+  crash value, QEMU 253, and does not resume. `hosts/unikraft/scripts/check-fault.sh`
+  requires the message line for the overflow probe; it passes on two boots and fails on the
+  image built without signals (verification/unikernel-fault-qemu.txt, "Result" and "Fault
+  message runs"). Codes, re-recorded with the library and unchanged: success 33, `IO.die`
+  35 (corpus failure: `Test.bend` `check` ends a failing test with `IO.die(Unit, 1, ...)`),
+  `IO.exit(3)` 39, a runtime or host-layer `_exit(1)` 17 (told from `exit()` by an atexit
+  mark), crash 253 (verification/unikernel-exit-codes.txt, "CURRENT MAP, RE-RECORDED WITH
+  POSIX SIGNALS"). Every image set was rebuilt with the library and rechecked; the corpus
+  is still 782 PASS (verification/unikernel-corpus-qemu.txt, unikernel-effects-qemu.txt,
+  unikernel-channel-qemu.txt, unikernel-binary-check.txt).
+  Recorded limit: arena exhaustion, forced with `scripts/unikernel/Exhaust.bend` at
+  `-m 1024`, is still a Unikraft crash with no runtime message and QEMU 253, now on the
+  assertion at lib/posix-process/signal/deliver.c:125 (the alternate stack already in use)
+  instead of in heap_alloc_miss (verification/unikernel-fault-qemu.txt, "Arena exhaustion
+  with signals"). The earlier record predicted that enabling the library would print the
+  message here; that prediction was wrong. Exhaustion therefore has no code distinct from a
+  fault, which UL-006 requires: this half of UL-006 is not met. The 4096 and 12288 MiB sizes
+  were not rerun with signals.
+  Not exercised: the signal value 19 and the non-halt value 251; with signals,
+  posix-process shutdown sends SIGTERM to an init process still running and waits for it
+  (lib/posix-process/shutdown.c:61-67), a path reachable only by a program still running at
+  shutdown, which no shipped image is (verification/unikernel-fault-qemu.txt, "Exit map
+  runs"; verification/unikernel-effects-qemu.txt). Every run is a QEMU TCG emulated boot on
+  the CPU; no GPU test. The scenario states no number, so the spec is unchanged.
 - [ ] 2.4 Enable additional lanes behind the kernel's thread library; show the corpus still matches and record the lane count.
 
 ## 3. Boots and deployment rules

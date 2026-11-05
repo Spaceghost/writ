@@ -41,3 +41,9 @@
 2026-11-05T00:35:06Z	implementer	task 2 report written; committing (DONE_WITH_CONCERNS)
 2026-11-05T00:35:59Z	controller	task 2 reported DONE_WITH_CONCERNS; reviewer dispatched
 2026-11-05T00:37:26Z	controller	task 2 review APPROVED; task 3 dispatched (records, box 2.3)
+2026-11-05T00:38:04Z	implementer	task 3 started: reading brief, reports, and the four documents
+2026-11-05T00:39:14Z	implementer	editing docs/UNIKERNELS.md (faults bullet, image configuration pins, open list, needs item 3)
+2026-11-05T00:39:33Z	implementer	editing verification/unikernel-matrix-unikraft.md (Faults row and E4 notes, Limits list)
+2026-11-05T00:39:45Z	implementer	editing UL-006 traceability row and tasks.md box 2.3 with its preface
+2026-11-05T00:40:15Z	implementer	documents edited (plus hosts/unikraft/INVENTORY.md's two stale pin cells); running OpenSpec strict and bend Tests.bend
+2026-11-05T00:41:09Z	implementer	OpenSpec strict 44 passed; bend Tests.bend 782 PASS, ALL LIBRARY TESTS PASSED; report written; committing (DONE_WITH_CONCERNS)
