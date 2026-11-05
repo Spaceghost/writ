@@ -1,11 +1,16 @@
 # Label-batch path probe for physical GPU validation (GV-001, GV-002; Task 3),
-# with differential parity cases (GV-003; Task 4).
+# with differential parity cases (GV-003; Task 4), injected faults (GV-003;
+# Task 5) and a wrong-but-faster control (GV-006; Task 5).
 #
 # Usage (native build; one GPU path per binary):
 #   bend scripts/gpu-validation/Labels.bend -o ../writ-build/physical-gpu/labels
 #   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS run SIZE [ROUNDS]
 #   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS parity CASE [ROUNDS]
 #     (CASE is `all` or one case name; see "Parity mode" below)
+#   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS inject CASE [ROUNDS]
+#     (CASE is `all` or one inject case name; see "Inject mode" below)
+#   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS bench-forged SIZE REPS
+#     (the forged control: no device call; it must FAIL; see below)
 #
 # SYNTHETIC MONITOR STATE. The snapshot and labels are the
 # examples/Scenario.bend fixtures (the incident team and report owner); no
@@ -280,6 +285,8 @@ def Labels.usage() -> IO(Unit):
   do IO<Unit>:
     IO.print_err("usage: labels [+RTS ... -RTS] run SIZE [ROUNDS]  (SIZE 1..4194304, ROUNDS 1..100000)")
     IO.print_err("       labels [+RTS ... -RTS] parity CASE [ROUNDS]  (CASE all or a case name, ROUNDS 1..100000)")
+    IO.print_err("       labels [+RTS ... -RTS] inject CASE [ROUNDS]  (CASE all or an inject case name, ROUNDS 1..100000)")
+    IO.print_err("       labels [+RTS ... -RTS] bench-forged SIZE REPS  (forged control: no device call; SIZE 1..4194304, REPS 1..100000)")
     IO.exit(2)
 
 # ---- Parity mode (Task 4; GV-003) ------------------------------------------
@@ -573,6 +580,246 @@ def Labels.parity(+name: String, rounds: Maybe<&2, U32>) -> IO(Unit):
     case None{}:
       Labels.usage()
 
+# ---- Inject mode (Task 5; GV-003 "Policy batch fabricates an allowance") ---
+#
+#   labels [+RTS ... -RTS] inject CASE [ROUNDS]
+#     CASE: flip-denial, truncate, swap-shape, or all
+#
+# Faults are injected HERE, in the probe, between the device call and the
+# check; no library module is changed. Every case uses the parity queries
+# allow-deny (leaves: allow, deny, allow, allow). Per case: ROUNDS device
+# batches (GPU.label_batch, each behind its own IO.now() step), an IO step,
+# then the CPU reference Dlm.batch on the same immutable queries and snapshot.
+# Then:
+#   control   every UNMUTATED device tree equals the CPU reference and
+#             Dlm.verify_batch on the original queries and snapshot accepts it,
+#             so a refusal below is caused by the mutation;
+#   replay    the probe mutates every device tree as the case states, then
+#             calls Dlm.verify_batch(original queries, snapshot, mutated tree)
+#             and prints its return value for the last round, with the first
+#             field where the mutated tree and the replay's own Dlm.batch tree
+#             differ (named by the parity field walk);
+#   inject    PASS only if Dlm.verify_batch returns False for every mutated
+#             tree.
+# Dlm.verify_batch returns a Bool and no library entry point takes an answer
+# tree as authority (the commit path evaluates Dlm.flows itself), so a refused
+# tree has no effect to emit. swap-shape keeps the leaf sequence and changes
+# only the tree shape, so a replay that compared leaves alone would accept it.
+
+type Inject is Data:
+  Inject{name: String, what: String, which: U32}
+
+def Labels.inject.cases() -> +List<Inject>:
+  [Inject{"flip-denial", "flip the denial at root.left.right (internal->public) to an allowance, False -> True", 1},
+    Inject{"truncate", "truncate the answer tree to its left half, root -> root.left (4 leaves -> 2)", 2},
+    Inject{"swap-shape", "swap the tree shape, ((a b) (c d)) -> (a (b (c d))), leaf order unchanged", 3}]
+
+def Labels.flip_second(a: Dlm.Answers) -> Dlm.Answers:
+  match a:
+    case Dlm.SplitAnswers{Dlm.SplitAnswers{x, Dlm.OneAnswer{_}}, r}:
+      Dlm.SplitAnswers{Dlm.SplitAnswers{x, Dlm.OneAnswer{True{}}}, r}
+    case other:
+      other
+
+def Labels.truncate(a: Dlm.Answers) -> Dlm.Answers:
+  match a:
+    case Dlm.SplitAnswers{l, _}:
+      l
+    case other:
+      other
+
+def Labels.reshape(a: Dlm.Answers) -> Dlm.Answers:
+  match a:
+    case Dlm.SplitAnswers{Dlm.SplitAnswers{w, x}, Dlm.SplitAnswers{y, z}}:
+      Dlm.SplitAnswers{w, Dlm.SplitAnswers{x, Dlm.SplitAnswers{y, z}}}
+    case other:
+      other
+
+def Labels.mutate.two(truncate: Bool, a: Dlm.Answers) -> Dlm.Answers:
+  match truncate:
+    case True{}:
+      Labels.truncate(a)
+    case False{}:
+      Labels.reshape(a)
+
+def Labels.mutate.one(flip: Bool, +which: U32, a: Dlm.Answers) -> Dlm.Answers:
+  match flip:
+    case True{}:
+      Labels.flip_second(a)
+    case False{}:
+      Labels.mutate.two(U32.is_eq(which, 2), a)
+
+# The device tree with the case's fault injected.
+def Labels.mutate(+which: U32, a: Dlm.Answers) -> Dlm.Answers:
+  Labels.mutate.one(U32.is_eq(which, 1), which, a)
+
+# Leaves in order, `T`/`F`, shape ignored.
+def Labels.sequence(a: Dlm.Answers) -> String:
+  match a:
+    case Dlm.NoAnswers{}:
+      ""
+    case Dlm.OneAnswer{x}:
+      Labels.tf(x)
+    case Dlm.SplitAnswers{l, r}:
+      Labels.sequence(l) ++ Labels.sequence(r)
+
+def Labels.refused(rounds: +List<Dlm.Answers>, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +which: U32) -> U32:
+  match rounds:
+    case Nil{}:
+      0
+    case Con{r, rest}:
+      (Labels.b2u(Bool.not(Dlm.verify_batch(queries, snapshot, Labels.mutate(which, r)))) +
+        Labels.refused(rest, queries, snapshot, which) : U32)
+
+def Labels.inject_tail(rounds: +List<Dlm.Answers>, +name: String, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +which: U32) -> IO(Unit):
+  match rounds:
+    case Nil{}:
+      IO.print("injected " ++ name ++ ": no device round")
+    case Con{+r, _}:
+      do IO<Unit>:
+        Labels.print_tree("injected (last round, mutated in the probe)", Labels.mutate(which, r))
+        IO.print("replay " ++ name ++ ": Dlm.verify_batch(original queries, snapshot, mutated tree) -> " ++
+          Bool.show(Dlm.verify_batch(queries, snapshot, Labels.mutate(which, r))))
+        IO.print("replay difference " ++ name ++ " (device = the mutated tree, CPU = the replay's Dlm.batch): " ++
+          Labels.diff(Labels.mutate(which, r), Dlm.batch(queries, snapshot), "root"))
+        IO.print("leaf sequence " ++ name ++ ": mutated " ++ Labels.sequence(Labels.mutate(which, r)) ++
+          ", replay " ++ Labels.sequence(Dlm.batch(queries, snapshot)))
+
+def Labels.inject_check(+name: String, +which: U32, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +device: +List<Dlm.Answers>, +reference: Dlm.Answers) -> IO(Bool):
+  do IO<Bool>:
+    Labels.print_device(device)
+    Labels.print_tree("CPU reference", reference)
+    Labels.inject_tail(device, name, queries, snapshot, which)
+    a : Bool <- Labels.line(U32.is_eq(Labels.count_same(device, reference), Labels.n_rounds(device)) &&
+        U32.is_eq(Labels.count_replay(device, queries, snapshot), Labels.n_rounds(device)) && U32.is_ne(Labels.n_rounds(device), 0),
+      "control " ++ name ++ ": every unmutated device tree equals the CPU reference and Dlm.verify_batch accepts it" ++
+        Labels.of(Labels.count_replay(device, queries, snapshot), Labels.n_rounds(device)))
+    b : Bool <- Labels.line(U32.is_eq(Labels.refused(device, queries, snapshot, which), Labels.n_rounds(device)) && U32.is_ne(Labels.n_rounds(device), 0),
+      "inject " ++ name ++ ": Dlm.verify_batch on the original queries and snapshot refuses the mutated tree (returns False)" ++
+        Labels.of(Labels.refused(device, queries, snapshot, which), Labels.n_rounds(device)))
+    IO.pure(Bool, a && b)
+
+def Labels.case_queries(c: Case) -> Dlm.Batch:
+  match c:
+    case Case{_, _, q, _}:
+      q
+
+def Labels.inject_case(c: Inject, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +rounds: U32) -> IO(Bool):
+  match c:
+    case Inject{+name, what, +which}:
+      do IO<Bool>:
+        IO.print("inject case " ++ name ++ ": base queries allow-deny, device rounds " ++ U32.show(rounds) ++ "; injected in the probe: " ++ what)
+        device : +List<Dlm.Answers> <- Labels.device_rounds(U32.to_nat(rounds), queries, snapshot, Nil{})
+        _now : Nat <- IO.now()
+        reference : Dlm.Answers <- IO.pure(Dlm.Answers, Dlm.batch(queries, snapshot))
+        Labels.inject_check(name, which, queries, snapshot, device, reference)
+
+def Labels.inject_all(cases: +List<Inject>, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +rounds: U32, ok: Bool) -> IO(Bool):
+  match cases:
+    case Nil{}:
+      IO.pure(Bool, ok)
+    case Con{c, rest}:
+      do IO<Bool>:
+        r : Bool <- Labels.inject_case(c, queries, snapshot, rounds)
+        Labels.inject_all(rest, queries, snapshot, rounds, ok && r)
+
+def Labels.inject.keep(ok: Bool, c: Inject, rest: +List<Inject>) -> +List<Inject>:
+  match ok:
+    case True{}:
+      Con{c, rest}
+    case False{}:
+      rest
+
+def Labels.inject.select(cases: +List<Inject>, +want: String, +every: Bool) -> +List<Inject>:
+  match cases:
+    case Nil{}:
+      Nil{}
+    case Con{Inject{+n, w, k}, rest}:
+      Labels.inject.keep(every || String.eq(n, want), Inject{n, w, k}, Labels.inject.select(rest, want, every))
+
+def Labels.inject_run(selected: +List<Inject>, +rounds: U32) -> IO(Unit):
+  match selected:
+    case Nil{}:
+      Labels.usage()
+    case Con{h, t}:
+      do IO<Unit>:
+        IO.print("SYNTHETIC label fault injection: faults are injected by this probe into device answer trees; no principal is authenticated")
+        snapshot : Dlm.Snapshot <- Labels.snapshot(Scenario.principals())
+        ok : Bool <- Labels.inject_all(Con{h, t}, Labels.case_queries(Labels.case.allow_deny()), snapshot, rounds, True{})
+        Labels.finish(ok)
+
+def Labels.inject.go(ok: Bool, +name: String, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Labels.inject_run(Labels.inject.select(Labels.inject.cases(), name, String.eq(name, "all")), r)
+    case False{}:
+      Labels.usage()
+
+def Labels.inject(+name: String, rounds: Maybe<&2, U32>) -> IO(Unit):
+  match rounds:
+    case Some{+r}:
+      Labels.inject.go(U32.is_ne(r, 0) && U32.is_le(r, 100000), name, r)
+    case None{}:
+      Labels.usage()
+
+# ---- Wrong-but-faster control (Task 5; GV-006) -----------------------------
+#
+#   labels [+RTS ... -RTS] bench-forged SIZE REPS
+#
+# The run-mode inputs, checks and output, with the device call replaced by a
+# constant allow-all answer tree of the same shape: no bang runs, so the run
+# is faster than `run SIZE REPS` by construction and its answers are wrong at
+# every denied leaf. The checks are run mode's (Labels.check), so the probe
+# prints FAIL lines and exits 1; observe.sh then records `correctness` FAIL
+# and the gate FAIL, and its wall time is not an accepted measurement.
+
+def Labels.forged(depth: Nat) -> Dlm.Answers:
+  match depth:
+    case 0n:
+      Dlm.OneAnswer{True{}}
+    case 1n+ +remaining:
+      Dlm.SplitAnswers{Labels.forged(remaining), Labels.forged(remaining)}
+
+def Labels.forged_rounds(left: Nat, +depth: Nat, acc: +List<Dlm.Answers>) -> IO(+List<Dlm.Answers>):
+  match left:
+    case 0n:
+      IO.pure(+List<Dlm.Answers>, acc)
+    case 1n+p:
+      do IO<+List<Dlm.Answers>>:
+        _now : Nat <- IO.now()
+        r : Dlm.Answers <- IO.pure(Dlm.Answers, Labels.forged(depth))
+        Labels.forged_rounds(p, depth, Con{r, acc})
+
+def Labels.forged_stage(+queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +depth: Nat, +rounds: U32) -> IO(Unit):
+  do IO<Unit>:
+    IO.print("SYNTHETIC label batch: Scenario principals and labels; no principal is authenticated")
+    IO.print("FORGED wrong-but-faster control: a constant allow-all answer tree replaces the device call; no bang runs")
+    IO.print("leaves: " ++ U32.show(U32.shln(1, depth)) ++ ", forged rounds: " ++ U32.show(rounds))
+    device : +List<Dlm.Answers> <- Labels.forged_rounds(U32.to_nat(rounds), depth, Nil{})
+    _now : Nat <- IO.now()
+    reference : Dlm.Answers <- IO.pure(Dlm.Answers, Dlm.batch(queries, snapshot))
+    Labels.check(device, queries, snapshot, reference, depth)
+
+def Labels.forged_go(+size: U32, +rounds: U32) -> IO(Unit):
+  do IO<Unit>:
+    snapshot : Dlm.Snapshot <- Labels.snapshot(Scenario.principals())
+    queries : Dlm.Batch <- IO.pure(Dlm.Batch, Labels.tree(Labels.depth(size), 0))
+    Labels.forged_stage(queries, snapshot, Labels.depth(size), rounds)
+
+def Labels.forged_bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Labels.forged_go(s, r)
+    case False{}:
+      Labels.usage()
+
+def Labels.forged_bounded(size: Maybe<&2, U32>, rounds: Maybe<&2, U32>) -> IO(Unit):
+  match size rounds:
+    case Some{+s} Some{+r}:
+      Labels.forged_bounded.go(U32.is_ne(s, 0) && U32.is_le(s, 4194304) && U32.is_ne(r, 0) && U32.is_le(r, 100000), s, r)
+    case _ _:
+      Labels.usage()
+
 def Labels.bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
   match ok:
     case True{}:
@@ -597,6 +844,12 @@ def Labels.main(args: List<String>) -> IO(Unit):
       Labels.parity(name, Some{1})
     case Con{_, Con{"parity", Con{name, Con{rounds, Nil{}}}}}:
       Labels.parity(name, U32.read(rounds))
+    case Con{_, Con{"inject", Con{name, Nil{}}}}:
+      Labels.inject(name, Some{1})
+    case Con{_, Con{"inject", Con{name, Con{rounds, Nil{}}}}}:
+      Labels.inject(name, U32.read(rounds))
+    case Con{_, Con{"bench-forged", Con{size, Con{rounds, Nil{}}}}}:
+      Labels.forged_bounded(U32.read(size), U32.read(rounds))
     case _:
       Labels.usage()
 

@@ -1,11 +1,14 @@
 # Graph-solver path probe for physical GPU validation (GV-001, GV-002; Task 3),
-# with differential parity cases (GV-003; Task 4).
+# with differential parity cases (GV-003; Task 4) and injected faults
+# (GV-003 "Stable malformed solver output"; Task 5).
 #
 # Usage (native build; one GPU path per binary):
 #   bend scripts/gpu-validation/Solver.bend -o ../writ-build/physical-gpu/solver
 #   ../writ-build/physical-gpu/solver +RTS --gpu on -RTS run SIZE [ROUNDS]
 #   ../writ-build/physical-gpu/solver +RTS --gpu on -RTS parity CASE [ROUNDS]
 #     (CASE is `all` or one case name; see "Parity mode" below)
+#   ../writ-build/physical-gpu/solver +RTS --gpu on -RTS inject CASE [ROUNDS]
+#     (CASE is `all` or one inject case name; see "Inject mode" below)
 #
 # SYNTHETIC MONITOR STATE. The graph replicates the examples/Scenario.bend
 # facts (the restricted report state, the summary type, the core stamp); it
@@ -344,6 +347,7 @@ def Solver.usage() -> IO(Unit):
   do IO<Unit>:
     IO.print_err("usage: solver [+RTS ... -RTS] run SIZE [ROUNDS]  (SIZE 1..1048576, ROUNDS 1..100000)")
     IO.print_err("       solver [+RTS ... -RTS] parity CASE [ROUNDS]  (CASE all or a case name, ROUNDS 1..100000)")
+    IO.print_err("       solver [+RTS ... -RTS] inject CASE [ROUNDS]  (CASE all or an inject case name, ROUNDS 1..100000)")
     IO.exit(2)
 
 # ---- Parity mode (Task 4; GV-003) ------------------------------------------
@@ -741,6 +745,329 @@ def Solver.parity(+name: String, rounds: Maybe<&2, U32>) -> IO(Unit):
     case None{}:
       Solver.usage()
 
+# ---- Inject mode (Task 5; GV-003 "Stable malformed solver output") ---------
+#
+#   solver [+RTS ... -RTS] inject CASE [ROUNDS]
+#     CASE: drop-node, erase-source, clear-bit63, stale-stamp, or all
+#
+# Faults are injected HERE, in the probe, between the device call and the
+# check; no library module is changed. Every case uses the parity graph
+# wide-dimensions (node 0 holds bits 31, 32 and 63 in secrecy, untrusted and
+# effects; flow 0 -> 1, calls 0 -> 2; 2 sweeps). Per case: ROUNDS device
+# solves (GPU.solve, each behind its own IO.now() step), an IO step, then the
+# CPU reference Core.solve_cpu on the same immutable graph. Then:
+#   control   every UNMUTATED device result equals the CPU reference, and
+#             Core.verify on the original graph approves it, so a denial
+#             below is caused by the mutation and nothing else;
+#   verifier  the probe mutates every device result as the case states, then
+#             calls Core.verify on the ORIGINAL case graph (never
+#             Gpu.make_tree's work tree, predecessor lists or work list) and
+#             the Scenario stamp, and prints its return value for the last
+#             solve; a clause line evaluates the original graph's checks
+#             separately (seeds, flow, equal, calls, live stamps) so the
+#             refusing check is visible;
+#   inject    PASS only if Core.verify returns Denied with the case's reason
+#             for every mutated result;
+#   sink      the effect gate: Core.authorize_sink with a SYNTHETIC sink chosen
+#             so the mutation would matter, on the unmutated candidate (its
+#             stated result) and on every mutated one (Denied with the same
+#             reason: no sink is authorized, so no effect can follow). For
+#             erase-source and clear-bit63 a diagnostic line shows the sink
+#             gate alone, on the mutated state without verification, would have
+#             approved: the injected fault would widen authority if the
+#             verifier were skipped. That diagnostic is Core.sink_gate, an
+#             exported implementation helper and not an entry point; its value
+#             is printed, never used.
+
+type Inject is Data:
+  Inject{name: String, what: String, which: U32, reason: Core.Error, sink: Core.Sink, clean: Core.Check, widens: Bool}
+
+def Solver.ones() -> Core.Bits64:
+  Core.Bits64{4294967295, 4294967295}
+
+# Every right granted, every label tolerated: only verification can refuse.
+def Solver.open_sink(+node: U32) -> Core.Sink:
+  Core.Sink{node, Solver.ones(), Solver.ones(), Solver.ones(), Solver.z()}
+
+def Solver.inject.cases() -> +List<Inject>:
+  [Inject{"drop-node", "drop node 2 (the last) from the candidate's node list, 3 nodes -> 2", 1, Core.InvalidCandidate{},
+      Solver.open_sink(2), Core.Approved{}, False{}},
+    Inject{"erase-source", "erase the source fact at node 0: secrecy 2147483648/2147483649 -> 0/0 (bits 31, 32, 63 cleared)", 2, Core.InvalidCandidate{},
+      Core.Sink{0, Solver.z(), Solver.ones(), Solver.ones(), Solver.z()}, Core.Denied{Core.FlowDenied{}}, True{}},
+    Inject{"clear-bit63", "clear bit 63 of node 2's effects: 2147483648/2147483649 -> 2147483648/1 (hi word top bit)", 3, Core.InvalidCandidate{},
+      Core.Sink{2, Solver.ones(), Solver.ones(), Core.Bits64{4294967295, 2147483647}, Solver.z()}, Core.Denied{Core.EffectDenied{}}, True{}},
+    Inject{"stale-stamp", "renumber the candidate stamp's authority epoch to an earlier epoch, 3 -> 2", 4, Core.StaleSnapshot{},
+      Solver.open_sink(1), Core.Approved{}, False{}}]
+
+def Solver.case_graph(c: Case) -> Core.Graph:
+  match c:
+    case Case{_, _, g, _, _}:
+      g
+
+# ---- Inject: the mutations (probe-side; the evidence names each) ----------
+
+def Solver.drop_last.go(rest: +List<Core.State>, x: Core.State) -> +List<Core.State>:
+  match rest:
+    case Nil{}:
+      Nil{}
+    case Con{y, more}:
+      Con{x, Solver.drop_last.go(more, y)}
+
+def Solver.drop_last(xs: +List<Core.State>) -> +List<Core.State>:
+  match xs:
+    case Nil{}:
+      Nil{}
+    case Con{x, rest}:
+      Solver.drop_last.go(rest, x)
+
+def Solver.erase_secrecy(s: Core.State) -> Core.State:
+  match s:
+    case Core.State{t, _, u, e}:
+      Core.State{t, Core.Bits64.zero(), u, e}
+
+def Solver.clear_bit63(s: Core.State) -> Core.State:
+  match s:
+    case Core.State{t, sec, u, Core.Bits64{lo, hi}}:
+      Core.State{t, sec, u, Core.Bits64{lo, U32.and(hi, 2147483647)}}
+
+def Solver.edit_state(erase: Bool, s: Core.State) -> Core.State:
+  match erase:
+    case True{}:
+      Solver.erase_secrecy(s)
+    case False{}:
+      Solver.clear_bit63(s)
+
+# Node `i` (zero-based) edited; every other node unchanged.
+def Solver.edit_at(xs: +List<Core.State>, i: Nat, +erase: Bool) -> +List<Core.State>:
+  match xs i:
+    case Nil{} _:
+      Nil{}
+    case Con{x, rest} 0n:
+      Con{Solver.edit_state(erase, x), rest}
+    case Con{x, rest} 1n+p:
+      Con{x, Solver.edit_at(rest, p, erase)}
+
+def Solver.earlier(st: Core.Stamp) -> Core.Stamp:
+  match st:
+    case Core.Stamp{g, p, Core.Bits64{lo, hi}}:
+      Core.Stamp{g, p, Core.Bits64{(lo - 1 : U32), hi}}
+
+def Solver.mutate.three(clear: Bool, st: Core.Stamp, nodes: +List<Core.State>) -> Core.Candidate:
+  match clear:
+    case True{}:
+      Core.Candidate{st, Solver.edit_at(nodes, 2n, False{})}
+    case False{}:
+      Core.Candidate{Solver.earlier(st), nodes}
+
+def Solver.mutate.two(erase: Bool, +which: U32, st: Core.Stamp, nodes: +List<Core.State>) -> Core.Candidate:
+  match erase:
+    case True{}:
+      Core.Candidate{st, Solver.edit_at(nodes, 0n, True{})}
+    case False{}:
+      Solver.mutate.three(U32.is_eq(which, 3), st, nodes)
+
+def Solver.mutate.one(drop: Bool, +which: U32, st: Core.Stamp, nodes: +List<Core.State>) -> Core.Candidate:
+  match drop:
+    case True{}:
+      Core.Candidate{st, Solver.drop_last(nodes)}
+    case False{}:
+      Solver.mutate.two(U32.is_eq(which, 2), which, st, nodes)
+
+# The device result with the case's fault injected; a SolveFailed result has
+# no candidate and is returned unchanged (its inject line then fails).
+def Solver.mutate(+which: U32, r: Core.SolveResult) -> Core.SolveResult:
+  match r:
+    case Core.Solved{Core.Candidate{st, nodes}, rounds}:
+      Core.Solved{Solver.mutate.one(U32.is_eq(which, 1), which, st, nodes), rounds}
+    case Core.SolveFailed{e}:
+      Core.SolveFailed{e}
+
+# ---- Inject: the library's verdicts ----------------------------------------
+
+def Solver.check_text(c: Core.Check) -> String:
+  match c:
+    case Core.Approved{}:
+      "Approved"
+    case Core.Denied{e}:
+      "Denied{" ++ Solver.error_name(e) ++ "}"
+
+def Solver.check_equal(a: Core.Check, b: Core.Check) -> Bool:
+  match a b:
+    case Core.Approved{} Core.Approved{}:
+      True{}
+    case Core.Denied{x} Core.Denied{y}:
+      Core.Error.equal(x, y)
+    case _ _:
+      False{}
+
+# Core.verify on the ORIGINAL graph and the Scenario stamp.
+def Solver.verify_result(r: Core.SolveResult, +graph: Core.Graph) -> Core.Check:
+  match r:
+    case Core.Solved{candidate, _}:
+      Core.verify(graph, candidate, Scenario.core_stamp())
+    case Core.SolveFailed{_}:
+      Core.Denied{Core.InvalidCandidate{}}
+
+def Solver.sink_result(r: Core.SolveResult, +graph: Core.Graph, +sink: Core.Sink) -> Core.Check:
+  match r:
+    case Core.Solved{candidate, _}:
+      Core.authorize_sink(graph, candidate, Scenario.core_stamp(), sink)
+    case Core.SolveFailed{_}:
+      Core.Denied{Core.InvalidCandidate{}}
+
+def Solver.is_solved(r: Core.SolveResult) -> Bool:
+  match r:
+    case Core.Solved{_, _}:
+      True{}
+    case Core.SolveFailed{_}:
+      False{}
+
+# Per device solve: how many mutated results each library path refuses with
+# the case's reason, and how many unmutated results pass the control.
+type Refusals is Data:
+  Refusals{verified: U32, sink_clean: U32, verify_denied: U32, sink_denied: U32}
+
+def Solver.refusals(rounds: +List<Core.SolveResult>, +graph: Core.Graph, +which: U32, +reason: Core.Error, +sink: Core.Sink, +clean: Core.Check, t: Refusals) -> Refusals:
+  match rounds t:
+    case Nil{} _:
+      t
+    case Con{+r, rest} Refusals{v, c, d, s}:
+      Solver.refusals(rest, graph, which, reason, sink, clean,
+        Refusals{(v + Solver.b2u(Solver.is_solved(r) && Core.Check.is_approved(Solver.verify_result(r, graph))) : U32),
+          (c + Solver.b2u(Solver.is_solved(r) && Solver.check_equal(Solver.sink_result(r, graph, sink), clean)) : U32),
+          (d + Solver.b2u(Solver.is_solved(r) && Core.Check.has_error(Solver.verify_result(Solver.mutate(which, r), graph), reason)) : U32),
+          (s + Solver.b2u(Solver.is_solved(r) && Core.Check.has_error(Solver.sink_result(Solver.mutate(which, r), graph, sink), reason)) : U32)})
+
+# The original graph's checks one by one, on the candidate's node states.
+def Solver.clauses(r: Core.SolveResult, graph: Core.Graph) -> String:
+  match r graph:
+    case Core.Solved{Core.Candidate{cs, +nodes}, _} Core.Graph{+gs, +seeds, +flow, +equal, +calls}:
+      "graph valid " ++ Bool.show(Core.Check.is_approved(Core.validate_graph(Core.Graph{gs, seeds, flow, equal, calls}))) ++
+        ", live stamps " ++ Bool.show(Core.Stamp.equal(gs, Scenario.core_stamp()) && Core.Stamp.equal(cs, Scenario.core_stamp())) ++
+        ", seeds (Core.candidate_seeds_valid) " ++ Bool.show(Core.candidate_seeds_valid(seeds, nodes)) ++
+        ", flow (Core.verify_flows) " ++ Bool.show(Core.verify_flows(flow, nodes)) ++
+        ", equal (Core.verify_equalities) " ++ Bool.show(Core.verify_equalities(equal, nodes)) ++
+        ", calls (Core.verify_calls) " ++ Bool.show(Core.verify_calls(calls, nodes))
+    case _ _:
+      "no candidate"
+
+# Diagnostic only: the sink gate on the mutated state WITHOUT verification.
+def Solver.gate_alone(r: Core.SolveResult, sink: Core.Sink) -> String:
+  match r sink:
+    case Core.Solved{Core.Candidate{_, +nodes}, _} Core.Sink{+i, c, t, g, q}:
+      Solver.check_text(Core.sink_gate(Core.state_at(nodes, i), Core.Sink{i, c, t, g, q}))
+    case _ _:
+      "no candidate"
+
+def Solver.sink_text(s: Core.Sink) -> String:
+  match s:
+    case Core.Sink{i, c, t, g, q}:
+      "node " ++ U32.show(i) ++ ", clearance " ++ Solver.bits(c) ++ ", tolerated " ++ Solver.bits(t) ++
+        ", granted " ++ Solver.bits(g) ++ ", requested " ++ Solver.bits(q)
+
+def Solver.widen_line(widens: Bool, +name: String, r: Core.SolveResult, sink: Core.Sink) -> IO(Unit):
+  match widens:
+    case True{}:
+      IO.print("diagnostic " ++ name ++ " (Core.sink_gate alone, unverified, printed and never used): mutated state -> " ++ Solver.gate_alone(r, sink))
+    case False{}:
+      IO.pure(Unit, Unit{})
+
+def Solver.inject_tail(rounds: +List<Core.SolveResult>, +name: String, +graph: Core.Graph, +which: U32, +sink: Core.Sink, +widens: Bool) -> IO(Unit):
+  match rounds:
+    case Nil{}:
+      IO.print("injected " ++ name ++ ": no device solve")
+    case Con{+r, _}:
+      do IO<Unit>:
+        Solver.print_result("injected (last solve, mutated in the probe)", Solver.mutate(which, r))
+        IO.print("verifier " ++ name ++ ": Core.verify(original graph, mutated candidate, Scenario stamp) -> " ++
+          Solver.check_text(Solver.verify_result(Solver.mutate(which, r), graph)))
+        IO.print("clauses " ++ name ++ ": " ++ Solver.clauses(Solver.mutate(which, r), graph))
+        IO.print("sink " ++ name ++ " (SYNTHETIC " ++ Solver.sink_text(sink) ++ "): Core.authorize_sink unmutated -> " ++
+          Solver.check_text(Solver.sink_result(r, graph, sink)) ++ ", mutated -> " ++
+          Solver.check_text(Solver.sink_result(Solver.mutate(which, r), graph, sink)))
+        Solver.widen_line(widens, name, Solver.mutate(which, r), sink)
+
+def Solver.inject_lines(+name: String, +reason: Core.Error, +clean: Core.Check, +n: U32, +same: U32, t: Refusals) -> IO(Bool):
+  match t:
+    case Refusals{+v, +c, +d, +s}:
+      do IO<Bool>:
+        a : Bool <- Solver.line(U32.is_eq(same, n) && U32.is_eq(v, n) && U32.is_ne(n, 0),
+          "control " ++ name ++ ": every unmutated device result equals the CPU reference and Core.verify on the original graph approves it" ++ Solver.of(v, n))
+        b : Bool <- Solver.line(U32.is_eq(c, n) && U32.is_ne(n, 0),
+          "control " ++ name ++ ": Core.authorize_sink on the unmutated candidate returns " ++ Solver.check_text(clean) ++ Solver.of(c, n))
+        e : Bool <- Solver.line(U32.is_eq(d, n) && U32.is_ne(n, 0),
+          "inject " ++ name ++ ": Core.verify on the original graph denies the mutated candidate with " ++ Solver.error_name(reason) ++ Solver.of(d, n))
+        f : Bool <- Solver.line(U32.is_eq(s, n) && U32.is_ne(n, 0),
+          "effect " ++ name ++ ": Core.authorize_sink denies the mutated candidate with " ++ Solver.error_name(reason) ++ ", so no sink is authorized" ++ Solver.of(s, n))
+        IO.pure(Bool, a && b && e && f)
+
+def Solver.inject_check(c: Inject, +graph: Core.Graph, +device: +List<Core.SolveResult>, +reference: Core.SolveResult) -> IO(Bool):
+  match c:
+    case Inject{+name, _, +which, +reason, +sink, +clean, +widens}:
+      do IO<Bool>:
+        Solver.print_device(device)
+        Solver.print_result("CPU reference", reference)
+        Solver.inject_tail(device, name, graph, which, sink, widens)
+        Solver.inject_lines(name, reason, clean, Solver.count(device), Solver.count_same(device, reference),
+          Solver.refusals(device, graph, which, reason, sink, clean, Refusals{0, 0, 0, 0}))
+
+def Solver.inject_case(c: Inject, +graph: Core.Graph, +rounds: U32) -> IO(Bool):
+  match c:
+    case Inject{+name, what, +which, +reason, +sink, +clean, +widens}:
+      do IO<Bool>:
+        IO.print("inject case " ++ name ++ ": base graph wide-dimensions, device solves " ++ U32.show(rounds) ++ "; injected in the probe: " ++ what)
+        device : +List<Core.SolveResult> <- Solver.device_rounds(U32.to_nat(rounds), graph, 0n, Nil{})
+        _now : Nat <- IO.now()
+        reference : Core.SolveResult <- IO.pure(Core.SolveResult, Core.solve_cpu(graph, 0n))
+        Solver.inject_check(Inject{name, "", which, reason, sink, clean, widens}, graph, device, reference)
+
+def Solver.inject_all(cases: +List<Inject>, +graph: Core.Graph, +rounds: U32, ok: Bool) -> IO(Bool):
+  match cases:
+    case Nil{}:
+      IO.pure(Bool, ok)
+    case Con{c, rest}:
+      do IO<Bool>:
+        r : Bool <- Solver.inject_case(c, graph, rounds)
+        Solver.inject_all(rest, graph, rounds, ok && r)
+
+def Solver.inject.keep(ok: Bool, c: Inject, rest: +List<Inject>) -> +List<Inject>:
+  match ok:
+    case True{}:
+      Con{c, rest}
+    case False{}:
+      rest
+
+def Solver.inject.select(cases: +List<Inject>, +want: String, +every: Bool) -> +List<Inject>:
+  match cases:
+    case Nil{}:
+      Nil{}
+    case Con{Inject{+n, w, k, r, s, c, d}, rest}:
+      Solver.inject.keep(every || String.eq(n, want), Inject{n, w, k, r, s, c, d}, Solver.inject.select(rest, want, every))
+
+def Solver.inject_run(selected: +List<Inject>, +rounds: U32) -> IO(Unit):
+  match selected:
+    case Nil{}:
+      Solver.usage()
+    case Con{h, t}:
+      do IO<Unit>:
+        IO.print("SYNTHETIC solver fault injection: faults are injected by this probe into device results; no sink is authorized")
+        ok : Bool <- Solver.inject_all(Con{h, t}, Solver.case_graph(Solver.case.wide()), rounds, True{})
+        Solver.finish(ok)
+
+def Solver.inject.go(ok: Bool, +name: String, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Solver.inject_run(Solver.inject.select(Solver.inject.cases(), name, String.eq(name, "all")), r)
+    case False{}:
+      Solver.usage()
+
+def Solver.inject(+name: String, rounds: Maybe<&2, U32>) -> IO(Unit):
+  match rounds:
+    case Some{+r}:
+      Solver.inject.go(U32.is_ne(r, 0) && U32.is_le(r, 100000), name, r)
+    case None{}:
+      Solver.usage()
+
 def Solver.bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
   match ok:
     case True{}:
@@ -765,6 +1092,10 @@ def Solver.main(args: List<String>) -> IO(Unit):
       Solver.parity(name, Some{1})
     case Con{_, Con{"parity", Con{name, Con{rounds, Nil{}}}}}:
       Solver.parity(name, U32.read(rounds))
+    case Con{_, Con{"inject", Con{name, Nil{}}}}:
+      Solver.inject(name, Some{1})
+    case Con{_, Con{"inject", Con{name, Con{rounds, Nil{}}}}}:
+      Solver.inject(name, U32.read(rounds))
     case _:
       Solver.usage()
 
