@@ -57,3 +57,23 @@ Notes:
 - E1 is killed by dispatching A's same offer reselected as selection 4, where retired selection 3's evidence names that offer and provider.
 - The `granted_registry` None arm and `selected_registry`'s NoSelection arm return the empty registry and are unreachable while the selection is current (eligibility's BelongsTo gate requires an unambiguous grant; currency requires a selection). They have no weaker value to mutate to (the empty registry is the least), so they are not in the table.
 - Earlier tasks' mutants on `current_gates`, the eligibility gates and `session_follows_selection` are unchanged and still killed by their Task 3 and Task 4 checks; G4 shows the dispatch splice of `current_gates` is itself pinned.
+
+## Fix round 1 (S1 to S4)
+
+The full list was rerun on the fix-round tree, with G1, G3, G4, G5 and C1 to C5 re-anchored to the new code. Every earlier result holds (G5 and P5 still equivalent), except T2 and T7: the first sweep left them alive, because the new token gate also denies B's sessions (which carry B's token) with NotSelected. They are killed again by "ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected".
+
+| Id | Gate or clause | Mutation | Result | Killing test (first failure) |
+|---|---|---|---|---|
+| H1 | host currency gate | `HP.current(host, expected_host_revision)` -> True | killed | ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision |
+| H2 | host currency gate | expected host revision ignored (`HP.current(host, HP.revision(host))`) | killed | ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision |
+| H3 | host currency gate | revision only, `HP.valid` dropped | killed | ER-007 a host state that is not HP.valid at its own revision (sessions of incarnation 57 under incarnation 58, or bindings to unconfigured profiles) denied StaleRevision; the twin-session and twin-binding hosts are not valid either |
+| K1 | caller token gate | -> True | killed | ER-001 A's worker session 8 authenticated under another token (word 3) is A's subject at profile 1 but not grant 3's holder: denied NotSelected; A's session 6 on the same host dispatches |
+| K2 | `grant_token_is` comparison | -> True | killed | (same check) |
+| K3 | `grant_token_is` None arm | -> True | equivalent | Unreachable: `current_gates` (eligibility's BelongsTo) has already required an unambiguous grant under the offer's grant id, and `grant_for` is the same lookup. |
+| K4 | `worker_token_is` NoSession/ManySessions arm | -> True | equivalent | Unreachable: the outer target gate `worker_caller_is` has already required exactly one session under the id. |
+| I1 | commit incarnation | recorded as 0 | killed | ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed |
+| X3 | target binding gate (reviewer's) | `Offer.profile(selected)` -> fixed 1 | killed | ER-001 the binding is compared with the selected offer's profile: with A's profile-2 offer {201, 2} selected, A's worker session 4 (profile 2) is its target and session 6 (profile 1) is not, WrongProfile |
+| T2 | target caller gate (rerun) | -> True | killed | ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected (PROOF.bend still checks) |
+| T7 | `worker_caller_is` subject comparison (rerun) | -> True | killed | (same check) |
+
+Total after fix round 1: 53 mutants, 49 killed, 4 equivalent (G5, P5, K3, K4).

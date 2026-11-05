@@ -185,6 +185,6 @@ def Laws.rendezvous_wrong_provider_evidence_rejects(state, expected_revision, fr
 # ...)`. Rewriting that scrutinee to False{} with the hypothesis (reversed)
 # selects `Rejected{state, reason}`, whose `accepted` is False{} and whose
 # `Change.state` is the supplied state, whatever the reason.
-def Laws.rendezvous_unselected_dispatch_rejects(state, expected_revision, offer, host, worker_session, session, expected_session, n_context, snapshot, unselected):
-  %Equal.sym(Bool, Rendezvous.dispatch_target_selected(state, offer, host, worker_session), False{}, unselected) : {(Rendezvous.Change.accepted(Rendezvous.dispatch_by(_, state, expected_revision, offer, host, worker_session, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.dispatch_by(_, state, expected_revision, offer, host, worker_session, session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+def Laws.rendezvous_unselected_dispatch_rejects(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot, unselected):
+  %Equal.sym(Bool, Rendezvous.dispatch_target_selected(state, offer, host, worker_session), False{}, unselected) : {(Rendezvous.Change.accepted(Rendezvous.dispatch_by(_, state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.dispatch_by(_, state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
   {==}

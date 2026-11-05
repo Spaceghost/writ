@@ -306,8 +306,8 @@ def evidence_equal(a: R.Evidences, b: R.Evidences) -> Bool:
 
 def dispatch_equal(a: R.Dispatch, b: R.Dispatch) -> Bool:
   match a b:
-    case R.Dispatch{asl, aw} R.Dispatch{bsl, bw}:
-      Nat.is_eq(asl, bsl) && Nat.is_eq(aw, bw)
+    case R.Dispatch{asl, ai, aw} R.Dispatch{bsl, bi, bw}:
+      Nat.is_eq(asl, bsl) && Nat.is_eq(ai, bi) && Nat.is_eq(aw, bw)
 
 def dispatches_equal(a: R.Dispatches, b: R.Dispatches) -> Bool:
   match a b:
@@ -1753,6 +1753,41 @@ def twin_session_host() -> HP.State:
 def twin_binding_host() -> HP.State:
   with_bindings(host(), HP.Bindings{HP.Binding{worker_a(), profile()}, HP.bindings(host())})
 
+# SYNTHETIC MONITOR STATES that `HP.valid` rejects: the identity table's
+# incarnation advanced to 58 while every session is still incarnation 57
+# (a session table carried across a restart), and the host with no
+# configured profiles (so each binding names an unconfigured profile).
+def with_incarnation(identity: HI.State, incarnation: Nat) -> HI.State:
+  match identity:
+    case HI.State{revision, hid, _, next_slot, sessions, entries}:
+      HI.State{revision, hid, incarnation, next_slot, sessions, entries}
+
+def restarted_host() -> HP.State:
+  with_identity(host(), with_incarnation(HP.identity(host()), 58n))
+
+def with_profiles(host: HP.State, profiles: HP.Profiles) -> HP.State:
+  match host:
+    case HP.State{revision, identity, _, bindings, workers, next_worker, seals, publications}:
+      HP.State{revision, identity, profiles, bindings, workers, next_worker, seals, publications}
+
+def unconfigured_host() -> HP.State:
+  with_profiles(host(), HP.NoProfiles{})
+
+# A valid host with one more session, 8: A's subject 201 authenticated
+# under C's token word 3, bound as a worker at profile 1.
+def token_swap_host() -> HP.State:
+  bind_on(host(), F.Caller{201n, token_c()}, False{}, HP.WorkerRole{profile()})
+
+# A valid host with one more session, 8: B's subject 202 authenticated
+# under A's grant token, bound as a worker at profile 1.
+def subject_swap_host() -> HP.State:
+  bind_on(host(), F.Caller{202n, token_a()}, False{}, HP.WorkerRole{profile()})
+
+# A's profile-2 candidate {201, 2} (quote 35) selected alone in the
+# two-profile world (constraint {1, 2}).
+def p2_selected() -> R.State:
+  R.Change.state(select_now(p2_state()))
+
 # A's trial session advanced through approve (3), reserve (4, receipt 11,
 # a fresh ledger) and start (5) on `context`, through Negotiation's entry
 # points: Running at revision 6.
@@ -1781,7 +1816,7 @@ def offer_id_tb() -> R.OfferId:
 # A dispatch at the state's own revision on the trial projection at 110.
 def dispatch_on(+state: R.State, +offer: R.OfferId, +host: HP.State, +worker: Nat, +session: N.Session,
     +snapshot: R.Snapshot) -> R.Change:
-  R.dispatch(state, R.revision(state), offer, host, worker, session, 6n, proj1(), snapshot)
+  R.dispatch(state, R.revision(state), offer, host, HP.revision(host), worker, session, 6n, proj1(), snapshot)
 
 def dispatch_a(+state: R.State, +offer: R.OfferId, +worker: Nat) -> R.Change:
   dispatch_on(state, offer, host(), worker, running_t(), trial_snapshot())
@@ -1851,12 +1886,12 @@ def dispatch_happy() -> IO(Unit):
     Test.check(N.Session.is(running_t(), N.Running{}) && Nat.is_eq(N.Session.revision(running_t()), 6n)
       && R.Change.accepted(dispatch_change()) && issued_is(R.Change.issued(dispatch_change()), 3n)
       && Nat.is_eq(R.revision(dispatched_t()), 7n) && Nat.is_eq(R.next_id(dispatched_t()), 4n)
-      && dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, worker_a()}, R.NoDispatches{}})
+      && dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
       && selection_equal(R.selection(dispatched_t()), R.selection(evidenced()))
       && evidence_equal(R.evidence(dispatched_t()), R.evidence(evidenced()))
       && offers_equal(R.offers(dispatched_t()), R.offers(evidenced()))
       && approvals_equal(R.approvals(dispatched_t()), R.approvals(evidenced()))
-      && serials_equal(R.seen(dispatched_t()), R.seen(evidenced())) && R.valid(dispatched_t()), "ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, 6} at revision 7, id 3 issued, nothing else changed")
+      && serials_equal(R.seen(dispatched_t()), R.seen(evidenced())) && R.valid(dispatched_t()), "ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed")
     Test.check(single_token_is(R.provider_registry(dispatched_t(), trial_snapshot()), token_a())
       && IT.registry_equal(R.provider_registry(dispatched_t(), trial_snapshot()), I.registry(issuer(), provider_a(), 110n))
       && IT.plan_is(a_read(R.provider_registry(dispatched_t(), trial_snapshot())), TF.plan()), "ER-001 provider_registry after dispatch holds exactly grant 3's capability for A, and F.mount, F.open and F.checked_plan resolve it to TF.plan() for caller A")
@@ -1882,7 +1917,7 @@ def dispatch_happy() -> IO(Unit):
       && R.worker_caller_is(R.worker_lookup(host(), worker_a()), provider_a()), "ER-001 worker_caller_is: no session under id 9, or two sessions under id 6 both with caller A, is not A's worker; the one session 6 is")
     Test.check(Bool.not(R.dispatch_target_selected(trial_offers(), offer_id_ta(), host(), worker_a()))
       && R.dispatch_target_selected(evidenced(), offer_id_ta(), host(), worker_a())
-      && denied(R.dispatch(trial_offers(), 3n, offer_id_ta(), host(), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), trial_offers(), R.NotSelected{}), "ER-001 dispatch_target_selected is false with no selection and true for A's offer on A's worker session 6; with no selection a dispatch at a stale revision is denied NotSelected first")
+      && denied(R.dispatch(trial_offers(), 3n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), trial_offers(), R.NotSelected{}), "ER-001 dispatch_target_selected is false with no selection and true for A's offer on A's worker session 6; with no selection a dispatch at a stale revision is denied NotSelected first")
 
 # Phase 2 of the trials (selection 4 of B's offer, evidence stored): B's
 # trial session and A's session from retired selection 3, each advanced to
@@ -1909,14 +1944,30 @@ def evidence_behind() -> R.State:
   with_evidence(evidenced(), R.Evidences{R.StoredEvidence{2n, ev_b(36n, 26n)}, R.evidence(evidenced())})
 
 def dispatch_behind() -> R.State:
-  with_dispatches(dispatched_t(), R.Dispatches{R.Dispatch{2n, worker_b()}, R.dispatched(dispatched_t())})
+  with_dispatches(dispatched_t(), R.Dispatches{R.Dispatch{2n, host_incarnation(), worker_b()}, R.dispatched(dispatched_t())})
 
 # The inner gates: race, stage, request, evidence, trial and replay.
 def dispatch_inner() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(R.dispatch(evidenced(), 5n, offer_id_ta(), host(), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 dispatch at revision 5 against 6 denied StaleRevision")
-    Test.check(denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), worker_a(), reserved_t(), 5n, proj1(), trial_snapshot()), evidenced(), R.WrongStage{})
-      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), worker_a(), running_t(), 5n, proj1(), trial_snapshot()), evidenced(), R.WrongStage{}), "ER-007 a session at Reserved, or a Running session at revision 6 named as 5, denied WrongStage")
+    Test.check(denied(R.dispatch(evidenced(), 5n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 dispatch at revision 5 against 6 denied StaleRevision")
+    Test.check(Nat.is_eq(HP.revision(host()), 7n)
+      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), 6n, worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{})
+      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), 8n, worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision")
+    Test.check(HP.valid(host()) && Bool.not(HP.valid(restarted_host())) && Bool.not(HP.valid(unconfigured_host()))
+      && Bool.not(HP.valid(twin_session_host())) && Bool.not(HP.valid(twin_binding_host()))
+      && denied(dispatch_on(evidenced(), offer_id_ta(), restarted_host(), worker_a(), running_t(), trial_snapshot()), evidenced(), R.StaleRevision{})
+      && denied(dispatch_on(evidenced(), offer_id_ta(), unconfigured_host(), worker_a(), running_t(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 a host state that is not HP.valid at its own revision (sessions of incarnation 57 under incarnation 58, or bindings to unconfigured profiles) denied StaleRevision; the twin-session and twin-binding hosts are not valid either")
+    Test.check(HP.valid(token_swap_host()) && R.dispatch_target_selected(evidenced(), offer_id_ta(), token_swap_host(), 8n)
+      && denied(dispatch_on(evidenced(), offer_id_ta(), token_swap_host(), 8n, running_t(), trial_snapshot()), evidenced(), R.NotSelected{})
+      && R.Change.accepted(dispatch_on(evidenced(), offer_id_ta(), token_swap_host(), worker_a(), running_t(), trial_snapshot())), "ER-001 A's worker session 8 authenticated under another token (word 3) is A's subject at profile 1 but not grant 3's holder: denied NotSelected; A's session 6 on the same host dispatches")
+    Test.check(HP.valid(subject_swap_host()) && Bool.not(R.dispatch_target_selected(evidenced(), offer_id_ta(), subject_swap_host(), 8n))
+      && denied(dispatch_on(evidenced(), offer_id_ta(), subject_swap_host(), 8n, running_t(), trial_snapshot()), evidenced(), R.NotSelected{}), "ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected")
+    Test.check(selection_offer_is(R.selection(p2_selected()), offer_a2_p2_35())
+      && R.dispatch_target_selected(p2_selected(), R.OfferId{201n, 2n}, host(), 4n)
+      && Bool.not(R.dispatch_target_selected(p2_selected(), R.OfferId{201n, 2n}, host(), worker_a()))
+      && R.Error.equal(R.Gates.reason(R.target_gates(R.selection(p2_selected()), R.OfferId{201n, 2n}, host(), worker_a()), R.NotSelected{}), R.WrongProfile{}), "ER-001 the binding is compared with the selected offer's profile: with A's profile-2 offer {201, 2} selected, A's worker session 4 (profile 2) is its target and session 6 (profile 1) is not, WrongProfile")
+    Test.check(denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), reserved_t(), 5n, proj1(), trial_snapshot()), evidenced(), R.WrongStage{})
+      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 5n, proj1(), trial_snapshot()), evidenced(), R.WrongStage{}), "ER-007 a session at Reserved, or a Running session at revision 6 named as 5, denied WrongStage")
     Test.check(dispatch_denied(dispatched_t(), offer_id_ta(), worker_a(), R.Replay{}), "ER-007 a second dispatch of selection 3 denied Replay")
     Test.check(dispatch_denied(selected_t(), offer_id_ta(), worker_a(), R.MissingEvidence{})
       && dispatch_denied(foreign_offer(), offer_id_ta(), worker_a(), R.MissingEvidence{})
@@ -1998,7 +2049,7 @@ def dispatch_invalidation() -> IO(Unit):
       && found_current(grant_record(issuer(), 3n), issuer(), 113n), "ER-006 after dispatch, provider_registry is empty once object 10's approval of A is withdrawn, or at 113 when A's offer has expired, though grant 3 is still current and projected for A")
     Test.check(R.selection_current(short_selected(), short_at(120n))
       && n_approvals_equal(approvals_of(R.negotiation_context(short_selected(), raw_at(120n), short_at(120n))), a_approvals(130n))
-      && denied(R.dispatch(short_selected(), 3n, R.OfferId{201n, 6n}, host(), worker_a(), running_t(), 6n, raw_at(130n), short_at(130n)), short_selected(), R.Expired{}), "ER-007 a grant that expires before dispatch: A's grant 12 is valid while now < 130; selected at 110 and current at 120, A's offer is denied Expired at dispatch at 130")
+      && denied(R.dispatch(short_selected(), 3n, R.OfferId{201n, 6n}, host(), HP.revision(host()), worker_a(), running_t(), 6n, raw_at(130n), short_at(130n)), short_selected(), R.Expired{}), "ER-007 a grant that expires before dispatch: A's grant 12 and its offer {201, 6} both end at 130 (an offer cannot outlive its grant); selected at 110 and current at 120, dispatch at 130 is denied Expired, the grant's currency gate reporting first")
     Test.check(N.Step.accepted(N.start(reserved_t(), 5n, R.negotiation_context(short_selected(), raw_at(129n), short_at(120n)), ledger_t()))
       && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, R.negotiation_context(short_selected(), raw_at(130n), short_at(120n)), ledger_t())))
       && empty_at(R.negotiation_context(short_selected(), raw_at(130n), short_at(130n)), trial_budgets(), 130n), "ER-007 the projected approval ends at 130 (the grant's and offer's end, before approval 145), so N.start at 130 is rejected even on a projection built at 120 (at 129 it advances), and the projection at 130 is empty")
@@ -2008,10 +2059,10 @@ def dispatch_invalidation() -> IO(Unit):
     Test.check(offers_equal(R.offers(R.open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoOffers{})
       && approvals_equal(R.approvals(R.open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoApprovals{})
       && evidence_equal(R.evidence(R.open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoEvidence{})
-      && denied(R.dispatch(R.open(request_with(IT.plan_invocation(), 42n), constraint()), 0n, offer_id_ta(), host(), worker_a(), running_for(request_with(IT.plan_invocation(), 42n)), 6n, proj1(), trial_snapshot()),
+      && denied(R.dispatch(R.open(request_with(IT.plan_invocation(), 42n), constraint()), 0n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_for(request_with(IT.plan_invocation(), 42n)), 6n, proj1(), trial_snapshot()),
         R.open(request_with(IT.plan_invocation(), 42n), constraint()), R.NotSelected{}), "ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected")
     Test.check(dispatch_denied(withdrawn_ta(), offer_id_ta(), worker_a(), R.NotSelected{})
-      && denied(R.dispatch(withdrawn_ta(), 6n, offer_id_ta(), host(), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), withdrawn_ta(), R.NotSelected{}), "ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal")
+      && denied(R.dispatch(withdrawn_ta(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), withdrawn_ta(), R.NotSelected{}), "ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal")
 
 # A cheaper provider substituted after selection (ER-007). From the
 # dispatched state: 101 withdraws B's approval (id 1, revision 8); B offers
@@ -2061,7 +2112,7 @@ def sub_running() -> N.Session:
   running_on(N.Step.session(N.sample(sub_challenged(), 2n, 36n, sub_proj(sub_evidenced()))), sub_proj(sub_evidenced()))
 
 def sub_dispatch(+state: R.State, +session: N.Session) -> R.Change:
-  R.dispatch(state, R.revision(state), offer_id_b20(), host(), worker_b(), session, 6n, sub_proj(state), snapshot2())
+  R.dispatch(state, R.revision(state), offer_id_b20(), host(), HP.revision(host()), worker_b(), session, 6n, sub_proj(state), snapshot2())
 
 def sub_dispatched() -> R.Change:
   sub_dispatch(sub_evidenced(), sub_running())
@@ -2069,7 +2120,7 @@ def sub_dispatched() -> R.Change:
 def dispatch_substitution() -> IO(Unit):
   do IO<Unit>:
     Test.check(Nat.is_eq(R.revision(sub_offered()), 9n) && offers_hold(R.offers(sub_offered()), offer_b20())
-      && denied(R.dispatch(sub_offered(), 9n, offer_id_b20(), host(), worker_b(), running_t(), 6n, proj1(), snapshot_with(issuer(), 112n)), sub_offered(), R.NotSelected{})
+      && denied(R.dispatch(sub_offered(), 9n, offer_id_b20(), host(), HP.revision(host()), worker_b(), running_t(), 6n, proj1(), snapshot_with(issuer(), 112n)), sub_offered(), R.NotSelected{})
       && denied(R.select(sub_offered(), 9n, NT.pinned(), 1n, NT.context(112n), snapshot_with(issuer(), 112n)), sub_offered(), R.AlreadySelected{}), "ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected")
     Test.check(reason_is(R.ineligibility(offer_b20(), sub_abandoned(), snapshot_with(issuer(), 114n)), R.MissingApproval{})
       && denied(R.select(sub_abandoned(), 10n, session2(), 1n, NT.context(114n), snapshot_with(issuer(), 114n)), sub_abandoned(), R.NoEligibleOffer{})
@@ -2080,7 +2131,7 @@ def dispatch_substitution() -> IO(Unit):
     Test.check(Nat.is_eq(R.revision(sub_evidenced()), 13n) && N.Session.is(sub_running(), N.Running{})
       && R.Change.accepted(sub_dispatched()) && issued_is(R.Change.issued(sub_dispatched()), 5n)
       && dispatches_equal(R.dispatched(R.Change.state(sub_dispatched())),
-        R.Dispatches{R.Dispatch{5n, worker_b()}, R.Dispatches{R.Dispatch{3n, worker_a()}, R.NoDispatches{}}})
+        R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_b()}, R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}}})
       && single_token_is(R.provider_registry(R.Change.state(sub_dispatched()), snapshot2()), token_b()), "ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6")
 
 def dispatch() -> IO(Unit):
@@ -2097,4 +2148,4 @@ def main() -> IO(Unit):
     selection()
     trials()
     dispatch()
-    IO.print("Rendezvous: 183 checks passed")
+    IO.print("Rendezvous: 188 checks passed")
