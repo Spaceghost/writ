@@ -146,3 +146,4 @@
 2026-11-05T04:47:46Z	controller	task 5 reported: 11 of 11 faults denied; digest collision finding; reviewer dispatched
 2026-11-05T04:55:06Z	controller	review: digest finding wording; fix round 1 dispatched
 2026-11-05T04:55:48Z	implementer	fix round 1: read task-5-review.md; text fixes only (structural digest collision, comparison of record, Task 3 16384 comparisons show counts only, calibration runs listed, clause breakdown last solve only, Task 3/4 denial-control gap closed); no rerun
+2026-11-05T04:56:23Z	controller	task 5 complete; task 6 dispatched (the corpus on and off the device)
