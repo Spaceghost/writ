@@ -2,6 +2,15 @@
 assert {[have_spec hw] && [have_spec x86_64] && [have_board pc]}
 assert {[have_include power_on/qemu] && [have_include image/iso]}
 
+# The run tool keeps only the last 40 KB of serial output (match_max -d 40000
+# in tool/run/run), and run_genode_until hands that window to the final checks.
+# The core corpus grew past 782 lines on 2026-11-05 (1014 with grant issuance),
+# so the early "PASS native allocator checks" and "core corpus" lines fell out
+# of the window and the gate in writ_policy.run failed although the test had
+# printed every line (run 83cfabc). Widen the default for the spawns that follow;
+# the gate still requires every pattern, nothing is relaxed.
+match_max -d 4000000
+
 proc writ_parent_services { } { return {
 + parent-provides
   + service CPU

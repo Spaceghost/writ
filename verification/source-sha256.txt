@@ -73,7 +73,7 @@ de4c1ac0457067d13a06474dbaa043c3189977bb0e8240ce5c108c8e7bca1f72  contrib/native
 5f05342c59fe9625a4bd3dd4636f7502d0ab66d76377344537d87048bfb99b09  contrib/native-hosts/genode/evidence/vfs-41776659987.log
 9b494e8f22e8a1a953aaa9c0891f98d4d35e6456b30048c6d272e903fdd67406  contrib/native-hosts/genode/include/writfs/control.h
 d8773e6f87a70104973de174776d25605684af08e5f22b4b430c4b94d65dfa19  contrib/native-hosts/genode/lib/mk/writ_quickjs.mk
-bee0981e440035409deacb69e0b5575d8f776234512e4fe3b90d1baca57ddc02  contrib/native-hosts/genode/run/writ_common.inc
+cf23284885b5749817c97725c99369499c9cbc3687d7eee967c2c7d0b5e37542  contrib/native-hosts/genode/run/writ_common.inc
 505e3cbb77554a70e5e457da53bccca945abbfb2b8187480d57246592c439f17  contrib/native-hosts/genode/run/writ_policy.run
 277535ff3e4d3d957cf68abd01765508e6f33541252edf95f96b6f245187210c  contrib/native-hosts/genode/run/writfs.run
 9e615e42a7b5b5aac0f702c79d8337dffc40bb8f190095b9e16e715b60277502  contrib/native-hosts/genode/run/writfs_vfs.run
@@ -355,10 +355,10 @@ d8838cdb23c5bdc42b82e5ebf18ae8de8105dfd162bac8036ba331308a8cb612  docs/superpowe
 63e542c93020409af43bc4081c20ec5f986a8bf94c050498ac2e99070b16ef33  docs/superpowers/records/2026-11-04-unikraft-twins/task-3-brief.md
 0a2d7891ea9237656300236a1f02e2ae2b60c16e52678668ff76c01c4cfe4857  docs/superpowers/records/2026-11-04-unikraft-twins/task-3-report.md
 86ac0c2e7fd2f07553284afa7be2396789f23ce76a7be66cce935726a28fe3c2  docs/superpowers/records/2026-11-04-unikraft-twins/task-3-review.md
-7a31868c61a44c3bb6630f5291722cab6d49bff8382b1d86dedb95630f127d14  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/activity.log
+2cbef5c3663baacbf5f9cded8c46dc9ef963759e52bffec59893a416cee8b0c0  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/activity.log
 72e38d335629a3b3373bc9b84bae7743df934de7ff7cbf99597f2368eb1fd427  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/final-rereview.md
 c41019eb96483055b0ddae81bca665317074fe624d2fac528398b3620d05e517  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/final-review.md
-6ac0a5703dd1e32a98ca717dd2f3c3f851733a34d77ca3ab9325f5d53cc6674a  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/progress.md
+775d22bdc3e5a71badd77362fbad44d2b9c795a74eb9d518958cdeb80cc60bfe  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/progress.md
 356f16f633be8d5e7535867b6b541677f35d0201f3bf0ae64bf8f3235a0d674b  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-1-brief.md
 ce19eb629a39151404d283db2d082833ca26384bfdd0c3967b2f8a1f256abab0  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-1-report.md
 9f4deab93c038595b5ee7ac80de3afd463e596e1dd39a8da9e5143cd8100c4ee  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-1-rereview.md
