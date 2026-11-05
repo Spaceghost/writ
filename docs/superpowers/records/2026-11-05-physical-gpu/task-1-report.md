@@ -10,7 +10,7 @@ No `.bend` file outside `scripts/gpu-validation/` was touched. No manifest, no p
 
 ## Environment
 `export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:/opt/cuda/bin:$PATH"; export BEND_NO_TELEMETRY=1; export CUDA_HOME=/opt/cuda`.
-CUDA_VISIBLE_DEVICES unset in every run. CUDA_PATH=/opt/cuda is inherited from the login environment (same directory as CUDA_HOME, which the driver searches first). Load average 48 to 115 throughout.
+CUDA_VISIBLE_DEVICES unset in every run. CUDA_PATH=/opt/cuda is inherited from the login environment (same directory as CUDA_HOME, which the driver searches first). 1-minute load average 47.92 to 67.84 in the evidence file's quoted `uptime` lines (5-minute up to 88.17); 99.82 at the fix-round rebuild.
 
 ## Toolchain (versions and paths)
 | Component | Version | Path |
@@ -30,7 +30,7 @@ CUDA_VISIBLE_DEVICES unset in every run. CUDA_PATH=/opt/cuda is inherited from t
 | host | Linux 7.2.9-1-MANJARO x86_64, glibc 2.44, nproc 32 | |
 
 ## Runtime facts from the driver
-33 fixed-string greps over `strings -n 6` of the bend binary, all matched (exit 0), each cited with its line number in the evidence file: the `cli_build` CUDA search (`CUDA_HOME`, `CUDA_PATH`, `/usr/local/cuda`, `/opt/cuda`, first holding `include/nvrtc.h`), the `BANGS` test, `-DBEND_CUDA=1`, `-I/-L<cuda>`, `-O3`, `-lcuda -lnvrtc`, the `--gpu-build` second step, the clang >= 19 requirement for GPU builds; `gpu_probe` (cuInit, cuDeviceGet(0), concurrent managed access, primary context, cuCtxSetCurrent, `"%s failed: %s"`); `gpu_make` (`--gpu-architecture=sm_%d%d`, `-DCUBE_LOG=%u`, `--fmad=false`, `-default-device`, 8-byte hash then cubin); `cuModuleGetFunction(... "bend_dev")`; `cuMemAllocManaged`; the `--gpu-build` silent case (`if (gpu_probe() == NULL && !gpu_make(...))`); the `--gpu` parse; the `why`/`err_fail` lines; `cuLaunchKernel` and the stderr notes. All match the plan header.
+34 fixed-string greps (33, plus `"-lcuda",` added in fix round 1) over `strings -n 6` of the bend binary, all matched (exit 0), each cited with its line number in the evidence file: the `cli_build` CUDA search (`CUDA_HOME`, `CUDA_PATH`, `/usr/local/cuda`, `/opt/cuda`, first holding `include/nvrtc.h`), the `BANGS` test, `-DBEND_CUDA=1`, `-I/-L<cuda>`, `-O3`, `-lcuda` (line 258815) and `-lnvrtc` (line 258816), the `--gpu-build` second step, the clang >= 19 requirement for GPU builds; `gpu_probe` (cuInit, cuDeviceGet(0), concurrent managed access, primary context, cuCtxSetCurrent, `"%s failed: %s"`); `gpu_make` (`--gpu-architecture=sm_%d%d`, `-DCUBE_LOG=%u`, `--fmad=false`, `-default-device`, 8-byte hash then cubin); `cuModuleGetFunction(... "bend_dev")`; `cuMemAllocManaged`; the `--gpu-build` silent case (`if (gpu_probe() == NULL && !gpu_make(...))`); the `--gpu` parse; the `why`/`err_fail` lines; `cuLaunchKernel` and the stderr notes. All match the plan header.
 
 ## Probe
 `Bang.bend`: `Bang.tree!` over a four-way fork tree of depth 7 (16384 leaves), each leaf a 4096-step xorshift32 loop on a Nat counter (structural tail call). REPEATS from `IO.args`; each round's bang is in a pure def and is preceded by `IO.now()`. After all device rounds, an `IO.now()` step, then the same rounds without `!`; PASS/FAIL on the rotate-xor checksum, exit 1 on mismatch, exit 2 on a missing argument. Not a Writ authority program, so it has no SYNTHETIC records.
@@ -45,7 +45,7 @@ Development notes: the first drafts failed the checker on a computed match scrut
 - `tail -c +9 bang.gpu > bang.cubin`: sha256 45943ecb...baf9, "ELF 64-bit LSB executable, NVIDIA CUDA architecture".
 - `cuobjdump -elf bang.cubin | head`: `64-bit ELF: type=ET_EXEC, ABI=8, sm=89, toolkit=13.4`.
 - `cuobjdump -sass bang.cubin | grep -m3 Function`: `window_dev`, `bend_dev`.
-- Rebuilds (including after the comment-only edit) reproduced identical bang.c, bang and bang.gpu hashes.
+- A rebuild from the committed Bang.bend (fix round 1, quoted in the evidence file) reproduced identical Bang.bend, bang.c, bang, bang.gpu and bang.cubin hashes.
 
 ## Observer
 Chosen: compute-sanitizer.
@@ -83,3 +83,11 @@ Chosen: compute-sanitizer.
 3. pmon SM samples are sparse on this shared, loaded GPU (1 of 8, 2 of 11, 3 of 46 rows numeric). It corroborates, but cannot serve as a gate.
 4. Side observation, outside this task's scope: the 2.0.39 driver's CPU build flags include `-O3` (driver line 258802 is in the shared `cpu` list), while `verification/runtime-profile-parity.txt` and `check-binary.sh` say `bend -o` builds at -O2. Not changed here (those files are off the touch list); flagged for the controller.
 5. Other compute processes shared the GPU during every run; Task 7 timings will need the quiet-host answer from Josh.
+
+## Fix round 1
+Review: task-1-review.md (spec compliance approved; record-quality fixes).
+1. Load average: header, overhead paragraph and Limits now state the quoted 1-minute values (47.92 to 67.84 in the capture; 5-minute up to 88.17), plus 99.82 from the rebuild's own quoted `uptime`. The 115 figure from unrecorded exploratory runs is dropped.
+2. Rebuild: added "## Build (rebuild after the comment edit)" to the evidence file: `git diff --quiet HEAD -- scripts/gpu-validation/Bang.bend` (matches HEAD), `bend ... -o ../writ-build/physical-gpu/rebuild/bang.c`, `bend ... -o ../writ-build/physical-gpu/rebuild/bang`, `tail -c +9`, and `sha256sum` of the five files: Bang.bend 5ff66256..., bang.c dc7f5730..., bang fccb498a..., bang.gpu 7cf384e0..., bang.cubin 45943ecb..., all equal to the capture. All exit 0, stderr empty.
+3. Execution line: only the compute-sanitizer `--gpu on` runs are observed for launches; the other `--gpu on` runs are device-requested but not individually observed; 5 per round is what this probe produced, not a constant (also softened in Result).
+4. `-lcuda`: `strings -n 6 "$(command -v bend)" | grep -n -F -e '"-lcuda",'` gives `258815:    "-lcuda",` (exit 0), quoted beside the `-lnvrtc` grep; report text corrected.
+Nothing else was rerun. Optional finding 5 (elided PATH) left as disclosed.

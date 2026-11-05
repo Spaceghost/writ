@@ -12,3 +12,7 @@
 2026-11-05T03:03:17Z	implementer	capture finished
 2026-11-05T03:05:27Z	implementer	evidence verification/gpu-toolchain.txt and task-1-report.md written; committing (DONE_WITH_CONCERNS: sanitizer needs flag form and --print-limit 0)
 2026-11-05T03:05:40Z	implementer	task 1 committed
+2026-11-05T03:06:01Z	controller	task 1 reported; rulings on the sanitizer form and gates; reviewer dispatched
+2026-11-05T03:07:28Z	controller	review: evidence wording fixes; fix round 1 dispatched
+2026-11-05T03:07:59Z	implementer	fix round 1 started: read task-1-review.md; quoted rebuild and -lcuda grep
+2026-11-05T03:08:34Z	implementer	fix round 1: evidence and report updated (load average, quoted rebuild, Execution line, -lcuda grep); committing
