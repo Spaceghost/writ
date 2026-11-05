@@ -4,8 +4,9 @@ Core regression rerun on 2026-11-04 using **Bend 2.0.39**, Linux x86_64, and
 **clang 19.1.1**. Earlier example/platform evidence is scoped below. The
 HostBinding records also include the 2026-11-03 review wave and 2026-11-04
 binding-gap fixes with Bend 2.0.39, **clang 23.1.1**, and Node v26.10.0.
-The core and examples contain 36 authored `.bend` files (34 originally verified,
-plus `HostBinding.bend` and `HostBindingTests.bend`). Their implementation,
+The core and examples contain 47 authored `.bend` files (34 originally verified,
+plus `HostBinding.bend`, `HostBindingTests.bend`, `Issuance.bend`,
+`IssuanceTests.bend`, and the nine portable-host-contract files). Their implementation,
 test drivers, and proof declarations are Bend 2. The optional rclone contribution
 adds 14 Bend files and a separate minimal Go adapter. WritFS adds seven native
 storage Bend files, three mounted-view Bend files and a shared SHA-256 module.
@@ -39,7 +40,7 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | HostPrimitives | 216 | The five primitive families (`HostPrimitives.bend` and `HostPublication.bend`): session binding with monitor-decided client delegability, issue bound to its Frontend handle's plan, owner, rights, and lease, and delegate wrappers, worker admission under a monitor-bound profile (controls, families, accelerator isolation, route inventory, one worker per identity entry), quotas and gated diagnostics, sealing against live writers and retargeting, publication only through `DataOS.commit_from_capability` with exact plan binding, replay and reconcile bound to the recorded digest and destination, revoke, restart, quiesce, reclaim and complete; full state equality and no effects on every denial (model only; no native binding) |
 | HostConformance | 43 | 36 shared conformance vectors plus one comparison line, run on two synthetic adapters: exact plan, owner, rights, and lease binding at issue and plan binding at publication, retained provenance, caller identity and session holding, revocation, replay, restart, digest and destination substitution at recovery, unchanged state on denial; identical decision lines on both adapters (the decision half of PH-012 only; no native adapter replays them) |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
-| **Total per backend** | **1014** | **Both complete runs passed** |
+| **Total per backend** | **1428** | **Both complete runs passed** |
 
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
@@ -51,7 +52,7 @@ proof for arbitrary graph sizes.
 
 Evidence is in `verification/tests-js.txt` and `verification/tests-native.txt`.
 The transfer test driver prints `PASS ` while other drivers print `PASS:`;
-counting both forms yields 1014 per file. The two files are byte-identical.
+counting both forms yields 1428 per file. The two files are byte-identical.
 
 Reproduction:
 
@@ -186,7 +187,7 @@ can fall back to CPU execution; success does not establish the physical backend.
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for twelve declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for seventeen declared laws:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
@@ -270,7 +271,7 @@ with:
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 ```
 
-No Lean-kernel verdict exists for any of the twelve laws. `kernel-verdict.txt`
+No Lean-kernel verdict exists for any of the seventeen laws. `kernel-verdict.txt`
 keeps the earlier three-law note and records the latest attempt verbatim.
 Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
@@ -442,8 +443,8 @@ bounded handles and supervisor revocation.
 
 The [execution record](contrib/native-hosts/VERIFICATION.md) captures 69 mount
 vectors plus a count-consistency check: 70 PASS lines on each local backend.
-The integrated core passes 1014 checks and 41 vectors on both CPU backends;
-all twelve ordinary laws pass. Linux native CI passes its actual mounts, fixed
+The integrated core passes 1428 checks, 41 HostBinding vectors and 37
+portable-host vector lines on both CPU backends; all seventeen ordinary laws pass. Linux native CI passes its actual mounts, fixed
 worker probes, revocation, interpreter/broker failure and owned cleanup.
 Genode clean CI passes the 782-core and 69-mount corpus, 24 allocator checks
 on host and guest, 56 filesystem checks and eight libc/VFS checks.
