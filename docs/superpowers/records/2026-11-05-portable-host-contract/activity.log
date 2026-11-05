@@ -100,3 +100,6 @@
 2026-11-05T07:03:57Z	implementer	final fix round: heartbeat, JS run 2 done, native build and run running
 2026-11-05T07:07:45Z	implementer	final fix round: heartbeat, native run done, PROOF running
 2026-11-05T07:10:03Z	implementer	final fix round: 1428 PASS JS x2 and native (byte-identical), vectors 37816dd7 (37 lines), PROOF ALL PROOFS CHECK 17 laws, --verdict refused (lean missing, appended), OpenSpec 44; committing fix
+2026-11-05T07:10:11Z	implementer	final fix round: committed merge 63b3710 and fix 6c2d2b6
+2026-11-05T07:10:44Z	controller	final fix round reported (master merged, 1428, 17 laws); scoped re-review dispatched
+2026-11-05T07:18:00Z	controller	final re-review ready; merging to master
