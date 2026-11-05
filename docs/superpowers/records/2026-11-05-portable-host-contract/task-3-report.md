@@ -377,3 +377,329 @@ Commands and results:
    checks needed to pin every branch.
 8. The `use` stale-revision result reuses `HostIdentity.StaleRevision`,
    because `use` returns a `HostIdentity.Resolution`.
+
+## Fix round 1
+
+Inputs: task-3-review.md (12 findings, both verdicts NEEDS_FIXES) and the
+controller's rulings for findings 1 to 3, 4, 5, 6, and 7. Every finding is
+applied. Files changed: HostPrimitives.bend, HostPrimitivesTests.bend, and
+the traceability file. HostIdentity.bend is not changed: its existing
+`NotDelegable` denial is the delegation check that ruling 1 needs (see
+finding 1). LAWS.bend, PROOF.bend, and Tests.bend are unchanged in this
+round. HostPrimitivesTests now has 91 checks (52 before).
+
+### Model changes
+
+- The configured profile table is monitor state. `State` is now
+  `{revision, identity, profiles: Profiles, workers, next_worker}`. The type
+  `Configured{profile, quota_limit}` pairs each profile with its quota.
+  `empty(identity, profiles)` fixes the table, and no transition writes it.
+  `admit_worker(state, rev, profile_id, report, inventory, session, ref, now)`
+  resolves the id in that table (a counted lookup). No request field carries
+  controls, families, a backend, or a quota.
+- `valid(State)` is public:
+  - `HostIdentity.valid` holds for the identity table;
+  - each profile id is configured once;
+  - each worker id is nonzero, below `next_worker`, and unique;
+  - no two unreclaimed workers share an input entry (same host,
+    incarnation, and slot).
+
+  Every transition, `use` included, gates on revision and `valid` together
+  (`current`). A state failing `valid` is denied `StaleRevision`, the
+  HostIdentity pattern.
+- `Worker.slot` is replaced by `Worker.input: W.Ref`, and `DeliverInputs` is
+  now `{worker, input: W.Ref}`. The reference is rebuilt from monitor state
+  by `entry_ref`: host, current incarnation, the entry's slot, and its
+  generation.
+- `charge` and `diagnostic` take `now`. They re-resolve the worker's input
+  on its own session after the phase step.
+- `use` returns `UseResult` (`Granted{entry, caller}` | `Refused{reason}`).
+- `Error` gains five reasons: `UnknownProfile`, `DelegableSession`,
+  `SlotOccupied`, `RightsNotHeld`, and `OperationNotPermitted`.
+- New named constants: `no_controls()` and `no_right()` (both 0), and
+  `right_read()` 1, `right_write()` 2, `right_execute()` 4.
+  `operation_right` maps each wire operation to its right bit.
+- Admission order: gate, profile (UnknownProfile), protected profile
+  (MissingControl), identity, non-delegable session (DelegableSession), free
+  slot (SlotOccupied), inventory fact, families, controls, accelerator,
+  routes, commit.
+- Use order: gate, then the message must be a `Use` (WrongPhase), identity,
+  held rights (RightsNotHeld), and operation (OperationNotPermitted).
+- Runtime order: gate, fact, worker, phase, re-resolution, then the quota or
+  the sink.
+
+### Finding-by-finding closure
+
+1. CLOSED (ruling 1a). `a_delegable` denies an admission whose presenting
+   session is bound delegable, with `DelegableSession`. The session lookup's
+   non-`OneSession` arm is unreachable after the resolve step and is
+   commented as such. Delegation from a worker session is denied by
+   HostIdentity's existing `d_delegable`. An admitted worker's session is
+   always non-delegable, so no HostIdentity change was needed.
+   - Checks:
+     - `PH-007 an admission on a delegable session denied DelegableSession with no effect` (the E1 shape);
+     - `PH-007 after admission a delegation from the worker session denied NotDelegable`;
+     - `PH-007 order: the delegable session precedes the occupied slot`.
+   - Header Authority paragraph and PH-007 traceability row updated. That
+     `SessionEvidence.delegable` is reported truthfully stays a section 2
+     host obligation (see concern R1).
+2. CLOSED (ruling 1b). At most one unreclaimed worker per input entry. Step
+   5 (`occupied`) and a `valid` clause enforce it.
+   - Checks:
+     - `PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs` (E2);
+     - `PH-006 an input held by a running worker listed after a reclaimed one denied SlotOccupied`;
+     - `PH-006 a worker on another slot does not block admission on the input`;
+     - `PH-006 an input whose earlier worker was reclaimed admits a new worker`;
+     - `PH-006 valid rejects two unreclaimed workers on one input`;
+     - `PH-006 order: the occupied slot precedes the inventory fact`.
+3. CLOSED (ruling 1c). `protects` requires the profile to list
+   `family_worker()` and to require at least one control; otherwise the
+   admission is denied MissingControl.
+   - Checks:
+     - `PH-006 a profile not listing the worker family denied MissingControl with no effect`;
+     - `PH-006 a profile requiring no controls admits nothing` (E3: profile 406 against `TargetReport{0, 0}` and `Inventory{[]}`);
+     - `PH-006 order: the protected-profile check precedes the input reference`.
+4. CLOSED (ruling 2, option a). The profile and its quota are monitor state,
+   as described above. The caller names an id only; an unknown id is
+   denied.
+   - Checks:
+     - `PH-001 an admission naming a profile id the monitor has not configured denied UnknownProfile`;
+     - `PH-001 order: the profile id precedes the input reference`;
+     - `PH-001 valid rejects a profile id configured twice`.
+   - The header's structural bullet and the PH-001 row are rewritten. The
+     remaining point is a reviewed-only host obligation: which configured
+     profile id a request names comes from the admitted request (see
+     concern R2).
+   - The original report's structural point 2 is superseded by this
+     paragraph.
+5. CLOSED (ruling 3). `use` accepts only a wire `Use`. It requires the
+   requested rights to be within the entry's rights, and the operation's
+   right to be within the requested rights. An operation outside the
+   wire's set maps to `no_right()` and is refused.
+   - Checks:
+     - `PH-002 a Use requesting rights the entry lacks denied RightsNotHeld` (E4 shape);
+     - `PH-002 a Use for a write outside its requested rights denied OperationNotPermitted`;
+     - `PH-002 a Use for a read outside its requested rights denied OperationNotPermitted`;
+     - `PH-002 a Use naming an operation outside the wire's set denied OperationNotPermitted`;
+     - `PH-002 a read and a write within the root's rights are granted`;
+     - `PH-001 use given a Delegate message denied WrongPhase` (E5);
+     - `PH-002 a Use of the worker's input on the client session denied Identity NotHolder`;
+     - `PH-002 order: the held rights precede the operation`.
+   - Fixture change: the root's rights are now 7 (read, write, execute), so
+     that a granted read exists.
+6. CLOSED (ruling 4). The `valid` gate is described above, with one
+   `valid rejects ...` check per clause:
+   - `PH-001 valid rejects a state whose identity table is not valid`
+     (HostIdentityTests' `widened_child`, the E6 table);
+   - `... worker id 0`;
+   - `... a worker id not below next_worker` (E8);
+   - `... two workers under one id`;
+   - `... two unreclaimed workers on one input`;
+   - `... a profile id configured twice`.
+
+   `PH-001 states built by the transitions satisfy valid` covers base,
+   admitted, charged, retired, after a diagnostic, after open_session, and
+   reclaimed-and-running. One gate check per transition on an invalid state:
+   - `PH-006 an admission over an identity table that is not valid denied StaleRevision`;
+   - `PH-001 open_session on a state that is not valid denied StaleRevision`;
+   - `PH-001 use on a state that is not valid denied StaleRevision`;
+   - `PH-007 a charge on a state that is not valid denied StaleRevision`;
+   - `PH-007 a diagnostic on a state that is not valid denied StaleRevision`;
+   - `PH-001 a native write offer on a state that is not valid denied StaleRevision`.
+
+   The duplicate-worker case is now rejected by `valid`. So the earlier
+   check `PH-007 a charge naming a duplicated worker id denied UnknownWorker`
+   is replaced by the valid and gate checks, and the counted lookup's
+   `ManyWorkers` arm is unreachable after the gate (commented).
+7. CLOSED (ruling 5). The order is pinned by a test, not dropped. `revoked()`
+   now has `quota_used` 200, so a 301 charge fails both the phase step and
+   the quota step. The swap mutant ("charge phase/quota swapped") is now
+   killed by `PH-007 order: the worker's phase precedes its quota`. Two new
+   order checks were added for the new re-resolution step:
+   - `PH-007 order: the input's re-resolution precedes the quota`;
+   - `PH-007 order: the input's re-resolution precedes the diagnostic sink`.
+8. CLOSED (first option). `charge` and `diagnostic` re-resolve the worker's
+   input through `HostIdentity.resolve` on the worker's session at `now`.
+   An unresolved input is `Identity{reason}`.
+   - Checks:
+     - `PH-007 a charge after the worker's input was retired denied Identity Retired` (E7);
+     - `PH-007 a diagnostic after the worker's input was retired denied Identity Retired`;
+     - `PH-007 a charge at the input's expiry denied Identity Expired`.
+9. CLOSED. `DeliverInputs{worker, input: W.Ref}` carries the full entry
+   reference, rebuilt from the table. `effect_equal` compares it, and every
+   accepted check compares `[DeliverInputs{81, input_ref()}]`. Mutants that
+   zero the generation or the whole reference are killed.
+10. CLOSED (kept, tested). `Prepared` is kept for Task 4, and the header
+    says no transition here produces it.
+    - Check: `PH-007 a charge from a prepared worker denied WrongPhase`.
+    - The `is_running` mutant is killed.
+11. CLOSED. The PH-005 row now says the destination recheck is
+    "re-run by HostPrimitives (Task 4, `publish`, via `DataOS.commit_from_capability`)".
+    The PH-001 admission row's coverage boundary now says inputs are
+    delivered to a confined worker without a plan recheck, and that the
+    plan-failure part is Task 4's publication check. The header says the
+    same.
+12. CLOSED.
+    - Grammar: "an `Admitted` step" in both places.
+    - The `Identity NotHolder` admission checks moved to a new
+      `identity_checks` group.
+    - The fixture header lists the exact profile ids (399, 402, 403, 404,
+      405, 406, and 408 never configured).
+    - Route kinds are now 91 to 94.
+    - `effect_equal` carries a comment that each Task 4 variant needs its
+      own arm. A `_ _` arm on a one-constructor match would be an
+      unreachable pattern.
+    - The optional transition-level law was not added: the Global
+      Constraints allow new laws only where the task says so (see concern
+      R4).
+
+### Removal map, round 1
+
+I applied 74 mutants in a scratch copy, one at a time, to every changed or
+new branch, together with the earlier branches that were rewritten. They
+include swap mutants for the use rights/operation order, the delegable/slot
+order, and the charge phase/quota order. The first run killed 71. Three
+survived:
+- "use: rights/operation swapped". The order check's input did not fail
+  both steps. It now uses a read with requested rights 6.
+- "occupied: head only". I added the running-after-reclaimed check.
+- "same_entry: slot ignored". I added the check that a worker on another
+  slot does not block admission on the input.
+
+In the final run against 91 checks, all 74 mutants were killed by named
+checks, none by a compile error.
+
+Source-reviewed only, because these arms are unreachable after the gate or
+the resolve step:
+- the non-`OneSession` arm of `a_session`;
+- the `ManyWorkers` arms of `c_worker` and `g_worker`;
+- the `ManyProfiles` arm of `a_profile`.
+
+`entry_ref` against the presented reference is an equivalent mutant,
+because resolve accepts only a reference equal to the entry's identity.
+
+| Mutant | First failing check |
+| --- | --- |
+| gate: valid dropped | `PH-006 an admission over an identity table that is not valid denied StaleRevision` |
+| gate: revision dropped | `PH-001 open_session at a stale revision denied StaleRevision` |
+| valid: identity clause | `PH-001 valid rejects a state whose identity table is not valid` |
+| valid: profile clause | `PH-001 valid rejects a profile id configured twice` |
+| valid: worker id nonzero | `PH-001 valid rejects worker id 0` |
+| valid: worker id below next | `PH-001 valid rejects a worker id not below next_worker` |
+| valid: worker id unique | `PH-001 valid rejects two workers under one id` |
+| valid: one unreclaimed worker per input | `PH-006 valid rejects two unreclaimed workers on one input` |
+| valid: reclaimed exemption dropped | `PH-006 an input whose earlier worker was reclaimed admits a new worker` |
+| open_session family | `PH-001 open_session on a target without the session family denied UnsupportedFamily` |
+| open_session fact variant | `PH-001 open_session given a fact other than SessionEvidence denied WrongPhase` |
+| open_session identity denial accepted | `PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession` |
+| use: message type | `PH-001 use given a Delegate message denied WrongPhase` |
+| use: identity reason | `PH-002 a Use of the worker's input on the client session denied Identity NotHolder` |
+| use: held rights | `PH-002 a Use requesting rights the entry lacks denied RightsNotHeld` |
+| use: operation | `PH-002 a Use for a write outside its requested rights denied OperationNotPermitted` |
+| use: rights/operation swapped | `PH-002 order: the held rights precede the operation` |
+| op: unknown operation zero check | `PH-002 a Use naming an operation outside the wire's set denied OperationNotPermitted` |
+| op: read arm | `PH-002 a read and a write within the root's rights are granted` |
+| op: read arm absent | `PH-002 a read and a write within the root's rights are granted` |
+| op: write arm | `PH-002 a read and a write within the root's rights are granted` |
+| op: execute arm absent | `PH-002 a Use claiming another subject on the client's session resolves to the client's caller` |
+| admit: profile lookup accepts unknown | `PH-001 an admission naming a profile id the monitor has not configured denied UnknownProfile` |
+| admit: protected forced | `PH-006 a profile not listing the worker family denied MissingControl with no effect` |
+| protects: worker family dropped | `PH-006 a profile not listing the worker family denied MissingControl with no effect` |
+| protects: controls dropped | `PH-006 a profile requiring no controls admits nothing` |
+| admit identity reason | `PH-006 an admission presenting an input reference the worker session does not hold denied Identity NotHolder` |
+| admit resolves on fixed session | `PH-006 an admission presenting the worker's input reference on the client session denied Identity NotHolder` |
+| admit: delegable allowed | `PH-007 an admission on a delegable session denied DelegableSession with no effect` |
+| admit: slot check dropped | `PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs` |
+| occupied: reclaimed exemption dropped | `PH-006 an input whose earlier worker was reclaimed admits a new worker` |
+| occupied: head only | `PH-006 an input held by a running worker listed after a reclaimed one denied SlotOccupied` |
+| same_entry: slot ignored | `PH-006 a worker on another slot does not block admission on the input` |
+| delegable/slot swapped | `PH-007 order: the delegable session precedes the occupied slot` |
+| admit inventory variant | `PH-006 an admission given a fact other than an Inventory denied WrongPhase` |
+| admit families | `PH-006 a report without the publication family denied UnsupportedFamily with the monitor profile unchanged` |
+| admit controls | `PH-006 address isolation missing alone denied MissingControl with no effect` |
+| admit accelerator | `PH-014 an accelerator profile not listing isolation, on a target without it, denied UnisolatedAccelerator and not downgraded` |
+| admit routes | `PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs` |
+| routes head only | `PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs` |
+| routes tail only | `PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs` |
+| admit emits nothing | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+| admit effect names presented ref slot only (generation 0) | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+| entry_ref generation dropped | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+| admit quota from elsewhere | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+| admit does not advance next_worker | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+| charge fact variant reason | `PH-007 a charge given a fact other than a ResourceRequest denied WrongPhase` |
+| charge unknown worker reason | `PH-007 a charge for a worker never admitted denied UnknownWorker` |
+| charge phase | `PH-007 a charge from a revoked worker denied WrongPhase` |
+| charge phase/quota swapped | `PH-007 order: the worker's phase precedes its quota` |
+| charge re-resolve dropped | `PH-007 a charge after the worker's input was retired denied Identity Retired` |
+| charge quota | `PH-007 a charge beyond the quota denied QuotaExhausted with the state unchanged and no effect` |
+| charge quota strict | `PH-007 a charge reaching exactly the quota limit is accepted` |
+| charge ignores used | `PH-007 a charge beyond the quota denied QuotaExhausted with the state unchanged and no effect` |
+| charge does not record use | `PH-007 a charge within the quota adds only to quota_used and emits nothing` |
+| charge changes phase | `PH-007 a charge within the quota adds only to quota_used and emits nothing` |
+| reresolve on another session | `PH-007 a charge within the quota adds only to quota_used and emits nothing` |
+| reresolve at time 0 | `PH-007 a charge at the input's expiry denied Identity Expired` |
+| diagnostic fact variant reason | `PH-007 a diagnostic given a fact other than a Diagnostic denied WrongPhase` |
+| diagnostic unknown worker reason | `PH-007 a diagnostic from a worker never admitted denied UnknownWorker` |
+| diagnostic phase | `PH-007 a diagnostic from a revoked worker denied WrongPhase` |
+| diagnostic re-resolve dropped | `PH-007 a diagnostic after the worker's input was retired denied Identity Retired` |
+| diagnostic public accepted | `PH-007 a public diagnostic from a running worker denied DiagnosticSink` |
+| diagnostic non-public denied | `PH-007 a non-public diagnostic is accepted with no effect` |
+| native write accepted | `PH-001 a native write offer for an admitted worker denied FastPathUnavailable` |
+| native write variant reason | `PH-001 a native write offer given another fact denied WrongPhase` |
+| native write gate dropped | `PH-001 native_write_offered at a stale revision denied StaleRevision` |
+| open_session gate dropped | `PH-001 open_session at a stale revision denied StaleRevision` |
+| use gate dropped | `PH-001 use at a stale revision denied StaleRevision` |
+| admit gate dropped | `PH-006 admit_worker at a stale revision denied StaleRevision` |
+| charge gate dropped | `PH-007 charge at a stale revision denied StaleRevision` |
+| diagnostic gate dropped | `PH-007 diagnostic at a stale revision denied StaleRevision` |
+| is_running any phase | `PH-007 a charge from a revoked worker denied WrongPhase` |
+| Error.equal identity ignores inner | `PH-001 Error.equal compares the HostIdentity reason inside Identity` |
+
+### Laws after the fixes
+
+Neither law needed restating. Both are statements about the public
+accessors on `Denied`, quantified over every `State` and `Error`. The `valid`
+gate adds denial paths but does not change those accessors. `State` gained a
+field, and both proofs are still `{==}`. `bend PROOF.bend` prints
+`ALL PROOFS CHECK`.
+
+### Verification after the fixes
+
+| | PASS lines |
+| --- | --- |
+| Before this round | 989 (782 + 207) |
+| After this round | 1028 (782 plus 246 new checks = 1028; HostPrimitives 91, up from 52) |
+
+- 0 of the 782 PASS lines in `verification/tests-js.txt` are missing.
+- No PASS line is duplicated.
+
+Commands and results:
+- `bend Tests.bend` (JS): exit 0, 1028 PASS. The last lines are
+  `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers`
+  and `ALL LIBRARY TESTS PASSED`.
+- Native: `bend Tests.bend -o ../writ-build/portable-host-contract/tests-native && ../writ-build/portable-host-contract/tests-native +RTS --threads 4 --gpu off`: the build and the run both exited 0, with 1028 PASS and the same last two lines. Its PASS lines are identical, in order, to the JS run's. This is CPU execution, not a GPU test.
+- `bend HostPrimitivesTests.bend`: 91 PASS, then `HostPrimitives: 91 checks passed`.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `--verdict`: still unavailable (`lean` is not on PATH).
+- OpenSpec 1.16.0, strict: `Totals: 44 passed, 0 failed (44 items)`.
+
+### Remaining concerns, round 1
+
+- R1. `SessionEvidence.delegable` is still a target-reported fact, and the
+  admission's non-delegable rule relies on it. The review asked whether
+  `open_session` should instead take delegability as a monitor parameter.
+  No ruling was given, so I left it target-reported and recorded it as a
+  section 2 obligation.
+- R2. A request names a configured profile id, under ruling 2. A binding
+  that controls the id could name a weaker profile that is still
+  configured, and every configured profile still passes the protected
+  checks. Binding the id to the admitted request is a reviewed-only host
+  obligation.
+- R3. Slot occupancy counts only workers that are not `Reclaimed`, and it
+  compares host, incarnation, and slot. Whether a slot should instead be
+  one-shot is left to Task 4's revocation family.
+- R4. The optional transition-level law
+  (`Step.effects(native_write_offered(...)) == []`) is provable through the
+  helper `n_gate`, but I did not add it, because a new law needs the task
+  to call for it.
+- R5. `HostPrimitives.bend` is now 1108 lines and the tests 919 lines.
