@@ -7,8 +7,9 @@ import ./Guard.bend as Guard
 
 # Tests for the issuance model, change add-authenticated-grant-issuance.
 # Sections follow the change's tasks: `submission` (1.1), `registration`
-# (1.2), `revision` (1.3). Every denial check asserts the exact Error and that the returned
-# state equals the supplied one, field by field, through `denied`.
+# (1.2), `revision` (1.3), `attenuation` (1.4). Every denial check asserts the
+# exact Error and that the returned state equals the supplied one, field by
+# field, through `denied`.
 #
 # Every fixture here is a SYNTHETIC AUTHORITY RECORD, not an authenticated
 # issuer. A real host builds the directory, placements and live stamp from
@@ -761,16 +762,37 @@ def revoked_is(approvals: I.Approvals, +id: Nat, +flag: Bool) -> Bool:
         case I.Stored{sid, _, _, revoked}:
           (Nat.is_eq(sid, id) && bool_equal(revoked, flag)) || revoked_is(tail, id, flag)
 
-# A SYNTHETIC derived grant 4 of grant 3, with the same scope, rights and
-# lifetime unless a test widens one (task 1.4's derive does not exist yet;
-# this record stands in for one so the ancestor walk can be checked).
+# A derived grant 4 of grant 3 as a record. `good_child()` is exactly the
+# record `derive` stores for rights 3 until 150 (the attenuation section checks
+# that); the other shapes are records `derive` refuses to build.
 def child(scope: I.Scope, rights: U32, valid_until: Nat, parent: Nat) -> I.Grant:
   I.Grant{4n, other_token(), scope, rights, valid_until, I.NoIds{}, 0n, parent}
 
 def good_child() -> I.Grant:
   child(scope(), 3, 150n, 3n)
 
-# registered() with `grant` added as id 4 (next_id 5, revision 4).
+# The subject 7 as the host's transport identity verification names it: the
+# only principal that may derive from a grant for subject 7.
+def subject_principal() -> I.Principal:
+  I.Principal{subject()}
+
+def derivation(rights: U32, valid_until: Nat) -> I.Derivation:
+  I.Derivation{1n, rights, valid_until}
+
+# derive called by subject 7 on registered() for grant 3 at now(): the child
+# is grant 4 at revision 4.
+def derive_change(rights: U32, valid_until: Nat) -> I.Change:
+  I.derive(registered(), 3n, subject_principal(), 3n, derivation(rights, valid_until), now(), other_token())
+
+def derived(rights: U32, valid_until: Nat) -> I.State:
+  I.Change.state(derive_change(rights, valid_until))
+
+# SYNTHETIC MONITOR STATE: registered() with `grant` added as id 4 (next_id 5,
+# revision 4), bypassing derive. Used only for child records derive refuses
+# to build (a missing or self parent, wider rights, a longer lifetime, another
+# scope, cited approvals); `valid` rejects every one, and each test asserts
+# that alongside `current`'s denial. With good_child() it is also the state
+# derive must produce, which the attenuation section compares against.
 def derived_state(grant: I.Grant) -> I.State:
   I.State{4n, 5n, TF.stamp(), directory(), placements(), I.approvals(registered()),
     I.Grants{grant, I.grants(registered())}, I.seen(registered())}
@@ -836,19 +858,122 @@ def revision() -> IO(Unit):
     Test.check(Bool.not(I.current(backing(source_for(scope_with(TF.plan(), 0n), 3, 200n), write_for(scope_with(TF.plan(), 0n), 3, 200n), grant_as(scope_with(TF.plan(), 0n), 3, 150n)), grant_as(scope_with(TF.plan(), 0n), 3, 150n), now())), "GI-005 a grant whose scope names subject 0 is not current")
     Test.check(Bool.not(I.current(backing(source_for(scope_with(empty_manifest_plan(), subject()), 3, 200n), write_for(scope_with(empty_manifest_plan(), subject()), 3, 200n), I.Grant{3n, token(), scope_with(empty_manifest_plan(), subject()), 3, 150n, I.NoIds{}, 2n, 0n}),
       I.Grant{3n, token(), scope_with(empty_manifest_plan(), subject()), 3, 150n, I.NoIds{}, 2n, 0n}, now())), "GI-005 a grant whose scope has an empty source manifest is not current")
-    Test.check(I.current(derived_state(good_child()), good_child(), now()) && I.valid(derived_state(good_child())), "GI-005 a synthetic derived grant of the registered grant is current and valid")
-    Test.check(Bool.not(I.current(I.Change.state(I.revoke(derived_state(good_child()), 4n, source_authority(), 1n)), good_child(), now())), "GI-005 revoking the parent's source approval makes the derived grant not current")
+    Test.check(I.current(derived(3, 150n), good_child(), now()) && I.valid(derived(3, 150n)), "GI-005 a derived grant of the registered grant is current and valid")
+    Test.check(Bool.not(I.current(I.Change.state(I.revoke(derived(3, 150n), 4n, source_authority(), 1n)), good_child(), now())), "GI-005 revoking the parent's source approval makes the derived grant not current")
     Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 150n, 9n)), child(scope(), 3, 150n, 9n), now())) && Bool.not(I.valid(derived_state(child(scope(), 3, 150n, 9n)))), "GI-005 a derived grant whose parent does not exist is not current and not valid")
     Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 150n, 4n)), child(scope(), 3, 150n, 4n), now())) && Bool.not(I.valid(derived_state(child(scope(), 3, 150n, 4n)))), "GI-005 a derived grant that is its own parent is not current and not valid")
-    Test.check(Bool.not(I.current(derived_state(child(scope(), 7, 150n, 3n)), child(scope(), 7, 150n, 3n), now())), "GI-005 a derived grant with rights 7 over its parent's 3 is not current")
-    Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 200n, 3n)), child(scope(), 3, 200n, 3n), now())), "GI-005 a derived grant outliving its parent is not current")
-    Test.check(Bool.not(I.current(derived_state(child(scope_with(plan_invocation(), subject()), 3, 150n, 3n)), child(scope_with(plan_invocation(), subject()), 3, 150n, 3n), now())), "GI-005 a derived grant whose scope differs from its parent's is not current")
-    Test.check(I.current(derived_state(child(scope(), 3, 120n, 3n)), child(scope(), 3, 120n, 3n), 119n) && Bool.not(I.current(derived_state(child(scope(), 3, 120n, 3n)), child(scope(), 3, 120n, 3n), 120n)), "GI-005 a derived grant is current before its own valid_until and not at it while its parent still is")
+    Test.check(Bool.not(I.current(derived_state(child(scope(), 7, 150n, 3n)), child(scope(), 7, 150n, 3n), now())) && Bool.not(I.valid(derived_state(child(scope(), 7, 150n, 3n)))), "GI-005 a derived grant with rights 7 over its parent's 3 is not current and not valid")
+    Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 200n, 3n)), child(scope(), 3, 200n, 3n), now())) && Bool.not(I.valid(derived_state(child(scope(), 3, 200n, 3n)))), "GI-005 a derived grant outliving its parent is not current and not valid")
+    Test.check(Bool.not(I.current(derived_state(child(scope_with(plan_invocation(), subject()), 3, 150n, 3n)), child(scope_with(plan_invocation(), subject()), 3, 150n, 3n), now())) && Bool.not(I.valid(derived_state(child(scope_with(plan_invocation(), subject()), 3, 150n, 3n)))), "GI-005 a derived grant whose scope differs from its parent's is not current and not valid")
+    Test.check(I.current(derived(3, 120n), child(scope(), 3, 120n, 3n), 119n) && Bool.not(I.current(derived(3, 120n), child(scope(), 3, 120n, 3n), 120n)) && I.current(derived(3, 120n), grant3(), 120n), "GI-005 a derived grant is current before its own valid_until and not at it while its parent still is")
     Test.check(Bool.not(I.current(registered(), good_child(), now())), "GI-005 a derived grant record that the state never registered is not current")
+
+# --- Attenuation fixtures (synthetic) ----------------------------------------
+
+def third_token() -> T.CodeId:
+  T.CodeId{9, 9, 9, 9, 9, 9, 9, 11}
+
+# An earlier monitor time, so a parent can expire at 100 with time to spare.
+def early() -> Nat:
+  10n
+
+# Submit `src` then `wr`, each from its own issuer, on initial() at time `t`:
+# ids 1 and 2, revision 2.
+def pair_at(+src: I.SourceApproval, +wr: I.WriteApproval, +t: Nat) -> I.State:
+  I.Change.state(I.submit_write(
+    I.Change.state(I.submit_source(initial(), 0n, I.SourceApproval.issuer(src), src, t)),
+    1n, I.WriteApproval.issuer(wr), wr, t))
+
+# Grant 3 for subject 7 with `rights` until `valid_until`, registered at time
+# 10 from approvals 1 and 2 (rights 3, valid until 200): revision 3.
+def parent_state(rights: U32, valid_until: Nat) -> I.State:
+  I.Change.state(I.register(pair_at(good_source(), good_write(), early()), 2n,
+    request_with(scope(), one(1n), 2n, rights, valid_until), early(), token()))
+
+# Subject 7 derives grant 4 from parent_state(rights, 100)'s grant 3 at time 20.
+def derive_from_100(parent_rights: U32, rights: U32, valid_until: Nat) -> I.Change:
+  I.derive(parent_state(parent_rights, 100n), 3n, subject_principal(), 3n, derivation(rights, valid_until), 20n, other_token())
+
+def child_of_100(rights: U32, valid_until: Nat) -> I.Grant:
+  child(scope(), rights, valid_until, 3n)
+
+# The looked-up grant record exists and has exactly `plan` as its scope plan.
+def found_plan_is(found: Maybe<&2, I.Grant>, plan: T.Plan) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{grant}:
+      T.Plan.equal(I.Scope.plan(I.Grant.scope(grant)), plan)
+
+# The looked-up grant record exists and names exactly `scope` (plan, write
+# domain and subject).
+def found_scope_is(found: Maybe<&2, I.Grant>, scope: I.Scope) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{grant}:
+      I.scope_equal(I.Grant.scope(grant), scope)
+
+# Grandchild 5 of child 4 (rights 3 until 120) of grant 3, derived at now().
+def grandchild_change(valid_until: Nat) -> I.Change:
+  I.derive(derived(3, 120n), 4n, subject_principal(), 4n, derivation(3, valid_until), now(), third_token())
+
+def grandchild(valid_until: Nat) -> I.Grant:
+  I.Grant{5n, third_token(), scope(), 3, valid_until, I.NoIds{}, 0n, 4n}
+
+# Approvals for scope() valid while now < 100, submitted at 99.
+def deadline_pair() -> I.State:
+  pair_at(source_until(100n), write_until(100n), 99n)
+
+# --- Section 1.4: attenuation (GI-006, GI-007) -------------------------------
+
+def attenuation() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(denied(derive_from_100(3, 3, 101n), parent_state(3, 100n), I.Widened{}), "GI-006 extending an expiry: a child of a parent expiring at 100 asking for 101 denied Widened")
+    Test.check(I.Change.accepted(derive_from_100(3, 3, 100n)) && I.current(I.Change.state(derive_from_100(3, 3, 100n)), child_of_100(3, 100n), 20n), "GI-006 a child asking for its parent's expiry 100 is accepted and current")
+    Test.check(I.Change.accepted(derive_from_100(3, 3, 50n)) && I.current(I.Change.state(derive_from_100(3, 3, 50n)), child_of_100(3, 50n), 20n), "GI-006 a child asking for expiry 50 under a parent expiring at 100 is accepted and current")
+    Test.check(denied(derive_from_100(1, 3, 100n), parent_state(1, 100n), I.Widened{}), "GI-006 widened rights: a child asking for rights 3 of a parent holding 1 denied Widened")
+    Test.check(I.Change.accepted(derive_from_100(1, 1, 100n)) && I.current(I.Change.state(derive_from_100(1, 1, 100n)), child_of_100(1, 100n), 20n), "GI-006 a child asking for its parent's rights 1 is accepted and current")
+    Test.check(I.Change.accepted(derive_change(1, 150n)) && I.current(derived(1, 150n), child(scope(), 1, 150n, 3n), now())
+      && Bool.not(I.current(derived(1, 150n), good_child(), now())), "GI-006 a child narrowing rights 3 to 1 is stored with rights 1 and current only as that record")
+    Test.check(denied(I.derive(registered(), 3n, source_authority(), 3n, derivation(3, 150n), now(), other_token()), registered(), I.SubjectMismatch{}), "GI-006 the source authority, not subject 7, deriving from subject 7's grant denied SubjectMismatch")
+    Test.check(denied(I.derive(registered(), 3n, I.Principal{8n}, 3n, derivation(3, 150n), now(), other_token()), registered(), I.SubjectMismatch{}), "GI-006 subject 8 deriving from subject 7's grant denied SubjectMismatch")
+    Test.check(found_plan_is(I.find_grant(I.grants(derived(3, 150n)), 4n), I.Scope.plan(I.Grant.scope(grant3())))
+      && found_scope_is(I.find_grant(I.grants(derived(3, 150n)), 4n), I.Grant.scope(grant3())), "GI-006 the derived child's plan equals its parent's, and so do its write domain and subject")
+    Test.check(I.Change.accepted(derive_change(3, 150n)) && issued_is(I.Change.issued(derive_change(3, 150n)), 4n)
+      && State.equal(derived(3, 150n), derived_state(good_child())) && I.valid(derived(3, 150n)), "GI-006 derive stores grant 4 with the parent's scope, the requested rights and lifetime, parent 3 and no cited approvals, keeps approvals, seen serials and the parent, and advances the revision once")
+    Test.check(denied(grandchild_change(130n), derived(3, 120n), I.Widened{}), "GI-006 a grandchild asking for 130, within its grandparent's 150 but past its parent's 120, denied Widened")
+    Test.check(I.Change.accepted(grandchild_change(110n)) && I.current(I.Change.state(grandchild_change(110n)), grandchild(110n), now())
+      && I.valid(I.Change.state(grandchild_change(110n))), "GI-006 a grandchild within its parent's 120 is accepted, current and valid")
+    Test.check(Bool.not(I.current(I.Change.state(I.revoke(I.Change.state(grandchild_change(110n)), 5n, source_authority(), 1n)), grandchild(110n), now())), "GI-006 revoking the root's source approval makes the grandchild not current")
+    Test.check(Bool.not(I.current(I.Change.state(I.revoke(derived(3, 150n), 4n, source_authority(), 1n)), grant3(), now()))
+      && Bool.not(I.current(I.Change.state(I.revoke(derived(3, 150n), 4n, source_authority(), 1n)), good_child(), now())), "GI-006 revoking the parent's source approval makes both the parent and the child not current")
+    Test.check(denied(I.derive(registered(), 3n, subject_principal(), 3n, derivation(3, 150n), 150n, other_token()), registered(), I.Expired{}), "GI-007 deriving at the parent's valid_until 150 denied Expired")
+    Test.check(denied(I.derive(source_revoked(), 4n, subject_principal(), 3n, derivation(3, 150n), now(), other_token()), source_revoked(), I.Revoked{}), "GI-006 deriving from a parent whose source approval is revoked denied Revoked")
+    Test.check(denied(I.derive(registered(), 3n, subject_principal(), 3n, I.Derivation{2n, 3, 150n}, now(), other_token()), registered(), I.UnknownVersion{}), "GI-006 derivation record version 2 denied UnknownVersion")
+    Test.check(denied(I.derive(registered(), 2n, subject_principal(), 3n, derivation(3, 150n), now(), other_token()), registered(), I.StaleRevision{}), "GI-006 derivation validated at revision 2 against state at revision 3 denied StaleRevision")
+    Test.check(denied(I.derive(registered(), 2n, subject_principal(), 3n, derivation(3, 151n), now(), other_token()), registered(), I.StaleRevision{}), "GI-006 a stale derivation that also outlives its parent still reads StaleRevision")
+    Test.check(denied(I.derive(registered(), 3n, subject_principal(), 99n, derivation(3, 150n), now(), other_token()), registered(), I.MissingApproval{}), "GI-006 deriving from a grant id that does not exist denied MissingApproval")
+    Test.check(denied(I.derive(registered(), 3n, subject_principal(), 3n, derivation(8, 150n), now(), other_token()), registered(), I.InvalidRights{}), "GI-006 derivation asking for rights 8 denied InvalidRights")
+    Test.check(denied(I.derive(registered(), 3n, subject_principal(), 3n, derivation(3, 100n), now(), other_token()), registered(), I.Expired{}), "GI-007 derivation whose requested valid_until equals now denied Expired")
+    Test.check(denied(I.derive(registered(), 3n, subject_principal(), 3n, derivation(3, 150n), now(), token()), registered(), I.DuplicateToken{}), "GI-006 derivation with the token the parent holds denied DuplicateToken")
+    Test.check(Bool.not(I.current(derived_state(I.Grant{4n, other_token(), scope(), 3, 150n, one(1n), 0n, 3n}), I.Grant{4n, other_token(), scope(), 3, 150n, one(1n), 0n, 3n}, now()))
+      && Bool.not(I.valid(derived_state(I.Grant{4n, other_token(), scope(), 3, 150n, one(1n), 0n, 3n}))), "GI-006 a derived grant record citing source approval 1 is not current and not valid")
+    Test.check(Bool.not(I.current(derived_state(I.Grant{4n, other_token(), scope(), 3, 150n, I.NoIds{}, 2n, 3n}), I.Grant{4n, other_token(), scope(), 3, 150n, I.NoIds{}, 2n, 3n}, now()))
+      && Bool.not(I.valid(derived_state(I.Grant{4n, other_token(), scope(), 3, 150n, I.NoIds{}, 2n, 3n}))), "GI-006 a derived grant record citing write approval 2 is not current and not valid")
+    Test.check(I.Change.accepted(I.submit_source(initial(), 0n, source_authority(), source_until(100n), 99n))
+      && denied(I.submit_source(initial(), 0n, source_authority(), source_until(100n), 100n), initial(), I.Expired{}), "GI-007 an approval valid while now < 100 is accepted on submission at 99 and denied Expired at 100")
+    Test.check(Nat.is_eq(I.revision(deadline_pair()), 2n)
+      && denied(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), deadline_pair(), I.Expired{}), "GI-007 issuance at the deadline: registration at 100 after both approvals were submitted at 99 denied Expired, no grant registered")
+    Test.check(I.current(I.Change.state(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 99n, token())), I.Grant{3n, token(), scope(), 3, 100n, one(1n), 2n, 0n}, 99n)
+      && Bool.not(I.current(I.Change.state(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 99n, token())), I.Grant{3n, token(), scope(), 3, 100n, one(1n), 2n, 0n}, 100n)), "GI-007 a grant with valid_until 100 is current at 99 and not at 100")
+    Test.check(denied(I.register(pair_at(source_until(100n), write_until(200n), early()), 2n, request_with(scope(), one(1n), 2n, 3, 150n), early(), token()),
+      pair_at(source_until(100n), write_until(200n), early()), I.Widened{}), "GI-007 a requested grant lifetime 150 beyond the shorter approval's 100 denied Widened")
 
 def main() -> IO(Unit):
   do IO<Unit>:
     submission()
     registration()
     revision()
-    IO.print("Issuance: 150 checks passed")
+    attenuation()
+    IO.print("Issuance: 179 checks passed")

@@ -105,3 +105,38 @@ law issuance_stale_revocation_keeps_state:
   for from: Issuance.Principal
   for id: Nat
   {Issuance.Change.state(Issuance.revoke(state, 1n+Issuance.revision(state), from, id)) == state : Issuance.State}
+
+# A natural number plus a positive amount is never at most the original under
+# `Nat.is_le`. Auxiliary arithmetic fact for derived_lifetime_extension_rejects
+# (every lifetime strictly past `u` is `Nat.add(u, 1n+extra)` for some
+# `extra`); it says nothing about Issuance by itself.
+law nat_le_add_successor_false:
+  for u: Nat
+  for extra: Nat
+  {Nat.is_le(Nat.add(u, 1n+extra), u) == False{} : Bool}
+
+# GI-006, lifetime half: a derivation whose requested lifetime is strictly
+# past its parent's never commits and returns exactly the supplied state, for
+# every state, expected revision, principal, version, rights, time and token,
+# whenever the parent id resolves in that state to the parent record whose
+# lifetime it exceeds (`found`, the same lookup `derive` performs). So a
+# derived grant can never extend its parent's expiry, by any amount, and the
+# attempt stores no grant. The proof pins `derive`'s parent lookup and its
+# outer `lifetime_within` match with its Rejected branch. It does not cover
+# rights (U32 masks are not inductive; rights attenuation is tested, not
+# proved), scope or subject (a Derivation cannot express either), the denial
+# reason (a stale revision still reads StaleRevision), or the per-use
+# re-check of the chain in `current`, which the tests show.
+law derived_lifetime_extension_rejects:
+  for state: Issuance.State
+  for expected_revision: Nat
+  for from: Issuance.Principal
+  for parent_id: Nat
+  for parent: Issuance.Grant
+  for found: {Issuance.find_grant(Issuance.grants(state), parent_id) == Some{parent} : Maybe<&2, Issuance.Grant>}
+  for version: Nat
+  for rights: U32
+  for extra: Nat
+  for now: Nat
+  for token: Transfer.CodeId
+  {(Issuance.Change.accepted(Issuance.derive(state, expected_revision, from, parent_id, Issuance.Derivation{version, rights, Nat.add(Issuance.Grant.valid_until(parent), 1n+extra)}, now, token)), Issuance.Change.state(Issuance.derive(state, expected_revision, from, parent_id, Issuance.Derivation{version, rights, Nat.add(Issuance.Grant.valid_until(parent), 1n+extra)}, now, token))) == (False{}, state) : Bool & Issuance.State}

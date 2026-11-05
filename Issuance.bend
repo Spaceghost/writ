@@ -34,12 +34,22 @@ import ./Frontend.bend as F
 #   valid_until), matching Transfer and Frontend. `current` takes it too, so
 #   a grant's usability is always judged at the monitor's time.
 # - `token`, the fresh capability token the monitor supplies to `register`
-#   (Bend generates no randomness). Bend only checks that no registered grant
-#   already holds it.
+#   and `derive` (Bend generates no randomness). Bend only checks that no
+#   registered grant already holds it.
 #
-# `from` is attached to submissions and revocations. Only an approval's
-# recorded issuer, still the directory authority for the approval's domain,
-# may revoke it; that issuer was bound to the authenticated submitter.
+# `from` is attached to submissions, revocations and derivations. Only an
+# approval's recorded issuer, still the directory authority for the approval's
+# domain, may revoke it; that issuer was bound to the authenticated submitter.
+# Only a grant's own subject may derive from it.
+#
+# Derivation (GI-006) only attenuates. A `Derivation` names rights and a
+# lifetime and nothing else: the child copies its parent's scope and subject
+# and cites no approvals (approvals are single use and were consumed by the
+# root of its chain), so it cannot widen the scope, change the subject or
+# claim fresh authority. Its rights must lie within the parent's and its
+# lifetime end no later than the parent's; the parent must be current at
+# derivation, and `current` re-checks the whole chain at every use. A
+# different subject needs a fresh grant through full admission (GI-004).
 #
 # Registration has no `from`. A `Request` names stored approvals by id and
 # asserts nothing about who asks: the cited approvals, each submitted earlier
@@ -53,6 +63,9 @@ import ./Frontend.bend as F
 # structure only and does not authenticate the supplied state. Every
 # transition returns the supplied state unchanged with exactly one closed-set
 # reason on any denial, and advances the revision exactly once on acceptance.
+# A stored derived grant's subject is the authenticated `from` that derived
+# it, because `derive` requires `from` to be the parent's scope subject and
+# copies that scope.
 #
 # Gates. Each transition first matches on the revision check, then computes
 # acceptance as `Guard.all` over the Guard.Checks projection of one ordered
@@ -70,13 +83,13 @@ import ./Frontend.bend as F
 # is neither `valid` there nor `current`.
 #
 # Public entry points: `empty`, `submit_source`, `submit_write`, `register`,
-# `revoke`, `current`, `valid`, and the `Change.*` accessors and state
-# accessors. Every other def is an exported implementation helper; calling one
-# does not perform a transition's checks.
+# `revoke`, `derive`, `current`, `valid`, and the `Change.*` accessors and
+# state accessors. Every other def is an exported implementation helper;
+# calling one does not perform a transition's checks.
 #
 # Laws. This module relies on the existing law `failed_check_denies` through
 # its gate structure (and `current`'s Guard.Checks lists), without modifying
-# it, and adds four in LAWS.bend:
+# it, and adds six in LAWS.bend:
 # - `nat_eq_successor_false`: no natural number equals its successor under
 #   `Nat.is_eq`; auxiliary arithmetic for the three stale-revision laws,
 #   saying nothing about issuance by itself.
@@ -96,6 +109,19 @@ import ./Frontend.bend as F
 #   outer revision match and its Rejected branch. They cover the successor
 #   revision only; denials at other gates are shown, with full state
 #   equality, by the tests, not proved.
+# - `nat_le_add_successor_false`: `Nat.add(u, 1n+extra)` is never at most
+#   `u`; auxiliary arithmetic for the next law, saying nothing about issuance
+#   by itself.
+# - `derived_lifetime_extension_rejects` (GI-006, lifetime half): whenever the
+#   parent id resolves in the state to a parent record, a derivation asking
+#   for any lifetime past that record's `valid_until` is rejected and returns
+#   exactly the supplied state, for every other argument. So no derived grant
+#   extends its parent's expiry and the attempt stores nothing; the proof pins
+#   `derive`'s lookup and its outer `lifetime_within` match, which is why that
+#   match stays. It does not cover rights (U32 masks are not inductive, so
+#   rights attenuation is tested, not proved), the denial reason, or the
+#   per-use re-check of the chain by `current`; scope and subject cannot be
+#   widened because a Derivation cannot express them.
 
 # --- Identities --------------------------------------------------------------
 
@@ -177,10 +203,12 @@ type Ids is Data:
   NoIds{}
   Ids{head: Nat, tail: Ids}
 
-# A registered grant, created only by `register`. `sources` names the cited source
-# approval ids in manifest order, `write` the cited write approval id, and
-# `parent` the grant it was derived from (0 for a root grant). A grant record
-# is never trusted because it exists: usability is re-derived from the state.
+# A registered grant, created only by `register` (a root grant) or `derive`
+# (a derived grant). `sources` names the cited source approval ids in manifest
+# order, `write` the cited write approval id, and `parent` the grant it was
+# derived from (0 for a root grant). A derived grant cites no approvals
+# (`NoIds`, write 0). A grant record is never trusted because it exists:
+# usability is re-derived from the state.
 type Grant is Data:
   Grant{id: Nat, token: T.CodeId, scope: Scope, rights: U32, valid_until: Nat,
     sources: Ids, write: Nat, parent: Nat}
@@ -1522,15 +1550,31 @@ def root_checks(+state: State, +grant: Grant, +now: Nat) -> Guard.Checks:
       Guard.Require{sources_meet(StillUnexpired{}, sources, state, grant_request(grant), now),
       Guard.End{}}}}}}}}}}}}}}}}}}}
 
+def ids_empty(ids: Ids) -> Bool:
+  match ids:
+    case NoIds{}:
+      True{}
+    case Ids{_, _}:
+      False{}
+
+# A derived grant cites no approvals of its own: approvals are single use and
+# were consumed by the root of its chain, so any citation on a derived record
+# could only be a claim to authority it was never given. `derive` stores
+# `NoIds` and write 0 by construction; `current` and `valid` deny any derived
+# record that cites an approval, rather than ignoring the citation.
+def cites_nothing(+grant: Grant) -> Bool:
+  ids_empty(Grant.sources(grant)) && Nat.is_eq(Grant.write(grant), 0n)
+
 # What a derived grant must satisfy against its parent at each use: the same
-# scope (subject included), rights within the parent's, and a lifetime no
-# longer than the parent's. The parent itself must be current, which
-# `current_within` checks by walking the chain.
+# scope (subject included), rights within the parent's, a lifetime no longer
+# than the parent's, and no cited approvals. The parent itself must be
+# current, which `current_within` checks by walking the chain.
 def derived_checks(+child: Grant, +parent: Grant) -> Guard.Checks:
   Guard.Require{scope_equal(Grant.scope(child), Grant.scope(parent)),
   Guard.Require{rights_within(Grant.rights(child), Grant.rights(parent)),
   Guard.Require{lifetime_within(Grant.valid_until(child), Grant.valid_until(parent)),
-  Guard.End{}}}}
+  Guard.Require{cites_nothing(child),
+  Guard.End{}}}}}
 
 # Whether `grant` is usable, walking its parent chain. `parent` is the
 # grant's parent id and `found` that id's lookup in this state's grants; both
@@ -1568,28 +1612,230 @@ def current_within(fuel: Grants, parent: Nat, found: Maybe<&2, Grant>, +state: S
 # approval present, consumed by this grant, unrevoked, still authorized by the
 # directory and still placed, covering the manifest, with the same scope,
 # rights covering the grant's and `now` before its `valid_until`; for a
-# derived grant the parent registered, current in turn, and the child within
-# its scope, rights and lifetime. A revoked approval, a directory or
+# derived grant the parent registered, current in turn, the child within
+# its scope, rights and lifetime, and citing no approvals. A revoked approval, a directory or
 # placement change, an epoch advance or expiry therefore withdraws the grant
 # and everything derived from it, without editing any record.
 def current(+state: State, +grant: Grant, +now: Nat) -> Bool:
   current_within(grants(state), Grant.parent(grant), find_grant(grants(state), Grant.parent(grant)),
     state, grant, now)
 
+# --- Derivation (GI-006, GI-007) ---------------------------------------------
+
+# What a derivation asks for: the child's rights and exclusive lifetime, in
+# record format `version`. There is deliberately no scope, plan, subject or
+# approval field. The child copies its parent's scope (subject included) and
+# cites no approvals, so a derivation cannot express a wider scope, another
+# subject or a fresh citation. A different subject needs a fresh grant through
+# full admission (GI-004), never a derivation.
+type Derivation is Data:
+  Derivation{version: Nat, rights: U32, valid_until: Nat}
+
+def Derivation.version(child: Derivation) -> Nat:
+  match child:
+    case Derivation{version, _, _}:
+      version
+
+def Derivation.rights(child: Derivation) -> U32:
+  match child:
+    case Derivation{_, rights, _}:
+      rights
+
+def Derivation.valid_until(child: Derivation) -> Nat:
+  match child:
+    case Derivation{_, _, valid_until}:
+      valid_until
+
+def Principal.id(principal: Principal) -> Nat:
+  match principal:
+    case Principal{id}:
+      id
+
+# The authenticated principal is the subject the scope names. Only the
+# parent's own subject may derive from it; anyone else deriving would be
+# delegation, which GI-004 forbids without the authorities' approval.
+def speaks_for_subject(from: Principal, scope: Scope) -> Bool:
+  Nat.is_eq(Principal.id(from), Scope.subject(scope))
+
+# The parent id resolved to exactly one registered grant. An absent or
+# ambiguous id resolves to none (MissingApproval: the closed error set has no
+# separate reason for a missing grant).
+def parent_present(found: Maybe<&2, Grant>) -> Bool:
+  Maybe.is_some(&2, Grant, found)
+
+# Each parent helper below fails closed on an absent parent.
+def parent_subject_is(found: Maybe<&2, Grant>, +from: Principal) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{parent}:
+      speaks_for_subject(from, Grant.scope(parent))
+
+# `now` is before the parent's exclusive `valid_until`: nothing derives from a
+# grant at or after its deadline.
+def parent_unexpired(found: Maybe<&2, Grant>, +now: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{parent}:
+      unexpired(now, Grant.valid_until(parent))
+
+# The parent is usable at `now` in this state, re-derived by `current`
+# (exact record, live stamp, expiry, every approval or ancestor revalidated).
+def parent_current(found: Maybe<&2, Grant>, +state: State, +now: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{parent}:
+      current(state, parent, now)
+
+def parent_rights_cover(found: Maybe<&2, Grant>, +rights: U32) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{parent}:
+      rights_within(rights, Grant.rights(parent))
+
+# The child's lifetime ends no later than the parent's (`lifetime_within`, the
+# helper the law `derived_lifetime_extension_rejects` is stated through).
+def parent_lifetime_covers(found: Maybe<&2, Grant>, +valid_until: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{parent}:
+      lifetime_within(valid_until, Grant.valid_until(parent))
+
+# Every check a derivation must pass, in denial order: the race (revision),
+# the format, the parent's existence, identity (the authenticated principal is
+# the parent's subject), the parent's usability (unexpired, then current),
+# then the bounds on rights and lifetime, and last the monitor-supplied token.
+# A parent that is not current for any reason other than its own expiry
+# (a revoked approval, a monitor change, an ancestor withdrawn) denies with
+# Revoked: its authority has been withdrawn.
+def derive_gates(+found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat,
+    +from: Principal, child: Derivation, +now: Nat, +token: T.CodeId) -> Gates:
+  match child:
+    case Derivation{version, +rights, +valid_until}:
+      Gate{revision_current(state, expected_revision), StaleRevision{},
+      Gate{version_supported(version), UnknownVersion{},
+      Gate{parent_present(found), MissingApproval{},
+      Gate{parent_subject_is(found, from), SubjectMismatch{},
+      Gate{parent_unexpired(found, now), Expired{},
+      Gate{parent_current(found, state, now), Revoked{},
+      Gate{rights_valid(rights), InvalidRights{},
+      Gate{parent_rights_cover(found, rights), Widened{},
+      Gate{unexpired(now, valid_until), Expired{},
+      Gate{parent_lifetime_covers(found, valid_until), Widened{},
+      Gate{token_fresh(grants(state), token), DuplicateToken{},
+      Open{}}}}}}}}}}}}
+
+def derive_checks(+found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat,
+    +from: Principal, +child: Derivation, +now: Nat, +token: T.CodeId) -> Guard.Checks:
+  Gates.checks(derive_gates(found, state, expected_revision, from, child, now, token))
+
+# Store the child under a fresh id (the change id) and advance the revision
+# once. The child's scope is the parent's record's scope, copied, so its plan,
+# write domain and subject (the authenticated `from`, by the subject gate) are
+# the parent's; it cites no approvals and names `parent_id`. Approvals and
+# `seen` are unchanged: a derivation consumes nothing and presents no serial.
+# Called only after every gate held.
+def commit_derivation(state: State, +parent_id: Nat, parent: Grant, child: Derivation,
+    token: T.CodeId) -> Change:
+  match state:
+    case State{revision, +next_id, live, directory, placements, approvals, grants, seen}:
+      match child:
+        case Derivation{_, rights, valid_until}:
+          Changed{State{1n+revision, 1n+next_id, live, directory, placements, approvals,
+            Grants{Grant{next_id, token, Grant.scope(parent), rights, valid_until, NoIds{}, 0n, parent_id}, grants},
+            seen}, next_id}
+
+def derive_checked(ok: Bool, +parent: Grant, +state: State, +expected_revision: Nat,
+    +from: Principal, +parent_id: Nat, +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
+      Rejected{state, Gates.reason(derive_gates(Some{parent}, state, expected_revision, from, child, now, token), StaleRevision{})}
+    case True{}:
+      commit_derivation(state, parent_id, parent, child, token)
+
+# The lifetime bound is matched before the gate list so the law
+# `derived_lifetime_extension_rejects` can follow it: a child outliving its
+# parent selects the Rejected branch whatever else holds. The reason is still
+# the first failing gate of the full list (the lifetime gate fails, so one
+# does), so a stale revision still reads StaleRevision.
+def derive_bounded(bounded: Bool, +parent: Grant, +state: State, +expected_revision: Nat,
+    +from: Principal, +parent_id: Nat, +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
+  match bounded:
+    case False{}:
+      Rejected{state, Gates.reason(derive_gates(Some{parent}, state, expected_revision, from, child, now, token), StaleRevision{})}
+    case True{}:
+      derive_checked(Guard.all(derive_checks(Some{parent}, state, expected_revision, from, child, now, token)),
+        parent, state, expected_revision, from, parent_id, child, now, token)
+
+def derive_found(found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat,
+    +from: Principal, +parent_id: Nat, +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
+  match found:
+    case None{}:
+      Rejected{state, Gates.reason(derive_gates(None{}, state, expected_revision, from, child, now, token), StaleRevision{})}
+    case Some{+parent}:
+      derive_bounded(lifetime_within(Derivation.valid_until(child), Grant.valid_until(parent)),
+        parent, state, expected_revision, from, parent_id, child, now, token)
+
+# Public entry point (GI-006, GI-007): the host derives an attenuated grant
+# from registered grant `parent_id` on behalf of the authenticated principal
+# `from`. The derivation names only rights and a lifetime: the child copies
+# the parent's scope and subject and cites no approvals, so it can narrow
+# rights and shorten the lifetime but never widen the scope, change the
+# subject or extend the expiry. Accepted only when the state is at
+# `expected_revision`, the derivation is version 1, `parent_id` names exactly
+# one registered grant, `from` is that grant's scope subject, `now` is before
+# the parent's `valid_until` and the parent is `current` at `now`, the
+# requested rights are valid and within the parent's, `now` is before the
+# requested `valid_until`, that lifetime is within the parent's, and `token`
+# names no registered grant. It then stores the child under a fresh id (the
+# change id) with `parent` = `parent_id`, and advances the revision once;
+# approvals and seen serials are untouched. Denial order: StaleRevision,
+# UnknownVersion, MissingApproval (no such parent), SubjectMismatch, Expired
+# (the parent's deadline), Revoked (the parent not current), InvalidRights,
+# Widened (rights), Expired (the child's lifetime), Widened (lifetime),
+# DuplicateToken; the state is returned unchanged. The child is not usable by
+# itself: `current` re-checks it, and its whole parent chain, at every use.
+def derive(+state: State, +expected_revision: Nat, +from: Principal, +parent_id: Nat,
+    +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
+  derive_found(find_grant(grants(state), parent_id), state, expected_revision, from, parent_id,
+    child, now, token)
+
 # --- Structural validity -----------------------------------------------------
+
+# A derived record against its parent's record: the same scope, rights and
+# lifetime within the parent's, and no cited approvals. An absent or
+# ambiguous parent fails.
+def derived_backed(found: Maybe<&2, Grant>, scope: Scope, rights: U32, valid_until: Nat,
+    sources: Ids, write: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{+parent}:
+      scope_equal(scope, Grant.scope(parent)) && rights_within(rights, Grant.rights(parent))
+        && lifetime_within(valid_until, Grant.valid_until(parent))
+        && ids_empty(sources) && Nat.is_eq(write, 0n)
 
 # A root grant's cited approvals exist and were consumed by exactly that
 # grant; a derived grant's parent is a grant registered before it (later in
-# the list, which is newest first), so no chain is circular. A grant record
-# copied into a state whose approvals do not back it is therefore invalid.
+# the list, which is newest first), so no chain is circular, and the derived
+# record attenuates that parent's record and cites no approvals. A grant
+# record copied into a state whose approvals do not back it is therefore
+# invalid.
 def grant_backed(grant: Grant, +approvals: Approvals, +earlier: Grants) -> Bool:
   match grant:
-    case Grant{+id, _, _, _, _, sources, write, parent}:
+    case Grant{+id, _, scope, rights, valid_until, sources, write, parent}:
       match parent:
         case 0n:
           write_consumed_by(approvals, write, id) && sources_consumed_by(approvals, sources, id)
         case 1n+p:
-          grant_exists(earlier, 1n+p)
+          derived_backed(find_grant(earlier, 1n+p), scope, rights, valid_until, sources, write)
 
 # Each grant has an allocated id, unique among grants and distinct from every
 # approval id (the two share one counter), and is backed as grant_backed
@@ -1606,7 +1852,7 @@ def grants_valid(grants: Grants, +next_id: Nat, +approvals: Approvals) -> Bool:
 # Public entry point: structural validity only. Ids are positive, below
 # `next_id` and unique; every stored approval's serial is recorded; every
 # grant is backed (its cited approvals consumed by exactly it, or its parent
-# registered before it); no object is placed twice in one namespace; no
+# registered before it and attenuated, with no cited approvals); no object is placed twice in one namespace; no
 # serial is recorded twice. It does not authenticate the supplied state, and
 # no transition treats a valid state as evidence: each recomputes its own
 # checks, and `current` re-derives usability at every use.

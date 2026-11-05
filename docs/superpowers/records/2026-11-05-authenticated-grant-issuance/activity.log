@@ -33,3 +33,8 @@
 2026-11-05T03:56:14Z	implementer	fix round 1: no un-revoke bug in revoke (mark_revoked keeps revoked ||); 4 checks added (I-1 flag and current-based, M-1 subject 0 and empty manifest; Issuance 150); trivial issuance_denied_preserves_state dropped, issuance_stale_registration_keeps_state and issuance_stale_revocation_keeps_state added (10 laws); 7 targeted mutants all killed; bend Tests.bend ALL LIBRARY TESTS PASSED 932 PASS (782 + 150); bend PROOF.bend ALL PROOFS CHECK; report section appended; committing
 2026-11-05T03:56:59Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T04:02:30Z	controller	task 3 complete; task 4 dispatched (derive: attenuation only)
+2026-11-05T04:03:24Z	implementer	task 4 started: read brief, plan Global Constraints, task 3 report/review/re-review
+2026-11-05T04:08:02Z	implementer	design: derive = lookup, outer lifetime_within match (for the law), then 11 ordered gates; current and valid require a derived grant to cite no approvals, valid also checks attenuation against the parent record; law stated over derive itself with a lookup hypothesis
+2026-11-05T04:20:44Z	implementer	derive, laws and attenuation section (29 checks) in; mutation: 47 derive mutants, 41 killed by tests, outer lifetime match killed by bend PROOF.bend, 5 None-arm equivalents; task 3 mutants rerun: unchanged (60 killed, 4 known)
+2026-11-05T04:22:37Z	implementer	report written; final verification run before commit
+2026-11-05T04:23:03Z	implementer	final: mutant total corrected to 49 (43 killed by tests, 1 by bend PROOF.bend, 5 None-arm equivalents); bend Tests.bend ALL LIBRARY TESTS PASSED 961 PASS (782 + 179); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing
