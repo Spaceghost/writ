@@ -54,3 +54,5 @@
 2026-11-05T05:16:44Z	implementer	task 4: final mutation run 119 of 119 killed by named checks; native build still running (heartbeat)
 2026-11-05T05:18:17Z	implementer	task 4: report drafted; native build still running (heartbeat)
 2026-11-05T05:18:32Z	implementer	task 4: native 1140 PASS, identical to JS (CPU, not GPU); PROOF ALL PROOFS CHECK; openspec 44 passed; committing
+2026-11-05T05:18:53Z	controller	task 4 reported; rulings; reviewer dispatched
+2026-11-05T05:29:50Z	controller	task 4 review APPROVED; task 5 dispatched (conformance vectors)
