@@ -223,3 +223,5 @@
 2026-11-05T07:39:22Z	implementer	task 7 evidence (verification/gpu-pipeline.txt) and report written; 9 series, 72 runs accepted, all labelled loaded host not representative; forged runs rejected; committing
 2026-11-05T07:40:01Z	controller	task 7 reported (restart succeeded); reviewer dispatched
 2026-11-05T07:42:29Z	controller	task 7 review APPROVED; task 8 dispatched (trust profile)
+2026-11-05T07:44:20Z	implementer	task 8 started: read brief, plan constraints (cross-lane ruling: exclusion is a recorded limit), GV-008, design.md trust section, Tasks 1-7 evidence Result and Limits, the two trust-statement shapes; re-read gpu_map/corpus_setup from the pinned driver strings
+2026-11-05T07:46:53Z	implementer	verification/gpu-trust-profile.md written (GT-1 trusted device; managed-heap statement; evidence table over Tasks 1-7; exclusion beside GV-008 text; strengthening list); tasks.md 4.1 checked citing it, 4.2 left unchecked with the recorded-limit note; openspec validate --all --strict 44 passed
