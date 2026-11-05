@@ -166,7 +166,11 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   program statuses 46 and 47; one gpuexample boot (of three) printed Unikraft's "PM driver
   failed the operation: -5" after the exit hook's port write, before QEMU exited with 33,
   cause unknown ([unikernel-corpus-qemu.txt](../verification/unikernel-corpus-qemu.txt),
-  Task 3 rerun); more lanes (2.4); accelerated boots (3.1).
+  Task 3 rerun); more lanes (2.4: a second lane runs on vCPU 0 only, since Unikraft 0.21.0
+  never calls `uk_lcpu_start`, and every `--threads 2` run, with the shipped template as
+  well, ends in the `alloc.c @ 198` shutdown assertion, QEMU 253, so the corpus was not
+  run on two lanes; [unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
+  "Stopping point"); accelerated boots (3.1).
 
 ## Selection matrix, 2026-11
 
@@ -269,7 +273,19 @@ changed, which the lane does not do. After the failure the process does not exit
    (UL-005). On this kernel `--threads 2` creates a lane whose `pool_work` was not entered before shutdown in a non-yielding program (E6; behaviour when the main lane yields not tried), so a
    multi-lane build must not be configured by accident. `UKPLAT_CPU_MAXCOUNT=1` is now set explicitly in the Kraftfile (done: `hosts/unikraft/app/Kraftfile`; in the matrix it was only a resolved default, matrix ~565); SMP is a later task (2.4), and
    the OSv hang at shutdown with more than one lane (cause inferred, O-E6) should be
-   investigated as part of it.
+   investigated as part of it. Since (Unikraft lanes lane, 2026-11-05): the shipped
+   template stays single-lane, and the `lanes` set (`UKPLAT_CPU_MAXCOUNT=2`, built outside
+   the tree) is the multi-lane evidence: a second lane now runs, but only on vCPU 0,
+   because nothing in Unikraft 0.21.0 calls `uk_lcpu_start`
+   ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point"
+   item 1). `--threads 2` on the shipped image crashes at shutdown (the `alloc.c @ 198`
+   assertion, QEMU 253) after complete output, as on the `lanes` set, so a multi-lane build
+   must not be configured ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt),
+   "Shipped template control", "Stopping point" item 2). A fix would need a
+   `uk_lcpu_start` caller and a scheduler per LCPU for parallel lanes, and a clean thread
+   teardown at shutdown; none was made, and 2.4 stays open
+   ([unikernel-lanes-qemu.txt](../verification/unikernel-lanes-qemu.txt), "Stopping point"
+   item 3).
 3. **The fault halt to carry the runtime's message (done for a stack overflow).** With
    the experimental posix signal library in the template (adopted 2026-11-04, Unikraft
    signals lane; `build.sh` carries the compile workaround) the runtime's `SIGSEGV`

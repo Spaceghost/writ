@@ -12,3 +12,5 @@
 2026-11-05T01:01:36Z	implementer	lanes1 (shipped template, MAXCOUNT 1, no HAVE_SMP) build rc 0 in 44 s (cec64bf8...); --threads 2 -smp 1: lanes 2, pow2 4194304, alloc.c:198 assertion, QEMU 253; --threads 1: 33; crash does not need MAXCOUNT 2; appended shipped-template control and Stopping point to unikernel-lanes-qemu.txt; box 2.4 note in tasks.md
 2026-11-05T01:02:09Z	controller	task 2 reported: stall recorded; shipped template crashes the same way on --threads 2
 2026-11-05T01:02:52Z	controller	task 1 review APPROVED; wording fix carried to the final round
+2026-11-05T01:03:19Z	implementer	task 3 started (stall branch): read brief, Global Constraints, task 1 and 2 reports, verification/unikernel-lanes-qemu.txt; editing matrix Threads/Atomics rows and Limits, UNIKERNELS.md item 2 and Open list, UL-005 row
+2026-11-05T01:04:15Z	implementer	records edited (matrix :41 :45 :465-473; UNIKERNELS.md :169-173 :276-288; UL-005 row); OpenSpec strict 44 passed, 0 failed; bend Tests.bend 782 PASS, ALL LIBRARY TESTS PASSED; report written; committing task 3
