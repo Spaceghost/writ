@@ -7,3 +7,5 @@
 2026-11-05T14:51:53Z	controller	review: fixture reuse let nine mutants survive; fix round 1 dispatched
 2026-11-05T14:52:18Z	implementer	fix round 1 started: read task-1-review.md (F1-F5)
 2026-11-05T14:54:14Z	implementer	fix round 1: six checks added (F1-F5), comments for F5 and zero quote; 48 mutants all killed; Tests.bend 1462 PASS, PROOF.bend ALL PROOFS CHECK; committing
+2026-11-05T14:54:55Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T14:55:58Z	controller	task 1 complete; task 2 dispatched (origin approvals)
