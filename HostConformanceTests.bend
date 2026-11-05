@@ -29,7 +29,8 @@ import ./Test.bend as Test
 # (from a decoded wire Delegate), `admit_worker` (with the decoded reference),
 # `HostPublication.seal`, `publish`, `revoke`, `reconcile`, `restart`,
 # `quiesce`, `reclaim`, and `complete` as the vector requires. No vector
-# starts from a hand-built state. Undecodable bytes become the all-zero
+# starts from a hand-built state except PH-005-8, marked HAND-BUILT (its root
+# is minted by `HostIdentity.mint` directly, bypassing `issue`). Undecodable bytes become the all-zero
 # reference, which names nothing, so a decoding fault can only deny.
 #
 # Each vector is run on both adapters. Its check asserts, for both: the
@@ -685,6 +686,31 @@ def ph005_7_ok(+a: V.Adapter) -> Bool:
 def ph005_7_line(+a: V.Adapter) -> String:
   plain_line("PH-005-7", "issue", mismatched_issue(a))
 
+# The client's root issued on Frontend handle `handle` for plan `plan`.
+def issue_root(+a: V.Adapter, +handle: Nat, +plan: T.Plan) -> P.Step:
+  +sessions = prefaced(with_sessions(a), V.adapter_prefaced(a))
+  P.issue(sessions, P.revision(sessions), V.session_client(), V.fixture_frontend_state(), handle, plan,
+    V.root_rights(), V.root_expires())
+
+def issue_input(+a: V.Adapter) -> P.Step:
+  issue_root(a, V.root_handle(), V.input_plan())
+
+# A plan reading input object 11, with handle 2's destination and invocation.
+def ph005_10_ok(+a: V.Adapter) -> Bool:
+  PT.denied(issue_input(a), prefaced(with_sessions(a), V.adapter_prefaced(a)), P.PlanMismatch{})
+
+def ph005_10_line(+a: V.Adapter) -> String:
+  plain_line("PH-005-10", "issue", issue_input(a))
+
+def issue_unopened(+a: V.Adapter) -> P.Step:
+  issue_root(a, V.unopened_handle(), V.plan())
+
+def ph005_11_ok(+a: V.Adapter) -> Bool:
+  PT.denied(issue_unopened(a), prefaced(with_sessions(a), V.adapter_prefaced(a)), P.PlanMismatch{})
+
+def ph005_11_line(+a: V.Adapter) -> String:
+  plain_line("PH-005-11", "issue", issue_unopened(a))
+
 # HAND-BUILT (marked): the identity table of `with_sessions` and the
 # adapter's preface after `HostIdentity.mint` issued the client's root for destination E's plan on
 # handle 2 (plan D) directly, bypassing `issue`'s plan binding, as a monitor
@@ -704,9 +730,10 @@ def bypassed_sealed(+a: V.Adapter) -> P.State:
 def bypassed_publish(+a: V.Adapter) -> H.PublishResult:
   publish_on(bypassed_sealed(a))
 
-# The bypassed chain really reached a sealed Running worker.
+# The hand-built table is `valid`, and the bypassed chain really reached a
+# sealed Running worker.
 def bypass_reached(+a: V.Adapter) -> Bool:
-  PT.phase_of(P.workers(bypassed_sealed(a)), V.worker_id(), P.Running{})
+  P.valid(bypassed_root(a)) && PT.phase_of(P.workers(bypassed_sealed(a)), V.worker_id(), P.Running{})
     && Bool.not(PT.seals_equal(P.seals(bypassed_sealed(a)), P.NoSeals{}))
 
 def ph005_8_ok(+a: V.Adapter) -> Bool:
@@ -788,6 +815,14 @@ def ph003_1_ok(+a: V.Adapter) -> Bool:
 
 def ph003_1_line(+a: V.Adapter) -> String:
   plain_line("PH-003-1", "admit_worker", endpoint_admit(a, V.session_worker()))
+
+# The proxy session (same subject and token as the client, Authenticated,
+# delegable) presents the client's root: holding is by session, not caller.
+def ph003_3_ok(+a: V.Adapter) -> Bool:
+  identity_denied(a, V.session_proxy(), use_of(a, V.Root{}, V.claim_none()), I.NotHolder{})
+
+def ph003_3_line(+a: V.Adapter) -> String:
+  plain_line("PH-003-3", "admit_worker", endpoint_admit(a, V.session_proxy()))
 
 def foreign_use(+a: V.Adapter) -> +List<U32>:
   V.use_bytes(V.foreign_ref(a, V.Input{}), V.claim_none())
@@ -945,8 +980,9 @@ def ph009_4_line(+a: V.Adapter) -> String:
 
 def lines_for(+a: V.Adapter) -> List<&2, String>:
   [ph009_1_line(a), ph005_1_line(a), ph005_2_line(a), ph005_3_line(a), ph005_4_line(a), ph005_5_line(a),
-    ph005_6_line(a), ph005_7_line(a), ph005_8_line(a), ph005_9_line(a), ph002_1_line(a), ph002_2_line(a), ph002_3_line(a), ph002_4_line(a), ph002_5_line(a),
-    ph003_1_line(a), ph003_2_line(a), ph010_1_line(a), ph009_2_line(a), ph010_2_line(a), ph010_3_line(a),
+    ph005_6_line(a), ph005_7_line(a), ph005_8_line(a), ph005_9_line(a), ph005_10_line(a),
+    ph005_11_line(a), ph002_1_line(a), ph002_2_line(a), ph002_3_line(a), ph002_4_line(a), ph002_5_line(a),
+    ph003_1_line(a), ph003_2_line(a), ph003_3_line(a), ph010_1_line(a), ph009_2_line(a), ph010_2_line(a), ph010_3_line(a),
     ph010_4_line(a), ph010_5_line(a), ph010_6_line(a), ph009_3_line(a), ph004_1_line(a), ph004_2_line(a),
     ph004_3_line(a), ph009_4_line(a)]
 
@@ -1021,6 +1057,10 @@ def plan_gap_checks() -> IO(Unit):
     vector(ph005_8_line(A()))
     Test.check(agree(ph005_9_ok(A()), ph005_9_ok(Bd()), ph005_9_line(A()), ph005_9_line(Bd()), V.expected_ph005_9()), "PH-005-9 a delegated child cannot publish a plan other than its parent's: denied PlanMismatch with the state, session, and ledger unchanged")
     vector(ph005_9_line(A()))
+    Test.check(agree(ph005_10_ok(A()), ph005_10_ok(Bd()), ph005_10_line(A()), ph005_10_line(Bd()), V.expected_ph005_10()), "PH-005-10 a root issued for a plan with a changed input object on handle 2 is denied PlanMismatch with the state unchanged")
+    vector(ph005_10_line(A()))
+    Test.check(agree(ph005_11_ok(A()), ph005_11_ok(Bd()), ph005_11_line(A()), ph005_11_line(Bd()), V.expected_ph005_11()), "PH-005-11 a root issued on a Frontend handle the monitor's Frontend state does not hold is denied PlanMismatch with the state unchanged")
+    vector(ph005_11_line(A()))
 
 def provenance_checks() -> IO(Unit):
   do IO<Unit>:
@@ -1044,6 +1084,8 @@ def caller_checks() -> IO(Unit):
     vector(ph003_1_line(A()))
     Test.check(agree(ph003_2_ok(A()), ph003_2_ok(Bd()), ph003_2_line(A()), ph003_2_line(Bd()), V.expected_ph003_2()), "PH-003-2 a reference naming the other adapter's host is denied ForeignHost with the state unchanged")
     vector(ph003_2_line(A()))
+    Test.check(agree(ph003_3_ok(A()), ph003_3_ok(Bd()), ph003_3_line(A()), ph003_3_line(Bd()), V.expected_ph003_3()), "PH-003-3 a proxy session with the client's subject and token presenting the client's root is denied NotHolder with the state unchanged")
+    vector(ph003_3_line(A()))
 
 def revocation_checks() -> IO(Unit):
   do IO<Unit>:
@@ -1094,4 +1136,4 @@ def main() -> IO(Unit):
     revocation_checks()
     replay_checks()
     adapter_checks()
-    IO.print("HostConformance: 36 checks passed, 30 vectors emitted")
+    IO.print("HostConformance: 39 checks passed, 33 vectors emitted")

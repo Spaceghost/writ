@@ -1157,13 +1157,19 @@ def m_gate(ok: Bool, +state: State, +session: Nat, frontend: F.State, +handle: N
 # `session` for Frontend handle `handle`, which the monitor has already
 # opened after complete admission of `plan`, through `HostIdentity.mint`
 # (the owner is the session's bound caller; only an Authenticated session
-# holds a root). `frontend` is the monitor's own Frontend state (the record
-# `DataOS.commit_from_capability` later re-resolves the handle in), never a
-# target value. Order: gate; plan binding: the handle must exist in
-# `frontend` and carry exactly `plan` (PlanMismatch: an entry can be issued
-# only for the plan its handle carries, so the entry's plan, which every
-# delegated child copies, is the handle's); then HostIdentity's own checks
-# (`Identity{reason}`). No effect.
+# holds a root). `frontend` must be the monitor's own Frontend state (the
+# record `DataOS.commit_from_capability` later re-resolves the handle in).
+# Nothing here enforces that: `frontend` carries no expected revision and is
+# not tied to the Frontend state publication later uses, so this check trusts
+# the Frontend state the monitor passes (a host obligation) and is defense in
+# depth. The binding of record is publication, which re-binds independently:
+# `HostPublication.publish` step 4 compares the entry's plan with the
+# negotiated session's, and DataOS compares the session's plan with the
+# re-resolved handle's. Order: gate; plan binding: the handle must exist in
+# `frontend` and carry exactly `plan`, compared whole with `T.Plan.equal`
+# (PlanMismatch: an entry can be issued only for the plan its handle carries,
+# so the entry's plan, which every delegated child copies, is the handle's);
+# then HostIdentity's own checks (`Identity{reason}`). No effect.
 def issue(+state: State, expected_revision: Nat, +session: Nat, frontend: F.State, handle: Nat, plan: T.Plan,
     rights: U32, expires: Nat) -> Step:
   m_gate(current(state, expected_revision), state, session, frontend, handle, plan, rights, expires)

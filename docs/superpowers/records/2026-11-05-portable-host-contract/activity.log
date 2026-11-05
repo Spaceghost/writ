@@ -71,3 +71,11 @@
 2026-11-05T06:04:51Z	implementer	task 5 fix round 1: issue binds the entry plan to the Frontend handle's plan, publish compares the entry plan with the session's and the committed intent's (PlanMismatch); HostPrimitives 206, HostConformance 36 checks / 30 vectors; running suite
 2026-11-05T06:06:12Z	implementer	task 5 fix round 1: JS 1179 PASS twice, vectors 30 lines sha256 70efda96... cmp-identical; PROOF ALL PROOFS CHECK; 8 mutants on the new checks (7 killed, step-7 intent-plan check equivalent while step 4 stands); native build running (heartbeat)
 2026-11-05T06:08:52Z	implementer	task 5 fix round 1: native (CPU, not GPU) 1179 PASS identical to JS, vector file 70efda96... cmp-identical; committing
+2026-11-05T06:09:07Z	controller	task 5 fix round reported; reviewer dispatched
+2026-11-05T06:16:40Z	controller	task 5 review: two vectors missing; fix round 2 dispatched
+2026-11-05T06:16:48Z	implementer	task 5 fix round 2: started (review: two missing vectors, five minor findings)
+2026-11-05T06:20:17Z	implementer	task 5 fix round 2: PH-005-10, PH-005-11, PH-003-3 added; minors 4-6 applied; mutants M4, M1b, M7 killed by their vectors; full runs started
+2026-11-05T06:20:20Z	implementer	task 5 fix round 2: heartbeat, JS run 1 done, JS run 2 running
+2026-11-05T06:20:22Z	implementer	task 5 fix round 2: heartbeat, JS run 2 done, native build and run running
+2026-11-05T06:25:11Z	implementer	task 5 fix round 2: heartbeat, native run done, PROOF running
+2026-11-05T06:25:47Z	implementer	task 5 fix round 2: JS x2 and native 1182 PASS, vectors fb85d405 cmp-identical (33 lines), PROOF ALL PROOFS CHECK, OpenSpec 44 passed; committing

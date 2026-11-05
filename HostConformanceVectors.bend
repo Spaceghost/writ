@@ -323,6 +323,10 @@ def adapter_b() -> Adapter:
 def root_handle() -> Nat:
   2n
 
+# A Frontend handle id the descriptor never opened (it opens 1 and 2).
+def unopened_handle() -> Nat:
+  3n
+
 # The descriptor's Session handle (1), which carries the same plan.
 def unrelated_handle() -> Nat:
   1n
@@ -629,6 +633,12 @@ def expected_ph005_8() -> String:
 def expected_ph005_9() -> String:
   "VECTOR PH-005-9 publish denied PlanMismatch"
 
+def expected_ph005_10() -> String:
+  "VECTOR PH-005-10 issue denied PlanMismatch"
+
+def expected_ph005_11() -> String:
+  "VECTOR PH-005-11 issue denied PlanMismatch"
+
 def expected_ph002_1() -> String:
   "VECTOR PH-002-1 use accepted slot=input"
 
@@ -649,6 +659,9 @@ def expected_ph003_1() -> String:
 
 def expected_ph003_2() -> String:
   "VECTOR PH-003-2 admit_worker denied Identity.ForeignHost"
+
+def expected_ph003_3() -> String:
+  "VECTOR PH-003-3 admit_worker denied Identity.NotHolder"
 
 def expected_ph010_1() -> String:
   "VECTOR PH-010-1 revoke accepted slot=input;stopped=input"
@@ -691,11 +704,12 @@ def expected_ph009_4() -> String:
 def expected_lines() -> List<&2, String>:
   [expected_ph009_1(), expected_ph005_1(), expected_ph005_2(), expected_ph005_3(), expected_ph005_4(),
     expected_ph005_5(), expected_ph005_6(), expected_ph005_7(), expected_ph005_8(), expected_ph005_9(),
+    expected_ph005_10(), expected_ph005_11(),
     expected_ph002_1(), expected_ph002_2(), expected_ph002_3(),
-    expected_ph002_4(), expected_ph002_5(), expected_ph003_1(), expected_ph003_2(), expected_ph010_1(),
+    expected_ph002_4(), expected_ph002_5(), expected_ph003_1(), expected_ph003_2(), expected_ph003_3(), expected_ph010_1(),
     expected_ph009_2(), expected_ph010_2(), expected_ph010_3(), expected_ph010_4(), expected_ph010_5(),
     expected_ph010_6(), expected_ph009_3(), expected_ph004_1(), expected_ph004_2(), expected_ph004_3(),
     expected_ph009_4()]
 
 def expected_ph012_1() -> String:
-  "VECTOR PH-012-1 compare accepted vectors=29"
+  "VECTOR PH-012-1 compare accepted vectors=32"

@@ -141,9 +141,9 @@ obligations (section 2).
 ## Conformance vectors (task 1.4)
 
 Inputs and expected lines: [HostConformanceVectors.bend](../../HostConformanceVectors.bend).
-Runner: [HostConformanceTests.bend](../../HostConformanceTests.bend), 36 checks.
+Runner: [HostConformanceTests.bend](../../HostConformanceTests.bend), 39 checks.
 Captured lines: [portable-host-vectors.txt](../../verification/portable-host-vectors.txt)
-(30 lines). Every value is synthetic monitor state.
+(33 lines). Every value is synthetic monitor state.
 
 Each vector runs the real transitions from an empty identity table
 (`HostIdentity.empty`, then `open_session`, `issue`, `HostWire.decode_bytes` of
@@ -190,6 +190,8 @@ Frontend revision 2. Narrowed chain: `proxy` delegated from the root to session
 | PH-005-7 | sessions 1 to 5 (and A's preface); `issue` of the client's root on Frontend handle 2 (plan D) for `destination_plan` (destination object 21) | `issue denied PlanMismatch` | `PH-005-7 a root issued for destination E's plan on a plan-D Frontend handle is denied PlanMismatch with the state unchanged` |
 | PH-005-8 | HAND-BUILT: the same table with the root minted for plan E on handle 2 through `HostIdentity.mint` directly; then the decoded Delegate to the worker, admission, seal; publish with the plan-D fixture session | `publish denied PlanMismatch` | `PH-005-8 a sealed worker on an entry minted for plan E publishing plan D is denied PlanMismatch with the state, session, and ledger unchanged` |
 | PH-005-9 | narrowed chain (root, proxy, narrow, all plan D), admitted on `narrow`, sealed; publish with `destination_session` | `publish denied PlanMismatch` | `PH-005-9 a delegated child cannot publish a plan other than its parent's: denied PlanMismatch with the state, session, and ledger unchanged` |
+| PH-005-10 | sessions 1 to 5 (and A's preface); `issue` of the client's root on Frontend handle 2 (plan D) for `input_plan` (input object 11, same destination and invocation) | `issue denied PlanMismatch` | `PH-005-10 a root issued for a plan with a changed input object on handle 2 is denied PlanMismatch with the state unchanged` |
+| PH-005-11 | sessions 1 to 5 (and A's preface); `issue` of the client's root on Frontend handle 3, which `fixture_frontend_state` never opened | `issue denied PlanMismatch` | `PH-005-11 a root issued on a Frontend handle the monitor's Frontend state does not hold is denied PlanMismatch with the state unchanged` |
 | PH-002-1 | common chain to `input`; decoded Use of `input` on the worker session claiming subject 8 | `use accepted slot=input` | `PH-002-1 a Use claiming subject B on the worker session resolves to the owner's caller` |
 | PH-002-2 | the same Use with claim 0 | `use accepted slot=input` | `PH-002-2 the same Use with no claim resolves to the same entry and caller` |
 | PH-002-3 | the common chain admitted on the claiming Use (subject 8), sealed, published | `publish accepted invocation=99;input=input` | `PH-002-3 admission on the claiming Use publishes the same full intent as with no claim` |
@@ -197,6 +199,7 @@ Frontend revision 2. Narrowed chain: `proxy` delegated from the root to session
 | PH-002-5 | the same on session 5 (inherited) | `admit_worker denied Identity.InheritedEndpoint` | `PH-002-5 an inherited endpoint is denied InheritedEndpoint with the state unchanged` |
 | PH-003-1 | the same on the worker session (the client's root slot and generation) | `admit_worker denied Identity.NotHolder` | `PH-003-1 a slot guessed from another session is denied NotHolder with the state unchanged` |
 | PH-003-2 | decoded Use of `input` naming the other adapter's host, on the worker session | `admit_worker denied Identity.ForeignHost` | `PH-003-2 a reference naming the other adapter's host is denied ForeignHost with the state unchanged` |
+| PH-003-3 | delegated chain; decoded Use of the client's root on the proxy session (session 3: the client's subject and token, Authenticated, delegable), through `use` and `admit_worker` | `admit_worker denied Identity.NotHolder` | `PH-003-3 a proxy session with the client's subject and token presenting the client's root is denied NotHolder with the state unchanged` |
 | PH-010-1 | sealed common chain; revoke the slot `use` resolved for the worker's `input` | `revoke accepted slot=input;stopped=input` | `PH-010-1 revoking the resolved input before authorization stops its worker` |
 | PH-009-2 | after PH-010-1; publish | `publish denied Identity.Retired` | `PH-009-2 a publication after the revocation is denied Identity Retired with the state, session, and ledger unchanged` |
 | PH-010-2 | published common chain; revoke the slot `use` resolved for the client's root | `revoke accepted slot=root;stopped=input` | `PH-010-2 revoking the root after publication stops the worker and keeps the publication record` |
@@ -209,7 +212,7 @@ Frontend revision 2. Narrowed chain: `proxy` delegated from the root to session
 | PH-004-2 | after PH-004-1; the client bound again, the preface and root issued again; decoded Use of the root in the next incarnation | `use accepted slot=root` | `PH-004-2 after restart the reissued root has the old slot and generation in the next incarnation` |
 | PH-004-3 | the same state; decoded Use of the root in the prior incarnation (same slot and generation); `use` and `admit_worker` | `admit_worker denied Identity.StaleIncarnation` | `PH-004-3 the prior-incarnation reference to that slot is denied StaleIncarnation with the state unchanged` |
 | PH-009-4 | published common chain; reconcile invocation 99 with the BackplaneTests other artifact digest | `reconcile denied Substitution` | `PH-009-4 reconcile with a substituted digest is denied Substitution with the state unchanged` |
-| PH-012-1 | every vector above on adapters A and B | `compare accepted vectors=29` | `PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector` |
+| PH-012-1 | every vector above on adapters A and B | `compare accepted vectors=32` | `PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector` |
 
 Other checks: `PH-012 the two adapters differ in host, incarnation, slot allocation, and target report`;
 `PH-012 every vector's raw bytes decode through HostWire.decode_bytes on both adapters`;
@@ -222,9 +225,9 @@ Other checks: `PH-012 the two adapters differ in host, incarnation, slot allocat
 | --- | --- | --- |
 | PH-001 "One policy implementation across hosts" | PH-012-1, PH-009-1 | Two synthetic adapters of the same Bend interfaces; no native target replays these vectors yet (section 2). |
 | PH-002 "A client changes its claimed subject"; "A delegated endpoint hides its new holder" | PH-002-1 to PH-002-5 | Model decisions only; that a native binding reports the true session and origin is a host obligation. |
-| PH-003 "A guessed numeric handle"; "A reference crosses hosts" | PH-003-1, PH-003-2 | As above. |
+| PH-003 "A guessed numeric handle"; "A reference crosses hosts" | PH-003-1 to PH-003-3 | As above. PH-003-3 pins the holder ruling at the vector level: same subject and token is not holding. |
 | PH-004 "Handle reuse after restart" | PH-004-1 to PH-004-3 | "Conflicting live mappings" stays a HostIdentityTests hand-built case (it needs a state no transition builds). |
-| PH-005 "A transferred endpoint requests another bucket"; "A narrower proxy leaves an old handle alive"; exact plan binding | PH-005-1 to PH-005-9 | Exact plan binding is checked at both ends of the host layer (task 5 fix round 1): `issue` issues an entry only for the plan its Frontend handle carries (PH-005-7), and `publish` requires the identity entry's plan to equal the negotiated session's plan (step 4, PH-005-1, PH-005-2, PH-005-8, PH-005-9) and the committed intent's plan (step 7). The step 7 comparison is equal on every path while step 4 stands (DataOS commits the session's plan), so alone it is an equivalent mutant; with step 4 removed it still refuses PH-005-8. DataOS's and Backplane's own plan checks remain behind these. |
+| PH-005 "A transferred endpoint requests another bucket"; "A narrower proxy leaves an old handle alive"; exact plan binding | PH-005-1 to PH-005-11 | Exact plan binding is checked at both ends of the host layer (task 5 fix round 1): `issue` issues an entry only for the plan its Frontend handle carries, compared whole with `T.Plan.equal` (PH-005-7 destination, PH-005-10 input object, PH-005-11 a handle not held). The issue check trusts the monitor's Frontend state; publication re-binds independently. `issue` takes `frontend` as an argument with no revision or tie to the record publication later uses, so its check is defense in depth, not the binding of record. `publish` requires the identity entry's plan to equal the negotiated session's plan (step 4, PH-005-1, PH-005-2, PH-005-8, PH-005-9) and the committed intent's plan (step 7). The step 7 comparison is equal on every path while step 4 stands (DataOS commits the session's plan), so alone it is an equivalent mutant; with step 4 removed it still refuses PH-005-8. DataOS's and Backplane's own plan checks remain behind these. |
 | PH-009 "Revocation precedes authorization"; "Crash recovery repeats a publication attempt"; replay | PH-009-1 to PH-009-4, PH-010-3 | Durability of the record and the session/ledger is a host obligation. |
 | PH-010 "A device completes after teardown" | PH-010-1 to PH-010-6 | Native DMA/IO quiescence is a host obligation; the quiescence fact is a vector input. |
 | PH-012 "Two native adapters are compared" (decision part) | PH-012-1 | Decision half only. Both adapters are Bend fixtures, not native bindings; the native half (real adapters replaying these inputs) is section 2. |

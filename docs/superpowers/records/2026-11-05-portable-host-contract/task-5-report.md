@@ -396,3 +396,70 @@ Verification:
 Remaining notes: `issue`'s signature changed (one new parameter), a Task 4
 public interface; its only callers are this lane's test modules. The step 7
 check is defense in depth, reachable only if step 4 were removed.
+
+## Fix round 2
+
+Findings from `task-5-review.md` (Verdict 2), applied:
+
+- Important 1, PH-005-10: `issue` of the client's root on Frontend handle 2
+  (plan D) for `V.input_plan()` (input object 11, same destination and
+  invocation) is denied `issue denied PlanMismatch`, with the state unchanged
+  (`PT.denied` against the pre-issue state). `issue` already compares the whole
+  plan (`handle_carries` uses `T.Plan.equal`), so the implementation is
+  unchanged. The new vector fails mutant M4 (destination-only comparison).
+- Important 2, PH-003-3: on the delegated chain, the proxy session (session 3:
+  the client's subject and token, Authenticated, delegable) presents the
+  client's root. Both `use` and `admit_worker` are denied `Identity.NotHolder`
+  with the state unchanged
+  (`identity_denied(a, V.session_proxy(), use_of(a, V.Root{}, V.claim_none()), I.NotHolder{})`).
+  Line: `admit_worker denied Identity.NotHolder`.
+- Minor 3, PH-005-11: `issue` on Frontend handle 3, which
+  `fixture_frontend_state` never opened (`V.unopened_handle()`), is denied
+  `issue denied PlanMismatch` with the state unchanged.
+- Minor 4: `issue`'s comment no longer says "never a target value". It now
+  says nothing enforces that `frontend` is the monitor's own state, so the
+  issue check trusts the monitor's Frontend state and is defense in depth.
+  Publication re-binds independently (publish step 4, then DataOS against the
+  re-resolved handle). The traceability PH-005 requirement row says the same.
+  The `HostPrimitives.bend` change is to comments only: its diff has no
+  non-comment line.
+- Minor 5: the header in `HostConformanceTests.bend` now says no vector starts
+  from a hand-built state except PH-005-8, which is marked HAND-BUILT.
+- Minor 6: `bypass_reached` now also asserts `P.valid(bypassed_root(a))`.
+- Minor 7 (optional), per-adapter session ids: declined. The adapters already
+  differ in host, incarnation, foreign host, preface (which shifts every slot
+  number for A), reported controls, and mediated routes. Vector lines use
+  logical slot names, so a slot or id leak would already fail PH-012-1. Session
+  ids are monitor-assigned binding keys and never appear in a vector line, so
+  varying them would add fixture surface without a new discriminating
+  observation. The comparison's limits stay as documented.
+
+Mutation runs, made with the scratchpad harness `mutate_f2.py` on a copy of the
+tree. The harness runs `HostConformanceTests.bend` and prints adapter A's lines
+against an unmutated baseline. The conformance runner stops at its first
+failing check.
+
+| Mutant | First failing conformance check | Vector lines changed |
+| --- | --- | --- |
+| M4 `handle_carries` compares only the destination | `PH-005-10 ...` | PH-005-10 becomes `issue accepted` |
+| M1 `r_session` holder test replaced by caller identity (`caller_equal(session_caller, entry_owner)`) | `PH-009-1 ...` (the worker's caller is not the owner, so the baseline breaks first) | 19 lines, including PH-003-3, which becomes `denied DelegableSession` |
+| M1b `r_session` also accepts caller identity as holding | `PH-003-3 ...` (the only failing vector) | PH-003-3 becomes `admit_worker denied DelegableSession` |
+| M7 missing handle accepted in `handle_carries` | `PH-005-11 ...` | PH-005-11 becomes `issue accepted` |
+
+M1b is the targeted form of the reviewer's mutant. Only PH-003-3 kills it among
+the vectors. Earlier, M7 changed no vector line.
+
+Verification:
+- `bend Tests.bend` (JS), twice: exit 0, 1182 PASS each (782 plus 400 new
+  checks = 1182; fix round 2 adds 3), no FAIL, no duplicate PASS line. Last
+  line: `ALL LIBRARY TESTS PASSED`. `HostConformance: 39 checks passed, 33 vectors emitted`.
+- Native (`bend Tests.bend -o ...tests-native`, `+RTS --threads 4 --gpu off`):
+  build exit 0. The run gives 1182 PASS in the same order as JS and ends
+  `ALL LIBRARY TESTS PASSED`. This was CPU execution, not a GPU test.
+- `verification/portable-host-vectors.txt` was regenerated: 33 lines, SHA-256
+  `fb85d405c08e9ad46727ffe0d69bf9f7d5cc241281226d8c1740a4a9f094d30d`. It is
+  `cmp`-identical across JS run 1, JS run 2, and native. PH-012-1 reads
+  `compare accepted vectors=32`.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+  `--verdict` is unavailable (no Lean executable).
+- OpenSpec strict: `Totals: 44 passed, 0 failed (44 items)`.
