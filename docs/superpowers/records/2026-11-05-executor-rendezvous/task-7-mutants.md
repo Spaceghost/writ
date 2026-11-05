@@ -35,3 +35,38 @@ reaches the grant and is denied NoGrant), and S8 is killed.
 | S11 | select ranks every stored offer | killed | scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected |
 | S12 | projection non-current arm passes the raw lists | killed | scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty |
 | S13 | dispatch outer target match -> True | killed | scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches |
+
+## Fix round 1: commit_context
+
+The review's finding 1 adds `R.commit_context`, a new denial path in
+`Rendezvous.bend`: the commit projection is empty unless the selection is
+current, a dispatch of it is recorded for the reported worker session at the
+host's incarnation (`selection_dispatched_to`, `dispatch_is`), and the
+committing session follows its trial (`session_follows_selection`).
+
+Method: `scratchpad/executor-rendezvous-t7/t7_fix1_mutate.py`, the same
+scratch copy, with the full `RendezvousTests.bend` driver (the integration and
+scenario commit checks both run); the first failing check is recorded. The
+baseline runs all 223 checks with no FAIL. C1 to C3 are the review's M1 to M3.
+
+Result: 8 mutants, 8 killed, 0 equivalent. C7 (dropping the selection id
+comparison) and C8 (reading only the newest dispatch record) survived the
+first run, because every lifecycle's newest record was the current
+selection's. The integration check on the monitor-installed `dispatch_behind()`
+state (Dispatch{3, 57, 6} behind a record for selection 2 on worker 7) kills
+both; the scenario "commit under a reselected offer" (Dispatch{5, 57, 6} left
+by a retired selection, same worker) is the lifecycle case for C7.
+
+| Mutant | Mutation (Rendezvous.bend) | Result | First failing check |
+|---|---|---|---|
+| C1 | commit_context: dispatch conjunct -> True | killed | integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched |
+| C2 | commit_context: session_follows_selection conjunct -> True | killed | scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits |
+| C3 | commit_context delegates to negotiation_context (both conjuncts dropped) | killed | integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched |
+| C4 | commit_context: selection_current conjunct -> True | killed | integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation |
+| C5 | dispatch_is: drop the incarnation comparison | killed | scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits |
+| C6 | dispatch_is: drop the worker-session comparison | killed | integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected |
+| C7 | dispatch_is: drop the selection-id comparison | killed | integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected |
+| C8 | dispatch_is: first record only (tail never read) | killed | integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected |
+
+The 13 scenario mutants S1 to S13 above were rerun on the fix-round tree
+(scenarios-only driver): all 13 still killed, by the same first checks.

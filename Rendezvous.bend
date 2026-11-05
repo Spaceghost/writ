@@ -208,10 +208,17 @@ import ./HostPrimitives.bend as HP
 # revocation family does that); once the projection is empty, no new mount
 # opens and a Frontend use judged against the rebuilt registry is denied.
 #
+# Commit projection. `commit_context` is the context the host passes to
+# `Backplane.commit` and `DataOS.commit_from_capability`: `negotiation_context`
+# further gated on a dispatch of the current selection to the reported
+# worker session at the host's incarnation, and on the committing session
+# following the selection's trial. It must be rebuilt for every commit;
+# `negotiation_context` is never passed to a commit.
+#
 # Public entry points: `open`, `submit_offer`, `submit_approval`,
 # `withdraw_approval`, `select`, `abandon` (a monitor action),
 # `withdraw_offer`, `submit_evidence`, `dispatch`, the projections
-# `negotiation_context` and `provider_registry`, the read-only diagnostic
+# `negotiation_context`, `commit_context` and `provider_registry`, the read-only diagnostic
 # `ineligibility`, `valid`, the `Change.*` accessors and the state, snapshot
 # and record accessors. Every other def (`selection_current`,
 # `selected_provider_is`, `session_follows_selection` and
@@ -2140,8 +2147,9 @@ def current_context(current: Bool, +state: State, n_context: N.Context, +snapsho
       selected_context(selection(state), state, transfer, challenges, samples, budgets, snapshot)
 
 # Public entry point (ER-004, ER-005, ER-006): the Negotiation context the
-# host passes to `N.challenge`, `N.sample`, `N.approve`, `N.reserve` and
-# `N.start` (and so to Backplane) for this rendezvous. It keeps the supplied
+# host passes to `N.challenge`, `N.sample`, `N.approve`, `N.reserve`,
+# `N.start` and `dispatch` for this rendezvous (never to a commit, which
+# takes `commit_context`). It keeps the supplied
 # transfer context and budgets unchanged, so `N.reserve` still binds the
 # exact reader, quote and units, and it replaces the three authority lists
 # with ones rebuilt from the state and snapshot supplied now:
@@ -2473,6 +2481,49 @@ def registry_open(open: Bool, +selection: Selection, +snapshot: Snapshot) -> F.R
 def provider_registry(+state: State, +snapshot: Snapshot) -> F.Registry:
   registry_open(selection_current(state, snapshot) && selection_dispatched(selection(state), state),
     selection(state), snapshot)
+
+# Whether `dispatches` holds exactly Dispatch{id, incarnation, worker}.
+def dispatch_is(dispatches: Dispatches, +id: Nat, +incarnation: Nat, +worker: Nat) -> Bool:
+  match dispatches:
+    case NoDispatches{}:
+      False{}
+    case Dispatches{Dispatch{selection, at, session}, tail}:
+      (Nat.is_eq(selection, id) && Nat.is_eq(at, incarnation) && Nat.is_eq(session, worker))
+        || dispatch_is(tail, id, incarnation, worker)
+
+# Whether the stored selection is dispatched to `worker` in host incarnation
+# `incarnation`. False with no selection.
+def selection_dispatched_to(selection: Selection, +state: State, +incarnation: Nat, +worker: Nat) -> Bool:
+  match selection:
+    case NoSelection{}:
+      False{}
+    case Selection{id, _, _, _, _, _}:
+      dispatch_is(dispatched(state), id, incarnation, worker)
+
+# Public entry point (ER-001, ER-005, ER-006, ER-007): the Negotiation
+# context the host passes to `Backplane.commit` and
+# `DataOS.commit_from_capability` for this rendezvous. It is
+# `negotiation_context`, further gated, at this call, on a dispatch of the
+# current selection recorded as Dispatch{selection id, the incarnation of
+# `host`, `worker_session}` (the worker session the host reports the output
+# from) and on `session` following that selection's trial
+# (`session_follows_selection`). Otherwise approvals, challenges and samples
+# are empty, so `N.owners` denies and the commit returns the Running session
+# and the ledger unchanged: no commit rests on an undispatched selection, a
+# selection with no evidence, a session whose trial ran under a retired
+# selection, another worker session, or a session id of another host
+# incarnation. `host` (the monitor's current HostPrimitives state) and
+# `worker_session` are trusted host inputs: Bend checks that the reported
+# worker is the dispatched one, not that the host ran only that worker or
+# that the output came from it. `negotiation_context` stays the projection
+# for `N.challenge` to `N.start` and `dispatch` (N.start needs approvals
+# before a dispatch can exist); the host must never pass it to a commit, and
+# must rebuild `commit_context` from the current states for every commit.
+def commit_context(+state: State, +session: N.Session, +host: HP.State, +worker_session: Nat,
+    n_context: N.Context, +snapshot: Snapshot) -> N.Context:
+  current_context(selection_current(state, snapshot)
+    && selection_dispatched_to(selection(state), state, HI.incarnation(HP.identity(host)), worker_session)
+    && session_follows_selection(state, session), state, n_context, snapshot)
 
 # --- Structural validity -----------------------------------------------------
 

@@ -139,3 +139,76 @@ No count pin was touched. Not run: `--verdict`, the native, JS and GPU runs, and
 2. **Synthetic transfer policies.** `sc_policies()` replaces `two_context()`'s approved operation with one taking two inputs. Without it, `T.admit` denies `IT.plan_two()` `Source`. It is a monitor-state fixture, marked in the source; no module changed.
 3. **Scope beyond the touch list's Task 7 line.** The one-bullet edit to `docs/EXECUTOR-RENDEZVOUS.md` is a lane-created file. So are the two stale-name fixes in boxes 1.3 and 1.4, which are box edits that tasks.md allows. Both are within the plan's touch list, but outside Task 7's own create list.
 4. **Check count.** The brief estimated about 12 checks; there are 19, and the count is recorded, not pinned.
+
+## Fix round 1 (review: NEEDS_FIXES on the dispatch binding)
+
+Status: DONE. This round addresses all five review findings.
+
+### Finding 1 and finding 2: the commit is now bound to the dispatch, the worker session and the trial
+
+`Rendezvous.bend` gains a public entry point, `commit_context(state, session, host, worker_session, n_context, snapshot)`, together with its helpers `dispatch_is` and `selection_dispatched_to`. They sit after `provider_registry`, in definition order.
+
+- **What it is.** `commit_context` is `negotiation_context`, gated further at the same call. It requires:
+  - the selection is current;
+  - a dispatch of that selection is recorded as `Dispatch{id, HI.incarnation(HP.identity(host)), worker_session}`;
+  - `session_follows_selection(state, session)` holds.
+- **Why this form.** The review's preferred form is taken: it takes the host and the reporting worker session, so finding 2's worker binding is executed rather than reviewed-only.
+- **Comments.** The header now has a "Commit projection" paragraph and lists `commit_context` among the public entry points. `negotiation_context`'s own comment no longer says "and so to Backplane".
+- **What is unchanged.** `LAWS.bend`, `PROOF.bend` and `Tests.bend` are unchanged, and there are still 24 laws. The review asked for no law.
+
+Every commit call site in `RendezvousTests.bend` now uses `commit_context`:
+- in the `integration` section, `final_proj` and the Sampled-session commit;
+- in the scenarios, `sc_commit_with` (behind `sc_commit_on`) and `sc_b_commit`;
+- the partial-owner scenario. Its commit now runs after a withdrawal that follows dispatch, because before dispatch `commit_context` would deny for lack of a dispatch alone. The dispatch denial still uses the withdrawal made before dispatch. The label is updated.
+
+The scenario 3 label now names `commit_context` (finding 5).
+
+### New checks (7)
+
+1. "integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched" (review check a, facade twin)
+2. "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected"
+3. "scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched" (check a; it also covers the review's no-evidence case)
+4. "scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits" (check b)
+5. "scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits" (finding 2)
+6. "scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits" (optional check c, and finding 4: ER-007's "expiry before commit" is now executed)
+7. "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits"
+
+### Mutants
+
+There are 8 `commit_context` mutants, C1 to C8, and all 8 are killed (`task-7-mutants.md`).
+- C1 to C3 are the review's M1 (no dispatch), M2 (no trial binding) and M3 (delegates to `negotiation_context`).
+- C4 to C8 cover the currency conjunct and the `dispatch_is` comparisons and list walk.
+- C7 and C8 first survived, so checks 2 and 7 were added.
+- The 13 scenario mutants were rerun, and all are still killed by the same first checks.
+
+### Findings 3 and 4: records
+
+- **ER-001 row.** It now cites the new checks. It states that the binding to the dispatch, the reported worker session, the host incarnation and the trial session is executed. What remains reviewed-only: Bend does not see which worker produced the candidate. The host must run only the worker it admitted, report that worker's session truthfully, and pass `commit_context`, rebuilt for each commit, to every commit.
+- **ER-005 row.** It now cites the retired-trial commit check.
+- **ER-007 row.** It now cites "scenario commit after abandon or expiry" and the epoch integration check. Its boundary sentence separates what holds before dispatch from what holds after dispatch and before commit.
+- **The cross-cutting line, box 2.1 and the evidence file's "Not exercised" item** are reworded the same way.
+- **Box 1.5** now cites all 11 integration checks.
+- **The preface** names `commit_context`.
+- **Counts.** The evidence file has the new counts, the 24 scenario labels, the two integration labels and the mutation totals: 366 mutants, 351 killed, 15 equivalent.
+
+### Document
+
+`docs/EXECUTOR-RENDEZVOUS.md` changes in four places:
+- "The final commit still decides" now describes `commit_context`, what it denies and what still rests on the host;
+- two integration rows are added to its table;
+- the rebuild section covers `commit_context` for every commit and forbids passing `negotiation_context` to a commit;
+- the entry-point table and host precondition 6 are updated to match.
+
+### Commands and final lines
+
+- `bend Rendezvous.bend --check-only`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `bend RendezvousTests.bend`: `Rendezvous: 223 checks passed`.
+- `bend Tests.bend`:
+  - exit 0, 0 FAIL lines, last line `ALL LIBRARY TESTS PASSED`;
+  - 1651 PASS lines (1598 `PASS: ` plus 53 `PASS `), which is 1428 plus 223 = 1651, every label unique.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`, 24 laws.
+- Name check: every quoted test name in the traceability file and `tasks.md` matches a PASS label of the run.
+
+### Remaining concern
+
+`commit_context` trusts the `host` and `worker_session` it is given. Bend checks the reported session against the dispatch record, not the true origin of the output. This is stated as reviewed-only in ER-001.

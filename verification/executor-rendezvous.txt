@@ -2,10 +2,10 @@ Executor rendezvous evidence (change add-executor-rendezvous, task 2.1; task 2.2
 Bend version: bend 2.0.39 (from `bend version`)
 Host: Linux 7.2.9-1-MANJARO x86_64
 Date: 2026-11-05 (UTC)
-Lane: lane/executor-rendezvous, based on master 78449c9 (the lane's first commit, ea8144a, adds only records); the tree recorded here is the task 7 commit on top of c9be27a.
+Lane: lane/executor-rendezvous, based on master 78449c9 (the lane's first commit, ea8144a, adds only records); the tree recorded here is task 7's fix round 1 commit (on 182970d, the task 7 commit on c9be27a).
 Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1; commands run from the worktree root
 Execution: the default `bend <file>` check-and-run on the CPU. No device code ran; nothing here is GPU evidence, and a CPU run is not a GPU test.
-Scope: the Bend rendezvous model (Rendezvous.bend) and its tests (RendezvousTests.bend). The change is proposed; no host adapter, facade entry or acceptance scenario is implemented, and the path stays disabled.
+Scope: the Bend rendezvous model (Rendezvous.bend, including the commit projection commit_context added in task 7's fix round 1) and its tests (RendezvousTests.bend). The change is proposed; no host adapter, facade entry or acceptance scenario is implemented, and the path stays disabled.
 
 ## Commands and results
 
@@ -17,7 +17,7 @@ Use --verdict for mathematical validity.
 $ bend RendezvousTests.bend
 [exit status: 0; 0 FAIL lines]
 Last line:
-Rendezvous: 216 checks passed
+Rendezvous: 223 checks passed
 
 $ bend Tests.bend > tests.out
 [exit status: 0; 0 FAIL lines; tests.out is a scratch capture, not committed]
@@ -26,22 +26,23 @@ Negotiation: 26 checks passed
 Backplane: 40 checks passed
 Facade: 12 checks passed
 Issuance: 230 checks passed
-Rendezvous: 216 checks passed
+Rendezvous: 223 checks passed
 Last lines:
 Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
 ALL LIBRARY TESTS PASSED
 
 PASS lines, counting both forms the corpus prints:
 $ grep -cE '^PASS[: ]' tests.out
-1644
+1651
 $ grep -c '^PASS: ' tests.out
-1591
+1598
 $ grep -c '^PASS ' tests.out
 53
-Total: 1428 checks at master 78449c9 plus 216 new Rendezvous checks = 1644
-(1428 plus 216 = 1644). By task: offers 34, approvals 38, selection 45,
-trials 37, dispatch 34, integration 9 (Rendezvous 197 at task 6), and the 19
-scenario checks below (216). No other suite changed; every PASS label in the
+Total: 1428 checks at master 78449c9 plus 223 new Rendezvous checks = 1651
+(1428 plus 223 = 1651). By task: offers 34, approvals 38, selection 45,
+trials 37, dispatch 34, integration 9 (Rendezvous 197 at task 6); task 7
+adds the 24 scenario checks below and 2 integration checks on commit_context
+(223; 216 before its fix round 1). No other suite changed; every PASS label in the
 run is unique. Per the cross-lane ruling this lane changes no recorded count
 pin; the controller re-pins counts after the parallel lanes merge.
 
@@ -112,12 +113,13 @@ Task 3 (eligibility, selection): 80 mutants, 77 killed, 3 equivalent (S8, F2, R2
 Task 4 (trial binding): 88 mutants, 85 killed, 3 equivalent (P14, P18, T10).
 Task 5 (dispatch, invalidation): 53 mutants, 49 killed, 4 equivalent (G5, P5, K3, K4).
 Task 6 (final commit, integration driver): 11 mutants, 10 killed, 1 equivalent (B4, Backplane's T.admit Require, which output_policy makes redundant).
-Task 7 (scenarios, confirmatory; no new denial branch): 13 mutants, 13 killed, 0 equivalent.
-Total: 358 mutants, 343 killed, 15 equivalent, each equivalence argued in its
+Task 7 (scenarios, confirmatory sweep): 13 mutants, 13 killed, 0 equivalent; rerun after fix round 1, all 13 still killed.
+Task 7 fix round 1 (commit_context, the new branches): 8 mutants, 8 killed, 0 equivalent.
+Total: 366 mutants, 351 killed, 15 equivalent, each equivalence argued in its
 task's table and accepted on review (task 7's has none). Task 2.2 re-runs the
 full sweep on the final tree.
 
-## Scenario checks (RendezvousTests.bend section `scenarios`, 19 checks, all PASS)
+## Scenario checks (RendezvousTests.bend section `scenarios`, 24 checks, all PASS)
 
 Each walks one lifecycle from R.open through the public entry points of
 Issuance (submit_source, submit_write, register, revoke), Rendezvous
@@ -139,7 +141,7 @@ mediated_inventory, unedited) and the Backplane binding.
 
 PASS: scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5
 PASS: scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6
-PASS: scenario current authority: Backplane.commit on the dispatched selection's projection commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2
+PASS: scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2
 PASS: scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6
 PASS: scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected
 PASS: scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty
@@ -153,9 +155,14 @@ PASS: scenario unauthenticated provider: principal C submitting an offer under A
 PASS: scenario scope narrower than the plan: D's grant 15 covers only the one-source TF.plan(), so D's offer of the two-source plan on it, and its offer of TF.plan() itself, are denied ScopeMismatch, as is 101's approval of D for TF.plan(); A is selected
 PASS: scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B
 PASS: scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals
-PASS: scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval and Backplane.commit on the rebuilt projection rejects and spends no reservation
+PASS: scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval, and withdrawn after dispatch, Backplane.commit on the rebuilt commit_context rejects and spends no reservation
 PASS: scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches
 PASS: scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)
+PASS: scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched
+PASS: scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits
+PASS: scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits
+PASS: scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits
+PASS: scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits
 
 HostPrimitives leg (plan ruling): driven. A worker session whose caller
 subject is the provider is bound through the public HP.open_session from
@@ -165,8 +172,20 @@ HP.admit_worker (one DeliverInputs effect for the issued input) are accepted
 from provider_registry, and HP.issue finds no handle once revocation empties
 the projection.
 
+Commit projection (task 7 fix round 1). Every commit in the scenarios and
+the integration section is judged on R.commit_context: negotiation_context
+further gated on a dispatch of the current selection recorded for the
+reported worker session at the host's incarnation, and on the committing
+session following the selection's trial. The two integration checks it adds:
+
+PASS: integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched
+PASS: integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected
+
+Its 8 mutants (scratch copy scratchpad/executor-rendezvous-t7/mutant, the
+full RendezvousTests driver) are all killed; table in task-7-mutants.md.
+
 Mutation exercise (task 7, scratch copy scratchpad/executor-rendezvous-t7/mutant,
-a scenarios-only driver; Rendezvous.bend in the tree unchanged): 13 mutants of
+a scenarios-only driver; mutations only in the scratch copy): 13 mutants of
 gates the scenarios rely on, all killed by a scenario check (table in
 docs/superpowers/records/2026-11-05-executor-rendezvous/task-7-mutants.md).
 The offer provider-claim gate first survived, masked by the identity gate
@@ -193,11 +212,13 @@ behind it; a case under C's own identity with A's claim was added and kills it.
 - Settlement: the selected quote is not settled against the ledger hold; the
   quote is a ceiling, and exact-versus-ceiling semantics are pending
   Spaceghost (q18).
-- The binding of the final commit to the dispatch: Backplane.commit judges
-  the projection, which requires a current selection and its evidence but
-  not a recorded dispatch; the candidate names no worker. That the committed
-  output came from the dispatched worker is a host adapter obligation
-  (reviewed-only in the traceability).
+- That the committed output came from the reported worker: commit_context
+  binds the commit to the dispatch record (selection, host incarnation and
+  reported worker session) and to the selection's trial session, and that is
+  executed. Bend does not see which worker produced the candidate; the host
+  must run only the worker it admitted, report its session truthfully, and
+  pass commit_context, rebuilt, to every commit (reviewed-only in the
+  traceability).
 - Any native host: no Genode, Unikraft, Linux, Windows or rclone binding runs
   the rendezvous. The HostPrimitives leg is the Bend model only.
 - GPU: no device code ran; this CPU run is not a GPU test.

@@ -292,10 +292,26 @@ to that handle (`HostPrimitives.issue`) is left to the monitor (ruling).
 The rendezvous decides who may run the plan. It never widens what the commit
 path admits. The `integration` section of `RendezvousTests.bend` drives the
 unchanged `Backplane.commit` and `DataOS.commit_from_capability`. Their
-Backplane context carries `negotiation_context` rebuilt from a dispatched
-selection whose trial passed. Each denial below is the commit path's own
-check. Each denied commit returns the Running session and the ledger with
-its hold, so no reservation is spent.
+Backplane context carries `commit_context`, rebuilt for the commit. It is
+`negotiation_context` further gated on three things at that call: a dispatch
+of the current selection recorded as `Dispatch{selection, incarnation,
+worker_session}` for the worker session the host reports the output from, at
+the host's current incarnation; the committing Negotiation session following
+that selection's trial (`session_follows_selection`); and the selection
+still current. Otherwise its approval, challenge and sample lists are empty,
+`N.owners` denies, and the commit keeps the Running session and the ledger.
+So no commit rests on an undispatched selection, a selection with no
+evidence, a session whose trial ran under a retired selection, another
+worker session or a session id of another incarnation (the `integration`
+and `scenarios` checks "before dispatch", "with a retired trial", "from
+another worker", "under a reselected offer"). What still rests on the host
+is that the worker it reports is the one that ran and produced the
+candidate: Bend checks the reported worker session against the dispatch
+record, not the output's origin. `negotiation_context` stays the projection
+for `N.challenge` to `N.start` and `dispatch`, and the host must never pass
+it to a commit. Each denial below is the commit path's own check. Each
+denied commit returns the Running session and the ledger with its hold, so
+no reservation is spent.
 
 | Check (name prefix `integration`) | What denies |
 | --- | --- |
@@ -306,6 +322,8 @@ its hold, so no reservation is spent.
 | "the issuer's live stamp advanced to epoch 5 after dispatch ..." | the projection is empty, so `N.owners` denies |
 | "with the selection current and dispatched, an output carrying control label 3 does not fit the destination ..." | Backplane's destination fit on the combined output policy |
 | "with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42 ..." | `N.budget_live` |
+| "before dispatch, commit_context of A's evidenced selection 3 carries no approvals ..." | `commit_context` is empty without a recorded dispatch, so `N.owners` denies (Backplane and facade) |
+| "commit_context reads the whole dispatch list ..." | `commit_context` is empty for a worker session the dispatch record does not name |
 | "a sample is not a commit: before A's evidence is stored ..." | without stored evidence the passing sample is not projected, so `N.sample` denies; a Challenged session cannot approve; a Sampled session cannot commit |
 | "once object 10 withdraws A's approval, ..." | `N.approve` and `N.start` (owners) on the projection |
 
@@ -452,11 +470,13 @@ profile that `open_session` bound each worker under. Dispatch requires
   whose native-session mapping the adapter kept across a restart, is
   HostIdentity's restart obligation. Bend cannot detect it.
 
-### Rebuild per use: `negotiation_context` and `provider_registry`
+### Rebuild per use: `negotiation_context`, `commit_context` and `provider_registry`
 
-The host must rebuild both projections from the current rendezvous, issuer
-and transfer states for every use. That means every `N.*` call, every
-`Backplane.commit` or facade commit, and every Frontend mount, open or use.
+The host must rebuild all three projections from the current rendezvous,
+issuer and transfer states for every use. That means `negotiation_context`
+for every `N.*` call and dispatch, `commit_context` (never
+`negotiation_context`) for every `Backplane.commit` or facade commit, and
+`provider_registry` for every Frontend mount, open or use.
 It must never cache them, reuse them across uses, or accept them from a
 caller. It must open the worker's input only from `provider_registry`, never
 from the raw issuer registry.
@@ -499,7 +519,8 @@ transition's checks. This includes `selection_current`,
 | `withdraw_offer(state, expected_revision, from, id)` | The provider withdraws every record under its own offer id (ER-008 resolution). |
 | `submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot)` | Binds one trial to the current selection (ER-004, ER-005). |
 | `dispatch(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot)` | Records the one dispatch of the current selection to the selected provider's worker session (ER-001, ER-006, ER-007). |
-| `negotiation_context(state, n_context, snapshot)` | The projected Negotiation context, rebuilt for every use. |
+| `negotiation_context(state, n_context, snapshot)` | The projected Negotiation context for `N.challenge` to `N.start` and `dispatch`, rebuilt for every use. |
+| `commit_context(state, session, host, worker_session, n_context, snapshot)` | The Negotiation context for `Backplane.commit` and the facade commit: empty unless the current selection is dispatched to `worker_session` at the host's incarnation and `session` follows its trial. Rebuilt for every commit. |
 | `provider_registry(state, snapshot)` | The dispatched provider's Frontend registry, rebuilt for every use. |
 | `ineligibility(offer, state, snapshot)` | Read-only diagnostic: the first failing eligibility gate, or none. |
 | `valid(state)` | Structural validity only. It authenticates nothing. |
@@ -538,7 +559,9 @@ movement cost and no proximity input.
    constraint at `open`.
 5. Genuine Negotiation sessions and receipts, and a current, valid
    HostPrimitives state at the named revision.
-6. Per-use rebuilding of `negotiation_context` and `provider_registry`. The
+6. Per-use rebuilding of `negotiation_context`, `commit_context` and
+   `provider_registry`, with `commit_context` the only context passed to a
+   commit, reporting the worker session the output truly came from. The
    worker's input is opened only from `provider_registry`.
 7. Atomic, serialized, durable installation at `expected_revision`, with no
    rollback of `seen`, `retired`, withdrawal flags, evidence or dispatch

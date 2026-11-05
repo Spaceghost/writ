@@ -2155,9 +2155,10 @@ def dispatch() -> IO(Unit):
 # The rendezvous decides who may run the plan; it never widens what the
 # commit path admits. These checks drive the unchanged `Backplane.commit`
 # and `DataOS.commit_from_capability` with a Backplane context whose
-# Negotiation context is `negotiation_context` rebuilt at 110 from the
+# Negotiation context is `commit_context` rebuilt at 110 from the
 # dispatched state (selection 3 of A's offer, A's passing trial evidence
-# stored, Dispatch{3, 57, 6}), and with A's Running trial session (revision
+# stored, Dispatch{3, 57, 6}) for A's Running session reported from worker
+# session 6 on host 61 (incarnation 57), and with A's Running trial session (revision
 # 6, receipt 11) and the ledger holding its reservation (revision 1). The
 # Backplane binding, graph, candidate and principals are the BackplaneTests
 # fixtures; the facade descriptor and registry are the FacadeTests fixtures
@@ -2166,7 +2167,7 @@ def dispatch() -> IO(Unit):
 # and the ledger with its hold, so no reservation is spent.
 
 def final_proj(+raw: N.Context, +snapshot: R.Snapshot) -> N.Context:
-  R.negotiation_context(dispatched_t(), raw, snapshot)
+  R.commit_context(dispatched_t(), running_t(), host(), worker_a(), raw, snapshot)
 
 def final_context(+negotiation: N.Context) -> B.Context:
   BF.with_negotiation(BF.context(), negotiation)
@@ -2256,11 +2257,25 @@ def integration_commits() -> IO(Unit):
     Test.check(rendezvous_passed() && kept(final_commit_with(wide_output_context(), wide_output_candidate())), "integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation")
     Test.check(rendezvous_passed() && kept(final_commit(short_budget_context())) && kept(facade_commit(short_budget_context())), "integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation")
 
+# The commit context of A's evidenced but undispatched selection 3.
+def undispatched_context() -> B.Context:
+  final_context(R.commit_context(evidenced(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot()))
+
+def integration_dispatch() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Bool.not(R.selection_dispatched(R.selection(evidenced()), evidenced()))
+      && n_approvals_equal(approvals_of(R.commit_context(evidenced(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
+      && kept(final_commit(undispatched_context())) && kept(facade_commit(undispatched_context()))
+      && B.accepted(successful_facade()), "integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched")
+    Test.check(B.accepted(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot()))))
+      && kept(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), worker_b(), trial_raw(), trial_snapshot())))), "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected")
+
 def integration_samples() -> IO(Unit):
   do IO<Unit>:
     Test.check(N.Session.is(sampled_t(), N.Sampled{}) && Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
       && Bool.not(N.Step.accepted(N.approve(challenged_t(), 2n, proj1())))
-      && Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(), final_context(proj1())))), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
+      && Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(),
+        final_context(R.commit_context(dispatched_t(), sampled_t(), host(), worker_a(), trial_raw(), trial_snapshot()))))), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
     Test.check(Bool.not(N.Step.accepted(N.approve(sampled_t(), 3n, unapproved_proj())))
       && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, unapproved_proj(), ledger_t())))
       && N.Step.accepted(N.start(reserved_t(), 5n, proj1(), ledger_t())), "integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)")
@@ -2268,6 +2283,7 @@ def integration_samples() -> IO(Unit):
 def integration() -> IO(Unit):
   do IO<Unit>:
     integration_commits()
+    integration_dispatch()
     integration_samples()
 
 # --- Section 2.1: whole-lifecycle scenarios (scenarios) -----------------------
@@ -2494,9 +2510,17 @@ def sc_binding() -> B.Binding:
   B.Binding{two_request(), BF.graph(), BF.sink(), D.secret_untrusted(), D.secret_untrusted(), B.Storage{},
     BF.artifact()}
 
+# A commit of `session` with `ledger` on the commit context rebuilt from
+# `state` at `now` for the output reported from `worker` on `host`.
+def sc_commit_with(+session: N.Session, +ledger: L.State, +state: R.State, +host: HP.State, +worker: Nat,
+    +issuer: I.State, +now: Nat) -> B.CommitResult:
+  B.commit(session, 6n, 1n, ledger, BF.candidate(),
+    BF.with_binding(BF.with_negotiation(BF.context(),
+      R.commit_context(state, session, host, worker, sc_raw(issuer, now), sc_snap(issuer, now))), sc_binding()))
+
+# A's Running session reported from A's worker session 6 on host().
 def sc_commit_on(+state: R.State, +issuer: I.State, +now: Nat) -> B.CommitResult:
-  B.commit(sc_running(), 6n, 1n, sc_ledger(), BF.candidate(),
-    BF.with_binding(BF.with_negotiation(BF.context(), sc_proj(state, issuer, now)), sc_binding()))
+  sc_commit_with(sc_running(), sc_ledger(), state, host(), worker_a(), issuer, now)
 
 def sc_commit() -> B.CommitResult:
   sc_commit_on(sc_dispatched(), sc_issuer(), 110n)
@@ -2507,6 +2531,13 @@ def sc_kept(+result: B.CommitResult) -> Bool:
     && Nat.is_eq(N.Session.revision(B.session(result)), 6n)
     && Nat.is_eq(L.revision(B.ledger(result)), L.revision(sc_ledger()))
     && N.hold_live(B.ledger(result), sc_running(), 110n)
+
+# A rejected commit that keeps `session` at Running revision 6 and `ledger`.
+def sc_kept_with(+result: B.CommitResult, ledger: L.State, session: N.Session) -> Bool:
+  Bool.not(B.accepted(result)) && N.Session.is(B.session(result), N.Running{})
+    && Nat.is_eq(N.Session.revision(B.session(result)), 6n)
+    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(ledger))
+    && N.hold_live(B.ledger(result), session, 116n)
 
 # The committed write intent keeps the scenario plan and both origins.
 def sc_retained(result: B.CommitResult) -> Bool:
@@ -2585,7 +2616,7 @@ def scenario_current() -> IO(Unit):
       && dispatches_equal(R.dispatched(sc_dispatched()), R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_a()}, R.NoDispatches{}})
       && R.valid(sc_dispatched()), "scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6")
     Test.check(B.accepted(sc_commit()) && sc_retained(sc_commit()) && N.Session.is(B.session(sc_commit()), N.Committed{})
-      && Nat.is_eq(L.revision(B.ledger(sc_commit())), 2n), "scenario current authority: Backplane.commit on the dispatched selection's projection commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2")
+      && Nat.is_eq(L.revision(B.ledger(sc_commit())), 2n), "scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2")
     Test.check(single_token_is(sc_registry(), token_a()) && IT.plan_is(sc_checked(), sc_plan())
       && sc_accepted(sc_issue()) && sc_delivers(sc_admit(), sc_input()), "scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6")
 
@@ -2686,9 +2717,11 @@ def sc_b_running() -> N.Session:
 def sc_b_dispatch() -> R.Change:
   sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_b_running(), sc_issuer(), 116n)
 
+def sc_b_dispatched() -> R.State:
+  R.Change.state(sc_b_dispatch())
+
 def sc_b_commit() -> B.CommitResult:
-  B.commit(sc_b_running(), 6n, 1n, sc_b_ledger(), BF.candidate(),
-    BF.with_binding(BF.with_negotiation(BF.context(), sc_proj(R.Change.state(sc_b_dispatch()), sc_issuer(), 116n)), sc_binding()))
+  sc_commit_with(sc_b_running(), sc_b_ledger(), sc_b_dispatched(), host(), worker_b(), sc_issuer(), 116n)
 
 def sc_challenges_of(+context: N.Context) -> N.Challenges:
   match context:
@@ -2739,9 +2772,13 @@ def sc_raced_select() -> R.Change:
   sc_select_on(sc_approved(), sc_revoked(), 103n)
 
 # Partial owner agreement: after A's session starts, 104 withdraws its
-# approval of A for object 11 (id 2) at revision 8 (revision 9).
+# approval of A for object 11 (id 2), before dispatch at revision 8
+# (revision 9), or after dispatch at revision 9 (revision 10).
 def sc_partial() -> R.State:
   R.Change.state(R.withdraw_approval(sc_evidenced(), 8n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 110n)))
+
+def sc_partial_dispatched() -> R.State:
+  R.Change.state(R.withdraw_approval(sc_dispatched(), 9n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 110n)))
 
 # Whether `origin`'s approval of A at profile 1 for the plan counts at 110.
 def sc_origin_approved(+state: R.State, +origin: T.ObjectVersion) -> Bool:
@@ -2757,10 +2794,9 @@ def scenario_currency() -> IO(Unit):
       && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 125n), sc_evidenced(), R.Expired{})
       && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_issuer(), 125n)), N.NoApprovals{}), "scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals")
     Test.check(denied(sc_dispatch_on(sc_partial(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n), sc_partial(), R.MissingApproval{})
-      && sc_kept(B.commit(sc_running(), 6n, 1n, sc_ledger(), BF.candidate(),
-        BF.with_binding(BF.with_negotiation(BF.context(), sc_proj(sc_partial(), sc_issuer(), 110n)), sc_binding())))
+      && sc_kept(sc_commit_on(sc_partial_dispatched(), sc_issuer(), 110n))
       && sc_origin_approved(sc_partial(), TF.source_object()) && Bool.not(sc_origin_approved(sc_partial(), IT.second_source()))
-      && sc_origin_approved(sc_evidenced(), IT.second_source()), "scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval and Backplane.commit on the rebuilt projection rejects and spends no reservation")
+      && sc_origin_approved(sc_evidenced(), IT.second_source()), "scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval, and withdrawn after dispatch, Backplane.commit on the rebuilt commit_context rejects and spends no reservation")
 
 # Identical candidates: A and B offer the same plan, code, profile 1, quote
 # 40 and lifetime (until 125), differing only in identity, provider and
@@ -2794,6 +2830,59 @@ def scenario_targets() -> IO(Unit):
       && denied(sc_submit_on(sc_twin_selected(), provider_b(), sc_twin_b_evidence(), sc_challenged_on(sc_twin_selected(), sc_issuer(), 41n, 110n), sc_issuer(), 110n), sc_twin_selected(), R.NotSelected{})
       && denied(sc_dispatch_on(sc_twin_selected(), R.OfferId{202n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_twin_selected(), R.NotSelected{}), "scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)")
 
+# --- Scenarios: the commit is bound to the dispatch ---------------------------
+
+# The dispatched selection 5 abandoned by the monitor (revision 10).
+def sc_dispatched_abandoned() -> R.State:
+  R.Change.state(R.abandon(sc_dispatched(), 9n))
+
+# The same offer reselected: after abandoning dispatched selection 5, the
+# monitor selects again at 112 and A's {201, 1} is selection 6 (revision
+# 11). A's new trial runs at 116 on challenge 42 and sample 52 from the
+# reader's negotiation pinned at 100; selection 6 is then dispatched to the
+# same worker session 6 (revision 13).
+def sc_a_reselected() -> R.State:
+  R.Change.state(sc_select_on(sc_dispatched_abandoned(), sc_issuer(), 112n))
+
+def sc_a2_challenged() -> N.Session:
+  sc_challenged_on(sc_a_reselected(), sc_issuer(), 42n, 116n)
+
+def sc_a2_evidenced() -> R.State:
+  R.Change.state(sc_submit_on(sc_a_reselected(), provider_a(),
+    evidence_with(R.record_version(), 52n, provider_a(), R.OfferId{201n, 1n}, 42n, TF.code()), sc_a2_challenged(), sc_issuer(), 116n))
+
+def sc_a2_proj() -> N.Context:
+  sc_proj(sc_a2_evidenced(), sc_issuer(), 116n)
+
+def sc_a2_reservation() -> N.ReservationStep:
+  N.reserve(N.Step.session(N.approve(N.Step.session(N.sample(sc_a2_challenged(), 2n, 52n, sc_a2_proj())), 3n, sc_a2_proj())),
+    4n, 0n, 11n, sc_a2_proj(), NT.initial_ledger())
+
+def sc_a2_ledger() -> L.State:
+  N.ReservationStep.ledger(sc_a2_reservation())
+
+def sc_a2_running() -> N.Session:
+  N.Step.session(N.start(N.ReservationStep.session(sc_a2_reservation()), 5n, sc_a2_proj(), sc_a2_ledger()))
+
+def sc_a2_dispatched() -> R.State:
+  R.Change.state(sc_dispatch_on(sc_a2_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_a2_running(), sc_issuer(), 116n))
+
+def scenario_commit() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(sc_kept(sc_commit_on(sc_evidenced(), sc_issuer(), 110n)) && sc_kept(sc_commit_on(sc_selected(), sc_issuer(), 110n))
+      && B.accepted(sc_commit_on(sc_dispatched(), sc_issuer(), 110n)), "scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched")
+    Test.check(sc_kept(sc_commit_with(sc_running(), sc_ledger(), sc_b_dispatched(), host(), worker_b(), sc_issuer(), 116n))
+      && B.accepted(sc_b_commit()), "scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits")
+    Test.check(sc_kept(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), host(), worker_b(), sc_issuer(), 110n))
+      && sc_kept(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), restarted_host(), worker_a(), sc_issuer(), 110n))
+      && B.accepted(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), host(), worker_a(), sc_issuer(), 110n)), "scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits")
+    Test.check(sc_kept(sc_commit_on(sc_dispatched_abandoned(), sc_issuer(), 110n))
+      && sc_kept(sc_commit_on(sc_dispatched(), sc_issuer(), 125n)) && B.accepted(sc_commit_on(sc_dispatched(), sc_issuer(), 124n)), "scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits")
+    Test.check(selection_offer_is(R.selection(sc_a_reselected()), sc_offer_a()) && issued_is(R.Change.issued(sc_select_on(sc_dispatched_abandoned(), sc_issuer(), 112n)), 6n)
+      && N.Session.is(sc_a2_running(), N.Running{})
+      && sc_kept_with(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_evidenced(), host(), worker_a(), sc_issuer(), 116n), sc_a2_ledger(), sc_a2_running())
+      && B.accepted(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_dispatched(), host(), worker_a(), sc_issuer(), 116n)), "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits")
+
 def scenarios() -> IO(Unit):
   do IO<Unit>:
     scenario_current()
@@ -2803,6 +2892,7 @@ def scenarios() -> IO(Unit):
     scenario_identity()
     scenario_currency()
     scenario_targets()
+    scenario_commit()
 
 def main() -> IO(Unit):
   do IO<Unit>:
@@ -2813,4 +2903,4 @@ def main() -> IO(Unit):
     dispatch()
     integration()
     scenarios()
-    IO.print("Rendezvous: 216 checks passed")
+    IO.print("Rendezvous: 223 checks passed")

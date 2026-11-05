@@ -66,3 +66,9 @@
 2026-11-05T17:39:44Z	implementer	Tests.bend 1644 PASS (1428 plus 216) ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK (24 laws); traceability written (every quoted name checked against the run), tasks.md boxes 1.3/1.4 stale names fixed, box 1.5 cites all nine integration checks, preface reworded, box 2.1 checked; writing verification/executor-rendezvous.txt
 2026-11-05T17:42:17Z	implementer	evidence file, mutants table and report written; final rerun of check-only, Tests.bend and PROOF.bend before commit
 2026-11-05T17:42:52Z	implementer	final runs green (1644 PASS, ALL LIBRARY TESTS PASSED; ALL PROOFS CHECK); committing task 7
+2026-11-05T17:43:22Z	controller	task 7 reported; ruling: commit requires a recorded dispatch; reviewer dispatched
+2026-11-05T17:51:41Z	controller	review: commit path not bound to dispatch; fix round 1 dispatched (commit_context)
+2026-11-05T17:52:22Z	implementer	fix round 1 started: read task-7-review.md; adding R.commit_context (dispatch to the reporting worker session at the host incarnation, session_follows_selection), switching commit call sites, checks and mutants
+2026-11-05T17:54:05Z	implementer	commit_context added, call sites switched, 5 new checks (Rendezvous 221); running the commit_context mutation sweep and the full scenarios sweep
+2026-11-05T17:58:58Z	implementer	sweeps: commit_context 8 mutants killed (C7, C8 needed the whole-list integration check), scenarios 13 still killed; records updated; running check-only, Tests.bend, PROOF.bend
+2026-11-05T18:00:28Z	implementer	fix round 1 green: Tests.bend 1651 PASS ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK (24 laws); report and mutants table extended; committing
