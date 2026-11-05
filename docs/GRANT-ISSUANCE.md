@@ -40,7 +40,7 @@ host meets it today.
 Contracts and evidence:
 
 - Proposed contract: [grant-issuance spec](../openspec/changes/add-authenticated-grant-issuance/specs/grant-issuance/spec.md) (GI-001 to GI-008).
-- Traceability: [openspec/traceability/grant-issuance.md](../openspec/traceability/grant-issuance.md). Task 6 of this change creates it.
+- Traceability: [openspec/traceability/grant-issuance.md](../openspec/traceability/grant-issuance.md).
 - Host obligations this document depends on: [authority-boundary spec](../openspec/specs/authority-boundary/spec.md), in particular AB-006.
 
 ## Public entry points
@@ -283,6 +283,78 @@ markers on approvals, and `seen`.
   consumed approvals usable for a second registration, and readmits replayed
   serials. Pure revision checks are not rollback-resistant persistence
   (AB-006).
+
+## Remaining host preconditions
+
+A real host must meet every precondition below before the issuer's decisions
+mean what the requirements say. None is met today: no host runs issuance, and
+each is a host obligation, not something the Bend model can supply. Where a
+requirement applies, its words are quoted. The sections above say what Bend
+does with each input and what goes wrong if it is supplied wrongly.
+
+1. **Transport identity verification.** The `from: Principal` attached to
+   `submit_source`, `submit_write`, `revoke` and `derive`, and the principal
+   passed to `reads`, `writes` and `registry`, must be the transport-verified
+   identity of the caller (a Genode route subject, Linux peer credentials, a
+   Windows token SID), never a value the caller chose. GI-001 requires
+   "an authenticated authority for that source's read domain"; GI-004
+   requires binding a capability to "the authenticated subject". The
+   principal of each use must also be the identity presented as
+   `F.Caller.subject`. Bearer possession of a native capability, descriptor
+   or handle does not establish it.
+2. **Signature verification for approvals carried off-host.** An approval
+   that travels between hosts or out of band must have its cryptographic
+   signature verified, and the signer bound to the `from` the host attaches,
+   before submission. Bend verifies no signature; GI-001's "authenticated
+   authority" is otherwise only as strong as the host that attaches `from`.
+3. **Durable and serialized state.** Each accepted state must be installed
+   atomically at `expected_revision`, transitions serialized against the
+   current authoritative revision, and the result preserved across crashes.
+   GI-005: "atomically register a grant only while the snapshot and approvals
+   used for its validation remain current". AB-006: "serialize accepted model
+   transitions against current authoritative revisions and preserve their
+   replay state across crashes". Recovery must never restore an old epoch or
+   drop `seen`, the revocation flags or the consumed markers (rollback,
+   above). The proposed durable-publication change is where recoverable
+   persistence would come from; none exists for issuance.
+4. **Monitor-supplied directory, placements, live stamp, clock and tokens.**
+   The authority directory and placements must come from the monitor's
+   authoritative record; the live stamp and `now` from its epoch state and a
+   trusted clock, the same values the host passes as `T.Context.live`,
+   `T.Context.now` and `F.Live` for that use; and every `token` from a
+   cryptographically secure source, never from the caller. GI-003's "epoch
+   snapshot" and GI-007's "at or after their expiry boundary" are only as
+   good as these inputs.
+5. **Per-use projection rebuilding.** For every use the host must rebuild
+   `T.Context.reads`/`writes` and the `F.Registry` from the current installed
+   issuer state for that use's authenticated principal, and must not cache,
+   reuse, merge or accept caller-supplied projections. GI-008: "A registered
+   capability SHALL remain subject to current paired-grant and policy checks
+   whenever it is used." The issuer's placements and the context's source
+   and destination policy domains must come from the same monitor record.
+6. **Enablement and capability negotiation in a host adapter.** No DataOS
+   facade entry or host adapter exposes issuance. The design requires
+   "explicit capability negotiation" and says to "Keep the new path disabled
+   until its acceptance tests and host preconditions hold"; rollback "never
+   restores old authority epochs or forgets consumed receipts". A host
+   adapter must negotiate the issuance capability and record versions
+   explicitly, reject unknown versions, and stay disabled until native
+   acceptance tests show preconditions 1 to 5 on that host. Until then
+   `DataOS.commit_from_capability` stays the only host-facing commit.
+7. **Host-corpus rebaseline.** The host corpus gates are bound to recorded
+   evidence for the tree before issuance and still expect 782 checks:
+   `hosts/unikraft/scripts/check-corpus.sh` (`WRIT_CORPUS_PASS` default 782,
+   with its Linux reference capture
+   `verification/unikernel-corpus-linux-reference.txt`) and
+   `scripts/genode/writ_bend_tests/writ_bend_tests.run`
+   (`expected_pass 782`). The library suite on this tree has 1010 checks on
+   the JavaScript and native CPU backends. Those images must be rebuilt and
+   their gates and captures re-recorded against the new tree by a later
+   lane before any host run counts as evidence for it. The current-tree
+   count gates (`utils/nix/writ.nix`, `WRIT_CORE_EXPECTED` in the Genode
+   workflow, the `build-and-run.sh` message) and the README and
+   VERIFICATION counts are re-pinned once by the controller after the
+   parallel lanes merge.
 
 ## What this document does not claim
 

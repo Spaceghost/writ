@@ -418,6 +418,15 @@ def plan_code() -> T.Plan:
 def plan_kind() -> T.Plan:
   T.Plan{TF.stamp(), 99n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Copy{}, 2}
 
+# TF.plan() with source object 10 at version 5 instead of 4: same object id,
+# a different version of it, so only the manifest's source version differs.
+def plan_source_version() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, T.OCons{T.ObjectVersion{10n, 5n}, T.OEnd{}}, TF.destination_object(), TF.code(), T.Summarize{}, 2}
+
+# TF.plan() with output type 3 instead of 2.
+def plan_output_type() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, TF.source_manifest(), TF.destination_object(), TF.code(), T.Summarize{}, 3}
+
 # The same read redirected to destination 20v9.
 def plan_redirect() -> T.Plan:
   T.Plan{TF.stamp(), 99n, TF.source_manifest(), next_destination(), TF.code(), T.Summarize{}, 2}
@@ -607,6 +616,10 @@ def registration() -> IO(Unit):
       pair(good_source(), write_for(scope_with(plan_code(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in the eighth code word denied ScopeMismatch")
     Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_kind(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(plan_kind(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in operation kind denied ScopeMismatch")
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_source_version(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+      pair(good_source(), write_for(scope_with(plan_source_version(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in the source object's version denied ScopeMismatch")
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_output_type(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+      pair(good_source(), write_for(scope_with(plan_output_type(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in output type denied ScopeMismatch")
     Test.check(denied(I.register(pair(source_for(scope_with(plan_invocation(), subject()), 3, 200n), good_write()), 2n, good_request(), now(), token()),
       pair(source_for(scope_with(plan_invocation(), subject()), 3, 200n), good_write()), I.ScopeMismatch{}), "GI-003 source approval differing from the request scope only in invocation denied ScopeMismatch")
     Test.check(denied(I.register(both(), 2n, request(scope_with(TF.plan(), 8n), one(1n), 2n), now(), token()), both(), I.SubjectMismatch{}), "GI-004 recipient substitution: approvals for subject 7 and a request for subject 8 denied SubjectMismatch")
@@ -1474,4 +1487,4 @@ def main() -> IO(Unit):
     attenuation()
     integration()
     scenarios()
-    IO.print("Issuance: 224 checks passed")
+    IO.print("Issuance: 226 checks passed")

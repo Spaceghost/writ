@@ -1,4 +1,4 @@
-Authenticated grant issuance evidence (change add-authenticated-grant-issuance, task 2.1)
+Authenticated grant issuance evidence (change add-authenticated-grant-issuance, tasks 2.1 and 2.2)
 Bend version: bend 2.0.39 (from `bend version`)
 Host: Linux 7.2.9-1-MANJARO x86_64
 Date: 2026-11-05 (UTC)
@@ -17,28 +17,56 @@ $ bend Tests.bend > tests.out
 [exit status: 0; 0 FAIL lines; tests.out is a scratch capture, not committed]
 Output lines of the two suites this change adds to:
 Facade: 12 checks passed
-Issuance: 224 checks passed
+Issuance: 226 checks passed
 Last lines:
 Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
 ALL LIBRARY TESTS PASSED
 
 PASS lines, counting both forms the corpus prints:
 $ grep -cE '^PASS[: ]' tests.out
-1008
+1010
 $ grep -c '^PASS: ' tests.out
-955
+957
 $ grep -c '^PASS ' tests.out
 53
-Total: 782 checks before this change plus 224 Issuance checks plus 2 new Facade
-checks = 1008. Per the cross-lane ruling this lane changes no recorded count
+Total: 782 checks before this change plus 226 Issuance checks plus 2 new Facade
+checks = 1010 (782 plus 228 new checks). Task 6 recorded 1008 with 224 Issuance
+checks; task 2.2 added the two GI-003 checks listed below. Per the cross-lane ruling this lane changes no recorded count
 pin; the controller re-pins counts after the parallel lanes merge.
 
 $ bend PROOF.bend
 [exit status: 0]
 ALL PROOFS CHECK
 Use --verdict for mathematical validity.
-`--verdict` was not run: the Lean kernel toolchain is not available here, so
-the proofs are checked by ordinary `bend PROOF.bend` only, not kernel verified.
+One `bend PROOF.bend --verdict` attempt (task 2.2) exited 1 because no Lean
+toolchain is on PATH; it is appended verbatim to verification/kernel-verdict.txt.
+The proofs are checked by ordinary `bend PROOF.bend` only, not kernel verified.
+
+Task 2.2 full runs (recorded files, the same tree):
+$ bend Tests.bend -o ../writ-build/authenticated-grant-issuance/tests.js && node ../writ-build/authenticated-grant-issuance/tests.js > verification/tests-js.txt
+$ bend Tests.bend -o ../writ-build/authenticated-grant-issuance/tests-native && ../writ-build/authenticated-grant-issuance/tests-native +RTS --threads 4 --gpu off > verification/tests-native.txt
+The native run is a CPU run with `--gpu off`; it is not a GPU test.
+Both exit 0; each file has 1010 PASS lines (957 `PASS: ` + 53 `PASS `), 0 FAIL
+lines and the last line ALL LIBRARY TESTS PASSED. The two files are
+byte-identical (SHA-256 61743d04903fd4536c345b5b4b20878f940ff759e03a1e752f951e56ab86295a),
+and their 41 VECTOR lines equal master's.
+$ bend PROOF.bend > verification/proofs.txt          (ALL PROOFS CHECK)
+$ ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive > verification/openspec-validation.txt
+Totals: 44 passed, 0 failed (44 items)
+
+## GI-003 checks added in task 2.2 (IssuanceTests.bend section `registration`, both PASS)
+
+Task 6's review noted that a source-version-only and an output-type-only
+mismatch had no dedicated test. Each pairs the good source approval with a
+write approval whose scope differs from the request's only in that field.
+
+PASS: GI-003 approvals differing only in the source object's version denied ScopeMismatch
+PASS: GI-003 approvals differing only in output type denied ScopeMismatch
+
+Mutation exercise (scratch copies only; Transfer.bend in the tree is unchanged):
+comparing manifest object ids but not versions in `T.Plan.equal` fails the
+source-version check first; dropping the output-type comparison from
+`T.Plan.equal` fails the output-type check first.
 
 ## Scenario checks (IssuanceTests.bend section `scenarios`, 23 checks, all PASS)
 
@@ -92,5 +120,6 @@ PASS: GI-008 after the issuer revokes the write approval the rebuilt projections
 - Per-use projection rebuilding by a host: the tests rebuild projections at
   each use themselves; no host does.
 - Any native host: no Genode, Unikraft, Linux, Windows or rclone binding runs
-  issuance. The native-backend corpus run belongs to task 2.2.
+  issuance. The native-backend run above is the library corpus compiled
+  for the CPU, not a host binding.
 - GPU: no device code ran; this CPU run is not a GPU test.

@@ -163,6 +163,32 @@ can fall back to CPU execution; success does not establish the physical backend.
 6. `generation_bump_monotone`: the destroy bump strictly raises an object's
    generation. That no transition lowers a generation is not stated.
 
+The proposed authenticated-grant-issuance change (`Issuance.bend`, not wired to
+any host) adds six laws, checked by the same `bend PROOF.bend`:
+
+- `nat_eq_successor_false`: no natural number equals its successor under
+  `Nat.is_eq` (auxiliary; says nothing about issuance by itself).
+- `issuance_stale_revision_rejects`: a registration whose expected revision is
+  one past the state's never commits (GI-005). Successor revision only; it
+  does not claim the host installs atomically or serializes installs (AB-006).
+- `issuance_stale_registration_keeps_state`: that registration returns exactly
+  the supplied state. Successor revision only; state preservation on every
+  other denial is tested, not proved.
+- `issuance_stale_revocation_keeps_state`: the same for revocation. Successor
+  revision only; host serialization is not claimed.
+- `nat_le_add_successor_false`: a natural number plus a positive amount is
+  never at most the original under `Nat.is_le` (auxiliary).
+- `derived_lifetime_extension_rejects`: a derivation asking for a lifetime past
+  its parent's never commits and returns the supplied state (GI-006, lifetime
+  half). Rights attenuation is tested, not proved (U32 masks); scope and
+  subject cannot be expressed by a derivation; the per-use re-check of the
+  chain in `current` is tested.
+
+On the issuance tree `bend PROOF.bend` printed `ALL PROOFS CHECK`, and the one
+`bend PROOF.bend --verdict` attempt exited 1 with the same missing-`lean`
+error quoted below (see `verification/kernel-verdict.txt`). No Lean-kernel
+verdict exists for these laws either.
+
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
 dependency completeness, cryptographic authentication, the compiler, or the OS.
