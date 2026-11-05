@@ -12,3 +12,5 @@ Task 2: complete (review APPROVED both axes; four hardening notes carried to the
 Task 3: dispatched implementer
 Task 3: implementer DONE_WITH_CONCERNS (d2a29e5): all three paths validated on the device (solver 15 launches, labels 5/6000, transfers 5/1000; combined 20), device results equal to CPU and verified on the original inputs. Rulings: the SIZE 16 gate failures (process ends before the 200 ms presence poll) stay recorded as refused, not reworked; the ROUNDS argument is accepted; the combined-run per-path split is an inference and is labelled so. Reviewer dispatched.
 Task 3: review NEEDS_FIXES on both axes, text only (the transfer digest is not all-field; no denial control for labels/transfers stated; pre-commit capture and exit-status provenance). The central claim holds (54 hashes verified, nine records re-gated). Fix round 1 dispatched.
+Task 3: fix round 1 verified by the controller (text only; digest fields stated; Limits lines added); complete.
+Task 4: dispatched implementer

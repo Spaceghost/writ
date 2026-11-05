@@ -80,3 +80,4 @@
 2026-11-05T03:55:19Z	controller	review: text fixes to gpu-paths.txt; fix round 1 dispatched
 2026-11-05T03:55:42Z	implementer	fix round 1: transfer digest coverage stated, verifier-denial and pre-commit Limits added, exit-status sources named (text only, no rerun); committing
 2026-11-05T03:56:06Z	implementer	fix round 1: report digest wording, concern and fix-round section added; amended the fix-round commit (not pushed)
+2026-11-05T03:56:19Z	controller	task 3 complete; task 4 dispatched (parity cases)
