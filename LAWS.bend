@@ -16,6 +16,7 @@ import ./AuditEvent.bend as AuditEvent
 import ./Dlm.bend as Dlm
 import ./AuditQuery.bend as AuditQuery
 import ./AuditExport.bend as AuditExport
+import ./Rendezvous.bend as Rendezvous
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -506,3 +507,128 @@ law audit_export_outside_stream_unobservable:
   for +e: AuditEvent.Recorded
   for outside: {AuditQuery.in_stream(owner, e) == False{} : Bool}
   {AuditExport.export_log_view(state, owner, sink, AuditQuery.Stored.append(before, AuditQuery.Stored.cons(e, after))) == AuditExport.export_log_view(state, owner, sink, AuditQuery.Stored.append(before, after)) : AuditQuery.Views}
+# No natural number is strictly below itself under `Nat.is_lt`. Auxiliary
+# arithmetic fact for offer_order_irreflexive (the quote and serial clauses of
+# the ranking compare a value with itself); it says nothing about the
+# rendezvous by itself.
+law nat_lt_irreflexive:
+  for n: Nat
+  {Nat.is_lt(n, n) == False{} : Bool}
+
+# Every natural number equals itself under `Nat.is_eq`. Auxiliary arithmetic
+# fact for offer_order_irreflexive (the tie conditions of the ranking compare
+# a value with itself, and the strict clause behind each tie is reached only
+# through it); it says nothing about the rendezvous by itself.
+law nat_eq_reflexive:
+  for n: Nat
+  {Nat.is_eq(n, n) == True{} : Bool}
+
+# ER-003: the selection comparator is strict on its diagonal. For every offer
+# record, `Rendezvous.before(a, a)` is False, so no offer is ever ranked ahead
+# of an identical record. This rules out a `<=`-style comparator at any of its
+# three levels (quote, provider id, serial), which would make the winner among
+# records under one identity depend on list order. It does not prove
+# transitivity, totality on distinct identities, or that `best` returns the
+# minimum; order independence of the selection is tested (RendezvousTests,
+# section `selection`).
+law offer_order_irreflexive:
+  for a: Rendezvous.Offer
+  {Rendezvous.before(a, a) == False{} : Bool}
+
+# ER-002: eligibility precedes ranking. For every list of offers before it,
+# offer `o`, list after it, state and snapshot, if `o` is not `eligible` in
+# that state and snapshot then removing `o` leaves `eligible_offers`, the only
+# list `select` ranks, unchanged. So an ineligible offer, at any position and
+# whatever its quote, contributes nothing to ranking, and no price can
+# override a denial; in particular an offer whose grant was revoked after
+# submission drops out wherever it sits. It does not prove that `select`
+# ranks only `eligible_offers` (the structure of `select_checked` and the
+# tests show that), nor that the eligibility gates are the right ones.
+law rendezvous_ineligible_offer_dropped:
+  for before_list: Rendezvous.Offers
+  for o: Rendezvous.Offer
+  for rest: Rendezvous.Offers
+  for state: Rendezvous.State
+  for snapshot: Rendezvous.Snapshot
+  for ineligible: {Rendezvous.eligible(o, state, snapshot) == False{} : Bool}
+  {Rendezvous.eligible_offers(Rendezvous.Offers.append(before_list, Rendezvous.Offers{o, rest}), state, snapshot) == Rendezvous.eligible_offers(Rendezvous.Offers.append(before_list, rest), state, snapshot) : Rendezvous.Offers}
+
+# A selection whose expected revision is one past the state's revision is not
+# accepted and returns exactly the supplied state, for every state, Negotiation
+# session, expected session revision, Negotiation context and snapshot. This
+# is the race between ranking and a changed offer set: a selection ranked at
+# revision r cannot commit after any submission, withdrawal or abandonment has
+# moved the state, and the attempt stores no selection and allocates no id.
+# The proof pins `select`'s outer `revision_current` match and that its
+# Rejected branch carries the caller's state. It covers the successor
+# revision only (other stale revisions are denied by the same match and
+# shown by RendezvousTests), says nothing about the denial reason, and does
+# not claim that the host serializes installs.
+law rendezvous_stale_selection_keeps_state:
+  for state: Rendezvous.State
+  for session: Negotiation.Session
+  for expected_session: Nat
+  for n_context: Negotiation.Context
+  for snapshot: Rendezvous.Snapshot
+  {(Rendezvous.Change.accepted(Rendezvous.select(state, 1n+Rendezvous.revision(state), session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.select(state, 1n+Rendezvous.revision(state), session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+
+# ER-005: evidence belongs to the selected provider. For every state,
+# expected revision, authenticated principal `from`, evidence record,
+# Negotiation session, Negotiation context and snapshot, if `from` is not the
+# provider the stored selection names (`selected_provider_is` is False, which
+# includes there being no selection), `submit_evidence` is not accepted and
+# returns exactly the supplied state. So no principal other than the selected
+# provider can attach trial evidence to the selection, whatever evidence
+# record, provider claim, offer id, challenge or sample it presents, and the
+# attempt stores nothing and advances no revision. The proof pins
+# `submit_evidence`'s outer `selected_provider_is` match and that its
+# Rejected branch carries the caller's state. It does not cover substitutions
+# by the selected provider itself (another offer, challenge, sample, code or
+# a replay; RendezvousTests, section `trials`, covers those), the currency of
+# the selection, or the `negotiation_context` projection.
+law rendezvous_wrong_provider_evidence_rejects:
+  for state: Rendezvous.State
+  for expected_revision: Nat
+  for from: Issuance.Principal
+  for evidence: Rendezvous.Evidence
+  for session: Negotiation.Session
+  for n_context: Negotiation.Context
+  for snapshot: Rendezvous.Snapshot
+  for wrong: {Rendezvous.selected_provider_is(state, from) == False{} : Bool}
+  {(Rendezvous.Change.accepted(Rendezvous.submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+
+# ER-001, ER-007: only the selection's target is dispatched. For every state,
+# expected revision, offer identity, host state, expected host revision,
+# worker session, Negotiation
+# session, expected session revision, Negotiation context and snapshot, if
+# the offer, the worker session or its binding is not the stored selection's
+# dispatch target (`dispatch_target_selected` is False: no selection, another
+# offer identity, a worker session that is not exactly one non-delegable
+# session of the selected provider, or one bound under another profile),
+# `dispatch` is not accepted and returns exactly the supplied state. So no
+# dispatch can be recorded for a provider, offer or worker session that is
+# not the current selection's, whatever its approvals, evidence or price:
+# that covers a cheaper candidate substituted after selection and an
+# unselected provider alike, and the attempt records nothing and advances no
+# revision. The proof pins `dispatch`'s outer `dispatch_target_selected`
+# match and that its Rejected branch carries the caller's state. It does not
+# prove that an accepted dispatch is correct (the selection's currency, the
+# evidence, the trial binding and replay are the inner gates, which
+# RendezvousTests, section `dispatch`, covers), says nothing about the
+# denial reason, and does not claim that the host executes only recorded
+# dispatches. The hypothesis is evaluated on the supplied host state, whose
+# currency (`HostPrimitives.current` at the expected host revision) is an
+# inner gate; the law holds whether or not that host state is current.
+law rendezvous_unselected_dispatch_rejects:
+  for state: Rendezvous.State
+  for expected_revision: Nat
+  for offer: Rendezvous.OfferId
+  for host: HostPrimitives.State
+  for expected_host_revision: Nat
+  for worker_session: Nat
+  for session: Negotiation.Session
+  for expected_session: Nat
+  for n_context: Negotiation.Context
+  for snapshot: Rendezvous.Snapshot
+  for unselected: {Rendezvous.dispatch_target_selected(state, offer, host, worker_session) == False{} : Bool}
+  {(Rendezvous.Change.accepted(Rendezvous.dispatch(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.dispatch(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}

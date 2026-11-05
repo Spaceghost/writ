@@ -1,0 +1,23 @@
+# Task 6 mutation table (integration: samples never bypass the final commit)
+
+Scratch: the session scratchpad's `executor-rendezvous-t6/` (`run.py`, the runner; `mutants.txt`, the raw results). The runner copies every `.bend` file of the worktree into `executor-rendezvous-t6/mutant/`, replaces exactly one occurrence of the pattern in the named file, and runs a driver `IntegrationOnly.bend` that calls only `RendezvousTests.integration()`, so the first FAIL line is attributable to the integration section (Backplane, Transfer and Negotiation mutants would otherwise fail earlier sections or other suites first). The `e` variants also delete the provider-revoked check from the mutant copy, so that the epoch check is reached. The worktree was never mutated; `Backplane.bend`, `DataOS.bend`, `Transfer.bend` and `Negotiation.bend` are untouched in the tree.
+
+Result: 11 runs, 10 killed, 1 equivalent (B4). Every denial check of the section is killed by a mutant of the gate it names.
+
+| Id | Gate (file) | Mutation | Result | Killing test (first failure) |
+|---|---|---|---|---|
+| B1 | `Backplane.checks` `N.owners` Require (Backplane.bend) | Require -> True | killed | integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation |
+| B1e | as B1, provider-revoked check removed | Require -> True | killed | integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation |
+| R1 | `current_context` non-current arm (Rendezvous.bend) | keeps the raw approvals instead of NoApprovals | killed | integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation |
+| R1e | as R1, provider-revoked check removed | keeps the raw approvals | killed | integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation |
+| B2 | `Backplane.checks` `N.budget_live` Require (Backplane.bend) | Require -> True | killed | integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation |
+| B3 | `Backplane.commit_output` `output_fits` (Backplane.bend) | `True{} \|\| ...` | killed | integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation |
+| X1 | `Transfer.header` write-grant `require(Writes.permit ...)` (Transfer.bend) | `True{} \|\| Writes.permit(...)` | killed | integration with the selection current and dispatched, the reader's transfer write grant revoked: T.admit denies, Backplane and the facade reject and spend no reservation |
+| B4 | `Backplane.checks` `T.accepted(T.admit(...))` Require (Backplane.bend) | Require -> True | equivalent | See below. |
+| R2 | `selected_context` sample projection (Rendezvous.bend) | passes the raw samples | killed | integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples) |
+| N1 | `Negotiation.approve` owners conjunct (Negotiation.bend) | `&& True{}` | killed | integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one) |
+| N2 | `Negotiation.start` owners conjunct (Negotiation.bend) | `&& True{}` | killed | integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one) |
+
+## B4 (equivalent within Backplane)
+
+`Backplane.commit_found` computes `output_policy(T.admit(plan, transfer), ...)`, which is `Some` only on `T.Admitted`, and `commit_output` returns `Rejected` on `None` before it reads `all_checks`. So when `T.admit` denies, the commit is rejected whether or not the `T.accepted(T.admit(...))` Require is present: that Require is redundant with the output-policy derivation, and removing it alone cannot change any outcome. The write-revoked check is pinned instead by X1, which removes the write-grant check inside `T.admit` itself; the commit is then accepted and the check fails. This is a property of the unchanged Backplane, not of the rendezvous.

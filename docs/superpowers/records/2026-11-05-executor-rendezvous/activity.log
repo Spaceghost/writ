@@ -1,0 +1,104 @@
+2026-11-05T14:34:12Z	controller	lane created from master 78449c9
+2026-11-05T14:37:43Z	implementer	task 1 started: read brief, plan Global Constraints, Issuance, Negotiation, IssuanceTests fixtures
+2026-11-05T14:41:46Z	implementer	Rendezvous.bend and RendezvousTests.bend written; bend RendezvousTests.bend green at 27 checks; starting mutation sweep
+2026-11-05T14:44:43Z	implementer	mutation sweep: 14 gate and 20 helper mutants, all killed after two added checks (28 checks); registered suite in Tests.bend; running full suite and proofs
+2026-11-05T14:46:19Z	implementer	Tests.bend green (ALL LIBRARY TESTS PASSED, 1456 PASS = 1428 + 28), PROOF.bend ALL PROOFS CHECK (17 laws unchanged); box 1.1 checked; report and mutants written; committing
+2026-11-05T14:46:40Z	controller	task 1 reported; reviewer dispatched; scratch dirs per lane from now on
+2026-11-05T14:51:53Z	controller	review: fixture reuse let nine mutants survive; fix round 1 dispatched
+2026-11-05T14:52:18Z	implementer	fix round 1 started: read task-1-review.md (F1-F5)
+2026-11-05T14:54:14Z	implementer	fix round 1: six checks added (F1-F5), comments for F5 and zero quote; 48 mutants all killed; Tests.bend 1462 PASS, PROOF.bend ALL PROOFS CHECK; committing
+2026-11-05T14:54:55Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T14:55:58Z	controller	task 1 complete; task 2 dispatched (origin approvals)
+2026-11-05T14:56:36Z	implementer	task 2 started: read brief, task 1 records
+2026-11-05T15:02:55Z	implementer	approvals: submit_approval, withdraw_approval, origin_approved, origins_approved added; 34 new checks green (68); starting mutation sweep
+2026-11-05T15:05:21Z	implementer	mutation sweep 1: 54 mutants, 3 survived (H6, W7, W16); 2 checks added; rerunning
+2026-11-05T15:07:35Z	implementer	mutation sweep final: 58 mutants, 54 killed, 4 equivalent (claim vs from after the claim gate); Tests.bend 1498 PASS, PROOF.bend ALL PROOFS CHECK; report written; committing
+2026-11-05T15:08:06Z	controller	task 2 reported; reviewer dispatched
+2026-11-05T15:13:37Z	controller	review: four findings incl. unneeded-origin approvals; fix round 1 dispatched
+2026-11-05T15:13:37Z	implementer	fix round 1 started: read task-2-review.md (F1-F4)
+2026-11-05T15:15:35Z	implementer	fix round 1: F1 origin gate, F2 profile 3, F3 live stamp, F4 comment; 65 mutants (61 killed, 4 equivalent); Tests.bend 1500 PASS, PROOF.bend ALL PROOFS CHECK; committing
+2026-11-05T15:15:50Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T15:16:50Z	controller	task 2 complete; task 3 dispatched (eligibility and selection)
+2026-11-05T15:17:25Z	implementer	task 3 started: read brief, task 1-2 records
+2026-11-05T15:23:00Z	implementer	eligibility, ranking, select, abandon, withdraw_offer added; approval submission now denies StaleEpoch when the issuer's live stamp is not the request plan's (task 2 gap); writing selection tests
+2026-11-05T15:25:51Z	implementer	selection section: 43 new checks green (115); writing laws
+2026-11-05T15:28:44Z	implementer	laws added, PROOF.bend ALL PROOFS CHECK; Tests.bend 1543 PASS; mutation sweep started (72 mutants)
+2026-11-05T15:31:55Z	implementer	mutation sweep: 74 mutants, 72 killed, 2 equivalent (unreachable None arm; live stamp equals plan stamp on acceptance); comparator, filter and outer-match mutants also fail PROOF.bend; writing report
+2026-11-05T15:33:23Z	implementer	report and mutants written; box 1.2 checked; Rendezvous 115 checks, Tests.bend 1543 PASS, PROOF.bend ALL PROOFS CHECK at 22 laws; committing
+2026-11-05T15:33:50Z	controller	task 3 reported; reviewer dispatched
+2026-11-05T15:42:08Z	controller	review: two fixture collisions; fix round 1 dispatched
+2026-11-05T15:42:24Z	implementer	task 3 fix round 1 started: read task-3-review.md
+2026-11-05T15:43:52Z	implementer	fix round 1: Q1 and Q2 checks added (117), Q3 comments and Q4 wraps done (comment-only module diff); rerunning mutation pass
+2026-11-05T15:46:56Z	implementer	fix round 1: 80 mutants (77 killed, 3 equivalent: S8, F2, R2); Tests.bend 1545 PASS, PROOF.bend ALL PROOFS CHECK at 22 laws; committing
+2026-11-05T15:47:17Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T15:48:22Z	controller	task 3 complete; task 4 dispatched (trial binding)
+2026-11-05T15:48:55Z	implementer	task 4 started: read brief, plan constraints, task 1-3 records
+2026-11-05T16:00:34Z	implementer	selection_current, submit_evidence (outer selected_provider_is), negotiation_context added; law rendezvous_wrong_provider_evidence_rejects checks; trials section 34 checks green (151); starting mutation sweep
+2026-11-05T16:06:13Z	implementer	mutation sweep 1: 76 mutants, 72 killed, 4 survivors (C7 offer_stored, P16 covering approval); trial approvals fixture reordered (B's approval 128 stored first) and a B-only offers check added; header and tasks.md box 1.3 updated; final sweep running
+2026-11-05T16:09:47Z	implementer	final: 76 mutants, 73 killed, 3 equivalent (P14, P18, T10); Rendezvous 151 checks, Tests.bend 1579 PASS, PROOF.bend ALL PROOFS CHECK at 23 laws; report and mutants written; box 1.3 checked; committing
+2026-11-05T16:10:13Z	controller	task 4 reported; reviewer dispatched
+2026-11-05T16:20:19Z	controller	review: three projection gaps; fix round 1 dispatched
+2026-11-05T16:20:53Z	implementer	task 4 fix round 1 started: read task-4-review.md (S1-S3)
+2026-11-05T16:23:15Z	implementer	fix round 1: S1 session_follows_selection, S2 offer and provider keying plus valid binding, S3 same-offer reselection check, S4-S6 docs and names; 154 checks green; mutation sweep (88 mutants) running
+2026-11-05T16:25:07Z	implementer	fix round 1 done: 88 mutants (85 killed, 3 equivalent: P14, P18, T10); Rendezvous 154 checks, Tests.bend 1582 PASS, PROOF.bend ALL PROOFS CHECK at 23 laws; report section and Carried to Task 5 written; committing
+2026-11-05T16:25:28Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T16:27:23Z	controller	task 4 complete; task 5 dispatched (dispatch and invalidation)
+2026-11-05T16:34:26Z	implementer	task 5 started: read brief, plan constraints, task 4 report and re-review (carried WrongTrial gate, 1191 wrap), Rendezvous, HostIdentity, HostPrimitives, Issuance registry, laws
+2026-11-05T16:42:08Z	implementer	dispatch, target_gates/run_gates, provider_registry, law rendezvous_unselected_dispatch_rejects and 25 dispatch checks written; RendezvousTests 179 checks pass, PROOF.bend checks; starting mutation sweep in scratchpad executor-rendezvous-t5/
+2026-11-05T16:45:26Z	implementer	mutation sweep: 43 mutants, 41 killed, 2 equivalent (G5, P5); added kill checks for T6/T8 (worker_caller_is direct) and E1 (reselected same offer); running Tests.bend and PROOF.bend
+2026-11-05T16:48:15Z	implementer	verification green: Rendezvous 183 checks, Tests.bend 1611 PASS 0 FAIL (ALL LIBRARY TESTS PASSED), PROOF.bend ALL PROOFS CHECK at 24 laws; box 1.4 checked; task-5-report.md and task-5-mutants.md written; committing
+2026-11-05T16:48:51Z	controller	task 5 reported; required finding: gate dispatch on host validity and revision; reviewer dispatched
+2026-11-05T16:58:53Z	controller	review: host revision gate required plus four minors; fix round 1 dispatched
+2026-11-05T17:05:08Z	implementer	fix round 1 started: read task-5-review.md (S1 host currency ruled, S2 profile source, S3 incarnation, S4 caller token, S5 check name)
+2026-11-05T17:05:08Z	implementer	fix round 1 done: expected_host_revision + HP.current gate, Dispatch records incarnation, caller-token gate, p2 profile and subject-swap checks, S5 rename; 53 mutants (49 killed, 4 equivalent: G5, P5, K3, K4); Rendezvous 188 checks, Tests.bend 1616 PASS 0 FAIL, PROOF.bend ALL PROOFS CHECK at 24 laws; committing
+2026-11-05T17:05:30Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T17:07:57Z	controller	task 5 complete; task 6 dispatched (document, final-commit tests)
+2026-11-05T17:08:36Z	implementer	task 6 started: read brief, plan global constraints and task 6
+2026-11-05T17:14:07Z	implementer	integration section added (9 checks, Rendezvous 197); mutation sweep: 11 runs, 10 killed, B4 equivalent (output_policy re-derives T.admit); running Tests.bend and PROOF.bend
+2026-11-05T17:15:19Z	implementer	Tests.bend 1625 PASS ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK; writing docs/EXECUTOR-RENDEZVOUS.md
+2026-11-05T17:18:31Z	implementer	doc, mutants table and report written; box 1.5 checked; committing
+2026-11-05T17:19:14Z	controller	task 6 reported; reviewer dispatched
+2026-11-05T17:21:34Z	controller	task 6 review APPROVED; task 7 dispatched (scenarios, evidence, traceability)
+2026-11-05T17:25:09Z	implementer	task 7 started: read brief, plan constraints, task 1-6 records, Rendezvous and tests, spec deltas, grant-issuance shapes; probing a two-origin world (IT.plan_two) for the current-authority scenario
+2026-11-05T17:30:07Z	implementer	current-authority scenario green in scratch (two providers, two origins, IT.plan_two with an operation taking two inputs; Backplane.commit and the HostPrimitives leg issue/admit_worker accepted); writing revocation, replay, abandon and denial scenarios
+2026-11-05T17:33:58Z	implementer	19 scenario checks green in the worktree (Rendezvous 216); running a confirmatory scenarios-only mutation sweep in scratchpad/executor-rendezvous-t7/mutant (no new denial branch in Rendezvous.bend)
+2026-11-05T17:36:27Z	implementer	sweep: 13 mutants, 13 killed (S8 needed a C-identity/A-claim case, added); running Rendezvous --check-only, Tests.bend and PROOF.bend
+2026-11-05T17:39:44Z	implementer	Tests.bend 1644 PASS (1428 plus 216) ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK (24 laws); traceability written (every quoted name checked against the run), tasks.md boxes 1.3/1.4 stale names fixed, box 1.5 cites all nine integration checks, preface reworded, box 2.1 checked; writing verification/executor-rendezvous.txt
+2026-11-05T17:42:17Z	implementer	evidence file, mutants table and report written; final rerun of check-only, Tests.bend and PROOF.bend before commit
+2026-11-05T17:42:52Z	implementer	final runs green (1644 PASS, ALL LIBRARY TESTS PASSED; ALL PROOFS CHECK); committing task 7
+2026-11-05T17:43:22Z	controller	task 7 reported; ruling: commit requires a recorded dispatch; reviewer dispatched
+2026-11-05T17:51:41Z	controller	review: commit path not bound to dispatch; fix round 1 dispatched (commit_context)
+2026-11-05T17:52:22Z	implementer	fix round 1 started: read task-7-review.md; adding R.commit_context (dispatch to the reporting worker session at the host incarnation, session_follows_selection), switching commit call sites, checks and mutants
+2026-11-05T17:54:05Z	implementer	commit_context added, call sites switched, 5 new checks (Rendezvous 221); running the commit_context mutation sweep and the full scenarios sweep
+2026-11-05T17:58:58Z	implementer	sweeps: commit_context 8 mutants killed (C7, C8 needed the whole-list integration check), scenarios 13 still killed; records updated; running check-only, Tests.bend, PROOF.bend
+2026-11-05T18:00:28Z	implementer	fix round 1 green: Tests.bend 1651 PASS ALL LIBRARY TESTS PASSED, PROOF.bend ALL PROOFS CHECK (24 laws); report and mutants table extended; committing
+2026-11-05T18:00:50Z	controller	fix round 1 reported (commit_context); scoped re-review dispatched
+2026-11-05T18:04:05Z	controller	task 7 complete (R1 carried); task 8 dispatched (final verification)
+2026-11-05T18:05:35Z	implementer	task 8 started: read brief, plan constraints, task 7 records (R1); starting JS and native builds in ../writ-build/executor-rendezvous
+2026-11-05T18:06:05Z	implementer	R1 sentence added to the Rendezvous.bend header and commit_context comment (comment only; non-comment lines identical to 56f091b); native build started
+2026-11-05T18:06:46Z	implementer	JS 1651 PASS (Node == embedded, byte-identical), check-only and PROOF.bend ALL PROOFS CHECK (24 laws), --verdict refused (lean not found), OpenSpec strict run; native build still running
+2026-11-05T18:07:26Z	implementer	native CPU build and run done (--threads 4 --gpu off): 1651 PASS, byte-identical to JS (cmp); starting the final mutation sweep
+2026-11-05T18:07:32Z	implementer	native build FAILED: "Error: an arity over 247" (exit 1, 56 s); locating the def that exceeds the native arity limit
+2026-11-05T18:14:57Z	implementer	arity bisect: Rendezvous.bend builds natively alone; 21 of 35 RendezvousTests check groups fail; splitting a failing check's conjunction into named Bool defs builds (per-def frame limit); probing every check of the failing groups
+2026-11-05T18:16:21Z	implementer	heartbeat: per-check native probe running (16 parallel builds); R1 sentences and the host-preconditions section written meanwhile
+2026-11-05T18:20:29Z	implementer	probe (C emission, 2 min): 33 of 223 Rendezvous checks exceed the native arity limit; splitting their conjunctions into named Bool defs in a scratch copy
+2026-11-05T18:22:15Z	implementer	33 checks split into 180 conjunct defs (token-equal after inlining, labels unchanged); JS output byte-identical to the pre-split run; native build restarted
+2026-11-05T18:24:37Z	implementer	final mutation sweep started on the final tree (scratch scratchpad/executor-rendezvous-t8/mutant): 83 gate-condition mutants (every Gate in Rendezvous.bend) plus the 365 task 1-7 mutants, full RendezvousTests driver, PROOF.bend on survivors
+2026-11-05T18:25:02Z	implementer	heartbeat: native build (after the split) and mutation sweep running; tasks.md box 2.2 and preface written
+2026-11-05T18:34:50Z	implementer	native CPU build and run (+RTS --threads 4 --gpu off) green: 1651 PASS, byte-identical to Node; final sweep done: 448 mutants, 433 killed, 15 equivalent (the accepted ones plus two gate-level duplicates of T10 and G5)
+2026-11-05T18:37:37Z	implementer	report and mutation table written; box 2.2 checked; OpenSpec strict rerun 44 passed; committing task 8
+2026-11-05T18:38:35Z	controller	task 8 reported; task review and final review dispatched
+2026-11-05T18:41:34Z	controller	task 8 review: four record items, folded into the final round
+2026-11-05T18:53:20Z	controller	final review: two gaps closed in code by ruling; final fix round dispatched
+2026-11-05T18:56:18Z	implementer	final fix round started: read final-review.md and task-8-review.md; F1 open takes the monitor index and denies AlreadyOpen, F2 commit_context gains expected_host_revision and HP.current, F4 challenge_evidenced binds offer and provider
+2026-11-05T18:56:18Z	implementer	correction to the task 8 line "final sweep done: 448 mutants, 433 killed, 15 equivalent": the totals are 431 killed and 17 equivalent (15 survive, 2 do not build), as task-8-mutants.md records
+2026-11-05T19:41:25Z	implementer	F1/F2/F4 code and five checks in (Rendezvous 228); bend Tests.bend green; C emission clears the arity limit; native build started (ffr)
+2026-11-05T21:41:59Z	implementer	trial_follows extended (reselected same offer; kills t4-B2 after F4); JS 1656 PASS; native build restarted on the final .bend tree (sources hashed in ffr/sources-at-build.sha); full sweep starting
+2026-11-05T21:44:35Z	implementer	heartbeat: native build and full sweep running; document, traceability updated (F1 precondition 14, F2 precondition 6, F3, F4, F5)
+2026-11-05T21:52:42Z final fix round: t7f-C5 survived the first full sweep (HP.current now masks the restarted-host check); added integration check on a valid current incarnation-58 host; t5-O2 re-anchored to fresh; both killed
+2026-11-05T21:54:18Z final fix round: embedded and JS runs 1657 PASS 0 FAIL, identical; C emission clean (no arity error); native build started
+2026-11-05T21:58:28Z heartbeat: native build/run of the final tree still in progress
+2026-11-05T22:02:28Z heartbeat: native build/run of the final tree still in progress
+2026-11-05T22:03:22Z final fix round: native build exit 0 (8m23s), run exit 0 (11.4s), 1657 PASS 0 FAIL, byte-identical to Node (sha256 29f7b272...767e7fa9); PROOF.bend ALL PROOFS CHECK (24 laws, unchanged); --verdict refused (no lean); OpenSpec strict 44 passed; sweep 464 mutants, 447 killed, 17 equivalent
+2026-11-05T22:03:41Z	controller	Final fix round DONE (f2e4eb9): F1 AlreadyOpen in open, F2 HP.current gate in commit_context, F3-F5 and record minors; 1657 checks (229 Rendezvous), 24 laws, JS and native byte-identical, strict 44, 447/464 mutants killed. Scoped re-review dispatched.
+2026-11-05T22:06:47Z	reviewer	final re-review (f2e4eb9): ALL CLOSED (F1 F2 code, F3 F5 docs, F4 code, record items 1-4); 1657 PASS (229 Rendezvous), ALL PROOFS CHECK, 24 laws unchanged, strict 44; mutants M1 open gate -> True killed by F1 scenario one rendezvous per request (first check), M2 commit_context HP.current dropped killed by integration commit_context requires the current host state; also M3 M4 M5 killed; no new defect
