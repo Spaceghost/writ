@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 3 of 9: making and releasing a reservation</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
+</style>
+</head><body>
+<h1>Shim review 3 of 9: making and releasing a reservation</h1>
+<p>A qualifying <code>mmap</code> becomes a <em>reservation</em>: address space that is set aside but has no memory behind it yet. Genode terms: a <em>dataspace</em> is a piece of memory (or address space) that can be referenced by capability and attached into an address space. A <em>Region_map</em> is an address-space layout: a set of dataspaces attached at offsets. A region map can itself be exported as a dataspace (a "managed dataspace") and attached into another region map. An <em>Rm_connection</em> is a session to the RM service that creates such region maps. So <code>_reserve</code> asks the RM session for an empty region map of the requested size, attaches it into the component's own address space (<code>Env::rm()</code>), and records it in a fixed table of 32 slots. Nothing is populated, so no RAM is charged here. Read the table struct first (378-435), then <code>_reserve</code> and <code>_release</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:378-435</code>, <code>writ_mem.cc:916-1028</code></p>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
+<form method="post" action="/questions/q9/answer">
+<h2>Claim 1</h2>
+<p>Every refusal in <code>_reserve</code> sets <code>errno = ENOMEM</code>, undoes what it already built, and returns <code>MAP_FAILED</code>.</p>
+<pre><code>930	    if (len &gt; MAX_RESERVATION) { errno = ENOMEM; return MAP_FAILED; }
+931	
+932	    Reservation *r = nullptr;
+933	    for (Reservation &amp;cand : _res)
+934	        if (!cand.used) { r = &amp;cand; break; }
+935	    if (!r) { errno = ENOMEM; return MAP_FAILED; }</code></pre>
+<pre><code>946	    if (!_fault_handler_installed) { errno = ENOMEM; return MAP_FAILED; }
+947	
+948	    size_t const size = _page_round(len);
+949	    size_t const num_chunks = (size + CHUNK - 1) / CHUNK;
+950	    /* Unreachable after the bounds above; kept as defence in depth. */
+951	    if (size == 0 || num_chunks == 0) { errno = ENOMEM; return MAP_FAILED; }
+952	
+953	    Chunk *chunks = nullptr;
+954	    if (_heap-&gt;try_alloc(num_chunks*sizeof(Chunk)).convert&lt;bool&gt;(
+955	            [&amp;] (Memory::Allocation &amp;a) {
+956	                a.deallocate = false; chunks = (Chunk *)a.ptr; return true; },
+957	            [&amp;] (Alloc_error) { return false; }) == false) {
+958	        errno = ENOMEM; return MAP_FAILED; }
+959	    for (size_t i = 0; i &lt; num_chunks; i++) construct_at&lt;Chunk&gt;(&amp;chunks[i]);
+960	
+961	    if (!_rm_connection.constructed()) _rm_connection.construct(*_env);
+962	    Capability&lt;Region_map&gt; rm_cap = _rm_connection-&gt;create(size);
+963	    if (!rm_cap.valid()) {
+964	        _heap-&gt;free(chunks, num_chunks*sizeof(Chunk));
+965	        errno = ENOMEM; return MAP_FAILED;
+966	    }</code></pre>
+<pre><code>992	    if (!base) {
+993	        _rm_connection-&gt;destroy(rm_cap);
+994	        _heap-&gt;free(chunks, num_chunks*sizeof(Chunk));
+995	        errno = ENOMEM; return MAP_FAILED;
+996	    }</code></pre>
+<p><strong>What I see.</strong> Each refusal (too large, no slot, no fault handler, zero size, chunk table, region map, attach) returns <code>MAP_FAILED</code> with <code>ENOMEM</code>. Cleanup matches what was built: the chunk table is freed at 964 and 994, and the region map destroyed at 993. <code>ENOMEM</code> is how Linux reports exhausted address space, which the runtime already handles.</p>
+<p><strong>Recommendation: Confirmed</strong>, each exit is a refusal with matching cleanup.</p>
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 2</h2>
+<p>A hint is tried only when it is page-aligned; otherwise, or on failure, the shim attaches wherever the local region map allows. It does not refuse the call or pick an address for any other reason.</p>
+<pre><code>969	    /*
+970	     * Linux treats the address as a hint: try it, then let the local
+971	     * region map choose. The runtime compares the result with its hint
+972	     * and unmaps a misplaced reservation itself.
+973	     */
+974	    Region_map_client rm(rm_cap);
+975	    auto attach_at = [&amp;] (bool use_at, addr_t at) -&gt; addr_t {
+976	        return _env-&gt;rm().attach(rm.dataspace(), {
+977	            .size = 0, .offset = 0, .use_at = use_at, .at = at,
+978	            .executable = false, .writeable = true
+979	        }).convert&lt;addr_t&gt;(
+980	            [&amp;] (Env::Local_rm::Attachment &amp;a) {
+981	                a.deallocate = false; return addr_t(a.ptr); },
+982	            [&amp;] (Env::Local_rm::Error) { return addr_t(0); });
+983	    };
+984	    addr_t base = 0;
+985	    if (hint &amp;&amp; (addr_t(hint) &amp; (PAGE - 1)) == 0)
+986	        base = attach_at(true, addr_t(hint));
+987	    if (base) _reserved_at_hint++;
+988	    if (!base) {
+989	        base = attach_at(false, 0);
+990	        if (base) _reserved_elsewhere++;
+991	    }</code></pre>
+<p><strong>What I see.</strong> This is the one place the shim picks something the caller did not ask for: an address other than the hint (988-991). It is Linux <code>mmap</code> semantics without <code>MAP_FIXED</code>, and the comment at 969-973 says the runtime checks the result against its hint and unmaps a misplaced reservation itself, so the caller still decides. Mechanical, not policy.</p>
+<p><strong>Recommendation: Confirmed</strong>, the fallback is Linux's hint rule and the caller keeps the decision.</p>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 3</h2>
+<p>A qualifying request above <code>MAX_RESERVATION</code> (1 TiB), or with all 32 slots used, fails with <code>ENOMEM</code> before anything is created. The comment records that the 1 TiB bound also caps the runtime's <code>corpus_grow</code>.</p>
+<pre><code>916	static void *_reserve(void *hint, size_t len)
+917	{
+918	    /*
+919	     * Bound len before any rounding: a len above SIZE_MAX - 4095 would
+920	     * page-round to 0 and create an empty region map. 1 TiB is far above
+921	     * what any quota can populate (and base-linux's region map holds at
+922	     * most 4096 pieces, 8 GiB of 2 MiB chunks), so a larger request fails
+923	     * with ENOMEM exactly as an exhausted address space would. The Bend
+924	     * runtime's corpus_grow treats that as "cannot grow". The bound
+925	     * therefore also caps corpus_grow, which doubles the term heap in
+926	     * place by mapping a span as large as the current one at its end
+927	     * (requests up to 4 TiB): growth stops after the 1 TiB request, at a
+928	     * 2 TiB corpus, and the runtime then posts ERR_HEAP ("out of memory").
+929	     */
+930	    if (len &gt; MAX_RESERVATION) { errno = ENOMEM; return MAP_FAILED; }
+931	
+932	    Reservation *r = nullptr;
+933	    for (Reservation &amp;cand : _res)
+934	        if (!cand.used) { r = &amp;cand; break; }
+935	    if (!r) { errno = ENOMEM; return MAP_FAILED; }</code></pre>
+<p><strong>What I see.</strong> Both checks run before any allocation. The 1 TiB bound also prevents a length that would round to zero, and it stops <code>corpus_grow</code> at a 2 TiB corpus. The 32 slots cap lanes at about 30 (<code>INVENTORY.md:379-383</code>). These are fixed capacity bounds that read no Writ fact; they affect how far the runtime can grow, not who may do what.</p>
+<p><strong>Recommendation: Confirmed</strong>, the bounds sit before any allocation and are constants.</p>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 4</h2>
+<p><code>_release</code> detaches and frees every populated chunk, destroys the region map, frees the chunk table, and on base-linux clears the retry entries for this reservation's pages.</p>
+<pre><code>1004	static void _release(Reservation &amp;r)
+1005	{
+1006	    for (size_t i = 0; i &lt; r.num_chunks; i++)
+1007	        if (r.chunks[i].populated) {
+1008	            _detach_pieces(r, i);
+1009	            _pd-&gt;free_ram(r.chunks[i].ds);
+1010	        }
+1011	    /* Local_rm_session::destroy also detaches the region map locally */
+1012	    _env-&gt;rm().detach(r.base);
+1013	    _rm_connection-&gt;destroy(r.rm_cap);
+1014	    _heap-&gt;free(r.chunks, r.num_chunks*sizeof(Chunk));
+1015	
+1016	#if defined(WRIT_SHIM_FAULT_LINUX_SIGSEGV)
+1017	    /*
+1018	     * Forget benign-retry counts for pages of this reservation, so a later
+1019	     * reservation at the same addresses does not inherit them.
+1020	     */
+1021	    for (Retry &amp;e : _retries)
+1022	        if (e.count &amp;&amp; _overlaps(e.page, PAGE, r.base, r.size))
+1023	            e = { 0, 0 };
+1024	#endif
+1025	
+1026	    r = { };
+1027	    _released++;
+1028	}</code></pre>
+<p><strong>What I see.</strong> All four steps are present, in that order, and the slot is reset at 1026. Clearing the retry entries (1016-1024) means a later reservation at the same addresses starts with no retry history. Pure resource release.</p>
+<p><strong>Recommendation: Confirmed</strong>, every resource built in <code>_reserve</code> is returned.</p>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

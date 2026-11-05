@@ -1,0 +1,3 @@
+{"at":"2026-11-04T23:49:42Z","who":"controller","kind":"ask","fields":{"text":"Reading guide page 7 of 10: the host functions behind Genode.log, now, and sleep, the Timer route probe, and the fail-stop (exit 1) on a clock that goes backwards or freezes. The claim to weigh: these effects move bytes or read a clock, Bend decides what and when, and exit 1 is host failure handling. About 15 minutes."}}
+{"at":"2026-11-05T00:01:23.543Z","who":"josh","kind":null,"fields":{"c1":"confirmed","c2":"confirmed","c3":"confirmed","c4":"confirmed","text":""}}
+{"at":"2026-11-05T00:01:31Z","who":"controller","kind":"note","fields":{"text":"Page 7: all four claims confirmed. Page 8 is posted as q14 (channel sessions and identity), the page where the real GB-006 question sits."}}

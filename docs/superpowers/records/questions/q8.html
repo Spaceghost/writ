@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 2 of 9: the three libc replacements (mmap, munmap, mprotect)</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
+</style>
+</head><body>
+<h1>Shim review 2 of 9: the three libc replacements (mmap, munmap, mprotect)</h1>
+<p>These are the public POSIX entry points the Bend runtime calls. The program binary's definitions shadow libc's by ordinary symbol interposition (<code>INVENTORY.md:50-55</code>, "How the entry points win"). The shim takes over only one shape of request: an anonymous, private, read-write mapping of at least 1 GiB. That is how the Bend runtime reserves its 8 GiB term heap and its 2 GiB per-lane stacks. Everything else goes to libc unchanged. The question for this page: does any refusal here depend on who is asking or what the memory is for, or only on whether the shim can carry the request out exactly? The inventory's "Exported symbols" table (<code>INVENTORY.md:73-88</code>) states the behaviour you are checking.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:907-914</code>, <code>writ_mem.cc:1031-1137</code></p>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
+<form method="post" action="/questions/q8/answer">
+<h2>Claim 1</h2>
+<p><code>_qualifies</code> tests only the request's shape (length, prot, flags, fd, offset); a non-qualifying call is forwarded unchanged to libc.</p>
+<pre><code>907	static bool _qualifies(size_t len, int prot, int flags, int fd, ::off_t offset)
+908	{
+909	    return len &gt;= MIN_QUALIFYING
+910	        &amp;&amp; prot == (PROT_READ | PROT_WRITE)
+911	        &amp;&amp; (flags &amp; MAP_ANON) &amp;&amp; (flags &amp; MAP_PRIVATE)
+912	        &amp;&amp; !(flags &amp; (MAP_FIXED | MAP_SHARED))
+913	        &amp;&amp; fd == -1 &amp;&amp; offset == 0;
+914	}</code></pre>
+<pre><code>1041	extern "C" void *mmap(void *addr, ::size_t len, int prot, int flags,
+1042	                      int fd, ::off_t offset)
+1043	{
+1044	    if (!_env || !_libc_mmap) { errno = ENOSYS; return MAP_FAILED; }  /* before construct */
+1045	
+1046	    if (!_qualifies(len, prot, flags, fd, offset))
+1047	        return _libc_mmap(addr, len, prot, flags, fd, offset);
+1048	
+1049	    Mutex::Guard guard(_mutex());
+1050	    return _reserve(addr, len);
+1051	}</code></pre>
+<p><strong>What I see.</strong> The predicate reads its five arguments and nothing else: no caller identity, label, or Bend state is available to it. A non-qualifying call reaches <code>_libc_mmap</code> with the same arguments (1047). The 1 GiB threshold is a fixed shape test that separates the runtime's heap and stack reservations from ordinary allocations.</p>
+<p><strong>Recommendation: Confirmed</strong>, the filter reads only its arguments.</p>
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 2</h2>
+<p><code>munmap</code> releases only a whole reservation: an overlapping range that is not exactly the reservation is <code>EINVAL</code>, and a range overlapping no reservation goes to libc.</p>
+<pre><code>1053	extern "C" int munmap(void *addr, ::size_t len)
+1054	{
+1055	    if (!_env || !_libc_munmap) { errno = ENOSYS; return -1; }  /* before construct */
+1056	
+1057	    addr_t const a = addr_t(addr);
+1058	    {
+1059	        Mutex::Guard guard(_mutex());
+1060	        for (Reservation &amp;r : _res) {
+1061	            if (!r.used || !_overlaps(a, len, r.base, r.size)) continue;
+1062	            /* only the whole reservation can be unmapped */
+1063	            if (a != r.base || len == 0 || len &gt; r.size
+1064	             || _page_round(len) != r.size) {
+1065	                errno = EINVAL; return -1; }
+1066	            _release(r);
+1067	            return 0;
+1068	        }
+1069	    }
+1070	    return _libc_munmap(addr, len);
+1071	}</code></pre>
+<p><strong>What I see.</strong> The loop finds the first reservation the range overlaps; anything other than its exact base and page-rounded size is <code>EINVAL</code>. The refusal is "cannot do a partial unmap", since the shim has no way to split a region map, not a judgement about the caller.</p>
+<p><strong>Recommendation: Confirmed</strong>, the whole-reservation rule and the libc fallthrough are both visible.</p>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 3</h2>
+<p><code>mprotect</code> on a reservation either records a <code>PROT_NONE</code> guard or fails (<code>EINVAL</code>, <code>ENOTSUP</code>, <code>ENOMEM</code>); the one silent success is read-write on a range with no guard.</p>
+<pre><code>1087	    /*
+1088	     * Validate before any sum: len is bounded by the reservation size,
+1089	     * so the page-rounded n cannot wrap, and containment is tested as
+1090	     * off &lt;= size - n.
+1091	     */
+1092	    if ((a &amp; (PAGE - 1)) || len == 0 || len &gt; r-&gt;size || a &lt; r-&gt;base) {
+1093	        errno = EINVAL; return -1; }
+1094	    size_t const n   = _page_round(len);
+1095	    addr_t const off = a - r-&gt;base;
+1096	    if (n == 0 || n &gt; r-&gt;size || off &gt; r-&gt;size - n) {
+1097	        errno = EINVAL; return -1; }</code></pre>
+<pre><code>1105	    if (prot == (PROT_READ | PROT_WRITE)) {
+1106	        /* already readable and writeable unless a guard is involved;
+1107	         * lifting a guard is not supported */
+1108	        if (overlaps_guard()) { errno = ENOTSUP; return -1; }
+1109	        return 0;
+1110	    }
+1111	
+1112	    if (prot != PROT_NONE) { errno = ENOTSUP; return -1; }
+1113	    if (overlaps_guard())  { errno = ENOTSUP; return -1; }
+1114	    if (r-&gt;num_guards == MAX_GUARDS) { errno = ENOMEM; return -1; }
+1115	
+1116	    /* detach the pieces of each populated chunk the guard will split */
+1117	    size_t const first = off / CHUNK, last = (off + n - 1) / CHUNK;
+1118	    for (size_t i = first; i &lt;= last; i++)
+1119	        if (r-&gt;chunks[i].populated) _detach_pieces(*r, i);
+1120	
+1121	    r-&gt;guards[r-&gt;num_guards++] = { off, n };</code></pre>
+<p><strong>What I see.</strong> Validation comes before any arithmetic that could wrap. Read-write returns 0 only when no guard overlaps (1105-1110), because a reservation is already read-write; lifting a guard and any other protection are <code>ENOTSUP</code>, and a fifth guard is <code>ENOMEM</code> (the fixed table of 4). These are "cannot do this exactly" refusals, the same for every caller.</p>
+<p><strong>Recommendation: Confirmed</strong>, every branch either acts as asked or fails.</p>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 4</h2>
+<p>If re-attaching the pieces around a new guard fails, the guard stays recorded and the call returns <code>ENOMEM</code>; the shim never drops the guard to save the data.</p>
+<pre><code>1123	    /* re-attach the same dataspaces around the guard: data is kept */
+1124	    bool ok = true;
+1125	    for (size_t i = first; i &lt;= last; i++)
+1126	        if (r-&gt;chunks[i].populated &amp;&amp; _attach_pieces(*r, i)) ok = false;
+1127	
+1128	    if (!ok) {
+1129	        /*
+1130	         * The guard range itself is never a piece (it stays a PROT_NONE
+1131	         * reservation, see the header), so the guard holds; data outside
+1132	         * it may be unreachable.
+1133	         */
+1134	        errno = ENOMEM; return -1;
+1135	    }
+1136	    return 0;
+1137	}</code></pre>
+<p><strong>What I see.</strong> The guard was already added at 1121 and is not removed on the failure path. The trade-off is fail-closed: data outside the guard may become unreachable, but the guard range never carries a mapping. That is a fixed safety rule, not a choice made per request.</p>
+<p><strong>Recommendation: Confirmed</strong>, the failure path keeps the guard.</p>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

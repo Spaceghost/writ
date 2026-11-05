@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 8 of 9: the Writ channel service, sessions, and route identity</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
+</style>
+</head><body>
+<h1>Shim review 8 of 9: the Writ channel service, sessions, and route identity</h1>
+<p>When the component's config has a <code>&lt;writ_channel&gt;</code> node, the shim <em>announces</em> a service to its parent. Clients can then open <code>Writ_channel</code> sessions, which are routed by init. Each session gets two 4 KiB buckets (RAM dataspaces, one for requests, one for results) and a signal handler, all served on a dedicated entrypoint, <code>writ_channel</code>. The session interface (<code>writ_channel_session.h:72-75</code>) has four RPCs, and each only hands over a capability or registers one. The security-relevant step is at session creation. init prefixes every session label with the requesting child's name, so the client cannot forge that prefix. The shim looks the label up in the integrator's <code>&lt;policy&gt;</code> nodes and stores the matching <code>subject</code> number with the channel. Bend later maps that number to an identity (GB-007). Read the header 1289-1333 first. See <code>INVENTORY.md:177-200</code> and <code>:212-217</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:1289-1333</code>, <code>writ_mem.cc:1402-1476</code>, <code>writ_mem.cc:1521-1667</code></p>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
+<form method="post" action="/questions/q14/answer">
+<h2>Claim 1</h2>
+<p>The subject stored on a channel comes only from the integrator's config, matched against the parent-prefixed label: <code>_create_session</code> reads only the label and <code>ram_quota</code> from the client's arguments, and takes the subject from <code>_subject</code>.</p>
+<pre><code>1555	    Create_result _create_session(char const *args) override
+1556	    {
+1557	        Session_label const label = label_from_args(args);
+1558	
+1559	        size_t const ram = Arg_string::find_arg(args, "ram_quota").ulong_value(0);
+1560	        if (ram &lt; CHANNEL_SESSION_RAM) {
+1561	            warning("writ_channel: '", label, "' donated ", ram,
+1562	                    " bytes, a channel needs ", unsigned(CHANNEL_SESSION_RAM));
+1563	            return Create_error::INSUFFICIENT_RAM;
+1564	        }
+1565	
+1566	        /*
+1567	         * Caps need no check here: Local_service::budget_adjusted_args,
+1568	         * which Root_component calls before _create_session, already
+1569	         * refuses a cap_quota below Writ_channel::Session::CAP_QUOTA with
+1570	         * INSUFFICIENT_CAPS (repos/base/include/base/service.h:170-177),
+1571	         * and the args seen here are the adjusted ones.
+1572	         */
+1573	
+1574	        uint32_t const subject = _subject(label);
+1575	        if (!subject) {
+1576	            warning("writ_channel: no &lt;policy&gt; with a subject for '", label,
+1577	                    "', session denied");
+1578	            return Create_error::DENIED;
+1579	        }</code></pre>
+<p><strong>What I see.</strong> The client controls the label suffix and the quota it donates, nothing else that reaches this code. The cap check happens earlier, in <code>Root_component</code> (comment 1566-1572). The subject is computed by <code>_subject</code> from libc's read-only config view, and the session is denied when it is 0.</p>
+<p><strong>Recommendation: Confirmed</strong>, only the label and ram_quota are read from the arguments.</p>
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 2</h2>
+<p>A <code>&lt;default-policy&gt;</code>, a policy with only <code>label_suffix</code>, no match, or <code>subject="0"</code> all give subject 0, and subject 0 is <code>DENIED</code>.</p>
+<pre><code>1539	    uint32_t _subject(Session_label const &amp;label)
+1540	    {
+1541	        uint32_t subject = 0;
+1542	        _channel_libc_env-&gt;with_config([&amp;] (Node const &amp;config) {
+1543	            config.with_optional_sub_node("writ_channel", [&amp;] (Node const &amp;policies) {
+1544	                subject = with_matching_policy(label, policies,
+1545	                    [&amp;] (Node const &amp;policy) -&gt; uint32_t {
+1546	                        if (!policy.has_type("policy")) return 0;   /* &lt;default-policy&gt; */
+1547	                        if (!policy.has_attribute("label")
+1548	                         &amp;&amp; !policy.has_attribute("label_prefix"))
+1549	                            return 0;                               /* suffix-only */
+1550	                        return policy.attribute_value("subject", uint32_t(0)); },
+1551	                    [&amp;] () -&gt; uint32_t { return 0; }); }); });
+1552	        return subject;
+1553	    }</code></pre>
+<p><strong>What I see.</strong> The code does exactly this. It is also the file's strongest candidate for "policy": a security rule written in C++ decides which kinds of policy node may bind identity, and so who may hold a channel. My argument that it is admitted binding: it applies one fixed rule to every label, the integrator writes the subject, and it grants nothing, because every request on the channel is still accepted or denied by Bend. GB-007 requires the route identity to be one the client cannot choose, and excluding the client-chosen suffix is what makes that true.</p>
+<p><strong>Recommendation: Confirmed</strong>, the code matches; whether it is acceptable binding is your judgement, and I think it is.</p>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 3</h2>
+<p>Apart from claim 2, a session is refused only for capacity: <code>ram_quota</code> below <code>CHANNEL_SESSION_RAM</code>, or no free slot, where a closing slot stays taken until Bend has taken its close event.</p>
+<pre><code>1581	        unsigned slot = MAX_CHANNELS;
+1582	        uint32_t id   = 0;
+1583	        {
+1584	            Mutex::Guard guard(_channel_mutex());
+1585	            for (unsigned i = 0; i &lt; MAX_CHANNELS; i++)
+1586	                if (!_channels[i] &amp;&amp; !_channel_closing[i]) { slot = i; break; }
+1587	            if (slot &lt; MAX_CHANNELS) id = _channel_next_id++;
+1588	        }
+1589	        if (slot == MAX_CHANNELS) {
+1590	            warning("writ_channel: ", unsigned(MAX_CHANNELS),
+1591	                    " channels open or closing, session for '", label, "' denied");
+1592	            return Create_error::DENIED;
+1593	        }</code></pre>
+<pre><code>1610	    void _destroy_session(Channel &amp;c) override
+1611	    {
+1612	        bool queued_close = false;
+1613	        {
+1614	            Mutex::Guard guard(_channel_mutex());
+1615	            for (unsigned i = 0; i &lt; MAX_CHANNELS; i++)
+1616	                if (_channels[i] == &amp;c) {
+1617	                    _channels[i]        = nullptr;
+1618	                    _channel_closing[i] = c.id;
+1619	                }</code></pre>
+<p><strong>What I see.</strong> The quota check is at 1559-1564 (shown under claim 1). The slot search skips closing slots, and <code>_destroy_session</code> marks a slot closing rather than freeing it. <code>MAX_CHANNELS</code> (8) is a fixed capacity bound that keeps the ring from overflowing (static assert at 1430), so a ninth session is refused for capacity, not for who it is.</p>
+<p><strong>Recommendation: Confirmed</strong>, the only other refusals are capacity bounds.</p>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 4</h2>
+<p>The four RPC methods return the two bucket capabilities and the request signal, or store the client's result signal; none reads a bucket or decides anything.</p>
+<pre><code>1467	    Dataspace_capability request_bucket() override { return request_ds.cap(); }
+1468	    Dataspace_capability result_bucket()  override { return result_ds.cap(); }
+1469	    Signal_context_capability request_sigh() override { return request_handler; }
+1470	
+1471	    void result_sigh(Signal_context_capability cap) override
+1472	    {
+1473	        Mutex::Guard guard(_channel_mutex());
+1474	        client_sigh = cap;
+1475	    }</code></pre>
+<p><strong>What I see.</strong> Each method is one line, a capability handover or a store under the mutex. This matches the interface in <code>writ_channel_session.h:72-75</code> and GB-011.</p>
+<p><strong>Recommendation: Confirmed</strong>, the four methods only hand over capabilities.</p>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

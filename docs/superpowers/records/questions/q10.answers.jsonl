@@ -1,0 +1,3 @@
+{"at":"2026-11-04T23:32:13Z","who":"controller","kind":"ask","fields":{"text":"Reading guide page 4 of 10: charging a 2 MiB chunk from the PD, the quota margins, RM-session upgrades, and attaching pieces around guards. The claim to weigh: this is Genode quota accounting with fixed margins, never Writ budget accounting and never a resource request to the parent. Claim 2 carries a caveat about detaching never-attached pieces. About 20 minutes."}}
+{"at":"2026-11-04T23:32:57.522Z","who":"josh","kind":null,"fields":{"c1":"confirmed","c2":"confirmed","c3":"confirmed","c4":"confirmed","text":""}}
+{"at":"2026-11-04T23:33:06Z","who":"controller","kind":"note","fields":{"text":"Page 4: all four claims confirmed. Page 5 is posted as q11 (fault handling on base-linux)."}}

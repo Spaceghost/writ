@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 6 of 9: the base-hw region-map fault path and exit 139</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
+</style>
+</head><body>
+<h1>Shim review 6 of 9: the base-hw region-map fault path and exit 139</h1>
+<p>On base-hw (Genode's own kernel), core is the pager of every thread. When a thread touches part of a region map that has nothing attached, and a <em>fault handler</em> is registered on that region map, core halts the thread and sends a Genode signal instead of logging an error. A Genode <code>Signal_handler</code> is an object bound to an Entrypoint; when its signal arrives, the entrypoint's thread calls the handler method. Signals to one handler <em>coalesce</em>: several faults may arrive as one signal, which is why the handler drains every queued fault. The shim starts its own entrypoint, <code>writ_fault</code>, in <code>construct</code> before <code>main</code>. It registers one handler on every reservation's region map and on the PD's own address space, stack area, and linker area, so that faults outside every reservation (a null pointer, a thread's stack guard) also reach the shim and are refused. Unlike base-linux, a refusal here ends the component by asking the parent: <code>Parent::exit(139)</code>, where 139 = 128 + SIGSEGV. See <code>INVENTORY.md:275</code> (base-hw row) and the six limits at <code>:305-319</code>.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:95-151</code>, <code>writ_mem.cc:190-211</code>, <code>writ_mem.cc:778-900</code></p>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
+<form method="post" action="/questions/q12/answer">
+<h2>Claim 1</h2>
+<p>A fault in the PD's address space, stack area, or linker area is refused before the shim mutex is taken and is never resolved.</p>
+<pre><code>830	        for (Pd_area const &amp;area : _pd_areas) {
+831	            Region_map::Fault const f = Region_map_client(area.cap).fault();
+832	            if (f.type != Region_map::Fault::Type::NONE)
+833	                _refuse(area.why, f.addr);
+834	        }
+835	
+836	        Mutex::Guard guard(_mutex());</code></pre>
+<pre><code>884	    Pd_session &amp;pd = _env-&gt;pd();
+885	    _pd_areas[0] = { pd.address_space(), "outside every reservation" };
+886	    _pd_areas[1] = { pd.stack_area(),    "stack area, offset in the area" };
+887	    _pd_areas[2] = { pd.linker_area(),   "linker area, offset in the area" };
+888	    for (Pd_area const &amp;area : _pd_areas)
+889	        Region_map_client(area.cap).fault_handler(_rm_fault_handler-&gt;sigh);
+890	    _fault_handler_installed = true;</code></pre>
+<p><strong>What I see.</strong> The loop over <code>_pd_areas</code> runs before the <code>Mutex::Guard</code> at 836, and every non-NONE fault there goes straight to <code>_refuse</code>. The areas are registered once in construct (884-889). Taking the refusal before the mutex means a thread that faults while holding the mutex still gets a recorded exit. Mechanical: no fault in those areas can be resolved by this unit.</p>
+<p><strong>Recommendation: Confirmed</strong>, the area loop precedes the mutex and only refuses.</p>
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 2</h2>
+<p>For each live reservation the handler drains <code>fault()</code> until <code>Type::NONE</code>, sends each fault through <code>_resolve_fault</code>, and refuses (does not retry) a reflected fault on a populated chunk.</p>
+<pre><code>836	        Mutex::Guard guard(_mutex());
+837	
+838	        for (Reservation &amp;r : _res) {
+839	            if (!r.used) continue;
+840	            Region_map_client rm(r.rm_cap);
+841	            for (;;) {
+842	                Region_map::Fault const f = rm.fault();
+843	                if (f.type == Region_map::Fault::Type::NONE) break;
+844	
+845	                addr_t const off = f.addr;   /* relative to the region map */
+846	                bool populated = false;
+847	                if (char const *why = _resolve_fault(r, off, populated))
+848	                    _refuse(why, r.base + off);
+849	                if (populated)
+850	                    _refuse("populated chunk, fault reflected", r.base + off);
+851	            }
+852	        }
+853	    }</code></pre>
+<pre><code>143	 *   Retry table: not used on base-hw. On base-linux a fault on a populated
+144	 * chunk is the benign result of a race and the access is retried by
+145	 * returning from the signal handler; on base-hw core resolves a touch of
+146	 * an attached range itself and never reflects it, and the attach that
+147	 * populated or re-pieced a chunk has already woken every faulter in its
+148	 * range. A reflected fault that still names a populated chunk outside
+149	 * every guard (for example an execute or write access that the
+150	 * attachment's rights refuse, region_map_component.h:465-473) therefore
+151	 * cannot be resolved by this unit, and is refused like a guard touch.</code></pre>
+<p><strong>What I see.</strong> The drain is needed because signals coalesce. Refusing a populated-chunk fault (849-850) looks like a choice but is not: on base-hw core resolves touches of attached ranges itself, so a fault that is still reflected cannot be fixed here (143-151). The base-linux retry table is not compiled on this path (505-520).</p>
+<p><strong>Recommendation: Confirmed</strong>, the loop and the refusal match the header's reasoning.</p>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 3</h2>
+<p><code>_refuse</code> logs the counters and the reason through the LOG session, calls <code>Parent::exit(139)</code>, and sleeps; it never wakes the faulting thread.</p>
+<pre><code>786	/* Logs the refusal and ends the component through the parent; the
+787	 * faulting thread stays halted in core and is never resumed. */
+788	[[noreturn]] static void _refuse(char const *why, addr_t a)
+789	{
+790	    log("writ_mem: [refusal] rm upgrades sent=", _rm_upgrades_sent,
+791	        " declined=", _rm_upgrades_declined);
+792	    log("writ_mem: unresolved fault at ", Hex(a), " (", why,
+793	        "), component terminates");
+794	    _env-&gt;parent().exit(REFUSED_FAULT_EXIT);
+795	    sleep_forever();
+796	}</code></pre>
+<pre><code>299	#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+300	enum : int { REFUSED_FAULT_EXIT = 139 };  /* 128 + SIGSEGV, see the header */</code></pre>
+<p><strong>What I see.</strong> The function is as stated and <code>[[noreturn]]</code>. Exit value 139 is a reporting convention (128 + SIGSEGV) and changes no outcome, since the component ends either way. Its weakness is evidential: init records an exit value, not a fault, so only the shim's own line distinguishes it from a voluntary exit 139 (header 207-211, <code>INVENTORY.md:305-319</code>). That is a GB-003 evidence limit, not a GB-006 decision; on base-linux there is no exit value at all, since Linux kills the process and init logs nothing.</p>
+<p><strong>Recommendation: Confirmed</strong>, the refusal ends the component and wakes nothing.</p>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 4</h2>
+<p>No reservation can exist without the handler: it is registered on each new region map before <code>_reserve</code> returns, <code>writ_fault</code> is started in construct, and <code>_reserve</code> refuses if the handler was never installed.</p>
+<pre><code>893	/* Registers the handler on a new reservation's region map before its
+894	 * first touch can happen (the reservation is not yet returned). */
+895	static void _watch_faults(Capability&lt;Region_map&gt; rm_cap)
+896	{
+897	    Region_map_client(rm_cap).fault_handler(_rm_fault_handler-&gt;sigh);
+898	}</code></pre>
+<pre><code>941	    /*
+942	     * On base-hw construct has started the "writ_fault" entrypoint before
+943	     * main; it is never constructed here, from libc's context. Without it
+944	     * no reservation is made.
+945	     */
+946	    if (!_fault_handler_installed) { errno = ENOMEM; return MAP_FAILED; }</code></pre>
+<pre><code>1902	#if defined(WRIT_SHIM_FAULT_REGION_MAP)
+1903	    /* the "writ_fault" entrypoint (header, "Fault delivery", case 2) */
+1904	    _install_fault_handler();
+1905	#endif</code></pre>
+<p><strong>What I see.</strong> <code>_watch_faults</code> is called at 967, after the region map is created and before it is attached or returned. On base-hw <code>_fault_handler_installed</code> is set only by <code>_install_fault_handler</code> (890), which construct calls before <code>main</code>. The ENOMEM at 946 is a fail-closed precondition, not a choice.</p>
+<p><strong>Recommendation: Confirmed</strong>, registration precedes first use on every path.</p>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>

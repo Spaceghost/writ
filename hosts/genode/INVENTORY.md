@@ -724,5 +724,21 @@ exercised; no run here showed an `EFAULT`.
 
 ## Reviewer
 
-Not reviewed under GB-006. Lane reviews are recorded in the SDD ledger; the
-GB-006 reviewer and reviewed sha256 are to be named at task 2.2.
+Reviewed under GB-006 by Josh Adams on 2026-11-04/05, file sha256
+`9d9d32d2402bd947c96a4632ae945c6825d1291a3ce97e5ac45b7d0349f71b5d`
+(the hash above), verdict "no policy decision found".
+
+Method: a guided review on the dev board (questions q7 to q16,
+`docs/superpowers/records/questions/`, answers in the `.answers.jsonl` files
+with timestamps). The controller split the file into nine sections covering
+every line, and for each of 36 claims showed the exact lines, its own reading,
+and a recommended answer; the reviewer marked every claim "confirmed" and chose
+the verdict on the tenth page. The one claim the controller flagged as the
+place a reviewer could call policy, the label/label_prefix admission rule at
+`writ_mem.cc:1539-1553` (a session binds a subject only from a parent policy
+that matched by `label` or `label_prefix` and names a nonzero subject), was
+confirmed as route-identity binding (GB-007), not a decision about a request.
+Limits of the evidence: the readings and recommendations were prepared by the
+controller, and pages 3, 4, 8, 9, and 10 were answered within about a minute
+of being posted; the reviewer did not add notes. Treat this as a ratified
+guided read, not an independent audit.

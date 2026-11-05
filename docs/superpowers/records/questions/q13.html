@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shim review 7 of 9: Genode.log, Genode.now, Genode.sleep</title>
+<meta name="writ-topic" content="genode">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+pre{background:var(--soft);border-radius:6px;padding:.6rem .8rem;overflow-x:auto;font-size:.85rem;line-height:1.35;tab-size:6}pre code{background:none;padding:0}h2{font-size:1.1rem;margin:1.6rem 0 .3rem}
+</style>
+</head><body>
+<h1>Shim review 7 of 9: Genode.log, Genode.now, Genode.sleep</h1>
+<p>These three C functions are what the Bend effects <code>Genode.log</code>, <code>Genode.now</code>, and <code>Genode.sleep</code> call (their C twins live in <code>hosts/genode/effects/</code>). Logging uses the component's existing LOG session. Time uses one <code>Timer::Connection</code>, a session to the timer service, opened on first use with the label <code>writ_shim</code> and kept for the component's life. Before opening it, the shim probes the route with <code>Env::try_session</code>, because a plain session request that the parent denies leaves the component hanging silently (header 1185-1190). The claim to check: the Bend program alone decides what is logged and when to wait (1146-1148), and the shim stops the component only when the clock itself cannot be trusted. <code>INVENTORY.md:233-259</code> ("Timer failure outcomes") and the Timer bullet at <code>:149-161</code> list this.</p>
+<p><strong>Open:</strong> <code>writ_mem.cc:1140-1287</code></p>
+<p class="note">Each claim below shows the lines that carry it (line number, tab, source; tabs in the source shown as four spaces), what I see there, and my recommendation. Nothing is pre-selected: read the lines and choose.</p>
+<form method="post" action="/questions/q13/answer">
+<h2>Claim 1</h2>
+<p><code>writ_shim_log</code> passes the bytes to <code>Genode::log</code> unchanged (up to <code>len</code> or the first NUL); it filters, labels, and adds nothing, and a null pointer does nothing.</p>
+<pre><code>1252	extern "C" void writ_shim_log(char const *text, size_t len)
+1253	{
+1254	    if (!text) return;
+1255	    log(Cstring(text, len));
+1256	}</code></pre>
+<pre><code>1150	 * LOG. writ_shim_log hands the bytes to Genode::log (repos/base/include/
+1151	 * base/log.h), which writes them to the component's own LOG session, the
+1152	 * one init routes to the parent's LOG service. The text is printed as a
+1153	 * Cstring of at most len bytes (repos/base/include/util/string.h:757), so
+1154	 * it ends at the first NUL; a line longer than the LOG session's
+1155	 * MAX_STRING_LEN (232, repos/base/include/log_session/log_session.h:48)
+1156	 * reaches the LOG in several pieces. Nothing is added to the text: the
+1157	 * LOG service prefixes the session label ("[init -&gt; &lt;name&gt;] ").
+1158	 *</code></pre>
+<p><strong>What I see.</strong> One call, no inspection of the text. The label prefix comes from the LOG service, not the shim, and splitting a line longer than 232 bytes is the LOG session's behaviour. What the LOG service does to unusual bytes is outside this file.</p>
+<p><strong>Recommendation: Confirmed</strong>, the function only forwards.</p>
+<fieldset><legend>Claim 1</legend>
+<label><input type="radio" name="c1" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c1" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c1" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 2</h2>
+<p><code>writ_shim_sleep_ms</code> returns only once the session clock has advanced by at least <code>ms</code>, and otherwise ends the component with exit 1 on a backwards clock, a clock that did not advance, or the round cap.</p>
+<pre><code>1265	extern "C" void writ_shim_sleep_ms(uint32_t ms)
+1266	{
+1267	    Timer::Connection *t = _timer_session();
+1268	    if (!t || ms == 0) return;
+1269	    uint64_t const start    = t-&gt;elapsed_ms();
+1270	    uint64_t const deadline = start + ms;
+1271	    uint64_t       last     = start;
+1272	    for (unsigned round = 0;; round++) {
+1273	        uint64_t const now = t-&gt;elapsed_ms();
+1274	        if (now &gt;= deadline) return;
+1275	        if (now &lt; start)
+1276	            _timer_fail("Timer clock went backwards during a sleep");
+1277	        if (round &gt; 0) {
+1278	            if (now &lt;= last)
+1279	                _timer_fail("Timer clock did not advance across msleep");
+1280	            _timer_short_wakes++;  /* msleep returned before the deadline */
+1281	        }
+1282	        if (round == MAX_SLEEP_ROUNDS)
+1283	            _timer_fail("sleep exceeded MAX_SLEEP_ROUNDS msleep calls");
+1284	        last = now;
+1285	        t-&gt;msleep(deadline - now);
+1286	    }
+1287	}</code></pre>
+<pre><code>1210	/* Ends the component with exit value 1 after one line; does not return. */
+1211	[[noreturn]] static void _timer_fail(char const *what)
+1212	{
+1213	    error("writ_shim: ", what, ", component exits 1");
+1214	    _env-&gt;parent().exit(1);
+1215	    sleep_forever();
+1216	}</code></pre>
+<p><strong>What I see.</strong> The loop is as described. The three stops are fail-stop host-failure handling: they read only the timer's own readings and a round counter. <code>MAX_SLEEP_ROUNDS</code> (16) is a bounded mechanical limit that keeps a broken connection from spinning. The only Writ-visible effect is availability: a bad clock stops every client of the component.</p>
+<p><strong>Recommendation: Confirmed</strong>, the deadline loop and the three stops are all here.</p>
+<fieldset><legend>Claim 2</legend>
+<label><input type="radio" name="c2" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c2" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c2" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 3</h2>
+<p>The route probe treats only <code>DENIED</code> as no route; a quota answer counts as a route and is left to the Connection, and the probe session is closed again on success.</p>
+<pre><code>1218	/*
+1219	 * Whether the parent grants a Timer session labelled "writ_shim". Only
+1220	 * DENIED counts as no route; a quota answer means the route exists and is
+1221	 * left to the Connection's own quota upgrades.
+1222	 */
+1223	static bool _timer_route_granted()
+1224	{
+1225	    Parent::Client client { };
+1226	    Id_space&lt;Parent::Client&gt;::Element const probe(client, _env-&gt;id_space());
+1227	    String&lt;Parent::Session_args::MAX_SIZE&gt; const args(
+1228	        "label=\"writ_shim\", ram_quota=", unsigned(TIMER_PROBE_RAM),
+1229	        ", cap_quota=", unsigned(TIMER_PROBE_CAPS));
+1230	
+1231	    return _env-&gt;try_session(Timer::Session::service_name(), probe.id(),
+1232	                             Parent::Session_args(args.string()), Affinity())
+1233	        .convert&lt;bool&gt;(
+1234	            [&amp;] (Session_capability) { _env-&gt;close(probe.id()); return true; },
+1235	            [&amp;] (Session_error e)    { return e != Session_error::DENIED; });
+1236	}</code></pre>
+<p><strong>What I see.</strong> This exists because a plain session request that the parent denies hangs the component silently (header 1185-1190). On a quota error there is nothing to close. Whether a route exists is the integrator's and init's decision; the shim only turns a silent hang into a recorded exit 1.</p>
+<p><strong>Recommendation: Confirmed</strong>, only DENIED stops, and success closes the probe.</p>
+<fieldset><legend>Claim 3</legend>
+<label><input type="radio" name="c3" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c3" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c3" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<h2>Claim 4</h2>
+<p><code>writ_shim_now_ms</code> returns the timer's <code>elapsed_ms()</code>, or 0 before <code>construct</code>, and nothing else.</p>
+<pre><code>1258	/* 0 before construct, which no effect can run before. */
+1259	extern "C" uint64_t writ_shim_now_ms(void)
+1260	{
+1261	    Timer::Connection *t = _timer_session();
+1262	    return t ? t-&gt;elapsed_ms() : 0;
+1263	}</code></pre>
+<p><strong>What I see.</strong> One RPC and a null check. The 32-bit truncation happens in the Bend twin, not here (<code>INVENTORY.md:85</code>).</p>
+<p><strong>Recommendation: Confirmed</strong>, nothing else happens.</p>
+<fieldset><legend>Claim 4</legend>
+<label><input type="radio" name="c4" value="confirmed">Confirmed: the code does this (recommended)</label>
+<label><input type="radio" name="c4" value="disagree">Disagree: the code does something else</label>
+<label><input type="radio" name="c4" value="unsure">Unsure: I could not tell from the code</label>
+</fieldset>
+<label>Notes, doubts, or what you'd like explained<br><textarea name="text" placeholder="optional"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+</body></html>
