@@ -26,3 +26,6 @@ Task 6: implementer DONE_WITH_CONCERNS (765d743): 782 on and off, byte-identical
 Task 6: complete (review APPROVED both axes; one Limits bullet about label/transfer paths carried to Task 9).
 Task 7: dispatched implementer (Nsight absent and the host loaded: the split is recorded as missing and the load stated, per plan)
 Task 7: first implementer stalled (last activity 05:10 UTC, no process on the host, stopped 06:30 UTC); uncommitted bench-mode edits to Solver/Labels/Transfers.bend and the activity log left in the worktree for the next implementer to review. Task 7: re-dispatched (fresh implementer).
+Task 7: implementer DONE_WITH_CONCERNS (96eeac5): nine series, 72 timing runs accepted, nine attestation runs gate PASS; every series labelled not representative (load above 16); GPU slower than CPU in every cell, no speedup sentence; split recorded as missing (no Nsight); forged runs rejected. Rulings: the verify-stage growth under --gpu on is recorded as an observation with the page-fault explanation marked unestablished; the 644 KB evidence file is accepted (it holds every run record). Reviewer dispatched.
+Task 7: complete (review APPROVED both axes; two low wording items carried to Task 9).
+Task 8: dispatched implementer (trust profile)

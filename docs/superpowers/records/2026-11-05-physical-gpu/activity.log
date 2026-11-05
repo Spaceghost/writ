@@ -221,3 +221,5 @@
 2026-11-05T07:36:37Z	implementer	solver 16384 plan finished (8 runs exit 0, attestation on gate PASS 300 launches); load 23.14 at end, so no repeat series (the load was above 16 at every series boundary)
 2026-11-05T07:36:53Z	implementer	heartbeat: solver 16384 attestation (observe.sh) running; load 24.72, 28.22, 29.66
 2026-11-05T07:39:22Z	implementer	task 7 evidence (verification/gpu-pipeline.txt) and report written; 9 series, 72 runs accepted, all labelled loaded host not representative; forged runs rejected; committing
+2026-11-05T07:40:01Z	controller	task 7 reported (restart succeeded); reviewer dispatched
+2026-11-05T07:42:29Z	controller	task 7 review APPROVED; task 8 dispatched (trust profile)
