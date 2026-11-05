@@ -44,3 +44,5 @@
 2026-11-05T16:52:17Z	implementer	mutation batch 1 (69 mutants): D1-D8 bad patches (script fixed), P8 did not compile (fixed); survivors V6, P11, K6 got checks (Audit 248); E4-E6, K4, P6, P7 argued equivalent; rerunning full batch
 2026-11-05T16:52:54Z	implementer	mutation batch 2 (70 mutants): 64 killed, 6 equivalent (E4 E5 E6 K4 P6 P7, arms behind an earlier failing gate); running Tests.bend and PROOF.bend
 2026-11-05T16:55:02Z	implementer	correction: batch 2 is 74 mutants, 68 killed, 6 equivalent (earlier line miscounted 70/64); Tests.bend 1428 plus 248 = 1676 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (26 laws); openspec 44 passed; box 1.3 checked; report written; committing
+2026-11-05T16:55:50Z	controller	task 4 reported; reviewer dispatched
+2026-11-05T17:03:11Z	controller	task 4 review APPROVED; task 5 dispatched (exports)
