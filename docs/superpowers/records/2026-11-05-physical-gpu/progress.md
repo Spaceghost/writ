@@ -16,3 +16,5 @@ Task 3: fix round 1 verified by the controller (text only; digest fields stated;
 Task 4: dispatched implementer
 Task 4: implementer DONE_WITH_CONCERNS (5ca227c): 20 parity cases, 18 device-validated, 0 differences, stdout byte-identical on and off; two solver cases have no sweeps (CPU only, expected); the transfer digest is now all-field. Rulings: the presence-refused short run validated through a ROUNDS 400 rerun is acceptable with both records kept; the label/transfer verify lines being the same evaluator is a stated limit until Task 5. Reviewer dispatched.
 Task 4: review spec APPROVED, evidence NEEDS_FIXES (the all-field transfer digest is defined but not exercised by any Task 4 run; two low comparator notes). Fix round 1 dispatched, text only.
+Task 4: fix round 1 verified by the controller (text only; the unexercised digest stated as a limit; the hash-sensitivity control goes to Task 5); complete.
+Task 5: dispatched implementer

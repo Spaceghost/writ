@@ -119,3 +119,4 @@
 2026-11-05T04:26:59Z	controller	review: one evidence wording fix; fix round 1 dispatched
 2026-11-05T04:27:07Z	implementer	fix round 1: read task-4-review.md; text fixes only (digest not exercised, per-field control scope, payment leading-space note); no rerun
 2026-11-05T04:27:26Z	implementer	fix round 1: gpu-parity.txt probes paragraph, control description and two Limits bullets amended; report fix-round section added; committing
+2026-11-05T04:27:41Z	controller	task 4 complete; task 5 dispatched (injected faults)
