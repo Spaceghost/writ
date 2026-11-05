@@ -12,3 +12,5 @@ Task 2: implementer DONE_WITH_CONCERNS (102c4c7): 3 met, 2 partly, 5 gaps; drill
 Task 2: complete (review APPROVED both axes; three optional nits carried to the final round: UA-009 label, UA-003 quote wording, Config.uk:78-79).
 Task 3: implementer DONE (91e49c0): 782 / ALL PROOFS CHECK (no --verdict, no Lean here) / strict 44 / no .bend diff; 3.3 checked; 1.3, 2.1, 2.4 open. Ruling: the UL-008 row keeps "none: UL-008 is not met" first with the related work after it — acceptable. Final whole-branch review dispatched (covers Task 3).
 Final review: Needs fixes before merge (B1 accepted-limit wording, B2 the 782 count wording, B3 the gpuexample PM line pointer, B4 INVENTORY temp-file counts; plus the three Task 2 nits). Fix round dispatched (Task 3 implementer resumed).
+Fix round 1: verified by the controller (B1-B4 and the nits; env.sh comments only; strict 44; no .bend/Kraftfile/host C diff). Final review resolved; complete.
+Merge: to master
