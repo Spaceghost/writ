@@ -17,3 +17,5 @@
 2026-11-05T15:13:37Z	controller	review: four findings incl. unneeded-origin approvals; fix round 1 dispatched
 2026-11-05T15:13:37Z	implementer	fix round 1 started: read task-2-review.md (F1-F4)
 2026-11-05T15:15:35Z	implementer	fix round 1: F1 origin gate, F2 profile 3, F3 live stamp, F4 comment; 65 mutants (61 killed, 4 equivalent); Tests.bend 1500 PASS, PROOF.bend ALL PROOFS CHECK; committing
+2026-11-05T15:15:50Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T15:16:50Z	controller	task 2 complete; task 3 dispatched (eligibility and selection)
