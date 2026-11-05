@@ -7,7 +7,7 @@ import ./Guard.bend as Guard
 
 # Tests for the issuance model, change add-authenticated-grant-issuance.
 # Sections follow the change's tasks: `submission` (1.1), `registration`
-# (1.2). Every denial check asserts the exact Error and that the returned
+# (1.2), `revision` (1.3). Every denial check asserts the exact Error and that the returned
 # state equals the supplied one, field by field, through `denied`.
 #
 # Every fixture here is a SYNTHETIC AUTHORITY RECORD, not an authenticated
@@ -511,7 +511,8 @@ def revoke_in(approvals: I.Approvals, +id: Nat) -> I.Approvals:
     case I.Approvals{head, tail}:
       I.Approvals{revoke_stored(head, id), revoke_in(tail, id)}
 
-# The state with approval `id` marked revoked, as task 1.3's revoke will.
+# The state with approval `id` marked revoked, the flag `revoke` sets, without
+# revoke's identity checks or revision advance.
 def with_revoked(+state: I.State, +id: Nat) -> I.State:
   with_approvals(state, revoke_in(I.approvals(state), id))
 
@@ -650,8 +651,188 @@ def registration() -> IO(Unit):
     Test.check(denied(I.register(both(), 1n, good_request(), now(), token()), both(), I.StaleRevision{}), "GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision")
     Test.check(Bool.not(Guard.all(I.register_checks(both(), 1n, good_request(), now(), token()))), "GI-002 the registration check list alone is false at a stale revision")
 
+# --- Revision fixtures (synthetic) -------------------------------------------
+
+# The grant registered() holds: grant 3, citing source approval 1 and write
+# approval 2.
+def grant3() -> I.Grant:
+  I.Grant{3n, token(), scope(), 3, 150n, one(1n), 2n, 0n}
+
+def with_grants(state: I.State, grants: I.Grants) -> I.State:
+  match state:
+    case I.State{r, n, l, d, p, a, _, s}:
+      I.State{r, n, l, d, p, a, grants, s}
+
+# registered() with its stored approvals replaced by `src` (id 1) and `wr`
+# (id 2), each consumed by grant 3 as registration would leave them, and its
+# grant list replaced by `grant`. A synthetic monitor state: `current` must
+# revalidate the stored records and the grant against each other.
+def backing(src: I.SourceApproval, wr: I.WriteApproval, grant: I.Grant) -> I.State:
+  with_grants(with_approvals(registered(),
+    I.Approvals{I.Stored{2n, I.WriteEntry{wr}, 3n, False{}},
+    I.Approvals{I.Stored{1n, I.SourceEntry{src}, 3n, False{}}, I.NoApprovals{}}}),
+    I.Grants{grant, I.NoGrants{}})
+
+# registered() with approval 1 consumed by grant `src_by` and approval 2 by
+# `wr_by`: the grant record without approvals that back it.
+def consumed_as(src_by: Nat, wr_by: Nat) -> I.State:
+  with_approvals(registered(),
+    I.Approvals{I.Stored{2n, I.WriteEntry{good_write()}, wr_by, False{}},
+    I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, src_by, False{}}, I.NoApprovals{}}})
+
+def source_until(valid_until: Nat) -> I.SourceApproval:
+  source_for(scope(), 3, valid_until)
+
+def write_until(valid_until: Nat) -> I.WriteApproval:
+  write_for(scope(), 3, valid_until)
+
+def grant_as(scope: I.Scope, rights: U32, valid_until: Nat) -> I.Grant:
+  I.Grant{3n, token(), scope, rights, valid_until, one(1n), 2n, 0n}
+
+def scope9() -> I.Scope:
+  I.Scope{TF.plan(), write9(), subject()}
+
+def scope_dup() -> I.Scope:
+  scope_with(plan_dup(), subject())
+
+# The authority epoch the monitor advanced to.
+def next_epoch() -> T.Stamp:
+  T.Stamp{1n, 2n, 4n}
+
+# The two-source plan registered as grant 4 (approvals 1, 2 and 3).
+def two_registered() -> I.State:
+  I.Change.state(I.register(two_state(), 3n, request(scope_two(), two(1n, 2n), 3n), now(), token()))
+
+# Source and write approvals for scope() with serial `n`.
+def source_serial(n: Nat) -> I.SourceApproval:
+  I.SourceApproval{1n, n, source_authority(), TF.source_object(), read5(), scope(), 3, 200n}
+
+def write_serial(n: Nat) -> I.WriteApproval:
+  I.WriteApproval{1n, n, write_authority(), TF.destination_object(), write6(), scope(), 3, 200n}
+
+# Seven accepted submissions through the public entry points: source
+# approvals 1, 3, 5, 7 and write approvals 2, 4, 6, at revision 7.
+def at_seven() -> I.State:
+  I.Change.state(I.submit_source(
+  I.Change.state(I.submit_write(
+  I.Change.state(I.submit_source(
+  I.Change.state(I.submit_write(
+  I.Change.state(I.submit_source(
+  I.Change.state(I.submit_write(
+  I.Change.state(I.submit_source(initial(), 0n, source_authority(), source_serial(1n), now())),
+    1n, write_authority(), write_serial(1n), now())),
+    2n, source_authority(), source_serial(2n), now())),
+    3n, write_authority(), write_serial(2n), now())),
+    4n, source_authority(), source_serial(3n), now())),
+    5n, write_authority(), write_serial(3n), now())),
+    6n, source_authority(), source_serial(4n), now()))
+
+# The source authority revokes approval 1 at revision 7: revision 8.
+def revoked_at_eight() -> I.Change:
+  I.revoke(at_seven(), 7n, source_authority(), 1n)
+
+def at_eight() -> I.State:
+  I.Change.state(revoked_at_eight())
+
+# Grant 3 revoked by its source authority (revision 4).
+def source_revoked() -> I.State:
+  I.Change.state(I.revoke(registered(), 3n, source_authority(), 1n))
+
+def write_revoked() -> I.State:
+  I.Change.state(I.revoke(registered(), 3n, write_authority(), 2n))
+
+# Whether stored approval `id` carries revoked flag `flag`.
+def revoked_is(approvals: I.Approvals, +id: Nat, +flag: Bool) -> Bool:
+  match approvals:
+    case I.NoApprovals{}:
+      False{}
+    case I.Approvals{head, tail}:
+      match head:
+        case I.Stored{sid, _, _, revoked}:
+          (Nat.is_eq(sid, id) && bool_equal(revoked, flag)) || revoked_is(tail, id, flag)
+
+# A SYNTHETIC derived grant 4 of grant 3, with the same scope, rights and
+# lifetime unless a test widens one (task 1.4's derive does not exist yet;
+# this record stands in for one so the ancestor walk can be checked).
+def child(scope: I.Scope, rights: U32, valid_until: Nat, parent: Nat) -> I.Grant:
+  I.Grant{4n, other_token(), scope, rights, valid_until, I.NoIds{}, 0n, parent}
+
+def good_child() -> I.Grant:
+  child(scope(), 3, 150n, 3n)
+
+# registered() with `grant` added as id 4 (next_id 5, revision 4).
+def derived_state(grant: I.Grant) -> I.State:
+  I.State{4n, 5n, TF.stamp(), directory(), placements(), I.approvals(registered()),
+    I.Grants{grant, I.grants(registered())}, I.seen(registered())}
+
+# --- Section 1.3: revision (GI-005) ------------------------------------------
+
+def revision() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(I.revision(at_seven()), 7n) && I.Change.accepted(I.register(at_seven(), 7n, good_request(), now(), token())), "GI-005 approvals 1 and 2 are valid for registration at revision 7")
+    Test.check(I.Change.accepted(revoked_at_eight()) && issued_is(I.Change.issued(revoked_at_eight()), 1n) && Nat.is_eq(I.revision(at_eight()), 8n), "GI-005 the source authority revokes approval 1, moving the state to revision 8")
+    Test.check(denied(I.register(at_eight(), 7n, good_request(), now(), token()), at_eight(), I.StaleRevision{}), "GI-005 revocation during issuance: registration validated at revision 7 against state at revision 8 denied StaleRevision")
+    Test.check(grants_empty(I.grants(I.Change.state(I.register(at_eight(), 7n, good_request(), now(), token()))))
+      && Bool.not(I.current(I.Change.state(I.register(at_eight(), 7n, good_request(), now(), token())), I.Grant{8n, token(), scope(), 3, 150n, one(1n), 2n, 0n}, now())), "GI-005 the raced registration exposes no grant for the plan and no current grant")
+    Test.check(denied(I.register(at_eight(), 8n, good_request(), now(), token()), at_eight(), I.Revoked{}), "GI-005 registration revalidated at revision 8 against the revoked approval denied Revoked")
+    Test.check(I.current(registered(), grant3(), now()) && I.valid(registered()), "GI-005 the registered grant is current at registration time")
+    Test.check(Bool.not(I.current(source_revoked(), grant3(), now())), "GI-005 the registered grant is not current after its source approval is revoked")
+    Test.check(Bool.not(I.current(write_revoked(), grant3(), now())), "GI-005 the registered grant is not current after its write approval is revoked")
+    Test.check(Nat.is_eq(I.revision(source_revoked()), 4n) && Nat.is_eq(I.next_id(source_revoked()), 4n)
+      && revoked_is(I.approvals(source_revoked()), 1n, True{}) && consumed_is(I.approvals(source_revoked()), 1n, 3n)
+      && grants_equal(I.grants(source_revoked()), I.grants(registered())) && serials_equal(I.seen(source_revoked()), I.seen(registered()))
+      && I.valid(source_revoked()), "GI-005 revocation advances the revision once, keeps the approval's consumption, the grant record and the seen serials, and leaves a valid state")
+    Test.check(revoked_is(I.approvals(source_revoked()), 2n, False{}), "GI-005 revoking approval 1 leaves approval 2 unrevoked")
+    Test.check(denied(I.revoke(registered(), 3n, write_authority(), 1n), registered(), I.Unauthenticated{}), "GI-005 revocation of source approval 1 by the write authority, not its issuer, denied Unauthenticated")
+    Test.check(denied(I.revoke(with_directory(registered(), directory_without_source()), 3n, source_authority(), 1n), with_directory(registered(), directory_without_source()), I.NotAuthority{}), "GI-005 revocation by the source issuer after the monitor removed it from the directory denied NotAuthority")
+    Test.check(denied(I.revoke(with_directory(registered(), directory_without_write()), 3n, write_authority(), 2n), with_directory(registered(), directory_without_write()), I.NotAuthority{}), "GI-005 revocation by the write issuer after the monitor removed it from the directory denied NotAuthority")
+    Test.check(denied(I.revoke(registered(), 2n, source_authority(), 1n), registered(), I.StaleRevision{}), "GI-005 revocation validated at revision 2 against state at revision 3 denied StaleRevision")
+    Test.check(Bool.not(Guard.all(I.revoke_checks(registered(), 2n, source_authority(), 1n))), "GI-005 the revocation check list alone is false at a stale revision")
+    Test.check(denied(I.revoke(registered(), 3n, source_authority(), 99n), registered(), I.MissingApproval{}), "GI-005 revocation of an approval id that does not exist denied MissingApproval")
+    Test.check(denied(I.revoke(source_revoked(), 4n, source_authority(), 1n), source_revoked(), I.Revoked{}), "GI-005 revoking an already revoked approval denied Revoked")
+    Test.check(denied(I.register(registered(), 3n, good_request(), now(), other_token()), registered(), I.Replay{}), "GI-005 replay: a second registration citing the consumed approvals denied Replay")
+    Test.check(denied(I.submit_source(I.Change.state(I.revoke(both(), 2n, source_authority(), 1n)), 3n, source_authority(), good_source(), now()),
+      I.Change.state(I.revoke(both(), 2n, source_authority(), 1n)), I.Replay{}), "GI-005 replay: re-submitting a revoked approval's serial denied Replay")
+    Test.check(Bool.not(I.valid(with_grants(initial(), I.Grants{grant3(), I.NoGrants{}}))) && Bool.not(I.current(with_grants(initial(), I.Grants{grant3(), I.NoGrants{}}), grant3(), now())), "GI-005 the grant copied into a fresh empty state is not valid and not current")
+    Test.check(Bool.not(I.valid(with_approvals(registered(), I.NoApprovals{}))) && Bool.not(I.current(with_approvals(registered(), I.NoApprovals{}), grant3(), now())), "GI-005 the grant in a state that lacks its approvals is not valid and not current")
+    Test.check(Bool.not(I.valid(consumed_as(0n, 0n))) && Bool.not(I.current(consumed_as(0n, 0n), grant3(), now())), "GI-005 the grant copied into a state whose approvals are unconsumed is not valid and not current")
+    Test.check(Bool.not(I.valid(consumed_as(3n, 5n))) && Bool.not(I.current(consumed_as(3n, 5n), grant3(), now())), "GI-005 the grant whose write approval is consumed by another grant is not valid and not current")
+    Test.check(Bool.not(I.valid(consumed_as(5n, 3n))) && Bool.not(I.current(consumed_as(5n, 3n), grant3(), now())), "GI-005 the grant whose source approval is consumed by another grant is not valid and not current")
+    Test.check(Bool.not(I.current(with_live(registered(), next_epoch()), grant3(), now())), "GI-005 after the monitor advances the authority epoch the old grant is not current")
+    Test.check(denied(I.register(with_live(fresh_pair(), next_epoch()), 5n, request(scope(), one(4n), 5n), now(), other_token()), with_live(fresh_pair(), next_epoch()), I.StaleEpoch{}), "GI-005 after the epoch advance a registration with the old scope denied StaleEpoch")
+    Test.check(I.current(registered(), grant3(), 149n) && Bool.not(I.current(registered(), grant3(), 150n)), "GI-005 the grant is current before its valid_until and not at it")
+    Test.check(Bool.not(I.current(registered(), I.Grant{3n, other_token(), scope(), 3, 150n, one(1n), 2n, 0n}, now())), "GI-005 a grant record with the registered id but another token is not current")
+    Test.check(Bool.not(I.current(with_grants(registered(), I.Grants{grant3(), I.grants(registered())}), grant3(), now())), "GI-005 a grant id registered twice resolves to no grant and is not current")
+    Test.check(Bool.not(I.current(with_directory(registered(), directory_without_source()), grant3(), now())), "GI-005 the grant is not current after the monitor removes its source authority from the directory")
+    Test.check(Bool.not(I.current(with_directory(registered(), directory_without_write()), grant3(), now())), "GI-005 the grant is not current after the monitor removes its write authority from the directory")
+    Test.check(Bool.not(I.current(with_placements(registered(), source_moved()), grant3(), now())), "GI-005 the grant is not current after its source object moves to read domain 9")
+    Test.check(Bool.not(I.current(with_placements(registered(), destination_moved()), grant3(), now())), "GI-005 the grant is not current after its destination moves to write domain 5")
+    Test.check(I.current(backing(good_source(), good_write(), grant3()), grant3(), now()), "GI-005 the synthetic backing state reproduces the registered grant as current")
+    Test.check(Bool.not(I.current(backing(source_for(scope_dup(), 3, 200n), write_for(scope_dup(), 3, 200n), I.Grant{3n, token(), scope_dup(), 3, 150n, two(1n, 1n), 2n, 0n}),
+      I.Grant{3n, token(), scope_dup(), 3, 150n, two(1n, 1n), 2n, 0n}, now())), "GI-005 a grant citing one source approval for two manifest entries is not current")
+    Test.check(I.current(two_registered(), I.Grant{4n, token(), scope_two(), 3, 150n, two(1n, 2n), 3n, 0n}, now())
+      && Bool.not(I.current(with_grants(two_registered(), I.Grants{I.Grant{4n, token(), scope_two(), 3, 150n, two(2n, 1n), 3n, 0n}, I.NoGrants{}}), I.Grant{4n, token(), scope_two(), 3, 150n, two(2n, 1n), 3n, 0n}, now())), "GI-005 a two-source grant is current, and its record with the source ids reordered is not")
+    Test.check(Bool.not(I.current(backing(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope(), 3, 200n}, grant3()), grant3(), now())), "GI-005 a grant whose stored write approval names destination 20v9 under a plan naming 20v8 is not current")
+    Test.check(Bool.not(I.current(backing(source_for(scope9(), 3, 200n), write_for(scope9(), 3, 200n), grant_as(scope9(), 3, 150n)), grant_as(scope9(), 3, 150n), now())), "GI-005 a grant whose stored write approval for write domain 6 names write domain 9 in its scope is not current")
+    Test.check(Bool.not(I.current(backing(good_source(), write_for(scope_with(plan_invocation(), subject()), 3, 200n), grant3()), grant3(), now())), "GI-005 a grant whose write approval's scope differs in invocation is not current")
+    Test.check(Bool.not(I.current(backing(source_for(scope_with(plan_invocation(), subject()), 3, 200n), good_write(), grant3()), grant3(), now())), "GI-005 a grant whose source approval's scope differs in invocation is not current")
+    Test.check(Bool.not(I.current(backing(good_source(), write_for(scope(), 7, 200n), grant_as(scope(), 7, 150n)), grant_as(scope(), 7, 150n), now())), "GI-005 a grant with rights 7 over its source approval's 3 is not current")
+    Test.check(Bool.not(I.current(backing(source_for(scope(), 7, 200n), good_write(), grant_as(scope(), 7, 150n)), grant_as(scope(), 7, 150n), now())), "GI-005 a grant with rights 7 over its write approval's 3 is not current")
+    Test.check(Bool.not(I.current(backing(source_until(300n), write_until(200n), grant_as(scope(), 3, 250n)), grant_as(scope(), 3, 250n), 200n)), "GI-005 a grant outliving its write approval is not current at the write approval's valid_until")
+    Test.check(Bool.not(I.current(backing(source_until(200n), write_until(300n), grant_as(scope(), 3, 250n)), grant_as(scope(), 3, 250n), 200n)), "GI-005 a grant outliving its source approval is not current at the source approval's valid_until")
+    Test.check(I.current(derived_state(good_child()), good_child(), now()) && I.valid(derived_state(good_child())), "GI-005 a synthetic derived grant of the registered grant is current and valid")
+    Test.check(Bool.not(I.current(I.Change.state(I.revoke(derived_state(good_child()), 4n, source_authority(), 1n)), good_child(), now())), "GI-005 revoking the parent's source approval makes the derived grant not current")
+    Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 150n, 9n)), child(scope(), 3, 150n, 9n), now())) && Bool.not(I.valid(derived_state(child(scope(), 3, 150n, 9n)))), "GI-005 a derived grant whose parent does not exist is not current and not valid")
+    Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 150n, 4n)), child(scope(), 3, 150n, 4n), now())) && Bool.not(I.valid(derived_state(child(scope(), 3, 150n, 4n)))), "GI-005 a derived grant that is its own parent is not current and not valid")
+    Test.check(Bool.not(I.current(derived_state(child(scope(), 7, 150n, 3n)), child(scope(), 7, 150n, 3n), now())), "GI-005 a derived grant with rights 7 over its parent's 3 is not current")
+    Test.check(Bool.not(I.current(derived_state(child(scope(), 3, 200n, 3n)), child(scope(), 3, 200n, 3n), now())), "GI-005 a derived grant outliving its parent is not current")
+    Test.check(Bool.not(I.current(derived_state(child(scope_with(plan_invocation(), subject()), 3, 150n, 3n)), child(scope_with(plan_invocation(), subject()), 3, 150n, 3n), now())), "GI-005 a derived grant whose scope differs from its parent's is not current")
+    Test.check(I.current(derived_state(child(scope(), 3, 120n, 3n)), child(scope(), 3, 120n, 3n), 119n) && Bool.not(I.current(derived_state(child(scope(), 3, 120n, 3n)), child(scope(), 3, 120n, 3n), 120n)), "GI-005 a derived grant is current before its own valid_until and not at it while its parent still is")
+    Test.check(Bool.not(I.current(registered(), good_child(), now())), "GI-005 a derived grant record that the state never registered is not current")
+
 def main() -> IO(Unit):
   do IO<Unit>:
     submission()
     registration()
-    IO.print("Issuance: 93 checks passed")
+    revision()
+    IO.print("Issuance: 146 checks passed")

@@ -31,10 +31,15 @@ import ./Frontend.bend as F
 # - `expected_revision`, the revision the caller validated against; the host
 #   must install an accepted state atomically at that revision.
 # - `now`, the monitor's trusted time. Every expiry is exclusive (now <
-#   valid_until), matching Transfer and Frontend.
+#   valid_until), matching Transfer and Frontend. `current` takes it too, so
+#   a grant's usability is always judged at the monitor's time.
 # - `token`, the fresh capability token the monitor supplies to `register`
 #   (Bend generates no randomness). Bend only checks that no registered grant
 #   already holds it.
+#
+# `from` is attached to submissions and revocations. Only an approval's
+# recorded issuer, still the directory authority for the approval's domain,
+# may revoke it; that issuer was bound to the authenticated submitter.
 #
 # Registration has no `from`. A `Request` names stored approvals by id and
 # asserts nothing about who asks: the cited approvals, each submitted earlier
@@ -55,12 +60,39 @@ import ./Frontend.bend as F
 # any position. The denial reason is the first failing gate of the same list,
 # so acceptance and reason cannot drift apart.
 #
-# Public entry points: `empty`, `submit_source`, `submit_write`, `register`,
-# `valid`, and the `Change.*` accessors and state accessors. Every other def is an exported
-# implementation helper; calling one does not perform a transition's checks.
+# Usability is never stored. `current(state, grant, now)` re-derives it on
+# every call from the state: the grant argument is an untrusted claim that
+# must equal the record registered under its id, and every approval it cites
+# (or, for a derived grant, every ancestor) is revalidated against the
+# directory, placements, live stamp and revocation flags this state carries.
+# Revocation, a monitor change or expiry withdraws a grant without editing
+# its record, so the history stays. A grant record copied into another state
+# is neither `valid` there nor `current`.
 #
-# Laws: this module adds none yet. It relies on the existing law
-# `failed_check_denies` through its gate structure, without modifying it.
+# Public entry points: `empty`, `submit_source`, `submit_write`, `register`,
+# `revoke`, `current`, `valid`, and the `Change.*` accessors and state
+# accessors. Every other def is an exported implementation helper; calling one
+# does not perform a transition's checks.
+#
+# Laws. This module relies on the existing law `failed_check_denies` through
+# its gate structure (and `current`'s Guard.Checks lists), without modifying
+# it, and adds three in LAWS.bend:
+# - `issuance_denied_preserves_state`: a rejected change carries the supplied
+#   state, for every state and reason. It fixes the denial contract every
+#   issuance transition relies on, so a denied or raced registration exposes
+#   no new state. It holds by computation and does not prove that a
+#   transition chose the denial path.
+# - `nat_eq_successor_false`: no natural number equals its successor under
+#   `Nat.is_eq`; auxiliary arithmetic for the next law, saying nothing about
+#   issuance by itself.
+# - `issuance_stale_revision_rejects`: `register` called with an expected
+#   revision one past the state's never commits, for every state, request,
+#   time and token. A registration validated at revision r cannot commit
+#   after any transition has moved the state (the GI-005 race); the proof
+#   relies on `register` matching on `revision_current` before any other
+#   gate, which is why that outer match stays. It covers the successor
+#   revision only and does not claim that the host serializes installs
+#   (AB-006); the inner StaleRevision gate and the tests cover the rest.
 
 # --- Identities --------------------------------------------------------------
 
@@ -124,8 +156,8 @@ type Approval is Data:
   WriteEntry{approval: WriteApproval}
 
 # An accepted approval under its issuer-state id. `consumed_by` is 0 until a
-# registration consumes it (then the grant id); `revoked` is set only by its
-# issuer's revocation. Both are monitor bookkeeping that can only withdraw
+# registration consumes it (then the grant id, kept through revocation);
+# `revoked` is set only by its issuer's revocation (`revoke`). Both are monitor bookkeeping that can only withdraw
 # authority: an unconsumed, unrevoked record grants nothing by itself, and
 # every use re-checks the directory and placements.
 type Stored is Data:
@@ -192,8 +224,8 @@ type Error is Data:
   StaleEpoch{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
-# state and the id it allocated (an approval id for submissions, a grant id
-# for registration).
+# state and an id: the approval id a submission allocated, the grant id a
+# registration allocated, or the id of the approval a revocation withdrew.
 type Change is Data:
   Rejected{state: State, reason: Error}
   Changed{state: State, id: Nat}
@@ -761,16 +793,6 @@ def approvals_valid(approvals: Approvals, +next_id: Nat, +seen: Serials) -> Bool
       allocated(Stored.id(head), next_id) && Bool.not(approval_exists(tail, Stored.id(head)))
         && stored_recorded(head, seen) && approvals_valid(tail, next_id, seen)
 
-# Each grant has an allocated id, unique among grants and distinct from every
-# approval id (the two share one counter).
-def grants_valid(grants: Grants, +next_id: Nat, +approvals: Approvals) -> Bool:
-  match grants:
-    case NoGrants{}:
-      True{}
-    case Grants{+head, +tail}:
-      allocated(Grant.id(head), next_id) && Bool.not(grant_exists(tail, Grant.id(head)))
-        && Bool.not(approval_exists(approvals, Grant.id(head))) && grants_valid(tail, next_id, approvals)
-
 def placement_again(entry: Placement, +rest: Placements) -> Bool:
   match entry:
     case SourceAt{object, _}:
@@ -798,18 +820,6 @@ def serials_valid(seen: Serials) -> Bool:
       True{}
     case Serials{head, +tail}:
       Bool.not(serial_again(head, tail)) && serials_valid(tail)
-
-# Public entry point: structural validity only. Ids are positive, below
-# `next_id` and unique; every stored approval's serial is recorded; no object
-# is placed twice in one namespace; no serial is recorded twice. It does not
-# authenticate the supplied state, and no transition treats a valid state as
-# evidence: each recomputes its own checks.
-def valid(state: State) -> Bool:
-  match state:
-    case State{_, +next_id, _, _, placements, +approvals, grants, +seen}:
-      Nat.is_gt(next_id, 0n) && approvals_valid(approvals, next_id, seen)
-        && grants_valid(grants, next_id, approvals) && placements_valid(placements)
-        && serials_valid(seen)
 
 # --- Registration ------------------------------------------------------------
 
@@ -1217,8 +1227,385 @@ def register_current(current: Bool, +state: State, +expected_revision: Nat, +req
 # with `parent` 0, marks every cited approval consumed by that grant, and
 # advances the revision once. Denial order is register_gates'; the state is
 # returned unchanged on every denial. The grant is not usable by itself:
-# projection (task 1.5) revalidates it at every use.
+# `current` revalidates it at every use, and projection (task 1.5) admits only
+# current grants.
 def register(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
     +token: T.CodeId) -> Change:
   register_current(revision_current(state, expected_revision), state, expected_revision,
     request, now, token)
+
+# --- Revocation (GI-005) -----------------------------------------------------
+
+# Whether the cited id resolves to exactly one stored approval.
+def stored_present(found: Maybe<&2, Stored>) -> Bool:
+  Maybe.is_some(&2, Stored, found)
+
+# The stored approval's recorded issuer is the authenticated principal. The
+# recorded issuer was bound to the submitter's authenticated `from` at
+# submission, so only that principal speaks for the approval. Absence denies.
+def issued_by(found: Maybe<&2, Stored>, +from: Principal) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      claim_matches(from, Approval.issuer(Stored.approval(stored)))
+
+# Whether the directory still names `principal` as the authority for the
+# approval's own domain, in the approval's own namespace (read for a source
+# approval, write for a write approval).
+def approval_authority(approval: Approval, +directory: Authorities, +principal: Principal) -> Bool:
+  match approval:
+    case SourceEntry{record}:
+      match record:
+        case SourceApproval{_, _, _, _, domain, _, _, _}:
+          is_read_authority(directory, principal, domain)
+    case WriteEntry{record}:
+      match record:
+        case WriteApproval{_, _, _, _, domain, _, _, _}:
+          is_write_authority(directory, principal, domain)
+
+def held_by_authority(found: Maybe<&2, Stored>, +directory: Authorities, +principal: Principal) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      approval_authority(Stored.approval(stored), directory, principal)
+
+# The approval has not been revoked yet. Revoking twice is denied (Revoked)
+# rather than advancing the revision for no change.
+def not_yet_revoked(found: Maybe<&2, Stored>) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      match stored:
+        case Stored{_, _, _, revoked}:
+          Bool.not(revoked)
+
+# Every check a revocation must pass, in denial order: the race (revision),
+# the approval's existence, then identity (the authenticated principal is the
+# approval's recorded issuer, and the directory still names it the authority
+# for the approval's domain), then that the approval is not already revoked.
+# A consumed approval may be revoked: that is how a registered grant is
+# withdrawn. Placements are not consulted: revocation only removes authority.
+def revoke_gates(+state: State, +expected_revision: Nat, +from: Principal, +approval_id: Nat) -> Gates:
+  Gate{revision_current(state, expected_revision), StaleRevision{},
+  Gate{stored_present(find_stored(approvals(state), approval_id)), MissingApproval{},
+  Gate{issued_by(find_stored(approvals(state), approval_id), from), Unauthenticated{},
+  Gate{held_by_authority(find_stored(approvals(state), approval_id), directory(state), from), NotAuthority{},
+  Gate{not_yet_revoked(find_stored(approvals(state), approval_id)), Revoked{},
+  Open{}}}}}}
+
+def revoke_checks(+state: State, +expected_revision: Nat, +from: Principal, +approval_id: Nat) -> Guard.Checks:
+  Gates.checks(revoke_gates(state, expected_revision, from, approval_id))
+
+def mark_revoked(stored: Stored, +id: Nat) -> Stored:
+  match stored:
+    case Stored{+sid, approval, consumed_by, revoked}:
+      Stored{sid, approval, consumed_by, revoked || Nat.is_eq(sid, id)}
+
+# Set the revoked flag on the stored approval under `id`, and on nothing else.
+# `consumed_by` is kept, so the history of which grant the approval backed
+# survives the revocation.
+def revoke_in(approvals: Approvals, +id: Nat) -> Approvals:
+  match approvals:
+    case NoApprovals{}:
+      NoApprovals{}
+    case Approvals{head, tail}:
+      Approvals{mark_revoked(head, id), revoke_in(tail, id)}
+
+# Mark the approval revoked and advance the revision once. `seen` keeps the
+# approval's `(issuer, serial)`, so the revoked approval cannot be submitted
+# again; grant records are not edited, so the history stays and `current`
+# withdraws every grant that cites the approval, and every grant derived from
+# one. Called only after every gate held.
+def commit_revocation(state: State, +approval_id: Nat) -> Change:
+  match state:
+    case State{revision, next_id, live, directory, placements, approvals, grants, seen}:
+      Changed{State{1n+revision, next_id, live, directory, placements,
+        revoke_in(approvals, approval_id), grants, seen}, approval_id}
+
+def revoke_checked(ok: Bool, +state: State, +expected_revision: Nat, +from: Principal,
+    +approval_id: Nat) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
+      Rejected{state, Gates.reason(revoke_gates(state, expected_revision, from, approval_id), StaleRevision{})}
+    case True{}:
+      commit_revocation(state, approval_id)
+
+def revoke_current(current: Bool, +state: State, +expected_revision: Nat, +from: Principal,
+    +approval_id: Nat) -> Change:
+  match current:
+    case False{}:
+      Rejected{state, StaleRevision{}}
+    case True{}:
+      revoke_checked(Guard.all(revoke_checks(state, expected_revision, from, approval_id)),
+        state, expected_revision, from, approval_id)
+
+# Public entry point (GI-005): the host revokes a stored approval on behalf of
+# the authenticated principal `from`. Accepted only when the state is at
+# `expected_revision`, `approval_id` names exactly one stored approval, `from`
+# is that approval's recorded issuer, the directory still names `from` the
+# authority for the approval's domain in its namespace, and the approval is
+# not already revoked. It then marks the approval revoked, keeps its serial in
+# `seen` and its `consumed_by`, and advances the revision once; the change id
+# is the revoked approval's id. Every grant citing the approval, and every
+# grant derived from such a grant, stops being `current`; grant records are
+# not edited. Denial order: StaleRevision, MissingApproval, Unauthenticated,
+# NotAuthority, Revoked; the state is returned unchanged.
+def revoke(+state: State, +expected_revision: Nat, +from: Principal, +approval_id: Nat) -> Change:
+  revoke_current(revision_current(state, expected_revision), state, expected_revision,
+    from, approval_id)
+
+# --- Usability (GI-005) ------------------------------------------------------
+
+def Grant.token(grant: Grant) -> T.CodeId:
+  match grant:
+    case Grant{_, token, _, _, _, _, _, _}:
+      token
+
+def Grant.scope(grant: Grant) -> Scope:
+  match grant:
+    case Grant{_, _, scope, _, _, _, _, _}:
+      scope
+
+def Grant.rights(grant: Grant) -> U32:
+  match grant:
+    case Grant{_, _, _, rights, _, _, _, _}:
+      rights
+
+def Grant.valid_until(grant: Grant) -> Nat:
+  match grant:
+    case Grant{_, _, _, _, valid_until, _, _, _}:
+      valid_until
+
+def Grant.sources(grant: Grant) -> Ids:
+  match grant:
+    case Grant{_, _, _, _, _, sources, _, _}:
+      sources
+
+def Grant.write(grant: Grant) -> Nat:
+  match grant:
+    case Grant{_, _, _, _, _, _, write, _}:
+      write
+
+def Grant.parent(grant: Grant) -> Nat:
+  match grant:
+    case Grant{_, _, _, _, _, _, _, parent}:
+      parent
+
+def Ids.equal(a: Ids, b: Ids) -> Bool:
+  match a b:
+    case NoIds{} NoIds{}:
+      True{}
+    case Ids{ah, at} Ids{bh, bt}:
+      Nat.is_eq(ah, bh) && Ids.equal(at, bt)
+    case _ _:
+      False{}
+
+# Exact equality of two grant records, every field compared.
+def Grant.equal(a: Grant, b: Grant) -> Bool:
+  match a b:
+    case Grant{ai, at, asc, ar, au, asl, aw, ap} Grant{bi, bt, bsc, br, bu, bs, bw, bp}:
+      Nat.is_eq(ai, bi) && T.CodeId.equal(at, bt) && scope_equal(asc, bsc)
+        && U32.is_eq(ar, br) && Nat.is_eq(au, bu) && Ids.equal(asl, bs)
+        && Nat.is_eq(aw, bw) && Nat.is_eq(ap, bp)
+
+def grant_entry(+grant: Grant, +wanted: Nat) -> Maybe<&2, Grant>:
+  Guard.choose(Maybe<&2, Grant>, Nat.is_eq(Grant.id(grant), wanted), Some{grant}, None{})
+
+# A hit is kept only when no later grant record has the same id: an ambiguous
+# id resolves to no grant, never to whichever record comes first.
+def first_grant(found: Maybe<&2, Grant>, again: Bool, rest: Maybe<&2, Grant>) -> Maybe<&2, Grant>:
+  match found again:
+    case None{} _:
+      rest
+    case Some{grant} False{}:
+      Some{grant}
+    case Some{_} True{}:
+      None{}
+
+# The registered grant under `wanted`, or None when it is absent or ambiguous.
+def find_grant(grants: Grants, +wanted: Nat) -> Maybe<&2, Grant>:
+  match grants:
+    case NoGrants{}:
+      None{}
+    case Grants{head, +tail}:
+      first_grant(grant_entry(head, wanted), grant_exists(tail, wanted), find_grant(tail, wanted))
+
+# The supplied grant is exactly the record this state registered under its
+# id. A record that merely looks like a grant, or one copied from another
+# state, is not.
+def registered_as(found: Maybe<&2, Grant>, +grant: Grant) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{held}:
+      Grant.equal(held, grant)
+
+# The cited approval exists and was consumed by exactly grant `grant_id`.
+def consumed_by_grant(found: Maybe<&2, Stored>, +grant_id: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      match stored:
+        case Stored{_, _, consumed_by, _}:
+          Nat.is_eq(consumed_by, grant_id)
+
+def sources_consumed_by(+approvals: Approvals, ids: Ids, +grant_id: Nat) -> Bool:
+  match ids:
+    case NoIds{}:
+      True{}
+    case Ids{head, tail}:
+      consumed_by_grant(find_stored(approvals, head), grant_id)
+        && sources_consumed_by(approvals, tail, grant_id)
+
+def write_consumed_by(+approvals: Approvals, write: Nat, +grant_id: Nat) -> Bool:
+  consumed_by_grant(find_stored(approvals, write), grant_id)
+
+# The grant's own fields as the request its approvals are revalidated
+# against, so `current` asks the same per-approval requirements registration
+# asked. Building it asserts nothing: it is compared, never believed.
+def grant_request(grant: Grant) -> Request:
+  match grant:
+    case Grant{_, _, scope, rights, valid_until, sources, write, _}:
+      Request{1n, scope, sources, write, rights, valid_until}
+
+# What every grant, root or derived, must satisfy at each use: it is exactly
+# the record registered under its id in this state, its scope is well formed
+# at the CURRENT live stamp (an epoch advance withdraws it), and `now` is
+# before its exclusive `valid_until`.
+def own_checks(+state: State, +grant: Grant, +now: Nat) -> Guard.Checks:
+  Guard.Require{registered_as(find_grant(grants(state), Grant.id(grant)), grant),
+  Guard.Require{scope_wellformed(Grant.scope(grant), live(state)),
+  Guard.Require{unexpired(now, Grant.valid_until(grant)),
+  Guard.End{}}}}
+
+# What a root grant's cited approvals must satisfy at each use, re-derived
+# from this state: each exists and was consumed by exactly this grant, no id
+# is cited twice, none is revoked, each issuer is still the directory
+# authority for its domain and each object still placed there, the source
+# approvals still cover the manifest position by position, the write approval
+# names the plan's destination and the scope's write domain, every approval's
+# scope equals the grant's exactly, the grant's rights are within every
+# approval's, and `now` is before every approval's exclusive `valid_until`.
+def root_checks(+state: State, +grant: Grant, +now: Nat) -> Guard.Checks:
+  match grant:
+    case Grant{+id, _, +scope, _, _, +sources, +write, _}:
+      Guard.Require{write_consumed_by(approvals(state), write, id),
+      Guard.Require{sources_consumed_by(approvals(state), sources, id),
+      Guard.Require{ids_distinct(sources),
+      Guard.Require{write_cited_meets(Unrevoked{}, state, grant_request(grant), now),
+      Guard.Require{sources_meet(Unrevoked{}, sources, state, grant_request(grant), now),
+      Guard.Require{write_cited_meets(StillAuthority{}, state, grant_request(grant), now),
+      Guard.Require{sources_meet(StillAuthority{}, sources, state, grant_request(grant), now),
+      Guard.Require{write_cited_meets(StillPlaced{}, state, grant_request(grant), now),
+      Guard.Require{sources_meet(StillPlaced{}, sources, state, grant_request(grant), now),
+      Guard.Require{sources_cover_manifest(approvals(state), T.Plan.sources(Scope.plan(scope)), sources),
+      Guard.Require{write_cited_meets(DestinationIsPlans{}, state, grant_request(grant), now),
+      Guard.Require{write_cited_meets(DomainIsScopes{}, state, grant_request(grant), now),
+      Guard.Require{write_cited_meets(SameScope{}, state, grant_request(grant), now),
+      Guard.Require{sources_meet(SameScope{}, sources, state, grant_request(grant), now),
+      Guard.Require{write_cited_meets(RightsCover{}, state, grant_request(grant), now),
+      Guard.Require{sources_meet(RightsCover{}, sources, state, grant_request(grant), now),
+      Guard.Require{write_cited_meets(StillUnexpired{}, state, grant_request(grant), now),
+      Guard.Require{sources_meet(StillUnexpired{}, sources, state, grant_request(grant), now),
+      Guard.End{}}}}}}}}}}}}}}}}}}}
+
+# What a derived grant must satisfy against its parent at each use: the same
+# scope (subject included), rights within the parent's, and a lifetime no
+# longer than the parent's. The parent itself must be current, which
+# `current_within` checks by walking the chain.
+def derived_checks(+child: Grant, +parent: Grant) -> Guard.Checks:
+  Guard.Require{scope_equal(Grant.scope(child), Grant.scope(parent)),
+  Guard.Require{rights_within(Grant.rights(child), Grant.rights(parent)),
+  Guard.Require{lifetime_within(Grant.valid_until(child), Grant.valid_until(parent)),
+  Guard.End{}}}}
+
+# Whether `grant` is usable, walking its parent chain. `parent` is the
+# grant's parent id and `found` that id's lookup in this state's grants; both
+# call sites compute them from the grant being checked, so they are not
+# caller facts. `fuel` is the grant list itself and loses one entry per step,
+# so the walk is structural and a chain longer than the list (a cycle) runs
+# out and denies. A root grant (parent 0) answers from its own and its
+# approvals' checks; a derived grant from its own checks, the attenuation
+# checks against its parent's exact record in this state, and its parent
+# being current in turn. A missing or ambiguous parent denies.
+def current_within(fuel: Grants, parent: Nat, found: Maybe<&2, Grant>, +state: State,
+    +grant: Grant, +now: Nat) -> Bool:
+  match fuel:
+    case NoGrants{}:
+      False{}
+    case Grants{_, rest}:
+      match parent:
+        case 0n:
+          Guard.all(own_checks(state, grant, now)) && Guard.all(root_checks(state, grant, now))
+        case 1n+_:
+          match found:
+            case None{}:
+              False{}
+            case Some{+held}:
+              Guard.all(own_checks(state, grant, now)) && Guard.all(derived_checks(grant, held))
+                && current_within(rest, Grant.parent(held), find_grant(grants(state), Grant.parent(held)),
+                  state, held, now)
+
+# Public entry point (GI-005): whether `grant` is usable in `state` at `now`.
+# The supplied grant is a claim: nothing is believed because the record
+# exists. Usability is re-derived on every call: the grant must be exactly
+# the record registered under its id here; its scope well formed at the live
+# stamp and `now` before its `valid_until`; for a root grant every cited
+# approval present, consumed by this grant, unrevoked, still authorized by the
+# directory and still placed, covering the manifest, with the same scope,
+# rights covering the grant's and `now` before its `valid_until`; for a
+# derived grant the parent registered, current in turn, and the child within
+# its scope, rights and lifetime. A revoked approval, a directory or
+# placement change, an epoch advance or expiry therefore withdraws the grant
+# and everything derived from it, without editing any record.
+def current(+state: State, +grant: Grant, +now: Nat) -> Bool:
+  current_within(grants(state), Grant.parent(grant), find_grant(grants(state), Grant.parent(grant)),
+    state, grant, now)
+
+# --- Structural validity -----------------------------------------------------
+
+# A root grant's cited approvals exist and were consumed by exactly that
+# grant; a derived grant's parent is a grant registered before it (later in
+# the list, which is newest first), so no chain is circular. A grant record
+# copied into a state whose approvals do not back it is therefore invalid.
+def grant_backed(grant: Grant, +approvals: Approvals, +earlier: Grants) -> Bool:
+  match grant:
+    case Grant{+id, _, _, _, _, sources, write, parent}:
+      match parent:
+        case 0n:
+          write_consumed_by(approvals, write, id) && sources_consumed_by(approvals, sources, id)
+        case 1n+p:
+          grant_exists(earlier, 1n+p)
+
+# Each grant has an allocated id, unique among grants and distinct from every
+# approval id (the two share one counter), and is backed as grant_backed
+# says.
+def grants_valid(grants: Grants, +next_id: Nat, +approvals: Approvals) -> Bool:
+  match grants:
+    case NoGrants{}:
+      True{}
+    case Grants{+head, +tail}:
+      allocated(Grant.id(head), next_id) && Bool.not(grant_exists(tail, Grant.id(head)))
+        && Bool.not(approval_exists(approvals, Grant.id(head)))
+        && grant_backed(head, approvals, tail) && grants_valid(tail, next_id, approvals)
+
+# Public entry point: structural validity only. Ids are positive, below
+# `next_id` and unique; every stored approval's serial is recorded; every
+# grant is backed (its cited approvals consumed by exactly it, or its parent
+# registered before it); no object is placed twice in one namespace; no
+# serial is recorded twice. It does not authenticate the supplied state, and
+# no transition treats a valid state as evidence: each recomputes its own
+# checks, and `current` re-derives usability at every use.
+def valid(state: State) -> Bool:
+  match state:
+    case State{_, +next_id, _, _, placements, +approvals, grants, +seen}:
+      Nat.is_gt(next_id, 0n) && approvals_valid(approvals, next_id, seen)
+        && grants_valid(grants, next_id, approvals) && placements_valid(placements)
+        && serials_valid(seen)
