@@ -240,3 +240,25 @@ Each law's rationale is in a comment above it in `LAWS.bend` and in the `Rendezv
 6. **The approval live-stamp gate is a Task 2 change.** It is the noted gap, closed as the brief allows. It adds StaleEpoch to `submit_approval`'s denial order, between the origin ScopeMismatch and Expired.
 7. **Two equivalent mutants** (S8 and F2) are argued in `task-3-mutants.md`, for the reviewer to accept or reject.
 8. **Check count.** There are 43 new checks against the brief's estimate of about 24. The extra checks pin every eligibility gate and the abandon and withdrawal mechanics.
+
+## Fix round 1
+
+Source: `task-3-review.md`. Spec compliance was APPROVED. Security was NEEDS_FIXES on Q1 and Q2; Q3 to Q5 are minor.
+
+- **Q1** (the ranking profile collided with the offer profile): new fixtures `offer_a2_p2_35()` (A's `{201, 2}` at profile 2, quote 35) and `p2_state()` (on `approved_a12()`, constraint {1, 2}), and one new check. "ER-003 a selection of A's profile-2 offer records ranking profile 1, not the offer's profile: Selection{3, the offer, the request, the live stamp, 100, 1}" asserts the full record. It kills R11.
+- **Q2** (`retired` was tested only at 0): new fixture `b_withdraws_after_reselect()` (B withdraws `{202, 1}` from `Change.state(reselect_change())` at revision 7) and one new check. "ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3" kills R13.
+- **Q3** (stale comments): `approval_gates` now names `eligibility_gates`. The `origin_approved` comment says that `eligibility_gates_found` calls it through `origins_approved`. The `with_seen` fixture comment says that it is the shape `withdraw_offer` leaves. I also fixed the `both_namespaces` comment ("No transition yet records approval serials (a later task)"), which Task 2 made stale. The three remaining "a later task" comments, on `Selection` currency, `Evidence` and `Dispatch`, refer to Tasks 4 and 5 and are still accurate.
+- **Q4** (overlong lines): the `submit_approval` doc, the `origin_approved` doc and the tests header are rewrapped. No comment line in either file now exceeds 100 columns.
+- **Q5**: R2 is recorded as equivalent in `task-3-mutants.md`, with the reviewer's argument.
+
+The `Rendezvous.bend` change is comments only. Every non-comment line is identical to 86c8dc4: I checked this by diffing the non-comment lines of both revisions.
+
+Mutation: 80 mutants, 77 killed, 3 equivalent (S8, F2, R2). See `task-3-mutants.md`, section "Fix round 1".
+
+Verification:
+- `bend Rendezvous.bend --check-only` ends with `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `bend RendezvousTests.bend` ends with `Rendezvous: 117 checks passed`.
+- `bend Tests.bend`: exit 0, 0 FAIL lines. Last lines: `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers` / `ALL LIBRARY TESTS PASSED`. The PASS total is **1545**: 1428 at master 78449c9 plus 117 Rendezvous checks, which is 1543 plus 2.
+- `bend PROOF.bend`: exit 0, `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` There are 22 laws; LAWS, PROOF and Tests.bend are unchanged in this round.
+
+Remaining concerns from the first round: 1 to 6 and 8. Concern 7 now covers three equivalent mutants (S8, F2, R2), all of which the reviewer has accepted.

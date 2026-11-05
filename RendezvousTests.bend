@@ -11,9 +11,9 @@ import ./Guard.bend as Guard
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
 # Sections follow the change's tasks; this file holds `offers` (1.1),
-# `approvals` (1.2, first half) and `selection` (1.2, second half). Every denial check asserts the exact Error
-# and that the returned state equals the supplied one, field by field,
-# through `denied`.
+# `approvals` (1.2, first half) and `selection` (1.2, second half). Every
+# denial check asserts the exact Error and that the returned state equals
+# the supplied one, field by field, through `denied`.
 #
 # Every fixture here is a SYNTHETIC AUTHORITY RECORD and SYNTHETIC MONITOR
 # STATE, not an authenticated issuer. Provider grants are built through
@@ -173,7 +173,7 @@ def with_both() -> R.State:
   R.Change.state(b_change())
 
 # SYNTHETIC MONITOR STATE: A's serial 1 recorded as seen with no offer stored
-# under it, the shape a withdrawal leaves behind (withdrawal is a later task).
+# under it, the shape `withdraw_offer` leaves behind.
 def with_seen(state: R.State, seen: R.Serials) -> R.State:
   match state:
     case R.State{revision, next_id, request, constraint, offers, approvals, selection,
@@ -215,8 +215,8 @@ def withdrawn_a7() -> R.State:
   with_seen(opened(), R.Serials{R.OfferSerial{provider_a(), 7n}, R.NoSerials{}})
 
 # SYNTHETIC MONITOR STATE: A's offer serial 1 and an origin-approval serial 1
-# from the same principal, which are separate namespaces. No transition yet
-# records approval serials (a later task).
+# from the same principal, which are separate namespaces (`submit_approval`
+# records approval serials; this state is installed directly).
 def both_namespaces() -> R.State:
   with_seen(opened(),
     R.Serials{R.OfferSerial{provider_a(), 1n}, R.Serials{R.ApprovalSerial{provider_a(), 1n}, R.NoSerials{}}})
@@ -1135,6 +1135,17 @@ def selection_races() -> IO(Unit):
       && denied(R.select(state_ab(), 4n, NT.pinned(), 0n, n_context(), snapshot()), state_ab(), R.WrongStage{}), "ER-003 select on a Negotiation session at Proposed, or at the wrong session revision, denied WrongStage")
     Test.check(denied(select_with(state_ab(), session_for(N.Request{TF.plan(), 7n, 41n, 30n, 180n}), snapshot()), state_ab(), R.ScopeMismatch{}), "ER-003 a session whose request differs in quote (41, not 42) denied ScopeMismatch")
 
+# A's serial 2 at profile 2 quoting 35, the cheapest in approved_a12().
+def offer_a2_p2_35() -> R.Offer:
+  R.Offer{R.record_version(), R.OfferId{201n, 2n}, provider_a(), 3n, TF.plan(), 2n, 35n, offer_until()}
+
+def p2_state() -> R.State:
+  put_offer(approved_a12(), provider_a(), offer_a2_p2_35())
+
+# B withdraws its unselected offer after a reselection, when `retired` is 3.
+def b_withdraws_after_reselect() -> R.Change:
+  R.withdraw_offer(R.Change.state(reselect_change()), 7n, provider_b(), R.OfferId{202n, 1n})
+
 # withdraw_offer and the selection, and the approval live-stamp gate.
 def selection_withdrawals() -> IO(Unit):
   do IO<Unit>:
@@ -1146,6 +1157,13 @@ def selection_withdrawals() -> IO(Unit):
       && Nat.is_eq(R.retired(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), 0n)
       && offers_equal(R.offers(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), R.Offers{offer_a(), R.NoOffers{}})
       && Nat.is_eq(R.revision(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), 6n), "ER-008 B withdrawing its unselected offer keeps A's selection and retires nothing")
+    Test.check(Nat.is_eq(R.retired(R.Change.state(reselect_change())), 3n)
+      && R.Change.accepted(b_withdraws_after_reselect())
+      && Nat.is_eq(R.retired(R.Change.state(b_withdraws_after_reselect())), 3n)
+      && selection_id_is(R.selection(R.Change.state(b_withdraws_after_reselect())), 4n), "ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3")
+    Test.check(Nat.is_eq(R.revision(p2_state()), 3n)
+      && selection_equal(R.selection(R.Change.state(select_now(p2_state()))),
+        R.Selection{3n, offer_a2_p2_35(), NT.request(), I.live(issuer()), IT.now(), 1n}), "ER-003 a selection of A's profile-2 offer records ranking profile 1, not the offer's profile: Selection{3, the offer, the request, the live stamp, 100, 1}")
     Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(), approval_a(), snapshot_with(epoch_issuer(), IT.now())),
         opened(), R.StaleEpoch{}), "ER-006 an approval submitted while the issuer is at epoch 5 and the transfer context still at the plan's epoch 3 denied StaleEpoch")
 
@@ -1164,4 +1182,4 @@ def main() -> IO(Unit):
     offers()
     approvals()
     selection()
-    IO.print("Rendezvous: 115 checks passed")
+    IO.print("Rendezvous: 117 checks passed")

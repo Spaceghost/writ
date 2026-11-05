@@ -888,7 +888,7 @@ def request_at_live(+state: State, +snapshot: Snapshot) -> Bool:
 # plan's stamp is the snapshot issuer's live stamp), the lifetime, and last
 # replay. The provider and profile are not checked here: an approval for
 # a provider without a grant, or at a profile outside the constraint, is
-# stored but never makes an offer eligible (eligibility, a later task).
+# stored but never makes an offer eligible (`eligibility_gates`).
 def approval_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
     approval: OriginApproval, +snapshot: Snapshot) -> Gates:
   match approval:
@@ -941,12 +941,13 @@ def submit_approval_checked(ok: Bool, +state: State, +expected_revision: Nat, +f
 # authority; the approval's plan is exactly the request plan; the origin is
 # one `T.required_origins(request plan, snapshot transfer)` lists (inherited
 # origins included; a Missing lookup admits none); the request plan's stamp
-# is the snapshot issuer's live stamp; `now < valid_until`; and `(from, serial)` is unseen as an approval serial. The
-# approval is then stored unedited under a fresh id (the change id), not
-# withdrawn, its serial recorded, and `next_id` and the revision advanced
-# once. A stored approval covers one origin, one provider, one profile and
-# one plan, and confers nothing by itself: `origin_approved` re-derives its
-# issuer's authority from the issuer state at every use. Denial order:
+# is the snapshot issuer's live stamp; `now < valid_until`; and `(from,
+# serial)` is unseen as an approval serial. The approval is then stored
+# unedited under a fresh id (the change id), not withdrawn, its serial
+# recorded, and `next_id` and the revision advanced once. A stored approval
+# covers one origin, one provider, one profile and one plan, and confers
+# nothing by itself: `origin_approved` re-derives its issuer's authority
+# from the issuer state at every use. Denial order:
 # StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority,
 # ScopeMismatch (plan, then an origin the plan does not need), StaleEpoch
 # (the issuer's live stamp is not the request plan's), Expired, Replay; the
@@ -1117,9 +1118,10 @@ def stored_covers(stored: StoredApproval, +origin: T.ObjectVersion, +provider: I
 
 # Whether some stored approval covers `origin` for `provider` at `profile`
 # and `plan` at `now`, against the supplied issuer state. Exported
-# implementation helper for eligibility; a later task calls it with the
-# snapshot's issuer and `now`. An approval for another provider, another
-# profile or another plan never covers this one.
+# implementation helper for eligibility: `eligibility_gates_found` calls it,
+# through `origins_approved`, with the snapshot's issuer and `now`. An
+# approval for another provider, another profile or another plan never
+# covers this one.
 def origin_approved(approvals: Approvals, +origin: T.ObjectVersion, +provider: I.Principal,
     +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat) -> Bool:
   match approvals:

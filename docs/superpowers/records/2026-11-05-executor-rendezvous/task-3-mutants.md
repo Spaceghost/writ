@@ -92,3 +92,20 @@ Result: 74 mutants, 72 killed, 2 equivalent (S8, F2; arguments below). PROOF: ev
 ## Masked gate handled by a direct check
 
 - S5 (some eligible offer -> True) is otherwise masked by the unreachable S8 arm, which denies with the same reason. The check "ER-002 selection racing revocation with no other offer: denied NoEligibleOffer, and the select gate list itself fails" calls the exported `select_checks` and kills it.
+
+## Fix round 1
+
+The full sweep was rerun on the fixed tests (117 Rendezvous checks), with the reviewer's R11, R13 and R2 added to `mutants.py`. The runner now also accepts multi-replacement mutants, which R11 needs. Result: 80 mutants, 77 killed, 3 equivalent (S8, F2 and R2). Every round-0 result is unchanged: the 72 killed mutants are still killed, and S8 and F2 still survive.
+
+| Id | Mutation | Result | First killing check | PROOF |
+|---|---|---|---|---|
+| R11 | ranking recorded as the selected offer's profile (`Some{+offer}`, `Offer.profile(offer)`) | KILLED | ER-003 a selection of A's profile-2 offer records ranking profile 1, not the offer's profile: Selection{3, the offer, the request, the live stamp, 100, 1} | |
+| R13 | unrelated withdrawal resets `retired` to 0 | KILLED | ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3 | |
+| R2 | eligibility gate 6 evaluates `I.current` at time 0 instead of `Snapshot.now` | SURVIVED (equivalent) | | CHECK |
+
+**R2 is equivalent (reviewer's argument, accepted)** on issuer states built through Issuance's entry points. Its time-dependent conjuncts are already implied:
+- Gate 8 (the offer is unexpired at `now`) and gate 9 (the offer's `valid_until` is no later than the grant's) already imply that the grant is unexpired at `now`.
+- Registration keeps a grant's lifetime within each cited approval's lifetime (`Issuance.bend` `lifetime_within` at registration).
+- Derivation keeps a child's lifetime within its parent's.
+
+So every time-dependent conjunct of `I.current` holds at `now` whenever gates 8 and 9 pass. The conjuncts that do not depend on time (revocation, epoch, directory, placement and ancestry) are pinned by E6 and by the StaleEpoch check. A monitor-installed issuer whose grant outlives its approvals is outside this argument. The time-dependent reason (Expired from `found_fault`) is still pinned through `found_fault`'s own `now` (E6r and "Expired at 150").

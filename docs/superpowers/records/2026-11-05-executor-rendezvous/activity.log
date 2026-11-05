@@ -25,3 +25,8 @@
 2026-11-05T15:28:44Z	implementer	laws added, PROOF.bend ALL PROOFS CHECK; Tests.bend 1543 PASS; mutation sweep started (72 mutants)
 2026-11-05T15:31:55Z	implementer	mutation sweep: 74 mutants, 72 killed, 2 equivalent (unreachable None arm; live stamp equals plan stamp on acceptance); comparator, filter and outer-match mutants also fail PROOF.bend; writing report
 2026-11-05T15:33:23Z	implementer	report and mutants written; box 1.2 checked; Rendezvous 115 checks, Tests.bend 1543 PASS, PROOF.bend ALL PROOFS CHECK at 22 laws; committing
+2026-11-05T15:33:50Z	controller	task 3 reported; reviewer dispatched
+2026-11-05T15:42:08Z	controller	review: two fixture collisions; fix round 1 dispatched
+2026-11-05T15:42:24Z	implementer	task 3 fix round 1 started: read task-3-review.md
+2026-11-05T15:43:52Z	implementer	fix round 1: Q1 and Q2 checks added (117), Q3 comments and Q4 wraps done (comment-only module diff); rerunning mutation pass
+2026-11-05T15:46:56Z	implementer	fix round 1: 80 mutants (77 killed, 3 equivalent: S8, F2, R2); Tests.bend 1545 PASS, PROOF.bend ALL PROOFS CHECK at 22 laws; committing
