@@ -60,3 +60,5 @@
 2026-11-05T05:03:58Z	implementer	scenarios section written (23 checks, Issuance 224); scenario-only mutation run: 19 gate mutants, 18 killed by scenario checks alone, 1 equivalent within public lifecycles (register DestinationIsPlans, shadowed by SameScope; submit_write already binds the destination); 3 checks added for the first-pass survivors; running full suite and proofs
 2026-11-05T05:05:38Z	implementer	suite 1008 PASS (782 + 224 + 2), ALL LIBRARY TESTS PASSED; PROOF ALL PROOFS CHECK; wrote verification/grant-issuance.txt and openspec/traceability/grant-issuance.md (GI-001 to GI-008 rows, reviewed-only gaps)
 2026-11-05T05:07:05Z	implementer	transfer-admission deferred sentence replaced with a pointer to grant-issuance.md; box 2.1 checked; OpenSpec strict 44 passed (sanity); task-6-report.md written; committing
+2026-11-05T05:07:46Z	controller	task 6 reported; reviewer dispatched
+2026-11-05T05:09:24Z	controller	task 6 review APPROVED; task 7 dispatched (full runs, proofs, OpenSpec, host preconditions)
