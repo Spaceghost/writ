@@ -58,13 +58,29 @@ import ./HostPrimitives.bend as HP
 #   exclusive (now < valid_until), matching Transfer, Frontend and Issuance.
 # - `expected_revision`, the revision the caller validated against; the host
 #   must install an accepted state atomically at that revision.
-# - `dispatch`'s `host: HP.State`, the monitor's CURRENT HostPrimitives state:
+# - The monitor's index of opened requests (`open`'s `index: Opened`): every
+#   negotiation request the host has opened a rendezvous for, kept durably
+#   and never shrunk. `open` denies AlreadyOpen for a request it holds, so
+#   one request, and so one Negotiation session, has at most one
+#   rendezvous. A Negotiation sample names no provider, so this is what
+#   keeps one provider's trial from counting for another's selection in a
+#   second rendezvous; an index that loses an entry reopens that gap, which
+#   Bend cannot detect. The host never presents one session's challenge or
+#   sample to two rendezvous.
+# - `select` and `abandon` are monitor actions: the host invokes them only
+#   on its own schedule, never on a provider's or reader's request (whoever
+#   times `select` can pick before a cheaper provider's approvals arrive,
+#   and `abandon` forces the trial to be redone).
+# - `dispatch`'s and `commit_context`'s `host: HP.State`, the monitor's
+#   CURRENT HostPrimitives state at each dispatch and each commit, never one
+#   from before a restart:
 #   its HostIdentity session table (each session's caller is set only by
 #   `bind_session` from authenticated native evidence) and its worker
 #   bindings (the configured profile `open_session` bound each worker session
 #   under). Plan ruling: a HostIdentity session's `F.Caller.subject` is the
 #   authenticated provider identity, the same namespace as `I.Principal.id`.
-#   `dispatch` takes `expected_host_revision` and requires `HP.current`
+#   `dispatch` and `commit_context` take `expected_host_revision` and
+#   require `HP.current`
 #   (that revision and `HP.valid`, which includes `HostIdentity.valid`), so
 #   a session table carried across a restart, a binding to an unconfigured
 #   profile, or a host at another revision is denied. A table that is valid
@@ -119,6 +135,15 @@ import ./HostPrimitives.bend as HP
 # state at every call, so a directory or placement change withdraws the
 # approval without editing it; `origins_approved` requires every origin
 # `T.required_origins` lists, and a Missing or empty lookup is False.
+# Because authority is re-read rather than recorded, an approval made inert
+# by a directory change counts again if the directory later names its issuer
+# again: it is the issuer's own unwithdrawn approval under its own authority,
+# with no new decision (final review, F5). The new authority cannot withdraw
+# it (only the recorded issuer may); a host that wants it gone after a
+# transfer of authority has the recorded issuer withdraw it, or opens a new
+# rendezvous for a new request. Likewise a fresh approval after a withdrawal
+# makes the same selection dispatchable again; that is a new authority
+# decision.
 #
 # Eligibility precedes ranking (ER-002). An offer is eligible only when it
 # passes every gate of the ordered list `eligibility_gates`, re-read from the
@@ -217,13 +242,13 @@ import ./HostPrimitives.bend as HP
 # Negotiation session to `commit_context` and to the commit; Bend cannot tie
 # them, because the commit takes its session separately.
 #
-# Public entry points: `open`, `submit_offer`, `submit_approval`,
+# Public entry points: `open` (with the `Opening.*` accessors), `submit_offer`, `submit_approval`,
 # `withdraw_approval`, `select`, `abandon` (a monitor action),
 # `withdraw_offer`, `submit_evidence`, `dispatch`, the projections
 # `negotiation_context`, `commit_context` and `provider_registry`, the read-only diagnostic
 # `ineligibility`, `valid`, the `Change.*` accessors and the state, snapshot
 # and record accessors. Every other def (`selection_current`,
-# `selected_provider_is`, `session_follows_selection` and
+# `selected_provider_is`, `session_follows_selection`, `fresh` and
 # `dispatch_target_selected` included) is an exported implementation helper;
 # calling one does not perform a transition's checks.
 #
@@ -406,6 +431,7 @@ type Error is Data:
   MissingEvidence{}
   Replay{}
   WrongProfile{}
+  AlreadyOpen{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
 # state and an id. For an accepted offer the id is the offer's serial (the
@@ -415,14 +441,92 @@ type Change is Data:
   Rejected{state: State, reason: Error}
   Changed{state: State, id: Nat}
 
-# Public entry point: the rendezvous for one negotiation request and the
-# monitor's execution constraint, with no offers, approvals, selection,
-# evidence, dispatches or seen serials. Id 0 is never allocated. The request
-# and constraint are fixed for the life of the rendezvous: a changed request
-# is a new rendezvous.
-def open(request: N.Request, constraint: Profiles) -> State:
+# The monitor's index of every negotiation request it has opened a
+# rendezvous for (trusted input). A Negotiation sample names no provider: a
+# sample belongs to a provider only because its challenge was issued after
+# that provider's selection inside one rendezvous. Two rendezvous for one
+# request could therefore each count the same session's challenge and sample
+# for a different provider (final review, F1), so `open` refuses a request
+# the index already holds. The host keeps the index durably, installs the
+# returned index with the new state, and never removes an entry (a request
+# is opened once, whatever becomes of its rendezvous).
+type Opened is Data:
+  NoneOpened{}
+  Opened{request: N.Request, tail: Opened}
+
+# The outcome of `open`: the fresh state with the index extended by its
+# request, or the denial with the supplied index unchanged.
+type Opening is Data:
+  OpenRejected{index: Opened, reason: Error}
+  OpenAccepted{state: State, index: Opened}
+
+# Whether the index holds a request equal to `request`.
+def request_opened(index: Opened, +request: N.Request) -> Bool:
+  match index:
+    case NoneOpened{}:
+      False{}
+    case Opened{head, tail}:
+      N.Request.equal(head, request) || request_opened(tail, request)
+
+# The rendezvous state for `request` and `constraint`, with no offers,
+# approvals, selection, evidence, dispatches or seen serials. Id 0 is never
+# allocated. Exported implementation helper: it performs none of `open`'s
+# checks, and a host that builds a state with it bypasses the index.
+def fresh(request: N.Request, constraint: Profiles) -> State:
   State{0n, 1n, request, constraint, NoOffers{}, NoApprovals{}, NoSelection{}, 0n,
     NoEvidence{}, NoDispatches{}, NoSerials{}}
+
+def open_checked(ok: Bool, +index: Opened, +request: N.Request, constraint: Profiles) -> Opening:
+  match ok:
+    case False{}:
+      OpenRejected{index, AlreadyOpen{}}
+    case True{}:
+      OpenAccepted{fresh(request, constraint), Opened{request, index}}
+
+# Public entry point: open the rendezvous for one negotiation request and
+# the monitor's execution constraint, against the monitor's index of opened
+# requests. Denied AlreadyOpen, with the index unchanged, when the index
+# already holds an equal request (`N.Request.equal`: plan, reader, quote,
+# units and expiry), so one request has at most one rendezvous and one
+# session's trial can count in at most one. Otherwise the result is
+# `fresh(request, constraint)` and the index with `request` added. The
+# request and constraint are fixed for the life of the rendezvous: a
+# changed request is a new rendezvous.
+def open(+index: Opened, +request: N.Request, constraint: Profiles) -> Opening:
+  open_checked(Bool.not(request_opened(index, request)), index, request, constraint)
+
+# Public accessor: whether `open` accepted.
+def Opening.accepted(opening: Opening) -> Bool:
+  match opening:
+    case OpenRejected{_, _}:
+      False{}
+    case OpenAccepted{_, _}:
+      True{}
+
+# Public accessor: the opened state; None on rejection.
+def Opening.state(opening: Opening) -> Maybe<&2, State>:
+  match opening:
+    case OpenRejected{_, _}:
+      None{}
+    case OpenAccepted{state, _}:
+      Some{state}
+
+# Public accessor: the index to install (extended on acceptance, the
+# supplied one on rejection).
+def Opening.index(opening: Opening) -> Opened:
+  match opening:
+    case OpenRejected{index, _}:
+      index
+    case OpenAccepted{_, index}:
+      index
+
+# Public accessor: the denial reason; None on acceptance.
+def Opening.reason(opening: Opening) -> Maybe<&2, Error>:
+  match opening:
+    case OpenRejected{_, reason}:
+      Some{reason}
+    case OpenAccepted{_, _}:
+      None{}
 
 def Error.equal(a: Error, b: Error) -> Bool:
   match a b:
@@ -451,6 +555,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case MissingEvidence{} MissingEvidence{}: True{}
     case Replay{} Replay{}: True{}
     case WrongProfile{} WrongProfile{}: True{}
+    case AlreadyOpen{} AlreadyOpen{}: True{}
     case _ _: False{}
 
 # Public accessor: whether the transition committed.
@@ -1963,22 +2068,28 @@ def submit_evidence(+state: State, +expected_revision: Nat, +from: I.Principal, 
 
 # --- Session binding (ER-005; the dispatch gate's input) --------------------
 
-# Whether evidence stored under selection `id` names challenge `challenge`.
-def challenge_evidenced(evidences: Evidences, +id: Nat, +challenge: Nat) -> Bool:
+# Whether evidence stored under selection `id`, naming the selected `offer`
+# and its provider claim, names challenge `challenge`. The offer and provider
+# comparisons match `evidence_for` and `evidence_names`, so a second evidence
+# record a monitor-installed state holds under the same id for another offer
+# cannot make a session follow the selection (final review, F4).
+def challenge_evidenced(evidences: Evidences, +id: Nat, +offer: Offer, +challenge: Nat) -> Bool:
   match evidences:
     case NoEvidence{}:
       False{}
-    case Evidences{StoredEvidence{selection, Evidence{_, _, _, _, named_challenge, _}}, tail}:
-      (Nat.is_eq(selection, id) && Nat.is_eq(named_challenge, challenge))
-        || challenge_evidenced(tail, id, challenge)
+    case Evidences{StoredEvidence{selection, Evidence{_, _, provider, named_offer, named_challenge, _}}, tail}:
+      (Nat.is_eq(selection, id) && OfferId.equal(named_offer, Offer.id(offer))
+        && I.Principal.equal(provider, Offer.provider(offer))
+        && Nat.is_eq(named_challenge, challenge))
+        || challenge_evidenced(tail, id, offer, challenge)
 
 def session_follows(selection: Selection, +state: State, +session: N.Session) -> Bool:
   match selection:
     case NoSelection{}:
       False{}
-    case Selection{id, _, _, _, _, _}:
+    case Selection{id, offer, _, _, _, _}:
       N.Request.equal(N.Session.request(session), request(state))
-        && challenge_evidenced(evidence(state), id, session_challenge(session))
+        && challenge_evidenced(evidence(state), id, offer, session_challenge(session))
 
 # Whether the Negotiation session belongs to the current selection's trial:
 # it carries exactly the rendezvous request, and its recorded challenge is
@@ -2505,7 +2616,11 @@ def selection_dispatched_to(selection: Selection, +state: State, +incarnation: N
 # Public entry point (ER-001, ER-005, ER-006, ER-007): the Negotiation
 # context the host passes to `Backplane.commit` and
 # `DataOS.commit_from_capability` for this rendezvous. It is
-# `negotiation_context`, further gated, at this call, on a dispatch of the
+# `negotiation_context`, further gated, at this call, on the host state
+# being current (`HP.current(host, expected_host_revision)`: that revision
+# and `HP.valid`, exactly as `dispatch` requires, so a pre-restart state, a
+# session table carried across a restart or a host at another revision
+# yields no commit context; final review, F2), on a dispatch of the
 # current selection recorded as Dispatch{selection id, the incarnation of
 # `host`, `worker_session}` (the worker session the host reports the output
 # from) and on `session` following that selection's trial
@@ -2526,9 +2641,10 @@ def selection_dispatched_to(selection: Selection, +state: State, +incarnation: N
 # separately (`Backplane.commit` and `DataOS.commit_from_capability` read
 # their own `session` argument, so the `session_follows_selection` gate here
 # protects only the session it is given).
-def commit_context(+state: State, +session: N.Session, +host: HP.State, +worker_session: Nat,
-    n_context: N.Context, +snapshot: Snapshot) -> N.Context:
-  current_context(selection_current(state, snapshot)
+def commit_context(+state: State, +session: N.Session, +host: HP.State, +expected_host_revision: Nat,
+    +worker_session: Nat, n_context: N.Context, +snapshot: Snapshot) -> N.Context:
+  current_context(HP.current(host, expected_host_revision)
+    && selection_current(state, snapshot)
     && selection_dispatched_to(selection(state), state, HI.incarnation(HP.identity(host)), worker_session)
     && session_follows_selection(state, session), state, n_context, snapshot)
 

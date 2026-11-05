@@ -20,6 +20,7 @@ import ./FacadeTests.bend as FT
 import ./Dlm.bend as D
 import ./HostWire.bend as W
 import ./HostPrimitivesTests.bend as HPT
+import ./HostPublication.bend as HPub
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
 # Sections follow the change's tasks; this file holds `offers` (1.1),
@@ -147,14 +148,32 @@ def profile() -> Nat:
 def constraint() -> R.Profiles:
   R.Profiles{profile(), R.NoProfiles{}}
 
+# The state `R.open` returns for `request` on `index`. The fallback arm (an
+# empty-constraint state) is never taken by a fixture: every fixture opens on
+# the empty index, and "F1 ..." in `scenario_index` checks that such an open
+# is accepted.
+def opened_state(opening: R.Opening, +request: N.Request) -> R.State:
+  match opening:
+    case R.OpenAccepted{state, _}:
+      state
+    case R.OpenRejected{_, _}:
+      R.fresh(request, R.NoProfiles{})
+
+def opened_on(+index: R.Opened, +request: N.Request, constraint: R.Profiles) -> R.State:
+  opened_state(R.open(index, request, constraint), request)
+
+# SYNTHETIC MONITOR STATE: the monitor's index holds no request yet.
+def first_open(+request: N.Request, constraint: R.Profiles) -> R.State:
+  opened_on(R.NoneOpened{}, request, constraint)
+
 # The rendezvous for the negotiation request NT.request() (TF.plan(), reader
 # 7, quote ceiling 42, units 30, deadline 180).
 def opened() -> R.State:
-  R.open(NT.request(), constraint())
+  first_open(NT.request(), constraint())
 
 # The same reader terms for the two-source plan IT.plan_two().
 def opened_two() -> R.State:
-  R.open(N.Request{IT.plan_two(), 7n, 42n, 30n, 180n}, constraint())
+  first_open(N.Request{IT.plan_two(), 7n, 42n, 30n, 180n}, constraint())
 
 def quote() -> Nat:
   40n
@@ -995,7 +1014,7 @@ def with_extra_offer(+state: R.State, offer: R.Offer) -> R.State:
 
 # The execution constraint {1, 2}, both of A's profiles admitted.
 def opened_12() -> R.State:
-  R.open(NT.request(), R.Profiles{profile(), R.Profiles{2n, R.NoProfiles{}}})
+  first_open(NT.request(), R.Profiles{profile(), R.Profiles{2n, R.NoProfiles{}}})
 
 def approved_a12() -> R.State:
   put_approval(put_approval(opened_12(), approval_a()), approval_a_p2())
@@ -2038,6 +2057,31 @@ def trial_owners() -> IO(Unit):
           N.Budgets{N.Budget{11n, TF.plan(), 8n, 42n, 30n, 180n}, N.NoBudgets{}}), trial_snapshot()), NT.initial_ledger())))
       && n_budgets_equal(budgets_of(proj1()), trial_budgets()), "ER-006 the projection keeps the supplied budgets, so N.reserve on it still binds the exact reader: a budget naming payer 8 is rejected")
 
+# --- session_follows_selection binds offer and provider (final review, F4) --
+
+# `foreign_offer()` and `foreign_provider()` (SYNTHETIC MONITOR STATES,
+# above) hold one evidence record under selection 3 naming challenge 21,
+# for B's offer or under B's provider claim.
+def trial_follows_0_0() -> Bool:
+  Bool.not(R.session_follows_selection(foreign_offer(), challenged_t()))
+
+def trial_follows_0_1() -> Bool:
+  Bool.not(R.session_follows_selection(foreign_provider(), challenged_t()))
+
+def trial_follows_0_2() -> Bool:
+  R.session_follows_selection(evidenced(), challenged_t())
+
+# Abandoned selection 3's evidence (A's offer, challenge 21) is kept; A's
+# same offer reselected as selection 4 has none of its own.
+def trial_follows_0_3() -> Bool:
+  R.Change.accepted(reselected_a())
+    && Bool.not(R.session_follows_selection(R.Change.state(reselected_a()), challenged_t()))
+
+def trial_follows() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(trial_follows_0_0() && trial_follows_0_1() && trial_follows_0_2()
+      && trial_follows_0_3(), "ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names challenge 21 for B's offer {202, 5}, or for A's offer under B's provider claim, A's session challenged with 21 does not follow selection 3; on A's own stored evidence it does; and once A's same offer is reselected as selection 4, retired selection 3's evidence does not make it follow")
+
 def trials() -> IO(Unit):
   do IO<Unit>:
     trial_happy()
@@ -2047,6 +2091,7 @@ def trials() -> IO(Unit):
     trial_reuse()
     trial_bindings()
     trial_owners()
+    trial_follows()
 
 # --- Section 1.4: dispatch, invalidation and the provider registry (ER-007, ER-006, ER-001)
 
@@ -2089,9 +2134,10 @@ def bind_on(+host: HP.State, caller: F.Caller, delegable: Bool, role: HP.Role) -
   HP.Step.state(HP.open_session(host, HP.revision(host), host_report(),
     HP.SessionEvidence{caller, HI.Authenticated{}, delegable}, role))
 
-def host() -> HP.State:
+# The same seven bindings on host 61 in incarnation `incarnation`.
+def host_at(incarnation: Nat) -> HP.State:
   bind_on(bind_on(bind_on(bind_on(bind_on(bind_on(bind_on(
-    HP.empty(HI.empty(host_id(), host_incarnation()), host_profiles()),
+    HP.empty(HI.empty(host_id(), incarnation), host_profiles()),
     caller_a(), True{}, HP.ClientRole{True{}}),
     caller_a(), False{}, HP.ClientRole{False{}}),
     caller_c(), False{}, HP.WorkerRole{profile()}),
@@ -2099,6 +2145,9 @@ def host() -> HP.State:
     caller_b(), False{}, HP.WorkerRole{2n}),
     caller_a(), False{}, HP.WorkerRole{profile()}),
     caller_b(), False{}, HP.WorkerRole{profile()})
+
+def host() -> HP.State:
+  host_at(host_incarnation())
 
 def worker_a() -> Nat:
   6n
@@ -2476,11 +2525,11 @@ def dispatch_invalidation() -> IO(Unit):
     Test.check(scope_denied(request_with(IT.plan_invocation(), 42n)) && scope_denied(request_with(IT.plan_source_version(), 42n))
       && scope_denied(request_with(IT.plan_redirect(), 42n)) && scope_denied(request_with(TF.plan(), 41n))
       && R.Change.accepted(dispatch_on(evidenced(), offer_id_ta(), host(), worker_a(), running_for(NT.request()), trial_snapshot())), "ER-007 a Running session whose request differs in invocation (98), manifest (source 10v5), destination (20v9) or quote (41) denied ScopeMismatch; the same session with the rendezvous request dispatches")
-    Test.check(offers_equal(R.offers(R.open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoOffers{})
-      && approvals_equal(R.approvals(R.open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoApprovals{})
-      && evidence_equal(R.evidence(R.open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoEvidence{})
-      && denied(R.dispatch(R.open(request_with(IT.plan_invocation(), 42n), constraint()), 0n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_for(request_with(IT.plan_invocation(), 42n)), 6n, proj1(), trial_snapshot()),
-        R.open(request_with(IT.plan_invocation(), 42n), constraint()), R.NotSelected{}), "ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected")
+    Test.check(offers_equal(R.offers(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoOffers{})
+      && approvals_equal(R.approvals(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoApprovals{})
+      && evidence_equal(R.evidence(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoEvidence{})
+      && denied(R.dispatch(first_open(request_with(IT.plan_invocation(), 42n), constraint()), 0n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_for(request_with(IT.plan_invocation(), 42n)), 6n, proj1(), trial_snapshot()),
+        first_open(request_with(IT.plan_invocation(), 42n), constraint()), R.NotSelected{}), "ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected")
     Test.check(dispatch_denied(withdrawn_ta(), offer_id_ta(), worker_a(), R.NotSelected{})
       && denied(R.dispatch(withdrawn_ta(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), withdrawn_ta(), R.NotSelected{}), "ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal")
 
@@ -2622,7 +2671,7 @@ def dispatch() -> IO(Unit):
 # and the ledger with its hold, so no reservation is spent.
 
 def final_proj(+raw: N.Context, +snapshot: R.Snapshot) -> N.Context:
-  R.commit_context(dispatched_t(), running_t(), host(), worker_a(), raw, snapshot)
+  R.commit_context(dispatched_t(), running_t(), host(), HP.revision(host()), worker_a(), raw, snapshot)
 
 def final_context(+negotiation: N.Context) -> B.Context:
   BF.with_negotiation(BF.context(), negotiation)
@@ -2714,16 +2763,16 @@ def integration_commits() -> IO(Unit):
 
 # The commit context of A's evidenced but undispatched selection 3.
 def undispatched_context() -> B.Context:
-  final_context(R.commit_context(evidenced(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot()))
+  final_context(R.commit_context(evidenced(), running_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot()))
 
 def integration_dispatch() -> IO(Unit):
   do IO<Unit>:
     Test.check(Bool.not(R.selection_dispatched(R.selection(evidenced()), evidenced()))
-      && n_approvals_equal(approvals_of(R.commit_context(evidenced(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
+      && n_approvals_equal(approvals_of(R.commit_context(evidenced(), running_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
       && kept(final_commit(undispatched_context())) && kept(facade_commit(undispatched_context()))
       && B.accepted(successful_facade()), "integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched")
-    Test.check(B.accepted(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), worker_a(), trial_raw(), trial_snapshot()))))
-      && kept(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), worker_b(), trial_raw(), trial_snapshot())))), "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected")
+    Test.check(B.accepted(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot()))))
+      && kept(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), HP.revision(host()), worker_b(), trial_raw(), trial_snapshot())))), "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected")
 
 # Native arity: each check of `integration_samples` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -2743,7 +2792,7 @@ def integration_samples_0_2() -> Bool:
 
 def integration_samples_0_3() -> Bool:
   Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(),
-    final_context(R.commit_context(dispatched_t(), sampled_t(), host(), worker_a(), trial_raw(), trial_snapshot())))))
+    final_context(R.commit_context(dispatched_t(), sampled_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot())))))
 
 def integration_samples() -> IO(Unit):
   do IO<Unit>:
@@ -2753,11 +2802,60 @@ def integration_samples() -> IO(Unit):
       && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, unapproved_proj(), ledger_t())))
       && N.Step.accepted(N.start(reserved_t(), 5n, proj1(), ledger_t())), "integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)")
 
+# --- The commit requires the current host state (final review, F2) ----------
+
+# The current host after HostPublication.restart moves it to incarnation 58.
+def restarted_current() -> HP.State:
+  HP.Step.state(HPub.restart(host(), HP.revision(host()), 58n))
+
+def commit_with_host(+host: HP.State, +expected_host_revision: Nat) -> B.CommitResult:
+  final_commit(final_context(R.commit_context(dispatched_t(), running_t(), host, expected_host_revision,
+    worker_a(), trial_raw(), trial_snapshot())))
+
+def integration_host_0_0() -> Bool:
+  HP.valid(restarted_current()) && Bool.not(Nat.is_eq(HP.revision(restarted_current()), HP.revision(host())))
+
+def integration_host_0_1() -> Bool:
+  kept(commit_with_host(host(), HP.revision(restarted_current())))
+
+def integration_host_0_2() -> Bool:
+  n_approvals_equal(approvals_of(R.commit_context(dispatched_t(), running_t(), host(), HP.revision(restarted_current()),
+    worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
+
+def integration_host_0_3() -> Bool:
+  B.accepted(commit_with_host(host(), HP.revision(host())))
+
+def integration_host_1_0() -> Bool:
+  Bool.not(HP.valid(unconfigured_host())) && Nat.is_eq(HP.revision(unconfigured_host()), HP.revision(host()))
+
+def integration_host_1_1() -> Bool:
+  kept(commit_with_host(unconfigured_host(), HP.revision(unconfigured_host())))
+
+# A valid host in incarnation 58 with the same bindings, so A's worker
+# session 6 exists there, but selection 5 was dispatched in incarnation 57.
+def host58() -> HP.State:
+  host_at(58n)
+
+def integration_host_2_0() -> Bool:
+  HP.valid(host58()) && HP.current(host58(), HP.revision(host58()))
+    && Bool.not(Nat.is_eq(HI.incarnation(HP.identity(host58())), HI.incarnation(HP.identity(host()))))
+
+def integration_host_2_1() -> Bool:
+  kept(commit_with_host(host58(), HP.revision(host58())))
+
+def integration_host() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(integration_host_0_0() && integration_host_0_1() && integration_host_0_2()
+      && integration_host_0_3(), "integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on the pre-restart host() named at that revision carries no approvals and Backplane.commit rejects and spends no reservation (the final review's scenario e5), while host() named at its own revision commits")
+    Test.check(integration_host_1_0() && integration_host_1_1(), "integration commit_context requires HP.valid: a host with A's worker session 6 at incarnation 57 whose bindings name unconfigured profiles, named at its own revision, yields no commit context and the commit is rejected and spends no reservation")
+    Test.check(integration_host_2_0() && integration_host_2_1(), "integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings, so A's worker session 6 exists there, named at its own revision, yields no commit context for selection 5 dispatched in incarnation 57, and the commit is rejected and spends no reservation")
+
 def integration() -> IO(Unit):
   do IO<Unit>:
     integration_commits()
     integration_dispatch()
     integration_samples()
+    integration_host()
 
 # --- Section 2.1: whole-lifecycle scenarios (scenarios) -----------------------
 
@@ -2893,7 +2991,7 @@ def sc_put_approval(+state: R.State, +from: I.Principal, +approval: R.OriginAppr
   R.Change.state(R.submit_approval(state, R.revision(state), from, approval, sc_snap(sc_issuer(), 100n)))
 
 def sc_opened() -> R.State:
-  R.open(two_request(), constraint())
+  first_open(two_request(), constraint())
 
 # Both offers stored (revision 2).
 def sc_offered() -> R.State:
@@ -2985,11 +3083,17 @@ def sc_binding() -> B.Binding:
 
 # A commit of `session` with `ledger` on the commit context rebuilt from
 # `state` at `now` for the output reported from `worker` on `host`.
-def sc_commit_with(+session: N.Session, +ledger: L.State, +state: R.State, +host: HP.State, +worker: Nat,
-    +issuer: I.State, +now: Nat) -> B.CommitResult:
+def sc_commit_at(+session: N.Session, +ledger: L.State, +state: R.State, +host: HP.State,
+    +expected_host_revision: Nat, +worker: Nat, +issuer: I.State, +now: Nat) -> B.CommitResult:
   B.commit(session, 6n, 1n, ledger, BF.candidate(),
     BF.with_binding(BF.with_negotiation(BF.context(),
-      R.commit_context(state, session, host, worker, sc_raw(issuer, now), sc_snap(issuer, now))), sc_binding()))
+      R.commit_context(state, session, host, expected_host_revision, worker, sc_raw(issuer, now),
+        sc_snap(issuer, now))), sc_binding()))
+
+# The commit with the host state named at its own revision.
+def sc_commit_with(+session: N.Session, +ledger: L.State, +state: R.State, +host: HP.State, +worker: Nat,
+    +issuer: I.State, +now: Nat) -> B.CommitResult:
+  sc_commit_at(session, ledger, state, host, HP.revision(host), worker, issuer, now)
 
 # A's Running session reported from A's worker session 6 on host().
 def sc_commit_on(+state: R.State, +issuer: I.State, +now: Nat) -> B.CommitResult:
@@ -3484,6 +3588,81 @@ def scenario_commit() -> IO(Unit):
       && sc_kept(sc_commit_on(sc_dispatched(), sc_issuer(), 125n)) && B.accepted(sc_commit_on(sc_dispatched(), sc_issuer(), 124n)), "scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits")
     Test.check(scenario_commit_4_0() && scenario_commit_4_1() && scenario_commit_4_2()
       && scenario_commit_4_3() && scenario_commit_4_4(), "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits")
+# --- One rendezvous per request (final review, F1) ---------------------------
+
+# SYNTHETIC MONITOR STATE: the index after the monitor opened the
+# scenario request, then also the request differing only in units (31).
+def index_one() -> R.Opened:
+  R.Opening.index(R.open(R.NoneOpened{}, two_request(), constraint()))
+
+def units31_request() -> N.Request:
+  N.Request{IT.plan_two(), 7n, 42n, 31n, 180n}
+
+def index_two() -> R.Opened:
+  R.Opening.index(R.open(index_one(), units31_request(), constraint()))
+
+def opened_equal(a: R.Opened, b: R.Opened) -> Bool:
+  match a b:
+    case R.NoneOpened{} R.NoneOpened{}:
+      True{}
+    case R.Opened{ah, at} R.Opened{bh, bt}:
+      N.Request.equal(ah, bh) && opened_equal(at, bt)
+    case _ _:
+      False{}
+
+# A denial with exactly `reason` that returned exactly `index`.
+def open_denied(opening: R.Opening, index: R.Opened, reason: R.Error) -> Bool:
+  match opening:
+    case R.OpenRejected{got_index, got}:
+      R.Error.equal(got, reason) && opened_equal(got_index, index)
+    case R.OpenAccepted{_, _}:
+      False{}
+
+# An acceptance whose state is exactly `R.fresh(request, constraint)` and
+# whose index is `index` with `request` added.
+def open_accepted(opening: R.Opening, +request: N.Request, constraint: R.Profiles, index: R.Opened) -> Bool:
+  match opening:
+    case R.OpenAccepted{state, got_index}:
+      State.equal(state, R.fresh(request, constraint)) && opened_equal(got_index, R.Opened{request, index})
+    case R.OpenRejected{_, _}:
+      False{}
+
+def scenario_index_0_0() -> Bool:
+  open_accepted(R.open(R.NoneOpened{}, two_request(), constraint()), two_request(), constraint(), R.NoneOpened{})
+
+def scenario_index_0_1() -> Bool:
+  State.equal(sc_opened(), R.fresh(two_request(), constraint()))
+
+def scenario_index_0_2() -> Bool:
+  open_denied(R.open(index_one(), two_request(), constraint()), index_one(), R.AlreadyOpen{})
+
+def scenario_index_0_3() -> Bool:
+  Bool.not(R.Opening.accepted(R.open(index_one(), two_request(), constraint())))
+
+def scenario_index_1_0() -> Bool:
+  open_accepted(R.open(index_one(), units31_request(), constraint()), units31_request(), constraint(), index_one())
+
+def scenario_index_1_1() -> Bool:
+  open_denied(R.open(index_two(), two_request(), constraint()), index_two(), R.AlreadyOpen{})
+
+def scenario_index_1_2() -> Bool:
+  open_denied(R.open(index_two(), units31_request(), R.NoProfiles{}), index_two(), R.AlreadyOpen{})
+
+def scenario_index_1_3() -> Bool:
+  open_accepted(R.open(R.NoneOpened{}, NT.request(), constraint()), NT.request(), constraint(), R.NoneOpened{})
+
+# The final review's scenario (b) opened a second rendezvous for the
+# scenario request, in which B was selected, attached A's challenge 41 and
+# sample 51 on the shared session, dispatched worker 7 and committed. With
+# the monitor's index that second rendezvous cannot be opened. Each check
+# is split into one def per conjunct for the native arity limit.
+def scenario_index() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(scenario_index_0_0() && scenario_index_0_1() && scenario_index_0_2()
+      && scenario_index_0_3(), "F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding that request, and a second R.open of the same request on that index is denied AlreadyOpen with the index unchanged, so the second rendezvous of the final review's scenario (b), in which B counted A's challenge 41 and sample 51 as its own, cannot be opened")
+    Test.check(scenario_index_1_0() && scenario_index_1_1() && scenario_index_1_2()
+      && scenario_index_1_3(), "F1 scenario one rendezvous per request: a request differing only in units (31) opens beside it; with both in the index, the scenario request (second entry) and the units-31 request (first entry, with another constraint) are denied AlreadyOpen with the index unchanged; NT.request() opens on the empty index")
+
 def scenarios() -> IO(Unit):
   do IO<Unit>:
     scenario_current()
@@ -3494,6 +3673,7 @@ def scenarios() -> IO(Unit):
     scenario_currency()
     scenario_targets()
     scenario_commit()
+    scenario_index()
 
 def main() -> IO(Unit):
   do IO<Unit>:
@@ -3504,4 +3684,4 @@ def main() -> IO(Unit):
     dispatch()
     integration()
     scenarios()
-    IO.print("Rendezvous: 223 checks passed")
+    IO.print("Rendezvous: 229 checks passed")

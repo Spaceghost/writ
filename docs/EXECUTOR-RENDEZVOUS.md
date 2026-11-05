@@ -66,8 +66,8 @@ Contracts and evidence:
 
 ### One rendezvous per request
 
-`open(request, constraint)` fixes the negotiation request and the execution
-constraint for the life of the rendezvous. The request carries the plan
+`open(index, request, constraint)` fixes the negotiation request and the
+execution constraint for the life of the rendezvous. The request carries the plan
 (code identity, invocation, ordered manifest, destination and stamp), the
 reader, the reader's quote ceiling and the units. The constraint is the
 monitor's list of configured worker profile ids that the reader admits.
@@ -77,6 +77,23 @@ is a new rendezvous. That rendezvous starts with no offers, approvals,
 evidence or dispatches, so nothing follows a changed execution (ER-007).
 Nothing in the module constructs or edits a `T.Plan`. Every offer, grant,
 approval and evidence must name exactly the request's plan.
+
+`open` also takes the monitor's index of the requests it has already opened
+a rendezvous for (`Opened`), and denies `AlreadyOpen`, returning the index
+unchanged, for a request the index holds (`N.Request.equal`). On acceptance
+it returns the fresh state and the index with the request added, and the
+host installs both. This closes a gap the final review found: a Negotiation
+sample names no provider, so a second rendezvous for the same request let
+provider B attach A's challenge 41 and sample 51 on the shared session as
+its own trial, dispatch and commit. "F1 scenario one rendezvous per
+request: R.open of the two-source request on the empty index is accepted
+with exactly sc_opened()'s state and an index holding that request, and a
+second R.open of the same request on that index is denied AlreadyOpen with
+the index unchanged, so the second rendezvous of the final review's
+scenario (b), in which B counted A's challenge 41 and sample 51 as its own,
+cannot be opened". The index is a trusted input: Bend cannot see a state
+the host builds without `open` (`fresh` is an exported helper) or an index
+it discards, so keeping the index durably is precondition 14.
 
 ### Offers and their identity
 
@@ -127,6 +144,13 @@ covers one origin, one provider, one profile and one exact plan.
 - **Withdrawal.** Only the recorded issuer, still that authority, may
   withdraw an approval. Withdrawal sets a flag that is never cleared, and
   the serial stays seen. A second withdrawal is denied `Revoked` (ruling).
+- **An inert approval can count again.** Because authority is re-read, not
+  recorded, an approval made inert by a directory change counts again if
+  the directory later names its issuer again: it is the issuer's own
+  unwithdrawn approval under its own authority, with no new decision. The
+  new authority cannot withdraw it; only the recorded issuer can. Likewise
+  a fresh approval after a withdrawal makes the same selection
+  dispatchable again, which is a new authority decision.
 
 "Every contributing origin" is `T.required_origins(plan, transfer)`, the same
 lookup `N.owners` uses, and it includes inherited origins.
@@ -244,7 +268,15 @@ session that reached `Sampled` under a retired selection would still pass
 because those stages never re-check the challenge or the sample.
 `session_follows_selection` (ruling) closes that gap at dispatch, with the
 reason `WrongTrial`. It requires that the session's challenge is the one in
-the current selection's evidence.
+evidence stored under the current selection's id that names the selected
+offer and its provider claim (the offer and provider comparisons were added
+in the final fix round, F4, matching `evidence_for`): "ER-005
+session_follows_selection binds the evidence's selection, offer and
+provider: on monitor-installed states whose only evidence under selection 3
+names challenge 21 for B's offer {202, 5}, or for A's offer under B's
+provider claim, A's session challenged with 21 does not follow selection 3;
+on A's own stored evidence it does; and once A's same offer is reselected
+as selection 4, retired selection 3's evidence does not make it follow".
 
 ### Dispatch
 
@@ -293,15 +325,16 @@ The rendezvous decides who may run the plan. It never widens what the commit
 path admits. The `integration` section of `RendezvousTests.bend` drives the
 unchanged `Backplane.commit` and `DataOS.commit_from_capability`. Their
 Backplane context carries `commit_context`, rebuilt for the commit. It is
-`negotiation_context` further gated on three things at that call: a dispatch
+`negotiation_context` further gated on four things at that call: the host
+state current (`HP.current` at `expected_host_revision`, as at dispatch); a dispatch
 of the current selection recorded as `Dispatch{selection, incarnation,
 worker_session}` for the worker session the host reports the output from, at
 the host's current incarnation; the committing Negotiation session following
 that selection's trial (`session_follows_selection`); and the selection
 still current. Otherwise its approval, challenge and sample lists are empty,
 `N.owners` denies, and the commit keeps the Running session and the ledger.
-So no commit rests on an undispatched selection, a selection with no
-evidence, a session whose trial ran under a retired selection, another
+So no commit rests on a host state that is not current, an undispatched
+selection, a selection with no evidence, a session whose trial ran under a retired selection, another
 worker session or a session id of another incarnation (the `integration`
 and `scenarios` checks "before dispatch", "with a retired trial", "from
 another worker", "under a reselected offer"). What still rests on the host
@@ -437,10 +470,18 @@ Every expiry is exclusive (`now < valid_until`).
   the same value the host passes as `T.Context.now` and `F.Live` for that
   use.
 
-### The negotiation request and the execution constraint (`open`)
+### The negotiation request, the execution constraint and the index (`open`)
 
 The request must be the one Negotiation pinned, and the constraint must be
-the monitor's configured worker profiles that the reader admits.
+the monitor's configured worker profiles that the reader admits. The index
+must be the monitor's durable index of every request it has opened a
+rendezvous for, and the host installs the index `open` returns.
+
+- **If the index is wrong:** an index that lost an entry, or a state built
+  without `open`, lets a second rendezvous exist for one request, in which
+  another provider can count the first provider's challenge and sample on
+  the shared session as its own trial (precondition 14). Bend cannot
+  detect it.
 
 - **If either is wrong:** a wrong request makes the rendezvous select for a
   plan the reader never negotiated. The session gates (`ScopeMismatch`)
@@ -461,11 +502,20 @@ sample records are the monitor's receipts. Evidence only names them.
 
 ### The configured profiles and the HostPrimitives state (`host`, `expected_host_revision`)
 
-`dispatch` takes the monitor's current HostPrimitives state. Its HostIdentity
+`dispatch` and `commit_context` take the monitor's current HostPrimitives
+state, at each dispatch and at each commit, never one from before a
+restart. Its HostIdentity
 session table sets each session's caller only through `bind_session`, from
 authenticated native evidence. Its worker bindings name the configured
-profile that `open_session` bound each worker under. Dispatch requires
-`HP.current` at `expected_host_revision`.
+profile that `open_session` bound each worker under. Dispatch and
+`commit_context` both require `HP.current` at `expected_host_revision`
+(final review, F2): "integration commit_context requires the current host
+state: after HostPublication.restart moves the host to incarnation 58 at a
+new revision, commit_context on the pre-restart host() named at that
+revision carries no approvals and Backplane.commit rejects and spends no
+reservation (the final review's scenario e5), while host() named at its own
+revision commits". Bend checks the state against the revision it is told
+is current; that revision is the monitor's.
 
 - **If it is wrong:** a misbound session lets another principal run as the
   selected provider. A binding to the wrong profile runs the provider
@@ -508,12 +558,12 @@ acceptance, and returns the supplied state unchanged on denial.
 All of them are in `Rendezvous.bend`. Every other definition there is an
 exported implementation helper, and calling one does not perform a
 transition's checks. This includes `selection_current`,
-`selected_provider_is`, `session_follows_selection` and
+`selected_provider_is`, `session_follows_selection`, `fresh` and
 `dispatch_target_selected`.
 
 | Entry point | What it does |
 | --- | --- |
-| `open(request, constraint)` | The rendezvous for one negotiation request and execution constraint. |
+| `open(index, request, constraint)` | The rendezvous for one negotiation request and execution constraint, against the monitor's index of opened requests: denied `AlreadyOpen` for a request the index holds; on acceptance, the state and the extended index (`Opening.accepted`, `Opening.state`, `Opening.index`, `Opening.reason`). |
 | `submit_offer(state, expected_revision, from, offer, snapshot)` | Stores one immutable, grant-backed offer under the provider's own identity (ER-001, ER-008). |
 | `submit_approval(state, expected_revision, from, approval, snapshot)` | Stores an origin authority's approval of one provider, profile and plan (ER-006). |
 | `withdraw_approval(state, expected_revision, from, approval_id, snapshot)` | The issuer withdraws its approval. |
@@ -523,7 +573,7 @@ transition's checks. This includes `selection_current`,
 | `submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot)` | Binds one trial to the current selection (ER-004, ER-005). |
 | `dispatch(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot)` | Records the one dispatch of the current selection to the selected provider's worker session (ER-001, ER-006, ER-007). |
 | `negotiation_context(state, n_context, snapshot)` | The projected Negotiation context for `N.challenge` to `N.start` and `dispatch`, rebuilt for every use. |
-| `commit_context(state, session, host, worker_session, n_context, snapshot)` | The Negotiation context for `Backplane.commit` and the facade commit: empty unless the current selection is dispatched to `worker_session` at the host's incarnation and `session` follows its trial. Rebuilt for every commit. |
+| `commit_context(state, session, host, expected_host_revision, worker_session, n_context, snapshot)` | The Negotiation context for `Backplane.commit` and the facade commit: empty unless `host` is `HP.current` at `expected_host_revision` and the current selection is dispatched to `worker_session` at the host's incarnation and `session` follows its trial. Rebuilt for every commit. |
 | `provider_registry(state, snapshot)` | The dispatched provider's Frontend registry, rebuilt for every use. |
 | `ineligibility(offer, state, snapshot)` | Read-only diagnostic: the first failing eligibility gate, or none. |
 | `valid(state)` | Structural validity only. It authenticates nothing. |
@@ -576,11 +626,17 @@ or the design names the obligation, its words are quoted.
    consistent transfer contexts, and challenge ids never reused across
    selections, so that challenges are "generated after the candidate and
    provider scope are fixed" (ER-004).
-5. **The genuine request at `open`.** The pinned negotiation request and the
-   monitor's configured profile constraint, and genuine Negotiation sessions
-   and receipts at every call.
-6. **The host state current at dispatch.** A current, valid HostPrimitives
-   state at `expected_host_revision`, whose session table binds each
+5. **The genuine request at `open`, and monitor-only actions.** The pinned
+   negotiation request and the monitor's configured profile constraint, and
+   genuine Negotiation sessions and receipts at every call. `select` and
+   `abandon` are invoked only by the monitor, never on a provider's or
+   reader's request: whoever times `select` can pick before a cheaper
+   provider's approvals arrive, and `abandon` forces the trial to be redone.
+6. **The host state current at dispatch and at the commit.** The monitor's
+   current HostPrimitives state at each dispatch and at each commit, never
+   one from before a restart, named at the monitor's current
+   `expected_host_revision` (both `dispatch` and `commit_context` require
+   `HP.current` there), whose session table binds each
    worker's caller only from authenticated native evidence
    (`bind_session`), and whose native-session mapping does not survive a
    restart (HostIdentity's restart obligation).
@@ -617,9 +673,18 @@ or the design names the obligation, its words are quoted.
 13. **Quote settlement.** The reader's quote is a ceiling and the selection
     records the agreed quote. Settling it against the ledger hold, and the
     exact-versus-ceiling semantics, are pending Spaceghost (q18).
+14. **One rendezvous per request, durably.** The host holds at most one
+    rendezvous per negotiation request and Negotiation session. It opens
+    every rendezvous through `open` on its durable index of opened requests,
+    installs the index `open` returns, never removes an entry, never builds
+    a state without `open` (`fresh`), and never presents one session's
+    challenge or sample to two rendezvous. ER-005 ("Selection SHALL reject
+    sample evidence from a different provider") relies on it: a sample
+    names no provider, so it belongs to a provider only through the one
+    rendezvous whose selection preceded its challenge.
 
 Not a host precondition, but open before this change is merged: the count
-re-pin by the controller. This lane records its own counts (1651 checks, 24
+re-pin by the controller. This lane records its own counts (1657 checks, 24
 laws) and changes no pin; the controller re-pins every count and law total
 once, after the parallel lanes merge.
 

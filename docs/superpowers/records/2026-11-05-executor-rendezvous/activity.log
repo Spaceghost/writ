@@ -87,3 +87,16 @@
 2026-11-05T18:25:02Z	implementer	heartbeat: native build (after the split) and mutation sweep running; tasks.md box 2.2 and preface written
 2026-11-05T18:34:50Z	implementer	native CPU build and run (+RTS --threads 4 --gpu off) green: 1651 PASS, byte-identical to Node; final sweep done: 448 mutants, 433 killed, 15 equivalent (the accepted ones plus two gate-level duplicates of T10 and G5)
 2026-11-05T18:37:37Z	implementer	report and mutation table written; box 2.2 checked; OpenSpec strict rerun 44 passed; committing task 8
+2026-11-05T18:38:35Z	controller	task 8 reported; task review and final review dispatched
+2026-11-05T18:41:34Z	controller	task 8 review: four record items, folded into the final round
+2026-11-05T18:53:20Z	controller	final review: two gaps closed in code by ruling; final fix round dispatched
+2026-11-05T18:56:18Z	implementer	final fix round started: read final-review.md and task-8-review.md; F1 open takes the monitor index and denies AlreadyOpen, F2 commit_context gains expected_host_revision and HP.current, F4 challenge_evidenced binds offer and provider
+2026-11-05T18:56:18Z	implementer	correction to the task 8 line "final sweep done: 448 mutants, 433 killed, 15 equivalent": the totals are 431 killed and 17 equivalent (15 survive, 2 do not build), as task-8-mutants.md records
+2026-11-05T19:41:25Z	implementer	F1/F2/F4 code and five checks in (Rendezvous 228); bend Tests.bend green; C emission clears the arity limit; native build started (ffr)
+2026-11-05T21:41:59Z	implementer	trial_follows extended (reselected same offer; kills t4-B2 after F4); JS 1656 PASS; native build restarted on the final .bend tree (sources hashed in ffr/sources-at-build.sha); full sweep starting
+2026-11-05T21:44:35Z	implementer	heartbeat: native build and full sweep running; document, traceability updated (F1 precondition 14, F2 precondition 6, F3, F4, F5)
+2026-11-05T21:52:42Z final fix round: t7f-C5 survived the first full sweep (HP.current now masks the restarted-host check); added integration check on a valid current incarnation-58 host; t5-O2 re-anchored to fresh; both killed
+2026-11-05T21:54:18Z final fix round: embedded and JS runs 1657 PASS 0 FAIL, identical; C emission clean (no arity error); native build started
+2026-11-05T21:58:28Z heartbeat: native build/run of the final tree still in progress
+2026-11-05T22:02:28Z heartbeat: native build/run of the final tree still in progress
+2026-11-05T22:03:22Z final fix round: native build exit 0 (8m23s), run exit 0 (11.4s), 1657 PASS 0 FAIL, byte-identical to Node (sha256 29f7b272...767e7fa9); PROOF.bend ALL PROOFS CHECK (24 laws, unchanged); --verdict refused (no lean); OpenSpec strict 44 passed; sweep 464 mutants, 447 killed, 17 equivalent

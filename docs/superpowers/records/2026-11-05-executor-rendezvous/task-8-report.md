@@ -133,3 +133,51 @@ Merge note: `LAWS.bend` and `PROOF.bend` append at the end, as the policy-aware-
 3. No Lean verdict and no GPU run; the native run is CPU only. No host runs the rendezvous; the Genode CI at the new count was not run.
 4. R1 and the reported-worker obligation stay reviewed-only; Bend cannot check them.
 5. The task 5 total (53 rows, 52 distinct ids) makes the earlier 366 total one more than the mutants that exist; recorded above and in `task-8-mutants.md`.
+
+## Final fix round
+
+Findings from `final-review.md` and `task-8-review.md`, each with its closure.
+
+- **F1 (blocking): one rendezvous per request.** Closed in code. `open(index, request, constraint)` returns an `Opening`; a request already in the monitor's index of opened requests is denied `AlreadyOpen` with the index unchanged, and an accepted open extends the index (`fresh` builds the state). Checks: "F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted ..." (the reviewer's scenario (b): the second rendezvous cannot be opened) and "F1 scenario one rendezvous per request: a request differing only in units (31) opens beside it ...". Mutants N1 to N8 and N16, all killed. Precondition 14 (the monitor keeps the index durably and passes the one it returned) and the ER-005 row state the residual trusted input: a host that opens a second state from a fixture without the index is outside the model; the reviewer's b0 to b3 still hold in that case.
+- **F2 (blocking): `commit_context` host currency.** Closed in code. `commit_context` takes `expected_host_revision` and gates on `HP.current` as `dispatch` does; a StaleRevision or invalid host yields no commit context. Checks: "integration commit_context requires the current host state: ... (the final review's scenario e5) ..." and "integration commit_context requires HP.valid: ...". Mutants N9 to N12, killed. Precondition 6 now covers dispatch and the commit. The host still names its current revision (trusted input, as at dispatch).
+- **F3 (optional): who invokes select and abandon.** Documented: precondition 5 and the trusted-input text name them monitor actions, never a provider's or caller's request.
+- **F4 (optional): `challenge_evidenced` offer and provider.** Closed in code: it compares the evidence's offer id and provider with the selection's offer. Check "ER-005 session_follows_selection binds the evidence's selection, offer and provider: ...". Mutants N13 to N15, killed; t4-B2 re-anchored and killed.
+- **F5 (observation): an inert approval counts again if authority returns.** Documented in `docs/EXECUTOR-RENDEZVOUS.md` "Origin approvals" and the `Rendezvous.bend` header.
+- **Minor 1:** the 366 figure in `verification/executor-rendezvous.txt` now carries the 365-distinct correction.
+- **Minor 2:** the arity lesson is in the verification record's Task 2.2 section.
+- **Minor 3:** box 2.2's note quotes the `--verdict` line and gives the sweep totals (Task 8: 448, 431 killed, 17 equivalent; final round: 464, 447 killed, 17 equivalent).
+- **Minor 4:** a new activity.log line corrects 433/15 to 431/17; the old line is unchanged.
+- **Sweep finding in this round:** t7f-C5 (dispatch_is without the incarnation comparison) survived the first full run, because the new `HP.current` gate denies the restarted host before the incarnation compare is reached. Added "integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings ..."; it kills C5. t5-O2 no longer built (`open` returns an `Opening`); re-anchored to `fresh`, killed. Both rerun on the final tree.
+
+Results on the final tree: `bend Tests.bend` 1657 PASS lines (229 Rendezvous), 0 FAIL, `ALL LIBRARY TESTS PASSED`; embedded, Node and native CPU (`--gpu off`, not a GPU test) byte-identical (SHA-256 29f7b272...767e7fa9; native build 8m23s, run 11.4s); C emission has no arity error; `bend PROOF.bend` ALL PROOFS CHECK, 24 laws, LAWS.bend and PROOF.bend unchanged; `--verdict` refused (no lean), NOT VERIFIED; OpenSpec strict 44 passed. No pin changed.
+
+### Pins to update at re-pin time (final count)
+
+Line numbers are master's (f970496). "New value" is for this lane alone: 1657 checks and 24 laws. The controller combines it with the policy-aware-audit lane's additions.
+
+| File | Line (master) | Old value on master | New value (this lane alone) |
+| --- | --- | --- | --- |
+| README.md | 114 | `The recorded suite passes **1428 checks on each of the JavaScript and native CPU` | `**1657 checks ...` |
+| docs/INSTALL.md | 76 | `requiring 1428 lines` | `requiring 1657 lines` |
+| docs/INSTALL.md | 161 | `Each complete test run should report **1428 passing checks** and` | `**1657 passing checks**` |
+| docs/INSTALL.md | 162 | `` `PROOF.bend` checks seventeen declared laws about guards, `` | `twenty-four declared laws`; consider naming executor rendezvous in the list that follows |
+| utils/nix/writ.nix | 10 | `# 1428, and the final line is "ALL LIBRARY TESTS PASSED".` | `# 1657, ...` |
+| utils/nix/writ.nix | 55 | `# exactly 1428 lines beginning with PASS ...` | `exactly 1657 lines` |
+| utils/nix/writ.nix | 64-65 | `if [ "$passes" != 1428 ]` / `expected 1428 PASS lines` | `1657` / `expected 1657 PASS lines` |
+| .github/workflows/writfs-genode-native.yml | 25 | `WRIT_CORE_EXPECTED: '1428'` | `'1657'` (the Genode CI at the new count is not run by this lane) |
+| contrib/native-hosts/genode/build-and-run.sh | 18 | `(currently 1428)` | `(currently 1657)` |
+| contrib/native-hosts/genode/README.md | 135 | `WRIT_CORE_EXPECTED=1428 bash ...` | `WRIT_CORE_EXPECTED=1657` |
+| contrib/native-hosts/genode/README.md | 149 | `workflow pins it to 1428 for the integrated source.` | `1657` |
+| contrib/native-hosts/genode/README.md | 162 | `(1428 in the current workflow)` | `(1657 ...)` |
+| VERIFICATION.md | 26-42 (suite table) | no Rendezvous row | add `\| Rendezvous \| 229 \| ... \|` after Issuance (offers, origin approvals, eligibility and selection, trial binding, dispatch, commit projection, lifecycle scenarios; model only) |
+| VERIFICATION.md | 43 | `\| **Total per backend** \| **1428** \| ...` | `**1657**` |
+| VERIFICATION.md | 55 | `counting both forms yields 1428 per file.` | `yields 1657 per file.` |
+| VERIFICATION.md | 246 | `` `bend PROOF.bend` prints `ALL PROOFS CHECK` for seventeen declared laws: `` | `twenty-four declared laws` (plus the seven rendezvous laws in the list) |
+| VERIFICATION.md | 330 | `No Lean-kernel verdict exists for any of the seventeen laws.` | `... any of the twenty-four laws.` |
+| VERIFICATION.md | 502-503 | `The integrated core passes 1428 checks, ...` / `all seventeen ordinary laws pass.` | `1657 checks` / `all twenty-four` |
+| verification/environment.txt | 12-16 | `bend_source_files` 47, `bend_source_lines` 21213, `javascript_checks` 1428, `native_checks` 1428 | recount files and lines on the merged tree (this lane adds two .bend files, Rendezvous.bend and RendezvousTests.bend); checks 1657 / 1657 |
+| verification/tests-js.txt, tests-native.txt, proofs.txt, kernel-verdict.txt, openspec-validation.txt | whole file | master's 1428 captures | recapture on the merged tree; this lane's outputs have SHA-256 `29f7b272...767e7fa9` (1657 PASS) |
+
+Leave historical sentences unchanged: VERIFICATION.md 20-24 (782), 208, 212 and 222 (the GPU runs on the 1428 tree); `openspec/changes/validate-physical-gpu-execution/tasks.md:68`; `openspec/traceability/gpu-validation.md:56-66`; `openspec/traceability/portable-host-contract.md:244-251`; `verification/gpu-trust-profile.md:186`. Each of these describes a run on a recorded tree.
+
+Merge note: `LAWS.bend` and `PROOF.bend` append at the end, as the policy-aware-audit lane's do. Resolve by keeping both sides. `Tests.bend` is one import and one call.

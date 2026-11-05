@@ -465,3 +465,56 @@ Result: **448 mutants. 431 killed** by a named check (Part A 81, Part B 350); **
 | t7f-C6 | dispatch_is: drop the worker-session comparison | `dispatch_is` | killed | integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected |
 | t7f-C7 | dispatch_is: drop the selection-id comparison | `dispatch_is` | killed | integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected |
 | t7f-C8 | dispatch_is: first record only (tail never read) | `dispatch_is` | killed | integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected |
+
+## Final fix round sweep
+
+The whole sweep rerun on the final fix round tree (229 Rendezvous checks): 464 mutants, 83 gate mutants (Part A),
+the 365 prior mutants of tasks 1 to 7 (Part B) and 16 new mutants for F1, F2 and F4 (Part C). 447 killed
+(Part A 81, Part B 350, Part C 16) and 17 equivalent, counted as the Task 8 table counts them: A57 (= t4-T10) and
+A75 (= t5-G5) in Part A, and in Part B the same 15 accepted in tasks 2 to 6 (A6, A6b, W19, W19b, S8, F2, R2, P14,
+P18, T10, G5, P5, K3, K4, B4; A6 and W19 do not build, their buildable variants A6b and W19b survive). No mutant
+survives otherwise. Five prior mutants were re-anchored to the new text (t4-B2, t4-B3, t7f-C3, t7f-C4, t5-O2: the last now
+builds its other state with `fresh`, since `open` returns an `Opening`), and t5-E1 is retargeted to `evidence_for`.
+
+t7f-C5 (dispatch_is drops the incarnation comparison) survived the first run of this sweep: with the `HP.current`
+gate in `commit_context`, the check that had killed it named a restarted host at a revision that is no longer
+current, so the host gate denied first. It is killed again by the new check "integration commit_context requires the
+dispatch's incarnation" on a valid, current incarnation-58 host with the same bindings. Both t7f-C5 and t5-O2 were
+rerun on the final tree after that check was added.
+
+Rows that changed from the Task 8 table, and the new mutants:
+
+| id | mutation | where | result | first failing check |
+|---|---|---|---|---|
+| t1-G1 | G1 revision_current [retargeted to offer_gates_found] | `offer_gates_found` | killed | ER-001 B's offer validated at revision 0 against the state at revision 1 denied StaleRevision |
+| t1-G2 | G2 version_supported [retargeted to offer_gates_found] | `offer_gates_found` | killed | ER-001 offer record version 2 denied UnknownVersion |
+| t1-G4 | G4 id_owned_by [retargeted to offer_gates_found] | `offer_gates_found` | killed | ER-008 from A submitting under OfferId{202, 1}, B's identity namespace, denied Unauthenticated |
+| t1-G5 | G5 plan_is_request [retargeted to offer_gates_found] | `offer_gates_found` | killed | ER-001 an offer whose plan names destination 20v9 instead of the request's 20v8 denied ScopeMismatch |
+| t1-G10 | G10 offer unexpired [retargeted to offer_gates_found] | `offer_gates_found` | killed | ER-001 an offer submitted at its own valid_until 100 denied Expired |
+| t1-H15 | H15 commit keeps revision [retargeted to commit_offer] | `commit_offer` | killed | ER-001 provider A's offer backed by its current grant 3 is stored at revision 1 and (A, serial 1) is recorded as seen |
+| t3-E18 | keep_if False branch keeps the offer [retargeted to keep_if] | `keep_if` | killed | ER-002 cheapest offer violates an origin: B quotes 30 without object 10's approval, A quotes 40 with it; A is selected and ineligibility(B) is MissingApproval |
+| t3-S2 | select gate: request equal -> True [retargeted to select_gates] | `select_gates` | killed | ER-003 a session whose request differs in quote (41, not 42) denied ScopeMismatch |
+| t3-A6 | retired_id ignores the selection id [retargeted to retired_id] | `retired_id` | killed | ER-003 abandon retires selection 3: no selection, retired 3, next_id 4 kept, revision 6, offers kept |
+| t4-B2 | challenge_evidenced: drop selection id [re-anchored to the final fix round text] | `challenge_evidenced` | killed | ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names cha |
+| t4-B3 | challenge_evidenced: drop challenge [re-anchored to the final fix round text] | `challenge_evidenced` | killed | ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but s |
+| t5-O2 | outer False arm returns another state [re-anchored to the final fix round text] | `dispatch_by` | killed | ER-001 dispatch to an unselected provider: A's offer with B's worker session 7, B's offer {202, 5} with B's or A's worker session, or A's unknown offer {201, 9} |
+| t5-E1 | evidence_for selection id -> True [retargeted to evidence_for] | `evidence_for` | killed | ER-005 A's same offer {201, 4} reselected as selection 4: retired selection 3's evidence for that offer and provider does not count, so dispatch is denied Missi |
+| t7f-C3 | commit_context delegates to negotiation_context (both conjuncts dropped) [re-anchored to the final fix round text] | `commit_context` | killed | integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and bot |
+| t7f-C4 | commit_context: selection_current conjunct -> True [re-anchored to the final fix round text] | `commit_context` | killed | integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation |
+| t7f-C5 | dispatch_is: drop the incarnation comparison | `dispatch_is` | killed | integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings, so A's worker session 6 exists t |
+| N1 | open: the index check bypassed | `open` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
+| N2 | open: accepted index not extended | `open_checked` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
+| N3 | open: rejection reason Replay | `open_checked` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
+| N4 | open: rejection returns an empty index | `open_checked` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
+| N5 | request_opened: head comparison -> False | `request_opened` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
+| N6 | request_opened: tail never read | `request_opened` | killed | F1 scenario one rendezvous per request: a request differing only in units (31) opens beside it; with both in the index, the scenario request (second entry) and  |
+| N7 | request_opened: empty index holds every request | `request_opened` | killed | ER-002 cheapest offer violates an origin: B quotes 30 without object 10's approval, A quotes 40 with it; A is selected and ineligibility(B) is MissingApproval |
+| N8 | Error.equal: AlreadyOpen never equal | `Error.equal` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
+| N9 | commit_context: HP.current conjunct -> True | `commit_context` | killed | integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on  |
+| N10 | commit_context: host revision only (HP.valid dropped) | `commit_context` | killed | integration commit_context requires HP.valid: a host with A's worker session 6 at incarnation 57 whose bindings name unconfigured profiles, named at its own rev |
+| N11 | commit_context: HP.valid only (expected revision ignored) | `commit_context` | killed | integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on  |
+| N12 | commit_context: host named at its own revision | `commit_context` | killed | integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on  |
+| N13 | challenge_evidenced: drop the offer comparison (F4) | `challenge_evidenced` | killed | ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names cha |
+| N14 | challenge_evidenced: drop the provider comparison (F4) | `challenge_evidenced` | killed | ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names cha |
+| N15 | challenge_evidenced: tail never read | `challenge_evidenced` | killed | ER-007 the evidence and dispatch lookups read the whole list: A's evidence for selection 3 behind a record for selection 2 still dispatches, and Dispatch{3, 6}  |
+| N16 | open_checked: False arm accepts | `open_checked` | killed | F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding th |
