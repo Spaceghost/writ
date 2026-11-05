@@ -9,3 +9,5 @@ Task 2: dispatched implementer
 Task 2: implementer DONE_WITH_CONCERNS (68e32eb): all sets rebuilt, corpus 782 at 163 min under load; channel references unchanged (byte-diffed by the check); io_work probe not rebuilt (signal 19 still untested). Reviewer dispatched.
 Task 2: complete (review APPROVED both axes; carry to Task 3: state signal 19 and the SIGTERM shutdown path outright as not exercised)
 Task 3: dispatched implementer
+Task 3: implementer DONE_WITH_CONCERNS (4e2b8ec). Ruling: the hosts/unikraft/INVENTORY.md cells (UK_CFLAGS, Kraftfile row) are in scope by intent (the trust inventory must name the shipped flag and library) — costs nothing if wrong. Ruling: box 2.3 checked as a recorded outcome with the exhaustion half an explicit limit, matching the q2 decision. Task reviewer and final reviewer dispatched in parallel.
+Final review: Needs fixes before merge (INVENTORY.md shutdown sentence, check-fault row, evidence pointers; traceability merge conflict with master). Fix round 1 dispatched (implementer resumed); scoped re-review next.

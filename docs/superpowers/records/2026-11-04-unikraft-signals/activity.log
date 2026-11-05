@@ -47,3 +47,8 @@
 2026-11-05T00:39:45Z	implementer	editing UL-006 traceability row and tasks.md box 2.3 with its preface
 2026-11-05T00:40:15Z	implementer	documents edited (plus hosts/unikraft/INVENTORY.md's two stale pin cells); running OpenSpec strict and bend Tests.bend
 2026-11-05T00:41:09Z	implementer	OpenSpec strict 44 passed; bend Tests.bend 782 PASS, ALL LIBRARY TESTS PASSED; report written; committing (DONE_WITH_CONCERNS)
+2026-11-05T00:41:32Z	controller	task 3 reported; task review and final whole-branch review dispatched
+2026-11-05T00:46:06Z	controller	final review: needs fixes (doc rows, merge conflict); fix round dispatched
+2026-11-05T00:46:11Z	implementer	fix round: read final-review.md and task-3-review.md; merging master
+2026-11-05T00:46:39Z	implementer	merge commit f93c84d (traceability: master's UL-002/UL-007, branch's UL-006); fixing INVENTORY.md and UNIKERNELS.md
+2026-11-05T00:47:23Z	implementer	fix round: INVENTORY.md (shutdown SIGTERM row, evidence pointers, check-fault row) and UNIKERNELS.md (:115, item 3) corrected; OpenSpec strict 44 passed after merge; committing

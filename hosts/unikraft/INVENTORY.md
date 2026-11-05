@@ -106,7 +106,7 @@ written:
 | halt, program status s, 0 <= s <= 108 (main returned s, or the program called `exit(s)`: `IO.exit`, `IO.die`) | s + 0x10 | 2s + 33 (0 -> 33, 1 -> 35, 3 -> 39) |
 | halt, program status above 108 (clamp) | 0x7f | 255 |
 | halt, status 1 without `exit()`: runtime or host-layer stop (`_exit(1)`: the runtime's `err_fail` and `host.c`'s `writ_uk_fail`; also `main` returning 1 on a bad `+RTS` argument. The runtime's own out-of-memory stop would be 17 if reached, but on this kernel a forced arena exhaustion runs out of guest memory first and is a crash, 253) | 0x08 | 17 |
-| halt, other nonzero status without `exit()`: ended by a signal (posix-process stores the signal number, or `0x80 \| SIGKILL` for an init process still running at shutdown) | 0x09 | 19 |
+| halt, other nonzero status without `exit()`: ended by a signal (posix-process stores the signal number for a signal death; with the signal library (every template image) an init process still running at shutdown is sent SIGTERM and waited for (`lib/posix-process/shutdown.c:61-67`), so the outcome is 19 if it dies or the harness timeout if it does not; neither exercised (`0x80 \| SIGKILL` is the non-signal path, :100-101)) | 0x09 | 19 |
 | shutdown whose target is not a halt (init failure, restart request) | 0x7d | 251 |
 | Unikraft crash (`UK_CRASH_EVENT`) | 0x7e | 253 |
 
@@ -116,10 +116,13 @@ written:
 goes to stderr, which the hook does not read); arena exhaustion has no value of its own:
 forced, it is a Unikraft crash (253), shared with a stack-overflow fault.
 
-Evidence: `verification/unikernel-fault-qemu.txt` (the current map, the fault-message
-trial, arena exhaustion), `verification/unikernel-corpus-qemu.txt` ("Task 3 rerun", the
-corpus at QEMU 33), and `verification/unikernel-exit-codes.txt` (the first map and the
-cited Unikraft hook locations).
+Evidence: `verification/unikernel-fault-qemu.txt` (the adopted signal configuration:
+fault message, exit map re-recorded, arena exhaustion with signals; the earlier trial and
+the effect-twins lane's map runs kept below it as history),
+`verification/unikernel-exit-codes.txt` ("CURRENT MAP, RE-RECORDED WITH POSIX SIGNALS"; the
+first map and the cited Unikraft hook locations below it as history), and
+`verification/unikernel-corpus-qemu.txt` (the signals record, 782 PASS at QEMU 33; its
+"Task 3 rerun" section is history).
 
 ## Application template and scripts
 
@@ -143,7 +146,7 @@ they build or copy is written inside the repository.
 | `scripts/check-image.sh <set> <label> <probe> <reference> <qemu_status> [pass] [timeout] [mem]` | Boots the image once through `run.sh` and checks console diff (empty), PASS count (if given), last line (if `WRIT_EXPECT_LAST_LINE`), and QEMU status; exits 1 if any expected outcome changed | reads `WRIT_EXPECT_LAST_LINE`, `WRIT_NO_BOOT=1` (check an existing capture), `WRIT_CONSOLE_SED` (sed script masking run-dependent values before the diff, printed when used) | `$W` only; two `mktemp` files (plus `<first>.m` while masking) |
 | `scripts/check-channel.sh <set> <label> <probe> <client_ref> <console_ref> <qemu_status> RECORD...` | One Writ channel run: builds `probes/client/client.c` into `$W/<set>/client`, boots the image with COM2 on the Unix socket `$W/<set>/logs/chan-<label>.sock`, sends RECORD... with the client, and checks the client's output, the console (console.sh), and QEMU's status against the references; exits 1 if any expected outcome changed, 2 on bad usage | reads `CC` (default `gcc`), `WRIT_CHANNEL_TIMEOUT` (default 120 s) | `$W` only; one `mktemp` file |
 | `scripts/check-corpus.sh <set> <label> [timeout] [mem]` | `check-image.sh` for `tests-qemu` against `verification/unikernel-corpus-linux-reference.txt`, QEMU 33, last line `ALL LIBRARY TESTS PASSED` | reads `WRIT_CORPUS_PASS` (default 782, the merged tree's corpus) | `$W` only |
-| `scripts/check-fault.sh <set> <label> <probe> <reference> <qemu_status> [timeout] [mem]` | For images that end in a Unikraft crash, whose capture console.sh refuses (NUL bytes in the crash screen): boots once through `run.sh` (or reads the existing log with `WRIT_NO_BOOT=1`) and checks the program's lines after the banner (Unikraft's own `[  <s>] ` lines dropped) against the reference, the crash screen when the expected status is 253, and QEMU's status; exits 1 if any expected outcome changed. References: `verification/unikernel-overflow-reference.txt`, `verification/unikernel-exhaust-reference.txt` | reads `WRIT_NO_BOOT` | `$W` only; one `mktemp` file |
+| `scripts/check-fault.sh <set> <label> <probe> <reference> <qemu_status> [timeout] [mem]` | For images that end in a Unikraft crash, whose capture console.sh refuses (NUL bytes in the crash screen): boots once through `run.sh` (or reads the existing log with `WRIT_NO_BOOT=1`) and checks the program's lines after the banner (Unikraft's own `[  <s>] ` lines dropped) against the reference, the crash screen when the expected status is 253, for the probe named `overflow` that the line `bend: memory fault (machine stack overflow?)` appears before the first `CRIT: Unikraft Crash` line (the runtime's fault message, shown with the signal library), and QEMU's status; exits 1 if any expected outcome changed. References: `verification/unikernel-overflow-reference.txt` (now two program lines, the second the fault message), `verification/unikernel-exhaust-reference.txt` | reads `WRIT_NO_BOOT` | `$W` only; one `mktemp` file |
 
 Image hashes are per build: Unikraft embeds the build time (`Makefile` `HOSTUTC`,
 `lib/uklibid`), and `build.sh` always builds clean.

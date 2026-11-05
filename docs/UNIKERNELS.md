@@ -112,7 +112,7 @@ it points here. Current state on Unikraft 0.21.0, QEMU TCG emulated boots, one l
   [100, 1100), shown once from a scratch build ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), fix round 1).
   The sleep parks on the runtime's own timer (`io_wait_on`, as `IO.sleep` does), so the loop
   stays live and no helper thread is created: an `io_work` helper thread outlives `main` on
-  this configuration and turned success into QEMU 255 (now 19, a signal death, by reading the map; not rerun) ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1).
+  this configuration and turned success into QEMU 255 (under the current map and the signal library: 19 if the SIGTERM sent at shutdown, `lib/posix-process/shutdown.c:61-67`, ends the helper, otherwise a hang to the harness timeout; not rerun) ([unikernel-effects-qemu.txt](../verification/unikernel-effects-qemu.txt), R0-E1).
   Gap: the re-park and clock-failure paths of `host.c` have never been exercised (no clock
   fault can be injected without patching Unikraft), and a fully stopped clock is bounded
   only by the harness timeout. `IO.print` still goes through lib-musl, not a twin.
@@ -270,14 +270,16 @@ changed, which the lane does not do. After the failure the process does not exit
    multi-lane build must not be configured by accident. `UKPLAT_CPU_MAXCOUNT=1` is now set explicitly in the Kraftfile (done: `hosts/unikraft/app/Kraftfile`; in the matrix it was only a resolved default, matrix ~565); SMP is a later task (2.4), and
    the OSv hang at shutdown with more than one lane (cause inferred, O-E6) should be
    investigated as part of it.
-3. **The fault halt to carry the runtime's message.** The runtime's `SIGSEGV` handler
-   does not run on Unikraft (E4); the halting fault handler (task 2.3) has to print the
-   runtime's fault text, or an equivalent recorded line, before the coded halt. Task 3
-   of the effect-twins lane: with `CONFIG_LIBPOSIX_PROCESS_SIGNAL=y` it does run and
-   prints its text, then the image crashes (253). Adopted 2026-11-04 (Unikraft signals
-   lane): the template enables the experimental library, `build.sh` carries the compile
-   workaround, and the corpus rerun is 782 PASS; arena exhaustion still crashes without
-   the message (Port status, "Faults").
+3. **The fault halt to carry the runtime's message (done for a stack overflow).** With
+   the experimental posix signal library in the template (adopted 2026-11-04, Unikraft
+   signals lane; `build.sh` carries the compile workaround) the runtime's `SIGSEGV`
+   handler runs on its alternate stack and prints `bend: memory fault (machine stack
+   overflow?)` before the crash screen; the image still ends in the Unikraft crash with
+   the hook's value 253 and does not resume, and the corpus rebuilt with the library is
+   782 PASS ([unikernel-fault-qemu.txt](../verification/unikernel-fault-qemu.txt),
+   "Result"). Arena exhaustion still crashes without the message (Port status,
+   "Faults"). History: in the matrix the handler did not run (E4), and the effect-twins
+   lane's Task 3 first showed the message as a trial.
 4. **The A3 libraries kept or replaced.** The event loop needs `posix-pipe` and
    `posix-poll` (Task 1 A1+A2 run); an ingress twin that replaces the self-pipe could drop
    them, and UL-003's binary check decides which stay. lib-musl itself selects
