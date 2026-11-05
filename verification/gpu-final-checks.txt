@@ -114,6 +114,6 @@ They import library modules and examples/Scenario.bend, never a *Tests.bend or T
 GPU claim: none from this file. The GPU evidence and its limits are in verification/gpu-validation-hosts.md and openspec/traceability/gpu-validation.md.
 
 ## Limits
-- These checks ran on the CPU. The device corpus run (verification/gpu-corpus.txt) is on the 782 tree before the merge; the merged 1428 tree has no `--gpu on` corpus run.
+- These checks ran on the CPU. The device corpus runs are in verification/gpu-corpus.txt: the 782 tree (Task 6) and the merged 1428 tree (Task 9 final round, "Merged tree, 2026-11-05": 1428 PASS on and off, 4915 bend_dev launches, gate PASS).
 - No Lean verdict (`--verdict` refused); `ALL PROOFS CHECK` is Bend's ordinary checker, not a kernel verdict.
 - The native corpus (`bend Tests.bend -o ...`) and the JavaScript corpus were not rebuilt here; the master records (verification/tests-native.txt, tests-js.txt) are master's.

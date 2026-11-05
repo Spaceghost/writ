@@ -238,3 +238,16 @@
 2026-11-05T07:56:50Z	implementer	wrote verification/gpu-validation-hosts.md (host row, 11 configuration rows, gap list); next: traceability
 2026-11-05T07:58:30Z	implementer	wrote traceability gpu-validation.md, PX-001/PX-008 pointers, VERIFICATION.md dated section, tasks.md boxes (1.1-1.3, 2.1-2.3, 3.2, 4.3 checked; 3.1 unchecked with reason; 4.1/4.2 untouched); running final checks
 2026-11-05T07:59:42Z	implementer	final checks on merged tree: Tests 1428 PASS, PROOF ALL PROOFS CHECK, --verdict refused (lean not found), OpenSpec 44/0, .bend diff = 4 probes; wrote gpu-final-checks.txt and task-9-report.md; committing
+2026-11-05T08:00:16Z	controller	task 9 reported; task review and final review dispatched
+2026-11-05T08:02:19Z	controller	task 9 review APPROVED; waiting on the final review
+2026-11-05T08:10:05Z	controller	final review: three record fixes plus the merged-tree device corpus rerun; final fix round dispatched
+2026-11-05T08:11:11Z	implementer	final fix round start: read final-review.md and task-9-review.md; starting device corpus rerun on merged tree in ../writ-build/physical-gpu/task9/
+2026-11-05T08:11:20Z	implementer	final round: building Tests.bend to C in ../writ-build/physical-gpu/task9
+2026-11-05T08:12:19Z	implementer	final round: building Tests.bend GPU binary (native build plus --gpu-build)
+2026-11-05T08:17:13Z	implementer	final round: binary built; recording hashes and cubin
+2026-11-05T08:17:15Z	implementer	final round: --gpu on capture running
+2026-11-05T08:17:18Z	implementer	final round: observe.sh --gpu on pair running
+2026-11-05T08:17:29Z	implementer	final round: supplementary sanitizer runs (threads 4 on and off)
+2026-11-05T08:17:32Z	implementer	final round: corpus runs done
+2026-11-05T08:18:13Z	implementer	merged-tree corpus: on 1428 / off 1428, 4915 bend_dev launches, gate PASS, cmp on/off and both against tests-native.txt (6faee219) exit 0; appended to gpu-corpus.txt; updating rows
+2026-11-05T08:19:50Z	implementer	final round: text fixes I-1 to I-3, M-1 to M-6, O-1, O-3 applied; Tests 1428 PASS, OpenSpec 44/0; committing

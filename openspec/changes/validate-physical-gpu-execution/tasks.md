@@ -1,6 +1,9 @@
 # Physical GPU validation tasks
 
-All hardware, implementation, and measurement work below is pending.
+Boxes 1.1 to 1.3, 2.1 to 2.3, 3.2, 4.1 and 4.3 are checked, each citing its evidence from one GPU host
+(the physical-gpu lane). Box 3.1 stays open because the device call is not split into memory movement,
+dispatch and kernel time (Nsight is absent) and no throughput is reported; box 4.2 stays open because no
+enforced memory/device boundary exists, and the trusted-device exclusion is a recorded limit, not a boundary.
 
 ## 1. Establish attributable hardware execution
 
@@ -12,7 +15,7 @@ All hardware, implementation, and measurement work below is pending.
 - [x] 1.2 Implement the hardware-required profile and verify that forced CPU fallback fails its hardware-evidence gate while leaving ordinary library fallback behavior intact.
   Evidence: `verification/gpu-gate-controls.txt` ("Result": controls (b), (c), (c2) compute PASS on the
   CPU and the gate refuses them; only (a) and (a-long) pass). Ordinary fallback is intact:
-  `verification/gpu-corpus-off.txt` (782 PASS with `--gpu off`, `verification/gpu-corpus.txt`, "Result").
+  `verification/gpu-corpus-off.txt` (782 PASS with `--gpu off`, 782 tree, 98db68bf; `verification/gpu-corpus.txt`, "Result").
 - [x] 1.3 Compile and execute each of the three device-requesting paths on a supported physical GPU; retain attributable dispatch/completion evidence and document the exact supported configuration.
   Evidence: `verification/gpu-paths.txt` ("Result": solver, label batch and transfer batch each with observed
   `bend_dev` launches in its own single-bang binary and gate PASS; the configuration is in the header and

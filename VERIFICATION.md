@@ -201,29 +201,38 @@ the requirement map is
 [openspec/traceability/gpu-validation.md](openspec/traceability/gpu-validation.md).
 
 Library correctness: the library corpus printed 782 PASS lines with
-`--gpu on` and with `--gpu off`, byte-identical to `tests-native.txt`, on the
-782 tree before the merge of master
-([gpu-corpus.txt](verification/gpu-corpus.txt), "Result"). The merged tree
-prints 1428 checks on the CPU ([gpu-final-checks.txt](verification/gpu-final-checks.txt));
-it has no `--gpu on` corpus run.
+`--gpu on` and with `--gpu off`, byte-identical to each other and to
+`verification/tests-native.txt` as of 98db68bf (sha256 `fc3a08aa...062916ff`),
+on the 782 tree before the merge of master
+([gpu-corpus.txt](verification/gpu-corpus.txt), "Result").
+On the merged tree the corpus printed 1428 PASS lines with `--gpu on` and with
+`--gpu off`, byte-identical to each other and to `verification/tests-native.txt`
+as it stands on the merged tree (sha256 `6faee219...9318`)
+([gpu-corpus.txt](verification/gpu-corpus.txt), "Result (merged tree)"), and
+1428 in the Bend driver ([gpu-final-checks.txt](verification/gpu-final-checks.txt)).
 
 GPU claim, limited to runs with observed launches: compute-sanitizer counted
 `bend_dev` launches attributed to the binary, and the hardware-evidence gate
 passed, for the graph solver, the label batch and the transfer batch, each in
 its own single-bang probe ([gpu-paths.txt](verification/gpu-paths.txt),
 "Result"), for 18 of 20 parity cases ([gpu-parity.txt](verification/gpu-parity.txt),
-"Result"), for 11 injected faults on device results, each denied in every
-round ([gpu-injection.txt](verification/gpu-injection.txt), "Result"), and for
-the solver bang inside the corpus, 4915 launches
-([gpu-corpus.txt](verification/gpu-corpus.txt), "Result"). The gate refuses
+"Result"), for the device runs underneath 11 injected-fault cases
+([gpu-injection.txt](verification/gpu-injection.txt), "Result"), and for the
+solver bang inside the corpus, 4915 launches on the 782 tree
+([gpu-corpus.txt](verification/gpu-corpus.txt), "Result"), and again 4915 launches with gate PASS on the merged 1428 tree
+([gpu-corpus.txt](verification/gpu-corpus.txt), "Result (merged tree)").
+Separately, CPU-side outcomes: the device results equalled the CPU reference
+(typed comparison) and the CPU-side check or replay accepted them, and it
+denied every injected fault in every round. The gate refuses
 forced CPU fallback, a hidden device and zero launches
 ([gpu-gate-controls.txt](verification/gpu-gate-controls.txt), "Result").
 Everything else is CPU execution: every `--gpu off` run, every CPU reference,
 verifier and replay, and the corpus's label and transfer batches.
 
 Limits: the timings were taken on a loaded host and are not representative;
-the device path was slower than the CPU in every measured cell, and no speedup
-is claimed ([gpu-pipeline.txt](verification/gpu-pipeline.txt), "Result",
+the complete `--gpu on` pipeline took longer than `--gpu off` of the same
+binary in every measured cell on this loaded host; this is not a performance
+result, and no speedup is claimed ([gpu-pipeline.txt](verification/gpu-pipeline.txt), "Result",
 "Limits"). The device call is not split into memory movement, dispatch and
 kernel time, because Nsight is not installed. The only trust profile is GT-1
 trusted device: the managed heap is shared and writable, and hostile device code

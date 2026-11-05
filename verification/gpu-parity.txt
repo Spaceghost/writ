@@ -3979,7 +3979,8 @@ off: PASS verify paired-admitted: Transfer.admit per original plan against its C
 [exit status: 0; stderr empty; wall 26 ms]
 
 ## Result
-On this host and configuration only (device GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, driver 615.71.09, bend 2.0.39, NVRTC/CUDA 13.4.92; solver.gpu db3438f73ad2d6c9a283fb25c30b67adcbc83e50949db91c30b255dcbeeba7bfb, labels.gpu a3b6885c1fbf98661f0e0712b4fe990ec9b845c87c6732e85c16ca92673af2a1, transfers.gpu aaad38b58edc2fbf38b6fe901b44d9f592db255bd5c9330388f6597628441f0e).
+On this host and configuration only (device GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, driver 615.71.09, bend 2.0.39, NVRTC/CUDA 13.4.92; solver.gpu db3438f7ad2d6c9a283fb25c30b67adcbc83e50949db91c30b255dcbeeba7bfb, labels.gpu a3b6885c1fbf98661f0e0712b4fe990ec9b845c87c6732e85c16ca92673af2a1, transfers.gpu aaad38b58edc2fbf38b6fe901b44d9f592db255bd5c9330388f6597628441f0e).
+(Task 9 final round, transcription fix, no rerun: the solver.gpu hash on the line above was printed with 65 hex characters; it is corrected to the file on disk and to the records' gpu_program_sha256: `$ sha256sum ../writ-build/physical-gpu/task4/solver.gpu` -> `db3438f7ad2d6c9a283fb25c30b67adcbc83e50949db91c30b255dcbeeba7bfb  ../writ-build/physical-gpu/task4/solver.gpu`.)
 
 Per case (single-case runs; "launches" is the observer's bend_dev count attributed to that binary; "plain" is the plain pass's wall time and its --query-compute-apps sightings; on and off are the parity line from the `--gpu on` plain pass and from the `--gpu off` run):
 

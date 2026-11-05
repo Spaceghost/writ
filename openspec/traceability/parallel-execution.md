@@ -2,13 +2,16 @@
 
 Baseline: [parallel-execution/spec.md](../specs/parallel-execution/spec.md).
 
-The current evidence verifies graph producer behavior and CPU-executed examples.
-It does not validate GPU hardware, device compilation, scheduling performance,
-or isolation from a malicious driver/runtime.
+The baseline evidence verifies graph producer behavior and CPU-executed examples.
+That baseline evidence does not validate GPU hardware, device compilation, scheduling
+performance, or isolation from a malicious driver/runtime. One-host device evidence
+from the proposed change validate-physical-gpu-execution is linked from rows PX-001 and
+PX-008 and traced in [gpu-validation.md](gpu-validation.md); it does not cover
+scheduling performance or isolation from a malicious driver/runtime.
 
 | Requirement | Implementation | Evidence and coverage |
 | --- | --- | --- |
-| PX-001 | [GpuLibrary.bend](../../GpuLibrary.bend): `solve`, `label_batch`, `transfer_batch`; [Gpu.bend](../../Gpu.bend), [DlmGpu.bend](../../DlmGpu.bend), [TransferGpu.bend](../../TransferGpu.bend) | **Code-generation evidence:** [verification/gpu-codegen.txt](../../verification/gpu-codegen.txt) records `#define BANGS 3` from [GpuExample.bend](../../GpuExample.bend). Each wrapper issues a native device request; this is not a device execution measurement. **Device execution (proposed change validate-physical-gpu-execution, one host):** each of the three entry points ran on an RTX 4090 with observed `bend_dev` launches in its own single-bang probe and gate PASS, results equal to the CPU reference and accepted by the independent check or replay; see [verification/gpu-paths.txt](../../verification/gpu-paths.txt) ("Result"), [verification/gpu-validation-hosts.md](../../verification/gpu-validation-hosts.md) and [gpu-validation.md](gpu-validation.md) (GV-002). That is GPU evidence for that configuration only. |
+| PX-001 | [GpuLibrary.bend](../../GpuLibrary.bend): `solve`, `label_batch`, `transfer_batch`; [Gpu.bend](../../Gpu.bend), [DlmGpu.bend](../../DlmGpu.bend), [TransferGpu.bend](../../TransferGpu.bend) | **Code-generation evidence:** [verification/gpu-codegen.txt](../../verification/gpu-codegen.txt) records `#define BANGS 3` from [GpuExample.bend](../../GpuExample.bend). Each wrapper issues a native device request; this is not a device execution measurement. **Device execution (proposed change validate-physical-gpu-execution, one host):** each of the three entry points ran on an RTX 4090 with observed `bend_dev` launches in its own single-bang probe and gate PASS. Separately, the device results equalled the CPU reference (typed comparison) and the CPU-side check or replay accepted them; see [verification/gpu-paths.txt](../../verification/gpu-paths.txt) ("Result"), [verification/gpu-validation-hosts.md](../../verification/gpu-validation-hosts.md) and [gpu-validation.md](gpu-validation.md) (GV-002). That is GPU evidence for that configuration only. |
 | PX-002 | [Gpu.bend](../../Gpu.bend): `solve_gpu`, `sweep`, `run_tree`; [Core.bend](../../Core.bend): `solve_cpu` | **Tested:** [CoreTests.bend](../../CoreTests.bend), "Bend parallel producer matches sequential producer", "parallel producer preserves type conflict", "parallel cycle agrees with CPU", "parallel propagation retains high bits". [PropertyTests.bend](../../PropertyTests.bend) checks both producers against an independent expected result for 320 four-node cases. |
 | PX-003 | [Gpu.bend](../../Gpu.bend): `make_tree`, `make_leaf`, `flatten` | **Tested:** the five-node fixture in `CoreTests`, "Bend parallel producer matches sequential producer", checks exact node order/count; "empty parallel graph needs no dispatch" covers the empty case. **Reviewed:** absent padding becomes `NoOutput` and `flatten` preserves left-to-right node order. |
 | PX-004 | [Dlm.bend](../../Dlm.bend): `batch`; [Transfer.bend](../../Transfer.bend): `batch`, `Decisions.all_accepted` | **Tested:** [DlmTests.bend](../../DlmTests.bend), "parallel batch agrees with four independent semantic outcomes"; [TransferTests.bend](../../TransferTests.bend), "parallel batch admission", "parallel batch retains denial". **Reviewed:** empty-branch structure is handled explicitly in both batch functions; it has no dedicated named scenario check. |
@@ -24,7 +27,8 @@ edge lists per destination. Preparation is sequential; every destination reads
 the same immutable prior assignment. Adjacency indexing and workload tuning are
 future optimizations. The shared runtime/heap remains part of the trusted stack;
 algorithmic verification is not a protected memory boundary.
-On the one GPU host of validate-physical-gpu-execution the device was slower
-than the CPU in every measured cell, on a loaded host, with no memory-movement
+On the one GPU host of validate-physical-gpu-execution the complete `--gpu on`
+pipeline took longer than `--gpu off` of the same binary in every measured cell
+on this loaded host; this is not a performance result. There is no memory-movement
 split ([verification/gpu-pipeline.txt](../../verification/gpu-pipeline.txt));
 the trusted-device profile is [verification/gpu-trust-profile.md](../../verification/gpu-trust-profile.md).
