@@ -8,3 +8,6 @@ Task 1: review spec APPROVED, security NEEDS_FIXES (caller-written scope fields 
 Task 1: fix round 1 done (7678088): early-denied admissions record a fieldless ScopeNotRead{} chosen from the library reason alone; 1488 checks; 83 of 86 mutants killed, 3 equivalent. Scoped re-review dispatched.
 Task 1: complete (re-review ALL CLOSED; 1488 checks, 21 laws). Carried to Task 3: the requester label on admission events; the binding source and destination labels on commit events.
 Task 2: dispatched implementer (canonical word encoding)
+Task 2: implementer DONE_WITH_CONCERNS (bc1c8e5): encoding with field_allowlist(), 88 checks (Audit 148, tree 1576), 96 of 97 mutants killed, E1/E2/E5 now killed. Rulings: the ScopeNotRead layout (six scope fields present with length 0, invocation length as the discriminator, mixed states BadLength) is accepted; encode refusing incoherent records via event_coherent is accepted (encode and decode agree); OutOfOrder for any non-next tag accepted; the Task 1 helper renames accepted. Reviewer dispatched.
+Task 2: complete (review APPROVED both axes; three minor notes carried to Task 6).
+Task 3: dispatched implementer (event labels; the Task 1 obligations: requester label on admission events, binding labels on commit events)
