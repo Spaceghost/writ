@@ -1,0 +1,724 @@
+GPU toolchain and launch-observation method (GV-004 environment half, GV-001 observer choice; Task 1)
+Bend version: bend 2.0.39 (from `bend version`; driver sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+Compiler: clang version 23.1.1 at /usr/bin/clang (the GPU build compiles the emitted C with -DBEND_CUDA=1 at -O3); NVRTC 13.4.92 compiles the device program; nvcc is present and not used
+Host: Linux 7.2.9-1-MANJARO x86_64, glibc 2.44, 32 online CPUs; 1-minute load average 47.92 to 67.84 in the quoted `uptime` lines of the original capture (5-minute up to 88.17), and 99.82 at the fix-round rebuild; every wall time is indicative only
+GPU: NVIDIA GeForce RTX 4090, GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, bus 00000000:0C:00.0, compute capability 8.9, driver 615.71.09, CUDA UMD 13.4; the display (gnome-shell, Xwayland) and other graphics and compute clients share it
+Date: 2026-11-05 02:55 to 03:03 UTC (2026-11-04 CST)
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:/opt/cuda/bin:$PATH"; export BEND_NO_TELEMETRY=1; export CUDA_HOME=/opt/cuda. CUDA_VISIBLE_DEVICES unset in every run; CUDA_PATH=/opt/cuda is inherited from the login environment (CUDA_HOME is searched first, and names the same directory); CC unset.
+Execution: observed device runs are the compute-sanitizer runs with `--gpu on` below, whose bend_dev launches are counted (5 per round in this probe; the count depends on the runtime and the workload and is not a constant). The other `--gpu on` runs (the 1-round run, the plain overhead runs, the 300-round nvidia-smi run) are the same binary and arguments, device-requested but not individually observed for launches. The `--gpu off` runs are CPU execution and the observer sees no CUDA API call in them. Library tests, proofs and Writ policy code were not run or changed by this task; nothing here is a corpus, solver, label or transfer result.
+
+## Toolchain
+Each command was run once from the worktree root with the Environment above; its stdout, stderr and exit status follow it.
+
+$ nvidia-smi
+Wed Nov  4 21:01:22 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 615.71.09              KMD Version: 615.71.09     CUDA UMD Version: 13.4     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 4090        Off |   00000000:0C:00.0  On |                  Off |
+| 30%   45C    P5             19W /  500W |    5452MiB /  24564MiB |     22%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            8155      G   /usr/bin/gnome-shell                    617MiB |
+|    0   N/A  N/A            8582      G   /usr/bin/Xwayland                         8MiB |
+|    0   N/A  N/A           10533      G   /usr/lib/slack/slack                     11MiB |
+|    0   N/A  N/A           20550    C+G   ...rack-uuid=3190708988185955192        913MiB |
+|    0   N/A  N/A           22068      G   ...rack-uuid=3190708988185955192         97MiB |
+|    0   N/A  N/A           22402      G   /home/jadams/.local/bin/ghostty         139MiB |
+|    0   N/A  N/A          403888      G   ...ppDir/usr/lib/dozer/bin/Dozer         34MiB |
+|    0   N/A  N/A          633329    C+G   /lib64/ld-linux-x86-64.so.2             158MiB |
+|    0   N/A  N/A          985180      G   /usr/bin/qemu-system-x86_64             856MiB |
+|    0   N/A  N/A         1708245      G   /usr/lib/electron39/electron             51MiB |
+|    0   N/A  N/A         2392024      G   /opt/zoom/zoom                          141MiB |
+|    0   N/A  N/A         3339540    C+G   ...rack-uuid=3190708988185955192        253MiB |
+|    0   N/A  N/A         3749654      G   ...Ptr --variations-seed-version        410MiB |
++-----------------------------------------------------------------------------------------+
+[exit status: 0; stderr empty]
+
+$ nvidia-smi --query-gpu=name,uuid,pci.bus_id,driver_version,compute_cap,memory.total --format=csv
+name, uuid, pci.bus_id, driver_version, compute_cap, memory.total [MiB]
+NVIDIA GeForce RTX 4090, GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, 00000000:0C:00.0, 615.71.09, 8.9, 24564 MiB
+[exit status: 0; stderr empty]
+
+$ cat /proc/driver/nvidia/version
+NVRM version: NVIDIA UNIX x86_64 Kernel Module  615.71.09  Fri Sep  4 21:42:44 UTC 2026
+GCC version:  gcc version 16.2.1 20260810 (GCC) 
+[exit status: 0; stderr empty]
+
+$ command -v nvcc
+/opt/cuda/bin/nvcc
+[exit status: 0; stderr empty]
+
+$ nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2026 NVIDIA Corporation
+Built on Tue_Sep_01_08:45:21_PDT_2026
+Cuda compilation tools, release 13.4, V13.4.92
+Build cuda_13.4.r13.4/compiler.38855100_0
+[exit status: 0; stderr empty]
+
+$ ls -l /opt/cuda/include/nvrtc.h /opt/cuda/lib64/libnvrtc.so*
+-rw-r--r-- 1 root root     57458 Sep 18 14:08 /opt/cuda/include/nvrtc.h
+lrwxrwxrwx 1 root root        14 Sep 18 14:08 /opt/cuda/lib64/libnvrtc.so -> libnvrtc.so.13
+lrwxrwxrwx 1 root root        19 Sep 18 14:08 /opt/cuda/lib64/libnvrtc.so.13 -> libnvrtc.so.13.4.92
+-rwxr-xr-x 1 root root 126417024 Sep 18 14:08 /opt/cuda/lib64/libnvrtc.so.13.4.92
+[exit status: 0; stderr empty]
+
+$ ldconfig -p | grep -E 'nvrtc|libcuda'
+	libnvrtc.so.13 (libc6,x86-64) => /opt/cuda/lib64/libnvrtc.so.13
+	libnvrtc.so (libc6,x86-64) => /opt/cuda/lib64/libnvrtc.so
+	libnvrtc-builtins.so.13.4 (libc6,x86-64) => /opt/cuda/lib64/libnvrtc-builtins.so.13.4
+	libnvrtc-builtins.so (libc6,x86-64) => /opt/cuda/lib64/libnvrtc-builtins.so
+	libcudart.so.13 (libc6,x86-64) => /opt/cuda/lib64/libcudart.so.13
+	libcudart.so (libc6,x86-64) => /opt/cuda/lib64/libcudart.so
+	libcudadebugger.so.1 (libc6,x86-64) => /usr/lib/libcudadebugger.so.1
+	libcudadebugger.so (libc6,x86-64) => /usr/lib/libcudadebugger.so
+	libcuda.so.1 (libc6,x86-64) => /usr/lib/libcuda.so.1
+	libcuda.so (libc6,x86-64) => /usr/lib/libcuda.so
+[exit status: 0; stderr empty]
+
+$ command -v clang
+/usr/bin/clang
+[exit status: 0; stderr empty]
+
+$ clang --version
+clang version 23.1.1
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+[exit status: 0; stderr empty]
+
+$ command -v bend
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+[exit status: 0; stderr empty]
+
+$ bend version
+bend 2.0.39
+[exit status: 0; stderr empty]
+
+$ sha256sum "$(command -v bend)"
+2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd  /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+[exit status: 0; stderr empty]
+
+$ ls -l /dev/nvidia*
+crw-rw-rw- 1 root root 195,   0 Nov  1 20:31 /dev/nvidia0
+crw-rw-rw- 1 root root 195, 255 Nov  1 20:31 /dev/nvidiactl
+crw-rw-rw- 1 root root 195, 254 Nov  1 20:31 /dev/nvidia-modeset
+crw-rw-rw- 1 root root 235,   0 Nov  1 20:28 /dev/nvidia-uvm
+crw-rw-rw- 1 root root 235,   1 Nov  1 20:28 /dev/nvidia-uvm-tools
+
+/dev/nvidia-caps:
+total 0
+cr-------- 1 root root 240, 1 Nov  1 20:31 nvidia-cap1
+cr--r--r-- 1 root root 240, 2 Nov  1 20:31 nvidia-cap2
+[exit status: 0; stderr empty]
+
+$ command -v compute-sanitizer
+/opt/cuda/bin/compute-sanitizer
+[exit status: 0; stderr empty]
+
+$ compute-sanitizer --version
+NVIDIA (R) Compute Sanitizer
+Copyright (c) 2020-2026 NVIDIA Corporation
+Version 2026.3.0.0 (build 38855100) (public-release)
+[exit status: 0; stderr empty]
+
+$ which nsys ncu
+[stderr:]
+which: no nsys in (<PATH elided: the Environment line prefix, then the login PATH; it includes /opt/cuda/bin>)
+which: no ncu in (<PATH elided: the Environment line prefix, then the login PATH; it includes /opt/cuda/bin>)
+[exit status: 2]
+
+$ ls -d /opt/cuda/nsight* /opt/nvidia/nsight* 2>&1
+ls: cannot access '/opt/cuda/nsight*': No such file or directory
+ls: cannot access '/opt/nvidia/nsight*': No such file or directory
+[exit status: 2; stderr empty]
+
+$ command -v cuobjdump; cuobjdump --version
+/opt/cuda/bin/cuobjdump
+cuobjdump: NVIDIA (R) fat binary listing tool
+Copyright (c) 2005-2026 NVIDIA Corporation
+Built on Tue_Sep_01_08:45:21_PDT_2026
+Cuda compilation tools, release 13.4, V13.4.92
+Build cuda_13.4.r13.4/compiler.38855100_0
+[exit status: 0; stderr empty]
+
+$ command -v gdb && gdb --version | head -1
+/usr/bin/gdb
+GNU gdb (GDB) 18.1
+[exit status: 0; stderr empty]
+
+$ uname -srm
+Linux 7.2.9-1-MANJARO x86_64
+[exit status: 0; stderr empty]
+
+$ ldd --version | head -1
+ldd (GNU libc) 2.44
+[exit status: 0; stderr empty]
+
+$ uptime
+ 21:01:22 up 3 days, 34 min,  1 user,  load average: 67.84, 88.17, 70.87
+[exit status: 0; stderr empty]
+
+$ nproc
+32
+[exit status: 0; stderr empty]
+
+$ echo CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES-unset} CUDA_HOME=$CUDA_HOME CUDA_PATH=${CUDA_PATH-unset} CC=${CC-unset} BEND_NO_TELEMETRY=$BEND_NO_TELEMETRY
+CUDA_VISIBLE_DEVICES=unset CUDA_HOME=/opt/cuda CUDA_PATH=/opt/cuda CC=unset BEND_NO_TELEMETRY=1
+[exit status: 0; stderr empty]
+
+## Runtime facts from the pinned driver
+The plan header's runtime facts, matched as fixed strings in the Bend 2.0.39 driver binary (the CLI and the runtime C are embedded in it). The line numbers are positions in `strings -n 6` output of the binary with the sha256 above; a different Bend build that changes any of these lines makes the corresponding grep fail or move.
+
+### cli_build: CUDA search (first directory holding include/nvrtc.h)
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '].find((d) => d && fs4.existsSync(d + "/include/nvrtc.h")) ?? "";'
+258794:  ].find((d) => d && fs4.existsSync(d + "/include/nvrtc.h")) ?? "";
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'const bangs = !/^#define BANGS\s+0$/m.test(c) && (mac || cuda !== "");'
+258795:  const bangs = !/^#define BANGS\s+0$/m.test(c) && (mac || cuda !== "");
+[exit status: 0]
+
+### cli_build: GPU compile flags and the --gpu-build step
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '"-DBEND_CUDA=1",'
+258810:    "-DBEND_CUDA=1",
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '"-I" + cuda + "/include",'
+258811:    "-I" + cuda + "/include",
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '"-L" + cuda + "/lib64",'
+258812:    "-L" + cuda + "/lib64",
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '"-O3",'
+258481:  run(tool("leanc"), ["-O3", "-DNDEBUG", "bendtt.c", "-o", "bendtt"]);
+258802:    "-O3",
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '"-lnvrtc"'
+258816:    "-lnvrtc"
+[exit status: 0]
+
+(fix round 1: the `-lcuda` line, grepped after the review)
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '"-lcuda",'
+258815:    "-lcuda",
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];'
+258817:  const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'const need = gpu ? m?.[1] === undefined ? 19 : 17 : 14;'
+258777:    const need = gpu ? m?.[1] === undefined ? 19 : 17 : 14;
+[exit status: 0]
+
+### gpu_probe
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'GPU_CHECK(cuInit, 0);'
+256405:  GPU_CHECK(cuInit, 0);
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'GPU_CHECK(cuDeviceGet, &gpu_dev, 0);'
+256406:  GPU_CHECK(cuDeviceGet, &gpu_dev, 0);
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS, gpu_dev);'
+256408:    CU_DEVICE_ATTRIBUTE_CONCURRENT_MANAGED_ACCESS, gpu_dev);
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'return "CUDA device lacks concurrent managed access (WSL2 lacks it)";'
+256410:    return "CUDA device lacks concurrent managed access (WSL2 lacks it)";
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'GPU_CHECK(cuDevicePrimaryCtxRetain, &ctx, gpu_dev);'
+256415:  GPU_CHECK(cuDevicePrimaryCtxRetain, &ctx, gpu_dev);
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'why = "cuCtxSetCurrent";'
+256419:    why = "cuCtxSetCurrent";
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'snprintf(error, sizeof error, "%s failed: %s", why, name);'
+256426:  snprintf(error, sizeof error, "%s failed: %s", why, name);
+[exit status: 0]
+
+### gpu_make: NVRTC options and the .gpu layout (8-byte hash, then the cubin)
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'snprintf(arch, sizeof arch, "--gpu-architecture=sm_%d%d", cc[0], cc[1]);'
+256447:  snprintf(arch, sizeof arch, "--gpu-architecture=sm_%d%d", cc[0], cc[1]);
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'snprintf(bag, sizeof bag, "-DCUBE_LOG=%u", CUBE_LOG);'
+256448:  snprintf(bag, sizeof bag, "-DCUBE_LOG=%u", CUBE_LOG);
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'const char* opts[] = { arch, bag, "--fmad=false", "-default-device" };'
+256449:  const char* opts[] = { arch, bag, "--fmad=false", "-default-device" };
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '&& fwrite(bin, 1, len, out) == len && fclose(out) == 0;'
+256470:    && fwrite(bin, 1, len, out) == len && fclose(out) == 0;
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'if (cuModuleGetFunction(&gpu_pso, gpu_lib, "bend_dev") != CUDA_SUCCESS) {'
+256492:  if (cuModuleGetFunction(&gpu_pso, gpu_lib, "bend_dev") != CUDA_SUCCESS) {
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'if (cuMemAllocManaged(&p, bytes, CU_MEM_ATTACH_GLOBAL) != CUDA_SUCCESS) {'
+256431:  if (cuMemAllocManaged(&p, bytes, CU_MEM_ATTACH_GLOBAL) != CUDA_SUCCESS) {
+[exit status: 0]
+
+### --gpu-build: exits 0 and writes nothing when the probe fails
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'if (gpu_probe() == NULL && !gpu_make(gpu_path())) {'
+257161:      if (gpu_probe() == NULL && !gpu_make(gpu_path())) {
+[exit status: 0]
+
+### --gpu parse
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '} else if (!strcmp(v, "on")'
+257179:      } else if (!strcmp(v, "on")
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'err_fail("expected on, off or a size like 4GB after --gpu");'
+257183:        err_fail("expected on, off or a size like 4GB after --gpu");
+[exit status: 0]
+
+### why / err_fail: --gpu on with a failed probe stops the program
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'const char* why = gpu != 0 && BANGS != 0 ? gpu_probe() : "";'
+257189:  const char* why = gpu != 0 && BANGS != 0 ? gpu_probe() : "";
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'if (gpu == 1 && BANGS != 0 && why != NULL) {'
+257190:  if (gpu == 1 && BANGS != 0 && why != NULL) {
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'fprintf(stderr, "bend: %s\n", msg);'
+255399:  fprintf(stderr, "bend: %s\n", msg);
+[exit status: 0]
+
+### Launch path the observer counts, and the device stderr notes
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'if (cuLaunchKernel(gpu_pso, TURN_ROWS(at), 1, 1, CUBE_T, 1, 1, 0, NULL,'
+256496:  if (cuLaunchKernel(gpu_pso, TURN_ROWS(at), 1, 1, CUBE_T, 1, 1, 0, NULL,
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e '// A bang launches 1, 2, 4 .. 64 rounds between syncs, until the pack'
+256499:// A bang launches 1, 2, 4 .. 64 rounds between syncs, until the pack
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'err_fail("device launch failed");'
+256498:    err_fail("device launch failed");
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'err_fail("device fault");'
+256506:      err_fail("device fault");
+[exit status: 0]
+
+$ strings -n 6 "$(command -v bend)" | grep -n -F -e 'fprintf(stderr, "bend: compiling the GPU program (%s is missing or"'
+256279:  fprintf(stderr, "bend: compiling the GPU program (%s is missing or"
+[exit status: 0]
+
+## Build
+Commands run from the worktree root; build outputs in ../writ-build/physical-gpu (outside the source tree).
+Source: scripts/gpu-validation/Bang.bend, sha256 5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 as committed. The capture below was taken before two comment lines in its header were reworded; the section "Build (rebuild after the comment edit)" after it rebuilds from the committed source and quotes the hashes.
+
+$ uptime
+ 21:02:22 up 3 days, 35 min,  1 user,  load average: 47.92, 78.27, 68.53
+[exit status: 0; stderr empty; wall .039 s]
+
+$ timeout 600 bend scripts/gpu-validation/Bang.bend -o ../writ-build/physical-gpu/bang.c
+[exit status: 0; stderr empty; wall 1.372 s]
+
+$ grep -n '^#define BANGS' ../writ-build/physical-gpu/bang.c
+408:#define BANGS   1
+[exit status: 0; stderr empty; wall .032 s]
+
+$ sha256sum ../writ-build/physical-gpu/bang.c
+dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  ../writ-build/physical-gpu/bang.c
+[exit status: 0; stderr empty; wall .033 s]
+
+$ rm -f ../writ-build/physical-gpu/bang ../writ-build/physical-gpu/bang.gpu ../writ-build/physical-gpu/bang.cubin; timeout 600 bend scripts/gpu-validation/Bang.bend -o ../writ-build/physical-gpu/bang
+[exit status: 0; stderr empty; wall 4.014 s]
+
+$ ls -l ../writ-build/physical-gpu/bang ../writ-build/physical-gpu/bang.gpu
+-rwxr-xr-x 1 jadams jadams 214224 Nov  4 21:02 ../writ-build/physical-gpu/bang
+-rw-r--r-- 1 jadams jadams  43104 Nov  4 21:02 ../writ-build/physical-gpu/bang.gpu
+[exit status: 0; stderr empty; wall .021 s]
+
+$ nm -D ../writ-build/physical-gpu/bang | grep -E 'cuInit|nvrtc'
+                 U cuInit
+                 U nvrtcCompileProgram@libnvrtc.so.13
+                 U nvrtcCreateProgram@libnvrtc.so.13
+                 U nvrtcDestroyProgram@libnvrtc.so.13
+                 U nvrtcGetCUBIN@libnvrtc.so.13
+                 U nvrtcGetCUBINSize@libnvrtc.so.13
+                 U nvrtcGetProgramLog@libnvrtc.so.13
+                 U nvrtcGetProgramLogSize@libnvrtc.so.13
+[exit status: 0; stderr empty; wall .077 s]
+
+$ ldd ../writ-build/physical-gpu/bang
+	linux-vdso.so.1 (0x00007f734cffa000)
+	libm.so.6 => /usr/lib/libm.so.6 (0x00007f734cdf3000)
+	libcuda.so.1 => /usr/lib/libcuda.so.1 (0x00007f7346200000)
+	libnvrtc.so.13 => /opt/cuda/lib64/libnvrtc.so.13 (0x00007f733e400000)
+	libc.so.6 => /usr/lib/libc.so.6 (0x00007f733e000000)
+	/lib64/ld-linux-x86-64.so.2 => /usr/lib64/ld-linux-x86-64.so.2 (0x00007f734cffc000)
+	libpthread.so.0 => /usr/lib/libpthread.so.0 (0x00007f734cdec000)
+	libdl.so.2 => /usr/lib/libdl.so.2 (0x00007f734cde7000)
+	librt.so.1 => /usr/lib/librt.so.1 (0x00007f734cde2000)
+[exit status: 0; stderr empty; wall .034 s]
+
+$ sha256sum ../writ-build/physical-gpu/bang ../writ-build/physical-gpu/bang.gpu
+fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  ../writ-build/physical-gpu/bang
+7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  ../writ-build/physical-gpu/bang.gpu
+[exit status: 0; stderr empty; wall .033 s]
+
+$ head -c 8 ../writ-build/physical-gpu/bang.gpu | od -An -tx1
+ 08 a5 90 df c8 6f 33 d9
+[exit status: 0; stderr empty; wall .033 s]
+
+$ cd ../writ-build/physical-gpu && tail -c +9 bang.gpu > bang.cubin && sha256sum bang.cubin && file bang.cubin
+45943ecb3ce915e17e4aeee023dc3973bc9c5c7f9e0c9a0b9f434cc12ad0baf9  bang.cubin
+bang.cubin: ELF 64-bit LSB executable, NVIDIA CUDA architecture, version 1, statically linked, not stripped
+[exit status: 0; stderr empty; wall .027 s]
+
+$ cd ../writ-build/physical-gpu && cuobjdump -elf bang.cubin | head
+
+64-bit ELF: type=ET_EXEC, ABI=8, sm=89, toolkit=13.4, flags=0x6005904
+Sections:
+Index Offset   Size ES Align                      Type    Flags Link     Info Name
+    1     40    1f3  0  1                       STRTAB        0    0        0 .shstrtab
+    2    233    268  0  1                       STRTAB        0    0        0 .strtab
+    3    4a0    1e0 18  8                       SYMTAB        0    2       12 .symtab
+    4    680    160  0  1                     PROGBITS        0    0        0 .debug_frame
+    5    7e0     b0  0  4                         NOTE  2000000    0        0 .note.nv.tkinfo
+    6    890     20  0  4                         NOTE  1000000    5        0 .note.nv.cuinfo
+[exit status: 0; stderr empty; wall .045 s]
+
+$ cd ../writ-build/physical-gpu && cuobjdump -sass bang.cubin | grep -m3 Function
+		Function : window_dev
+		Function : bend_dev
+[exit status: 0; stderr empty; wall .742 s]
+
+## Build (rebuild after the comment edit)
+Fix round 1, 2026-11-05 03:08 UTC: rebuilt from the committed Bang.bend into a separate directory, same Environment.
+
+$ uptime
+ 21:07:59 up 3 days, 40 min,  1 user,  load average: 99.82, 66.20, 64.68
+[exit status: 0; stderr empty]
+
+$ git log -1 --format=%H -- scripts/gpu-validation/Bang.bend; git diff --quiet HEAD -- scripts/gpu-validation/Bang.bend && echo 'Bang.bend matches HEAD'
+35c8b3ba4406328080cf04dde32df7f2fe0aa48b
+Bang.bend matches HEAD
+[exit status: 0; stderr empty]
+
+$ rm -rf ../writ-build/physical-gpu/rebuild && mkdir -p ../writ-build/physical-gpu/rebuild && timeout 600 bend scripts/gpu-validation/Bang.bend -o ../writ-build/physical-gpu/rebuild/bang.c
+[exit status: 0; stderr empty]
+
+$ timeout 600 bend scripts/gpu-validation/Bang.bend -o ../writ-build/physical-gpu/rebuild/bang
+[exit status: 0; stderr empty]
+
+$ tail -c +9 ../writ-build/physical-gpu/rebuild/bang.gpu > ../writ-build/physical-gpu/rebuild/bang.cubin
+[exit status: 0; stderr empty]
+
+$ sha256sum scripts/gpu-validation/Bang.bend ../writ-build/physical-gpu/rebuild/bang.c ../writ-build/physical-gpu/rebuild/bang ../writ-build/physical-gpu/rebuild/bang.gpu ../writ-build/physical-gpu/rebuild/bang.cubin
+5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570  scripts/gpu-validation/Bang.bend
+dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  ../writ-build/physical-gpu/rebuild/bang.c
+fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  ../writ-build/physical-gpu/rebuild/bang
+7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  ../writ-build/physical-gpu/rebuild/bang.gpu
+45943ecb3ce915e17e4aeee023dc3973bc9c5c7f9e0c9a0b9f434cc12ad0baf9  ../writ-build/physical-gpu/rebuild/bang.cubin
+[exit status: 0; stderr empty]
+
+## Run
+Run commands below start with `cd ../writ-build/physical-gpu` so the binary is ./bang as in the plan. CUDA_VISIBLE_DEVICES is unset in every run.
+
+$ uptime
+ 21:02:29 up 3 days, 35 min,  1 user,  load average: 49.02, 77.51, 68.38
+[exit status: 0; stderr empty; wall .013 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 ./bang +RTS --gpu off -RTS 1 > run-off-1.out; st=$?; sha256sum run-off-1.out; cat run-off-1.out; exit $st
+305b51afc1d72e464bc514f7245f7d555f534da136eb6108080f0519ce801861  run-off-1.out
+rounds: 1, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 1325062663
+checksum (no bang): 1325062663
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall .138 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 ./bang +RTS --gpu on -RTS 1 > run-on-1.out; st=$?; sha256sum run-on-1.out; cat run-on-1.out; exit $st
+305b51afc1d72e464bc514f7245f7d555f534da136eb6108080f0519ce801861  run-on-1.out
+rounds: 1, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 1325062663
+checksum (no bang): 1325062663
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall .556 s]
+
+$ cd ../writ-build/physical-gpu && cmp run-off-1.out run-on-1.out
+[exit status: 0; stderr empty; wall .028 s]
+
+$ cd ../writ-build/physical-gpu && timeout 60 ./bang
+[stderr:]
+usage: bang [+RTS ... -RTS] REPEATS (a decimal U32)
+[exit status: 2; wall .390 s]
+
+### Observer 1: compute-sanitizer
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches yes --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 1
+[stderr:]
+compute-sanitizer: extra yes detected on the input command line
+[exit status: 255; wall .026 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 1
+========= COMPUTE-SANITIZER
+========= Launch #1 (filtered: excluded by name)
+=========   Kernel: bend_dev
+=========   Grid:   (1, 1, 1)
+=========   Block:  (128, 1, 1)
+=========   Stream: 0x0
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cuLaunchKernel [0x3f268a] in libcuda.so.1
+=========         Host Frame: cube_run [0x7493] in bang
+=========         Host Frame: corpus_eval [0x41ac] in bang
+=========         Host Frame: io_step [0x456a] in bang
+=========         Host Frame: io_loop [0x3b35] in bang
+=========         Host Frame: main [0x5efc] in bang
+========= 
+========= Launch #2 (filtered: excluded by name)
+=========   Kernel: bend_dev
+=========   Grid:   (128, 1, 1)
+=========   Block:  (128, 1, 1)
+=========   Stream: 0x0
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cuLaunchKernel [0x3f268a] in libcuda.so.1
+=========         Host Frame: cube_run [0x74fc] in bang
+=========         Host Frame: corpus_eval [0x41ac] in bang
+=========         Host Frame: io_step [0x456a] in bang
+=========         Host Frame: io_loop [0x3b35] in bang
+=========         Host Frame: main [0x5efc] in bang
+========= 
+========= Launch #3 (filtered: excluded by name)
+=========   Kernel: bend_dev
+=========   Grid:   (128, 1, 1)
+=========   Block:  (128, 1, 1)
+=========   Stream: 0x0
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cuLaunchKernel [0x3f268a] in libcuda.so.1
+=========         Host Frame: cube_run [0x7565] in bang
+=========         Host Frame: corpus_eval [0x41ac] in bang
+=========         Host Frame: io_step [0x456a] in bang
+=========         Host Frame: io_loop [0x3b35] in bang
+=========         Host Frame: main [0x5efc] in bang
+========= 
+========= Launch #4 (filtered: excluded by name)
+=========   Kernel: bend_dev
+=========   Grid:   (128, 1, 1)
+=========   Block:  (128, 1, 1)
+=========   Stream: 0x0
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cuLaunchKernel [0x3f268a] in libcuda.so.1
+=========         Host Frame: cube_run [0x75ce] in bang
+=========         Host Frame: corpus_eval [0x41ac] in bang
+=========         Host Frame: io_step [0x456a] in bang
+=========         Host Frame: io_loop [0x3b35] in bang
+=========         Host Frame: main [0x5efc] in bang
+========= 
+========= Launch #5 (filtered: excluded by name)
+=========   Kernel: bend_dev
+=========   Grid:   (1, 1, 1)
+=========   Block:  (128, 1, 1)
+=========   Stream: 0x0
+=========     Saved host backtrace up to driver entry point at kernel launch time
+=========         Host Frame: cuLaunchKernel [0x3f268a] in libcuda.so.1
+=========         Host Frame: cube_run [0x762e] in bang
+=========         Host Frame: corpus_eval [0x41ac] in bang
+=========         Host Frame: io_step [0x456a] in bang
+=========         Host Frame: io_loop [0x3b35] in bang
+=========         Host Frame: main [0x5efc] in bang
+========= 
+rounds: 1, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 1325062663
+checksum (no bang): 1325062663
+PASS bang checksum equals the no-bang checksum
+========= ERROR SUMMARY: 5 errors
+[exit status: 0; stderr empty; wall .571 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 100 > san-default-100.out 2>&1; st=$?; echo "bend_dev launches listed: $(grep -c 'Kernel: bend_dev' san-default-100.out)"; tail -2 san-default-100.out; exit $st
+bend_dev launches listed: 100
+========= ERROR SUMMARY: 500 errors
+========= ERROR SUMMARY: 400 errors were not printed. Use --print-limit option to adjust the number of printed errors
+[exit status: 0; stderr empty; wall 3.486 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 1 > san-1.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-1.out); other kernels: $(grep 'Kernel:' san-1.out | grep -vc 'Kernel: bend_dev'); launch numbers: $(grep -c '^========= Launch #' san-1.out)"; grep 'Grid:' san-1.out | sort | uniq -c; grep -h -E '^(rounds|checksum|PASS|FAIL)' san-1.out; tail -1 san-1.out; exit $st
+bend_dev launches: 5; other kernels: 0; launch numbers: 5
+      2 =========   Grid:   (1, 1, 1)
+      3 =========   Grid:   (128, 1, 1)
+rounds: 1, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 1325062663
+checksum (no bang): 1325062663
+PASS bang checksum equals the no-bang checksum
+========= ERROR SUMMARY: 5 errors
+[exit status: 0; stderr empty; wall .743 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 2 > san-2.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-2.out); other kernels: $(grep 'Kernel:' san-2.out | grep -vc 'Kernel: bend_dev'); launch numbers: $(grep -c '^========= Launch #' san-2.out)"; grep 'Grid:' san-2.out | sort | uniq -c; grep -h -E '^(rounds|checksum|PASS|FAIL)' san-2.out; tail -1 san-2.out; exit $st
+bend_dev launches: 10; other kernels: 0; launch numbers: 10
+      4 =========   Grid:   (1, 1, 1)
+      6 =========   Grid:   (128, 1, 1)
+rounds: 2, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 1175654559
+checksum (no bang): 1175654559
+PASS bang checksum equals the no-bang checksum
+========= ERROR SUMMARY: 10 errors
+[exit status: 0; stderr empty; wall .693 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 10 > san-10.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-10.out); other kernels: $(grep 'Kernel:' san-10.out | grep -vc 'Kernel: bend_dev'); launch numbers: $(grep -c '^========= Launch #' san-10.out)"; grep 'Grid:' san-10.out | sort | uniq -c; grep -h -E '^(rounds|checksum|PASS|FAIL)' san-10.out; tail -1 san-10.out; exit $st
+bend_dev launches: 50; other kernels: 0; launch numbers: 50
+     20 =========   Grid:   (1, 1, 1)
+     30 =========   Grid:   (128, 1, 1)
+rounds: 10, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 94130081
+checksum (no bang): 94130081
+PASS bang checksum equals the no-bang checksum
+========= ERROR SUMMARY: 50 errors
+[exit status: 0; stderr empty; wall 1.223 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 100 > san-100.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-100.out); other kernels: $(grep 'Kernel:' san-100.out | grep -vc 'Kernel: bend_dev'); launch numbers: $(grep -c '^========= Launch #' san-100.out)"; grep 'Grid:' san-100.out | sort | uniq -c; grep -h -E '^(rounds|checksum|PASS|FAIL)' san-100.out; tail -1 san-100.out; exit $st
+bend_dev launches: 500; other kernels: 0; launch numbers: 500
+    200 =========   Grid:   (1, 1, 1)
+    300 =========   Grid:   (128, 1, 1)
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+========= ERROR SUMMARY: 500 errors
+[exit status: 0; stderr empty; wall 3.534 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 1 2>&1 | tail -1
+========= ERROR SUMMARY: 0 errors
+[exit status: 0; stderr empty; wall .663 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu off -RTS 1
+========= COMPUTE-SANITIZER
+rounds: 1, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 1325062663
+checksum (no bang): 1325062663
+PASS bang checksum equals the no-bang checksum
+========= Error: Target application terminated before first instrumented API call
+[exit status: 255; stderr empty; wall .367 s]
+
+### Observer overhead (100 rounds; three interleaved pairs, plain first)
+
+$ cd ../writ-build/physical-gpu && timeout 600 ./bang +RTS --gpu on -RTS 100 | tail -1
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.073 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 100 > san-pair-1.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-pair-1.out)"; grep -h '^PASS\|^FAIL' san-pair-1.out; exit $st
+bend_dev launches: 500
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.435 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 ./bang +RTS --gpu on -RTS 100 | tail -1
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.039 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 100 > san-pair-2.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-pair-2.out)"; grep -h '^PASS\|^FAIL' san-pair-2.out; exit $st
+bend_dev launches: 500
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.908 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 ./bang +RTS --gpu on -RTS 100 | tail -1
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.558 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 compute-sanitizer --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ./bang +RTS --gpu on -RTS 100 > san-pair-3.out 2>&1; st=$?; echo "bend_dev launches: $(grep -c 'Kernel: bend_dev' san-pair-3.out)"; grep -h '^PASS\|^FAIL' san-pair-3.out; exit $st
+bend_dev launches: 500
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.683 s]
+
+$ cd ../writ-build/physical-gpu && timeout 600 ./bang +RTS --gpu off -RTS 100 | tail -1
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty; wall 3.988 s]
+
+$ uptime
+ 21:03:06 up 3 days, 35 min,  1 user,  load average: 59.67, 77.04, 68.56
+[exit status: 0; stderr empty; wall .023 s]
+
+### nvidia-smi during a long run (300 rounds)
+
+$ (sampler script; reproduced verbatim)
+cd ../writ-build/physical-gpu
+timeout 120 nvidia-smi pmon -s u -d 1 > pmon-300.out 2>&1 & SAMPLER=$!
+sleep 1
+timeout 600 ./bang +RTS --gpu on -RTS 300 > long-300.out 2> long-300.err & T=$!
+sleep 2; BANG=$(pgrep -P $T)
+for k in 1 2 3; do
+  nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv | grep -E "^pid|^$BANG,"
+  sleep 2
+done
+wait $T; echo "bang exit $?"
+kill $SAMPLER; wait $SAMPLER
+bang PID: 637844
+sample 1 at 03:03:10Z:
+pid, process_name, used_gpu_memory [MiB]
+637844, ./bang, 388 MiB
+sample 2 at 03:03:12Z:
+pid, process_name, used_gpu_memory [MiB]
+637844, ./bang, 388 MiB
+sample 3 at 03:03:14Z:
+pid, process_name, used_gpu_memory [MiB]
+637844, ./bang, 388 MiB
+bang exit 0; wall 9.0226 s
+stdout:
+rounds: 300, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3265290264
+checksum (no bang): 3265290264
+PASS bang checksum equals the no-bang checksum
+stderr bytes: 0
+pmon header:
+# gpu         pid   type     sm    mem    enc    dec    jpg    ofa    command 
+# Idx           #    C/G      %      %      %      %      %      %    name 
+pmon rows for PID 637844: 8; rows with a numeric SM %: 1
+    0     637844     C      -      -      -      -      -      -    bang           
+    0     637844     C     44      3      -      -      -      -    bang           
+    0     637844     C      -      -      -      -      -      -    bang           
+    0     637844     C      -      -      -      -      -      -    bang           
+    0     637844     C      -      -      -      -      -      -    bang           
+    0     637844     C      -      -      -      -      -      -    bang           
+    0     637844     C      -      -      -      -      -      -    bang           
+    0     637844     C      -      -      -      -      -      -    bang           
+other compute (C or C+G) processes sampled: 20550/--cr 3339540/--gpu-pr 633329/ld-linux-x86-64 637844/bang 
+
+$ uptime
+ 21:03:17 up 3 days, 36 min,  1 user,  load average: 60.20, 76.56, 68.50
+[exit status: 0; stderr empty; wall .020 s]
+
+## Result
+Toolchain: every component the plan names is present and recorded with its version and path: driver/KMD 615.71.09 (/proc/driver/nvidia/version), CUDA UMD 13.4, nvrtc.h and libnvrtc.so.13.4.92 under /opt/cuda, libcuda.so.1 in /usr/lib (ldconfig), clang 23.1.1 at /usr/bin/clang, bend 2.0.39, /dev/nvidia0, /dev/nvidiactl and /dev/nvidia-uvm at mode 666, compute-sanitizer 2026.3.0.0 and cuobjdump 13.4.92 in /opt/cuda/bin, gdb 18.1 at /usr/bin/gdb. nvcc 13.4.92 is present at /opt/cuda/bin/nvcc and is not used by Bend (the driver strings above compile through NVRTC). Nsight Systems (nsys) and Nsight Compute (ncu) are absent.
+
+Build: `bend ... -o bang` took the CUDA path. The binary imports cuInit and the nvrtc functions and links libcuda.so.1 and libnvrtc.so.13; the build wrote bang.gpu (43104 bytes, sha256 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d), an 8-byte source hash followed by a CUDA ELF with sm=89, toolkit=13.4, containing the bend_dev kernel (and window_dev, which bang never launches). The emitted C has `#define BANGS   1`. The rebuild from the committed Bang.bend (fix round 1, quoted under "Build (rebuild after the comment edit)") produced the same bang.c, bang, bang.gpu and bang.cubin sha256 values as the capture.
+
+Observer: compute-sanitizer is chosen. The plan's exact first command is refused by this sanitizer version (`--dump-kernel-launches` takes no value: "extra yes detected", exit 255); the flag form `--dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.*` works and lists every launch with its kernel name and a host backtrace through cube_run. `--print-limit 0` is required: the dumps are counted as reported records, and at the default limit of 100 only the first 100 of 500 launches are listed (the summary says "400 errors were not printed"). The count is a dump-record count, not an error count: the same run without --dump-kernel-launches reports "0 errors". Launch counts: 5, 10, 50, 500 bend_dev launches for 1, 2, 10, 100 rounds (five per bang in this probe, not a constant of the runtime: grids 1, 128, 128, 128, 1 of 128-thread blocks), no other kernel launched, and every checksum equal to the no-bang checksum. Under `--gpu off` the sanitizer reports "Target application terminated before first instrumented API call" (exit 255): no CUDA call at all. The gdb fallback was not needed and was not exercised.
+
+Overhead at 100 rounds, three interleaved pairs: plain 3.073, 3.039, 3.558 s; under the observer 3.435, 3.908, 3.683 s (about 0.1 to 0.9 s, 4 to 29 percent, per pair). The quoted `uptime` lines bracketing these pairs show 1-minute load averages of 49.02 and 59.67; the numbers say only that the observer is cheap enough to wrap every probe run, not what either run costs on a quiet host. The `--gpu off` run of the same 100 rounds took 3.988 s and is CPU execution.
+
+nvidia-smi: during a 300-round run (9.0 s), `nvidia-smi --query-compute-apps` listed the bang PID 637844 with 388 MiB in all three samples, and `nvidia-smi pmon -s u -d 1` gave 8 rows for the PID, of which 1 carried a numeric SM figure (44 percent) and 7 showed "-" (no sample attributed to the PID in that interval). Two exploratory runs earlier in this session (200 and 1500 rounds, not part of this capture) gave the same picture: 2 of 11 and 3 of 46 pmon rows numeric. pmon therefore corroborates that the PID held a compute context and was sampled at least once; it is not a launch counter and cannot stand alone as dispatch evidence. Other compute or compute-plus-graphics clients (a browser GPU process, Signal, and a long-running AppImage process, PID 633329) shared the GPU throughout, as did the display.
+
+Correctness: every bang run printed PASS (bang checksum equal to the no-bang checksum) and exited 0; the 1-round outputs under --gpu off and --gpu on are byte-identical (sha256 305b51af...). A missing REPEATS argument exits 2 with a usage line on stderr.
+
+## Limits
+- One probe program only. No Writ path (Gpu.sweep, Dlm.batch, Transfer.batch) was built or run with the device; nothing here is evidence that those bangs reach bend_dev. Tasks 3 to 7 cover them.
+- The validation-run record (`--- record v1 ---`) is defined by Task 2 and is not attached to these runs.
+- The observer shows that bend_dev was launched for this process and how many times; it does not check device memory accesses (all kernels are excluded from checking by design), and it does not show which Bend def each lane ran.
+- `--gpu on` was the only device mode run. The default (no --gpu, silent CPU fallback when the probe fails), a size such as `--gpu 8GB`, and the failed-probe paths (`err_fail`, the silent `--gpu-build` exit) were read from the driver strings, not exercised; Task 2's negative controls exercise them.
+- The silent `--gpu-build` case did not arise: the build wrote bang.gpu, and no run printed the "is missing or stale" note.
+- Nsight Systems and Nsight Compute are absent, so no kernel timeline, per-kernel duration or occupancy is recorded.
+- The host was loaded (1-minute load average 47.92 to 67.84 in the capture's quoted `uptime` lines, 99.82 at the fix-round rebuild) and the GPU drives the display and serves other clients; wall times and pmon samples are indicative only and are not performance results.
+- gdb (the plan's second observer) was not exercised.
+- Lean is not on PATH; no proof or --verdict run belongs to this task.

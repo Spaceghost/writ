@@ -1,0 +1,1579 @@
+The three native calculation paths on the device (GV-002 "Validate all three native calculation paths", GV-001 "Require observed physical execution"; Task 3)
+Bend version: bend 2.0.39 (driver sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+Compiler: clang version 23.1.1 at /usr/bin/clang (GPU build: emitted C with -DBEND_CUDA=1 at -O3, per verification/gpu-toolchain.txt); NVRTC 13.4.92 compiles each device program; compute-sanitizer 2026.3.0.0 is the launch observer
+Host: Linux 7.2.9-1-MANJARO x86_64, 32 online CPUs; 1-minute load average 18.88 to 63.49 in the quoted `uptime` and `load_avg` lines below; the display and other graphics and compute clients share the GPU; every wall time is indicative only
+GPU: NVIDIA GeForce RTX 4090, GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, bus 00000000:0C:00.0, compute capability 8.9 (cubins sm=89), driver 615.71.09, CUDA UMD 13.4
+Date: 2026-11-05 03:42 to 03:47 UTC (2026-11-04 CST)
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:/opt/cuda/bin:$PATH"; export BEND_NO_TELEMETRY=1; export CUDA_HOME=/opt/cuda. CUDA_VISIBLE_DEVICES unset and BENDRTS unset in every run (every record states it). Commands run from the worktree root. Probes were uncommitted at capture (each record's lane_commit says so); their sha256 in every record equals the committed files.
+Execution: device runs, observed: the observed (compute-sanitizer) pass of every observe.sh run below, `+RTS --gpu on -RTS`, with its bend_dev launches counted from the sanitizer log. Device runs, not individually observed: the plain pass of every observe.sh run (same binary, options and arguments; process listed by --query-compute-apps except in the three SIZE 16 runs). CPU runs: every `--gpu off` comparison run, and inside every probe the CPU reference (Core.solve_cpu, Dlm.batch, Transfer.batch with no bang) and the independent checks (Core.verify, Dlm.verify_batch, Transfer.admit), which have no bang in any mode. Library tests, proofs and the corpus were not run; nothing here is a corpus result.
+
+Probes (one GpuLibrary entry and one bang site per binary; BANGS 1 each): scripts/gpu-validation/Solver.bend (GPU.solve), Labels.bend (GPU.label_batch), Transfers.bend (GPU.transfer_batch). Each takes `run SIZE [ROUNDS]`; ROUNDS (default 1) repeats the device call, each behind its own IO.now() step, and is used only for the label and transfer runs sized to last at least 10 s. Inputs are SYNTHETIC records replicated from examples/Scenario.bend with distinct indices: for the solver, SIZE nodes in groups of four (report -> summary chain of two plus a fan-out, flow and calls edges, one equality per group); for the batches, leaf i chosen by i mod 4 so allowed and denied outcomes alternate (labels: allow, deny-adds-readers, allow, deny-stale-epoch; transfers: invocation 1000+i, admit, deny Read, admit, deny Write). Each probe compares every device result with the in-process CPU reference field by field, with an expected outcome per leaf, and with the independent check on the ORIGINAL inputs (Core.verify on the original Core.Graph and the Scenario core stamp; Dlm.verify_batch on the original queries and snapshot; Transfer.admit per original plan against its own Context); the solver adds a denied control (Core.verify refuses the unsolved seed assignment). With at most 16 leaves the last device result is printed in full, so the `--gpu off` stdout comparison is field by field at SIZE 16 and by counts and a digest at the larger sizes. (Task 9 reconciliation, after the Task 5 finding in verification/gpu-injection.txt, "Result", the digest-collision finding, and "Limits": the 32-bit digest collides structurally, so the cross-process comparisons at the larger sizes are evidence of equal counts only, for all three probes; see Limits.) The digest covers every field for the solver (outcome, stamp, every node state, sweep count) and the labels (shape and every answer). For the transfer probe the digest covers the tree shape, each denial code, and per admitted ticket only the plan's invocation, the output schema, secrecy, untrusted and kinds, and each retained origin's object, version, secrecy, untrusted and kinds; it omits the plan's stamp, sources, destination, code, kind and output_type and each origin's approved codes and payment rule (the probe header's "a hash over every field" is wrong for Transfers.bend, a known defect left unedited so the source hash still binds the records).
+
+Harness: scripts/gpu-validation/observe.sh and check-record.sh, unchanged from Task 2 (sha256 efd08afb...a8ac and 7d4df17b...88ab in every record). Each observe.sh run writes a plain/observed record pair inline below between `--- record v1 ---` and `--- end record ---`, and its exit status is check-record.sh's (0 gate PASS, 1 gate FAIL). In each pair, the plain record's `exit_status` is the probe's own exit status, and the observed record's `exit_status` is compute-sanitizer's (the probe's status under the sanitizer is not recorded separately; it is shown by sanitizer exit 0 and an observed stdout identical to the plain stdout, ending `result: all checks PASS`). The `[exit status: N]` after each observe.sh command is check-record.sh's gate verdict; every other `[exit status: N]` is that command's own (in the `--gpu off` runs, the probe's). Run directories: ../writ-build/physical-gpu/runs/task3/<binary>-<label>. Labels: s16 = `run 16`, s16384 = `run 16384`, long = `run 16384 1200` (labels) or `run 16384 200` (transfers); the solver's s16384 plain pass lasted 30.8 s and is its run of at least 10 s.
+
+## Build
+Each probe is built twice from the worktree root, first to C (for the BANGS line and emitted_c_sha256) and then to the binary, whose build runs the GPU compile and writes NAME.gpu beside it (the driver's `--gpu-build` step). GpuExample.bend (the root entry, unchanged) is built the same way for the combined run.
+
+$ uptime
+ 21:42:10 up 3 days,  1:14,  1 user,  load average: 30.60, 32.91, 41.72
+[exit status: 0; stderr empty; wall 9 ms]
+
+### Solver (scripts/gpu-validation/Solver.bend)
+
+$ echo GV_SOURCES="scripts/gpu-validation/Solver.bend Core.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend"
+GV_SOURCES=scripts/gpu-validation/Solver.bend Core.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ rm -f ../writ-build/physical-gpu/solver.c; timeout 600 bend scripts/gpu-validation/Solver.bend -o ../writ-build/physical-gpu/solver.c
+[exit status: 0; stderr empty; wall 1675 ms]
+
+$ grep -n '^#define BANGS' ../writ-build/physical-gpu/solver.c
+629:#define BANGS   1
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ rm -f ../writ-build/physical-gpu/solver ../writ-build/physical-gpu/solver.gpu ../writ-build/physical-gpu/solver.cubin; timeout 600 bend scripts/gpu-validation/Solver.bend -o ../writ-build/physical-gpu/solver
+[exit status: 0; stderr empty; wall 4027 ms]
+
+$ ls -l ../writ-build/physical-gpu/solver ../writ-build/physical-gpu/solver.gpu
+-rwxr-xr-x 1 jadams jadams 749120 Nov  4 21:42 ../writ-build/physical-gpu/solver
+-rw-r--r-- 1 jadams jadams  71480 Nov  4 21:42 ../writ-build/physical-gpu/solver.gpu
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ nm -D ../writ-build/physical-gpu/solver | grep -E 'cuInit|cuLaunchKernel|nvrtc'
+                 U cuInit
+                 U cuLaunchKernel
+                 U nvrtcCompileProgram@libnvrtc.so.13
+                 U nvrtcCreateProgram@libnvrtc.so.13
+                 U nvrtcDestroyProgram@libnvrtc.so.13
+                 U nvrtcGetCUBIN@libnvrtc.so.13
+                 U nvrtcGetCUBINSize@libnvrtc.so.13
+                 U nvrtcGetProgramLog@libnvrtc.so.13
+                 U nvrtcGetProgramLogSize@libnvrtc.so.13
+[exit status: 0; stderr empty; wall 28 ms]
+
+$ ldd ../writ-build/physical-gpu/solver | grep -E 'libcuda|libnvrtc'
+	libcuda.so.1 => /usr/lib/libcuda.so.1 (0x00007fa2b2c00000)
+	libnvrtc.so.13 => /opt/cuda/lib64/libnvrtc.so.13 (0x00007fa2aae00000)
+[exit status: 0; stderr empty; wall 13 ms]
+
+$ head -c 8 ../writ-build/physical-gpu/solver.gpu | od -An -tx1
+ de da 9b 00 a9 3c 28 cf
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ tail -c +9 ../writ-build/physical-gpu/solver.gpu > ../writ-build/physical-gpu/solver.cubin && file ../writ-build/physical-gpu/solver.cubin
+../writ-build/physical-gpu/solver.cubin: ELF 64-bit LSB executable, NVIDIA CUDA architecture, version 1, statically linked, not stripped
+[exit status: 0; stderr empty; wall 13 ms]
+
+$ cuobjdump -elf ../writ-build/physical-gpu/solver.cubin | head
+
+64-bit ELF: type=ET_EXEC, ABI=8, sm=89, toolkit=13.4, flags=0x6005904
+Sections:
+Index Offset   Size ES Align                      Type    Flags Link     Info Name
+    1     40    1f3  0  1                       STRTAB        0    0        0 .shstrtab
+    2    233    268  0  1                       STRTAB        0    0        0 .strtab
+    3    4a0    1e0 18  8                       SYMTAB        0    2       12 .symtab
+    4    680    150  0  1                     PROGBITS        0    0        0 .debug_frame
+    5    7d0     b0  0  4                         NOTE  2000000    0        0 .note.nv.tkinfo
+    6    880     20  0  4                         NOTE  1000000    5        0 .note.nv.cuinfo
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ cuobjdump -sass ../writ-build/physical-gpu/solver.cubin | grep -m3 Function
+		Function : window_dev
+		Function : bend_dev
+[exit status: 0; stderr empty; wall 390 ms]
+
+$ sha256sum scripts/gpu-validation/Solver.bend Core.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend ../writ-build/physical-gpu/solver.c ../writ-build/physical-gpu/solver ../writ-build/physical-gpu/solver.gpu ../writ-build/physical-gpu/solver.cubin
+a2ee82bbc3f2f37b8cdf2b8c4ce96bd2071a45374406078174ff67635880b602  scripts/gpu-validation/Solver.bend
+a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53  Core.bend
+9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90  GpuLibrary.bend
+f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38  Gpu.bend
+a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db  Dlm.bend
+20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d  DlmGpu.bend
+c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53  Transfer.bend
+e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461  TransferGpu.bend
+d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c  examples/Scenario.bend
+238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75  Negotiation.bend
+acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8  Ledger.bend
+a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37  Frontend.bend
+46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519  Backplane.bend
+afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e  Guard.bend
+07e229b8a36f041f011d711d572511b66ecdb84db0484e9e364f2a51c8cffa72  ../writ-build/physical-gpu/solver.c
+156185e34b1d08a8defeb01ab6c214eb3a19de7dc779b2a3befefa15c1e35bad  ../writ-build/physical-gpu/solver
+164461c13f46d93058f535178d56d0d7d4f3b553930a2b06484a5c8925950b67  ../writ-build/physical-gpu/solver.gpu
+9d6f9eaa11825d0129a84fb2aca19f105e0a66fa9a4760b69ff42a1d5e9ae858  ../writ-build/physical-gpu/solver.cubin
+[exit status: 0; stderr empty; wall 7 ms]
+
+### Labels (scripts/gpu-validation/Labels.bend)
+
+$ echo GV_SOURCES="scripts/gpu-validation/Labels.bend Dlm.bend GpuLibrary.bend Core.bend Gpu.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend"
+GV_SOURCES=scripts/gpu-validation/Labels.bend Dlm.bend GpuLibrary.bend Core.bend Gpu.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ rm -f ../writ-build/physical-gpu/labels.c; timeout 600 bend scripts/gpu-validation/Labels.bend -o ../writ-build/physical-gpu/labels.c
+[exit status: 0; stderr empty; wall 733 ms]
+
+$ grep -n '^#define BANGS' ../writ-build/physical-gpu/labels.c
+605:#define BANGS   1
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ rm -f ../writ-build/physical-gpu/labels ../writ-build/physical-gpu/labels.gpu ../writ-build/physical-gpu/labels.cubin; timeout 600 bend scripts/gpu-validation/Labels.bend -o ../writ-build/physical-gpu/labels
+[exit status: 0; stderr empty; wall 2756 ms]
+
+$ ls -l ../writ-build/physical-gpu/labels ../writ-build/physical-gpu/labels.gpu
+-rwxr-xr-x 1 jadams jadams 535024 Nov  4 21:42 ../writ-build/physical-gpu/labels
+-rw-r--r-- 1 jadams jadams 161240 Nov  4 21:42 ../writ-build/physical-gpu/labels.gpu
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ nm -D ../writ-build/physical-gpu/labels | grep -E 'cuInit|cuLaunchKernel|nvrtc'
+                 U cuInit
+                 U cuLaunchKernel
+                 U nvrtcCompileProgram@libnvrtc.so.13
+                 U nvrtcCreateProgram@libnvrtc.so.13
+                 U nvrtcDestroyProgram@libnvrtc.so.13
+                 U nvrtcGetCUBIN@libnvrtc.so.13
+                 U nvrtcGetCUBINSize@libnvrtc.so.13
+                 U nvrtcGetProgramLog@libnvrtc.so.13
+                 U nvrtcGetProgramLogSize@libnvrtc.so.13
+[exit status: 0; stderr empty; wall 23 ms]
+
+$ ldd ../writ-build/physical-gpu/labels | grep -E 'libcuda|libnvrtc'
+	libcuda.so.1 => /usr/lib/libcuda.so.1 (0x00007fc566a00000)
+	libnvrtc.so.13 => /opt/cuda/lib64/libnvrtc.so.13 (0x00007fc55ec00000)
+[exit status: 0; stderr empty; wall 11 ms]
+
+$ head -c 8 ../writ-build/physical-gpu/labels.gpu | od -An -tx1
+ ff d2 ac d5 ee 19 58 35
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ tail -c +9 ../writ-build/physical-gpu/labels.gpu > ../writ-build/physical-gpu/labels.cubin && file ../writ-build/physical-gpu/labels.cubin
+../writ-build/physical-gpu/labels.cubin: ELF 64-bit LSB executable, NVIDIA CUDA architecture, version 1, statically linked, not stripped
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ cuobjdump -elf ../writ-build/physical-gpu/labels.cubin | head
+
+64-bit ELF: type=ET_EXEC, ABI=8, sm=89, toolkit=13.4, flags=0x6005904
+Sections:
+Index Offset   Size ES Align                      Type    Flags Link     Info Name
+    1     40    1f3  0  1                       STRTAB        0    0        0 .shstrtab
+    2    233    339  0  1                       STRTAB        0    0        0 .strtab
+    3    570    228 18  8                       SYMTAB        0    2       15 .symtab
+    4    798    638  0  1                     PROGBITS        0    0        0 .debug_frame
+    5    dd0     b0  0  4                         NOTE  2000000    0        0 .note.nv.tkinfo
+    6    e80     20  0  4                         NOTE  1000000    5        0 .note.nv.cuinfo
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ cuobjdump -sass ../writ-build/physical-gpu/labels.cubin | grep -m3 Function
+		Function : window_dev
+		Function : bend_dev
+[exit status: 0; stderr empty; wall 439 ms]
+
+$ sha256sum scripts/gpu-validation/Labels.bend Dlm.bend GpuLibrary.bend Core.bend Gpu.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend ../writ-build/physical-gpu/labels.c ../writ-build/physical-gpu/labels ../writ-build/physical-gpu/labels.gpu ../writ-build/physical-gpu/labels.cubin
+e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45  scripts/gpu-validation/Labels.bend
+a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db  Dlm.bend
+9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90  GpuLibrary.bend
+a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53  Core.bend
+f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38  Gpu.bend
+20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d  DlmGpu.bend
+c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53  Transfer.bend
+e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461  TransferGpu.bend
+d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c  examples/Scenario.bend
+238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75  Negotiation.bend
+acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8  Ledger.bend
+a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37  Frontend.bend
+46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519  Backplane.bend
+afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e  Guard.bend
+c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  ../writ-build/physical-gpu/labels.c
+527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  ../writ-build/physical-gpu/labels
+c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  ../writ-build/physical-gpu/labels.gpu
+61785988dadaab4c4e09c248301e7049a1ca67aaccc3c01a86298266d662881e  ../writ-build/physical-gpu/labels.cubin
+[exit status: 0; stderr empty; wall 8 ms]
+
+### Transfers (scripts/gpu-validation/Transfers.bend)
+
+$ echo GV_SOURCES="scripts/gpu-validation/Transfers.bend Core.bend Transfer.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend"
+GV_SOURCES=scripts/gpu-validation/Transfers.bend Core.bend Transfer.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ rm -f ../writ-build/physical-gpu/transfers.c; timeout 600 bend scripts/gpu-validation/Transfers.bend -o ../writ-build/physical-gpu/transfers.c
+[exit status: 0; stderr empty; wall 1087 ms]
+
+$ grep -n '^#define BANGS' ../writ-build/physical-gpu/transfers.c
+767:#define BANGS   1
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ rm -f ../writ-build/physical-gpu/transfers ../writ-build/physical-gpu/transfers.gpu ../writ-build/physical-gpu/transfers.cubin; timeout 600 bend scripts/gpu-validation/Transfers.bend -o ../writ-build/physical-gpu/transfers
+[exit status: 0; stderr empty; wall 5569 ms]
+
+$ ls -l ../writ-build/physical-gpu/transfers ../writ-build/physical-gpu/transfers.gpu
+-rwxr-xr-x 1 jadams jadams 1100072 Nov  4 21:42 ../writ-build/physical-gpu/transfers
+-rw-r--r-- 1 jadams jadams  497536 Nov  4 21:42 ../writ-build/physical-gpu/transfers.gpu
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ nm -D ../writ-build/physical-gpu/transfers | grep -E 'cuInit|cuLaunchKernel|nvrtc'
+                 U cuInit
+                 U cuLaunchKernel
+                 U nvrtcCompileProgram@libnvrtc.so.13
+                 U nvrtcCreateProgram@libnvrtc.so.13
+                 U nvrtcDestroyProgram@libnvrtc.so.13
+                 U nvrtcGetCUBIN@libnvrtc.so.13
+                 U nvrtcGetCUBINSize@libnvrtc.so.13
+                 U nvrtcGetProgramLog@libnvrtc.so.13
+                 U nvrtcGetProgramLogSize@libnvrtc.so.13
+[exit status: 0; stderr empty; wall 20 ms]
+
+$ ldd ../writ-build/physical-gpu/transfers | grep -E 'libcuda|libnvrtc'
+	libcuda.so.1 => /usr/lib/libcuda.so.1 (0x00007f78d9600000)
+	libnvrtc.so.13 => /opt/cuda/lib64/libnvrtc.so.13 (0x00007f78d1800000)
+[exit status: 0; stderr empty; wall 10 ms]
+
+$ head -c 8 ../writ-build/physical-gpu/transfers.gpu | od -An -tx1
+ e2 e9 25 fd 79 81 a8 ce
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ tail -c +9 ../writ-build/physical-gpu/transfers.gpu > ../writ-build/physical-gpu/transfers.cubin && file ../writ-build/physical-gpu/transfers.cubin
+../writ-build/physical-gpu/transfers.cubin: ELF 64-bit LSB executable, NVIDIA CUDA architecture, version 1, statically linked, not stripped
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ cuobjdump -elf ../writ-build/physical-gpu/transfers.cubin | head
+
+64-bit ELF: type=ET_EXEC, ABI=8, sm=89, toolkit=13.4, flags=0x6005904
+Sections:
+Index Offset   Size ES Align                      Type    Flags Link     Info Name
+    1     40    1f3  0  1                       STRTAB        0    0        0 .shstrtab
+    2    233    339  0  1                       STRTAB        0    0        0 .strtab
+    3    570    228 18  8                       SYMTAB        0    2       15 .symtab
+    4    798    f90  0  1                     PROGBITS        0    0        0 .debug_frame
+    5   1728     b0  0  4                         NOTE  2000000    0        0 .note.nv.tkinfo
+    6   17d8     20  0  4                         NOTE  1000000    5        0 .note.nv.cuinfo
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ cuobjdump -sass ../writ-build/physical-gpu/transfers.cubin | grep -m3 Function
+		Function : window_dev
+		Function : bend_dev
+[exit status: 0; stderr empty; wall 616 ms]
+
+$ sha256sum scripts/gpu-validation/Transfers.bend Core.bend Transfer.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend ../writ-build/physical-gpu/transfers.c ../writ-build/physical-gpu/transfers ../writ-build/physical-gpu/transfers.gpu ../writ-build/physical-gpu/transfers.cubin
+f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974  scripts/gpu-validation/Transfers.bend
+a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53  Core.bend
+c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53  Transfer.bend
+9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90  GpuLibrary.bend
+f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38  Gpu.bend
+a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db  Dlm.bend
+20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d  DlmGpu.bend
+e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461  TransferGpu.bend
+d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c  examples/Scenario.bend
+238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75  Negotiation.bend
+acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8  Ledger.bend
+a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37  Frontend.bend
+46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519  Backplane.bend
+afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e  Guard.bend
+e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  ../writ-build/physical-gpu/transfers.c
+f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  ../writ-build/physical-gpu/transfers
+fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  ../writ-build/physical-gpu/transfers.gpu
+573e06a4996ec2fd2de0db718e3a5b78d9e2c91e54e4575eb10d1e28d5675764  ../writ-build/physical-gpu/transfers.cubin
+[exit status: 0; stderr empty; wall 8 ms]
+
+### GpuExample (GpuExample.bend)
+
+$ echo GV_SOURCES="GpuExample.bend examples/Parallel.bend Core.bend Dlm.bend Transfer.bend GpuLibrary.bend Gpu.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend examples/Transfer.bend examples/Expect.bend"
+GV_SOURCES=GpuExample.bend examples/Parallel.bend Core.bend Dlm.bend Transfer.bend GpuLibrary.bend Gpu.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend examples/Transfer.bend examples/Expect.bend
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ rm -f ../writ-build/physical-gpu/gpu-example.c; timeout 600 bend GpuExample.bend -o ../writ-build/physical-gpu/gpu-example.c
+[exit status: 0; stderr empty; wall 880 ms]
+
+$ grep -n '^#define BANGS' ../writ-build/physical-gpu/gpu-example.c
+695:#define BANGS   3
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ rm -f ../writ-build/physical-gpu/gpu-example ../writ-build/physical-gpu/gpu-example.gpu ../writ-build/physical-gpu/gpu-example.cubin; timeout 600 bend GpuExample.bend -o ../writ-build/physical-gpu/gpu-example
+[exit status: 0; stderr empty; wall 5462 ms]
+
+$ ls -l ../writ-build/physical-gpu/gpu-example ../writ-build/physical-gpu/gpu-example.gpu
+-rwxr-xr-x 1 jadams jadams 908960 Nov  4 21:42 ../writ-build/physical-gpu/gpu-example
+-rw-r--r-- 1 jadams jadams 689984 Nov  4 21:42 ../writ-build/physical-gpu/gpu-example.gpu
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ nm -D ../writ-build/physical-gpu/gpu-example | grep -E 'cuInit|cuLaunchKernel|nvrtc'
+                 U cuInit
+                 U cuLaunchKernel
+                 U nvrtcCompileProgram@libnvrtc.so.13
+                 U nvrtcCreateProgram@libnvrtc.so.13
+                 U nvrtcDestroyProgram@libnvrtc.so.13
+                 U nvrtcGetCUBIN@libnvrtc.so.13
+                 U nvrtcGetCUBINSize@libnvrtc.so.13
+                 U nvrtcGetProgramLog@libnvrtc.so.13
+                 U nvrtcGetProgramLogSize@libnvrtc.so.13
+[exit status: 0; stderr empty; wall 22 ms]
+
+$ ldd ../writ-build/physical-gpu/gpu-example | grep -E 'libcuda|libnvrtc'
+	libcuda.so.1 => /usr/lib/libcuda.so.1 (0x00007fa4c9200000)
+	libnvrtc.so.13 => /opt/cuda/lib64/libnvrtc.so.13 (0x00007fa4c1400000)
+[exit status: 0; stderr empty; wall 11 ms]
+
+$ head -c 8 ../writ-build/physical-gpu/gpu-example.gpu | od -An -tx1
+ 42 8c e8 32 61 2f 88 09
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ tail -c +9 ../writ-build/physical-gpu/gpu-example.gpu > ../writ-build/physical-gpu/gpu-example.cubin && file ../writ-build/physical-gpu/gpu-example.cubin
+../writ-build/physical-gpu/gpu-example.cubin: ELF 64-bit LSB executable, NVIDIA CUDA architecture, version 1, statically linked, not stripped
+[exit status: 0; stderr empty; wall 10 ms]
+
+$ cuobjdump -elf ../writ-build/physical-gpu/gpu-example.cubin | head
+
+64-bit ELF: type=ET_EXEC, ABI=8, sm=89, toolkit=13.4, flags=0x6005904
+Sections:
+Index Offset   Size ES Align                      Type    Flags Link     Info Name
+    1     40    1f3  0  1                       STRTAB        0    0        0 .shstrtab
+    2    233    339  0  1                       STRTAB        0    0        0 .strtab
+    3    570    228 18  8                       SYMTAB        0    2       15 .symtab
+    4    798   10e0  0  1                     PROGBITS        0    0        0 .debug_frame
+    5   1878     b0  0  4                         NOTE  2000000    0        0 .note.nv.tkinfo
+    6   1928     20  0  4                         NOTE  1000000    5        0 .note.nv.cuinfo
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ cuobjdump -sass ../writ-build/physical-gpu/gpu-example.cubin | grep -m3 Function
+		Function : window_dev
+		Function : bend_dev
+[exit status: 0; stderr empty; wall 772 ms]
+
+$ sha256sum GpuExample.bend examples/Parallel.bend Core.bend Dlm.bend Transfer.bend GpuLibrary.bend Gpu.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend examples/Transfer.bend examples/Expect.bend ../writ-build/physical-gpu/gpu-example.c ../writ-build/physical-gpu/gpu-example ../writ-build/physical-gpu/gpu-example.gpu ../writ-build/physical-gpu/gpu-example.cubin
+f9805e663f28f4e3f72e8c2a393fd41e543e2ae38ea416013790afb99c039c46  GpuExample.bend
+639544adc7ee74209caf2fe0c19f646eb148c79e4f788e713a6ebe2708035773  examples/Parallel.bend
+a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53  Core.bend
+a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db  Dlm.bend
+c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53  Transfer.bend
+9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90  GpuLibrary.bend
+f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38  Gpu.bend
+20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d  DlmGpu.bend
+e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461  TransferGpu.bend
+d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c  examples/Scenario.bend
+238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75  Negotiation.bend
+acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8  Ledger.bend
+a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37  Frontend.bend
+46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519  Backplane.bend
+afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e  Guard.bend
+6b25e1ce00c4972a4098e1dceea9cec79074a0b9c180eefe1264dae45ab6ef71  examples/Transfer.bend
+f67c2854e2ec31909dee5641843656711bd04681ba46fb6a5b43382c6a8be877  examples/Expect.bend
+2723bf5a0aa2110b31c616683e5df7b437914ca8d82a9d591b5224b0d47999c4  ../writ-build/physical-gpu/gpu-example.c
+27c8617594f92e3ecefc3920ca8d6ccbb52e77984bc3eb3ea1f9d2a5bbc6177e  ../writ-build/physical-gpu/gpu-example
+be0ee70c020629f80de7f9e170594ffc9026bd4a6a1cb60e434013f0c2cfd005  ../writ-build/physical-gpu/gpu-example.gpu
+9d257067ab646e8810d6763d6ff87caed0fd54c3f9b35f31a6b1106d62d0bbc9  ../writ-build/physical-gpu/gpu-example.cubin
+[exit status: 0; stderr empty; wall 9 ms]
+
+## Run
+
+### Solver, s16: observe.sh solver on run 16
+
+$ uptime
+ 21:42:45 up 3 days,  1:15,  1 user,  load average: 26.69, 31.66, 40.98
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Solver.bend Core.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/solver-s16 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/solver on run 16
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Solver.bend=a2ee82bbc3f2f37b8cdf2b8c4ce96bd2071a45374406078174ff67635880b602 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: 07e229b8a36f041f011d711d572511b66ecdb84db0484e9e364f2a51c8cffa72  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.c
+binary_sha256: 156185e34b1d08a8defeb01ab6c214eb3a19de7dc779b2a3befefa15c1e35bad  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver
+gpu_program_sha256: 164461c13f46d93058f535178d56d0d7d4f3b553930a2b06484a5c8925950b67  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.gpu
+gpu_arch: sm=89 (cuobjdump -elf of solver.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=solver mode=on args=run 16
+exit_status: 0
+stdout_sha256: f71df4a11cd1f7f7ac727eb86c213ec1cdc60b1b6052411e58eddf035bcd49cf
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1522750 seen=0 polls=2 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16/plain.apps log_sha256=0d65f75ce34e6c2d5771978b2545581b79eccd9e9ee73e12b4937df0f1907f6d
+pmon_max_sm: - pid=1522750 rows=1 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16/plain.pmon log_sha256=e58b25534db438a38935f154002d9203b55edf5a61123b4fa7d7b6f76d107cbd
+util_samples: 8 interval_ms=200 scope=global(display shares the GPU) baseline=48%,5291MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16/plain.util log_sha256=cdaee532baf7423b75699bf6b5b6d6b92821f2cb0d8493f37abbb955e7ba5c0c
+wall_ms: 504
+load_avg: 21:42:48 up 3 days,  1:15,  1 user,  load average: 26.69, 31.66, 40.98
+correctness: PASS 7, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (compute_app_seen: probe pid '1522750' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Solver.bend=a2ee82bbc3f2f37b8cdf2b8c4ce96bd2071a45374406078174ff67635880b602 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: 07e229b8a36f041f011d711d572511b66ecdb84db0484e9e364f2a51c8cffa72  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.c
+binary_sha256: 156185e34b1d08a8defeb01ab6c214eb3a19de7dc779b2a3befefa15c1e35bad  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver
+gpu_program_sha256: 164461c13f46d93058f535178d56d0d7d4f3b553930a2b06484a5c8925950b67  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.gpu
+gpu_arch: sm=89 (cuobjdump -elf of solver.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=solver mode=on args=run 16
+exit_status: 0
+stdout_sha256: f71df4a11cd1f7f7ac727eb86c213ec1cdc60b1b6052411e58eddf035bcd49cf
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16/observed.sanitizer.log log_sha256=96a21aea26a0932162058fbe1bdae13206a537f256b172d1d410aef15accefc1
+bend_dev_launches: 15
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 534 (under the observer)
+load_avg: 21:42:49 up 3 days,  1:15,  1 user,  load average: 25.75, 31.38, 40.84
+correctness: PASS 7, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (compute_app_seen: probe pid '1522750' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (compute_app_seen: probe pid '1522750' never listed by --query-compute-apps)
+[exit status: 1; stderr empty; wall 5265 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/solver-s16/plain.stdout
+SYNTHETIC solver graph: Scenario report and summary facts replicated; no sink is authorized
+nodes: 16, device solves: 1
+CPU reference: Solved, nodes 16, sweeps 3, hash 2229931993
+device (last solve): Solved, nodes 16, sweeps 3, hash 2229931993
+  stamp 1/0 2/0 3/0, sweeps 3
+  node 0: types 1 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 1: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 2: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 3: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 4: types 1 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 5: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 6: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 7: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 8: types 1 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 9: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 10: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 11: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 12: types 1 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 13: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 14: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+  node 15: types 2 secrecy 1/0 untrusted 2/0 effects 1/0
+PASS CPU reference Core.solve_cpu equals the expected least solution in 3 sweeps
+PASS CPU reference candidate approved by Core.verify on the original graph and stamp
+PASS Core.verify denies the unsolved seed assignment (InvalidCandidate)
+PASS device SolveResult equals the CPU reference, every node field, stamp and sweep count (1 of 1 solves)
+PASS device result digest equals the CPU reference digest (1 of 1 solves)
+PASS device result equals the expected least solution in 3 sweeps (1 of 1 solves)
+PASS device candidate approved by Core.verify on the original graph and stamp (1 of 1 solves)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/solver-s16/plain.stdout ../writ-build/physical-gpu/runs/task3/solver-s16/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/solver-s16/observed.sanitizer.log solver
+15
+[exit status: 0; stderr empty; wall 11 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/solver-s16/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/solver-s16/observed.sanitizer.log | sort | uniq -c
+15
+     15 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 9 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/solver-s16/observed.sanitizer.log
+========= ERROR SUMMARY: 15 errors
+[exit status: 0; stderr empty; wall 6 ms]
+
+### Solver, s16384: observe.sh solver on run 16384
+
+$ uptime
+ 21:42:51 up 3 days,  1:15,  1 user,  load average: 25.75, 31.38, 40.84
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Solver.bend Core.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/solver-s16384 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/solver on run 16384
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16384
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Solver.bend=a2ee82bbc3f2f37b8cdf2b8c4ce96bd2071a45374406078174ff67635880b602 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: 07e229b8a36f041f011d711d572511b66ecdb84db0484e9e364f2a51c8cffa72  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.c
+binary_sha256: 156185e34b1d08a8defeb01ab6c214eb3a19de7dc779b2a3befefa15c1e35bad  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver
+gpu_program_sha256: 164461c13f46d93058f535178d56d0d7d4f3b553930a2b06484a5c8925950b67  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.gpu
+gpu_arch: sm=89 (cuobjdump -elf of solver.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=solver mode=on args=run 16384
+exit_status: 0
+stdout_sha256: c448405f4cfa6763b3b3a38e9b414bef65cc8c4634bb6490c7cbeb7459c93a42
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1524953 seen=123 polls=125 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16384/plain.apps log_sha256=0170b2ffb32377b6f12d9e5c6d25ded4a95f6f3afc94bb05eb4c67e4ddd1acb5
+pmon_max_sm: 6 pid=1524953 rows=28 numeric=2 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16384/plain.pmon log_sha256=7ddc1d09935283aa18ac68802b17b0c789baef26c468feb92c8f87011977f6a0
+util_samples: 159 interval_ms=200 scope=global(display shares the GPU) baseline=23%,5267MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16384/plain.util log_sha256=904b7a61c66a263f9143400d004800e323c7951ce546de2d60ab4c6820f1af97
+wall_ms: 30816
+load_avg: 21:42:53 up 3 days,  1:15,  1 user,  load average: 24.89, 31.11, 40.70
+correctness: PASS 7, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Solver.bend=a2ee82bbc3f2f37b8cdf2b8c4ce96bd2071a45374406078174ff67635880b602 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: 07e229b8a36f041f011d711d572511b66ecdb84db0484e9e364f2a51c8cffa72  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.c
+binary_sha256: 156185e34b1d08a8defeb01ab6c214eb3a19de7dc779b2a3befefa15c1e35bad  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver
+gpu_program_sha256: 164461c13f46d93058f535178d56d0d7d4f3b553930a2b06484a5c8925950b67  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/solver.gpu
+gpu_arch: sm=89 (cuobjdump -elf of solver.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=solver mode=on args=run 16384
+exit_status: 0
+stdout_sha256: c448405f4cfa6763b3b3a38e9b414bef65cc8c4634bb6490c7cbeb7459c93a42
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/solver-s16384/observed.sanitizer.log log_sha256=ff22880d2ad299ddee7f06fc2abe9a3ea02f31acd8c19b8ac3d8bd8a883d7fa0
+bend_dev_launches: 15
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 31884 (under the observer)
+load_avg: 21:43:25 up 3 days,  1:16,  1 user,  load average: 25.82, 30.67, 40.24
+correctness: PASS 7, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 70023 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/solver-s16384/plain.stdout
+SYNTHETIC solver graph: Scenario report and summary facts replicated; no sink is authorized
+nodes: 16384, device solves: 1
+CPU reference: Solved, nodes 16384, sweeps 3, hash 2056436565
+device (last solve): Solved, nodes 16384, sweeps 3, hash 2056436565
+PASS CPU reference Core.solve_cpu equals the expected least solution in 3 sweeps
+PASS CPU reference candidate approved by Core.verify on the original graph and stamp
+PASS Core.verify denies the unsolved seed assignment (InvalidCandidate)
+PASS device SolveResult equals the CPU reference, every node field, stamp and sweep count (1 of 1 solves)
+PASS device result digest equals the CPU reference digest (1 of 1 solves)
+PASS device result equals the expected least solution in 3 sweeps (1 of 1 solves)
+PASS device candidate approved by Core.verify on the original graph and stamp (1 of 1 solves)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 16 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/solver-s16384/plain.stdout ../writ-build/physical-gpu/runs/task3/solver-s16384/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 25 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/solver-s16384/observed.sanitizer.log solver
+15
+[exit status: 0; stderr empty; wall 33 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/solver-s16384/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/solver-s16384/observed.sanitizer.log | sort | uniq -c
+15
+     15 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 37 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/solver-s16384/observed.sanitizer.log
+========= ERROR SUMMARY: 15 errors
+[exit status: 0; stderr empty; wall 22 ms]
+
+### Labels, s16: observe.sh labels on run 16
+
+$ uptime
+ 21:44:01 up 3 days,  1:16,  1 user,  load average: 28.40, 30.57, 39.84
+[exit status: 0; stderr empty; wall 18 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Labels.bend Dlm.bend GpuLibrary.bend Core.bend Gpu.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/labels-s16 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/labels on run 16
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Labels.bend=e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.c
+binary_sha256: 527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels
+gpu_program_sha256: c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.gpu
+gpu_arch: sm=89 (cuobjdump -elf of labels.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=labels mode=on args=run 16
+exit_status: 0
+stdout_sha256: d974b08ab37e06cdf3e76a2c2f36dd2a3896ce1e7f553bf3f44dc7eb6786e24c
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1536745 seen=0 polls=1 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16/plain.apps log_sha256=9222574167058dbba9ac571734ad32e1ca78c5b4ef16b03b06eb76b67bb9178f
+pmon_max_sm: - pid=1536745 rows=0 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16/plain.pmon log_sha256=48bf1d97d3c0e51321ae2a54e6f514a293193e31185a5ef1b6ecf8ed944caa58
+util_samples: 7 interval_ms=200 scope=global(display shares the GPU) baseline=29%,5321MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16/plain.util log_sha256=e9e7834a31cbfc7a5c94c87675f300fe93f97f9db7ffa2e05a1af0583aeb0fd0
+wall_ms: 250
+load_avg: 21:44:04 up 3 days,  1:16,  1 user,  load average: 28.45, 30.54, 39.78
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (compute_app_seen: probe pid '1536745' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Labels.bend=e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.c
+binary_sha256: 527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels
+gpu_program_sha256: c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.gpu
+gpu_arch: sm=89 (cuobjdump -elf of labels.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=labels mode=on args=run 16
+exit_status: 0
+stdout_sha256: d974b08ab37e06cdf3e76a2c2f36dd2a3896ce1e7f553bf3f44dc7eb6786e24c
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16/observed.sanitizer.log log_sha256=05d3e6526b6678fdc16d05a7f0506b0ff30ce27697d728e724ea4519c90ffe42
+bend_dev_launches: 5
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 516 (under the observer)
+load_avg: 21:44:06 up 3 days,  1:16,  1 user,  load average: 28.45, 30.54, 39.78
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (compute_app_seen: probe pid '1536745' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (compute_app_seen: probe pid '1536745' never listed by --query-compute-apps)
+[exit status: 1; stderr empty; wall 5462 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/labels-s16/plain.stdout
+SYNTHETIC label batch: Scenario principals and labels; no principal is authenticated
+leaves: 16, device rounds: 1
+CPU reference: allowed 8, denied 8, hash 763004515
+device (last round): allowed 8, denied 8, hash 763004515
+  leaf 0: allowed True
+  leaf 1: allowed False
+  leaf 2: allowed True
+  leaf 3: allowed False
+  leaf 4: allowed True
+  leaf 5: allowed False
+  leaf 6: allowed True
+  leaf 7: allowed False
+  leaf 8: allowed True
+  leaf 9: allowed False
+  leaf 10: allowed True
+  leaf 11: allowed False
+  leaf 12: allowed True
+  leaf 13: allowed False
+  leaf 14: allowed True
+  leaf 15: allowed False
+PASS CPU reference Dlm.batch matches the expected allow/deny pattern
+PASS CPU reference passes Dlm.verify_batch on the original queries and snapshot
+PASS device answer tree equals the CPU reference, every leaf and the shape (1 of 1 rounds)
+PASS device answer digest equals the CPU reference digest (1 of 1 rounds)
+PASS device answers match the expected allow/deny pattern (1 of 1 rounds)
+PASS device answers pass Dlm.verify_batch on the original queries and snapshot (1 of 1 rounds)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/labels-s16/plain.stdout ../writ-build/physical-gpu/runs/task3/labels-s16/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/labels-s16/observed.sanitizer.log labels
+5
+[exit status: 0; stderr empty; wall 10 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/labels-s16/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/labels-s16/observed.sanitizer.log | sort | uniq -c
+5
+      5 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/labels-s16/observed.sanitizer.log
+========= ERROR SUMMARY: 5 errors
+[exit status: 0; stderr empty; wall 5 ms]
+
+### Labels, s16384: observe.sh labels on run 16384
+
+$ uptime
+ 21:44:07 up 3 days,  1:16,  1 user,  load average: 28.45, 30.54, 39.78
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Labels.bend Dlm.bend GpuLibrary.bend Core.bend Gpu.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/labels-s16384 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/labels on run 16384
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16384
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Labels.bend=e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.c
+binary_sha256: 527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels
+gpu_program_sha256: c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.gpu
+gpu_arch: sm=89 (cuobjdump -elf of labels.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=labels mode=on args=run 16384
+exit_status: 0
+stdout_sha256: 81a7dc42cf9a6a6f0a84856f7acde9be2e7459b008a68a211e2caa78de3ae1d3
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1538767 seen=1 polls=2 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16384/plain.apps log_sha256=07a23232ee1b67d58595be246509ee4380ca3d74c20808dc97293a3b10f6c46a
+pmon_max_sm: - pid=1538767 rows=1 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16384/plain.pmon log_sha256=8dcefb2598dda0291649e6f6b09139bc919addc7409593db63665fac3eb90e09
+util_samples: 8 interval_ms=200 scope=global(display shares the GPU) baseline=22%,5280MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16384/plain.util log_sha256=2b8464187ee19957a06a26a59abff910cd58ee195ae6197a0f97130030281cc7
+wall_ms: 482
+load_avg: 21:44:10 up 3 days,  1:16,  1 user,  load average: 28.01, 30.42, 39.69
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Labels.bend=e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.c
+binary_sha256: 527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels
+gpu_program_sha256: c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.gpu
+gpu_arch: sm=89 (cuobjdump -elf of labels.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=labels mode=on args=run 16384
+exit_status: 0
+stdout_sha256: 81a7dc42cf9a6a6f0a84856f7acde9be2e7459b008a68a211e2caa78de3ae1d3
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-s16384/observed.sanitizer.log log_sha256=010dd1fd6a2211bb3bf96b917328c2b2c0db4bf9bb689801cea8d88db0a8262a
+bend_dev_launches: 5
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 727 (under the observer)
+load_avg: 21:44:11 up 3 days,  1:16,  1 user,  load average: 28.01, 30.42, 39.69
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 5150 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/labels-s16384/plain.stdout
+SYNTHETIC label batch: Scenario principals and labels; no principal is authenticated
+leaves: 16384, device rounds: 1
+CPU reference: allowed 8192, denied 8192, hash 2954464355
+device (last round): allowed 8192, denied 8192, hash 2954464355
+PASS CPU reference Dlm.batch matches the expected allow/deny pattern
+PASS CPU reference passes Dlm.verify_batch on the original queries and snapshot
+PASS device answer tree equals the CPU reference, every leaf and the shape (1 of 1 rounds)
+PASS device answer digest equals the CPU reference digest (1 of 1 rounds)
+PASS device answers match the expected allow/deny pattern (1 of 1 rounds)
+PASS device answers pass Dlm.verify_batch on the original queries and snapshot (1 of 1 rounds)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/labels-s16384/plain.stdout ../writ-build/physical-gpu/runs/task3/labels-s16384/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/labels-s16384/observed.sanitizer.log labels
+5
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/labels-s16384/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/labels-s16384/observed.sanitizer.log | sort | uniq -c
+5
+      5 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/labels-s16384/observed.sanitizer.log
+========= ERROR SUMMARY: 5 errors
+[exit status: 0; stderr empty; wall 5 ms]
+
+### Labels, long: observe.sh labels on run 16384 1200
+
+$ uptime
+ 21:44:13 up 3 days,  1:16,  1 user,  load average: 27.05, 30.18, 39.57
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Labels.bend Dlm.bend GpuLibrary.bend Core.bend Gpu.bend DlmGpu.bend Transfer.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/labels-long timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/labels on run 16384 1200
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-long
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Labels.bend=e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.c
+binary_sha256: 527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels
+gpu_program_sha256: c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.gpu
+gpu_arch: sm=89 (cuobjdump -elf of labels.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=labels mode=on args=run 16384 1200
+exit_status: 0
+stdout_sha256: 74b7f976cdf91e849d6d3de6761b5cdc74a998c72f9db110189b9c9d06990226
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1540877 seen=63 polls=64 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-long/plain.apps log_sha256=834e7bc7ecb7cf3aaace2cc7db36d262ebfcab7e5c98eba002b1a8e94e28d46e
+pmon_max_sm: 34 pid=1540877 rows=14 numeric=3 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-long/plain.pmon log_sha256=efc0426566cf0ed2e1a5625004727def91b0002cd5150d3e3d0e0da84a15238e
+util_samples: 80 interval_ms=200 scope=global(display shares the GPU) baseline=26%,5249MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-long/plain.util log_sha256=e56b8b58802357c0b178438ec89f59c387cc88164557e154f937ee0d4a69d81a
+wall_ms: 14996
+load_avg: 21:44:15 up 3 days,  1:17,  1 user,  load average: 27.05, 30.18, 39.57
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Labels.bend=e1b080fb07a397316dc89cdd232a889fd92972b3b41ca8f288c6d62e2f238a45 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: c41645a5d8bfa6e4f311eca3dc2aa2646d46dc0ec841a4a815aecfdbf5c7316a  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.c
+binary_sha256: 527d2d99c4feb04101ec9db566229dfc0c20f09546b1f7c3945c57cc64d628f8  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels
+gpu_program_sha256: c09ae05a151736e50f2459389549795035d9dece5564a749a1933536a93f5339  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/labels.gpu
+gpu_arch: sm=89 (cuobjdump -elf of labels.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=labels mode=on args=run 16384 1200
+exit_status: 0
+stdout_sha256: 74b7f976cdf91e849d6d3de6761b5cdc74a998c72f9db110189b9c9d06990226
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/labels-long/observed.sanitizer.log log_sha256=14075f48ede1478f8832f858a304160b1bb9568854f156aa98b6767a2da8992e
+bend_dev_launches: 6000
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 20732 (under the observer)
+load_avg: 21:44:30 up 3 days,  1:17,  1 user,  load average: 24.02, 29.36, 39.15
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 39467 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/labels-long/plain.stdout
+SYNTHETIC label batch: Scenario principals and labels; no principal is authenticated
+leaves: 16384, device rounds: 1200
+CPU reference: allowed 8192, denied 8192, hash 2954464355
+device (last round): allowed 8192, denied 8192, hash 2954464355
+PASS CPU reference Dlm.batch matches the expected allow/deny pattern
+PASS CPU reference passes Dlm.verify_batch on the original queries and snapshot
+PASS device answer tree equals the CPU reference, every leaf and the shape (1200 of 1200 rounds)
+PASS device answer digest equals the CPU reference digest (1200 of 1200 rounds)
+PASS device answers match the expected allow/deny pattern (1200 of 1200 rounds)
+PASS device answers pass Dlm.verify_batch on the original queries and snapshot (1200 of 1200 rounds)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/labels-long/plain.stdout ../writ-build/physical-gpu/runs/task3/labels-long/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/labels-long/observed.sanitizer.log labels
+6000
+[exit status: 0; stderr empty; wall 89 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/labels-long/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/labels-long/observed.sanitizer.log | sort | uniq -c
+6000
+   6000 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 13 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/labels-long/observed.sanitizer.log
+========= ERROR SUMMARY: 6000 errors
+[exit status: 0; stderr empty; wall 10 ms]
+
+### Transfers, s16: observe.sh transfers on run 16
+
+$ uptime
+ 21:44:53 up 3 days,  1:17,  1 user,  load average: 20.73, 28.27, 38.58
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Transfers.bend Core.bend Transfer.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/transfers-s16 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/transfers on run 16
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Transfers.bend=f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.c
+binary_sha256: f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers
+gpu_program_sha256: fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.gpu
+gpu_arch: sm=89 (cuobjdump -elf of transfers.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=transfers mode=on args=run 16
+exit_status: 0
+stdout_sha256: dee7fd26f2f0687a5017caaabf2dee043dc482593cab43e93b8e7cf4d1a9bf23
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1547302 seen=0 polls=2 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16/plain.apps log_sha256=b23827a75fbb5a343020c5def2180857d8d99e04d1ec4096a9a196b8715401c2
+pmon_max_sm: - pid=1547302 rows=1 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16/plain.pmon log_sha256=4b81822873fdca12e0ec3d6430221d9de2b52d9922e9887159a4299802d35233
+util_samples: 8 interval_ms=200 scope=global(display shares the GPU) baseline=22%,5257MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16/plain.util log_sha256=cecc3acee380f16c93066bc390cdb6d208199cdf361a437311aa6025c0d5e346
+wall_ms: 486
+load_avg: 21:44:55 up 3 days,  1:17,  1 user,  load average: 20.43, 28.08, 38.46
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (compute_app_seen: probe pid '1547302' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Transfers.bend=f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.c
+binary_sha256: f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers
+gpu_program_sha256: fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.gpu
+gpu_arch: sm=89 (cuobjdump -elf of transfers.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=transfers mode=on args=run 16
+exit_status: 0
+stdout_sha256: dee7fd26f2f0687a5017caaabf2dee043dc482593cab43e93b8e7cf4d1a9bf23
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16/observed.sanitizer.log log_sha256=e7d28ad0d9a800651f1d0c09a99b8d740be3f14c56fd5973b30e3c08667d1452
+bend_dev_launches: 5
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 502 (under the observer)
+load_avg: 21:44:56 up 3 days,  1:17,  1 user,  load average: 20.43, 28.08, 38.46
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (compute_app_seen: probe pid '1547302' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (compute_app_seen: probe pid '1547302' never listed by --query-compute-apps)
+[exit status: 1; stderr empty; wall 4812 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/transfers-s16/plain.stdout
+SYNTHETIC transfer batch: Scenario plans, grants and contexts; nothing is issued or committed
+leaves: 16, device rounds: 1
+CPU reference: admitted 8, denied Read 4, denied Write 4, hash 1653791715
+device (last round): admitted 8, denied Read 4, denied Write 4, hash 1653791715
+  leaf 0: Admitted plan stamp 1.2.3 invocation 1000 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 1: Denied 4
+  leaf 2: Admitted plan stamp 1.2.3 invocation 1002 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 3: Denied 5
+  leaf 4: Admitted plan stamp 1.2.3 invocation 1004 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 5: Denied 4
+  leaf 6: Admitted plan stamp 1.2.3 invocation 1006 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 7: Denied 5
+  leaf 8: Admitted plan stamp 1.2.3 invocation 1008 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 9: Denied 4
+  leaf 10: Admitted plan stamp 1.2.3 invocation 1010 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 11: Denied 5
+  leaf 12: Admitted plan stamp 1.2.3 invocation 1012 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 13: Denied 4
+  leaf 14: Admitted plan stamp 1.2.3 invocation 1014 sources 10v1 destination 20v1 code 1.0.0.0.0.0.0.0 kind 4 type 2; output schema 2 secrecy 1/0 untrusted 2/0 kinds 4 [origin 10v1 secrecy 1/0 untrusted 2/0 kinds 4 code 1.0.0.0.0.0.0.0 free]
+  leaf 15: Denied 5
+PASS CPU reference Transfer.batch matches the expected admit/deny pattern, plans and retained origins
+PASS CPU reference equals Transfer.admit per original plan against its Context
+PASS device decision tree equals the CPU reference, field by field and the shape (1 of 1 rounds)
+PASS device decision digest equals the CPU reference digest (1 of 1 rounds)
+PASS device decisions match the expected admit/deny pattern, plans and retained origins (1 of 1 rounds)
+PASS device decisions equal Transfer.admit per original plan against its Context (1 of 1 rounds)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 3 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/transfers-s16/plain.stdout ../writ-build/physical-gpu/runs/task3/transfers-s16/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/transfers-s16/observed.sanitizer.log transfers
+5
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/transfers-s16/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/transfers-s16/observed.sanitizer.log | sort | uniq -c
+5
+      5 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/transfers-s16/observed.sanitizer.log
+========= ERROR SUMMARY: 5 errors
+[exit status: 0; stderr empty; wall 5 ms]
+
+### Transfers, s16384: observe.sh transfers on run 16384
+
+$ uptime
+ 21:44:58 up 3 days,  1:17,  1 user,  load average: 20.43, 28.08, 38.46
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Transfers.bend Core.bend Transfer.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/transfers-s16384 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/transfers on run 16384
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16384
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Transfers.bend=f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.c
+binary_sha256: f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers
+gpu_program_sha256: fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.gpu
+gpu_arch: sm=89 (cuobjdump -elf of transfers.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=transfers mode=on args=run 16384
+exit_status: 0
+stdout_sha256: ebce188b525dc75fc2084ea9c4ef97952e7bd7e88095015d03e32ce02a9a0b25
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1549748 seen=2 polls=3 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16384/plain.apps log_sha256=ed811e6a2770e7fcb86afc3d1436b4a60ab4aa8eecf625443cb92630b57d9d5a
+pmon_max_sm: - pid=1549748 rows=1 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16384/plain.pmon log_sha256=8f96a05506f10702978da1af0636bf865d67e037e1777212cd0609480abc458c
+util_samples: 9 interval_ms=200 scope=global(display shares the GPU) baseline=19%,5261MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16384/plain.util log_sha256=897612cb4f70e9333ba191d915ee54fa439b3ae221e4a217f1012851c5b37fe6
+wall_ms: 699
+load_avg: 21:45:00 up 3 days,  1:17,  1 user,  load average: 19.83, 27.83, 38.33
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Transfers.bend=f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.c
+binary_sha256: f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers
+gpu_program_sha256: fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.gpu
+gpu_arch: sm=89 (cuobjdump -elf of transfers.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=transfers mode=on args=run 16384
+exit_status: 0
+stdout_sha256: ebce188b525dc75fc2084ea9c4ef97952e7bd7e88095015d03e32ce02a9a0b25
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-s16384/observed.sanitizer.log log_sha256=477d8a12bd4bacb7ebafe7af390f11647c1bc5a60eb51ff2f1b8628deb2e838d
+bend_dev_launches: 5
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 852 (under the observer)
+load_avg: 21:45:01 up 3 days,  1:17,  1 user,  load average: 19.83, 27.83, 38.33
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 4855 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/transfers-s16384/plain.stdout
+SYNTHETIC transfer batch: Scenario plans, grants and contexts; nothing is issued or committed
+leaves: 16384, device rounds: 1
+CPU reference: admitted 8192, denied Read 4096, denied Write 4096, hash 2452851811
+device (last round): admitted 8192, denied Read 4096, denied Write 4096, hash 2452851811
+PASS CPU reference Transfer.batch matches the expected admit/deny pattern, plans and retained origins
+PASS CPU reference equals Transfer.admit per original plan against its Context
+PASS device decision tree equals the CPU reference, field by field and the shape (1 of 1 rounds)
+PASS device decision digest equals the CPU reference digest (1 of 1 rounds)
+PASS device decisions match the expected admit/deny pattern, plans and retained origins (1 of 1 rounds)
+PASS device decisions equal Transfer.admit per original plan against its Context (1 of 1 rounds)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/transfers-s16384/plain.stdout ../writ-build/physical-gpu/runs/task3/transfers-s16384/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/transfers-s16384/observed.sanitizer.log transfers
+5
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/transfers-s16384/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/transfers-s16384/observed.sanitizer.log | sort | uniq -c
+5
+      5 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/transfers-s16384/observed.sanitizer.log
+========= ERROR SUMMARY: 5 errors
+[exit status: 0; stderr empty; wall 4 ms]
+
+### Transfers, long: observe.sh transfers on run 16384 200
+
+$ uptime
+ 21:45:03 up 3 days,  1:17,  1 user,  load average: 19.83, 27.83, 38.33
+[exit status: 0; stderr empty; wall 4 ms]
+
+$ GV_SOURCES="scripts/gpu-validation/Transfers.bend Core.bend Transfer.bend GpuLibrary.bend Gpu.bend Dlm.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/transfers-long timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/transfers on run 16384 200
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-long
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Transfers.bend=f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.c
+binary_sha256: f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers
+gpu_program_sha256: fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.gpu
+gpu_arch: sm=89 (cuobjdump -elf of transfers.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=transfers mode=on args=run 16384 200
+exit_status: 0
+stdout_sha256: 23f12b0af113552ac351cc0b2d00bc2d2a4dbb7885e1e8bbba2b9b56aaeb9719
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1551847 seen=99 polls=101 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-long/plain.apps log_sha256=4f0e5a89eb236810858771901c9c6ef80aebe6c10e6857f34d6ae7d2b768aa47
+pmon_max_sm: 32 pid=1551847 rows=25 numeric=1 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-long/plain.pmon log_sha256=baf184a000cf73fc1d64b5098bb6275ee844dc228b4afb7802c8356e4b495236
+util_samples: 152 interval_ms=200 scope=global(display shares the GPU) baseline=24%,5272MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-long/plain.util log_sha256=295655defaa274c02453822c7f33e35d92946e46be1b8f33ab081114ffbdfb23
+wall_ms: 29586
+load_avg: 21:45:05 up 3 days,  1:17,  1 user,  load average: 18.88, 27.50, 38.16
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: scripts/gpu-validation/Transfers.bend=f7073cb453b524a1d9b1ffc08f71b620f32e0e78877cb80aa8a596d6b56df974 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: e40259f6de83a1a8dc0a5ab4e88fc832b61e42ae0c03f56d3f33b2bea642729c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.c
+binary_sha256: f3e811921e36ce42db3434904f48be15638fc83f383348d583eede9932e6c7c3  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers
+gpu_program_sha256: fddac93aad6d72fb5d9d6193f542e3dd95a131c7d97c239c76e982010cdaf09c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/transfers.gpu
+gpu_arch: sm=89 (cuobjdump -elf of transfers.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=transfers mode=on args=run 16384 200
+exit_status: 0
+stdout_sha256: 23f12b0af113552ac351cc0b2d00bc2d2a4dbb7885e1e8bbba2b9b56aaeb9719
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/transfers-long/observed.sanitizer.log log_sha256=d0773039c86facb57b88846cd16de9ab310f3da002ab6efd401e95baea066730
+bend_dev_launches: 1000
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 35382 (under the observer)
+load_avg: 21:45:35 up 3 days,  1:18,  1 user,  load average: 31.07, 29.55, 38.50
+correctness: PASS 6, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 69247 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/transfers-long/plain.stdout
+SYNTHETIC transfer batch: Scenario plans, grants and contexts; nothing is issued or committed
+leaves: 16384, device rounds: 200
+CPU reference: admitted 8192, denied Read 4096, denied Write 4096, hash 2452851811
+device (last round): admitted 8192, denied Read 4096, denied Write 4096, hash 2452851811
+PASS CPU reference Transfer.batch matches the expected admit/deny pattern, plans and retained origins
+PASS CPU reference equals Transfer.admit per original plan against its Context
+PASS device decision tree equals the CPU reference, field by field and the shape (200 of 200 rounds)
+PASS device decision digest equals the CPU reference digest (200 of 200 rounds)
+PASS device decisions match the expected admit/deny pattern, plans and retained origins (200 of 200 rounds)
+PASS device decisions equal Transfer.admit per original plan against its Context (200 of 200 rounds)
+result: all checks PASS
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/transfers-long/plain.stdout ../writ-build/physical-gpu/runs/task3/transfers-long/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 16 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/transfers-long/observed.sanitizer.log transfers
+1000
+[exit status: 0; stderr empty; wall 29 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/transfers-long/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/transfers-long/observed.sanitizer.log | sort | uniq -c
+1000
+   1000 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 11 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/transfers-long/observed.sanitizer.log
+========= ERROR SUMMARY: 1000 errors
+[exit status: 0; stderr empty; wall 10 ms]
+
+### GpuExample, combined: observe.sh gpu-example on 
+
+$ uptime
+ 21:46:12 up 3 days,  1:18,  1 user,  load average: 43.93, 33.05, 39.35
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ GV_SOURCES="GpuExample.bend examples/Parallel.bend Core.bend Dlm.bend Transfer.bend GpuLibrary.bend Gpu.bend DlmGpu.bend TransferGpu.bend examples/Scenario.bend Negotiation.bend Ledger.bend Frontend.bend Backplane.bend Guard.bend examples/Transfer.bend examples/Expect.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task3/gpu-example-combined timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/gpu-example on 
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/gpu-example-combined
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: GpuExample.bend=f9805e663f28f4e3f72e8c2a393fd41e543e2ae38ea416013790afb99c039c46 examples/Parallel.bend=639544adc7ee74209caf2fe0c19f646eb148c79e4f788e713a6ebe2708035773 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e examples/Transfer.bend=6b25e1ce00c4972a4098e1dceea9cec79074a0b9c180eefe1264dae45ab6ef71 examples/Expect.bend=f67c2854e2ec31909dee5641843656711bd04681ba46fb6a5b43382c6a8be877 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: 2723bf5a0aa2110b31c616683e5df7b437914ca8d82a9d591b5224b0d47999c4  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/gpu-example.c
+binary_sha256: 27c8617594f92e3ecefc3920ca8d6ccbb52e77984bc3eb3ea1f9d2a5bbc6177e  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/gpu-example
+gpu_program_sha256: be0ee70c020629f80de7f9e170594ffc9026bd4a6a1cb60e434013f0c2cfd005  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/gpu-example.gpu
+gpu_arch: sm=89 (cuobjdump -elf of gpu-example.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=gpu-example mode=on args=
+exit_status: 0
+stdout_sha256: 6ecd8bfd7fdcb976dc34fa65524a901a0d89f0d01e4c51e77af58b7a12f2d473
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1569852 seen=1 polls=2 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.apps log_sha256=97d4648114f0dcfec61ab2f1cffe7d00f123dd1d838028cf9d481c24d42a315d
+pmon_max_sm: - pid=1569852 rows=1 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.pmon log_sha256=4c6a5f11f638b73508f85b849e01615f288f9622c61883e29433dc7a0e3be72b
+util_samples: 8 interval_ms=200 scope=global(display shares the GPU) baseline=33%,5697MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.util log_sha256=1428398422c089ec3736c563c2b8fdda803f40556489fa430774f2948286b076
+wall_ms: 476
+load_avg: 21:46:15 up 3 days,  1:19,  1 user,  load average: 43.78, 33.20, 39.36
+correctness: PASS 5, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 16bf000ba64aad581dc700075adc623a5e1b6226 (uncommitted: ?? scripts/gpu-validation/Labels.bend, ?? scripts/gpu-validation/Solver.bend, ?? scripts/gpu-validation/Transfers.bend)
+source_sha256: GpuExample.bend=f9805e663f28f4e3f72e8c2a393fd41e543e2ae38ea416013790afb99c039c46 examples/Parallel.bend=639544adc7ee74209caf2fe0c19f646eb148c79e4f788e713a6ebe2708035773 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 GpuLibrary.bend=9e0109b07fb2c14bdfcf948bbf0f5b247bf4ba9367c5a62c8b76a114a4226a90 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 DlmGpu.bend=20218113da2172b547f620d6f486c32f3f0550369551a98cae14aa1d6b6a691d TransferGpu.bend=e31f8563ee9ca1c85e8353d9dd5f686c5ac232542b717892f1e2205af78b5461 examples/Scenario.bend=d86b7ca0a25d42116926794c738796fc7307008d767b2c9ed674500be91e606c Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e examples/Transfer.bend=6b25e1ce00c4972a4098e1dceea9cec79074a0b9c180eefe1264dae45ab6ef71 examples/Expect.bend=f67c2854e2ec31909dee5641843656711bd04681ba46fb6a5b43382c6a8be877 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: 2723bf5a0aa2110b31c616683e5df7b437914ca8d82a9d591b5224b0d47999c4  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/gpu-example.c
+binary_sha256: 27c8617594f92e3ecefc3920ca8d6ccbb52e77984bc3eb3ea1f9d2a5bbc6177e  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/gpu-example
+gpu_program_sha256: be0ee70c020629f80de7f9e170594ffc9026bd4a6a1cb60e434013f0c2cfd005  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/gpu-example.gpu
+gpu_arch: sm=89 (cuobjdump -elf of gpu-example.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=gpu-example mode=on args=
+exit_status: 0
+stdout_sha256: 6ecd8bfd7fdcb976dc34fa65524a901a0d89f0d01e4c51e77af58b7a12f2d473
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task3/gpu-example-combined/observed.sanitizer.log log_sha256=3dd43646747da8aec86ff68623d0088a7cae9b3ca1a81933ae9195c990bcbd9c
+bend_dev_launches: 20
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 1132 (under the observer)
+load_avg: 21:46:16 up 3 days,  1:19,  1 user,  load average: 43.78, 33.20, 39.36
+correctness: PASS 5, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 8909 ms]
+
+$ cat ../writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.stdout
+Parallel: solver, DLM labels, and paired-transfer batch paths.
+Native GPU dispatch requested; CPU fallback is allowed. No device attestation.
+PASS solver path passes original-graph verifier: True
+PASS label path allows internal and denies public: True
+PASS label path matches complete host replay: True
+PASS transfer path admits paired grants and denies missing read: True
+PASS host transfer replay preserves both outcomes and provenance: True
+[exit status: 0; stderr empty; wall 20 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.stdout ../writ-build/physical-gpu/runs/task3/gpu-example-combined/observed.stdout && echo 'plain and observed stdout identical'
+plain and observed stdout identical
+[exit status: 0; stderr empty; wall 22 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task3/gpu-example-combined/observed.sanitizer.log gpu-example
+20
+[exit status: 0; stderr empty; wall 37 ms]
+
+$ grep -c '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/gpu-example-combined/observed.sanitizer.log; grep '^=========   Kernel: ' ../writ-build/physical-gpu/runs/task3/gpu-example-combined/observed.sanitizer.log | sort | uniq -c
+20
+     20 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 27 ms]
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task3/gpu-example-combined/observed.sanitizer.log
+========= ERROR SUMMARY: 20 errors
+[exit status: 0; stderr empty; wall 20 ms]
+
+### Solver, s16: `--gpu off` comparison run
+
+$ uptime
+ 21:46:22 up 3 days,  1:19,  1 user,  load average: 43.72, 33.36, 39.38
+[exit status: 0; stderr empty; wall 21 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/solver +RTS --gpu off -RTS run 16 > ../writ-build/physical-gpu/runs/task3/solver-s16/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/solver-s16/off.stdout ../writ-build/physical-gpu/runs/task3/solver-s16/plain.stdout; exit $st
+f71df4a11cd1f7f7ac727eb86c213ec1cdc60b1b6052411e58eddf035bcd49cf  ../writ-build/physical-gpu/runs/task3/solver-s16/off.stdout
+f71df4a11cd1f7f7ac727eb86c213ec1cdc60b1b6052411e58eddf035bcd49cf  ../writ-build/physical-gpu/runs/task3/solver-s16/plain.stdout
+[exit status: 0; stderr empty; wall 104 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/solver-s16/off.stdout ../writ-build/physical-gpu/runs/task3/solver-s16/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 25 ms]
+
+### Solver, s16384: `--gpu off` comparison run
+
+$ uptime
+ 21:46:22 up 3 days,  1:19,  1 user,  load average: 43.72, 33.36, 39.38
+[exit status: 0; stderr empty; wall 21 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/solver +RTS --gpu off -RTS run 16384 > ../writ-build/physical-gpu/runs/task3/solver-s16384/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/solver-s16384/off.stdout ../writ-build/physical-gpu/runs/task3/solver-s16384/plain.stdout; exit $st
+c448405f4cfa6763b3b3a38e9b414bef65cc8c4634bb6490c7cbeb7459c93a42  ../writ-build/physical-gpu/runs/task3/solver-s16384/off.stdout
+c448405f4cfa6763b3b3a38e9b414bef65cc8c4634bb6490c7cbeb7459c93a42  ../writ-build/physical-gpu/runs/task3/solver-s16384/plain.stdout
+[exit status: 0; stderr empty; wall 19933 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/solver-s16384/off.stdout ../writ-build/physical-gpu/runs/task3/solver-s16384/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 13 ms]
+
+### Labels, s16: `--gpu off` comparison run
+
+$ uptime
+ 21:46:42 up 3 days,  1:19,  1 user,  load average: 44.23, 34.21, 39.54
+[exit status: 0; stderr empty; wall 22 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/labels +RTS --gpu off -RTS run 16 > ../writ-build/physical-gpu/runs/task3/labels-s16/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/labels-s16/off.stdout ../writ-build/physical-gpu/runs/task3/labels-s16/plain.stdout; exit $st
+d974b08ab37e06cdf3e76a2c2f36dd2a3896ce1e7f553bf3f44dc7eb6786e24c  ../writ-build/physical-gpu/runs/task3/labels-s16/off.stdout
+d974b08ab37e06cdf3e76a2c2f36dd2a3896ce1e7f553bf3f44dc7eb6786e24c  ../writ-build/physical-gpu/runs/task3/labels-s16/plain.stdout
+[exit status: 0; stderr empty; wall 86 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/labels-s16/off.stdout ../writ-build/physical-gpu/runs/task3/labels-s16/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 17 ms]
+
+### Labels, s16384: `--gpu off` comparison run
+
+$ uptime
+ 21:46:42 up 3 days,  1:19,  1 user,  load average: 44.23, 34.21, 39.54
+[exit status: 0; stderr empty; wall 19 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/labels +RTS --gpu off -RTS run 16384 > ../writ-build/physical-gpu/runs/task3/labels-s16384/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/labels-s16384/off.stdout ../writ-build/physical-gpu/runs/task3/labels-s16384/plain.stdout; exit $st
+81a7dc42cf9a6a6f0a84856f7acde9be2e7459b008a68a211e2caa78de3ae1d3  ../writ-build/physical-gpu/runs/task3/labels-s16384/off.stdout
+81a7dc42cf9a6a6f0a84856f7acde9be2e7459b008a68a211e2caa78de3ae1d3  ../writ-build/physical-gpu/runs/task3/labels-s16384/plain.stdout
+[exit status: 0; stderr empty; wall 138 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/labels-s16384/off.stdout ../writ-build/physical-gpu/runs/task3/labels-s16384/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 19 ms]
+
+### Labels, long: `--gpu off` comparison run
+
+$ uptime
+ 21:46:42 up 3 days,  1:19,  1 user,  load average: 44.23, 34.21, 39.54
+[exit status: 0; stderr empty; wall 27 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/labels +RTS --gpu off -RTS run 16384 1200 > ../writ-build/physical-gpu/runs/task3/labels-long/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/labels-long/off.stdout ../writ-build/physical-gpu/runs/task3/labels-long/plain.stdout; exit $st
+74b7f976cdf91e849d6d3de6761b5cdc74a998c72f9db110189b9c9d06990226  ../writ-build/physical-gpu/runs/task3/labels-long/off.stdout
+74b7f976cdf91e849d6d3de6761b5cdc74a998c72f9db110189b9c9d06990226  ../writ-build/physical-gpu/runs/task3/labels-long/plain.stdout
+[exit status: 0; stderr empty; wall 28386 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/labels-long/off.stdout ../writ-build/physical-gpu/runs/task3/labels-long/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 7 ms]
+
+### Transfers, s16: `--gpu off` comparison run
+
+$ uptime
+ 21:47:11 up 3 days,  1:19,  1 user,  load average: 63.49, 39.94, 41.28
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/transfers +RTS --gpu off -RTS run 16 > ../writ-build/physical-gpu/runs/task3/transfers-s16/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/transfers-s16/off.stdout ../writ-build/physical-gpu/runs/task3/transfers-s16/plain.stdout; exit $st
+dee7fd26f2f0687a5017caaabf2dee043dc482593cab43e93b8e7cf4d1a9bf23  ../writ-build/physical-gpu/runs/task3/transfers-s16/off.stdout
+dee7fd26f2f0687a5017caaabf2dee043dc482593cab43e93b8e7cf4d1a9bf23  ../writ-build/physical-gpu/runs/task3/transfers-s16/plain.stdout
+[exit status: 0; stderr empty; wall 27 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/transfers-s16/off.stdout ../writ-build/physical-gpu/runs/task3/transfers-s16/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 6 ms]
+
+### Transfers, s16384: `--gpu off` comparison run
+
+$ uptime
+ 21:47:11 up 3 days,  1:19,  1 user,  load average: 63.49, 39.94, 41.28
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/transfers +RTS --gpu off -RTS run 16384 > ../writ-build/physical-gpu/runs/task3/transfers-s16384/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/transfers-s16384/off.stdout ../writ-build/physical-gpu/runs/task3/transfers-s16384/plain.stdout; exit $st
+ebce188b525dc75fc2084ea9c4ef97952e7bd7e88095015d03e32ce02a9a0b25  ../writ-build/physical-gpu/runs/task3/transfers-s16384/off.stdout
+ebce188b525dc75fc2084ea9c4ef97952e7bd7e88095015d03e32ce02a9a0b25  ../writ-build/physical-gpu/runs/task3/transfers-s16384/plain.stdout
+[exit status: 0; stderr empty; wall 171 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/transfers-s16384/off.stdout ../writ-build/physical-gpu/runs/task3/transfers-s16384/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 9 ms]
+
+### Transfers, long: `--gpu off` comparison run
+
+$ uptime
+ 21:47:11 up 3 days,  1:19,  1 user,  load average: 63.49, 39.94, 41.28
+[exit status: 0; stderr empty; wall 9 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/transfers +RTS --gpu off -RTS run 16384 200 > ../writ-build/physical-gpu/runs/task3/transfers-long/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/transfers-long/off.stdout ../writ-build/physical-gpu/runs/task3/transfers-long/plain.stdout; exit $st
+23f12b0af113552ac351cc0b2d00bc2d2a4dbb7885e1e8bbba2b9b56aaeb9719  ../writ-build/physical-gpu/runs/task3/transfers-long/off.stdout
+23f12b0af113552ac351cc0b2d00bc2d2a4dbb7885e1e8bbba2b9b56aaeb9719  ../writ-build/physical-gpu/runs/task3/transfers-long/plain.stdout
+[exit status: 0; stderr empty; wall 7646 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/transfers-long/off.stdout ../writ-build/physical-gpu/runs/task3/transfers-long/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 6 ms]
+
+### GpuExample, combined: `--gpu off` comparison run
+
+$ uptime
+ 21:47:19 up 3 days,  1:20,  1 user,  load average: 56.58, 39.23, 41.04
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/gpu-example +RTS --gpu off -RTS  > ../writ-build/physical-gpu/runs/task3/gpu-example-combined/off.stdout; st=$?; sha256sum ../writ-build/physical-gpu/runs/task3/gpu-example-combined/off.stdout ../writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.stdout; exit $st
+6ecd8bfd7fdcb976dc34fa65524a901a0d89f0d01e4c51e77af58b7a12f2d473  ../writ-build/physical-gpu/runs/task3/gpu-example-combined/off.stdout
+6ecd8bfd7fdcb976dc34fa65524a901a0d89f0d01e4c51e77af58b7a12f2d473  ../writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.stdout
+[exit status: 0; stderr empty; wall 29 ms]
+
+$ cmp ../writ-build/physical-gpu/runs/task3/gpu-example-combined/off.stdout ../writ-build/physical-gpu/runs/task3/gpu-example-combined/plain.stdout && echo '--gpu off stdout identical to the --gpu on plain-pass stdout'
+--gpu off stdout identical to the --gpu on plain-pass stdout
+[exit status: 0; stderr empty; wall 6 ms]
+
+## Result
+Per path, on this host and configuration only (device GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, driver 615.71.09, bend 2.0.39, NVRTC/CUDA 13.4.92, the .gpu hashes in ## Build):
+
+- Graph solver (GPU.solve -> Gpu.sweep, scripts/gpu-validation/Solver.bend; solver.gpu 164461c1...0b67): validated on the device. Observed runs: s16 15 bend_dev launches, gate FAIL (compute_app_seen: the 0.5 s plain pass ended before --query-compute-apps listed its pid); s16384 15 launches, gate PASS (plain pass 30.8 s, pid seen in 123 of 125 polls, pmon max SM 6 on 2 of 28 rows). 15 = 3 sweeps per solve x 5 launches per bang: every Core.solve_with sweep reached the device, including the second and third, which follow host work (states_equal, states_nonempty) inside the same pure solve. Correctness: PASS 7, FAIL 0 in every pass and in `--gpu off`; device SolveResult equal to the CPU reference Core.solve_cpu in every field (outcome, stamp, each node state, sweep count 3), equal to the expected least solution, and approved by Core.verify on the original graph and Scenario stamp; Core.verify denies the unsolved seed assignment. `--gpu off` stdout identical at both sizes.
+- Label batch (GPU.label_batch -> Dlm.batch!, scripts/gpu-validation/Labels.bend; labels.gpu c09ae05a...5339): validated on the device. s16 5 launches, gate FAIL (same compute_app_seen reason, 0.25 s plain pass); s16384 5 launches, gate PASS; long (1200 rounds, plain 15.0 s, pmon max SM 34 on 3 of 14 rows) 6000 launches, gate PASS. Correctness: PASS 6, FAIL 0 everywhere; device answers equal to the CPU reference Dlm.batch (shape and every leaf), equal to the expected allow/deny pattern (8192 allowed, 8192 denied at 16384), and accepted by Dlm.verify_batch on the original queries and snapshot, in every round. `--gpu off` stdout identical in all three runs.
+- Transfer batch (GPU.transfer_batch -> Transfer.batch!, scripts/gpu-validation/Transfers.bend; transfers.gpu fddac93a...f09c): validated on the device. s16 5 launches, gate FAIL (same compute_app_seen reason, 0.5 s plain pass); s16384 5 launches, gate PASS; long (200 rounds, plain 29.6 s, pmon max SM 32 on 1 of 25 rows) 1000 launches, gate PASS. Correctness: PASS 6, FAIL 0 everywhere; device decisions equal to the CPU reference Transfer.batch field by field (denial reasons; ticket plans; output schema, labels, kinds, retained origin rules with codes and payment), equal to the expected pattern (8192 admitted, 4096 Denied{Read}, 4096 Denied{Write} at 16384) with the exact plan and the Scenario origin policy in each ticket, and equal to Transfer.admit per original plan against its Context, in every round. `--gpu off` stdout identical in all three runs.
+- Combined (GpuExample.bend -> examples/Parallel.bend, BANGS 3; gpu-example.gpu be0ee70c...d005): 20 bend_dev launches in one process, gate PASS, PASS 5, FAIL 0, `--gpu off` stdout identical. The sanitizer's host backtraces do not name the bang site (every launch is cube_run <- corpus_eval <- io_step), so this run is not per-path attribution; the 20 are four groups of five launches, which matches 2 solver sweeps on the two-node Scenario graph plus one label and one transfer bang, an inference from the launch grids, not an observation.
+
+Within this exact configuration, all three native calculation paths (the graph solver, the label batch and the transfer batch) were compiled for sm_89 and executed on the device, each with observed bend_dev launches attributed to its own single-bang binary in observed runs that passed the gate, and each with results equal to the CPU reference and accepted by the independent verifier or replay.
+
+Findings, recorded verbatim: (1) the three SIZE 16 pairs fail the gate on `compute_app_seen` although their observed passes show 15, 5 and 5 bend_dev launches and correct results: a plain pass of 0.25 to 0.5 s finished before a 200 ms --query-compute-apps poll listed the pid. They were not re-run; the gate is doing what Task 2 defined. (2) No device result differed from any CPU result. (3) The device was slower than the CPU on every workload here (for example the solver at 16384: plain pass 30.8 s with --gpu on; the recorded --gpu off comparison run took 19.9 s), consistent with the shaders guide on managed-memory faults and per-lane list walks; this is not a performance measurement.
+
+## Limits
+- One host, one GPU, one driver, one Bend and CUDA version; the "complete three-path" sentence above is scoped to it. The display and other compute clients shared the GPU; load average 18.88 to 63.49; wall times are indicative only.
+- Workloads are synthetic replicas of the Scenario facts at sizes 16 and 16384 (plus repeats); no adversarial, malformed or large-policy inputs, no denied solver result (SolveFailed paths such as TypeConflict or IterationLimit were not exercised on the device), and no other graph shapes.
+- Reconciled in Task 9 after the Task 5 digest finding (verification/gpu-injection.txt, "Result": the correct label tree and the allow-all tree of 16384 leaves have the same Labels.hash; "Limits": "No 32-bit digest in these probes is equality evidence"): the Task 3 cross-process `--gpu off` comparisons at SIZE 16384 and in the long runs are evidence of equal counts only, not of equal results, for all three probes. The `PASS ... digest equals the CPU reference digest` lines in the runs above are kept verbatim as captured output and are not equality evidence. The comparison of record for these runs is the typed in-process comparison with the CPU reference (Solver.result_equal, Dlm.answers_equal, Transfers.Decisions.equal), which is field by field at every size, plus the per-leaf expected outcomes and the independent checks on the original inputs; the field-by-field cross-process comparison is verification/gpu-parity.txt, "Result", "Comparison" (every field of every case printed, `--gpu off` stdout byte-identical in all 24 runs).
+- Original wording, kept as history: the cross-process `--gpu off` comparison is field by field only at SIZE 16; at 16384 and in the long runs it compares counts and a 32-bit digest, which covers every field for the solver and labels but not for transfers (it omits the plan's stamp, sources, destination, code, kind and output_type and the origins' approved codes and payment rules). A full-field transfer digest is left for Task 4's parity cases, where the field-by-field comparison is the standard. The in-process comparison with the CPU reference is field by field at every size.
+- The independent checks run in the same process and in the same address space as the device result; they are a logical check, not a memory-protection boundary. The verifier and replays use the library's own evaluators (Dlm.verify_batch replays Dlm.batch's semantics; Transfer.admit is the same admission function).
+- Device memory checking was not run (the sanitizer excludes every kernel by design); Nsight is absent; the plain passes' sampler evidence is sparse (pmon numeric on 1 to 3 rows).
+- Per-launch attribution in the combined run is inferred, not observed. The default `--gpu` mode, `--gpu <size>`, and hidden-device controls were not run for these probes (Task 2 covered them for bang).
+- The ROUNDS argument is a probe extension beyond the brief's `run SIZE`; it only repeats the same device call.
+- Not run: `bend Tests.bend`, `bend PROOF.bend` (no library, law or proof source changed).
+- The label and transfer probes have no case in which the verifier rejects a wrong answer: Dlm.verify_batch and the Transfer.admit replay were not shown to reject a wrong candidate here (their denied leaves are policy outcomes, not verifier refusals), so an always-true replay would pass both probes. Those denial controls are Task 5's injected faults (flipped denial, truncated tree, fabricated Admitted, wrong-plan ticket). For the batches the replay is also not independent of the CPU-reference comparison (Dlm.verify_batch is answers_equal over Dlm.batch; the replay is Transfer.admit per leaf, as Transfer.batch is); only Core.verify is a different algorithm from its producer.
+- Pre-commit capture: the probes were uncommitted when this evidence was captured, so every record's lane_commit is 16bf000ba64aad581dc700075adc623a5e1b6226 marked "uncommitted: ?? scripts/gpu-validation/..."; the source_sha256 values in every record equal the committed files (Solver.bend a2ee82bb..., Labels.bend e1b080fb..., Transfers.bend f7073cb4...), which bind the records to the committed tree.

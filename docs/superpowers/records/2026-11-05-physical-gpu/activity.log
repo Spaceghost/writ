@@ -1,0 +1,255 @@
+2026-11-05T02:51:28Z	controller	lane created from master d56325b
+2026-11-05T02:52:08Z	implementer	task 1 started: read brief, plan Global Constraints, AGENTS.md
+2026-11-05T02:54:35Z	implementer	Bang.bend written; emitted C builds (bang.c)
+2026-11-05T02:55:17Z	implementer	native CUDA build of bang done (9 s); bang.gpu is sm_89 cubin with bend_dev; running bang --gpu off/on
+2026-11-05T02:56:00Z	implementer	compute-sanitizer observer works (flag form; 5 bend_dev launches per round); timing overhead at 100 rounds
+2026-11-05T02:58:23Z	implementer	sanitizer needs --print-limit 0 (default 100 hides launches); now sampling nvidia-smi compute-apps and pmon during a 200-round run
+2026-11-05T02:59:36Z	implementer	pmon shows bang PID but SM samples only in first ~2 s of a 300-round run; trying 1500 rounds (bounded 300 s) to see the device phase
+2026-11-05T03:02:22Z	implementer	capture: build section
+2026-11-05T03:02:29Z	implementer	capture: run section (CPU and device runs, observer)
+2026-11-05T03:02:42Z	implementer	capture: overhead pairs at 100 rounds
+2026-11-05T03:03:06Z	implementer	capture: nvidia-smi compute-apps and pmon during a 300-round run
+2026-11-05T03:03:17Z	implementer	capture finished
+2026-11-05T03:05:27Z	implementer	evidence verification/gpu-toolchain.txt and task-1-report.md written; committing (DONE_WITH_CONCERNS: sanitizer needs flag form and --print-limit 0)
+2026-11-05T03:05:40Z	implementer	task 1 committed
+2026-11-05T03:06:01Z	controller	task 1 reported; rulings on the sanitizer form and gates; reviewer dispatched
+2026-11-05T03:07:28Z	controller	review: evidence wording fixes; fix round 1 dispatched
+2026-11-05T03:07:59Z	implementer	fix round 1 started: read task-1-review.md; quoted rebuild and -lcuda grep
+2026-11-05T03:08:34Z	implementer	fix round 1: evidence and report updated (load average, quoted rebuild, Execution line, -lcuda grep); committing
+2026-11-05T03:08:49Z	controller	task 1 complete; task 2 dispatched (run record, gate, negative controls)
+2026-11-05T03:13:13Z	implementer	task 2 started: read brief, plan constraints, task 1 report and toolchain record; driver strings show default gpu=-1 (silent fallback) and BENDRTS env options; writing observe.sh and check-record.sh
+2026-11-05T03:18:27Z	implementer	control (a) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/a timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+2026-11-05T03:18:52Z	implementer	control (a) finished
+2026-11-05T03:18:52Z	implementer	control (a-long) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/a-long timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 600
+2026-11-05T03:19:32Z	implementer	control (a-long) finished
+2026-11-05T03:19:32Z	implementer	control (b) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/b timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang off 100
+2026-11-05T03:19:40Z	implementer	control (b) finished
+2026-11-05T03:19:40Z	implementer	control (c) running: CUDA_VISIBLE_DEVICES= GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/c timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang default 100
+2026-11-05T03:20:01Z	implementer	control (c) finished
+2026-11-05T03:20:01Z	implementer	control (c2) running: CUDA_VISIBLE_DEVICES=99 GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/c2 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang default 100
+2026-11-05T03:20:36Z	implementer	control (c2) finished
+2026-11-05T03:20:36Z	implementer	control (d) running: CUDA_VISIBLE_DEVICES= GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/d timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+2026-11-05T03:21:01Z	implementer	control (d) finished
+2026-11-05T03:21:01Z	implementer	control (d2) running: CUDA_VISIBLE_DEVICES=99 GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/d2 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+2026-11-05T03:21:14Z	implementer	control (d2) finished
+2026-11-05T03:21:14Z	implementer	control (e) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/e timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 0
+2026-11-05T03:21:28Z	implementer	control (e) finished
+2026-11-05T03:21:28Z	implementer	control (f) and (g) record edits
+2026-11-05T03:21:33Z	implementer	controls done
+2026-11-05T03:22:49Z	implementer	controls captured (a, a-long, b, c, c2, d, d2, e, f, g, g2); finding: compute-sanitizer drops an empty CUDA_VISIBLE_DEVICES from its target; writing verification/gpu-gate-controls.txt
+2026-11-05T03:24:12Z	implementer	control (h) truncated-log check captured; evidence file written; writing task-2-report.md
+2026-11-05T03:24:57Z	implementer	report written; committing task 2
+2026-11-05T03:25:24Z	controller	task 2 reported; rulings on device hiding and gate limits; reviewer dispatched
+2026-11-05T03:27:27Z	controller	task 2 review APPROVED; task 3 dispatched (three paths on the device)
+2026-11-05T03:28:02Z	implementer	task 3 started; reading brief, plan constraints, task 1/2 reports, scripts, GPU modules
+2026-11-05T03:35:17Z	implementer	Labels.bend and Transfers.bend written; BANGS 1 each; exploratory sanitizer runs show 5 bend_dev launches each at 16384; writing Solver.bend
+2026-11-05T03:42:05Z	implementer	probes final (Solver, Labels, Transfers); exploratory runs: all PASS on and off, sanitizer counts solver 15 (3 sweeps x 5), labels 5, transfers 5, GpuExample 20; starting evidence capture into verification/gpu-paths.txt
+2026-11-05T03:42:10Z	implementer	building Solver (scripts/gpu-validation/Solver.bend -> ../writ-build/physical-gpu/solver)
+2026-11-05T03:42:16Z	implementer	building Labels (scripts/gpu-validation/Labels.bend -> ../writ-build/physical-gpu/labels)
+2026-11-05T03:42:21Z	implementer	building Transfers (scripts/gpu-validation/Transfers.bend -> ../writ-build/physical-gpu/transfers)
+2026-11-05T03:42:28Z	implementer	building GpuExample (GpuExample.bend -> ../writ-build/physical-gpu/gpu-example)
+2026-11-05T03:42:45Z	implementer	observe.sh Solver s16 (run 16) starting
+2026-11-05T03:42:51Z	implementer	observe.sh Solver s16 finished
+2026-11-05T03:42:51Z	implementer	observe.sh Solver s16384 (run 16384) starting
+2026-11-05T03:44:01Z	implementer	observe.sh Solver s16384 finished
+2026-11-05T03:44:01Z	implementer	observe.sh Labels s16 (run 16) starting
+2026-11-05T03:44:07Z	implementer	observe.sh Labels s16 finished
+2026-11-05T03:44:07Z	implementer	observe.sh Labels s16384 (run 16384) starting
+2026-11-05T03:44:13Z	implementer	observe.sh Labels s16384 finished
+2026-11-05T03:44:13Z	implementer	observe.sh Labels long (run 16384 1200) starting
+2026-11-05T03:44:53Z	implementer	observe.sh Labels long finished
+2026-11-05T03:44:53Z	implementer	observe.sh Transfers s16 (run 16) starting
+2026-11-05T03:44:58Z	implementer	observe.sh Transfers s16 finished
+2026-11-05T03:44:58Z	implementer	observe.sh Transfers s16384 (run 16384) starting
+2026-11-05T03:45:03Z	implementer	observe.sh Transfers s16384 finished
+2026-11-05T03:45:03Z	implementer	observe.sh Transfers long (run 16384 200) starting
+2026-11-05T03:46:12Z	implementer	observe.sh Transfers long finished
+2026-11-05T03:46:12Z	implementer	observe.sh GpuExample combined () starting
+2026-11-05T03:46:22Z	implementer	observe.sh GpuExample combined finished
+2026-11-05T03:46:22Z	implementer	gpu off run Solver s16 (run 16)
+2026-11-05T03:46:22Z	implementer	gpu off run Solver s16384 (run 16384)
+2026-11-05T03:46:42Z	implementer	gpu off run Labels s16 (run 16)
+2026-11-05T03:46:42Z	implementer	gpu off run Labels s16384 (run 16384)
+2026-11-05T03:46:42Z	implementer	gpu off run Labels long (run 16384 1200)
+2026-11-05T03:47:11Z	implementer	gpu off run Transfers s16 (run 16)
+2026-11-05T03:47:11Z	implementer	gpu off run Transfers s16384 (run 16384)
+2026-11-05T03:47:11Z	implementer	gpu off run Transfers long (run 16384 200)
+2026-11-05T03:47:19Z	implementer	gpu off run GpuExample combined ()
+2026-11-05T03:49:40Z	implementer	evidence written (verification/gpu-paths.txt): solver 15, labels 5/6000, transfers 5/1000 launches, gate PASS at 16384 and long; SIZE 16 pairs gate FAIL on compute_app_seen (recorded); report written; committing task 3
+2026-11-05T03:50:05Z	controller	task 3 reported: three paths on the device; reviewer dispatched
+2026-11-05T03:55:19Z	controller	review: text fixes to gpu-paths.txt; fix round 1 dispatched
+2026-11-05T03:55:42Z	implementer	fix round 1: transfer digest coverage stated, verifier-denial and pre-commit Limits added, exit-status sources named (text only, no rerun); committing
+2026-11-05T03:56:06Z	implementer	fix round 1: report digest wording, concern and fix-round section added; amended the fix-round commit (not pushed)
+2026-11-05T03:56:19Z	controller	task 3 complete; task 4 dispatched (parity cases)
+2026-11-05T04:00:08Z	implementer	task 4 started: read brief, plan constraints, task 3 report/review, probes and harness; designing parity mode (per-case runs for launch counts)
+2026-11-05T04:06:45Z	implementer	solver parity mode written (10 cases + comparator control); dev build passes --gpu on and off with identical stdout; writing labels parity
+2026-11-05T04:09:21Z	implementer	labels parity mode written (4 cases + comparator control, tree shape printed); writing transfers parity and the all-field transfer digest from the task 3 review
+2026-11-05T04:14:35Z	implementer	transfers parity mode written (6 cases + comparator control); transfer digest now covers every field (task 3 review item 1); all three probes pass parity all with identical --gpu on/off stdout in dev builds; starting evidence builds and runs
+2026-11-05T04:14:46Z	implementer	task 4 builds start (solver, labels, transfers to ../writ-build/physical-gpu/task4)
+2026-11-05T04:16:02Z	implementer	task 4 builds done
+2026-11-05T04:16:12Z	implementer	run solver-all (solver parity parity all): launches 90; gate: PASS
+2026-11-05T04:16:23Z	implementer	run labels-all (labels parity parity all): launches 20; gate: PASS
+2026-11-05T04:16:34Z	implementer	run transfers-all (transfers parity parity all): launches 30; gate: PASS
+2026-11-05T04:16:44Z	implementer	run solver-bit31-secrecy (solver parity parity bit31-secrecy): launches 15; gate: PASS
+2026-11-05T04:16:54Z	implementer	run solver-bit32-untrusted (solver parity parity bit32-untrusted): launches 15; gate: PASS
+2026-11-05T04:17:05Z	implementer	run solver-bit63-effects (solver parity parity bit63-effects): launches 15; gate: PASS
+2026-11-05T04:17:16Z	implementer	run solver-wide-dimensions (solver parity parity wide-dimensions): launches 10; gate: PASS
+2026-11-05T04:17:27Z	implementer	run solver-cycle (solver parity parity cycle): launches 15; gate: PASS
+2026-11-05T04:17:39Z	implementer	run solver-empty (solver parity parity empty): launches 0; gate: FAIL (launches: 0 bend_dev launches attributed to solver)
+2026-11-05T04:17:53Z	implementer	run solver-type-conflict (solver parity parity type-conflict): launches 5; gate: PASS
+2026-11-05T04:18:05Z	implementer	run solver-invalid-flow (solver parity parity invalid-flow): launches 0; gate: FAIL (launches: 0 bend_dev launches attributed to solver)
+2026-11-05T04:18:15Z	implementer	run solver-budget-1 (solver parity parity budget-1): launches 5; gate: PASS
+2026-11-05T04:18:27Z	implementer	run solver-budget-2 (solver parity parity budget-2): launches 10; gate: PASS
+2026-11-05T04:18:38Z	implementer	run labels-allow-deny (labels parity parity allow-deny): launches 5; gate: PASS
+2026-11-05T04:18:48Z	implementer	run labels-stale-epoch (labels parity parity stale-epoch): launches 5; gate: PASS
+2026-11-05T04:18:57Z	implementer	run labels-missing-principal (labels parity parity missing-principal): launches 5; gate: PASS
+2026-11-05T04:19:07Z	implementer	run labels-empty-batch (labels parity parity empty-batch): launches 5; gate: PASS
+2026-11-05T04:19:18Z	implementer	run transfers-paired-admitted (transfers parity parity paired-admitted): launches 5; gate: FAIL (compute_app_seen: probe pid '2036808' never listed by --query-compute-apps)
+2026-11-05T04:19:28Z	implementer	run transfers-missing-read (transfers parity parity missing-read): launches 5; gate: PASS
+2026-11-05T04:19:38Z	implementer	run transfers-missing-write (transfers parity parity missing-write): launches 5; gate: PASS
+2026-11-05T04:19:48Z	implementer	run transfers-missing-payment (transfers parity parity missing-payment): launches 5; gate: PASS
+2026-11-05T04:19:59Z	implementer	run transfers-stale-context (transfers parity parity stale-context): launches 5; gate: PASS
+2026-11-05T04:20:09Z	implementer	run transfers-empty-batch (transfers parity parity empty-batch): launches 5; gate: PASS
+2026-11-05T04:20:09Z	implementer	task 4 single-round runs done
+2026-11-05T04:20:58Z	implementer	run transfers-paired-admitted-r400 (transfers parity parity paired-admitted 400): launches 2000; gate: PASS
+2026-11-05T04:20:58Z	implementer	task 4 ROUNDS 400 runs done
+2026-11-05T04:22:53Z	implementer	verification/gpu-parity.txt assembled (24 observed runs, all off-diffs empty, 18/20 cases device-validated, no differences); writing report
+2026-11-05T04:23:40Z	implementer	task 4 report written; committing (no push)
+2026-11-05T04:24:04Z	controller	task 4 reported: 18 of 20 cases on the device, no differences; reviewer dispatched
+2026-11-05T04:26:59Z	controller	review: one evidence wording fix; fix round 1 dispatched
+2026-11-05T04:27:07Z	implementer	fix round 1: read task-4-review.md; text fixes only (digest not exercised, per-field control scope, payment leading-space note); no rerun
+2026-11-05T04:27:26Z	implementer	fix round 1: gpu-parity.txt probes paragraph, control description and two Limits bullets amended; report fix-round section added; committing
+2026-11-05T04:27:41Z	controller	task 4 complete; task 5 dispatched (injected faults)
+2026-11-05T04:30:45Z	implementer	task 5 started: read brief, plan constraints, task 3/4 reports and reviews, probes, observe.sh, check-record.sh, Core.verify, Dlm.verify_batch, DataOS/Backplane commit path
+2026-11-05T04:34:48Z	implementer	solver inject mode written (drop-node, erase-source, clear-bit63, stale-stamp on wide-dimensions; Core.verify + Core.authorize_sink); checks and runs on the interpreter
+2026-11-05T04:39:07Z	implementer	labels inject + bench-forged and transfers inject (4 cases, commit path, 20 digest controls) written; type-checked; interpreter runs
+2026-11-05T04:40:06Z	implementer	task 5 builds start (solver, labels, transfers to ../writ-build/physical-gpu/task5)
+2026-11-05T04:41:20Z	implementer	task 5 builds done (solver labels transfers)
+2026-11-05T04:41:26Z	implementer	builds done (BANGS 1 each, task5 dir); calibrating ROUNDS with unrecorded plain runs
+2026-11-05T04:42:04Z	implementer	observed runs start: 11 inject cases (solver ROUNDS 500, labels/transfers ROUNDS 1000), transfers run 16384 (digest), labels honest/forged/honest at 16384x200
+2026-11-05T04:42:15Z	implementer	run solver-inject-drop-node (solver inject drop-node 500): launches 5000; gate: PASS
+2026-11-05T04:42:28Z	implementer	run solver-inject-erase-source (solver inject erase-source 500): launches 5000; gate: PASS
+2026-11-05T04:42:39Z	implementer	run solver-inject-clear-bit63 (solver inject clear-bit63 500): launches 5000; gate: PASS
+2026-11-05T04:42:50Z	implementer	run solver-inject-stale-stamp (solver inject stale-stamp 500): launches 5000; gate: PASS
+2026-11-05T04:43:02Z	implementer	run labels-inject-flip-denial (labels inject flip-denial 1000): launches 5000; gate: PASS
+2026-11-05T04:43:13Z	implementer	run labels-inject-truncate (labels inject truncate 1000): launches 5000; gate: PASS
+2026-11-05T04:43:24Z	implementer	run labels-inject-swap-shape (labels inject swap-shape 1000): launches 5000; gate: PASS
+2026-11-05T04:43:33Z	implementer	run transfers-inject-fabricate-admitted (transfers inject fabricate-admitted 1000): launches 5000; gate: PASS
+2026-11-05T04:43:42Z	implementer	run transfers-inject-wrong-plan (transfers inject wrong-plan 1000): launches 5000; gate: PASS
+2026-11-05T04:43:50Z	implementer	run transfers-inject-stale-context (transfers inject stale-context 1000): launches 5000; gate: PASS
+2026-11-05T04:43:59Z	implementer	run transfers-inject-forged-commit (transfers inject forged-commit 1000): launches 5000; gate: PASS
+2026-11-05T04:44:04Z	implementer	run transfers-run-16384 (transfers run 16384): launches 5; gate: PASS
+2026-11-05T04:44:16Z	implementer	run labels-honest-1 (labels run 16384 200): launches 1000; gate: PASS
+2026-11-05T04:44:23Z	implementer	run labels-forged (labels bench-forged 16384 200): launches 0; gate: FAIL (observed: exit_status 1; observed: correctness 'PASS 3, FAIL 3 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; plain: exit_status 1; plain: correctness 'PASS 3, FAIL 3 (l
+2026-11-05T04:44:35Z	implementer	run labels-honest-2 (labels run 16384 200): launches 1000; gate: PASS
+2026-11-05T04:47:15Z	implementer	all runs done: 11 inject cases denied (gate PASS, 5000 launches each), transfers run 16384 digest PASS, forged run gate FAIL (1164 ms vs honest 3208/3211); finding: Labels.hash collision allow-all vs correct at 16384; evidence and report written; committing
+2026-11-05T04:47:46Z	controller	task 5 reported: 11 of 11 faults denied; digest collision finding; reviewer dispatched
+2026-11-05T04:55:06Z	controller	review: digest finding wording; fix round 1 dispatched
+2026-11-05T04:55:48Z	implementer	fix round 1: read task-5-review.md; text fixes only (structural digest collision, comparison of record, Task 3 16384 comparisons show counts only, calibration runs listed, clause breakdown last solve only, Task 3/4 denial-control gap closed); no rerun
+2026-11-05T04:56:23Z	controller	task 5 complete; task 6 dispatched (the corpus on and off the device)
+2026-11-05T04:57:25Z	implementer	task 6 started: read brief, plan Global Constraints, task 5 review, observe.sh/check-record.sh; build dir ../writ-build/physical-gpu/task6/
+2026-11-05T04:57:53Z	implementer	build: bend Tests.bend to C (task6/tests-gpu.c)
+2026-11-05T04:58:11Z	implementer	build: bend Tests.bend to binary with GPU compile (task6/tests-gpu, tests-gpu.gpu)
+2026-11-05T04:59:58Z	implementer	build done: BANGS 1, tests-gpu 53eeea2b..., tests-gpu.gpu 40b1305c... sm=89; kernels bend_dev, window_dev
+2026-11-05T04:59:58Z	implementer	run: tests-gpu --gpu off (timeout 600)
+2026-11-05T04:59:58Z	implementer	run off finished
+2026-11-05T05:00:05Z	implementer	run: tests-gpu --gpu on (timeout 600)
+2026-11-05T05:00:07Z	implementer	run on finished
+2026-11-05T05:00:24Z	implementer	run: observe.sh tests-gpu on (plain + compute-sanitizer pass, each timeout 600)
+2026-11-05T05:00:34Z	implementer	observe.sh run finished
+2026-11-05T05:01:11Z	implementer	supplementary: compute-sanitizer over the exact on-capture options (--threads 4 --gpu on)
+2026-11-05T05:01:15Z	implementer	supplementary run finished
+2026-11-05T05:01:50Z	implementer	supplementary: compute-sanitizer over the off-capture options (--threads 4 --gpu off), expecting no launch
+2026-11-05T05:01:50Z	implementer	off sanitizer run finished
+2026-11-05T05:03:00Z	implementer	evidence and report written: 782/782 on and off, three diffs empty, 4915 bend_dev launches, gate PASS; committing
+2026-11-05T05:03:16Z	controller	task 6 reported: corpus 782 on and off, 4915 launches; reviewer dispatched
+2026-11-05T05:04:10Z	controller	task 6 review APPROVED; task 7 dispatched (whole-pipeline measurement)
+2026-11-05T05:08:24Z	implementer	task 7 started: read brief, global constraints, task 3-6 reports, probes, observe.sh; IO.now is ms (io_tick CLOCK_MONOTONIC ns / 1e6); load 429 at 23:07 local
+2026-11-05T05:10:20Z	implementer	labels bench mode written (5 IO.now marks per repetition, times on stderr); type-checks; writing solver and transfers bench modes
+2026-11-05T06:27:18Z	controller	task 7 implementer stalled and was stopped; re-dispatched
+2026-11-05T06:27:55Z	implementer	task 7 takeover started: reading git diff, brief, constraints, reports
+2026-11-05T06:29:04Z	implementer	reviewed stalled diff: bench modes present in all three probes (5 IO.now marks, stderr lines, CPU reference and run-mode checks after the last rep); keeping them; building in ../writ-build/physical-gpu/task7/ (load 49.96)
+2026-11-05T06:32:40Z	implementer	built solver/labels/transfers in task7 (BANGS 1 each, exit 0); smoke bench 16 3 on/off all PASS, stdout identical; 16384 cost probe: solver ~12.5 s per rep, labels/transfers <0.4 s; IO.now = io_tick()/10^6 ms (effs/now.c)
+2026-11-05T06:33:21Z	implementer	started series plan small in background (compile runs, sizes 16 and 1024 all probes, labels/transfers 16384, attestations, forged rerun)
+2026-11-05T06:33:35Z	implementer	compile runs done (stale .gpu then fresh, size 16)
+2026-11-05T06:33:37Z	implementer	series solver 16 done: 19.11, 32.92, 33.53 -> 19.11, 32.92, 33.53; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:33:42Z	implementer	attest solver 16 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:33:46Z	implementer	attest solver 16 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/solver +RTS --gpu off -RTS bench 16 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to solver; compute_app_seen: probe pid '818988' never listed by --query-compute-apps)
+2026-11-05T06:33:48Z	implementer	series labels 16 done: 17.86, 32.19, 33.28 -> 17.86, 32.19, 33.28; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:33:52Z	implementer	attest labels 16 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:33:57Z	implementer	attest labels 16 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/labels +RTS --gpu off -RTS bench 16 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to labels; compute_app_seen: probe pid '824616' never listed by --query-compute-apps)
+2026-11-05T06:33:58Z	implementer	series transfers 16 done: 18.93, 31.97, 33.20 -> 18.93, 31.97, 33.20; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:34:02Z	implementer	attest transfers 16 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:34:07Z	implementer	attest transfers 16 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/transfers +RTS --gpu off -RTS bench 16 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to transfers; compute_app_seen: probe pid '829863' never listed by --query-compute-apps)
+2026-11-05T06:34:17Z	implementer	series solver 1024 done: 20.72, 31.91, 33.17 -> 19.78, 31.33, 32.97; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:34:25Z	implementer	attest solver 1024 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:34:31Z	implementer	attest solver 1024 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/solver +RTS --gpu off -RTS bench 1024 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to solver; compute_app_seen: probe pid '838337' never listed by --query-compute-apps)
+2026-11-05T06:34:34Z	implementer	series labels 1024 done: 19.78, 30.75, 32.75 -> 19.78, 30.75, 32.75; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:34:38Z	implementer	attest labels 1024 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:34:43Z	implementer	attest labels 1024 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/labels +RTS --gpu off -RTS bench 1024 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to labels; compute_app_seen: probe pid '852995' never listed by --query-compute-apps)
+2026-11-05T06:34:47Z	implementer	series transfers 1024 done: 18.84, 30.18, 32.54 -> 18.77, 29.98, 32.46; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:34:55Z	implementer	attest transfers 1024 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:35:01Z	implementer	attest transfers 1024 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/transfers +RTS --gpu off -RTS bench 1024 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to transfers; compute_app_seen: probe pid '865999' never listed by --query-compute-apps)
+2026-11-05T06:35:21Z	implementer	series labels 16384 done: 23.43, 30.46, 32.58 -> 20.32, 29.28, 32.14; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:35:33Z	implementer	attest labels 16384 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:35:37Z	implementer	attest labels 16384 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/labels +RTS --gpu off -RTS bench 16384 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to labels; compute_app_seen: probe pid '880400' never listed by --query-compute-apps)
+2026-11-05T06:36:25Z	implementer	series transfers 16384 done: 18.98, 28.54, 31.86 -> 19.58, 27.40, 31.31; exits 0 0 0 0 0 0 0 0 
+2026-11-05T06:36:46Z	implementer	attest transfers 16384 on: observe.sh exit 0; gate: PASS
+2026-11-05T06:36:52Z	implementer	attest transfers 16384 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/transfers +RTS --gpu off -RTS bench 16384 20'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to transfers; compute_app_seen: probe pid '901275' never listed by --query-compute-apps)
+2026-11-05T06:36:53Z	implementer	forged control rerun (labels bench-forged 16384 20) exit exit_status: 1
+2026-11-05T06:36:53Z	implementer	series plan small finished
+2026-11-05T06:37:09Z	implementer	heartbeat: plan small at labels/transfers 16384 series; sizes 16 and 1024 complete
+2026-11-05T06:37:18Z	implementer	plan small finished (all series exits 0); started plan solver16384 in background (8 runs of ~7 min each expected, then attestation); load 15.95
+2026-11-05T06:37:35Z	implementer	heartbeat: solver 16384 series running (0 of 8 runs done); summarised sizes 16/1024 and labels/transfers 16384: all 64 runs accepted
+2026-11-05T06:39:47Z	implementer	heartbeat: solver 16384 series, 0 of 8 runs done; load 22.43, 24.45, 29.28
+2026-11-05T06:42:30Z	implementer	heartbeat: solver 16384 series, 0 of 8 runs done; load 24.92, 24.92, 28.67
+2026-11-05T06:48:42Z	implementer	heartbeat: solver 16384 plan running, 2 of 8 timing runs done; load 48.67, 40.94, 34.19
+2026-11-05T06:54:01Z	implementer	heartbeat: solver 16384 plan running, 3 of 8 timing runs done; load 28.36, 30.90, 31.56
+2026-11-05T06:59:09Z	implementer	heartbeat: solver 16384 plan running, 4 of 8 timing runs done; load 15.85, 24.44, 28.80
+2026-11-05T07:04:36Z	implementer	heartbeat: solver 16384 plan running, 6 of 8 timing runs done; load 13.40, 16.33, 23.80
+2026-11-05T07:05:16Z	implementer	heartbeat: solver 16384 plan running, 6 of 8 timing runs done; load 16.38, 16.68, 23.59
+2026-11-05T07:10:21Z	implementer	heartbeat: solver 16384 plan running, 6 of 8 timing runs done; load 48.12, 25.57, 24.68
+2026-11-05T07:15:31Z	implementer	heartbeat: solver 16384 plan running, 7 of 8 timing runs done; load 39.24, 43.70, 34.01
+2026-11-05T07:18:28Z	implementer	series solver 16384 done: 15.95, 25.13, 30.31 -> 23.32, 33.72, 31.82; exits 0 0 0 0 0 0 0 0 
+2026-11-05T07:20:37Z	implementer	heartbeat: solver 16384 plan running, 8 of 8 timing runs done; load 78.40, 46.82, 36.52
+2026-11-05T07:25:43Z	implementer	heartbeat: solver 16384 plan running, 8 of 8 timing runs done; load 19.60, 30.71, 32.70
+2026-11-05T07:28:53Z	implementer	heartbeat: solver 16384 attestation (observe.sh) running; load 20.65, 25.85, 30.41
+2026-11-05T07:31:32Z	implementer	attest solver 16384 on: observe.sh exit 0; gate: PASS
+2026-11-05T07:32:53Z	implementer	heartbeat: solver 16384 attestation (observe.sh) running; load 15.83, 20.80, 27.35
+2026-11-05T07:36:17Z	implementer	attest solver 16384 off: observe.sh exit 1; gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task7/solver +RTS --gpu off -RTS bench 16384 20'; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to solver; compute_app_seen: probe pid '1737025' never listed by --query-compute-apps; samplers: run of 142297 ms has no per-PID SM sample above 0)
+2026-11-05T07:36:17Z	implementer	series plan solver16384 finished
+2026-11-05T07:36:37Z	implementer	solver 16384 plan finished (8 runs exit 0, attestation on gate PASS 300 launches); load 23.14 at end, so no repeat series (the load was above 16 at every series boundary)
+2026-11-05T07:36:53Z	implementer	heartbeat: solver 16384 attestation (observe.sh) running; load 24.72, 28.22, 29.66
+2026-11-05T07:39:22Z	implementer	task 7 evidence (verification/gpu-pipeline.txt) and report written; 9 series, 72 runs accepted, all labelled loaded host not representative; forged runs rejected; committing
+2026-11-05T07:40:01Z	controller	task 7 reported (restart succeeded); reviewer dispatched
+2026-11-05T07:42:29Z	controller	task 7 review APPROVED; task 8 dispatched (trust profile)
+2026-11-05T07:44:20Z	implementer	task 8 started: read brief, plan constraints (cross-lane ruling: exclusion is a recorded limit), GV-008, design.md trust section, Tasks 1-7 evidence Result and Limits, the two trust-statement shapes; re-read gpu_map/corpus_setup from the pinned driver strings
+2026-11-05T07:46:53Z	implementer	verification/gpu-trust-profile.md written (GT-1 trusted device; managed-heap statement; evidence table over Tasks 1-7; exclusion beside GV-008 text; strengthening list); tasks.md 4.1 checked citing it, 4.2 left unchecked with the recorded-limit note; openspec validate --all --strict 44 passed
+2026-11-05T07:47:08Z	controller	task 8 reported; reviewer dispatched
+2026-11-05T07:50:27Z	controller	task 8 review: wording fixes; fix round 1 dispatched
+2026-11-05T07:50:29Z	implementer	task 8 fix round 1 started: read task-8-review.md (8 findings, text only)
+2026-11-05T07:51:06Z	implementer	task 8 fix round 1: eight review findings applied to gpu-trust-profile.md (timer limit, trusted list additions, proof wording, detection wording, binary_sha256 quote, Build citation, client names, validates wording); openspec strict 44 passed; committing
+2026-11-05T07:51:19Z	controller	task 8 complete; task 9 dispatched
+2026-11-05T07:51:57Z	implementer	task 9 start; merging master into lane/physical-gpu
+2026-11-05T07:52:08Z	implementer	merge clean as dbed241 (no conflicts); starting bend Tests.bend and PROOF.bend on merged tree
+2026-11-05T07:52:33Z	implementer	Tests.bend 1428 PASS + ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK; --verdict refused (lean not found), exit 1
+2026-11-05T07:54:15Z	implementer	carried notes: gpu-paths.txt digest reconciliation (equal counts only, typed comparisons and gpu-parity.txt), gpu-corpus.txt Limits bullet, gpu-pipeline.txt smallest-ratio wording and nine stage-attribution caveats
+2026-11-05T07:55:10Z	implementer	source check: library modules in every path record equal the merged tree; Tests.bend and FacadeTests.bend differ (corpus evidence is the 782 tree's only); writing hosts table
+2026-11-05T07:56:50Z	implementer	wrote verification/gpu-validation-hosts.md (host row, 11 configuration rows, gap list); next: traceability
+2026-11-05T07:58:30Z	implementer	wrote traceability gpu-validation.md, PX-001/PX-008 pointers, VERIFICATION.md dated section, tasks.md boxes (1.1-1.3, 2.1-2.3, 3.2, 4.3 checked; 3.1 unchecked with reason; 4.1/4.2 untouched); running final checks
+2026-11-05T07:59:42Z	implementer	final checks on merged tree: Tests 1428 PASS, PROOF ALL PROOFS CHECK, --verdict refused (lean not found), OpenSpec 44/0, .bend diff = 4 probes; wrote gpu-final-checks.txt and task-9-report.md; committing
+2026-11-05T08:00:16Z	controller	task 9 reported; task review and final review dispatched
+2026-11-05T08:02:19Z	controller	task 9 review APPROVED; waiting on the final review
+2026-11-05T08:10:05Z	controller	final review: three record fixes plus the merged-tree device corpus rerun; final fix round dispatched
+2026-11-05T08:11:11Z	implementer	final fix round start: read final-review.md and task-9-review.md; starting device corpus rerun on merged tree in ../writ-build/physical-gpu/task9/
+2026-11-05T08:11:20Z	implementer	final round: building Tests.bend to C in ../writ-build/physical-gpu/task9
+2026-11-05T08:12:19Z	implementer	final round: building Tests.bend GPU binary (native build plus --gpu-build)
+2026-11-05T08:17:13Z	implementer	final round: binary built; recording hashes and cubin
+2026-11-05T08:17:15Z	implementer	final round: --gpu on capture running
+2026-11-05T08:17:18Z	implementer	final round: observe.sh --gpu on pair running
+2026-11-05T08:17:29Z	implementer	final round: supplementary sanitizer runs (threads 4 on and off)
+2026-11-05T08:17:32Z	implementer	final round: corpus runs done
+2026-11-05T08:18:13Z	implementer	merged-tree corpus: on 1428 / off 1428, 4915 bend_dev launches, gate PASS, cmp on/off and both against tests-native.txt (6faee219) exit 0; appended to gpu-corpus.txt; updating rows
+2026-11-05T08:19:50Z	implementer	final round: text fixes I-1 to I-3, M-1 to M-6, O-1, O-3 applied; Tests 1428 PASS, OpenSpec 44/0; committing
+2026-11-05T08:20:10Z	controller	final fix round reported (merged-tree device corpus); scoped re-review dispatched
+2026-11-05T08:22:04Z	controller	final re-review ready; merging to master
