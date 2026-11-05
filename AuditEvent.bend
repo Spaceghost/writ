@@ -8,8 +8,8 @@ import ./Negotiation.bend as N
 import ./Dlm.bend as D
 import ./DataOS.bend as OS
 
-# Policy-aware AUDIT EVENT MODEL (change add-policy-aware-audit, AU-001 and
-# the model part of AU-005). An audit event is a PROJECTION of exactly one
+# Policy-aware AUDIT EVENT MODEL (change add-policy-aware-audit, AU-001,
+# AU-002 and the model part of AU-005). An audit event is a PROJECTION of exactly one
 # library decision, never a second decision. Each wrapper below calls the
 # library once (the transfer admission check, or the DataOS capability commit
 # facade), binds that result, returns it unchanged and projects the event from
@@ -75,21 +75,42 @@ import ./DataOS.bend as OS
 # objects, payment witnesses and receipts, request bodies, the plan's output
 # type.
 #
-# Confidentiality of the allowed fields is the event policy's job (Task 3),
-# not the type's. Task 3 obligations recorded here:
-# 1. Every admission event's policy includes the requesting subject's
-#    influence (a control edge with the requester's label or clearance), or
-#    the event fails closed: even a vouched scope and the denial reason are
-#    shaped by what the requester chose to ask.
+# Confidentiality of the allowed fields is the event policy's job, not the
+# type's (section "Event policy" below; AU-002). Each wrapper returns a
+# `Recorded{event, policy}` whose policy is derived, when the event is built,
+# from monitor-owned state only, never from the decision, the commit result
+# or a request field:
+# - the plan's sources and destination, looked up in the monitor's label
+#   table, as data edges and again as control edges (the outcome and the
+#   reason depend on their policies);
+# - the objects of the authoritative context's source and destination
+#   policies, as control edges;
+# - the requester's own label, a control edge (obligation 1 below);
+# - on commit, the resolved binding's joined source and destination labels,
+#   a control edge owned by the destination's owner (obligation 2 below);
+# - the union of the context's source and origin secrecy and untrusted sets.
+# Each owner's restriction stays its own list element; nothing is merged,
+# cleared, lowered or met. A missing or duplicate label entry, a subject that
+# cannot name a DLM principal, and a commit with no unique binding each give
+# the maximal-restriction influence (owner Top, `D.maximal_restriction()`),
+# so the event fails closed. Release (`releasable`) needs every influence to
+# flow to the sink label and both bit sets within the sink's clearance and
+# tolerance. The two obligations Task 1's review placed here are met so:
+# 1. Every admission event's policy includes the requesting subject's own
+#    label (`requester_influence`), so a denial is visible only to a sink
+#    that may learn that the requester asked; even a vouched scope and the
+#    denial reason are shaped by what the requester chose to ask.
 # 2. Every commit event's policy includes the resolved `Backplane.Binding`'s
-#    source and destination labels and is never released below the output's
-#    label, because `artifact` is a digest of the sealed content.
+#    `D.join(source_label, destination_label)`, the label of the
+#    WriteIntent, and the context's secrecy, which equals the output policy's,
+#    so it is never released below the output's label although `artifact`
+#    is a digest of the sealed content.
 #
 # Trusted inputs (supplied by the monitor, never by the caller):
 # - `event_id`, a fresh identifier (Bend generates none); query views and
 #   exports omit it, it exists for durable idempotency (section 2).
-# - `labels`, the monitor-owned object label table (consumed from Task 3 on;
-#   unused by these projections).
+# - `labels`, the monitor-owned object label table, read only by the policy
+#   derivation (never by the event projections).
 # - The transfer context and the DataOS context, exactly as the library's own
 #   entry points require them.
 # - The caller's subject as already authenticated by the frontend.
@@ -183,13 +204,19 @@ import ./DataOS.bend as OS
 # would restate the definitions.
 #
 # Public entry points: `audited_admit` and `audited_commit`, plus the record
-# accessors and `EventRecord.equal`; for the encoding, `encode`, `decode`,
+# accessors and `EventRecord.equal`; for the policy, `releasable` and
+# `event_owners`; for the encoding, `encode`, `decode`,
 # `field_allowlist`, `field_allowed`, the named constants (format version,
 # kind, phase, outcome and field tags, `max_sources`, `word_limit`,
 # `max_words`), `FormatError.equal`, `DecodeResult.equal` and
 # `DecodeResult.event`. Every other def (`outcome_of_decision`,
 # `outcome_of_commit`, `denial_reads_scope`, `admission_scope`,
 # `admission_event`, `commit_event`, `project`, the tag and equality helpers,
+# the policy derivation helpers (`object_influence`, `label_lookup`,
+# `source_influences`, `destination_influence`, `decision_influences`,
+# `context_influences`, `requester_influence`, `binding_influence`,
+# `context_secrecy`, `context_untrusted`, `admission_policy`,
+# `commit_policy`, `influences_flow`, `Influences.cons`, `Influences.append`)
 # and the encoding and decoding helpers) is an exported implementation
 # helper; calling one performs none of the library's checks, records no
 # decision, and (for the codec helpers) skips the decoder's other checks.
@@ -209,9 +236,20 @@ import ./DataOS.bend as OS
 #   `audit_commit_returns_library_result`: the wrappers return exactly what
 #   the library returned, so a denied transfer stays denied with its reason,
 #   and a rejected commit keeps the caller's session and ledger.
+# - `audit_failed_influence_withholds`: if one influence's label does not
+#   flow to the sink label, `influences_flow` over any list holding it, at
+#   any position, is False. One owner's unmet restriction withholds the
+#   event; the other owners' approvals cannot outweigh it. It does not claim
+#   that `releasable` is the only route to a sink (Tasks 4 and 5 test that).
+# - `audit_outcome_never_lowers_policy`: the policy `audited_admit` records
+#   is `admission_policy(plan, context, labels, subject)` for every caller
+#   token, diagnostic and event id, hence for every decision. A denial
+#   reason is labelled exactly as the facts it may reveal, never lower. It
+#   does not claim the influence list is complete; AuditTests' event_policy
+#   section shows the derivation.
 # None of them claims durability, append success, or that a host calls the
-# wrapper at all; those are section 2 and host obligations. The scope rule is
-# tested (AuditTests), not proved.
+# wrapper at all; those are section 2 and host obligations. The scope rule
+# and the influence derivation are tested (AuditTests), not proved.
 
 # --- Records -----------------------------------------------------------------
 # Naming: the design's `Event` and `Kind` are `EventRecord` and `EventKind`
@@ -255,7 +293,9 @@ type Diagnostic is Data:
     credential: List<&2, U32>, token: T.CodeId}
 
 # Monitor-owned object labels (owner and DLM label per exact object version).
-# Consumed by the event policy derivation (Task 3); never caller input.
+# Consumed by the event policy derivation; never caller input. The table is
+# expected to hold exactly one entry per object version: an object with no
+# entry, or with two (even identical ones), is ambiguous and fails closed.
 type ObjectLabel is Data:
   ObjectLabel{object: T.ObjectVersion, owner: D.Principal, label: D.Label}
 
@@ -263,13 +303,62 @@ type Labels is Data:
   NoLabels{}
   Labelled{head: ObjectLabel, rest: Labels}
 
-# The library's decision, unchanged, next to its projected event.
-type AuditedAdmission is Data:
-  AuditedAdmission{decision: T.Decision, event: EventRecord}
+# --- Event policy records (AU-002) --------------------------------------------
 
-# The facade's commit result, unchanged, next to its projected event.
+# Why an influence is on the event. `DataEdge`: the event's fields describe
+# facts of that object (its identity, version, the sealed artifact).
+# `ControlEdge`: the outcome or the denial reason depends on that policy, or
+# on the requester's choice to ask. Both edges restrict the event the same
+# way; the edge is kept so a later per-reason rule can be reviewed against
+# it. (The design's `Data | Control` are renamed: `Data` is a keyword.)
+type Edge is Data:
+  DataEdge{}
+  ControlEdge{}
+
+# One owner's restriction on the event. An influence is never merged into
+# another owner's: every owner keeps its own list element.
+type Influence is Data:
+  Influence{owner: D.Principal, label: D.Label, edge: Edge}
+
+type Influences is Data:
+  NoInfluences{}
+  Influenced{head: Influence, rest: Influences}
+
+# The event's policy: every influence, plus the union of the authoritative
+# source secrecy and untrusted-influence sets. Release needs every part.
+type EventPolicy is Data:
+  EventPolicy{influences: Influences, secrecy: T.Bits64, untrusted: T.Bits64}
+
+# A stored event and the policy derived for it in the same wrapper call.
+type Recorded is Data:
+  Recorded{event: EventRecord, policy: EventPolicy}
+
+# A monitor-registered response sink: its DLM label, the secrecy it is
+# cleared for and the untrusted influence it tolerates. Monitor state, never
+# caller input; a caller names a sink only by id (Task 4).
+type Sink is Data:
+  Sink{id: Nat, label: D.Label, clearance: T.Bits64, tolerated: T.Bits64}
+
+# The owners whose streams an event belongs to, in first-appearance order.
+type Owners is Data:
+  NoOwners{}
+  Owned{head: D.Principal, rest: Owners}
+
+# The result of looking an object version up in the label table.
+type LabelLookup is Data:
+  LabelMissing{}
+  LabelFound{entry: ObjectLabel}
+  LabelAmbiguous{}
+
+# The library's decision, unchanged, next to its projected event and the
+# record (event and policy) the monitor would store.
+type AuditedAdmission is Data:
+  AuditedAdmission{decision: T.Decision, event: EventRecord, recorded: Recorded}
+
+# The facade's commit result, unchanged, next to its projected event and the
+# record (event and policy) the monitor would store.
 type AuditedCommit is Data:
-  AuditedCommit{result: B.CommitResult, event: EventRecord}
+  AuditedCommit{result: B.CommitResult, event: EventRecord, recorded: Recorded}
 
 # --- Named constants and tags ------------------------------------------------
 
@@ -499,52 +588,427 @@ def commit_event(session: N.Session, ref: F.Ref, +result: B.CommitResult,
   project(OS.subject(ref), scope_of_plan(N.Session.plan(session)),
     outcome_of_commit(result), artifact_of_commit(result), event_id)
 
+# --- Event policy (AU-002) ---------------------------------------------------
+# Every influence below is read from monitor-owned state when the wrapper
+# builds the event: the label table, the authoritative transfer context, the
+# resolved backplane binding, and the frontend-authenticated subject. None is
+# read from the decision or the commit result, so a denial cannot lower an
+# event's policy below the acceptance's, and none comes from a request field.
+# Nothing here clears, lowers, meets or drops an influence, and no helper
+# takes a caller's Influences in order to add, remove or replace an element:
+# `Influences.cons` and `Influences.append` only assemble the derived lists.
+
+# Policy record accessors (public entry points).
+
+def Recorded.event(r: Recorded) -> EventRecord:
+  match r:
+    case Recorded{event, _}:
+      event
+
+def Recorded.policy(r: Recorded) -> EventPolicy:
+  match r:
+    case Recorded{_, policy}:
+      policy
+
+def EventPolicy.influences(p: EventPolicy) -> Influences:
+  match p:
+    case EventPolicy{influences, _, _}:
+      influences
+
+def EventPolicy.secrecy(p: EventPolicy) -> T.Bits64:
+  match p:
+    case EventPolicy{_, secrecy, _}:
+      secrecy
+
+def EventPolicy.untrusted(p: EventPolicy) -> T.Bits64:
+  match p:
+    case EventPolicy{_, _, untrusted}:
+      untrusted
+
+def Influence.owner(i: Influence) -> D.Principal:
+  match i:
+    case Influence{owner, _, _}:
+      owner
+
+def Influence.label(i: Influence) -> D.Label:
+  match i:
+    case Influence{_, label, _}:
+      label
+
+def Influence.edge(i: Influence) -> Edge:
+  match i:
+    case Influence{_, _, edge}:
+      edge
+
+# List assembly for derived influence lists (never applied to a caller's list).
+def Influences.cons(i: Influence, xs: Influences) -> Influences:
+  Influenced{i, xs}
+
+def Influences.append(a: Influences, b: Influences) -> Influences:
+  match a:
+    case NoInfluences{}:
+      b
+    case Influenced{h, t}:
+      Influenced{h, Influences.append(t, b)}
+
+# The fail-closed influence: owned by Top and labelled with the DLM's maximal
+# restriction, so an event carrying it reaches no sink whose label is below
+# Top's (in particular no reader sink in the fixtures).
+def maximal_influence(edge: Edge) -> Influence:
+  Influence{D.Top{}, D.maximal_restriction(), edge}
+
+def ObjectLabel.object(l: ObjectLabel) -> T.ObjectVersion:
+  match l:
+    case ObjectLabel{object, _, _}:
+      object
+
+# A matching entry is found only if no later entry also matches; a second
+# match, identical or not, makes the lookup ambiguous.
+def lookup_step(hit: Bool, entry: ObjectLabel, rest: LabelLookup) -> LabelLookup:
+  match hit:
+    case False{}:
+      rest
+    case True{}:
+      match rest:
+        case LabelMissing{}:
+          LabelFound{entry}
+        case LabelFound{other}:
+          LabelAmbiguous{}
+        case LabelAmbiguous{}:
+          LabelAmbiguous{}
+
+# The whole table is walked, so a duplicate anywhere is seen.
+def label_lookup(labels: Labels, +object: T.ObjectVersion) -> LabelLookup:
+  match labels:
+    case NoLabels{}:
+      LabelMissing{}
+    case Labelled{+head, rest}:
+      lookup_step(T.ObjectVersion.equal(ObjectLabel.object(head), object), head,
+        label_lookup(rest, object))
+
+# The entry's owner and label on the given edge; a missing or ambiguous entry
+# fails closed to the maximal-restriction influence.
+def influence_of(found: LabelLookup, edge: Edge) -> Influence:
+  match found:
+    case LabelFound{entry}:
+      match entry:
+        case ObjectLabel{_, owner, label}:
+          Influence{owner, label, edge}
+    case LabelMissing{}:
+      maximal_influence(edge)
+    case LabelAmbiguous{}:
+      maximal_influence(edge)
+
+# The table's influence for one exact object version, on `edge`.
+def object_influence(labels: Labels, +object: T.ObjectVersion, edge: Edge) -> Influence:
+  influence_of(label_lookup(labels, object), edge)
+
+# One influence per manifest entry, in manifest order (repeats kept).
+def objects_influences(+labels: Labels, objects: T.Objects, +edge: Edge) -> Influences:
+  match objects:
+    case T.OEnd{}:
+      NoInfluences{}
+    case T.OCons{h, t}:
+      Influenced{object_influence(labels, h, edge), objects_influences(labels, t, edge)}
+
+# The sources as data edges, in manifest order.
+def source_influences(labels: Labels, objects: T.Objects) -> Influences:
+  objects_influences(labels, objects, DataEdge{})
+
+# The destination as a data edge.
+def destination_influence(labels: Labels, object: T.ObjectVersion) -> Influence:
+  object_influence(labels, object, DataEdge{})
+
+# The plan's sources and destination as data edges, and the same objects
+# again as control edges: the outcome and any denial reason depend on their
+# policies (the "Reasons" ruling), so the control copies keep that
+# dependence explicit even where a later rule refines the data edges.
+def decision_influences(+labels: Labels, +plan: T.Plan) -> Influences:
+  +objects = T.Plan.sources(plan)
+  +destination = T.Plan.destination(plan)
+  Influences.append(source_influences(labels, objects),
+    Influences.cons(destination_influence(labels, destination),
+      Influences.append(objects_influences(labels, objects, ControlEdge{}),
+        Influences.cons(object_influence(labels, destination, ControlEdge{}), NoInfluences{}))))
+
+# The objects of the authoritative context's source and destination
+# policies, as control edges. Admission compares these policies with the
+# plan, so a denial (Source, Stale, Schema, ...) can depend on them even when
+# they name objects other than the plan's.
+def policies_influences(+labels: Labels, sources: T.Sources) -> Influences:
+  match sources:
+    case T.SEnd{}:
+      NoInfluences{}
+    case T.SCons{T.SourcePolicy{o, _, _, _, _, _, _, _}, t}:
+      Influenced{object_influence(labels, o, ControlEdge{}), policies_influences(labels, t)}
+
+def destination_policy_object(d: T.DestinationPolicy) -> T.ObjectVersion:
+  match d:
+    case T.DestinationPolicy{o, _, _, _, _, _, _}:
+      o
+
+def context_influences(+labels: Labels, +context: T.Context) -> Influences:
+  Influences.append(policies_influences(labels, T.Context.sources(context)),
+    Influences.cons(object_influence(labels,
+      destination_policy_object(T.Context.destination(context)), ControlEdge{}), NoInfluences{}))
+
+# The requester's own label: owned by and readable by the requesting
+# principal only (untrusted integrity, the most restrictive). This is the
+# Task 1 obligation: whether a request was made, and what it named, is the
+# requester's information, so an event is visible only to a sink that may
+# learn it. A subject that does not fit one word cannot name a DLM principal
+# without aliasing, so it fails closed; an unregistered subject's label is
+# refused by `D.flows` at release.
+def requester_label(+p: D.Principal) -> D.Label:
+  D.Label{D.Rule{p, p}, D.Rule{D.Bottom{}, D.Bottom{}}}
+
+def requester_checked(ok: Bool, subject: Nat) -> Influence:
+  match ok:
+    case True{}:
+      +p = {D.Named{U32.from_nat(subject)} : D.Principal}
+      Influence{p, requester_label(p), ControlEdge{}}
+    case False{}:
+      maximal_influence(ControlEdge{})
+
+# DLM principal ids are U32 words: a subject fits exactly when converting it
+# to a word and back returns it, so a subject at or above 2^32 (which would
+# wrap onto another principal's id) is refused.
+def principal_id_fits(+subject: Nat) -> Bool:
+  Nat.is_eq(U32.to_nat(U32.from_nat(subject)), subject)
+
+def requester_influence(+subject: Nat) -> Influence:
+  requester_checked(principal_id_fits(subject), subject)
+
+# The resolved binding's combined label (the label the WriteIntent carries),
+# as a control edge owned by the destination's owner. The sealed artifact id
+# is a digest of output the binding's labels cover (Task 1 obligation 2).
+def binding_influence(binding: B.Binding, owner: D.Principal) -> Influence:
+  match binding:
+    case B.Binding{_, _, _, source_label, destination_label, _, _}:
+      Influence{owner, D.join(source_label, destination_label), ControlEdge{}}
+
+# The binding the backplane resolves for the session's request; no unique
+# binding fails closed to the maximal-restriction control influence.
+def binding_part(found: Maybe<&2, B.Binding>, owner: D.Principal) -> Influence:
+  match found:
+    case None{}:
+      maximal_influence(ControlEdge{})
+    case Some{binding}:
+      binding_influence(binding, owner)
+
+# The table's owner of the destination; Top when missing or ambiguous.
+def owner_of(found: LabelLookup) -> D.Principal:
+  match found:
+    case LabelFound{entry}:
+      match entry:
+        case ObjectLabel{_, owner, _}:
+          owner
+    case LabelMissing{}:
+      D.Top{}
+    case LabelAmbiguous{}:
+      D.Top{}
+
+def origins_secrecy(xs: T.Origins) -> T.Bits64:
+  match xs:
+    case T.REnd{}:
+      T.Bits64.zero()
+    case T.RCons{T.OriginRule{_, s, _, _, _, _}, t}:
+      T.Bits64.join(s, origins_secrecy(t))
+
+def origins_untrusted(xs: T.Origins) -> T.Bits64:
+  match xs:
+    case T.REnd{}:
+      T.Bits64.zero()
+    case T.RCons{T.OriginRule{_, _, u, _, _, _}, t}:
+      T.Bits64.join(u, origins_untrusted(t))
+
+# The union of every source policy's secrecy and of every origin rule it
+# retains (an ill-formed origin outside its source's set still counts).
+def sources_secrecy(xs: T.Sources) -> T.Bits64:
+  match xs:
+    case T.SEnd{}:
+      T.Bits64.zero()
+    case T.SCons{T.SourcePolicy{_, _, _, _, s, _, _, origins}, t}:
+      T.Bits64.join(s, T.Bits64.join(origins_secrecy(origins), sources_secrecy(t)))
+
+def sources_untrusted(xs: T.Sources) -> T.Bits64:
+  match xs:
+    case T.SEnd{}:
+      T.Bits64.zero()
+    case T.SCons{T.SourcePolicy{_, _, _, _, _, u, _, origins}, t}:
+      T.Bits64.join(u, T.Bits64.join(origins_untrusted(origins), sources_untrusted(t)))
+
+def context_secrecy(context: T.Context) -> T.Bits64:
+  sources_secrecy(T.Context.sources(context))
+
+def context_untrusted(context: T.Context) -> T.Bits64:
+  sources_untrusted(T.Context.sources(context))
+
+# The policy of an admission event for this plan, context, label table and
+# authenticated subject. It takes no decision: every outcome of the same
+# request gets this same policy, so a denial reason is labelled with every
+# fact it may reveal.
+def admission_policy(+plan: T.Plan, +context: T.Context, +labels: Labels,
+    subject: Nat) -> EventPolicy:
+  EventPolicy{Influences.append(decision_influences(labels, plan),
+    Influences.append(context_influences(labels, context),
+      Influences.cons(requester_influence(subject), NoInfluences{}))),
+    context_secrecy(context), context_untrusted(context)}
+
+# The policy of a commit event: the negotiated plan's facts, the transfer
+# context inside the facade context, the binding the backplane resolves for
+# the session's request, and the Ref's authenticated subject. It takes no
+# commit result.
+def commit_policy(+session: N.Session, context: OS.Context, +labels: Labels,
+    subject: Nat) -> EventPolicy:
+  match context:
+    case OS.Context{backplane, _, _}:
+      match backplane:
+        case B.Context{+negotiation, _, _, bindings}:
+          +transfer = N.Context.transfer(negotiation)
+          +plan = N.Session.plan(session)
+          +owner = owner_of(label_lookup(labels, T.Plan.destination(plan)))
+          EventPolicy{Influences.append(decision_influences(labels, plan),
+            Influences.append(context_influences(labels, transfer),
+              Influences.cons(binding_part(B.binding_find(bindings, N.Session.request(session)), owner),
+                Influences.cons(requester_influence(subject), NoInfluences{})))),
+            context_secrecy(transfer), context_untrusted(transfer)}
+
+# Every influence must flow to the sink label (`&&` over all elements): one
+# owner's unmet restriction, at any position, withholds the event (law
+# `audit_failed_influence_withholds`).
+def influences_flow(+snapshot: D.Snapshot, +epoch: Nat, influences: Influences,
+    +sink_label: D.Label) -> Bool:
+  match influences:
+    case NoInfluences{}:
+      True{}
+    case Influenced{head, rest}:
+      D.flows(snapshot, epoch, Influence.label(head), sink_label) &&
+        influences_flow(snapshot, epoch, rest, sink_label)
+
+# Public entry point. An event may be described to a sink only when every
+# influence flows to the sink's label under the current snapshot and epoch,
+# its secrecy is within the sink's clearance and its untrusted influence
+# within the sink's tolerance. True is a release-policy check, not a grant:
+# Task 4's queries also require a current read grant.
+def releasable(+snapshot: D.Snapshot, +epoch: Nat, policy: EventPolicy, sink: Sink) -> Bool:
+  match policy sink:
+    case EventPolicy{xs, secrecy, untrusted} Sink{_, label, clearance, tolerated}:
+      influences_flow(snapshot, epoch, xs, label) &&
+        T.Bits64.subset(secrecy, clearance) && T.Bits64.subset(untrusted, tolerated)
+
+def principal_equal(a: D.Principal, b: D.Principal) -> Bool:
+  match a b:
+    case D.Bottom{} D.Bottom{}:
+      True{}
+    case D.Top{} D.Top{}:
+      True{}
+    case D.Named{x} D.Named{y}:
+      U32.is_eq(x, y)
+    case D.Unsupported{} D.Unsupported{}:
+      True{}
+    case _ _:
+      False{}
+
+def owners_contain(owners: Owners, +p: D.Principal) -> Bool:
+  match owners:
+    case NoOwners{}:
+      False{}
+    case Owned{h, t}:
+      principal_equal(h, p) || owners_contain(t, p)
+
+def owners_snoc(owners: Owners, p: D.Principal) -> Owners:
+  match owners:
+    case NoOwners{}:
+      Owned{p, NoOwners{}}
+    case Owned{h, t}:
+      Owned{h, owners_snoc(t, p)}
+
+def owners_add(present: Bool, owners: Owners, p: D.Principal) -> Owners:
+  match present:
+    case True{}:
+      owners
+    case False{}:
+      owners_snoc(owners, p)
+
+def collect_owners(xs: Influences, +acc: Owners) -> Owners:
+  match xs:
+    case NoInfluences{}:
+      acc
+    case Influenced{h, t}:
+      +p = Influence.owner(h)
+      collect_owners(t, owners_add(owners_contain(acc, p), acc, p))
+
+# Public entry point. Every distinct owner among the influences, in first
+# appearance order: the event belongs to each of these owners' streams.
+def event_owners(influences: Influences) -> Owners:
+  collect_owners(influences, NoOwners{})
+
 # --- Public entry points -----------------------------------------------------
 
 # Public entry point. Calls the transfer admission check exactly once and
-# returns its Decision unchanged beside the projected event. `labels` and
-# `diagnostic` are accepted and not read here (labels feed Task 3's policy).
-# Failure behaviour is the library's: a denial is returned as the same
-# Denied{reason}; recording it is not a second decision.
-def audited_admit(+plan: T.Plan, context: T.Context, labels: Labels,
-    caller: F.Caller, diagnostic: Diagnostic, event_id: Nat) -> AuditedAdmission:
+# returns its Decision unchanged beside the projected event and its record.
+# The record's policy is `admission_policy` of the plan, the context, the
+# monitor's label table and the authenticated subject: it is computed without
+# the decision, so it is the same whatever the outcome (the law
+# `audit_outcome_never_lowers_policy`). `diagnostic` and the caller's token
+# are never read. Failure behaviour is the library's: a denial is returned as
+# the same Denied{reason}; recording it is not a second decision.
+def audited_admit(+plan: T.Plan, +context: T.Context, labels: Labels,
+    +caller: F.Caller, diagnostic: Diagnostic, event_id: Nat) -> AuditedAdmission:
   +decision = T.admit(plan, context)
-  AuditedAdmission{decision, admission_event(plan, decision, caller, event_id)}
+  +event = admission_event(plan, decision, caller, event_id)
+  AuditedAdmission{decision, event,
+    Recorded{event, admission_policy(plan, context, labels, caller_subject(caller))}}
 
 # Public entry point. Calls the DataOS capability commit facade exactly once,
 # with exactly the facade's arguments, and returns its CommitResult unchanged
 # beside the projected event. A rejection therefore keeps the caller's
 # session and ledger (no reservation is consumed by recording), and the only
-# release route is the facade's own.
+# release route is the facade's own. The record's policy is `commit_policy`
+# of the session, the facade context, the label table and the Ref's
+# authenticated subject; it never reads the result.
 def audited_commit(+session: N.Session, expected_session: Nat,
     expected_ledger: Nat, ledger: L.State, candidate: C.Candidate, +ref: F.Ref,
-    expected_frontend: Nat, context: OS.Context, labels: Labels,
+    expected_frontend: Nat, +context: OS.Context, labels: Labels,
     diagnostic: Diagnostic, event_id: Nat) -> AuditedCommit:
   +result = OS.commit_from_capability(session, expected_session, expected_ledger,
     ledger, candidate, ref, expected_frontend, context)
-  AuditedCommit{result, commit_event(session, ref, result, event_id)}
+  +event = commit_event(session, ref, result, event_id)
+  AuditedCommit{result, event,
+    Recorded{event, commit_policy(session, context, labels, OS.subject(ref))}}
 
 # --- Accessors (public entry points) ------------------------------------------
 
 def AuditedAdmission.decision(a: AuditedAdmission) -> T.Decision:
   match a:
-    case AuditedAdmission{decision, _}:
+    case AuditedAdmission{decision, _, _}:
       decision
 
 def AuditedAdmission.event(a: AuditedAdmission) -> EventRecord:
   match a:
-    case AuditedAdmission{_, event}:
+    case AuditedAdmission{_, event, _}:
       event
+
+def AuditedAdmission.recorded(a: AuditedAdmission) -> Recorded:
+  match a:
+    case AuditedAdmission{_, _, recorded}:
+      recorded
 
 def AuditedCommit.result(a: AuditedCommit) -> B.CommitResult:
   match a:
-    case AuditedCommit{result, _}:
+    case AuditedCommit{result, _, _}:
       result
 
 def AuditedCommit.event(a: AuditedCommit) -> EventRecord:
   match a:
-    case AuditedCommit{_, event}:
+    case AuditedCommit{_, event, _}:
       event
+
+def AuditedCommit.recorded(a: AuditedCommit) -> Recorded:
+  match a:
+    case AuditedCommit{_, _, recorded}:
+      recorded
 
 def EventRecord.version(e: EventRecord) -> Nat:
   match e:

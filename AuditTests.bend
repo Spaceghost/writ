@@ -10,6 +10,7 @@ import ./Frontend.bend as F
 import ./DataOS.bend as OS
 import ./FacadeTests.bend as FT
 import ./AuditEvent.bend as AE
+import ./Dlm.bend as D
 import ./Test.bend as Test
 
 # Tests for the policy-aware audit model (change add-policy-aware-audit).
@@ -30,6 +31,11 @@ import ./Test.bend as Test
 #   with a distinct value in every field (so a field moved or dropped shows).
 #   The malformed word lists are built test-side from the documented layout,
 #   never from the encoder, so the layout itself is pinned.
+# - event_policy (Task 3): AU-002 event policies include observed
+#   influences. Every policy checked comes from the record a wrapper returned
+#   (or, to pin a helper, from that helper over the same fixtures). Alice,
+#   Bob and Mallory each have a distinct label, so a derivation or join that
+#   drops one owner shows; the label tables and sinks are SYNTHETIC.
 
 # --- Sentinels and synthetic inputs ------------------------------------------
 
@@ -1538,8 +1544,557 @@ def event_format() -> IO(Unit):
     format_check_order()
     format_isolated()
 
+# --- event_policy (Task 3): AU-002 event policies include observed influences --
+# Every label table, sink and principal below is SYNTHETIC MONITOR STATE.
+# Principals come from D.fixture(3n): Alice Named{0}, Bob Named{1}, and
+# Mallory Named{2}, the outsider. Each owner's label is distinct, so a join
+# or a derivation that drops one owner shows.
+
+def alice() -> D.Principal:
+  D.Named{0}
+
+def bob() -> D.Principal:
+  D.Named{1}
+
+def mallory() -> D.Principal:
+  D.Named{2}
+
+# An owner's label: owned by and readable by that principal only.
+def owner_label(+p: D.Principal) -> D.Label:
+  D.Label{D.Rule{p, p}, D.Rule{D.Bottom{}, D.Bottom{}}}
+
+def two_owner_label(+a: D.Principal, +b: D.Principal) -> D.Label:
+  D.join(owner_label(a), owner_label(b))
+
+def snapshot() -> D.Snapshot:
+  D.fixture(3n)
+
+def policy_epoch() -> Nat:
+  3n
+
+# The source secrecy and untrusted sets of the fixtures below.
+def source_secrecy() -> T.Bits64:
+  T.Bits64{1, 0}
+
+def source_untrusted() -> T.Bits64:
+  T.Bits64{2, 0}
+
+def sink_with(id: Nat, label: D.Label) -> AE.Sink:
+  AE.Sink{id, label, source_secrecy(), source_untrusted()}
+
+# Sink 1 is cleared for Alice only, sink 2 for Bob only, sink 3 for both,
+# sink 4 for Alice, Bob and Mallory, sink 7 for Mallory only. Sinks 5 and 6
+# satisfy both owners' labels but lack the secrecy bit (5) or the untrusted
+# tolerance (6).
+def sink_alice() -> AE.Sink:
+  sink_with(1n, owner_label(alice()))
+
+def sink_bob() -> AE.Sink:
+  sink_with(2n, owner_label(bob()))
+
+def sink_both() -> AE.Sink:
+  sink_with(3n, two_owner_label(alice(), bob()))
+
+def sink_all() -> AE.Sink:
+  sink_with(4n, D.join(two_owner_label(alice(), bob()), owner_label(mallory())))
+
+def sink_uncleared() -> AE.Sink:
+  AE.Sink{5n, two_owner_label(alice(), bob()), T.Bits64.zero(), source_untrusted()}
+
+def sink_intolerant() -> AE.Sink:
+  AE.Sink{6n, two_owner_label(alice(), bob()), source_secrecy(), T.Bits64.zero()}
+
+def sink_mallory() -> AE.Sink:
+  sink_with(7n, owner_label(mallory()))
+
+def fixture_sinks() -> List<&2, AE.Sink>:
+  [sink_alice(), sink_bob(), sink_both(), sink_all(), sink_uncleared(),
+    sink_intolerant(), sink_mallory()]
+
+def releasable(policy: AE.EventPolicy, sink: AE.Sink) -> Bool:
+  AE.releasable(snapshot(), policy_epoch(), policy, sink)
+
+def releasable_to_none(+policy: AE.EventPolicy, sinks: List<&2, AE.Sink>) -> Bool:
+  match sinks:
+    case []:
+      True{}
+    case s <> rest:
+      Bool.not(releasable(policy, s)) && releasable_to_none(policy, rest)
+
+# --- event_policy: test-side equality ------------------------------------------
+
+def principal_eq(a: D.Principal, b: D.Principal) -> Bool:
+  match a b:
+    case D.Bottom{} D.Bottom{}:
+      True{}
+    case D.Top{} D.Top{}:
+      True{}
+    case D.Named{x} D.Named{y}:
+      U32.is_eq(x, y)
+    case D.Unsupported{} D.Unsupported{}:
+      True{}
+    case _ _:
+      False{}
+
+def dlm_policy_eq(a: D.Policy, b: D.Policy) -> Bool:
+  match a b:
+    case D.Rule{ao, ad} D.Rule{bo, bd}:
+      principal_eq(ao, bo) && principal_eq(ad, bd)
+    case D.Join{al, ar} D.Join{bl, br}:
+      dlm_policy_eq(al, bl) && dlm_policy_eq(ar, br)
+    case D.Meet{al, ar} D.Meet{bl, br}:
+      dlm_policy_eq(al, bl) && dlm_policy_eq(ar, br)
+    case _ _:
+      False{}
+
+def label_eq(a: D.Label, b: D.Label) -> Bool:
+  match a b:
+    case D.Label{ac, ai} D.Label{bc, bi}:
+      dlm_policy_eq(ac, bc) && dlm_policy_eq(ai, bi)
+
+def edge_eq(a: AE.Edge, b: AE.Edge) -> Bool:
+  match a b:
+    case AE.DataEdge{} AE.DataEdge{}:
+      True{}
+    case AE.ControlEdge{} AE.ControlEdge{}:
+      True{}
+    case _ _:
+      False{}
+
+def influence_eq(a: AE.Influence, b: AE.Influence) -> Bool:
+  match a b:
+    case AE.Influence{ao, al, ae} AE.Influence{bo, bl, be}:
+      principal_eq(ao, bo) && label_eq(al, bl) && edge_eq(ae, be)
+
+def influences_eq(a: AE.Influences, b: AE.Influences) -> Bool:
+  match a b:
+    case AE.NoInfluences{} AE.NoInfluences{}:
+      True{}
+    case AE.Influenced{ah, at} AE.Influenced{bh, bt}:
+      influence_eq(ah, bh) && influences_eq(at, bt)
+    case _ _:
+      False{}
+
+# The test-side EventPolicy.equal: influences in order, secrecy, untrusted.
+def event_policy_equal(a: AE.EventPolicy, b: AE.EventPolicy) -> Bool:
+  match a b:
+    case AE.EventPolicy{ax, as, au} AE.EventPolicy{bx, bs, bu}:
+      influences_eq(ax, bx) && T.Bits64.equal(as, bs) && T.Bits64.equal(au, bu)
+
+def has_influence(xs: AE.Influences, +wanted: AE.Influence) -> Bool:
+  match xs:
+    case AE.NoInfluences{}:
+      False{}
+    case AE.Influenced{h, t}:
+      influence_eq(h, wanted) || has_influence(t, wanted)
+
+def owners_eq(a: AE.Owners, b: AE.Owners) -> Bool:
+  match a b:
+    case AE.NoOwners{} AE.NoOwners{}:
+      True{}
+    case AE.Owned{ah, at} AE.Owned{bh, bt}:
+      principal_eq(ah, bh) && owners_eq(at, bt)
+    case _ _:
+      False{}
+
+def data_of(+p: D.Principal) -> AE.Influence:
+  AE.Influence{p, owner_label(p), AE.DataEdge{}}
+
+def control_of(+p: D.Principal) -> AE.Influence:
+  AE.Influence{p, owner_label(p), AE.ControlEdge{}}
+
+def maximal_data() -> AE.Influence:
+  AE.Influence{D.Top{}, D.maximal_restriction(), AE.DataEdge{}}
+
+def maximal_control() -> AE.Influence:
+  AE.Influence{D.Top{}, D.maximal_restriction(), AE.ControlEdge{}}
+
+# --- event_policy: "Denial reveals a protected source fact" -------------------
+
+# Bob's source object 11 and Alice's destination object 20 (TF's destination).
+def bob_source() -> T.ObjectVersion:
+  T.ObjectVersion{11n, 4n}
+
+def bob_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, T.OCons{bob_source(), T.OEnd{}}, TF.destination_object(),
+    TF.code(), T.Summarize{}, 2}
+
+# A SYNTHETIC monitor context for bob_plan: one source policy for object 11
+# (schema, approved codes and payment rule as given), TF's destination and
+# operation, read and write grants bound to the plan, and `pays`.
+def bob_context(schema: U32, codes: T.Codes, payment: T.PaymentRule, pays: T.Payments) -> T.Context:
+  +s = TF.scope_for(bob_plan(), T.WriteDomain{6n}, 200n)
+  T.Context{TF.stamp(), 100n,
+    T.SCons{T.SourcePolicy{bob_source(), T.ReadDomain{5n}, schema, 2n, source_secrecy(), source_untrusted(), 7,
+      T.RCons{T.OriginRule{bob_source(), source_secrecy(), source_untrusted(), 7, codes, payment}, T.REnd{}}}, T.SEnd{}},
+    TF.destination(), TF.operation(),
+    T.ReadCons{T.ReadGrant{bob_source(), T.ReadDomain{5n}, s}, T.ReadEnd{}},
+    T.WriteCons{T.WriteGrant{TF.destination_object(), T.WriteDomain{6n}, s}, T.WriteEnd{}}, pays}
+
+def bob_witness() -> T.Payments:
+  T.PayCons{T.PaymentWitness{1n, bob_source(), 99n, TF.code(), T.Summarize{},
+    TF.destination_object(), 42n, 200n}, T.PayEnd{}}
+
+def bob_admitted_context() -> T.Context:
+  bob_context(1, TF.one_code(TF.code()), T.Charge{42n, 4}, bob_witness())
+
+# The origin rule's approved codes leave out the plan's code.
+def bob_origin_context() -> T.Context:
+  bob_context(1, TF.one_code(TF.other_code()), T.Charge{42n, 4}, bob_witness())
+
+def bob_payment_context() -> T.Context:
+  bob_context(1, TF.one_code(TF.code()), T.Charge{42n, 4}, T.PayEnd{})
+
+def bob_schema_context() -> T.Context:
+  bob_context(3, TF.one_code(TF.code()), T.Charge{42n, 4}, bob_witness())
+
+def bob_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{bob_source(), bob(), owner_label(bob())},
+    AE.Labelled{AE.ObjectLabel{TF.destination_object(), alice(), owner_label(alice())}, AE.NoLabels{}}}
+
+def admit_labelled(+plan: T.Plan, context: T.Context, labels: AE.Labels, subject: Nat) -> AE.AuditedAdmission:
+  AE.audited_admit(plan, context, labels, FT.caller(subject), empty_diagnostic(), event_id())
+
+def admission_policy_of(a: AE.AuditedAdmission) -> AE.EventPolicy:
+  AE.Recorded.policy(AE.AuditedAdmission.recorded(a))
+
+# Alice (subject 0) asks for Bob's object 11.
+def bob_audited(context: T.Context) -> AE.AuditedAdmission:
+  admit_labelled(bob_plan(), context, bob_labels(), 0n)
+
+def bob_policy(context: T.Context) -> AE.EventPolicy:
+  admission_policy_of(bob_audited(context))
+
+# The denial is the library's, the event records the reason, its influences
+# hold Bob's label as data and as control, and it reaches the both-owners
+# sink but not Alice's.
+def protected_denial(+context: T.Context, +reason: T.Denial) -> Bool:
+  +audited = bob_audited(context)
+  +xs = AE.EventPolicy.influences(admission_policy_of(audited))
+  TF.denied_as(AE.AuditedAdmission.decision(audited), reason) &&
+    denied_for(AE.EventRecord.outcome(AE.AuditedAdmission.event(audited)), reason) &&
+    has_influence(xs, data_of(bob())) && has_influence(xs, control_of(bob()))
+
+def withheld_from_alice(+context: T.Context) -> Bool:
+  +policy = bob_policy(context)
+  Bool.not(releasable(policy, sink_alice())) && releasable(policy, sink_both())
+
+def denial_reveals() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(protected_denial(bob_origin_context(), T.Origin{}),
+      "AU-002 denial reveals a protected source fact: an Origin denial for Bob's object 11 is recorded DeniedFor Origin with Bob's label as data and as control")
+    Test.check(withheld_from_alice(bob_origin_context()),
+      "AU-002 denial reveals a protected source fact: the Origin denial event is not releasable to Alice-only sink 1 and is releasable to sink 3")
+    Test.check(protected_denial(bob_payment_context(), T.Payment{}) && withheld_from_alice(bob_payment_context()),
+      "AU-002 denial reveals a protected source fact: a Payment denial carries Bob's label, withheld from sink 1, released to sink 3")
+    Test.check(protected_denial(bob_schema_context(), T.Schema{}) && withheld_from_alice(bob_schema_context()),
+      "AU-002 denial reveals a protected source fact: a Schema denial carries Bob's label, withheld from sink 1, released to sink 3")
+    Test.check(Bool.not(releasable(bob_policy(bob_origin_context()), sink_bob())) &&
+      Bool.not(releasable(bob_policy(bob_origin_context()), sink_mallory())),
+      "AU-002 the Origin denial event is withheld from Bob-only sink 2 (Alice's destination and request) and from Mallory's sink 7")
+    Test.check(has_influence(AE.EventPolicy.influences(bob_policy(bob_origin_context())), data_of(alice())) &&
+      has_influence(AE.EventPolicy.influences(bob_policy(bob_origin_context())), control_of(alice())),
+      "AU-002 the destination's owner label is an influence as data and as control")
+    Test.check(AE.EventRecord.equal(AE.Recorded.event(AE.AuditedAdmission.recorded(bob_audited(bob_origin_context()))),
+      AE.AuditedAdmission.event(bob_audited(bob_origin_context()))),
+      "AU-002 the record holds the same event the wrapper returns")
+
+# --- event_policy: the requester's influence (Task 1 obligation 1) -------------
+
+def requester_of(+p: D.Principal) -> AE.Influence:
+  AE.Influence{p, owner_label(p), AE.ControlEdge{}}
+
+def mallory_policy() -> AE.EventPolicy:
+  admission_policy_of(admit_labelled(bob_plan(), bob_origin_context(), bob_labels(), 2n))
+
+def requester_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(has_influence(AE.EventPolicy.influences(bob_policy(bob_origin_context())), requester_of(alice())),
+      "AU-002 an admission event carries the requester's own label (Alice, subject 0) as a control influence")
+    Test.check(has_influence(AE.EventPolicy.influences(mallory_policy()), requester_of(mallory())) &&
+      Bool.not(releasable(mallory_policy(), sink_both())) && releasable(mallory_policy(), sink_all()),
+      "AU-002 Mallory's denied request is withheld from the Alice-and-Bob sink 3, which may not learn that Mallory asked, and released to sink 4")
+    Test.check(has_influence(AE.EventPolicy.influences(admission_policy_of(admit_labelled(bob_plan(), bob_origin_context(), bob_labels(), two_32()))), maximal_control()) &&
+      influence_eq(AE.requester_influence(two_32()), maximal_control()) &&
+      influence_eq(AE.requester_influence(0n), requester_of(alice())),
+      "AU-002 a subject of 2^32 does not wrap onto Alice's id 0: its requester influence is the maximal restriction")
+    Test.check(releasable_to_none(admission_policy_of(admit_labelled(bob_plan(), bob_origin_context(), bob_labels(), 7n)), fixture_sinks()),
+      "AU-002 a requester outside the DLM registry (subject 7) makes the event releasable to no fixture sink")
+
+# --- event_policy: "Multiple owners contribute evidence" ----------------------
+
+# Bob's source 11 and Alice's second source 12, Alice's destination 20.
+def alice_source() -> T.ObjectVersion:
+  T.ObjectVersion{12n, 4n}
+
+def shared_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, T.OCons{bob_source(), T.OCons{alice_source(), T.OEnd{}}},
+    TF.destination_object(), TF.code(), T.Summarize{}, 2}
+
+# A second Alice entry added to bob_labels().
+def shared_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{alice_source(), alice(), owner_label(alice())}, bob_labels()}
+
+# vouched_context gives one source policy per manifest object, so every
+# object the context names is in the table.
+def shared_policy() -> AE.EventPolicy:
+  admission_policy_of(admit_labelled(shared_plan(), vouched_context(shared_plan()), shared_labels(), 0n))
+
+# Bob's label for object 11, Alice's for objects 12 and 20, and Alice as the
+# requester: two owners, first Bob (the first source), then Alice.
+def multiple_owners() -> IO(Unit):
+  +xs = AE.EventPolicy.influences(shared_policy())
+  do IO<Unit>:
+    Test.check(has_influence(xs, data_of(bob())) && has_influence(xs, data_of(alice())) &&
+      owners_eq(AE.event_owners(xs), AE.Owned{bob(), AE.Owned{alice(), AE.NoOwners{}}}),
+      "AU-002 multiple owners contribute evidence: Bob and Alice are separate influences and event_owners gives Bob then Alice")
+    Test.check(Bool.not(has_influence(xs, AE.Influence{alice(), two_owner_label(alice(), bob()), AE.DataEdge{}})) &&
+      Bool.not(has_influence(xs, AE.Influence{bob(), two_owner_label(bob(), alice()), AE.DataEdge{}})),
+      "AU-002 multiple owners contribute evidence: no owner's influence is merged into another's label")
+    Test.check(Bool.not(releasable(shared_policy(), sink_alice())) && releasable(shared_policy(), sink_both()),
+      "AU-002 multiple owners contribute evidence: a sink satisfying Alice but not Bob is withheld, one satisfying both is released")
+    Test.check(has_influence(xs, data_of(bob())) && has_influence(xs, control_of(bob())) &&
+      has_influence(AE.EventPolicy.influences(admission_policy_of(admit_labelled(shared_plan(), vouched_context(shared_plan()), bob_labels(), 0n))), data_of(bob())),
+      "AU-002 multiple owners contribute evidence: a second Alice entry in the label table does not remove Bob's influence")
+    Test.check(owners_eq(AE.event_owners(AE.NoInfluences{}), AE.NoOwners{}) &&
+      owners_eq(AE.event_owners(AE.Influenced{data_of(alice()), AE.Influenced{data_of(alice()), AE.NoInfluences{}}}),
+        AE.Owned{alice(), AE.NoOwners{}}),
+      "AU-002 event_owners lists each owner once")
+
+# --- event_policy: fail closed on the label table -----------------------------
+
+# Object 11 has no entry; object 11 has two identical entries; object 11 has
+# two entries naming different owners.
+def unlabelled() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{TF.destination_object(), alice(), owner_label(alice())}, AE.NoLabels{}}
+
+def duplicated() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{bob_source(), bob(), owner_label(bob())}, bob_labels()}
+
+def conflicting() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{bob_source(), alice(), owner_label(alice())}, bob_labels()}
+
+def table_policy(labels: AE.Labels) -> AE.EventPolicy:
+  admission_policy_of(admit_labelled(bob_plan(), bob_origin_context(), labels, 0n))
+
+def lookup_missing(x: AE.LabelLookup) -> Bool:
+  match x:
+    case AE.LabelMissing{}:
+      True{}
+    case _:
+      False{}
+
+def lookup_ambiguous(x: AE.LabelLookup) -> Bool:
+  match x:
+    case AE.LabelAmbiguous{}:
+      True{}
+    case _:
+      False{}
+
+def fails_closed(+labels: AE.Labels) -> Bool:
+  +xs = AE.EventPolicy.influences(table_policy(labels))
+  has_influence(xs, maximal_data()) && has_influence(xs, maximal_control()) &&
+    Bool.not(has_influence(xs, data_of(bob()))) && releasable_to_none(table_policy(labels), fixture_sinks())
+
+def table_fail_closed() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(lookup_missing(AE.label_lookup(unlabelled(), bob_source())) && fails_closed(unlabelled()),
+      "AU-002 an unlabelled source gives the maximal-restriction influence and the event is releasable to no fixture sink")
+    Test.check(lookup_ambiguous(AE.label_lookup(duplicated(), bob_source())) && fails_closed(duplicated()),
+      "AU-002 two identical label entries for one object give the maximal-restriction influence and no fixture sink")
+    Test.check(lookup_ambiguous(AE.label_lookup(conflicting(), bob_source())) && fails_closed(conflicting()),
+      "AU-002 two label entries naming different owners give the maximal-restriction influence and no fixture sink")
+    Test.check(releasable_to_none(table_policy(AE.NoLabels{}), fixture_sinks()),
+      "AU-002 an empty label table gives an event releasable to no fixture sink")
+    Test.check(influence_eq(AE.object_influence(unlabelled(), bob_source(), AE.DataEdge{}), maximal_data()) &&
+      influence_eq(AE.object_influence(duplicated(), bob_source(), AE.ControlEdge{}), maximal_control()) &&
+      influence_eq(AE.object_influence(bob_labels(), bob_source(), AE.DataEdge{}), data_of(bob())),
+      "AU-002 object_influence returns the table entry, or the maximal restriction on a missing or ambiguous entry")
+
+# --- event_policy: secrecy, untrusted influence and the snapshot epoch --------
+
+# One source with secrecy {1} and untrusted {2}, whose origin rule adds
+# secrecy {4} and untrusted {8}; TF.pair_context's two sources.
+def origin_bits_context() -> T.Context:
+  TF.with_origin(TF.context(), T.RCons{T.OriginRule{TF.source_object(),
+    T.Bits64{4, 0}, T.Bits64{8, 0}, 7, TF.one_code(TF.code()), T.Free{}}, T.REnd{}}, 7)
+
+# Two origin rules on one source: secrecy {4} and {16}, untrusted {8} and {32}.
+def two_origins_context() -> T.Context:
+  TF.with_origin(TF.context(), T.RCons{T.OriginRule{TF.source_object(),
+    T.Bits64{4, 0}, T.Bits64{8, 0}, 7, TF.one_code(TF.code()), T.Free{}},
+    T.RCons{T.OriginRule{TF.source_object(), T.Bits64{16, 0}, T.Bits64{32, 0}, 7,
+      TF.one_code(TF.code()), T.Free{}}, T.REnd{}}}, 7)
+
+def secrecy_checks() -> IO(Unit):
+  +policy = bob_policy(bob_origin_context())
+  do IO<Unit>:
+    Test.check(releasable(policy, sink_both()) && Bool.not(releasable(policy, sink_uncleared())),
+      "AU-002 a sink whose DLM label flows but whose clearance lacks the source's secrecy bit is withheld")
+    Test.check(Bool.not(releasable(policy, sink_intolerant())),
+      "AU-002 a sink whose DLM label flows but which does not tolerate the source's untrusted bit is withheld")
+    Test.check(T.Bits64.equal(AE.EventPolicy.secrecy(policy), source_secrecy()) &&
+      T.Bits64.equal(AE.EventPolicy.untrusted(policy), source_untrusted()),
+      "AU-002 the event's secrecy and untrusted sets are the source policy's")
+    Test.check(T.Bits64.equal(AE.context_secrecy(TF.pair_context()), T.Bits64{5, 2147483648}) &&
+      T.Bits64.equal(AE.context_untrusted(TF.pair_context()), T.Bits64{10, 0}),
+      "AU-002 context secrecy and untrusted sets join every source policy in the context")
+    Test.check(T.Bits64.equal(AE.context_secrecy(origin_bits_context()), T.Bits64{5, 0}) &&
+      T.Bits64.equal(AE.context_untrusted(origin_bits_context()), T.Bits64{10, 0}),
+      "AU-002 context secrecy and untrusted sets include an origin rule's bits outside its source's")
+    Test.check(T.Bits64.equal(AE.context_secrecy(two_origins_context()), T.Bits64{21, 0}) &&
+      T.Bits64.equal(AE.context_untrusted(two_origins_context()), T.Bits64{42, 0}),
+      "AU-002 context secrecy and untrusted sets join every origin rule of a source")
+    Test.check(Bool.not(AE.releasable(snapshot(), 4n, policy, sink_both())),
+      "AU-002 an event is withheld when the snapshot epoch is not the expected epoch")
+
+# --- event_policy: the policy is outcome-independent --------------------------
+
+def outcome_independent() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(T.accepted(AE.AuditedAdmission.decision(bob_audited(bob_admitted_context()))) &&
+      event_policy_equal(bob_policy(bob_admitted_context()), bob_policy(bob_origin_context())),
+      "AU-002 an admitted event and an Origin-denied event for the same plan and label table have equal influences, secrecy and untrusted sets")
+    Test.check(event_policy_equal(bob_policy(bob_admitted_context()), bob_policy(bob_payment_context())) &&
+      event_policy_equal(bob_policy(bob_admitted_context()), AE.admission_policy(bob_plan(), bob_admitted_context(), bob_labels(), 0n)),
+      "AU-002 a Payment-denied event has the admitted event's policy, which is admission_policy of the request")
+    Test.check(Bool.not(event_policy_equal(bob_policy(bob_admitted_context()), mallory_policy())) &&
+      Bool.not(event_policy_equal(bob_policy(bob_origin_context()), table_policy(unlabelled()))),
+      "AU-002 the test-side EventPolicy.equal separates a different requester and a different label table")
+
+# --- event_policy: control copies and the context's own policies --------------
+
+# The context's source policy names object 13 (labelled Mallory) while the
+# plan names 11: admission denies, and the denial depends on object 13's
+# policy, so Mallory's label is a control influence.
+def foreign_policy_context() -> T.Context:
+  TF.with_sources(bob_admitted_context(), T.SCons{T.SourcePolicy{T.ObjectVersion{13n, 4n}, T.ReadDomain{5n}, 1, 2n,
+    source_secrecy(), source_untrusted(), 7, T.RCons{TF.origin(), T.REnd{}}}, T.SEnd{}})
+
+def foreign_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{T.ObjectVersion{13n, 4n}, mallory(), owner_label(mallory())}, bob_labels()}
+
+# TF.pair_context names source policies for objects 10 and 30 and a
+# destination policy for object 20; each gets its own owner here.
+def pair_policy_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{TF.source_object(), bob(), owner_label(bob())},
+    AE.Labelled{AE.ObjectLabel{TF.second_object(), alice(), owner_label(alice())},
+      AE.Labelled{AE.ObjectLabel{TF.destination_object(), mallory(), owner_label(mallory())}, AE.NoLabels{}}}}
+
+def control_checks() -> IO(Unit):
+  +xs = AE.EventPolicy.influences(bob_policy(bob_origin_context()))
+  +foreign = AE.EventPolicy.influences(admission_policy_of(admit_labelled(bob_plan(), foreign_policy_context(), foreign_labels(), 0n)))
+  do IO<Unit>:
+    Test.check(influences_eq(AE.decision_influences(bob_labels(), bob_plan()),
+      AE.Influenced{data_of(bob()), AE.Influenced{data_of(alice()),
+        AE.Influenced{control_of(bob()), AE.Influenced{control_of(alice()), AE.NoInfluences{}}}}}),
+      "AU-002 decision_influences is the sources and destination as data, then the same objects as control")
+    Test.check(influences_eq(AE.source_influences(shared_labels(), T.Plan.sources(shared_plan())),
+      AE.Influenced{data_of(bob()), AE.Influenced{data_of(alice()), AE.NoInfluences{}}}),
+      "AU-002 source_influences gives one data influence per source in manifest order")
+    Test.check(TF.denied_as(AE.AuditedAdmission.decision(admit_labelled(bob_plan(), foreign_policy_context(), foreign_labels(), 0n)), T.Source{}) &&
+      has_influence(foreign, control_of(mallory())) && Bool.not(has_influence(foreign, data_of(mallory()))),
+      "AU-002 a context source policy for another object (13, Mallory's) is a control influence of the Source denial")
+    Test.check(has_influence(xs, control_of(bob())) && has_influence(xs, control_of(alice())),
+      "AU-002 the control copies of the plan's objects are on the event")
+    Test.check(influences_eq(AE.context_influences(pair_policy_labels(), TF.pair_context()),
+      AE.Influenced{control_of(bob()), AE.Influenced{control_of(alice()),
+        AE.Influenced{control_of(mallory()), AE.NoInfluences{}}}}),
+      "AU-002 context_influences is every context source policy's object, then the destination policy's object, as control")
+
+# --- event_policy: commit events and the resolved binding ---------------------
+# NF.running()'s plan is TF.plan(): Bob's source 10, Alice's destination 20.
+# The committing subject is 7, so these checks use a SYNTHETIC registry of
+# eight named principals (0 to 7, no delegations) in which subject 7 is a
+# registered principal.
+
+def commit_labels() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{TF.source_object(), bob(), owner_label(bob())},
+    AE.Labelled{AE.ObjectLabel{TF.destination_object(), alice(), owner_label(alice())}, AE.NoLabels{}}}
+
+def commit_labelled(context: OS.Context, subject: Nat) -> AE.AuditedCommit:
+  AE.audited_commit(NF.running(), 6n, 1n, NF.held_ledger(), BF.candidate(),
+    F.Ref{FT.caller(subject), 2n}, 2n, context, commit_labels(), empty_diagnostic(), event_id())
+
+def commit_policy_of(context: OS.Context, subject: Nat) -> AE.EventPolicy:
+  AE.Recorded.policy(AE.AuditedCommit.recorded(commit_labelled(context, subject)))
+
+def prepared_or_fixture(m: Maybe<&2, D.Snapshot>) -> D.Snapshot:
+  match m:
+    case Some{s}:
+      s
+    case None{}:
+      D.fixture(3n)
+
+def eight_principals() -> D.Snapshot:
+  prepared_or_fixture(D.prepare(3n, 8, D.NoEdges{}))
+
+def subject_seven() -> D.Principal:
+  D.Named{7}
+
+# A binding whose labels are Mallory's: the binding's source label and its
+# destination label are joined into one control influence, owned by Alice.
+def mallory_binding_context() -> OS.Context:
+  OS.Context{BF.with_binding(BF.context(), B.Binding{NF.request(), BF.graph(), BF.sink(),
+    owner_label(mallory()), owner_label(mallory()), B.Storage{}, BF.artifact()}),
+    FT.descriptor(7n, 7), FT.registry(7n, 7)}
+
+def no_binding_context() -> OS.Context:
+  OS.Context{BF.with_bindings(BF.context(), B.NoBindings{}), FT.descriptor(7n, 7), FT.registry(7n, 7)}
+
+# Alice, Bob and subject 7; with Mallory added.
+def commit_sink() -> AE.Sink:
+  sink_with(8n, D.join(two_owner_label(alice(), bob()), owner_label(subject_seven())))
+
+def commit_sink_mallory() -> AE.Sink:
+  sink_with(9n, D.join(D.join(two_owner_label(alice(), bob()), owner_label(subject_seven())), owner_label(mallory())))
+
+def commit_releasable(policy: AE.EventPolicy, sink: AE.Sink) -> Bool:
+  AE.releasable(eight_principals(), 3n, policy, sink)
+
+def binding_checks() -> IO(Unit):
+  +xs = AE.EventPolicy.influences(commit_policy_of(FT.context(), 7n))
+  +mx = AE.EventPolicy.influences(commit_policy_of(mallory_binding_context(), 7n))
+  do IO<Unit>:
+    Test.check(B.accepted(AE.AuditedCommit.result(commit_labelled(FT.context(), 7n))) &&
+      has_influence(xs, AE.binding_influence(BF.binding(), alice())) &&
+      has_influence(xs, AE.Influence{alice(), D.join(D.secret_untrusted(), D.secret_untrusted()), AE.ControlEdge{}}),
+      "AU-002 a commit event's policy includes BF.binding()'s joined source and destination labels as a control influence owned by the destination's owner")
+    Test.check(has_influence(mx, AE.Influence{alice(), D.join(owner_label(mallory()), owner_label(mallory())), AE.ControlEdge{}}) &&
+      Bool.not(has_influence(mx, AE.binding_influence(BF.binding(), alice()))),
+      "AU-002 the commit binding influence follows the resolved binding's labels")
+    Test.check(commit_releasable(commit_policy_of(FT.context(), 7n), commit_sink()) &&
+      Bool.not(commit_releasable(commit_policy_of(mallory_binding_context(), 7n), commit_sink())) &&
+      commit_releasable(commit_policy_of(mallory_binding_context(), 7n), commit_sink_mallory()),
+      "AU-002 a committed event is withheld from a sink that satisfies the object and requester labels but not the binding's")
+    Test.check(Bool.not(B.accepted(AE.AuditedCommit.result(commit_labelled(no_binding_context(), 7n)))) &&
+      has_influence(AE.EventPolicy.influences(commit_policy_of(no_binding_context(), 7n)), maximal_control()),
+      "AU-002 a commit with no resolvable binding carries the maximal-restriction control influence")
+    Test.check(has_influence(xs, requester_of(subject_seven())) && has_influence(xs, data_of(bob())) &&
+      has_influence(xs, control_of(alice())) &&
+      T.Bits64.equal(AE.EventPolicy.secrecy(commit_policy_of(FT.context(), 7n)), source_secrecy()) &&
+      T.Bits64.equal(AE.EventPolicy.untrusted(commit_policy_of(FT.context(), 7n)), source_untrusted()),
+      "AU-002 a commit event carries the requester, the session plan's objects and the transfer context's secrecy and untrusted sets")
+    Test.check(AE.EventRecord.equal(AE.Recorded.event(AE.AuditedCommit.recorded(commit_labelled(FT.context(), 7n))),
+      AE.AuditedCommit.event(commit_labelled(FT.context(), 7n))),
+      "AU-002 the commit record holds the same event the wrapper returns")
+    Test.check(event_policy_equal(commit_policy_of(revoked_context(), 7n), commit_policy_of(FT.context(), 7n)),
+      "AU-002 a rejected commit has the accepted commit's policy (the policy does not read the result)")
+
+def event_policy() -> IO(Unit):
+  do IO<Unit>:
+    denial_reveals()
+    requester_checks()
+    multiple_owners()
+    table_fail_closed()
+    secrecy_checks()
+    outcome_independent()
+    control_checks()
+    binding_checks()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     event_projection()
     event_format()
-    IO.print("Audit: 148 checks passed")
+    event_policy()
+    IO.print("Audit: 191 checks passed")

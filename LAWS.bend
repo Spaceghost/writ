@@ -13,6 +13,7 @@ import ./Frontend.bend as Frontend
 import ./Backplane.bend as Backplane
 import ./DataOS.bend as DataOS
 import ./AuditEvent.bend as AuditEvent
+import ./Dlm.bend as Dlm
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -326,3 +327,47 @@ law audit_commit_returns_library_result:
   for diagnostic: AuditEvent.Diagnostic
   for event_id: Nat
   {AuditEvent.AuditedCommit.result(AuditEvent.audited_commit(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context, labels, diagnostic, event_id)) == DataOS.commit_from_capability(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context) : Backplane.CommitResult}
+
+# AU-002 "Multiple owners contribute evidence": if one influence's label does
+# not flow to the sink label, the whole influence list does not flow, wherever
+# that influence sits (any `before`, any `after`), for every snapshot and
+# epoch. Audit needs this because an event's policy keeps each owner's
+# restriction as its own element: one owner's unmet restriction withholds the
+# event, and approvals from every other owner cannot outweigh it. The proof is
+# by induction on `before`, as in `failed_check_denies`. It does not claim
+# that `releasable` is the only route by which an event reaches a sink (Tasks
+# 4 and 5 show that by tests), that the influence list is complete (the
+# derivation is tested in AuditTests' event_policy section), or anything
+# about the secrecy and untrusted sets, which `releasable` checks separately.
+law audit_failed_influence_withholds:
+  for +snapshot: Dlm.Snapshot
+  for +epoch: Nat
+  for before: AuditEvent.Influences
+  for +after: AuditEvent.Influences
+  for +i: AuditEvent.Influence
+  for +sink_label: Dlm.Label
+  for fails: {Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(i), sink_label) == False{} : Bool}
+  {AuditEvent.influences_flow(snapshot, epoch, AuditEvent.Influences.append(before, AuditEvent.Influences.cons(i, after)), sink_label) == False{} : Bool}
+
+# AU-002 "Denial reveals a protected source fact": the policy `audited_admit`
+# records is exactly `admission_policy` of the plan, the context, the label
+# table and the caller's authenticated subject, for every caller token,
+# diagnostic and event id, and so for every decision `Transfer.admit` returns.
+# Whatever the outcome, the event carries the outcome-independent policy of
+# the plan's facts, so a protected denial reason is labelled exactly as the
+# facts it may reveal and never lower; the caller's token does not move it.
+# The proof is by computation and pins that the wrapper does not branch on
+# the decision when it builds the policy: a denial branch that substitutes a
+# lower label (for example `Dlm.public_untrusted()`) breaks it. It does not
+# claim that `admission_policy` names every influence (AuditTests shows the
+# requester, sources, destination and control copies), that the label table
+# is correct, or that a host stores the record.
+law audit_outcome_never_lowers_policy:
+  for plan: Transfer.Plan
+  for context: Transfer.Context
+  for labels: AuditEvent.Labels
+  for subject: Nat
+  for token: Transfer.CodeId
+  for diagnostic: AuditEvent.Diagnostic
+  for event_id: Nat
+  {AuditEvent.Recorded.policy(AuditEvent.AuditedAdmission.recorded(AuditEvent.audited_admit(plan, context, labels, Frontend.Caller{subject, token}, diagnostic, event_id))) == AuditEvent.admission_policy(plan, context, labels, subject) : AuditEvent.EventPolicy}

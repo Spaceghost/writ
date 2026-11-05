@@ -7,6 +7,7 @@ import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
 import ./AuditEvent.bend as AuditEvent
+import ./Dlm.bend as Dlm
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -136,4 +137,34 @@ def Laws.audit_admit_returns_library_decision(plan, context, labels, caller, dia
 
 # The result field of the wrapper's record is the bound facade call.
 def Laws.audit_commit_returns_library_result(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context, labels, diagnostic, event_id):
+  {==}
+
+# Case analysis on a Bool: `Bool.and` matches its first argument, so a False
+# second argument needs both cases. A proof helper for the law below, not a
+# law of its own.
+def audit_bool_and_false_right(b: Bool) -> {Bool.and(b, False{}) == False{} : Bool}:
+  match b:
+    case False{}:
+      {==}
+    case True{}:
+      {==}
+
+# Induction on `before`. Empty: the list is `Influenced{i, after}`, whose
+# head conjunct is rewritten to False{} by the hypothesis (reversed), and
+# `Bool.and(False{}, _)` computes to False{}. Cons: the tail conjunct is the
+# induction hypothesis (reversed), and `Bool.and(x, False{})` is False{} by
+# the case analysis above.
+def Laws.audit_failed_influence_withholds(snapshot, epoch, before, after, i, sink_label, fails):
+  match before:
+    case AuditEvent.NoInfluences{}:
+      %Equal.sym(Bool, Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(i), sink_label), False{}, fails) : {Bool.and(_, AuditEvent.influences_flow(snapshot, epoch, after, sink_label)) == False{} : Bool}
+      {==}
+    case AuditEvent.Influenced{h, t}:
+      %Equal.sym(Bool, AuditEvent.influences_flow(snapshot, epoch, AuditEvent.Influences.append(t, AuditEvent.Influences.cons(i, after)), sink_label), False{}, Laws.audit_failed_influence_withholds(snapshot, epoch, t, after, i, sink_label, fails)) : {Bool.and(Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(h), sink_label), _) == False{} : Bool}
+      audit_bool_and_false_right(Dlm.flows(snapshot, epoch, AuditEvent.Influence.label(h), sink_label))
+
+# The recorded policy is the `admission_policy` call the wrapper builds,
+# which takes no decision; `caller_subject` reduces on the literal
+# `Frontend.Caller{subject, token}` to `subject`.
+def Laws.audit_outcome_never_lowers_policy(plan, context, labels, subject, token, diagnostic, event_id):
   {==}
