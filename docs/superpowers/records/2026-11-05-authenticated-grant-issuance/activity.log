@@ -10,3 +10,9 @@
 2026-11-05T03:09:17Z	implementer	fix round 1: bend Tests.bend ALL LIBRARY TESTS PASSED 821 PASS (782 + 39); bend PROOF.bend ALL PROOFS CHECK; report section appended; committing
 2026-11-05T03:09:48Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T03:11:01Z	controller	task 1 complete; task 2 dispatched (register: paired exact-scope issuance)
+2026-11-05T03:11:50Z	implementer	task 2 started: read brief, plan constraints, task 1 report/reviews
+2026-11-05T03:16:59Z	implementer	register implemented in Issuance.bend: Request, 31 ordered gates (register_gates/register_checks), commit_grant consumes cited approvals; check-only green; writing registration tests
+2026-11-05T03:20:09Z	implementer	registration section: 49 checks (Issuance 88), all pass; running the register removal exercise on a scratch copy
+2026-11-05T03:22:52Z	implementer	removal exercise: 59 mutants, 54 killed, 5 equivalent survivors; 2 boundary acceptance checks added (Issuance 90); box 1.2 checked; running bend Tests.bend and bend PROOF.bend
+2026-11-05T03:24:04Z	implementer	bend Tests.bend ALL LIBRARY TESTS PASSED 872 PASS (782 + 90; Issuance 90); bend PROOF.bend ALL PROOFS CHECK; task-2-report.md written; committing
+2026-11-05T03:24:15Z	implementer	correction to the removal-exercise line above: first run 59 mutants, 53 killed, 6 survived (5 equivalent + strict lifetime_within); rerun after the 2 boundary checks killed strict lifetime_within and a rights-equality mutant; total 60 mutants, 55 killed, 5 equivalent (as the report states); task 2 committed

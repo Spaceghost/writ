@@ -32,6 +32,14 @@ import ./Frontend.bend as F
 #   must install an accepted state atomically at that revision.
 # - `now`, the monitor's trusted time. Every expiry is exclusive (now <
 #   valid_until), matching Transfer and Frontend.
+# - `token`, the fresh capability token the monitor supplies to `register`
+#   (Bend generates no randomness). Bend only checks that no registered grant
+#   already holds it.
+#
+# Registration has no `from`. A `Request` names stored approvals by id and
+# asserts nothing about who asks: the cited approvals, each submitted earlier
+# by its authenticated authority and each revalidated against the committed
+# state, are the only authority, and their common scope fixes the subject.
 #
 # Constructing an Issuance record authenticates nothing. Public Data records
 # (approvals, states, grants) are a model, not unforgeable capabilities; a
@@ -47,8 +55,8 @@ import ./Frontend.bend as F
 # any position. The denial reason is the first failing gate of the same list,
 # so acceptance and reason cannot drift apart.
 #
-# Public entry points: `empty`, `submit_source`, `submit_write`, `valid`, and
-# the `Change.*` accessors and state accessors. Every other def is an exported
+# Public entry points: `empty`, `submit_source`, `submit_write`, `register`,
+# `valid`, and the `Change.*` accessors and state accessors. Every other def is an exported
 # implementation helper; calling one does not perform a transition's checks.
 #
 # Laws: this module adds none yet. It relies on the existing law
@@ -133,8 +141,7 @@ type Ids is Data:
   NoIds{}
   Ids{head: Nat, tail: Ids}
 
-# A registered grant (registration arrives with task 1.2; no transition in
-# this revision of the module creates one). `sources` names the cited source
+# A registered grant, created only by `register`. `sources` names the cited source
 # approval ids in manifest order, `write` the cited write approval id, and
 # `parent` the grant it was derived from (0 for a root grant). A grant record
 # is never trusted because it exists: usability is re-derived from the state.
@@ -185,7 +192,8 @@ type Error is Data:
   StaleEpoch{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
-# state and the id it allocated (an approval id for submissions).
+# state and the id it allocated (an approval id for submissions, a grant id
+# for registration).
 type Change is Data:
   Rejected{state: State, reason: Error}
   Changed{state: State, id: Nat}
@@ -802,3 +810,415 @@ def valid(state: State) -> Bool:
       Nat.is_gt(next_id, 0n) && approvals_valid(approvals, next_id, seen)
         && grants_valid(grants, next_id, approvals) && placements_valid(placements)
         && serials_valid(seen)
+
+# --- Registration ------------------------------------------------------------
+
+# A registration request (GI-002, GI-003). `sources` names the stored source
+# approval ids in the scope plan's manifest order and `write` the one stored
+# write approval id (0 cites none; id 0 is never allocated). The request
+# carries no requester identity and no authority: what it asks for is checked
+# against the cited approvals, which alone fix the scope and the subject.
+type Request is Data:
+  Request{version: Nat, scope: Scope, sources: Ids, write: Nat, rights: U32,
+    valid_until: Nat}
+
+def Request.version(request: Request) -> Nat:
+  match request:
+    case Request{version, _, _, _, _, _}:
+      version
+
+def Request.scope(request: Request) -> Scope:
+  match request:
+    case Request{_, scope, _, _, _, _}:
+      scope
+
+def Request.sources(request: Request) -> Ids:
+  match request:
+    case Request{_, _, sources, _, _, _}:
+      sources
+
+def Request.write(request: Request) -> Nat:
+  match request:
+    case Request{_, _, _, write, _, _}:
+      write
+
+def Request.rights(request: Request) -> U32:
+  match request:
+    case Request{_, _, _, _, rights, _}:
+      rights
+
+def Request.valid_until(request: Request) -> Nat:
+  match request:
+    case Request{_, _, _, _, _, valid_until}:
+      valid_until
+
+# The requested rights are a subset of the rights an approval granted. Every
+# cited approval must cover the request, so the issued rights lie within the
+# intersection of all of them.
+def rights_within(+requested: U32, approved: U32) -> Bool:
+  T.word_subset(requested, approved)
+
+# The requested lifetime ends no later than the approval's. A longer request is
+# denied (Widened), never silently clamped.
+def lifetime_within(requested: Nat, approved: Nat) -> Bool:
+  Nat.is_le(requested, approved)
+
+# A stored approval no registration has consumed yet. Approvals are single
+# use: one approval pair backs exactly one grant.
+def unconsumed(consumed_by: Nat) -> Bool:
+  Nat.is_eq(consumed_by, 0n)
+
+def ids_contain(ids: Ids, +wanted: Nat) -> Bool:
+  match ids:
+    case NoIds{}:
+      False{}
+    case Ids{head, tail}:
+      Nat.is_eq(head, wanted) || ids_contain(tail, wanted)
+
+# No approval id is cited twice for the source manifest. Consumption is checked
+# against the state before the commit, so without this a single-use approval
+# could back two manifest entries of one grant.
+def ids_distinct(ids: Ids) -> Bool:
+  match ids:
+    case NoIds{}:
+      True{}
+    case Ids{+head, +tail}:
+      Bool.not(ids_contain(tail, head)) && ids_distinct(tail)
+
+# A hit is kept only when no later stored record has the same id: an
+# ambiguous id resolves to no approval (MissingApproval), never to whichever
+# record comes first.
+def first_stored(found: Maybe<&2, Stored>, again: Bool, rest: Maybe<&2, Stored>) -> Maybe<&2, Stored>:
+  match found again:
+    case None{} _:
+      rest
+    case Some{stored} False{}:
+      Some{stored}
+    case Some{_} True{}:
+      None{}
+
+def stored_entry(+stored: Stored, +wanted: Nat) -> Maybe<&2, Stored>:
+  Guard.choose(Maybe<&2, Stored>, Nat.is_eq(Stored.id(stored), wanted), Some{stored}, None{})
+
+# The stored record under `wanted`, or None when it is absent or ambiguous.
+def find_stored(approvals: Approvals, +wanted: Nat) -> Maybe<&2, Stored>:
+  match approvals:
+    case NoApprovals{}:
+      None{}
+    case Approvals{head, +tail}:
+      first_stored(stored_entry(head, wanted), approval_exists(tail, wanted), find_stored(tail, wanted))
+
+# What registration requires of each cited approval. Each requirement is
+# re-derived from the state being committed: the stored record is evidence of
+# an earlier admission, not a standing authority.
+type Requirement is Data:
+  Present{}
+  Unconsumed{}
+  Unrevoked{}
+  StillAuthority{}
+  StillPlaced{}
+  DestinationIsPlans{}
+  DomainIsScopes{}
+  SameSubject{}
+  SameScope{}
+  RightsCover{}
+  StillUnexpired{}
+  LifetimeCovers{}
+
+# One requirement on a cited source approval. StillAuthority asks the CURRENT
+# directory whether the recorded issuer is the authority for its read domain,
+# and StillPlaced asks the CURRENT placements, so a monitor change between
+# submission and registration withdraws the approval. The destination and
+# write-domain requirements belong to the write approval; asked of a source
+# approval they fail closed.
+def source_requirement(approval: SourceApproval, requirement: Requirement, +consumed_by: Nat,
+    +revoked: Bool, +state: State, +request: Request, +now: Nat) -> Bool:
+  match approval:
+    case SourceApproval{_, _, +issuer, +source, +domain, +scope, +rights, +valid_until}:
+      match requirement:
+        case Present{}:
+          True{}
+        case Unconsumed{}:
+          unconsumed(consumed_by)
+        case Unrevoked{}:
+          Bool.not(revoked)
+        case StillAuthority{}:
+          is_read_authority(directory(state), issuer, domain)
+        case StillPlaced{}:
+          read_placed_in(source_domain(placements(state), source), domain)
+        case DestinationIsPlans{}:
+          False{}
+        case DomainIsScopes{}:
+          False{}
+        case SameSubject{}:
+          Nat.is_eq(Scope.subject(scope), Scope.subject(Request.scope(request)))
+        case SameScope{}:
+          scope_equal(scope, Request.scope(request))
+        case RightsCover{}:
+          rights_within(Request.rights(request), rights)
+        case StillUnexpired{}:
+          unexpired(now, valid_until)
+        case LifetimeCovers{}:
+          lifetime_within(Request.valid_until(request), valid_until)
+
+# One requirement on the cited write approval, against the write directory and
+# destination placements. The destination must be the request scope plan's
+# destination object version and the approved write domain the request
+# scope's write domain.
+def write_requirement(approval: WriteApproval, requirement: Requirement, +consumed_by: Nat,
+    +revoked: Bool, +state: State, +request: Request, +now: Nat) -> Bool:
+  match approval:
+    case WriteApproval{_, _, +issuer, +destination, +domain, +scope, +rights, +valid_until}:
+      match requirement:
+        case Present{}:
+          True{}
+        case Unconsumed{}:
+          unconsumed(consumed_by)
+        case Unrevoked{}:
+          Bool.not(revoked)
+        case StillAuthority{}:
+          is_write_authority(directory(state), issuer, domain)
+        case StillPlaced{}:
+          write_placed_in(destination_domain(placements(state), destination), domain)
+        case DestinationIsPlans{}:
+          T.ObjectVersion.equal(destination, T.Plan.destination(Scope.plan(Request.scope(request))))
+        case DomainIsScopes{}:
+          T.WriteDomain.equal(domain, Scope.write_domain(Request.scope(request)))
+        case SameSubject{}:
+          Nat.is_eq(Scope.subject(scope), Scope.subject(Request.scope(request)))
+        case SameScope{}:
+          scope_equal(scope, Request.scope(request))
+        case RightsCover{}:
+          rights_within(Request.rights(request), rights)
+        case StillUnexpired{}:
+          unexpired(now, valid_until)
+        case LifetimeCovers{}:
+          lifetime_within(Request.valid_until(request), valid_until)
+
+# A cited id must name a stored source approval; a missing, ambiguous or
+# write-kind record meets no requirement.
+def source_meets(requirement: Requirement, found: Maybe<&2, Stored>, +state: State,
+    +request: Request, +now: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      match stored:
+        case Stored{_, approval, +consumed_by, +revoked}:
+          match approval:
+            case SourceEntry{record}:
+              source_requirement(record, requirement, consumed_by, revoked, state, request, now)
+            case WriteEntry{_}:
+              False{}
+
+def write_meets(requirement: Requirement, found: Maybe<&2, Stored>, +state: State,
+    +request: Request, +now: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      match stored:
+        case Stored{_, approval, +consumed_by, +revoked}:
+          match approval:
+            case SourceEntry{_}:
+              False{}
+            case WriteEntry{record}:
+              write_requirement(record, requirement, consumed_by, revoked, state, request, now)
+
+# `requirement` holds for every cited source approval.
+def sources_meet(+requirement: Requirement, ids: Ids, +state: State, +request: Request,
+    +now: Nat) -> Bool:
+  match ids:
+    case NoIds{}:
+      True{}
+    case Ids{head, tail}:
+      source_meets(requirement, find_stored(approvals(state), head), state, request, now)
+        && sources_meet(requirement, tail, state, request, now)
+
+# `requirement` holds for the cited write approval.
+def write_cited_meets(requirement: Requirement, +state: State, +request: Request, +now: Nat) -> Bool:
+  write_meets(requirement, find_stored(approvals(state), Request.write(request)), state, request, now)
+
+# The request cites at least one source approval per manifest entry. Fewer
+# ids means a manifest entry has no source authority's approval.
+def sources_named_for_manifest(manifest: T.Objects, ids: Ids) -> Bool:
+  match manifest ids:
+    case T.OEnd{} _:
+      True{}
+    case T.OCons{_, _} NoIds{}:
+      False{}
+    case T.OCons{_, tail} Ids{_, rest}:
+      sources_named_for_manifest(tail, rest)
+
+def cited_source_is(found: Maybe<&2, Stored>, +wanted: T.ObjectVersion) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{stored}:
+      match stored:
+        case Stored{_, approval, _, _}:
+          match approval:
+            case SourceEntry{record}:
+              match record:
+                case SourceApproval{_, _, _, source, _, _, _, _}:
+                  T.ObjectVersion.equal(source, wanted)
+            case WriteEntry{_}:
+              False{}
+
+# Walks the manifest and the cited ids together (no index): the approval at
+# each position approves exactly the manifest entry at that position, and the
+# two lists end together. A reordered, substituted or extra id fails.
+def sources_cover_manifest(+approvals: Approvals, manifest: T.Objects, ids: Ids) -> Bool:
+  match manifest ids:
+    case T.OEnd{} NoIds{}:
+      True{}
+    case T.OEnd{} Ids{_, _}:
+      False{}
+    case T.OCons{_, _} NoIds{}:
+      False{}
+    case T.OCons{head, tail} Ids{id, rest}:
+      cited_source_is(find_stored(approvals, id), head) && sources_cover_manifest(approvals, tail, rest)
+
+def grant_token_used(grants: Grants, +token: T.CodeId) -> Bool:
+  match grants:
+    case NoGrants{}:
+      False{}
+    case Grants{head, tail}:
+      match head:
+        case Grant{_, held, _, _, _, _, _, _}:
+          T.CodeId.equal(held, token) || grant_token_used(tail, token)
+
+# The monitor-supplied token names no registered grant (as F.registry_valid's
+# duplicate rule requires of the projected registry).
+def token_fresh(grants: Grants, +token: T.CodeId) -> Bool:
+  Bool.not(grant_token_used(grants, token))
+
+# Every check a registration must pass, in denial order: the race (revision),
+# the format, then the cited approvals' existence, single use and revocation
+# (what was withdrawn denies before anything is compared), then their
+# authority revalidated against the directory and placements this state
+# carries, then the exact scope binding (live stamp, manifest coverage,
+# destination, write domain, subject, the whole scope), then the bounds on
+# rights and lifetime, and last the monitor-supplied token. Each requirement is
+# asked of the write approval before the source approvals; each has its own
+# gate so every denial is attributable. A cited approval's expiry is checked
+# before the request's own, so an expired approval reads as Expired, not as a
+# lifetime the request could not have.
+def register_gates(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
+    +token: T.CodeId) -> Gates:
+  match request:
+    case Request{version, +scope, +sources, _, rights, valid_until}:
+      Gate{revision_current(state, expected_revision), StaleRevision{},
+      Gate{version_supported(version), UnknownVersion{},
+      Gate{write_cited_meets(Present{}, state, request, now), MissingApproval{},
+      Gate{sources_meet(Present{}, sources, state, request, now), MissingApproval{},
+      Gate{sources_named_for_manifest(T.Plan.sources(Scope.plan(scope)), sources), MissingApproval{},
+      Gate{ids_distinct(sources), Replay{},
+      Gate{write_cited_meets(Unconsumed{}, state, request, now), Replay{},
+      Gate{sources_meet(Unconsumed{}, sources, state, request, now), Replay{},
+      Gate{write_cited_meets(Unrevoked{}, state, request, now), Revoked{},
+      Gate{sources_meet(Unrevoked{}, sources, state, request, now), Revoked{},
+      Gate{write_cited_meets(StillAuthority{}, state, request, now), NotAuthority{},
+      Gate{sources_meet(StillAuthority{}, sources, state, request, now), NotAuthority{},
+      Gate{write_cited_meets(StillPlaced{}, state, request, now), WrongDomain{},
+      Gate{sources_meet(StillPlaced{}, sources, state, request, now), WrongDomain{},
+      Gate{scope_wellformed(scope, live(state)), scope_fault(scope, live(state)),
+      Gate{sources_cover_manifest(approvals(state), T.Plan.sources(Scope.plan(scope)), sources), ScopeMismatch{},
+      Gate{write_cited_meets(DestinationIsPlans{}, state, request, now), ScopeMismatch{},
+      Gate{write_cited_meets(DomainIsScopes{}, state, request, now), ScopeMismatch{},
+      Gate{write_cited_meets(SameSubject{}, state, request, now), SubjectMismatch{},
+      Gate{sources_meet(SameSubject{}, sources, state, request, now), SubjectMismatch{},
+      Gate{write_cited_meets(SameScope{}, state, request, now), ScopeMismatch{},
+      Gate{sources_meet(SameScope{}, sources, state, request, now), ScopeMismatch{},
+      Gate{rights_valid(rights), InvalidRights{},
+      Gate{write_cited_meets(RightsCover{}, state, request, now), Widened{},
+      Gate{sources_meet(RightsCover{}, sources, state, request, now), Widened{},
+      Gate{write_cited_meets(StillUnexpired{}, state, request, now), Expired{},
+      Gate{sources_meet(StillUnexpired{}, sources, state, request, now), Expired{},
+      Gate{unexpired(now, valid_until), Expired{},
+      Gate{write_cited_meets(LifetimeCovers{}, state, request, now), Widened{},
+      Gate{sources_meet(LifetimeCovers{}, sources, state, request, now), Widened{},
+      Gate{token_fresh(grants(state), token), DuplicateToken{},
+      Open{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+
+def register_checks(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
+    +token: T.CodeId) -> Guard.Checks:
+  Gates.checks(register_gates(state, expected_revision, request, now, token))
+
+def consume_stored(stored: Stored, cited: Bool, +grant: Nat) -> Stored:
+  match stored cited:
+    case Stored{id, approval, consumed_by, revoked} False{}:
+      Stored{id, approval, consumed_by, revoked}
+    case Stored{id, approval, _, revoked} True{}:
+      Stored{id, approval, grant, revoked}
+
+# Mark every cited approval consumed by `grant`. Called only after every gate
+# held, so each cited approval is present, unconsumed and cited once.
+def consume(approvals: Approvals, +sources: Ids, +write: Nat, +grant: Nat) -> Approvals:
+  match approvals:
+    case NoApprovals{}:
+      NoApprovals{}
+    case Approvals{+head, tail}:
+      Approvals{consume_stored(head, Nat.is_eq(Stored.id(head), write) || ids_contain(sources, Stored.id(head)), grant),
+        consume(tail, sources, write, grant)}
+
+# Store the grant under a fresh id (the change id), consume its approvals and
+# advance the revision once. The stored scope is the request's, which the
+# SameScope gates made exactly equal (every plan field, write domain and
+# subject) to every cited approval's scope, so the subject is the one the
+# authorities approved. `seen` is unchanged: no new serial was presented.
+def commit_grant(state: State, request: Request, token: T.CodeId) -> Change:
+  match state:
+    case State{revision, +next_id, live, directory, placements, approvals, grants, seen}:
+      match request:
+        case Request{_, scope, +sources, +write, rights, valid_until}:
+          Changed{State{1n+revision, 1n+next_id, live, directory, placements,
+            consume(approvals, sources, write, next_id),
+            Grants{Grant{next_id, token, scope, rights, valid_until, sources, write, 0n}, grants},
+            seen}, next_id}
+
+def register_checked(ok: Bool, +state: State, +expected_revision: Nat, +request: Request,
+    +now: Nat, +token: T.CodeId) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
+      Rejected{state, Gates.reason(register_gates(state, expected_revision, request, now, token), StaleRevision{})}
+    case True{}:
+      commit_grant(state, request, token)
+
+def register_current(current: Bool, +state: State, +expected_revision: Nat, +request: Request,
+    +now: Nat, +token: T.CodeId) -> Change:
+  match current:
+    case False{}:
+      Rejected{state, StaleRevision{}}
+    case True{}:
+      register_checked(Guard.all(register_checks(state, expected_revision, request, now, token)),
+        state, expected_revision, request, now, token)
+
+# Public entry point (GI-002, GI-003, GI-004): issue one grant backed by one
+# stored write approval and one stored source approval per manifest entry, in
+# manifest order. There is no `from`: the request asserts nothing about who
+# asks, and authority comes only from the cited approvals, each of which an
+# authenticated authority submitted earlier and each of which is revalidated
+# here against this state's directory, placements and live stamp. Accepted
+# only when the state is at `expected_revision`, the request is version 1,
+# every cited approval is present, of the right kind, cited once, unconsumed
+# and unrevoked, its issuer is still the directory authority for its domain
+# and its object is still placed there, the request scope is well formed at
+# the live stamp, the source approvals cover the manifest position by
+# position, the write approval names the plan's destination and the scope's
+# write domain, every approval's scope equals the request scope exactly
+# (subject included), the requested rights are valid and within every
+# approval's rights, every approval and the request are unexpired at `now`,
+# the requested `valid_until` is within every approval's, and `token` names no
+# registered grant. It then stores the grant under a fresh id (the change id)
+# with `parent` 0, marks every cited approval consumed by that grant, and
+# advances the revision once. Denial order is register_gates'; the state is
+# returned unchanged on every denial. The grant is not usable by itself:
+# projection (task 1.5) revalidates it at every use.
+def register(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
+    +token: T.CodeId) -> Change:
+  register_current(revision_current(state, expected_revision), state, expected_revision,
+    request, now, token)
