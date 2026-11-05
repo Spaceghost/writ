@@ -1,6 +1,6 @@
 # Authenticated grant issuance tasks
 
-All implementation and integration work below is pending.
+All seven boxes below were checked by the authenticated-grant-issuance lane (landed 2026-11-05); the change is not archived because transport identity, signature checking, durable state, and host wiring remain host preconditions (docs/GRANT-ISSUANCE.md).
 
 ## 1. Implement and verify
 
