@@ -17,21 +17,22 @@ $ bend Tests.bend > tests.out
 [exit status: 0; 0 FAIL lines; tests.out is a scratch capture, not committed]
 Output lines of the two suites this change adds to:
 Facade: 12 checks passed
-Issuance: 226 checks passed
+Issuance: 230 checks passed
 Last lines:
 Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
 ALL LIBRARY TESTS PASSED
 
 PASS lines, counting both forms the corpus prints:
 $ grep -cE '^PASS[: ]' tests.out
-1010
+1014
 $ grep -c '^PASS: ' tests.out
-957
+961
 $ grep -c '^PASS ' tests.out
 53
-Total: 782 checks before this change plus 226 Issuance checks plus 2 new Facade
-checks = 1010 (782 plus 228 new checks). Task 6 recorded 1008 with 224 Issuance
-checks; task 2.2 added the two GI-003 checks listed below. Per the cross-lane ruling this lane changes no recorded count
+Total: 782 checks before this change plus 230 Issuance checks plus 2 new Facade
+checks = 1014 (782 plus 232 new checks). Task 6 recorded 1008 with 224 Issuance
+checks; task 2.2 added the two GI-003 checks listed below (1010), and the
+final fix round added the four registration-caller checks listed below (1014). Per the cross-lane ruling this lane changes no recorded count
 pin; the controller re-pins counts after the parallel lanes merge.
 
 $ bend PROOF.bend
@@ -46,13 +47,19 @@ Task 2.2 full runs (recorded files, the same tree):
 $ bend Tests.bend -o ../writ-build/authenticated-grant-issuance/tests.js && node ../writ-build/authenticated-grant-issuance/tests.js > verification/tests-js.txt
 $ bend Tests.bend -o ../writ-build/authenticated-grant-issuance/tests-native && ../writ-build/authenticated-grant-issuance/tests-native +RTS --threads 4 --gpu off > verification/tests-native.txt
 The native run is a CPU run with `--gpu off`; it is not a GPU test.
-Both exit 0; each file has 1010 PASS lines (957 `PASS: ` + 53 `PASS `), 0 FAIL
+Both exit 0; each file has 1014 PASS lines (961 `PASS: ` + 53 `PASS `), 0 FAIL
 lines and the last line ALL LIBRARY TESTS PASSED. The two files are
-byte-identical (SHA-256 61743d04903fd4536c345b5b4b20878f940ff759e03a1e752f951e56ab86295a),
+byte-identical (SHA-256 e07942b33808774a01ebf82f6a1a2396513088b893b43eeb3641831a87138928),
 and their 41 VECTOR lines equal master's.
 $ bend PROOF.bend > verification/proofs.txt          (ALL PROOFS CHECK)
 $ ~/.bun/bin/bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive > verification/openspec-validation.txt
 Totals: 44 passed, 0 failed (44 items)
+The committed openspec-validation.txt at the merge base was stale (37 items);
+44 is the full count of this tree, which adds seven items from other lanes'
+changes and specs that the stale file predates: change/add-freestanding-bend-runtime,
+change/add-unikernel-appliance-host, change/add-unikernel-library-runtime,
+spec/bend-runtime-host-profile, spec/genode-bend-component,
+spec/genode-capability-adoption and spec/native-host-canary-mounts.
 
 ## GI-003 checks added in task 2.2 (IssuanceTests.bend section `registration`, both PASS)
 
@@ -68,7 +75,27 @@ comparing manifest object ids but not versions in `T.Plan.equal` fails the
 source-version check first; dropping the output-type comparison from
 `T.Plan.equal` fails the output-type check first.
 
-## Scenario checks (IssuanceTests.bend section `scenarios`, 23 checks, all PASS)
+## Registration-caller checks added in the final fix round (all PASS)
+
+`register` now takes the authenticated `from` and denies SubjectMismatch
+unless it is the request scope's subject, before any approval is read.
+Without this, any caller could consume a single-use approval pair first with
+terms of its choosing (final review I-1). Section `registration`:
+
+PASS: GI-004 principal 8, neither an authority nor subject 7, registering subject 7's pair with rights 0 until 101 denied SubjectMismatch, both approvals unconsumed
+PASS: GI-004 the source authority or the write authority registering subject 7's request denied SubjectMismatch
+PASS: GI-004 after principal 8's registration is denied, subject 7 registers the same pair as grant 3
+
+Section `scenarios`: the "scenario third-party registration" check below.
+
+Mutation exercise (scratch copies only): replacing the caller gate's
+condition with True{} fails the principal-8 check first; weakening it to
+accept any caller other than principal 8 fails the authority-caller check
+first. `bend PROOF.bend` still prints ALL PROOFS CHECK under both mutants,
+as expected: the two register laws now quantify over every `from` and rely
+only on the outer revision match.
+
+## Scenario checks (IssuanceTests.bend section `scenarios`, 24 checks, all PASS)
 
 Each walks one whole lifecycle from an `I.empty(...)` state through the public
 entry points (submit_source, submit_write, register, revoke, derive), and
@@ -96,6 +123,7 @@ PASS: scenario redirect: a read of 10 into 20v8 paired with a write approval for
 PASS: scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write
 PASS: scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted
 PASS: scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8
+PASS: scenario third-party registration: principal 8 registering subject 7's approved pair with rights 0 until 101 is denied SubjectMismatch and nothing is projected; subject 7 then registers the pair as grant 3 and T.admit admits TF.plan()
 PASS: scenario epoch advance: grant 3 admitted at epoch 3 is not current once the monitor installs epoch 4, nothing is projected, T.admit denies the old plan Stale and a fresh approval of the old scope is denied StaleEpoch
 PASS: scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4
 PASS: scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200

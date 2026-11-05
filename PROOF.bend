@@ -53,19 +53,19 @@ def Laws.nat_eq_successor_false(n):
 # `register_current(Nat.is_eq(revision, 1n+revision), ...)`. Rewriting that
 # scrutinee to False{} with nat_eq_successor_false (reversed by Equal.sym)
 # selects the `Rejected` branch, whose `accepted` is False{} by computation.
-def Laws.issuance_stale_revision_rejects(state, request, now, token):
+def Laws.issuance_stale_revision_rejects(state, from, request, now, token):
   match state:
     case Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}:
-      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.accepted(Issuance.register_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, request, now, token)) == False{} : Bool}
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.accepted(Issuance.register_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, from, request, now, token)) == False{} : Bool}
       {==}
 
 # As issuance_stale_revision_rejects: after the rewrite `register_current`
 # takes its False{} branch, `Rejected{state, StaleRevision{}}`, whose
 # `Change.state` is the matched state by computation.
-def Laws.issuance_stale_registration_keeps_state(state, request, now, token):
+def Laws.issuance_stale_registration_keeps_state(state, from, request, now, token):
   match state:
     case Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}:
-      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.state(Issuance.register_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, request, now, token)) == Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen} : Issuance.State}
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {Issuance.Change.state(Issuance.register_current(_, Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen}, 1n+revision, from, request, now, token)) == Issuance.State{revision, next_id, live, directory, placements, approvals, grants, seen} : Issuance.State}
       {==}
 
 # The same argument through `revoke_current`.

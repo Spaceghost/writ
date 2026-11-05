@@ -573,6 +573,9 @@ PASS: GI-003 approvals differing only in the source object's version denied Scop
 PASS: GI-003 approvals differing only in output type denied ScopeMismatch
 PASS: GI-003 source approval differing from the request scope only in invocation denied ScopeMismatch
 PASS: GI-004 recipient substitution: approvals for subject 7 and a request for subject 8 denied SubjectMismatch
+PASS: GI-004 principal 8, neither an authority nor subject 7, registering subject 7's pair with rights 0 until 101 denied SubjectMismatch, both approvals unconsumed
+PASS: GI-004 the source authority or the write authority registering subject 7's request denied SubjectMismatch
+PASS: GI-004 after principal 8's registration is denied, subject 7 registers the same pair as grant 3
 PASS: GI-004 write approval for subject 8 paired with a source approval and request for subject 7 denied SubjectMismatch
 PASS: GI-004 source approval for subject 8 paired with a write approval and request for subject 7 denied SubjectMismatch
 PASS: GI-003 requested rights 7 exceeding the source approval's 3 denied Widened
@@ -730,11 +733,12 @@ PASS: scenario redirect: a read of 10 into 20v8 paired with a write approval for
 PASS: scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write
 PASS: scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted
 PASS: scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8
+PASS: scenario third-party registration: principal 8 registering subject 7's approved pair with rights 0 until 101 is denied SubjectMismatch and nothing is projected; subject 7 then registers the pair as grant 3 and T.admit admits TF.plan()
 PASS: scenario epoch advance: grant 3 admitted at epoch 3 is not current once the monitor installs epoch 4, nothing is projected, T.admit denies the old plan Stale and a fresh approval of the old scope is denied StaleEpoch
 PASS: scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4
 PASS: scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200
 PASS: scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write
-Issuance: 226 checks passed
+Issuance: 230 checks passed
 PASS: oracle fixture: disconnected vertices
 PASS: oracle fixture: directed chain
 PASS: oracle fixture: directed cycle

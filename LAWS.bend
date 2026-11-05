@@ -64,7 +64,8 @@ law nat_eq_successor_false:
   {Nat.is_eq(n, 1n+n) == False{} : Bool}
 
 # A registration whose expected revision is one past the state's revision
-# never commits, for every state, request, time and token. This is the GI-005
+# never commits, for every state, calling principal, request, time and token
+# (the subject included, so the subject check is not what denies it). This is the GI-005
 # race: a registration validated at revision r cannot commit after any
 # transition has moved the state to r+1. It relies on `register` matching on
 # `revision_current` before any other gate. It covers the successor revision
@@ -74,13 +75,15 @@ law nat_eq_successor_false:
 # (AB-006).
 law issuance_stale_revision_rejects:
   for state: Issuance.State
+  for from: Issuance.Principal
   for request: Issuance.Request
   for now: Nat
   for token: Transfer.CodeId
-  {Issuance.Change.accepted(Issuance.register(state, 1n+Issuance.revision(state), request, now, token)) == False{} : Bool}
+  {Issuance.Change.accepted(Issuance.register(state, 1n+Issuance.revision(state), from, request, now, token)) == False{} : Bool}
 
 # A registration whose expected revision is one past the state's revision
-# returns exactly the supplied state, for every request, time and token. So a
+# returns exactly the supplied state, for every calling principal, request,
+# time and token. So a
 # registration raced by any transition that moved the state exposes no new
 # state: no grant is stored and no approval consumed. The proof pins
 # `register`'s outer `revision_current` match and that its Rejected branch
@@ -89,10 +92,11 @@ law issuance_stale_revision_rejects:
 # with full state equality), not proved here.
 law issuance_stale_registration_keeps_state:
   for state: Issuance.State
+  for from: Issuance.Principal
   for request: Issuance.Request
   for now: Nat
   for token: Transfer.CodeId
-  {Issuance.Change.state(Issuance.register(state, 1n+Issuance.revision(state), request, now, token)) == state : Issuance.State}
+  {Issuance.Change.state(Issuance.register(state, 1n+Issuance.revision(state), from, request, now, token)) == state : Issuance.State}
 
 # The same for revocation: a revocation whose expected revision is one past
 # the state's returns exactly the supplied state, for every principal and

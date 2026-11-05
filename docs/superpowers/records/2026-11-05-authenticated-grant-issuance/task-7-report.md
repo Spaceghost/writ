@@ -53,23 +53,23 @@ Seven numbered preconditions, each a host obligation not met today, quoting the 
 
 ## Pins to update at re-pin time
 
-The values are this lane's alone (1010). If the parallel lane adds N checks, the total is 1010 + N.
+The values are this lane's alone (1014). If the parallel lane adds N checks, the total is 1014 + N.
 
 | File | Line | Old | New (this lane alone) |
 | --- | --- | --- | --- |
-| README.md | 114 | `The recorded suite passes **782 checks on each of the JavaScript and native CPU` | `**1010 checks ...` |
-| utils/nix/writ.nix | 10 | comment `# 782, and the final line is "ALL LIBRARY TESTS PASSED".` | `# 1010, ...` |
-| utils/nix/writ.nix | 55 | `# exactly 782 lines beginning with PASS ...` | `exactly 1010 lines` |
-| utils/nix/writ.nix | 64-65 | `if [ "$passes" != 782 ]` / `expected 782 PASS lines` | `1010` / `expected 1010 PASS lines` |
-| .github/workflows/writfs-genode-native.yml | 25 | `WRIT_CORE_EXPECTED: '782'` | `WRIT_CORE_EXPECTED: '1010'` |
-| contrib/native-hosts/genode/build-and-run.sh | 18 | `(currently 782)` | `(currently 1010)` |
+| README.md | 114 | `The recorded suite passes **782 checks on each of the JavaScript and native CPU` | `**1014 checks ...` |
+| utils/nix/writ.nix | 10 | comment `# 782, and the final line is "ALL LIBRARY TESTS PASSED".` | `# 1014, ...` |
+| utils/nix/writ.nix | 55 | `# exactly 782 lines beginning with PASS ...` | `exactly 1014 lines` |
+| utils/nix/writ.nix | 64-65 | `if [ "$passes" != 782 ]` / `expected 782 PASS lines` | `1014` / `expected 1014 PASS lines` |
+| .github/workflows/writfs-genode-native.yml | 25 | `WRIT_CORE_EXPECTED: '782'` | `WRIT_CORE_EXPECTED: '1014'` |
+| contrib/native-hosts/genode/build-and-run.sh | 18 | `(currently 782)` | `(currently 1014)` |
 | VERIFICATION.md | 34 | `\| Facade \| 10 \| ...` | `\| Facade \| 12 \| ...` (the two GI-008 facade checks) |
 | VERIFICATION.md | after 35 (HostBinding row) | none | new row `\| Issuance \| 226 \| Authenticated approval submission, exact paired-scope registration, revision-checked revocation and replay, attenuation-only derivation, exclusive expiry, subject-scoped per-use projections into T.admit and F.checked_plan (model only; not wired to a host) \|` |
-| VERIFICATION.md | 37 | `\| **Total per backend** \| **782** \| ...` | `**1010**` |
-| VERIFICATION.md | 49 | `counting both forms yields 782 per file.` | `yields 1010 per file.` |
+| VERIFICATION.md | 37 | `\| **Total per backend** \| **782** \| ...` | `**1014**` |
+| VERIFICATION.md | 49 | `counting both forms yields 782 per file.` | `yields 1014 per file.` |
 | VERIFICATION.md | 154 | `` `bend PROOF.bend` prints `ALL PROOFS CHECK` for six declared laws: `` | `twelve declared laws` (the six issuance laws are listed in the paragraph after item 6) |
 | VERIFICATION.md | 213 | `No Lean-kernel verdict exists for any of the six laws.` | `... any of the twelve laws.` |
-| VERIFICATION.md | 385-386 (Model boundaries) | `The integrated core passes 782 checks and 41 vectors on both CPU backends;` / next line `all six ordinary laws pass.` | `1010 checks` / `all twelve ordinary laws pass.` |
+| VERIFICATION.md | 385-386 (Model boundaries) | `The integrated core passes 782 checks and 41 vectors on both CPU backends;` / next line `all six ordinary laws pass.` | `1014 checks` / `all twelve ordinary laws pass.` |
 
 Leave historical sentences at 782 (VERIFICATION.md lines 20, 22, 83, ~302, ~308, ~388; the host-corpus gates above in preconditions item 7): they describe recorded runs of the earlier tree.
 
@@ -80,3 +80,41 @@ Leave historical sentences at 782 (VERIFICATION.md lines 20, 22, 83, ~302, ~308,
 3. `verification/openspec-validation.txt` was stale at the merge base (37 items) and now records the 44 this tree produces. If master has since rewritten it, expect a merge conflict that can be resolved by regenerating the file.
 4. The build paths are `../writ-build/authenticated-grant-issuance/`, not the `../writ-build/` named in the brief and in VERIFICATION.md, to avoid collisions with the parallel lanes. The commands are recorded as run.
 5. There is no Lean kernel verdict and no GPU run. The native run is CPU only.
+
+## Final fix round
+
+Read `final-review.md` and `task-7-review.md` (not edited). Controller ruling on I-1: Option A.
+
+### I-1: register takes the authenticated `from`
+
+- `Issuance.register(state, expected_revision, from, request, now, token)`. `register_current`, `register_checked`, `register_checks` and `register_gates` take `from` too. The new gate is `Gate{speaks_for_subject(from, scope), SubjectMismatch{}, ...`, third in `register_gates` (after StaleRevision and UnknownVersion), before any approval is read. SubjectMismatch is the reason from the fixed set, and the module header says so. `Principal.id` and `speaks_for_subject` moved above `register_gates`, because Bend needs a definition before its first use. Their text is unchanged except for one comment sentence. `derive` and the projections use the same helper.
+- The single-use ruling is unchanged. The subject check grants no authority.
+- Updated comments: the module header ("Registration takes the authenticated `from` ..."), the `register` doc, the `register_gates` denial-order comment, and the `Request` type comment. M-4: the stale "projection (task 1.5)" comment now reads "the projections `reads`, `writes` and `registry` admit only the authenticated principal's current grants".
+- Laws: `issuance_stale_revision_rejects` and `issuance_stale_registration_keeps_state` gain `for from: Issuance.Principal`, and their rationale says "every calling principal ... (the subject included, so the subject check is not what denies it)". These are still real statements over every `from`. The PROOF.bend terms only thread `from` through, because the outer revision match still comes first. `git diff <merge-base> -- LAWS.bend PROOF.bend` still has 0 removed lines. There are still 12 laws.
+- Tests: all 94 `I.register`/`I.register_checks` calls in `IssuanceTests.bend` pass the request scope's subject. That is `subject_principal()`, or `principal8()` for the subject-8 requests, so every earlier check still reaches the gate it was written for. Both fixtures moved to the top of the file (synthetic, commented). The four new checks:
+  - "GI-004 principal 8, neither an authority nor subject 7, registering subject 7's pair with rights 0 until 101 denied SubjectMismatch, both approvals unconsumed"
+  - "GI-004 the source authority or the write authority registering subject 7's request denied SubjectMismatch"
+  - "GI-004 after principal 8's registration is denied, subject 7 registers the same pair as grant 3"
+  - "scenario third-party registration: principal 8 registering subject 7's approved pair with rights 0 until 101 is denied SubjectMismatch and nothing is projected; subject 7 then registers the pair as grant 3 and T.admit admits TF.plan()"
+- Mutation (scratch copies under the session scratchpad, `t7fix/`): with the gate condition replaced by `True{}`, the run is KILLED, and the first FAIL is the principal-8 check (525 PASS before it). With the gate weakened to accept any caller except principal 8, the run is KILLED, and the first FAIL is the authority-caller check (526 PASS). `bend PROOF.bend` still prints ALL PROOFS CHECK under both, as expected: the laws rely only on the revision match.
+
+### Minor findings
+
+- M-1: `docs/GRANT-ISSUANCE.md` "Rebuilding the projections" gains a "Rights reach Frontend only" bullet. It says Transfer grants carry no rights, so a bare `T.admit` path admits a current grant's whole plan whatever its rights, including 0. It states the hazard, and the host must route rights-limited use through Frontend.
+- M-2: "trusted, monotone clock: `now` never decreases across the transitions and uses of one issuer state" is now in the live-stamp section (which also states the revival examples) and in precondition 4. The GI-007 traceability gap says the same.
+- M-3: "no grant-level revocation" is listed as open in GRANT-ISSUANCE.md "What this document does not claim" and at the end of the traceability file.
+- M-4: done (above).
+- M-5: `verification/grant-issuance.txt` now says why openspec-validation.txt went from 37 to 44 items: the stale file at the merge base, and the seven added items by name.
+- Documents: the GRANT-ISSUANCE.md entry-point table and "The authenticated principal" section (the old "`register` takes no `from`" sentence is replaced with the I-1 rationale and a named check). Traceability: GI-002 and GI-004 rows (implementing defs, named checks, the gap now includes the `from` of `register`) and the header count. Evidence file: counts, a new "Registration-caller checks" section with its mutation result, and the scenario list (24, matching the run). tasks.md: the 2.1 and 2.2 box notes now give 1014.
+
+### Results (verbatim)
+
+1. `bend Tests.bend -o ../writ-build/authenticated-grant-issuance/tests.js && node ... > verification/tests-js.txt`: exit 0. The last lines are `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers` / `ALL LIBRARY TESTS PASSED`. There are 1014 PASS lines (961 `PASS: ` + 53 `PASS `) and 0 FAIL. `Issuance: 230 checks passed`, `Facade: 12 checks passed`.
+2. Native CPU: the build exited 0 (real 2m42.137s), and `+RTS --threads 4 --gpu off` exited 0 with 1014 PASS. The output is byte-identical to tests-js.txt: SHA-256 `e07942b33808774a01ebf82f6a1a2396513088b893b43eeb3641831a87138928`. The VECTOR lines equal master's. This is a CPU run, not a GPU test.
+3. `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` (12 laws; proofs.txt unchanged).
+4. `--verdict`: not re-run in this round. The Task 7 attempt (exit 1, no `lean`) stands in kernel-verdict.txt.
+5. OpenSpec 1.16.0 strict: `Totals: 44 passed, 0 failed (44 items)`, identical to the recorded file.
+
+Count: **1014 = 782 plus 232 new checks (230 Issuance + 2 Facade)**. The pins table above now gives 1014.
+
+`git diff --stat <merge-base> -- '*.bend'` still lists exactly FacadeTests, Issuance, IssuanceTests, LAWS, PROOF and Tests. No use-time module changed, and no count pin changed.

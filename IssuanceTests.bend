@@ -111,6 +111,17 @@ def now() -> Nat:
 def subject() -> Nat:
   7n
 
+# The subject 7 as the host's transport identity verification names it
+# (synthetic): the only principal that may register a request for subject 7
+# or derive from a grant for subject 7.
+def subject_principal() -> I.Principal:
+  I.Principal{subject()}
+
+# Subject 8 as transport identity verification would name it (synthetic): the
+# caller of the subject-8 requests and of the second grant in two_subjects().
+def principal8() -> I.Principal:
+  I.Principal{8n}
+
 # --- Scopes and approvals ----------------------------------------------------
 
 def scope() -> I.Scope:
@@ -403,7 +414,7 @@ def good_request() -> I.Request:
   request(scope(), one(1n), 2n)
 
 def registration_change() -> I.Change:
-  I.register(both(), 2n, good_request(), now(), token())
+  I.register(both(), 2n, subject_principal(), good_request(), now(), token())
 
 def registered() -> I.State:
   I.Change.state(registration_change())
@@ -579,6 +590,15 @@ def consumed_is(approvals: I.Approvals, +id: Nat, +grant: Nat) -> Bool:
 
 # --- Section 1.2: registration (GI-002, GI-003, GI-004) ----------------------
 
+# Synthetic principal 8, neither an authority nor subject 7, asks to register
+# subject 7's approved pair (ids 1 and 2) with rights 0 until 101: the terms a
+# third party would pick to burn the single-use approvals.
+def third_party_request() -> I.Request:
+  request_with(scope(), one(1n), 2n, 0, 101n)
+
+def third_party_registration() -> I.Change:
+  I.register(both(), 2n, principal8(), third_party_request(), now(), token())
+
 def registration() -> IO(Unit):
   do IO<Unit>:
     Test.check(I.Change.accepted(registration_change()) && issued_is(I.Change.issued(registration_change()), 3n)
@@ -586,86 +606,93 @@ def registration() -> IO(Unit):
     Test.check(grants_equal(I.grants(registered()), I.Grants{I.Grant{3n, token(), scope(), 3, 150n, one(1n), 2n, 0n}, I.NoGrants{}}), "GI-004 the registered grant binds the approved scope and subject 7, the cited ids, the requested rights and lifetime, and no parent")
     Test.check(consumed_is(I.approvals(registered()), 1n, 3n) && consumed_is(I.approvals(registered()), 2n, 3n)
       && serials_equal(I.seen(registered()), I.seen(both())) && I.valid(registered()), "GI-002 registration consumes both cited approvals for grant 3, records no serial, and leaves a valid state")
-    Test.check(I.Change.accepted(I.register(two_state(), 3n, request(scope_two(), two(1n, 2n), 3n), now(), token()))
-      && grants_equal(I.grants(I.Change.state(I.register(two_state(), 3n, request(scope_two(), two(1n, 2n), 3n), now(), token()))),
+    Test.check(I.Change.accepted(I.register(two_state(), 3n, subject_principal(), request(scope_two(), two(1n, 2n), 3n), now(), token()))
+      && grants_equal(I.grants(I.Change.state(I.register(two_state(), 3n, subject_principal(), request(scope_two(), two(1n, 2n), 3n), now(), token()))),
         I.Grants{I.Grant{4n, token(), scope_two(), 3, 150n, two(1n, 2n), 3n, 0n}, I.NoGrants{}}), "GI-003 two-source plan from read domains 5 and 7 is accepted with both source approvals in manifest order")
-    Test.check(denied(I.register(two_state(), 3n, request(scope_two(), two(2n, 1n), 3n), now(), token()), two_state(), I.ScopeMismatch{}), "GI-003 two-source plan with the source approvals reordered denied ScopeMismatch")
-    Test.check(denied(I.register(two_state(), 3n, request(scope_two(), one(1n), 3n), now(), token()), two_state(), I.MissingApproval{}), "GI-003 two-source plan citing no approval for object 11 denied MissingApproval")
-    Test.check(denied(I.register(two_plus_state(), 4n, request(scope_two(), three(1n, 2n, 4n), 3n), now(), token()), two_plus_state(), I.ScopeMismatch{}), "GI-003 two-source plan citing a third source approval beyond the manifest denied ScopeMismatch")
-    Test.check(denied(I.register(both(), 2n, request(scope(), one(1n), 0n), now(), token()), both(), I.MissingApproval{}), "GI-002 missing destination approval: no write approval cited denied MissingApproval")
-    Test.check(denied(I.register(both(), 2n, request(scope(), one(1n), 99n), now(), token()), both(), I.MissingApproval{}), "GI-002 missing destination approval: cited write approval id does not exist denied MissingApproval")
-    Test.check(denied(I.register(both(), 2n, request(scope(), one(1n), 1n), now(), token()), both(), I.MissingApproval{}), "GI-002 a source approval cited as the write approval denied MissingApproval")
-    Test.check(denied(I.register(both(), 2n, request(scope(), one(99n), 2n), now(), token()), both(), I.MissingApproval{}), "GI-003 cited source approval id does not exist denied MissingApproval")
-    Test.check(denied(I.register(both(), 2n, request(scope(), one(2n), 2n), now(), token()), both(), I.MissingApproval{}), "GI-003 the write approval cited as a source approval denied MissingApproval")
-    Test.check(denied(I.register(with_approvals(both(), I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, 0n, False{}}, I.approvals(both())}), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(two_state(), 3n, subject_principal(), request(scope_two(), two(2n, 1n), 3n), now(), token()), two_state(), I.ScopeMismatch{}), "GI-003 two-source plan with the source approvals reordered denied ScopeMismatch")
+    Test.check(denied(I.register(two_state(), 3n, subject_principal(), request(scope_two(), one(1n), 3n), now(), token()), two_state(), I.MissingApproval{}), "GI-003 two-source plan citing no approval for object 11 denied MissingApproval")
+    Test.check(denied(I.register(two_plus_state(), 4n, subject_principal(), request(scope_two(), three(1n, 2n, 4n), 3n), now(), token()), two_plus_state(), I.ScopeMismatch{}), "GI-003 two-source plan citing a third source approval beyond the manifest denied ScopeMismatch")
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request(scope(), one(1n), 0n), now(), token()), both(), I.MissingApproval{}), "GI-002 missing destination approval: no write approval cited denied MissingApproval")
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request(scope(), one(1n), 99n), now(), token()), both(), I.MissingApproval{}), "GI-002 missing destination approval: cited write approval id does not exist denied MissingApproval")
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request(scope(), one(1n), 1n), now(), token()), both(), I.MissingApproval{}), "GI-002 a source approval cited as the write approval denied MissingApproval")
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request(scope(), one(99n), 2n), now(), token()), both(), I.MissingApproval{}), "GI-003 cited source approval id does not exist denied MissingApproval")
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request(scope(), one(2n), 2n), now(), token()), both(), I.MissingApproval{}), "GI-003 the write approval cited as a source approval denied MissingApproval")
+    Test.check(denied(I.register(with_approvals(both(), I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, 0n, False{}}, I.approvals(both())}), 2n, subject_principal(), good_request(), now(), token()),
       with_approvals(both(), I.Approvals{I.Stored{1n, I.SourceEntry{good_source()}, 0n, False{}}, I.approvals(both())}), I.MissingApproval{}), "GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval")
-    Test.check(denied(I.register(both(), 2n, request(I.Scope{TF.plan(), write9(), subject()}, one(1n), 2n), now(), token()), both(), I.ScopeMismatch{}), "GI-003 write approval issued for write domain 6 under a request scope naming write domain 9 denied ScopeMismatch")
-    Test.check(denied(I.register(stored_pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), write_with(I.Scope{TF.plan(), write9(), subject()}, 3)), 2n, request(I.Scope{TF.plan(), write9(), subject()}, one(1n), 2n), now(), token()),
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request(I.Scope{TF.plan(), write9(), subject()}, one(1n), 2n), now(), token()), both(), I.ScopeMismatch{}), "GI-003 write approval issued for write domain 6 under a request scope naming write domain 9 denied ScopeMismatch")
+    Test.check(denied(I.register(stored_pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), write_with(I.Scope{TF.plan(), write9(), subject()}, 3)), 2n, subject_principal(), request(I.Scope{TF.plan(), write9(), subject()}, one(1n), 2n), now(), token()),
       stored_pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), write_with(I.Scope{TF.plan(), write9(), subject()}, 3)), I.ScopeMismatch{}), "GI-003 stored write approval for write domain 6 whose own scope names write domain 9 is revalidated and denied ScopeMismatch")
-    Test.check(denied(I.register(stored_pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope(), 3, 200n}), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(stored_pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope(), 3, 200n}), 2n, subject_principal(), good_request(), now(), token()),
       stored_pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope(), 3, 200n}), I.ScopeMismatch{}), "GI-003 stored write approval for destination 20v9 under a plan naming 20v8 is revalidated and denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n}), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n}), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n}), I.ScopeMismatch{}), "GI-003 redirecting an existing read: source approval for 10 to 20v8 with a write approval for 20v9, under the read's scope, denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n}), 2n, request(scope_with(plan_redirect(), subject()), one(1n), 2n), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n}), 2n, subject_principal(), request(scope_with(plan_redirect(), subject()), one(1n), 2n), now(), token()),
       pair(good_source(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n}), I.ScopeMismatch{}), "GI-003 redirecting an existing read: the same pair under the redirected write's scope denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_two(), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_two(), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_two(), 3, 200n)), I.ScopeMismatch{}), "GI-003 expanded manifest: write approval whose scope adds source 11 denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_invocation(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_invocation(), subject()), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(plan_invocation(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in invocation denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_code(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_code(), subject()), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(plan_code(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in the eighth code word denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_kind(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_kind(), subject()), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(plan_kind(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in operation kind denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_source_version(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_source_version(), subject()), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(plan_source_version(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in the source object's version denied ScopeMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_output_type(), subject()), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(plan_output_type(), subject()), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(plan_output_type(), subject()), 3, 200n)), I.ScopeMismatch{}), "GI-003 approvals differing only in output type denied ScopeMismatch")
-    Test.check(denied(I.register(pair(source_for(scope_with(plan_invocation(), subject()), 3, 200n), good_write()), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(source_for(scope_with(plan_invocation(), subject()), 3, 200n), good_write()), 2n, subject_principal(), good_request(), now(), token()),
       pair(source_for(scope_with(plan_invocation(), subject()), 3, 200n), good_write()), I.ScopeMismatch{}), "GI-003 source approval differing from the request scope only in invocation denied ScopeMismatch")
-    Test.check(denied(I.register(both(), 2n, request(scope_with(TF.plan(), 8n), one(1n), 2n), now(), token()), both(), I.SubjectMismatch{}), "GI-004 recipient substitution: approvals for subject 7 and a request for subject 8 denied SubjectMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(TF.plan(), 8n), 3, 200n)), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(both(), 2n, principal8(), request(scope_with(TF.plan(), 8n), one(1n), 2n), now(), token()), both(), I.SubjectMismatch{}), "GI-004 recipient substitution: approvals for subject 7 and a request for subject 8 denied SubjectMismatch")
+    Test.check(denied(third_party_registration(), both(), I.SubjectMismatch{})
+      && consumed_is(I.approvals(I.Change.state(third_party_registration())), 1n, 0n)
+      && consumed_is(I.approvals(I.Change.state(third_party_registration())), 2n, 0n), "GI-004 principal 8, neither an authority nor subject 7, registering subject 7's pair with rights 0 until 101 denied SubjectMismatch, both approvals unconsumed")
+    Test.check(denied(I.register(both(), 2n, source_authority(), good_request(), now(), token()), both(), I.SubjectMismatch{})
+      && denied(I.register(both(), 2n, write_authority(), good_request(), now(), token()), both(), I.SubjectMismatch{}), "GI-004 the source authority or the write authority registering subject 7's request denied SubjectMismatch")
+    Test.check(I.Change.accepted(I.register(I.Change.state(third_party_registration()), 2n, subject_principal(), good_request(), now(), token()))
+      && issued_is(I.Change.issued(I.register(I.Change.state(third_party_registration()), 2n, subject_principal(), good_request(), now(), token())), 3n), "GI-004 after principal 8's registration is denied, subject 7 registers the same pair as grant 3")
+    Test.check(denied(I.register(pair(good_source(), write_for(scope_with(TF.plan(), 8n), 3, 200n)), 2n, subject_principal(), good_request(), now(), token()),
       pair(good_source(), write_for(scope_with(TF.plan(), 8n), 3, 200n)), I.SubjectMismatch{}), "GI-004 write approval for subject 8 paired with a source approval and request for subject 7 denied SubjectMismatch")
-    Test.check(denied(I.register(pair(source_for(scope_with(TF.plan(), 8n), 3, 200n), good_write()), 2n, good_request(), now(), token()),
+    Test.check(denied(I.register(pair(source_for(scope_with(TF.plan(), 8n), 3, 200n), good_write()), 2n, subject_principal(), good_request(), now(), token()),
       pair(source_for(scope_with(TF.plan(), 8n), 3, 200n), good_write()), I.SubjectMismatch{}), "GI-004 source approval for subject 8 paired with a write approval and request for subject 7 denied SubjectMismatch")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope(), 7, 200n)), 2n, request_with(scope(), one(1n), 2n, 7, 150n), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope(), 7, 200n)), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 7, 150n), now(), token()),
       pair(good_source(), write_for(scope(), 7, 200n)), I.Widened{}), "GI-003 requested rights 7 exceeding the source approval's 3 denied Widened")
-    Test.check(denied(I.register(pair(source_for(scope(), 7, 200n), good_write()), 2n, request_with(scope(), one(1n), 2n, 7, 150n), now(), token()),
+    Test.check(denied(I.register(pair(source_for(scope(), 7, 200n), good_write()), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 7, 150n), now(), token()),
       pair(source_for(scope(), 7, 200n), good_write()), I.Widened{}), "GI-003 requested rights 7 exceeding the write approval's 3 denied Widened")
-    Test.check(denied(I.register(both(), 2n, request_with(scope(), one(1n), 2n, 8, 150n), now(), token()), both(), I.InvalidRights{}), "GI-003 requested rights 8 denied InvalidRights")
-    Test.check(denied(I.register(pair(source_for(scope(), 3, 300n), good_write()), 2n, request_with(scope(), one(1n), 2n, 3, 250n), 200n, token()),
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 8, 150n), now(), token()), both(), I.InvalidRights{}), "GI-003 requested rights 8 denied InvalidRights")
+    Test.check(denied(I.register(pair(source_for(scope(), 3, 300n), good_write()), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 250n), 200n, token()),
       pair(source_for(scope(), 3, 300n), good_write()), I.Expired{}), "GI-002 registration at the write approval's valid_until denied Expired")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope(), 3, 300n)), 2n, request_with(scope(), one(1n), 2n, 3, 250n), 200n, token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope(), 3, 300n)), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 250n), 200n, token()),
       pair(good_source(), write_for(scope(), 3, 300n)), I.Expired{}), "GI-002 registration at the source approval's valid_until denied Expired")
-    Test.check(denied(I.register(both(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), now(), token()), both(), I.Expired{}), "GI-002 requested valid_until equal to now denied Expired")
-    Test.check(I.Change.accepted(I.register(both(), 2n, request_with(scope(), one(1n), 2n, 3, 200n), now(), token())), "GI-002 requested valid_until equal to both approvals' valid_until is accepted")
-    Test.check(I.Change.accepted(I.register(both(), 2n, request_with(scope(), one(1n), 2n, 1, 150n), now(), token())), "GI-003 requested rights 1, a strict subset of both approvals' 3, are accepted")
-    Test.check(denied(I.register(pair(source_for(scope(), 3, 300n), good_write()), 2n, request_with(scope(), one(1n), 2n, 3, 250n), now(), token()),
+    Test.check(denied(I.register(both(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), now(), token()), both(), I.Expired{}), "GI-002 requested valid_until equal to now denied Expired")
+    Test.check(I.Change.accepted(I.register(both(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 200n), now(), token())), "GI-002 requested valid_until equal to both approvals' valid_until is accepted")
+    Test.check(I.Change.accepted(I.register(both(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 1, 150n), now(), token())), "GI-003 requested rights 1, a strict subset of both approvals' 3, are accepted")
+    Test.check(denied(I.register(pair(source_for(scope(), 3, 300n), good_write()), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 250n), now(), token()),
       pair(source_for(scope(), 3, 300n), good_write()), I.Widened{}), "GI-002 requested lifetime beyond the write approval's denied Widened")
-    Test.check(denied(I.register(pair(good_source(), write_for(scope(), 3, 300n)), 2n, request_with(scope(), one(1n), 2n, 3, 250n), now(), token()),
+    Test.check(denied(I.register(pair(good_source(), write_for(scope(), 3, 300n)), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 250n), now(), token()),
       pair(good_source(), write_for(scope(), 3, 300n)), I.Widened{}), "GI-002 requested lifetime beyond the source approval's denied Widened")
-    Test.check(I.Change.accepted(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token()))
-      && issued_is(I.Change.issued(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token())), 6n), "GI-002 a fresh approval pair registers a second grant with a fresh token")
-    Test.check(grants_equal(I.grants(I.Change.state(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token()))),
+    Test.check(I.Change.accepted(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), other_token()))
+      && issued_is(I.Change.issued(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), other_token())), 6n), "GI-002 a fresh approval pair registers a second grant with a fresh token")
+    Test.check(grants_equal(I.grants(I.Change.state(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), other_token()))),
       I.Grants{I.Grant{6n, other_token(), scope(), 3, 150n, one(4n), 5n, 0n}, I.grants(registered())}), "GI-002 a second registration keeps the first grant in the grant list")
-    Test.check(I.Change.accepted(I.register(two_plus_state(), 4n, request(scope_two(), two(1n, 2n), 3n), now(), token()))
-      && consumed_is(I.approvals(I.Change.state(I.register(two_plus_state(), 4n, request(scope_two(), two(1n, 2n), 3n), now(), token()))), 4n, 0n), "GI-002 registration leaves an uncited approval unconsumed")
-    Test.check(denied(I.register(pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), good_write()), 2n, good_request(), now(), token()),
+    Test.check(I.Change.accepted(I.register(two_plus_state(), 4n, subject_principal(), request(scope_two(), two(1n, 2n), 3n), now(), token()))
+      && consumed_is(I.approvals(I.Change.state(I.register(two_plus_state(), 4n, subject_principal(), request(scope_two(), two(1n, 2n), 3n), now(), token()))), 4n, 0n), "GI-002 registration leaves an uncited approval unconsumed")
+    Test.check(denied(I.register(pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), good_write()), 2n, subject_principal(), good_request(), now(), token()),
       pair(source_for(I.Scope{TF.plan(), write9(), subject()}, 3, 200n), good_write()), I.ScopeMismatch{}), "GI-003 source approval whose scope names write domain 9, paired with a write approval and request for write domain 6, denied ScopeMismatch")
-    Test.check(denied(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), token()), fresh_pair(), I.DuplicateToken{}), "GI-002 registration with a token a registered grant holds denied DuplicateToken")
-    Test.check(denied(I.register(fresh_pair(), 5n, request(scope(), one(1n), 5n), now(), other_token()), fresh_pair(), I.Replay{}), "GI-002 a consumed source approval cited by a second registration denied Replay")
-    Test.check(denied(I.register(fresh_pair(), 5n, request(scope(), one(4n), 2n), now(), other_token()), fresh_pair(), I.Replay{}), "GI-002 a consumed write approval cited by a second registration denied Replay")
-    Test.check(denied(I.register(pair(source_for(scope_with(plan_dup(), subject()), 3, 200n), write_for(scope_with(plan_dup(), subject()), 3, 200n)), 2n, request(scope_with(plan_dup(), subject()), two(1n, 1n), 2n), now(), token()),
+    Test.check(denied(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), token()), fresh_pair(), I.DuplicateToken{}), "GI-002 registration with a token a registered grant holds denied DuplicateToken")
+    Test.check(denied(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(1n), 5n), now(), other_token()), fresh_pair(), I.Replay{}), "GI-002 a consumed source approval cited by a second registration denied Replay")
+    Test.check(denied(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 2n), now(), other_token()), fresh_pair(), I.Replay{}), "GI-002 a consumed write approval cited by a second registration denied Replay")
+    Test.check(denied(I.register(pair(source_for(scope_with(plan_dup(), subject()), 3, 200n), write_for(scope_with(plan_dup(), subject()), 3, 200n)), 2n, subject_principal(), request(scope_with(plan_dup(), subject()), two(1n, 1n), 2n), now(), token()),
       pair(source_for(scope_with(plan_dup(), subject()), 3, 200n), write_for(scope_with(plan_dup(), subject()), 3, 200n)), I.Replay{}), "GI-003 one source approval cited for two manifest entries denied Replay")
-    Test.check(denied(I.register(with_revoked(both(), 2n), 2n, good_request(), now(), token()), with_revoked(both(), 2n), I.Revoked{}), "GI-002 a revoked write approval denied Revoked")
-    Test.check(denied(I.register(with_revoked(both(), 1n), 2n, good_request(), now(), token()), with_revoked(both(), 1n), I.Revoked{}), "GI-002 a revoked source approval denied Revoked")
-    Test.check(denied(I.register(with_directory(both(), directory_without_source()), 2n, good_request(), now(), token()), with_directory(both(), directory_without_source()), I.NotAuthority{}), "GI-001 source authority removed from the directory between submission and registration denied NotAuthority")
-    Test.check(denied(I.register(with_directory(both(), directory_without_write()), 2n, good_request(), now(), token()), with_directory(both(), directory_without_write()), I.NotAuthority{}), "GI-001 write authority removed from the directory between submission and registration denied NotAuthority")
-    Test.check(denied(I.register(with_placements(both(), source_moved()), 2n, good_request(), now(), token()), with_placements(both(), source_moved()), I.WrongDomain{}), "GI-001 source object moved to read domain 9 between submission and registration denied WrongDomain")
-    Test.check(denied(I.register(with_placements(both(), destination_moved()), 2n, good_request(), now(), token()), with_placements(both(), destination_moved()), I.WrongDomain{}), "GI-001 destination moved to write domain 5 between submission and registration denied WrongDomain")
-    Test.check(denied(I.register(with_live(both(), T.Stamp{1n, 2n, 4n}), 2n, good_request(), now(), token()), with_live(both(), T.Stamp{1n, 2n, 4n}), I.StaleEpoch{}), "GI-003 registration after the monitor advanced the authority epoch denied StaleEpoch")
-    Test.check(denied(I.register(both(), 2n, I.Request{2n, scope(), one(1n), 2n, 3, 150n}, now(), token()), both(), I.UnknownVersion{}), "GI-002 registration request version 2 denied UnknownVersion")
-    Test.check(denied(I.register(both(), 1n, good_request(), now(), token()), both(), I.StaleRevision{}), "GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision")
-    Test.check(Bool.not(Guard.all(I.register_checks(both(), 1n, good_request(), now(), token()))), "GI-002 the registration check list alone is false at a stale revision")
+    Test.check(denied(I.register(with_revoked(both(), 2n), 2n, subject_principal(), good_request(), now(), token()), with_revoked(both(), 2n), I.Revoked{}), "GI-002 a revoked write approval denied Revoked")
+    Test.check(denied(I.register(with_revoked(both(), 1n), 2n, subject_principal(), good_request(), now(), token()), with_revoked(both(), 1n), I.Revoked{}), "GI-002 a revoked source approval denied Revoked")
+    Test.check(denied(I.register(with_directory(both(), directory_without_source()), 2n, subject_principal(), good_request(), now(), token()), with_directory(both(), directory_without_source()), I.NotAuthority{}), "GI-001 source authority removed from the directory between submission and registration denied NotAuthority")
+    Test.check(denied(I.register(with_directory(both(), directory_without_write()), 2n, subject_principal(), good_request(), now(), token()), with_directory(both(), directory_without_write()), I.NotAuthority{}), "GI-001 write authority removed from the directory between submission and registration denied NotAuthority")
+    Test.check(denied(I.register(with_placements(both(), source_moved()), 2n, subject_principal(), good_request(), now(), token()), with_placements(both(), source_moved()), I.WrongDomain{}), "GI-001 source object moved to read domain 9 between submission and registration denied WrongDomain")
+    Test.check(denied(I.register(with_placements(both(), destination_moved()), 2n, subject_principal(), good_request(), now(), token()), with_placements(both(), destination_moved()), I.WrongDomain{}), "GI-001 destination moved to write domain 5 between submission and registration denied WrongDomain")
+    Test.check(denied(I.register(with_live(both(), T.Stamp{1n, 2n, 4n}), 2n, subject_principal(), good_request(), now(), token()), with_live(both(), T.Stamp{1n, 2n, 4n}), I.StaleEpoch{}), "GI-003 registration after the monitor advanced the authority epoch denied StaleEpoch")
+    Test.check(denied(I.register(both(), 2n, subject_principal(), I.Request{2n, scope(), one(1n), 2n, 3, 150n}, now(), token()), both(), I.UnknownVersion{}), "GI-002 registration request version 2 denied UnknownVersion")
+    Test.check(denied(I.register(both(), 1n, subject_principal(), good_request(), now(), token()), both(), I.StaleRevision{}), "GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision")
+    Test.check(Bool.not(Guard.all(I.register_checks(both(), 1n, subject_principal(), good_request(), now(), token()))), "GI-002 the registration check list alone is false at a stale revision")
 
 # --- Revision fixtures (synthetic) -------------------------------------------
 
@@ -717,7 +744,7 @@ def next_epoch() -> T.Stamp:
 
 # The two-source plan registered as grant 4 (approvals 1, 2 and 3).
 def two_registered() -> I.State:
-  I.Change.state(I.register(two_state(), 3n, request(scope_two(), two(1n, 2n), 3n), now(), token()))
+  I.Change.state(I.register(two_state(), 3n, subject_principal(), request(scope_two(), two(1n, 2n), 3n), now(), token()))
 
 # Source and write approvals for scope() with serial `n`.
 def source_serial(n: Nat) -> I.SourceApproval:
@@ -763,7 +790,7 @@ def write_revoked() -> I.State:
 def revoked_twice() -> I.State:
   I.Change.state(I.revoke(
     I.Change.state(I.revoke(
-      I.Change.state(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token())),
+      I.Change.state(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), other_token())),
       6n, source_authority(), 1n)),
     7n, source_authority(), 4n))
 
@@ -785,11 +812,6 @@ def child(scope: I.Scope, rights: U32, valid_until: Nat, parent: Nat) -> I.Grant
 
 def good_child() -> I.Grant:
   child(scope(), 3, 150n, 3n)
-
-# The subject 7 as the host's transport identity verification names it: the
-# only principal that may derive from a grant for subject 7.
-def subject_principal() -> I.Principal:
-  I.Principal{subject()}
 
 def derivation(rights: U32, valid_until: Nat) -> I.Derivation:
   I.Derivation{1n, rights, valid_until}
@@ -816,12 +838,12 @@ def derived_state(grant: I.Grant) -> I.State:
 
 def revision() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Nat.is_eq(I.revision(at_seven()), 7n) && I.Change.accepted(I.register(at_seven(), 7n, good_request(), now(), token())), "GI-005 approvals 1 and 2 are valid for registration at revision 7")
+    Test.check(Nat.is_eq(I.revision(at_seven()), 7n) && I.Change.accepted(I.register(at_seven(), 7n, subject_principal(), good_request(), now(), token())), "GI-005 approvals 1 and 2 are valid for registration at revision 7")
     Test.check(I.Change.accepted(revoked_at_eight()) && issued_is(I.Change.issued(revoked_at_eight()), 1n) && Nat.is_eq(I.revision(at_eight()), 8n), "GI-005 the source authority revokes approval 1, moving the state to revision 8")
-    Test.check(denied(I.register(at_eight(), 7n, good_request(), now(), token()), at_eight(), I.StaleRevision{}), "GI-005 revocation during issuance: registration validated at revision 7 against state at revision 8 denied StaleRevision")
-    Test.check(grants_empty(I.grants(I.Change.state(I.register(at_eight(), 7n, good_request(), now(), token()))))
-      && Bool.not(I.current(I.Change.state(I.register(at_eight(), 7n, good_request(), now(), token())), I.Grant{8n, token(), scope(), 3, 150n, one(1n), 2n, 0n}, now())), "GI-005 the raced registration exposes no grant for the plan and no current grant")
-    Test.check(denied(I.register(at_eight(), 8n, good_request(), now(), token()), at_eight(), I.Revoked{}), "GI-005 registration revalidated at revision 8 against the revoked approval denied Revoked")
+    Test.check(denied(I.register(at_eight(), 7n, subject_principal(), good_request(), now(), token()), at_eight(), I.StaleRevision{}), "GI-005 revocation during issuance: registration validated at revision 7 against state at revision 8 denied StaleRevision")
+    Test.check(grants_empty(I.grants(I.Change.state(I.register(at_eight(), 7n, subject_principal(), good_request(), now(), token()))))
+      && Bool.not(I.current(I.Change.state(I.register(at_eight(), 7n, subject_principal(), good_request(), now(), token())), I.Grant{8n, token(), scope(), 3, 150n, one(1n), 2n, 0n}, now())), "GI-005 the raced registration exposes no grant for the plan and no current grant")
+    Test.check(denied(I.register(at_eight(), 8n, subject_principal(), good_request(), now(), token()), at_eight(), I.Revoked{}), "GI-005 registration revalidated at revision 8 against the revoked approval denied Revoked")
     Test.check(I.current(registered(), grant3(), now()) && I.valid(registered()), "GI-005 the registered grant is current at registration time")
     Test.check(Bool.not(I.current(source_revoked(), grant3(), now())), "GI-005 the registered grant is not current after its source approval is revoked")
     Test.check(Bool.not(I.current(write_revoked(), grant3(), now())), "GI-005 the registered grant is not current after its write approval is revoked")
@@ -840,7 +862,7 @@ def revision() -> IO(Unit):
     Test.check(Bool.not(Guard.all(I.revoke_checks(registered(), 2n, source_authority(), 1n))), "GI-005 the revocation check list alone is false at a stale revision")
     Test.check(denied(I.revoke(registered(), 3n, source_authority(), 99n), registered(), I.MissingApproval{}), "GI-005 revocation of an approval id that does not exist denied MissingApproval")
     Test.check(denied(I.revoke(source_revoked(), 4n, source_authority(), 1n), source_revoked(), I.Revoked{}), "GI-005 revoking an already revoked approval denied Revoked")
-    Test.check(denied(I.register(registered(), 3n, good_request(), now(), other_token()), registered(), I.Replay{}), "GI-005 replay: a second registration citing the consumed approvals denied Replay")
+    Test.check(denied(I.register(registered(), 3n, subject_principal(), good_request(), now(), other_token()), registered(), I.Replay{}), "GI-005 replay: a second registration citing the consumed approvals denied Replay")
     Test.check(denied(I.submit_source(I.Change.state(I.revoke(both(), 2n, source_authority(), 1n)), 3n, source_authority(), good_source(), now()),
       I.Change.state(I.revoke(both(), 2n, source_authority(), 1n)), I.Replay{}), "GI-005 replay: re-submitting a revoked approval's serial denied Replay")
     Test.check(Bool.not(I.valid(with_grants(initial(), I.Grants{grant3(), I.NoGrants{}}))) && Bool.not(I.current(with_grants(initial(), I.Grants{grant3(), I.NoGrants{}}), grant3(), now())), "GI-005 the grant copied into a fresh empty state is not valid and not current")
@@ -849,7 +871,7 @@ def revision() -> IO(Unit):
     Test.check(Bool.not(I.valid(consumed_as(3n, 5n))) && Bool.not(I.current(consumed_as(3n, 5n), grant3(), now())), "GI-005 the grant whose write approval is consumed by another grant is not valid and not current")
     Test.check(Bool.not(I.valid(consumed_as(5n, 3n))) && Bool.not(I.current(consumed_as(5n, 3n), grant3(), now())), "GI-005 the grant whose source approval is consumed by another grant is not valid and not current")
     Test.check(Bool.not(I.current(with_live(registered(), next_epoch()), grant3(), now())), "GI-005 after the monitor advances the authority epoch the old grant is not current")
-    Test.check(denied(I.register(with_live(fresh_pair(), next_epoch()), 5n, request(scope(), one(4n), 5n), now(), other_token()), with_live(fresh_pair(), next_epoch()), I.StaleEpoch{}), "GI-005 after the epoch advance a registration with the old scope denied StaleEpoch")
+    Test.check(denied(I.register(with_live(fresh_pair(), next_epoch()), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), other_token()), with_live(fresh_pair(), next_epoch()), I.StaleEpoch{}), "GI-005 after the epoch advance a registration with the old scope denied StaleEpoch")
     Test.check(I.current(registered(), grant3(), 149n) && Bool.not(I.current(registered(), grant3(), 150n)), "GI-005 the grant is current before its valid_until and not at it")
     Test.check(Bool.not(I.current(registered(), I.Grant{3n, other_token(), scope(), 3, 150n, one(1n), 2n, 0n}, now())), "GI-005 a grant record with the registered id but another token is not current")
     Test.check(Bool.not(I.current(with_grants(registered(), I.Grants{grant3(), I.grants(registered())}), grant3(), now())), "GI-005 a grant id registered twice resolves to no grant and is not current")
@@ -902,7 +924,7 @@ def pair_at(+src: I.SourceApproval, +wr: I.WriteApproval, +t: Nat) -> I.State:
 # Grant 3 for subject 7 with `rights` until `valid_until`, registered at time
 # 10 from approvals 1 and 2 (rights 3, valid until 200): revision 3.
 def parent_state(rights: U32, valid_until: Nat) -> I.State:
-  I.Change.state(I.register(pair_at(good_source(), good_write(), early()), 2n,
+  I.Change.state(I.register(pair_at(good_source(), good_write(), early()), 2n, subject_principal(),
     request_with(scope(), one(1n), 2n, rights, valid_until), early(), token()))
 
 # Subject 7 derives grant 4 from parent_state(rights, 100)'s grant 3 at time 20.
@@ -993,10 +1015,10 @@ def attenuation() -> IO(Unit):
     Test.check(I.Change.accepted(I.submit_source(initial(), 0n, source_authority(), source_until(100n), 99n))
       && denied(I.submit_source(initial(), 0n, source_authority(), source_until(100n), 100n), initial(), I.Expired{}), "GI-007 an approval valid while now < 100 is accepted on submission at 99 and denied Expired at 100")
     Test.check(Nat.is_eq(I.revision(deadline_pair()), 2n)
-      && denied(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), deadline_pair(), I.Expired{}), "GI-007 issuance at the deadline: registration at 100 after both approvals were submitted at 99 denied Expired, no grant registered")
-    Test.check(I.current(I.Change.state(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 99n, token())), I.Grant{3n, token(), scope(), 3, 100n, one(1n), 2n, 0n}, 99n)
-      && Bool.not(I.current(I.Change.state(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 99n, token())), I.Grant{3n, token(), scope(), 3, 100n, one(1n), 2n, 0n}, 100n)), "GI-007 a grant with valid_until 100 is current at 99 and not at 100")
-    Test.check(denied(I.register(pair_at(source_until(100n), write_until(200n), early()), 2n, request_with(scope(), one(1n), 2n, 3, 150n), early(), token()),
+      && denied(I.register(deadline_pair(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), deadline_pair(), I.Expired{}), "GI-007 issuance at the deadline: registration at 100 after both approvals were submitted at 99 denied Expired, no grant registered")
+    Test.check(I.current(I.Change.state(I.register(deadline_pair(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), 99n, token())), I.Grant{3n, token(), scope(), 3, 100n, one(1n), 2n, 0n}, 99n)
+      && Bool.not(I.current(I.Change.state(I.register(deadline_pair(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), 99n, token())), I.Grant{3n, token(), scope(), 3, 100n, one(1n), 2n, 0n}, 100n)), "GI-007 a grant with valid_until 100 is current at 99 and not at 100")
+    Test.check(denied(I.register(pair_at(source_until(100n), write_until(200n), early()), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 150n), early(), token()),
       pair_at(source_until(100n), write_until(200n), early()), I.Widened{}), "GI-007 a requested grant lifetime 150 beyond the shorter approval's 100 denied Widened")
 
 # --- Integration fixtures (synthetic) ----------------------------------------
@@ -1117,17 +1139,12 @@ def no_plan(found: Maybe<&2, T.Plan>) -> Bool:
 # registered() plus grant 6 from fresh_pair's approvals 4 and 5 (token
 # other_token, revision 6). Grant 6 is at the head of the grant list.
 def both_registered() -> I.State:
-  I.Change.state(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token()))
+  I.Change.state(I.register(fresh_pair(), 5n, subject_principal(), request(scope(), one(4n), 5n), now(), other_token()))
 
 # both_registered() with grant 6's source approval 4 revoked by its issuer
 # (revision 7): the head grant is withdrawn and grant 3, behind it, is not.
 def head_revoked() -> I.State:
   I.Change.state(I.revoke(both_registered(), 6n, source_authority(), 4n))
-
-# The subject the second grant below is issued to, as transport identity
-# verification would name it.
-def principal8() -> I.Principal:
-  I.Principal{8n}
 
 def scope8() -> I.Scope:
   scope_with(TF.plan(), 8n)
@@ -1142,13 +1159,13 @@ def two_subjects() -> I.State:
         I.SourceApproval{1n, 2n, source_authority(), TF.source_object(), read5(), scope8(), 3, 200n}, now())),
       4n, write_authority(),
       I.WriteApproval{1n, 2n, write_authority(), TF.destination_object(), write6(), scope8(), 3, 200n}, now())),
-    5n, request(scope8(), one(4n), 5n), now(), other_token()))
+    5n, principal8(), request(scope8(), one(4n), 5n), now(), other_token()))
 
 # Public fixtures for FacadeTests (synthetic). Grant 3 for subject 7 with
 # rights 7 (read, write, execute) until 180, from approvals 1 and 2 that each
 # grant rights 7 until 200, registered at time 100: revision 3.
 def execute_state() -> I.State:
-  I.Change.state(I.register(pair(source_for(scope(), 7, 200n), write_for(scope(), 7, 200n)), 2n,
+  I.Change.state(I.register(pair(source_for(scope(), 7, 200n), write_for(scope(), 7, 200n)), 2n, subject_principal(),
     request_with(scope(), one(1n), 2n, 7, 180n), now(), token()))
 
 # execute_state() with its write approval 2 revoked by its issuer: revision 4.
@@ -1256,7 +1273,7 @@ def pair_request() -> I.Request:
   request(pair_scope(), two(1n, 2n), 3n)
 
 def pair_registration() -> I.Change:
-  I.register(pair_approved(), 3n, pair_request(), now(), token())
+  I.register(pair_approved(), 3n, subject_principal(), pair_request(), now(), token())
 
 def pair_registered() -> I.State:
   I.Change.state(pair_registration())
@@ -1323,12 +1340,12 @@ def replay_fresh_source() -> I.Change:
   I.submit_source(I.Change.state(replay_revoked()), 5n, source_authority(), source_serial(2n), now())
 
 def replay_registration() -> I.Change:
-  I.register(I.Change.state(replay_fresh_source()), 6n, request(scope(), one(5n), 4n), now(), other_token())
+  I.register(I.Change.state(replay_fresh_source()), 6n, subject_principal(), request(scope(), one(5n), 4n), now(), other_token())
 
 # Grant 3's consumed write approval 2 cited beside the fresh source
 # approval 5 (approval 2 itself is not revoked).
 def replay_consumed_write() -> I.Change:
-  I.register(I.Change.state(replay_fresh_source()), 6n, request(scope(), one(5n), 2n), now(), other_token())
+  I.register(I.Change.state(replay_fresh_source()), 6n, subject_principal(), request(scope(), one(5n), 2n), now(), other_token())
 
 def grant6() -> I.Grant:
   I.Grant{6n, other_token(), scope(), 3, 150n, one(5n), 4n, 0n}
@@ -1383,12 +1400,12 @@ def new_epoch_registration() -> I.Change:
         I.SourceApproval{1n, 2n, source_authority(), TF.source_object(), read5(), new_epoch_scope(), 3, 200n}, now())),
       4n, write_authority(),
       I.WriteApproval{1n, 2n, write_authority(), TF.destination_object(), write6(), new_epoch_scope(), 3, 200n}, now())),
-    5n, request(new_epoch_scope(), one(4n), 5n), now(), other_token())
+    5n, subject_principal(), request(new_epoch_scope(), one(4n), 5n), now(), other_token())
 
 # Deadline: approvals valid while now < 100, submitted at 99 (deadline_pair);
 # the grant registered at 99 for rights 3 until 100 (revision 3).
 def deadline_registered() -> I.State:
-  I.Change.state(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 99n, token()))
+  I.Change.state(I.register(deadline_pair(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), 99n, token()))
 
 # TF.context() at time `t` with its grant lists rebuilt for subject 7 at `t`.
 def projected_at(+state: I.State, +t: Nat) -> T.Context:
@@ -1412,8 +1429,8 @@ def scenarios() -> IO(Unit):
       && Bool.not(mounts(I.registry(pair_registered(), principal8(), now()), F.Caller{8n, token()})), "scenario current authority: principal 8's rebuilt projections of the same state admit nothing at Write and give it nothing to mount")
     # Revocation mid-flow, before registration.
     Test.check(accepted_as(I.revoke(pair_approved(), 3n, other_read_authority(), 2n), 2n)
-      && denied(I.register(pair_mid_revoked(), 4n, pair_request(), now(), token()), pair_mid_revoked(), I.Revoked{})
-      && denied(I.register(pair_mid_revoked(), 3n, pair_request(), now(), token()), pair_mid_revoked(), I.StaleRevision{}), "scenario revocation mid-flow: after the read-domain-9 authority revokes approval 2 at revision 4, registering the pair at revision 4 is denied Revoked, and a registration validated at revision 3 is denied StaleRevision")
+      && denied(I.register(pair_mid_revoked(), 4n, subject_principal(), pair_request(), now(), token()), pair_mid_revoked(), I.Revoked{})
+      && denied(I.register(pair_mid_revoked(), 3n, subject_principal(), pair_request(), now(), token()), pair_mid_revoked(), I.StaleRevision{}), "scenario revocation mid-flow: after the read-domain-9 authority revokes approval 2 at revision 4, registering the pair at revision 4 is denied Revoked, and a registration validated at revision 3 is denied StaleRevision")
     Test.check(nothing_projected(pair_mid_revoked(), now())
       && TF.denied_as(T.admit(TF.pair_plan(), pair_projected_for(pair_mid_revoked(), subject_principal())), T.Write{})
       && Bool.not(mounts(I.registry(pair_mid_revoked(), subject_principal(), now()), caller())), "scenario revocation mid-flow: use is denied too, with nothing projected for subject 7, T.admit denying TF.pair_plan() at Write and nothing to mount")
@@ -1427,8 +1444,8 @@ def scenarios() -> IO(Unit):
       && no_plan(use_plan(child_descriptor(), I.Change.state(after_child_revocation()), other_token(), projected(I.Change.state(after_child_revocation()))))
       && TF.denied_as(T.admit(TF.plan(), projected(I.Change.state(after_child_revocation()))), T.Write{}), "scenario revocation after derivation: once the write authority revokes the root's approval 2 the child dies with its parent: neither is current, nothing is projected, the child's descriptor resolves no plan and T.admit denies Write")
     # Replay.
-    Test.check(denied(I.register(registered(), 3n, good_request(), now(), other_token()), registered(), I.Replay{}), "scenario replay: a second registration of grant 3's request with a fresh token denied Replay")
-    Test.check(denied(I.register(replay_fresh_write(), 4n, request(scope(), one(1n), 4n), now(), other_token()), replay_fresh_write(), I.Replay{}), "scenario replay: grant 3's consumed source approval 1 cited by another request beside a fresh write approval denied Replay")
+    Test.check(denied(I.register(registered(), 3n, subject_principal(), good_request(), now(), other_token()), registered(), I.Replay{}), "scenario replay: a second registration of grant 3's request with a fresh token denied Replay")
+    Test.check(denied(I.register(replay_fresh_write(), 4n, subject_principal(), request(scope(), one(1n), 4n), now(), other_token()), replay_fresh_write(), I.Replay{}), "scenario replay: grant 3's consumed source approval 1 cited by another request beside a fresh write approval denied Replay")
     Test.check(accepted_as(replay_revoked(), 1n)
       && denied(I.submit_source(I.Change.state(replay_revoked()), 5n, source_authority(), good_source(), now()), I.Change.state(replay_revoked()), I.Replay{})
       && accepted_as(replay_fresh_source(), 5n), "scenario replay: after its issuer revokes approval 1, resubmitting serial 1 is denied Replay while a fresh serial 2 is accepted as id 5")
@@ -1442,28 +1459,32 @@ def scenarios() -> IO(Unit):
     # Denial cases.
     Test.check(denied(I.submit_source(initial(), 0n, write_authority(), source_approval(write_authority(), read5()), now()), initial(), I.NotAuthority{})
       && accepted_as(I.submit_write(initial(), 0n, write_authority(), good_write(), now()), 1n)
-      && denied(I.register(forged_write_only(), 1n, request(scope(), one(1n), 1n), now(), token()), forged_write_only(), I.MissingApproval{})
+      && denied(I.register(forged_write_only(), 1n, subject_principal(), request(scope(), one(1n), 1n), now(), token()), forged_write_only(), I.MissingApproval{})
       && nothing_projected(forged_write_only(), now())
       && TF.denied_as(T.admit(TF.plan(), projected(forged_write_only())), T.Write{}), "scenario forged issuer: the write-domain-6 principal's own source approval for object 10 is denied NotAuthority, its genuine write approval is accepted, a request citing that write approval as the source is denied MissingApproval, and T.admit denies Write")
-    Test.check(accepted_as(I.register(forged_then_honest(), 2n, request(scope(), one(2n), 1n), now(), token()), 3n)
-      && admitted(T.admit(TF.plan(), projected(I.Change.state(I.register(forged_then_honest(), 2n, request(scope(), one(2n), 1n), now(), token()))))), "scenario forged issuer: once the read-domain-5 authority itself approves object 10, the same plan registers as grant 3 and T.admit admits it")
-    Test.check(denied(I.register(redirected(), 2n, request(scope(), one(1n), 2n), now(), token()), redirected(), I.ScopeMismatch{})
-      && denied(I.register(redirected(), 2n, request(scope_with(plan_redirect(), subject()), one(1n), 2n), now(), token()), redirected(), I.ScopeMismatch{})
+    Test.check(accepted_as(I.register(forged_then_honest(), 2n, subject_principal(), request(scope(), one(2n), 1n), now(), token()), 3n)
+      && admitted(T.admit(TF.plan(), projected(I.Change.state(I.register(forged_then_honest(), 2n, subject_principal(), request(scope(), one(2n), 1n), now(), token()))))), "scenario forged issuer: once the read-domain-5 authority itself approves object 10, the same plan registers as grant 3 and T.admit admits it")
+    Test.check(denied(I.register(redirected(), 2n, subject_principal(), request(scope(), one(1n), 2n), now(), token()), redirected(), I.ScopeMismatch{})
+      && denied(I.register(redirected(), 2n, subject_principal(), request(scope_with(plan_redirect(), subject()), one(1n), 2n), now(), token()), redirected(), I.ScopeMismatch{})
       && nothing_projected(redirected(), now())
       && TF.denied_as(T.admit(plan_redirect(), TF.with_writes(TF.with_reads(TF.redirect_context(plan_redirect(), write6()),
         I.reads(redirected(), subject_principal(), now())), I.writes(redirected(), subject_principal(), now()))), T.Write{}), "scenario redirect: a read of 10 into 20v8 paired with a write approval for 20v9 is denied ScopeMismatch under either scope, nothing is projected, and T.admit denies the redirected plan at Write")
-    Test.check(denied(I.register(expanded(), 2n, request(scope(), one(1n), 2n), now(), token()), expanded(), I.ScopeMismatch{})
-      && denied(I.register(expanded(), 2n, request(scope_two(), one(1n), 2n), now(), token()), expanded(), I.MissingApproval{})
+    Test.check(denied(I.register(expanded(), 2n, subject_principal(), request(scope(), one(1n), 2n), now(), token()), expanded(), I.ScopeMismatch{})
+      && denied(I.register(expanded(), 2n, subject_principal(), request(scope_two(), one(1n), 2n), now(), token()), expanded(), I.MissingApproval{})
       && nothing_projected(expanded(), now())
       && TF.denied_as(T.admit(TF.plan(), projected(expanded())), T.Write{}), "scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write")
-    Test.check(denied(I.register(both(), 2n, request(scope8(), one(1n), 2n), now(), token()), both(), I.SubjectMismatch{})
+    Test.check(denied(I.register(both(), 2n, principal8(), request(scope8(), one(1n), 2n), now(), token()), both(), I.SubjectMismatch{})
       && accepted_as(registration_change(), 3n)
       && denied(I.derive(registered(), 3n, principal8(), 3n, derivation(1, 120n), now(), other_token()), registered(), I.SubjectMismatch{})
       && nothing_projected_for(registered(), principal8(), now())
       && Bool.not(mounts(I.registry(registered(), principal8(), now()), F.Caller{8n, token()}))
       && admitted(T.admit(TF.plan(), projected(registered()))), "scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted")
-    Test.check(denied(I.register(half_approved_for8(), 2n, request(scope8(), one(1n), 2n), now(), token()), half_approved_for8(), I.SubjectMismatch{})
+    Test.check(denied(I.register(half_approved_for8(), 2n, principal8(), request(scope8(), one(1n), 2n), now(), token()), half_approved_for8(), I.SubjectMismatch{})
       && nothing_projected_for(half_approved_for8(), principal8(), now()), "scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8")
+    Test.check(denied(third_party_registration(), both(), I.SubjectMismatch{})
+      && nothing_projected_for(I.Change.state(third_party_registration()), subject_principal(), now())
+      && accepted_as(I.register(I.Change.state(third_party_registration()), 2n, subject_principal(), good_request(), now(), token()), 3n)
+      && admitted(T.admit(TF.plan(), projected(I.Change.state(I.register(I.Change.state(third_party_registration()), 2n, subject_principal(), good_request(), now(), token()))))), "scenario third-party registration: principal 8 registering subject 7's approved pair with rights 0 until 101 is denied SubjectMismatch and nothing is projected; subject 7 then registers the pair as grant 3 and T.admit admits TF.plan()")
     Test.check(admitted(T.admit(TF.plan(), projected(registered())))
       && I.valid(epoch_advanced()) && Bool.not(I.current(epoch_advanced(), grant3(), now()))
       && nothing_projected(epoch_advanced(), now())
@@ -1472,9 +1493,9 @@ def scenarios() -> IO(Unit):
     Test.check(accepted_as(new_epoch_registration(), 6n)
       && registry_equal(I.registry(I.Change.state(new_epoch_registration()), subject_principal(), now()),
         F.Registered{F.Capability{other_token(), subject(), stale_plan(), 3, 4n, 150n}, F.EmptyRegistry{}}), "scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4")
-    Test.check(denied(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), deadline_pair(), I.Expired{})
+    Test.check(denied(I.register(deadline_pair(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), deadline_pair(), I.Expired{})
       && grants_empty(I.grants(deadline_pair()))
-      && denied(I.register(both(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), both(), I.Expired{}), "scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200")
+      && denied(I.register(both(), 2n, subject_principal(), request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), both(), I.Expired{}), "scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200")
     Test.check(admitted(T.admit(TF.plan(), projected_at(deadline_registered(), 99n)))
       && nothing_projected(deadline_registered(), 100n)
       && TF.denied_as(T.admit(TF.plan(), projected_at(deadline_registered(), 100n)), T.Write{}), "scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write")
@@ -1487,4 +1508,4 @@ def main() -> IO(Unit):
     attenuation()
     integration()
     scenarios()
-    IO.print("Issuance: 226 checks passed")
+    IO.print("Issuance: 230 checks passed")

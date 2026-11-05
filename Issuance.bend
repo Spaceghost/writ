@@ -63,10 +63,15 @@ import ./Frontend.bend as F
 # derivation, and `current` re-checks the whole chain at every use. A
 # different subject needs a fresh grant through full admission (GI-004).
 #
-# Registration has no `from`. A `Request` names stored approvals by id and
-# asserts nothing about who asks: the cited approvals, each submitted earlier
-# by its authenticated authority and each revalidated against the committed
-# state, are the only authority, and their common scope fixes the subject.
+# Registration takes the authenticated `from`, which must be the subject the
+# request scope names; any other caller is denied SubjectMismatch (the closest
+# reason in the closed set) before any approval is read, so nobody else can
+# consume the single-use approval pair under rights, a lifetime or a moment
+# the subject did not choose. The caller check grants no authority. A
+# `Request` names stored approvals by id: the cited approvals, each submitted
+# earlier by its authenticated authority and each revalidated against the
+# committed state, are the only authority, and their common scope fixes the
+# subject.
 #
 # Constructing an Issuance record authenticates nothing. Public Data records
 # (approvals, states, grants) are a model, not unforgeable capabilities; a
@@ -111,8 +116,8 @@ import ./Frontend.bend as F
 #   `Nat.is_eq`; auxiliary arithmetic for the three stale-revision laws,
 #   saying nothing about issuance by itself.
 # - `issuance_stale_revision_rejects`: `register` called with an expected
-#   revision one past the state's never commits, for every state, request,
-#   time and token. A registration validated at revision r cannot commit
+#   revision one past the state's never commits, for every state, calling
+#   principal, request, time and token. A registration validated at revision r cannot commit
 #   after any transition has moved the state (the GI-005 race); the proof
 #   relies on `register` matching on `revision_current` before any other
 #   gate, which is why that outer match stays. It covers the successor
@@ -875,8 +880,10 @@ def serials_valid(seen: Serials) -> Bool:
 # A registration request (GI-002, GI-003). `sources` names the stored source
 # approval ids in the scope plan's manifest order and `write` the one stored
 # write approval id (0 cites none; id 0 is never allocated). The request
-# carries no requester identity and no authority: what it asks for is checked
-# against the cited approvals, which alone fix the scope and the subject.
+# carries no requester identity and no authority: the caller arrives as
+# `register`'s separate authenticated `from`, which must be the scope's
+# subject, and what it asks for is checked against the cited approvals, which
+# alone fix the scope and the subject.
 type Request is Data:
   Request{version: Nat, scope: Scope, sources: Ids, write: Nat, rights: U32,
     valid_until: Nat}
@@ -1152,8 +1159,23 @@ def grant_token_used(grants: Grants, +token: T.CodeId) -> Bool:
 def token_fresh(grants: Grants, +token: T.CodeId) -> Bool:
   Bool.not(grant_token_used(grants, token))
 
+def Principal.id(principal: Principal) -> Nat:
+  match principal:
+    case Principal{id}:
+      id
+
+# The authenticated principal is the subject the scope names. Only the
+# request scope's subject may register (anyone else would consume the
+# single-use approvals under terms the subject did not choose), and only the
+# parent's own subject may derive from it; anyone else deriving would be
+# delegation, which GI-004 forbids without the authorities' approval.
+def speaks_for_subject(from: Principal, scope: Scope) -> Bool:
+  Nat.is_eq(Principal.id(from), Scope.subject(scope))
+
 # Every check a registration must pass, in denial order: the race (revision),
-# the format, then the cited approvals' existence, single use and revocation
+# the format, the caller (the authenticated `from` must be the request scope's
+# subject; any other caller, an approving authority included, is denied
+# SubjectMismatch before any approval is looked at), then the cited approvals' existence, single use and revocation
 # (what was withdrawn denies before anything is compared), then their
 # authority revalidated against the directory and placements this state
 # carries, then the exact scope binding (live stamp, manifest coverage,
@@ -1163,12 +1185,13 @@ def token_fresh(grants: Grants, +token: T.CodeId) -> Bool:
 # gate so every denial is attributable. A cited approval's expiry is checked
 # before the request's own, so an expired approval reads as Expired, not as a
 # lifetime the request could not have.
-def register_gates(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
-    +token: T.CodeId) -> Gates:
+def register_gates(+state: State, +expected_revision: Nat, +from: Principal, +request: Request,
+    +now: Nat, +token: T.CodeId) -> Gates:
   match request:
     case Request{version, +scope, +sources, _, rights, valid_until}:
       Gate{revision_current(state, expected_revision), StaleRevision{},
       Gate{version_supported(version), UnknownVersion{},
+      Gate{speaks_for_subject(from, scope), SubjectMismatch{},
       Gate{write_cited_meets(Present{}, state, request, now), MissingApproval{},
       Gate{sources_meet(Present{}, sources, state, request, now), MissingApproval{},
       Gate{sources_named_for_manifest(T.Plan.sources(Scope.plan(scope)), sources), MissingApproval{},
@@ -1198,11 +1221,11 @@ def register_gates(+state: State, +expected_revision: Nat, +request: Request, +n
       Gate{write_cited_meets(LifetimeCovers{}, state, request, now), Widened{},
       Gate{sources_meet(LifetimeCovers{}, sources, state, request, now), Widened{},
       Gate{token_fresh(grants(state), token), DuplicateToken{},
-      Open{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+      Open{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 
-def register_checks(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
-    +token: T.CodeId) -> Guard.Checks:
-  Gates.checks(register_gates(state, expected_revision, request, now, token))
+def register_checks(+state: State, +expected_revision: Nat, +from: Principal, +request: Request,
+    +now: Nat, +token: T.CodeId) -> Guard.Checks:
+  Gates.checks(register_gates(state, expected_revision, from, request, now, token))
 
 def consume_stored(stored: Stored, cited: Bool, +grant: Nat) -> Stored:
   match stored cited:
@@ -1236,34 +1259,37 @@ def commit_grant(state: State, request: Request, token: T.CodeId) -> Change:
             Grants{Grant{next_id, token, scope, rights, valid_until, sources, write, 0n}, grants},
             seen}, next_id}
 
-def register_checked(ok: Bool, +state: State, +expected_revision: Nat, +request: Request,
-    +now: Nat, +token: T.CodeId) -> Change:
+def register_checked(ok: Bool, +state: State, +expected_revision: Nat, +from: Principal,
+    +request: Request, +now: Nat, +token: T.CodeId) -> Change:
   match ok:
     case False{}:
       # `ok` is Guard.all over the same gate list, so some gate failed and
       # Gates.reason returns its reason; the StaleRevision fallback is
       # unreachable here.
-      Rejected{state, Gates.reason(register_gates(state, expected_revision, request, now, token), StaleRevision{})}
+      Rejected{state, Gates.reason(register_gates(state, expected_revision, from, request, now, token), StaleRevision{})}
     case True{}:
       commit_grant(state, request, token)
 
-def register_current(current: Bool, +state: State, +expected_revision: Nat, +request: Request,
-    +now: Nat, +token: T.CodeId) -> Change:
+def register_current(current: Bool, +state: State, +expected_revision: Nat, +from: Principal,
+    +request: Request, +now: Nat, +token: T.CodeId) -> Change:
   match current:
     case False{}:
       Rejected{state, StaleRevision{}}
     case True{}:
-      register_checked(Guard.all(register_checks(state, expected_revision, request, now, token)),
-        state, expected_revision, request, now, token)
+      register_checked(Guard.all(register_checks(state, expected_revision, from, request, now, token)),
+        state, expected_revision, from, request, now, token)
 
 # Public entry point (GI-002, GI-003, GI-004): issue one grant backed by one
 # stored write approval and one stored source approval per manifest entry, in
-# manifest order. There is no `from`: the request asserts nothing about who
-# asks, and authority comes only from the cited approvals, each of which an
-# authenticated authority submitted earlier and each of which is revalidated
-# here against this state's directory, placements and live stamp. Accepted
-# only when the state is at `expected_revision`, the request is version 1,
-# every cited approval is present, of the right kind, cited once, unconsumed
+# manifest order, on behalf of the authenticated principal `from`, which must
+# be the subject the request scope names (otherwise SubjectMismatch). The
+# subject check grants no authority: authority comes only from the cited
+# approvals, each of which an authenticated authority submitted earlier and
+# each of which is revalidated here against this state's directory, placements
+# and live stamp. It stops any other caller from consuming the single-use
+# approval pair under rights, a lifetime and a moment the subject never chose.
+# Accepted only when the state is at `expected_revision`, the request is
+# version 1, `from` is the request scope's subject, every cited approval is present, of the right kind, cited once, unconsumed
 # and unrevoked, its issuer is still the directory authority for its domain
 # and its object is still placed there, the request scope is well formed at
 # the live stamp, the source approvals cover the manifest position by
@@ -1276,12 +1302,12 @@ def register_current(current: Bool, +state: State, +expected_revision: Nat, +req
 # with `parent` 0, marks every cited approval consumed by that grant, and
 # advances the revision once. Denial order is register_gates'; the state is
 # returned unchanged on every denial. The grant is not usable by itself:
-# `current` revalidates it at every use, and projection (task 1.5) admits only
-# current grants.
-def register(+state: State, +expected_revision: Nat, +request: Request, +now: Nat,
-    +token: T.CodeId) -> Change:
+# `current` revalidates it at every use, and the projections `reads`, `writes`
+# and `registry` admit only the authenticated principal's current grants.
+def register(+state: State, +expected_revision: Nat, +from: Principal, +request: Request,
+    +now: Nat, +token: T.CodeId) -> Change:
   register_current(revision_current(state, expected_revision), state, expected_revision,
-    request, now, token)
+    from, request, now, token)
 
 # --- Revocation (GI-005) -----------------------------------------------------
 
@@ -1670,17 +1696,6 @@ def Derivation.valid_until(child: Derivation) -> Nat:
   match child:
     case Derivation{_, _, valid_until}:
       valid_until
-
-def Principal.id(principal: Principal) -> Nat:
-  match principal:
-    case Principal{id}:
-      id
-
-# The authenticated principal is the subject the scope names. Only the
-# parent's own subject may derive from it; anyone else deriving would be
-# delegation, which GI-004 forbids without the authorities' approval.
-def speaks_for_subject(from: Principal, scope: Scope) -> Bool:
-  Nat.is_eq(Principal.id(from), Scope.subject(scope))
 
 # The parent id is a real grant id and resolved to exactly one registered
 # grant. Id 0 is never allocated (it is the root encoding of `parent` and the

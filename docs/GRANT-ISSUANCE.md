@@ -54,7 +54,7 @@ transition's checks.
 | `empty(live, directory, placements)` | The issuer state the monitor installs. |
 | `submit_source(state, expected_revision, from, approval, now)` | Accepts a source-read approval from its read-domain authority (GI-001). |
 | `submit_write(state, expected_revision, from, approval, now)` | Accepts a destination-write approval from its write-domain authority (GI-001). |
-| `register(state, expected_revision, request, now, token)` | Issues one grant backed by one exact, current approval pair (GI-002 to GI-004). |
+| `register(state, expected_revision, from, request, now, token)` | Issues one grant backed by one exact, current approval pair, on behalf of the request scope's subject only (GI-002 to GI-004). |
 | `revoke(state, expected_revision, from, approval_id)` | Withdraws a stored approval on behalf of its issuer (GI-005). |
 | `derive(state, expected_revision, from, parent_id, child, now, token)` | Issues an attenuated grant to the parent's own subject (GI-006, GI-007). |
 | `current(state, grant, now)` | Whether a grant is usable now, re-derived from the state (GI-005). |
@@ -74,7 +74,7 @@ and what happens if the host supplies it wrongly.
 
 ### The authenticated principal (`from`)
 
-`submit_source`, `submit_write`, `revoke` and `derive` each take
+`submit_source`, `submit_write`, `register`, `revoke` and `derive` each take
 `from: Principal`, a separate parameter that the host attaches to the
 transition. The projections `reads`, `writes` and `registry` take the same
 parameter for the principal of a use, and that principal is the identity the
@@ -86,9 +86,18 @@ No approval, request or derivation can assert its own authentication.
   `from` as the authority for the approval's domain (otherwise
   `NotAuthority`). A revocation must come from the approval's recorded issuer,
   who must still be that authority. A derivation must come from the parent
-  grant's subject (otherwise `SubjectMismatch`). `register` takes no `from`:
-  its only authority is the cited approvals, which were each bound to an
-  authenticated submitter.
+  grant's subject (otherwise `SubjectMismatch`). A registration must come
+  from the subject the request scope names (otherwise `SubjectMismatch`,
+  checked before any approval is read). That check grants no authority, since
+  the only authority is the cited approvals, each bound to an authenticated
+  submitter. It exists because approvals are single use. Without it, any
+  caller that learned the approval ids (they are sequential and returned in
+  every `Change.issued`) could register the pair first with terms the subject
+  never chose, for example rights 0 until `now + 1`. That would consume both
+  approvals, and the subject's own registration would then be denied
+  `Replay` ("GI-004 principal 8, neither an authority nor subject 7,
+  registering subject 7's pair with rights 0 until 101 denied
+  SubjectMismatch, both approvals unconsumed" in `IssuanceTests.bend`).
 - Who supplies it: the host's transport identity verification. Example
   sources are the Genode route subject (`HostBinding.Route.subject`, the
   identity the parent prepends to the session label), Linux peer credentials
@@ -98,7 +107,8 @@ No approval, request or derivation can assert its own authentication.
   (see `docs/PLATFORMS.md`).
 - If it is wrong: anyone the host misidentifies as a directory authority can
   submit and revoke approvals in that authority's domains, and anyone
-  misidentified as a grant's subject can derive from it and use it: the
+  misidentified as a grant's subject can register its approved pairs, derive
+  from its grants and use them: the
   projections built for that principal include the grant, and Frontend's
   caller check compares against the same identity. Bend cannot detect this,
   because the parameter is the definition of who is asking.
@@ -139,12 +149,17 @@ epochs). `now` is passed to every submission, registration, derivation,
   (`now < valid_until`), matching Transfer and Frontend. The projections take
   `now` and include only grants current at that time.
 - Who supplies them: the monitor, from its authoritative epoch state and a
-  trusted clock. The `now` passed to the projections must be the same time
+  trusted, monotone clock: `now` never decreases across the transitions and
+  uses of one issuer state. The `now` passed to the projections must be the same time
   the host passes in `T.Context.now` and `F.Live` for that use, and the live
   stamp must be the one in `T.Context.live`.
 - If they are wrong: a stale live stamp keeps grants from a retired epoch
   usable, and a clock that runs slow or is caller-chosen extends every
-  lifetime. Expiry and epoch are re-checked at use against `T.Context.now`
+  lifetime. A clock that goes backwards revives expired grants and
+  approvals. Bend checks only the upper bound `now < valid_until` and records
+  no lower bound. A grant that expired at 150 is current again at 149, and
+  approvals valid until 100 still register at a regressed time of 50.
+  Expiry and epoch are re-checked at use against `T.Context.now`
   and `live` (`Transfer.scoped`, `Frontend.capability_current`), so a
   projection built at an earlier `now` cannot by itself admit an expired
   grant while those use-time values are trusted; a later `now` only drops
@@ -207,6 +222,18 @@ facade consume (`F.Registry`), for one use by the authenticated principal
   is placed in the source's read domain, and every entry is bound to the
   grant's own scope and lifetime. `T.admit` and `F.checked_plan` then run
   unchanged on the result. Issuance adds no shortcut around them.
+- Rights reach Frontend only. `rights` limit what a Frontend handle opened
+  from the projected registry may do, but Transfer's grants carry no rights,
+  so the projected read and write grants do not reach `Transfer.admit` with
+  them. On a bare `T.admit` path (`DataOS.admit`, `Backplane.commit`, the
+  Negotiation transitions), a current grant admits its whole plan whatever
+  its rights, including a rights-0 grant. The hazard is that a grant
+  registered or derived with narrower rights than its approvals still
+  projects the full approved read and write to any path that does not go
+  through `F.checked_plan`. It never projects more than the approvals'
+  scope covers. A host must route rights-limited use through Frontend
+  (`DataOS.commit_from_capability`) and must not treat a bare admission as
+  evidence that a grant's rights permitted it.
 - Who supplies them: the host must rebuild all three from the current,
   installed issuer state, for the principal of this use, for every use. It
   must not cache one, reuse an earlier one, reuse one built for another
@@ -320,7 +347,9 @@ does with each input and what goes wrong if it is supplied wrongly.
 4. **Monitor-supplied directory, placements, live stamp, clock and tokens.**
    The authority directory and placements must come from the monitor's
    authoritative record; the live stamp and `now` from its epoch state and a
-   trusted clock, the same values the host passes as `T.Context.live`,
+   trusted, monotone clock (`now` never decreases across the transitions and
+   uses of one issuer state, because a backwards `now` revives expired grants
+   and approvals), the same values the host passes as `T.Context.live`,
    `T.Context.now` and `F.Live` for that use; and every `token` from a
    cryptographically secure source, never from the caller. GI-003's "epoch
    snapshot" and GI-007's "at or after their expiry boundary" are only as
@@ -347,7 +376,7 @@ does with each input and what goes wrong if it is supplied wrongly.
    with its Linux reference capture
    `verification/unikernel-corpus-linux-reference.txt`) and
    `scripts/genode/writ_bend_tests/writ_bend_tests.run`
-   (`expected_pass 782`). The library suite on this tree has 1010 checks on
+   (`expected_pass 782`). The library suite on this tree has 1014 checks on
    the JavaScript and native CPU backends. Those images must be rebuilt and
    their gates and captures re-recorded against the new tree by a later
    lane before any host run counts as evidence for it. The current-tree
@@ -359,6 +388,11 @@ does with each input and what goes wrong if it is supplied wrongly.
 ## What this document does not claim
 
 It does not claim that any host meets these inputs, that issuance is wired
-into the DataOS facade, or that approvals are cryptographically verified. The
+into the DataOS facade, or that approvals are cryptographically verified.
+
+Open in the model: there is no grant-level revocation. Only approvals can be
+revoked (`revoke`). A derived grant, or the middle of a chain, can be
+withdrawn only by revoking the root's approval, and that withdraws the whole
+chain. Neither the subject nor an authority can withdraw one child alone. The
 Bend tests and proofs show what the model does with the inputs it is given.
 Host qualification needs separate native evidence for each claimed profile.
