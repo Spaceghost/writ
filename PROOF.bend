@@ -6,6 +6,7 @@ import ./Issuance.bend as Issuance
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
+import ./AuditEvent.bend as AuditEvent
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -114,4 +115,25 @@ def Laws.publication_refused_preserves_state(state, session, ledger, reason):
   {==}
 
 def Laws.publication_refused_emits_nothing(state, session, ledger, reason):
+  {==}
+
+# Both sides unfold to `project` over the same plan, the same stuck
+# `Transfer.admit(plan, context)` and the same event id; `caller_subject`
+# reduces on the literal `Frontend.Caller{subject, _}` to `subject` on both
+# sides, and neither the token nor the diagnostic occurs in the result.
+def Laws.audit_admission_event_ignores_diagnostic(plan, context, labels, subject, t1, t2, d1, d2, event_id):
+  {==}
+
+# The left side unfolds to `commit_event` over the same session, the same
+# stuck facade result and event id; `DataOS.subject` reduces on both Ref
+# literals to `subject`, and the diagnostic does not occur.
+def Laws.audit_commit_event_ignores_diagnostic(session, expected_session, expected_ledger, ledger, candidate, subject, id, t1, t2, expected_frontend, context, labels, diagnostic, event_id):
+  {==}
+
+# The decision field of the wrapper's record is the bound library call.
+def Laws.audit_admit_returns_library_decision(plan, context, labels, caller, diagnostic, event_id):
+  {==}
+
+# The result field of the wrapper's record is the bound facade call.
+def Laws.audit_commit_returns_library_result(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context, labels, diagnostic, event_id):
   {==}

@@ -8,6 +8,11 @@ import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
 import ./Negotiation.bend as Negotiation
+import ./Core.bend as Core
+import ./Frontend.bend as Frontend
+import ./Backplane.bend as Backplane
+import ./DataOS.bend as DataOS
+import ./AuditEvent.bend as AuditEvent
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -221,3 +226,103 @@ law publication_refused_emits_nothing:
   for ledger: Ledger.State
   for reason: HostPrimitives.Error
   {HostPublication.PublishResult.effects(HostPublication.Refused{state, session, ledger, reason}) == [] : List<&2, HostPublication.PublishEffect>}
+
+# AU-001: the admission event `audited_admit` records is the same for every
+# diagnostic and every caller token, for all plans, contexts, labels,
+# subjects and event ids, and therefore for every decision `Transfer.admit`
+# can return, every denial reason included. So no payload bytes, error text,
+# credential or caller token can reach any event field: the caller's
+# authenticated subject is the only part of the caller an event holds. Audit
+# needs this because an event is later released to readers whose clearance
+# differs from the caller's, so a field derived from protected failure
+# material would be a second route out for it. The proof is by computation:
+# the projection reads only the subject of `Frontend.Caller` and never reads
+# the diagnostic; copying a diagnostic or token word into any field breaks it.
+# It does not claim that the event is stored or durable, that an append
+# succeeds, that the event's other fields are correct (AuditTests shows
+# them), or that a host calls the wrapper at all.
+law audit_admission_event_ignores_diagnostic:
+  for plan: Transfer.Plan
+  for context: Transfer.Context
+  for labels: AuditEvent.Labels
+  for subject: Nat
+  for t1: Transfer.CodeId
+  for t2: Transfer.CodeId
+  for d1: AuditEvent.Diagnostic
+  for d2: AuditEvent.Diagnostic
+  for event_id: Nat
+  {AuditEvent.AuditedAdmission.event(AuditEvent.audited_admit(plan, context, labels, Frontend.Caller{subject, t1}, d1, event_id)) == AuditEvent.AuditedAdmission.event(AuditEvent.audited_admit(plan, context, labels, Frontend.Caller{subject, t2}, d2, event_id)) : AuditEvent.EventRecord}
+
+# AU-001 for commits: the event `audited_commit` records equals
+# `commit_event` (the projection the wrapper uses) applied, with NO
+# diagnostic and with ANY other caller token in the Ref, to the result
+# `DataOS.commit_from_capability` returned for the real arguments. This holds
+# for every session, revision, ledger, candidate, subject, handle id, token
+# pair, frontend revision, context, labels, diagnostic and event id. So the
+# diagnostic never influences an event, and the caller's token influences it
+# only through the facade's own decision, never as a field. It is stated
+# this way, rather than as equality of two wrapper events with different
+# tokens, because the token is an authority input to the facade: a different
+# token may legitimately change Committed to Rejected, and the event must
+# record that. The proof is by computation; copying the diagnostic or the
+# Ref's token into any field breaks it. It does not claim durability, append
+# success, correctness of the other fields (AuditTests shows them), or that a
+# host calls the wrapper.
+law audit_commit_event_ignores_diagnostic:
+  for session: Negotiation.Session
+  for expected_session: Nat
+  for expected_ledger: Nat
+  for ledger: Ledger.State
+  for candidate: Core.Candidate
+  for subject: Nat
+  for id: Nat
+  for t1: Transfer.CodeId
+  for t2: Transfer.CodeId
+  for expected_frontend: Nat
+  for context: DataOS.Context
+  for labels: AuditEvent.Labels
+  for diagnostic: AuditEvent.Diagnostic
+  for event_id: Nat
+  {AuditEvent.AuditedCommit.event(AuditEvent.audited_commit(session, expected_session, expected_ledger, ledger, candidate, Frontend.Ref{Frontend.Caller{subject, t1}, id}, expected_frontend, context, labels, diagnostic, event_id)) == AuditEvent.commit_event(session, Frontend.Ref{Frontend.Caller{subject, t2}, id}, DataOS.commit_from_capability(session, expected_session, expected_ledger, ledger, candidate, Frontend.Ref{Frontend.Caller{subject, t1}, id}, expected_frontend, context), event_id) : AuditEvent.EventRecord}
+
+# AU-001 and AU-005 (model part): `audited_admit` returns exactly the
+# Decision `Transfer.admit` returns for the same plan and context, for every
+# labels, caller, diagnostic and event id. Auditing never changes a
+# decision: a denied transfer stays denied with the same reason, an admitted
+# one keeps its ticket, and recording is not a second decision. The proof is
+# by computation and pins that the wrapper's decision field is the single
+# bound library call; returning any other Decision on any branch breaks it.
+# It does not claim that the event is stored, that an append succeeds, or
+# that a host routes every admission through the wrapper.
+law audit_admit_returns_library_decision:
+  for plan: Transfer.Plan
+  for context: Transfer.Context
+  for labels: AuditEvent.Labels
+  for caller: Frontend.Caller
+  for diagnostic: AuditEvent.Diagnostic
+  for event_id: Nat
+  {AuditEvent.AuditedAdmission.decision(AuditEvent.audited_admit(plan, context, labels, caller, diagnostic, event_id)) == Transfer.admit(plan, context) : Transfer.Decision}
+
+# AU-005 (model part): `audited_commit` returns exactly the CommitResult
+# `DataOS.commit_from_capability` returns for the same arguments, for every
+# labels, diagnostic and event id. So a rejected commit hands back the
+# caller's own session and ledger (the facade's Rejected keeps both), no
+# reservation is consumed by recording, an accepted commit carries the same
+# WriteIntent, and the facade remains the only release route. The proof is
+# by computation and pins the single bound facade call; substituting any
+# other result breaks it. It does not claim durability, that a denial append
+# succeeds (AU-005's append half is section 2), or that a host calls the
+# wrapper.
+law audit_commit_returns_library_result:
+  for session: Negotiation.Session
+  for expected_session: Nat
+  for expected_ledger: Nat
+  for ledger: Ledger.State
+  for candidate: Core.Candidate
+  for ref: Frontend.Ref
+  for expected_frontend: Nat
+  for context: DataOS.Context
+  for labels: AuditEvent.Labels
+  for diagnostic: AuditEvent.Diagnostic
+  for event_id: Nat
+  {AuditEvent.AuditedCommit.result(AuditEvent.audited_commit(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context, labels, diagnostic, event_id)) == DataOS.commit_from_capability(session, expected_session, expected_ledger, ledger, candidate, ref, expected_frontend, context) : Backplane.CommitResult}
