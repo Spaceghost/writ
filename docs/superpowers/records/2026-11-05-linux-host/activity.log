@@ -8,3 +8,5 @@
 2026-11-05T14:59:19Z	controller	task 1 reported; rulings; reviewer dispatched
 2026-11-05T15:07:39Z	controller	review: Barrier fact not bound to its session; fix round 1 dispatched
 2026-11-05T15:12:23Z	implementer	fix round 1: SessionMismatch barrier binding (I1), restart StaleLaunch checks (I2), INVENTORY facts table and obligations (I3), box 1.1 unchecked, minors m1-m6; 38/38 mutants killed; suite 1519 PASS (1428 + 91); replay cmp-identical; PROOF ALL PROOFS CHECK; OpenSpec 44/44
+2026-11-05T15:12:43Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T15:14:06Z	controller	task 1 complete; task 2 dispatched (broker.c, launch.c)
