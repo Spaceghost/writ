@@ -3,3 +3,7 @@
 2026-11-05T14:41:46Z	implementer	Rendezvous.bend and RendezvousTests.bend written; bend RendezvousTests.bend green at 27 checks; starting mutation sweep
 2026-11-05T14:44:43Z	implementer	mutation sweep: 14 gate and 20 helper mutants, all killed after two added checks (28 checks); registered suite in Tests.bend; running full suite and proofs
 2026-11-05T14:46:19Z	implementer	Tests.bend green (ALL LIBRARY TESTS PASSED, 1456 PASS = 1428 + 28), PROOF.bend ALL PROOFS CHECK (17 laws unchanged); box 1.1 checked; report and mutants written; committing
+2026-11-05T14:46:40Z	controller	task 1 reported; reviewer dispatched; scratch dirs per lane from now on
+2026-11-05T14:51:53Z	controller	review: fixture reuse let nine mutants survive; fix round 1 dispatched
+2026-11-05T14:52:18Z	implementer	fix round 1 started: read task-1-review.md (F1-F5)
+2026-11-05T14:54:14Z	implementer	fix round 1: six checks added (F1-F5), comments for F5 and zero quote; 48 mutants all killed; Tests.bend 1462 PASS, PROOF.bend ALL PROOFS CHECK; committing

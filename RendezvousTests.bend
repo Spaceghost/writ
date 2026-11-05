@@ -200,6 +200,32 @@ def double_seen() -> R.State:
   with_seen(opened(),
     R.Serials{R.OfferSerial{provider_a(), 1n}, R.Serials{R.OfferSerial{provider_a(), 1n}, R.NoSerials{}}})
 
+# A's second offer: serial 7, everything else as offer_a(), so the serial is
+# the only field carrying 7 (version and profile stay 1).
+def offer_a7() -> R.Offer:
+  offer_with(R.OfferId{201n, 7n}, provider_a(), 3n, TF.plan(), quote(), offer_until())
+
+def a7_change() -> R.Change:
+  R.submit_offer(with_a(), 1n, provider_a(), offer_a7(), snapshot())
+
+# SYNTHETIC MONITOR STATE: A's serial 7 seen with no record stored under it.
+def withdrawn_a7() -> R.State:
+  with_seen(opened(), R.Serials{R.OfferSerial{provider_a(), 7n}, R.NoSerials{}})
+
+# SYNTHETIC MONITOR STATE: A's offer serial 1 and an origin-approval serial 1
+# from the same principal, which are separate namespaces. No transition yet
+# records approval serials (a later task).
+def both_namespaces() -> R.State:
+  with_seen(opened(),
+    R.Serials{R.OfferSerial{provider_a(), 1n}, R.Serials{R.ApprovalSerial{provider_a(), 1n}, R.NoSerials{}}})
+
+def usable_found(found: Maybe<&2, I.Grant>, +state: I.State, +from: I.Principal, +now: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{grant}:
+      I.usable_by(state, grant, from, now)
+
 # --- Test-side state equality ------------------------------------------------
 
 def profiles_equal(a: R.Profiles, b: R.Profiles) -> Bool:
@@ -364,6 +390,21 @@ def offer_records() -> IO(Unit):
       && Bool.not(R.offer_equal(offer_a(), offer_b()))
       && Bool.not(R.OfferId.equal(R.Offer.id(offer_a()), R.Offer.id(offer_b()))), "ER-001 same code different provider: the two offers share a code identity but are not equal records and have distinct identities")
     Test.check(Bool.not(R.valid(misowned())) && Bool.not(R.valid(double_seen())), "ER-008 valid: an offer whose identity names another provider, or a serial recorded twice, is not a valid state")
+    Test.check(R.valid(both_namespaces()), "ER-008 valid: A's offer serial 1 beside an approval serial 1 from the same principal is valid, the two namespaces being separate")
+    Test.check(R.Change.accepted(a7_change()) && issued_is(R.Change.issued(a7_change()), 7n)
+      && offers_equal(R.offers(R.Change.state(a7_change())), R.Offers{offer_a7(), R.Offers{offer_a(), R.NoOffers{}}})
+      && serials_equal(R.seen(R.Change.state(a7_change())),
+        R.Serials{R.OfferSerial{provider_a(), 7n}, R.Serials{R.OfferSerial{provider_a(), 1n}, R.NoSerials{}}}), "ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1)")
+    Test.check(R.offer_equal(offer_a(), offer_a())
+      && Bool.not(R.offer_equal(offer_a(), R.Offer{2n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), profile(), quote(), offer_until()}))
+      && Bool.not(R.offer_equal(offer_a(), R.Offer{1n, R.OfferId{201n, 1n}, provider_a(), 4n, TF.plan(), profile(), quote(), offer_until()}))
+      && Bool.not(R.offer_equal(offer_a(), R.Offer{1n, R.OfferId{201n, 1n}, provider_a(), 3n, IT.plan_code(), profile(), quote(), offer_until()}))
+      && Bool.not(R.offer_equal(offer_a(), R.Offer{1n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), 2n, quote(), offer_until()}))
+      && Bool.not(R.offer_equal(offer_a(), R.Offer{1n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), profile(), 35n, offer_until()}))
+      && Bool.not(R.offer_equal(offer_a(), R.Offer{1n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), profile(), quote(), 139n})), "ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139")
+    Test.check(R.Change.accepted(a_change())
+      && usable_found(R.grant_for(issuer(), R.Offer.grant(offer_a())), issuer(), provider_a(), IT.now())
+      && Bool.not(usable_found(R.grant_for(issuer(), R.Offer.grant(offer_a())), issuer(), provider_b(), IT.now())), "ER-001 projection agreement: grant 3 behind A's accepted offer passes I.usable_by for A, the filter of I.registry, and not for B")
 
 # Every submit_offer gate, each denial with its exact reason and the supplied
 # state returned unchanged.
@@ -421,6 +462,11 @@ def offer_denials() -> IO(Unit):
     Test.check(denied(R.submit_offer(opened(), 0n, provider_a(),
         R.Offer{2n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), profile(), quote(), offer_until()}, snapshot()),
         opened(), R.UnknownVersion{}), "ER-001 offer record version 2 denied UnknownVersion")
+    Test.check(denied(R.submit_offer(opened(), 0n, provider_a(),
+        R.Offer{0n, R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), profile(), quote(), offer_until()}, snapshot()),
+        opened(), R.UnknownVersion{}), "ER-001 offer record version 0 denied UnknownVersion")
+    Test.check(denied(R.submit_offer(withdrawn_a7(), 0n, provider_a(), offer_a7(), snapshot()),
+        withdrawn_a7(), R.Replay{}), "ER-008 A's serial 7 already seen with no record stored under it: an offer under OfferId{201, 7} denied Replay")
     Test.check(denied(R.submit_offer(with_a(), 0n, provider_b(), offer_b(), snapshot()),
         with_a(), R.StaleRevision{}), "ER-001 B's offer validated at revision 0 against the state at revision 1 denied StaleRevision")
 
@@ -432,4 +478,4 @@ def offers() -> IO(Unit):
 def main() -> IO(Unit):
   do IO<Unit>:
     offers()
-    IO.print("Rendezvous: 28 checks passed")
+    IO.print("Rendezvous: 34 checks passed")

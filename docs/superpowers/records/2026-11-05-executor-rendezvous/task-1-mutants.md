@@ -44,3 +44,26 @@ Before the final sweep, two mutants survived and were killed by added checks: H5
 Not in the table: recording the offer's `provider` claim instead of `from` in `commit_offer` does not type-check (the offer is affine and already stored), and it is equivalent by construction anyway, because the `claim_matches` gate makes the two equal before `commit_offer` runs.
 
 Masking notes. G8 (`IsCurrent`) is killed by the Revoked check. The Expired-at-150 check alone would not kill it, because the offer-lifetime gate G10 would also deny Expired at 150. G6 (`BelongsTo`) is killed first by the no-grant check. The B-citing-A's-grant check also kills it by construction: with the gate removed, grant 3 passes every later gate for B. The run stops at the first failure, so that second kill is not shown in the table. No mutant survives, and none is claimed equivalent.
+
+## Fix round 1
+
+This round reruns the review's mutants N1 to N14 together with the original 34, after the six added checks. All 48 are KILLED (the sweep script is in `scratchpad/executor-rendezvous-t1/er_mutate.py`). I reran the original 34 too, and each is still killed by the same first check as in the table above.
+
+| Mutant | Mutation | Result | Killing test |
+|---|---|---|---|
+| N1 | offer_equal drops version | KILLED | ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139 |
+| N2 | offer_equal drops grant | KILLED | ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139 |
+| N3 | offer_equal drops plan | KILLED | ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139 |
+| N4 | offer_equal drops profile | KILLED | ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139 |
+| N5 | offer_equal drops quote | KILLED | ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139 |
+| N6 | offer_equal drops valid_until | KILLED | ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139 |
+| N7 | OfferId.equal drops serial | KILLED | ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1) |
+| N8 | serial_entry drops serial | KILLED | ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1) |
+| N9 | commit records profile as serial | KILLED | ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1) |
+| N10 | Replay gate checks serial 1 | KILLED | ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1) |
+| N11 | id_owned_by compares serial to 1 | KILLED | ER-008 valid: an offer whose identity names another provider, or a serial recorded twice, is not a valid state |
+| N12 | offer_exists compares provider only | KILLED | ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1) |
+| N13 | version is_eq to is_le | KILLED | ER-001 offer record version 0 denied UnknownVersion |
+| N14 | serial_equal cross arm True | KILLED | ER-008 valid: A's offer serial 1 beside an approval serial 1 from the same principal is valid, the two namespaces being separate |
+
+N14 is reachable as a structural question. `valid` is a public entry point over any supplied state, and the check uses a synthetic monitor state that holds both namespaces, so I did not record N14 as source-reviewed. N10 is killed first by the second-offer check, because with the Replay gate checking serial 1 A's serial-7 submission on `with_a()` is denied Replay. The new serial-7 Replay check also pins it.

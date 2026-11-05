@@ -471,8 +471,14 @@ def plan_is_request(plan: T.Plan, state: State) -> Bool:
   T.Plan.equal(plan, request_plan(state))
 
 # The registered grant under `id` in the issuer state, or None when absent or
-# ambiguous (I.find_grant). The id is the offer's claim; only the issuer
-# state's record under it is consulted.
+# ambiguous (I.find_grant). The id is the offer's claim and only a selector;
+# only the issuer state's record under it is consulted. The submission gates
+# BelongsTo (the record's scope subject is `from`) and IsCurrent (`I.current`
+# on that record, whose own checks re-confirm it is the record registered
+# under its id) together are exactly Issuance's projection filter
+# `I.usable_by(issuer, grant, from, now)`, so a grant accepted here is one
+# `I.registry(issuer, from, now)` projects for `from`. Eligibility must keep
+# both conjuncts so it cannot drift from the projection.
 def grant_for(issuer: I.State, id: Nat) -> Maybe<&2, I.Grant>:
   I.find_grant(I.grants(issuer), id)
 
@@ -553,9 +559,9 @@ def found_fault(found: Maybe<&2, I.Grant>, issuer: I.State, now: Nat) -> Error:
       grant_fault(issuer, grant, now)
 
 # A positive quote. A zero quote names no billing term; it is denied
-# OverBudget, the closed set's reason for a quote outside the admitted range
-# (positive, up to the reader's ceiling; the ceiling is an eligibility
-# condition). The closed set has no separate reason.
+# OverBudget, the closed set's one billing reason, which covers any quote out
+# of the admitted quote range (positive, up to the reader's ceiling; the
+# ceiling is an eligibility condition). The closed set has no separate reason.
 def quote_named(quote: Nat) -> Bool:
   Nat.is_gt(quote, 0n)
 
@@ -777,7 +783,9 @@ def serial_in(seen: Serials, +wanted: Serial) -> Bool:
     case Serials{head, tail}:
       serial_equal(head, wanted) || serial_in(tail, wanted)
 
-# No serial is recorded twice in one namespace.
+# No serial is recorded twice in one namespace. An offer serial and an
+# approval serial with the same principal and number are different entries
+# (separate namespaces), so a state holding both is valid.
 def serials_valid(seen: Serials) -> Bool:
   match seen:
     case NoSerials{}:

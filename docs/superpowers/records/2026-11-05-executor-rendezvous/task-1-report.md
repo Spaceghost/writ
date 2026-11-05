@@ -160,3 +160,31 @@ Two mutants survived the first sweep. Both were killed by checks I added:
 5. **The Replay gate uses a synthetic monitor state.** Withdrawal does not exist yet, so the Replay check uses a state with A's serial seen and no record stored. Task 3 should add the real withdraw-then-resubmit check.
 6. **Shared scratchpad collision.** The session scratchpad is shared with the parallel policy-aware-audit lane. That lane overwrote my first `scratchpad/mutate.py`, and my next sweep invocation ran their script by mistake. Their script only reads their worktree and writes under `writ-lanes/writ-build/policy-aware-audit/mutants/task-1`. My shell redirect also overwrote `scratchpad/mutants.txt` with a partial copy of their run's output, and the run was cut off ("Terminated"). Their worktree was not modified by me, as far as `git status` shows. If they read `scratchpad/mutants.txt` or that mutants directory, they should regenerate it. I moved my files to `scratchpad/executor-rendezvous-t1/` and reran my sweep from there.
 7. **Mutant directory path.** My mutant copy is at `spaceghost/writ-build/executor-rendezvous/mutant/`. That is `../../writ-build` from the worktree, one level above the plan's `../writ-build`. It is outside the worktree either way.
+
+## Fix round 1
+
+Source: `task-1-review.md`, findings F1 to F5, with both verdicts NEEDS_FIXES. The fixtures put 1 in version, serial and profile, and no provider submitted a second offer, so nine comparator and serial mutants survived.
+
+Changes:
+- **F1:**
+  - Added "ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1)". The fixture is `offer_a7()`, and serial is the only field carrying 7.
+  - Added "ER-008 A's serial 7 already seen with no record stored under it: an offer under OfferId{201, 7} denied Replay" (synthetic monitor state `withdrawn_a7()`).
+- **F2:** added "ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139". It also asserts self-equality. This strengthens every `denied` state-unchanged assertion, which goes through `offer_equal`.
+- **F3:** added "ER-001 offer record version 0 denied UnknownVersion".
+- **F4:** added "ER-008 valid: A's offer serial 1 beside an approval serial 1 from the same principal is valid, the two namespaces being separate" (synthetic monitor state `both_namespaces()`). This kills N14, so N14 is not recorded as source-reviewed. The `serials_valid` comment now states the namespace consequence.
+- **F5 (hardening):**
+  - The `grant_for` comment now states that BelongsTo plus IsCurrent is exactly `I.usable_by(issuer, grant, from, now)`, the `I.registry` filter, and that eligibility must keep both.
+  - Added "ER-001 projection agreement: grant 3 behind A's accepted offer passes I.usable_by for A, the filter of I.registry, and not for B".
+- **Zero-quote ruling:** the reviewer kept `OverBudget`. Following their suggestion, the `quote_named` comment now says "out of the admitted quote range". Concern 1 is resolved.
+- **F6:** a note only, so there was no change.
+
+Mutation: the review's N1 to N14 plus my original 34 make 48, and all are KILLED. The table is in `task-1-mutants.md`, section "Fix round 1".
+
+Verification:
+- `bend Rendezvous.bend --check-only` ends with `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `bend RendezvousTests.bend` ends with `Rendezvous: 34 checks passed`.
+- `bend Tests.bend` ends with `ALL LIBRARY TESTS PASSED`. The PASS total (the `PASS:` and `PASS ` forms together) is **1462**, which is 1428 at master 78449c9 plus 34 new checks. The run had 0 FAIL lines.
+- `bend PROOF.bend` ends with `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` The 17 laws are unchanged, and `git diff master -- LAWS.bend PROOF.bend` is empty.
+- `openspec validate add-executor-rendezvous --strict --no-interactive` reports `Change 'add-executor-rendezvous' is valid`.
+
+Remaining concerns from the first round: 2 (the change id is the serial), 3 (type shapes for later tasks), 5 (the Task 3 withdraw-then-resubmit test is still owed), 6 (the scratchpad collision, now avoided by keeping every file under `scratchpad/executor-rendezvous-t1/`) and 7 (the mutant directory path). Concern 4 (values reused across fields) is resolved for serial by the serial-7 checks, and for version and profile by the version-0 and single-field `offer_equal` checks.
