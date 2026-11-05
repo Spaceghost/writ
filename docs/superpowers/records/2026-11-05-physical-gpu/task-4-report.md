@@ -18,7 +18,7 @@ No other `.bend` file changed. observe.sh and check-record.sh are unchanged. The
   - a `verify` line on the original inputs. For the solver this is Core.verify on the original graph, plus a `stale` line in which Core.verify must refuse each candidate with StaleSnapshot under authority epoch 4. For labels it is Dlm.verify_batch, and for transfers Transfer.admit per original plan.
   - a comparator control per probe: a one-field change must be named exactly and refused by the typed equality.
 - Every case prints the device result, the CPU result and the expected result in full, so the `--gpu off` stdout diff is all-field.
-- Run mode: Solver.device takes the round budget (run mode passes 0n). Transfers.hash now covers every Plan field and the origin codes and payment rules (Task 3 review finding 1), and its comment says so. The headers name Task 4.
+- Run mode: Solver.device takes the round budget (run mode passes 0n). Transfers.hash is now defined over every Plan field and the origin codes and payment rules in source (Task 3 review finding 1), and its comment says so. No Task 4 run executes it (fix round 1). The headers name Task 4.
 
 ## Cases, launches and gate (single-case runs, `--gpu on`)
 | Probe/case | Exercises | bend_dev launches | Gate | parity on/off |
@@ -64,3 +64,14 @@ The `parity all` runs had 90 (solver), 20 (labels) and 30 (transfers) launches. 
 2. The label and transfer `verify` lines run the same evaluator as the CPU reference, so they are not independent. Only Core.verify is a separate algorithm.
 3. Pre-commit capture: every lane_commit is b0d40dd marked uncommitted for the three probes. The records are bound by source_sha256, which equals the committed files.
 4. The empty label and transfer batches still dispatch the bang (5 launches each). Only the solver's empty graph skips the device. This is an observation, not a defect.
+
+## Fix round 1
+Review: task-4-review.md. These are text changes only: no GPU rerun, no probe change, and the probe hashes are unchanged (823ab04b, 4bb420f1, 9f15ea73), so every record stays bound.
+1. Transfer digest (finding 1): the probes paragraph of gpu-parity.txt now says Transfers.hash is defined over every field in source, which closes the Task 3 finding, but that it was not exercised. A Limits bullet now says:
+   - the digest is compiled but no Task 4 run executes it, since only run mode reaches it;
+   - the Task 3 run-mode records are bound to the earlier, partial digest;
+   - a `transfers run SIZE` invocation, or a hash-sensitivity control in Task 5, would exercise it.
+
+   I corrected the controller's pointer to Task 6: the corpus (Tests.bend) does not run this probe, so Task 6 would not exercise the digest. The report's run-mode bullet is softened to match.
+2. Comparator scope (finding 2): a Limits bullet now says each control exercises one field, and that the other walked fields are covered by code reading and the typed equality, not by a per-field control.
+3. The payment control's double space (finding 3): explained in gpu-parity.txt next to the control description, instead of as a probe comment, because a comment would change Transfers.bend's sha256 and unbind the 24 records.

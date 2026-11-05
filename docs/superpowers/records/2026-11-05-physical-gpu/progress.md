@@ -14,3 +14,5 @@ Task 3: implementer DONE_WITH_CONCERNS (d2a29e5): all three paths validated on t
 Task 3: review NEEDS_FIXES on both axes, text only (the transfer digest is not all-field; no denial control for labels/transfers stated; pre-commit capture and exit-status provenance). The central claim holds (54 hashes verified, nine records re-gated). Fix round 1 dispatched.
 Task 3: fix round 1 verified by the controller (text only; digest fields stated; Limits lines added); complete.
 Task 4: dispatched implementer
+Task 4: implementer DONE_WITH_CONCERNS (5ca227c): 20 parity cases, 18 device-validated, 0 differences, stdout byte-identical on and off; two solver cases have no sweeps (CPU only, expected); the transfer digest is now all-field. Rulings: the presence-refused short run validated through a ROUNDS 400 rerun is acceptable with both records kept; the label/transfer verify lines being the same evaluator is a stated limit until Task 5. Reviewer dispatched.
+Task 4: review spec APPROVED, evidence NEEDS_FIXES (the all-field transfer digest is defined but not exercised by any Task 4 run; two low comparator notes). Fix round 1 dispatched, text only.

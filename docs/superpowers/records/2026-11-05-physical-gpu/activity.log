@@ -115,3 +115,7 @@
 2026-11-05T04:20:58Z	implementer	task 4 ROUNDS 400 runs done
 2026-11-05T04:22:53Z	implementer	verification/gpu-parity.txt assembled (24 observed runs, all off-diffs empty, 18/20 cases device-validated, no differences); writing report
 2026-11-05T04:23:40Z	implementer	task 4 report written; committing (no push)
+2026-11-05T04:24:04Z	controller	task 4 reported: 18 of 20 cases on the device, no differences; reviewer dispatched
+2026-11-05T04:26:59Z	controller	review: one evidence wording fix; fix round 1 dispatched
+2026-11-05T04:27:07Z	implementer	fix round 1: read task-4-review.md; text fixes only (digest not exercised, per-field control scope, payment leading-space note); no rerun
+2026-11-05T04:27:26Z	implementer	fix round 1: gpu-parity.txt probes paragraph, control description and two Limits bullets amended; report fix-round section added; committing
