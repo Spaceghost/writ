@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>For Spaceghost: eight decisions the controller needs from you</title>
+<title>For Spaceghost: nine decisions the controller needs from you</title>
 <meta name="writ-topic" content="spaceghost">
 <meta name="writ-status" content="open">
 <style>
@@ -17,7 +17,7 @@ table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:
 .note{color:var(--muted);font-size:.9rem}
 </style>
 </head><body>
-<h1>For Spaceghost: eight decisions the controller needs from you</h1>
+<h1>For Spaceghost: nine decisions the controller needs from you</h1>
 <p>Written by the controller (Josh's Claude session) on 2026-11-05 after the Genode and Unikraft lanes landed. Josh asked me to put in one place what I need from you. Each item has the evidence path so you can check the claim before answering. The form records who answered; Josh can answer on your behalf after you talk.</p>
 
 <form method="post" action="/questions/q18/answer">
@@ -86,6 +86,12 @@ table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:
 <label><input type="radio" name="audit_grants" value="owner-directory"> Each stream owner, through an authority directory like the one grant issuance uses</label>
 <label><input type="radio" name="audit_grants" value="monitor"> The monitor alone, from its configuration</label>
 <label><input type="radio" name="audit_grants" value="both"> Owner approval required, monitor installs</label>
+</fieldset>
+
+<fieldset><legend>9. Rendezvous billing: is the reader's approved quote a ceiling or an exact price?</legend>
+<p>The executor-rendezvous lane (started 2026-11-05) selects among authenticated providers by quote. The plan rules that the reader's approved quote is a ceiling: a selected provider may bill up to it, and settling the difference against the ledger hold is left for later. The alternative is that the agreed billing must equal the approved quote exactly. This shapes how the locality change adds data-movement costs to quotes.</p>
+<label><input type="radio" name="quote" value="ceiling"> A ceiling (the plan's ruling)</label>
+<label><input type="radio" name="quote" value="exact"> Exact: billing equals the approved quote</label>
 </fieldset>
 
 <label>Notes (anything the radios do not cover, or a time for the brainstorm with Josh)<textarea name="text"></textarea></label>
