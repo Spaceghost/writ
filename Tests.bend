@@ -11,6 +11,7 @@ import ./HostWireTests.bend as HostWire
 import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostConformanceTests.bend as HostConformance
+import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
 import ./FacadeTests.bend as Facade
 import ./IssuanceTests.bend as Issuance
 import ./PropertyTests.bend as Properties
@@ -29,6 +30,7 @@ def main() -> IO(Unit):
     HostIdentity.main()
     HostPrimitives.main()
     HostConformance.main()
+    LinuxHost.main()
     Facade.main()
     Issuance.main()
     Properties.main()
