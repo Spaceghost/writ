@@ -7,3 +7,4 @@
 2026-11-05T00:57:18Z	implementer	gdb: second lane (pool_work arg 1) calls pool_rows on its own stack 0x10800ad000 after the main lane's two turns, on CPU#0; crash is uk_free_ifpages <- uk_thread_release(thread 'main') <- uk_sched_thread_gc <- idle_thread_fn (schedcoop.c:199); compat checks: check-corpus default WRIT_NO_BOOT on sigcorpustests PASS 782, lanes path with no image FAIL log missing, run.sh without vcpus logs no -smp; writing evidence
 2026-11-05T00:58:23Z	implementer	wrote verification/unikernel-lanes-qemu.txt; writing report
 2026-11-05T00:58:56Z	implementer	report written; committing task 1 (DONE_WITH_CONCERNS: second lane runs on vCPU 0 only; two-lane runs crash at shutdown, QEMU 253)
+2026-11-05T00:59:32Z	controller	task 1 reported; ruling: task 2 records the stall (one probe build, no corpus); reviewer and task 2 dispatched
