@@ -27,11 +27,20 @@ import ./DataOS.bend as D
 #   sets of native support, and Booleans.
 # - Execution profiles are monitor state: `State.profiles`, the configured
 #   (or negotiated) table, fixed by `empty` and never written by a
-#   transition. A request names a profile only by id; `admit_worker`
-#   resolves the id in that table and denies an unknown one. No request
-#   field carries controls, families, a backend, or a quota limit, and
-#   `TargetReport` has no profile field, so a target cannot introduce or
-#   lower one; its facts are only compared against the configured profile.
+#   transition. The profile a worker runs under is fixed once, when the
+#   monitor opens its session (`open_session` with `WorkerRole{profile}`, a
+#   configured id, else UnknownProfile), and recorded in `State.bindings`.
+#   `admit_worker` and every later transition read that stored binding; no
+#   later request has a profile field, so no request can switch a session to
+#   another configured profile. No request field carries controls,
+#   families, a backend, or a quota limit, and `TargetReport` has no
+#   profile field, so a target cannot introduce or lower one; its facts are
+#   only compared against the bound profile.
+# - Delegability is monitor state: `open_session` binds a worker session
+#   non-delegable by construction, and admission reads the delegability the
+#   identity table stored. The `delegable` flag in `SessionEvidence` can
+#   only narrow (a client session it reports non-delegable is bound so); it
+#   never makes a session delegable that the monitor's role does not allow.
 # - `Effect` is closed. It has no native write, publish, or diagnostic
 #   variant, and `native_write_offered` has no accepting branch, so the fast
 #   publication route has no value to return. Publication will be one
@@ -41,10 +50,10 @@ import ./DataOS.bend as D
 # Host obligations (section 2, reviewed-only): (a) Bend datatypes are public,
 # so a target could construct an `Effect` itself. A target-constructed
 # `Effect` is not authorization; the binding must execute only effects taken
-# from an `Admitted` step this monitor returned. (b) Which configured
-# profile a request uses is the admitted request's choice: the id passed to
-# `admit_worker` must come from that request, never from the binding. Every
-# configured profile still has to pass the admission checks below.
+# from an `Admitted` step this monitor returned. (b) The `Role` passed to
+# `open_session` is the monitor's own decision from its admitted request
+# (which sessions are workers, and under which configured profile), never a
+# value the binding chose.
 #
 # Authority. `State` is monitor state: the HostIdentity table (sessions and
 # entries, built only by its transitions), the configured profile table, the
@@ -55,11 +64,11 @@ import ./DataOS.bend as D
 # generation), not copied from the request. Its profile and quota limit come
 # from the configured table. The only target value stored is the amount a
 # successful `charge` adds, bounded by the configured limit.
-# Worker sessions: a worker is admitted only on a session the monitor bound
-# non-delegable, so `HostIdentity.delegate` from a worker session is always
-# denied NotDelegable and a worker cannot pass its inputs on. Delegability
-# is reported in `SessionEvidence` (a section 2 host obligation: the binding
-# reports it from how the native session was created).
+# Worker sessions: a worker is admitted only on a session the identity table
+# records non-delegable and `bindings` records as a worker session, so
+# `HostIdentity.delegate` from a worker session is always denied
+# NotDelegable and a worker cannot pass its inputs on, whatever the target
+# reported.
 # Each input entry feeds at most one worker that is not `Reclaimed`.
 # Host obligations (section 2): the adapter identifies the worker a runtime
 # fact came from (as it identifies the session a message arrived on); the
@@ -74,7 +83,9 @@ import ./DataOS.bend as D
 # module never imports `hosts/`, `contrib/`, or `examples/`.
 #
 # Invariants (`valid`): the identity table satisfies `HostIdentity.valid`;
-# every configured profile id names one profile; every worker id is nonzero,
+# every configured profile id names one profile; every bound session is
+# bound once, is one non-delegable session of the identity table, and names
+# a configured profile; every worker id is nonzero,
 # below `next_worker`, and names one worker; and no two workers that are not
 # `Reclaimed` share an input entry (host, incarnation, and slot). Every
 # transition first requires the expected revision and a `valid` state (a
@@ -83,23 +94,25 @@ import ./DataOS.bend as D
 # preserves `valid`.
 #
 # Admission order (`admit_worker`), first failure reported:
-#   0. gate          revision differs, or the state is not valid -> StaleRevision
-#   1. profile       the id names no configured profile     -> UnknownProfile
-#   2. protected     the profile does not list `family_worker()`,
-#                    or requires no control                 -> MissingControl
-#   3. identity      the input reference does not resolve on
+#   1. gate          revision differs, or the state is not valid -> StaleRevision
+#   2. identity      the input reference does not resolve on
 #                    the presenting session                 -> Identity{reason}
-#   4. session       that session is delegable              -> DelegableSession
-#   5. slot          a worker that is not Reclaimed already
+#   3. session       the identity table records that session
+#                    delegable                              -> DelegableSession
+#   4. profile       no profile is bound to the session     -> UnknownProfile
+#                    (its bound id is configured: `valid`)
+#   5. protected     the profile does not list `family_worker()`,
+#                    or requires no control                 -> MissingControl
+#   6. slot          a worker that is not Reclaimed already
 #                    holds the input entry                  -> SlotOccupied
-#   6. inventory     the fact is not an `Inventory`         -> WrongPhase
-#   7. families      a required family is not supported     -> UnsupportedFamily
-#   8. controls      a required control is not established  -> MissingControl
-#   9. accelerator   an `Accelerator` backend without
+#   7. inventory     the fact is not an `Inventory`         -> WrongPhase
+#   8. families      a required family is not supported     -> UnsupportedFamily
+#   9. controls      a required control is not established  -> MissingControl
+#  10. accelerator   an `Accelerator` backend without
 #                    `control_accelerator_isolation()`      -> UnisolatedAccelerator
 #                    (checked whether or not the profile
 #                    lists that control)
-#  10. routes        any inventory route is not mediated    -> UnmediatedRoute
+#  11. routes        any inventory route is not mediated    -> UnmediatedRoute
 #   then commit: the worker is recorded `Running` and the only effect is
 #   `DeliverInputs`, naming the input by its full reference (host,
 #   incarnation, slot, generation), so plaintext delivery is the last step of
@@ -107,7 +120,7 @@ import ./DataOS.bend as D
 #   slot. Admission is atomic: there is no window between recording the
 #   worker and the delivery. Plan ruling: there is no downgrade. An
 #   accelerator profile without isolation is denied; CPU work is a separate
-#   admission naming a profile whose backend is `Cpu`, and the worker
+#   worker session bound under a profile whose backend is `Cpu`, and the worker
 #   records that profile (PH-014). Inputs are delivered to a confined worker
 #   without a Transfer/Frontend plan recheck; the plan is rechecked at
 #   publication (Task 4, `DataOS.commit_from_capability`).
@@ -154,6 +167,7 @@ import ./DataOS.bend as D
 # this part uses neither.
 #
 # Public entry points: `empty`, `valid`, `open_session`, `use` (family 1);
+# the types `Role`, `Binding`, `Bindings`;
 # `admit_worker`, `charge`, `diagnostic`, `native_write_offered` (family 2);
 # the types `Backend`, `Profile`, `Configured`, `Profiles`, `TargetReport`,
 # `RouteFact`, `Fact`, `Effect`, `Step`, `UseResult`, `Error`, `Phase`,
@@ -240,10 +254,29 @@ type Workers is Data:
   NoWorkers{}
   Workers{head: Worker, tail: Workers}
 
+# The monitor's decision, at bind time, of what a new session is for: a
+# client session, or a worker session bound under configured profile
+# `profile`. The monitor takes it from its own admitted request; it is never
+# target evidence.
+type Role is Data:
+  ClientRole{}
+  WorkerRole{profile: Nat}
+
+# The configured profile a worker session was bound under.
+type Binding is Data:
+  Binding{session: Nat, profile: Nat}
+
+type Bindings is Data:
+  NoBindings{}
+  Bindings{head: Binding, tail: Bindings}
+
 # The primitive layer's whole state. `profiles` is fixed by `empty`;
-# `next_worker` exceeds every worker id.
+# `bindings` records, for each session `open_session` bound as a worker
+# session, the configured profile it was bound under; `next_worker` exceeds
+# every worker id.
 type State is Data:
-  State{revision: Nat, identity: I.State, profiles: Profiles, workers: Workers, next_worker: Nat}
+  State{revision: Nat, identity: I.State, profiles: Profiles, bindings: Bindings, workers: Workers,
+    next_worker: Nat}
 
 # Closed set of denial reasons. Every denied transition names exactly one.
 type Error is Data:
@@ -280,6 +313,12 @@ type WorkerLookup is Data:
   NoWorker{}
   OneWorker{worker: Worker}
   ManyWorkers{}
+
+# Implementation helper: a counted lookup of the profile bound to a session.
+type BindingLookup is Data:
+  NoBinding{}
+  OneBinding{profile: Nat}
+  ManyBindings{}
 
 # Implementation helper: a counted lookup of configured profiles with one id.
 type ProfileLookup is Data:
@@ -356,7 +395,7 @@ def no_usage() -> Nat:
 # Public entry point: a primitive layer over the monitor's identity table and
 # its configured profile table, with no workers.
 def empty(identity: I.State, profiles: Profiles) -> State:
-  State{0n, identity, profiles, NoWorkers{}, first_worker()}
+  State{0n, identity, profiles, NoBindings{}, NoWorkers{}, first_worker()}
 
 # --- Accessors and equality (public) ----------------------------------------------
 
@@ -406,27 +445,32 @@ def Step.reason(step: Step) -> Maybe<&2, Error>:
 
 def revision(state: State) -> Nat:
   match state:
-    case State{revision, _, _, _, _}:
+    case State{revision, _, _, _, _, _}:
       revision
 
 def identity(state: State) -> I.State:
   match state:
-    case State{_, identity, _, _, _}:
+    case State{_, identity, _, _, _, _}:
       identity
 
 def profiles(state: State) -> Profiles:
   match state:
-    case State{_, _, profiles, _, _}:
+    case State{_, _, profiles, _, _, _}:
       profiles
+
+def bindings(state: State) -> Bindings:
+  match state:
+    case State{_, _, _, bindings, _, _}:
+      bindings
 
 def workers(state: State) -> Workers:
   match state:
-    case State{_, _, _, workers, _}:
+    case State{_, _, _, _, workers, _}:
       workers
 
 def next_worker(state: State) -> Nat:
   match state:
-    case State{_, _, _, _, next_worker}:
+    case State{_, _, _, _, _, next_worker}:
       next_worker
 
 def worker_id(worker: Worker) -> Nat:
@@ -635,12 +679,75 @@ def profiles_valid(profiles: Profiles, +all: Profiles) -> Bool:
       Nat.is_eq(profile_count(all, profile_id(configured_profile(configured))), 1n)
         && profiles_valid(rest, all)
 
+# Implementation helper: add one candidate to a counted binding lookup.
+def count_binding(ok: Bool, profile: Nat, rest: BindingLookup) -> BindingLookup:
+  match ok rest:
+    case False{} rest:
+      rest
+    case True{} NoBinding{}:
+      OneBinding{profile}
+    case True{} OneBinding{_}:
+      ManyBindings{}
+    case True{} ManyBindings{}:
+      ManyBindings{}
+
+def binding_session(binding: Binding) -> Nat:
+  match binding:
+    case Binding{session, _}:
+      session
+
+def binding_profile(binding: Binding) -> Nat:
+  match binding:
+    case Binding{_, profile}:
+      profile
+
+# Implementation helper: the profile bound to session `session`, counted.
+def binding_at(bindings: Bindings, +session: Nat) -> BindingLookup:
+  match bindings:
+    case NoBindings{}:
+      NoBinding{}
+    case Bindings{+binding, rest}:
+      count_binding(Nat.is_eq(binding_session(binding), session), binding_profile(binding),
+        binding_at(rest, session))
+
+# Implementation helper: whether a session lookup found exactly one session,
+# bound non-delegable.
+def non_delegable_session(found: I.SessionLookup) -> Bool:
+  match found:
+    case I.OneSession{session}:
+      Bool.not(I.session_delegable(session))
+    case _:
+      False{}
+
+# Implementation helper: whether a binding lookup found exactly one binding.
+def one_binding(found: BindingLookup) -> Bool:
+  match found:
+    case OneBinding{_}:
+      True{}
+    case _:
+      False{}
+
+# Implementation helper: `valid`'s binding clauses: each bound session is
+# bound once, is one non-delegable session of the identity table, and names
+# a configured profile.
+def bindings_valid(bindings: Bindings, +all: Bindings, +sessions: I.Sessions, +profiles: Profiles) -> Bool:
+  match bindings:
+    case NoBindings{}:
+      True{}
+    case Bindings{+binding, rest}:
+      one_binding(binding_at(all, binding_session(binding)))
+        && non_delegable_session(I.session_at(sessions, binding_session(binding)))
+        && Nat.is_eq(profile_count(profiles, binding_profile(binding)), 1n)
+        && bindings_valid(rest, all, sessions, profiles)
+
 # Public: the structural invariants (module header). It checks structure only
 # and does not authenticate the supplied state.
 def valid(state: State) -> Bool:
   match state:
-    case State{_, identity, +profiles, +workers, +next_worker}:
-      I.valid(identity) && profiles_valid(profiles, profiles) && workers_valid(workers, workers, next_worker)
+    case State{_, +identity, +profiles, +bindings, +workers, +next_worker}:
+      I.valid(identity) && profiles_valid(profiles, profiles)
+        && bindings_valid(bindings, bindings, I.sessions(identity), profiles)
+        && workers_valid(workers, workers, next_worker)
 
 # Implementation helper: every transition's first gate.
 def current(+state: State, expected_revision: Nat) -> Bool:
@@ -653,19 +760,26 @@ def reresolve(+state: State, +worker: Worker, +now: Nat) -> I.Resolution:
 # Implementation helper: advance the revision once, keeping everything else.
 def advanced(state: State) -> State:
   match state:
-    case State{revision, identity, profiles, workers, next_worker}:
-      State{1n+revision, identity, profiles, workers, next_worker}
+    case State{revision, identity, profiles, bindings, workers, next_worker}:
+      State{1n+revision, identity, profiles, bindings, workers, next_worker}
 
 # --- Family 1: session binding (public: open_session, use) ------------------------
 
 # Implementation helper: commit a bound identity table.
 def with_identity(state: State, identity: I.State) -> State:
   match state:
-    case State{revision, _, profiles, workers, next_worker}:
-      State{1n+revision, identity, profiles, workers, next_worker}
+    case State{revision, _, profiles, bindings, workers, next_worker}:
+      State{1n+revision, identity, profiles, bindings, workers, next_worker}
 
-# Implementation helper: open_session's identity step; a HostIdentity denial
-# is reported as `Identity{reason}`.
+# Implementation helper: commit a bound identity table and record that the
+# issued session is a worker session bound under `profile`.
+def with_worker_session(state: State, identity: I.State, +session: Nat, +profile: Nat) -> State:
+  match state:
+    case State{revision, _, profiles, bindings, workers, next_worker}:
+      State{1n+revision, identity, profiles, Bindings{Binding{session, profile}, bindings}, workers, next_worker}
+
+# Implementation helper: a client session's identity step; a HostIdentity
+# denial is reported as `Identity{reason}`.
 def o_bound(change: I.Change, +state: State) -> Step:
   match change:
     case I.Rejected{_, reason}:
@@ -673,36 +787,69 @@ def o_bound(change: I.Change, +state: State) -> Step:
     case I.Accepted{identity, _}:
       Admitted{with_identity(state, identity), []}
 
+# Implementation helper: a worker session's identity step.
+def o_worker_bound(change: I.Change, +state: State, +profile: Nat) -> Step:
+  match change:
+    case I.Rejected{_, reason}:
+      Denied{state, Identity{reason}}
+    case I.Accepted{identity, +issued}:
+      Admitted{with_worker_session(state, identity, issued, profile), []}
+
+# Implementation helper: a worker session's profile step. The session is
+# bound non-delegable whatever the evidence reports.
+def o_worker(found: ProfileLookup, +state: State, +profile: Nat, caller: F.Caller, +origin: I.Origin) -> Step:
+  match found:
+    case OneProfile{_}:
+      o_worker_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, False{}),
+        state, profile)
+    case _:
+      Denied{state, UnknownProfile{}}
+
+# Implementation helper: open_session's role step. A client session is
+# delegable only if the monitor's role allows it and the evidence does not
+# deny it: the evidence's flag can only narrow, never grant.
+def o_role(role: Role, +state: State, caller: F.Caller, +origin: I.Origin, delegable: Bool) -> Step:
+  match role:
+    case ClientRole{}:
+      o_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, delegable), state)
+    case WorkerRole{+profile}:
+      o_worker(profile_at(profiles(state), profile), state, profile, caller, origin)
+
 # Implementation helper: open_session's fact step.
-def o_fact(fact: Fact, +state: State) -> Step:
+def o_fact(fact: Fact, +state: State, role: Role) -> Step:
   match fact:
     case SessionEvidence{caller, +origin, delegable}:
-      o_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, delegable), state)
+      o_role(role, state, caller, origin, delegable)
     case _:
       Denied{state, WrongPhase{}}
 
 # Implementation helper: open_session's family step.
-def o_family(ok: Bool, +state: State, fact: Fact) -> Step:
+def o_family(ok: Bool, +state: State, fact: Fact, role: Role) -> Step:
   match ok:
     case True{}:
-      o_fact(fact, state)
+      o_fact(fact, state, role)
     case False{}:
       Denied{state, UnsupportedFamily{}}
 
 # Implementation helper: open_session's gate.
-def o_gate(ok: Bool, +state: State, report: TargetReport, fact: Fact) -> Step:
+def o_gate(ok: Bool, +state: State, report: TargetReport, fact: Fact, role: Role) -> Step:
   match ok:
     case True{}:
-      o_family(within(family_session(), report_families(report)), state, fact)
+      o_family(within(family_session(), report_families(report)), state, fact, role)
     case False{}:
       Denied{state, StaleRevision{}}
 
 # Public entry point, family 1: bind a native session from the target's
 # `SessionEvidence` through `HostIdentity.bind_session`, which allocates the
-# session id. Requires the target to support `family_session()`. Order:
-# gate, family, fact variant, then HostIdentity's own checks. No effect.
-def open_session(+state: State, expected_revision: Nat, report: TargetReport, fact: Fact) -> Step:
-  o_gate(current(state, expected_revision), state, report, fact)
+# session id, in the role the monitor decided (`role`, from its admitted
+# request, never from the target). Requires the target to support
+# `family_session()`. Order: gate, family, fact variant, role, then
+# HostIdentity's own checks. A `ClientRole` session is delegable only when
+# the evidence also says so; a `WorkerRole{profile}` session needs a
+# configured `profile` (else UnknownProfile), is always bound non-delegable,
+# and is recorded in `bindings` under that profile. No effect.
+def open_session(+state: State, expected_revision: Nat, report: TargetReport, fact: Fact, role: Role) -> Step:
+  o_gate(current(state, expected_revision), state, report, fact, role)
 
 # Implementation helper: choose a right.
 def pick_right(ok: Bool, chosen: U32, otherwise: U32) -> U32:
@@ -808,10 +955,10 @@ def entry_ref(+identity: I.State, +entry: I.Entry) -> W.Ref:
 # Implementation helper: record the admitted worker and allocate its id.
 def commit_worker(state: State, worker: Worker) -> State:
   match state:
-    case State{revision, identity, profiles, workers, next_worker}:
-      State{1n+revision, identity, profiles, Workers{worker, workers}, 1n+next_worker}
+    case State{revision, identity, profiles, bindings, workers, next_worker}:
+      State{1n+revision, identity, profiles, bindings, Workers{worker, workers}, 1n+next_worker}
 
-# Implementation helper, step 10 and commit: plaintext is delivered only here,
+# Implementation helper, step 11 and commit: plaintext is delivered only here,
 # after every other admission check.
 def a_routes(ok: Bool, +state: State, +configured: Configured, +session: Nat, +input: W.Ref) -> Step:
   match ok:
@@ -821,7 +968,7 @@ def a_routes(ok: Bool, +state: State, +configured: Configured, +session: Nat, +i
     case False{}:
       Denied{state, UnmediatedRoute{}}
 
-# Implementation helper, step 9.
+# Implementation helper, step 10.
 def a_accelerator(ok: Bool, +state: State, +configured: Configured, routes: +List<RouteFact>,
     +session: Nat, +input: W.Ref) -> Step:
   match ok:
@@ -830,7 +977,7 @@ def a_accelerator(ok: Bool, +state: State, +configured: Configured, routes: +Lis
     case False{}:
       Denied{state, UnisolatedAccelerator{}}
 
-# Implementation helper, step 8.
+# Implementation helper, step 9.
 def a_controls(ok: Bool, +state: State, +configured: Configured, +report: TargetReport,
     routes: +List<RouteFact>, +session: Nat, +input: W.Ref) -> Step:
   match ok:
@@ -840,7 +987,7 @@ def a_controls(ok: Bool, +state: State, +configured: Configured, +report: Target
     case False{}:
       Denied{state, MissingControl{}}
 
-# Implementation helper, step 7.
+# Implementation helper, step 8.
 def a_families(ok: Bool, +state: State, +configured: Configured, +report: TargetReport,
     routes: +List<RouteFact>, +session: Nat, +input: W.Ref) -> Step:
   match ok:
@@ -850,7 +997,7 @@ def a_families(ok: Bool, +state: State, +configured: Configured, +report: Target
     case False{}:
       Denied{state, UnsupportedFamily{}}
 
-# Implementation helper, step 6.
+# Implementation helper, step 7.
 def a_inventory(inventory: Fact, +state: State, +configured: Configured, +report: TargetReport,
     +session: Nat, +input: W.Ref) -> Step:
   match inventory:
@@ -860,7 +1007,7 @@ def a_inventory(inventory: Fact, +state: State, +configured: Configured, +report
     case _:
       Denied{state, WrongPhase{}}
 
-# Implementation helper, step 5: one worker per input entry.
+# Implementation helper, step 6: one worker per input entry.
 def a_slot(ok: Bool, +state: State, +configured: Configured, report: TargetReport, inventory: Fact,
     +session: Nat, +input: W.Ref) -> Step:
   match ok:
@@ -869,77 +1016,89 @@ def a_slot(ok: Bool, +state: State, +configured: Configured, report: TargetRepor
     case False{}:
       Denied{state, SlotOccupied{}}
 
-# Implementation helper, step 4, the decision.
-def a_delegable(delegable: Bool, +state: State, +configured: Configured, report: TargetReport,
-    inventory: Fact, +session: Nat, +input: W.Ref) -> Step:
+# Implementation helper, step 5.
+def a_protected(ok: Bool, +state: State, +configured: Configured, report: TargetReport, inventory: Fact,
+    +session: Nat, +input: W.Ref) -> Step:
+  match ok:
+    case True{}:
+      a_slot(Bool.not(occupied(workers(state), input)), state, configured, report, inventory, session, input)
+    case False{}:
+      Denied{state, MissingControl{}}
+
+# Implementation helper, step 4, the configured profile. A bound profile id
+# that is not configured once is unreachable from a valid state.
+def a_profile(found: ProfileLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
+    +input: W.Ref) -> Step:
+  match found:
+    case OneProfile{+configured}:
+      a_protected(protects(configured_profile(configured)), state, configured, report, inventory, session,
+        input)
+    case _:
+      Denied{state, UnknownProfile{}}
+
+# Implementation helper, step 4: the profile the session was bound under at
+# `open_session`. A session with no worker binding has no profile to admit
+# under (more than one binding is unreachable from a valid state).
+def a_bound(found: BindingLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
+    +input: W.Ref) -> Step:
+  match found:
+    case OneBinding{+profile}:
+      a_profile(profile_at(profiles(state), profile), state, report, inventory, session, input)
+    case _:
+      Denied{state, UnknownProfile{}}
+
+# Implementation helper, step 3, the decision: the stored delegability.
+def a_delegable(delegable: Bool, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
+    +input: W.Ref) -> Step:
   match delegable:
     case False{}:
-      a_slot(Bool.not(occupied(workers(state), input)), state, configured, report, inventory, session, input)
+      a_bound(binding_at(bindings(state), session), state, report, inventory, session, input)
     case True{}:
       Denied{state, DelegableSession{}}
 
-# Implementation helper, step 4: the presenting session must be bound
-# non-delegable, so the worker cannot re-delegate its inputs.
-def a_session(found: I.SessionLookup, +state: State, +configured: Configured, report: TargetReport,
-    inventory: Fact, +session: Nat, +input: W.Ref) -> Step:
+# Implementation helper, step 3: the presenting session must be one the
+# monitor recorded non-delegable, so the worker cannot re-delegate its inputs.
+def a_session(found: I.SessionLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
+    +input: W.Ref) -> Step:
   match found:
     case I.OneSession{bound}:
-      a_delegable(I.session_delegable(bound), state, configured, report, inventory, session, input)
+      a_delegable(I.session_delegable(bound), state, report, inventory, session, input)
     case _:
-      # Unreachable after step 3 resolved on this session; kept for totality.
+      # Unreachable after step 2 resolved on this session; kept for totality.
       Denied{state, Identity{I.UnknownSession{}}}
 
-# Implementation helper, step 3: the input reference must resolve on the
+# Implementation helper, step 2: the input reference must resolve on the
 # presenting session; the stored reference is rebuilt from the entry.
-def a_identity(resolution: I.Resolution, +state: State, +configured: Configured, report: TargetReport,
-    inventory: Fact, +session: Nat) -> Step:
+def a_identity(resolution: I.Resolution, +state: State, report: TargetReport, inventory: Fact,
+    +session: Nat) -> Step:
   match resolution:
     case I.Unresolved{reason}:
       Denied{state, Identity{reason}}
     case I.Resolved{+entry, _}:
-      a_session(I.session_at(I.sessions(identity(state)), session), state, configured, report, inventory,
-        session, entry_ref(identity(state), entry))
+      a_session(I.session_at(I.sessions(identity(state)), session), state, report, inventory, session,
+        entry_ref(identity(state), entry))
 
-# Implementation helper, step 2.
-def a_protected(ok: Bool, +state: State, +configured: Configured, report: TargetReport, inventory: Fact,
-    +session: Nat, +ref: W.Ref, +now: Nat) -> Step:
+# Implementation helper, step 1.
+def a_gate(ok: Bool, +state: State, report: TargetReport, inventory: Fact, +session: Nat, +ref: W.Ref,
+    +now: Nat) -> Step:
   match ok:
     case True{}:
-      a_identity(I.resolve(identity(state), I.revision(identity(state)), session, ref, now), state,
-        configured, report, inventory, session)
-    case False{}:
-      Denied{state, MissingControl{}}
-
-# Implementation helper, step 1: the profile id must name one configured
-# profile (more than one is unreachable from a valid state).
-def a_profile(found: ProfileLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
-    +ref: W.Ref, +now: Nat) -> Step:
-  match found:
-    case OneProfile{+configured}:
-      a_protected(protects(configured_profile(configured)), state, configured, report, inventory, session,
-        ref, now)
-    case _:
-      Denied{state, UnknownProfile{}}
-
-# Implementation helper, step 0.
-def a_gate(ok: Bool, +state: State, +profile: Nat, report: TargetReport, inventory: Fact, +session: Nat,
-    +ref: W.Ref, +now: Nat) -> Step:
-  match ok:
-    case True{}:
-      a_profile(profile_at(profiles(state), profile), state, report, inventory, session, ref, now)
+      a_identity(I.resolve(identity(state), I.revision(identity(state)), session, ref, now), state, report,
+        inventory, session)
     case False{}:
       Denied{state, StaleRevision{}}
 
-# Public entry point, family 2: admit a protected worker domain under the
-# configured profile `profile` (an id; the profile and its quota limit come
-# from the monitor's table). `report` and `inventory` are the target's facts;
-# `ref` is the worker's input reference, presented on its native `session`,
-# resolved at monitor time `now`. Checks in the documented admission order;
+# Public entry point, family 2: admit a protected worker domain on worker
+# session `session`, under the configured profile that session was bound
+# under at `open_session` (the request names no profile; the profile and its
+# quota limit come from the monitor's tables). `report` and `inventory` are
+# the target's facts; `ref` is the worker's input reference, resolved on
+# `session` at monitor time `now`. Checks in the documented admission order;
 # on acceptance records the worker `Running` and returns exactly
 # `[DeliverInputs{worker, input}]`.
-def admit_worker(+state: State, expected_revision: Nat, +profile: Nat, report: TargetReport,
-    inventory: Fact, +session: Nat, +ref: W.Ref, +now: Nat) -> Step:
-  a_gate(current(state, expected_revision), state, profile, report, inventory, session, ref, now)
+def admit_worker(+state: State, expected_revision: Nat, report: TargetReport, inventory: Fact,
+    +session: Nat, +ref: W.Ref, +now: Nat) -> Step:
+  a_gate(current(state, expected_revision), state, report, inventory, session, ref, now)
 
 # Implementation helper: one worker's use after a charge.
 def charged_one(ok: Bool, worker: Worker, amount: Nat) -> Worker:
@@ -960,8 +1119,8 @@ def charged(workers: Workers, +id: Nat, +amount: Nat) -> Workers:
 # Implementation helper: commit an accepted charge.
 def commit_charge(state: State, +id: Nat, +amount: Nat) -> State:
   match state:
-    case State{revision, identity, profiles, workers, next_worker}:
-      State{1n+revision, identity, profiles, charged(workers, id, amount), next_worker}
+    case State{revision, identity, profiles, bindings, workers, next_worker}:
+      State{1n+revision, identity, profiles, bindings, charged(workers, id, amount), next_worker}
 
 # Implementation helper: charge's quota step.
 def c_quota(ok: Bool, +state: State, +id: Nat, +amount: Nat) -> Step:

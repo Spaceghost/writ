@@ -703,3 +703,166 @@ Commands and results:
   helper `n_gate`, but I did not add it, because a new law needs the task
   to call for it.
 - R5. `HostPrimitives.bend` is now 1108 lines and the tests 919 lines.
+
+## Fix round 2
+
+The controller made two rulings on round-1 concerns R1 and R2. Both make a
+fact monitor-owned. Files changed: HostPrimitives.bend,
+HostPrimitivesTests.bend, and the traceability file. HostIdentity,
+LAWS.bend, PROOF.bend, and Tests.bend are unchanged. HostPrimitivesTests
+now has 104 checks (91 before).
+
+### Ruling 1: delegability is a monitor fact (closes R1)
+
+- `open_session` takes a monitor parameter `role: Role`, either
+  `ClientRole{}` or `WorkerRole{profile}`. The role is the monitor's
+  decision from its admitted request, never target evidence.
+- A `WorkerRole` session is always bound non-delegable: `o_worker` passes
+  `False{}` to `HostIdentity.bind_session`. The target's
+  `SessionEvidence.delegable` is not read for a worker.
+- For a `ClientRole` session the evidence flag is only a consistency check
+  that can deny. The session is delegable only if the role allows it (a
+  client) and the evidence also says so. A client the evidence reports
+  non-delegable is bound non-delegable.
+- Admission (step 3, `a_delegable`) reads the delegability that the
+  identity table stored. `valid` adds that every bound worker session is
+  exactly one non-delegable session of the table.
+- Checks:
+  - `PH-002 open_session as a worker binds the session non-delegable under its profile even when the target reports it delegable`
+  - `PH-007 a worker session the target reported delegable still cannot delegate`
+    (open the worker with delegable=true evidence, delegate the input to
+    it, then `HostIdentity.delegate` from it is denied `NotDelegable`)
+  - `PH-002 a client session the evidence reports non-delegable is bound non-delegable`
+  - `PH-007 valid rejects a profile binding for a delegable session`
+
+### Ruling 2: the profile id is bound at open_session (closes R2)
+
+- `State` gains `bindings: Bindings` (`Binding{session, profile}`).
+  `open_session` with `WorkerRole{profile}` requires a configured profile
+  (else `UnknownProfile`) and records `Binding{issued session, profile}`.
+  No later transition writes a binding.
+- `admit_worker` no longer has a profile parameter. Its signature is now
+  `admit_worker(state, rev, report, inventory, session, ref, now)`. It reads
+  the presenting session's binding (step 4; no binding gives
+  `UnknownProfile`) and then the configured entry. The quota limit comes
+  from that entry. No request type after `open_session` carries a profile
+  field, so no later request can switch profiles.
+- `valid` adds, for each binding:
+  - the session is bound once;
+  - it is one non-delegable session of the identity table;
+  - it names a configured profile.
+- New admission order: gate, identity, stored delegability, bound profile,
+  protected profile, free slot, inventory, families, controls, accelerator,
+  routes, commit. The module header, the step comments, and the
+  traceability are updated.
+- Checks:
+  - `PH-001 a later request cannot switch profiles: a session bound under the accelerator profile is denied on a CPU-only report that the CPU profile accepts`
+  - `PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile`
+  - `PH-001 an admission on a non-delegable session with no bound profile denied UnknownProfile`
+  - `PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile`
+  - `PH-002 open_session as a worker with evidence inherited from an unbound session denied Identity UnknownSession`
+  - `PH-002 open_session records the worker session's profile binding used by the fixtures`
+  - `PH-001 valid rejects a profile binding for a session not in the identity table`
+  - `PH-001 valid rejects a session bound to two profiles`
+  - `PH-001 valid rejects a binding to a profile id not configured`
+  - `PH-001 order: the input reference precedes the bound profile`
+  - `PH-006 order: the input reference precedes the protected-profile check`
+  - `PH-006 order: the protected-profile check precedes the occupied slot`
+- Replaced checks:
+  - `PH-001 an admission naming a profile id the monitor has not configured denied UnknownProfile`
+    is gone, because no request names a profile.
+  - The two round-1 order checks that put the profile before the input
+    reference are replaced by the new order checks above.
+
+### Fixtures
+
+- The client and worker sessions are now opened with `P.open_session`
+  (`ClientRole`, then `WorkerRole{403}`). The input is minted and delegated
+  on that identity table.
+- `base_under(profile)` gives the same table with the worker session bound
+  under another configured profile, to exercise each profile.
+- `doubled_profiles()` carries no binding, so its profile-clause check is
+  isolated.
+
+### Removal map, round 2
+
+The round-1 mutants whose source text changed were rewritten. The obsolete
+"admit: delegable allowed" mutant no longer compiles; it is replaced by
+"admit: delegable allowed (round 2)". New mutants were added for every new
+branch, in the same scratch-copy harness. The first run left two survivors:
+- "valid: profile clause". The doubled-table state also failed the binding
+  clause; it now has no binding.
+- "binding lookup ignores session". I added the two-worker-sessions check.
+
+In the final run, all 91 mutants were killed by named checks, none by a
+compile error.
+
+Unreachable arms, source-reviewed:
+- the `ManyBindings` arm of `a_bound`;
+- the non-`OneProfile` arm of `a_profile`, because a bound id is configured
+  by `valid`.
+
+The new and rewritten mutants:
+
+| Mutant | First failing check |
+| --- | --- |
+| valid: identity clause | `PH-001 valid rejects a state whose identity table is not valid` |
+| valid: profile clause | `PH-001 valid rejects a profile id configured twice` |
+| valid: binding clause dropped | `PH-001 valid rejects a profile binding for a session not in the identity table` |
+| valid binding: bound once | `PH-001 valid rejects a session bound to two profiles` |
+| valid binding: session non-delegable | `PH-001 valid rejects a profile binding for a session not in the identity table` |
+| non_delegable_session ignores flag | `PH-007 valid rejects a profile binding for a delegable session` |
+| non_delegable_session accepts unknown | `PH-001 valid rejects a profile binding for a session not in the identity table` |
+| valid binding: profile configured | `PH-001 valid rejects a binding to a profile id not configured` |
+| open_session family | `PH-001 open_session on a target without the session family denied UnsupportedFamily` |
+| open_session fact variant | `PH-001 open_session given a fact other than SessionEvidence denied WrongPhase` |
+| open_session client identity denial accepted | `PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession` |
+| open_session worker identity denial accepted | `PH-002 open_session as a worker with evidence inherited from an unbound session denied Identity UnknownSession` |
+| open_session gate dropped | `PH-001 open_session at a stale revision denied StaleRevision` |
+| worker session takes evidence delegable | `PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile` |
+| worker bound delegable | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+| client ignores evidence (always delegable) | `PH-002 a client session the evidence reports non-delegable is bound non-delegable` |
+| worker profile unconfigured accepted | `PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile` |
+| worker binding not recorded | `PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile` |
+| worker binding records wrong session | `PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile` |
+| admit gate dropped | `PH-006 admit_worker at a stale revision denied StaleRevision` |
+| admit: no binding accepted under accel | `PH-001 an admission on a non-delegable session with no bound profile denied UnknownProfile` |
+| admit: bound profile ignored (always accel) | `PH-014 a CPU admission without accelerator isolation records backend Cpu` |
+| binding lookup first-match | `PH-001 valid rejects a session bound to two profiles` |
+| binding lookup ignores session | `PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile` |
+| admit: slot check dropped | `PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs` |
+| admit: protected/slot swapped | `PH-006 order: the protected-profile check precedes the occupied slot` |
+| admit: delegable/binding swapped | `PH-007 an admission on a delegable session denied DelegableSession with no effect` |
+| admit: delegable allowed (round 2) | `PH-007 an admission on a delegable session denied DelegableSession with no effect` |
+| admit does not advance next_worker | `PH-006 an admission with every control established records the worker Running and delivers only its input reference` |
+
+### Verification, round 2
+
+| | PASS lines |
+| --- | --- |
+| Before this round | 1028 |
+| After this round | 1041 (782 plus 259 new checks = 1041; HostPrimitives 104) |
+
+- 0 of the 782 PASS lines in `verification/tests-js.txt` are missing.
+- No PASS line is duplicated.
+
+Commands and results:
+- `bend Tests.bend` (JS): exit 0, 1041 PASS. The last lines are
+  `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers`
+  and `ALL LIBRARY TESTS PASSED`.
+- Native (`tests-native +RTS --threads 4 --gpu off`): build and run exit 0, 1041 PASS, same last two lines, PASS lines identical in order to the JS run. CPU execution, not a GPU test.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+  Neither law needed restating: `State` gained a field, and the accessors
+  on `Denied` are unchanged.
+- `--verdict`: unavailable (`lean` is not on PATH).
+- OpenSpec 1.16.0, strict: `Totals: 44 passed, 0 failed (44 items)`.
+
+### Remaining concerns, round 2
+
+- The `Role` passed to `open_session` is now the one monitor-supplied
+  decision input: which sessions are workers, and under which configured
+  profile. It is recorded as a reviewed-only host obligation, the same
+  class as the `Effect` obligation: it comes from the monitor's admitted
+  request, never from the binding.
+- R3 to R5 from round 1 stand. Slot occupancy ignores reclaimed workers.
+  No transition-level law was added. The module is now about 1250 lines.

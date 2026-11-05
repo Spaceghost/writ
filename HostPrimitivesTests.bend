@@ -333,22 +333,53 @@ def seed_identity() -> I.State:
 def client_evidence() -> P.Fact:
   P.SessionEvidence{caller_client(), I.Authenticated{}, True{}}
 
-def with_client() -> I.State:
+def nondelegable_client_evidence() -> P.Fact:
+  P.SessionEvidence{caller_client(), I.Authenticated{}, False{}}
+
+def worker_evidence() -> P.Fact:
+  P.SessionEvidence{caller_worker(), I.Authenticated{}, False{}}
+
+# The worker's evidence claiming the session may delegate.
+def claiming_worker_evidence() -> P.Fact:
+  P.SessionEvidence{caller_worker(), I.Authenticated{}, True{}}
+
+# The client session as HostIdentity binds it directly (the expected result).
+def direct_client() -> I.State:
   I.Change.state(I.bind_session(seed_identity(), I.revision(seed_identity()), caller_client(),
     I.Authenticated{}, True{}))
 
-def with_worker() -> I.State:
-  I.Change.state(I.bind_session(with_client(), I.revision(with_client()), caller_worker(),
-    I.Authenticated{}, False{}))
+def seed_state() -> P.State:
+  P.State{0n, seed_identity(), table(), P.NoBindings{}, P.NoWorkers{}, seed_worker()}
 
-def with_root() -> I.State:
-  I.Change.state(I.mint(with_worker(), I.revision(with_worker()), session_client(), handle_client(),
+# The monitor opens the client session (301) and then the worker session
+# (302) under the accelerator profile.
+def opened_client() -> P.State:
+  P.Step.state(P.open_session(seed_state(), P.revision(seed_state()), full_report(), client_evidence(), P.ClientRole{}))
+
+def open_worker(+evidence: P.Fact) -> P.State:
+  P.Step.state(P.open_session(opened_client(), P.revision(opened_client()), full_report(), evidence,
+    P.WorkerRole{accel_id()}))
+
+def opened_worker() -> P.State:
+  open_worker(worker_evidence())
+
+def with_client() -> I.State:
+  P.identity(opened_client())
+
+def with_worker() -> I.State:
+  P.identity(opened_worker())
+
+def root_on(+table: I.State) -> I.State:
+  I.Change.state(I.mint(table, I.revision(table), session_client(), handle_client(),
     TF.plan(), root_rights(), root_expires()))
 
 # The client delegates a narrowed input entry to the worker session.
-def with_input() -> I.State:
-  I.Change.state(I.delegate(with_root(), I.revision(with_root()), session_client(), root_ref(),
+def input_on(+table: I.State) -> I.State:
+  I.Change.state(I.delegate(root_on(table), I.revision(root_on(table)), session_client(), root_ref(),
     session_worker(), input_rights(), input_lifetime(), now()))
+
+def with_input() -> I.State:
+  input_on(with_worker())
 
 # The same table after the monitor retired the worker's input.
 def with_input_retired() -> I.State:
@@ -356,14 +387,29 @@ def with_input_retired() -> I.State:
 
 # --- Primitive states ---------------------------------------------------------------
 
+# The worker session bound under configured profile `profile`, as
+# `open_session` with `WorkerRole{profile}` records it.
+def binding_for(+profile: Nat) -> P.Bindings:
+  P.Bindings{P.Binding{session_worker(), profile}, P.NoBindings{}}
+
+def worker_binding() -> P.Bindings:
+  binding_for(accel_id())
+
+# The input table with the worker session bound under `profile`. The binding
+# for the accelerator profile is the one `open_session` recorded
+# (`opened_worker()`); the others are the same shape for other profiles.
+def base_under(+profile: Nat) -> P.State:
+  P.State{0n, with_input(), table(), binding_for(profile), P.NoWorkers{}, seed_worker()}
+
 def base() -> P.State:
-  P.State{0n, with_input(), table(), P.NoWorkers{}, seed_worker()}
+  base_under(accel_id())
 
-def admit_on(+state: P.State, +profile: Nat, +report: P.TargetReport, +inventory: P.Fact) -> P.Step:
-  P.admit_worker(state, P.revision(state), profile, report, inventory, session_worker(), input_ref(), now())
+def admit_on(+state: P.State, +report: P.TargetReport, +inventory: P.Fact) -> P.Step:
+  P.admit_worker(state, P.revision(state), report, inventory, session_worker(), input_ref(), now())
 
+# An admission on the worker session bound under `profile`.
 def admit(+profile: Nat, +report: P.TargetReport, +inventory: P.Fact) -> P.Step:
-  admit_on(base(), profile, report, inventory)
+  admit_on(base_under(profile), report, inventory)
 
 def worker_as(+id: Nat, +input: W.Ref, +profile: P.Profile, +phase: P.Phase, +used: Nat) -> P.Worker:
   P.Worker{id, session_worker(), input, profile, phase, quota_limit(), used}
@@ -373,7 +419,7 @@ def expected_worker(+profile: P.Profile, +phase: P.Phase, +used: Nat) -> P.Worke
 
 # The state one admission under `profile` commits from `base()`.
 def after_admit(+profile: P.Profile) -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{expected_worker(profile, P.Running{}, P.no_usage()), P.NoWorkers{}},
+  P.State{1n, with_input(), table(), binding_for(P.profile_id(profile)), P.Workers{expected_worker(profile, P.Running{}, P.no_usage()), P.NoWorkers{}},
     next_worker_after()}
 
 def admitted() -> P.State:
@@ -389,7 +435,28 @@ def diagnose(+state: P.State, +fact: P.Fact) -> P.Step:
   P.diagnostic(state, P.revision(state), fact, now())
 
 def one_worker(+identity: I.State, +worker: P.Worker) -> P.State:
-  P.State{1n, identity, table(), P.Workers{worker, P.NoWorkers{}}, next_worker_after()}
+  P.State{1n, identity, table(), worker_binding(), P.Workers{worker, P.NoWorkers{}}, next_worker_after()}
+
+# A second worker session (303) opened under the CPU profile after the first,
+# then the input delegated to the first; both bindings are recorded.
+def opened_two_workers() -> P.State:
+  P.Step.state(P.open_session(opened_worker(), P.revision(opened_worker()), full_report(), worker_evidence(),
+    P.WorkerRole{cpu_id()}))
+
+def two_bound() -> P.State:
+  P.State{0n, input_on(P.identity(opened_two_workers())), table(), P.bindings(opened_two_workers()), P.NoWorkers{},
+    seed_worker()}
+
+# The input table with no worker binding: session 302 is non-delegable but
+# was not opened as a worker session.
+def unbound() -> P.State:
+  P.State{0n, with_input(), table(), P.NoBindings{}, P.NoWorkers{}, seed_worker()}
+
+# Hand-built: the input already occupied by worker 81, with the worker
+# session bound under the profile not listing the worker family.
+def occupied_unprotected() -> P.State:
+  P.State{1n, with_input(), table(), binding_for(no_worker_id()), P.Workers{expected_worker(accel_profile(),
+    P.Running{}, P.no_usage()), P.NoWorkers{}}, next_worker_after()}
 
 # Hand-built: the admitted worker in phase Revoked, having used 200 units.
 def revoked() -> P.State:
@@ -410,25 +477,25 @@ def root_occupied() -> P.State:
 
 # Hand-built: the input's earlier worker 80 was reclaimed.
 def reclaimed_input() -> P.State:
-  P.State{0n, with_input(), table(), P.Workers{worker_as(earlier_worker(), input_ref(), accel_profile(),
+  P.State{0n, with_input(), table(), worker_binding(), P.Workers{worker_as(earlier_worker(), input_ref(), accel_profile(),
     P.Reclaimed{}, P.no_usage()), P.NoWorkers{}}, seed_worker()}
 
 # Hand-built: a reclaimed worker 80 and a running worker 81 on one input.
 def reclaimed_and_running() -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
+  P.State{1n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
     P.Workers{worker_as(earlier_worker(), input_ref(), accel_profile(), P.Reclaimed{}, P.no_usage()),
       P.NoWorkers{}}}, next_worker_after()}
 
 # Hand-built: the reclaimed worker 80 listed before the running worker 81, both
 # on the input.
 def running_after_reclaimed() -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{worker_as(earlier_worker(), input_ref(), accel_profile(),
+  P.State{1n, with_input(), table(), worker_binding(), P.Workers{worker_as(earlier_worker(), input_ref(), accel_profile(),
     P.Reclaimed{}, P.no_usage()), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
       P.NoWorkers{}}}, next_worker_after()}
 
 # What admitting worker 82 on the input commits from `root_occupied()`.
 def root_and_input() -> P.State:
-  P.State{2n, with_input(), table(), P.Workers{worker_as(other_worker(), input_ref(), accel_profile(), P.Running{},
+  P.State{2n, with_input(), table(), worker_binding(), P.Workers{worker_as(other_worker(), input_ref(), accel_profile(), P.Running{},
     P.no_usage()), P.Workers{worker_as(worker_id(), root_ref(), accel_profile(), P.Running{}, P.no_usage()),
       P.NoWorkers{}}}, next_worker_two()}
 
@@ -436,29 +503,44 @@ def root_and_input() -> P.State:
 
 # An identity table with a child wider than its parent (HostIdentityTests).
 def invalid_identity() -> P.State:
-  P.State{0n, IT.widened_child(), table(), P.NoWorkers{}, seed_worker()}
+  P.State{0n, IT.widened_child(), table(), P.NoBindings{}, P.NoWorkers{}, seed_worker()}
 
 def zero_worker() -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{worker_as(0n, input_ref(), accel_profile(), P.Running{},
+  P.State{1n, with_input(), table(), worker_binding(), P.Workers{worker_as(0n, input_ref(), accel_profile(), P.Running{},
     P.no_usage()), P.NoWorkers{}}, next_worker_after()}
 
 # next_worker (50) does not exceed the worker id (81).
 def unallocated_worker() -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
+  P.State{1n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
     P.NoWorkers{}}, 50n}
 
 def duplicated() -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
+  P.State{1n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
     P.Workers{worker_as(worker_id(), root_ref(), cpu_profile(), P.Running{}, P.no_usage()), P.NoWorkers{}}},
     next_worker_after()}
 
 def shared_input() -> P.State:
-  P.State{1n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
+  P.State{1n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()),
     P.Workers{worker_as(other_worker(), input_ref(), cpu_profile(), P.Running{}, P.no_usage()), P.NoWorkers{}}},
     next_worker_two()}
 
+def with_bindings(+bindings: P.Bindings) -> P.State:
+  P.State{0n, with_input(), table(), bindings, P.NoWorkers{}, seed_worker()}
+
+def bound_unknown_session() -> P.State:
+  with_bindings(P.Bindings{P.Binding{session_unknown(), accel_id()}, P.NoBindings{}})
+
+def bound_delegable_session() -> P.State:
+  with_bindings(P.Bindings{P.Binding{session_client(), accel_id()}, P.NoBindings{}})
+
+def bound_twice() -> P.State:
+  with_bindings(P.Bindings{P.Binding{session_worker(), accel_id()}, P.Bindings{P.Binding{session_worker(), cpu_id()}, P.NoBindings{}}})
+
+def bound_unconfigured() -> P.State:
+  with_bindings(binding_for(unknown_profile_id()))
+
 def doubled_profiles() -> P.State:
-  P.State{0n, with_input(), doubled_table(), P.NoWorkers{}, seed_worker()}
+  P.State{0n, with_input(), doubled_table(), P.NoBindings{}, P.NoWorkers{}, seed_worker()}
 
 # --- Equality helpers ---------------------------------------------------------------
 
@@ -520,10 +602,25 @@ def workers_equal(a: P.Workers, b: P.Workers) -> Bool:
     case _ _:
       False{}
 
+def binding_equal(a: P.Binding, b: P.Binding) -> Bool:
+  match a b:
+    case P.Binding{as, ap} P.Binding{bs, bp}:
+      Nat.is_eq(as, bs) && Nat.is_eq(ap, bp)
+
+def bindings_equal(a: P.Bindings, b: P.Bindings) -> Bool:
+  match a b:
+    case P.NoBindings{} P.NoBindings{}:
+      True{}
+    case P.Bindings{ah, at} P.Bindings{bh, bt}:
+      binding_equal(ah, bh) && bindings_equal(at, bt)
+    case _ _:
+      False{}
+
 def state_equal(a: P.State, b: P.State) -> Bool:
   match a b:
-    case P.State{ar, ai, ap, aw, an} P.State{br, bi, bp, bw, bn}:
-      Nat.is_eq(ar, br) && IT.state_equal(ai, bi) && profiles_equal(ap, bp) && workers_equal(aw, bw)
+    case P.State{ar, ai, ap, ab, aw, an} P.State{br, bi, bp, bb, bw, bn}:
+      Nat.is_eq(ar, br) && IT.state_equal(ai, bi) && profiles_equal(ap, bp) && bindings_equal(ab, bb)
+        && workers_equal(aw, bw)
         && Nat.is_eq(an, bn)
 
 # Task 4 adds effect variants; each then needs its own arm here.
@@ -634,10 +731,25 @@ def delivered() -> +List<P.Effect>:
 def use_on(+state: P.State, +session: Nat, +message: W.Message) -> P.UseResult:
   P.use(state, P.revision(state), session, message, now())
 
+def only_profile(workers: P.Workers, expected: P.Profile) -> Bool:
+  match workers:
+    case P.Workers{P.Worker{_, _, _, profile, _, _, _}, P.NoWorkers{}}:
+      profile_equal(profile, expected)
+    case _:
+      False{}
+
+# The single worker's profile after an admitted step.
+def admitted_under(+step: P.Step, expected: P.Profile) -> Bool:
+  match step:
+    case P.Admitted{state, effects}:
+      effects_equal(effects, delivered()) && only_profile(P.workers(state), expected)
+    case P.Denied{_, _}:
+      False{}
+
 # --- Checks -------------------------------------------------------------------------
 
 def missing_control(+bit: U32) -> Bool:
-  denied(admit(accel_id(), missing_report(bit), mediated_inventory()), base(), P.MissingControl{})
+  denied(admit(accel_id(), missing_report(bit), mediated_inventory()), base_under(accel_id()), P.MissingControl{})
 
 # Accepted admissions (PH-006, PH-014).
 def accept_checks() -> IO(Unit):
@@ -650,7 +762,7 @@ def accept_checks() -> IO(Unit):
       "PH-006 the lower report meets the lower profile when that profile is the admitted one")
     Test.check(admitted_as(admit(bare_accel_id(), full_report(), mediated_inventory()), after_admit(bare_accel_profile()), delivered()),
       "PH-014 the same accelerator profile is admitted once isolation is established")
-    Test.check(admitted_as(admit_on(reclaimed_input(), accel_id(), full_report(), mediated_inventory()), reclaimed_and_running(), delivered()),
+    Test.check(admitted_as(admit_on(reclaimed_input(), full_report(), mediated_inventory()), reclaimed_and_running(), delivered()),
       "PH-006 an input whose earlier worker was reclaimed admits a new worker")
 
 # Each control bit missing alone (PH-006 "A required kernel feature is missing").
@@ -666,59 +778,64 @@ def control_checks() -> IO(Unit):
 # The configured profile table (PH-001: no request carries a profile).
 def profile_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(admit(unknown_profile_id(), full_report(), mediated_inventory()), base(), P.UnknownProfile{}),
-      "PH-001 an admission naming a profile id the monitor has not configured denied UnknownProfile")
-    Test.check(denied(admit(no_worker_id(), full_report(), mediated_inventory()), base(), P.MissingControl{}),
+    Test.check(denied(admit_on(unbound(), full_report(), mediated_inventory()), unbound(), P.UnknownProfile{}),
+      "PH-001 an admission on a non-delegable session with no bound profile denied UnknownProfile")
+    Test.check(denied(admit(accel_id(), cpu_report(), mediated_inventory()), base_under(accel_id()), P.MissingControl{})
+      && admitted_as(admit(cpu_id(), cpu_report(), mediated_inventory()), after_admit(cpu_profile()), delivered()),
+      "PH-001 a later request cannot switch profiles: a session bound under the accelerator profile is denied on a CPU-only report that the CPU profile accepts")
+    Test.check(P.valid(two_bound()) && admitted_under(admit_on(two_bound(), full_report(), mediated_inventory()), accel_profile()),
+      "PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile")
+    Test.check(denied(admit(no_worker_id(), full_report(), mediated_inventory()), base_under(no_worker_id()), P.MissingControl{}),
       "PH-006 a profile not listing the worker family denied MissingControl with no effect")
-    Test.check(denied(admit(no_control_id(), P.TargetReport{P.no_controls(), P.no_controls()}, P.Inventory{[]}), base(), P.MissingControl{}),
+    Test.check(denied(admit(no_control_id(), P.TargetReport{P.no_controls(), P.no_controls()}, P.Inventory{[]}), base_under(no_control_id()), P.MissingControl{}),
       "PH-006 a profile requiring no controls admits nothing")
 
 # Target reports cannot lower the monitor's profile (PH-006, PH-001).
 def report_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(admit(accel_id(), no_publication_report(), mediated_inventory()), base(), P.UnsupportedFamily{}),
+    Test.check(denied(admit(accel_id(), no_publication_report(), mediated_inventory()), base_under(accel_id()), P.UnsupportedFamily{}),
       "PH-006 a report without the publication family denied UnsupportedFamily with the monitor profile unchanged")
-    Test.check(denied(admit(accel_id(), lower_report(), mediated_inventory()), base(), P.UnsupportedFamily{}),
+    Test.check(denied(admit(accel_id(), lower_report(), mediated_inventory()), base_under(accel_id()), P.UnsupportedFamily{}),
       "PH-006 a report meeting only a lower profile denied for the admitted profile with the monitor profile unchanged")
-    Test.check(denied(admit(cpu_id(), P.TargetReport{P.all_families(), lower_controls()}, mediated_inventory()), base(), P.MissingControl{}),
+    Test.check(denied(admit(cpu_id(), P.TargetReport{P.all_families(), lower_controls()}, mediated_inventory()), base_under(cpu_id()), P.MissingControl{}),
       "PH-006 a report with every family but only the lower profile's controls denied MissingControl")
 
 # Route inventory (PH-006 "An inherited output remains accessible").
 def inventory_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(admit(accel_id(), full_report(), leaky_inventory()), base(), P.UnmediatedRoute{}),
+    Test.check(denied(admit(accel_id(), full_report(), leaky_inventory()), base_under(accel_id()), P.UnmediatedRoute{}),
       "PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs")
-    Test.check(denied(admit(accel_id(), full_report(), leaky_first_inventory()), base(), P.UnmediatedRoute{}),
+    Test.check(denied(admit(accel_id(), full_report(), leaky_first_inventory()), base_under(accel_id()), P.UnmediatedRoute{}),
       "PH-006 an unmediated first route denied UnmediatedRoute")
-    Test.check(denied(admit(accel_id(), full_report(), P.NativeWriteOffered{worker_id()}), base(), P.WrongPhase{}),
+    Test.check(denied(admit(accel_id(), full_report(), P.NativeWriteOffered{worker_id()}), base_under(accel_id()), P.WrongPhase{}),
       "PH-006 an admission given a fact other than an Inventory denied WrongPhase")
 
 # Accelerators (PH-014 "A shared device heap exposes the original graph").
 def accelerator_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(admit(bare_accel_id(), cpu_report(), mediated_inventory()), base(), P.UnisolatedAccelerator{}),
+    Test.check(denied(admit(bare_accel_id(), cpu_report(), mediated_inventory()), base_under(bare_accel_id()), P.UnisolatedAccelerator{}),
       "PH-014 an accelerator profile not listing isolation, on a target without it, denied UnisolatedAccelerator and not downgraded")
 
 # The input reference and its session (PH-006, PH-007).
 def identity_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), accel_id(), full_report(),
+    Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), full_report(),
       mediated_inventory(), session_worker(), root_ref(), now()), base(), I.NotHolder{}),
       "PH-006 an admission presenting an input reference the worker session does not hold denied Identity NotHolder")
-    Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), accel_id(), full_report(),
+    Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), full_report(),
       mediated_inventory(), session_client(), input_ref(), now()), base(), I.NotHolder{}),
       "PH-006 an admission presenting the worker's input reference on the client session denied Identity NotHolder")
-    Test.check(denied(P.admit_worker(base(), P.revision(base()), accel_id(), full_report(),
+    Test.check(denied(P.admit_worker(base(), P.revision(base()), full_report(),
       mediated_inventory(), session_client(), root_ref(), now()), base(), P.DelegableSession{}),
       "PH-007 an admission on a delegable session denied DelegableSession with no effect")
     Test.check(identity_rejected(I.delegate(P.identity(admitted()), I.revision(P.identity(admitted())), session_worker(),
       input_ref(), session_client(), input_rights(), input_lifetime(), now()), I.NotDelegable{}),
       "PH-007 after admission a delegation from the worker session denied NotDelegable")
-    Test.check(denied(admit_on(admitted(), accel_id(), full_report(), mediated_inventory()), admitted(), P.SlotOccupied{}),
+    Test.check(denied(admit_on(admitted(), full_report(), mediated_inventory()), admitted(), P.SlotOccupied{}),
       "PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs")
-    Test.check(denied(admit_on(running_after_reclaimed(), accel_id(), full_report(), mediated_inventory()), running_after_reclaimed(), P.SlotOccupied{}),
+    Test.check(denied(admit_on(running_after_reclaimed(), full_report(), mediated_inventory()), running_after_reclaimed(), P.SlotOccupied{}),
       "PH-006 an input held by a running worker listed after a reclaimed one denied SlotOccupied")
-    Test.check(admitted_as(admit_on(root_occupied(), accel_id(), full_report(), mediated_inventory()), root_and_input(),
+    Test.check(admitted_as(admit_on(root_occupied(), full_report(), mediated_inventory()), root_and_input(),
       [P.DeliverInputs{other_worker(), input_ref()}]),
       "PH-006 a worker on another slot does not block admission on the input")
 
@@ -726,10 +843,10 @@ def identity_checks() -> IO(Unit):
 def quota_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(admitted_as(charge(admitted(), P.ResourceRequest{worker_id(), first_charge()}),
-      P.State{2n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, used_after_first()), P.NoWorkers{}}, next_worker_after()},
+      P.State{2n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, used_after_first()), P.NoWorkers{}}, next_worker_after()},
       []), "PH-007 a charge within the quota adds only to quota_used and emits nothing")
     Test.check(admitted_as(charge(charged(), P.ResourceRequest{worker_id(), exact_charge()}),
-      P.State{3n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, used_at_limit()), P.NoWorkers{}}, next_worker_after()},
+      P.State{3n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, used_at_limit()), P.NoWorkers{}}, next_worker_after()},
       []), "PH-007 a charge reaching exactly the quota limit is accepted")
     Test.check(denied(charge(charged(), P.ResourceRequest{worker_id(), excess_charge()}), charged(), P.QuotaExhausted{}),
       "PH-007 a charge beyond the quota denied QuotaExhausted with the state unchanged and no effect")
@@ -755,7 +872,7 @@ def diagnostic_checks() -> IO(Unit):
     Test.check(denied(diagnose(admitted(), P.Diagnostic{worker_id(), True{}}), admitted(), P.DiagnosticSink{}),
       "PH-007 a public diagnostic from a running worker denied DiagnosticSink")
     Test.check(admitted_as(diagnose(admitted(), P.Diagnostic{worker_id(), False{}}),
-      P.State{2n, with_input(), table(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()), P.NoWorkers{}}, next_worker_after()},
+      P.State{2n, with_input(), table(), worker_binding(), P.Workers{expected_worker(accel_profile(), P.Running{}, P.no_usage()), P.NoWorkers{}}, next_worker_after()},
       []), "PH-007 a non-public diagnostic is accepted with no effect")
     Test.check(denied(diagnose(admitted(), P.Diagnostic{worker_unknown(), False{}}), admitted(), P.UnknownWorker{}),
       "PH-007 a diagnostic from a worker never admitted denied UnknownWorker")
@@ -777,16 +894,37 @@ def fastpath_checks() -> IO(Unit):
 # Session binding (family 1).
 def session_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence()),
-      P.State{1n, with_client(), table(), P.NoWorkers{}, P.first_worker()}, []),
+    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{}),
+      P.State{1n, direct_client(), table(), P.NoBindings{}, P.NoWorkers{}, P.first_worker()}, []),
       "PH-002 open_session binds the evidence's caller through HostIdentity with no effect")
-    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, no_session_report(), client_evidence()), P.empty(seed_identity(), table()), P.UnsupportedFamily{}),
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, no_session_report(), client_evidence(), P.ClientRole{}), P.empty(seed_identity(), table()), P.UnsupportedFamily{}),
       "PH-001 open_session on a target without the session family denied UnsupportedFamily")
-    Test.check(denied_identity(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), P.SessionEvidence{caller_client(), I.Inherited{session_unknown()}, True{}}),
+    Test.check(denied_identity(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), P.SessionEvidence{caller_client(), I.Inherited{session_unknown()}, True{}}, P.ClientRole{}),
       P.empty(seed_identity(), table()), I.UnknownSession{}),
       "PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession")
-    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), mediated_inventory()), P.empty(seed_identity(), table()), P.WrongPhase{}),
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), mediated_inventory(), P.ClientRole{}), P.empty(seed_identity(), table()), P.WrongPhase{}),
       "PH-001 open_session given a fact other than SessionEvidence denied WrongPhase")
+    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), claiming_worker_evidence(), P.WorkerRole{cpu_id()}),
+      P.State{1n, I.Change.state(I.bind_session(seed_identity(), I.revision(seed_identity()), caller_worker(), I.Authenticated{}, False{})),
+        table(), P.Bindings{P.Binding{session_client(), cpu_id()}, P.NoBindings{}}, P.NoWorkers{}, P.first_worker()}, []),
+      "PH-002 open_session as a worker binds the session non-delegable under its profile even when the target reports it delegable")
+    Test.check(identity_rejected(I.delegate(input_on(P.identity(open_worker(claiming_worker_evidence()))),
+      I.revision(input_on(P.identity(open_worker(claiming_worker_evidence())))), session_worker(), input_ref(), session_client(),
+      input_rights(), input_lifetime(), now()), I.NotDelegable{}),
+      "PH-007 a worker session the target reported delegable still cannot delegate")
+    Test.check(admitted_as(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), nondelegable_client_evidence(), P.ClientRole{}),
+      P.State{1n, I.Change.state(I.bind_session(seed_identity(), I.revision(seed_identity()), caller_client(), I.Authenticated{}, False{})),
+        table(), P.NoBindings{}, P.NoWorkers{}, P.first_worker()}, []),
+      "PH-002 a client session the evidence reports non-delegable is bound non-delegable")
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), worker_evidence(), P.WorkerRole{unknown_profile_id()}),
+      P.empty(seed_identity(), table()), P.UnknownProfile{}),
+      "PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile")
+    Test.check(denied_identity(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), P.SessionEvidence{caller_worker(), I.Inherited{session_unknown()}, False{}}, P.WorkerRole{accel_id()}),
+      P.empty(seed_identity(), table()), I.UnknownSession{}),
+      "PH-002 open_session as a worker with evidence inherited from an unbound session denied Identity UnknownSession")
+    Test.check(bindings_equal(P.bindings(opened_worker()), worker_binding()) && IT.state_equal(with_worker(),
+      I.Change.state(I.bind_session(direct_client(), I.revision(direct_client()), caller_worker(), I.Authenticated{}, False{}))),
+      "PH-002 open_session records the worker session's profile binding used by the fixtures")
     Test.check(P.Error.equal(P.Identity{I.NotHolder{}}, P.Identity{I.NotHolder{}})
       && Bool.not(P.Error.equal(P.Identity{I.NotHolder{}}, P.Identity{I.UnknownSession{}})),
       "PH-001 Error.equal compares the HostIdentity reason inside Identity")
@@ -817,11 +955,11 @@ def use_checks() -> IO(Unit):
 # Every transition at a stale revision.
 def revision_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 1n+P.revision(P.empty(seed_identity(), table())), full_report(), client_evidence()), P.empty(seed_identity(), table()), P.StaleRevision{}),
+    Test.check(denied(P.open_session(P.empty(seed_identity(), table()), 1n+P.revision(P.empty(seed_identity(), table())), full_report(), client_evidence(), P.ClientRole{}), P.empty(seed_identity(), table()), P.StaleRevision{}),
       "PH-001 open_session at a stale revision denied StaleRevision")
     Test.check(refused(P.use(base(), 1n+P.revision(base()), session_client(), claiming_use(), now()), P.StaleRevision{}),
       "PH-001 use at a stale revision denied StaleRevision")
-    Test.check(denied(P.admit_worker(base(), 1n+P.revision(base()), accel_id(), full_report(),
+    Test.check(denied(P.admit_worker(base(), 1n+P.revision(base()), full_report(),
       mediated_inventory(), session_worker(), input_ref(), now()), base(), P.StaleRevision{}),
       "PH-006 admit_worker at a stale revision denied StaleRevision")
     Test.check(denied(P.charge(admitted(), 1n+P.revision(admitted()), P.ResourceRequest{worker_id(), first_charge()}, now()), admitted(), P.StaleRevision{}),
@@ -836,7 +974,7 @@ def valid_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(P.valid(base()) && P.valid(admitted()) && P.valid(charged()) && P.valid(retired())
       && P.valid(P.Step.state(diagnose(admitted(), P.Diagnostic{worker_id(), False{}})))
-      && P.valid(P.Step.state(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence())))
+      && P.valid(P.Step.state(P.open_session(P.empty(seed_identity(), table()), 0n, full_report(), client_evidence(), P.ClientRole{})))
       && P.valid(reclaimed_and_running()),
       "PH-001 states built by the transitions satisfy valid")
     Test.check(Bool.not(P.valid(invalid_identity())), "PH-001 valid rejects a state whose identity table is not valid")
@@ -845,13 +983,17 @@ def valid_checks() -> IO(Unit):
     Test.check(Bool.not(P.valid(duplicated())), "PH-001 valid rejects two workers under one id")
     Test.check(Bool.not(P.valid(shared_input())), "PH-006 valid rejects two unreclaimed workers on one input")
     Test.check(Bool.not(P.valid(doubled_profiles())), "PH-001 valid rejects a profile id configured twice")
+    Test.check(Bool.not(P.valid(bound_unknown_session())), "PH-001 valid rejects a profile binding for a session not in the identity table")
+    Test.check(Bool.not(P.valid(bound_delegable_session())), "PH-007 valid rejects a profile binding for a delegable session")
+    Test.check(Bool.not(P.valid(bound_twice())), "PH-001 valid rejects a session bound to two profiles")
+    Test.check(Bool.not(P.valid(bound_unconfigured())), "PH-001 valid rejects a binding to a profile id not configured")
 
 # Every transition on a state that fails `valid`.
 def gate_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(admit_on(invalid_identity(), accel_id(), full_report(), mediated_inventory()), invalid_identity(), P.StaleRevision{}),
+    Test.check(denied(admit_on(invalid_identity(), full_report(), mediated_inventory()), invalid_identity(), P.StaleRevision{}),
       "PH-006 an admission over an identity table that is not valid denied StaleRevision")
-    Test.check(denied(P.open_session(invalid_identity(), P.revision(invalid_identity()), full_report(), client_evidence()), invalid_identity(), P.StaleRevision{}),
+    Test.check(denied(P.open_session(invalid_identity(), P.revision(invalid_identity()), full_report(), client_evidence(), P.ClientRole{}), invalid_identity(), P.StaleRevision{}),
       "PH-001 open_session on a state that is not valid denied StaleRevision")
     Test.check(refused(use_on(invalid_identity(), session_client(), claiming_use()), P.StaleRevision{}),
       "PH-001 use on a state that is not valid denied StaleRevision")
@@ -866,23 +1008,25 @@ def gate_checks() -> IO(Unit):
 # earlier one.
 def order_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(P.admit_worker(base(), P.revision(base()), unknown_profile_id(), full_report(),
-      mediated_inventory(), session_worker(), root_ref(), now()), base(), P.UnknownProfile{}),
-      "PH-001 order: the profile id precedes the input reference")
-    Test.check(denied(P.admit_worker(base(), P.revision(base()), no_worker_id(), full_report(),
-      mediated_inventory(), session_worker(), root_ref(), now()), base(), P.MissingControl{}),
-      "PH-006 order: the protected-profile check precedes the input reference")
-    Test.check(denied(P.admit_worker(root_occupied(), P.revision(root_occupied()), accel_id(), full_report(),
+    Test.check(denied_identity(P.admit_worker(unbound(), P.revision(unbound()), full_report(),
+      mediated_inventory(), session_worker(), root_ref(), now()), unbound(), I.NotHolder{}),
+      "PH-001 order: the input reference precedes the bound profile")
+    Test.check(denied_identity(P.admit_worker(base_under(no_worker_id()), P.revision(base_under(no_worker_id())), full_report(),
+      mediated_inventory(), session_worker(), root_ref(), now()), base_under(no_worker_id()), I.NotHolder{}),
+      "PH-006 order: the input reference precedes the protected-profile check")
+    Test.check(denied(admit_on(occupied_unprotected(), full_report(), mediated_inventory()), occupied_unprotected(), P.MissingControl{}),
+      "PH-006 order: the protected-profile check precedes the occupied slot")
+    Test.check(denied(P.admit_worker(root_occupied(), P.revision(root_occupied()), full_report(),
       mediated_inventory(), session_client(), root_ref(), now()), root_occupied(), P.DelegableSession{}),
       "PH-007 order: the delegable session precedes the occupied slot")
-    Test.check(denied(admit_on(admitted(), accel_id(), full_report(), P.NativeWriteOffered{worker_id()}), admitted(), P.SlotOccupied{}),
+    Test.check(denied(admit_on(admitted(), full_report(), P.NativeWriteOffered{worker_id()}), admitted(), P.SlotOccupied{}),
       "PH-006 order: the occupied slot precedes the inventory fact")
-    Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), accel_id(), full_report(),
+    Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), full_report(),
       P.NativeWriteOffered{worker_id()}, session_worker(), root_ref(), now()), base(), I.NotHolder{}),
       "PH-006 order: the input reference precedes the inventory fact")
-    Test.check(denied(admit(accel_id(), no_publication_report(), P.NativeWriteOffered{worker_id()}), base(), P.WrongPhase{}),
+    Test.check(denied(admit(accel_id(), no_publication_report(), P.NativeWriteOffered{worker_id()}), base_under(accel_id()), P.WrongPhase{}),
       "PH-006 order: the inventory fact precedes the families")
-    Test.check(denied(admit(bare_accel_id(), cpu_report(), leaky_inventory()), base(), P.UnisolatedAccelerator{}),
+    Test.check(denied(admit(bare_accel_id(), cpu_report(), leaky_inventory()), base_under(bare_accel_id()), P.UnisolatedAccelerator{}),
       "PH-014 order: accelerator isolation precedes the route inventory")
     Test.check(denied(charge(revoked(), P.ResourceRequest{worker_id(), excess_charge()}), revoked(), P.WrongPhase{}),
       "PH-007 order: the worker's phase precedes its quota")
@@ -916,4 +1060,4 @@ def main() -> IO(Unit):
     valid_checks()
     gate_checks()
     order_checks()
-    IO.print("HostPrimitives: 91 checks passed")
+    IO.print("HostPrimitives: 104 checks passed")

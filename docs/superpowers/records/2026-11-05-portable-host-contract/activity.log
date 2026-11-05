@@ -37,3 +37,8 @@
 2026-11-05T04:30:54Z	implementer	task 3 fix round 1: 91 checks; round-1 mutation run complete (see report)
 2026-11-05T04:32:32Z	implementer	task 3 fix round 1: JS 1028 PASS (782 + 246), ALL LIBRARY TESTS PASSED, 0 missing; PROOF ALL PROOFS CHECK; 74 of 74 mutants killed; openspec 44 passed; traceability regenerated; report section appended; native running (heartbeat)
 2026-11-05T04:34:41Z	implementer	task 3 fix round 1: native 1028 PASS, identical to JS (CPU, not GPU); committing
+2026-11-05T04:35:33Z	controller	fix round 1 reported; fix round 2 dispatched (monitor-owned delegability and profile id)
+2026-11-05T04:36:05Z	implementer	task 3 fix round 2: rulings received (monitor-owned delegability; profile bound at open_session); reworking open_session and admission
+2026-11-05T04:42:32Z	implementer	task 3 fix round 2: 104 checks standalone; mutation run complete
+2026-11-05T04:43:43Z	implementer	task 3 fix round 2: JS 1041 PASS (782 + 259), ALL LIBRARY TESTS PASSED; PROOF ALL PROOFS CHECK; 91 of 91 mutants killed; openspec 44 passed; report section appended; native running (heartbeat)
+2026-11-05T04:45:15Z	implementer	task 3 fix round 2: native 1041 PASS, identical to JS (CPU, not GPU); committing
