@@ -73,9 +73,9 @@ to be a general Bend C runtime port.
 | Session packet buffer | 4,096–131,072 bytes |
 | Individual native read | At most 65,536 bytes, checked before U32 conversion |
 | Packet processing | At most one protocol queue batch per dispatch |
-| Generated source ROM | At most 2 MiB per module/script |
-| Tracked QuickJS reservations | 64 MiB, including retained cache capacity and private allocation headers |
-| Large-allocation reuse | At most two free reservations per size class; all remain charged to the same 64 MiB limit |
+| Generated source ROM | At most 8 MiB per module/script (the generated core corpus passed 2 MiB at 1942 checks) |
+| Tracked QuickJS reservations | 128 MiB (raised from 64 MiB when the 1942-check corpus passed a 60.7 MB peak), including retained cache capacity and private allocation headers |
+| Large-allocation reuse | At most two free reservations per size class; all remain charged to the same 128 MiB limit |
 | QuickJS stack limit | 512 KiB; stack checking remains enabled |
 | Component stack | 768 KiB, leaving the native stack slot's guard and metadata intact |
 | Service/test component RAM quota | 128 MiB in the supplied supervisor configs |

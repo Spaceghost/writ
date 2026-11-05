@@ -10,7 +10,7 @@ namespace {
 
 Genode::size_t source_length(Genode::Attached_rom_dataspace const &rom)
 {
-    if (!rom.valid() || rom.size() > 2U * 1024U * 1024U) throw Writ::Javascript::Failed();
+    if (!rom.valid() || rom.size() > 8U * 1024U * 1024U) throw Writ::Javascript::Failed();
     auto const *source = rom.local_addr<char>();
     Genode::size_t n = 0;
     while (n < rom.size() && source[n]) ++n;
@@ -50,7 +50,7 @@ void Libc::Component::construct(Libc::Env &env)
             Genode::log("TIMING mount_ms=", clock.elapsed_ms() - mount_start);
             Genode::log("QUICKJS heap_peak=", writ_qjs_peak_bytes(),
                         " reserved_peak=", writ_qjs_peak_reserved_bytes(),
-                        " heap_live=0 reserved=0 tracked_limit=67108864");
+                        " heap_live=0 reserved=0 tracked_limit=134217728");
         });
         Genode::log("WRIT POLICY NATIVE PASS");
         env.parent().exit(0);
