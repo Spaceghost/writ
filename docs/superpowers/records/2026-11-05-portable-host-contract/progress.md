@@ -7,3 +7,4 @@ Task 1: implementer DONE_WITH_CONCERNS (c277f80): 841 checks (782+59), proofs un
 Task 1: review spec APPROVED, quality NEEDS_FIXES (two PH-004 checks pass on Malformed; fixture reuse; two short inputs untested; op code as rights; comment). Fix round 1 dispatched.
 Task 1: fix round 1 verified by the controller (845 checks; PH-004 checks now require two successful decodes that differ; HostWire.bend change is comment-only); complete.
 Task 2: dispatched implementer
+Correction: the HostWire.bend fix-round change is not comment-only; the 10-word cap is now derived as header_words() + width_use() (the duplicate-constant nit), same value; accepted.
