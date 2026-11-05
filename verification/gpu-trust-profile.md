@@ -17,13 +17,14 @@ device's transfer decisions, rewrites one leaf from `Denied Read` to an `Admitte
 and hands the result to `Transfer.admit` against the authoritative `Context`. The replay
 denies it, 1000 of 1000 rounds (verification/gpu-injection.txt, "Result"). That is a wrong
 returned value, and the checks catch it. Now suppose device code, or the driver, wrote into
-the `Context` itself, or into the original graph, before the replay read it. Nothing in this
-lane's evidence would notice: the replay would read the altered value as authoritative. The
+the `Context` itself, or into the original graph, before the replay read it. No check that
+guards the run would notice: the replay would read the altered value as authoritative. The
 gap is that the device, the driver and the verifier share one writable heap.
 
 ## Profile
 
-There is one profile, **GT-1 trusted device**. It is the only profile this lane validates.
+There is one profile, **GT-1 trusted device**. It is the only profile under which this lane's
+evidence is stated.
 No other profile is defined here, and no profile here treats a GPU program or the driver as
 untrusted.
 
@@ -63,27 +64,46 @@ Every component in this list is trusted under GT-1.
   account that ran every build and run. Because the device nodes are mode 666, any local
   process can open the device; GT-1 assumes that none of them interferes.
 - **The display stack and the other clients sharing the device.** gnome-shell and Xwayland
-  are graphics processes on this GPU. Slack, ghostty, Dozer, a QEMU process, Electron, Zoom,
-  browser processes (two of them `C+G`) and a long-running process run through
-  `/lib64/ld-linux-x86-64.so.2` (PID 633329, `C+G`) were also listed on it
-  (verification/gpu-toolchain.txt, the `nvidia-smi` process table in "Toolchain"). GT-1
-  assumes that none of them interferes with a Writ run. No run tested that.
-- **The harness scripts**, trusted only for the PASS and FAIL lines and gate verdicts they
-  print: `scripts/gpu-validation/observe.sh` (sha256 `efd08afb...`) and
+  are graphics processes on this GPU. The `nvidia-smi` process table also lists, as recorded,
+  `/usr/lib/slack/slack`, `/home/jadams/.local/bin/ghostty`, `...ppDir/usr/lib/dozer/bin/Dozer`,
+  `/lib64/ld-linux-x86-64.so.2` (PID 633329, `C+G`), `/usr/bin/qemu-system-x86_64`,
+  `/usr/lib/electron39/electron`, `/opt/zoom/zoom`, `...Ptr --variations-seed-version`, and three
+  entries truncated to `...rack-uuid=3190708988185955192` (PIDs 20550 and 3339540 `C+G`, 22068 `G`)
+  (verification/gpu-toolchain.txt, "Toolchain"). Task 1's "Result" identifies the compute
+  clients as "a browser GPU process, Signal, and a long-running AppImage process, PID 633329".
+  The table is a snapshot at one time (2026-11-04 21:01 CST); the clients present during the
+  later runs (Tasks 2 to 7) were not recorded. GT-1 assumes that none of them interferes with a
+  Writ run. No run tested that.
+- **The harness scripts**, trusted for the PASS and FAIL lines and gate verdicts they print,
+  and for summarize.py's run-acceptance decisions and statistics:
+  `scripts/gpu-validation/observe.sh` (sha256 `efd08afb...`) and
   `scripts/gpu-validation/check-record.sh` (sha256 `7d4df17b...`), POSIX sh, which start
   processes, sample `nvidia-smi`, and read files; and the Task 7 timing harness outside the
   tree, `../writ-build/physical-gpu/task7/{build.sh,trun.py,series.sh,summarize.py,mkruns.sh}`,
-  quoted with hashes in verification/gpu-pipeline.txt, "Harness". They make no Writ
-  authority, label or admission decision; every comparison of results is in the Bend probes.
+  quoted in verification/gpu-pipeline.txt, "Harness", with their sha256 in "Build". They make
+  no Writ authority, label or admission decision; every comparison of results is in the Bend
+  probes.
+- **The host tools the harness and the evidence use**: `/bin/sh`, which runs observe.sh and
+  check-record.sh; python3, which runs trun.py (its CLOCK_MONOTONIC readings give the process
+  wall times) and summarize.py (whose acceptance rule decides which timing runs are accepted);
+  `sha256sum`, `diff` and `cmp`, on which every hash binding and every "byte-identical" claim
+  rests; and `cuobjdump` 13.4.92, the source of the "sm_89 cubin with `bend_dev`" fact
+  (verification/gpu-toolchain.txt, "Build").
 - **The observers**: compute-sanitizer 2026.3.0.0, the launch observer, which counts
   `bend_dev` launches with host backtraces and excludes every kernel from memory checking by
   design; and `nvidia-smi` (`--query-compute-apps`, `pmon`, `--query-gpu`), which is
   corroboration only (verification/gpu-toolchain.txt, "Result", "Observer 1:
   compute-sanitizer"; verification/gpu-gate-controls.txt, "Result").
 - **The Writ library and the probes**, as Bend source: `Core`, `Dlm`, `Transfer`, `DataOS`,
-  `Gpu`, the `GPU.*` entry points the probes call, `examples/Scenario.bend`, and `scripts/gpu-validation/{Bang,Solver,Labels,Transfers}.bend`.
-  Their correctness claims rest on the library corpus and the proofs, which this file does
-  not restate.
+  `Gpu`, `GpuLibrary` (imported as `GPU`, the entry points the probes call), and `Ledger`,
+  `Frontend`, `Backplane` and `Negotiation` (imported by `scripts/gpu-validation/Transfers.bend`),
+  with `examples/Scenario.bend` and `scripts/gpu-validation/{Bang,Solver,Labels,Transfers}.bend`.
+  Their correctness claims rest on the library corpus and on proofs checked by Bend's own
+  checker (not rerun in this lane; no Lean kernel verdict, see "What would strengthen the
+  profile").
+- **Bend's Base library**, which every probe imports, including the C effect `effs/now.c`
+  behind `IO.now` (sha256 `fc4c1d87...`, quoted in verification/gpu-pipeline.txt), from which
+  every stage time comes.
 
 ## Outside the trusted base
 
@@ -136,8 +156,11 @@ region, and the driver can read and write all of it. CPU-side checks such as `Co
 
 Stated plainly: **the shared writable heap is not protection from those writers.** Device
 code or the driver can write the original graph, the snapshots, the contexts, and the
-values the commit path reads, and a write of that kind is not detected by anything in this
-lane's evidence. The checks compare one value in the heap with another value in the same
+values the commit path reads, and a write of that kind is not detected by any check that
+guards a run. Only the after-the-fact `--gpu off` stdout comparisons of the probe runs would
+surface such a write (the `--gpu off` heap is a separate host mapping), and only if it changed
+printed output; a write that leaves the output unchanged, or one outside a probe run, goes
+unseen. The checks compare one value in the heap with another value in the same
 heap, so they cannot notice when the reference value itself was altered.
 
 Under `--gpu off` the heap comes from `corpus_map` (an ordinary host mapping) and no CUDA
@@ -153,12 +176,12 @@ only.
 | Evidence (file, section) | Shows | Does not show |
 | --- | --- | --- |
 | verification/gpu-toolchain.txt, "Result" and "Limits" | The toolchain is present with the versions above; a bang build takes the CUDA path and writes an sm_89 cubin with `bend_dev`; compute-sanitizer counts `bend_dev` launches per process; `--gpu off` makes no CUDA call. | Any memory access by a kernel (all kernels are excluded from checking by design); which Bend def a lane ran; any Writ path. |
-| verification/gpu-gate-controls.txt, "Result" and "Limits" | The gate passes only `--gpu on` runs with at least one observed `bend_dev` launch; forced CPU fallback, the hidden device, zero launches, a missing driver field, a missing or truncated log, and a record whose claims disagree with its log are refused. Finding: compute-sanitizer removes an empty `CUDA_VISIBLE_DEVICES` from its target (it "unhides" the device), so hiding uses an invalid id. | Authenticity. The gate checks that files are consistent with one another, not signatures: "it does not resist a forger who rewrites a log and its record consistently". Device identity comes from `nvidia-smi -i 0`, which ignores `CUDA_VISIBLE_DEVICES`, and is exact on this one-GPU host only. |
+| verification/gpu-gate-controls.txt, "Result" and "Limits" | The gate passes only `--gpu on` runs with at least one observed `bend_dev` launch; forced CPU fallback, the hidden device, zero launches, a missing driver field, a missing or truncated log, and a record whose claims disagree with its log are refused. Finding: compute-sanitizer removes an empty `CUDA_VISIBLE_DEVICES` from its target (it "unhides" the device), so hiding uses an invalid id. | Authenticity. The gate checks that files are consistent with one another, not signatures: "it does not resist a forger who rewrites a log and its record consistently". Device identity comes from `nvidia-smi -i 0`, which ignores `CUDA_VISIBLE_DEVICES`, and is exact on this one-GPU host only. "binary_sha256 is hashed at run time and not re-hashed by check-record.sh, so a later rebuild does not invalidate an old record." |
 | verification/gpu-paths.txt, "Result" and "Limits" | Each of the three paths (solver, label batch, transfer batch) compiled for sm_89, ran with observed launches in its own single-bang binary, and gave results equal to the CPU reference and accepted by the check or replay. | Finding (1): short runs (0.25 to 0.5 s) fail the gate's presence rule because the process ends before the 200 ms `--query-compute-apps` poll lists it; presence is a poll, not an observation of every run. "The independent checks run in the same process and in the same address space as the device result; they are a logical check, not a memory-protection boundary." The combined-run per-path split is inferred. |
 | verification/gpu-parity.txt, "Result" and "Limits" | 20 cases (bits 31, 32, 63, cycles, empty input, conflicts, stale epochs, missing grants): 18 device-validated, 0 differences, `--gpu off` stdout byte-identical. | The label and transfer `verify` lines "replay the same evaluators as the CPU reference" (Dlm.verify_batch is Dlm.batch plus answers_equal; the transfer replay is Transfer.admit, which Transfer.batch calls). Only Core.verify is a separate algorithm. Finite, small, synthetic cases. |
 | verification/gpu-injection.txt, "Result" and "Limits" | 11 probe-injected faults on device results (dropped node, erased source, cleared bit 63, stale stamp, flipped denial, truncated tree, swapped shape, fabricated Admitted, wrong plan, stale context, forged commit), each denied in every round; the forged faster run is recorded as FAIL and its time is not accepted. Finding: the 32-bit digests collide structurally (the allow-all and the correct label trees hash equal at every power-of-two size from 256 leaves), so no digest is equality evidence; the typed in-process comparisons are the record. | "No fault is injected inside the device, the runtime or managed memory, and no bit flip in transit is simulated." "Each injection is a probe-side change of a value in the same process. The checks are logical, in the same address space. They are not a protection boundary." They do not show a verifier independent of its producer for labels and transfers. |
 | verification/gpu-corpus.txt (with gpu-corpus-on.txt and gpu-corpus-off.txt), "Result" and "Limits" | The library corpus prints the same 782 PASS lines with `--gpu on` and `--gpu off`, byte-identical to verification/tests-native.txt; 4915 `bend_dev` launches attributed to the solver bang. | GPU evidence for the label or transfer paths (the corpus binary reaches only the solver bang); which launches belong to which test. |
-| verification/gpu-pipeline.txt, "Result" and "Limits" | Complete-pipeline timings for the three paths at sizes 16, 1024 and 16384, each series labelled "taken on a loaded host; not representative"; the GPU path was slower in every cell; the verify stage (CPU code) is larger under `--gpu on`. | The split of the device call into memory movement, dispatch and kernel time (Nsight is absent); the cause of the verify-stage growth (managed-memory faults on host access is "likely but unestablished"); anything about a quiet host. |
+| verification/gpu-pipeline.txt, "Result" and "Limits" | Complete-pipeline timings for the three paths at sizes 16, 1024 and 16384, each series labelled "taken on a loaded host; not representative"; the GPU path was slower in every cell; the verify stage (CPU code) is larger under `--gpu on`. | The split of the device call into memory movement, dispatch and kernel time (Nsight is absent); the cause of the verify-stage growth (managed-memory faults on host access is "likely but unestablished"); anything about a quiet host; per-stage components below the 1 ms timer resolution (IO.now truncates CLOCK_MONOTONIC; several warm ratios are undefined); that each stage's work is not deferred past its mark. |
 
 Across all of these, the in-process verification is a logical replay. It reads the original
 inputs and the candidate from the same heap, in the same process, after the device call.
@@ -254,6 +277,9 @@ None of the following is implemented. Each is a missing piece, not a plan of rec
 - The managed-heap facts come from the pinned driver's embedded runtime C, read as strings
   from the binary. They were not observed at run time: no run dumped the allocation or
   traced a device write to the heap.
+- Stage times rest on `IO.now`, which truncates CLOCK_MONOTONIC to integer milliseconds:
+  components below 1 ms print 0, and several warm ratios are undefined
+  (verification/gpu-pipeline.txt, "Limits").
 - The display stack and the other device clients are trusted by assumption. No run tested
   their interference, or its absence.
 - This file makes no performance claim and no host-qualification claim. A CPU fallback is

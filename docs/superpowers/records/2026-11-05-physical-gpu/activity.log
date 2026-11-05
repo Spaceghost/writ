@@ -225,3 +225,7 @@
 2026-11-05T07:42:29Z	controller	task 7 review APPROVED; task 8 dispatched (trust profile)
 2026-11-05T07:44:20Z	implementer	task 8 started: read brief, plan constraints (cross-lane ruling: exclusion is a recorded limit), GV-008, design.md trust section, Tasks 1-7 evidence Result and Limits, the two trust-statement shapes; re-read gpu_map/corpus_setup from the pinned driver strings
 2026-11-05T07:46:53Z	implementer	verification/gpu-trust-profile.md written (GT-1 trusted device; managed-heap statement; evidence table over Tasks 1-7; exclusion beside GV-008 text; strengthening list); tasks.md 4.1 checked citing it, 4.2 left unchecked with the recorded-limit note; openspec validate --all --strict 44 passed
+2026-11-05T07:47:08Z	controller	task 8 reported; reviewer dispatched
+2026-11-05T07:50:27Z	controller	task 8 review: wording fixes; fix round 1 dispatched
+2026-11-05T07:50:29Z	implementer	task 8 fix round 1 started: read task-8-review.md (8 findings, text only)
+2026-11-05T07:51:06Z	implementer	task 8 fix round 1: eight review findings applied to gpu-trust-profile.md (timer limit, trusted list additions, proof wording, detection wording, binary_sha256 quote, Build citation, client names, validates wording); openspec strict 44 passed; committing

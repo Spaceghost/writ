@@ -44,3 +44,18 @@ Status: DONE_WITH_CONCERNS
 2. The plan says Task 9 alone edits tasks.md. The dispatch directed the 4.1 and 4.2 box edits here, so I made them. Task 9 should not redo them.
 3. The brief asks to "cite the gpu_map string from Task 1". Task 1 grepped the `cuMemAllocManaged` line, not the `gpu_map` name. The function name and the `corpus_setup` caller were read today from the same driver binary (same sha256) and quoted in the profile with the command. That makes them a new read, not a Task 1 record.
 4. The trusted list adds items beyond the brief's six (the GPU and its firmware, the other device clients, the observers, the Writ library and probes). Without them the list would leave pieces in force during a run that were not named as trusted.
+
+## Fix round 1
+
+These edits respond to task-8-review.md. All of them are text-only changes to verification/gpu-trust-profile.md. tasks.md is unchanged.
+
+1. The 1 ms timer limit and the deferred-evaluation limit are now in the pipeline row's "Does not show" cell. A matching bullet is added under "Limits of this statement".
+2. The trusted list now names more of the Writ modules: `GpuLibrary` (imported as `GPU`) and `Ledger`, `Frontend`, `Backplane` and `Negotiation`, which Transfers.bend imports. A new bullet names Bend's Base library, including `effs/now.c` (fc4c1d87...). Another new bullet names the host tools: `/bin/sh`, python3 (trun.py's clock readings and summarize.py's acceptance rule), `sha256sum`, `diff`, `cmp`, and `cuobjdump`. The harness bullet now also covers summarize.py's run-acceptance decisions and statistics.
+3. The library bullet says the proofs were checked by Bend's own checker, were not rerun in this lane, and have no Lean kernel verdict.
+4. The heap statement used to say a write was "not detected by anything in this lane's evidence". It now says no check that guards a run would detect it. The after-the-fact `--gpu off` stdout comparisons would show such a write only if it changed printed output. The opening example was aligned with this wording.
+5. The gate row quotes the binary_sha256 re-hash limit.
+6. The Task 7 harness citation now reads "quoted in 'Harness', with their sha256 in 'Build'".
+7. The device clients are quoted as `nvidia-smi` recorded them, including the three truncated `...rack-uuid=...` entries. Task 1's identification is quoted. The table is marked as a single snapshot; the clients during later runs were not recorded.
+8. "the only profile this lane validates" now reads "the only profile under which this lane's evidence is stated".
+
+OpenSpec 1.16.0 `validate --all --strict --no-interactive` gives 44 passed, 0 failed. No Bend source changed, so Tests and PROOF were not run.
