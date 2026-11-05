@@ -142,9 +142,13 @@ def width_complete() -> U32:
 def width_release() -> U32:
   4
 
-# The longest message is 3 header + 7 body words.
+# The header: version, tag, body length.
+def header_words() -> Nat:
+  3n
+
+# The longest message: the header plus the widest body (Use and Delegate).
 def max_words() -> Nat:
-  10n
+  Nat.add(header_words(), U32.to_nat(width_use()))
 
 def bytes_per_word() -> Nat:
   4n
@@ -348,6 +352,7 @@ def word_bytes(+word: U32, rest: +List<U32>) -> +List<U32>:
   U32.and(word, byte_mask()) <> U32.and(U32.shrn(word, byte1_shift()), byte_mask()) <>
     U32.and(U32.shrn(word, byte2_shift()), byte_mask()) <> U32.shrn(word, byte3_shift()) <> rest
 
+# Implementation helper: every word as four little-endian bytes.
 def words_to_bytes(words: +List<U32>) -> +List<U32>:
   match words:
     case Nil{}:
@@ -361,6 +366,7 @@ def encode_bytes(message: Message) -> +List<U32>:
 
 # --- Decoding ----------------------------------------------------------------
 
+# Implementation helper: `chosen` when `ok`, otherwise `otherwise`.
 def choose_kind(ok: Bool, chosen: TagKind, otherwise: TagKind) -> TagKind:
   match ok:
     case True{}:
@@ -391,6 +397,7 @@ def width_matches(kind: TagKind, +length: U32) -> Bool:
     case TagUnknown{}:
       False{}
 
+# Implementation helper for `admit`.
 def admit_checked(ok: Bool, message: Message) -> DecodeResult:
   match ok:
     case True{}:
@@ -398,12 +405,13 @@ def admit_checked(ok: Bool, message: Message) -> DecodeResult:
     case False{}:
       Malformed{OutOfRange{}}
 
-# Step 6: admit a fully parsed message only if every field is in bounds.
+# Implementation helper, step 6: admit a fully parsed message only if every
+# field is in bounds.
 def admit(+message: Message) -> DecodeResult:
   admit_checked(message_in_bounds(message), message)
 
-# Step 5: the body must hold exactly the tag's width in words; anything
-# shorter or longer, including one trailing word, is BadLength.
+# Implementation helper, step 5: the body must hold exactly the tag's width in
+# words; anything shorter or longer, including one trailing word, is BadLength.
 def parse_body(kind: TagKind, body: +List<U32>) -> DecodeResult:
   match kind body:
     case TagUse{} Con{h, Con{i, Con{s, Con{g, Con{operation, Con{rights, Con{claimed, Nil{}}}}}}}}:
@@ -417,7 +425,8 @@ def parse_body(kind: TagKind, body: +List<U32>) -> DecodeResult:
     case _ _:
       Malformed{BadLength{}}
 
-# Step 4: the header length word must equal the tag's width.
+# Implementation helper, step 4: the header length word must equal the tag's
+# width.
 def check_header_length(ok: Bool, kind: TagKind, body: +List<U32>) -> DecodeResult:
   match ok:
     case True{}:
@@ -425,6 +434,7 @@ def check_header_length(ok: Bool, kind: TagKind, body: +List<U32>) -> DecodeResu
     case False{}:
       Malformed{BadLength{}}
 
+# Implementation helper: reads the header length word; none left is BadLength.
 def decode_length(+kind: TagKind, rest: +List<U32>) -> DecodeResult:
   match rest:
     case Nil{}:
@@ -432,7 +442,7 @@ def decode_length(+kind: TagKind, rest: +List<U32>) -> DecodeResult:
     case Con{+length, body}:
       check_header_length(width_matches(kind, length), kind, body)
 
-# Step 3: the tag must be one of the four known tags.
+# Implementation helper, step 3: the tag must be one of the four known tags.
 def check_tag(kind: TagKind, rest: +List<U32>) -> DecodeResult:
   match kind:
     case TagUnknown{}:
@@ -446,6 +456,7 @@ def check_tag(kind: TagKind, rest: +List<U32>) -> DecodeResult:
     case TagRelease{}:
       decode_length(TagRelease{}, rest)
 
+# Implementation helper: reads the tag word; none left is BadLength.
 def decode_tag(rest: +List<U32>) -> DecodeResult:
   match rest:
     case Nil{}:
@@ -453,7 +464,7 @@ def decode_tag(rest: +List<U32>) -> DecodeResult:
     case Con{tag, after}:
       check_tag(tag_kind(tag), after)
 
-# Step 2: the version word must be `wire_version()`.
+# Implementation helper, step 2: the version word must be `wire_version()`.
 def check_version(ok: Bool, rest: +List<U32>) -> DecodeResult:
   match ok:
     case True{}:
@@ -461,6 +472,7 @@ def check_version(ok: Bool, rest: +List<U32>) -> DecodeResult:
     case False{}:
       Malformed{UnknownVersion{}}
 
+# Implementation helper: reads the version word; empty input is BadLength.
 def decode_version(words: +List<U32>) -> DecodeResult:
   match words:
     case Nil{}:
@@ -468,7 +480,7 @@ def decode_version(words: +List<U32>) -> DecodeResult:
     case Con{version, rest}:
       check_version(U32.is_eq(version, wire_version()), rest)
 
-# Step 1: the length cap.
+# Implementation helper, step 1: the length cap.
 def check_cap(over: Bool, words: +List<U32>) -> DecodeResult:
   match over:
     case True{}:
@@ -482,12 +494,14 @@ def check_cap(over: Bool, words: +List<U32>) -> DecodeResult:
 def decode(+words: +List<U32>) -> DecodeResult:
   check_cap(Nat.is_gt(List.length(&2, U32, words), max_words()), words)
 
-# Implementation helper: four little-endian byte values as one word. Callers
-# check every byte against `byte_mask()` first, so no bits overlap.
+# Implementation helper: four little-endian byte values as one word.
+# Out-of-range bytes may overlap here; `decode_in_range` discards the packed
+# words unless every byte is within `byte_mask()`.
 def pack_word(b0: U32, b1: U32, b2: U32, b3: U32) -> U32:
   U32.or(U32.or(b0, U32.shln(b1, byte1_shift())),
     U32.or(U32.shln(b2, byte2_shift()), U32.shln(b3, byte3_shift())))
 
+# Implementation helper: one packed word in front of the rest, if aligned.
 def prepend_word(word: U32, rest: Packed) -> Packed:
   match rest:
     case Words{words}:
@@ -506,6 +520,7 @@ def pack(bytes: +List<U32>) -> Packed:
     case _:
       Misaligned{}
 
+# Implementation helper: whether every value is within `byte_mask()`.
 def bytes_in_bounds(bytes: +List<U32>) -> Bool:
   match bytes:
     case Nil{}:
@@ -513,6 +528,7 @@ def bytes_in_bounds(bytes: +List<U32>) -> Bool:
     case Con{byte, rest}:
       byte_in_bounds(byte) && bytes_in_bounds(rest)
 
+# Implementation helper: decode packed words only if every byte was in range.
 def decode_in_range(in_range: Bool, words: +List<U32>) -> DecodeResult:
   match in_range:
     case True{}:
@@ -520,6 +536,7 @@ def decode_in_range(in_range: Bool, words: +List<U32>) -> DecodeResult:
     case False{}:
       Malformed{OutOfRange{}}
 
+# Implementation helper: alignment first, then the byte-range result.
 def decode_packed(in_range: Bool, packed: Packed) -> DecodeResult:
   match packed:
     case Misaligned{}:
@@ -527,6 +544,7 @@ def decode_packed(in_range: Bool, packed: Packed) -> DecodeResult:
     case Words{words}:
       decode_in_range(in_range, words)
 
+# Implementation helper: the byte cap, then `decode_packed`.
 def check_byte_cap(over: Bool, +bytes: +List<U32>) -> DecodeResult:
   match over:
     case True{}:

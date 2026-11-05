@@ -154,3 +154,46 @@ All 782 pre-existing PASS lines are still present (sorted comparison against
   constant naming; the tests are 363 lines.
 - `HostWire.bend` and `HostWireTests.bend` are not yet in
   `verification/source-sha256.txt`; that is Task 6 per the plan.
+
+## Fix round 1
+
+Source: task-1-review.md (verdict 1 APPROVED, verdict 2 NEEDS_FIXES). All
+eight findings were applied.
+
+1. PH-004 distinctness: new fixtures `next_incarnation_ref()` (incarnation 6)
+   and `next_generation_ref()` (generation 3), and a helper
+   `distinct_from_own(ref)` that requires `decodes_to(release_with(ref),
+   Release{ref})`, `ref` different from `own_ref()`, and different encoded
+   words. A Malformed decode now fails both PH-004 "encode and decode
+   differently" checks. The check names are unchanged.
+2. Guessed handle: `owner_subject()` is now 1234 and `guessed_words()` ends in
+   1234, so rights (7), the header length (7), and the subject are distinct.
+   The PH-003 Ref check now also asserts the whole decoded message
+   (`guessed_msg()` = `Use{guessed_ref(), operation_read, rights_mask,
+   ClaimedSubject{1234}}`). The name is unchanged.
+3. New checks: `PH-011 version word only denied BadLength` (`[1]`) and
+   `PH-011 version and tag only denied BadLength` (`[1, 1]`).
+4. New fixture `read_right()` (1, the read bit) replaces `W.operation_read()`
+   in every rights position: `delegate_msg` and five `delegate_with` sites.
+   `all_rights()` is removed in favour of `W.rights_mask()`.
+5. The `pack_word` comment now says out-of-range bytes may overlap and that
+   `decode_in_range` discards the packed words unless every byte is in range.
+6. New constant `header_words()` (3n); `max_words()` is now
+   `header_words() + width_use()` (still 10).
+7. Every decode/encode helper now has its own "Implementation helper" comment.
+8. New checks: `PH-011 a byte-level round trip of a Use is the same message`
+   and `PH-011 a byte-level round trip of a Complete is the same message`.
+
+The traceability rows are updated with the four new check names and notes
+for findings 1 and 2. The summary line is now `HostWire: 63 checks passed`.
+
+Verification after the fixes:
+- `bend Tests.bend`: exit 0, 845 PASS (782 + 63). Last lines are
+  `Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers`
+  and `ALL LIBRARY TESTS PASSED`. 0 of the 782 pre-existing PASS lines are
+  missing.
+- Native CPU run (`--threads 4 --gpu off`): exit 0, 845 PASS, PASS lines
+  identical to the JS run. This is not a GPU test.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+  `--verdict` is still unavailable because Lean is absent.
+- OpenSpec 1.16.0 strict: `Totals: 44 passed, 0 failed (44 items)`.

@@ -52,9 +52,10 @@ def claimed() -> U32:
   77
 
 # The subject the owner of other_slot() acts for, which a guessing peer
-# claims in order to impersonate it.
+# claims in order to impersonate it. Distinct from every rights, operation,
+# and length value in guessed_words(), so a swapped field is caught.
 def owner_subject() -> U32:
-  7
+  1234
 
 def lifetime() -> U32:
   600
@@ -62,8 +63,10 @@ def lifetime() -> U32:
 def read_write() -> U32:
   3
 
-def all_rights() -> U32:
-  7
+# The read bit of the Frontend fixtures, as a rights value. Its numeric
+# value equals W.operation_read(), but it is a rights bit, not an operation.
+def read_right() -> U32:
+  1
 
 # The largest U32, used as an unknown version and tag.
 def all_ones() -> U32:
@@ -84,7 +87,7 @@ def use_words() -> +List<U32>:
   [1, 1, 7, 3, 5, 11, 2, 2, 3, 77]
 
 def delegate_msg() -> W.Message:
-  W.Delegate{own_ref(), W.operation_read(), lifetime(), target_session()}
+  W.Delegate{own_ref(), read_right(), lifetime(), target_session()}
 
 def delegate_words() -> +List<U32>:
   [1, 2, 7, 3, 5, 11, 2, 1, 600, 4]
@@ -102,11 +105,19 @@ def release_words() -> +List<U32>:
   [1, 4, 4, 3, 5, 11, 2]
 
 # A Delegate whose words need all four bytes, to pin little-endian order.
+# own_ref() after a host restart (incarnation 6) and after its slot is
+# reused (generation 3): each differs from own_ref() in one field only.
+def next_incarnation_ref() -> W.Ref:
+  W.Ref{host(), 6, own_slot(), generation()}
+
+def next_generation_ref() -> W.Ref:
+  W.Ref{host(), incarnation(), own_slot(), 3}
+
 def wide_ref() -> W.Ref:
   W.Ref{67305985, incarnation(), own_slot(), generation()}
 
 def wide_msg() -> W.Message:
-  W.Delegate{wide_ref(), all_rights(), W.max_lifetime(), target_session()}
+  W.Delegate{wide_ref(), W.rights_mask(), W.max_lifetime(), target_session()}
 
 # Release{Ref{0x04030201, 5, 11, 2}} byte by byte, least significant first.
 def wide_release_bytes() -> +List<U32>:
@@ -201,6 +212,12 @@ def release_with(ref: W.Ref) -> W.DecodeResult:
   encoded_ref(W.Release{ref})
 
 # The reference a decoded message names, or a zero Ref when none was built.
+# Whether `ref` decodes as itself, differs from own_ref(), and encodes to
+# different words than own_ref()'s Release. A Malformed decode fails it.
+def distinct_from_own(+ref: W.Ref) -> Bool:
+  decodes_to(release_with(ref), W.Release{ref}) && Bool.not(W.Ref.equal(ref, own_ref())) &&
+    Bool.not(words_equal(W.encode(W.Release{ref}), release_words()))
+
 def decoded_ref(result: W.DecodeResult) -> W.Ref:
   match result:
     case W.Decoded{message}:
@@ -234,7 +251,10 @@ def context_words() -> +List<U32>:
 # PH-003 "A guessed numeric handle": a Use naming another session's slot,
 # asking for every right and claiming the owner's subject.
 def guessed_words() -> +List<U32>:
-  [1, 1, 7, 3, 5, 12, 2, 1, 7, 7]
+  [1, 1, 7, 3, 5, 12, 2, 1, 7, 1234]
+
+def guessed_msg() -> W.Message:
+  W.Use{guessed_ref(), W.operation_read(), W.rights_mask(), W.ClaimedSubject{owner_subject()}}
 
 def guessed() -> W.DecodeResult:
   W.decode(guessed_words())
@@ -265,9 +285,11 @@ def accept_checks() -> IO(Unit):
     Test.check(round_trips(release_msg()), "PH-011 Release decode of encode is the same message")
     Test.check(decodes_to(W.decode(release_words()), release_msg()) && reencodes(release_words()), "PH-011 Release words decode and re-encode to the same words")
     Test.check(decodes_to(W.decode_bytes(W.encode_bytes(wide_msg())), wide_msg()), "PH-011 a byte-level round trip of a 40-byte Delegate is the same message")
+    Test.check(decodes_to(W.decode_bytes(W.encode_bytes(use_msg())), use_msg()), "PH-011 a byte-level round trip of a Use is the same message")
+    Test.check(decodes_to(W.decode_bytes(W.encode_bytes(complete_msg())), complete_msg()), "PH-011 a byte-level round trip of a Complete is the same message")
     Test.check(words_equal(W.encode_bytes(W.Release{wide_ref()}), wide_release_bytes()) && decodes_to(W.decode_bytes(wide_release_bytes()), W.Release{wide_ref()}), "PH-011 byte transport carries each word little-endian")
     Test.check(decodes_to(use_with(own_ref(), W.operation_execute(), W.rights_mask()), W.Use{own_ref(), W.operation_execute(), W.rights_mask(), W.ClaimedSubject{claimed()}}), "PH-011 operation execute with rights equal to the mask is in bounds")
-    Test.check(decodes_to(delegate_with(W.operation_read(), W.max_lifetime(), target_session()), W.Delegate{own_ref(), W.operation_read(), W.max_lifetime(), target_session()}), "PH-011 lifetime equal to max_lifetime is in bounds")
+    Test.check(decodes_to(delegate_with(read_right(), W.max_lifetime(), target_session()), W.Delegate{own_ref(), read_right(), W.max_lifetime(), target_session()}), "PH-011 lifetime equal to max_lifetime is in bounds")
 
 # PH-011 "A peer sends an unknown authority variant": unsupported versions.
 def version_checks() -> IO(Unit):
@@ -289,6 +311,8 @@ def tag_checks() -> IO(Unit):
 def length_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(rejected(W.decode([]), W.BadLength{}), "PH-011 empty input denied BadLength")
+    Test.check(rejected(W.decode([1]), W.BadLength{}), "PH-011 version word only denied BadLength")
+    Test.check(rejected(W.decode([1, 1]), W.BadLength{}), "PH-011 version and tag only denied BadLength")
     Test.check(rejected(W.decode([1, 4, 4]), W.BadLength{}), "PH-011 header only denied BadLength")
     Test.check(rejected(decode_with_length(6, use_words()), W.BadLength{}), "PH-011 Use header length one short denied BadLength")
     Test.check(rejected(decode_with_length(8, use_words()), W.BadLength{}), "PH-011 Use header length one long denied BadLength")
@@ -311,13 +335,13 @@ def range_checks() -> IO(Unit):
     Test.check(rejected(release_with(W.Ref{0, incarnation(), own_slot(), generation()}), W.OutOfRange{}), "PH-011 zero host denied OutOfRange")
     Test.check(rejected(release_with(W.Ref{host(), incarnation(), 0, generation()}), W.OutOfRange{}), "PH-011 zero slot denied OutOfRange")
     Test.check(rejected(complete_with(0, W.status_ok()), W.OutOfRange{}), "PH-011 zero sequence denied OutOfRange")
-    Test.check(rejected(delegate_with(W.operation_read(), lifetime(), 0), W.OutOfRange{}), "PH-011 zero target_session denied OutOfRange")
+    Test.check(rejected(delegate_with(read_right(), lifetime(), 0), W.OutOfRange{}), "PH-011 zero target_session denied OutOfRange")
     Test.check(rejected(use_with(own_ref(), 0, read_write()), W.OutOfRange{}), "PH-011 operation 0 denied OutOfRange")
     Test.check(rejected(use_with(own_ref(), 4, read_write()), W.OutOfRange{}), "PH-011 operation 4 denied OutOfRange")
     Test.check(rejected(use_with(own_ref(), W.operation_read(), 0), W.OutOfRange{}), "PH-011 rights 0 denied OutOfRange")
     Test.check(rejected(use_with(own_ref(), W.operation_read(), 8), W.OutOfRange{}), "PH-011 rights 8 denied OutOfRange")
-    Test.check(rejected(delegate_with(W.operation_read(), 0, target_session()), W.OutOfRange{}), "PH-011 lifetime 0 denied OutOfRange")
-    Test.check(rejected(delegate_with(W.operation_read(), U32.add(W.max_lifetime(), 1), target_session()), W.OutOfRange{}), "PH-011 lifetime max_lifetime plus 1 denied OutOfRange")
+    Test.check(rejected(delegate_with(read_right(), 0, target_session()), W.OutOfRange{}), "PH-011 lifetime 0 denied OutOfRange")
+    Test.check(rejected(delegate_with(read_right(), U32.add(W.max_lifetime(), 1), target_session()), W.OutOfRange{}), "PH-011 lifetime max_lifetime plus 1 denied OutOfRange")
     Test.check(rejected(complete_with(sequence(), 0), W.OutOfRange{}), "PH-011 status 0 denied OutOfRange")
     Test.check(rejected(complete_with(sequence(), 3), W.OutOfRange{}), "PH-011 status 3 denied OutOfRange")
     Test.check(rejected(W.decode_bytes(with_first_byte(256, W.encode_bytes(release_msg()))), W.OutOfRange{}), "PH-011 a byte value of 256 denied OutOfRange")
@@ -335,7 +359,7 @@ def order_checks() -> IO(Unit):
 # description naming another slot, never to a grant.
 def ph003_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(W.Ref.equal(decoded_ref(guessed()), guessed_ref()), "PH-003 a Use naming another session's slot decodes to a Ref of four identity words only")
+    Test.check(decodes_to(guessed(), guessed_msg()) && W.Ref.equal(decoded_ref(guessed()), guessed_ref()), "PH-003 a Use naming another session's slot decodes to a Ref of four identity words only")
     Test.check(claimed_is(claimed_of(guessed()), owner_subject()), "PH-003 the guessed Use's subject stays a ClaimedSubject, untrusted")
 
 # PH-004 the wire part: every reference carries incarnation and generation,
@@ -344,8 +368,8 @@ def ph004_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(rejected(release_with(W.Ref{host(), 0, own_slot(), generation()}), W.OutOfRange{}), "PH-004 zero incarnation denied OutOfRange")
     Test.check(rejected(release_with(W.Ref{host(), incarnation(), own_slot(), 0}), W.OutOfRange{}), "PH-004 zero generation denied OutOfRange")
-    Test.check(Bool.not(words_equal(W.encode(W.Release{W.Ref{host(), 6, own_slot(), generation()}}), release_words())) && Bool.not(W.Ref.equal(decoded_ref(release_with(W.Ref{host(), 6, own_slot(), generation()})), own_ref())), "PH-004 references differing only in incarnation encode and decode differently")
-    Test.check(Bool.not(words_equal(W.encode(W.Release{W.Ref{host(), incarnation(), own_slot(), 3}}), release_words())) && Bool.not(W.Ref.equal(decoded_ref(release_with(W.Ref{host(), incarnation(), own_slot(), 3})), own_ref())), "PH-004 references differing only in generation encode and decode differently")
+    Test.check(distinct_from_own(next_incarnation_ref()), "PH-004 references differing only in incarnation encode and decode differently")
+    Test.check(distinct_from_own(next_generation_ref()), "PH-004 references differing only in generation encode and decode differently")
 
 # Public entry point, run by Tests.bend. Checks are grouped per requirement and
 # fixtures are named functions, keeping each group under the native backend's
@@ -360,4 +384,4 @@ def main() -> IO(Unit):
     order_checks()
     ph003_checks()
     ph004_checks()
-    IO.print("HostWire: 59 checks passed")
+    IO.print("HostWire: 63 checks passed")
