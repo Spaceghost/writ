@@ -49,7 +49,8 @@ import ./Issuance.bend as I
 # - The snapshot's transfer context (`Snapshot.transfer`): the current
 #   `T.Context`. It is carried for eligibility: `origins_approved` takes
 #   `T.required_origins(plan, transfer)`, which lists every contributing
-#   origin, inherited ones included. No transition reads it yet.
+#   origin, inherited ones included, and `submit_approval` admits only an
+#   origin that lookup lists for the request plan.
 # - The snapshot's `now`, the monitor's trusted time. Every expiry is
 #   exclusive (now < valid_until), matching Transfer, Frontend and Issuance.
 # - `expected_revision`, the revision the caller validated against; the host
@@ -805,12 +806,32 @@ def approval_serial_seen(seen: Serials, +issuer: I.Principal, +serial: Nat) -> B
     case Serials{head, tail}:
       approval_serial_entry(head, issuer, serial) || approval_serial_seen(tail, issuer, serial)
 
+# Whether `origin` is one of the listed objects.
+def origin_listed(objects: T.Objects, +origin: T.ObjectVersion) -> Bool:
+  match objects:
+    case T.OEnd{}:
+      False{}
+    case T.OCons{head, tail}:
+      T.ObjectVersion.equal(head, origin) || origin_listed(tail, origin)
+
+# Whether `origin` contributes to the request plan under the snapshot's
+# transfer context (inherited origins included). Missing lists nothing, so
+# no approval is stored while the origin set is unknown.
+def origin_required(lookup: T.OriginLookup, +origin: T.ObjectVersion) -> Bool:
+  match lookup:
+    case T.Missing{}:
+      False{}
+    case T.Found{objects}:
+      origin_listed(objects, origin)
+
 # Every check an origin-approval submission must pass, in denial order: the
 # race (revision), the format, identity (the issuer claim is `from`), the
 # origin's placement in the snapshot issuer (exactly one read domain), the
 # authority (`from`, not the claim, is that domain's read authority in the
-# snapshot directory), the plan (exactly the request's), the lifetime, and
-# last replay. The provider and profile are not checked here: an approval for
+# snapshot directory), the plan (exactly the request's), the origin's need
+# (the request plan's `T.required_origins` under the snapshot's transfer
+# context lists it; a Missing lookup lists nothing), the lifetime, and last
+# replay. The provider and profile are not checked here: an approval for
 # a provider without a grant, or at a profile outside the constraint, is
 # stored but never makes an offer eligible (eligibility, a later task).
 def approval_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
@@ -823,9 +844,10 @@ def approval_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
       Gate{origin_placed(Snapshot.issuer(snapshot), origin), WrongDomain{},
       Gate{speaks_for_origin(Snapshot.issuer(snapshot), from, origin), NotAuthority{},
       Gate{plan_is_request(plan, state), ScopeMismatch{},
+      Gate{origin_required(T.required_origins(request_plan(state), Snapshot.transfer(snapshot)), origin), ScopeMismatch{},
       Gate{unexpired(Snapshot.now(snapshot), valid_until), Expired{},
       Gate{Bool.not(approval_serial_seen(seen(state), from, serial)), Replay{},
-      Open{}}}}}}}}}
+      Open{}}}}}}}}}}
 
 def approval_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
     +approval: OriginApproval, +snapshot: Snapshot) -> Guard.Checks:
@@ -860,7 +882,9 @@ def submit_approval_checked(ok: Bool, +state: State, +expected_revision: Nat, +f
 # is at `expected_revision`; the record is version 1; its issuer claim is
 # `from`; the snapshot's issuer state places the approved origin in exactly
 # one read domain and its directory names `from` that domain's read
-# authority; the approval's plan is exactly the request plan; `now <
+# authority; the approval's plan is exactly the request plan; the origin is
+# one `T.required_origins(request plan, snapshot transfer)` lists (inherited
+# origins included; a Missing lookup admits none); `now <
 # valid_until`; and `(from, serial)` is unseen as an approval serial. The
 # approval is then stored unedited under a fresh id (the change id), not
 # withdrawn, its serial recorded, and `next_id` and the revision advanced
@@ -868,7 +892,8 @@ def submit_approval_checked(ok: Bool, +state: State, +expected_revision: Nat, +f
 # one plan, and confers nothing by itself: `origin_approved` re-derives its
 # issuer's authority from the issuer state at every use. Denial order:
 # StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority,
-# ScopeMismatch, Expired, Replay; the state is returned unchanged.
+# ScopeMismatch (plan, then an origin the plan does not need), Expired,
+# Replay; the state is returned unchanged.
 def submit_approval(+state: State, +expected_revision: Nat, +from: I.Principal,
     +approval: OriginApproval, +snapshot: Snapshot) -> Change:
   submit_approval_checked(Guard.all(approval_checks(state, expected_revision, from, approval, snapshot)),
@@ -1013,7 +1038,9 @@ def withdraw_approval(+state: State, +expected_revision: Nat, +from: I.Principal
 # --- Approval predicates (ER-002 inputs, ER-006) -----------------------------
 
 # One stored approval covers exactly this origin, provider, profile and plan,
-# is not withdrawn, is unexpired at `now`, and its recorded issuer is still
+# is not withdrawn, is unexpired at `now`, the plan's stamp is the issuer's
+# live stamp (an epoch advance in the issuer withdraws it, whatever transfer
+# context the host supplies), and its recorded issuer is still
 # the read authority for the origin in the supplied issuer state. The
 # recorded issuer was bound to the authenticated submitter by
 # `submit_approval`; it is compared here against the current directory and
@@ -1028,6 +1055,7 @@ def stored_covers(stored: StoredApproval, +origin: T.ObjectVersion, +provider: I
           Bool.not(withdrawn) && T.ObjectVersion.equal(approved, origin)
             && I.Principal.equal(approved_provider, provider) && Nat.is_eq(approved_profile, profile)
             && T.Plan.equal(approved_plan, plan) && unexpired(now, valid_until)
+            && T.Stamp.equal(T.Plan.stamp(plan), I.live(issuer))
             && speaks_for_origin(issuer, recorded, approved)
 
 # Whether some stored approval covers `origin` for `provider` at `profile`

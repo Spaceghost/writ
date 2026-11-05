@@ -13,3 +13,7 @@
 2026-11-05T15:02:55Z	implementer	approvals: submit_approval, withdraw_approval, origin_approved, origins_approved added; 34 new checks green (68); starting mutation sweep
 2026-11-05T15:05:21Z	implementer	mutation sweep 1: 54 mutants, 3 survived (H6, W7, W16); 2 checks added; rerunning
 2026-11-05T15:07:35Z	implementer	mutation sweep final: 58 mutants, 54 killed, 4 equivalent (claim vs from after the claim gate); Tests.bend 1498 PASS, PROOF.bend ALL PROOFS CHECK; report written; committing
+2026-11-05T15:08:06Z	controller	task 2 reported; reviewer dispatched
+2026-11-05T15:13:37Z	controller	review: four findings incl. unneeded-origin approvals; fix round 1 dispatched
+2026-11-05T15:13:37Z	implementer	fix round 1 started: read task-2-review.md (F1-F4)
+2026-11-05T15:15:35Z	implementer	fix round 1: F1 origin gate, F2 profile 3, F3 live stamp, F4 comment; 65 mutants (61 killed, 4 equivalent); Tests.bend 1500 PASS, PROOF.bend ALL PROOFS CHECK; committing

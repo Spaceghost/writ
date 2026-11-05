@@ -479,7 +479,7 @@ def offers() -> IO(Unit):
 # --- Section 1.2 (first half): origin approvals (ER-006 records, ER-002 inputs)
 
 # Approval fixtures. Every field carries its own value: version 1, serial 12
-# (13, 14, 15 for later approvals), issuer 101 (object 10's read authority),
+# (13 and 15 for later approvals), issuer 101 (object 10's read authority),
 # origin 10v4, provider A 201, profile 1, TF.plan(), valid while now < 130.
 # Ids are allocated by the transition (1, then 2).
 def approval_until() -> Nat:
@@ -493,9 +493,10 @@ def approval_a() -> R.OriginApproval:
   approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(),
     TF.plan(), approval_until())
 
-# A second approval by the same authority: serial 13, provider B, profile 2.
+# A second approval by the same authority: serial 13, provider B, profile 3
+# (stored as id 2, so no field shares the id's value).
 def approval_b2() -> R.OriginApproval:
-  approval_with(13n, IT.source_authority(), TF.source_object(), provider_b(), 2n,
+  approval_with(13n, IT.source_authority(), TF.source_object(), provider_b(), 3n,
     TF.plan(), approval_until())
 
 def approve_change() -> R.Change:
@@ -507,7 +508,7 @@ def approved() -> R.State:
 def approve_b2_change() -> R.Change:
   R.submit_approval(approved(), 1n, IT.source_authority(), approval_b2(), snapshot())
 
-# Approval 2 (B at profile 2) at the head, approval 1 (A at profile 1) after.
+# Approval 2 (B at profile 3) at the head, approval 1 (A at profile 1) after.
 def approved_two() -> R.State:
   R.Change.state(approve_b2_change())
 
@@ -651,7 +652,7 @@ def approval_records() -> IO(Unit):
         R.Approvals{stored(2n, approval_b2(), False{}), R.Approvals{stored(1n, approval_a(), False{}), R.NoApprovals{}}})
       && serials_equal(R.seen(approved_two()),
         R.Serials{R.ApprovalSerial{IT.source_authority(), 13n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}})
-      && R.valid(approved_two()), "ER-006 101's second approval, serial 13 for provider B at profile 2, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)")
+      && R.valid(approved_two()), "ER-006 101's second approval, serial 13 for provider B at profile 3, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)")
     Test.check(R.Change.accepted(two_eleven_change()) && issued_is(R.Change.issued(two_eleven_change()), 2n)
       && serials_equal(R.seen(two_both()),
         R.Serials{R.ApprovalSerial{IT.second_source_authority(), 12n}, R.Serials{R.ApprovalSerial{IT.source_authority(), 12n}, R.NoSerials{}}}), "ER-006 object 11's authority 104 may use serial 12 after 101 used it: replay is per issuer")
@@ -695,6 +696,12 @@ def approval_denials() -> IO(Unit):
     Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(),
         approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), IT.plan_invocation(), approval_until()), snapshot()),
         opened(), R.ScopeMismatch{}), "ER-006 an approval for a plan that differs from the request's in invocation (98, not 99) denied ScopeMismatch")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.second_source_authority(),
+        approval_with(12n, IT.second_source_authority(), IT.second_source(), provider_a(), profile(), TF.plan(), approval_until()), snapshot()),
+        opened(), R.ScopeMismatch{})
+      && denied(R.submit_approval(opened(), 0n, IT.source_authority(), approval_a(),
+        R.Snapshot{issuer(), TF.with_live(TF.context(), next_epoch()), IT.now()}),
+        opened(), R.ScopeMismatch{}), "ER-006 an approval for object 11, which TF.plan() does not need, denied ScopeMismatch; with a stale transfer context (Missing lookup), denied ScopeMismatch")
     Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(),
         approval_with(12n, IT.source_authority(), TF.source_object(), provider_a(), profile(), TF.plan(), IT.now()), snapshot()),
         opened(), R.Expired{}), "ER-006 an approval submitted at its own valid_until 100 denied Expired")
@@ -737,7 +744,8 @@ def approval_predicates() -> IO(Unit):
   do IO<Unit>:
     Test.check(a_approved(approved(), issuer(), IT.now()) && a_approved(approved(), issuer(), 129n)
       && a_approved(approved_two(), issuer(), IT.now())
-      && R.origin_approved(R.approvals(approved_two()), TF.source_object(), provider_b(), 2n, TF.plan(), issuer(), IT.now()), "ER-006 origin_approved: object 10 approved for A at profile 1 at 100 and 129, also with B's approval stored ahead of it, and for B at profile 2")
+      && R.origin_approved(R.approvals(approved_two()), TF.source_object(), provider_b(), 3n, TF.plan(), issuer(), IT.now()), "ER-006 origin_approved: object 10 approved for A at profile 1 at 100 and 129, also with B's approval stored ahead of it, and for B at profile 3")
+    Test.check(Bool.not(a_approved(approved(), epoch_issuer(), IT.now())), "ER-006 origin_approved is false once the issuer installs a new live stamp (epoch 5)")
     Test.check(Bool.not(R.origin_approved(R.approvals(approved()), TF.source_object(), provider_b(), profile(), TF.plan(), issuer(), IT.now()))
       && Bool.not(R.origin_approved(R.approvals(approved()), TF.source_object(), provider_a(), 2n, TF.plan(), issuer(), IT.now())), "ER-006 origin_approved is false for provider B and for profile 2 when only A at profile 1 was approved")
     Test.check(Bool.not(R.origin_approved(R.approvals(approved()), TF.source_object(), provider_a(), profile(), IT.plan_invocation(), issuer(), IT.now()))
@@ -767,4 +775,4 @@ def main() -> IO(Unit):
   do IO<Unit>:
     offers()
     approvals()
-    IO.print("Rendezvous: 70 checks passed")
+    IO.print("Rendezvous: 72 checks passed")

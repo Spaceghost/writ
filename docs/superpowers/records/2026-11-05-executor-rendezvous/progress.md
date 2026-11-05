@@ -8,3 +8,5 @@ Task 1: review NEEDS_FIXES both axes (fixtures put 1 in version, serial, and pro
 Task 1: fix round 1 done (81c4e58): six checks for F1-F5, 48 mutants killed incl. the valid namespace arm, 1462 checks. Scoped re-review dispatched.
 Task 1: complete (re-review ALL CLOSED; 1462 checks).
 Task 2: dispatched implementer (origin approvals)
+Task 2: implementer DONE_WITH_CONCERNS (2d3e5bb): 1498 checks (+36), 54 of 58 mutants killed, 4 equivalent (claim gate precedes the authority read). Rulings: withdraw_approval taking the snapshot and the approved-origin helpers taking the issuer state are right (authority re-read at every call); a second withdrawal denied Revoked is acceptable within the fixed set; an approval for an origin the plan does not need being stored but never consulted is a finding for the reviewer to weigh (prefer denying it at submission). Reviewer dispatched.
+Task 2: review NEEDS_FIXES both axes (F1 an approval for an origin the plan does not need is stored: deny ScopeMismatch at submission; F2 id/profile fixture collision let two mutants survive; F3 approvals outlive an issuer epoch advance; F4 a comment). Fix round 1 dispatched.

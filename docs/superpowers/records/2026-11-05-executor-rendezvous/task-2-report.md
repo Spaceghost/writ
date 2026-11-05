@@ -110,3 +110,22 @@ Accepting and predicate checks: the eight `approval_records` checks (first appro
 4. **Submission does not require the origin to be one of the request's required origins.** Not in the brief; an approval for an unrelated placed origin is stored but never consulted, because `origins_approved` walks only `T.required_origins`. The transfer context is not read by either transition.
 5. **`approval_id_exists` moved** within `Rendezvous.bend` (token-identical) so `find_approval` can use it.
 6. **Scratchpad.** All mutation files are under `scratchpad/executor-rendezvous-t2/` (script `mutate.py`, outputs `mutants*.txt`); mutant copies are created and removed under its `mutant/`.
+
+## Fix round 1
+
+Source: `task-2-review.md`, findings F1 to F4 (both verdicts NEEDS_FIXES).
+
+- **F1:** `approval_gates` has a new gate directly after `plan_is_request`: `origin_required(T.required_origins(request_plan(state), Snapshot.transfer(snapshot)), origin)`, reason ScopeMismatch. The lookup is built from the request plan, never the approval's plan field. A Missing lookup admits nothing. The helpers are `origin_listed` and `origin_required`. The submission order is now: StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority, ScopeMismatch (plan), ScopeMismatch (origin not needed), Expired, Replay. The header line on the transfer context, the `approval_gates` comment and the `submit_approval` comment are updated. New check: "ER-006 an approval for object 11, which TF.plan() does not need, denied ScopeMismatch; with a stale transfer context (Missing lookup), denied ScopeMismatch".
+- **F2:** `approval_b2` now has profile 3, so no field shares the value of its id 2. The B check is renamed "... and for B at profile 3". With that change, the existing withdrawal check kills R1 and R2.
+- **F3:** `stored_covers` now also requires `T.Stamp.equal(T.Plan.stamp(plan), I.live(issuer))`. New check: "ER-006 origin_approved is false once the issuer installs a new live stamp (epoch 5)". I did not add the review's optional stamp gate at submission. A stale-stamp approval is never counted, because the F3 conjunct rejects it at use. And the F1 gate already denies when the transfer context's live stamp differs from the plan's.
+- **F4:** the fixture comment now lists serials 13 and 15 only.
+
+Mutation: 65 mutants, 61 killed, 4 equivalent (the same as before). Details are in `task-2-mutants.md`, section "Fix round 1".
+
+Verification:
+- `bend Rendezvous.bend --check-only` ends with `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `bend RendezvousTests.bend` ends with `Rendezvous: 72 checks passed`.
+- `bend Tests.bend`: exit 0, last line `ALL LIBRARY TESTS PASSED`, 0 FAIL lines. The PASS total is **1500**: 1428 at master 78449c9 plus 72 Rendezvous checks, which is 1498 plus 2 new checks.
+- `bend PROOF.bend`: exit 0, `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` LAWS, PROOF and Tests.bend are unchanged since 2d3e5bb.
+
+Remaining concerns from the first round: 1 to 3 (the snapshot parameter on `withdraw_approval`, the issuer parameter on `origin_approved` and `origins_approved`, and the Revoked reason for a second withdrawal). Concern 4 is resolved by F1.
