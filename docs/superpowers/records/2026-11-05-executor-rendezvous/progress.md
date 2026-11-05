@@ -15,3 +15,6 @@ Task 2: complete (re-review ALL CLOSED; 1500 checks). Noted gap: an approval sub
 Task 3: dispatched implementer (eligibility, selection, three laws)
 Task 3: implementer DONE_WITH_CONCERNS (86c8dc4): 1543 checks (+43), 22 laws (+5), 72 of 74 mutants killed, 2 equivalent; the Task 2 epoch gap closed at submission (StaleEpoch). Rulings: eligibility_gates name accepted; the over-ceiling and narrower-grant fixtures adjusted as described; Revoked for withdrawing an unknown offer id is acceptable within the fixed set. Reviewer dispatched.
 Task 3: review spec APPROVED, security NEEDS_FIXES (two fixture collisions: ranking profile vs selected offer profile both 1; unrelated withdrawal tested only with retired 0; minor comments; one more equivalent mutant). No way to select an ineligible offer was found. Fix round 1 dispatched.
+Task 3: fix round 1 done (a1fe222): two checks for Q1/Q2, 1545 checks, 77 of 80 mutants killed, 3 equivalent. Scoped re-review dispatched.
+Task 3: complete (re-review ALL CLOSED; 1545 checks, 22 laws).
+Task 4: dispatched implementer (trial binding)
