@@ -105,8 +105,8 @@ import ./DataOS.bend as OS
 # an early-denied `ScopeNotRead{}` event joins the requester's own stream
 # only (Top's, which is nobody's, when the subject cannot name a principal).
 # `event_owners` is only the distinct owners among the influences.
-# Residual channel (observation, carried to Task 4 and the Task 6 gaps,
-# beside the timing channel): within the requester's own stream, whether an
+# Residual channel (observation, recorded in docs/AUDIT.md (Residual
+# channels) beside the timing channel): within the requester's own stream, whether an
 # early-denied event is releasable to her sink still depends on the table
 # entries for the objects she named, so each request reveals one bit of the
 # label table (does a named object carry a label her sink satisfies). It
@@ -114,7 +114,7 @@ import ./DataOS.bend as OS
 # depend on the outcome, contrary to `audit_outcome_never_lowers_policy`.
 # Requester numbering: `Named{subject}` assumes the monitor numbers frontend
 # subjects as DLM named principals; no subject-to-principal mapping exists
-# yet (recorded gap for Task 6).
+# yet (recorded in docs/AUDIT.md, Ownership and label rules).
 # The two obligations Task 1's review placed here are met so:
 # 1. Every admission event's policy includes the requesting subject's own
 #    label (`requester_influence`), so a denial is visible only to a sink
@@ -125,6 +125,20 @@ import ./DataOS.bend as OS
 #    WriteIntent, and the context's secrecy, which equals the output policy's,
 #    so it is never released below the output's label although `artifact`
 #    is a digest of the sealed content.
+#
+# Outputs (host obligation, reviewed-only, recorded in docs/AUDIT.md): the
+# wrappers return the library value together with `event` and `recorded`.
+# A host returns ONLY `AuditedAdmission.decision` or `AuditedCommit.result`
+# to the caller. `event` and `recorded` go only to the monitor's log; they
+# are never returned, logged elsewhere, or sent to any party except through
+# `respond` or `transmit`. `recorded.policy` lists the owners and labels of
+# every object the plan names and of the authoritative context, which the
+# requester did not name, so handing it back would be a label-table oracle.
+# Log integrity (precondition, reviewed-only): the wrappers are the only
+# producers of a stored event that this model provides, but `Recorded` is a
+# public constructor, so a host stores only the `recorded` value a wrapper
+# returned in the same invocation. A decoded event carries no policy and is
+# never re-logged.
 #
 # Trusted inputs (supplied by the monitor, never by the caller):
 # - `event_id`, a fresh identifier (Bend generates none); query views and
@@ -205,7 +219,7 @@ import ./DataOS.bend as OS
 #   mandatory, and each value has one word form, so an accepted word list is
 #   the unique encoding of its event: decode(encode(e)) == Decoded{e} for
 #   every encodable e, and encode of a decoded event is its input words.
-# Per-field sensitivity (Task 6 copies these into docs/AUDIT.md):
+# Per-field sensitivity (recorded in docs/AUDIT.md, Ownership and label rules):
 # - version, kind, phase: public format facts, but kind and phase reveal that
 #   an admission or commit was attempted at all.
 # - event_id: a monitor sequence number; it reveals ordering and volume, so
@@ -782,7 +796,7 @@ def context_influences(+labels: Labels, +context: T.Context) -> Influences:
 # without aliasing, so it fails closed; an unregistered subject's label is
 # refused by `D.flows` at release. Assumes the monitor numbers frontend
 # subjects as DLM named principals; no subject-to-principal mapping exists
-# yet (recorded gap for Task 6).
+# yet (recorded in docs/AUDIT.md, Ownership and label rules).
 def requester_label(+p: D.Principal) -> D.Label:
   D.Label{D.Rule{p, p}, D.Rule{D.Bottom{}, D.Bottom{}}}
 
@@ -996,6 +1010,8 @@ def event_streams(r: Recorded) -> Owners:
 
 # Public entry point. Calls the transfer admission check exactly once and
 # returns its Decision unchanged beside the projected event and its record.
+# Host obligation: return only `decision` to the caller. `event` and
+# `recorded` go only to the monitor's log (see Outputs in the header).
 # The record's policy is `admission_policy` of the plan, the context, the
 # monitor's label table and the authenticated subject: it is computed without
 # the decision, so it is the same whatever the outcome (the law
@@ -1016,6 +1032,8 @@ def audited_admit(+plan: T.Plan, +context: T.Context, labels: Labels,
 # release route is the facade's own. The record's policy is `commit_policy`
 # of the session, the facade context, the label table and the Ref's
 # authenticated subject; it never reads the result.
+# Host obligation: return only `result` to the caller. `event` and
+# `recorded` go only to the monitor's log (see Outputs in the header).
 def audited_commit(+session: N.Session, expected_session: Nat,
     expected_ledger: Nat, ledger: L.State, candidate: C.Candidate, +ref: F.Ref,
     expected_frontend: Nat, +context: OS.Context, labels: Labels,

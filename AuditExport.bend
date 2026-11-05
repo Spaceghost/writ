@@ -109,7 +109,7 @@ import ./AuditQuery.bend as AQ
 #   count over every stored event would leak hidden ones, and withholding
 #   the metric whenever a hidden event exists would reveal that hidden
 #   events exist; a visible-view count reveals neither. It undercounts by
-#   design (Task 6's docs/AUDIT.md says so). A count at or above 2^32 is Withheld,
+#   design (docs/AUDIT.md says so). A count at or above 2^32 is Withheld,
 #   never wrapped; that bound depends on the visible view only.
 # - `Alert{}`: one emission per visible event whose kind is `rule`, each the
 #   view encoding of that event, in append order. A hidden matching event
@@ -117,8 +117,8 @@ import ./AuditQuery.bend as AQ
 # Every emission names the resolved sink's id, which is the sink the grant
 # names; content is never addressed to any other sink.
 #
-# Residual channels (not claimed closed; carried to the Task 6 gaps, as for
-# queries): compute time depends on the whole log, and within the requester's
+# Residual channels (not claimed closed; recorded in docs/AUDIT.md (Residual
+# channels), as for queries): compute time depends on the whole log, and within the requester's
 # own stream an early-denied event's visibility still depends on the label
 # table (AuditEvent's one-bit observation). This model claims no constant
 # time and does not model when or how often an exporter calls.
@@ -127,7 +127,7 @@ import ./AuditQuery.bend as AQ
 # `ExportGrant`, `ExportRequest`, `Emit` and `Transmission` are public Data
 # records, a model, not unforgeable evidence or capabilities, and an `Emit`
 # is a description for the host's sink binding, not authority to send.
-# Host obligation (carried to Task 6): a host delivers a `Sent`
+# Host obligation (recorded in docs/AUDIT.md, Ownership and label rules): a host delivers a `Sent`
 # transmission's effects only to the named sink's binding, never to the
 # exporter process. The exporter holds no read grant, so it learns at most
 # whether a transmission was sent, and that bit depends only on its grant,
@@ -390,7 +390,9 @@ def export_gates(+state: State, +from: Nat, +request: ExportRequest, +now: Nat) 
   AQ.Gates.checks(export_gate_list(state, from, request, now))
 
 # Public entry point (monitor-internal diagnostics and tests only): the
-# first failing export gate, or None when all six hold. It is never part of
+# first failing export gate, or None when all six hold. Its output is
+# protected monitor state: never write it to any log, response or emission.
+# It is never part of
 # a Transmission and does not consult the revision.
 def first_failed_gate(+state: State, +from: Nat, +request: ExportRequest, +now: Nat) -> Maybe<&2, AQ.Gate>:
   AQ.Gates.first_failed(export_gate_list(state, from, request, now))

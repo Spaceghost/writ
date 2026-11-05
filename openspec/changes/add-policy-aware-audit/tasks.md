@@ -18,7 +18,7 @@ openspec/traceability/policy-aware-audit.md for what section 1 does not cover.
 
 - [ ] 2.1 Include required events in the durable authorization transaction; test failures before durability and after index delivery, and document when audit is satisfied without creating orphan spending or partial publication.
 - [ ] 2.2 Record denied attempts without changing rejected business state; test denial-append failure and verify no protected effect or diagnostic fallback occurs, and document the limits of denial completeness during outages.
-- [ ] 2.3 Implement scoped append authentication, sequence checks, idempotent event identities, and trusted-head reconciliation; test mutation, reordering, replay, conflicting identity reuse, and stale-prefix restoration, and document the trusted-anchor assumptions.
+- [ ] 2.3 Implement scoped append authentication, sequence checks, idempotent event identities, and trusted-head reconciliation; test mutation, reordering, replay, conflicting identity reuse, and stale-prefix restoration, and document the trusted-anchor assumptions. Open item: the version 1 wire format carries no policy, so durable storage must persist, or re-derive from authenticated monitor state, the policy recorded at decision time, and may append only wrapper output; a decoded event is never re-logged.
 - [ ] 2.4 Implement bounded append/query resources and policy-safe error envelopes; test queue exhaustion and protected error variants, and document residual timing and traffic assumptions without claiming constant-time behavior.
 
 ## 3. Integration evidence

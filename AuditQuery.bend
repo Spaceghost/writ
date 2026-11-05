@@ -113,7 +113,7 @@ import ./AuditEvent.bend as AE
 # work runs out before the page is full and before the view ends, the whole
 # response is refused, with no partial page. Seeing whether visible events
 # remain after a full page is free.
-# Residual channels (not claimed closed; carried to the Task 6 gaps):
+# Residual channels (not claimed closed; recorded in docs/AUDIT.md (Residual channels)):
 # - Timing: building the view walks the whole log, so compute time depends
 #   on hidden events. The design leaves this to each deployment's
 #   confidentiality contract; this model claims no constant time.
@@ -185,8 +185,11 @@ type ReadGrants is Data:
   NoReadGrants{}
   Granted{head: ReadGrant, rest: ReadGrants}
 
-# The stored events in append order: each the record (event and policy) one
-# AuditEvent wrapper returned. A stream has no counter, length or head field.
+# The stored events in append order: each expected to be the record (event
+# and policy) one AuditEvent wrapper returned in the same invocation. This is
+# a precondition on the monitor, not a checked fact: `Recorded` is a public
+# constructor, and a decoded event carries no policy and must never be
+# re-logged. A stream has no counter, length or head field.
 type Stored is Data:
   NoRecords{}
   Logged{head: AE.Recorded, rest: Stored}
@@ -654,7 +657,9 @@ def Gates.first_failed(gates: Gates) -> Maybe<&2, Gate>:
       first_failed_at(condition, gate, Gates.first_failed(rest))
 
 # Public entry point (monitor-internal diagnostics and tests only): the
-# first failing query gate, or None when all nine hold. It is never part of
+# first failing query gate, or None when all nine hold. Its output is
+# protected monitor state: never write it to any log, response or emission.
+# It is never part of
 # a Response. It does not consult the revision, which `respond` checks first.
 def first_failed_gate(+state: State, +from: Nat, +query: Query, +sink_id: Nat, +now: Nat) -> Maybe<&2, Gate>:
   Gates.first_failed(query_gate_list(state, from, query, sink_id, now))

@@ -66,8 +66,8 @@ no decision.
 
 | Module | Entry point | What it does |
 | --- | --- | --- |
-| `AuditEvent.bend` | `audited_admit(plan, context, labels, caller, diagnostic, event_id)` | Calls `Transfer.admit` once, returns its decision unchanged, and returns the projected event and its policy (`Recorded`). |
-| `AuditEvent.bend` | `audited_commit(session, ..., ref, expected_frontend, context, labels, diagnostic, event_id)` | Calls `DataOS.commit_from_capability` once, returns its result unchanged, and returns the projected event and its policy. |
+| `AuditEvent.bend` | `audited_admit(plan, context, labels, caller, diagnostic, event_id)` | Calls `Transfer.admit` once, returns its decision unchanged, and also returns the projected event and its policy (`Recorded`) to the monitor, for its log. Only the decision goes to the requester. |
+| `AuditEvent.bend` | `audited_commit(session, ..., ref, expected_frontend, context, labels, diagnostic, event_id)` | Calls `DataOS.commit_from_capability` once, returns its result unchanged, and also returns the projected event and its policy to the monitor, for its log. Only the result goes to the requester. |
 | `AuditEvent.bend` | `releasable(snapshot, epoch, policy, sink)`, `event_streams(recorded)` | Whether a stored event may reach a sink, and the owner streams it joins. |
 | `AuditEvent.bend` | `encode`, `decode`, `field_allowlist`, `field_allowed` and the named constants | The canonical version 1 encoding. This is a boundary, not policy. |
 | `AuditEvent.bend` | the record accessors, `EventRecord.equal`, `FormatError.equal`, `DecodeResult.equal`, `DecodeResult.event` | Read a record or compare two records. |
@@ -274,7 +274,8 @@ false, and no registered sink makes gate 9 false. Every refusal is the same
 value, `Refused{public_denial()}`, and `PublicDenial` has one constructor,
 `Unavailable{}` (law `audit_refusal_is_constant`). An authorized caller whose
 budget ran out learns nothing a stranger does not. The gate names exist for
-`first_failed_gate` only.
+`first_failed_gate` only. Its output is protected monitor state: it is never
+written to any log, response or emission.
 
 The supported view. A page is built only from the caller's visible view:
 the stored events, in append order, that are in the owner's stream
@@ -382,7 +383,7 @@ these inputs is a host or monitor obligation. None is met today.
 | The DLM snapshot and the live epoch | `releasable`, gate 5, cursors | The monitor's epoch state. |
 | The registered sinks (label, clearance, tolerance) | gate 2, `releasable`, emissions | The monitor's sink registry. A caller names a sink only by id. |
 | Read grants and export grants | gates 3 to 6 | Installed by the monitor in section 1. Who approves them on a real host is a recorded gap: see the open questions below. |
-| The event log | views, pages, emissions | Monitor-installed state in section 1. Section 2 supplies the durable, verifiable append. |
+| The event log | views, pages, emissions | Monitor-installed state in section 1. Section 2 supplies the durable, verifiable append. Precondition: the wrappers are the only producers of a stored event that the model provides, but `Recorded` is a public constructor, so the monitor stores only the `recorded` value a wrapper returned in the same invocation. A decoded event carries no policy and is never re-logged. Reviewed-only, no test shows it. |
 | `expected_revision` | the stale-revision check | The caller's claim, compared with the installed revision. The host must install each accepted state atomically and serialize installs (AB-006). |
 | `now` | exclusive expiry | The monitor's trusted, monotone clock. |
 
@@ -393,6 +394,22 @@ The host also has these obligations:
   call them;
 - deliver a `Sent` transmission's effects only to the named sink's binding;
 - send nothing derived from the log outside `respond` and `transmit`;
+- return to the caller only `AuditedAdmission.decision` or
+  `AuditedCommit.result`. The `event` and `recorded` values go only to the
+  monitor's log. They are never returned, logged elsewhere, or sent to any
+  party except through `respond` or `transmit`. `recorded.policy` lists the
+  owners and labels of every object the plan names and of the authoritative
+  context, which the requester did not name, so returning it would be a
+  label-table oracle;
+- store in the log only the `recorded` value a wrapper returned in the same
+  invocation. `Recorded` is a public constructor, so the model cannot tell a
+  forged record from a genuine one. A decoded event carries no policy and is
+  never re-logged;
+- deliver a `Page` only through the resolved sink's binding;
+- deliver a `Page` or `Sent` value within the same serialized step as the call
+  that produced it, never after a later state is installed (AB-006). Both
+  `respond` and `transmit` authorize at the call, so a value kept and
+  delivered after a revocation would be released after revocation;
 - rebuild every input above from current state for each call.
 
 ## Residual channels
@@ -468,7 +485,14 @@ each until they answer.
    issuance for event-read and export grants".
 3. Metrics count only events releasable to the export sink, so they
    undercount. Is that acceptable to operators, or should a metric that a
-   hidden event would affect be withheld entirely?
+   hidden event would affect be withheld entirely (withholding would itself
+   reveal hidden events, see the ruling above)?
+
+Open item for section 2 (task 2.3), not a question for the owners: the
+version 1 wire format carries no policy. Durable storage must therefore
+persist the policy recorded at decision time, or re-derive it from
+authenticated monitor state, and may append only wrapper output. A decoded
+event cannot be re-labelled from the wire.
 
 ## What this document does not claim
 

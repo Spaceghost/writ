@@ -494,15 +494,7 @@ def receipt_admission() -> AE.EventRecord:
 # per conjunct, unchanged and in the original order. Written inline in
 # one def, each of these checks exceeded the native backend's 247-word
 # function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
-# A def named `protected_content_K_J` is conjunct J of the K-th check of `protected_content`, counting
-# from 0.
-
-# Native arity: each check of `protected_content` named below is split into one def
-# per conjunct, unchanged and in the original order. Written inline in
-# one def, each of these checks exceeded the native backend's 247-word
-# function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# `bend Tests.bend -o <binary>`; see verification/policy-aware-audit.txt, "Native arity layout", for the full lesson).
 # A def named `protected_content_K_J` is conjunct J of the K-th check of `protected_content`, counting
 # from 0.
 def protected_content_5_0() -> Bool:
@@ -546,15 +538,7 @@ def committed_event() -> AE.EventRecord:
 # per conjunct, unchanged and in the original order. Written inline in
 # one def, each of these checks exceeded the native backend's 247-word
 # function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
-# A def named `committed_recorded_K_J` is conjunct J of the K-th check of `committed_recorded`, counting
-# from 0.
-
-# Native arity: each check of `committed_recorded` named below is split into one def
-# per conjunct, unchanged and in the original order. Written inline in
-# one def, each of these checks exceeded the native backend's 247-word
-# function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# `bend Tests.bend -o <binary>`; see verification/policy-aware-audit.txt, "Native arity layout", for the full lesson).
 # A def named `committed_recorded_K_J` is conjunct J of the K-th check of `committed_recorded`, counting
 # from 0.
 def committed_recorded_0_0() -> Bool:
@@ -2145,7 +2129,7 @@ def commit_releasable(policy: AE.EventPolicy, sink: AE.Sink) -> Bool:
 # Native arity: the 5th check of `binding_checks` (counting from 0) is a single
 # conjunct whose two operands, written inline in one def, exceeded the native
 # backend's 247-word function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# `bend Tests.bend -o <binary>`; see verification/policy-aware-audit.txt, "Native arity layout", for the full lesson).
 # `binding_checks_5_0_J` is operand J of that check's `AE.EventRecord.equal`,
 # unchanged and in the original order.
 def binding_checks_5_0_0() -> AE.EventRecord:
@@ -2214,15 +2198,7 @@ def owners_has(xs: AE.Owners, +p: D.Principal) -> Bool:
 # per conjunct, unchanged and in the original order. Written inline in
 # one def, each of these checks exceeded the native backend's 247-word
 # function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
-# A def named `stream_checks_K_J` is conjunct J of the K-th check of `stream_checks`, counting
-# from 0.
-
-# Native arity: each check of `stream_checks` named below is split into one def
-# per conjunct, unchanged and in the original order. Written inline in
-# one def, each of these checks exceeded the native backend's 247-word
-# function-arity limit ("Error: an arity over 247" from
-# `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
+# `bend Tests.bend -o <binary>`; see verification/policy-aware-audit.txt, "Native arity layout", for the full lesson).
 # A def named `stream_checks_K_J` is conjunct J of the K-th check of `stream_checks`, counting
 # from 0.
 def stream_checks_0_0() -> Bool:

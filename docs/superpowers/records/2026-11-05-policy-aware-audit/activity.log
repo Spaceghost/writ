@@ -88,3 +88,5 @@
 2026-11-05T19:05:02Z	controller	task 6 reported; task review and final review dispatched
 2026-11-05T19:13:01Z	controller	Task 6 review: spec APPROVED, quality APPROVED; two comment nits (duplicated arity comments at AuditTests.bend 493/501, 545/553, 2213/2221; pointer should cite verification/policy-aware-audit.txt). Folded into the final-review fix round.
 2026-11-05T19:17:48Z	controller	Final review: Needs fixes (B1 wrapper return value must stay in the monitor; B2 wrapper exclusivity is an untested precondition, forged Recorded visible). Ruling: both doc-only fixes as specified, plus N1-N5 and the Task 6 pointer nit in the same single fix round; tokens must stay identical to 0d886cb.
+2026-11-05T19:18:05Z	implementer	final fix round started
+2026-11-05T19:20:14Z	implementer	final fix round committed (B1 B2 N1-N5)
