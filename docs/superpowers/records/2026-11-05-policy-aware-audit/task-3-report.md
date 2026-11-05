@@ -350,3 +350,108 @@ Environment: `export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/b
    membership from leaking through a query.
 8. **Count.** 43 checks against an estimate of about 28. The extra checks
    come from mutation survivors and from the obligations.
+
+## Fix round 1
+
+Input: `task-3-review.md`. Both verdicts were NEEDS_FIXES: I1 (ruled), I2,
+I3, M1, M2 and M3.
+
+### I1: stream membership (ruled)
+
+- Added `streams_for(scope, subject, policy)` and the public entry point
+  `event_streams(r: Recorded)` after `event_owners`, as the review
+  prototyped them.
+  - A `ScopeNotRead{}` event joins the requester's own stream only. That is
+    owner `Influence.owner(requester_influence(subject))`, which is Top, and
+    so nobody's stream, when the subject cannot name a principal.
+  - A `ScopeRead` event joins the stream of every owner among its
+    influences.
+  - `event_streams` reads only the stored record's projected scope and
+    authenticated subject.
+  - The policy is unchanged, so `audit_outcome_never_lowers_policy` stands
+    and visibility is never widened.
+- `event_owners` is now an implementation helper: "the distinct owners
+  among the influences". The header lists `event_streams` as the policy
+  entry point.
+- The stream rule is stated in the module header in two places: beside the
+  `ScopeNotRead{}` rule in the allowlist section, and in the "Event policy"
+  paragraph.
+- This refines the plan's "Streams and ownership" ruling for `ScopeNotRead`
+  events. **Task 4 must use `event_streams`, not `event_owners`.**
+- New checks, each the review's probe or one of its cases:
+  - "AU-002 an early-denied (ScopeNotRead) event joins only the requester's
+    stream, whatever objects the plan names". Mallory's Stale plan names 11
+    and 12 under `shared_labels()`. The check confirms the denial is Stale,
+    the scope is not read, Bob is among the influence owners, and
+    `event_streams` is exactly `Owned{mallory()}`.
+  - "AU-002 a ScopeRead denial joins every influence owner's stream".
+  - "AU-002 an early-denied event from a subject of 2^32 joins only Top's
+    stream".
+
+### I2 and I3: survivors X2, X4, X6, X7
+
+Each survivor has a new check in `table_fail_closed` or `binding_checks`:
+
+- "AU-002 a duplicate label entry behind an unrelated head entry gives the
+  maximal-restriction influence and no fixture sink". Kills X2.
+- "AU-002 a duplicated entry for the second source gives the maximal
+  restriction at that source's position". Here `source_influences` is
+  `[data_of(bob()), maximal_data()]`. Kills X4.
+- "AU-002 a label entry for another version of the same object does not
+  match: maximal restriction, no fixture sink". The table holds only
+  `ObjectVersion{11, 3}`, and the plan names version 4. Kills X7.
+- "AU-002 a commit event's influences are the plan's objects as data and
+  control, the transfer context's policy objects, the binding and the
+  requester, in that order". This is an exact `influences_eq` list. Kills
+  X6.
+
+### M1 to M3 (comments)
+
+- The subject-numbering assumption is stated in the `requester_influence`
+  comment and in the header's "Event policy" paragraph: "no
+  subject-to-principal mapping exists yet (recorded gap for Task 6)".
+- The residual one-bit channel is stated in the header beside the stream
+  rule:
+  - Within the requester's own stream, whether an early-denied event is
+    releasable depends on the table entries for the objects she named.
+  - It is fail-safe, and removing it would make the policy depend on the
+    outcome.
+  - It is carried as a named observation for the Task 4 brief and the
+    Task 6 gaps, next to the timing channel.
+
+### Mutation pass (fix round)
+
+Seven mutants were added to `mutate3.py`:
+- S1: the ScopeNotRead arm returns `event_owners`.
+- S2: the ScopeNotRead arm uses subject 0.
+- S3: the ScopeRead arm returns the requester only.
+- The review's X2, X4, X6 and X7.
+
+The table at `../writ-build/policy-aware-audit/mutants/task-3.tsv` is
+rewritten by the full rerun.
+
+Full rerun on the fix tree: **71 of 71 killed, 0 equivalent.** That is the 64 earlier mutants plus the 7 new ones. The 64 are still killed by the checks listed in the main table, or by an earlier check in the same group. New rows:
+
+| id | mutation | killed by | proofs |
+|---|---|---|---|
+| S1 | ScopeNotRead stream is every influence owner | "AU-002 an early-denied (ScopeNotRead) event joins only the requester's stream, whatever objects the plan names" | proofs check |
+| S2 | ScopeNotRead stream uses subject 0 | "AU-002 an early-denied (ScopeNotRead) event joins only the requester's stream, whatever objects the plan names" | proofs check |
+| S3 | ScopeRead stream is the requester only | "AU-002 a ScopeRead denial joins every influence owner's stream" | proofs check |
+| X2 | duplicate detected only when the head entry matches | "AU-002 a duplicate label entry behind an unrelated head entry gives the maximal-restriction influence and no fixture sink" | proofs check |
+| X4 | duplicate detected only for the first source | "AU-002 a duplicated entry for the second source gives the maximal restriction at that source's position" | proofs check |
+| X6 | commit_policy drops context_influences | "AU-002 a commit event's influences are the plan's objects as data and control, the transfer context's policy objects, the binding and the requester, in that order" | proofs check |
+| X7 | lookup ignores the version | "AU-002 a label entry for another version of the same object does not match: maximal restriction, no fixture sink" | proofs check |
+
+### Runs (fix round)
+
+- `bend AuditEvent.bend --check-only` prints `ALL PROOFS CHECK`.
+- `bend AuditTests.bend` prints `Audit: 198 checks passed`, 7 more than
+  191.
+- `bend Tests.bend` ends with `ALL LIBRARY TESTS PASSED` (exit 0). It prints
+  1626 `^PASS(:| )` lines and 0 FAIL lines: 1428 plus 198 = 1626.
+- `bend PROOF.bend` prints `ALL PROOFS CHECK` (exit 0) with 23 laws. No law
+  changed. `git diff master -- LAWS.bend PROOF.bend Tests.bend` removes 0
+  lines.
+- Captures are `check-t3f1.txt`, `audit-t3f1.txt`, `tests-t3f1.txt` and
+  `proof-t3f1.txt` in `../writ-build/policy-aware-audit/`.
+- Not run: `--verdict`, native and GPU (Task 6).

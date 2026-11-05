@@ -60,6 +60,10 @@ import ./DataOS.bend as OS
 #     ruling, fail closed). The classification is by the reason the library
 #     returned (`denial_reads_scope`), never by re-running a check; a reason
 #     that can occur both early and late is treated as early.
+#     Stream rule beside it: a `ScopeNotRead{}` event joins the requester's
+#     own stream only (`event_streams`), so objects named in a plan no grant
+#     vouched for cannot place it in another owner's stream; its policy
+#     still carries every influence, so visibility is never widened.
 #   - Commit: the plan of the session the facade was given, which is
 #     monitor-owned negotiated state (owner approvals, budget, hold), not a
 #     proposal made at this call. It is recorded for accepted and rejected
@@ -95,7 +99,23 @@ import ./DataOS.bend as OS
 # the maximal-restriction influence (owner Top, `D.maximal_restriction()`),
 # so the event fails closed. Release (`releasable`) needs every influence to
 # flow to the sink label and both bit sets within the sink's clearance and
-# tolerance. The two obligations Task 1's review placed here are met so:
+# tolerance.
+# Streams: `event_streams` is the stream rule. An event read under a vouched
+# scope (`ScopeRead`) joins the stream of every owner among its influences;
+# an early-denied `ScopeNotRead{}` event joins the requester's own stream
+# only (Top's, which is nobody's, when the subject cannot name a principal).
+# `event_owners` is only the distinct owners among the influences.
+# Residual channel (observation, carried to Task 4 and the Task 6 gaps,
+# beside the timing channel): within the requester's own stream, whether an
+# early-denied event is releasable to her sink still depends on the table
+# entries for the objects she named, so each request reveals one bit of the
+# label table (does a named object carry a label her sink satisfies). It
+# only ever narrows visibility, and removing it would make the policy
+# depend on the outcome, contrary to `audit_outcome_never_lowers_policy`.
+# Requester numbering: `Named{subject}` assumes the monitor numbers frontend
+# subjects as DLM named principals; no subject-to-principal mapping exists
+# yet (recorded gap for Task 6).
+# The two obligations Task 1's review placed here are met so:
 # 1. Every admission event's policy includes the requesting subject's own
 #    label (`requester_influence`), so a denial is visible only to a sink
 #    that may learn that the requester asked; even a vouched scope and the
@@ -205,7 +225,7 @@ import ./DataOS.bend as OS
 #
 # Public entry points: `audited_admit` and `audited_commit`, plus the record
 # accessors and `EventRecord.equal`; for the policy, `releasable` and
-# `event_owners`; for the encoding, `encode`, `decode`,
+# `event_streams`; for the encoding, `encode`, `decode`,
 # `field_allowlist`, `field_allowed`, the named constants (format version,
 # kind, phase, outcome and field tags, `max_sources`, `word_limit`,
 # `max_words`), `FormatError.equal`, `DecodeResult.equal` and
@@ -216,7 +236,8 @@ import ./DataOS.bend as OS
 # `source_influences`, `destination_influence`, `decision_influences`,
 # `context_influences`, `requester_influence`, `binding_influence`,
 # `context_secrecy`, `context_untrusted`, `admission_policy`,
-# `commit_policy`, `influences_flow`, `Influences.cons`, `Influences.append`)
+# `commit_policy`, `influences_flow`, `event_owners`, `streams_for`,
+# `Influences.cons`, `Influences.append`)
 # and the encoding and decoding helpers) is an exported implementation
 # helper; calling one performs none of the library's checks, records no
 # decision, and (for the codec helpers) skips the decoder's other checks.
@@ -339,7 +360,8 @@ type Recorded is Data:
 type Sink is Data:
   Sink{id: Nat, label: D.Label, clearance: T.Bits64, tolerated: T.Bits64}
 
-# The owners whose streams an event belongs to, in first-appearance order.
+# A list of distinct owners, in first-appearance order (influence owners, or
+# the streams an event joins; see `event_streams`).
 type Owners is Data:
   NoOwners{}
   Owned{head: D.Principal, rest: Owners}
@@ -758,7 +780,9 @@ def context_influences(+labels: Labels, +context: T.Context) -> Influences:
 # requester's information, so an event is visible only to a sink that may
 # learn it. A subject that does not fit one word cannot name a DLM principal
 # without aliasing, so it fails closed; an unregistered subject's label is
-# refused by `D.flows` at release.
+# refused by `D.flows` at release. Assumes the monitor numbers frontend
+# subjects as DLM named principals; no subject-to-principal mapping exists
+# yet (recorded gap for Task 6).
 def requester_label(+p: D.Principal) -> D.Label:
   D.Label{D.Rule{p, p}, D.Rule{D.Bottom{}, D.Bottom{}}}
 
@@ -939,10 +963,34 @@ def collect_owners(xs: Influences, +acc: Owners) -> Owners:
       +p = Influence.owner(h)
       collect_owners(t, owners_add(owners_contain(acc, p), acc, p))
 
-# Public entry point. Every distinct owner among the influences, in first
-# appearance order: the event belongs to each of these owners' streams.
+# The distinct owners among the influences, in first-appearance order. This
+# is not stream membership; `event_streams` is.
 def event_owners(influences: Influences) -> Owners:
   collect_owners(influences, NoOwners{})
+
+# Stream membership by scope. An admission event with `ScopeNotRead{}` was
+# denied before any monitor grant vouched for the plan, so the objects the
+# caller named must not choose which owners' streams it joins: it joins the
+# requester's own stream only (owner Top when the subject cannot name a DLM
+# principal, which is nobody's stream). Its policy is unchanged and still
+# carries every influence, so visibility is never widened. Every other event
+# joins the stream of each owner among its influences.
+def streams_for(scope: Scope, +subject: Nat, policy: EventPolicy) -> Owners:
+  match scope:
+    case ScopeNotRead{}:
+      Owned{Influence.owner(requester_influence(subject)), NoOwners{}}
+    case ScopeRead{_, _, _, _, _, _}:
+      event_owners(EventPolicy.influences(policy))
+
+# Public entry point. The owners whose streams a stored event belongs to,
+# from the record's own projected scope and authenticated subject; it reads
+# no request field.
+def event_streams(r: Recorded) -> Owners:
+  match r:
+    case Recorded{event, policy}:
+      match event:
+        case EventRecord{_, _, _, subject, _, scope, _, _}:
+          streams_for(scope, subject, policy)
 
 # --- Public entry points -----------------------------------------------------
 

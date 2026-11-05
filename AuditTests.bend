@@ -1874,6 +1874,22 @@ def duplicated() -> AE.Labels:
 def conflicting() -> AE.Labels:
   AE.Labelled{AE.ObjectLabel{bob_source(), alice(), owner_label(alice())}, bob_labels()}
 
+# The duplicate of object 11 sits behind an unrelated head entry.
+def duplicated_behind() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{TF.destination_object(), alice(), owner_label(alice())},
+    AE.Labelled{AE.ObjectLabel{bob_source(), bob(), owner_label(bob())},
+      AE.Labelled{AE.ObjectLabel{bob_source(), bob(), owner_label(bob())}, AE.NoLabels{}}}}
+
+# shared_labels() with a second identical entry for Alice's object 12, the
+# second source of shared_plan().
+def second_source_duplicated() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{alice_source(), alice(), owner_label(alice())}, shared_labels()}
+
+# Only version 3 of object 11 is labelled; bob_plan names version 4.
+def other_version() -> AE.Labels:
+  AE.Labelled{AE.ObjectLabel{T.ObjectVersion{11n, 3n}, bob(), owner_label(bob())},
+    AE.Labelled{AE.ObjectLabel{TF.destination_object(), alice(), owner_label(alice())}, AE.NoLabels{}}}
+
 def table_policy(labels: AE.Labels) -> AE.EventPolicy:
   admission_policy_of(admit_labelled(bob_plan(), bob_origin_context(), labels, 0n))
 
@@ -1904,6 +1920,13 @@ def table_fail_closed() -> IO(Unit):
       "AU-002 two identical label entries for one object give the maximal-restriction influence and no fixture sink")
     Test.check(lookup_ambiguous(AE.label_lookup(conflicting(), bob_source())) && fails_closed(conflicting()),
       "AU-002 two label entries naming different owners give the maximal-restriction influence and no fixture sink")
+    Test.check(lookup_ambiguous(AE.label_lookup(duplicated_behind(), bob_source())) && fails_closed(duplicated_behind()),
+      "AU-002 a duplicate label entry behind an unrelated head entry gives the maximal-restriction influence and no fixture sink")
+    Test.check(influences_eq(AE.source_influences(second_source_duplicated(), T.Plan.sources(shared_plan())),
+      AE.Influenced{data_of(bob()), AE.Influenced{maximal_data(), AE.NoInfluences{}}}),
+      "AU-002 a duplicated entry for the second source gives the maximal restriction at that source's position")
+    Test.check(lookup_missing(AE.label_lookup(other_version(), bob_source())) && fails_closed(other_version()),
+      "AU-002 a label entry for another version of the same object does not match: maximal restriction, no fixture sink")
     Test.check(releasable_to_none(table_policy(AE.NoLabels{}), fixture_sinks()),
       "AU-002 an empty label table gives an event releasable to no fixture sink")
     Test.check(influence_eq(AE.object_influence(unlabelled(), bob_source(), AE.DataEdge{}), maximal_data()) &&
@@ -2078,8 +2101,50 @@ def binding_checks() -> IO(Unit):
     Test.check(AE.EventRecord.equal(AE.Recorded.event(AE.AuditedCommit.recorded(commit_labelled(FT.context(), 7n))),
       AE.AuditedCommit.event(commit_labelled(FT.context(), 7n))),
       "AU-002 the commit record holds the same event the wrapper returns")
+    Test.check(influences_eq(xs,
+      AE.Influenced{data_of(bob()), AE.Influenced{data_of(alice()),
+        AE.Influenced{control_of(bob()), AE.Influenced{control_of(alice()),
+          AE.Influenced{control_of(bob()), AE.Influenced{control_of(alice()),
+            AE.Influenced{AE.Influence{alice(), D.join(D.secret_untrusted(), D.secret_untrusted()), AE.ControlEdge{}},
+              AE.Influenced{requester_of(subject_seven()), AE.NoInfluences{}}}}}}}}}),
+      "AU-002 a commit event's influences are the plan's objects as data and control, the transfer context's policy objects, the binding and the requester, in that order")
     Test.check(event_policy_equal(commit_policy_of(revoked_context(), 7n), commit_policy_of(FT.context(), 7n)),
       "AU-002 a rejected commit has the accepted commit's policy (the policy does not read the result)")
+
+# --- event_policy: stream membership (event_streams) --------------------------
+
+# Mallory's plan names Bob's object 11 and Alice's object 12 under a stale
+# stamp, so admission denies Stale before any grant vouched for the plan.
+def stale_shared_plan() -> T.Plan:
+  T.Plan{T.Stamp{9n, 9n, 9n}, 99n, T.OCons{bob_source(), T.OCons{alice_source(), T.OEnd{}}},
+    TF.destination_object(), TF.code(), T.Summarize{}, 2}
+
+def stale_by(subject: Nat) -> AE.AuditedAdmission:
+  admit_labelled(stale_shared_plan(), bob_admitted_context(), shared_labels(), subject)
+
+def streams_of(a: AE.AuditedAdmission) -> AE.Owners:
+  AE.event_streams(AE.AuditedAdmission.recorded(a))
+
+def owners_has(xs: AE.Owners, +p: D.Principal) -> Bool:
+  match xs:
+    case AE.NoOwners{}:
+      False{}
+    case AE.Owned{h, t}:
+      principal_eq(h, p) || owners_has(t, p)
+
+def stream_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(TF.denied_as(AE.AuditedAdmission.decision(stale_by(2n)), T.Stale{}) &&
+      no_scope(AE.AuditedAdmission.event(stale_by(2n))) &&
+      owners_has(AE.event_owners(AE.EventPolicy.influences(admission_policy_of(stale_by(2n)))), bob()) &&
+      owners_eq(streams_of(stale_by(2n)), AE.Owned{mallory(), AE.NoOwners{}}),
+      "AU-002 an early-denied (ScopeNotRead) event joins only the requester's stream, whatever objects the plan names")
+    Test.check(owners_eq(streams_of(bob_audited(bob_origin_context())),
+      AE.event_owners(AE.EventPolicy.influences(bob_policy(bob_origin_context())))) &&
+      owners_has(streams_of(bob_audited(bob_origin_context())), bob()),
+      "AU-002 a ScopeRead denial joins every influence owner's stream")
+    Test.check(owners_eq(streams_of(stale_by(two_32())), AE.Owned{D.Top{}, AE.NoOwners{}}),
+      "AU-002 an early-denied event from a subject of 2^32 joins only Top's stream")
 
 def event_policy() -> IO(Unit):
   do IO<Unit>:
@@ -2091,10 +2156,11 @@ def event_policy() -> IO(Unit):
     outcome_independent()
     control_checks()
     binding_checks()
+    stream_checks()
 
 def main() -> IO(Unit):
   do IO<Unit>:
     event_projection()
     event_format()
     event_policy()
-    IO.print("Audit: 191 checks passed")
+    IO.print("Audit: 198 checks passed")
