@@ -15,3 +15,5 @@
 2026-11-05T15:04:02Z	implementer	fix round 1 mutation batch started: 86 mutants (adds S1-S15 scope rule, E19-E21 Scope.equal), output ../writ-build/policy-aware-audit/mutants/task-1-fix1.tsv, script scratchpad/policy-aware-audit/mutate.py
 2026-11-05T15:08:15Z	implementer	fix round 1 batch 1: survivors S14 (admitted scope untested), T1 (Read/Payment pair no longer isolates Read/Write tags) plus equivalents E1/E2/E5; added checks for admitted scope and denial_equal over all ten reasons (60 checks); rerunning whole batch
 2026-11-05T15:12:13Z	implementer	fix round 1 final batch: 86 mutants, 83 killed (14 also by a law), 3 equivalent (E1, E2, E5); Tests.bend 1428 plus 60 = 1488, PROOF.bend ALL PROOFS CHECK 21 laws; report fix round 1 section appended; committing
+2026-11-05T15:12:31Z	controller	fix round 1 reported (ScopeNotRead); scoped re-review dispatched
+2026-11-05T15:14:49Z	controller	task 1 complete; task 2 dispatched (encoding)
