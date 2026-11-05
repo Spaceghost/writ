@@ -1,0 +1,55 @@
+2026-11-04T21:25:55Z	controller	lane created from master 5cd0ace; plan committed
+2026-11-04T21:27:29Z	implementer	task 1 started: read brief, plan constraints, fault and exit evidence, scripts
+2026-11-04T21:28:26Z	implementer	template edited (Kraftfile signals line, build.sh flag, check-fault.sh message check, overflow reference); generated C matches recorded hashes; building sets sigfault (overflow, exhaust) and sigcodes (hello, die, exit) with the template
+2026-11-04T21:31:31Z	implementer	heartbeat: builds running (hello rc=0 wall=167s overflow rc=1 wall=185s )
+2026-11-04T21:32:27Z	implementer	heartbeat: sigcodes hello built (167 s); sigfault overflow build failed fetching musl-1.2.3.tar.gz (download, not compile; retry after the chain); exhaust, die building
+2026-11-04T21:36:27Z	implementer	first pass: hello and exit built; overflow, exhaust, die failed downloading musl-1.2.3.tar.gz (musl-libc.org slow, wget 22-38 s by hand; not a compile error); rebuilding those with up to 3 attempts on that download failure only
+2026-11-04T21:36:59Z	implementer	sigcodes checks: hello 33 PASS, exit 39 PASS, +RTS --threads 0 and --bogus 17, negative control FAIL as expected; waiting on overflow, exhaust, die rebuilds
+2026-11-04T21:39:36Z	implementer	overflow image built with the template (141 s); check-fault.sh ovs1, ovs2: message before crash screen, QEMU 253, PASS; die 35 PASS; exhaust building
+2026-11-04T21:42:03Z	implementer	exhaust with signals: crash 253 at deliver.c:125 altstack assertion, no message (limit kept); unikernel-fault-qemu.txt rewritten (adopted configuration first, trial kept as history); refreshing unikernel-exit-codes.txt
+2026-11-04T21:42:55Z	implementer	exit-codes.txt refreshed; report written; committing task 1 (DONE_WITH_CONCERNS)
+2026-11-04T21:43:18Z	controller	task 1 reported DONE_WITH_CONCERNS; rulings on the template file and set names; reviewer dispatched
+2026-11-04T21:45:03Z	controller	task 1 review APPROVED; task 2 dispatched (corpus, effects, channel rebuilds)
+2026-11-04T21:47:08Z	implementer	task 2 started: read brief, plan constraints, task 1 report/review, scripts, evidence files; making sets sigcorpus, sigcorpustests, sigeffects, sigchannel with mkapp.sh
+2026-11-04T21:48:11Z	implementer	tests.c emitted (b50856fb..., identical to corpus3's); corpus build started in set sigcorpustests (build.sh, expect 95+ min)
+2026-11-04T21:48:56Z	implementer	example, probe, probefail (scratch), hello, monitor C emitted (examples and monitor byte-identical to earlier; probe.c differs from effects2's in a twin comment only, tokens identical); builds started: sigcorpus (4 examples), sigeffects (probe, probefail, hello), sigchannel (monitor)
+2026-11-04T21:56:11Z	implementer	probe (192 s), probefail (132 s), flow (184 s), transfer (106 s) built first try; booting the effects probe
+2026-11-04T21:57:09Z	implementer	effects: probe 3x check-image PASS (QEMU 33, deltas 103-105 ms, no shutdown hang), run.sh 33; probefail QEMU 35, check FAIL exit 1 as required; hello 33 PASS; monitor still building
+2026-11-04T21:58:13Z	implementer	heartbeat: 4 build wrappers running, 6 builds finished, corpus build running, load 54.98
+2026-11-04T22:07:14Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 27.59
+2026-11-04T22:16:14Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 30.89
+2026-11-04T22:21:02Z	implementer	channel: monitor built (492 s); check-channel accepted and denied PASS (QEMU 33, no shutdown hang), negative control FAIL exit 1, no-port 17, flood 8 refusals 4 decisions QEMU 33, replies == MonitorCheck; writing channel and effects evidence while examples and corpus build
+2026-11-04T22:21:27Z	implementer	examples: flow, transfer, example, gpuexample check-image PASS (QEMU 33, PASS 4/4/16/5, diffs empty), negative control FAIL exit 1, binary checks IO.print PASS; corpus still building
+2026-11-04T22:24:43Z	implementer	effects and channel evidence sections written (current record first, earlier record kept as history); pins gain the signal library and the build flag; corpus cc1 on tests.c still running (about 40 min in)
+2026-11-04T22:25:14Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 26.66
+2026-11-04T22:34:15Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 82.68
+2026-11-04T22:43:16Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 61.82
+2026-11-04T22:52:16Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 263.09
+2026-11-04T23:01:17Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 270.55
+2026-11-04T23:10:18Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 269.21
+2026-11-04T23:19:20Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 221.70
+2026-11-04T23:28:21Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 60.59
+2026-11-04T23:37:22Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 60.51
+2026-11-04T23:46:22Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 42.75
+2026-11-04T23:55:23Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 30.81
+2026-11-05T00:04:23Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 38.35
+2026-11-05T00:13:24Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 31.39
+2026-11-05T00:22:24Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 30.51
+2026-11-05T00:31:25Z	implementer	heartbeat: 2 build wrappers running, 8 builds finished, corpus build running, load 26.77
+2026-11-05T00:31:52Z	implementer	corpus image built (see bwrap log); booting check-corpus.sh at -m 4096 and -m 32
+2026-11-05T00:34:14Z	implementer	corpus: check-corpus.sh PASS at -m 4096 and -m 32 (782 PASS, diff empty, QEMU 33; build 9795 s first try); count negative control FAIL; binary checks on all nine new .dbg as expected; corpus and binary-check evidence written
+2026-11-05T00:35:06Z	implementer	task 2 report written; committing (DONE_WITH_CONCERNS)
+2026-11-05T00:35:59Z	controller	task 2 reported DONE_WITH_CONCERNS; reviewer dispatched
+2026-11-05T00:37:26Z	controller	task 2 review APPROVED; task 3 dispatched (records, box 2.3)
+2026-11-05T00:38:04Z	implementer	task 3 started: reading brief, reports, and the four documents
+2026-11-05T00:39:14Z	implementer	editing docs/UNIKERNELS.md (faults bullet, image configuration pins, open list, needs item 3)
+2026-11-05T00:39:33Z	implementer	editing verification/unikernel-matrix-unikraft.md (Faults row and E4 notes, Limits list)
+2026-11-05T00:39:45Z	implementer	editing UL-006 traceability row and tasks.md box 2.3 with its preface
+2026-11-05T00:40:15Z	implementer	documents edited (plus hosts/unikraft/INVENTORY.md's two stale pin cells); running OpenSpec strict and bend Tests.bend
+2026-11-05T00:41:09Z	implementer	OpenSpec strict 44 passed; bend Tests.bend 782 PASS, ALL LIBRARY TESTS PASSED; report written; committing (DONE_WITH_CONCERNS)
+2026-11-05T00:41:32Z	controller	task 3 reported; task review and final whole-branch review dispatched
+2026-11-05T00:46:06Z	controller	final review: needs fixes (doc rows, merge conflict); fix round dispatched
+2026-11-05T00:46:11Z	implementer	fix round: read final-review.md and task-3-review.md; merging master
+2026-11-05T00:46:39Z	implementer	merge commit f93c84d (traceability: master's UL-002/UL-007, branch's UL-006); fixing INVENTORY.md and UNIKERNELS.md
+2026-11-05T00:47:23Z	implementer	fix round: INVENTORY.md (shutdown SIGTERM row, evidence pointers, check-fault row) and UNIKERNELS.md (:115, item 3) corrected; OpenSpec strict 44 passed after merge; committing
+2026-11-05T00:48:06Z	controller	fix round verified; merging to master

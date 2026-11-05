@@ -8,6 +8,29 @@ runtime or host-layer _exit(1) as 17, a signal death as 19; crash 253 and non-ha
 are unchanged. Reruns under the new map: verification/unikernel-fault-qemu.txt (and the
 corpus rerun in verification/unikernel-corpus-qemu.txt).
 
+CURRENT MAP, RE-RECORDED WITH POSIX SIGNALS (2026-11-04, Unikraft signals lane Task 1):
+the template now enables the experimental CONFIG_LIBPOSIX_PROCESS_SIGNAL and build.sh adds
+"-include uk/config.h" (verification/unikernel-fault-qemu.txt, "Configuration"). Rerun with
+images built from the template by mkapp.sh and build.sh (sets sigcodes and sigfault;
+emulated boots under QEMU 11.1.2 TCG, -no-reboot, the device at 0xf4, CPU only, no GPU;
+-m 1024, Overflow -m 4096), same generated C as below:
+
+| Program (scripts/unikernel/) | Outcome | QEMU exit | Check |
+| --- | --- | --- | --- |
+| Hello.bend | main returns 0 | 33 | check-image.sh sigcodes hello1: PASS |
+| Die.bend | IO.die(Unit, 1, "die") -> exit(1) | 35 | check-image.sh sigcodes die1: PASS |
+| Exit.bend | IO.exit(3) -> exit(3) | 39 | check-image.sh sigcodes exit1: PASS |
+| Hello, "+RTS --threads 0" | err_fail -> _exit(1) | 17 | run.sh sigcodes rtsthreads0 |
+| Hello, "+RTS --bogus" | main returns 1 | 17 | run.sh sigcodes rtsbogus |
+| Overflow.bend | "bend: memory fault (machine stack overflow?)", then Unikraft crash | 253 | check-fault.sh sigfault ovs1, ovs2: PASS |
+| Exhaust.bend | Unikraft crash (altstack assertion), no message | 253 | check-fault.sh sigfault exs1: PASS |
+
+Every value equals the map recorded before the library (unikernel-fault-qemu.txt, trial
+section). Not exercised with the library: the signal value 19 (no program here ends by a
+signal), non-halt 251, and statuses above 108 (255). Commands, hashes, consoles, and wall
+times: unikernel-fault-qemu.txt. The sections below are the 2026-11-03 record under the
+first map, kept as recorded.
+
 Every run below is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine type
 the qemu-system-x86_64 default (pc), -cpu max, -no-reboot on every run, -m 1024 unless
 stated (Overflow: -m 4096). CPU-only; no accelerator device. Versions and install

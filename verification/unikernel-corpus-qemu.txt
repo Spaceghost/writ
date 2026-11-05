@@ -1,3 +1,147 @@
+Unikraft signals lane, Task 2 (2026-11-04/05): the corpus and the four examples rebuilt with
+the shipped template, posix signals present. CURRENT RECORD; everything below the double
+rule further down is the earlier record, kept as recorded (history).
+Recorded 2026-11-04/05 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Configuration. Every image in this section was built from the template as shipped:
+hosts/unikraft/app/Kraftfile (ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce)
+sets CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y' (the experimental posix signal library,
+lib/posix-process/Config.uk:78), and hosts/unikraft/scripts/build.sh
+(67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817) passes
+UK_CFLAGS="-std=gnu11 -include uk/config.h". Resolved configurations (each has
+CONFIG_LIBPOSIX_PROCESS_SIGNAL=y and "# CONFIG_LIBPOSIX_PROCESS_SIGNALFD is not set", and
+equals Task 1's sigfault configuration apart from the CONFIG_UK_APP path line, diff):
+  26db92abdbc46c0f515f52f0eba3d0e45d89533d274d098aa12e4df9eb6cf512  $W/sigcorpustests-unikraft/.config.writ-bend_qemu-x86_64
+  3ebae4e8332db586b9effe09e7e886a390f5e1d2478930c2dea265cd3bc2e50f  $W/sigcorpus-unikraft/.config.writ-bend_qemu-x86_64
+Makefile.uk a2b009186031e819e2c416f020fd0c9acb3dfe5c29e3458705d2b896b05b3f3e, exit_device.c
+c4012e46747e8e9d256ed811cf7cf839dbfa2659989b152be763ab175a2f0d90, host.c not linked
+(WRIT_HOST_LAYER=n).
+
+Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine pc, -cpu max,
+-no-reboot, the exit device -device isa-debug-exit,iobase=0xf4,iosize=0x04 (current map:
+33 = status 0), -append "+RTS --threads 1 --gpu off", stdin /dev/null. One CPU, one lane,
+CPU only: not native, not an accelerated boot, no GPU was used or tested. The corpus's
+'Bend parallel producer' checks ran on one lane with --gpu off; GpuExample prints its
+CPU-fallback line ('Native GPU dispatch requested; CPU fallback is allowed. No device
+attestation.'), which is not GPU evidence. Unikraft 0.21.0 (7351f8b), kraft 0.12.16,
+lib-musl (musl 1.2.3), gcc 16.2.1, Bend 2.0.39 (BEND_NO_TELEMETRY=1). W = realpath
+../writ-unikernel (here /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel);
+nothing built is in the tree. The host was heavily loaded (load average 21 to 277 at the
+samples taken during the corpus build); build and wall times are indicative only.
+
+== Result (signals present) ==
+
+| Program | Set / image | -m | QEMU | PASS lines | console diff | check |
+| --- | --- | --- | --- | --- | --- | --- |
+| Tests.bend | sigcorpustests/tests-qemu | 4096 | 33 | 782 | empty (vs verification/unikernel-corpus-linux-reference.txt) | check-corpus.sh PASS |
+| Tests.bend | sigcorpustests/tests-qemu | 32 | 33 | 782 | empty | check-corpus.sh PASS |
+| Example.bend | sigcorpus/example-qemu | 4096 | 33 | 16 | empty (vs $W/corpus/linux/example-1.txt) | check-image.sh PASS |
+| examples/Flow.bend | sigcorpus/flow-qemu | 4096 | 33 | 4 | empty | check-image.sh PASS |
+| examples/Transfer.bend | sigcorpus/transfer-qemu | 4096 | 33 | 4 | empty | check-image.sh PASS |
+| GpuExample.bend | sigcorpus/gpuexample-qemu | 4096 | 33 | 5 | empty | check-image.sh PASS |
+
+Corpus count unchanged: 782 PASS lines, the same program lines as the Linux reference, last
+line 'ALL LIBRARY TESTS PASSED'. No image hung at shutdown with signals present (every boot
+ended with QEMU 33 in 0.4 to 2.2 s, well inside the timeout).
+
+== Builds (new sets sigcorpustests and sigcorpus; earlier sets stay as history) ==
+
+From the worktree root (export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1):
+  hosts/unikraft/scripts/mkapp.sh sigcorpustests; hosts/unikraft/scripts/mkapp.sh sigcorpus
+    (both Kraftfiles cmp-equal to the template; two app directories so the corpus and the
+    examples built at the same time)
+  bend Tests.bend             -o $W/sigcorpustests/gen/tests.c    (28.6 s)
+  bend Example.bend           -o $W/sigcorpus/gen/example.c
+  bend examples/Flow.bend     -o $W/sigcorpus/gen/flow.c
+  bend examples/Transfer.bend -o $W/sigcorpus/gen/transfer.c
+  bend GpuExample.bend        -o $W/sigcorpus/gen/gpuexample.c
+  hosts/unikraft/scripts/build.sh sigcorpustests tests    # 9795 s (163 min), first attempt
+  hosts/unikraft/scripts/build.sh sigcorpus <n>           # flow 184 s, transfer 106 s,
+                                                          # example 432 s, gpuexample 72 s
+  Every build succeeded on its first attempt: no musl download failure, no retry. The
+  corpus build ran concurrently with the example, effects and channel builds; nearly all of
+  it was one cc1 on the 10.9 MB tests.c at -O2 (cc1 alone ran for more than 2 h 40 min).
+Emitted C (never edited), each byte-identical (cmp) to the C of the earlier record:
+  b50856fbba69f93b950cbb68d05a9d9ce876f5c5cb4f2ba83bb5c1e184bb0602  tests.c (10918962 bytes; = $W/corpus3/gen/tests.c)
+  5fd1f6c3cae4718c219dde40db6be75acb455abdf255f882c1a6672c364386a1  example.c (= $W/gen/corpus/example.c)
+  be7c2e8a444e3e7bce51a45eca09981b5040e2e9593f139a30c13c0a798e9c8d  flow.c
+  15f10d93dcc939183ec946c40a81f96bf7b16fb442c2962a534464d02a1e7d8c  transfer.c
+  2723bf5a0aa2110b31c616683e5df7b437914ca8d82a9d591b5224b0d47999c4  gpuexample.c
+Images (per build: Unikraft embeds the build time, so a clean rebuild of the same inputs
+gives a different hash):
+  f1537f84b43301487a57b16407f0131020e4d5f425b1cd019a93f5d2a7b6e13c  $W/sigcorpustests/images/tests-qemu
+  9c9aeb5945da347ddce96003f3e7d504fe4691176787cbca928c0d40ae3fdb07  $W/sigcorpustests/images/tests-qemu.dbg
+  4acc0e66b024c00b55f3a0b25cf71bc51ce6f52e8d446e0e07f7249f392e182f  $W/sigcorpus/images/example-qemu
+  bfbe0efca948d8e859f181c32d92d6daf47818fbf5fec548cc6ba191f36f8983  $W/sigcorpus/images/example-qemu.dbg
+  ad07d5d6621bb53aad5022fd8464ded1adf794043162d420f3253dd48ea497f3  $W/sigcorpus/images/flow-qemu
+  c3b641cd89eaf054c2b8d60092a5efa04bdce3b6dce908731eb9eab373ef763a  $W/sigcorpus/images/flow-qemu.dbg
+  635614fe829e35d89d5c7cbb8b843ec116974ef21da988f98682c5c120f87659  $W/sigcorpus/images/transfer-qemu
+  2005a8d6336c76ecddb01caed1cb861f869d8ca363cf317c67d297b91b5ee5f3  $W/sigcorpus/images/transfer-qemu.dbg
+  e048ef1f476fd43b92d6711a705f4704e47fa2eae08b31c59eaceacb9ef11183  $W/sigcorpus/images/gpuexample-qemu
+  f0e285916c131acf01ac7ac068d82393600539efc39abaa5f6c3b8dab138c9c2  $W/sigcorpus/images/gpuexample-qemu.dbg
+
+== Runs (signals present) ==
+
+References: verification/unikernel-corpus-linux-reference.txt
+(491859afc5ea771058747b38e772d5ac45aae870a30e69af1875a7cb945e263d, unchanged; 782 PASS
+lines after its '== capture ==' line); $W/corpus/linux/<n>-1.txt for the examples (the
+Linux captures of the earlier record, unchanged).
+run.sh's command line (from run-tests-m4096.log; the others differ in -m, timeout and image):
+  $ timeout 600 qemu-system-x86_64 -accel tcg -nographic -m 4096 -cpu max -kernel $W/sigcorpustests/images/tests-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot  </dev/null; echo $?
+
+$ hosts/unikraft/scripts/check-corpus.sh sigcorpustests tests-m4096 600 4096; echo $?
+diff: empty
+PASS lines: 782
+last line: ALL LIBRARY TESTS PASSED
+QEMU exit: 33
+log: $W/sigcorpustests/logs/run-tests-m4096.log; result: PASS
+0
+  (wall 2.2 s; run-tests-m4096.log ff7cadb0a3294b0135ec583ab4b62be5a358fd3029a22ba4178d6a9af43c8b08,
+   .raw 567a8b09b51d19efbf7e39d22608ebfa106c016f6250534284255ee10cfc7680)
+$ hosts/unikraft/scripts/check-corpus.sh sigcorpustests tests-m32 600 32; echo $?
+diff: empty
+PASS lines: 782
+last line: ALL LIBRARY TESTS PASSED
+QEMU exit: 33
+log: $W/sigcorpustests/logs/run-tests-m32.log; result: PASS
+0
+  (wall 1.8 s; run-tests-m32.log 757af82f1dec78056cc9ed36aec1ffcf00aa1ea64d338799b24aef2aa7642c75,
+   .raw 062834c42572e8bd46f2294ad547aeef585e44d0d99834ceeeea860b9ac5e2f2)
+Negative control of the count check (the same capture, a changed expectation; must fail):
+$ WRIT_NO_BOOT=1 WRIT_CORPUS_PASS=783 hosts/unikraft/scripts/check-corpus.sh sigcorpustests tests-m4096; echo $?
+diff: empty
+PASS lines: 782, expected 783
+last line: ALL LIBRARY TESTS PASSED
+QEMU exit: 33
+log: $W/sigcorpustests/logs/run-tests-m4096.log; result: FAIL
+1
+
+Examples:
+$ hosts/unikraft/scripts/check-image.sh sigcorpus s2-<n>-m4096 <n> $W/corpus/linux/<n>-1.txt 33 <pass> 300 4096; echo $?
+  flow       diff: empty / PASS lines: 4  / QEMU exit: 33 / result: PASS / 0  (wall 0.4 s; log 586e28d92bbb0d2e441bef3843aa6807b1670366f17737275cb137112ca3cd7a)
+  transfer   diff: empty / PASS lines: 4  / QEMU exit: 33 / result: PASS / 0  (wall 0.4 s; log 19143cc752d8e726551e502c253a614b691579133de412ecc769bb52fd59b192)
+  example    diff: empty / PASS lines: 16 / QEMU exit: 33 / result: PASS / 0  (wall 0.6 s; log 5ca81a7503a110fa7d7dc364bd474d2fa974d737330963e232efe49c61119ea1)
+  gpuexample diff: empty / PASS lines: 5  / QEMU exit: 33 / result: PASS / 0  (wall 0.4 s; log 70884e2732fc73da5ae2c0577fb58612e4072b4bc34cf12fb3cb7319781619ae)
+    console includes: Native GPU dispatch requested; CPU fallback is allowed. No device attestation.
+    (the earlier record's gpuexample pm.c line after the program's output did not appear)
+Negative control: flow-qemu against transfer's reference (must fail):
+$ hosts/unikraft/scripts/check-image.sh sigcorpus s2-flow-neg-m4096 flow $W/corpus/linux/transfer-1.txt 33 4 300 4096; echo $?
+diff: NOT EMPTY / PASS lines: 4 / QEMU exit: 33 / result: FAIL / 1
+  (exit status 1 confirmed with WRIT_NO_BOOT=1 on the same capture; log f215586048784cd0b404e74cc3f05dd2411c9849c2f3b6c60e5a0a2314c395f7)
+
+Binary check (UL-003) on all five .dbg files: effect rows IO.print, PASS, exit 0
+(output per image: verification/unikernel-binary-check.txt, signals section).
+
+Not exercised with signals: the examples at -m below 4096 and the corpus at sizes other than
+4096 and 32; no multi-lane run, no KVM or Firecracker boot. Bend Tests.bend on Linux, PROOF
+and OpenSpec were not rerun in this task (no Bend or document change; plan Task 3 runs the
+suite and OpenSpec).
+
+==========================================================================================
+== History: the record before the signal library (first run, integration rerun, final-review
+== recheck, and the new-map Task 3 rerun), kept as recorded.
+==========================================================================================
+
 Unikernel port lane, Task 3: the corpus and the four examples as single-lane Unikraft images
 Recorded 2026-11-03/04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
 

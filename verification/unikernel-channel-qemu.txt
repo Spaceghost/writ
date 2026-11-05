@@ -1,3 +1,210 @@
+Unikraft signals lane, Task 2 (2026-11-04): the channel monitor rebuilt with the shipped
+template, posix signals present. CURRENT RECORD; everything below the double rule further
+down is the effect-twins lane's record, kept as recorded (history).
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Configuration. The image was built from the template as shipped:
+hosts/unikraft/app/Kraftfile (ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce)
+sets CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y' (the experimental posix signal library,
+lib/posix-process/Config.uk:78) beside CONFIG_LIBNS16550_COM2: 'y', and
+hosts/unikraft/scripts/build.sh (67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817)
+passes UK_CFLAGS="-std=gnu11 -include uk/config.h". The resolved configuration
+$W/sigchannel-unikraft/.config.writ-bend_qemu-x86_64
+(b4eeb544099a650191ce1dd9796cd5b8b8b7d9ff48ade3c11834b7aebdf655f4) has
+CONFIG_LIBPOSIX_PROCESS_SIGNAL=y, "# CONFIG_LIBPOSIX_PROCESS_SIGNALFD is not set", and equals
+Task 1's sigfault configuration apart from the CONFIG_UK_APP path line (diff).
+
+Every boot is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine pc, -cpu max,
+-m 1024, -no-reboot, the exit device -device isa-debug-exit,iobase=0xf4,iosize=0x04 (current
+map: 33 = status 0, 17 runtime or host-layer _exit(1), 19 signal, 253 crash), -append
+"+RTS --threads 1 --gpu off", timeout 120 s, and two serial ports: -serial mon:stdio (COM1)
+-serial unix:<sock>,server=on,wait=off (COM2, the Writ channel). One lane, CPU only: not
+native, not an accelerated boot, no GPU was used or tested. Unikraft 0.21.0 (7351f8b),
+kraft 0.12.16, lib-musl (musl 1.2.3), gcc 16.2.1, Bend 2.0.39 (BEND_NO_TELEMETRY=1).
+W = realpath ../writ-unikernel (here
+/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel); nothing built is
+in the tree. Host load average 42 to 54 at the samples taken; wall times are indicative only.
+
+== Result (signals present) ==
+
+Unchanged outcomes. accepted and denied: check-channel.sh PASS (client output and console
+equal to the references in verification/, QEMU 33, exit 0). The negative control (denied
+order against the accepted references) FAILS and exits 1. No second serial port: host.c's
+line and QEMU 17. Flood of 12 bad-length frames: 8 refusals, 4 dropped, 4 decisions,
+QEMU 33. The image's Bend replies equal MonitorCheck.bend's on Linux for both orders.
+check-binary.sh: rows Unikraft.log Unikraft.put Unikraft.take, outside the monitor profile,
+exit 1, as before.
+Shutdown with signals: lib/posix-process/shutdown.c:61-67 now sends SIGTERM to an init
+process still running at shutdown and waits for it. No boot hung: each ended with its status
+well inside the timeout (wall 0.5 to 2.2 s). The monitor creates no helper thread (take
+parks on the runtime timer), so that path is not reached by it.
+
+== Build (set sigchannel, new; the earlier set channel stays as history) ==
+
+From the worktree root (export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1):
+  hosts/unikraft/scripts/mkapp.sh sigchannel      # Kraftfile cmp-equal to the template
+  bend hosts/unikraft/monitor/Monitor.bend -o $W/sigchannel/gen/monitor.c   (67139 lines, never edited)
+  WRIT_HOST_LAYER=y WRIT_CHANNEL_SUBJECT=1 hosts/unikraft/scripts/build.sh sigchannel monitor
+    # 492 s, first attempt, no musl download failure, no retry (concurrent with other builds)
+Inputs and outputs:
+  cf7ae59276fc9f00c79fe4d10b382d44c9f85213ee1f4bbb530618c28d1c255c  hosts/unikraft/monitor/Monitor.bend
+  7343559dfccc93f91ca2b7739a26efb7f607ca9d4e513669fd3cfe26b50c2453  hosts/unikraft/monitor/MonitorCheck.bend
+  9130a715195c77af5cec270d181bc9147e188cca0fe479f3471ab4370cf862e9  hosts/unikraft/host.c
+  c4012e46747e8e9d256ed811cf7cf839dbfa2659989b152be763ab175a2f0d90  hosts/unikraft/exit_device.c
+  359532e7c821f9d03e076e13c9d6279a712c79aa30d03ec883e0a41d78f5e950  hosts/unikraft/effects/Unikraft.bend
+  0c4d3a6ac7cb239ce556777b0f3337d1ed77af470701a7dadb3b399c940baa4e  hosts/unikraft/effects/unikraft_log.c
+  e4f7887721a559d3a72688811b50ddc0477d74342e59cb865e311230c79ac0be  hosts/unikraft/effects/unikraft_put.c
+  2a1410fc5b964ad90a3393b9daaa1d145c9b567acd57a819f1cb423356bd8bdb  hosts/unikraft/effects/unikraft_take.c
+  a2b009186031e819e2c416f020fd0c9acb3dfe5c29e3458705d2b896b05b3f3e  hosts/unikraft/app/Makefile.uk
+  3fd4600975e1ce098243bedf02b3978bdca6337ce0383d3c689de1d6d6a79c19  hosts/unikraft/probes/client/client.c
+  041d0672a21f55dda4d478b700417ee08e957bf1054c243f78045cd9a92c1166  hosts/unikraft/scripts/check-channel.sh
+  671c63a31a0194f403b4d9c209dc4af7672f63c3038f99a112dbf07047de0997  hosts/unikraft/scripts/run.sh
+  bf47f14411cd9577d138720f137d8a6ae196f17279b45b8c40a76d8dc32b26e8  hosts/unikraft/scripts/console.sh
+  08c58ee1346b2b00a9b25869c2f1a53e502d25ab97dcbc65495a1695e12731a5  $W/sigchannel/gen/monitor.c
+    (byte-identical to $W/channel/gen/monitor.c, the new-map rerun's input)
+  2147af12723eaa0a59c3445779924f07dea74fdf349c06e41d611b53e414217d  $W/sigchannel/client (built by check-channel.sh)
+Image (per build: Unikraft embeds the build time, so a clean rebuild gives a different hash):
+  10c3f08806783074ec42ef6b84f739565a4dafb888f545d755627ff29adba1ae  $W/sigchannel/images/monitor-qemu
+  250aefeacd6b4494326b12facdc85847ecbb4b6c93a68394c75495042b18ac4a  $W/sigchannel/images/monitor-qemu.dbg
+
+== Runs (signals present) ==
+
+References (unchanged):
+  608ab7f2a52a7bac6da7e8f0adf32b55db5edf5a6823165608c882d8ee89d82d  verification/unikernel-channel-accepted-client.txt
+  66451227a3fd44229f8c695508880f1443ee12b9059e6862d81b0f63ba3e81d9  verification/unikernel-channel-accepted-console.txt
+  59b91d24dd1469d68ab958d6a3e8adad20869bd8e8670f5eb4eeebdcaf8da53c  verification/unikernel-channel-denied-client.txt
+  9fa2f7080203bcb538039a3f59254e7886911498286f7ba03d18ca83c9ee2245  verification/unikernel-channel-denied-console.txt
+run.sh's command line (from run-s2acc.log; the socket is $W/sigchannel/logs/chan-<label>.sock):
+$ timeout 120 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/sigchannel/images/monitor-qemu -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot -serial mon:stdio -serial unix:$W/sigchannel/logs/chan-s2acc.sock,server=on,wait=off </dev/null; echo $?
+
+-- accepted
+  hosts/unikraft/scripts/check-channel.sh sigchannel s2acc monitor \
+    verification/unikernel-channel-accepted-client.txt verification/unikernel-channel-accepted-console.txt 33 \
+    accept badlen badver other accept; echo $?
+client: exit 0
+client diff: empty
+console diff: empty
+QEMU exit: 33
+logs: $W/sigchannel/logs/run-s2acc.log, $W/sigchannel/logs/client-s2acc.txt; result: PASS
+0
+Console (run-s2acc.log after the banner):
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+writ_uk: channel frame refused: length=0x00000041 bad length=1
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=1 (bad record) session_revision=0 reader_balance=0 descriptor=0 frontend_revision=0
+monitor: route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: fuel exhausted, exiting
+33
+(wall 1.0 s)
+  run-s2acc.log 74dbe33dcdbe2be4295a063b4d0da9acd81fca80581e73be293279e786f0f044,
+  run-s2acc.raw 44794a5f25dd7a859a677506394d2b2494a250471df382c0df707f14a6bd0e1d,
+  client-s2acc.txt 608ab7f2a52a7bac6da7e8f0adf32b55db5edf5a6823165608c882d8ee89d82d (= the reference)
+
+-- denied
+  hosts/unikraft/scripts/check-channel.sh sigchannel s2den monitor \
+    verification/unikernel-channel-denied-client.txt verification/unikernel-channel-denied-console.txt 33 \
+    other badlen badver accept accept; echo $?
+client: exit 0
+client diff: empty
+console diff: empty
+QEMU exit: 33
+logs: $W/sigchannel/logs/run-s2den.log, $W/sigchannel/logs/client-s2den.txt; result: PASS
+0
+Console (run-s2den.log after the banner):
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+monitor: route_subject=1 session=2 body_claimed_subject=2 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+writ_uk: channel frame refused: length=0x00000041 bad length=1
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=1 (bad record) session_revision=0 reader_balance=0 descriptor=0 frontend_revision=0
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0 (none) session_revision=7 reader_balance=45 descriptor=2 frontend_revision=2
+monitor: route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Denied reason=6 (DataOS.commit_from_capability rejected) session_revision=0 reader_balance=0 descriptor=2 frontend_revision=2
+monitor: fuel exhausted, exiting
+33
+(wall 1.3 s)
+  run-s2den.log d4bf63201a55c5de9775866e4b5103a3a2607c4b09329fa67df9f578394933c0,
+  run-s2den.raw df9060d290973d29ddf0c7f1b74592a9078165189ae625b7c1dcf1f42c0660de,
+  client-s2den.txt 59b91d24dd1469d68ab958d6a3e8adad20869bd8e8670f5eb4eeebdcaf8da53c (= the reference)
+
+-- negative control: the denied order checked against the accepted references (must fail)
+  hosts/unikraft/scripts/check-channel.sh sigchannel s2neg monitor \
+    verification/unikernel-channel-accepted-client.txt verification/unikernel-channel-accepted-console.txt 33 \
+    other badlen badver accept accept; echo $?
+client: exit 0
+client diff: NOT EMPTY
+console diff: NOT EMPTY
+QEMU exit: 33
+logs: $W/sigchannel/logs/run-s2neg.log, $W/sigchannel/logs/client-s2neg.txt; result: FAIL
+1
+(wall 1.1 s; run-s2neg.log ad3fcb77993c395e58829ac5e623a7a25976a41f80a139e0ede3a718d9e9cccc)
+
+-- no second serial port (host.c's missing-port path)
+  hosts/unikraft/scripts/run.sh sigchannel s2noport monitor "+RTS --threads 1 --gpu off" 60 1024; echo $?
+monitor: SYNTHETIC authority: examples/Scenario.bend state, not an issuer; the subject is a build-time word, not a route
+monitor: serving 4 records
+writ_uk: COM2 (0x2f8) does not answer; no second -serial, image exits 1
+17
+(wall 0.5 s; run-s2noport.log 70f456201f1db3d88efa51d250bc58573007ca54f0c64ab940efc5c2a40a3a41)
+
+-- flood (refusal cap), scratch client $W/chanfix/flood
+   (flood.c 1999040e19b9f96276acd37398733513b991e1726ae3f1c9a29342c265ecef5b, binary
+   4fb6076c87b01aa391fff961c83ca66351ddd4429929def60b216375719abd57), label s2fl:
+  WRIT_QEMU_SERIAL2="unix:$W/sigchannel/logs/chan-s2fl.sock,server=on,wait=off" \
+    hosts/unikraft/scripts/run.sh sigchannel s2fl monitor "+RTS --threads 1 --gpu off" 120 1024 &
+  $W/chanfix/flood $W/sigchannel/logs/chan-s2fl.sock 12     (once the socket exists)
+client: sent 12 bad-length frames; refusals received 8; decisions received 4
+        decision for seq 1: kind=2 decision=1 reason=0
+        decision for seq 2: kind=2 decision=2 reason=1
+        decision for seq 3: kind=2 decision=2 reason=6
+        decision for seq 4: kind=2 decision=2 reason=6
+        flood exit 0
+console: 8 x "writ_uk: channel frame refused: ...", 4 x "writ_uk: channel frame dropped,
+         no reply (refusal cap): ...", the four decision lines, "monitor: fuel exhausted,
+         exiting"; QEMU 33 (wall 2.2 s; run-s2fl.log eabd7e37eadac503f7f9ddeeb30e0f83a5780fe447daabbc055b974988841dae)
+
+== Linux check and cross-check (signals present) ==
+
+  bend hosts/unikraft/monitor/MonitorCheck.bend > $W/sigchannel/xcheck/monitorcheck.txt; echo $?
+  -> 10 PASS lines, exit 0 (output 6f4061a7c0f0b0654a13a10d490369b30e58c30a226d05d129c48a969ffee2fe)
+  X=$W/sigchannel/xcheck
+  for n in accepted denied; do L=s2acc; [ $n = denied ] && L=s2den
+    awk '/^ got  record/{for(i=5;i<=NF;i++) h=h $i} /^ reply:/{print h; h=""}' \
+      $W/sigchannel/logs/client-$L.txt | grep -v '^0100000003000000030000000001' > $X/$n.got
+    grep "^$(printf %-8s $n) reply" $X/monitorcheck.txt | sed 's/.*: //' > $X/$n.mc
+    diff $X/$n.got $X/$n.mc && echo "$n: image replies == MonitorCheck replies"
+  done
+accepted: image replies == MonitorCheck replies      (4 replies)
+denied: image replies == MonitorCheck replies        (4 replies)
+
+== Binary check (UL-003, signals present) ==
+
+  sh scripts/runtime-profile/check-binary.sh $W/sigchannel/images/monitor-qemu.dbg; echo $?
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.put Unikraft.take
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.put
+  Unikraft.take
+result: FAIL (outside the monitor profile)
+1
+
+== Not exercised with signals ==
+
+- measure.sh timing of one accept round trip (not rerun); the FIFO attempt (dropped earlier).
+- The partial-frame-across-a-pause run (split.py) of the new-map rerun.
+- The items under "Not shown" below (missing subject, disconnect mid-frame, blocked put,
+  byte loss under flood) are as before.
+- OpenSpec was not rerun (no document change in this task).
+
+The reference files verification/unikernel-channel-{accepted,denied}-{client,console}.txt are
+unchanged: these boots reproduce them exactly with the signal library present.
+
+==========================================================================================
+== History: the effect-twins lane's record (Task 2 and fix round 1, then the new-map rerun
+== in verification/unikernel-fault-qemu.txt), built before the signal library; kept as recorded.
+==========================================================================================
+
 Unikraft effect-twins lane, Task 2: ingress twins over a second serial channel
 Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
 

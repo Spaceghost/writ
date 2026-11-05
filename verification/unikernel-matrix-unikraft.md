@@ -12,6 +12,8 @@ Task 1's runs all use `+RTS --threads 1 --gpu off`; no accelerator was used in e
 
 > CODE MAP NOTE (2026-11-04, Unikraft effect-twins lane Task 3): the QEMU statuses below were recorded before the exit hook existed or under the exit hook's map at the time and are kept as recorded. The hook now writes program statuses as s + 0x10 (success 33, status 1 35, 2s + 33 in general), a runtime or host-layer _exit(1) as 17, a signal death as 19; crash 253 and non-halt 251 are unchanged. Reruns under the new map: verification/unikernel-fault-qemu.txt (and the corpus rerun in verification/unikernel-corpus-qemu.txt).
 
+> SIGNALS NOTE (2026-11-04, Unikraft signals lane Task 3): the template now enables Unikraft's experimental posix signal library (`CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y'`, `lib/posix-process/Config.uk:78`) and `build.sh` passes `-include uk/config.h` (pins: verification/unikernel-pins.txt, "Unikraft image configuration pins"). The rows below were recorded without the library and are kept as recorded; the Faults row (E4) is superseded as noted there.
+
 Input: `scripts/unikernel/Hello.bend` (`IO.print("hi")`), emitted with
 `bend scripts/unikernel/Hello.bend -o $W/hello/hello.c`
 (Bend 2.0.39, 3074 lines, sha256 `260b70a3...45d56cf`).
@@ -35,7 +37,7 @@ Value key: `supplied` (the host provides the behavior the runtime expects), `sub
 | Row | qemu/x86_64, 0.21.0 (emulated boot) | Evidence (primary) | linuxu/x86_64, 0.16.3 (process execution) |
 | --- | --- | --- | --- |
 | Memory | **supplied**, lazily backed | Hello boots and prints `hi` with `-m 1024` down to `-m 8` (E1). Under gdb the runtime's two reservations are `mmap addr=0x200000000000 len=0x200000000` (8 GiB heap, first hint taken: inferred from no further calls; E2 printed mmap arguments, not return values) and `mmap addr=0 len=0x8000c000` (2 GiB stack + 16 KiB guard + alternate signal stack); no `reservation failed` or `stack guard failed` (E2). Pages are backed on touch only: exhausting guest RAM by stack growth is a Unikraft crash, not the runtime's own message (E4). | **missing**: `bend: reservation failed`, then the process does not exit (killed, 124); same with `+RTS --gpu 64MB` (E10). posix-mmap is dropped on linuxu (no `LIBUKVMEM`). |
-| Faults | **substituted** by a Unikraft trap that halts (inferred) | Overflow.bend reaches the guard page (`r08: 000000108003f000` = stack base `0x100003f000` + 2 GiB) and the guest prints `CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)` plus registers; the runtime's `bend: memory fault (machine stack overflow?)` never appears, so its `SIGSEGV` handler does not run; QEMU exits **0** under `-no-reboot`; power-off vs reset not distinguished (inferred) (E4). | not reached: startup stops at the reservation. |
+| Faults | **substituted** by a Unikraft trap that halts (inferred) | Overflow.bend reaches the guard page (`r08: 000000108003f000` = stack base `0x100003f000` + 2 GiB) and the guest prints `CRIT: Unikraft Crash - Ijiraq (0.21.0~7351f8b)` plus registers; the runtime's `bend: memory fault (machine stack overflow?)` never appears, so its `SIGSEGV` handler does not run; QEMU exits **0** under `-no-reboot`; power-off vs reset not distinguished (inferred) (E4). Since (signals lane, 2026-11-04, kept above as recorded): with the signal library the runtime's handler runs and prints `bend: memory fault (machine stack overflow?)` before the crash screen; the image still crashes, QEMU 253 from the crash hook; arena exhaustion still crashes with no message, QEMU 253 (verification/unikernel-fault-qemu.txt, "Result"). | not reached: startup stops at the reservation. |
 | Threads | **substituted** by a single lane: creation succeeds, `pool_work` was not entered before shutdown in a non-yielding program (E6); behaviour when the main lane yields not tried | Hello makes no parallel call, so `--threads 2` creates no thread (E5, prints `hi`, 0). Lanes.bend with `--threads 2` prints `lanes 2` and the correct `pow2 4194304`, 0 (E5). Under gdb, `pthread_create(entry=pool_work, arg=1)` returns 0, but `pool_work` is not entered by shutdown (the guest powers off first); both `pool_rows` turns run on the main loop's stack `0x100003f000` (E6). The cause is inferred, not traced: with one CPU and the cooperative scheduler, the new thread is never scheduled because the main loop never yields to it. Default thread count (no options): `lanes 1`. | not reached. |
 | Clock | **supplied** | Clock.bend prints `before 108`, `after 211`, `advanced`; QEMU exits 0 (E7). One sample: 103 ms across a 100 ms sleep; backward motion was not hunted for. | not reached. |
 | Event loop | **supplied** with A3; **missing** with the plan's four libraries | With A3, startup reaches the first print in every probe (E1); `IO.sleep` parks on `select` with a timeout and wakes (E7). Without `posix-pipe`/`posix-poll`, startup stops at `bend: the event loop failed to open` (Task 1 `qemu/x86_64` A1 + A2 run below). A helper thread writing the wake pipe was not exercised: no monitor-profile effect uses an IO helper thread. | not reached (0.16.3 linuxu pulls in posix-pipe and posix-poll by dependency, but startup stops earlier). |
@@ -251,6 +253,8 @@ The `--bogus` path is `fprintf` then `return 1` from `main`; QEMU still exits 0.
 
 **E4 Faults, Overflow.** (QEMU 0 under `-no-reboot`: power-off vs reset not distinguished, inferred.)
 
+> E4 SUPERSEDED (2026-11-04, Unikraft signals lane): recorded before the exit hook and without the signal library; kept as recorded. Current outcome, with the library adopted in the template: the Overflow probe prints `bend: memory fault (machine stack overflow?)` before the Unikraft crash screen, then crashes (`Cannot deliver SIGSEGV`, `lib/posix-process/signal/deliver.c:428`) with the hook's crash value, QEMU 253; `check-fault.sh` requires the message line and fails on the image built without signals (verification/unikernel-fault-qemu.txt, "Fault message runs"). Arena exhaustion (Exhaust.bend, `-m 1024`) is still a Unikraft crash with no message, QEMU 253, now on the assertion at `lib/posix-process/signal/deliver.c:125` (alternate stack already in use); the earlier prediction that the message would appear there was wrong (verification/unikernel-fault-qemu.txt, "Arena exhaustion with signals"). QEMU TCG boots on the CPU; no GPU test.
+
 ```
 $ rows-run.sh overflow-m4096 overflow "+RTS --threads 1 --gpu off" 300 4096
                   Ijiraq 0.21.0~7351f8b
@@ -448,6 +452,16 @@ linuxu: every run stops at the reservation, and no option shrinks it.
   exercised.
 - linuxu evidence is from 0.16.3 (process execution), not the 0.21.0 pin.
 - No run is a device run: every run is CPU execution.
+- Added 2026-11-04 (Unikraft signals lane): with the signal library, arena exhaustion
+  remains a Unikraft crash with no runtime message and the same crash value as a fault,
+  QEMU 253 (verification/unikernel-fault-qemu.txt, "Arena exhaustion with signals"); only
+  `-m 1024` was rerun with signals. This half of UL-006 is a recorded limit.
+- Added 2026-11-04 (Unikraft signals lane): the signal value (QEMU 19) and the non-halt
+  value (QEMU 251) were not exercised with the library. The shutdown path that sends
+  SIGTERM to a still-running init process and waits (`lib/posix-process/shutdown.c:61-67`)
+  is reachable only by a program still running at shutdown and was not exercised
+  (verification/unikernel-fault-qemu.txt, "Exit map runs";
+  verification/unikernel-effects-qemu.txt).
 
 # Task 1: build matrix
 

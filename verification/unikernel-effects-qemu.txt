@@ -1,3 +1,171 @@
+Unikraft signals lane, Task 2 (2026-11-04): the effects probe rebuilt with the shipped
+template, posix signals present. CURRENT RECORD; everything below the double rule further
+down is the effect-twins lane's record, kept as recorded (history).
+Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
+
+Configuration. Every image in this section was built from the template as shipped:
+hosts/unikraft/app/Kraftfile (ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce)
+sets CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y' (the experimental posix signal library,
+lib/posix-process/Config.uk:78), and hosts/unikraft/scripts/build.sh
+(67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817) passes
+UK_CFLAGS="-std=gnu11 -include uk/config.h". The resolved configuration
+$W/sigeffects-unikraft/.config.writ-bend_qemu-x86_64
+(3a2939801547e9bbd545e14a79d2ab3e7452aefd93a484252f662b6b3a6c4aca) has
+CONFIG_LIBPOSIX_PROCESS_SIGNAL=y and "# CONFIG_LIBPOSIX_PROCESS_SIGNALFD is not set", and
+equals Task 1's sigfault configuration apart from the CONFIG_UK_APP path line (diff); the
+flag is on the compile line of lib/posix-process/shutdown.c
+($W/sigeffects-unikraft/.unikraft/build/libposix_process/shutdown.o.cmd contains
+"-include uk/config.h"). Makefile.uk a2b009186031e819e2c416f020fd0c9acb3dfe5c29e3458705d2b896b05b3f3e,
+Config.uk e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855 (empty),
+exit_device.c c4012e46747e8e9d256ed811cf7cf839dbfa2659989b152be763ab175a2f0d90,
+host.c 9130a715195c77af5cec270d181bc9147e188cca0fe479f3471ab4370cf862e9.
+
+Every run is an EMULATED BOOT under QEMU 11.1.2 with TCG (-accel tcg), machine pc, -cpu max,
+-m 1024, -no-reboot, the exit device -device isa-debug-exit,iobase=0xf4,iosize=0x04 (current
+map: 33 = status 0, 35 = status 1, 17 runtime stop, 19 signal, 253 crash), -append
+"+RTS --threads 1 --gpu off", stdin /dev/null, timeout 60 s. One lane, CPU only: not native,
+not an accelerated boot, no GPU was used or tested. Unikraft 0.21.0 (7351f8b), kraft 0.12.16,
+lib-musl (musl 1.2.3), gcc 16.2.1, Bend 2.0.39 (BEND_NO_TELEMETRY=1). W = realpath
+../writ-unikernel (here /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel);
+nothing built is in the tree. Host load average 42 to 54 at the samples taken during these runs; wall times are
+indicative only.
+
+== Result (signals present) ==
+
+Unchanged outcomes. The probe's four "probe:" lines, written through Unikraft.log, match the
+masked reference in three check-image.sh boots (PASS, QEMU 33) and one run.sh boot (QEMU 33);
+the deltas around Unikraft.sleep(100) were 107, 103, 103, 105 ms, ordered and inside
+[100, 1100). The FAIL branch (scratch copy requiring a delta of at least 1000 ms) prints its
+FAIL line and ends with QEMU 35; check-image.sh FAILS on it and exits 1. Hello without the
+host layer: "hi", QEMU 33, PASS, no writ_uk symbol. Binary check unchanged (rows
+Unikraft.log Unikraft.now Unikraft.sleep, outside the monitor profile, exit 1; hello IO.print,
+PASS, exit 0).
+Shutdown with signals: with the library, lib/posix-process/shutdown.c:61-67 sends SIGTERM to
+an init process still running at shutdown and waits for it. No image here hung: every boot
+ended with its program's status well inside the 60 s timeout (wall 0.5 to 0.8 s). The probe
+creates no helper thread (its sleep parks on the runtime timer), so that path is not
+reached by it; the R0-E1 io_work variant, which would reach it, was not rebuilt.
+
+== Builds (set sigeffects, new; the earlier sets effects and effects2 stay as history) ==
+
+From the worktree root (export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1):
+  hosts/unikraft/scripts/mkapp.sh sigeffects      # Kraftfile cmp-equal to the template
+  bend scripts/unikernel/Probe.bend -o $W/sigeffects/gen/probe.c
+  bend scripts/unikernel/Hello.bend -o $W/sigeffects/gen/hello.c
+  sed -e "s#^import ../../hosts/unikraft/effects/Unikraft.bend as Host#import ../../../unikraft-signals/hosts/unikraft/effects/Unikraft.bend as Host#" \
+      -e '/^def min_delta_ms/{n;s/sleep_ms()/1000/}' scripts/unikernel/Probe.bend > $W/sigeffects/scratch/ProbeFail.bend
+  bend $W/sigeffects/scratch/ProbeFail.bend -o $W/sigeffects/gen/probefail.c
+  WRIT_HOST_LAYER=y hosts/unikraft/scripts/build.sh sigeffects probe        # 192 s, first attempt
+  WRIT_HOST_LAYER=y hosts/unikraft/scripts/build.sh sigeffects probefail    # 132 s, first attempt
+  hosts/unikraft/scripts/build.sh sigeffects hello                          # 131 s, first attempt
+  (builds ran concurrently with the corpus, example and monitor builds; no musl download
+  failure on any of them, no retry)
+Inputs:
+  fe09d0ecb62739d0581afced52b321c3d0a37aedc0e2e0877360479a4bf01c82  scripts/unikernel/Probe.bend
+  c70559d49042fb846d8ff84652daac45ff848b2204a9d29f5594235c840b1bb2  scripts/unikernel/Hello.bend
+  359532e7c821f9d03e076e13c9d6279a712c79aa30d03ec883e0a41d78f5e950  hosts/unikraft/effects/Unikraft.bend
+  0c4d3a6ac7cb239ce556777b0f3337d1ed77af470701a7dadb3b399c940baa4e  hosts/unikraft/effects/unikraft_log.c
+  fac11e40328888d084ac09fdc463e846bd3254a46128fea7a708665024f33133  hosts/unikraft/effects/unikraft_now.c
+  f9ccb6cf0c673ff96aaf88ea8d2d8e0f285a8d080743ae4364ecaba522f1020a  hosts/unikraft/effects/unikraft_sleep.c
+  afc19e2ed9f25d5aeb4b41df47afc7f287560af21c311f8786cb8c62af86bbb3  $W/sigeffects/scratch/ProbeFail.bend (scratch, never committed)
+Emitted C (never edited):
+  0bb236e135e9cfa87ad2b8e4c9a3a547c09afb78ead1de9d757c4e723d8d1dca  probe.c (4287 lines)
+    differs from $W/effects2/gen/probe.c (1a3af50a9c3c7afcf8984e403a55609e545fab302d9ce5fabf13942fdb2883b8)
+    only in the spliced unikraft_sleep.c comment (diff: lines 4163-4166); implementation
+    tokens identical (gcc -fpreprocessed -dD -E -P, whitespace squeezed:
+    f3b659cb9d86d159e210b2d025e86904c1206e73453d1a911f5c35d2c214879b for both)
+  d028b9da2b0b624cc874c358cd85d4c61c402845667d274fd9eae0c3f0224e56  probefail.c
+  260b70a3671e52b8fe8f81ae064f40b415b654faf6c27fe0a495a476945d56cf  hello.c (as recorded since 2026-11-03)
+Images (per build: Unikraft embeds the build time, so a clean rebuild of the same inputs
+gives a different hash):
+  0b09310967e2beeb0f0a1f9fc04757ab5d09eb8ecd99ca8210b98615a0133d0b  $W/sigeffects/images/probe-qemu
+  b9992d11481c7c84888fcde7ca6a35a28e3f11ddf6eb98cc240c126fa0f62d02  $W/sigeffects/images/probe-qemu.dbg
+  196d07503080df2b6e099bc7ead18c483ef04ce5fb02ff3b15cb4940d42049d7  $W/sigeffects/images/probefail-qemu
+  b536eb2ec2b1a22100f3ba9ef1b84e456a9de490b792d01e1e9c0135149eac2e  $W/sigeffects/images/probefail-qemu.dbg
+  d0421dfbf5deb0d535297fadcdc3ffe9878dd05d20524d4b84b8a7024ca0079c  $W/sigeffects/images/hello-qemu
+  d57807824c8c5fb0b6223a977aa6eec6788dd6f8ec3351c362da44364ad10288  $W/sigeffects/images/hello-qemu.dbg
+
+== Runs (signals present) ==
+
+run.sh's command line (from each log; <image> as named):
+  $ timeout 60 qemu-system-x86_64 -accel tcg -nographic -m 1024 -cpu max -kernel $W/sigeffects/images/<image> -append "+RTS --threads 1 --gpu off" -device isa-debug-exit,iobase=0xf4,iosize=0x04 -no-reboot  </dev/null; echo $?
+Serial text is run.sh's cleaned log from the banner's last line on.
+
+S2-E1 run.sh only: hosts/unikraft/scripts/run.sh sigeffects s2-probe-1 probe "+RTS --threads 1 --gpu off" 60 1024
+                  Ijiraq 0.21.0~7351f8b
+probe: hello from Bend through the Unikraft console
+probe: before=130 after=237
+probe: delta_ms=107 sleep_ms=100 min_delta_ms=100 max_delta_ms=1100
+probe: PASS after >= before and min <= delta < max
+33
+(wall 0.7 s)   run-s2-probe-1.log 77d9473583c308938f24a12bfd0859982231a5c606a1462844c64e9b8ef40550
+
+S2-E2 to S2-E4, check-image.sh (reference verification/unikernel-effects-probe-reference.txt,
+cfbcc6c08650ed047f1610cacb4587c1ac26959b92202dc9f9de054fcf916d44):
+  WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' hosts/unikraft/scripts/check-image.sh sigeffects s2-probe-<n> \
+    probe verification/unikernel-effects-probe-reference.txt 33 "" 60 1024; echo $?
+console masked with: sed -e 's/=[0-9][0-9]*/=N/g'
+diff: empty
+QEMU exit: 33
+log: $W/sigeffects/logs/run-s2-probe-<n>.log; result: PASS
+0
+  S2-E2 s2-probe-2: before=148 after=251 delta_ms=103; PASS, exit 0 (wall 0.8 s; log a05113c62d60a028fc691c039b7c5a10f6caebcfae12f1624c6f851dda8eb488)
+  S2-E3 s2-probe-3: before=123 after=226 delta_ms=103; PASS, exit 0 (wall 0.6 s; log 517b3b527cfd6f4db758339452e6bd599b4b207dc5bb94556279523e7f0e8727)
+  S2-E4 s2-probe-4: before=124 after=229 delta_ms=105; PASS, exit 0 (wall 0.5 s; log 832d2fd523579e83966dac26edf5a4a858503ed062ffb217b0dd9f8b5c4d21f6)
+
+S2-E5 FAIL branch (must fail):
+  hosts/unikraft/scripts/run.sh sigeffects s2-probefail-1 probefail "+RTS --threads 1 --gpu off" 60 1024
+                  Ijiraq 0.21.0~7351f8b
+probe: hello from Bend through the Unikraft console
+probe: before=119 after=226
+probe: delta_ms=107 sleep_ms=100 min_delta_ms=1000 max_delta_ms=1100
+probe: FAIL readings outside after >= before and min <= delta < max
+35
+(wall 0.8 s)   run-s2-probefail-1.log 1f8f3fc82601b5ebdd88f549cfc282bd3ab45eaaea86b0ee2f4561bcfa86363b
+  WRIT_NO_BOOT=1 WRIT_CONSOLE_SED='s/=[0-9][0-9]*/=N/g' hosts/unikraft/scripts/check-image.sh \
+    sigeffects s2-probefail-1 probefail verification/unikernel-effects-probe-reference.txt 33 "" 60 1024; echo $?
+console masked with: sed -e 's/=[0-9][0-9]*/=N/g'
+4c4
+< probe: FAIL readings outside after >= before and min <= delta < max
+---
+> probe: PASS after >= before and min <= delta < max
+diff: NOT EMPTY
+QEMU exit: 35, expected 33
+log: $W/sigeffects/logs/run-s2-probefail-1.log; result: FAIL
+1
+
+S2-E6 hello without the host layer (WRIT_HOST_LAYER=n), reference $W/sigeffects/hello-ref.txt
+(copied unchanged from $W/effects2/hello-ref.txt, 98ea6e4f216f2fb4b69fff9b3a44842c38686ca685f3f55dc48c5d3fb1107be4, the line "hi"):
+  hosts/unikraft/scripts/check-image.sh sigeffects s2-hello hello $W/sigeffects/hello-ref.txt 33 "" 60 1024; echo $?
+diff: empty
+QEMU exit: 33
+log: $W/sigeffects/logs/run-s2-hello.log; result: PASS
+0
+(wall 0.8 s; log 39c9daf57bd51ad06d6aa8a276bcfbb99f1c4e21172ce2d062369a5a3efb9ff5)
+  nm $W/sigeffects/images/hello-qemu.dbg | grep -c writ_uk   -> 0
+
+S2-E7 binary check (UL-003), scripts/runtime-profile/check-binary.sh and allow lists unchanged:
+  sh scripts/runtime-profile/check-binary.sh $W/sigeffects/images/probe-qemu.dbg; echo $?
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.now Unikraft.sleep
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.now
+  Unikraft.sleep
+result: FAIL (outside the monitor profile)
+1
+  probefail-qemu.dbg: the same rows, FAIL, exit 1. hello-qemu.dbg: effect rows IO.print,
+  PASS, exit 0. Static link: the host-symbol surface is not checked by this tool.
+
+Not exercised with signals: a second park (re-sleep); host.c's clock-failure paths; the
+R0-E1 io_work variant (a helper thread alive at shutdown, the case shutdown.c:61-67's
+SIGTERM-and-wait would reach); OpenSpec was not rerun (no document change in this task).
+
+==========================================================================================
+== History: the effect-twins lane's record (R0 and fix round 1, then the new-map rerun in
+== verification/unikernel-fault-qemu.txt), built before the signal library; kept as recorded.
+==========================================================================================
+
 Unikraft effect-twins lane, Task 1: console and time effects through hosts/unikraft/host.c
 Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9), no root.
 

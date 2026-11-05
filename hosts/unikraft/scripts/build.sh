@@ -21,7 +21,11 @@ export WRIT_CHANNEL_SUBJECT=${WRIT_CHANNEL_SUBJECT:-}
 cd "$W/$S-unikraft"
 # Make tracks neither the environment nor the copied app.c's origin, so start clean.
 rm -rf .unikraft/build
-UK_CFLAGS=-std=gnu11 $KRAFT build --no-update --target qemu/x86_64 -j "${WRIT_JOBS:-$(nproc)}" . > "$W/$S/logs/build-$P.log" 2>&1 \
+# -include uk/config.h: with CONFIG_LIBPOSIX_PROCESS_SIGNAL (Kraftfile) 0.21.0's
+# lib/posix-process/shutdown.c:63 fails, because it includes signal/signal.h before
+# <uk/config.h>, so the guard at signal.h:116 reads 0 and pprocess_signal_send
+# (signal.h:287) is undeclared. No source is patched.
+UK_CFLAGS="-std=gnu11 -include uk/config.h" $KRAFT build --no-update --target qemu/x86_64 -j "${WRIT_JOBS:-$(nproc)}" . > "$W/$S/logs/build-$P.log" 2>&1 \
   || { tail -30 "$W/$S/logs/build-$P.log"; exit 1; }
 cp .unikraft/build/writ-bend_qemu-x86_64 "$W/$S/images/$P-qemu"
 cp .unikraft/build/writ-bend_qemu-x86_64.dbg "$W/$S/images/$P-qemu.dbg"

@@ -1,3 +1,119 @@
+Unikernel runtime profile binary check (UL-003) on the Unikraft image ELFs.
+CURRENT RECORD: the signals rerun directly below (2026-11-04/05, Unikraft signals lane Task 2).
+Recorded on Linux x86_64 (Manjaro, kernel 7.2.9). W = realpath ../writ-unikernel (here
+/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-unikernel); nothing built is in the tree.
+
+== Signals rerun, 2026-11-04/05 (Unikraft signals lane Task 2): every image rebuilt with the shipped template ==
+
+Configuration of every image in this section: hosts/unikraft/app/Kraftfile
+(ea31944043807789720f42c2267bb16082b4b177e6164a6dc2eba6299390a4ce) with
+CONFIG_LIBPOSIX_PROCESS_SIGNAL: 'y' (the experimental posix signal library), and
+hosts/unikraft/scripts/build.sh (67ceb9d2b074ec39b7d0c3f9918022974e3fe38af7954b17c1b3bbe1a4fc2817)
+with UK_CFLAGS="-std=gnu11 -include uk/config.h". Builds and boots:
+verification/unikernel-corpus-qemu.txt, unikernel-effects-qemu.txt, unikernel-channel-qemu.txt
+(the sets sigcorpustests, sigcorpus, sigeffects, sigchannel; all made by mkapp.sh). Checker
+and allow lists unchanged:
+  sh scripts/runtime-profile/check-binary.sh $W/<set>/images/<image>.dbg; echo $?
+The library adds posix-process signal code to every image; the checker reads only the
+`<prefix>_run` effect rows, so its result is unchanged, and the static link still means the
+host-symbol surface is not checked.
+
+
+## $W/sigcorpustests/images/tests-qemu.dbg
+sha256 9c9aeb5945da347ddce96003f3e7d504fe4691176787cbca928c0d40ae3fdb07; image tests-qemu f1537f84b43301487a57b16407f0131020e4d5f425b1cd019a93f5d2a7b6e13c
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+
+## $W/sigcorpus/images/example-qemu.dbg
+sha256 bfbe0efca948d8e859f181c32d92d6daf47818fbf5fec548cc6ba191f36f8983; image example-qemu 4acc0e66b024c00b55f3a0b25cf71bc51ce6f52e8d446e0e07f7249f392e182f
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+
+## $W/sigcorpus/images/flow-qemu.dbg
+sha256 c3b641cd89eaf054c2b8d60092a5efa04bdce3b6dce908731eb9eab373ef763a; image flow-qemu ad07d5d6621bb53aad5022fd8464ded1adf794043162d420f3253dd48ea497f3
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+
+## $W/sigcorpus/images/transfer-qemu.dbg
+sha256 2005a8d6336c76ecddb01caed1cb861f869d8ca363cf317c67d297b91b5ee5f3; image transfer-qemu 635614fe829e35d89d5c7cbb8b843ec116974ef21da988f98682c5c120f87659
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+
+## $W/sigcorpus/images/gpuexample-qemu.dbg
+sha256 f0e285916c131acf01ac7ac068d82393600539efc39abaa5f6c3b8dab138c9c2; image gpuexample-qemu e048ef1f476fd43b92d6711a705f4704e47fa2eae08b31c59eaceacb9ef11183
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+
+## $W/sigeffects/images/hello-qemu.dbg
+sha256 d57807824c8c5fb0b6223a977aa6eec6788dd6f8ec3351c362da44364ad10288; image hello-qemu d0421dfbf5deb0d535297fadcdc3ffe9878dd05d20524d4b84b8a7024ca0079c
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)
+checker exit status 0
+
+## $W/sigeffects/images/probe-qemu.dbg
+sha256 b9992d11481c7c84888fcde7ca6a35a28e3f11ddf6eb98cc240c126fa0f62d02; image probe-qemu 0b09310967e2beeb0f0a1f9fc04757ab5d09eb8ecd99ca8210b98615a0133d0b
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.now Unikraft.sleep
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.now
+  Unikraft.sleep
+result: FAIL (outside the monitor profile)
+checker exit status 1
+
+## $W/sigeffects/images/probefail-qemu.dbg
+sha256 b536eb2ec2b1a22100f3ba9ef1b84e456a9de490b792d01e1e9c0135149eac2e; image probefail-qemu 196d07503080df2b6e099bc7ead18c483ef04ce5fb02ff3b15cb4940d42049d7
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.now Unikraft.sleep
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.now
+  Unikraft.sleep
+result: FAIL (outside the monitor profile)
+checker exit status 1
+
+## $W/sigchannel/images/monitor-qemu.dbg
+sha256 250aefeacd6b4494326b12facdc85847ecbb4b6c93a68394c75495042b18ac4a; image monitor-qemu 10c3f08806783074ec42ef6b84f739565a4dafb888f545d755627ff29adba1ae
+undefined symbols: not applicable (static link)
+effect rows: Unikraft.log Unikraft.put Unikraft.take
+effects outside the monitor profile:
+  Unikraft.log
+  Unikraft.put
+  Unikraft.take
+result: FAIL (outside the monitor profile)
+checker exit status 1
+
+Expected: IO.print only (PASS, 0) for the corpus, the examples and hello; the effects probe,
+its scratch FAIL-branch copy, and the channel monitor carry exactly their Unikraft effect
+rows (FAIL, 1), as in the records before the library. All nine as expected. The 764- and
+782-check rows above are kept as history; no image built without the library is the
+current record.
+
+Not rerun with signals: the negative control bincheck/widened (Hello plus TCP.listen,
+history below, FAIL on TCP.listen) and the exitcode/crash probes (Task 1 of the signals lane
+rebuilt the probes as sigfault/sigcodes; their .dbg files were not passed through this checker).
+
+==========================================================================================
+== History: the records before the signal library, kept as recorded.
+==========================================================================================
+
 Unikernel port lane, Task 4: runtime profile binary check (UL-003) on the Unikraft image ELFs
 Recorded 2026-11-04 on Linux x86_64 (Manjaro, kernel 7.2.9).
 
