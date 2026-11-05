@@ -35,5 +35,6 @@ automatically create distinct grant or payment consumption events.
 
 The complete source manifest is trusted input. Passing these checks does not
 establish that an arbitrary executable has disclosed all sources it can read.
-The current scope implements read/write pairing at use; authenticated grant
-issuance is deferred.
+The current scope implements read/write pairing at use. Authenticated grant
+issuance is modeled in Bend and is not wired to a host; see
+[grant-issuance.md](grant-issuance.md).

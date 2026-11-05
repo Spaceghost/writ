@@ -1,0 +1,96 @@
+Authenticated grant issuance evidence (change add-authenticated-grant-issuance, task 2.1)
+Bend version: bend 2.0.39 (from `bend version`)
+Host: Linux 7.2.9-1-MANJARO x86_64
+Date: 2026-11-05 (UTC)
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH"; export BEND_NO_TELEMETRY=1; commands run from the repository root
+Execution: the default `bend <file>` check-and-run on the CPU. No device code ran; nothing here is GPU evidence, and a CPU run is not a GPU test.
+Scope: the Bend issuance model (Issuance.bend) and its tests (IssuanceTests.bend, FacadeTests.bend). The change is proposed; no host adapter, facade entry or acceptance scenario is implemented.
+
+## Commands and results
+
+$ bend Issuance.bend --check-only
+[exit status: 0]
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.
+
+$ bend Tests.bend > tests.out
+[exit status: 0; 0 FAIL lines; tests.out is a scratch capture, not committed]
+Output lines of the two suites this change adds to:
+Facade: 12 checks passed
+Issuance: 224 checks passed
+Last lines:
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+
+PASS lines, counting both forms the corpus prints:
+$ grep -cE '^PASS[: ]' tests.out
+1008
+$ grep -c '^PASS: ' tests.out
+955
+$ grep -c '^PASS ' tests.out
+53
+Total: 782 checks before this change plus 224 Issuance checks plus 2 new Facade
+checks = 1008. Per the cross-lane ruling this lane changes no recorded count
+pin; the controller re-pins counts after the parallel lanes merge.
+
+$ bend PROOF.bend
+[exit status: 0]
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.
+`--verdict` was not run: the Lean kernel toolchain is not available here, so
+the proofs are checked by ordinary `bend PROOF.bend` only, not kernel verified.
+
+## Scenario checks (IssuanceTests.bend section `scenarios`, 23 checks, all PASS)
+
+Each walks one whole lifecycle from an `I.empty(...)` state through the public
+entry points (submit_source, submit_write, register, revoke, derive), and
+judges use with the unchanged T.admit and F.mount/F.open/F.checked_plan on
+projections rebuilt for that use. The epoch-advance scenario's monitor install
+(`epoch_advanced`, built with `with_live`) is the one state not reached by a
+public transition, and it is marked in the source.
+
+PASS: scenario current authority: from an empty state the read-domain-5 and read-domain-9 authorities each approve their source of TF.pair_plan(), the write-domain-6 authority approves its destination, and the cited approvals register grant 4 at revision 4
+PASS: scenario current authority: subject 7's rebuilt projections of grant 4 hold one read per source in its own read domain and make T.admit admit TF.pair_plan() under TF.pair_context()'s policies
+PASS: scenario current authority: F.mount, F.open and F.checked_plan resolve grant 4's projected capability for subject 7 to TF.pair_plan()
+PASS: scenario current authority: principal 8's rebuilt projections of the same state admit nothing at Write and give it nothing to mount
+PASS: scenario revocation mid-flow: after the read-domain-9 authority revokes approval 2 at revision 4, registering the pair at revision 4 is denied Revoked, and a registration validated at revision 3 is denied StaleRevision
+PASS: scenario revocation mid-flow: use is denied too, with nothing projected for subject 7, T.admit denying TF.pair_plan() at Write and nothing to mount
+PASS: scenario revocation after derivation: subject 7 derives child 4 (rights 1 until 120) from grant 3, and a descriptor opened from the child's capability resolves TF.plan()
+PASS: scenario revocation after derivation: once the write authority revokes the root's approval 2 the child dies with its parent: neither is current, nothing is projected, the child's descriptor resolves no plan and T.admit denies Write
+PASS: scenario replay: a second registration of grant 3's request with a fresh token denied Replay
+PASS: scenario replay: grant 3's consumed source approval 1 cited by another request beside a fresh write approval denied Replay
+PASS: scenario replay: after its issuer revokes approval 1, resubmitting serial 1 is denied Replay while a fresh serial 2 is accepted as id 5
+PASS: scenario replay: grant 3's consumed write approval 2 cited beside the fresh source approval 5 denied Replay
+PASS: scenario replay: the fresh pair registers grant 6, the only grant projected for subject 7, which T.admit admits while revoked grant 3 is not current
+PASS: scenario forged issuer: the write-domain-6 principal's own source approval for object 10 is denied NotAuthority, its genuine write approval is accepted, a request citing that write approval as the source is denied MissingApproval, and T.admit denies Write
+PASS: scenario forged issuer: once the read-domain-5 authority itself approves object 10, the same plan registers as grant 3 and T.admit admits it
+PASS: scenario redirect: a read of 10 into 20v8 paired with a write approval for 20v9 is denied ScopeMismatch under either scope, nothing is projected, and T.admit denies the redirected plan at Write
+PASS: scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write
+PASS: scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted
+PASS: scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8
+PASS: scenario epoch advance: grant 3 admitted at epoch 3 is not current once the monitor installs epoch 4, nothing is projected, T.admit denies the old plan Stale and a fresh approval of the old scope is denied StaleEpoch
+PASS: scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4
+PASS: scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200
+PASS: scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write
+
+## Facade checks (FacadeTests.bend, the 2 added by this change, both PASS)
+
+PASS: GI-008 a grant registered by the issuer, projected into the transfer grants and registry, commits through the facade
+PASS: GI-008 after the issuer revokes the write approval the rebuilt projections deny the facade commit and spend no reservation
+
+## Not exercised
+
+- Transport authentication: every `from: Principal` is a synthetic fixture.
+  No Genode route, Linux peer credential or Windows token is verified here.
+- Signatures: no approval carried off-host is cryptographically verified;
+  Bend checks no signature.
+- Durable storage: the issuer state lives only in the test run. Nothing is
+  persisted, recovered or rolled back.
+- Concurrent hosts: there is no serialization of installs between hosts or
+  processes. Races are modeled by the revision check only (AB-006 is a host
+  obligation).
+- Per-use projection rebuilding by a host: the tests rebuild projections at
+  each use themselves; no host does.
+- Any native host: no Genode, Unikraft, Linux, Windows or rclone binding runs
+  issuance. The native-backend corpus run belongs to task 2.2.
+- GPU: no device code ran; this CPU run is not a GPU test.

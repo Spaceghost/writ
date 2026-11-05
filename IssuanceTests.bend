@@ -8,7 +8,8 @@ import ./Guard.bend as Guard
 
 # Tests for the issuance model, change add-authenticated-grant-issuance.
 # Sections follow the change's tasks: `submission` (1.1), `registration`
-# (1.2), `revision` (1.3), `attenuation` (1.4), `integration` (1.5). Every denial check asserts the
+# (1.2), `revision` (1.3), `attenuation` (1.4), `integration` (1.5) and
+# `scenarios` (2.1, whole lifecycles). Every denial check asserts the
 # exact Error and that the returned state equals the supplied one, field by
 # field, through `denied`.
 #
@@ -1185,6 +1186,286 @@ def integration() -> IO(Unit):
     Test.check(no_plan(F.checked_plan(descriptor(), I.registry(write_revoked(), subject_principal(), now()), 2n, F.Ref{caller(), 2n}, F.Read{}, projected(registered())))
       && no_plan(F.checked_plan(descriptor(), I.registry(registered(), subject_principal(), now()), 2n, F.Ref{caller(), 2n}, F.Read{}, projected(write_revoked()))), "GI-008 partial staleness: a rebuilt registry beside stale transfer lists, or a stale registry beside rebuilt lists, still gives no plan after the write revocation")
 
+# --- Scenario fixtures (synthetic) -------------------------------------------
+
+# Every scenario below is one whole lifecycle. It starts from a state the
+# monitor installs with `I.empty(...)` (`initial()`, or `pair_initial()`), and
+# reaches every later state only through the public entry points
+# `submit_source`, `submit_write`, `register`, `revoke` and `derive`, each
+# called with the authenticated principal a host would attach. Use is then
+# judged by the unchanged `T.admit` and `F.mount`/`F.open`/`F.checked_plan` on
+# projections rebuilt from the issuer state for that use. The fixtures reused
+# from earlier sections (`registered()`, `both()`, `derived(...)`,
+# `deadline_pair()`) are built the same way. The single exception is the
+# epoch-advance scenario's monitor install, marked where it is built: no
+# public transition changes the live stamp, so the monitor installing the
+# advanced snapshot is modeled with `with_live`. Each scenario asserts a
+# permitted and a denied outcome.
+
+# TF.pair_plan() reads object 10v4 then object 30v6 into 20v8. The monitor
+# places 30v6 in read domain 9, whose directory authority is
+# other_read_authority() (103), so the plan's two sources have two distinct
+# read authorities, and TF.pair_context() supplies its synthetic policies.
+def pair_placements() -> I.Placements:
+  I.Placements{I.SourceAt{TF.second_object(), read9()}, placements()}
+
+def pair_initial() -> I.State:
+  I.empty(TF.stamp(), directory(), pair_placements())
+
+def pair_scope() -> I.Scope:
+  I.Scope{TF.pair_plan(), write6(), subject()}
+
+def pair_first() -> I.SourceApproval:
+  I.SourceApproval{1n, 1n, source_authority(), TF.source_object(), read5(), pair_scope(), 3, 200n}
+
+def pair_second() -> I.SourceApproval:
+  I.SourceApproval{1n, 1n, other_read_authority(), TF.second_object(), read9(), pair_scope(), 3, 200n}
+
+def pair_write() -> I.WriteApproval:
+  I.WriteApproval{1n, 1n, write_authority(), TF.destination_object(), write6(), pair_scope(), 3, 200n}
+
+# The read-domain-5 authority approves the first source (id 1, revision 1),
+# the read-domain-9 authority the second (id 2, revision 2), and the
+# write-domain-6 authority the destination (id 3, revision 3).
+def pair_step1() -> I.Change:
+  I.submit_source(pair_initial(), 0n, source_authority(), pair_first(), now())
+
+def pair_step2() -> I.Change:
+  I.submit_source(I.Change.state(pair_step1()), 1n, other_read_authority(), pair_second(), now())
+
+def pair_step3() -> I.Change:
+  I.submit_write(I.Change.state(pair_step2()), 2n, write_authority(), pair_write(), now())
+
+def pair_approved() -> I.State:
+  I.Change.state(pair_step3())
+
+def pair_request() -> I.Request:
+  request(pair_scope(), two(1n, 2n), 3n)
+
+def pair_registration() -> I.Change:
+  I.register(pair_approved(), 3n, pair_request(), now(), token())
+
+def pair_registered() -> I.State:
+  I.Change.state(pair_registration())
+
+# The pair plan's Transfer scope as grant 4 confers it (lifetime 150).
+def pair_scope4() -> T.GrantScope:
+  TF.scope_for(TF.pair_plan(), write6(), 150n)
+
+# TF.pair_context()'s synthetic policies, operation and payments with its
+# grant lists replaced by the projections of `state` for `from` at now().
+def pair_projected_for(+state: I.State, +from: I.Principal) -> T.Context:
+  TF.with_writes(TF.with_reads(TF.pair_context(), I.reads(state, from, now())), I.writes(state, from, now()))
+
+# A change committed and allocated exactly `id`.
+def accepted_as(+change: I.Change, id: Nat) -> Bool:
+  I.Change.accepted(change) && issued_is(I.Change.issued(change), id)
+
+# Subject 7, presenting `token`, mounts (handle 1) and opens a descriptor
+# (handle 2) with read rights from `state`'s registry rebuilt for subject 7.
+def descriptor_from(+state: I.State, +token: T.CodeId) -> F.State:
+  mounted = F.state(F.mount(F.empty(), I.registry(state, subject_principal(), now()), 0n,
+    F.Caller{subject(), token}, 1, live()))
+  F.state(F.open(mounted, I.registry(state, subject_principal(), now()), 1n,
+    F.Ref{F.Caller{subject(), token}, 1n}, 1, live()))
+
+# A read request on `descriptor` against the registry and the grant lists
+# rebuilt from `state` for subject 7 for this use, under `context`'s policies.
+def use_plan(+descriptor: F.State, +state: I.State, +token: T.CodeId, +context: T.Context) -> Maybe<&2, T.Plan>:
+  F.checked_plan(descriptor, I.registry(state, subject_principal(), now()), 2n,
+    F.Ref{F.Caller{subject(), token}, 2n}, F.Read{}, context)
+
+# Whether `caller` can mount anything from `registry`.
+def mounts(+registry: F.Registry, +caller: F.Caller) -> Bool:
+  F.accepted(F.mount(F.empty(), registry, 0n, caller, 1, live()))
+
+# Revocation mid-flow: the read-domain-9 authority revokes its approval 2
+# before registration (revision 4).
+def pair_mid_revoked() -> I.State:
+  I.Change.state(I.revoke(pair_approved(), 3n, other_read_authority(), 2n))
+
+# Revocation after derivation: subject 7 derives child 4 (rights 1 until 120)
+# from registered grant 3 (revision 4); the write authority then revokes the
+# root's write approval 2 (revision 5).
+def child_record() -> I.Grant:
+  child(scope(), 1, 120n, 3n)
+
+def child_descriptor() -> F.State:
+  descriptor_from(derived(1, 120n), other_token())
+
+def after_child_revocation() -> I.Change:
+  I.revoke(derived(1, 120n), 4n, write_authority(), 2n)
+
+# Replay: after grant 3 (revision 3) the write authority approves a fresh
+# write (serial 2, id 4, revision 4); the source authority revokes approval 1
+# (revision 5) and approves a fresh source (serial 2, id 5, revision 6); the
+# fresh pair registers grant 6 with other_token (revision 7).
+def replay_fresh_write() -> I.State:
+  I.Change.state(I.submit_write(registered(), 3n, write_authority(), write_serial(2n), now()))
+
+def replay_revoked() -> I.Change:
+  I.revoke(replay_fresh_write(), 4n, source_authority(), 1n)
+
+def replay_fresh_source() -> I.Change:
+  I.submit_source(I.Change.state(replay_revoked()), 5n, source_authority(), source_serial(2n), now())
+
+def replay_registration() -> I.Change:
+  I.register(I.Change.state(replay_fresh_source()), 6n, request(scope(), one(5n), 4n), now(), other_token())
+
+# Grant 3's consumed write approval 2 cited beside the fresh source
+# approval 5 (approval 2 itself is not revoked).
+def replay_consumed_write() -> I.Change:
+  I.register(I.Change.state(replay_fresh_source()), 6n, request(scope(), one(5n), 2n), now(), other_token())
+
+def grant6() -> I.Grant:
+  I.Grant{6n, other_token(), scope(), 3, 150n, one(5n), 4n, 0n}
+
+# Forged issuer: the write-domain-6 principal's genuine write approval (id 1,
+# revision 1), then the read-domain-5 authority's genuine source approval
+# (id 2, revision 2).
+def forged_write_only() -> I.State:
+  I.Change.state(I.submit_write(initial(), 0n, write_authority(), good_write(), now()))
+
+def forged_then_honest() -> I.State:
+  I.Change.state(I.submit_source(forged_write_only(), 1n, source_authority(), good_source(), now()))
+
+# Redirect: a source approval for TF.plan() (10 into 20v8, id 1) and a write
+# approval for the same read redirected to 20v9 (id 2), each accepted from its
+# own authority.
+def redirected() -> I.State:
+  I.Change.state(I.submit_write(submitted(), 1n, write_authority(),
+    I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope_with(plan_redirect(), subject()), 3, 200n},
+    now()))
+
+# Expanded manifest: a source approval for TF.plan() (id 1) and a write
+# approval whose scope adds source 11 (id 2).
+def expanded() -> I.State:
+  I.Change.state(I.submit_write(submitted(), 1n, write_authority(), write_for(scope_two(), 3, 200n), now()))
+
+# Subject substitution approved by one authority only: the source authority
+# approves TF.plan() for subject 8 (id 1), the write authority for subject 7
+# (id 2).
+def half_approved_for8() -> I.State:
+  I.Change.state(I.submit_write(
+    I.Change.state(I.submit_source(initial(), 0n, source_authority(),
+      I.SourceApproval{1n, 1n, source_authority(), TF.source_object(), read5(), scope8(), 3, 200n}, now())),
+    1n, write_authority(), good_write(), now()))
+
+# MONITOR INSTALL (synthetic; not a public transition): the monitor advances
+# the authority epoch from 3 to 4 and installs registered()'s records under
+# the new live stamp. `valid` accepts it; only the live stamp differs.
+def epoch_advanced() -> I.State:
+  with_live(registered(), next_epoch())
+
+# After the advance, the source and write authorities approve stale_plan()
+# (TF.plan() at the new stamp) with serial 2: ids 4 and 5, revision 5; the
+# fresh pair registers grant 6 (revision 6).
+def new_epoch_scope() -> I.Scope:
+  scope_with(stale_plan(), subject())
+
+def new_epoch_registration() -> I.Change:
+  I.register(
+    I.Change.state(I.submit_write(
+      I.Change.state(I.submit_source(epoch_advanced(), 3n, source_authority(),
+        I.SourceApproval{1n, 2n, source_authority(), TF.source_object(), read5(), new_epoch_scope(), 3, 200n}, now())),
+      4n, write_authority(),
+      I.WriteApproval{1n, 2n, write_authority(), TF.destination_object(), write6(), new_epoch_scope(), 3, 200n}, now())),
+    5n, request(new_epoch_scope(), one(4n), 5n), now(), other_token())
+
+# Deadline: approvals valid while now < 100, submitted at 99 (deadline_pair);
+# the grant registered at 99 for rights 3 until 100 (revision 3).
+def deadline_registered() -> I.State:
+  I.Change.state(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 99n, token()))
+
+# TF.context() at time `t` with its grant lists rebuilt for subject 7 at `t`.
+def projected_at(+state: I.State, +t: Nat) -> T.Context:
+  TF.with_now(TF.with_writes(TF.with_reads(TF.context(), I.reads(state, subject_principal(), t)),
+    I.writes(state, subject_principal(), t)), t)
+
+# --- Section 2.1: scenarios (GI-001 to GI-008, end to end) --------------------
+
+def scenarios() -> IO(Unit):
+  do IO<Unit>:
+    # Current authority.
+    Test.check(accepted_as(pair_step1(), 1n) && accepted_as(pair_step2(), 2n) && accepted_as(pair_step3(), 3n)
+      && accepted_as(pair_registration(), 4n) && Nat.is_eq(I.revision(pair_registered()), 4n)
+      && I.valid(pair_registered()), "scenario current authority: from an empty state the read-domain-5 and read-domain-9 authorities each approve their source of TF.pair_plan(), the write-domain-6 authority approves its destination, and the cited approvals register grant 4 at revision 4")
+    Test.check(reads_equal(I.reads(pair_registered(), subject_principal(), now()),
+        T.ReadCons{T.ReadGrant{TF.source_object(), read5(), pair_scope4()}, T.ReadCons{T.ReadGrant{TF.second_object(), read9(), pair_scope4()}, T.ReadEnd{}}})
+      && admitted(T.admit(TF.pair_plan(), pair_projected_for(pair_registered(), subject_principal()))), "scenario current authority: subject 7's rebuilt projections of grant 4 hold one read per source in its own read domain and make T.admit admit TF.pair_plan() under TF.pair_context()'s policies")
+    Test.check(plan_is(use_plan(descriptor_from(pair_registered(), token()), pair_registered(), token(),
+        pair_projected_for(pair_registered(), subject_principal())), TF.pair_plan()), "scenario current authority: F.mount, F.open and F.checked_plan resolve grant 4's projected capability for subject 7 to TF.pair_plan()")
+    Test.check(TF.denied_as(T.admit(TF.pair_plan(), pair_projected_for(pair_registered(), principal8())), T.Write{})
+      && Bool.not(mounts(I.registry(pair_registered(), principal8(), now()), F.Caller{8n, token()})), "scenario current authority: principal 8's rebuilt projections of the same state admit nothing at Write and give it nothing to mount")
+    # Revocation mid-flow, before registration.
+    Test.check(accepted_as(I.revoke(pair_approved(), 3n, other_read_authority(), 2n), 2n)
+      && denied(I.register(pair_mid_revoked(), 4n, pair_request(), now(), token()), pair_mid_revoked(), I.Revoked{})
+      && denied(I.register(pair_mid_revoked(), 3n, pair_request(), now(), token()), pair_mid_revoked(), I.StaleRevision{}), "scenario revocation mid-flow: after the read-domain-9 authority revokes approval 2 at revision 4, registering the pair at revision 4 is denied Revoked, and a registration validated at revision 3 is denied StaleRevision")
+    Test.check(nothing_projected(pair_mid_revoked(), now())
+      && TF.denied_as(T.admit(TF.pair_plan(), pair_projected_for(pair_mid_revoked(), subject_principal())), T.Write{})
+      && Bool.not(mounts(I.registry(pair_mid_revoked(), subject_principal(), now()), caller())), "scenario revocation mid-flow: use is denied too, with nothing projected for subject 7, T.admit denying TF.pair_plan() at Write and nothing to mount")
+    # Revocation after a derivation.
+    Test.check(accepted_as(derive_change(1, 120n), 4n) && I.current(derived(1, 120n), child_record(), now())
+      && plan_is(use_plan(child_descriptor(), derived(1, 120n), other_token(), projected(derived(1, 120n))), TF.plan()), "scenario revocation after derivation: subject 7 derives child 4 (rights 1 until 120) from grant 3, and a descriptor opened from the child's capability resolves TF.plan()")
+    Test.check(accepted_as(after_child_revocation(), 2n)
+      && Bool.not(I.current(I.Change.state(after_child_revocation()), child_record(), now()))
+      && Bool.not(I.current(I.Change.state(after_child_revocation()), grant3(), now()))
+      && nothing_projected(I.Change.state(after_child_revocation()), now())
+      && no_plan(use_plan(child_descriptor(), I.Change.state(after_child_revocation()), other_token(), projected(I.Change.state(after_child_revocation()))))
+      && TF.denied_as(T.admit(TF.plan(), projected(I.Change.state(after_child_revocation()))), T.Write{}), "scenario revocation after derivation: once the write authority revokes the root's approval 2 the child dies with its parent: neither is current, nothing is projected, the child's descriptor resolves no plan and T.admit denies Write")
+    # Replay.
+    Test.check(denied(I.register(registered(), 3n, good_request(), now(), other_token()), registered(), I.Replay{}), "scenario replay: a second registration of grant 3's request with a fresh token denied Replay")
+    Test.check(denied(I.register(replay_fresh_write(), 4n, request(scope(), one(1n), 4n), now(), other_token()), replay_fresh_write(), I.Replay{}), "scenario replay: grant 3's consumed source approval 1 cited by another request beside a fresh write approval denied Replay")
+    Test.check(accepted_as(replay_revoked(), 1n)
+      && denied(I.submit_source(I.Change.state(replay_revoked()), 5n, source_authority(), good_source(), now()), I.Change.state(replay_revoked()), I.Replay{})
+      && accepted_as(replay_fresh_source(), 5n), "scenario replay: after its issuer revokes approval 1, resubmitting serial 1 is denied Replay while a fresh serial 2 is accepted as id 5")
+    Test.check(denied(replay_consumed_write(), I.Change.state(replay_fresh_source()), I.Replay{}), "scenario replay: grant 3's consumed write approval 2 cited beside the fresh source approval 5 denied Replay")
+    Test.check(accepted_as(replay_registration(), 6n)
+      && I.current(I.Change.state(replay_registration()), grant6(), now())
+      && Bool.not(I.current(I.Change.state(replay_registration()), grant3(), now()))
+      && registry_equal(I.registry(I.Change.state(replay_registration()), subject_principal(), now()),
+        F.Registered{F.Capability{other_token(), subject(), TF.plan(), 3, 3n, 150n}, F.EmptyRegistry{}})
+      && admitted(T.admit(TF.plan(), projected(I.Change.state(replay_registration())))), "scenario replay: the fresh pair registers grant 6, the only grant projected for subject 7, which T.admit admits while revoked grant 3 is not current")
+    # Denial cases.
+    Test.check(denied(I.submit_source(initial(), 0n, write_authority(), source_approval(write_authority(), read5()), now()), initial(), I.NotAuthority{})
+      && accepted_as(I.submit_write(initial(), 0n, write_authority(), good_write(), now()), 1n)
+      && denied(I.register(forged_write_only(), 1n, request(scope(), one(1n), 1n), now(), token()), forged_write_only(), I.MissingApproval{})
+      && nothing_projected(forged_write_only(), now())
+      && TF.denied_as(T.admit(TF.plan(), projected(forged_write_only())), T.Write{}), "scenario forged issuer: the write-domain-6 principal's own source approval for object 10 is denied NotAuthority, its genuine write approval is accepted, a request citing that write approval as the source is denied MissingApproval, and T.admit denies Write")
+    Test.check(accepted_as(I.register(forged_then_honest(), 2n, request(scope(), one(2n), 1n), now(), token()), 3n)
+      && admitted(T.admit(TF.plan(), projected(I.Change.state(I.register(forged_then_honest(), 2n, request(scope(), one(2n), 1n), now(), token()))))), "scenario forged issuer: once the read-domain-5 authority itself approves object 10, the same plan registers as grant 3 and T.admit admits it")
+    Test.check(denied(I.register(redirected(), 2n, request(scope(), one(1n), 2n), now(), token()), redirected(), I.ScopeMismatch{})
+      && denied(I.register(redirected(), 2n, request(scope_with(plan_redirect(), subject()), one(1n), 2n), now(), token()), redirected(), I.ScopeMismatch{})
+      && nothing_projected(redirected(), now())
+      && TF.denied_as(T.admit(plan_redirect(), TF.with_writes(TF.with_reads(TF.redirect_context(plan_redirect(), write6()),
+        I.reads(redirected(), subject_principal(), now())), I.writes(redirected(), subject_principal(), now()))), T.Write{}), "scenario redirect: a read of 10 into 20v8 paired with a write approval for 20v9 is denied ScopeMismatch under either scope, nothing is projected, and T.admit denies the redirected plan at Write")
+    Test.check(denied(I.register(expanded(), 2n, request(scope(), one(1n), 2n), now(), token()), expanded(), I.ScopeMismatch{})
+      && denied(I.register(expanded(), 2n, request(scope_two(), one(1n), 2n), now(), token()), expanded(), I.MissingApproval{})
+      && nothing_projected(expanded(), now())
+      && TF.denied_as(T.admit(TF.plan(), projected(expanded())), T.Write{}), "scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write")
+    Test.check(denied(I.register(both(), 2n, request(scope8(), one(1n), 2n), now(), token()), both(), I.SubjectMismatch{})
+      && accepted_as(registration_change(), 3n)
+      && denied(I.derive(registered(), 3n, principal8(), 3n, derivation(1, 120n), now(), other_token()), registered(), I.SubjectMismatch{})
+      && nothing_projected_for(registered(), principal8(), now())
+      && Bool.not(mounts(I.registry(registered(), principal8(), now()), F.Caller{8n, token()}))
+      && admitted(T.admit(TF.plan(), projected(registered()))), "scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted")
+    Test.check(denied(I.register(half_approved_for8(), 2n, request(scope8(), one(1n), 2n), now(), token()), half_approved_for8(), I.SubjectMismatch{})
+      && nothing_projected_for(half_approved_for8(), principal8(), now()), "scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8")
+    Test.check(admitted(T.admit(TF.plan(), projected(registered())))
+      && I.valid(epoch_advanced()) && Bool.not(I.current(epoch_advanced(), grant3(), now()))
+      && nothing_projected(epoch_advanced(), now())
+      && TF.denied_as(T.admit(TF.plan(), TF.with_live(projected(epoch_advanced()), next_epoch())), T.Stale{})
+      && denied(I.submit_source(epoch_advanced(), 3n, source_authority(), source_serial(2n), now()), epoch_advanced(), I.StaleEpoch{}), "scenario epoch advance: grant 3 admitted at epoch 3 is not current once the monitor installs epoch 4, nothing is projected, T.admit denies the old plan Stale and a fresh approval of the old scope is denied StaleEpoch")
+    Test.check(accepted_as(new_epoch_registration(), 6n)
+      && registry_equal(I.registry(I.Change.state(new_epoch_registration()), subject_principal(), now()),
+        F.Registered{F.Capability{other_token(), subject(), stale_plan(), 3, 4n, 150n}, F.EmptyRegistry{}}), "scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4")
+    Test.check(denied(I.register(deadline_pair(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), deadline_pair(), I.Expired{})
+      && grants_empty(I.grants(deadline_pair()))
+      && denied(I.register(both(), 2n, request_with(scope(), one(1n), 2n, 3, 100n), 100n, token()), both(), I.Expired{}), "scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200")
+    Test.check(admitted(T.admit(TF.plan(), projected_at(deadline_registered(), 99n)))
+      && nothing_projected(deadline_registered(), 100n)
+      && TF.denied_as(T.admit(TF.plan(), projected_at(deadline_registered(), 100n)), T.Write{}), "scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write")
+
 def main() -> IO(Unit):
   do IO<Unit>:
     submission()
@@ -1192,4 +1473,5 @@ def main() -> IO(Unit):
     revision()
     attenuation()
     integration()
-    IO.print("Issuance: 201 checks passed")
+    scenarios()
+    IO.print("Issuance: 224 checks passed")
