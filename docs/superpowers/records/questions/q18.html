@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>For Spaceghost: five decisions the controller needs from you</title>
+<meta name="writ-topic" content="spaceghost">
+<meta name="writ-status" content="open">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec;--mono:"JetBrains Mono","SF Mono",Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 "Source Sans 3","Segoe UI",system-ui,sans-serif;max-width:60rem}
+h1{font-size:1.3rem;margin:0 0 .4rem}p{margin:.4rem 0;max-width:68ch}
+fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:.9rem 0}legend{font-weight:600;padding:0 .3rem}
+label{display:block;margin:.3rem 0;cursor:pointer}label input{margin-right:.5rem}
+textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem;cursor:pointer;margin-top:.5rem}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.05em .3em;border-radius:4px}
+table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:left;padding:.3rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+.note{color:var(--muted);font-size:.9rem}
+</style>
+</head><body>
+<h1>For Spaceghost: five decisions the controller needs from you</h1>
+<p>Written by the controller (Josh's Claude session) on 2026-11-05 after the Genode and Unikraft lanes landed. Josh asked me to put in one place what I need from you. Each item has the evidence path so you can check the claim before answering. The form records who answered; Josh can answer on your behalf after you talk.</p>
+
+<form method="post" action="/questions/q18/answer">
+<fieldset><legend>Who is answering</legend>
+<label><input type="radio" name="from" value="spaceghost"> Spaceghost</label>
+<label><input type="radio" name="from" value="josh-for-spaceghost"> Josh, relaying Spaceghost's answers</label>
+</fieldset>
+
+<fieldset><legend>1. Next bucket: three lanes in parallel (my recommendation; confirm or change)</legend>
+<p>State: the Genode component change is archived (GB-006 reviewed), the unikernel change is at 9 of 10 boxes and held for its ingress transport (item 3). Twenty-four changes have no box started. I recommend starting these three, which share no files:</p>
+<table>
+<tr><th>Change</th><th>Why now</th><th>What it needs</th></tr>
+<tr><td><code>add-portable-host-contract</code> section 1</td><td>Every host target (Linux, Windows, Drift) waits on the five host primitives, monitor-owned identity, and the shared conformance vectors; it also fixes the shape of the authenticated ingress subject the unikernel 2.1 box needs.</td><td>Bend only; no hardware.</td></tr>
+<tr><td><code>add-authenticated-grant-issuance</code></td><td>The library enforces paired permission at use but does not authenticate grant issuers; a security-law gap in the core, independent of hosts.</td><td>Bend only.</td></tr>
+<tr><td><code>validate-physical-gpu-execution</code></td><td>Every evidence file so far says "CPU fallback is not a GPU test". This host has an RTX 4090 (driver 615.71), so real device evidence can be produced now.</td><td>The pinned Bend GPU backend on this host; no new hardware.</td></tr>
+</table>
+<label><input type="radio" name="bucket" value="confirm"> Confirm these three</label>
+<label><input type="radio" name="bucket" value="swap"> Change the set (say which in the notes)</label>
+<label><input type="radio" name="bucket" value="one-at-a-time"> Only one lane at a time (say which first)</label>
+</fieldset>
+
+<fieldset><legend>2. Genode: which monitor layout is the reference? (open since q1)</legend>
+<p>Today the Bend monitor runs as a child of the same init that routes the clients, and the shim binds one descriptor per session from the parent's route subject (<code>hosts/genode/monitor/Monitor.bend</code>, <code>hosts/genode/effects/Channel.md</code>). The alternative confines the clients under a nested init with the monitor one level up, which keeps the route subjects out of the clients' reach by construction.</p>
+<label><input type="radio" name="monitor" value="same-init"> Keep the monitor beside the clients under one init (current)</label>
+<label><input type="radio" name="monitor" value="nested-init"> Monitor one level up, clients under a nested init</label>
+<label><input type="radio" name="monitor" value="both"> Record both as profiles, nested as the reference</label>
+</fieldset>
+
+<fieldset><legend>3. Unikraft: the ingress transport for task 2.1 (Josh ruled this is yours, q17)</legend>
+<p>The <code>IO.print</code> twin is missing and the ingress subject is scaffolding (COM2 over a Unix socket; a client could forge it; UL-008 unmet). Evidence: <code>docs/UNIKERNELS.md</code> Open list, <code>hosts/unikraft/INVENTORY.md</code>, <code>verification/unikernel-channel-qemu.txt</code>.</p>
+<label><input type="radio" name="transport" value="virtio"> A virtio channel: the host side labels each port, the guest reads the subject from the port, never from the frame (needs a virtio driver in the image and a labelling harness)</label>
+<label><input type="radio" name="transport" value="com2-harness"> Descriptor-driven COM2: the harness that opens the socket attaches the subject outside the guest (smaller change; authenticity rests on the harness, outside the trusted base)</label>
+<label><input type="radio" name="transport" value="defer"> Defer until the portable host contract fixes the subject shape (item 1), then choose</label>
+</fieldset>
+
+<fieldset><legend>4. Windows: who has the machine?</legend>
+<p><code>docs/PLATFORMS.md</code> says Windows is the first product target and that a Windows WinFsp canary passed while its confinement lane failed. There is no Windows machine in this session. For <code>add-windows-host</code> I need to know where that evidence was produced and whether that machine (or another with WinFsp and a native toolchain) can run lanes.</p>
+<label><input type="radio" name="windows" value="spaceghost-machine"> You have it; you will run the Windows lanes from the plans I write</label>
+<label><input type="radio" name="windows" value="josh-machine"> Josh will set one up (VM or hardware) for the controller to drive</label>
+<label><input type="radio" name="windows" value="later"> No Windows machine for now; keep Windows after Linux</label>
+</fieldset>
+
+<fieldset><legend>5. Drift: when does a bootable kernel exist?</legend>
+<p><code>add-drift-kernel-host</code> and <code>add-freestanding-bend-runtime</code> assume a kernel of Writ's own using Drift's drivers. The Drift clone on this machine fails its kernel check under the local QEMU and GCC. The answer sets whether those two changes go in the next bucket or the one after.</p>
+<label><input type="radio" name="drift" value="weeks"> A bootable kernel within weeks: plan the freestanding runtime now</label>
+<label><input type="radio" name="drift" value="months"> Months or more: keep both changes after the host contract and Linux</label>
+<label><input type="radio" name="drift" value="unknown"> Unknown; the controller should not plan around it</label>
+</fieldset>
+
+<label>Notes (anything the radios do not cover, or a time for the buckets brainstorm with Josh)<textarea name="text"></textarea></label>
+<button type="submit">Send answer</button>
+</form>
+<p class="note">The repository copy of the open items is <code>docs/superpowers/records/spaceghost-questions.md</code>. Answers land in <code>q18.answers.jsonl</code>.</p>
+</body></html>
