@@ -44,3 +44,13 @@
 2026-11-05T04:45:15Z	implementer	task 3 fix round 2: native 1041 PASS, identical to JS (CPU, not GPU); committing
 2026-11-05T04:45:39Z	controller	fix round 2 reported; scoped re-review dispatched
 2026-11-05T04:48:46Z	controller	task 3 complete; task 4 dispatched (sealing, publication, recovery, revocation)
+2026-11-05T04:54:50Z	implementer	task 4 started: brief, global constraints, task 3 records, HostPrimitives, HostIdentity, DataOS/Backplane/FacadeTests, LAWS/PROOF read; HostPrimitives is 1267 lines, so families 3 to 5 go to HostPublication.bend (pre-approved)
+2026-11-05T05:06:21Z	implementer	task 4: HostPublication.bend written (families 3 to 5), HostPrimitives types/valid/issue/delegate extended; HostPrimitivesTests 198 checks standalone (104 + 94)
+2026-11-05T05:09:15Z	implementer	task 4: mutation run started (119 mutants)
+2026-11-05T05:12:13Z	implementer	task 4: 119 mutants, 116 killed first run; 3 input_live survivors closed by a hand-built revoke check (203 checks); new laws discriminate
+2026-11-05T05:12:48Z	implementer	task 4: code final; full JS suite and native build started
+2026-11-05T05:13:47Z	implementer	task 4: JS suite exit 0, 1140 PASS, ALL LIBRARY TESTS PASSED; native build running (heartbeat)
+2026-11-05T05:14:41Z	implementer	task 4: duplicate check name (PH-005 delegate stale revision, also in HostIdentityTests) renamed; JS rerun exit 0, 1140 PASS, no duplicates; native build restarted (heartbeat)
+2026-11-05T05:16:44Z	implementer	task 4: final mutation run 119 of 119 killed by named checks; native build still running (heartbeat)
+2026-11-05T05:18:17Z	implementer	task 4: report drafted; native build still running (heartbeat)
+2026-11-05T05:18:32Z	implementer	task 4: native 1140 PASS, identical to JS (CPU, not GPU); PROOF ALL PROOFS CHECK; openspec 44 passed; committing

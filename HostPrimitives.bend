@@ -3,18 +3,19 @@ import ./HostWire.bend as W
 import ./HostIdentity.bend as I
 import ./Frontend.bend as F
 import ./Transfer.bend as T
-import ./Backplane.bend as B
-import ./DataOS.bend as D
 
 # Portable HOST PRIMITIVES (task 1.3 of the add-portable-host-contract change;
-# PH-001, PH-006, PH-007, PH-014 in this part): the five primitive families
-# every target binding (Genode, direct Linux, native Windows, a future kernel)
-# implements, defined once here in Bend:
-#   1. session binding   (`family_session()`)      this module, task 1.3
-#   2. worker domains    (`family_worker()`)       this module, task 1.3
-#   3. artifacts         (`family_artifact()`)     added by Task 4
-#   4. publication       (`family_publication()`)  added by Task 4
-#   5. revocation        (`family_revocation()`)   added by Task 4
+# PH-001, PH-006, PH-007, PH-014 here, PH-008 to PH-010 in HostPublication):
+# the five primitive families every target binding (Genode, direct Linux,
+# native Windows, a future kernel) implements, defined once in Bend:
+#   1. session binding   (`family_session()`)      this module
+#   2. worker domains    (`family_worker()`)       this module
+#   3. artifacts         (`family_artifact()`)     HostPublication.bend
+#   4. publication       (`family_publication()`)  HostPublication.bend
+#   5. revocation        (`family_revocation()`)   HostPublication.bend
+# All five share this module's types (`State`, `Step`, `Effect`, `Error`,
+# `Phase`) and its `valid` gate; families 3 to 5 are in a separate module
+# only because of this one's size.
 #
 # Binding contract (PH-001). A target binding supplies only `Fact` values (and
 # its `TargetReport` and route inventory, which are facts too) and executes
@@ -41,10 +42,12 @@ import ./DataOS.bend as D
 #   identity table stored. The `delegable` flag in `SessionEvidence` can
 #   only narrow (a client session it reports non-delegable is bound so); it
 #   never makes a session delegable that the monitor's role does not allow.
-# - `Effect` is closed. It has no native write, publish, or diagnostic
-#   variant, and `native_write_offered` has no accepting branch, so the fast
-#   publication route has no value to return. Publication will be one
-#   `Effect` that carries a `DataOS.commit_from_capability` result (Task 4).
+# - `Effect` is closed. It has no native write, publish, recall, or
+#   diagnostic variant, and `native_write_offered` has no accepting branch,
+#   so the fast publication route has no value to return. The publication
+#   effect is `HostPublication.Publish`, a separate type that no `Step` can
+#   carry; only `HostPublication.publish` returns it, after
+#   `DataOS.commit_from_capability` (HostPublication header).
 # - `Denied` has no effects field: a denial cannot carry work for the target
 #   (law `primitive_denied_emits_nothing`).
 # Host obligations (section 2, reviewed-only): (a) Bend datatypes are public,
@@ -56,8 +59,10 @@ import ./DataOS.bend as D
 # value the binding chose.
 #
 # Authority. `State` is monitor state: the HostIdentity table (sessions and
-# entries, built only by its transitions), the configured profile table, the
-# admitted workers, and the worker counter. Worker ids are monitor-allocated.
+# entries, changed only through this layer's transitions: `open_session`,
+# `issue`, `delegate`, and HostPublication's `revoke` and `restart`), the
+# configured profile table, the admitted workers, the worker counter, the
+# sealed artifacts, and the publication records. Worker ids are monitor-allocated.
 # A worker's session is the one `HostIdentity.resolve` accepted for the
 # presented reference, and its stored input reference is rebuilt from the
 # resolved entry (this host, the current incarnation, the entry's slot and
@@ -86,8 +91,10 @@ import ./DataOS.bend as D
 # every configured profile id names one profile; every bound session is
 # bound once, is one non-delegable session of the identity table, and names
 # a configured profile; every worker id is nonzero,
-# below `next_worker`, and names one worker; and no two workers that are not
-# `Reclaimed` share an input entry (host, incarnation, and slot). Every
+# below `next_worker`, and names one worker; no two workers that are not
+# `Reclaimed` share an input entry (host, incarnation, and slot); every sealed
+# record names one worker and no worker is sealed twice; and every recorded
+# invocation is recorded once. Every
 # transition first requires the expected revision and a `valid` state (a
 # state failing `valid` is not one this monitor committed, so it is denied
 # StaleRevision, the HostIdentity pattern), and every admitted step
@@ -123,7 +130,7 @@ import ./DataOS.bend as D
 #   worker session bound under a profile whose backend is `Cpu`, and the worker
 #   records that profile (PH-014). Inputs are delivered to a confined worker
 #   without a Transfer/Frontend plan recheck; the plan is rechecked at
-#   publication (Task 4, `DataOS.commit_from_capability`).
+#   publication (`HostPublication.publish`, through `DataOS.commit_from_capability`).
 #
 # Use order (`use`, read-only): gate -> the message is a wire `Use` (else
 # WrongPhase) -> `HostIdentity.resolve` (Identity{reason}) -> the requested
@@ -162,19 +169,19 @@ import ./DataOS.bend as D
 # assert which transitions deny, that a reason is the right one, or that an
 # accepted step's effects are correct; HostPrimitivesTests covers those.
 #
-# Imports: `Backplane` and `DataOS` are imported for the publication family
-# (Task 4), whose effect carries a `DataOS.commit_from_capability` result;
-# this part uses neither.
-#
-# Public entry points: `empty`, `valid`, `open_session`, `use` (family 1);
-# the types `Role`, `Binding`, `Bindings`;
+# Public entry points: `empty`, `valid`, `open_session`, `use`, `issue`,
+# `delegate` (family 1); the types `Role`, `Binding`, `Bindings`;
 # `admit_worker`, `charge`, `diagnostic`, `native_write_offered` (family 2);
 # the types `Backend`, `Profile`, `Configured`, `Profiles`, `TargetReport`,
 # `RouteFact`, `Fact`, `Effect`, `Step`, `UseResult`, `Error`, `Phase`,
-# `Worker`, `Workers`, `State`; the named family, control, and right bits
+# `Worker`, `Workers`, `State`, `Sealed`, `Seals`, `Publication`,
+# `Publications`; the named family, control, and right bits
 # (with `no_controls` and `no_right`),
 # `operation_right`, `first_worker`, `no_usage`; and the accessors and
-# equalities marked "Public". Every other def is an implementation helper.
+# equalities marked "Public". Every other def is an implementation helper;
+# HostPublication reuses `current`, `reresolve`, `advanced`, `is_running`,
+# `is_reclaimed`, `worker_at`, `count_worker`, `seal_at`, `publication_at`,
+# `entry_ref`, and `same_entry`, and the lookup types.
 
 # --- Interface types -------------------------------------------------------------
 
@@ -215,8 +222,8 @@ type RouteFact is Data:
 # worker's complete route set; `ResourceRequest` a worker asking for `amount`
 # more units; `Diagnostic` a worker's emission and whether it would be
 # public; `NativeWriteOffered` a native fast write route offered for a
-# worker's output. Task 4 adds the artifact, publication, and revocation
-# facts.
+# worker's output. The artifact, quiescence, and completion facts are
+# HostPublication's own types.
 type Fact is Data:
   SessionEvidence{caller: F.Caller, origin: I.Origin, delegable: Bool}
   Inventory{routes: +List<RouteFact>}
@@ -224,17 +231,29 @@ type Fact is Data:
   Diagnostic{worker: Nat, public: Bool}
   NativeWriteOffered{worker: Nat}
 
-# The only work a target binding may perform, each returned by an admitted
-# transition. `DeliverInputs` delivers the protected inputs of the identity
-# entry `input` (its full reference, as the monitor rebuilt it) into
-# `worker`'s confined domain. Task 4 adds the rest.
+# The only work a target binding may perform from a `Step`, each returned by
+# an admitted transition. `DeliverInputs` delivers the protected inputs of the
+# identity entry `input` (its full reference, as the monitor rebuilt it) into
+# `worker`'s confined domain. `Reconcile` tells the binding that the
+# publication this monitor recorded for `invocation`, of artifact `digest`, is
+# the outcome to finish or confirm after a crash; both fields are copied from
+# the monitor's record, so it can only repeat a recorded publication.
+# `StopEffects` stops every future native effect of `worker` (it recalls and
+# erases nothing). `Reclaim` releases `worker`'s quiesced native resources.
+# There is deliberately no publish variant: a publication effect is
+# `HostPublication.Publish`, which no `Step` can carry (HostPublication
+# header), and there is no recall or erase variant.
 type Effect is Data:
   DeliverInputs{worker: Nat, input: W.Ref}
+  Reconcile{invocation: Nat, digest: T.CodeId}
+  StopEffects{worker: Nat}
+  Reclaim{worker: Nat}
 
 # A worker domain's lifecycle phase. Admission records workers directly in
-# `Running`, so no transition of this part produces `Prepared`; it is kept
-# for Task 4's revocation family, and the runtime checks deny it like every
-# phase other than `Running`.
+# `Running`, so no transition produces `Prepared`; the runtime checks deny it
+# like every phase other than `Running`. Revocation moves `Running` to
+# `Revoked`, quiescence `Revoked` to `Quiesced`, and reclamation `Quiesced`
+# to `Reclaimed` (HostPublication).
 type Phase is Data:
   Prepared{}
   Running{}
@@ -270,13 +289,35 @@ type Bindings is Data:
   NoBindings{}
   Bindings{head: Binding, tail: Bindings}
 
+# The artifact a worker sealed (family 3, `HostPublication.seal`): the exact
+# object, version, and content digest the binding reported with no writer of
+# any kind. Monitor state; only `seal` writes it.
+type Sealed is Data:
+  Sealed{worker: Nat, object: Nat, version: Nat, digest: T.CodeId}
+
+type Seals is Data:
+  NoSeals{}
+  Seals{head: Sealed, tail: Seals}
+
+# One recorded publication (family 4): the negotiated plan's invocation and
+# the sealed digest that `HostPublication.publish` released for it. Monitor
+# state; only `publish` writes it, and no transition removes it.
+type Publication is Data:
+  Publication{invocation: Nat, digest: T.CodeId}
+
+type Publications is Data:
+  NoPublications{}
+  Publications{head: Publication, tail: Publications}
+
 # The primitive layer's whole state. `profiles` is fixed by `empty`;
 # `bindings` records, for each session `open_session` bound as a worker
 # session, the configured profile it was bound under; `next_worker` exceeds
-# every worker id.
+# every worker id; `seals` holds each worker's sealed artifact and
+# `publications` each released invocation (families 3 and 4, written only by
+# HostPublication's `seal` and `publish`).
 type State is Data:
   State{revision: Nat, identity: I.State, profiles: Profiles, bindings: Bindings, workers: Workers,
-    next_worker: Nat}
+    next_worker: Nat, seals: Seals, publications: Publications}
 
 # Closed set of denial reasons. Every denied transition names exactly one.
 type Error is Data:
@@ -296,6 +337,15 @@ type Error is Data:
   SlotOccupied{}
   RightsNotHeld{}
   OperationNotPermitted{}
+  LiveWriter{}
+  NotSealed{}
+  Retargeted{}
+  ArtifactMismatch{}
+  CommitRejected{}
+  Replay{}
+  Substitution{}
+  Unrecorded{}
+  NotQuiesced{}
 
 # The output of every mutating transition. Only `Admitted` carries effects.
 type Step is Data:
@@ -325,6 +375,18 @@ type ProfileLookup is Data:
   NoProfile{}
   OneProfile{configured: Configured}
   ManyProfiles{}
+
+# Implementation helper: a counted lookup of a worker's sealed record.
+type SealLookup is Data:
+  NoSeal{}
+  OneSeal{sealed: Sealed}
+  ManySeals{}
+
+# Implementation helper: a counted lookup of an invocation's publication.
+type PublicationLookup is Data:
+  NoPublication{}
+  OnePublication{publication: Publication}
+  ManyPublications{}
 
 # --- Named constants (public) -----------------------------------------------------
 
@@ -395,7 +457,7 @@ def no_usage() -> Nat:
 # Public entry point: a primitive layer over the monitor's identity table and
 # its configured profile table, with no workers.
 def empty(identity: I.State, profiles: Profiles) -> State:
-  State{0n, identity, profiles, NoBindings{}, NoWorkers{}, first_worker()}
+  State{0n, identity, profiles, NoBindings{}, NoWorkers{}, first_worker(), NoSeals{}, NoPublications{}}
 
 # --- Accessors and equality (public) ----------------------------------------------
 
@@ -417,6 +479,15 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case SlotOccupied{} SlotOccupied{}: True{}
     case RightsNotHeld{} RightsNotHeld{}: True{}
     case OperationNotPermitted{} OperationNotPermitted{}: True{}
+    case LiveWriter{} LiveWriter{}: True{}
+    case NotSealed{} NotSealed{}: True{}
+    case Retargeted{} Retargeted{}: True{}
+    case ArtifactMismatch{} ArtifactMismatch{}: True{}
+    case CommitRejected{} CommitRejected{}: True{}
+    case Replay{} Replay{}: True{}
+    case Substitution{} Substitution{}: True{}
+    case Unrecorded{} Unrecorded{}: True{}
+    case NotQuiesced{} NotQuiesced{}: True{}
     case _ _: False{}
 
 # Public accessor: the resulting state; on denial, the supplied state.
@@ -445,33 +516,43 @@ def Step.reason(step: Step) -> Maybe<&2, Error>:
 
 def revision(state: State) -> Nat:
   match state:
-    case State{revision, _, _, _, _, _}:
+    case State{revision, _, _, _, _, _, _, _}:
       revision
 
 def identity(state: State) -> I.State:
   match state:
-    case State{_, identity, _, _, _, _}:
+    case State{_, identity, _, _, _, _, _, _}:
       identity
 
 def profiles(state: State) -> Profiles:
   match state:
-    case State{_, _, profiles, _, _, _}:
+    case State{_, _, profiles, _, _, _, _, _}:
       profiles
 
 def bindings(state: State) -> Bindings:
   match state:
-    case State{_, _, _, bindings, _, _}:
+    case State{_, _, _, bindings, _, _, _, _}:
       bindings
 
 def workers(state: State) -> Workers:
   match state:
-    case State{_, _, _, _, workers, _}:
+    case State{_, _, _, _, workers, _, _, _}:
       workers
 
 def next_worker(state: State) -> Nat:
   match state:
-    case State{_, _, _, _, _, next_worker}:
+    case State{_, _, _, _, _, next_worker, _, _}:
       next_worker
+
+def seals(state: State) -> Seals:
+  match state:
+    case State{_, _, _, _, _, _, seals, _}:
+      seals
+
+def publications(state: State) -> Publications:
+  match state:
+    case State{_, _, _, _, _, _, _, publications}:
+      publications
 
 def worker_id(worker: Worker) -> Nat:
   match worker:
@@ -532,6 +613,36 @@ def configured_quota(configured: Configured) -> Nat:
   match configured:
     case Configured{_, quota_limit}:
       quota_limit
+
+def sealed_worker(sealed: Sealed) -> Nat:
+  match sealed:
+    case Sealed{worker, _, _, _}:
+      worker
+
+def sealed_object(sealed: Sealed) -> Nat:
+  match sealed:
+    case Sealed{_, object, _, _}:
+      object
+
+def sealed_version(sealed: Sealed) -> Nat:
+  match sealed:
+    case Sealed{_, _, version, _}:
+      version
+
+def sealed_digest(sealed: Sealed) -> T.CodeId:
+  match sealed:
+    case Sealed{_, _, _, digest}:
+      digest
+
+def publication_invocation(publication: Publication) -> Nat:
+  match publication:
+    case Publication{invocation, _}:
+      invocation
+
+def publication_digest(publication: Publication) -> T.CodeId:
+  match publication:
+    case Publication{_, digest}:
+      digest
 
 def report_families(report: TargetReport) -> U32:
   match report:
@@ -740,14 +851,93 @@ def bindings_valid(bindings: Bindings, +all: Bindings, +sessions: I.Sessions, +p
         && Nat.is_eq(profile_count(profiles, binding_profile(binding)), 1n)
         && bindings_valid(rest, all, sessions, profiles)
 
+# Implementation helper: add one candidate to a counted seal lookup.
+def count_seal(ok: Bool, sealed: Sealed, rest: SealLookup) -> SealLookup:
+  match ok rest:
+    case False{} rest:
+      rest
+    case True{} NoSeal{}:
+      OneSeal{sealed}
+    case True{} OneSeal{_}:
+      ManySeals{}
+    case True{} ManySeals{}:
+      ManySeals{}
+
+# Implementation helper: every sealed record of worker `worker`, counted.
+def seal_at(seals: Seals, +worker: Nat) -> SealLookup:
+  match seals:
+    case NoSeals{}:
+      NoSeal{}
+    case Seals{+sealed, rest}:
+      count_seal(Nat.is_eq(sealed_worker(sealed), worker), sealed, seal_at(rest, worker))
+
+# Implementation helper: whether a seal lookup found exactly one record.
+def one_seal(found: SealLookup) -> Bool:
+  match found:
+    case OneSeal{_}:
+      True{}
+    case _:
+      False{}
+
+# Implementation helper: `valid`'s seal clauses: each sealed record names one
+# worker, and no worker has two sealed records.
+def seals_valid(seals: Seals, +all: Seals, +workers: Workers) -> Bool:
+  match seals:
+    case NoSeals{}:
+      True{}
+    case Seals{+sealed, rest}:
+      Nat.is_eq(id_count(workers, sealed_worker(sealed)), 1n) && one_seal(seal_at(all, sealed_worker(sealed)))
+        && seals_valid(rest, all, workers)
+
+# Implementation helper: add one candidate to a counted publication lookup.
+def count_publication(ok: Bool, publication: Publication, rest: PublicationLookup) -> PublicationLookup:
+  match ok rest:
+    case False{} rest:
+      rest
+    case True{} NoPublication{}:
+      OnePublication{publication}
+    case True{} OnePublication{_}:
+      ManyPublications{}
+    case True{} ManyPublications{}:
+      ManyPublications{}
+
+# Implementation helper: every recorded publication of `invocation`, counted.
+def publication_at(publications: Publications, +invocation: Nat) -> PublicationLookup:
+  match publications:
+    case NoPublications{}:
+      NoPublication{}
+    case Publications{+publication, rest}:
+      count_publication(Nat.is_eq(publication_invocation(publication), invocation), publication,
+        publication_at(rest, invocation))
+
+# Implementation helper: whether a publication lookup found exactly one record.
+def one_publication(found: PublicationLookup) -> Bool:
+  match found:
+    case OnePublication{_}:
+      True{}
+    case _:
+      False{}
+
+# Implementation helper: `valid`'s publication clause: each invocation is
+# recorded once.
+def publications_valid(publications: Publications, +all: Publications) -> Bool:
+  match publications:
+    case NoPublications{}:
+      True{}
+    case Publications{+publication, rest}:
+      one_publication(publication_at(all, publication_invocation(publication)))
+        && publications_valid(rest, all)
+
 # Public: the structural invariants (module header). It checks structure only
 # and does not authenticate the supplied state.
 def valid(state: State) -> Bool:
   match state:
-    case State{_, +identity, +profiles, +bindings, +workers, +next_worker}:
+    case State{_, +identity, +profiles, +bindings, +workers, +next_worker, +seals, +publications}:
       I.valid(identity) && profiles_valid(profiles, profiles)
         && bindings_valid(bindings, bindings, I.sessions(identity), profiles)
         && workers_valid(workers, workers, next_worker)
+        && seals_valid(seals, seals, workers)
+        && publications_valid(publications, publications)
 
 # Implementation helper: every transition's first gate.
 def current(+state: State, expected_revision: Nat) -> Bool:
@@ -760,23 +950,24 @@ def reresolve(+state: State, +worker: Worker, +now: Nat) -> I.Resolution:
 # Implementation helper: advance the revision once, keeping everything else.
 def advanced(state: State) -> State:
   match state:
-    case State{revision, identity, profiles, bindings, workers, next_worker}:
-      State{1n+revision, identity, profiles, bindings, workers, next_worker}
+    case State{revision, identity, profiles, bindings, workers, next_worker, seals, publications}:
+      State{1n+revision, identity, profiles, bindings, workers, next_worker, seals, publications}
 
-# --- Family 1: session binding (public: open_session, use) ------------------------
+# --- Family 1: session binding (public: open_session, use, issue, delegate) ------
 
 # Implementation helper: commit a bound identity table.
 def with_identity(state: State, identity: I.State) -> State:
   match state:
-    case State{revision, _, profiles, bindings, workers, next_worker}:
-      State{1n+revision, identity, profiles, bindings, workers, next_worker}
+    case State{revision, _, profiles, bindings, workers, next_worker, seals, publications}:
+      State{1n+revision, identity, profiles, bindings, workers, next_worker, seals, publications}
 
 # Implementation helper: commit a bound identity table and record that the
 # issued session is a worker session bound under `profile`.
 def with_worker_session(state: State, identity: I.State, +session: Nat, +profile: Nat) -> State:
   match state:
-    case State{revision, _, profiles, bindings, workers, next_worker}:
-      State{1n+revision, identity, profiles, Bindings{Binding{session, profile}, bindings}, workers, next_worker}
+    case State{revision, _, profiles, bindings, workers, next_worker, seals, publications}:
+      State{1n+revision, identity, profiles, Bindings{Binding{session, profile}, bindings}, workers, next_worker,
+        seals, publications}
 
 # Implementation helper: a client session's identity step; a HostIdentity
 # denial is reported as `Identity{reason}`.
@@ -919,6 +1110,59 @@ def u_gate(ok: Bool, +state: State, +session: Nat, message: W.Message, +now: Nat
 def use(+state: State, expected_revision: Nat, +session: Nat, message: W.Message, +now: Nat) -> UseResult:
   u_gate(current(state, expected_revision), state, session, message, now)
 
+# Implementation helper: an identity-table change that issues no session
+# (`issue`, `delegate`): a HostIdentity denial is `Identity{reason}`; an
+# accepted change commits the table, advances the revision once, and emits
+# nothing.
+def changed(change: I.Change, +state: State) -> Step:
+  match change:
+    case I.Rejected{_, reason}:
+      Denied{state, Identity{reason}}
+    case I.Accepted{identity, _}:
+      Admitted{with_identity(state, identity), []}
+
+# Implementation helper: issue's gate.
+def m_gate(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
+    expires: Nat) -> Step:
+  match ok:
+    case True{}:
+      changed(I.mint(identity(state), I.revision(identity(state)), session, handle, plan, rights, expires),
+        state)
+    case False{}:
+      Denied{state, StaleRevision{}}
+
+# Public entry point, family 1, a monitor action: issue a root reference on
+# `session` for Frontend handle `handle`, which the monitor has already
+# opened after complete admission of `plan`, through `HostIdentity.mint`
+# (the owner is the session's bound caller; only an Authenticated session
+# holds a root). Order: gate, then HostIdentity's own checks
+# (`Identity{reason}`). No effect.
+def issue(+state: State, expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
+    expires: Nat) -> Step:
+  m_gate(current(state, expected_revision), state, session, handle, plan, rights, expires)
+
+# Implementation helper: delegate's gate.
+def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rights: U32, +lifetime: Nat,
+    +now: Nat) -> Step:
+  match ok:
+    case True{}:
+      changed(I.delegate(identity(state), I.revision(identity(state)), session, ref, target, rights, lifetime,
+        now), state)
+    case False{}:
+      Denied{state, StaleRevision{}}
+
+# Public entry point, family 1: session `session` (the transport identified
+# it) delegates the entry `ref` names to session `target` with `rights` for
+# `lifetime` from monitor time `now`, through `HostIdentity.delegate` (which
+# re-resolves the parent and denies NotDelegable from a worker session,
+# SubjectChanged, WidenedRights, and WidenedLifetime). Order: gate, then
+# HostIdentity's checks (`Identity{reason}`). No effect. A delegation is a
+# primitive transition so that the primitive revision covers every change to
+# the identity table.
+def delegate(+state: State, expected_revision: Nat, +session: Nat, +ref: W.Ref, target: Nat, rights: U32,
+    +lifetime: Nat, +now: Nat) -> Step:
+  d_gate(current(state, expected_revision), state, session, ref, target, rights, lifetime, now)
+
 # --- Family 2: worker domains (public: admit_worker, charge, diagnostic,
 # --- native_write_offered) ---------------------------------------------------------
 
@@ -955,8 +1199,9 @@ def entry_ref(+identity: I.State, +entry: I.Entry) -> W.Ref:
 # Implementation helper: record the admitted worker and allocate its id.
 def commit_worker(state: State, worker: Worker) -> State:
   match state:
-    case State{revision, identity, profiles, bindings, workers, next_worker}:
-      State{1n+revision, identity, profiles, bindings, Workers{worker, workers}, 1n+next_worker}
+    case State{revision, identity, profiles, bindings, workers, next_worker, seals, publications}:
+      State{1n+revision, identity, profiles, bindings, Workers{worker, workers}, 1n+next_worker, seals,
+        publications}
 
 # Implementation helper, step 11 and commit: plaintext is delivered only here,
 # after every other admission check.
@@ -1119,8 +1364,9 @@ def charged(workers: Workers, +id: Nat, +amount: Nat) -> Workers:
 # Implementation helper: commit an accepted charge.
 def commit_charge(state: State, +id: Nat, +amount: Nat) -> State:
   match state:
-    case State{revision, identity, profiles, bindings, workers, next_worker}:
-      State{1n+revision, identity, profiles, bindings, charged(workers, id, amount), next_worker}
+    case State{revision, identity, profiles, bindings, workers, next_worker, seals, publications}:
+      State{1n+revision, identity, profiles, bindings, charged(workers, id, amount), next_worker, seals,
+        publications}
 
 # Implementation helper: charge's quota step.
 def c_quota(ok: Bool, +state: State, +id: Nat, +amount: Nat) -> Step:
@@ -1260,8 +1506,15 @@ def n_gate(ok: Bool, +state: State, fact: Fact) -> Step:
 def native_write_offered(+state: State, expected_revision: Nat, fact: Fact) -> Step:
   n_gate(current(state, expected_revision), state, fact)
 
-# --- Family 3: artifacts (Task 4) -----------------------------------------------
+# --- Family 3: artifacts ------------------------------------------------------------
+# `seal`, in HostPublication.bend (this module's size; the types it writes,
+# `Sealed` and `Seals`, are above).
 
-# --- Family 4: publication (Task 4) ---------------------------------------------
+# --- Family 4: publication ----------------------------------------------------------
+# `publish` and `reconcile`, in HostPublication.bend (`Publication`,
+# `Publications`, and the `Reconcile` effect are above; the publication effect
+# itself is defined there, beside its only constructor site).
 
-# --- Family 5: revocation (Task 4) ----------------------------------------------
+# --- Family 5: revocation -----------------------------------------------------------
+# `revoke`, `restart`, `quiesce`, `reclaim`, and `complete`, in
+# HostPublication.bend (the `StopEffects` and `Reclaim` effects are above).

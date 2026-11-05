@@ -4,6 +4,7 @@ import ./LAWS.bend as Laws
 import ./HostBinding.bend as HostBinding
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
+import ./HostPublication.bend as HostPublication
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -48,4 +49,10 @@ def Laws.primitive_denied_preserves_state(state, reason):
   {==}
 
 def Laws.primitive_denied_emits_nothing(state, reason):
+  {==}
+
+def Laws.publication_refused_preserves_state(state, session, ledger, reason):
+  {==}
+
+def Laws.publication_refused_emits_nothing(state, session, ledger, reason):
   {==}

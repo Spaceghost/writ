@@ -4,6 +4,8 @@ import ./Ledger.bend as Ledger
 import ./HostBinding.bend as HostBinding
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
+import ./HostPublication.bend as HostPublication
+import ./Negotiation.bend as Negotiation
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -93,3 +95,38 @@ law primitive_denied_emits_nothing:
   for state: HostPrimitives.State
   for reason: HostPrimitives.Error
   {HostPrimitives.Step.effects(HostPrimitives.Denied{state, reason}) == [] : List<&2, HostPrimitives.Effect>}
+
+# A refused publication carries the supplied primitive state unchanged, for
+# any state, Negotiation session, ledger, and closed-type reason. This is
+# `primitive_denied_preserves_state` stated for `HostPublication.publish`,
+# the one transition whose result is not a `HostPrimitives.Step` (it must also
+# hand back the session and ledger). It holds by computation of the
+# `PublishResult.state` accessor and fixes the contract the publication
+# refusal path relies on (refuse by returning `Refused{state, session, ledger,
+# r}` with the caller's own state). It does not assert which inputs are
+# refused, that the reason is the right one, that the returned session and
+# ledger are the inputs, or that a published intent is correct; those are
+# covered by HostPrimitivesTests.
+law publication_refused_preserves_state:
+  for state: HostPrimitives.State
+  for session: Negotiation.Session
+  for ledger: Ledger.State
+  for reason: HostPrimitives.Error
+  {HostPublication.PublishResult.state(HostPublication.Refused{state, session, ledger, reason}) == state : HostPrimitives.State}
+
+# A refused publication yields no publication effect, for any state, session,
+# ledger, and closed-type reason: the publication effects a target binding may
+# execute are exactly `PublishResult.effects` of `publish`'s output, and for a
+# refusal that list is empty, so a `Publish` exists only on a published
+# result. This is `primitive_denied_emits_nothing` stated for
+# `HostPublication.publish`. It holds by computation of the
+# `PublishResult.effects` accessor (`Refused` has no effects field). It does
+# not assert which inputs are refused, that a reason is the right one, or that
+# a published intent is correct; HostPrimitivesTests covers those. That a
+# binding executes only effects this monitor returned is a host obligation.
+law publication_refused_emits_nothing:
+  for state: HostPrimitives.State
+  for session: Negotiation.Session
+  for ledger: Ledger.State
+  for reason: HostPrimitives.Error
+  {HostPublication.PublishResult.effects(HostPublication.Refused{state, session, ledger, reason}) == [] : List<&2, HostPublication.PublishEffect>}
