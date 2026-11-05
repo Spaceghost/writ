@@ -41,3 +41,38 @@
 2026-11-05T03:24:57Z	implementer	report written; committing task 2
 2026-11-05T03:25:24Z	controller	task 2 reported; rulings on device hiding and gate limits; reviewer dispatched
 2026-11-05T03:27:27Z	controller	task 2 review APPROVED; task 3 dispatched (three paths on the device)
+2026-11-05T03:28:02Z	implementer	task 3 started; reading brief, plan constraints, task 1/2 reports, scripts, GPU modules
+2026-11-05T03:35:17Z	implementer	Labels.bend and Transfers.bend written; BANGS 1 each; exploratory sanitizer runs show 5 bend_dev launches each at 16384; writing Solver.bend
+2026-11-05T03:42:05Z	implementer	probes final (Solver, Labels, Transfers); exploratory runs: all PASS on and off, sanitizer counts solver 15 (3 sweeps x 5), labels 5, transfers 5, GpuExample 20; starting evidence capture into verification/gpu-paths.txt
+2026-11-05T03:42:10Z	implementer	building Solver (scripts/gpu-validation/Solver.bend -> ../writ-build/physical-gpu/solver)
+2026-11-05T03:42:16Z	implementer	building Labels (scripts/gpu-validation/Labels.bend -> ../writ-build/physical-gpu/labels)
+2026-11-05T03:42:21Z	implementer	building Transfers (scripts/gpu-validation/Transfers.bend -> ../writ-build/physical-gpu/transfers)
+2026-11-05T03:42:28Z	implementer	building GpuExample (GpuExample.bend -> ../writ-build/physical-gpu/gpu-example)
+2026-11-05T03:42:45Z	implementer	observe.sh Solver s16 (run 16) starting
+2026-11-05T03:42:51Z	implementer	observe.sh Solver s16 finished
+2026-11-05T03:42:51Z	implementer	observe.sh Solver s16384 (run 16384) starting
+2026-11-05T03:44:01Z	implementer	observe.sh Solver s16384 finished
+2026-11-05T03:44:01Z	implementer	observe.sh Labels s16 (run 16) starting
+2026-11-05T03:44:07Z	implementer	observe.sh Labels s16 finished
+2026-11-05T03:44:07Z	implementer	observe.sh Labels s16384 (run 16384) starting
+2026-11-05T03:44:13Z	implementer	observe.sh Labels s16384 finished
+2026-11-05T03:44:13Z	implementer	observe.sh Labels long (run 16384 1200) starting
+2026-11-05T03:44:53Z	implementer	observe.sh Labels long finished
+2026-11-05T03:44:53Z	implementer	observe.sh Transfers s16 (run 16) starting
+2026-11-05T03:44:58Z	implementer	observe.sh Transfers s16 finished
+2026-11-05T03:44:58Z	implementer	observe.sh Transfers s16384 (run 16384) starting
+2026-11-05T03:45:03Z	implementer	observe.sh Transfers s16384 finished
+2026-11-05T03:45:03Z	implementer	observe.sh Transfers long (run 16384 200) starting
+2026-11-05T03:46:12Z	implementer	observe.sh Transfers long finished
+2026-11-05T03:46:12Z	implementer	observe.sh GpuExample combined () starting
+2026-11-05T03:46:22Z	implementer	observe.sh GpuExample combined finished
+2026-11-05T03:46:22Z	implementer	gpu off run Solver s16 (run 16)
+2026-11-05T03:46:22Z	implementer	gpu off run Solver s16384 (run 16384)
+2026-11-05T03:46:42Z	implementer	gpu off run Labels s16 (run 16)
+2026-11-05T03:46:42Z	implementer	gpu off run Labels s16384 (run 16384)
+2026-11-05T03:46:42Z	implementer	gpu off run Labels long (run 16384 1200)
+2026-11-05T03:47:11Z	implementer	gpu off run Transfers s16 (run 16)
+2026-11-05T03:47:11Z	implementer	gpu off run Transfers s16384 (run 16384)
+2026-11-05T03:47:11Z	implementer	gpu off run Transfers long (run 16384 200)
+2026-11-05T03:47:19Z	implementer	gpu off run GpuExample combined ()
+2026-11-05T03:49:40Z	implementer	evidence written (verification/gpu-paths.txt): solver 15, labels 5/6000, transfers 5/1000 launches, gate PASS at 16384 and long; SIZE 16 pairs gate FAIL on compute_app_seen (recorded); report written; committing task 3
