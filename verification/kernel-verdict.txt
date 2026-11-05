@@ -14,3 +14,17 @@ Exit status: 1
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 Status: NOT VERIFIED by the independent BendTT kernel. No Lean toolchain is on PATH
 in this environment. Ordinary `bend PROOF.bend` printed ALL PROOFS CHECK.
+
+Authenticated-grant-issuance attempt (2026-11-05, twelve laws, Bend 2.0.39), recorded verbatim:
+Command: bend PROOF.bend --verdict
+Exit status: 1
+Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
+Status: NOT VERIFIED by the independent BendTT kernel. No Lean toolchain is on PATH
+in this environment. Ordinary `bend PROOF.bend` printed ALL PROOFS CHECK.
+
+Portable-host-contract final fix round (2026-11-05, merged tree, seventeen laws, Bend 2.0.39), recorded verbatim:
+Command: bend PROOF.bend --verdict
+Exit status: 1
+Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
+Status: NOT VERIFIED by the independent BendTT kernel. No Lean toolchain is on PATH
+in this environment. Ordinary `bend PROOF.bend` printed ALL PROOFS CHECK.

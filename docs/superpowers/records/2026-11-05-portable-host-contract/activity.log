@@ -1,0 +1,106 @@
+2026-11-05T02:51:30Z	controller	lane created from master d56325b
+2026-11-05T02:56:51Z	implementer	task 1: read brief, global constraints, HostBinding style, bend guide
+2026-11-05T02:56:51Z	implementer	task 1: HostWire.bend written; bend HostWire.bend ALL PROOFS CHECK
+2026-11-05T02:58:36Z	implementer	task 1: HostWireTests.bend 59 checks pass standalone; registered in Tests.bend; running JS suite
+2026-11-05T03:02:19Z	implementer	task 1: bend Tests.bend green, 841 PASS (782 + 59); native build running; running PROOF
+2026-11-05T03:03:11Z	implementer	task 1: native CPU run green, 841 PASS, PASS lines identical to JS; PROOF ALL PROOFS CHECK; --verdict unavailable (no lean); traceability and tasks.md 1.1 written; running openspec
+2026-11-05T03:03:56Z	implementer	task 1: openspec strict 44 passed; report written; committing
+2026-11-05T03:04:15Z	controller	task 1 reported; reviewer dispatched
+2026-11-05T03:07:08Z	controller	review: test-strength fixes; fix round 1 dispatched
+2026-11-05T03:07:18Z	implementer	task 1 fix round 1: read task-1-review.md; applying findings 1-8
+2026-11-05T03:08:14Z	implementer	task 1 fix round 1: fixes applied, HostWire 63 checks standalone; traceability updated; running suite and proof
+2026-11-05T03:11:13Z	implementer	task 1 fix round 1: JS and native 845 PASS (782 + 63), PROOF ALL PROOFS CHECK, openspec 44 passed; report section appended; committing
+2026-11-05T03:11:39Z	controller	task 1 complete; task 2 dispatched (HostIdentity)
+2026-11-05T03:16:39Z	implementer	task 2: read brief, global constraints, task 1 report and review, HostWire, HostBinding, Frontend, Transfer, LAWS, PROOF, spec PH-002..005, bend guide
+2026-11-05T03:20:28Z	implementer	task 2: HostIdentity.bend written; bend HostIdentity.bend ALL PROOFS CHECK; writing HostIdentityTests.bend
+2026-11-05T03:26:09Z	implementer	task 2: HostIdentityTests 76 checks pass standalone; removal map: 55 mutants in a scratch copy, every one killed (4 checks added to close gaps); adding law
+2026-11-05T03:26:21Z	implementer	task 2: law added to LAWS.bend and PROOF.bend, PROOF ALL PROOFS CHECK; Tests.bend registration added; JS and native suites running; writing traceability
+2026-11-05T03:28:18Z	implementer	task 2: heartbeat: traceability and tasks.md 1.2 written, openspec strict 44 passed; report drafted; waiting on JS and native suites
+2026-11-05T03:29:20Z	implementer	task 2: JS and native 921 PASS (782 + 139; this task 76), PASS lines identical, 0 pre-existing missing; PROOF ALL PROOFS CHECK; --verdict unavailable (no lean); report complete; committing
+2026-11-05T03:29:46Z	controller	task 2 reported; rulings; reviewer dispatched
+2026-11-05T03:35:59Z	controller	review: holder must be the session, not the subject (ruling); fix round 1 dispatched
+2026-11-05T03:37:17Z	implementer	task 2 fix round 1: read task-2-review.md and the controller holder ruling; applying finding 1 per ruling and minor findings 2-5 (nits 6-7)
+2026-11-05T03:43:26Z	implementer	task 2 fix round 1: holder ruling applied (owner is the minting caller, resolve reports it), valid gains holder and delegation clauses, literals named, fixtures distinct; HostIdentity 92 checks standalone; 69 mutants all killed; running suites
+2026-11-05T03:46:43Z	implementer	task 2 fix round 1: JS and native 937 PASS (782 + 63 + 92), identical, 0 missing; PROOF ALL PROOFS CHECK; openspec 44 passed; report section appended; committing
+2026-11-05T03:47:01Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T03:49:12Z	controller	task 2 complete; task 3 dispatched (HostPrimitives: session binding, worker domains)
+2026-11-05T03:53:37Z	implementer	task 3: read brief, global constraints, task 1-2 reviews, HostWire, HostIdentity, LAWS, PROOF, spec PH-001/006/007/014; writing HostPrimitives.bend
+2026-11-05T03:58:40Z	implementer	task 3: HostPrimitives.bend and HostPrimitivesTests.bend written; 45 checks pass standalone; starting mutation run
+2026-11-05T04:02:16Z	implementer	task 3: 52 checks standalone; 41 mutants all killed (2 survivors closed with new checks); laws primitive_denied_preserves_state and primitive_denied_emits_nothing proved; registered in Tests.bend; running JS suite
+2026-11-05T04:06:00Z	implementer	task 3: JS suite 989 PASS (937 + 52), ALL LIBRARY TESTS PASSED, 0 of 782 missing; native build running (heartbeat); correction: the mutation run applied 40 mutants, not 41
+2026-11-05T04:11:14Z	implementer	task 3: final mutation run 40 of 40 killed against 52 checks; PROOF ALL PROOFS CHECK (--verdict: lean not found); openspec 44 passed; traceability section added; report drafted; native suite still running (heartbeat)
+2026-11-05T04:11:55Z	implementer	task 3: native 989 PASS, identical to JS, ALL LIBRARY TESTS PASSED (CPU, not GPU); report complete; committing
+2026-11-05T04:12:22Z	controller	task 3 reported; rulings on worker delegation, one worker per slot, profile must carry the worker family; reviewer dispatched
+2026-11-05T04:20:51Z	controller	review: twelve findings (caller-supplied profile, use ignores rights, no valid gate, worker rules); fix round 1 dispatched
+2026-11-05T04:22:29Z	implementer	task 3 fix round 1: read task-3-review.md (12 findings) and controller rulings; reworking HostPrimitives (profile table, valid gate, use rights/operation, non-delegable worker session, one worker per slot, re-resolve at runtime, ref in effect)
+2026-11-05T04:28:03Z	implementer	task 3 fix round 1: HostPrimitives reworked; HostPrimitivesTests 89 checks pass standalone; writing round-1 mutants
+2026-11-05T04:30:54Z	implementer	task 3 fix round 1: 91 checks; round-1 mutation run complete (see report)
+2026-11-05T04:32:32Z	implementer	task 3 fix round 1: JS 1028 PASS (782 + 246), ALL LIBRARY TESTS PASSED, 0 missing; PROOF ALL PROOFS CHECK; 74 of 74 mutants killed; openspec 44 passed; traceability regenerated; report section appended; native running (heartbeat)
+2026-11-05T04:34:41Z	implementer	task 3 fix round 1: native 1028 PASS, identical to JS (CPU, not GPU); committing
+2026-11-05T04:35:33Z	controller	fix round 1 reported; fix round 2 dispatched (monitor-owned delegability and profile id)
+2026-11-05T04:36:05Z	implementer	task 3 fix round 2: rulings received (monitor-owned delegability; profile bound at open_session); reworking open_session and admission
+2026-11-05T04:42:32Z	implementer	task 3 fix round 2: 104 checks standalone; mutation run complete
+2026-11-05T04:43:43Z	implementer	task 3 fix round 2: JS 1041 PASS (782 + 259), ALL LIBRARY TESTS PASSED; PROOF ALL PROOFS CHECK; 91 of 91 mutants killed; openspec 44 passed; report section appended; native running (heartbeat)
+2026-11-05T04:45:15Z	implementer	task 3 fix round 2: native 1041 PASS, identical to JS (CPU, not GPU); committing
+2026-11-05T04:45:39Z	controller	fix round 2 reported; scoped re-review dispatched
+2026-11-05T04:48:46Z	controller	task 3 complete; task 4 dispatched (sealing, publication, recovery, revocation)
+2026-11-05T04:54:50Z	implementer	task 4 started: brief, global constraints, task 3 records, HostPrimitives, HostIdentity, DataOS/Backplane/FacadeTests, LAWS/PROOF read; HostPrimitives is 1267 lines, so families 3 to 5 go to HostPublication.bend (pre-approved)
+2026-11-05T05:06:21Z	implementer	task 4: HostPublication.bend written (families 3 to 5), HostPrimitives types/valid/issue/delegate extended; HostPrimitivesTests 198 checks standalone (104 + 94)
+2026-11-05T05:09:15Z	implementer	task 4: mutation run started (119 mutants)
+2026-11-05T05:12:13Z	implementer	task 4: 119 mutants, 116 killed first run; 3 input_live survivors closed by a hand-built revoke check (203 checks); new laws discriminate
+2026-11-05T05:12:48Z	implementer	task 4: code final; full JS suite and native build started
+2026-11-05T05:13:47Z	implementer	task 4: JS suite exit 0, 1140 PASS, ALL LIBRARY TESTS PASSED; native build running (heartbeat)
+2026-11-05T05:14:41Z	implementer	task 4: duplicate check name (PH-005 delegate stale revision, also in HostIdentityTests) renamed; JS rerun exit 0, 1140 PASS, no duplicates; native build restarted (heartbeat)
+2026-11-05T05:16:44Z	implementer	task 4: final mutation run 119 of 119 killed by named checks; native build still running (heartbeat)
+2026-11-05T05:18:17Z	implementer	task 4: report drafted; native build still running (heartbeat)
+2026-11-05T05:18:32Z	implementer	task 4: native 1140 PASS, identical to JS (CPU, not GPU); PROOF ALL PROOFS CHECK; openspec 44 passed; committing
+2026-11-05T05:18:53Z	controller	task 4 reported; rulings; reviewer dispatched
+2026-11-05T05:29:50Z	controller	task 4 review APPROVED; task 5 dispatched (conformance vectors)
+2026-11-05T05:35:47Z	implementer	task 5: started; read brief, Global Constraints, Task 1-4 reports and reviews, the four modules and HostBinding vector discipline
+2026-11-05T05:40:01Z	implementer	task 5: design fixed (27 vectors, adapters A host 51 with a prefaced unrelated entry and B host 52; alternative plan sessions negotiated through Negotiation transitions); writing HostConformanceVectors.bend
+2026-11-05T05:48:54Z	implementer	task 5: HostConformanceVectors.bend and HostConformanceTests.bend written; HostConformance 33 PASS, 27 VECTOR lines on JS; probing an entry-plan question and starting the mutation exercise
+2026-11-05T05:51:00Z	implementer	task 5: mutation exercise 29 mutants: 25 killed by named checks, 3 equivalent (unreachable decode/revoke fallbacks), 1 survivor (DataOS plan equality: the destination-E denial is over-determined by Backplane); Tests.bend registered; running full suite
+2026-11-05T05:51:47Z	implementer	task 5: JS suite 1173 PASS (1140 + 33), ALL LIBRARY TESTS PASSED; 27 vector lines, two JS captures cmp-identical; native build started
+2026-11-05T05:52:50Z	implementer	task 5: native (CPU, not GPU) 1173 PASS identical to JS; native vector capture cmp-identical; PROOF ALL PROOFS CHECK; openspec 44 passed; writing report
+2026-11-05T05:55:35Z	implementer	task 5: first native build failed 'an arity over 247' in ph009_3_ok; split the replay session and ledger into named defs (same expressions); rebuilding native
+2026-11-05T05:56:18Z	implementer	task 5: final mutation run 29 mutants: 25 killed, 3 equivalent fallbacks, 1 survivor (over-determined DataOS plan check); native build running (heartbeat)
+2026-11-05T05:57:32Z	implementer	task 5: report drafted; native build still running (heartbeat)
+2026-11-05T06:01:18Z	implementer	task 5: native (CPU, not GPU) 1173 PASS identical to JS; vector file sha256 0ee8cb48... identical across two JS runs and native; committing
+2026-11-05T06:02:11Z	controller	task 5 reported; ruling: bind the entry plan at issue and publish; fix round 1 dispatched
+2026-11-05T06:02:25Z	implementer	task 5 fix round 1: started (ruling: bind the entry plan at issue and at publish)
+2026-11-05T06:04:51Z	implementer	task 5 fix round 1: issue binds the entry plan to the Frontend handle's plan, publish compares the entry plan with the session's and the committed intent's (PlanMismatch); HostPrimitives 206, HostConformance 36 checks / 30 vectors; running suite
+2026-11-05T06:06:12Z	implementer	task 5 fix round 1: JS 1179 PASS twice, vectors 30 lines sha256 70efda96... cmp-identical; PROOF ALL PROOFS CHECK; 8 mutants on the new checks (7 killed, step-7 intent-plan check equivalent while step 4 stands); native build running (heartbeat)
+2026-11-05T06:08:52Z	implementer	task 5 fix round 1: native (CPU, not GPU) 1179 PASS identical to JS, vector file 70efda96... cmp-identical; committing
+2026-11-05T06:09:07Z	controller	task 5 fix round reported; reviewer dispatched
+2026-11-05T06:16:40Z	controller	task 5 review: two vectors missing; fix round 2 dispatched
+2026-11-05T06:16:48Z	implementer	task 5 fix round 2: started (review: two missing vectors, five minor findings)
+2026-11-05T06:20:17Z	implementer	task 5 fix round 2: PH-005-10, PH-005-11, PH-003-3 added; minors 4-6 applied; mutants M4, M1b, M7 killed by their vectors; full runs started
+2026-11-05T06:20:20Z	implementer	task 5 fix round 2: heartbeat, JS run 1 done, JS run 2 running
+2026-11-05T06:20:22Z	implementer	task 5 fix round 2: heartbeat, JS run 2 done, native build and run running
+2026-11-05T06:25:11Z	implementer	task 5 fix round 2: heartbeat, native run done, PROOF running
+2026-11-05T06:25:47Z	implementer	task 5 fix round 2: JS x2 and native 1182 PASS, vectors fb85d405 cmp-identical (33 lines), PROOF ALL PROOFS CHECK, OpenSpec 44 passed; committing
+2026-11-05T06:25:51Z	implementer	task 5 fix round 2: committed 1a00268
+2026-11-05T06:26:27Z	controller	fix round 2 reported; scoped re-review dispatched
+2026-11-05T06:32:40Z	controller	task 5 complete; task 6 dispatched (records)
+2026-11-05T06:33:17Z	implementer	task 6: started; read brief, plan constraints (cross-lane ruling: no count pins), grant-issuance task-7 report model
+2026-11-05T06:35:31Z	implementer	task 6: JS run 1182 PASS; native build running; tasks.md preface, design.md sentence, PLATFORMS.md sentence edited
+2026-11-05T06:36:37Z	implementer	task 6: native build exit 0 (2m56s), native CPU run 1182 PASS; node run 1182 PASS; byte-identical sha256 120108e0...; captures stored
+2026-11-05T06:36:48Z	implementer	task 6: PROOF.bend ALL PROOFS CHECK (11 laws); --verdict exit 1, no lean
+2026-11-05T06:38:13Z	implementer	task 6: traceability: line 74 citation restored, PH-009/PH-010 reviewed-only notes, requirement summary PH-001..PH-014 added; VERIFICATION rows, vectors, laws; environment counts
+2026-11-05T06:38:32Z	implementer	task 6: OpenSpec 1.16.0 strict 44 passed, 0 failed
+2026-11-05T06:39:47Z	implementer	task 6: report written (pins table: lane 1182, merged 1414); committing
+2026-11-05T06:40:02Z	implementer	task 6: committed cd25c29
+2026-11-05T06:40:30Z	controller	task 6 reported; task review and final review dispatched
+2026-11-05T06:42:13Z	controller	task 6 review APPROVED; waiting on the final review
+2026-11-05T06:54:09Z	implementer	final fix round: started; reading final-review.md and task-6-review.md
+2026-11-05T06:54:11Z	controller	final review: issue binding incomplete, recovery record lacks destination; final fix round dispatched with the master merge
+2026-11-05T07:02:21Z	implementer	final fix round: merged master (63b3710, 1414 PASS, 17 laws); I-1 issue binds owner/rights/lease, I-2 recovery binds destination, M-6 ClientRole{delegable}; mutants running; docs next
+2026-11-05T07:03:53Z	implementer	final fix round: 15 mutants all killed (mutate_f3); full runs started (JS x2, native CPU, PROOF, --verdict, OpenSpec)
+2026-11-05T07:03:55Z	implementer	final fix round: heartbeat, JS run 1 done, JS run 2 running
+2026-11-05T07:03:57Z	implementer	final fix round: heartbeat, JS run 2 done, native build and run running
+2026-11-05T07:07:45Z	implementer	final fix round: heartbeat, native run done, PROOF running
+2026-11-05T07:10:03Z	implementer	final fix round: 1428 PASS JS x2 and native (byte-identical), vectors 37816dd7 (37 lines), PROOF ALL PROOFS CHECK 17 laws, --verdict refused (lean missing, appended), OpenSpec 44; committing fix
+2026-11-05T07:10:11Z	implementer	final fix round: committed merge 63b3710 and fix 6c2d2b6
+2026-11-05T07:10:44Z	controller	final fix round reported (master merged, 1428, 17 laws); scoped re-review dispatched
+2026-11-05T07:18:00Z	controller	final re-review ready; merging to master
+2026-11-05T07:24:38Z	controller	merged to master (re-pinned to 1428, 17 laws) and pushed as c65d53d
