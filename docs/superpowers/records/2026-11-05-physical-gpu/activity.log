@@ -147,3 +147,18 @@
 2026-11-05T04:55:06Z	controller	review: digest finding wording; fix round 1 dispatched
 2026-11-05T04:55:48Z	implementer	fix round 1: read task-5-review.md; text fixes only (structural digest collision, comparison of record, Task 3 16384 comparisons show counts only, calibration runs listed, clause breakdown last solve only, Task 3/4 denial-control gap closed); no rerun
 2026-11-05T04:56:23Z	controller	task 5 complete; task 6 dispatched (the corpus on and off the device)
+2026-11-05T04:57:25Z	implementer	task 6 started: read brief, plan Global Constraints, task 5 review, observe.sh/check-record.sh; build dir ../writ-build/physical-gpu/task6/
+2026-11-05T04:57:53Z	implementer	build: bend Tests.bend to C (task6/tests-gpu.c)
+2026-11-05T04:58:11Z	implementer	build: bend Tests.bend to binary with GPU compile (task6/tests-gpu, tests-gpu.gpu)
+2026-11-05T04:59:58Z	implementer	build done: BANGS 1, tests-gpu 53eeea2b..., tests-gpu.gpu 40b1305c... sm=89; kernels bend_dev, window_dev
+2026-11-05T04:59:58Z	implementer	run: tests-gpu --gpu off (timeout 600)
+2026-11-05T04:59:58Z	implementer	run off finished
+2026-11-05T05:00:05Z	implementer	run: tests-gpu --gpu on (timeout 600)
+2026-11-05T05:00:07Z	implementer	run on finished
+2026-11-05T05:00:24Z	implementer	run: observe.sh tests-gpu on (plain + compute-sanitizer pass, each timeout 600)
+2026-11-05T05:00:34Z	implementer	observe.sh run finished
+2026-11-05T05:01:11Z	implementer	supplementary: compute-sanitizer over the exact on-capture options (--threads 4 --gpu on)
+2026-11-05T05:01:15Z	implementer	supplementary run finished
+2026-11-05T05:01:50Z	implementer	supplementary: compute-sanitizer over the off-capture options (--threads 4 --gpu off), expecting no launch
+2026-11-05T05:01:50Z	implementer	off sanitizer run finished
+2026-11-05T05:03:00Z	implementer	evidence and report written: 782/782 on and off, three diffs empty, 4915 bend_dev launches, gate PASS; committing

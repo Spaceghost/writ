@@ -1,0 +1,323 @@
+The library corpus (Tests.bend) with the device on and off (GV-003 "Match reference decisions and verifier outcomes", library-wide; GV-001 "Require observed physical execution", attributing what the corpus ran on the device; Task 6)
+Bend version: bend 2.0.39 (driver sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+Compiler: clang version 23.1.1 at /usr/bin/clang (GPU build: emitted C with -DBEND_CUDA=1 at -O3, the driver's cli_build flags quoted in the record below); NVRTC 13.4.92 compiles the device program (the driver's `--gpu-build` step); compute-sanitizer 2026.3.0.0 is the launch observer
+Host: Linux 7.2.9-1-MANJARO x86_64, 32 online CPUs; 1-minute load average 10.79 to 23.86 in the quoted `uptime` and `load_avg` lines below; the display and other graphics and compute clients share the GPU; every wall time is indicative only (a shared, loaded host)
+GPU: NVIDIA GeForce RTX 4090, GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, bus 00000000:0C:00.0, compute capability 8.9 (cubin sm=89), driver 615.71.09, CUDA UMD 13.4
+Date: 2026-11-05 04:57 to 05:02 UTC (2026-11-04 CST)
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:/opt/cuda/bin:$PATH"; export BEND_NO_TELEMETRY=1; export CUDA_HOME=/opt/cuda. CUDA_VISIBLE_DEVICES unset and BENDRTS unset in every run (the record states it). Commands run from the worktree root at lane commit 98db68bf (clean for every .bend source; only activity.log was modified at capture). No .bend file was changed in this task.
+Execution: CPU run: `+RTS --threads 4 --gpu off` (capture verification/gpu-corpus-off.txt; a supplementary run of the same options under compute-sanitizer shows no CUDA API call instrumented). Device runs, not individually observed: `+RTS --threads 4 --gpu on` (capture verification/gpu-corpus-on.txt), and the plain pass of the observe.sh run (`+RTS --gpu on -RTS`, runtime-default 32 threads; process listed by --query-compute-apps). Device runs, observed: the observed (compute-sanitizer) pass of the observe.sh run, and a supplementary compute-sanitizer run of the exact capture options `+RTS --threads 4 --gpu on -RTS`; bend_dev launches counted from each sanitizer log. In every `--gpu on` run the only bang in the binary (Gpu.sweep's `run_tree!`, reached through Gpu.solve_gpu from CoreTests.bend and PropertyTests.bend) is the device path; the label and transfer batches in the corpus are host-side calls without `!`, and the CPU references and verifiers (Core.solve_cpu, Core.verify, Dlm, Transfer) have no bang and run on the CPU in every mode. Proofs were not run.
+
+Corpus: Tests.bend, the library corpus, with its 23 transitive sources (listed with sha256 in the record's source_sha256). The count is what `bend Tests.bend` prints on this lane's tree: 782 PASS lines (this lane adds no tests; no count pin was touched). The committed reference is verification/tests-native.txt, sha256 fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff, unchanged by this task.
+
+Harness: scripts/gpu-validation/observe.sh and check-record.sh, unchanged from Task 2 (sha256 efd08afb...a8ac and 7d4df17b...88ab in the record). The observe.sh run writes a plain/observed record pair inline below between `--- record v1 ---` and `--- end record ---`; the `[exit status: N]` after the observe.sh command is check-record.sh's gate verdict (0 PASS). observe.sh takes no runtime options except `--gpu MODE`, so its two passes use the runtime-default thread count (32), not `--threads 4`; the supplementary sanitizer run covers the `--threads 4` capture options. Every other `[exit status: N]` is that command's own. Build directory (new for this task, so earlier binaries stay as recorded): ../writ-build/physical-gpu/task6/. Run directories: ../writ-build/physical-gpu/runs/task6/tests-gpu-on (observe.sh), tests-gpu-on-threads4 and tests-gpu-off-sanitizer (supplementary).
+
+The brief's `-o ../writ-build/physical-gpu/tests-gpu` is built as ../writ-build/physical-gpu/task6/tests-gpu, per the controller ruling to build in a new directory. The binary is built twice from the worktree root, first to C (for the BANGS line and emitted_c_sha256) and then to the binary, whose build runs the GPU compile and writes tests-gpu.gpu beside it.
+
+## Build
+
+$ uptime
+ 22:57:53 up 3 days,  2:30,  1 user,  load average: 10.79, 20.40, 30.66
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ bend version; command -v bend; sha256sum $(command -v bend)
+bend 2.0.39
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd  /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+[exit status: 0; stderr empty; wall 238 ms]
+
+$ git rev-parse HEAD; git status --porcelain --untracked-files=all
+98db68bf9518ad9fedda57e70b89ce7231daf603
+ M docs/superpowers/records/2026-11-05-physical-gpu/activity.log
+[exit status: 0; stderr empty; wall 13 ms]
+
+$ nvidia-smi -i 0 --query-gpu=driver_version,name,uuid,pci.bus_id,compute_cap --format=csv,noheader
+615.71.09, NVIDIA GeForce RTX 4090, GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, 00000000:0C:00.0, 8.9
+[exit status: 0; stderr empty; wall 46 ms]
+
+$ rm -f ../writ-build/physical-gpu/task6/tests-gpu.c; timeout 600 bend Tests.bend -o ../writ-build/physical-gpu/task6/tests-gpu.c
+[exit status: 0; stderr empty; wall 9637 ms]
+
+$ grep -n '^#define BANGS' ../writ-build/physical-gpu/task6/tests-gpu.c; sha256sum ../writ-build/physical-gpu/task6/tests-gpu.c
+3971:#define BANGS   1
+b50856fbba69f93b950cbb68d05a9d9ce876f5c5cb4f2ba83bb5c1e184bb0602  ../writ-build/physical-gpu/task6/tests-gpu.c
+[exit status: 0; stderr empty; wall 25 ms]
+
+$ rm -f ../writ-build/physical-gpu/task6/tests-gpu ../writ-build/physical-gpu/task6/tests-gpu.gpu; timeout 600 bend Tests.bend -o ../writ-build/physical-gpu/task6/tests-gpu
+[exit status: 0; stderr empty; wall 93625 ms]
+
+$ ls -l ../writ-build/physical-gpu/task6/tests-gpu ../writ-build/physical-gpu/task6/tests-gpu.gpu
+-rwxr-xr-x 1 jadams jadams 15153384 Nov  4 22:59 ../writ-build/physical-gpu/task6/tests-gpu
+-rw-r--r-- 1 jadams jadams   885648 Nov  4 22:59 ../writ-build/physical-gpu/task6/tests-gpu.gpu
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ sha256sum ../writ-build/physical-gpu/task6/tests-gpu ../writ-build/physical-gpu/task6/tests-gpu.gpu
+53eeea2b44f58b504acc3a86ca25ca9bd90560408afba158463049d874bafdf1  ../writ-build/physical-gpu/task6/tests-gpu
+40b1305c51e5a17506bb3de47f387b75f34cfbc2a81bcf1908cfe4dadb5147f9  ../writ-build/physical-gpu/task6/tests-gpu.gpu
+[exit status: 0; stderr empty; wall 21 ms]
+
+$ nm -D ../writ-build/physical-gpu/task6/tests-gpu | grep -E 'cuInit|cuLaunchKernel|nvrtc'
+                 U cuInit
+                 U cuLaunchKernel
+                 U nvrtcCompileProgram@libnvrtc.so.13
+                 U nvrtcCreateProgram@libnvrtc.so.13
+                 U nvrtcDestroyProgram@libnvrtc.so.13
+                 U nvrtcGetCUBIN@libnvrtc.so.13
+                 U nvrtcGetCUBINSize@libnvrtc.so.13
+                 U nvrtcGetProgramLog@libnvrtc.so.13
+                 U nvrtcGetProgramLogSize@libnvrtc.so.13
+[exit status: 0; stderr empty; wall 37 ms]
+
+$ ldd ../writ-build/physical-gpu/task6/tests-gpu | grep -E 'libcuda|libnvrtc'
+	libcuda.so.1 => /usr/lib/libcuda.so.1 (0x00007ff757400000)
+	libnvrtc.so.13 => /opt/cuda/lib64/libnvrtc.so.13 (0x00007ff74f600000)
+[exit status: 0; stderr empty; wall 14 ms]
+
+$ head -c 8 ../writ-build/physical-gpu/task6/tests-gpu.gpu | od -An -tx1
+ fa df 43 03 86 b7 6d 20
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ tail -c +9 ../writ-build/physical-gpu/task6/tests-gpu.gpu > ../writ-build/physical-gpu/task6/tests-gpu.cubin && file ../writ-build/physical-gpu/task6/tests-gpu.cubin
+../writ-build/physical-gpu/task6/tests-gpu.cubin: ELF 64-bit LSB executable, NVIDIA CUDA architecture, version 1, statically linked, not stripped
+[exit status: 0; stderr empty; wall 15 ms]
+
+$ cuobjdump -elf ../writ-build/physical-gpu/task6/tests-gpu.cubin | grep -m 1 -o 'sm=[0-9]*, toolkit=[0-9.]*'
+sm=89, toolkit=13.4
+[exit status: 0; stderr empty; wall 10 ms]
+
+$ cuobjdump -sass ../writ-build/physical-gpu/task6/tests-gpu.cubin | grep Function
+		Function : window_dev
+		Function : bend_dev
+[exit status: 0; stderr empty; wall 997 ms]
+
+## Run
+
+$ uptime
+ 22:59:58 up 3 days,  2:32,  1 user,  load average: 18.63, 19.33, 28.92
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/task6/tests-gpu +RTS --threads 4 --gpu off > verification/gpu-corpus-off.txt
+[exit status: 0; stderr empty; wall 74 ms]
+
+$ uptime
+ 23:00:05 up 3 days,  2:32,  1 user,  load average: 19.91, 19.58, 28.90
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ timeout 600 ../writ-build/physical-gpu/task6/tests-gpu +RTS --threads 4 --gpu on > verification/gpu-corpus-on.txt
+[exit status: 0; stderr empty; wall 2112 ms]
+
+$ grep -cE '^PASS[: ]' verification/gpu-corpus-off.txt; grep -c '^FAIL' verification/gpu-corpus-off.txt; tail -n 1 verification/gpu-corpus-off.txt; wc -l < verification/gpu-corpus-off.txt; sha256sum verification/gpu-corpus-off.txt
+782
+0
+ALL LIBRARY TESTS PASSED
+834
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  verification/gpu-corpus-off.txt
+[exit status: 0; stderr empty; wall 13 ms]
+
+$ grep -cE '^PASS[: ]' verification/gpu-corpus-on.txt; grep -c '^FAIL' verification/gpu-corpus-on.txt; tail -n 1 verification/gpu-corpus-on.txt; wc -l < verification/gpu-corpus-on.txt; sha256sum verification/gpu-corpus-on.txt
+782
+0
+ALL LIBRARY TESTS PASSED
+834
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  verification/gpu-corpus-on.txt
+[exit status: 0; stderr empty; wall 9 ms]
+
+$ sha256sum verification/tests-native.txt; grep -cE '^PASS[: ]' verification/tests-native.txt
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  verification/tests-native.txt
+782
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ diff verification/gpu-corpus-on.txt verification/gpu-corpus-off.txt; echo "diff exit $?"; cmp verification/gpu-corpus-on.txt verification/gpu-corpus-off.txt; echo "cmp exit $?"
+diff exit 0
+cmp exit 0
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ diff verification/gpu-corpus-on.txt verification/tests-native.txt; echo "diff exit $?"; cmp verification/gpu-corpus-on.txt verification/tests-native.txt; echo "cmp exit $?"
+diff exit 0
+cmp exit 0
+[exit status: 0; stderr empty; wall 7 ms]
+
+$ diff verification/gpu-corpus-off.txt verification/tests-native.txt; echo "diff exit $?"; cmp verification/gpu-corpus-off.txt verification/tests-native.txt; echo "cmp exit $?"
+diff exit 0
+cmp exit 0
+[exit status: 0; stderr empty; wall 8 ms]
+
+$ git diff --stat master -- '*.bend'; git status --porcelain -- '*.bend'
+ scripts/gpu-validation/Bang.bend      |  138 ++++
+ scripts/gpu-validation/Labels.bend    |  859 +++++++++++++++++++
+ scripts/gpu-validation/Solver.bend    | 1105 +++++++++++++++++++++++++
+ scripts/gpu-validation/Transfers.bend | 1449 +++++++++++++++++++++++++++++++++
+ 4 files changed, 3551 insertions(+)
+[exit status: 0; stderr empty; wall 57 ms]
+
+$ uptime
+ 23:00:24 up 3 days,  2:33,  1 user,  load average: 19.36, 19.50, 28.72
+[exit status: 0; stderr empty; wall 6 ms]
+
+$ GV_SOURCES="Tests.bend CoreTests.bend TransferTests.bend DlmTests.bend LedgerTests.bend NegotiationTests.bend BackplaneTests.bend FrontendTests.bend HostBindingTests.bend FacadeTests.bend PropertyTests.bend Core.bend Gpu.bend Test.bend Transfer.bend Dlm.bend Ledger.bend Negotiation.bend Backplane.bend Frontend.bend HostBinding.bend DataOS.bend Guard.bend" GV_RUN_DIR=../writ-build/physical-gpu/runs/task6/tests-gpu-on timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/task6/tests-gpu on
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task6/tests-gpu-on
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 98db68bf9518ad9fedda57e70b89ce7231daf603 (clean)
+source_sha256: Tests.bend=a0248cdfb43c6e61aa5b6328723d243aa204463181a7ea2003bbc222fa401fb1 CoreTests.bend=6ddb947d11cee49340a1d6153ef245dcb2e4ba3aca3d0b1cafc5d09413763266 TransferTests.bend=4f77a3fa3d3b03c96d99936821fda1fcdb9026ea0f4c569ce2a3de88d5466ec7 DlmTests.bend=451f122db7b74144e4618d0573f8bebf81a775c38bb95b5c1a3309fb26b4b150 LedgerTests.bend=6c464f28d239f7776a4dc5ec188593b238a95153bbbbb450f4ef3315832d2183 NegotiationTests.bend=e78dc566fb0a73d26d4d66492c0ea69195c90ccf6a298b8139113f19e215f25f BackplaneTests.bend=cc12033360c3c91d170792c26074f44511332cb7f864d115bb1a4d4978b05479 FrontendTests.bend=277284767b173aef44b63b4dfafba7990c041f8824d9ae4f8b8e41d2328dec19 HostBindingTests.bend=45c080ca6ee4f81f09f9dc1bb09980689d4ecd47ec984bc21168f7099aff8c0e FacadeTests.bend=61203ba74d87bb53d97f1471967c5cb261e75eb0441c2de41a5ccbd1ab4a0478 PropertyTests.bend=f79c1a976d2d868570997523d1b383dc7855d94d9f870ba7ecf262ff492ec631 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Test.bend=b1fd5da4ecc434efffe4f07ed1c66a861cdca431ddbf551d402bbfd748807d81 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 HostBinding.bend=ffd15450262b2800d555d034167b08f700e7197614ce8607ab28062cef2bed87 DataOS.bend=b218bd07d059ff402c5054a261ee09a5783a34794e47556a8f6ca7d1fbd84394 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: b50856fbba69f93b950cbb68d05a9d9ce876f5c5cb4f2ba83bb5c1e184bb0602  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task6/tests-gpu.c
+binary_sha256: 53eeea2b44f58b504acc3a86ca25ca9bd90560408afba158463049d874bafdf1  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task6/tests-gpu
+gpu_program_sha256: 40b1305c51e5a17506bb3de47f387b75f34cfbc2a81bcf1908cfe4dadb5147f9  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task6/tests-gpu.gpu
+gpu_arch: sm=89 (cuobjdump -elf of tests-gpu.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=tests-gpu mode=on args=
+exit_status: 0
+stdout_sha256: fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=3092151 seen=8 polls=9 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task6/tests-gpu-on/plain.apps log_sha256=49997c875a0cb5b7956f95a2fe64c791cecb79372c6f480693e10fdfc88c8fd9
+pmon_max_sm: 43 pid=3092151 rows=2 numeric=1 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task6/tests-gpu-on/plain.pmon log_sha256=6d06f4e7c8585dc1d9517d1a1d06745731fd401cc3fa0689b322c19fdadec478
+util_samples: 16 interval_ms=200 scope=global(display shares the GPU) baseline=16%,5248MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task6/tests-gpu-on/plain.util log_sha256=ca5535e44f0212032e94df536fdc7e2862c257fbe29296f126936db5c5d2e966
+wall_ms: 2082
+load_avg: 23:00:26 up 3 days,  2:33,  1 user,  load average: 18.93, 19.40, 28.64
+correctness: PASS 782, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 98db68bf9518ad9fedda57e70b89ce7231daf603 (clean)
+source_sha256: Tests.bend=a0248cdfb43c6e61aa5b6328723d243aa204463181a7ea2003bbc222fa401fb1 CoreTests.bend=6ddb947d11cee49340a1d6153ef245dcb2e4ba3aca3d0b1cafc5d09413763266 TransferTests.bend=4f77a3fa3d3b03c96d99936821fda1fcdb9026ea0f4c569ce2a3de88d5466ec7 DlmTests.bend=451f122db7b74144e4618d0573f8bebf81a775c38bb95b5c1a3309fb26b4b150 LedgerTests.bend=6c464f28d239f7776a4dc5ec188593b238a95153bbbbb450f4ef3315832d2183 NegotiationTests.bend=e78dc566fb0a73d26d4d66492c0ea69195c90ccf6a298b8139113f19e215f25f BackplaneTests.bend=cc12033360c3c91d170792c26074f44511332cb7f864d115bb1a4d4978b05479 FrontendTests.bend=277284767b173aef44b63b4dfafba7990c041f8824d9ae4f8b8e41d2328dec19 HostBindingTests.bend=45c080ca6ee4f81f09f9dc1bb09980689d4ecd47ec984bc21168f7099aff8c0e FacadeTests.bend=61203ba74d87bb53d97f1471967c5cb261e75eb0441c2de41a5ccbd1ab4a0478 PropertyTests.bend=f79c1a976d2d868570997523d1b383dc7855d94d9f870ba7ecf262ff492ec631 Core.bend=a4bf042b0504f67368f03475b04649332b2ba16b2def24aa6175cd27729eee53 Gpu.bend=f5b6ac701360c9d2afaa1284619012b96ba0710f385e1ffec20e07d180279e38 Test.bend=b1fd5da4ecc434efffe4f07ed1c66a861cdca431ddbf551d402bbfd748807d81 Transfer.bend=c2779e16b7f50b54b3679b15f16f3008799375494a43b406db07678159436b53 Dlm.bend=a5c3e77c9e966b03423d95262976f8f45cded09f48a4d3d768ca39513d6573db Ledger.bend=acc6468232ff321075ff17d5e7ed05df328b29cfbab1e2bfee2948afcb8828a8 Negotiation.bend=238de570d42b7c57e81655fc8678673bb91d97b7c4a95da4b58fdf01b1be0b75 Backplane.bend=46492a82a42216d575908ac7f95d0a37f52440179325261f5d9ec16e332dc519 Frontend.bend=a15c5fdc273054ff888f4b6da076630f52e2a8f42afd08e64dc86b3e0a845c37 HostBinding.bend=ffd15450262b2800d555d034167b08f700e7197614ce8607ab28062cef2bed87 DataOS.bend=b218bd07d059ff402c5054a261ee09a5783a34794e47556a8f6ca7d1fbd84394 Guard.bend=afad8d1d625e03f5d93dfcbb39c2ec61452a479622f38e7b95e3f7667324084e scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: b50856fbba69f93b950cbb68d05a9d9ce876f5c5cb4f2ba83bb5c1e184bb0602  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task6/tests-gpu.c
+binary_sha256: 53eeea2b44f58b504acc3a86ca25ca9bd90560408afba158463049d874bafdf1  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task6/tests-gpu
+gpu_program_sha256: 40b1305c51e5a17506bb3de47f387b75f34cfbc2a81bcf1908cfe4dadb5147f9  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/task6/tests-gpu.gpu
+gpu_arch: sm=89 (cuobjdump -elf of tests-gpu.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=tests-gpu mode=on args=
+exit_status: 0
+stdout_sha256: fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log log_sha256=f27f894f8ee31f408b42f387c8d4b89099c0225e7e352704b76604096c6a1984
+bend_dev_launches: 4915
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 3021 (under the observer)
+load_avg: 23:00:29 up 3 days,  2:33,  1 user,  load average: 19.10, 19.43, 28.60
+correctness: PASS 782, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty; wall 9828 ms]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task6/tests-gpu-on/record.txt; echo "check-record exit $?"
+gate: PASS
+check-record exit 0
+[exit status: 0; stderr empty; wall 797 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log tests-gpu
+4915
+[exit status: 0; stderr empty; wall 91 ms]
+
+$ grep -c 'Kernel launch' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log; grep -oE 'name = [A-Za-z_]+' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log | sort | uniq -c
+0
+[exit status: 0; stderr empty; wall 22 ms]
+(Both patterns were wrong for this sanitizer's log format and matched nothing; the count and kernel breakdown below use the log's actual `========= Launch #` and `Kernel:` lines.)
+
+$ grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log
+========= ERROR SUMMARY: 4915 errors
+[exit status: 0; stderr empty; wall 14 ms]
+
+$ sha256sum ../writ-build/physical-gpu/runs/task6/tests-gpu-on/plain.stdout ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.stdout verification/gpu-corpus-on.txt; cmp ../writ-build/physical-gpu/runs/task6/tests-gpu-on/plain.stdout verification/gpu-corpus-on.txt; echo cmp1 $?; cmp ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.stdout verification/gpu-corpus-on.txt; echo cmp2 $?
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  ../writ-build/physical-gpu/runs/task6/tests-gpu-on/plain.stdout
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.stdout
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  verification/gpu-corpus-on.txt
+cmp1 0
+cmp2 0
+[exit status: 0; stderr empty; wall 11 ms]
+
+$ grep -E '^=========   Kernel:' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log | sort | uniq -c; grep -c '^========= Launch #' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log
+   4915 =========   Kernel: bend_dev
+4915
+[exit status: 0; stderr empty; wall 13 ms]
+
+$ grep -E 'Host Frame' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log | sed 's/\[0x[0-9a-f]*\]//' | sort | uniq -c
+   4915 =========         Host Frame: corpus_eval  in tests-gpu
+   4915 =========         Host Frame: cube_run  in tests-gpu
+   4915 =========         Host Frame: cuLaunchKernel  in libcuda.so.1
+   4915 =========         Host Frame: io_loop  in tests-gpu
+   4900 =========         Host Frame: io_step  in tests-gpu
+   4915 =========         Host Frame: main  in tests-gpu
+[exit status: 0; stderr empty; wall 111 ms]
+
+$ grep -E 'Grid:' ../writ-build/physical-gpu/runs/task6/tests-gpu-on/observed.sanitizer.log | sort | uniq -c
+   1966 =========   Grid:   (1, 1, 1)
+   2949 =========   Grid:   (128, 1, 1)
+[exit status: 0; stderr empty; wall 17 ms]
+
+$ uptime
+ 23:01:11 up 3 days,  2:33,  1 user,  load average: 23.86, 20.49, 28.56
+[exit status: 0; stderr empty; wall 5 ms]
+
+$ timeout 600 compute-sanitizer --log-file ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/sanitizer.log --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ../writ-build/physical-gpu/task6/tests-gpu +RTS --threads 4 --gpu on -RTS > ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/stdout; echo "sanitizer exit $?"
+sanitizer exit 0
+[exit status: 0; stderr empty; wall 3297 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/sanitizer.log tests-gpu; grep -E 'ERROR SUMMARY|were not printed' ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/sanitizer.log; grep -E '^=========   Kernel:' ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/sanitizer.log | sort | uniq -c
+4915
+========= ERROR SUMMARY: 4915 errors
+   4915 =========   Kernel: bend_dev
+[exit status: 0; stderr empty; wall 79 ms]
+
+$ sha256sum ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/stdout ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/sanitizer.log; cmp ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/stdout verification/gpu-corpus-on.txt; echo "cmp exit $?"
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/stdout
+3f90fcd99539b295170c0727e07a2b508215eda4dc4b84b7e095a7ecb45e434e  ../writ-build/physical-gpu/runs/task6/tests-gpu-on-threads4/sanitizer.log
+cmp exit 0
+[exit status: 0; stderr empty; wall 11 ms]
+
+$ timeout 600 compute-sanitizer --log-file ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/sanitizer.log --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* ../writ-build/physical-gpu/task6/tests-gpu +RTS --threads 4 --gpu off -RTS > ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/stdout; echo "sanitizer exit $?"
+sanitizer exit 255
+[exit status: 0; stderr empty; wall 214 ms]
+
+$ sh scripts/gpu-validation/check-record.sh --count-launches ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/sanitizer.log tests-gpu; grep -c '^========= Launch #' ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/sanitizer.log; grep -E 'ERROR SUMMARY|were not printed|No CUDA|not instrumented' ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/sanitizer.log; sha256sum ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/stdout ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/sanitizer.log; cmp ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/stdout verification/gpu-corpus-off.txt; echo "cmp exit $?"
+0
+0
+fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff  ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/stdout
+84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269  ../writ-build/physical-gpu/runs/task6/tests-gpu-off-sanitizer/sanitizer.log
+cmp exit 0
+[exit status: 0; stderr empty; wall 18 ms]
+
+## Result
+
+Library correctness (a corpus result, not GPU evidence): `+RTS --threads 4 --gpu on` printed 782 PASS lines, 0 FAIL lines, final line `ALL LIBRARY TESTS PASSED`, exit 0, stdout sha256 fc3a08aa33059b67fc9602d20496f6d40ad7950e5dd32bada6fc37c6062916ff; `+RTS --threads 4 --gpu off` printed 782 PASS lines, 0 FAIL lines, the same final line, exit 0, the same sha256. The three byte-level comparisons are all empty: `diff` and `cmp` exit 0 for on against off, on against verification/tests-native.txt, and off against verification/tests-native.txt. The plain and observed passes of the observe.sh run and the supplementary sanitizer runs (on and off) produced the same stdout bytes (cmp exit 0 against the captures). No differing line exists, so there is no difference finding. No `corpus reservation failed` and no fault occurred under the default device heap, so the `--gpu 16GB` rerun did not apply. The sha256 equalities above are byte identity of the files, confirmed by the `cmp` and `diff` runs; the corpus's own checks (782 PASS) are the correctness evidence, and no digest is used as equality evidence.
+
+GPU claim (separate from the corpus result): 4915 `bend_dev` launches observed; the solver bang in the corpus executed on the device. The observe.sh pair for `+RTS --gpu on -RTS` passes the gate (`gate: PASS`, check-record.sh exit 0): 4915 bend_dev launches, every one with a host backtrace in tests-gpu (cube_run, corpus_eval, io_loop, main), recounted by check-record.sh from the sanitizer log; no other kernel was launched (window_dev is in the cubin but launched 0 times); the plain pass's PID was listed by --query-compute-apps in 8 of 9 polls. The supplementary run of the exact capture options (`+RTS --threads 4 --gpu on -RTS`) also shows 4915 bend_dev launches attributed to tests-gpu. This is GPU evidence only for the one device path in this binary, Gpu.sweep's `run_tree!` reached through Gpu.solve_gpu from CoreTests and PropertyTests; it is not GPU evidence for the label or transfer paths (no bang in the corpus binary reaches them) or for any CPU reference or verifier.
+
+Wall times (indicative only, shared host at load average 18.6 to 23.9): `--gpu off` 74 ms; `--gpu on` 2112 ms (threads 4) and 2082 ms (plain pass, threads 32); 3021 ms and 3297 ms under compute-sanitizer. No performance claim is made.
+
+## Limits
+
+- The launch count attributes device execution to the single bang site (BANGS 1), not to individual test cases. It does not show that every Gpu.solve_gpu call in the corpus dispatched (CoreTests' "empty parallel graph needs no dispatch" case is designed not to), nor which of the 4915 launches belong to which test. Launch grids were (1,1,1) for 1966 and (128,1,1) for 2949 launches; the mapping of launches to sweeps was not established.
+- The `--gpu on` captures and the plain pass are device runs not individually observed; the observed passes are separate runs of the same binary whose stdout is byte-identical. observe.sh's passes use 32 threads, not the captures' 4; the `--threads 4` options are covered by a supplementary sanitizer run that is not a gate record.
+- The corpus checks its own GPU solver results against Core.solve_cpu (and the property cases against CPU and Bend parallel producers) in-process; it adds no independent verifier pass beyond what the tests already contain. Library correctness here means the corpus's 782 checks pass and its output is byte-identical to the CPU reference; it says nothing about paths the corpus does not exercise.
+- The pmon and utilisation samples are not gate inputs for this run (plain pass under 10 s); the utilisation reading is global and shared with the display.
+- The `--gpu off` capture's CPU execution is shown by the off sanitizer run (exit 255, "Target application terminated before first instrumented API call", 0 launches), consistent with verification/gpu-gate-controls.txt (b).
+- Not exercised: `--gpu <size>` heap options (no exhaustion occurred), the default (no +RTS) mode, CUDA_VISIBLE_DEVICES set, the JavaScript backend, proofs, and `--verdict` (Lean is absent). Nsight Systems and Nsight Compute are not installed, so there is no host/device time split.
