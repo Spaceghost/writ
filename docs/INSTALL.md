@@ -73,7 +73,7 @@ flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
 and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
 `examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
 library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
-binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 1428 lines
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 1713 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
@@ -158,9 +158,9 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **1428 passing checks** and
-`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks seventeen declared laws about guards,
-preservation of denied state, grant issuance, and host-contract denials; it does
+Each complete test run should report **1713 passing checks** and
+`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks twenty-nine declared laws about guards,
+preservation of denied state, grant issuance, host-contract denials, and policy-aware audit; it does
 not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.
 The recorded Lean 4.34.0 installation could not start, so that result remains
