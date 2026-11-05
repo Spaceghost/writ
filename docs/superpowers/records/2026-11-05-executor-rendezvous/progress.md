@@ -28,3 +28,6 @@ Task 5: review spec APPROVED, security NEEDS_FIXES (S1 confirmed: dispatch accep
 Task 5: fix round 1 done (5689ae6): host revision gate threaded through the law, incarnation in the record, caller token compared, S2/S5 checks; 1616 checks; 49 of 53 mutants killed, 4 equivalent. Scoped re-review dispatched.
 Task 5: complete (re-review ALL CLOSED; 1616 checks, 24 laws).
 Task 6: dispatched implementer (document and final-commit tests)
+Task 6: implementer DONE_WITH_CONCERNS (dc03bda): 9 integration checks (1625), docs/EXECUTOR-RENDEZVOUS.md, box 1.5; 10 of 11 mutants killed. Rulings: the write-grant denial pinned through Transfer is how the unchanged Backplane works, acceptable and recorded; the shared N.owners gate is acceptable with the variant run; the traceability path named ahead of Task 7 is fine. Reviewer dispatched.
+Task 6: complete (review APPROVED both axes; two minor items carried to Task 7: box 1.5 cites five of nine integration checks; the tasks.md preface wording).
+Task 7: dispatched implementer (scenarios and traceability)
