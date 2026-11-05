@@ -36,3 +36,4 @@ Final review: Needs fixes before merge. Blocking I-1: anyone can call register a
 Final fix round done (7568225): register authenticates the subject (SubjectMismatch), 1014 checks, 12 laws over every from, strict 44. Scoped re-review of the final round dispatched.
 Final re-review: Ready to merge (I-1 closed, scenario g rerun, laws over every from). Complete.
 Merge: to master; re-pin to 1014 on master in the same landing (a known-red CI is not pushed); re-pin again after the host-contract lane.
+Merge: merged to master, re-pinned to 1014 (83cfabc), pushed as 83cfabc
