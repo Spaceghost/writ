@@ -171,3 +171,11 @@ def Laws.rendezvous_stale_selection_keeps_state(state, session, expected_session
     case Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}:
       %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {(Rendezvous.Change.accepted(Rendezvous.select_current(_, Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.select_current(_, Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}, session, expected_session, n_context, snapshot))) == (False{}, Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}) : Bool & Rendezvous.State}
       {==}
+
+# `submit_evidence` unfolds to `submit_evidence_by(selected_provider_is(state,
+# from), ...)`. Rewriting that scrutinee to False{} with the hypothesis
+# (reversed) selects `Rejected{state, NotSelected{}}`, whose `accepted` is
+# False{} and whose `Change.state` is the supplied state.
+def Laws.rendezvous_wrong_provider_evidence_rejects(state, expected_revision, from, evidence, session, n_context, snapshot, wrong):
+  %Equal.sym(Bool, Rendezvous.selected_provider_is(state, from), False{}, wrong) : {(Rendezvous.Change.accepted(Rendezvous.submit_evidence_by(_, state, expected_revision, from, evidence, session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.submit_evidence_by(_, state, expected_revision, from, evidence, session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+  {==}

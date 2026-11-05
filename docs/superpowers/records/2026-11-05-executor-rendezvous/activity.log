@@ -32,3 +32,7 @@
 2026-11-05T15:46:56Z	implementer	fix round 1: 80 mutants (77 killed, 3 equivalent: S8, F2, R2); Tests.bend 1545 PASS, PROOF.bend ALL PROOFS CHECK at 22 laws; committing
 2026-11-05T15:47:17Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T15:48:22Z	controller	task 3 complete; task 4 dispatched (trial binding)
+2026-11-05T15:48:55Z	implementer	task 4 started: read brief, plan constraints, task 1-3 records
+2026-11-05T16:00:34Z	implementer	selection_current, submit_evidence (outer selected_provider_is), negotiation_context added; law rendezvous_wrong_provider_evidence_rejects checks; trials section 34 checks green (151); starting mutation sweep
+2026-11-05T16:06:13Z	implementer	mutation sweep 1: 76 mutants, 72 killed, 4 survivors (C7 offer_stored, P16 covering approval); trial approvals fixture reordered (B's approval 128 stored first) and a B-only offers check added; header and tasks.md box 1.3 updated; final sweep running
+2026-11-05T16:09:47Z	implementer	final: 76 mutants, 73 killed, 3 equivalent (P14, P18, T10); Rendezvous 151 checks, Tests.bend 1579 PASS, PROOF.bend ALL PROOFS CHECK at 23 laws; report and mutants written; box 1.3 checked; committing

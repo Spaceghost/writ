@@ -11,7 +11,8 @@ import ./Guard.bend as Guard
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
 # Sections follow the change's tasks; this file holds `offers` (1.1),
-# `approvals` (1.2, first half) and `selection` (1.2, second half). Every
+# `approvals` (1.2, first half), `selection` (1.2, second half) and `trials`
+# (1.3). Every
 # denial check asserts the exact Error and that the returned state equals
 # the supplied one, field by field, through `denied`.
 #
@@ -1177,9 +1178,447 @@ def selection() -> IO(Unit):
     selection_races()
     selection_withdrawals()
 
+# --- Section 1.3: trial evidence and the Negotiation projection (ER-004 to ER-006)
+
+# Trial fixtures. Every field carries its own value. A's trial offer is
+# OfferId{201, 4} on grant 3, quote 38, valid while now < 113; B's is
+# OfferId{202, 5} on grant 6, quote 41, valid while now < 140; both at
+# profile 1 and approved by object 10's authority: B by approval_tb()
+# (serial 19, valid until 128, id 1), then A by approval_a() (serial 12,
+# valid until 130, id 2), so the first stored approval is A's and does not
+# cover B. The negotiation is pinned at 100
+# (NT.pinned()), A is selected at 103 as selection 3, and the trial runs at
+# 110. Challenge and sample records are SYNTHETIC MONITOR STATE (the
+# monitor's trusted receipts), valid until 170 and 160.
+def approval_tb() -> R.OriginApproval:
+  approval_with(19n, IT.source_authority(), TF.source_object(), provider_b(), profile(),
+    TF.plan(), 128n)
+
+def trial_approved() -> R.State:
+  put_approval(put_approval(opened(), approval_tb()), approval_a())
+
+def offer_ta() -> R.Offer:
+  offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 38n, 113n)
+
+def offer_tb() -> R.Offer:
+  offer_with(R.OfferId{202n, 5n}, provider_b(), 6n, TF.plan(), 41n, 140n)
+
+# Revision 4, no selection.
+def trial_offers() -> R.State:
+  put_offer(put_offer(trial_approved(), provider_a(), offer_ta()), provider_b(), offer_tb())
+
+def trial_select() -> R.Change:
+  R.select(trial_offers(), 4n, NT.pinned(), 1n, NT.context(103n), snapshot_with(issuer(), 103n))
+
+# Selection 3 of A's trial offer at 103, revision 5.
+def selected_t() -> R.State:
+  R.Change.state(trial_select())
+
+def trial_snapshot() -> R.Snapshot:
+  snapshot_with(issuer(), 110n)
+
+def nonce_of(word: U32) -> T.CodeId:
+  T.CodeId{5, 5, 5, 5, 5, 5, 5, word}
+
+def challenge_rec(id: Nat, plan: T.Plan, nonce: T.CodeId, issued: Nat) -> N.Challenge:
+  N.Challenge{id, plan, nonce, issued, 170n}
+
+def sample_rec(id: Nat, plan: T.Plan, challenge: Nat, nonce: T.CodeId, passed: Bool, until: Nat) -> N.Sample:
+  N.Sample{id, plan, challenge, nonce, passed, until}
+
+# 21 (issued 105) and 24 (104) follow fixation; 22 was issued at 103, the
+# selection's own time; 23 is for the plan whose code differs in one word.
+def trial_challenges() -> N.Challenges:
+  N.Challenges{challenge_rec(21n, TF.plan(), nonce_of(1), 105n),
+  N.Challenges{challenge_rec(22n, TF.plan(), nonce_of(2), 103n),
+  N.Challenges{challenge_rec(23n, IT.plan_code(), nonce_of(3), 106n),
+  N.Challenges{challenge_rec(24n, TF.plan(), nonce_of(4), 104n),
+  N.NoChallenges{}}}}}
+
+# The passing sample: id 31, challenge 21, nonce 1.
+def good_sample() -> N.Sample:
+  sample_rec(31n, TF.plan(), 21n, nonce_of(1), True{}, 160n)
+
+# The passing sample is the second record 31 (challenge 21, nonce 1). Every
+# other record differs from it in one field: the first 31 is for the other
+# plan, the third answers challenge 24; 32 other plan; 33 answers the
+# fixation-time challenge 22; 34 failed; 35 expires at 110; 37 carries
+# challenge 24's nonce; 38 answers challenge 22 with challenge 21's nonce.
+def trial_samples() -> N.Samples:
+  N.Samples{sample_rec(31n, IT.plan_code(), 21n, nonce_of(1), True{}, 160n),
+  N.Samples{good_sample(),
+  N.Samples{sample_rec(31n, TF.plan(), 24n, nonce_of(4), True{}, 160n),
+  N.Samples{sample_rec(32n, IT.plan_code(), 21n, nonce_of(1), True{}, 160n),
+  N.Samples{sample_rec(33n, TF.plan(), 22n, nonce_of(2), True{}, 160n),
+  N.Samples{sample_rec(34n, TF.plan(), 21n, nonce_of(1), False{}, 160n),
+  N.Samples{sample_rec(35n, TF.plan(), 21n, nonce_of(1), True{}, 110n),
+  N.Samples{sample_rec(37n, TF.plan(), 21n, nonce_of(4), True{}, 160n),
+  N.Samples{sample_rec(38n, TF.plan(), 22n, nonce_of(1), True{}, 160n),
+  N.NoSamples{}}}}}}}}}}
+
+def raw_approvals() -> N.Approvals:
+  N.Approvals{N.Approval{TF.source_object(), TF.plan(), 180n}, N.NoApprovals{}}
+
+def trial_budgets() -> N.Budgets:
+  N.Budgets{N.Budget{11n, TF.plan(), 7n, 42n, 30n, 180n}, N.NoBudgets{}}
+
+# SYNTHETIC MONITOR STATE: the unprojected Negotiation context at `now`,
+# with a raw approval the projection must not pass through.
+def raw_with(now: Nat, challenges: N.Challenges, samples: N.Samples, budgets: N.Budgets) -> N.Context:
+  N.Context{TF.with_now(TF.context(), now), raw_approvals(), challenges, samples, budgets}
+
+def trial_raw() -> N.Context:
+  raw_with(110n, trial_challenges(), trial_samples(), trial_budgets())
+
+def proj_on(+state: R.State) -> N.Context:
+  R.negotiation_context(state, trial_raw(), trial_snapshot())
+
+def proj0() -> N.Context:
+  proj_on(selected_t())
+
+# The negotiation session after N.challenge with 21 on the projection.
+def challenged_t() -> N.Session:
+  N.Step.session(N.challenge(NT.pinned(), 1n, 21n, proj0()))
+
+# A session for `request`, pinned at 100 and challenged with 21 on the
+# projection, through Negotiation's entry points.
+def challenged_for(request: N.Request) -> N.Session:
+  N.Step.session(N.challenge(N.Step.session(N.pin(N.open(request), 0n, TF.code(), NT.context(100n))),
+    1n, 21n, proj0()))
+
+# SYNTHETIC MONITOR STATE: a session at Challenged with challenge `id`,
+# otherwise as challenged_t(), as a host that skipped the projection might
+# hold it.
+def session_at(id: Nat) -> N.Session:
+  N.Session{2n, NT.request(), N.Challenged{}, 100n, id, 0n}
+
+def evidence_with(version: Nat, sample: Nat, provider: I.Principal, offer: R.OfferId, challenge: Nat,
+    code: T.CodeId) -> R.Evidence:
+  R.Evidence{version, sample, provider, offer, challenge, code}
+
+def ev_a(sample: Nat, challenge: Nat) -> R.Evidence:
+  evidence_with(R.record_version(), sample, provider_a(), R.OfferId{201n, 4n}, challenge, TF.code())
+
+def good_evidence() -> R.Evidence:
+  ev_a(31n, 21n)
+
+def submit_t(+state: R.State, +from: I.Principal, +evidence: R.Evidence, +session: N.Session) -> R.Change:
+  R.submit_evidence(state, R.revision(state), from, evidence, session, trial_raw(), trial_snapshot())
+
+def submit_a(+evidence: R.Evidence, +session: N.Session) -> R.Change:
+  submit_t(selected_t(), provider_a(), evidence, session)
+
+def evidence_change() -> R.Change:
+  submit_a(good_evidence(), challenged_t())
+
+# Revision 6, A's evidence stored under selection 3.
+def evidenced() -> R.State:
+  R.Change.state(evidence_change())
+
+def proj1() -> N.Context:
+  proj_on(evidenced())
+
+def sampled_t() -> N.Session:
+  N.Step.session(N.sample(challenged_t(), 2n, 31n, proj1()))
+
+# A denial of `evidence` from A on the selected state, with the state kept.
+def trial_denied(+evidence: R.Evidence, +session: N.Session, reason: R.Error) -> Bool:
+  denied(submit_a(evidence, session), selected_t(), reason)
+
+# SYNTHETIC MONITOR STATE: a state with `selection` installed directly.
+def with_selection(state: R.State, selection: R.Selection) -> R.State:
+  match state:
+    case R.State{revision, next_id, request, constraint, offers, approvals, _,
+        retired, evidence, dispatched, seen}:
+      R.State{revision, next_id, request, constraint, offers, approvals, selection,
+        retired, evidence, dispatched, seen}
+
+def sel_t(request: N.Request, stamp: T.Stamp) -> R.Selection:
+  R.Selection{3n, offer_ta(), request, stamp, 103n, 1n}
+
+# --- Test-side equality of Negotiation lists ---------------------------------
+
+def n_challenge_equal(a: N.Challenge, b: N.Challenge) -> Bool:
+  match a b:
+    case N.Challenge{ai, ap, an, ais, au} N.Challenge{bi, bp, bn, bis, bu}:
+      Nat.is_eq(ai, bi) && T.Plan.equal(ap, bp) && T.CodeId.equal(an, bn)
+        && Nat.is_eq(ais, bis) && Nat.is_eq(au, bu)
+
+def n_challenges_equal(a: N.Challenges, b: N.Challenges) -> Bool:
+  match a b:
+    case N.NoChallenges{} N.NoChallenges{}:
+      True{}
+    case N.Challenges{ah, at} N.Challenges{bh, bt}:
+      n_challenge_equal(ah, bh) && n_challenges_equal(at, bt)
+    case _ _:
+      False{}
+
+def n_sample_equal(a: N.Sample, b: N.Sample) -> Bool:
+  match a b:
+    case N.Sample{ai, ap, ac, an, ad, au} N.Sample{bi, bp, bc, bn, bd, bu}:
+      Nat.is_eq(ai, bi) && T.Plan.equal(ap, bp) && Nat.is_eq(ac, bc) && T.CodeId.equal(an, bn)
+        && IT.bool_equal(ad, bd) && Nat.is_eq(au, bu)
+
+def n_samples_equal(a: N.Samples, b: N.Samples) -> Bool:
+  match a b:
+    case N.NoSamples{} N.NoSamples{}:
+      True{}
+    case N.Samples{ah, at} N.Samples{bh, bt}:
+      n_sample_equal(ah, bh) && n_samples_equal(at, bt)
+    case _ _:
+      False{}
+
+def n_approvals_equal(a: N.Approvals, b: N.Approvals) -> Bool:
+  match a b:
+    case N.NoApprovals{} N.NoApprovals{}:
+      True{}
+    case N.Approvals{N.Approval{ao, ap, au}, at} N.Approvals{N.Approval{bo, bp, bu}, bt}:
+      T.ObjectVersion.equal(ao, bo) && T.Plan.equal(ap, bp) && Nat.is_eq(au, bu)
+        && n_approvals_equal(at, bt)
+    case _ _:
+      False{}
+
+def n_budgets_equal(a: N.Budgets, b: N.Budgets) -> Bool:
+  match a b:
+    case N.NoBudgets{} N.NoBudgets{}:
+      True{}
+    case N.Budgets{N.Budget{ar, ap, ay, aq, au, av}, at} N.Budgets{N.Budget{br, bp, by, bq, bu, bv}, bt}:
+      Nat.is_eq(ar, br) && T.Plan.equal(ap, bp) && Nat.is_eq(ay, by) && Nat.is_eq(aq, bq)
+        && Nat.is_eq(au, bu) && Nat.is_eq(av, bv) && n_budgets_equal(at, bt)
+    case _ _:
+      False{}
+
+# The projection's three lists and its budgets are exactly these, and its
+# transfer context is the supplied one (time 110 here).
+def context_is(context: N.Context, approvals: N.Approvals, challenges: N.Challenges,
+    samples: N.Samples, budgets: N.Budgets, now: Nat) -> Bool:
+  match context:
+    case N.Context{transfer, ca, cc, cs, cb}:
+      n_approvals_equal(ca, approvals) && n_challenges_equal(cc, challenges)
+        && n_samples_equal(cs, samples) && n_budgets_equal(cb, budgets) && Nat.is_eq(T.Context.now(transfer), now)
+
+def budgets_of(context: N.Context) -> N.Budgets:
+  match context:
+    case N.Context{_, _, _, _, budgets}:
+      budgets
+
+def empty_at(context: N.Context, budgets: N.Budgets, now: Nat) -> Bool:
+  context_is(context, N.NoApprovals{}, N.NoChallenges{}, N.NoSamples{}, budgets, now)
+
+def a_approvals(until: Nat) -> N.Approvals:
+  N.Approvals{N.Approval{TF.source_object(), TF.plan(), until}, N.NoApprovals{}}
+
+def post_fixation() -> N.Challenges:
+  N.Challenges{challenge_rec(21n, TF.plan(), nonce_of(1), 105n),
+  N.Challenges{challenge_rec(24n, TF.plan(), nonce_of(4), 104n), N.NoChallenges{}}}
+
+# The happy path: the projection, the evidence and Negotiation's stages.
+def trial_happy() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(R.Change.accepted(trial_select()) && Nat.is_eq(R.revision(selected_t()), 5n)
+      && selection_equal(R.selection(selected_t()), R.Selection{3n, offer_ta(), NT.request(), I.live(issuer()), 103n, 1n})
+      && R.selection_current(selected_t(), trial_snapshot()), "ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110")
+    Test.check(context_is(proj0(), a_approvals(113n), post_fixation(), N.NoSamples{}, trial_budgets(), 110n), "ER-004 the projection for selection 3 carries exactly challenges 21 and 24, no sample, one approval for 10v4 valid until 113 (the offer's end, before approval 130 and grant 150), and the supplied budgets and transfer")
+    Test.check(N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, proj0()))
+      && Nat.is_eq(R.session_challenge(challenged_t()), 21n), "ER-004 happy path: N.challenge with 21 advances on the projected context")
+    Test.check(R.Change.accepted(evidence_change()) && issued_is(R.Change.issued(evidence_change()), 3n)
+      && Nat.is_eq(R.revision(evidenced()), 6n) && Nat.is_eq(R.next_id(evidenced()), 4n)
+      && evidence_equal(R.evidence(evidenced()), R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}})
+      && selection_equal(R.selection(evidenced()), R.selection(selected_t()))
+      && offers_equal(R.offers(evidenced()), R.offers(selected_t()))
+      && approvals_equal(R.approvals(evidenced()), R.approvals(selected_t()))
+      && serials_equal(R.seen(evidenced()), R.seen(selected_t())) && R.valid(evidenced()), "ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed")
+    Test.check(context_is(proj1(), a_approvals(113n), post_fixation(), N.Samples{good_sample(), N.NoSamples{}}, trial_budgets(), 110n)
+      && Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
+      && N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj1())), "ER-005 after the evidence the projection carries exactly sample 31 for challenge 21 and the selected plan; N.sample with 31 is rejected before the evidence and advances after it")
+    Test.check(N.Step.accepted(N.approve(sampled_t(), 3n, proj1()))
+      && N.ReservationStep.accepted(N.reserve(N.Step.session(N.approve(sampled_t(), 3n, proj1())), 4n, 0n, 11n, proj1(), NT.initial_ledger())), "ER-006 happy path: N.approve and then N.reserve advance on the projected context for the selected provider")
+
+# Before any selection, and when the selection is not current.
+def trial_currency() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(empty_at(proj_on(trial_offers()), trial_budgets(), 110n)
+      && Bool.not(R.selection_current(trial_offers(), trial_snapshot()))
+      && N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, trial_raw()))
+      && Bool.not(N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, proj_on(trial_offers())))), "ER-004 before any selection the projection has no approvals, challenges or samples, so N.challenge with 21 is rejected on it though the raw context admits it")
+    Test.check(denied(submit_t(trial_offers(), provider_a(), good_evidence(), challenged_t()), trial_offers(), R.NotSelected{}), "ER-005 evidence with no selection denied NotSelected")
+    Test.check(denied(R.submit_evidence(selected_t(), 5n, provider_a(), good_evidence(), challenged_t(), trial_raw(), snapshot_with(epoch_issuer(), 110n)),
+        selected_t(), R.StaleEpoch{})
+      && empty_at(R.negotiation_context(selected_t(), trial_raw(), snapshot_with(epoch_issuer(), 110n)), trial_budgets(), 110n), "ER-005 epoch substitution: once the issuer's live stamp advances to epoch 5 the selection is not current; evidence denied StaleEpoch and the projection is empty")
+    Test.check(denied(R.submit_evidence(selected_t(), 5n, provider_a(), good_evidence(), challenged_t(), trial_raw(), snapshot_with(revoked_issuer(), 110n)),
+        selected_t(), R.Revoked{})
+      && empty_at(R.negotiation_context(selected_t(), trial_raw(), snapshot_with(revoked_issuer(), 110n)), trial_budgets(), 110n), "ER-006 once 101 revokes the source approval behind A's grant 3, evidence is denied Revoked and the projection carries no approval, challenge or sample")
+    Test.check(denied(submit_t(with_selection(selected_t(), sel_t(NT.request(), next_epoch())), provider_a(), good_evidence(), challenged_t()),
+        with_selection(selected_t(), sel_t(NT.request(), next_epoch())), R.StaleEpoch{})
+      && R.selection_current(with_selection(selected_t(), sel_t(NT.request(), I.live(issuer()))), trial_snapshot()), "ER-004 a monitor-installed selection recorded at epoch 5 while the issuer and grant are at epoch 3 is not current: StaleEpoch; at the live stamp it is current")
+    Test.check(denied(submit_t(with_selection(selected_t(), sel_t(N.Request{TF.plan(), 7n, 41n, 30n, 180n}, I.live(issuer()))), provider_a(), good_evidence(), challenged_t()),
+        with_selection(selected_t(), sel_t(N.Request{TF.plan(), 7n, 41n, 30n, 180n}, I.live(issuer()))), R.NotSelected{}), "ER-004 a monitor-installed selection made for a request with quote 41 is not current for the rendezvous request: NotSelected")
+    Test.check(denied(submit_t(with_offers(selected_t(), R.NoOffers{}), provider_a(), good_evidence(), challenged_t()),
+        with_offers(selected_t(), R.NoOffers{}), R.NotSelected{})
+      && denied(submit_t(with_offers(selected_t(), R.Offers{offer_tb(), R.NoOffers{}}), provider_a(), good_evidence(), challenged_t()),
+        with_offers(selected_t(), R.Offers{offer_tb(), R.NoOffers{}}), R.NotSelected{})
+      && denied(submit_t(with_extra_offer(selected_t(), offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 37n, 113n)), provider_a(), good_evidence(), challenged_t()),
+        with_extra_offer(selected_t(), offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 37n, 113n)), R.NotSelected{}), "ER-004 a selection whose offer record is no longer stored (no records, or only B's), or whose identity also carries a record quoting 37, is not current: NotSelected")
+
+# Each field of the evidence substituted, and the session.
+def trial_substitutions() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(trial_denied(evidence_with(2n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.code()), challenged_t(), R.UnknownVersion{})
+      && trial_denied(evidence_with(1n, 31n, provider_b(), R.OfferId{201n, 4n}, 21n, TF.code()), challenged_t(), R.Unauthenticated{}), "ER-005 field substitution: version 2 denied UnknownVersion; provider claim B from A denied Unauthenticated")
+    Test.check(trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 9n}, 21n, TF.code()), challenged_t(), R.NotSelected{})
+      && trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{202n, 5n}, 21n, TF.code()), challenged_t(), R.NotSelected{}), "ER-005 offer substitution: A's evidence naming OfferId{201, 9} or B's OfferId{202, 5} denied NotSelected")
+    Test.check(trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.other_code()), challenged_t(), R.ScopeMismatch{})
+      && n_samples_equal(R.projected_samples(N.Samples{sample_rec(31n, IT.plan_code(), 21n, nonce_of(1), True{}, 160n), N.NoSamples{}},
+        R.evidence(evidenced()), 3n, TF.plan()), N.NoSamples{}), "ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31")
+    Test.check(trial_denied(ev_a(31n, 24n), challenged_t(), R.WrongTrial{})
+      && trial_denied(ev_a(31n, 23n), session_at(23n), R.WrongTrial{})
+      && trial_denied(ev_a(31n, 29n), session_at(29n), R.WrongTrial{}), "ER-005 challenge substitution: evidence naming 24 on a session challenged with 21, or a session at 23 (the other plan's challenge) or at the absent 29, denied WrongTrial")
+    Test.check(N.Step.accepted(N.challenge(NT.pinned(), 1n, 22n, trial_raw()))
+      && Bool.not(N.Step.accepted(N.challenge(NT.pinned(), 1n, 22n, proj0())))
+      && trial_denied(ev_a(33n, 22n), N.Step.session(N.challenge(NT.pinned(), 1n, 22n, trial_raw())), R.ChallengeBeforeFixation{}), "ER-004 a challenge issued at 103, the selection's own time: absent from the projection, so N.challenge with 22 is rejected there (the raw context admits it); evidence naming it denied ChallengeBeforeFixation")
+    Test.check(trial_denied(ev_a(39n, 21n), challenged_t(), R.WrongTrial{})
+      && trial_denied(ev_a(32n, 21n), challenged_t(), R.WrongTrial{}), "ER-005 sample substitution: the absent sample 39, or sample 32 for the plan with the other code (another input scope), denied WrongTrial")
+    Test.check(trial_denied(ev_a(34n, 21n), challenged_t(), R.WrongTrial{})
+      && trial_denied(ev_a(35n, 21n), challenged_t(), R.WrongTrial{})
+      && trial_denied(ev_a(37n, 21n), challenged_t(), R.WrongTrial{})
+      && trial_denied(ev_a(38n, 21n), challenged_t(), R.WrongTrial{}), "ER-005 a failed sample (34), one expiring at 110 (35), one carrying challenge 24's nonce (37), or one answering challenge 22 (38) denied WrongTrial")
+    Test.check(denied(submit_t(evidenced(), provider_a(), good_evidence(), challenged_t()), evidenced(), R.Replay{}), "ER-005 a second evidence for selection 3 denied Replay")
+    Test.check(denied(R.submit_evidence(selected_t(), 4n, provider_a(), good_evidence(), challenged_t(), trial_raw(), trial_snapshot()), selected_t(), R.StaleRevision{})
+      && trial_denied(good_evidence(), NT.pinned(), R.WrongStage{})
+      && trial_denied(good_evidence(), sampled_t(), R.WrongStage{}), "ER-005 evidence at revision 4 against 5 denied StaleRevision; a session at CandidateFixed or at Sampled denied WrongStage")
+
+# Exported helpers whose conjuncts an earlier gate masks at the entry point.
+def trial_helpers() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Bool.not(R.challenge_posted(N.Challenges{challenge_rec(22n, IT.plan_code(), nonce_of(2), 107n), N.NoChallenges{}}, 22n, TF.plan(), 103n))
+      && R.challenge_posted(N.Challenges{challenge_rec(22n, TF.plan(), nonce_of(2), 104n), N.NoChallenges{}}, 22n, TF.plan(), 103n), "ER-004 challenge_posted: a challenge 22 issued at 107 for the other plan does not follow fixation for TF.plan(); one for TF.plan() at 104 does")
+    Test.check(Bool.not(R.nonce_posted(N.Challenges{challenge_rec(21n, IT.plan_code(), nonce_of(6), 108n), N.NoChallenges{}}, 21n, TF.plan(), nonce_of(6), 103n))
+      && Bool.not(R.nonce_posted(trial_challenges(), 22n, TF.plan(), nonce_of(2), 103n))
+      && R.nonce_posted(trial_challenges(), 21n, TF.plan(), nonce_of(1), 103n), "ER-005 nonce_posted: nonce 6 of another plan's challenge 21, or challenge 22's nonce at fixation time, does not answer; challenge 21's nonce 1 does")
+    Test.check(Bool.not(R.selected_provider_is(trial_offers(), provider_a()))
+      && R.selected_provider_is(selected_t(), provider_a()) && Bool.not(R.selected_provider_is(selected_t(), provider_b())), "ER-005 selected_provider_is: false with no selection, true only for A while A is selected")
+
+# Phase 2: A's selection abandoned, B selected at 116, B's trial at 120 with
+# challenge 26 (issued 118, nonce 6) and sample 36, beside A's records.
+def abandoned_t() -> R.State:
+  R.Change.state(R.abandon(evidenced(), 6n))
+
+def session2() -> N.Session:
+  N.Step.session(N.pin(N.open(NT.request()), 0n, TF.code(), NT.context(114n)))
+
+# A's offer expired at 113, so B is selected as selection 4, revision 8.
+def selected_b() -> R.State:
+  R.Change.state(R.select(abandoned_t(), 7n, session2(), 1n, NT.context(116n), snapshot_with(issuer(), 116n)))
+
+def raw2() -> N.Context:
+  raw_with(120n, N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), trial_challenges()},
+    N.Samples{sample_rec(36n, TF.plan(), 26n, nonce_of(6), True{}, 160n), trial_samples()}, trial_budgets())
+
+def snapshot2() -> R.Snapshot:
+  snapshot_with(issuer(), 120n)
+
+def proj_b(+state: R.State) -> N.Context:
+  R.negotiation_context(state, raw2(), snapshot2())
+
+def challenged_b() -> N.Session:
+  N.Step.session(N.challenge(session2(), 1n, 26n, proj_b(selected_b())))
+
+def submit_2(+from: I.Principal, +evidence: R.Evidence) -> R.Change:
+  R.submit_evidence(selected_b(), 8n, from, evidence, challenged_b(), raw2(), snapshot2())
+
+def ev_b(sample: Nat, challenge: Nat) -> R.Evidence:
+  evidence_with(R.record_version(), sample, provider_b(), R.OfferId{202n, 5n}, challenge, TF.code())
+
+def b_evidence_change() -> R.Change:
+  submit_2(provider_b(), ev_b(36n, 26n))
+
+def b_approvals() -> N.Approvals:
+  a_approvals(128n)
+
+def trial_reuse() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(selection_equal(R.selection(selected_b()), R.Selection{4n, offer_tb(), NT.request(), I.live(issuer()), 116n, 1n})
+      && Nat.is_eq(R.retired(selected_b()), 3n) && Nat.is_eq(R.revision(selected_b()), 8n)
+      && context_is(proj_b(selected_b()), b_approvals(),
+        N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}}, N.NoSamples{}, trial_budgets(), 120n), "ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)")
+    Test.check(N.Step.accepted(N.challenge(session2(), 1n, 26n, proj_b(selected_b())))
+      && denied(submit_2(provider_b(), ev_b(31n, 21n)), selected_b(), R.WrongTrial{})
+      && denied(submit_2(provider_b(), ev_b(31n, 26n)), selected_b(), R.WrongTrial{}), "ER-005 reusing another provider's sample: B submitting A's sample 31 and challenge 21 as its own, or A's sample 31 under its challenge 26, denied WrongTrial")
+    Test.check(denied(submit_2(provider_b(), good_evidence()), selected_b(), R.Unauthenticated{})
+      && denied(submit_2(provider_a(), good_evidence()), selected_b(), R.NotSelected{})
+      && denied(submit_2(provider_a(), ev_b(36n, 26n)), selected_b(), R.NotSelected{}), "ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected")
+    Test.check(R.Change.accepted(b_evidence_change()) && issued_is(R.Change.issued(b_evidence_change()), 4n)
+      && evidence_equal(R.evidence(R.Change.state(b_evidence_change())),
+        R.Evidences{R.StoredEvidence{4n, ev_b(36n, 26n)}, R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}}})
+      && context_is(proj_b(R.Change.state(b_evidence_change())), b_approvals(),
+        N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}},
+        N.Samples{sample_rec(36n, TF.plan(), 26n, nonce_of(6), True{}, 160n), N.NoSamples{}}, trial_budgets(), 120n), "ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected")
+
+# Partial owner agreement (ER-006) on the two-source plan, and the reader
+# terms. The two-source fixtures are Task 3's: grant 13 for A over
+# IT.plan_two(), approvals by 101 (object 10, id 1) and 104 (object 11, id 2).
+def two_offer_on(+state: R.State) -> R.State:
+  R.Change.state(R.submit_offer(state, R.revision(state), provider_a(), offer_a_two(), two_grant_snapshot()))
+
+def two_snapshot_at(now: Nat) -> R.Snapshot:
+  R.Snapshot{two_issuer(), two_context(), now}
+
+# Selection 3 of A's two-source offer at 103, revision 4.
+def two_selected() -> R.State:
+  R.Change.state(R.select(two_offer_on(two_both()), 3n, session_for(two_request()), 1n, NT.context(103n), two_snapshot_at(103n)))
+
+def two_raw() -> N.Context:
+  N.Context{TF.with_now(two_context(), 110n), N.NoApprovals{}, N.NoChallenges{}, N.NoSamples{}, N.NoBudgets{}}
+
+def two_proj(+state: R.State) -> N.Context:
+  R.negotiation_context(state, two_raw(), two_snapshot_at(110n))
+
+# Object 11's authority 104 withdraws approval 2 (revision 5).
+def two_withdrawn() -> R.State:
+  R.Change.state(R.withdraw_approval(two_selected(), 4n, IT.second_source_authority(), 2n, two_snapshot_at(110n)))
+
+# SYNTHETIC MONITOR STATE: a two-source negotiation session at Sampled
+# (revision 3). The two-source plan's sources are not readable in the
+# transfer fixture, so N.sample cannot reach this stage there; only
+# N.approve's owner check is exercised.
+def two_sampled() -> N.Session:
+  N.Session{3n, two_request(), N.Sampled{}, 100n, 21n, 0n}
+
+def two_approvals() -> N.Approvals:
+  N.Approvals{N.Approval{TF.source_object(), IT.plan_two(), 130n},
+  N.Approvals{N.Approval{IT.second_source(), IT.plan_two(), 130n}, N.NoApprovals{}}}
+
+def trial_owners() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(reason_is(R.ineligibility(offer_a_two(), two_offer_on(two_ten()), two_snapshot_at(110n)), R.MissingApproval{})
+      && Bool.not(R.selection_current(two_offer_on(two_ten()), two_snapshot_at(110n))), "ER-006 partial owner agreement: with only object 10's authority approving A for the two-source plan, A's offer is ineligible MissingApproval")
+    Test.check(selection_offer_is(R.selection(two_selected()), offer_a_two())
+      && context_is(two_proj(two_selected()), two_approvals(), N.NoChallenges{}, N.NoSamples{}, N.NoBudgets{}, 110n)
+      && N.Step.accepted(N.approve(two_sampled(), 3n, two_proj(two_selected()))), "ER-006 with both objects approved A is selected; the projection carries one approval each for 10v4 and 11v4 (until 130) and N.approve advances on it")
+    Test.check(R.Change.accepted(R.withdraw_approval(two_selected(), 4n, IT.second_source_authority(), 2n, two_snapshot_at(110n)))
+      && empty_at(two_proj(two_withdrawn()), N.NoBudgets{}, 110n)
+      && Bool.not(N.Step.accepted(N.approve(two_sampled(), 3n, two_proj(two_withdrawn())))), "ER-006 after object 11's approval is withdrawn the projection carries no approvals and N.approve on it is rejected")
+    Test.check(trial_denied(good_evidence(), challenged_for(N.Request{TF.plan(), 7n, 41n, 30n, 180n}), R.ScopeMismatch{})
+      && trial_denied(good_evidence(), challenged_for(N.Request{TF.plan(), 7n, 42n, 31n, 180n}), R.ScopeMismatch{})
+      && trial_denied(good_evidence(), challenged_for(N.Request{TF.plan(), 8n, 42n, 30n, 180n}), R.ScopeMismatch{}), "ER-006 reader terms: a session whose request differs from the rendezvous request in quote (41), units (31) or reader (8) denied ScopeMismatch")
+    Test.check(Bool.not(N.ReservationStep.accepted(N.reserve(N.Step.session(N.approve(sampled_t(), 3n, proj1())), 4n, 0n, 11n,
+        R.negotiation_context(evidenced(), raw_with(110n, trial_challenges(), trial_samples(),
+          N.Budgets{N.Budget{11n, TF.plan(), 8n, 42n, 30n, 180n}, N.NoBudgets{}}), trial_snapshot()), NT.initial_ledger())))
+      && n_budgets_equal(budgets_of(proj1()), trial_budgets()), "ER-006 the projection keeps the supplied budgets, so N.reserve on it still binds the exact reader: a budget naming payer 8 is rejected")
+
+def trials() -> IO(Unit):
+  do IO<Unit>:
+    trial_happy()
+    trial_currency()
+    trial_substitutions()
+    trial_helpers()
+    trial_reuse()
+    trial_owners()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     offers()
     approvals()
     selection()
-    IO.print("Rendezvous: 117 checks passed")
+    trials()
+    IO.print("Rendezvous: 151 checks passed")

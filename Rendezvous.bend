@@ -74,6 +74,9 @@ import ./Issuance.bend as I
 # its first gate. `select` matches `revision_current` outermost, before its
 # gate list, because the law `rendezvous_stale_selection_keeps_state` pins
 # that match; its gate list therefore holds no revision gate.
+# `submit_evidence` matches `selected_provider_is` outermost, before its gate
+# list (which starts with the revision gate), because the law
+# `rendezvous_wrong_provider_evidence_rejects` pins that match.
 #
 # Submission is not eligibility (plan ruling). `submit_offer` checks the
 # offer's identity, plan, backing grant, lifetime and record uniqueness. The
@@ -121,15 +124,39 @@ import ./Issuance.bend as I
 # and only `abandon` or the selected offer's withdrawal retires it (its id
 # becomes `retired` and is never restored).
 #
+# Trial binding (ER-004, ER-005). `submit_evidence` accepts trial evidence
+# only from the authenticated provider the current selection names, for the
+# selected offer, from a Negotiation session carrying exactly the rendezvous
+# request, for a challenge issued strictly after the selection and a passed
+# sample answering it, once per selection. Its `session` and `n_context`
+# are trusted host inputs: the Negotiation session and the monitor's
+# unprojected Negotiation context, whose challenge and sample records are
+# the monitor's receipts; the evidence only names them. Trial compute stays
+# unmetered, as in Negotiation (no sample-compute hold exists; the
+# dependency add-metered-sample-execution is not implemented).
+#
+# Projection (plan ruling: no use-time hook). `negotiation_context` rebuilds
+# Negotiation's challenge, sample and approval lists from the state and
+# snapshot supplied at the call, for the current selection only, and keeps
+# the supplied transfer context and budgets. All three lists are empty
+# unless `selection_current` holds, so the unchanged `N.challenge`,
+# `N.sample`, `N.approve`, `N.reserve` and `N.start` deny once a selection
+# is abandoned, withdrawn, revoked, at a stale epoch or missing an origin's
+# approval. The host must rebuild the projection from the current
+# rendezvous, issuer and transfer states for every use; a cached projection
+# keeps stale authority, which Bend cannot detect.
+#
 # Public entry points: `open`, `submit_offer`, `submit_approval`,
 # `withdraw_approval`, `select`, `abandon` (a monitor action),
-# `withdraw_offer`, the read-only diagnostic `ineligibility`, `valid`, the
-# `Change.*` accessors and the state, snapshot and record accessors. Every
-# other def is an exported implementation helper; calling one does not
-# perform a transition's checks.
+# `withdraw_offer`, `submit_evidence`, the projection
+# `negotiation_context`, the read-only diagnostic `ineligibility`, `valid`,
+# the `Change.*` accessors and the state, snapshot and record accessors.
+# Every other def (`selection_current` and `selected_provider_is` included)
+# is an exported implementation helper; calling one does not perform a
+# transition's checks.
 #
 # Laws. The module relies on the existing law `failed_check_denies` through
-# its gate structure, without modifying it, and adds three (LAWS.bend):
+# its gate structure, without modifying it, and adds four (LAWS.bend):
 # - `offer_order_irreflexive`: `before(a, a)` is False for every offer, so
 #   the ER-003 comparator is strict on its diagonal and an offer is never
 #   ranked ahead of an identical record; a `<=`-style comparator, which would
@@ -147,6 +174,13 @@ import ./Issuance.bend as I
 #   moved the state cannot commit. It pins `select`'s outer revision match,
 #   covers the successor revision only and does not claim the host
 #   serializes installs.
+# - `rendezvous_wrong_provider_evidence_rejects`: when `from` is not the
+#   provider the stored selection names (including when there is none),
+#   `submit_evidence` is not accepted and returns exactly the supplied
+#   state, whatever record it presents (ER-005). It pins the outer
+#   `selected_provider_is` match. It does not cover substitutions by the
+#   selected provider itself (the `trials` tests do), the selection's
+#   currency, or the projection.
 # Two auxiliary arithmetic laws, `nat_lt_irreflexive` and
 # `nat_eq_reflexive`, are what the irreflexivity proof needs.
 
@@ -201,14 +235,18 @@ type Approvals is Data:
 # The current selection, or none. It stores the complete offer record, the
 # request it was made for, the live stamp and time it was made at, and the
 # ranking profile it used. A selection record grants nothing by itself: its
-# currency is re-derived against the snapshot at every use (a later task).
+# currency is re-derived against the snapshot at every use
+# (`selection_current`).
 type Selection is Data:
   NoSelection{}
   Selection{id: Nat, offer: Offer, request: N.Request, stamp: T.Stamp,
     selected_at: Nat, ranking: Nat}
 
-# Trial evidence a provider attaches to a selection (a later task).
-# `provider` is a CLAIM compared with `from`.
+# Trial evidence a provider attaches to a selection (`submit_evidence`).
+# `provider` is a CLAIM compared with `from`; `offer` must be the selected
+# offer's identity; `challenge` and `sample` only name the monitor's
+# challenge and sample records, which are checked in the supplied
+# Negotiation context; `code` must be the selected plan's code identity.
 type Evidence is Data:
   Evidence{version: Nat, sample: Nat, provider: I.Principal, offer: OfferId,
     challenge: Nat, code: T.CodeId}
@@ -1549,6 +1587,464 @@ def withdraw_offer_checked(ok: Bool, +state: State, +expected_revision: Nat, +fr
 def withdraw_offer(+state: State, +expected_revision: Nat, +from: I.Principal, +id: OfferId) -> Change:
   withdraw_offer_checked(Guard.all(withdraw_offer_checks(state, expected_revision, from, id)),
     state, expected_revision, from, id)
+
+# --- Selection currency (ER-004, ER-005, ER-006) ---------------------------
+
+# Whether `offers` holds a record exactly equal to `offer`, every field
+# compared, so a later record under the selected id with other content is
+# not the selected offer.
+def offer_stored(offers: Offers, +offer: Offer) -> Bool:
+  match offers:
+    case NoOffers{}:
+      False{}
+    case Offers{head, tail}:
+      offer_equal(head, offer) || offer_stored(tail, offer)
+
+# `front`'s gates, then `back`'s, in order. Acceptance is still Guard.all
+# over one list, so `failed_check_denies` covers every spliced gate.
+def Gates.append(front: Gates, back: Gates) -> Gates:
+  match front:
+    case Open{}:
+      back
+    case Gate{condition, reason, rest}:
+      Gate{condition, reason, Gates.append(rest, back)}
+
+# Every condition under which the stored selection is still current at this
+# call, in denial order: a selection exists (NotSelected); the identical
+# complete offer record it stores is still stored (NotSelected: withdrawn,
+# or replaced by other content) and no record under its identity carries
+# other content (NotSelected); the request it was made for is the state's
+# request (NotSelected); the issuer's live stamp is the stamp it was made at
+# (StaleEpoch: an epoch advance retires it whatever the grant says); and the
+# selected offer passes every eligibility gate against the snapshot supplied
+# now, with that gate's reason. Nothing is cached: the grant, the approvals,
+# the ceiling and the constraint are all re-read here.
+def current_gates(selection: Selection, +state: State, +snapshot: Snapshot) -> Gates:
+  match selection:
+    case NoSelection{}:
+      Gate{False{}, NotSelected{}, Open{}}
+    case Selection{_, +offer, chosen_for, stamp, _, _}:
+      Gate{offer_stored(offers(state), offer), NotSelected{},
+      Gate{Bool.not(conflicts_with(offers(state), offer)), NotSelected{},
+      Gate{N.Request.equal(chosen_for, request(state)), NotSelected{},
+      Gate{T.Stamp.equal(stamp, I.live(Snapshot.issuer(snapshot))), StaleEpoch{},
+      eligibility_gates(offer, state, snapshot)}}}}
+
+# Whether the stored selection is current at this call (`current_gates`).
+# Re-derived on every call; never stored as a Bool.
+def selection_current(+state: State, +snapshot: Snapshot) -> Bool:
+  Guard.all(Gates.checks(current_gates(selection(state), state, snapshot)))
+
+def selection_by(selection: Selection, +from: I.Principal) -> Bool:
+  match selection:
+    case NoSelection{}:
+      False{}
+    case Selection{_, offer, _, _, _, _}:
+      I.Principal.equal(Offer.provider(offer), from)
+
+# Whether the authenticated principal `from` is the provider the stored
+# selection names (its complete offer record's provider claim, which
+# `submit_offer` bound to the authenticated submitter). False when there is
+# no selection. It says nothing about currency (`selection_current`).
+def selected_provider_is(state: State, +from: I.Principal) -> Bool:
+  selection_by(selection(state), from)
+
+# The selection's id, or 0 (never allocated) when there is none.
+def selection_id(selection: Selection) -> Nat:
+  match selection:
+    case NoSelection{}:
+      0n
+    case Selection{id, _, _, _, _, _}:
+      id
+
+# --- Trial evidence (ER-004, ER-005) ---------------------------------------
+
+def Evidence.version(evidence: Evidence) -> Nat:
+  match evidence:
+    case Evidence{version, _, _, _, _, _}:
+      version
+
+def Evidence.sample(evidence: Evidence) -> Nat:
+  match evidence:
+    case Evidence{_, sample, _, _, _, _}:
+      sample
+
+def Evidence.provider(evidence: Evidence) -> I.Principal:
+  match evidence:
+    case Evidence{_, _, provider, _, _, _}:
+      provider
+
+def Evidence.offer(evidence: Evidence) -> OfferId:
+  match evidence:
+    case Evidence{_, _, _, offer, _, _}:
+      offer
+
+def Evidence.challenge(evidence: Evidence) -> Nat:
+  match evidence:
+    case Evidence{_, _, _, _, challenge, _}:
+      challenge
+
+def Evidence.code(evidence: Evidence) -> T.CodeId:
+  match evidence:
+    case Evidence{_, _, _, _, _, code}:
+      code
+
+# The challenge id the Negotiation session recorded at `N.challenge`.
+def session_challenge(session: N.Session) -> Nat:
+  match session:
+    case N.Session{_, _, _, _, challenge, _}:
+      challenge
+
+def n_challenges(n_context: N.Context) -> N.Challenges:
+  match n_context:
+    case N.Context{_, _, challenges, _, _}:
+      challenges
+
+def n_samples(n_context: N.Context) -> N.Samples:
+  match n_context:
+    case N.Context{_, _, _, samples, _}:
+      samples
+
+# Whether some supplied challenge has id `id` and exactly `plan`. A
+# challenge for another plan, however close, is another trial.
+def challenge_listed(challenges: N.Challenges, +id: Nat, +plan: T.Plan) -> Bool:
+  match challenges:
+    case N.NoChallenges{}:
+      False{}
+    case N.Challenges{N.Challenge{actual_id, actual_plan, _, _, _}, rest}:
+      (Nat.is_eq(actual_id, id) && T.Plan.equal(actual_plan, plan)) || challenge_listed(rest, id, plan)
+
+# Whether some supplied challenge has id `id`, exactly `plan`, and was issued
+# strictly after `after` (the selection's time): a challenge issued at or
+# before fixation could have been seen before the candidate was chosen.
+def challenge_posted(challenges: N.Challenges, +id: Nat, +plan: T.Plan, +after: Nat) -> Bool:
+  match challenges:
+    case N.NoChallenges{}:
+      False{}
+    case N.Challenges{N.Challenge{actual_id, actual_plan, _, issued_at, _}, rest}:
+      (Nat.is_eq(actual_id, id) && T.Plan.equal(actual_plan, plan) && Nat.is_gt(issued_at, after))
+        || challenge_posted(rest, id, plan, after)
+
+# Whether some supplied challenge with id `id` and exactly `plan`, issued
+# strictly after `after`, carries `nonce`: the sample answers that
+# post-fixation challenge and no other.
+def nonce_posted(challenges: N.Challenges, +id: Nat, +plan: T.Plan, +nonce: T.CodeId,
+    +after: Nat) -> Bool:
+  match challenges:
+    case N.NoChallenges{}:
+      False{}
+    case N.Challenges{N.Challenge{actual_id, actual_plan, actual_nonce, issued_at, _}, rest}:
+      (Nat.is_eq(actual_id, id) && T.Plan.equal(actual_plan, plan)
+        && T.CodeId.equal(actual_nonce, nonce) && Nat.is_gt(issued_at, after))
+        || nonce_posted(rest, id, plan, nonce, after)
+
+# Whether a supplied sample record has id `id`, exactly `plan`, challenge
+# `challenge`, passed, is unexpired at `now`, and carries the nonce of a
+# post-fixation challenge `challenge` for `plan`. The sample records are the
+# monitor's trusted receipts; the evidence only names one.
+def sample_found(samples: N.Samples, +id: Nat, +challenge: Nat, +plan: T.Plan,
+    +challenges: N.Challenges, +after: Nat, +now: Nat) -> Bool:
+  match samples:
+    case N.NoSamples{}:
+      False{}
+    case N.Samples{N.Sample{actual_id, actual_plan, actual_challenge, nonce, passed, valid_until}, rest}:
+      (Nat.is_eq(actual_id, id) && T.Plan.equal(actual_plan, plan)
+        && Nat.is_eq(actual_challenge, challenge) && passed && unexpired(now, valid_until)
+        && nonce_posted(challenges, challenge, plan, nonce, after))
+        || sample_found(rest, id, challenge, plan, challenges, after, now)
+
+# Whether evidence is already stored under selection id `id`.
+def evidence_stored(evidences: Evidences, +id: Nat) -> Bool:
+  match evidences:
+    case NoEvidence{}:
+      False{}
+    case Evidences{StoredEvidence{selection, _}, tail}:
+      Nat.is_eq(selection, id) || evidence_stored(tail, id)
+
+# The gates that bind the evidence to the stored selection, after its
+# currency, in denial order: the evidence names the selected offer's
+# identity (NotSelected); the Negotiation session's request is exactly the
+# rendezvous request, so the reader, quote ceiling, units, deadline and plan
+# are the ones the selection was made for (ScopeMismatch); the session is at
+# Challenged (WrongStage); the session's recorded challenge is the evidence's
+# challenge (WrongTrial); that challenge is supplied for the selected plan
+# (WrongTrial: absent, or for another plan); it was issued strictly after
+# the selection (ChallengeBeforeFixation); the evidence's code identity is
+# the selected plan's (ScopeMismatch: a provider cannot swap code after the
+# challenge); a passed, unexpired sample under the evidence's sample id
+# answers exactly that challenge for the selected plan with its nonce
+# (WrongTrial); and no evidence is stored for this selection yet (Replay).
+# Exported implementation helper: only `evidence_gates` calls it, with the
+# state's own selection.
+def trial_gates(selection: Selection, +state: State, +claim: Evidence, +session: N.Session,
+    +n_context: N.Context, +snapshot: Snapshot) -> Gates:
+  match selection:
+    case NoSelection{}:
+      Gate{False{}, NotSelected{}, Open{}}
+    case Selection{+id, +offer, _, _, +selected_at, _}:
+      Gate{OfferId.equal(Evidence.offer(claim), Offer.id(offer)), NotSelected{},
+      Gate{N.Request.equal(N.Session.request(session), request(state)), ScopeMismatch{},
+      Gate{N.Session.is(session, N.Challenged{}), WrongStage{},
+      Gate{Nat.is_eq(session_challenge(session), Evidence.challenge(claim)), WrongTrial{},
+      Gate{challenge_listed(n_challenges(n_context), Evidence.challenge(claim), Offer.plan(offer)), WrongTrial{},
+      Gate{challenge_posted(n_challenges(n_context), Evidence.challenge(claim), Offer.plan(offer), selected_at),
+        ChallengeBeforeFixation{},
+      Gate{T.CodeId.equal(Evidence.code(claim), T.Plan.code(Offer.plan(offer))), ScopeMismatch{},
+      Gate{sample_found(n_samples(n_context), Evidence.sample(claim), Evidence.challenge(claim),
+          Offer.plan(offer), n_challenges(n_context), selected_at, Snapshot.now(snapshot)), WrongTrial{},
+      Gate{Bool.not(evidence_stored(evidence(state), id)), Replay{},
+      Open{}}}}}}}}}}
+
+# Every check an evidence submission must pass after the outer provider
+# match, in denial order: the race (revision), the format, identity (the
+# evidence's provider claim is `from`), the selection's currency
+# (`current_gates`), then the trial binding (`trial_gates`).
+def evidence_gates(+state: State, +expected_revision: Nat, +from: I.Principal, +evidence: Evidence,
+    +session: N.Session, +n_context: N.Context, +snapshot: Snapshot) -> Gates:
+  Gate{revision_current(state, expected_revision), StaleRevision{},
+  Gate{version_supported(Evidence.version(evidence)), UnknownVersion{},
+  Gate{I.claim_matches(from, Evidence.provider(evidence)), Unauthenticated{},
+  Gates.append(current_gates(selection(state), state, snapshot),
+    trial_gates(selection(state), state, evidence, session, n_context, snapshot))}}}
+
+def evidence_checks(+state: State, +expected_revision: Nat, +from: I.Principal, +evidence: Evidence,
+    +session: N.Session, +n_context: N.Context, +snapshot: Snapshot) -> Guard.Checks:
+  Gates.checks(evidence_gates(state, expected_revision, from, evidence, session, n_context, snapshot))
+
+# Store the evidence unedited under the current selection's id and advance
+# the revision once; the change id is the selection id. Called only after
+# every gate held, so a selection exists and holds no evidence yet.
+def commit_evidence(state: State, evidence: Evidence) -> Change:
+  match state:
+    case State{revision, next_id, request, constraint, offers, approvals, +selection, retired,
+        stored, dispatched, seen}:
+      Changed{State{1n+revision, next_id, request, constraint, offers, approvals, selection, retired,
+        Evidences{StoredEvidence{selection_id(selection), evidence}, stored}, dispatched, seen},
+        selection_id(selection)}
+
+def submit_evidence_checked(ok: Bool, +state: State, +expected_revision: Nat, +from: I.Principal,
+    +evidence: Evidence, +session: N.Session, +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the fallback is unreachable here.
+      Rejected{state, Gates.reason(evidence_gates(state, expected_revision, from, evidence, session,
+        n_context, snapshot), StaleRevision{})}
+    case True{}:
+      commit_evidence(state, evidence)
+
+# The provider match stays outermost (law
+# rendezvous_wrong_provider_evidence_rejects): a principal that is not the
+# selected provider is refused before any record it presents is read.
+def submit_evidence_by(selected: Bool, +state: State, +expected_revision: Nat, +from: I.Principal,
+    +evidence: Evidence, +session: N.Session, +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  match selected:
+    case False{}:
+      Rejected{state, NotSelected{}}
+    case True{}:
+      submit_evidence_checked(Guard.all(evidence_checks(state, expected_revision, from, evidence,
+        session, n_context, snapshot)), state, expected_revision, from, evidence, session,
+        n_context, snapshot)
+
+# Public entry point (ER-004, ER-005): the host attaches trial evidence to
+# the current selection on behalf of the authenticated principal `from`.
+# `session` is the Negotiation session the trial ran under and `n_context`
+# the monitor's unprojected Negotiation context (its challenge and sample
+# records are trusted receipts; the evidence only names them). Accepted only
+# when `from` is the selected provider (outermost); the state is at
+# `expected_revision`; the record is version 1; its provider claim is
+# `from`; the selection is current against the snapshot (`current_gates`);
+# the evidence names the selected offer; the session carries exactly the
+# rendezvous request and is at Challenged with the evidence's challenge; that
+# challenge is supplied for the selected plan and was issued strictly after
+# the selection; the evidence's code is the selected plan's; a passed,
+# unexpired sample under the evidence's sample id answers that challenge's
+# nonce for the selected plan; and the selection holds no evidence yet. It
+# then stores StoredEvidence{selection id, evidence} and advances the
+# revision once; the change id is the selection id. Evidence is quality
+# evidence for the selection only: it authorizes nothing, and Negotiation
+# re-checks the sample at `N.sample` on the projected context. Denial order:
+# NotSelected (not the selected provider), StaleRevision, UnknownVersion,
+# Unauthenticated, NotSelected or the currency reason (StaleEpoch, or an
+# eligibility reason), NotSelected (another offer), ScopeMismatch (session
+# request), WrongStage, WrongTrial (session challenge, then absent or
+# another plan's challenge), ChallengeBeforeFixation, ScopeMismatch (code),
+# WrongTrial (sample), Replay; the state is returned unchanged.
+def submit_evidence(+state: State, +expected_revision: Nat, +from: I.Principal, +evidence: Evidence,
+    +session: N.Session, +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  submit_evidence_by(selected_provider_is(state, from), state, expected_revision, from, evidence,
+    session, n_context, snapshot)
+
+# --- Negotiation projection (ER-004, ER-005, ER-006) -----------------------
+
+def challenge_after_fixation(challenge: N.Challenge, +plan: T.Plan, +after: Nat) -> Bool:
+  match challenge:
+    case N.Challenge{_, actual_plan, _, issued_at, _}:
+      T.Plan.equal(actual_plan, plan) && Nat.is_gt(issued_at, after)
+
+def keep_challenge(ok: Bool, challenge: N.Challenge, rest: N.Challenges) -> N.Challenges:
+  match ok:
+    case True{}:
+      N.Challenges{challenge, rest}
+    case False{}:
+      rest
+
+# The supplied challenges for exactly `plan` issued strictly after `after`
+# (the selection's time), in supplied order. Exported implementation helper
+# of `negotiation_context`.
+def projected_challenges(challenges: N.Challenges, +plan: T.Plan, +after: Nat) -> N.Challenges:
+  match challenges:
+    case N.NoChallenges{}:
+      N.NoChallenges{}
+    case N.Challenges{+head, rest}:
+      keep_challenge(challenge_after_fixation(head, plan, after), head,
+        projected_challenges(rest, plan, after))
+
+def evidence_names(stored: StoredEvidence, +id: Nat, +sample: Nat, +challenge: Nat) -> Bool:
+  match stored:
+    case StoredEvidence{selection, Evidence{_, named, _, _, named_challenge, _}}:
+      Nat.is_eq(selection, id) && Nat.is_eq(named, sample) && Nat.is_eq(named_challenge, challenge)
+
+# Whether evidence stored under selection `id` names sample `sample` for
+# challenge `challenge`.
+def evidence_named(evidences: Evidences, +id: Nat, +sample: Nat, +challenge: Nat) -> Bool:
+  match evidences:
+    case NoEvidence{}:
+      False{}
+    case Evidences{head, tail}:
+      evidence_names(head, id, sample, challenge) || evidence_named(tail, id, sample, challenge)
+
+def sample_named(sample: N.Sample, +evidences: Evidences, +id: Nat, +plan: T.Plan) -> Bool:
+  match sample:
+    case N.Sample{sample_id, actual_plan, challenge, _, _, _}:
+      T.Plan.equal(actual_plan, plan) && evidence_named(evidences, id, sample_id, challenge)
+
+def keep_sample(ok: Bool, sample: N.Sample, rest: N.Samples) -> N.Samples:
+  match ok:
+    case True{}:
+      N.Samples{sample, rest}
+    case False{}:
+      rest
+
+# The supplied samples for exactly `plan` that evidence stored under
+# selection `id` names, with the challenge it names, in supplied order. A
+# retired selection's evidence is under another id, which is never reused,
+# so it is never projected for a later selection. Exported implementation
+# helper of `negotiation_context`.
+def projected_samples(samples: N.Samples, +evidences: Evidences, +id: Nat, +plan: T.Plan) -> N.Samples:
+  match samples:
+    case N.NoSamples{}:
+      N.NoSamples{}
+    case N.Samples{+head, rest}:
+      keep_sample(sample_named(head, evidences, id, plan), head,
+        projected_samples(rest, evidences, id, plan))
+
+def OriginApproval.valid_until(approval: OriginApproval) -> Nat:
+  match approval:
+    case OriginApproval{_, _, _, _, _, _, _, valid_until}:
+      valid_until
+
+# The lifetime of the first stored approval that covers `origin` for this
+# provider, profile and plan at `now` (`stored_covers`), or None.
+def covering_until(approvals: Approvals, +origin: T.ObjectVersion, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat) -> Maybe<&2, Nat>:
+  match approvals:
+    case NoApprovals{}:
+      None{}
+    case Approvals{+head, tail}:
+      Guard.choose(Maybe<&2, Nat>, stored_covers(head, origin, provider, profile, plan, issuer, now),
+        Some{OriginApproval.valid_until(StoredApproval.approval(head))},
+        covering_until(tail, origin, provider, profile, plan, issuer, now))
+
+def project_origin(found: Maybe<&2, Nat>, origin: T.ObjectVersion, plan: T.Plan, +bound: Nat,
+    rest: N.Approvals) -> N.Approvals:
+  match found:
+    case None{}:
+      rest
+    case Some{until}:
+      N.Approvals{N.Approval{origin, plan, Nat.min(until, bound)}, rest}
+
+# One N.Approval per listed origin that a stored approval covers, valid until
+# the earlier of that approval's lifetime and `bound`.
+def projected_origins(origins: T.Objects, +approvals: Approvals, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat, +bound: Nat) -> N.Approvals:
+  match origins:
+    case T.OEnd{}:
+      N.NoApprovals{}
+    case T.OCons{+origin, rest}:
+      project_origin(covering_until(approvals, origin, provider, profile, plan, issuer, now), origin,
+        plan, bound, projected_origins(rest, approvals, provider, profile, plan, issuer, now, bound))
+
+def projected_lookup(lookup: T.OriginLookup, +approvals: Approvals, +provider: I.Principal,
+    +profile: Nat, +plan: T.Plan, +issuer: I.State, +now: Nat, +bound: Nat) -> N.Approvals:
+  match lookup:
+    case T.Missing{}:
+      N.NoApprovals{}
+    case T.Found{objects}:
+      projected_origins(objects, approvals, provider, profile, plan, issuer, now, bound)
+
+# The backing grant's exclusive lifetime, or 0 (already expired at every
+# time) when the issuer holds no unambiguous record under the id.
+def grant_until(found: Maybe<&2, I.Grant>) -> Nat:
+  match found:
+    case None{}:
+      0n
+    case Some{grant}:
+      I.Grant.valid_until(grant)
+
+# The approvals for the selected offer: one N.Approval{origin, plan,
+# valid_until} per origin `T.required_origins` lists for the request plan
+# under the snapshot's transfer context, valid until the earliest of that
+# origin's covering approval, the offer and the backing grant. Exported
+# implementation helper of `negotiation_context`, called only while the
+# selection is current.
+def projected_approvals(offer: Offer, +state: State, +snapshot: Snapshot) -> N.Approvals:
+  match offer:
+    case Offer{_, _, +provider, grant, +plan, +profile, _, offer_until}:
+      projected_lookup(T.required_origins(plan, Snapshot.transfer(snapshot)), approvals(state),
+        provider, profile, plan, Snapshot.issuer(snapshot), Snapshot.now(snapshot),
+        Nat.min(offer_until, grant_until(grant_for(Snapshot.issuer(snapshot), grant))))
+
+def selected_context(selection: Selection, +state: State, transfer: T.Context,
+    challenges: N.Challenges, samples: N.Samples, budgets: N.Budgets, +snapshot: Snapshot) -> N.Context:
+  match selection:
+    case NoSelection{}:
+      N.Context{transfer, N.NoApprovals{}, N.NoChallenges{}, N.NoSamples{}, budgets}
+    case Selection{+id, +offer, _, _, +selected_at, _}:
+      N.Context{transfer, projected_approvals(offer, state, snapshot),
+        projected_challenges(challenges, Offer.plan(offer), selected_at),
+        projected_samples(samples, evidence(state), id, Offer.plan(offer)), budgets}
+
+def current_context(current: Bool, +state: State, n_context: N.Context, +snapshot: Snapshot) -> N.Context:
+  match current n_context:
+    case False{} N.Context{transfer, _, _, _, budgets}:
+      N.Context{transfer, N.NoApprovals{}, N.NoChallenges{}, N.NoSamples{}, budgets}
+    case True{} N.Context{transfer, _, challenges, samples, budgets}:
+      selected_context(selection(state), state, transfer, challenges, samples, budgets, snapshot)
+
+# Public entry point (ER-004, ER-005, ER-006): the Negotiation context the
+# host passes to `N.challenge`, `N.sample`, `N.approve`, `N.reserve` and
+# `N.start` (and so to Backplane) for this rendezvous. It keeps the supplied
+# transfer context and budgets unchanged, so `N.reserve` still binds the
+# exact reader, quote and units, and it replaces the three authority lists
+# with ones rebuilt from the state and snapshot supplied now:
+# - challenges: the supplied challenges for the selected plan issued
+#   strictly after the selection, so no challenge for an unfixed candidate
+#   reaches `N.challenge`;
+# - samples: the supplied samples for the selected plan that evidence stored
+#   under the current selection's id names, with its challenge;
+# - approvals: one `N.Approval{origin, plan, valid_until}` per required
+#   origin, valid until the earliest of that origin's approval for the
+#   selected provider and profile, the offer and the backing grant.
+# All three are empty unless the selection is current at this call
+# (`selection_current`), so before any selection, after abandonment or
+# withdrawal, after a revocation or an epoch advance, or after an origin
+# withdraws its approval, Negotiation's unchanged checks deny. The host must
+# rebuild the projection from the current rendezvous, issuer and transfer
+# states for every use; a cached projection keeps stale authority, which
+# Bend cannot detect.
+def negotiation_context(+state: State, n_context: N.Context, +snapshot: Snapshot) -> N.Context:
+  current_context(selection_current(state, snapshot), state, n_context, snapshot)
 
 # --- Structural validity -----------------------------------------------------
 

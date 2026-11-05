@@ -287,3 +287,28 @@ law rendezvous_stale_selection_keeps_state:
   for n_context: Negotiation.Context
   for snapshot: Rendezvous.Snapshot
   {(Rendezvous.Change.accepted(Rendezvous.select(state, 1n+Rendezvous.revision(state), session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.select(state, 1n+Rendezvous.revision(state), session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+
+# ER-005: evidence belongs to the selected provider. For every state,
+# expected revision, authenticated principal `from`, evidence record,
+# Negotiation session, Negotiation context and snapshot, if `from` is not the
+# provider the stored selection names (`selected_provider_is` is False, which
+# includes there being no selection), `submit_evidence` is not accepted and
+# returns exactly the supplied state. So no principal other than the selected
+# provider can attach trial evidence to the selection, whatever evidence
+# record, provider claim, offer id, challenge or sample it presents, and the
+# attempt stores nothing and advances no revision. The proof pins
+# `submit_evidence`'s outer `selected_provider_is` match and that its
+# Rejected branch carries the caller's state. It does not cover substitutions
+# by the selected provider itself (another offer, challenge, sample, code or
+# a replay; RendezvousTests, section `trials`, covers those), the currency of
+# the selection, or the `negotiation_context` projection.
+law rendezvous_wrong_provider_evidence_rejects:
+  for state: Rendezvous.State
+  for expected_revision: Nat
+  for from: Issuance.Principal
+  for evidence: Rendezvous.Evidence
+  for session: Negotiation.Session
+  for n_context: Negotiation.Context
+  for snapshot: Rendezvous.Snapshot
+  for wrong: {Rendezvous.selected_provider_is(state, from) == False{} : Bool}
+  {(Rendezvous.Change.accepted(Rendezvous.submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.submit_evidence(state, expected_revision, from, evidence, session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
