@@ -17,6 +17,7 @@ Implementation and test modules:
 | 1.1 | [HostWire.bend](../../HostWire.bend) | [HostWireTests.bend](../../HostWireTests.bend), run by `Tests.bend` as `HostWire` |
 | 1.2 | [HostIdentity.bend](../../HostIdentity.bend) | [HostIdentityTests.bend](../../HostIdentityTests.bend), run by `Tests.bend` as `HostIdentity`; law `identity_denied_preserves_state` in [LAWS.bend](../../LAWS.bend), proved in [PROOF.bend](../../PROOF.bend) |
 | 1.3 (families 1 and 2; 3 to 5) | [HostPrimitives.bend](../../HostPrimitives.bend); [HostPublication.bend](../../HostPublication.bend) | [HostPrimitivesTests.bend](../../HostPrimitivesTests.bend), run by `Tests.bend` as `HostPrimitives`; laws `primitive_denied_preserves_state`, `primitive_denied_emits_nothing`, `publication_refused_preserves_state`, and `publication_refused_emits_nothing` in [LAWS.bend](../../LAWS.bend), proved in [PROOF.bend](../../PROOF.bend) |
+| 1.4 | [HostConformanceVectors.bend](../../HostConformanceVectors.bend) (vector inputs and expected lines; no transition, no test harness) | [HostConformanceTests.bend](../../HostConformanceTests.bend), run by `Tests.bend` as `HostConformance`; captured lines in [portable-host-vectors.txt](../../verification/portable-host-vectors.txt) |
 
 Test names below are the exact `Test.check` names. "Reviewed-only" means the
 named part has no executable check in this model and rests on source review or
@@ -136,3 +137,92 @@ obligations (section 2).
 | PH-001, PH-005, PH-007 family 1 wrappers | `HostPrimitives.issue` (wraps `HostIdentity.mint`), `HostPrimitives.delegate` (wraps `HostIdentity.delegate`), helper `changed` | `PH-001 issue commits HostIdentity.mint's table, advances the revision once, and emits nothing`; `PH-001 issue on an unbound session denied Identity UnknownSession`; `PH-005 delegate commits HostIdentity.delegate's table, advances the revision once, and emits nothing`; `PH-007 a delegation from the worker session through the primitive layer denied Identity NotDelegable` | Every change to the identity table now goes through a primitive transition (open_session, issue, delegate, revoke, restart), so the primitive revision and the laws cover it. |
 | PH-001 the gate and `valid` for families 3 to 5 | `P.current` in every gate; `valid` clauses `seals_valid` and `publications_valid`; `Error.equal` | `PH-008 seal at a stale revision denied StaleRevision`; `PH-009 publish at a stale revision denied StaleRevision`; `PH-009 reconcile at a stale revision denied StaleRevision`; `PH-010 revoke at a stale revision denied StaleRevision`; `PH-010 restart at a stale revision denied StaleRevision`; `PH-010 quiesce at a stale revision denied StaleRevision`; `PH-010 reclaim at a stale revision denied StaleRevision`; `PH-010 complete at a stale revision denied StaleRevision`; `PH-001 issue at a stale revision denied StaleRevision`; `PH-005 the primitive delegate at a stale revision denied StaleRevision`; `PH-001 states built by the family 1 and 3 to 5 transitions satisfy valid`; `PH-008 valid rejects a sealed record naming no worker`; `PH-008 valid rejects a worker sealed twice`; `PH-009 valid rejects an invocation recorded twice`; `PH-008 a seal on a state that is not valid denied StaleRevision`; `PH-009 a publication on a state that is not valid denied StaleRevision`; `PH-009 reconcile on a state that is not valid denied StaleRevision`; `PH-010 revoke on a state that is not valid denied StaleRevision`; `PH-010 restart on a state that is not valid denied StaleRevision`; `PH-010 quiesce on a state that is not valid denied StaleRevision`; `PH-010 reclaim on a state that is not valid denied StaleRevision`; `PH-010 complete on a state that is not valid denied StaleRevision`; `PH-001 issue on a state that is not valid denied StaleRevision`; `PH-005 the primitive delegate on a state that is not valid denied StaleRevision`; `PH-001 Error.equal distinguishes the publication and revocation reasons` | `valid` checks structure only and does not authenticate a supplied state. |
 | Denial contract for families 3 to 5 (laws) | `P.Step` for `seal`, `reconcile`, `revoke`, `restart`, `quiesce`, `reclaim`, `complete`, `issue`, `delegate`; `PublishResult.state`, `PublishResult.effects`, `Refused` (no effects field) for `publish` | laws `primitive_denied_preserves_state` and `primitive_denied_emits_nothing` (every `P.Step` transition), and `publication_refused_preserves_state` and `publication_refused_emits_nothing` (`bend PROOF.bend`) | Hold by computation of the accessors. They do not assert which inputs are refused, that a reason is correct, or that the returned session and ledger are the inputs; the named checks above do. |
+
+## Conformance vectors (task 1.4)
+
+Inputs and expected lines: [HostConformanceVectors.bend](../../HostConformanceVectors.bend).
+Runner: [HostConformanceTests.bend](../../HostConformanceTests.bend), 33 checks.
+Captured lines: [portable-host-vectors.txt](../../verification/portable-host-vectors.txt)
+(27 lines). Every value is synthetic monitor state.
+
+Each vector runs the real transitions from an empty identity table
+(`HostIdentity.empty`, then `open_session`, `issue`, `HostWire.decode_bytes` of
+raw little-endian bytes, `use`, `delegate` from a decoded wire Delegate,
+`admit_worker` with the decoded reference, `seal`, `publish`, and the family 5
+transitions), on two adapters. No vector starts from a hand-built state. A
+check asserts the outcome on both adapters (reason or accepted result; for a
+denial, the returned primitive state equals the input with no effect; for a
+publication refusal, also the supplied Negotiation session's revision and the
+ledger's revision and payer balance), then requires both rendered lines to
+equal the expected line. The line printed is adapter A's.
+
+Adapters (plan ruling, PH-012): A is host 51, incarnation 73 (restart to 74),
+mints an unrelated entry (handle 5, read) before the client's root, reports
+every control, and reports four mediated routes; B is host 52, incarnation 90
+(restart to 91), mints no preface, reports exactly the configured profile's
+controls, and reports one mediated route. So A's slots are one higher than
+B's. Logical names (`logical_of`): root = 1 + offset, input = 2 + offset,
+proxy = 3 + offset, narrow = 4 + offset (offset 1 for A, 0 for B); an
+unexpected slot renders `unmapped`.
+
+Common chain: sessions 1 client (subject 7, FacadeTests token, delegable), 2
+worker (subject 7, other token, non-delegable, configured CPU profile 11), 3
+proxy (subject 7, delegable), 4 transferred from 1, 5 inherited from 1; root
+on the client (Frontend handle 2, TransferTests plan, rights 7, expires 400);
+`input` delegated to the worker by a decoded Delegate (rights 7, lifetime 50,
+time 100); the worker admitted on a decoded Use of `input` (execute, rights 4,
+claim 0); sealed with the BackplaneTests artifact and no writers; published
+with the NegotiationTests session (revision 6) and ledger (revision 1), the
+BackplaneTests candidate, the FacadeTests DataOS context (time 110), and
+Frontend revision 2. Narrowed chain: `proxy` delegated from the root to session
+3 (rights 6, lifetime 80), `narrow` delegated from the proxy to the worker
+(rights 4, lifetime 40), and the worker admitted on `narrow`.
+
+| Vector | Inputs | Expected line suffix | Asserting check |
+| --- | --- | --- | --- |
+| PH-009-1 | common chain, publish | `publish accepted invocation=99;input=input` | `PH-009-1 the baseline delegated input publishes once through DataOS.commit_from_capability on both adapters` |
+| PH-005-1 | sealed common chain; publish with `destination_session` (plan naming destination object 21 instead of 20, negotiated through Negotiation transitions) and `destination_ledger` | `publish denied CommitRejected` | `PH-005-1 the delegated input used on a session negotiated for destination E is denied CommitRejected with the state, session, and ledger unchanged` |
+| PH-005-2 | sealed common chain; publish with `input_session` (plan reading input object 11 instead of 10) and `input_ledger` | `publish denied CommitRejected` | `PH-005-2 a session negotiated for a changed input object is denied CommitRejected with the state, session, and ledger unchanged` |
+| PH-005-3 | common chain to `input`; decoded Delegate of the root to session 3 | `delegate accepted slot=proxy` | `PH-005-3 a decoded Delegate narrows the root to the proxy session` |
+| PH-005-4 | after PH-005-3; decoded Delegate of `proxy` from session 3 to the worker | `delegate accepted slot=narrow` | `PH-005-4 the proxy delegates a narrower entry to the worker and the delegation copies the parent's plan unchanged` |
+| PH-005-5 | narrowed chain, admitted on `narrow`, sealed, published | `publish accepted invocation=99;input=narrow` | `PH-005-5 the narrower delegated use of the same plan publishes the same full intent as the baseline` |
+| PH-005-6 | narrowed chain; decoded Use of the root on the client session | `use accepted slot=root` | `PH-005-6 after the narrower proxy the broader root still resolves live with all its rights` |
+| PH-002-1 | common chain to `input`; decoded Use of `input` on the worker session claiming subject 8 | `use accepted slot=input` | `PH-002-1 a Use claiming subject B on the worker session resolves to the owner's caller` |
+| PH-002-2 | the same Use with claim 0 | `use accepted slot=input` | `PH-002-2 the same Use with no claim resolves to the same entry and caller` |
+| PH-002-3 | the common chain admitted on the claiming Use (subject 8), sealed, published | `publish accepted invocation=99;input=input` | `PH-002-3 admission on the claiming Use publishes the same full intent as with no claim` |
+| PH-002-4 | common chain to `input`; decoded Use of the root on session 4 (transferred, no edge); `use` and `admit_worker` | `admit_worker denied Identity.TransferredEndpoint` | `PH-002-4 a transferred endpoint with no delegation edge is denied TransferredEndpoint with the state unchanged` |
+| PH-002-5 | the same on session 5 (inherited) | `admit_worker denied Identity.InheritedEndpoint` | `PH-002-5 an inherited endpoint is denied InheritedEndpoint with the state unchanged` |
+| PH-003-1 | the same on the worker session (the client's root slot and generation) | `admit_worker denied Identity.NotHolder` | `PH-003-1 a slot guessed from another session is denied NotHolder with the state unchanged` |
+| PH-003-2 | decoded Use of `input` naming the other adapter's host, on the worker session | `admit_worker denied Identity.ForeignHost` | `PH-003-2 a reference naming the other adapter's host is denied ForeignHost with the state unchanged` |
+| PH-010-1 | sealed common chain; revoke the slot `use` resolved for the worker's `input` | `revoke accepted slot=input;stopped=input` | `PH-010-1 revoking the resolved input before authorization stops its worker` |
+| PH-009-2 | after PH-010-1; publish | `publish denied Identity.Retired` | `PH-009-2 a publication after the revocation is denied Identity Retired with the state, session, and ledger unchanged` |
+| PH-010-2 | published common chain; revoke the slot `use` resolved for the client's root | `revoke accepted slot=root;stopped=input` | `PH-010-2 revoking the root after publication stops the worker and keeps the publication record` |
+| PH-010-3 | after PH-010-2; reconcile invocation 99 with the sealed digest | `reconcile accepted invocation=99` | `PH-010-3 after revocation reconcile returns the same invocation and digest` |
+| PH-010-4 | after PH-010-2; quiesce worker 1 at the retired generation 2 | `quiesce accepted slot=input` | `PH-010-4 the revoked worker is quiesced at the retired generation` |
+| PH-010-5 | after PH-010-4; reclaim worker 1 | `reclaim accepted slot=input` | `PH-010-5 the quiesced worker is reclaimed` |
+| PH-010-6 | after PH-010-5; decoded Complete of `input` (sequence 1, ok) on the worker session | `complete denied Identity.Retired` | `PH-010-6 a stale completion after teardown is denied Identity Retired with the state unchanged` |
+| PH-009-3 | published common chain; publish again with the session and ledger the first commit returned | `publish denied Replay` | `PH-009-3 a second publication is denied Replay with the state, session, and ledger unchanged` |
+| PH-004-1 | admitted common chain; restart to the adapter's successor incarnation | `restart accepted incarnation=next;stopped=input` | `PH-004-1 restart moves to the next incarnation and stops the running worker` |
+| PH-004-2 | after PH-004-1; the client bound again, the preface and root issued again; decoded Use of the root in the next incarnation | `use accepted slot=root` | `PH-004-2 after restart the reissued root has the old slot and generation in the next incarnation` |
+| PH-004-3 | the same state; decoded Use of the root in the prior incarnation (same slot and generation); `use` and `admit_worker` | `admit_worker denied Identity.StaleIncarnation` | `PH-004-3 the prior-incarnation reference to that slot is denied StaleIncarnation with the state unchanged` |
+| PH-009-4 | published common chain; reconcile invocation 99 with the BackplaneTests other artifact digest | `reconcile denied Substitution` | `PH-009-4 reconcile with a substituted digest is denied Substitution with the state unchanged` |
+| PH-012-1 | every vector above on adapters A and B | `compare accepted vectors=26` | `PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector` |
+
+Other checks: `PH-012 the two adapters differ in host, incarnation, slot allocation, and target report`;
+`PH-012 every vector's raw bytes decode through HostWire.decode_bytes on both adapters`;
+`PH-005 the destination-E and changed-input sessions are Running at the baseline revisions with another plan`;
+`PH-009 the accepted intent retains the source labels and origins (BackplaneTests.retained) on both adapters`;
+`PH-005 the delegated path's intent label and full origin records equal the root path's`;
+`PH-005 delegation copies the parent's plan unchanged`.
+
+| Requirement | Vectors | Coverage boundary |
+| --- | --- | --- |
+| PH-001 "One policy implementation across hosts" | PH-012-1, PH-009-1 | Two synthetic adapters of the same Bend interfaces; no native target replays these vectors yet (section 2). |
+| PH-002 "A client changes its claimed subject"; "A delegated endpoint hides its new holder" | PH-002-1 to PH-002-5 | Model decisions only; that a native binding reports the true session and origin is a host obligation. |
+| PH-003 "A guessed numeric handle"; "A reference crosses hosts" | PH-003-1, PH-003-2 | As above. |
+| PH-004 "Handle reuse after restart" | PH-004-1 to PH-004-3 | "Conflicting live mappings" stays a HostIdentityTests hand-built case (it needs a state no transition builds). |
+| PH-005 "A transferred endpoint requests another bucket"; "A narrower proxy leaves an old handle alive" | PH-005-1 to PH-005-6 | The destination-E and changed-input denials come from `DataOS.commit_from_capability` (plan equality) and are also produced by Backplane's binding and negotiation checks: dropping only DataOS's plan equality leaves both denied (mutation exercise, task 5 report). The identity entry's own `plan` field is not compared at publication (task 5 report, concern). |
+| PH-009 "Revocation precedes authorization"; "Crash recovery repeats a publication attempt"; replay | PH-009-1 to PH-009-4, PH-010-3 | Durability of the record and the session/ledger is a host obligation. |
+| PH-010 "A device completes after teardown" | PH-010-1 to PH-010-6 | Native DMA/IO quiescence is a host obligation; the quiescence fact is a vector input. |
+| PH-012 "Two native adapters are compared" (decision part) | PH-012-1 | Decision half only. Both adapters are Bend fixtures, not native bindings; the native half (real adapters replaying these inputs) is section 2. |
+
