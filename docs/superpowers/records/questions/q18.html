@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>For Spaceghost: seven decisions the controller needs from you</title>
+<title>For Spaceghost: eight decisions the controller needs from you</title>
 <meta name="writ-topic" content="spaceghost">
 <meta name="writ-status" content="open">
 <style>
@@ -17,7 +17,7 @@ table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:
 .note{color:var(--muted);font-size:.9rem}
 </style>
 </head><body>
-<h1>For Spaceghost: seven decisions the controller needs from you</h1>
+<h1>For Spaceghost: eight decisions the controller needs from you</h1>
 <p>Written by the controller (Josh's Claude session) on 2026-11-05 after the Genode and Unikraft lanes landed. Josh asked me to put in one place what I need from you. Each item has the evidence path so you can check the claim before answering. The form records who answered; Josh can answer on your behalf after you talk.</p>
 
 <form method="post" action="/questions/q18/answer">
@@ -79,6 +79,13 @@ table{border-collapse:collapse;font-size:.92rem;margin:.5rem 0}th,td{text-align:
 <p>The grant-issuance and host-contract plans had to settle two points the designs left open. The lanes are building on these; say if either is wrong.</p>
 <label><input type="checkbox" name="veto_single_use" value="veto"> Veto: "an approval pair backs exactly one grant; renewal needs fresh approvals" (single-use approvals)</label>
 <label><input type="checkbox" name="veto_subject" value="veto"> Veto: "a derived or delegated grant never changes the effective subject; a different subject always needs a fresh grant through full admission" (PH-005, GI-006)</label>
+</fieldset>
+
+<fieldset><legend>8. Audit: who approves event-read and export grants?</legend>
+<p>The policy-aware audit lane (started 2026-11-05) gates every audit query and every export, metric, and alert channel on an explicit grant naming the reader or exporter, the owner, the sink, and the channel. For now the monitor installs those grants and the records call it a gap. On a real host, who should approve them?</p>
+<label><input type="radio" name="audit_grants" value="owner-directory"> Each stream owner, through an authority directory like the one grant issuance uses</label>
+<label><input type="radio" name="audit_grants" value="monitor"> The monitor alone, from its configuration</label>
+<label><input type="radio" name="audit_grants" value="both"> Owner approval required, monitor installs</label>
 </fieldset>
 
 <label>Notes (anything the radios do not cover, or a time for the brainstorm with Josh)<textarea name="text"></textarea></label>
