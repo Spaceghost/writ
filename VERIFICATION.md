@@ -31,10 +31,11 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | Negotiation | 26 | Stage ordering, candidate pinning, fresh challenges, sample permission, every-origin approval, reader expense, current budgets |
 | Backplane | 40 | Combined checks, late revocation, metadata tampering, actual effects, combined labels, exact output types, artifact identity, duplicate-binding denial |
 | Frontend | 70 | Mount/open/dup/attenuate/close protocol, subject/token/plan binding, all token words, current grants, descriptor revocation, malformed registries |
-| Facade | 10 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
+| Facade | 12 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
 | HostBinding | 144 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, destroy authority (no close through a delegated copy), derived Frontend handles closed with their Session, holder versus subject, non-holders told UnknownAlias, delegation withdrawn with the delegator's route, no delegation to another subject's domain, non-widening delegation trees, quota before authority and refunds on close and revoke, exact state preservation on every denial |
+| Issuance | 230 | Authenticated approval submission, exact paired-scope registration (subject-only caller), revision-checked revocation and replay, attenuation-only derivation, exclusive expiry, subject-scoped per-use projections into T.admit and F.checked_plan (model only; not wired to a host) |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
-| **Total per backend** | **782** | **Both complete runs passed** |
+| **Total per backend** | **1014** | **Both complete runs passed** |
 
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
@@ -46,7 +47,7 @@ proof for arbitrary graph sizes.
 
 Evidence is in `verification/tests-js.txt` and `verification/tests-native.txt`.
 The transfer test driver prints `PASS ` while other drivers print `PASS:`;
-counting both forms yields 782 per file. The two files are byte-identical.
+counting both forms yields 1014 per file. The two files are byte-identical.
 
 Reproduction:
 
@@ -151,7 +152,7 @@ can fall back to CPU execution; success does not establish the physical backend.
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for six declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for twelve declared laws:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
@@ -210,7 +211,7 @@ with:
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 ```
 
-No Lean-kernel verdict exists for any of the six laws. `kernel-verdict.txt`
+No Lean-kernel verdict exists for any of the twelve laws. `kernel-verdict.txt`
 keeps the earlier three-law note and records the latest attempt verbatim.
 Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
@@ -382,8 +383,8 @@ bounded handles and supervisor revocation.
 
 The [execution record](contrib/native-hosts/VERIFICATION.md) captures 69 mount
 vectors plus a count-consistency check: 70 PASS lines on each local backend.
-The integrated core passes 782 checks and 41 vectors on both CPU backends;
-all six ordinary laws pass. Linux native CI passes its actual mounts, fixed
+The integrated core passes 1014 checks and 41 vectors on both CPU backends;
+all twelve ordinary laws pass. Linux native CI passes its actual mounts, fixed
 worker probes, revocation, interpreter/broker failure and owned cleanup.
 Genode clean CI passes the 782-core and 69-mount corpus, 24 allocator checks
 on host and guest, 56 filesystem checks and eight libc/VFS checks.
