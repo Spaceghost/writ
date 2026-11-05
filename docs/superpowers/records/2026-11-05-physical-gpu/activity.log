@@ -1,1 +1,14 @@
 2026-11-05T02:51:28Z	controller	lane created from master d56325b
+2026-11-05T02:52:08Z	implementer	task 1 started: read brief, plan Global Constraints, AGENTS.md
+2026-11-05T02:54:35Z	implementer	Bang.bend written; emitted C builds (bang.c)
+2026-11-05T02:55:17Z	implementer	native CUDA build of bang done (9 s); bang.gpu is sm_89 cubin with bend_dev; running bang --gpu off/on
+2026-11-05T02:56:00Z	implementer	compute-sanitizer observer works (flag form; 5 bend_dev launches per round); timing overhead at 100 rounds
+2026-11-05T02:58:23Z	implementer	sanitizer needs --print-limit 0 (default 100 hides launches); now sampling nvidia-smi compute-apps and pmon during a 200-round run
+2026-11-05T02:59:36Z	implementer	pmon shows bang PID but SM samples only in first ~2 s of a 300-round run; trying 1500 rounds (bounded 300 s) to see the device phase
+2026-11-05T03:02:22Z	implementer	capture: build section
+2026-11-05T03:02:29Z	implementer	capture: run section (CPU and device runs, observer)
+2026-11-05T03:02:42Z	implementer	capture: overhead pairs at 100 rounds
+2026-11-05T03:03:06Z	implementer	capture: nvidia-smi compute-apps and pmon during a 300-round run
+2026-11-05T03:03:17Z	implementer	capture finished
+2026-11-05T03:05:27Z	implementer	evidence verification/gpu-toolchain.txt and task-1-report.md written; committing (DONE_WITH_CONCERNS: sanitizer needs flag form and --print-limit 0)
+2026-11-05T03:05:40Z	implementer	task 1 committed
