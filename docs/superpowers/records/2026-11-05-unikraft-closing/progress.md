@@ -14,3 +14,4 @@ Task 3: implementer DONE (91e49c0): 782 / ALL PROOFS CHECK (no --verdict, no Lea
 Final review: Needs fixes before merge (B1 accepted-limit wording, B2 the 782 count wording, B3 the gpuexample PM line pointer, B4 INVENTORY temp-file counts; plus the three Task 2 nits). Fix round dispatched (Task 3 implementer resumed).
 Fix round 1: verified by the controller (B1-B4 and the nits; env.sh comments only; strict 44; no .bend/Kraftfile/host C diff). Final review resolved; complete.
 Merge: to master
+Merge: merged to master as fbc62b9
