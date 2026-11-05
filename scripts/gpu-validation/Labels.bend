@@ -1,6 +1,7 @@
 # Label-batch path probe for physical GPU validation (GV-001, GV-002; Task 3),
 # with differential parity cases (GV-003; Task 4), injected faults (GV-003;
-# Task 5) and a wrong-but-faster control (GV-006; Task 5).
+# Task 5), a wrong-but-faster control (GV-006; Task 5) and a whole-pipeline
+# stage timer (GV-005, GV-007; Task 7).
 #
 # Usage (native build; one GPU path per binary):
 #   bend scripts/gpu-validation/Labels.bend -o ../writ-build/physical-gpu/labels
@@ -11,6 +12,8 @@
 #     (CASE is `all` or one inject case name; see "Inject mode" below)
 #   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS bench-forged SIZE REPS
 #     (the forged control: no device call; it must FAIL; see below)
+#   ../writ-build/physical-gpu/labels +RTS --gpu on -RTS bench SIZE REPS
+#     (whole-pipeline stage timer, Task 7; times on stderr; see "Bench mode")
 #
 # SYNTHETIC MONITOR STATE. The snapshot and labels are the
 # examples/Scenario.bend fixtures (the incident team and report owner); no
@@ -287,6 +290,7 @@ def Labels.usage() -> IO(Unit):
     IO.print_err("       labels [+RTS ... -RTS] parity CASE [ROUNDS]  (CASE all or a case name, ROUNDS 1..100000)")
     IO.print_err("       labels [+RTS ... -RTS] inject CASE [ROUNDS]  (CASE all or an inject case name, ROUNDS 1..100000)")
     IO.print_err("       labels [+RTS ... -RTS] bench-forged SIZE REPS  (forged control: no device call; SIZE 1..4194304, REPS 1..100000)")
+    IO.print_err("       labels [+RTS ... -RTS] bench SIZE REPS  (stage timer, times on stderr; SIZE 1..4194304, REPS 1..100000)")
     IO.exit(2)
 
 # ---- Parity mode (Task 4; GV-003) ------------------------------------------
@@ -762,6 +766,109 @@ def Labels.inject(+name: String, rounds: Maybe<&2, U32>) -> IO(Unit):
     case None{}:
       Labels.usage()
 
+# ---- Bench mode (Task 7; GV-005, GV-006, GV-007) ---------------------------
+#
+#   labels [+RTS ... -RTS] bench SIZE REPS
+#
+# Run mode's SYNTHETIC inputs, device call and checks, with a stage timer.
+# Five IO.now() marks per repetition (IO.now answers milliseconds of
+# CLOCK_MONOTONIC: the runtime's io_tick() nanoseconds divided by 10^6):
+#   t1  before input construction (repetition 1 builds the snapshot and the
+#       query tree; repetitions 2..REPS reuse those resident inputs, so their
+#       prep is only the step between marks)
+#   t2  before the bang
+#   t3  after the bang returns: one bundled "device call" component holding
+#       allocation, managed-memory movement, dispatch, every batch round and
+#       result return; this probe cannot split it (no runtime timer, no
+#       Nsight), and the split is recorded as a missing field, not estimated
+#   t4  after the independent replay Dlm.verify_batch on the ORIGINAL queries
+#       and snapshot
+#   t5  after the expected allow/deny pattern check; the end of the repetition
+# One `bench labels rep ...` line per repetition goes to stderr with every
+# component and the total (t5 - t1), plus the absolute marks, so that a
+# harness reading CLOCK_MONOTONIC can account for the time outside main.
+# Timing is on stderr only: stdout stays the deterministic PASS/FAIL record,
+# so observe.sh can pair a plain and an observed pass, and a `--gpu off` run
+# prints the same stdout bytes.
+# After the last repetition: an IO step, the CPU reference Dlm.batch (no `!`,
+# timed as `after cpu_reference_ms`, not a pipeline stage), then run mode's
+# checks over every repetition's result (Labels.check: typed equality with the
+# CPU reference, the expected pattern, Dlm.verify_batch), preceded by two
+# lines for the in-repetition replay and pattern results. Any FAIL exits 1.
+# No timing number here is a performance claim; the evidence file states the
+# load average, the attestation run and the conditions of every series.
+
+def Labels.bench.ms(+a: Nat, +b: Nat) -> String:
+  Nat.show((b - a : Nat))
+
+def Labels.bench.line(+rep: U32, +t1: Nat, +t2: Nat, +t3: Nat, +t4: Nat, +t5: Nat) -> String:
+  "bench labels rep " ++ U32.show(rep) ++ " prep_ms " ++ Labels.bench.ms(t1, t2) ++
+    " device_call_ms " ++ Labels.bench.ms(t2, t3) ++ " verify_ms " ++ Labels.bench.ms(t3, t4) ++
+    " check_ms " ++ Labels.bench.ms(t4, t5) ++ " total_ms " ++ Labels.bench.ms(t1, t5) ++
+    " marks " ++ Nat.show(t1) ++ " " ++ Nat.show(t2) ++ " " ++ Nat.show(t3) ++ " " ++
+    Nat.show(t4) ++ " " ++ Nat.show(t5)
+
+# After every repetition: the CPU reference, then the in-repetition counts,
+# then run mode's checks over every repetition's device result.
+def Labels.bench.close(ok: Bool, +device: +List<Dlm.Answers>, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +reference: Dlm.Answers, +depth: Nat) -> IO(Unit):
+  match ok:
+    case True{}:
+      Labels.check(device, queries, snapshot, reference, depth)
+    case False{}:
+      IO.die(Unit, 1, "result: a check FAILED")
+
+def Labels.bench.finish(+device: +List<Dlm.Answers>, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +depth: Nat, +reps: U32, +verified: U32, +expected: U32) -> IO(Unit):
+  do IO<Unit>:
+    +t6 : Nat <- IO.now()
+    reference : Dlm.Answers <- IO.pure(Dlm.Answers, Dlm.batch(queries, snapshot))
+    +t7 : Nat <- IO.now()
+    IO.print_err("bench labels after cpu_reference_ms " ++ Labels.bench.ms(t6, t7) ++ " marks " ++ Nat.show(t6) ++ " " ++ Nat.show(t7))
+    a : Bool <- Labels.line(U32.is_eq(verified, reps), "in-repetition Dlm.verify_batch accepted the device answers" ++ Labels.of(verified, reps))
+    b : Bool <- Labels.line(U32.is_eq(expected, reps), "in-repetition device answers matched the expected allow/deny pattern" ++ Labels.of(expected, reps))
+    Labels.bench.close(a && b, device, queries, snapshot, reference, depth)
+
+# `left` repetitions; `t1` is this repetition's first mark.
+def Labels.bench.reps(left: Nat, +rep: U32, +reps: U32, +t1: Nat, +queries: Dlm.Batch, +snapshot: Dlm.Snapshot, +depth: Nat, acc: +List<Dlm.Answers>, +verified: U32, +expected: U32) -> IO(Unit):
+  match left:
+    case 0n:
+      Labels.bench.finish(acc, queries, snapshot, depth, reps, verified, expected)
+    case 1n+p:
+      do IO<Unit>:
+        +t2 : Nat <- IO.now()
+        +r : Dlm.Answers <- IO.pure(Dlm.Answers, Labels.device(queries, snapshot))
+        +t3 : Nat <- IO.now()
+        v : Bool <- IO.pure(Bool, Dlm.verify_batch(queries, snapshot, r))
+        +t4 : Nat <- IO.now()
+        e : Bool <- IO.pure(Bool, Labels.expected(r, depth, 0))
+        +t5 : Nat <- IO.now()
+        IO.print_err(Labels.bench.line(rep, t1, t2, t3, t4, t5))
+        +next : Nat <- IO.now()
+        Labels.bench.reps(p, (rep + 1 : U32), reps, next, queries, snapshot, depth, Con{r, acc},
+          (verified + Labels.b2u(v) : U32), (expected + Labels.b2u(e) : U32))
+
+def Labels.bench.go(+size: U32, +reps: U32) -> IO(Unit):
+  do IO<Unit>:
+    IO.print("SYNTHETIC label batch: Scenario principals and labels; no principal is authenticated")
+    IO.print("bench: leaves " ++ U32.show(U32.shln(1, Labels.depth(size))) ++ ", repetitions " ++ U32.show(reps) ++ " (stage times on stderr)")
+    +t1 : Nat <- IO.now()
+    snapshot : Dlm.Snapshot <- Labels.snapshot(Scenario.principals())
+    queries : Dlm.Batch <- IO.pure(Dlm.Batch, Labels.tree(Labels.depth(size), 0))
+    Labels.bench.reps(U32.to_nat(reps), 1, reps, t1, queries, snapshot, Labels.depth(size), Nil{}, 0, 0)
+
+def Labels.bench.bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Labels.bench.go(s, r)
+    case False{}:
+      Labels.usage()
+
+def Labels.bench(size: Maybe<&2, U32>, reps: Maybe<&2, U32>) -> IO(Unit):
+  match size reps:
+    case Some{+s} Some{+r}:
+      Labels.bench.bounded.go(U32.is_ne(s, 0) && U32.is_le(s, 4194304) && U32.is_ne(r, 0) && U32.is_le(r, 100000), s, r)
+    case _ _:
+      Labels.usage()
+
 # ---- Wrong-but-faster control (Task 5; GV-006) -----------------------------
 #
 #   labels [+RTS ... -RTS] bench-forged SIZE REPS
@@ -850,6 +957,8 @@ def Labels.main(args: List<String>) -> IO(Unit):
       Labels.inject(name, U32.read(rounds))
     case Con{_, Con{"bench-forged", Con{size, Con{rounds, Nil{}}}}}:
       Labels.forged_bounded(U32.read(size), U32.read(rounds))
+    case Con{_, Con{"bench", Con{size, Con{reps, Nil{}}}}}:
+      Labels.bench(U32.read(size), U32.read(reps))
     case _:
       Labels.usage()
 

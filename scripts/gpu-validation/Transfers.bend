@@ -1,6 +1,7 @@
 # Transfer-batch path probe for physical GPU validation (GV-001, GV-002; Task 3),
-# with differential parity cases (GV-003; Task 4) and injected faults with a
-# commit-path refusal and digest sensitivity controls (GV-003; Task 5).
+# with differential parity cases (GV-003; Task 4), injected faults with a
+# commit-path refusal and digest sensitivity controls (GV-003; Task 5), and a
+# whole-pipeline stage timer (GV-005, GV-007; Task 7).
 #
 # Usage (native build; one GPU path per binary):
 #   bend scripts/gpu-validation/Transfers.bend -o ../writ-build/physical-gpu/transfers
@@ -9,6 +10,8 @@
 #     (CASE is `all` or one case name; see "Parity mode" below)
 #   ../writ-build/physical-gpu/transfers +RTS --gpu on -RTS inject CASE [ROUNDS]
 #     (CASE is `all` or one inject case name; see "Inject mode" below)
+#   ../writ-build/physical-gpu/transfers +RTS --gpu on -RTS bench SIZE REPS
+#     (whole-pipeline stage timer, Task 7; times on stderr; see "Bench mode")
 #
 # SYNTHETIC MONITOR STATE. Every plan, grant and context below is built from
 # the examples/Scenario.bend fixtures; nothing is authenticated, issued or
@@ -531,7 +534,109 @@ def Transfers.usage() -> IO(Unit):
     IO.print_err("usage: transfers [+RTS ... -RTS] run SIZE [ROUNDS]  (SIZE 1..4194304, ROUNDS 1..100000)")
     IO.print_err("       transfers [+RTS ... -RTS] parity CASE [ROUNDS]  (CASE all or a case name, ROUNDS 1..100000)")
     IO.print_err("       transfers [+RTS ... -RTS] inject CASE [ROUNDS]  (CASE all or an inject case name, ROUNDS 1..100000)")
+    IO.print_err("       transfers [+RTS ... -RTS] bench SIZE REPS  (stage timer, times on stderr; SIZE 1..4194304, REPS 1..100000)")
     IO.exit(2)
+
+# ---- Bench mode (Task 7; GV-005, GV-006, GV-007) ---------------------------
+#
+#   transfers [+RTS ... -RTS] bench SIZE REPS
+#
+# Run mode's SYNTHETIC requests, device call and checks, with a stage timer.
+# Five IO.now() marks per repetition (IO.now answers milliseconds of
+# CLOCK_MONOTONIC: the runtime's io_tick() nanoseconds divided by 10^6):
+#   t1  before input construction (repetition 1 builds the request tree;
+#       repetitions 2..REPS reuse those resident requests, so their prep is
+#       only the step between marks)
+#   t2  before the bang
+#   t3  after the bang returns: one bundled "device call" component holding
+#       allocation, managed-memory movement, dispatch, every batch round and
+#       result return; this probe cannot split it (no runtime timer, no
+#       Nsight), and the split is recorded as a missing field, not estimated
+#   t4  after the independent replay: Transfer.admit for each ORIGINAL plan
+#       against its own Context, compared leaf by leaf (Transfers.replay)
+#   t5  after the expected admit/deny pattern check; the end of the repetition
+# One `bench transfers rep ...` line per repetition goes to stderr with every
+# component and the total (t5 - t1), plus the absolute marks, so that a
+# harness reading CLOCK_MONOTONIC can account for the time outside main.
+# Timing is on stderr only: stdout stays the deterministic PASS/FAIL record,
+# so observe.sh can pair a plain and an observed pass, and a `--gpu off` run
+# prints the same stdout bytes.
+# After the last repetition: an IO step, the CPU reference Transfer.batch (no
+# `!`, timed as `after cpu_reference_ms`, not a pipeline stage), then run
+# mode's checks over every repetition's result (Transfers.check: field-by-field
+# equality with the CPU reference, the expected pattern, the replay),
+# preceded by two lines for the in-repetition results. Any FAIL exits 1.
+# Nothing is issued or committed. No timing number here is a performance
+# claim; the evidence file states the load average, the attestation run and
+# the conditions of every series.
+
+def Transfers.bench.ms(+a: Nat, +b: Nat) -> String:
+  Nat.show((b - a : Nat))
+
+def Transfers.bench.line(+rep: U32, +t1: Nat, +t2: Nat, +t3: Nat, +t4: Nat, +t5: Nat) -> String:
+  "bench transfers rep " ++ U32.show(rep) ++ " prep_ms " ++ Transfers.bench.ms(t1, t2) ++
+    " device_call_ms " ++ Transfers.bench.ms(t2, t3) ++ " verify_ms " ++ Transfers.bench.ms(t3, t4) ++
+    " check_ms " ++ Transfers.bench.ms(t4, t5) ++ " total_ms " ++ Transfers.bench.ms(t1, t5) ++
+    " marks " ++ Nat.show(t1) ++ " " ++ Nat.show(t2) ++ " " ++ Nat.show(t3) ++ " " ++
+    Nat.show(t4) ++ " " ++ Nat.show(t5)
+
+def Transfers.bench.close(ok: Bool, +device: +List<Transfer.Decisions>, +requests: Transfer.Batch, +reference: Transfer.Decisions, +depth: Nat) -> IO(Unit):
+  match ok:
+    case True{}:
+      Transfers.check(device, requests, reference, depth)
+    case False{}:
+      IO.die(Unit, 1, "result: a check FAILED")
+
+def Transfers.bench.finish(+device: +List<Transfer.Decisions>, +requests: Transfer.Batch, +depth: Nat, +reps: U32, +verified: U32, +expected: U32) -> IO(Unit):
+  do IO<Unit>:
+    +t6 : Nat <- IO.now()
+    reference : Transfer.Decisions <- IO.pure(Transfer.Decisions, Transfer.batch(requests))
+    +t7 : Nat <- IO.now()
+    IO.print_err("bench transfers after cpu_reference_ms " ++ Transfers.bench.ms(t6, t7) ++ " marks " ++ Nat.show(t6) ++ " " ++ Nat.show(t7))
+    a : Bool <- Transfers.line(U32.is_eq(verified, reps), "in-repetition device decisions equalled Transfer.admit per original plan against its Context" ++ Transfers.of(verified, reps))
+    b : Bool <- Transfers.line(U32.is_eq(expected, reps), "in-repetition device decisions matched the expected admit/deny pattern, plans and retained origins" ++ Transfers.of(expected, reps))
+    Transfers.bench.close(a && b, device, requests, reference, depth)
+
+# `left` repetitions; `t1` is this repetition's first mark.
+def Transfers.bench.reps(left: Nat, +rep: U32, +reps: U32, +t1: Nat, +requests: Transfer.Batch, +depth: Nat, acc: +List<Transfer.Decisions>, +verified: U32, +expected: U32) -> IO(Unit):
+  match left:
+    case 0n:
+      Transfers.bench.finish(acc, requests, depth, reps, verified, expected)
+    case 1n+p:
+      do IO<Unit>:
+        +t2 : Nat <- IO.now()
+        +r : Transfer.Decisions <- IO.pure(Transfer.Decisions, Transfers.device(requests))
+        +t3 : Nat <- IO.now()
+        v : Bool <- IO.pure(Bool, Transfers.replay(requests, r))
+        +t4 : Nat <- IO.now()
+        e : Bool <- IO.pure(Bool, Transfers.expected(r, depth, 0))
+        +t5 : Nat <- IO.now()
+        IO.print_err(Transfers.bench.line(rep, t1, t2, t3, t4, t5))
+        +next : Nat <- IO.now()
+        Transfers.bench.reps(p, (rep + 1 : U32), reps, next, requests, depth, Con{r, acc},
+          (verified + Transfers.b2u(v) : U32), (expected + Transfers.b2u(e) : U32))
+
+def Transfers.bench.go(+size: U32, +reps: U32) -> IO(Unit):
+  do IO<Unit>:
+    IO.print("SYNTHETIC transfer batch: Scenario plans, grants and contexts; nothing is issued or committed")
+    IO.print("bench: leaves " ++ U32.show(U32.shln(1, Transfers.depth(size))) ++ ", repetitions " ++ U32.show(reps) ++ " (stage times on stderr)")
+    +t1 : Nat <- IO.now()
+    requests : Transfer.Batch <- IO.pure(Transfer.Batch, Transfers.tree(Transfers.depth(size), 0))
+    Transfers.bench.reps(U32.to_nat(reps), 1, reps, t1, requests, Transfers.depth(size), Nil{}, 0, 0)
+
+def Transfers.bench.bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Transfers.bench.go(s, r)
+    case False{}:
+      Transfers.usage()
+
+def Transfers.bench(size: Maybe<&2, U32>, reps: Maybe<&2, U32>) -> IO(Unit):
+  match size reps:
+    case Some{+s} Some{+r}:
+      Transfers.bench.bounded.go(U32.is_ne(s, 0) && U32.is_le(s, 4194304) && U32.is_ne(r, 0) && U32.is_le(r, 100000), s, r)
+    case _ _:
+      Transfers.usage()
 
 # ---- Parity mode (Task 4; GV-003) ------------------------------------------
 #
@@ -1440,6 +1545,8 @@ def Transfers.main(args: List<String>) -> IO(Unit):
       Transfers.inject(name, Some{1})
     case Con{_, Con{"inject", Con{name, Con{rounds, Nil{}}}}}:
       Transfers.inject(name, U32.read(rounds))
+    case Con{_, Con{"bench", Con{size, Con{reps, Nil{}}}}}:
+      Transfers.bench(U32.read(size), U32.read(reps))
     case _:
       Transfers.usage()
 

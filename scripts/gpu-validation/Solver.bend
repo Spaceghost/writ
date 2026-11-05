@@ -1,6 +1,7 @@
 # Graph-solver path probe for physical GPU validation (GV-001, GV-002; Task 3),
-# with differential parity cases (GV-003; Task 4) and injected faults
-# (GV-003 "Stable malformed solver output"; Task 5).
+# with differential parity cases (GV-003; Task 4), injected faults
+# (GV-003 "Stable malformed solver output"; Task 5) and a whole-pipeline
+# stage timer (GV-005, GV-007; Task 7).
 #
 # Usage (native build; one GPU path per binary):
 #   bend scripts/gpu-validation/Solver.bend -o ../writ-build/physical-gpu/solver
@@ -9,6 +10,8 @@
 #     (CASE is `all` or one case name; see "Parity mode" below)
 #   ../writ-build/physical-gpu/solver +RTS --gpu on -RTS inject CASE [ROUNDS]
 #     (CASE is `all` or one inject case name; see "Inject mode" below)
+#   ../writ-build/physical-gpu/solver +RTS --gpu on -RTS bench SIZE REPS
+#     (whole-pipeline stage timer, Task 7; times on stderr; see "Bench mode")
 #
 # SYNTHETIC MONITOR STATE. The graph replicates the examples/Scenario.bend
 # facts (the restricted report state, the summary type, the core stamp); it
@@ -348,7 +351,110 @@ def Solver.usage() -> IO(Unit):
     IO.print_err("usage: solver [+RTS ... -RTS] run SIZE [ROUNDS]  (SIZE 1..1048576, ROUNDS 1..100000)")
     IO.print_err("       solver [+RTS ... -RTS] parity CASE [ROUNDS]  (CASE all or a case name, ROUNDS 1..100000)")
     IO.print_err("       solver [+RTS ... -RTS] inject CASE [ROUNDS]  (CASE all or an inject case name, ROUNDS 1..100000)")
+    IO.print_err("       solver [+RTS ... -RTS] bench SIZE REPS  (stage timer, times on stderr; SIZE 1..1048576, REPS 1..100000)")
     IO.exit(2)
+
+# ---- Bench mode (Task 7; GV-005, GV-006, GV-007) ---------------------------
+#
+#   solver [+RTS ... -RTS] bench SIZE REPS
+#
+# Run mode's SYNTHETIC graph, device solve and checks, with a stage timer.
+# Five IO.now() marks per repetition (IO.now answers milliseconds of
+# CLOCK_MONOTONIC: the runtime's io_tick() nanoseconds divided by 10^6):
+#   t1  before input construction (repetition 1 builds the graph; repetitions
+#       2..REPS reuse that resident graph, so their prep is only the step
+#       between marks)
+#   t2  before the solve's first bang
+#   t3  after GPU.solve returns: one bundled "device call" component holding
+#       allocation, managed-memory movement, dispatch, every Jacobi sweep (one
+#       bang per sweep, with the solver's host work between sweeps) and result
+#       return; this probe cannot split it (no runtime timer, no Nsight), and
+#       the split is recorded as a missing field, not estimated
+#   t4  after the independent check Core.verify on the ORIGINAL graph and the
+#       Scenario stamp (never the solver's work tree or convergence claim)
+#   t5  after the expected least-solution check; the end of the repetition
+# One `bench solver rep ...` line per repetition goes to stderr with every
+# component and the total (t5 - t1), plus the absolute marks, so that a
+# harness reading CLOCK_MONOTONIC can account for the time outside main.
+# Timing is on stderr only: stdout stays the deterministic PASS/FAIL record,
+# so observe.sh can pair a plain and an observed pass, and a `--gpu off` run
+# prints the same stdout bytes.
+# After the last repetition: an IO step, the CPU reference Core.solve_cpu (no
+# bang, timed as `after cpu_reference_ms`, not a pipeline stage), then run
+# mode's checks over every repetition's result (Solver.check: typed equality
+# with the CPU reference, the expected solution, Core.verify, the denied seed
+# control), preceded by two lines for the in-repetition results. Any FAIL
+# exits 1. No timing number here is a performance claim; the evidence file
+# states the load average, the attestation run and the conditions of every
+# series.
+
+def Solver.bench.ms(+a: Nat, +b: Nat) -> String:
+  Nat.show((b - a : Nat))
+
+def Solver.bench.line(+rep: U32, +t1: Nat, +t2: Nat, +t3: Nat, +t4: Nat, +t5: Nat) -> String:
+  "bench solver rep " ++ U32.show(rep) ++ " prep_ms " ++ Solver.bench.ms(t1, t2) ++
+    " device_call_ms " ++ Solver.bench.ms(t2, t3) ++ " verify_ms " ++ Solver.bench.ms(t3, t4) ++
+    " check_ms " ++ Solver.bench.ms(t4, t5) ++ " total_ms " ++ Solver.bench.ms(t1, t5) ++
+    " marks " ++ Nat.show(t1) ++ " " ++ Nat.show(t2) ++ " " ++ Nat.show(t3) ++ " " ++
+    Nat.show(t4) ++ " " ++ Nat.show(t5)
+
+def Solver.bench.close(ok: Bool, +device: +List<Core.SolveResult>, +graph: Core.Graph, +reference: Core.SolveResult, +groups: Nat) -> IO(Unit):
+  match ok:
+    case True{}:
+      Solver.check(device, graph, reference, groups)
+    case False{}:
+      IO.die(Unit, 1, "result: a check FAILED")
+
+def Solver.bench.finish(+device: +List<Core.SolveResult>, +graph: Core.Graph, +groups: Nat, +reps: U32, +verified: U32, +expected: U32) -> IO(Unit):
+  do IO<Unit>:
+    +t6 : Nat <- IO.now()
+    reference : Core.SolveResult <- IO.pure(Core.SolveResult, Core.solve_cpu(graph, 0n))
+    +t7 : Nat <- IO.now()
+    IO.print_err("bench solver after cpu_reference_ms " ++ Solver.bench.ms(t6, t7) ++ " marks " ++ Nat.show(t6) ++ " " ++ Nat.show(t7))
+    a : Bool <- Solver.line(U32.is_eq(verified, reps), "in-repetition Core.verify approved the device candidate on the original graph and stamp" ++ Solver.of(verified, reps))
+    b : Bool <- Solver.line(U32.is_eq(expected, reps), "in-repetition device result equalled the expected least solution in 3 sweeps" ++ Solver.of(expected, reps))
+    Solver.bench.close(a && b, device, graph, reference, groups)
+
+# `left` repetitions; `t1` is this repetition's first mark.
+def Solver.bench.reps(left: Nat, +rep: U32, +reps: U32, +t1: Nat, +graph: Core.Graph, +groups: Nat, acc: +List<Core.SolveResult>, +verified: U32, +expected: U32) -> IO(Unit):
+  match left:
+    case 0n:
+      Solver.bench.finish(acc, graph, groups, reps, verified, expected)
+    case 1n+p:
+      do IO<Unit>:
+        +t2 : Nat <- IO.now()
+        +r : Core.SolveResult <- IO.pure(Core.SolveResult, Solver.device(graph, 0n))
+        +t3 : Nat <- IO.now()
+        v : Bool <- IO.pure(Bool, Solver.verified(r, graph))
+        +t4 : Nat <- IO.now()
+        e : Bool <- IO.pure(Bool, Solver.expected(r, groups))
+        +t5 : Nat <- IO.now()
+        IO.print_err(Solver.bench.line(rep, t1, t2, t3, t4, t5))
+        +next : Nat <- IO.now()
+        Solver.bench.reps(p, (rep + 1 : U32), reps, next, graph, groups, Con{r, acc},
+          (verified + Solver.b2u(v) : U32), (expected + Solver.b2u(e) : U32))
+
+def Solver.bench.go(+size: U32, +reps: U32) -> IO(Unit):
+  do IO<Unit>:
+    IO.print("SYNTHETIC solver graph: Scenario report and summary facts replicated; no sink is authorized")
+    IO.print("bench: nodes " ++ U32.show(U32.from_nat((Solver.groups(Solver.depth(size)) * 4n : Nat))) ++ ", repetitions " ++ U32.show(reps) ++ " (stage times on stderr)")
+    +t1 : Nat <- IO.now()
+    graph : Core.Graph <- IO.pure(Core.Graph, Solver.graph(Solver.groups(Solver.depth(size))))
+    Solver.bench.reps(U32.to_nat(reps), 1, reps, t1, graph, Solver.groups(Solver.depth(size)), Nil{}, 0, 0)
+
+def Solver.bench.bounded.go(ok: Bool, +s: U32, +r: U32) -> IO(Unit):
+  match ok:
+    case True{}:
+      Solver.bench.go(s, r)
+    case False{}:
+      Solver.usage()
+
+def Solver.bench(size: Maybe<&2, U32>, reps: Maybe<&2, U32>) -> IO(Unit):
+  match size reps:
+    case Some{+s} Some{+r}:
+      Solver.bench.bounded.go(U32.is_ne(s, 0) && U32.is_le(s, 1048576) && U32.is_ne(r, 0) && U32.is_le(r, 100000), s, r)
+    case _ _:
+      Solver.usage()
 
 # ---- Parity mode (Task 4; GV-003) ------------------------------------------
 #
@@ -1096,6 +1202,8 @@ def Solver.main(args: List<String>) -> IO(Unit):
       Solver.inject(name, Some{1})
     case Con{_, Con{"inject", Con{name, Con{rounds, Nil{}}}}}:
       Solver.inject(name, U32.read(rounds))
+    case Con{_, Con{"bench", Con{size, Con{reps, Nil{}}}}}:
+      Solver.bench(U32.read(size), U32.read(reps))
     case _:
       Solver.usage()
 
