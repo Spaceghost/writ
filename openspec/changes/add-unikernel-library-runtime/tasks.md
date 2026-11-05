@@ -6,10 +6,11 @@ Selection (1.1, 1.2) is recorded in docs/UNIKERNELS.md ("Selection matrix, 2026-
 verification/unikernel-matrix-unikraft.md, verification/unikernel-matrix-osv.md, and
 verification/unikernel-pins.txt. Unikraft 0.21.0 is a native link; OSv 0.57.0 is a
 compat observation only (a Linux PIE through OSv's ELF loader), recorded so the matrix
-has two candidates. All boot runs are QEMU TCG emulated boots (the one `linuxu` run was process execution, and native calibration runs on Linux). Of the port tasks 2.2 (single-lane
+has two candidates. All boot runs are QEMU TCG emulated boots except the KVM boots of 3.1, recorded only in verification/unikernel-kvm.txt (the one `linuxu` run was process execution, and native calibration runs on Linux). Of the port tasks 2.2 (single-lane
 corpus parity under QEMU TCG) and 2.3 (the fault message, with arena exhaustion's missing
-distinct code kept as a recorded limit) are checked; the other port tasks and the boot
-tasks remain pending.
+distinct code kept as a recorded limit) are checked; 3.1, 3.2 and 3.3 are checked. The
+change is not finished: 1.3, 2.1 and 2.4 are open (each box says why), and UL-008 is not
+met (3.2 is a checklist of its gaps).
 
 ## 1. Selection
 
@@ -147,6 +148,13 @@ tasks remain pending.
 
 ## 3. Boots and deployment rules
 
-- [ ] 3.1 Boot the image under a hardware-accelerated hypervisor (Firecracker or QEMU with KVM); record results separately from software emulation.
-- [ ] 3.2 Apply the appliance host's requirements UA-001 through UA-010 to the library image, including the rebuild drill with elapsed time and the trusted-base statement.
-- [ ] 3.3 Validate OpenSpec strictly and run the ordinary Bend checks on Linux to show no policy source changed.
+- [x] 3.1 Boot the image under a hardware-accelerated hypervisor (Firecracker or QEMU with KVM); record results separately from software emulation.
+  Done (2026-11-05, Unikraft closing lane): QEMU 11.1.2 with `-accel kvm -cpu host` (`run.sh` accel `kvm`) on an AMD Ryzen 9 5950X, kernel 7.2.9, recorded only in verification/unikernel-kvm.txt (TCG records unchanged). Hello 33, Die 35, Exit 39, Exhaust 253, Overflow fault message then 253, and the corpus 33 with 782 PASS lines, each passing its check script with the program lines equal to the references. Under KVM the guest runs briefly past exit_device.c's port write, so Unikraft's `pm.c:69` shutdown line, whole or cut off, can end a capture; the check scripts now drop a trailing unterminated fragment that is the start of a timestamped kernel line after the exit write (a cut-off timestamp, or the pm.c:69 line), nothing else, and count it every time: `kernel shutdown fragment after exit: dropped <0|1>` (the file's "Fix round" and "Fix round 2" list every count and the self-test). Follow-up: a halt after the write in exit_device.c, deferred to the next rebuild of every set. One vCPU, CPU only, no GPU; Firecracker not tried.
+- [x] 3.2 Apply the appliance host's requirements UA-001 through UA-010 to the library image, including the rebuild drill with elapsed time and the trusted-base statement.
+  Done (2026-11-05, Unikraft closing lane) as a checklist, not an appliance (the appliance change is not implemented): verification/unikernel-appliance-rules.md gives each of the ten requirements its evidence or its gap quoted in the requirement's words. Met for what exists: UA-003 (782 PASS; the "638 count" predates the corpus), UA-009, UA-010. Partly met: UA-001 (the only monitor image fails the profile check), UA-007 (rebuild only: no store, no reconciliation). Gaps: UA-002 (the hash differs because of the embedded build time), UA-004, UA-005 (the channel is not authenticated), UA-006 (no store), UA-008 (no boot clock check, no entropy). Rebuild drill: a fresh `drillhello` set from the pinned sources, built clean in 68.2 s (68.7 s from mkapp.sh to the image). The image hash is f8f49e7d against the recorded d0421dfb; with the 25-byte build time in `.uk_libinfo` masked, the images are byte-identical, and nm (4523 symbols), sizes, check-binary.sh (IO.print, PASS) and the boot's program lines (`hi`, QEMU 33, TCG and KVM) are equal. The trusted-base statement names QEMU, the host kernel, SeaBIOS, Unikraft 0.21.0, and all 55 linked objects, including the experimental signal library and `-include uk/config.h`.
+- [x] 3.3 Validate OpenSpec strictly and run the ordinary Bend checks on Linux to show no policy source changed.
+  Done (2026-11-05, Unikraft closing lane, tree 8be3b87 plus this lane's document edits; Bend 2.0.39, `BEND_NO_TELEMETRY=1`, Linux x86_64, from the worktree root):
+  `bend Tests.bend`: exit 0, 782 PASS lines (`^PASS[: ]`, as the check scripts count: 729 `PASS:` plus 53 `PASS ` lines), last line `ALL LIBRARY TESTS PASSED` (4.8 s).
+  `bend PROOF.bend`: exit 0, `ALL PROOFS CHECK` then `Use --verdict for mathematical validity.`; run without `--verdict`, since no Lean kernel toolchain is installed here, so this is the checker's own result, not a kernel verdict.
+  `bunx @fission-ai/openspec@1.16.0 validate --all --strict --no-interactive`: exit 0, `Totals: 44 passed, 0 failed (44 items)`; structural validation only, separate from the Bend checks.
+  `git diff --stat master -- '*.bend'`: empty; this lane changed no Bend file. Across the unikernel lanes already on master, the commits touching the unikernel paths changed only Bend files under `hosts/unikraft/` (`effects/Unikraft.bend`, the effect twins' declarations; `monitor/Monitor.bend` and `monitor/MonitorCheck.bend`, the SYNTHETIC channel-monitor scaffolding, which imports the root modules and whose final gate is `DataOS.commit_from_capability`) and probe programs under `scripts/unikernel/` (Clock, Die, Exhaust, Exit, Hello, Lanes, Overflow, Probe); one integration commit among them (600f82e) also added a cross-reference comment to the Genode probe `scripts/genode/Hello.bend`. No root or library Bend file imports any of these, and no policy module (`DataOS.bend`, `LAWS.bend`, `PROOF.bend`, the other root libraries) is among them. CPU only; no GPU test.

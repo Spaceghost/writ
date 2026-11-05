@@ -1,0 +1,16 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-11-05-unikraft-closing.md
+Branch: lane/unikraft-closing
+
+Conflict scan: Task 1 edits run.sh (accelerator option) and adds unikernel-kvm.txt; Task 2 adds unikernel-appliance-rules.md and the drill; Task 3 is checks and records. Task 1 and Task 2 share no file; Task 3 edits tasks.md/traceability after both. Ruling: a refused /dev/kvm leaves 3.1 open, no sudo, no group change.
+Task 1: dispatched implementer
+Task 1: implementer DONE_WITH_CONCERNS (3da955a): all 23 KVM boots gave the expected exit codes and the corpus 782, but on 13 boots Unikraft's pm.c shutdown line (whole or cut off) lands after the program output because the guest runs briefly past the exit-device write under KVM, failing the byte checks. Ruling: no exit_device.c change now (a halt after the outb is the proper fix, recorded for the next rebuild); the check scripts drop only a trailing prefix of that one known line and print the count; INVENTORY.md rows in scope — costs an unexplained-fragment blind spot if a different line ever appears (the scripts drop nothing else). Fix round 1 dispatched.
+Task 1: fix round done (972d5fe), 3.1 checked. Ruling: the drop rule is accepted as "a trailing fragment that is the start of a timestamped kernel line after the exit write" (cut-off timestamp or the pm.c line), counted every time; the comment and evidence must say it that way (carried to the task review). Reviewer dispatched; Task 2 dispatched in parallel (new file, no shared edits).
+Task 1: review NEEDS_FIXES both axes (the fragment rule also drops legitimate program lines like "[1.5]"; wording; missing TCG reruns; table label). Fix round 2 dispatched: drop only an unterminated trailing fragment that is a prefix of the timestamp form or the pm.c text, with a self-test.
+Task 1: fix round 2 done (e944b22); scoped re-review dispatched.
+Task 1: complete (re-review ALL CLOSED; accepted limit: an unterminated program line that is exactly "[" would be dropped, stated in env.sh and the evidence).
+Task 2: implementer DONE_WITH_CONCERNS (102c4c7): 3 met, 2 partly, 5 gaps; drill 68.7 s, images identical except the 25-byte build time. Ruling: QEMU, host kernel, and firmware are trusted and outside the image (UA-009 reading accepted); follow-ups for the next rebuild (exit_device halt, CONFIG_LIBUKLIBID_INFO_COMPILEDATE, -nic none) go in the Open list in Task 3. Reviewer dispatched; Task 3 dispatched in parallel.
+Task 2: complete (review APPROVED both axes; three optional nits carried to the final round: UA-009 label, UA-003 quote wording, Config.uk:78-79).
+Task 3: implementer DONE (91e49c0): 782 / ALL PROOFS CHECK (no --verdict, no Lean here) / strict 44 / no .bend diff; 3.3 checked; 1.3, 2.1, 2.4 open. Ruling: the UL-008 row keeps "none: UL-008 is not met" first with the related work after it — acceptable. Final whole-branch review dispatched (covers Task 3).
+Final review: Needs fixes before merge (B1 accepted-limit wording, B2 the 782 count wording, B3 the gpuexample PM line pointer, B4 INVENTORY temp-file counts; plus the three Task 2 nits). Fix round dispatched (Task 3 implementer resumed).
+Fix round 1: verified by the controller (B1-B4 and the nits; env.sh comments only; strict 44; no .bend/Kraftfile/host C diff). Final review resolved; complete.
+Merge: to master

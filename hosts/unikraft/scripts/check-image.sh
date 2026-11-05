@@ -17,11 +17,18 @@
 # QEMU 33 counts as success only with checks 1 to 3 passing. QEMU's own startup errors
 # exit 1, which the hook never produces, and leave no banner, so console.sh fails on
 # them as well.
+# Kernel fragment after the exit write (writ_kernel_fragment, env.sh): if the raw
+# capture ends with an unterminated last line that is the start of a timestamped kernel
+# line (a cut-off timestamp, or the pm.c:69 shutdown line), that one line is removed
+# before console.sh; nothing else is. Under KVM the guest runs briefly past
+# exit_device.c's port write, contradicting that file's "QEMU does not return here"
+# (verification/unikernel-kvm.txt). Counted every time: each run prints "kernel shutdown
+# fragment after exit: dropped <0|1>".
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise.
 . "$(dirname "$0")/env.sh"
 S=${1:?usage}; LB=${2:?usage}; P=${3:?usage}; REF=${4:?usage}; XQ=${5:?usage}
 XP=$6; T=${7:-600}; M=${8:-4096}
-C=$(mktemp); E=$(mktemp); trap 'rm -f "$C" "$E"' EXIT
+C=$(mktemp); E=$(mktemp); RT=$(mktemp); trap 'rm -f "$C" "$E" "$RT"' EXIT
 if [ "${WRIT_NO_BOOT:-0}" = 1 ]; then
   Q=$(tail -n 2 "$W/$S/logs/run-$LB.log" | head -n 1)
 else
@@ -29,7 +36,12 @@ else
   Q=$?
 fi
 BAD=0
-if "$HERE/console.sh" "$W/$S/logs/run-$LB.raw" > "$C"; then :; else echo "console: FAIL"; BAD=1; fi
+RAW="$W/$S/logs/run-$LB.raw"; FR=0
+if [ -f "$RAW" ] && writ_kernel_fragment "$RAW" > /dev/null; then
+  head -n -1 "$RAW" > "$RT"; RAW=$RT; FR=1
+fi
+echo "kernel shutdown fragment after exit: dropped $FR"
+if "$HERE/console.sh" "$RAW" > "$C"; then :; else echo "console: FAIL"; BAD=1; fi
 if [ -n "$WRIT_CONSOLE_SED" ]; then
   echo "console masked with: sed -e '$WRIT_CONSOLE_SED'"
   sed -e "$WRIT_CONSOLE_SED" "$C" > "$C.m" && mv "$C.m" "$C" || { echo "console mask: FAIL"; BAD=1; }

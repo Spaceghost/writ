@@ -12,6 +12,7 @@
 # (default lanes 1) and <vcpus> passed as run.sh's vcpus argument (-smp; default 1),
 # then checks that capture with check-image.sh under WRIT_NO_BOOT=1, so the checks are
 # the same. Without them the call is exactly the single-lane check it always was.
+# check-image.sh applies (and reports) the kernel shutdown fragment rule.
 . "$(dirname "$0")/env.sh"
 S=${1:?usage: check-corpus.sh <set> <label> [timeout] [mem] [lanes] [vcpus]}; LB=${2:?usage}
 T=${3:-600}; M=${4:-4096}

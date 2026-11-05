@@ -1,0 +1,48 @@
+2026-11-05T01:11:15Z	controller	lane created from master 0f329b3 after unikraft-lanes landed
+2026-11-05T01:12:54Z	implementer	task 1 started: read brief, plan Global Constraints, run.sh, check-image/fault/corpus.sh, evidence files
+2026-11-05T01:12:54Z	implementer	host facts: AMD Ryzen 9 5950X (AMD-V), kernel 7.2.9-1-MANJARO, QEMU 11.1.2; /dev/kvm crw-rw-rw- root:kvm; load average 102
+2026-11-05T01:12:54Z	implementer	image sha256 verified against evidence: sigcodes hello/die/exit, sigfault overflow/exhaust, sigcorpustests tests: all six match, no rebuild
+2026-11-05T01:12:54Z	implementer	run.sh: optional 8th argument accel (tcg default -cpu max; kvm -accel kvm -cpu host; other values exit 2)
+2026-11-05T01:13:02Z	implementer	run.sh checks: accel bogus -> exit 2 before QEMU; no accel -> logged command byte-identical to run-hello1.log (TCG), QEMU 33
+2026-11-05T01:13:13Z	implementer	KVM hello (sigcodes kvm-hello1): QEMU 33, check-image.sh WRIT_NO_BOOT=1 PASS
+2026-11-05T01:13:54Z	implementer	KVM die (kvm-die1): QEMU 35 but check-image FAIL: pm.c:69 'PM driver failed' line with a NUL after the program lines (console.sh refused); kept as recorded. KVM exit (kvm-exit1): QEMU 39, PASS. Rerunning hello/die/exit x5 each to measure
+2026-11-05T01:16:51Z	implementer	reruns r2-r6: QEMU status 33/35/39 on all 15; check-image PASS on hello3,4,6 and die3 only; the rest end with Unikraft's own pm.c:69 log line (whole or cut off, sometimes a NUL) after the program lines: the guest runs on after the exit-device write before QEMU exits
+2026-11-05T01:17:48Z	implementer	KVM exhaust (sigfault kvm-exhaust1): 253, check-fault PASS, wall 18.0 s (TCG 3.7 s). KVM overflow (kvm-overflow1): message then 253, check-fault PASS, wall 29.0 s (TCG 17.8/13.5 s). Load average ~100
+2026-11-05T01:17:48Z	implementer	KVM corpus boot started (sigcorpustests kvm-tests-m4096, timeout 600, -m 4096)
+2026-11-05T01:18:09Z	implementer	KVM corpus (kvm-tests-m4096): QEMU 33, check-corpus.sh WRIT_NO_BOOT=1 PASS: diff empty, 782 PASS, last line ok; wall 8.5 s (TCG record 2.2 s). Starting corpus reruns x2 and same-session TCG controls
+2026-11-05T01:19:08Z	implementer	KVM corpus reruns: kvm-tests2 33 but FAIL (cut-off '[  ' Unikraft log line after ALL LIBRARY TESTS PASSED), kvm-tests3 33 PASS. Same-session TCG controls: corpus 3.1 s PASS, exhaust 11.5 s PASS, overflow 16.1 s PASS (load ~60-70)
+2026-11-05T01:19:50Z	implementer	TCG controls hello/die/exit x3 each: all PASS (0.2-0.3 s). info kvm: 'kvm support: enabled', CPU #0 model=host. QEMU start-and-quit 0.08 s kvm / 0.05 s tcg, so the slower KVM walls are guest time. Writing verification/unikernel-kvm.txt
+2026-11-05T01:21:49Z	implementer	wrote verification/unikernel-kvm.txt; box 3.1 left open: strict checks PASS on 8 of 21 KVM hello/die/exit/corpus boots (guest runs on after the exit write); exit map and 782 count held on all 23
+2026-11-05T01:22:36Z	implementer	task 1 report written; committing (box 3.1 left open)
+2026-11-05T01:23:26Z	controller	task 1 reported; ruling: scripts tolerate the one known kernel shutdown fragment and count it; fix round dispatched
+2026-11-05T01:24:15Z	implementer	fix round started per controller ruling: pm.c shutdown-fragment rule in the check scripts (helper in env.sh), reruns, INVENTORY rows
+2026-11-05T01:25:08Z	implementer	rechecked all 23 existing KVM captures with the fragment rule: all PASS; dropped 1 on the 13 that failed before, 0 on the rest. Fresh KVM reruns and TCG controls next
+2026-11-05T01:26:43Z	implementer	fresh KVM reruns all PASS (hello x2, die x3, exit x3, corpus x2, exhaust, overflow); TCG hello and corpus through changed scripts PASS, dropped 0. kvmfix-overflow1 dropped a timestamp-only fragment '[    2.27112' cut from the crash screen, not a pm.c line: noted. Negative controls (fragment not last, other pm.c line, two fragments) FAIL as required. Load average 31-47
+2026-11-05T01:27:39Z	implementer	fix round: INVENTORY rows (env.sh, run.sh accel, check-image/corpus/fault fragment rule), unikernel-kvm.txt Fix round section, box 3.1 checked, OpenSpec strict 44 passed; report fix-round section appended; committing
+2026-11-05T01:28:05Z	controller	task 1 fix round reported, 3.1 checked; reviewer and task 2 dispatched
+2026-11-05T01:28:56Z	implementer	task 2 started: reading brief, appliance spec, UNIKERNELS.md, INVENTORY, pins, binary check, build scripts
+2026-11-05T01:30:10Z	implementer	rebuild drill started: fresh set drillhello (mkapp.sh), hello.c from scripts/unikernel/Hello.bend with Bend 2.0.39, clean build.sh; sources at pinned commits (unikraft 7351f8b, lib-musl 5fed64e, clean trees), kraft sha matches pins; load average 27-47
+2026-11-05T01:30:30Z	controller	task 1 review: needs fixes (rule too loose); fix round 2 dispatched
+2026-11-05T01:31:16Z	implementer	fix round 2 started: read task-1-review.md; tightening the fragment rule (unterminated last line, Unikraft [%5lu.%06lu] timestamp shape, pm.c text)
+2026-11-05T01:31:38Z	implementer	drill build done: mkapp 0.03 s, emit 0.45 s (hello.c 260b70a3, = pins), clean build 68.2 s first attempt (no musl fetch failure; tarball 7d5b0b60, = pins), total 68.7 s; image f8f49e7d (recorded d0421dfb). Comparing symbols, sizes, checker, one boot next
+2026-11-05T01:32:10Z	implementer	helper rewritten (writ_is_kernel_fragment_text, writ_kernel_fragment); self-test 26 of 26 ok. Rechecking every KVM capture
+2026-11-05T01:32:29Z	implementer	recheck through the tightened rule: every KVM count unchanged (17 dropped 1, 18 dropped 0, all PASS); TCG captures dropped 0 PASS; negatives FAIL. Booting TCG die/exit/exhaust/overflow through the changed scripts
+2026-11-05T01:33:26Z	implementer	drill comparison: image sizes equal (1193040), 6 differing bytes all inside the 25-byte build-time string in .uk_libinfo (offset 1116868); masked images byte-identical; nm inventory identical (4523 symbols); size -A identical; check-binary.sh IO.print PASS exit 0 both; link set 55 objects identical; .config differs only in CONFIG_UK_APP. One TCG boot check-image PASS (hi, 33, 0.3 s) and one KVM boot PASS (hi, 33, 1.1 s). Writing verification/unikernel-appliance-rules.md
+2026-11-05T01:34:07Z	implementer	TCG boots through the tightened scripts (die, exit, hello, exhaust, overflow, corpus): dropped 0 PASS. Evidence Fix round 2 section, top table labelled pre-rule, INVENTORY and 3.1 note reworded; OpenSpec strict 44 passed; report fix round 2 appended; committing
+2026-11-05T01:34:33Z	implementer	report self-test output corrected (first capture ran without W exported); commit amended
+2026-11-05T01:34:49Z	controller	task 1 fix round 2 reported; scoped re-review dispatched
+2026-11-05T01:36:03Z	controller	task 1 complete (re-review all closed)
+2026-11-05T01:36:16Z	implementer	Task 1 fix round 2 (e944b22) landed mid-task and changed the check scripts. Rechecked both drill captures (TCG, KVM) with WRIT_NO_BOOT=1 under e944b22: PASS, dropped 0. KVM cites updated to the renamed section. Doc link and box 3.2 written. OpenSpec 1.16.0 strict: 44 passed
+2026-11-05T01:36:47Z	implementer	task 2 report written; committing
+2026-11-05T01:37:08Z	controller	task 2 reported; reviewer and task 3 dispatched
+2026-11-05T01:37:51Z	implementer	task 3 started; reading brief, plan constraints, task 1/2 reports
+2026-11-05T01:38:20Z	controller	task 2 review APPROVED
+2026-11-05T01:38:33Z	implementer	running bend Tests.bend and bend PROOF.bend on tree 8be3b87
+2026-11-05T01:39:19Z	implementer	bend Tests.bend rc 0, 782 PASS, ALL LIBRARY TESTS PASSED (4.8 s); bend PROOF.bend rc 0, ALL PROOFS CHECK (no --verdict); git diff --stat master -- '*.bend' empty
+2026-11-05T01:41:28Z	implementer	tasks.md 3.3 checked, traceability UL-007/UL-008 and footer, UNIKERNELS.md KVM bullet and final Open list; OpenSpec 1.16.0 strict rerun on the edited tree: 44 passed, 0 failed
+2026-11-05T01:41:59Z	implementer	task 3 report written; committing
+2026-11-05T01:42:18Z	controller	task 3 reported; final whole-branch review dispatched
+2026-11-05T01:49:16Z	controller	final review: four wording fixes; fix round dispatched
+2026-11-05T01:49:21Z	implementer	final-review fix round started (B1-B4, three task 2 nits)
+2026-11-05T01:50:33Z	implementer	fix round: B1 (env.sh comment, kvm.txt limit), B2 (tasks.md 3.3 ^PASS[: ] 729+53), B3 (UNIKERNELS.md gpuexample to KVM finding), B4 (INVENTORY temp files), nits UA-009/UA-003/Config.uk:78-79; OpenSpec strict 44 passed, 0 failed; committing
+2026-11-05T01:51:00Z	controller	fix round verified; merging to master
