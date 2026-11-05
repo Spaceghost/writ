@@ -77,3 +77,5 @@
 2026-11-05T05:28:17Z	implementer	mutation: subject gate replaced by True KILLED by the principal-8 check; gate weakened to accept any non-8 caller KILLED by the authority-caller check; docs updated (I-1, rights reach Frontend only, monotone clock, no grant-level revocation open); native CPU rebuild started
 2026-11-05T05:31:11Z	implementer	native CPU rebuild rc 0 (2m42s), run --gpu off rc 0: 1014 PASS, byte-identical to tests-js.txt (sha256 e07942b33808774a01ebf82f6a1a2396513088b893b43eeb3641831a87138928); JS 1014 PASS 0 FAIL; PROOF ALL PROOFS CHECK (12 laws); OpenSpec strict 44 passed; traceability GI-002/GI-004/GI-007 and evidence updated
 2026-11-05T05:32:02Z	implementer	final fix round section appended to task-7-report.md (pins table now 1014); committing
+2026-11-05T05:32:46Z	controller	final fix round reported; scoped re-review dispatched
+2026-11-05T05:35:07Z	controller	final re-review ready; merging to master
