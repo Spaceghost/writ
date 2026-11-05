@@ -569,6 +569,12 @@ f1b47312ebb1b4a72a925aee4b6df4b96b7c3ba7957533ddc04d7ecdc4ba4280  openspec/chang
 f53a9ff0feaca7a67bc4a6c9885a7ac415c1d9bfdf8e02361134905dff09a7a4  openspec/changes/archive/2026-11-04-add-bend-runtime-host-profile/proposal.md
 35de29533213625e8c0fcce9651d4298c67141d77438c8a7d0d9376ca7992028  openspec/changes/archive/2026-11-04-add-bend-runtime-host-profile/specs/bend-runtime-host-profile/spec.md
 2f7378a8680dcbf711431df8c67736286bd28fce83b66113386a6adbc9876b3d  openspec/changes/archive/2026-11-04-add-bend-runtime-host-profile/tasks.md
+d8a62913086bea5b7cc7b1850489b5f6c196e9cd37de49af0a2dc66e3bb54fb1  openspec/changes/archive/2026-11-04-add-genode-bend-component/.openspec.yaml
+5eedac280f68c8537eccb69ae212c5f472037c3fe7ae62e27a72d6c85ae953ec  openspec/changes/archive/2026-11-04-add-genode-bend-component/design.md
+38fbea5bd6352b8a0119daf1e5118217cf906eae49ae0a9fc2b184e71f772058  openspec/changes/archive/2026-11-04-add-genode-bend-component/explainer.html
+6c5a5af02d6c7017ccf26a8ba2a416aa1e42e748ad55d488b421ff2dd7487ebc  openspec/changes/archive/2026-11-04-add-genode-bend-component/proposal.md
+7c52f73a68a00dc07655c48a690652a8536a73a75c316b75514049aad2962fbd  openspec/changes/archive/2026-11-04-add-genode-bend-component/specs/genode-bend-component/spec.md
+0e2b8fd0bea15ec663475ed11075f31d33ad638fb49ca0fb98f1d2c513a271ef  openspec/changes/archive/2026-11-04-add-genode-bend-component/tasks.md
 769c162f33810a24df1782196f3935bd0da6bef250953beb0b6d940a9b855a83  openspec/changes/archive/2026-11-04-add-genode-capability-adoption/.openspec.yaml
 b707abde21b2c319f5133187b2a470f6c3dc51412956e30cab88f750a3be5d8d  openspec/changes/archive/2026-11-04-add-genode-capability-adoption/capability-shape.html
 1b3add9277bbfcf3ec71ac287ea6505bb7668ac507b24e47e0fb045f9f1147e9  openspec/changes/archive/2026-11-04-add-genode-capability-adoption/design.md
@@ -606,6 +612,7 @@ d7b29b24f243fe7b9be8d9e862bcf8fb299a15848ba96d2c260efcd41746431f  openspec/specs
 8e284bafd8aa02e6a93988a4571e9630a67c4b33378502e3d5796ebc5c985dec  openspec/specs/constraint-solving/spec.md
 02e4f2f0a3f74bc38eed4184f142c6272bf3e0ef745081149d50d32c655db989  openspec/specs/data-model/spec.md
 27cc90329922b407fb002438a569b112ef981adc090bf1782f3bf602dcf56fe2  openspec/specs/decentralized-labels/spec.md
+11322f6de62aeddecf1d90b17c741352c836f62bfe1cd6ce4525ae751f25b94f  openspec/specs/genode-bend-component/spec.md
 b15d5b2ec3a0a6f4d04e87d0f711220cc3ad2cb5800d2dac31910b3dcdfb55f3  openspec/specs/genode-capability-adoption/spec.md
 dcf6e98e16475101b2745491db4b041b9dd3a90541e1745c8e75faa89616a012  openspec/specs/native-host-canary-mounts/spec.md
 4c20c37daa24e4595b5b2d71b0a1a1d73e4203e93e76d3609732004548114bbc  openspec/specs/native-snapshot-staging/spec.md
