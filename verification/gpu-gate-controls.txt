@@ -1,0 +1,942 @@
+Hardware-evidence gate and negative controls (GV-001 "Require observed physical execution", GV-004 "Bind evidence to reproducible inputs and environment"; Task 2)
+Bend version: bend 2.0.39 (driver sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+Compiler: clang version 23.1.1 at /usr/bin/clang; NVRTC 13.4.92; the binary is Task 1's build (verification/gpu-toolchain.txt), re-hashed below and not rebuilt
+Host: Linux 7.2.9-1-MANJARO x86_64, 32 online CPUs; 1-minute load average 43.70 to 91.65 in the quoted `uptime` and `load_avg` lines below; the display and other graphics and compute clients share the GPU; every wall time is indicative only
+GPU: NVIDIA GeForce RTX 4090, GPU-0188dad3-4d11-4254-3a0d-50e3808bf464, bus 00000000:0C:00.0, driver 615.71.09
+Date: 2026-11-05 03:18 to 03:24 UTC (2026-11-04 CST)
+Environment: export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:/opt/cuda/bin:$PATH"; export BEND_NO_TELEMETRY=1; export CUDA_HOME=/opt/cuda. CUDA_VISIBLE_DEVICES unset except in controls (c), (c2), (d), (d2), whose command lines set it (empty in (c) and (d), the invalid id 99 in (c2) and (d2)); every record states it. BENDRTS unset (observe.sh refuses a non-empty BENDRTS). Commands run from the worktree root.
+Execution: device runs, observed: the observed passes of (a), (a-long), and also of (c) and (d), where compute-sanitizer removed the empty CUDA_VISIBLE_DEVICES and the target ran on the device (500 bend_dev launches each; see the finding in Result). The observed pass of (e) opened the device and launched nothing (0 launches, ERROR SUMMARY 0). Device runs, not individually observed for launches: the plain passes of (a), (a-long), and of (e) (process listed by --query-compute-apps). CPU runs: (b) both passes (--gpu off; no CUDA call instrumented), the plain passes of (c) and (c2) and the observed pass of (c2) (cuInit fails, silent fallback), and (d), (d2) plain and (d2) observed exit 1 before any work (cuInit failed: CUDA_ERROR_NO_DEVICE). (f), (g), (g2), (h) are record or log edits checked by check-record.sh; nothing ran. Library tests, proofs and Writ policy code were not run or changed; nothing here is a corpus, solver, label or transfer result.
+
+Harness: scripts/gpu-validation/observe.sh and scripts/gpu-validation/check-record.sh (POSIX sh; their header comments give the record format, the pair, and the gate rule). Each observe.sh call runs the workload twice with identical inputs, a plain pass (samplers, compute-apps polls, wall time) and an observed pass (compute-sanitizer --print-session-details --log-file LOG --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.*), writes both records to RUN/record.txt between `--- record v1 ---` and `--- end record ---`, and exits with check-record.sh's status: 0 gate PASS, 1 gate FAIL (record says FAIL), 2 INCOMPLETE or MALFORMED, 3 GATE MISMATCH (a record's gate claim disagrees with the evidence it names). The gate's verdict is re-derived from the run-local evidence files (re-hashed against the record), never read from the record. Run directories: ../writ-build/physical-gpu/runs/task2/<control>.
+
+## Build
+No build in this task. The probe, the harness, and Task 1's build outputs, hashed at the start of the capture (the records below quote the same hashes in source_sha256, emitted_c_sha256, binary_sha256 and gpu_program_sha256):
+
+$ uptime
+ 21:18:27 up 3 days, 51 min,  1 user,  load average: 43.70, 41.45, 50.90
+[exit status: 0; stderr empty]
+
+$ sha256sum scripts/gpu-validation/Bang.bend scripts/gpu-validation/observe.sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/bang.c ../writ-build/physical-gpu/bang ../writ-build/physical-gpu/bang.gpu
+5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570  scripts/gpu-validation/Bang.bend
+efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac  scripts/gpu-validation/observe.sh
+7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab  scripts/gpu-validation/check-record.sh
+dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  ../writ-build/physical-gpu/bang.c
+fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  ../writ-build/physical-gpu/bang
+7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  ../writ-build/physical-gpu/bang.gpu
+[exit status: 0; stderr empty]
+
+## Run
+
+### control (a)
+$ GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/a timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1031250 seen=17 polls=19 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a/plain.apps log_sha256=d8c29d4b5782a1bf4e2aeb88f546a3edd62651665ab267ebce0571b5be9c5202
+pmon_max_sm: 13 pid=1031250 rows=5 numeric=2 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a/plain.pmon log_sha256=83af0c7148bd416387efeec36de58a4b7bcbb7a314f02ae59aa0a933e5dba596
+util_samples: 37 interval_ms=200 scope=global(display shares the GPU) baseline=20%,6130MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a/plain.util log_sha256=4f87ebc6a39445333a106e154d02a307cd725bc8ff2a76dc7c19daf712115004
+wall_ms: 6463
+load_avg: 21:18:30 up 3 days, 51 min,  1 user,  load average: 44.92, 41.74, 50.94
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a/observed.sanitizer.log log_sha256=f88e9f2a71d6c493e0ce1eebd088e2744d1737f4fa8c32f6eb02e8a2e3b30ea4
+bend_dev_launches: 500
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 7861 (under the observer)
+load_avg: 21:18:38 up 3 days, 51 min,  1 user,  load average: 50.92, 43.15, 51.30
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty]
+
+### control (a-long)
+$ GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/a-long timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 600
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a-long
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=600
+exit_status: 0
+stdout_sha256: dbd94ff909e5bfb3f113ee221d28c72d61930bf6574cd71a3099af90be3cd311
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1040452 seen=72 polls=74 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a-long/plain.apps log_sha256=27fce4b200b6dfc1f23ecd69f1a532b0b1e7aa08d6297b1daa75cd47cad8de00
+pmon_max_sm: 33 pid=1040452 rows=18 numeric=4 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a-long/plain.pmon log_sha256=14a8bba041e167f2c4dc701edfdfcb3483ac7fe1d64d148ebd5bfb9ca2b6e66f
+util_samples: 123 interval_ms=200 scope=global(display shares the GPU) baseline=22%,6102MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a-long/plain.util log_sha256=455fca2715ea0baf32733093e9b13c81121125ecc1195c1d499e854f82a8f1e7
+wall_ms: 23936
+load_avg: 21:18:56 up 3 days, 51 min,  1 user,  load average: 64.67, 46.52, 52.27
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=600
+exit_status: 0
+stdout_sha256: dbd94ff909e5bfb3f113ee221d28c72d61930bf6574cd71a3099af90be3cd311
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/a-long/observed.sanitizer.log log_sha256=e4944794143dcbb04703d8bcdc06d3ee18c98a80000db6d959bb7339e84a1062
+bend_dev_launches: 3000
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 9238 (under the observer)
+load_avg: 21:19:21 up 3 days, 52 min,  1 user,  load average: 74.71, 50.26, 53.35
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: PASS
+--- end record ---
+gate: PASS
+[exit status: 0; stderr empty]
+
+### control (b)
+$ GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/b timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang off 100
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/b
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu off -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=off args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1054282 seen=0 polls=12 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/b/plain.apps log_sha256=9074913ff1718e67cff76355f159c7941ee776dc551150b0728a57df4ae306df
+pmon_max_sm: - pid=1054282 rows=0 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/b/plain.pmon log_sha256=5ef866438d6322b516b74afb952b3b1f50289f9ca3c8382ad315df8bfc774586
+util_samples: 22 interval_ms=200 scope=global(display shares the GPU) baseline=27%,6086MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/b/plain.util log_sha256=633c3a3dad99d8df3ab7bb051404ab3e73a36ba6c5d4d944d9c321746be7c3f9
+wall_ms: 3283
+load_avg: 21:19:33 up 3 days, 52 min,  1 user,  load average: 64.09, 49.13, 52.93
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu off -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1054282' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu off -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=off args=100
+exit_status: 255
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/b/observed.sanitizer.log log_sha256=84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269
+bend_dev_launches: 0
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 1318 (under the observer)
+load_avg: 21:19:38 up 3 days, 52 min,  1 user,  load average: 61.36, 48.81, 52.81
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu off -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1054282' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu off -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1054282' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+### control (c)
+$ CUDA_VISIBLE_DEVICES= GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/c timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang default 100
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set, empty
+rts_options: none (no +RTS block; BENDRTS unset)
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=default args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1060879 seen=0 polls=13 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c/plain.apps log_sha256=f4b1af4d02a1c371a58c41198054e6483ca8bacaf25b3b4767f51a0942955d1f
+pmon_max_sm: - pid=1060879 rows=0 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c/plain.pmon log_sha256=fbb06b9a5c347aac99d99a9c0f8022c17b51f276e30ebd91ac4426fa94eeb4ce
+util_samples: 27 interval_ms=200 scope=global(display shares the GPU) baseline=8%,6094MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c/plain.util log_sha256=5affa8469a60c494c7dfaa33f8d74e40365703c1252b6319ec471a7713dd650d
+wall_ms: 4245
+load_avg: 21:19:42 up 3 days, 52 min,  1 user,  load average: 61.36, 48.81, 52.81
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1060879' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set, empty
+rts_options: none (no +RTS block; BENDRTS unset)
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=default args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=set-empty target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c/observed.sanitizer.log log_sha256=e4310e9219f9e9fb37a8f5d9e94d1d147f4930608cd95061e5a85d53772baa63
+bend_dev_launches: 500
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 4606 (under the observer)
+load_avg: 21:19:47 up 3 days, 52 min,  1 user,  load average: 63.90, 49.54, 53.03
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1060879' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1060879' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+### control (c2)
+$ CUDA_VISIBLE_DEVICES=99 GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/c2 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang default 100
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c2
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set: 99
+rts_options: none (no +RTS block; BENDRTS unset)
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=default args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1090061 seen=0 polls=31 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c2/plain.apps log_sha256=2e3bf5b4f32905fe6a95df64c9fc58c78c07c3d49182653817e7b12976728da7
+pmon_max_sm: - pid=1090061 rows=0 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c2/plain.pmon log_sha256=9f48ea9b82992208f45bf13fe9c8374078f1180675f6ebf1bfe243f292e07da0
+util_samples: 69 interval_ms=200 scope=global(display shares the GPU) baseline=43%,6056MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c2/plain.util log_sha256=196599541c0f4c49a6169e4249936bdcfbbfe04faece835594abac1fbdbb9059
+wall_ms: 13015
+load_avg: 21:20:05 up 3 days, 52 min,  1 user,  load average: 71.24, 52.10, 53.79
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1090061' never listed by --query-compute-apps; samplers: run of 13015 ms has no per-PID SM sample above 0)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set: 99
+rts_options: none (no +RTS block; BENDRTS unset)
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=default args=100
+exit_status: 255
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=set:99 target_cuda_visible_devices=set:99 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/c2/observed.sanitizer.log log_sha256=84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269
+bend_dev_launches: 0
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 9055 (under the observer)
+load_avg: 21:20:19 up 3 days, 53 min,  1 user,  load average: 86.30, 56.44, 55.19
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1090061' never listed by --query-compute-apps; samplers: run of 13015 ms has no per-PID SM sample above 0)
+--- end record ---
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1090061' never listed by --query-compute-apps; samplers: run of 13015 ms has no per-PID SM sample above 0)
+[exit status: 1; stderr empty]
+
+### control (d)
+$ CUDA_VISIBLE_DEVICES= GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/d timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set, empty
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=100
+exit_status: 1
+stdout_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+stderr: bend: cuInit failed: CUDA_ERROR_NO_DEVICE
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1107653 seen=0 polls=1 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d/plain.apps log_sha256=3c6e847549f28931f5f06edb7ae15b8503990924d7c25ca65ca5fbe69ad0937b
+pmon_max_sm: - pid=1107653 rows=0 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d/plain.pmon log_sha256=6a688354f7f8642fa9784b20763f1e1f8ff6c3d941c544f57ed38db584fe28ad
+util_samples: 7 interval_ms=200 scope=global(display shares the GPU) baseline=29%,6036MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d/plain.util log_sha256=2f2a2e9358367938d066e2f11159b8eec09a629d35b8b88aa1d6194b45aedac9
+wall_ms: 521
+load_avg: 21:20:42 up 3 days, 53 min,  1 user,  load average: 87.87, 58.76, 55.98
+correctness: PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (pair: stdout_sha256 differs between the observed and plain record; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1107653' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set, empty
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=100
+exit_status: 0
+stdout_sha256: ce736882421a8170130eeb777243e6384b18468f696847845462b0d75073512f
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=set-empty target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d/observed.sanitizer.log log_sha256=638ea9c674c341afcb8a1dd67405081697e4f1e0dbd252bbd7e058910597ea7c
+bend_dev_launches: 500
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 10233 (under the observer)
+load_avg: 21:20:44 up 3 days, 53 min,  1 user,  load average: 88.84, 59.45, 56.22
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (pair: stdout_sha256 differs between the observed and plain record; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1107653' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (pair: stdout_sha256 differs between the observed and plain record; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1107653' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+### control (d2)
+$ CUDA_VISIBLE_DEVICES=99 GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/d2 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d2
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set: 99
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=100
+exit_status: 1
+stdout_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+stderr: bend: cuInit failed: CUDA_ERROR_NO_DEVICE
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: no pid=1116766 seen=0 polls=1 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d2/plain.apps log_sha256=90c5c29e6b4ecd7504d4dceacb540a07cf03a3cbbbec40710f95e4e9f96e984b
+pmon_max_sm: - pid=1116766 rows=0 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d2/plain.pmon log_sha256=6f9340bf5bc2ba32d05414bb91bfdb5444ccabcc116e7275412e40f66d86fd1c
+util_samples: 6 interval_ms=200 scope=global(display shares the GPU) baseline=23%,5347MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d2/plain.util log_sha256=435d37fff2eb5ab649acfb8202d3aff8f7760521800d80849cbddc25a8df69bc
+wall_ms: 391
+load_avg: 21:21:04 up 3 days, 53 min,  1 user,  load average: 90.52, 61.85, 57.09
+correctness: PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (observed: exit_status 255; observed: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1116766' never listed by --query-compute-apps)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: set: 99
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=100
+exit_status: 255
+stdout_sha256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+stderr: bend: cuInit failed: CUDA_ERROR_NO_DEVICE
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=set:99 target_cuda_visible_devices=set:99 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/d2/observed.sanitizer.log log_sha256=84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269
+bend_dev_launches: 0
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 395 (under the observer)
+load_avg: 21:21:06 up 3 days, 53 min,  1 user,  load average: 90.52, 61.85, 57.09
+correctness: PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (observed: exit_status 255; observed: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1116766' never listed by --query-compute-apps)
+--- end record ---
+gate: FAIL (observed: exit_status 255; observed: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1116766' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+### control (e)
+$ GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/e timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 0
+run directory: /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/e
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=0
+exit_status: 0
+stdout_sha256: 07829c80c35175165df7081a541c3572a40841ca6d38fea2185f79cd3a387221
+stderr: empty
+observer: none (plain pass; launches are counted in the paired observed record)
+bend_dev_launches: not observed (plain pass)
+compute_app_seen: yes pid=1122408 seen=1 polls=3 interval_ms=200 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/e/plain.apps log_sha256=5965cfdfa8ee9b10594b568104fbe07cf3e67776d56d201bca75ab52b69650db
+pmon_max_sm: - pid=1122408 rows=1 numeric=0 interval_ms=1000 log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/e/plain.pmon log_sha256=428ff4bae6f43de4b45caf67f83725d0fb995ceefcfe8c54d3203aaf0676ff64
+util_samples: 11 interval_ms=200 scope=global(display shares the GPU) baseline=27%,5354MiB log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/e/plain.util log_sha256=c803740e2773d2555b255488054b2b022bb70592fd83c0edea1d085e2998589c
+wall_ms: 1177
+load_avg: 21:21:18 up 3 days, 54 min,  1 user,  load average: 91.65, 63.48, 57.70
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (launches: 0 bend_dev launches attributed to bang)
+--- end record ---
+--- record v1 ---
+record_version: gpu-validation-record v1
+lane_commit: 23b82c8e9cf5000e3b7d7d2fe127c61d55e08b90 (uncommitted: ?? scripts/gpu-validation/check-record.sh, ?? scripts/gpu-validation/observe.sh)
+source_sha256: scripts/gpu-validation/Bang.bend=5ff66256015086c56d8424edebb234b1d1dee91a1d846ae7c06e24e396179570 scripts/gpu-validation/observe.sh=efd08afbd28e4b396b04f5956cd947e0c0bfd7ce2751a119b11bb786ad01a8ac scripts/gpu-validation/check-record.sh=7d4df17bf05a75ffdd9dfa464ebceb08710ef719a6d924dac3238261dfcc88ab
+bend_version: bend 2.0.39 (driver /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend sha256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd)
+base: 3cd0b0944b11e15c4da5c9af2560e3c04f27d3d37027f1617899aeec17b499ce
+cc: /usr/bin/clang clang version 23.1.1 (the compiler the driver selects here; the build is bound by emitted_c_sha256 and binary_sha256)
+cuda_home: /opt/cuda
+nvrtc_version: 13.4.92 (/opt/cuda/targets/x86_64-linux/lib/libnvrtc.so.13.4.92, resolved by ldd for the binary)
+build_flags: driver cli_build, verbatim: const cpu = [ ...objc, "-std=c11", "-O3", file, "-lpthread", "-lm", ...libs, "-o", path3.resolve(bin) const gpu = mac ? ["-DBEND_METAL=1", ...cpu] : [ "-DBEND_CUDA=1", "-I" + cuda + "/include", "-L" + cuda + "/lib64", "-L" + cuda + "/lib", ...cpu, "-lcuda", "-lnvrtc" const steps = bangs ? [[cc, gpu], [path3.resolve(bin), ["+RTS", "--gpu-build"]]] : [[cc, cpu]];
+emitted_c_sha256: dc7f5730a166b8318b13fbd30117feb12d9cf2c9b15162487ec1e432493d3d6c  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.c
+binary_sha256: fccb498a92dad8519056134d629be004ccb3b98471f8fbf48101bd88577d0700  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang
+gpu_program_sha256: 7cf384e07fde15285cdc0ce82e7d4033258495511dd94d91c354ea037bb8b79d  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang.gpu
+gpu_arch: sm=89 (cuobjdump -elf of bang.gpu after its 8-byte header)
+driver_version: 615.71.09
+device_name: NVIDIA GeForce RTX 4090
+device_uuid: GPU-0188dad3-4d11-4254-3a0d-50e3808bf464
+device_bus: 00000000:0C:00.0
+cuda_visible_devices: unset
+rts_options: +RTS --gpu on -RTS
+threads: runtime default: cpu_count() (nproc 32)
+workload: probe=bang mode=on args=0
+exit_status: 0
+stdout_sha256: 07829c80c35175165df7081a541c3572a40841ca6d38fea2185f79cd3a387221
+stderr: empty
+observer: compute-sanitizer 2026.3.0.0 (build 38855100) (public-release) --print-session-details --dump-kernel-launches --print-limit 0 --kernel-name-exclude regex=.* caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log=/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/e/observed.sanitizer.log log_sha256=99a48f8c120f1ba72c392fee2cb4cc35d092f0b776e8c4c86d3459b618e0756d
+bend_dev_launches: 0
+compute_app_seen: not sampled (observed pass; the paired plain record samples)
+pmon_max_sm: not sampled (observed pass)
+util_samples: not sampled (observed pass)
+wall_ms: 956 (under the observer)
+load_avg: 21:21:20 up 3 days, 54 min,  1 user,  load average: 91.65, 63.48, 57.70
+correctness: PASS 1, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)
+gate: FAIL (launches: 0 bend_dev launches attributed to bang)
+--- end record ---
+gate: FAIL (launches: 0 bend_dev launches attributed to bang)
+[exit status: 1; stderr empty]
+
+### control (f)
+$ sed '/^driver_version:/d' ../writ-build/physical-gpu/runs/task2/a/record.txt > ../writ-build/physical-gpu/runs/task2/f-record.txt; grep -c '^driver_version:' ../writ-build/physical-gpu/runs/task2/f-record.txt; sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/f-record.txt
+0
+INCOMPLETE: missing driver_version (record 1)
+INCOMPLETE: missing driver_version (record 2)
+[exit status: 2; stderr empty]
+
+### control (g)
+$ mkdir -p ../writ-build/physical-gpu/runs/task2/g && cp ../writ-build/physical-gpu/runs/task2/a/plain.apps ../writ-build/physical-gpu/runs/task2/a/plain.pmon ../writ-build/physical-gpu/runs/task2/a/plain.util ../writ-build/physical-gpu/runs/task2/g/ && A=$(cd ../writ-build/physical-gpu/runs/task2/a && pwd) && G=$(cd ../writ-build/physical-gpu/runs/task2/g && pwd) && sed "s|$A/|$G/|g" ../writ-build/physical-gpu/runs/task2/a/record.txt > ../writ-build/physical-gpu/runs/task2/g/record.txt && ls ../writ-build/physical-gpu/runs/task2/g && grep -E '^(bend_dev_launches|gate):' ../writ-build/physical-gpu/runs/task2/g/record.txt && sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/g/record.txt
+plain.apps
+plain.pmon
+plain.util
+record.txt
+bend_dev_launches: not observed (plain pass)
+gate: PASS
+bend_dev_launches: 500
+gate: PASS
+gate: FAIL (observer: log /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/runs/task2/g/observed.sanitizer.log does not exist)
+GATE MISMATCH: record 1 says 'PASS', the evidence gives 'FAIL'
+GATE MISMATCH: record 2 says 'PASS', the evidence gives 'FAIL'
+[exit status: 3; stderr empty]
+
+### control (g2)
+$ sed -e 's/^bend_dev_launches: 0$/bend_dev_launches: 5/' -e 's/^gate: .*/gate: PASS/' ../writ-build/physical-gpu/runs/task2/e/record.txt > ../writ-build/physical-gpu/runs/task2/g2-record.txt && diff ../writ-build/physical-gpu/runs/task2/e/record.txt ../writ-build/physical-gpu/runs/task2/g2-record.txt; sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/g2-record.txt
+34c34
+< gate: FAIL (launches: 0 bend_dev launches attributed to bang)
+---
+> gate: PASS
+62c62
+< bend_dev_launches: 0
+---
+> bend_dev_launches: 5
+69c69
+< gate: FAIL (launches: 0 bend_dev launches attributed to bang)
+---
+> gate: PASS
+gate: FAIL (observer: record claims bend_dev_launches '5', log shows 0; launches: 0 bend_dev launches attributed to bang)
+GATE MISMATCH: record 1 says 'PASS', the evidence gives 'FAIL'
+GATE MISMATCH: record 2 says 'PASS', the evidence gives 'FAIL'
+[exit status: 3; stderr empty]
+
+$ uptime
+ 21:21:33 up 3 days, 54 min,  1 user,  load average: 86.81, 63.81, 57.90
+[exit status: 0; stderr empty]
+
+## Run (supporting facts, captured after the controls)
+
+### What the sanitizer's target sees of CUDA_VISIBLE_DEVICES
+$ CUDA_VISIBLE_DEVICES= sh -c 'if [ "${CUDA_VISIBLE_DEVICES+set}" != set ]; then echo unset; elif [ -z "$CUDA_VISIBLE_DEVICES" ]; then echo set-empty; else echo "set:$CUDA_VISIBLE_DEVICES"; fi'
+set-empty
+[exit status: 0; stderr empty]
+
+$ CUDA_VISIBLE_DEVICES= timeout 120 compute-sanitizer --print-limit 0 sh -c 'if [ "${CUDA_VISIBLE_DEVICES+set}" != set ]; then echo unset; elif [ -z "$CUDA_VISIBLE_DEVICES" ]; then echo set-empty; else echo "set:$CUDA_VISIBLE_DEVICES"; fi'
+========= COMPUTE-SANITIZER
+unset
+========= Error: Target application terminated before first instrumented API call
+[exit status: 255; stderr empty]
+
+$ CUDA_VISIBLE_DEVICES=99 timeout 120 compute-sanitizer --print-limit 0 sh -c 'if [ "${CUDA_VISIBLE_DEVICES+set}" != set ]; then echo unset; elif [ -z "$CUDA_VISIBLE_DEVICES" ]; then echo set-empty; else echo "set:$CUDA_VISIBLE_DEVICES"; fi'
+========= COMPUTE-SANITIZER
+set:99
+========= Error: Target application terminated before first instrumented API call
+[exit status: 255; stderr empty]
+
+### Sanitizer log facts per control (the gate recounts these)
+$ L=../writ-build/physical-gpu/runs/task2/a/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+f88e9f2a71d6c493e0ce1eebd088e2744d1737f4fa8c32f6eb02e8a2e3b30ea4  ../writ-build/physical-gpu/runs/task2/a/observed.sanitizer.log
+========= Target application:     /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 100
+========= Display Driver version: 615.71.09
+========= ERROR SUMMARY: 500 errors
+bend_dev launches attributed to bang: 500; kernel lines: 500; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/a-long/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+e4944794143dcbb04703d8bcdc06d3ee18c98a80000db6d959bb7339e84a1062  ../writ-build/physical-gpu/runs/task2/a-long/observed.sanitizer.log
+========= Target application:     /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 600
+========= Display Driver version: 615.71.09
+========= ERROR SUMMARY: 3000 errors
+bend_dev launches attributed to bang: 3000; kernel lines: 3000; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/b/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269  ../writ-build/physical-gpu/runs/task2/b/observed.sanitizer.log
+========= Error: Target application terminated before first instrumented API call
+bend_dev launches attributed to bang: 0; kernel lines: 0; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/c/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+e4310e9219f9e9fb37a8f5d9e94d1d147f4930608cd95061e5a85d53772baa63  ../writ-build/physical-gpu/runs/task2/c/observed.sanitizer.log
+========= Target application:     /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang 100
+========= Display Driver version: 615.71.09
+========= ERROR SUMMARY: 500 errors
+bend_dev launches attributed to bang: 500; kernel lines: 500; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/c2/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269  ../writ-build/physical-gpu/runs/task2/c2/observed.sanitizer.log
+========= Error: Target application terminated before first instrumented API call
+bend_dev launches attributed to bang: 0; kernel lines: 0; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/d/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+638ea9c674c341afcb8a1dd67405081697e4f1e0dbd252bbd7e058910597ea7c  ../writ-build/physical-gpu/runs/task2/d/observed.sanitizer.log
+========= Target application:     /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 100
+========= Display Driver version: 615.71.09
+========= ERROR SUMMARY: 500 errors
+bend_dev launches attributed to bang: 500; kernel lines: 500; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/d2/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+84b7f31aaa7fe67c00ded8172d7a3ffb016ee0ccf157978cb34e037ef9e25269  ../writ-build/physical-gpu/runs/task2/d2/observed.sanitizer.log
+========= Error: Target application terminated before first instrumented API call
+bend_dev launches attributed to bang: 0; kernel lines: 0; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+$ L=../writ-build/physical-gpu/runs/task2/e/observed.sanitizer.log; sha256sum $L; grep -E '^========= (Target application|Display Driver version|ERROR SUMMARY|Error)' $L; echo "bend_dev launches attributed to bang: $(sh scripts/gpu-validation/check-record.sh --count-launches $L bang); kernel lines: $(grep -c 'Kernel:' $L); other kernels: $(grep 'Kernel:' $L | grep -vc 'Kernel: bend_dev'); truncation lines: $(grep -c 'were not printed' $L)"
+99a48f8c120f1ba72c392fee2cb4cc35d092f0b776e8c4c86d3459b618e0756d  ../writ-build/physical-gpu/runs/task2/e/observed.sanitizer.log
+========= Target application:     /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 0
+========= Display Driver version: 615.71.09
+========= ERROR SUMMARY: 0 errors
+bend_dev launches attributed to bang: 0; kernel lines: 0; other kernels: 0; truncation lines: 0
+[exit status: 0; stderr empty]
+
+### Plain-pass stdout and stderr per control
+$ cat ../writ-build/physical-gpu/runs/task2/a/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/a/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/a/observed.stdout
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+--- stderr:
+--- observed stdout:
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/a-long/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/a-long/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/a-long/observed.stdout
+rounds: 600, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3764679844
+checksum (no bang): 3764679844
+PASS bang checksum equals the no-bang checksum
+--- stderr:
+--- observed stdout:
+rounds: 600, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3764679844
+checksum (no bang): 3764679844
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/b/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/b/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/b/observed.stdout
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+--- stderr:
+--- observed stdout:
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/c/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/c/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/c/observed.stdout
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+--- stderr:
+--- observed stdout:
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/c2/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/c2/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/c2/observed.stdout
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+--- stderr:
+--- observed stdout:
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/d/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/d/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/d/observed.stdout
+--- stderr:
+bend: cuInit failed: CUDA_ERROR_NO_DEVICE
+--- observed stdout:
+rounds: 100, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 3676560414
+checksum (no bang): 3676560414
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/d2/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/d2/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/d2/observed.stdout
+--- stderr:
+bend: cuInit failed: CUDA_ERROR_NO_DEVICE
+--- observed stdout:
+[exit status: 0; stderr empty]
+
+$ cat ../writ-build/physical-gpu/runs/task2/e/plain.stdout; echo '--- stderr:'; cat ../writ-build/physical-gpu/runs/task2/e/plain.stderr; echo '--- observed stdout:'; cat ../writ-build/physical-gpu/runs/task2/e/observed.stdout
+rounds: 0, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 0
+checksum (no bang): 0
+PASS bang checksum equals the no-bang checksum
+--- stderr:
+--- observed stdout:
+rounds: 0, leaves per round: 16384, leaf steps: 4096
+checksum (bang): 0
+checksum (no bang): 0
+PASS bang checksum equals the no-bang checksum
+[exit status: 0; stderr empty]
+
+### Re-check of every record file
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/a/record.txt
+gate: PASS
+[exit status: 0; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/a-long/record.txt
+gate: PASS
+[exit status: 0; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/b/record.txt
+gate: FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu off -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1054282' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/c/record.txt
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1060879' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/c2/record.txt
+gate: FAIL (mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device (--gpu on or a size is required); observed: exit_status 255; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1090061' never listed by --query-compute-apps; samplers: run of 13015 ms has no per-PID SM sample above 0)
+[exit status: 1; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/d/record.txt
+gate: FAIL (pair: stdout_sha256 differs between the observed and plain record; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced); compute_app_seen: probe pid '1107653' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/d2/record.txt
+gate: FAIL (observed: exit_status 255; observed: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; plain: exit_status 1; plain: correctness 'PASS 0, FAIL 0 (lines beginning PASS/FAIL in the probe stdout)' is not all PASS; observer: log target '' is not '/mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-build/physical-gpu/bang +RTS --gpu on -RTS 100'; observer: no CUDA API call was instrumented; observer: sanitizer did not finish (no ERROR SUMMARY); observer: log driver '' differs from driver_version; launches: 0 bend_dev launches attributed to bang; compute_app_seen: probe pid '1116766' never listed by --query-compute-apps)
+[exit status: 1; stderr empty]
+
+$ sh scripts/gpu-validation/check-record.sh ../writ-build/physical-gpu/runs/task2/e/record.txt
+gate: FAIL (launches: 0 bend_dev launches attributed to bang)
+[exit status: 1; stderr empty]
+
+## Run (truncation control, captured last)
+
+### control (h): a truncated sanitizer log, re-hashed into (a)'s records
+$ rm -rf ../writ-build/physical-gpu/runs/task2/h && cp -r ../writ-build/physical-gpu/runs/task2/a ../writ-build/physical-gpu/runs/task2/h && A=$(cd ../writ-build/physical-gpu/runs/task2/a && pwd) && H=$(cd ../writ-build/physical-gpu/runs/task2/h && pwd) && sed -i 's/^========= ERROR SUMMARY: 500 errors$/========= 400 errors were not printed\n&/' $H/observed.sanitizer.log && tail -2 $H/observed.sanitizer.log && old=$(sha256sum $A/observed.sanitizer.log | cut -d ' ' -f 1) && new=$(sha256sum $H/observed.sanitizer.log | cut -d ' ' -f 1) && sed -e "s|$A/|$H/|g" -e "s|log_sha256=$old|log_sha256=$new|" $A/record.txt > $H/record.txt && grep -c "log_sha256=$new" $H/record.txt && sh scripts/gpu-validation/check-record.sh $H/record.txt
+========= 400 errors were not printed
+========= ERROR SUMMARY: 500 errors
+1
+gate: FAIL (observer: sanitizer output truncated (were not printed))
+GATE MISMATCH: record 1 says 'PASS', the evidence gives 'FAIL'
+GATE MISMATCH: record 2 says 'PASS', the evidence gives 'FAIL'
+[exit status: 3; stderr empty]
+
+## Result
+
+| Control | Command (MODE ARGS; environment) | Plain exit | Observed exit | Correctness (plain / observed) | bend_dev launches (recounted) | compute_app_seen | check-record.sh | Gate |
+|---|---|---|---|---|---|---|---|---|
+| (a) | on 100 | 0 | 0 | PASS 1 / PASS 1 | 500 | yes (17 of 19 polls) | exit 0 | PASS |
+| (a-long) | on 600 (plain 23.9 s, so the utilisation rule applies) | 0 | 0 | PASS 1 / PASS 1 | 3000 | yes (72 of 74 polls); pmon max SM 33 (4 of 18 rows numeric); 123 utilisation samples | exit 0 | PASS |
+| (b) | off 100 | 0 | 255 (sanitizer: no CUDA API call) | PASS 1 / PASS 1 | 0 | no | exit 1 | FAIL |
+| (c) | default 100; CUDA_VISIBLE_DEVICES= | 0 | 0 | PASS 1 / PASS 1 | 500 in the observed pass (sanitizer dropped the empty value); plain pass ran on the CPU | no | exit 1 | FAIL |
+| (c2) | default 100; CUDA_VISIBLE_DEVICES=99 | 0 | 255 (no CUDA API call instrumented) | PASS 1 / PASS 1 | 0 | no | exit 1 | FAIL |
+| (d) | on 100; CUDA_VISIBLE_DEVICES= | 1, `bend: cuInit failed: CUDA_ERROR_NO_DEVICE` | 0 (device visible to the sanitizer's target) | PASS 0 / PASS 1 | 500 in the observed pass | no | exit 1 | FAIL |
+| (d2) | on 100; CUDA_VISIBLE_DEVICES=99 | 1, `bend: cuInit failed: CUDA_ERROR_NO_DEVICE` | 255, same stderr | PASS 0 / PASS 0 | 0 | no | exit 1 | FAIL |
+| (e) | on 0 (no bang reached) | 0 | 0 (ERROR SUMMARY: 0 errors; CUDA calls instrumented) | PASS 1 / PASS 1 | 0 | yes (1 of 3 polls: the context was opened) | exit 1 | FAIL |
+| (f) | (a)'s record with every driver_version line deleted | - | - | - | - | - | exit 2, `INCOMPLETE: missing driver_version (record 1)` and `(record 2)` | INCOMPLETE |
+| (g) | (a)'s records copied unchanged (gate: PASS, bend_dev_launches: 500) into a directory without the sanitizer log | - | - | - | log absent | - | exit 3, `gate: FAIL (observer: log .../g/observed.sanitizer.log does not exist)`, GATE MISMATCH for both records | FAIL |
+| (g2) | (e)'s records with `bend_dev_launches: 5` and `gate: PASS` written in; the real zero-launch log kept | - | - | - | record claims 5, log shows 0 | - | exit 3, `gate: FAIL (observer: record claims bend_dev_launches '5', log shows 0; launches: 0 ...)`, GATE MISMATCH | FAIL |
+| (h) | (a)'s records and log, with a `400 errors were not printed` line inserted into the log and the new log hash written into the record | - | - | - | - | - | exit 3, `gate: FAIL (observer: sanitizer output truncated (were not printed))`, GATE MISMATCH | FAIL |
+
+Only (a) and (a-long), the two `--gpu on` workloads with observed launches, pass. Each refused control's full reason list is its `gate:` line above.
+
+GPU evidence: (a) and (a-long) are observed physical execution of the bang probe on the RTX 4090: 500 and 3000 bend_dev launches attributed to the binary by the sanitizer's host backtraces, the process listed by --query-compute-apps in the plain pass, and identical stdout in both passes. The launch count is recorded, not gated: the gate requires at least one.
+
+Correctness, separately: every run that reached the probe's comparison printed PASS (bang checksum equal to the no-bang checksum), on the device and on the CPU; (d) plain, (d2) plain and (d2) observed stopped before computing.
+
+(c) is the silent fallback: no --gpu option, the device hidden, exit 0, checksum PASS, computed on the CPU (plain pass: compute_app_seen no, no pmon row for the PID). The gate refuses it: `mode: rts_options 'none (no +RTS block; BENDRTS unset)' requests no device`. (c2) shows the same with an invalid id.
+
+(d) and (d2) are the runtime's own refusal: `bend: cuInit failed: CUDA_ERROR_NO_DEVICE`, exit 1, from the plain pass (the runtime's `"%s failed: %s"` with why = cuInit; verification/gpu-toolchain.txt quotes the driver lines). The runtime fails when the device is unavailable and `--gpu on` is given; this is not a finding against GV-001.
+
+Finding (observer): compute-sanitizer 2026.3.0.0 removes an empty CUDA_VISIBLE_DEVICES from its target's environment (the probe above: `set-empty` without the sanitizer, `unset` under it), while it passes a non-empty value through (`set:99`). In (c) and (d) the observed pass therefore ran on the device with 500 launches while the plain pass ran hidden. The gate refuses both pairs anyway (plain exit 1 and stdout differing in (d); mode in (c)), and observe.sh now probes what the sanitizer's target sees and records it as `target_cuda_visible_devices` beside `caller_cuda_visible_devices` in the observer field; check-record.sh fails any pair where they differ (`observer: target saw CUDA_VISIBLE_DEVICES 'unset', caller set 'set-empty' (environment not reproduced)`). Later tasks that hide the device should use an invalid id, not the empty string, when the observed pass must see the same environment.
+
+Observed-pass exit status is compute-sanitizer's: 255 whenever the target makes no instrumented CUDA call ((b), and (c2), (d2), where cuInit fails before the sanitizer attaches), even when the probe itself exited 0 and printed PASS ((b), (c2)). The plain pass carries the probe's own exit status.
+
+## Limits
+- One probe (bang) and one binary. No Writ GPU path (Gpu.sweep, Dlm.batch, Transfer.batch) was run; those are Tasks 3 onward.
+- A size argument (`--gpu 8GB`) was not run; the gate's mode rule accepts it by pattern only.
+- The (a-long) pass shows the 10 s utilisation rule satisfied once; no long run was shown failing it. pmon remained sparse (4 of 18 rows numeric) on the shared GPU.
+- (e) uses repeat 0 of the GPU-built bang; no separate probe without a GPU call was built (no new .bend file was in scope).
+- The evidence files are unsigned run-local files. The gate catches records whose claims disagree with the evidence they name, missing evidence, truncated sanitizer output, a different target command line, and an environment the observer did not reproduce; it does not resist a forger who rewrites a log and its record consistently. binary_sha256 is hashed at run time and not re-hashed by check-record.sh, so a later rebuild does not invalidate an old record.
+- device_name, device_uuid, device_bus and driver_version come from `nvidia-smi -i 0`, which ignores CUDA_VISIBLE_DEVICES; on this one-GPU host GPU 0 is the device cuDeviceGet(0) opens when it is visible. A multi-GPU host would need the mapping recorded.
+- `cc` is the compiler the driver selects in this environment, not a fact read from the binary; the build is bound by emitted_c_sha256 and binary_sha256.
+- lane_commit in every record is 23b82c8 with observe.sh and check-record.sh uncommitted; their sha256 in source_sha256 (efd08afb..., 7d4df17b...) equal the committed files.
+- The host was loaded (1-minute load average up to 91.65) and the display shares the GPU; wall times are indicative only and are not performance results.
+- gdb fallback, Nsight (absent), and device memory checking (all kernels excluded by design) not exercised. `bend Tests.bend` and `bend PROOF.bend` were not run: no .bend file or policy code changed.

@@ -17,3 +17,25 @@
 2026-11-05T03:07:59Z	implementer	fix round 1 started: read task-1-review.md; quoted rebuild and -lcuda grep
 2026-11-05T03:08:34Z	implementer	fix round 1: evidence and report updated (load average, quoted rebuild, Execution line, -lcuda grep); committing
 2026-11-05T03:08:49Z	controller	task 1 complete; task 2 dispatched (run record, gate, negative controls)
+2026-11-05T03:13:13Z	implementer	task 2 started: read brief, plan constraints, task 1 report and toolchain record; driver strings show default gpu=-1 (silent fallback) and BENDRTS env options; writing observe.sh and check-record.sh
+2026-11-05T03:18:27Z	implementer	control (a) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/a timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+2026-11-05T03:18:52Z	implementer	control (a) finished
+2026-11-05T03:18:52Z	implementer	control (a-long) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/a-long timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 600
+2026-11-05T03:19:32Z	implementer	control (a-long) finished
+2026-11-05T03:19:32Z	implementer	control (b) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/b timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang off 100
+2026-11-05T03:19:40Z	implementer	control (b) finished
+2026-11-05T03:19:40Z	implementer	control (c) running: CUDA_VISIBLE_DEVICES= GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/c timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang default 100
+2026-11-05T03:20:01Z	implementer	control (c) finished
+2026-11-05T03:20:01Z	implementer	control (c2) running: CUDA_VISIBLE_DEVICES=99 GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/c2 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang default 100
+2026-11-05T03:20:36Z	implementer	control (c2) finished
+2026-11-05T03:20:36Z	implementer	control (d) running: CUDA_VISIBLE_DEVICES= GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/d timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+2026-11-05T03:21:01Z	implementer	control (d) finished
+2026-11-05T03:21:01Z	implementer	control (d2) running: CUDA_VISIBLE_DEVICES=99 GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/d2 timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 100
+2026-11-05T03:21:14Z	implementer	control (d2) finished
+2026-11-05T03:21:14Z	implementer	control (e) running: GV_SOURCES=scripts/gpu-validation/Bang.bend GV_RUN_DIR=../writ-build/physical-gpu/runs/task2/e timeout 1300 sh scripts/gpu-validation/observe.sh ../writ-build/physical-gpu/bang on 0
+2026-11-05T03:21:28Z	implementer	control (e) finished
+2026-11-05T03:21:28Z	implementer	control (f) and (g) record edits
+2026-11-05T03:21:33Z	implementer	controls done
+2026-11-05T03:22:49Z	implementer	controls captured (a, a-long, b, c, c2, d, d2, e, f, g, g2); finding: compute-sanitizer drops an empty CUDA_VISIBLE_DEVICES from its target; writing verification/gpu-gate-controls.txt
+2026-11-05T03:24:12Z	implementer	control (h) truncated-log check captured; evidence file written; writing task-2-report.md
+2026-11-05T03:24:57Z	implementer	report written; committing task 2
