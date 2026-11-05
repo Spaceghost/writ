@@ -39,3 +39,5 @@
 2026-11-05T03:22:49Z	implementer	controls captured (a, a-long, b, c, c2, d, d2, e, f, g, g2); finding: compute-sanitizer drops an empty CUDA_VISIBLE_DEVICES from its target; writing verification/gpu-gate-controls.txt
 2026-11-05T03:24:12Z	implementer	control (h) truncated-log check captured; evidence file written; writing task-2-report.md
 2026-11-05T03:24:57Z	implementer	report written; committing task 2
+2026-11-05T03:25:24Z	controller	task 2 reported; rulings on device hiding and gate limits; reviewer dispatched
+2026-11-05T03:27:27Z	controller	task 2 review APPROVED; task 3 dispatched (three paths on the device)

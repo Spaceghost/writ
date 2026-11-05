@@ -7,3 +7,6 @@ Task 1: implementer DONE_WITH_CONCERNS (35c8b3b): CUDA build works; bang.gpu is 
 Task 1: review spec APPROVED, record NEEDS_FIXES (unbacked load range, unquoted rebuild, Execution line overclaims, -lcuda grep). Fix round 1 dispatched.
 Task 1: complete (fix round 1 verified by the controller: load range backed, rebuild quoted, Execution line narrowed, -lcuda grep).
 Task 2: dispatched implementer
+Task 2: implementer DONE_WITH_CONCERNS (50ed67c): 12 controls, 2 pass (observed --gpu on), 10 refused. Rulings carried to later tasks: hide the device with an invalid CUDA_VISIBLE_DEVICES id (the sanitizer strips an empty one); the gate checks consistency of files, not signatures (a limit to state in the trust profile, Task 8); device identity from GPU 0 is exact on this one-GPU host only (state it). Reviewer dispatched.
+Task 2: complete (review APPROVED both axes; four hardening notes carried to the final round).
+Task 3: dispatched implementer
