@@ -31,14 +31,15 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | Negotiation | 26 | Stage ordering, candidate pinning, fresh challenges, sample permission, every-origin approval, reader expense, current budgets |
 | Backplane | 40 | Combined checks, late revocation, metadata tampering, actual effects, combined labels, exact output types, artifact identity, duplicate-binding denial |
 | Frontend | 70 | Mount/open/dup/attenuate/close protocol, subject/token/plan binding, all token words, current grants, descriptor revocation, malformed registries |
-| Facade | 10 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
+| Facade | 12 | Capability resolution through final commit, reader identity, revoked/closed/stale descriptors, no spending on denial |
 | HostBinding | 144 | Genode binding model GA-001 to GA-011 (GA-010 reviewed-only): generations, parent routes, minted objects, close and revoke staleness, destroy authority (no close through a delegated copy), derived Frontend handles closed with their Session, holder versus subject, non-holders told UnknownAlias, delegation withdrawn with the delegator's route, no delegation to another subject's domain, non-widening delegation trees, quota before authority and refunds on close and revoke, exact state preservation on every denial |
+| Issuance | 230 | Authenticated approval submission, exact paired-scope registration (subject-only caller), revision-checked revocation and replay, attenuation-only derivation, exclusive expiry, subject-scoped per-use projections into T.admit and F.checked_plan (model only; not wired to a host) |
 | HostWire | 63 | Versioned, bounded, canonical wire schema (four tags, fixed widths, little-endian bytes): word and byte round trips, unknown versions and tags (a tag-5 record shaped like a serialized Context, Ledger, and caller included), malformed lengths, out-of-range fields, fixed check order; decoding yields descriptions, never authority (model only) |
 | HostIdentity | 92 | Monitor-owned identity table: authenticated session binding, minting, resolution order (revision, host, incarnation, forged, ambiguity, generation, holder, origin, expiry), the holder is the bound session rather than the subject, an untrusted claimed subject never changes the caller, inherited and transferred endpoints, non-widening delegation that never changes the subject, restart incarnations, retire cascade, exact state on every denial (model only) |
 | HostPrimitives | 206 | The five primitive families (`HostPrimitives.bend` and `HostPublication.bend`): session binding with issue and delegate wrappers, worker admission under a monitor-bound profile (controls, families, accelerator isolation, route inventory, one reader per input), quotas and gated diagnostics, sealing against live writers and retargeting, publication only through `DataOS.commit_from_capability` with exact plan binding, replay and reconcile, revoke, restart, quiesce, reclaim and complete; full state equality and no effects on every denial (model only; no native binding) |
 | HostConformance | 39 | 32 shared conformance vectors plus one comparison line, run on two synthetic adapters: exact plan binding at issue and publication, retained provenance, caller identity and session holding, revocation, replay, restart, substitution, unchanged state on denial; identical decision lines on both adapters (the decision half of PH-012 only; no native adapter replays them) |
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
-| **Total per backend** | **782** | **Both complete runs passed** |
+| **Total per backend** | **1014** | **Both complete runs passed** |
 
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
@@ -50,7 +51,7 @@ proof for arbitrary graph sizes.
 
 Evidence is in `verification/tests-js.txt` and `verification/tests-native.txt`.
 The transfer test driver prints `PASS ` while other drivers print `PASS:`;
-counting both forms yields 782 per file. The two files are byte-identical.
+counting both forms yields 1014 per file. The two files are byte-identical.
 
 Reproduction:
 
@@ -184,7 +185,7 @@ can fall back to CPU execution; success does not establish the physical backend.
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for six declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for twelve declared laws:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
@@ -196,7 +197,33 @@ can fall back to CPU execution; success does not establish the physical backend.
 6. `generation_bump_monotone`: the destroy bump strictly raises an object's
    generation. That no transition lowers a generation is not stated.
 
-The portable-host-contract lane adds five laws to the list above. Each fixes
+The proposed authenticated-grant-issuance change (`Issuance.bend`, not wired to
+any host) adds six laws, checked by the same `bend PROOF.bend`:
+
+- `nat_eq_successor_false`: no natural number equals its successor under
+  `Nat.is_eq` (auxiliary; says nothing about issuance by itself).
+- `issuance_stale_revision_rejects`: a registration whose expected revision is
+  one past the state's never commits (GI-005). Successor revision only; it
+  does not claim the host installs atomically or serializes installs (AB-006).
+- `issuance_stale_registration_keeps_state`: that registration returns exactly
+  the supplied state. Successor revision only; state preservation on every
+  other denial is tested, not proved.
+- `issuance_stale_revocation_keeps_state`: the same for revocation. Successor
+  revision only; host serialization is not claimed.
+- `nat_le_add_successor_false`: a natural number plus a positive amount is
+  never at most the original under `Nat.is_le` (auxiliary).
+- `derived_lifetime_extension_rejects`: a derivation asking for a lifetime past
+  its parent's never commits and returns the supplied state (GI-006, lifetime
+  half). Rights attenuation is tested, not proved (U32 masks); scope and
+  subject cannot be expressed by a derivation; the per-use re-check of the
+  chain in `current` is tested.
+
+On the issuance tree `bend PROOF.bend` printed `ALL PROOFS CHECK`, and the one
+`bend PROOF.bend --verdict` attempt exited 1 with the same missing-`lean`
+error quoted below (see `verification/kernel-verdict.txt`). No Lean-kernel
+verdict exists for these laws either.
+
+The portable-host-contract lane adds five further laws. Each fixes
 the denial contract of one host-contract module and holds by computation of an
 accessor; its rationale is in that module's header and above the law:
 
@@ -242,7 +269,7 @@ with:
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 ```
 
-No Lean-kernel verdict exists for any of the six laws. `kernel-verdict.txt`
+No Lean-kernel verdict exists for any of the twelve laws. `kernel-verdict.txt`
 keeps the earlier three-law note and records the latest attempt verbatim.
 Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
@@ -414,8 +441,8 @@ bounded handles and supervisor revocation.
 
 The [execution record](contrib/native-hosts/VERIFICATION.md) captures 69 mount
 vectors plus a count-consistency check: 70 PASS lines on each local backend.
-The integrated core passes 782 checks and 41 vectors on both CPU backends;
-all six ordinary laws pass. Linux native CI passes its actual mounts, fixed
+The integrated core passes 1014 checks and 41 vectors on both CPU backends;
+all twelve ordinary laws pass. Linux native CI passes its actual mounts, fixed
 worker probes, revocation, interpreter/broker failure and owned cleanup.
 Genode clean CI passes the 782-core and 69-mount corpus, 24 allocator checks
 on host and guest, 56 filesystem checks and eight libc/VFS checks.

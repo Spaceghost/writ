@@ -12,6 +12,7 @@ import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostConformanceTests.bend as HostConformance
 import ./FacadeTests.bend as Facade
+import ./IssuanceTests.bend as Issuance
 import ./PropertyTests.bend as Properties
 
 def main() -> IO(Unit):
@@ -29,5 +30,6 @@ def main() -> IO(Unit):
     HostPrimitives.main()
     HostConformance.main()
     Facade.main()
+    Issuance.main()
     Properties.main()
     IO.print("ALL LIBRARY TESTS PASSED")
