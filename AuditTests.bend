@@ -15,13 +15,21 @@ import ./Test.bend as Test
 # Tests for the policy-aware audit model (change add-policy-aware-audit).
 # Every log, grant, sink, label table and principal in this module is
 # SYNTHETIC MONITOR STATE built from the shared fixtures (TF, BF, NF,
-# FacadeTests), not an authenticated issuer, and every event checked here
-# comes from `AE.audited_admit` or `AE.audited_commit`, never from a
-# hand-written record. Sections follow the plan's task order:
+# FacadeTests), not an authenticated issuer, and every event checked in
+# event_projection comes from `AE.audited_admit` or `AE.audited_commit`,
+# never from a hand-written record (event_format alone also decodes
+# hand-written SYNTHETIC records, as the plan allows for decoder tests).
+# Sections follow the plan's task order:
 # - event_projection (Task 1): AU-001 minimal scoped event records and the
 #   model part of AU-005 (recording a denial keeps the rejected state).
 #   It includes the early-denial rule: an admission denied before its write
 #   grant bound the plan carries ScopeNotRead and none of the plan's words.
+# - event_format (Task 2): AU-001's versioned canonical encoding and its
+#   field allowlist. Round trips use projected events from the wrappers and,
+#   as the plan allows for decoder tests only, hand-written SYNTHETIC records
+#   with a distinct value in every field (so a field moved or dropped shows).
+#   The malformed word lists are built test-side from the documented layout,
+#   never from the encoder, so the layout itself is pinned.
 
 # --- Sentinels and synthetic inputs ------------------------------------------
 
@@ -853,7 +861,685 @@ def event_projection() -> IO(Unit):
     equality_outcome()
     equality_helpers()
 
+# --- event_format: helpers ------------------------------------------------------
+
+# A test-side field: tag word and value words; `fields_words` adds the length.
+type WField is Data:
+  WField{tag: U32, values: List<&2, U32>}
+
+def words_equal(a: List<&2, U32>, b: List<&2, U32>) -> Bool:
+  match a b:
+    case Nil{} Nil{}:
+      True{}
+    case Con{x, xs} Con{y, ys}:
+      U32.is_eq(x, y) && words_equal(xs, ys)
+    case _ _:
+      False{}
+
+def len_word(vs: List<&2, U32>) -> U32:
+  U32.from_nat(List.length(&2, U32, vs))
+
+# Tag word, length word, values, for every field in order.
+def fields_words(fs: List<&2, WField>) -> List<&2, U32>:
+  match fs:
+    case Nil{}:
+      Nil{}
+    case Con{WField{t, +vs}, rest}:
+      t <> len_word(vs) <> cat(vs, fields_words(rest))
+
+# A version-1 header with the true body length in front of `fs`.
+def framed(kind: U32, fs: List<&2, WField>) -> List<&2, U32>:
+  +b = fields_words(fs)
+  1 <> kind <> len_word(b) <> b
+
+# A header with every word given, in front of `fs`.
+def raw(version: U32, kind: U32, length: U32, fs: List<&2, WField>) -> List<&2, U32>:
+  version <> kind <> length <> fields_words(fs)
+
+# Test-side reason codes, independent of FormatError.equal.
+def reason_code(e: AE.FormatError) -> Nat:
+  match e:
+    case AE.UnknownVersion{}:
+      1n
+    case AE.UnknownKind{}:
+      2n
+    case AE.NotAllowed{}:
+      3n
+    case AE.OutOfOrder{}:
+      4n
+    case AE.BadLength{}:
+      5n
+    case AE.TooLong{}:
+      6n
+    case AE.OutOfRange{}:
+      7n
+
+def rejected(r: AE.DecodeResult, reason: AE.FormatError) -> Bool:
+  match r:
+    case AE.Decoded{e}:
+      False{}
+    case AE.Malformed{found}:
+      Nat.is_eq(reason_code(found), reason_code(reason))
+
+def all_reasons_format() -> List<&2, AE.FormatError>:
+  [AE.UnknownVersion{}, AE.UnknownKind{}, AE.NotAllowed{}, AE.OutOfOrder{}, AE.BadLength{},
+    AE.TooLong{}, AE.OutOfRange{}]
+
+# FormatError.equal holds for `r` against itself and fails against every other.
+def format_separates(+r: AE.FormatError, xs: List<&2, AE.FormatError>) -> Bool:
+  match xs:
+    case []:
+      True{}
+    case +h <> t:
+      same_bool(AE.FormatError.equal(r, h), Nat.is_eq(reason_code(r), reason_code(h))) &&
+        format_separates(r, t)
+
+def format_all_separated(xs: List<&2, AE.FormatError>) -> Bool:
+  match xs:
+    case []:
+      True{}
+    case h <> t:
+      format_separates(h, all_reasons_format()) && format_all_separated(t)
+
+def nothing_built(m: Maybe<&2, AE.EventRecord>) -> Bool:
+  match m:
+    case None{}:
+      True{}
+    case Some{e}:
+      False{}
+
+def builds_nothing(r: AE.DecodeResult) -> Bool:
+  nothing_built(AE.DecodeResult.event(r))
+
+def refused(m: Maybe<&2, List<&2, U32>>) -> Bool:
+  match m:
+    case None{}:
+      True{}
+    case Some{ws}:
+      False{}
+
+def encodes_as(m: Maybe<&2, List<&2, U32>>, ws: List<&2, U32>) -> Bool:
+  match m:
+    case None{}:
+      False{}
+    case Some{xs}:
+      words_equal(xs, ws)
+
+# The encoding, or the empty list (which decodes BadLength) when refused.
+def encoded(+e: AE.EventRecord) -> List<&2, U32>:
+  Maybe.default(&2, List<&2, U32>, AE.encode(e), [])
+
+# A decoded event equals `e` under EventRecord.equal and under the test-side
+# flattening `event_words`, which does not depend on AuditEvent's equality.
+def decoded_matches(r: AE.DecodeResult, +e: AE.EventRecord) -> Bool:
+  match r:
+    case AE.Decoded{+d}:
+      AE.EventRecord.equal(d, e) && words_equal(event_words(d), event_words(e))
+    case AE.Malformed{reason}:
+      False{}
+
+# decode(encode(e)) == Decoded{e}.
+def round_trips(+e: AE.EventRecord) -> Bool:
+  decoded_matches(AE.decode(encoded(e)), e)
+
+def all_round_trip(es: List<&2, AE.EventRecord>) -> Bool:
+  match es:
+    case Nil{}:
+      True{}
+    case Con{e, rest}:
+      round_trips(e) && all_round_trip(rest)
+
+# The reverse direction: an accepted word list re-encodes to itself.
+def reencoded(r: AE.DecodeResult, ws: List<&2, U32>) -> Bool:
+  match r:
+    case AE.Decoded{e}:
+      encodes_as(AE.encode(e), ws)
+    case AE.Malformed{reason}:
+      False{}
+
+def reencodes(+ws: List<&2, U32>) -> Bool:
+  reencoded(AE.decode(ws), ws)
+
+def decode_fields(kind: U32, fs: List<&2, WField>) -> AE.DecodeResult:
+  AE.decode(framed(kind, fs))
+
+# --- event_format: SYNTHETIC records with a distinct value in every field ------
+
+# Hand-written records (decoder tests only; never stored in a log). Event id
+# 1001, subject 1002, invocation 1003, sources (1004, 1005) and (1006, 1007),
+# destination (1008, 1009), stamp (1010, 1011, 1012), code 1013-1020,
+# operation Transform (word 2), artifact digest 1021-1028.
+def d_sources() -> T.Objects:
+  T.OCons{T.ObjectVersion{1004n, 1005n}, T.OCons{T.ObjectVersion{1006n, 1007n}, T.OEnd{}}}
+
+def d_destination() -> T.ObjectVersion:
+  T.ObjectVersion{1008n, 1009n}
+
+def d_stamp() -> T.Stamp:
+  T.Stamp{1010n, 1011n, 1012n}
+
+def d_code() -> T.CodeId:
+  T.CodeId{1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020}
+
+def d_artifact() -> B.ArtifactId:
+  B.ArtifactId{T.CodeId{1021, 1022, 1023, 1024, 1025, 1026, 1027, 1028}}
+
+def scope_with(n: Nat, xs: T.Objects, d: T.ObjectVersion, st: T.Stamp) -> AE.Scope:
+  AE.ScopeRead{n, xs, d, st, d_code(), T.Transform{}}
+
+def d_scope() -> AE.Scope:
+  scope_with(1003n, d_sources(), d_destination(), d_stamp())
+
+def record(k: AE.EventKind, p: AE.Phase, x: AE.Scope, a: Maybe<&2, B.ArtifactId>,
+    o: AE.Outcome) -> AE.EventRecord:
+  AE.EventRecord{1n, k, 1001n, 1002n, p, x, a, o}
+
+def committed_with(x: AE.Scope) -> AE.EventRecord:
+  record(AE.CommitAccepted{}, AE.Commit{}, x, Some{d_artifact()}, AE.Committed{})
+
+def d_committed() -> AE.EventRecord:
+  committed_with(d_scope())
+
+def d_rejected() -> AE.EventRecord:
+  record(AE.CommitRejected{}, AE.Commit{}, d_scope(), None{}, AE.NotCommitted{})
+
+def d_admitted() -> AE.EventRecord:
+  record(AE.AdmissionAdmitted{}, AE.Admission{}, d_scope(), None{}, AE.Admitted{})
+
+def d_denied(r: T.Denial, x: AE.Scope) -> AE.EventRecord:
+  record(AE.AdmissionDenied{}, AE.Admission{}, x, None{}, AE.DeniedFor{r})
+
+def d_early(r: T.Denial) -> AE.EventRecord:
+  d_denied(r, AE.ScopeNotRead{})
+
+def d_late(r: T.Denial) -> AE.EventRecord:
+  d_denied(r, d_scope())
+
+# Test-side: the reasons whose events carry a scope (Read, Origin, Payment).
+def d_denials() -> List<&2, AE.EventRecord>:
+  [d_early(T.InvalidPolicy{}), d_early(T.Stale{}), d_early(T.Source{}), d_late(T.Read{}),
+    d_early(T.Write{}), d_early(T.Schema{}), d_early(T.Operation{}), d_late(T.Origin{}),
+    d_late(T.Payment{}), d_early(T.Destination{})]
+
+# d_committed() in the documented layout: header version 1, kind 3, body 53.
+def committed_golden() -> List<&2, U32>:
+  [1, 3, 53, 1, 1, 1001, 2, 1, 1002, 3, 1, 1, 4, 1, 1003,
+    5, 4, 1004, 1005, 1006, 1007, 6, 2, 1008, 1009, 7, 3, 1010, 1011, 1012,
+    8, 8, 1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020, 9, 1, 2,
+    10, 8, 1021, 1022, 1023, 1024, 1025, 1026, 1027, 1028, 11, 1, 2]
+
+# d_early(Stale): kind 2, every scope field and the artifact length 0, the
+# outcome DeniedFor (1) with reason Stale (1).
+def early_golden() -> List<&2, U32>:
+  [1, 2, 27, 1, 1, 1001, 2, 1, 1002, 3, 1, 0, 4, 0, 5, 0, 6, 0, 7, 0, 8, 0, 9, 0,
+    10, 0, 11, 2, 1, 1]
+
+# The fields of d_committed(), one function each, for building malformed lists.
+def f_id() -> WField:
+  WField{1, [1001]}
+
+def f_subject() -> WField:
+  WField{2, [1002]}
+
+def f_phase() -> WField:
+  WField{3, [1]}
+
+def f_invocation() -> WField:
+  WField{4, [1003]}
+
+def f_sources() -> WField:
+  WField{5, [1004, 1005, 1006, 1007]}
+
+def f_destination() -> WField:
+  WField{6, [1008, 1009]}
+
+def f_stamp() -> WField:
+  WField{7, [1010, 1011, 1012]}
+
+def f_code() -> WField:
+  WField{8, [1013, 1014, 1015, 1016, 1017, 1018, 1019, 1020]}
+
+def f_op() -> WField:
+  WField{9, [2]}
+
+def f_artifact() -> WField:
+  WField{10, [1021, 1022, 1023, 1024, 1025, 1026, 1027, 1028]}
+
+def f_outcome() -> WField:
+  WField{11, [2]}
+
+def f_empty(tag: U32) -> WField:
+  WField{tag, []}
+
+# The scope fields, invocation to operation kind.
+def scope_fields(rest: List<&2, WField>) -> List<&2, WField>:
+  f_invocation() <> f_sources() <> f_destination() <> f_stamp() <> f_code() <> f_op() <> rest
+
+def empty_scope_fields(rest: List<&2, WField>) -> List<&2, WField>:
+  f_empty(4) <> f_empty(5) <> f_empty(6) <> f_empty(7) <> f_empty(8) <> f_empty(9) <> rest
+
+# d_committed() as fields; each variant below changes one thing.
+def committed_fields() -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> scope_fields([f_artifact(), f_outcome()])
+
+# Committed fields with the given phase, scope part, artifact and outcome.
+def committed_parts(ph: WField, scope: List<&2, WField>) -> List<&2, WField>:
+  f_id() <> f_subject() <> ph <> scope
+
+def with_outcome(o: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> scope_fields([f_artifact(), o])
+
+def with_artifact(a: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> scope_fields([a, f_outcome()])
+
+# Committed fields with one scope field replaced.
+def with_sources(s: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> f_invocation() <> s <> f_destination() <> f_stamp() <>
+    f_code() <> f_op() <> f_artifact() <> f_outcome() <> Nil{}
+
+def with_stamp_field(s: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> f_invocation() <> f_sources() <> f_destination() <> s <>
+    f_code() <> f_op() <> f_artifact() <> f_outcome() <> Nil{}
+
+def with_op(o: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> f_invocation() <> f_sources() <> f_destination() <> f_stamp() <>
+    f_code() <> o <> f_artifact() <> f_outcome() <> Nil{}
+
+def with_phase(p: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> p <> scope_fields([f_artifact(), f_outcome()])
+
+# An admission (kind 1 or 2) with the given scope part and outcome, no artifact.
+def admission_fields(scope: List<&2, WField>, o: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> WField{3, [0]} <> List.append(&2, WField, scope, [f_empty(10), o])
+
+# A CommitRejected event (no artifact) with the given sources field.
+def rejected_with_sources(s: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> f_phase() <> f_invocation() <> s <> f_destination() <> f_stamp() <>
+    f_code() <> f_op() <> f_empty(10) <> WField{11, [3]} <> Nil{}
+
+# An AdmissionAdmitted-shaped event (scope read, no artifact) with the given
+# phase and outcome fields.
+def admitted_parts(ph: WField, o: WField) -> List<&2, WField>:
+  f_id() <> f_subject() <> ph <> scope_fields([f_empty(10), o])
+
+def sixteen_pairs() -> List<&2, U32>:
+  [1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005,
+    1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005, 1004, 1005]
+
+def seventeen_pairs() -> List<&2, U32>:
+  1004 <> 1005 <> sixteen_pairs()
+
+# n copies of the source version (1004, 1005).
+def sources_n(n: Nat) -> T.Objects:
+  match n:
+    case 0n:
+      T.OEnd{}
+    case 1n+p:
+      T.OCons{T.ObjectVersion{1004n, 1005n}, sources_n(p)}
+
+# 2^32, computed test-side.
+def two_32() -> Nat:
+  Nat.add(4294967295n, 1n)
+
+def with_ids(+e: AE.EventRecord, id: Nat, subject: Nat) -> AE.EventRecord:
+  match e:
+    case AE.EventRecord{v, k, _, _, p, x, a, o}:
+      AE.EventRecord{v, k, id, subject, p, x, a, o}
+
+def with_version(+e: AE.EventRecord, v: Nat) -> AE.EventRecord:
+  match e:
+    case AE.EventRecord{_, k, i, s, p, x, a, o}:
+      AE.EventRecord{v, k, i, s, p, x, a, o}
+
+def with_kind(+e: AE.EventRecord, k: AE.EventKind) -> AE.EventRecord:
+  match e:
+    case AE.EventRecord{v, _, i, s, p, x, a, o}:
+      AE.EventRecord{v, k, i, s, p, x, a, o}
+
+def with_phase_value(+e: AE.EventRecord, p: AE.Phase) -> AE.EventRecord:
+  match e:
+    case AE.EventRecord{v, k, i, s, _, x, a, o}:
+      AE.EventRecord{v, k, i, s, p, x, a, o}
+
+def decoded_differs(r: AE.DecodeResult, +other: AE.EventRecord) -> Bool:
+  match r:
+    case AE.Decoded{d}:
+      Bool.not(AE.EventRecord.equal(d, other))
+    case AE.Malformed{reason}:
+      False{}
+
+# Test-side copy of the allowlist, independent of AuditEvent's constants.
+def expected_tags() -> List<&2, Nat>:
+  [1n, 2n, 3n, 4n, 5n, 6n, 7n, 8n, 9n, 10n, 11n]
+
+def tags_are(tags: AE.FieldTags, want: List<&2, Nat>) -> Bool:
+  match tags want:
+    case AE.NoTags{} Nil{}:
+      True{}
+    case AE.FieldTag{t, rest} Con{w, ws}:
+      Nat.is_eq(t, w) && tags_are(rest, ws)
+    case _ _:
+      False{}
+
+def all_allowed(ts: List<&2, Nat>) -> Bool:
+  match ts:
+    case Nil{}:
+      True{}
+    case Con{t, rest}:
+      AE.field_allowed(t) && all_allowed(rest)
+
+# --- event_format: projected events (from the wrappers) ------------------------
+
+def projected_denials() -> List<&2, AE.EventRecord>:
+  [admission_event(TF.plan(), TF.with_live(TF.context(), T.Stamp{2n, 2n, 3n})),
+    admission_event(TF.plan(), TF.with_sources(TF.context(), T.SEnd{})),
+    admission_event(TF.plan(), TF.with_reads(TF.context(), T.ReadEnd{})),
+    admission_event(TF.plan(), TF.with_writes(TF.context(), T.WriteEnd{})),
+    admission_event(TF.plan(), TF.with_sources(TF.context(), T.SCons{TF.invalid_schema_source(), T.SEnd{}})),
+    admission_event(TF.plan(), operation_denied()),
+    admission_event(TF.plan(), origin_denied()),
+    admission_event(TF.plan(), TF.with_payments(TF.context(), T.PayEnd{})),
+    admission_event(TF.plan(), TF.destination_clearance(T.Bits64{0, 0}, T.Bits64{2, 0}, 7)),
+    admission_event(TF.plan(), TF.with_origin(TF.context(), T.REnd{}, 7))]
+
+def rejected_event() -> AE.EventRecord:
+  AE.AuditedCommit.event(commit_subject(revoked_context(), 7n))
+
+# --- event_format: round trips --------------------------------------------------
+
+def format_round_trips() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(round_trips(admission_event(TF.plan(), TF.context())),
+      "AU-001 format: a projected AdmissionAdmitted event round trips")
+    Test.check(all_round_trip(projected_denials()),
+      "AU-001 format: projected AdmissionDenied events for all ten denial reasons round trip, early ones with ScopeNotRead")
+    Test.check(round_trips(committed_event()) && round_trips(AE.AuditedCommit.event(commit_subject(other_artifact_context(), 7n))),
+      "AU-001 format: projected CommitAccepted events round trip with their artifact")
+    Test.check(round_trips(rejected_event()),
+      "AU-001 format: a projected CommitRejected event round trips with no artifact")
+    Test.check(round_trips(admission_event(stuffed_stale(), TF.context())) &&
+      round_trips(admission_event(stuffed_write(), TF.context())) &&
+      none_of(plan_words(), encoded(admission_event(stuffed_stale(), TF.context()))) &&
+      none_of(plan_words(), encoded(admission_event(stuffed_write(), TF.context()))),
+      "AU-001 format: ScopeNotRead events round trip and no caller-written plan word occurs in their encoding")
+    Test.check(none_of(sentinel_words(), encoded(sentinel_admission())) &&
+      none_of(sentinel_words(), encoded(sentinel_denial())) &&
+      none_of(sentinel_words(), encoded(sentinel_commit())),
+      "AU-001 format: no diagnostic or caller-token sentinel occurs in an encoded event")
+    Test.check(round_trips(d_admitted()) && round_trips(d_committed()) && round_trips(d_rejected()),
+      "AU-001 format: distinct-valued AdmissionAdmitted, CommitAccepted and CommitRejected records round trip")
+    Test.check(all_round_trip(d_denials()),
+      "AU-001 format: distinct-valued AdmissionDenied records round trip for every denial reason")
+    Test.check(round_trips(d_early(T.Stale{})) && round_trips(d_early(T.Write{})),
+      "AU-001 format: distinct-valued ScopeNotRead records round trip")
+
+def format_layout() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(encodes_as(AE.encode(d_committed()), committed_golden()),
+      "AU-001 format: encode emits the documented layout (header, then tag, length and values per field in allowlist order)")
+    Test.check(encodes_as(AE.encode(d_early(T.Stale{})), early_golden()),
+      "AU-001 format: under ScopeNotRead every scope field and the absent artifact are length 0")
+    Test.check(reencodes(committed_golden()) && reencodes(early_golden()) &&
+      reencodes(encoded(d_late(T.Payment{}))) && reencodes(encoded(d_rejected())),
+      "AU-001 format: accepted word lists re-encode to exactly themselves")
+    Test.check(decoded_differs(AE.decode(committed_golden()), with_version(d_committed(), 2n)),
+      "AU-001 format: a decoded record and one differing only in version compare unequal")
+    Test.check(decoded_differs(AE.decode(committed_golden()), with_kind(d_committed(), AE.CommitRejected{})),
+      "AU-001 format: a decoded record and one differing only in kind compare unequal")
+    Test.check(decoded_differs(AE.decode(committed_golden()), with_phase_value(d_committed(), AE.Admission{})),
+      "AU-001 format: a decoded record and one differing only in phase compare unequal")
+
+# --- event_format: the allowlist ------------------------------------------------
+
+def format_allowlist() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(tags_are(AE.field_allowlist(), expected_tags()),
+      "AU-001 format: field_allowlist() is exactly tags 1 to 11 in order")
+    Test.check(all_allowed(expected_tags()),
+      "AU-001 format: field_allowed accepts every allowlisted tag")
+    Test.check(Bool.not(AE.field_allowed(AE.field_reserved_payload())) &&
+      Bool.not(AE.field_allowed(AE.field_reserved_token())) &&
+      Bool.not(AE.field_allowed(AE.field_reserved_text())) &&
+      Bool.not(AE.field_allowed(0n)) && Bool.not(AE.field_allowed(15n)),
+      "AU-001 format: field_allowed refuses the reserved payload, token and text tags, 0 and 15")
+    Test.check(Nat.is_eq(AE.max_words(), 85n),
+      "AU-001 format: the length cap is 3 header words, 2 per field and 60 value words")
+
+# --- event_format: encoder refusals ---------------------------------------------
+
+def format_encode_bounds() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(refused(AE.encode(committed_with(scope_with(two_32(), d_sources(), d_destination(), d_stamp())))),
+      "AU-001 format: encode of an invocation of 2^32 is None")
+    Test.check(round_trips(committed_with(scope_with(4294967295n, d_sources(), d_destination(), d_stamp()))),
+      "AU-001 format: an invocation of 2^32 - 1 encodes and round trips")
+    Test.check(refused(AE.encode(with_ids(d_committed(), two_32(), 1002n))) &&
+      refused(AE.encode(with_ids(d_committed(), 1001n, two_32()))),
+      "AU-001 format: encode of an event id or subject of 2^32 is None")
+    Test.check(refused(AE.encode(committed_with(scope_with(1003n, T.OCons{T.ObjectVersion{two_32(), 1005n}, T.OEnd{}}, d_destination(), d_stamp())))) &&
+      refused(AE.encode(committed_with(scope_with(1003n, T.OCons{T.ObjectVersion{1004n, 1005n}, T.OCons{T.ObjectVersion{1006n, two_32()}, T.OEnd{}}}, d_destination(), d_stamp())))),
+      "AU-001 format: encode of a source object or version of 2^32 is None")
+    Test.check(refused(AE.encode(committed_with(scope_with(1003n, d_sources(), T.ObjectVersion{two_32(), 1009n}, d_stamp())))) &&
+      refused(AE.encode(committed_with(scope_with(1003n, d_sources(), T.ObjectVersion{1008n, two_32()}, d_stamp())))),
+      "AU-001 format: encode of a destination object or version of 2^32 is None")
+    Test.check(refused(AE.encode(committed_with(scope_with(1003n, d_sources(), d_destination(), T.Stamp{two_32(), 1011n, 1012n})))) &&
+      refused(AE.encode(committed_with(scope_with(1003n, d_sources(), d_destination(), T.Stamp{1010n, two_32(), 1012n})))) &&
+      refused(AE.encode(committed_with(scope_with(1003n, d_sources(), d_destination(), T.Stamp{1010n, 1011n, two_32()})))),
+      "AU-001 format: encode of any of the three epochs at 2^32 is None")
+    Test.check(refused(AE.encode(committed_with(scope_with(1003n, sources_n(17n), d_destination(), d_stamp())))),
+      "AU-001 format: encode of 17 sources (more than max_sources) is None")
+    Test.check(round_trips(committed_with(scope_with(1003n, sources_n(16n), d_destination(), d_stamp()))),
+      "AU-001 format: 16 sources encode and round trip")
+
+def format_encode_coherence() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(refused(AE.encode(with_version(d_committed(), 2n))),
+      "AU-001 format: encode of a record whose version is not the format's is None")
+    Test.check(refused(AE.encode(with_kind(d_committed(), AE.AdmissionAdmitted{}))),
+      "AU-001 format: encode of a record whose kind contradicts its outcome is None")
+    Test.check(refused(AE.encode(with_phase_value(d_committed(), AE.Admission{}))),
+      "AU-001 format: encode of a record whose phase contradicts its kind is None")
+    Test.check(refused(AE.encode(record(AE.CommitRejected{}, AE.Commit{}, d_scope(), Some{d_artifact()}, AE.NotCommitted{}))) &&
+      refused(AE.encode(record(AE.CommitAccepted{}, AE.Commit{}, d_scope(), None{}, AE.Committed{}))),
+      "AU-001 format: encode of an artifact on a rejected commit, or none on an accepted one, is None")
+    Test.check(refused(AE.encode(d_denied(T.Stale{}, d_scope()))) &&
+      refused(AE.encode(d_denied(T.Read{}, AE.ScopeNotRead{}))) &&
+      refused(AE.encode(committed_with(AE.ScopeNotRead{}))),
+      "AU-001 format: encode of a scope on an early denial, or none on a scope-reading outcome, is None")
+
+# --- event_format: decoder rejections --------------------------------------------
+
+def format_header() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(AE.decode(raw(0, 3, 53, committed_fields())), AE.UnknownVersion{}),
+      "AU-001 format: version 0 denied UnknownVersion")
+    Test.check(rejected(AE.decode(raw(2, 3, 53, committed_fields())), AE.UnknownVersion{}),
+      "AU-001 format: version 2 denied UnknownVersion")
+    Test.check(rejected(AE.decode(raw(4294967295, 3, 53, committed_fields())), AE.UnknownVersion{}),
+      "AU-001 format: version 0xFFFFFFFF denied UnknownVersion")
+    Test.check(rejected(AE.decode(raw(1, 0, 53, committed_fields())), AE.UnknownKind{}),
+      "AU-001 format: kind 0 denied UnknownKind")
+    Test.check(rejected(AE.decode(raw(1, 5, 53, committed_fields())), AE.UnknownKind{}),
+      "AU-001 format: kind 5 denied UnknownKind")
+    Test.check(rejected(AE.decode([]), AE.BadLength{}) && rejected(AE.decode([1]), AE.BadLength{}) &&
+      rejected(AE.decode([1, 3]), AE.BadLength{}),
+      "AU-001 format: empty input, a version word only, and version and kind only denied BadLength")
+    Test.check(rejected(AE.decode(raw(1, 3, 52, committed_fields())), AE.BadLength{}),
+      "AU-001 format: a body length word one short denied BadLength")
+    Test.check(rejected(AE.decode(raw(1, 3, 54, committed_fields())), AE.BadLength{}),
+      "AU-001 format: a body length word one long denied BadLength")
+    Test.check(rejected(AE.decode(List.take(&2, U32, committed_golden(), 55n)), AE.BadLength{}),
+      "AU-001 format: a truncated body denied BadLength")
+    Test.check(rejected(AE.decode(cat(committed_golden(), [0])), AE.BadLength{}),
+      "AU-001 format: one trailing word denied BadLength")
+
+def format_reserved() -> IO(Unit):
+  +payload = decode_fields(3, f_id() <> f_subject() <> WField{12, payload_words()} <> f_phase() <>
+    scope_fields([f_artifact(), f_outcome()]))
+  +token = decode_fields(3, f_id() <> f_subject() <> f_phase() <> f_invocation() <> f_sources() <>
+    f_destination() <> f_stamp() <> WField{13, code_words(caller_token())} <> f_op() <> f_artifact() <> f_outcome() <> Nil{})
+  +text = decode_fields(3, WField{14, error_text_words()} <> committed_fields())
+  do IO<Unit>:
+    Test.check(rejected(payload, AE.NotAllowed{}) && builds_nothing(payload),
+      "AU-001 format: a field tagged as payload (12) is denied NotAllowed and builds no event")
+    Test.check(rejected(token, AE.NotAllowed{}) && builds_nothing(token),
+      "AU-001 format: a field tagged as a token (13) in place of the code is denied NotAllowed and builds no event")
+    Test.check(rejected(text, AE.NotAllowed{}) && builds_nothing(text),
+      "AU-001 format: a field tagged as text (14) before the event id is denied NotAllowed and builds no event")
+    Test.check(rejected(decode_fields(3, f_id() <> WField{0, [1002]} <> Nil{}), AE.NotAllowed{}) &&
+      rejected(decode_fields(3, f_id() <> WField{15, [1002]} <> Nil{}), AE.NotAllowed{}),
+      "AU-001 format: field tags 0 and 15 are denied NotAllowed")
+
+def format_order() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(decode_fields(3, f_subject() <> f_id() <> f_phase() <> scope_fields([f_artifact(), f_outcome()])), AE.OutOfOrder{}),
+      "AU-001 format: two fields out of allowlist order denied OutOfOrder")
+    Test.check(rejected(decode_fields(3, f_id() <> f_subject() <> f_subject() <> f_phase() <> scope_fields([f_artifact(), f_outcome()])), AE.OutOfOrder{}),
+      "AU-001 format: a duplicate field denied OutOfOrder")
+    Test.check(rejected(decode_fields(3, f_id() <> f_phase() <> scope_fields([f_artifact(), f_outcome()])), AE.OutOfOrder{}),
+      "AU-001 format: a missing middle field (the subject) denied OutOfOrder")
+    Test.check(rejected(decode_fields(3, f_id() <> f_subject() <> f_phase() <> scope_fields([f_artifact()])), AE.BadLength{}),
+      "AU-001 format: a missing last field (the outcome) denied BadLength")
+    Test.check(rejected(AE.decode(cat(raw(1, 3, 54, committed_fields()), [0])), AE.BadLength{}),
+      "AU-001 format: a word after the last field, counted by the body length, denied BadLength")
+    Test.check(rejected(AE.decode(cat(List.take(&2, U32, committed_golden(), 53n), [11, 5, 2])), AE.BadLength{}),
+      "AU-001 format: a field length word naming more words than remain denied BadLength")
+
+def format_widths() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(decode_fields(3, with_stamp_field(WField{7, [1010, 1011]})), AE.BadLength{}),
+      "AU-001 format: a field one word short (stamp length 2) denied BadLength")
+    Test.check(rejected(decode_fields(3, with_stamp_field(WField{7, [1010, 1011, 1012, 1013]})), AE.BadLength{}),
+      "AU-001 format: a field one word long (stamp length 4) denied BadLength")
+    Test.check(rejected(decode_fields(3, WField{1, [1001, 1001]} <> f_subject() <> f_phase() <> scope_fields([f_artifact(), f_outcome()])), AE.BadLength{}) &&
+      rejected(decode_fields(3, f_id() <> f_empty(2) <> f_phase() <> scope_fields([f_artifact(), f_outcome()])), AE.BadLength{}) &&
+      rejected(decode_fields(3, with_phase(WField{3, [1, 1]})), AE.BadLength{}),
+      "AU-001 format: event id, subject and phase of other than one word denied BadLength")
+    Test.check(rejected(decode_fields(3, f_id() <> f_subject() <> f_phase() <> WField{4, [1003, 1003]} <> f_sources() <> f_destination() <>
+      f_stamp() <> f_code() <> f_op() <> f_artifact() <> f_outcome() <> Nil{}), AE.BadLength{}) &&
+      rejected(decode_fields(3, f_id() <> f_subject() <> f_phase() <> f_invocation() <> f_sources() <> WField{6, [1008]} <>
+        f_stamp() <> f_code() <> f_op() <> f_artifact() <> f_outcome() <> Nil{}), AE.BadLength{}) &&
+      rejected(decode_fields(3, f_id() <> f_subject() <> f_phase() <> f_invocation() <> f_sources() <> f_destination() <>
+        f_stamp() <> WField{8, [1013, 1014, 1015, 1016, 1017, 1018, 1019]} <> f_op() <> f_artifact() <> f_outcome() <> Nil{}), AE.BadLength{}) &&
+      rejected(decode_fields(3, with_op(WField{9, [2, 2]})), AE.BadLength{}),
+      "AU-001 format: invocation, destination, code and operation of the wrong width denied BadLength")
+    Test.check(rejected(decode_fields(3, with_sources(WField{5, [1004, 1005, 1006]})), AE.BadLength{}),
+      "AU-001 format: an odd number of source words denied BadLength")
+    Test.check(rejected(decode_fields(4, rejected_with_sources(WField{5, seventeen_pairs()})), AE.TooLong{}) &&
+      Nat.is_le(List.length(&2, U32, framed(4, rejected_with_sources(WField{5, seventeen_pairs()}))), AE.max_words()),
+      "AU-001 format: more than max_sources sources denied TooLong (inside the length cap)")
+    Test.check(Bool.not(builds_nothing(decode_fields(3, with_sources(WField{5, sixteen_pairs()})))),
+      "AU-001 format: exactly max_sources sources decode")
+    Test.check(rejected(AE.decode(List.replicate(U32, 86n, 1)), AE.TooLong{}),
+      "AU-001 format: more than max_words words denied TooLong")
+    Test.check(rejected(decode_fields(3, with_artifact(WField{10, [1021, 1022, 1023, 1024, 1025, 1026, 1027]})), AE.BadLength{}),
+      "AU-001 format: an artifact of seven words denied BadLength")
+
+def format_scope_widths() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(decode_fields(2, admission_fields(f_empty(4) <> f_sources() <> f_empty(6) <> f_empty(7) <>
+      f_empty(8) <> f_empty(9) <> Nil{}, WField{11, [1, 1]})), AE.BadLength{}) &&
+      rejected(decode_fields(2, admission_fields(f_empty(4) <> f_empty(5) <> f_empty(6) <> f_empty(7) <>
+        f_empty(8) <> f_op() <> Nil{}, WField{11, [1, 1]})), AE.BadLength{}),
+      "AU-001 format: an empty invocation with another scope field present denied BadLength")
+    Test.check(rejected(decode_fields(3, f_id() <> f_subject() <> f_phase() <> f_invocation() <> f_sources() <> f_empty(6) <>
+      f_stamp() <> f_code() <> f_op() <> f_artifact() <> f_outcome() <> Nil{}), AE.BadLength{}),
+      "AU-001 format: a present invocation with an empty destination denied BadLength")
+    Test.check(rejected(decode_fields(2, admission_fields(empty_scope_fields(Nil{}), WField{11, [1]})), AE.BadLength{}),
+      "AU-001 format: a DeniedFor outcome without its reason word denied BadLength")
+    Test.check(rejected(decode_fields(3, with_outcome(WField{11, [2, 1]})), AE.BadLength{}),
+      "AU-001 format: a Committed outcome with a second word denied BadLength")
+
+def format_ranges() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(decode_fields(3, with_phase(WField{3, [2]})), AE.OutOfRange{}),
+      "AU-001 format: phase word 2 denied OutOfRange")
+    Test.check(rejected(decode_fields(3, with_op(WField{9, [3]})), AE.OutOfRange{}) &&
+      rejected(decode_fields(3, with_op(WField{9, [0]})), AE.OutOfRange{}),
+      "AU-001 format: operation words 0 and 3 denied OutOfRange")
+    Test.check(rejected(decode_fields(3, with_outcome(WField{11, [7]})), AE.OutOfRange{}),
+      "AU-001 format: outcome word 7 denied OutOfRange")
+    Test.check(rejected(decode_fields(2, admission_fields(empty_scope_fields(Nil{}), WField{11, [1, 10]})), AE.OutOfRange{}),
+      "AU-001 format: reason word 10 denied OutOfRange")
+    Test.check(rejected(decode_fields(3, with_phase(WField{3, [0]})), AE.OutOfRange{}),
+      "AU-001 format: an Admission phase on a CommitAccepted event denied OutOfRange")
+    Test.check(rejected(decode_fields(1, committed_fields()), AE.OutOfRange{}),
+      "AU-001 format: a Committed outcome under kind AdmissionAdmitted denied OutOfRange")
+    Test.check(rejected(decode_fields(4, with_outcome(WField{11, [3]})), AE.OutOfRange{}) &&
+      rejected(decode_fields(1, f_id() <> f_subject() <> WField{3, [0]} <> scope_fields([f_artifact(), WField{11, [0]}])), AE.OutOfRange{}),
+      "AU-001 format: an artifact on a CommitRejected or AdmissionAdmitted event denied OutOfRange")
+    Test.check(rejected(decode_fields(2, admission_fields(scope_fields(Nil{}), WField{11, [1, 1]})), AE.OutOfRange{}) &&
+      rejected(decode_fields(2, admission_fields(empty_scope_fields(Nil{}), WField{11, [1, 3]})), AE.OutOfRange{}),
+      "AU-001 format: a scope on a Stale denial, or none on a Read denial, denied OutOfRange")
+    Test.check(rejected(decode_fields(3, committed_parts(f_phase(), empty_scope_fields([f_artifact(), f_outcome()]))), AE.OutOfRange{}),
+      "AU-001 format: a CommitAccepted event without a scope denied OutOfRange")
+
+# The fixed check order: each input fails two checks and must report the
+# earlier one.
+def format_check_order() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(AE.decode(2 <> List.replicate(U32, 85n, 1)), AE.TooLong{}),
+      "AU-001 format order: the length cap precedes the version")
+    Test.check(rejected(AE.decode(raw(2, 5, 53, committed_fields())), AE.UnknownVersion{}),
+      "AU-001 format order: the version precedes the kind")
+    Test.check(rejected(AE.decode(raw(1, 5, 52, committed_fields())), AE.UnknownKind{}),
+      "AU-001 format order: the kind precedes the body length")
+    Test.check(rejected(decode_fields(3, WField{1, [1001, 1001]} <> f_subject() <> WField{12, payload_words()} <> Nil{}), AE.NotAllowed{}),
+      "AU-001 format order: the field walk precedes field widths")
+    Test.check(rejected(decode_fields(1, with_stamp_field(WField{7, [1010]})), AE.BadLength{}) &&
+      rejected(decode_fields(1, with_phase(WField{3, [7]})), AE.OutOfRange{}) &&
+      rejected(decode_fields(4, with_outcome(WField{11, [3, 3]})), AE.BadLength{}),
+      "AU-001 format order: field widths and values precede coherence")
+
+# Rejections that a mutant could otherwise turn into a coherent record: each
+# input here would decode if its check were removed.
+def format_isolated() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(AE.decode(cat([1, 3, 51], cat(List.take(&2, U32, List.drop(&2, U32, committed_golden(), 3n), 50n), [11]))), AE.BadLength{}),
+      "AU-001 format: a field tag with no length word denied BadLength")
+    Test.check(rejected(decode_fields(1, admitted_parts(WField{3, [2]}, WField{11, [0]})), AE.OutOfRange{}),
+      "AU-001 format: phase word 2 on an admission event denied OutOfRange")
+    Test.check(rejected(decode_fields(1, admitted_parts(WField{3, [0]}, WField{11, [7]})), AE.OutOfRange{}),
+      "AU-001 format: outcome word 7 on an admission event denied OutOfRange")
+    Test.check(rejected(decode_fields(1, admitted_parts(WField{3, [0]}, WField{11, [0, 0, 0]})), AE.BadLength{}) &&
+      rejected(decode_fields(1, admitted_parts(WField{3, [0]}, f_empty(11))), AE.BadLength{}),
+      "AU-001 format: an outcome of three words or of none denied BadLength")
+    Test.check(rejected(decode_fields(1, admitted_parts(WField{3, [0]}, WField{11, [1, 3]})), AE.OutOfRange{}) &&
+      rejected(decode_fields(4, f_id() <> f_subject() <> f_phase() <> scope_fields([f_empty(10), f_outcome()])), AE.OutOfRange{}),
+      "AU-001 format: an outcome contradicting only the kind (a Read denial under AdmissionAdmitted, Committed under CommitRejected) denied OutOfRange")
+    Test.check(refused(AE.encode(with_kind(d_late(T.Read{}), AE.AdmissionAdmitted{}))),
+      "AU-001 format: encode of a record whose kind alone contradicts its outcome is None")
+    Test.check(refused(AE.field_values(AE.field_reserved_payload(), d_committed())) &&
+      refused(AE.field_values(AE.field_reserved_token(), d_committed())) &&
+      refused(AE.field_values(AE.field_reserved_text(), d_committed())),
+      "AU-001 format: the encoder has no value for a reserved tag, so it could not emit one even if the allowlist named it")
+    Test.check(format_all_separated(all_reasons_format()),
+      "AU-001 format: FormatError.equal separates all seven reasons")
+    Test.check(AE.DecodeResult.equal(AE.decode(committed_golden()), AE.Decoded{d_committed()}) &&
+      Bool.not(AE.DecodeResult.equal(AE.decode(committed_golden()), AE.Decoded{d_rejected()})) &&
+      Bool.not(AE.DecodeResult.equal(AE.decode(committed_golden()), AE.Malformed{AE.BadLength{}})) &&
+      Bool.not(AE.DecodeResult.equal(AE.Malformed{AE.BadLength{}}, AE.Decoded{d_committed()})) &&
+      Bool.not(AE.DecodeResult.equal(AE.Malformed{AE.BadLength{}}, AE.Malformed{AE.TooLong{}})),
+      "AU-001 format: DecodeResult.equal separates events, reasons, and an event from a rejection")
+
+def event_format() -> IO(Unit):
+  do IO<Unit>:
+    format_round_trips()
+    format_layout()
+    format_allowlist()
+    format_encode_bounds()
+    format_encode_coherence()
+    format_header()
+    format_reserved()
+    format_order()
+    format_widths()
+    format_scope_widths()
+    format_ranges()
+    format_check_order()
+    format_isolated()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     event_projection()
-    IO.print("Audit: 60 checks passed")
+    event_format()
+    IO.print("Audit: 148 checks passed")
