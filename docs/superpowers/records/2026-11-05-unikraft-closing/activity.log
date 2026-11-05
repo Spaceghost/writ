@@ -34,3 +34,4 @@
 2026-11-05T01:36:03Z	controller	task 1 complete (re-review all closed)
 2026-11-05T01:36:16Z	implementer	Task 1 fix round 2 (e944b22) landed mid-task and changed the check scripts. Rechecked both drill captures (TCG, KVM) with WRIT_NO_BOOT=1 under e944b22: PASS, dropped 0. KVM cites updated to the renamed section. Doc link and box 3.2 written. OpenSpec 1.16.0 strict: 44 passed
 2026-11-05T01:36:47Z	implementer	task 2 report written; committing
+2026-11-05T01:37:08Z	controller	task 2 reported; reviewer and task 3 dispatched
