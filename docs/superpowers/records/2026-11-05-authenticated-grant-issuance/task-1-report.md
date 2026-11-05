@@ -106,3 +106,94 @@ The fixtures are commented as synthetic authority records. The principals are 10
 2. `Stored.revoked` is a Bool. It only withdraws authority (False grants nothing, and every use re-checks the directory), so I read it as allowed under "no Bool that asserts authentication, ownership or authority". The controller may prefer a dedicated two-constructor type.
 3. Transitions do not gate on `valid(state)`. Each gate is recomputed directly from the state, and ambiguous placements deny locally. `valid` is exposed as a separate structural check, as the brief asks.
 4. `Grant`, `Ids`, `Stored.consumed_by` and `Stored.revoked` are defined now but no transition in this task populates them. I defined them so that `State` and the test-side equality have their final shape and later tasks need no constructor churn.
+
+## Fix round 1 (review task-1-review.md: I-1, I-2, M-1, M-2, M-3)
+
+Status: DONE. All five findings were real, and all five are fixed.
+
+Code (`Issuance.bend`):
+- M-2: `submit_source_checked` and `submit_write_checked` now pass the authenticated `from` to `commit_approval`, not the approval's `issuer` claim. The comment on `commit_approval` says why: the recorded replay identity is the trusted input by construction.
+- M-3: a comment at both `Gates.reason` call sites explains that `ok` is `Guard.all` over the same gate list, so the `StaleRevision` fallback is unreachable.
+- No gate, order or reason changed.
+
+Tests (`IssuanceTests.bend`): 15 checks were added, from 24 to 39, and the summary now reads `Issuance: 39 checks passed`. New fixtures:
+- `ambiguous_destination()`: destination 20v8 is placed first in write domain 5, ahead of its write domain 6 placement.
+- `empty_manifest_plan()`, `write_with(scope, rights)` and `domain_absent`.
+- The module now imports `Guard.bend` as `Guard`.
+
+I-1, write-side gates:
+- "GI-001 write-domain-5 authority approving destination 20v8 placed in write domain 6 denied WrongDomain"
+- "GI-001 write approval naming the true write authority as issuer but submitted by the source principal denied Unauthenticated"
+- "GI-001 write submission validated at revision 0 against state at revision 1 denied StaleRevision"
+- "GI-001 the write check list alone is false at a stale revision"
+- "GI-001 write approval record version 2 denied UnknownVersion"
+- "GI-001 write approval whose scope stamp is not the live stamp denied StaleEpoch"
+- "GI-004 write approval naming subject 0 denied SubjectMismatch"
+- "GI-001 write approval with rights 8 denied InvalidRights"
+- "GI-001 write approval submitted at its valid_until denied Expired"
+- "GI-001 repeated write (issuer, serial) denied Replay" (resubmits `good_write()` on `both()` at revision 2)
+
+I-1, inner revision gate on the source side:
+- "GI-001 the source check list alone is false at a stale revision"
+
+I-2, ambiguous placement:
+- "GI-001 the first of two placements does not win: read-domain-9 authority approving object 10 also placed in read domain 9 denied WrongDomain"
+- "GI-001 source_domain of an object placed twice is None"
+- "GI-001 the first of two destination placements does not win: write-domain-5 authority approving destination 20v8 also placed in write domain 5 denied WrongDomain"
+- The original ambiguity check stays, with the same name. It is still true as stated, but on its own it was not discriminating.
+
+M-1, empty manifest:
+- "GI-001 write approval under a scope with an empty source manifest denied ScopeMismatch"
+
+### Mutation (removal) results
+
+The mutation harness ran on a scratch copy outside the worktree; the script is `/tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/55038343-2e0b-4235-a6a8-7c68c6dd1f50/scratchpad/scripts/mutate.py`. Each mutant replaces one gate condition (or one helper body) with `True{}`, or changes one arm, and then runs `bend IssuanceTests.bend`. KILLED means the run failed, and the table names the first failing check.
+
+The result is 31 mutants: 29 killed and 2 survived. The two survivors are the outer revision match of `submit_source` and of `submit_write`. They are equivalent mutants. With the outer match removed, the inner `revision_current` gate denies the same input with the same reason and the same state, so no black-box test can tell them apart. The outer match is kept because the planned Task 3 law `issuance_stale_revision_rejects` needs `register` to match on the revision first, and the submissions use the same shape. Removing both the outer match and the inner gate is killed (rows below). Removing the inner gate alone is killed by the check-list-alone checks.
+
+| Removed branch | First failing check |
+|---|---|
+| write_gates StaleRevision (inner revision gate) | GI-001 the write check list alone is false at a stale revision |
+| write_gates UnknownVersion | GI-001 write approval record version 2 denied UnknownVersion |
+| write_gates Unauthenticated | GI-001 write approval naming the true write authority as issuer but submitted by the source principal denied Unauthenticated |
+| write_gates NotAuthority | GI-001 source authority submitting a destination-write approval denied NotAuthority |
+| write_gates WrongDomain (destination placement) | GI-001 the first of two destination placements does not win: write-domain-5 authority approving destination 20v8 also placed in write domain 5 denied WrongDomain (the brief's case, "GI-001 write-domain-5 authority approving destination 20v8 placed in write domain 6 denied WrongDomain", also fails) |
+| write_gates scope_wellformed | GI-001 write approval whose scope stamp is not the live stamp denied StaleEpoch |
+| write_gates destination version | GI-001 write approval for destination version 9 when the plan names version 8 denied ScopeMismatch |
+| write_gates write domain vs scope | GI-001 write approval for write domain 6 under a scope naming write domain 9 denied ScopeMismatch |
+| write_gates InvalidRights | GI-001 write approval with rights 8 denied InvalidRights |
+| write_gates Expired | GI-001 write approval submitted at its valid_until denied Expired |
+| write_gates Replay | GI-001 repeated write (issuer, serial) denied Replay |
+| source_gates StaleRevision (inner revision gate) | GI-001 the source check list alone is false at a stale revision |
+| source_gates UnknownVersion | GI-001 source approval record version 2 denied UnknownVersion |
+| source_gates Unauthenticated | GI-001 approval naming the true source authority as issuer but submitted by the write principal denied Unauthenticated |
+| source_gates NotAuthority | GI-001 forged source issuer: the write-domain-6 principal submitting a source approval for object 10 under its own identity denied NotAuthority |
+| source_gates WrongDomain | GI-001 read-domain-9 authority approving object 10 placed in read domain 5 denied WrongDomain |
+| source_gates scope_wellformed | GI-001 source approval whose scope stamp is not the live stamp denied StaleEpoch |
+| source_gates manifest contains source | GI-001 source approval for an object outside the scope manifest denied ScopeMismatch |
+| source_gates InvalidRights | GI-001 source approval with rights 8 denied InvalidRights |
+| source_gates Expired | GI-001 source approval submitted at its valid_until denied Expired |
+| source_gates Replay | GI-001 repeated (issuer, serial) denied Replay |
+| submit_write outer revision match + inner gate | GI-001 write submission validated at revision 0 against state at revision 1 denied StaleRevision |
+| submit_source outer revision match + inner gate | GI-001 submission validated at revision 0 against state at revision 1 denied StaleRevision |
+| submit_write outer revision match only | SURVIVED (equivalent: inner gate denies identically) |
+| submit_source outer revision match only | SURVIVED (equivalent: inner gate denies identically) |
+| scope_manifest_named | GI-001 write approval under a scope with an empty source manifest denied ScopeMismatch |
+| scope_at_live | GI-001 source approval whose scope stamp is not the live stamp denied StaleEpoch |
+| scope_subject_named | GI-004 source approval naming subject 0 denied SubjectMismatch |
+| first_read first match wins | GI-001 the first of two placements does not win: read-domain-9 authority approving object 10 also placed in read domain 9 denied WrongDomain |
+| first_write first match wins | GI-001 the first of two destination placements does not win: write-domain-5 authority approving destination 20v8 also placed in write domain 5 denied WrongDomain |
+| source denial carries a committed state | GI-001 forged source issuer: the write-domain-6 principal submitting a source approval for object 10 under its own identity denied NotAuthority |
+
+### Verification after the fix (Bend 2.0.39)
+
+- `bend Issuance.bend --check-only`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.`
+- `bend Tests.bend` (exit 0, 0 FAIL). Last lines:
+  ```
+  Issuance: 39 checks passed
+  Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+  ALL LIBRARY TESTS PASSED
+  ```
+  The PASS count is 821 (768 `PASS:` + 53 `PASS `), which is 782 + 39.
+- `bend PROOF.bend`: `ALL PROOFS CHECK` / `Use --verdict for mathematical validity.` The six laws are unchanged. I did not run `--verdict`, a native build or a GPU test.
+- No count pins were touched. `Tests.bend` is unchanged since the task commit.

@@ -3,3 +3,8 @@
 2026-11-05T02:56:11Z	implementer	read complete; writing Issuance.bend (state, directory, placements, gates, submit_source, submit_write)
 2026-11-05T02:59:55Z	implementer	Issuance.bend and IssuanceTests.bend (24 checks) green standalone; registered in Tests.bend; box 1.1 checked; running full suite and proofs
 2026-11-05T03:00:43Z	implementer	bend Tests.bend: ALL LIBRARY TESTS PASSED, 806 PASS (782 + 24); bend PROOF.bend: ALL PROOFS CHECK (six laws unchanged); report written; committing
+2026-11-05T03:01:01Z	controller	task 1 reported; reviewer dispatched
+2026-11-05T03:05:29Z	controller	review: tests too weak on write-side denials; fix round 1 dispatched
+2026-11-05T03:05:56Z	implementer	fix round 1 started: read task-1-review.md (I-1 write-side gate tests, I-2 ambiguous placement, M-1..M-3)
+2026-11-05T03:08:42Z	implementer	fix round 1: 15 checks added (39 total), M-2/M-3 applied; 31 single-gate mutants in a scratch copy: 29 killed, 2 survivors are the outer revision match (equivalent to the inner gate); running full suite and proofs
+2026-11-05T03:09:17Z	implementer	fix round 1: bend Tests.bend ALL LIBRARY TESTS PASSED 821 PASS (782 + 39); bend PROOF.bend ALL PROOFS CHECK; report section appended; committing

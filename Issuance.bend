@@ -638,8 +638,10 @@ def write_checks(+state: State, +expected_revision: Nat, +from: Principal,
   Gates.checks(write_gates(state, expected_revision, from, approval, now))
 
 # Store an admitted approval under a fresh id, record its `(issuer, serial)`
-# for ever, and advance the revision once. Called only after every gate held,
-# so `issuer` is the authenticated principal.
+# for ever, and advance the revision once. Called only after every gate held.
+# The caller passes the authenticated principal `from`, never the approval's
+# `issuer` claim, so the recorded replay identity is the trusted input by
+# construction (the claim_matches gate makes the two equal at this point).
 def commit_approval(state: State, approval: Approval, issuer: Principal, serial: Nat) -> Change:
   match state:
     case State{revision, +next_id, live, directory, placements, approvals, grants, seen}:
@@ -651,9 +653,12 @@ def submit_source_checked(ok: Bool, +state: State, +expected_revision: Nat, +fro
     +approval: SourceApproval, +now: Nat) -> Change:
   match ok:
     case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
       Rejected{state, Gates.reason(source_gates(state, expected_revision, from, approval, now), StaleRevision{})}
     case True{}:
-      commit_approval(state, SourceEntry{approval}, SourceApproval.issuer(approval),
+      commit_approval(state, SourceEntry{approval}, from,
         SourceApproval.serial(approval))
 
 def submit_source_current(current: Bool, +state: State, +expected_revision: Nat, +from: Principal,
@@ -687,9 +692,12 @@ def submit_write_checked(ok: Bool, +state: State, +expected_revision: Nat, +from
     +approval: WriteApproval, +now: Nat) -> Change:
   match ok:
     case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the StaleRevision fallback is
+      # unreachable here.
       Rejected{state, Gates.reason(write_gates(state, expected_revision, from, approval, now), StaleRevision{})}
     case True{}:
-      commit_approval(state, WriteEntry{approval}, WriteApproval.issuer(approval),
+      commit_approval(state, WriteEntry{approval}, from,
         WriteApproval.serial(approval))
 
 def submit_write_current(current: Bool, +state: State, +expected_revision: Nat, +from: Principal,

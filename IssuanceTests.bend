@@ -3,6 +3,7 @@ import ./Issuance.bend as I
 import ./Transfer.bend as T
 import ./TransferTests.bend as TF
 import ./Test.bend as Test
+import ./Guard.bend as Guard
 
 # Tests for the issuance model, change add-authenticated-grant-issuance.
 # Sections follow the change's tasks: `submission` (1.1). Every denial check
@@ -96,6 +97,11 @@ def initial() -> I.State:
 def ambiguous() -> I.State:
   I.empty(TF.stamp(), directory(), I.Placements{I.SourceAt{TF.source_object(), read9()}, placements()})
 
+# Destination 20v8 placed a second time, in write domain 5, ahead of its write
+# domain 6 placement: a first-match resolver would answer write domain 5.
+def ambiguous_destination() -> I.State:
+  I.empty(TF.stamp(), directory(), I.Placements{I.DestinationAt{TF.destination_object(), write5()}, placements()})
+
 def now() -> Nat:
   100n
 
@@ -114,6 +120,13 @@ def scope_with(plan: T.Plan, subject: Nat) -> I.Scope:
 def stale_plan() -> T.Plan:
   T.Plan{T.Stamp{1n, 2n, 4n}, 99n, TF.source_manifest(), TF.destination_object(),
     TF.code(), T.Summarize{}, 2}
+
+# TF.plan() with an empty source manifest: names nothing to read.
+def empty_manifest_plan() -> T.Plan:
+  T.Plan{TF.stamp(), 99n, T.OEnd{}, TF.destination_object(), TF.code(), T.Summarize{}, 2}
+
+def write_with(scope: I.Scope, rights: U32) -> I.WriteApproval:
+  I.WriteApproval{1n, 1n, write_authority(), TF.destination_object(), write6(), scope, rights, 200n}
 
 def source_approval(issuer: I.Principal, domain: T.ReadDomain) -> I.SourceApproval:
   I.SourceApproval{1n, 1n, issuer, TF.source_object(), domain, scope(), 3, 200n}
@@ -283,6 +296,13 @@ def issued_is(value: Maybe<&2, Nat>, expected: Nat) -> Bool:
     case Some{id}:
       Nat.is_eq(id, expected)
 
+def domain_absent(found: Maybe<&2, T.ReadDomain>) -> Bool:
+  match found:
+    case None{}:
+      True{}
+    case Some{_}:
+      False{}
+
 def grants_empty(grants: I.Grants) -> Bool:
   match grants:
     case I.NoGrants{}:
@@ -319,6 +339,9 @@ def submission() -> IO(Unit):
     Test.check(denied(I.submit_source(initial(), 0n, stranger(), source_approval(stranger(), read5()), now()), initial(), I.NotAuthority{}), "GI-001 principal absent from the directory denied NotAuthority")
     Test.check(denied(I.submit_source(ambiguous(), 0n, source_authority(), good_source(), now()), ambiguous(), I.WrongDomain{}), "GI-001 object placed in two read domains resolves to none and is denied WrongDomain")
     Test.check(Bool.not(I.valid(ambiguous())), "GI-001 an object placed twice in one namespace is not a valid state")
+    Test.check(denied(I.submit_source(ambiguous(), 0n, other_read_authority(), source_approval(other_read_authority(), read9()), now()), ambiguous(), I.WrongDomain{}), "GI-001 the first of two placements does not win: read-domain-9 authority approving object 10 also placed in read domain 9 denied WrongDomain")
+    Test.check(domain_absent(I.source_domain(I.placements(ambiguous()), TF.source_object())), "GI-001 source_domain of an object placed twice is None")
+    Test.check(denied(I.submit_write(ambiguous_destination(), 0n, write5_authority(), I.WriteApproval{1n, 1n, write5_authority(), TF.destination_object(), write5(), I.Scope{TF.plan(), write5(), subject()}, 3, 200n}, now()), ambiguous_destination(), I.WrongDomain{}), "GI-001 the first of two destination placements does not win: write-domain-5 authority approving destination 20v8 also placed in write domain 5 denied WrongDomain")
     Test.check(I.Change.accepted(write_change()) && issued_is(I.Change.issued(write_change()), 2n)
       && Nat.is_eq(I.revision(both()), 2n), "GI-001 destination-write approval from its write authority is accepted as id 2")
     Test.check(grants_empty(I.grants(both())) && Bool.not(grant_for_plan(I.grants(both()), TF.plan())), "GI-001 submitting both approvals registers no grant for the plan")
@@ -333,8 +356,20 @@ def submission() -> IO(Unit):
     Test.check(denied(I.submit_source(submitted(), 1n, source_authority(), good_source(), now()), submitted(), I.Replay{}), "GI-001 repeated (issuer, serial) denied Replay")
     Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), I.WriteApproval{1n, 1n, write_authority(), next_destination(), write6(), scope(), 3, 200n}, now()), submitted(), I.ScopeMismatch{}), "GI-001 write approval for destination version 9 when the plan names version 8 denied ScopeMismatch")
     Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), I.WriteApproval{1n, 1n, write_authority(), TF.destination_object(), write6(), I.Scope{TF.plan(), write9(), subject()}, 3, 200n}, now()), submitted(), I.ScopeMismatch{}), "GI-001 write approval for write domain 6 under a scope naming write domain 9 denied ScopeMismatch")
+    Test.check(denied(I.submit_write(initial(), 0n, write5_authority(), I.WriteApproval{1n, 1n, write5_authority(), TF.destination_object(), write5(), I.Scope{TF.plan(), write5(), subject()}, 3, 200n}, now()), initial(), I.WrongDomain{}), "GI-001 write-domain-5 authority approving destination 20v8 placed in write domain 6 denied WrongDomain")
+    Test.check(denied(I.submit_write(submitted(), 1n, source_authority(), good_write(), now()), submitted(), I.Unauthenticated{}), "GI-001 write approval naming the true write authority as issuer but submitted by the source principal denied Unauthenticated")
+    Test.check(denied(I.submit_write(submitted(), 0n, write_authority(), good_write(), now()), submitted(), I.StaleRevision{}), "GI-001 write submission validated at revision 0 against state at revision 1 denied StaleRevision")
+    Test.check(Bool.not(Guard.all(I.write_checks(submitted(), 0n, write_authority(), good_write(), now()))), "GI-001 the write check list alone is false at a stale revision")
+    Test.check(Bool.not(Guard.all(I.source_checks(submitted(), 0n, source_authority(), I.SourceApproval{1n, 2n, source_authority(), TF.source_object(), read5(), scope(), 3, 200n}, now()))), "GI-001 the source check list alone is false at a stale revision")
+    Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), I.WriteApproval{2n, 1n, write_authority(), TF.destination_object(), write6(), scope(), 3, 200n}, now()), submitted(), I.UnknownVersion{}), "GI-001 write approval record version 2 denied UnknownVersion")
+    Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), write_with(scope_with(stale_plan(), subject()), 3), now()), submitted(), I.StaleEpoch{}), "GI-001 write approval whose scope stamp is not the live stamp denied StaleEpoch")
+    Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), write_with(scope_with(TF.plan(), 0n), 3), now()), submitted(), I.SubjectMismatch{}), "GI-004 write approval naming subject 0 denied SubjectMismatch")
+    Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), write_with(scope_with(empty_manifest_plan(), subject()), 3), now()), submitted(), I.ScopeMismatch{}), "GI-001 write approval under a scope with an empty source manifest denied ScopeMismatch")
+    Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), write_with(scope(), 8), now()), submitted(), I.InvalidRights{}), "GI-001 write approval with rights 8 denied InvalidRights")
+    Test.check(denied(I.submit_write(submitted(), 1n, write_authority(), good_write(), 200n), submitted(), I.Expired{}), "GI-001 write approval submitted at its valid_until denied Expired")
+    Test.check(denied(I.submit_write(both(), 2n, write_authority(), good_write(), now()), both(), I.Replay{}), "GI-001 repeated write (issuer, serial) denied Replay")
 
 def main() -> IO(Unit):
   do IO<Unit>:
     submission()
-    IO.print("Issuance: 24 checks passed")
+    IO.print("Issuance: 39 checks passed")
