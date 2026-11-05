@@ -44,3 +44,8 @@
 2026-11-05T04:33:33Z	implementer	fix round 1: subject 6 and principal 0 SubjectMismatch checks (I-1); id_named in own_checks and parent_present, forged id-0 grant and parent id 0 checks (M-1); header reason mapping (M-2); comment reflow (M-3); 5 new mutants all killed (54 total, 48 by tests, 1 proof-only, 5 equivalent); bend Tests.bend ALL LIBRARY TESTS PASSED 965 PASS (782 + 183); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing
 2026-11-05T04:33:51Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T04:35:34Z	controller	task 4 complete; task 5 dispatched (integration with admission and the facade; trusted inputs doc)
+2026-11-05T04:38:08Z	implementer	task 5 started: read brief, plan constraints, Issuance.bend, Transfer/Frontend/DataOS, Facade/Transfer/Backplane fixtures
+2026-11-05T04:40:43Z	implementer	projections reads/writes/registry added to Issuance.bend; integration section 12 checks (Issuance 195); FacadeTests 2 checks (Facade 12); running bend Tests.bend and PROOF.bend
+2026-11-05T04:44:03Z	implementer	mutation exercise on the projections: 27 removal/replacement mutants, 26 killed by tests first pass; the survivor (placed_read None arm, unreachable for a current grant) killed after adding a direct helper check; Issuance 196
+2026-11-05T04:44:03Z	implementer	docs/GRANT-ISSUANCE.md written; tasks.md box 1.5 checked; bend Tests.bend ALL LIBRARY TESTS PASSED 980 PASS (782 + 196 Issuance + 2 Facade); bend PROOF.bend ALL PROOFS CHECK (12 laws, unchanged); writing report and committing
+2026-11-05T04:44:13Z	implementer	task 5 report written (DONE_WITH_CONCERNS: source-revocation denies at Write when both projections rebuilt, Read shown for the read projection alone; counts; no --verdict); committing

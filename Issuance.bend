@@ -36,6 +36,12 @@ import ./Frontend.bend as F
 # - `token`, the fresh capability token the monitor supplies to `register`
 #   and `derive` (Bend generates no randomness). Bend only checks that no
 #   registered grant already holds it.
+# - The projections `reads`, `writes` and `registry` (GI-008): the host must
+#   rebuild `T.Context.reads`/`writes` and the `F.Registry` from the current
+#   issuer state, at the monitor's `now`, for every use, and must not reuse an
+#   earlier projection. Bend then still runs `T.admit` and
+#   `F.checked_plan` unchanged on them; a stale projection would keep a
+#   revoked grant usable, which Bend cannot detect at the use-time check.
 #
 # `from` is attached to submissions, revocations and derivations. Only an
 # approval's recorded issuer, still the directory authority for the approval's
@@ -86,9 +92,11 @@ import ./Frontend.bend as F
 # is neither `valid` there nor `current`.
 #
 # Public entry points: `empty`, `submit_source`, `submit_write`, `register`,
-# `revoke`, `derive`, `current`, `valid`, and the `Change.*` accessors and
-# state accessors. Every other def is an exported implementation helper;
-# calling one does not perform a transition's checks.
+# `revoke`, `derive`, `current`, `valid`, the projections `reads`, `writes`
+# and `registry`, and the `Change.*` accessors and state accessors. Every
+# other def is an exported implementation helper; calling one does not
+# perform a transition's checks. docs/GRANT-ISSUANCE.md lists every trusted
+# input and who must supply it on a real host.
 #
 # Laws. This module relies on the existing law `failed_check_denies` through
 # its gate structure (and `current`'s Guard.Checks lists), without modifying
@@ -1877,3 +1885,140 @@ def valid(state: State) -> Bool:
       Nat.is_gt(next_id, 0n) && approvals_valid(approvals, next_id, seen)
         && grants_valid(grants, next_id, approvals) && placements_valid(placements)
         && serials_valid(seen)
+
+# --- Projection into the use-time checks (GI-008) ----------------------------
+
+# Issuance does not replace use-time authorization. These projections turn the
+# issuer's state into the grant lists `Transfer.admit` consumes
+# (`T.Context.reads`/`writes`) and the registry `Frontend` consumes
+# (`F.Registry`); Bend then still runs `T.admit` and `F.checked_plan`,
+# unchanged, on what they return. A grant appears only while `current` holds
+# for it in this state at `now`, so a revoked approval (source or write), a
+# directory, placement or epoch change, an expired grant or a withdrawn
+# ancestor removes the whole grant from all three projections at once: a
+# grant is never projected half usable. Nothing is cached: each call walks the
+# grant list and re-derives `current`, and the result is not a fact the
+# caller may keep. The host must rebuild the projections from the current
+# issuer state for every use (a trusted input; see the module header).
+
+# The Transfer scope a grant confers: the plan's invocation, ordered manifest,
+# destination, code, kind and stamp, the scope's write domain, and the grant's
+# own exclusive lifetime (for a derived grant, its attenuated one).
+def grant_scope(grant: Grant) -> T.GrantScope:
+  match grant:
+    case Grant{_, _, scope, _, valid_until, _, _, _}:
+      match scope:
+        case Scope{plan, write_domain, _}:
+          match plan:
+            case T.Plan{stamp, invocation, sources, destination, code, kind, _}:
+              T.GrantScope{invocation, sources, destination, write_domain, code, kind, stamp, valid_until}
+
+# One read grant for a manifest entry, in the read domain the monitor places
+# that source in. For a current grant every manifest source is placed exactly
+# once in its approval's domain (`current` re-checks that, through the root of
+# a derived chain), so the missing-or-ambiguous arm is defensive: it projects
+# no read rather than guessing a domain.
+def placed_read(found: Maybe<&2, T.ReadDomain>, object: T.ObjectVersion, scope: T.GrantScope,
+    rest: T.Reads) -> T.Reads:
+  match found:
+    case None{}:
+      rest
+    case Some{domain}:
+      T.ReadCons{T.ReadGrant{object, domain, scope}, rest}
+
+# One read grant per manifest entry, in manifest order, ahead of `rest`.
+def manifest_reads(manifest: T.Objects, +placements: Placements, +scope: T.GrantScope,
+    rest: T.Reads) -> T.Reads:
+  match manifest:
+    case T.OEnd{}:
+      rest
+    case T.OCons{+head, tail}:
+      placed_read(source_domain(placements, head), head, scope,
+        manifest_reads(tail, placements, scope, rest))
+
+# The filtering gate: a grant that is not current contributes no read.
+def grant_reads(usable: Bool, +grant: Grant, +state: State, rest: T.Reads) -> T.Reads:
+  match usable:
+    case False{}:
+      rest
+    case True{}:
+      manifest_reads(T.Plan.sources(Scope.plan(Grant.scope(grant))), placements(state),
+        grant_scope(grant), rest)
+
+# Walk the grant list, judging each record with `current` against the whole
+# state (so a record whose id is ambiguous, or that its approvals do not back,
+# is not projected).
+def reads_of(grants: Grants, +state: State, +now: Nat) -> T.Reads:
+  match grants:
+    case NoGrants{}:
+      T.ReadEnd{}
+    case Grants{+head, tail}:
+      grant_reads(current(state, head, now), head, state, reads_of(tail, state, now))
+
+# Public entry point (GI-008): the source-read grants for `T.Context.reads`,
+# one per manifest entry of each grant current in `state` at `now`, each in
+# the source's placed read domain and bound to the grant's scope and
+# lifetime. Rebuild it for every use; `T.admit` still decides.
+def reads(+state: State, +now: Nat) -> T.Reads:
+  reads_of(grants(state), state, now)
+
+# The destination-write grant a grant confers: the plan's destination in the
+# scope's write domain.
+def grant_write(+grant: Grant) -> T.WriteGrant:
+  T.WriteGrant{T.Plan.destination(Scope.plan(Grant.scope(grant))), Scope.write_domain(Grant.scope(grant)),
+    grant_scope(grant)}
+
+# The filtering gate: a grant that is not current contributes no write.
+def grant_writes(usable: Bool, +grant: Grant, rest: T.Writes) -> T.Writes:
+  match usable:
+    case False{}:
+      rest
+    case True{}:
+      T.WriteCons{grant_write(grant), rest}
+
+def writes_of(grants: Grants, +state: State, +now: Nat) -> T.Writes:
+  match grants:
+    case NoGrants{}:
+      T.WriteEnd{}
+    case Grants{+head, tail}:
+      grant_writes(current(state, head, now), head, writes_of(tail, state, now))
+
+# Public entry point (GI-008): the destination-write grants for
+# `T.Context.writes`, one per grant current in `state` at `now`. Rebuild it
+# for every use; `T.admit` still decides.
+def writes(+state: State, +now: Nat) -> T.Writes:
+  writes_of(grants(state), state, now)
+
+# The Frontend capability a grant confers: its monitor-supplied token, the
+# scope's subject and plan, the grant's rights and exclusive lifetime, and the
+# authority epoch of the plan's stamp (the live stamp, for a current grant).
+def grant_capability(grant: Grant) -> F.Capability:
+  match grant:
+    case Grant{_, token, scope, rights, valid_until, _, _, _}:
+      match scope:
+        case Scope{+plan, _, subject}:
+          F.Capability{token, subject, plan, rights, F.authority(T.Plan.stamp(plan)), valid_until}
+
+# The filtering gate: a grant that is not current registers no capability.
+def grant_registered(usable: Bool, +grant: Grant, rest: F.Registry) -> F.Registry:
+  match usable:
+    case False{}:
+      rest
+    case True{}:
+      F.Registered{grant_capability(grant), rest}
+
+def registry_of(grants: Grants, +state: State, +now: Nat) -> F.Registry:
+  match grants:
+    case NoGrants{}:
+      F.EmptyRegistry{}
+    case Grants{+head, tail}:
+      grant_registered(current(state, head, now), head, registry_of(tail, state, now))
+
+# Public entry point (GI-008): the capability registry for `F.mount`,
+# `F.checked_plan` and the DataOS facade, one capability per grant current in
+# `state` at `now`. Tokens are distinct because `register` and `derive` deny
+# a token already held. Rebuild it for every use; Frontend still checks the
+# authenticated caller, rights, epoch and expiry, and `checked_plan` still
+# runs `T.admit`.
+def registry(+state: State, +now: Nat) -> F.Registry:
+  registry_of(grants(state), state, now)

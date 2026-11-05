@@ -1,13 +1,14 @@
 import Base
 import ./Issuance.bend as I
 import ./Transfer.bend as T
+import ./Frontend.bend as F
 import ./TransferTests.bend as TF
 import ./Test.bend as Test
 import ./Guard.bend as Guard
 
 # Tests for the issuance model, change add-authenticated-grant-issuance.
 # Sections follow the change's tasks: `submission` (1.1), `registration`
-# (1.2), `revision` (1.3), `attenuation` (1.4). Every denial check asserts the
+# (1.2), `revision` (1.3), `attenuation` (1.4), `integration` (1.5). Every denial check asserts the
 # exact Error and that the returned state equals the supplied one, field by
 # field, through `denied`.
 #
@@ -984,10 +985,166 @@ def attenuation() -> IO(Unit):
     Test.check(denied(I.register(pair_at(source_until(100n), write_until(200n), early()), 2n, request_with(scope(), one(1n), 2n, 3, 150n), early(), token()),
       pair_at(source_until(100n), write_until(200n), early()), I.Widened{}), "GI-007 a requested grant lifetime 150 beyond the shorter approval's 100 denied Widened")
 
+# --- Integration fixtures (synthetic) ----------------------------------------
+
+# The admission context TF.context() supplies (its synthetic source policy,
+# destination policy, operation and payment witness, at time 100) with its
+# grant lists replaced by the projections of `state` at time 100, rebuilt for
+# this use. Only the grants come from the issuer; every other policy fact is
+# Transfer's own synthetic fixture.
+def projected(+state: I.State) -> T.Context:
+  TF.with_writes(TF.with_reads(TF.context(), I.reads(state, now())), I.writes(state, now()))
+
+def admitted(decision: T.Decision) -> Bool:
+  T.accepted(decision)
+
+# Grant 3's Transfer scope as the projections must bind it: TF.plan()'s
+# invocation, manifest, destination, code, kind and stamp, write domain 6 and
+# the grant's own lifetime 150 (not its approvals' 200).
+def scope3() -> T.GrantScope:
+  TF.scope_for(TF.plan(), write6(), 150n)
+
+def scope_two3() -> T.GrantScope:
+  TF.scope_for(plan_two(), write6(), 150n)
+
+def gscope_equal(a: T.GrantScope, b: T.GrantScope) -> Bool:
+  match a b:
+    case T.GrantScope{ai, ax, ad, aw, ac, ak, as, au} T.GrantScope{bi, bx, bd, bw, bc, bk, bs, bu}:
+      Nat.is_eq(ai, bi) && T.Objects.equal(ax, bx) && T.ObjectVersion.equal(ad, bd)
+        && T.WriteDomain.equal(aw, bw) && T.CodeId.equal(ac, bc) && T.OpKind.equal(ak, bk)
+        && T.Stamp.equal(as, bs) && Nat.is_eq(au, bu)
+
+def reads_equal(a: T.Reads, b: T.Reads) -> Bool:
+  match a b:
+    case T.ReadEnd{} T.ReadEnd{}:
+      True{}
+    case T.ReadCons{T.ReadGrant{as, ad, ag}, at} T.ReadCons{T.ReadGrant{bs, bd, bg}, bt}:
+      T.ObjectVersion.equal(as, bs) && T.ReadDomain.equal(ad, bd) && gscope_equal(ag, bg)
+        && reads_equal(at, bt)
+    case _ _:
+      False{}
+
+def writes_equal(a: T.Writes, b: T.Writes) -> Bool:
+  match a b:
+    case T.WriteEnd{} T.WriteEnd{}:
+      True{}
+    case T.WriteCons{T.WriteGrant{ad, aw, ag}, at} T.WriteCons{T.WriteGrant{bd, bw, bg}, bt}:
+      T.ObjectVersion.equal(ad, bd) && T.WriteDomain.equal(aw, bw) && gscope_equal(ag, bg)
+        && writes_equal(at, bt)
+    case _ _:
+      False{}
+
+def capability_equal(a: F.Capability, b: F.Capability) -> Bool:
+  match a b:
+    case F.Capability{at, asub, ap, ar, ae, au} F.Capability{bt, bsub, bp, br, be, bu}:
+      T.CodeId.equal(at, bt) && Nat.is_eq(asub, bsub) && T.Plan.equal(ap, bp)
+        && U32.is_eq(ar, br) && Nat.is_eq(ae, be) && Nat.is_eq(au, bu)
+
+def registry_equal(a: F.Registry, b: F.Registry) -> Bool:
+  match a b:
+    case F.EmptyRegistry{} F.EmptyRegistry{}:
+      True{}
+    case F.Registered{ac, ar} F.Registered{bc, br}:
+      capability_equal(ac, bc) && registry_equal(ar, br)
+    case _ _:
+      False{}
+
+# All three projections of `state` at `t` are empty: no grant is usable.
+def nothing_projected(+state: I.State, +t: Nat) -> Bool:
+  reads_equal(I.reads(state, t), T.ReadEnd{}) && writes_equal(I.writes(state, t), T.WriteEnd{})
+    && registry_equal(I.registry(state, t), F.EmptyRegistry{})
+
+# The Frontend caller for subject 7 presenting grant 3's token. Like `from`,
+# a host builds it from transport identity verification; here it is synthetic.
+def caller() -> F.Caller:
+  F.Caller{subject(), token()}
+
+def live() -> F.Live:
+  F.Live{3n, now()}
+
+# Subject 7 mounts grant 3's projected capability (handle 1) with read rights
+# and opens a read descriptor (handle 2) from registered()'s projection: the
+# frontend state at revision 2. Built while grant 3 is current.
+def descriptor() -> F.State:
+  mounted = F.state(F.mount(F.empty(), I.registry(registered(), now()), 0n, caller(), 1, live()))
+  F.state(F.open(mounted, I.registry(registered(), now()), 1n, F.Ref{caller(), 1n}, 1, live()))
+
+# A read request on descriptor 2 against the registry and grant lists rebuilt
+# from `state` for this use.
+def read_plan(+state: I.State) -> Maybe<&2, T.Plan>:
+  F.checked_plan(descriptor(), I.registry(state, now()), 2n, F.Ref{caller(), 2n}, F.Read{},
+    projected(state))
+
+def plan_is(found: Maybe<&2, T.Plan>, plan: T.Plan) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{got}:
+      T.Plan.equal(got, plan)
+
+def no_plan(found: Maybe<&2, T.Plan>) -> Bool:
+  match found:
+    case None{}:
+      True{}
+    case Some{_}:
+      False{}
+
+# registered() plus grant 6 from fresh_pair's approvals 4 and 5 (token
+# other_token, revision 6). Grant 6 is at the head of the grant list.
+def both_registered() -> I.State:
+  I.Change.state(I.register(fresh_pair(), 5n, request(scope(), one(4n), 5n), now(), other_token()))
+
+# both_registered() with grant 6's source approval 4 revoked by its issuer
+# (revision 7): the head grant is withdrawn and grant 3, behind it, is not.
+def head_revoked() -> I.State:
+  I.Change.state(I.revoke(both_registered(), 6n, source_authority(), 4n))
+
+# Public fixtures for FacadeTests (synthetic). Grant 3 for subject 7 with
+# rights 7 (read, write, execute) until 180, from approvals 1 and 2 that each
+# grant rights 7 until 200, registered at time 100: revision 3.
+def execute_state() -> I.State:
+  I.Change.state(I.register(pair(source_for(scope(), 7, 200n), write_for(scope(), 7, 200n)), 2n,
+    request_with(scope(), one(1n), 2n, 7, 180n), now(), token()))
+
+# execute_state() with its write approval 2 revoked by its issuer: revision 4.
+def execute_write_revoked() -> I.State:
+  I.Change.state(I.revoke(execute_state(), 3n, write_authority(), 2n))
+
+# --- Section 1.5: integration (GI-008) ----------------------------------------
+
+def integration() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(reads_equal(I.reads(registered(), now()), T.ReadCons{T.ReadGrant{TF.source_object(), read5(), scope3()}, T.ReadEnd{}})
+      && writes_equal(I.writes(registered(), now()), T.WriteCons{T.WriteGrant{TF.destination_object(), write6(), scope3()}, T.WriteEnd{}})
+      && registry_equal(I.registry(registered(), now()), F.Registered{F.Capability{token(), subject(), TF.plan(), 3, 3n, 150n}, F.EmptyRegistry{}}), "GI-008 grant 3 projects exactly one read of 10v4 in read domain 5, one write of 20v8 in write domain 6 and one capability for subject 7, each bound to TF.plan() until 150")
+    Test.check(reads_equal(I.reads(two_registered(), now()), T.ReadCons{T.ReadGrant{TF.source_object(), read5(), scope_two3()}, T.ReadCons{T.ReadGrant{second_source(), read7(), scope_two3()}, T.ReadEnd{}}}), "GI-008 the two-source grant projects one read per manifest entry, in manifest order, each in its placed read domain")
+    Test.check(reads_equal(I.manifest_reads(TF.source_manifest(), I.placements(ambiguous()), scope3(), T.ReadEnd{}), T.ReadEnd{})
+      && reads_equal(I.manifest_reads(TF.source_manifest(), I.NoPlacements{}, scope3(), T.ReadEnd{}), T.ReadEnd{}), "GI-008 the read-projection helper gives a source placed twice, or not placed, no read rather than a guessed domain (defensive: no current grant has such a source)")
+    Test.check(admitted(T.admit(TF.plan(), projected(registered()))), "GI-008 the projection of registered grant 3 makes T.admit admit TF.plan()")
+    Test.check(plan_is(read_plan(registered()), TF.plan()), "GI-008 F.mount, F.open and F.checked_plan resolve grant 3's projected capability for subject 7 to TF.plan()")
+    Test.check(TF.denied_as(T.admit(TF.plan(), projected(write_revoked())), T.Write{}) && nothing_projected(write_revoked(), now()), "GI-008 revocation after registration: with the write approval revoked the rebuilt projection is empty and T.admit denies Write")
+    Test.check(no_plan(read_plan(write_revoked())), "GI-008 revocation after registration: checked_plan on the descriptor opened while grant 3 was current gives None")
+    Test.check(TF.denied_as(T.admit(TF.plan(), TF.with_reads(TF.context(), I.reads(source_revoked(), now()))), T.Read{})
+      && nothing_projected(source_revoked(), now()) && TF.denied_as(T.admit(TF.plan(), projected(source_revoked())), T.Write{}), "GI-008 with the source approval revoked the rebuilt read projection denies Read even beside a write list that still permits; both projections rebuilt deny at Write, the first check")
+    Test.check(nothing_projected(registered(), 150n) && Bool.not(nothing_projected(registered(), 149n)), "GI-008 every projection of grant 3 is empty at its valid_until 150 and not at 149")
+    Test.check(registry_equal(I.registry(both_registered(), now()),
+        F.Registered{F.Capability{other_token(), subject(), TF.plan(), 3, 3n, 150n}, F.Registered{F.Capability{token(), subject(), TF.plan(), 3, 3n, 150n}, F.EmptyRegistry{}}})
+      && writes_equal(I.writes(both_registered(), now()), T.WriteCons{T.WriteGrant{TF.destination_object(), write6(), scope3()}, T.WriteCons{T.WriteGrant{TF.destination_object(), write6(), scope3()}, T.WriteEnd{}}})
+      && reads_equal(I.reads(both_registered(), now()), T.ReadCons{T.ReadGrant{TF.source_object(), read5(), scope3()}, T.ReadCons{T.ReadGrant{TF.source_object(), read5(), scope3()}, T.ReadEnd{}}}), "GI-008 two current grants both project, newest first")
+    Test.check(registry_equal(I.registry(head_revoked(), now()), F.Registered{F.Capability{token(), subject(), TF.plan(), 3, 3n, 150n}, F.EmptyRegistry{}})
+      && writes_equal(I.writes(head_revoked(), now()), T.WriteCons{T.WriteGrant{TF.destination_object(), write6(), scope3()}, T.WriteEnd{}})
+      && reads_equal(I.reads(head_revoked(), now()), T.ReadCons{T.ReadGrant{TF.source_object(), read5(), scope3()}, T.ReadEnd{}})
+      && admitted(T.admit(TF.plan(), projected(head_revoked()))), "GI-008 a withdrawn grant is filtered without dropping the current grant behind it")
+    Test.check(registry_equal(I.registry(derived(1, 120n), now()),
+        F.Registered{F.Capability{other_token(), subject(), TF.plan(), 1, 3n, 120n}, F.Registered{F.Capability{token(), subject(), TF.plan(), 3, 3n, 150n}, F.EmptyRegistry{}}})
+      && nothing_projected(I.Change.state(I.revoke(derived(1, 120n), 4n, source_authority(), 1n)), now()), "GI-008 a derived child projects its own attenuated rights and lifetime, and revoking the root's source approval withdraws parent and child together")
+    Test.check(nothing_projected(with_live(registered(), next_epoch()), now()) && nothing_projected(with_directory(registered(), directory_without_write()), now()), "GI-008 an authority epoch advance or a directory change withdraws grant 3 from every projection")
+
 def main() -> IO(Unit):
   do IO<Unit>:
     submission()
     registration()
     revision()
     attenuation()
-    IO.print("Issuance: 183 checks passed")
+    integration()
+    IO.print("Issuance: 196 checks passed")
