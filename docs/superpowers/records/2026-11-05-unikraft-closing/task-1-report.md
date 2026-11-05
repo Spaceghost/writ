@@ -181,3 +181,122 @@ Status after this round: DONE_WITH_CONCERNS. This supersedes the status line at 
    - At load average 31 to 47, hello, die and exit took 0.3 s (TCG 0.2 s), the corpus 4.8 to 5.0 s (TCG 1.7 s), exhaust 5.1 s, and overflow 2.5 s.
    - Not investigated, per the ruling.
 3. **The proper fix is deferred:** a halt after the `outb` in `exit_device.c`, at the next rebuild of every set.
+
+## Fix round 2 (review: task-1-review.md)
+
+Status after this round: DONE. Box 3.1 stays checked.
+
+### Findings addressed
+
+- **Finding 1 (the over-match).** The rule now drops only a trailing unterminated fragment that is the start of a timestamped kernel line after the exit write: a cut-off timestamp, or the `pm.c:69` line. It is counted every time. All three conditions must hold:
+  - (a) It is the capture's last line, and the capture does not end with a newline.
+  - (b) Once NUL bytes are removed, it is a nonempty prefix of Unikraft's `[%5lu.%06lu] ` timestamp. That means a 5-wide field of spaces then digits with at least one space, so an uptime below 10000 s, then exactly 6 fractional digits. Alternatively, it is that complete timestamp followed by a prefix of the `pm.c:69` text.
+  - (c) Nothing else is dropped.
+
+  Accepted limit: `[` (or `[` and spaces) cannot be told from program text by its shape. Condition (a) is what keeps a program line out.
+- **Finding 2 (wording).** The env.sh comment, the check-image.sh and check-fault.sh comments, the INVENTORY rows, the evidence definition and the tasks.md 3.1 note now use the ruling's words. The env.sh comment names the overflow case.
+- **Finding 3 (missing TCG reruns).** Added: check-fault.sh on exhaust and overflow, plus die and exit, both as rechecks and as fresh boots.
+- **Finding 4 (top table read as final).** The top table is now labelled as strict checks before the fragment rule.
+- **Finding 6 (empty last line).** The comment now says that an empty unterminated last line is not dropped, so the check fails, which is the safe direction.
+
+### Changes
+
+- **`hosts/unikraft/scripts/env.sh`** (85b2dd82…): the old helper is replaced.
+  - lines 28-58: comment, rule and self-test cases.
+  - lines 59-88: `writ_is_kernel_fragment_text` (awk, anchored shape).
+  - lines 90-96: `writ_kernel_fragment <raw>`. It checks that the last byte is not `\n`, strips the last line, tests it, and prints the line.
+- **`check-image.sh`** (8c66f262…):
+  - lines 20-26: comment.
+  - line 40: calls `writ_kernel_fragment "$RAW"`.
+- **`check-fault.sh`** (13825bcd…):
+  - lines 18-26: comment.
+  - lines 47-49: drops the last program line only when it equals the raw capture's fragment.
+- **`hosts/unikraft/INVENTORY.md`**: the env.sh, check-image, check-fault and check-corpus rows are reworded.
+- **`openspec/changes/add-unikernel-library-runtime/tasks.md`**: the 3.1 note is reworded.
+- **`verification/unikernel-kvm.txt`**:
+  - the top table is labelled pre-rule;
+  - the Fix round definition points to the tightened rule;
+  - the first-definition unit check is marked superseded;
+  - a new "Fix round 2" section is added.
+- OpenSpec 1.16.0 strict validation: 44 passed, 0 failed.
+
+### Self-test
+
+Command: `W=$W sh selftest.sh hosts/unikraft/scripts`. W must be set, because env.sh stops without it. The script is a scratch file that sources env.sh; its full text is below.
+
+```sh
+# Self-test of env.sh's kernel-fragment helpers. Usage: sh selftest.sh <scripts dir>
+HERE=$1; . "$1/env.sh"
+PM='[    0.173610] ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy loop...'
+bad=0
+t() { if writ_is_kernel_fragment_text "$2"; then g=drop; else g=keep; fi
+  [ "$g" = "$1" ] && r=ok || { r=WRONG; bad=1; }; printf '%s  expect %s got %s  <%s>\n' "$r" "$1" "$g" "$2"; }
+for s in "[" "[   " "[    2" "[    2.27112" "[    2.271123] " "[    0.117238] ERR:  [li" "$PM"; do t drop "$s"; done
+for s in "[1.5]" "[12" "[1" "[5.25]" "[ 1.0]" "[3.0] E" "[1, 2]" "hi" "[    0.1] ERR:" "[    0.173610] CRIT: x" "${PM}x" ""; do t keep "$s"; done
+D=$(mktemp -d); trap 'rm -rf "$D"' EXIT
+c() { printf "$2" > "$D/c"; if writ_kernel_fragment "$D/c" > /dev/null; then g=drop; else g=keep; fi
+  [ "$g" = "$1" ] && r=ok || { r=WRONG; bad=1; }; printf '%s  expect %s got %s  capture %s\n' "$r" "$1" "$g" "$3"; }
+c keep 'hi\r\n[\r\n' '"hi CRLF [ CRLF" (terminated)'
+c keep 'hi\r\n[1.5]\r\n' '"hi CRLF [1.5] CRLF" (terminated)'
+c keep 'hi\r\n[1.5]' '"hi CRLF [1.5]" (unterminated, wrong shape)'
+c drop 'hi\r\n[    2.27112' '"hi CRLF [    2.27112" (unterminated)'
+c drop 'die\r\n[    0.173610] ERR:  [libukpm] <pm.c @   69> \000PM driver failed the operation: -5. Falling back on busy loop...' '"die CRLF <pm.c line with a NUL>" (unterminated)'
+c keep "$(printf 'die\\r\\n%s\\r\\n' "$PM")" '"die CRLF <pm.c line> CRLF" (terminated)'
+c keep 'hi\r\n\000' '"hi CRLF NUL" (empty last line)'
+echo "self-test: $([ $bad = 0 ] && echo PASS || echo FAIL)"; exit $bad
+```
+
+Output:
+```
+ok  expect drop got drop  <[>
+ok  expect drop got drop  <[   >
+ok  expect drop got drop  <[    2>
+ok  expect drop got drop  <[    2.27112>
+ok  expect drop got drop  <[    2.271123] >
+ok  expect drop got drop  <[    0.117238] ERR:  [li>
+ok  expect drop got drop  <[    0.173610] ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy loop...>
+ok  expect keep got keep  <[1.5]>
+ok  expect keep got keep  <[12>
+ok  expect keep got keep  <[1>
+ok  expect keep got keep  <[5.25]>
+ok  expect keep got keep  <[ 1.0]>
+ok  expect keep got keep  <[3.0] E>
+ok  expect keep got keep  <[1, 2]>
+ok  expect keep got keep  <hi>
+ok  expect keep got keep  <[    0.1] ERR:>
+ok  expect keep got keep  <[    0.173610] CRIT: x>
+ok  expect keep got keep  <[    0.173610] ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy loop...x>
+ok  expect keep got keep  <>
+ok  expect keep got keep  capture "hi CRLF [ CRLF" (terminated)
+ok  expect keep got keep  capture "hi CRLF [1.5] CRLF" (terminated)
+ok  expect keep got keep  capture "hi CRLF [1.5]" (unterminated, wrong shape)
+ok  expect drop got drop  capture "hi CRLF [    2.27112" (unterminated)
+ok  expect drop got drop  capture "die CRLF <pm.c line with a NUL>" (unterminated)
+ok  expect keep got keep  capture "die CRLF <pm.c line> CRLF" (terminated)
+ok  expect keep got keep  capture "hi CRLF NUL" (empty last line)
+self-test: PASS
+exit 0
+```
+
+### Rechecks and reruns
+
+- **Recheck through the tightened rule** (`WRIT_NO_BOOT=1`, 35 KVM captures). **No KVM count changed:**
+  - 17 captures dropped 1: the 13 from the first recheck, plus kvmfix-die1, kvmfix-exit1, kvmfix-tests2 and kvmfix-overflow1.
+  - 18 captures dropped 0.
+  - All 35 PASS. Every dropped-1 capture ends unterminated.
+- **Negative controls:** notlast 0 FAIL, other 0 FAIL, twofrag 1 FAIL.
+- **TCG rechecks:** dropped 0, PASS, across the following 14 captures:
+  - tcgnow hello1-3, die1-3, exit1-3;
+  - tcgfix-hello1;
+  - tcgnow-tests and tcgfix-tests;
+  - tcgnow exhaust and overflow (check-fault.sh).
+- **TCG boots through the changed scripts:** all dropped 0, PASS.
+
+| Boot | Script | Result | Wall |
+| --- | --- | --- | --- |
+| tcgfix2-die1 | check-image.sh | 35 | 0.3 s |
+| tcgfix2-exit1 | check-image.sh | 39 | 0.3 s |
+| tcgfix2-hello1 | check-image.sh | 33 | 0.3 s |
+| tcgfix2-exhaust1 | check-fault.sh | 253 | 8.3 s |
+| tcgfix2-overflow1 | check-fault.sh | 253, message first | 10.3 s |
+| tcgfix2-tests-m4096 | check-corpus.sh | 33, 782 PASS | 2.1 s |

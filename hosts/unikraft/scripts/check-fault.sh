@@ -15,13 +15,15 @@
 #      Kraftfile); the reference must list it among the program lines as well;
 #   3. QEMU's exit status equals expected_qemu_status (run.sh's exit status when booting,
 #      and the status run.sh recorded in the log).
-# Kernel shutdown fragment: before check 1, if the last program line (the line before
-# the QEMU status line) is a prefix of Unikraft's pm.c:69 shutdown line
-# (writ_is_pm_shutdown_fragment, env.sh), that one line is dropped, and only that line;
-# "kernel shutdown fragment after exit: dropped <0|1>" is printed on every run. Under KVM
-# the guest runs briefly past exit_device.c's port write, contradicting that file's
-# "QEMU does not return here" (verification/unikernel-kvm.txt, "Finding: the guest runs
-# on after the exit-device write (KVM)").
+# Kernel fragment after the exit write (writ_kernel_fragment, env.sh): before check 1,
+# and before the "[ <s>] " filter (so a counted line is never hidden by that filter), the
+# last program line is dropped only when the raw capture run-<label>.raw ends with an
+# unterminated last line that is the start of a timestamped kernel line (a cut-off
+# timestamp, or the pm.c:69 shutdown line) and the log's last program line is that same
+# text; nothing else is. Under KVM the guest runs briefly past exit_device.c's port
+# write, contradicting that file's "QEMU does not return here"
+# (verification/unikernel-kvm.txt). Counted every time: each run prints "kernel shutdown
+# fragment after exit: dropped <0|1>".
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise.
 # Host tooling: makes no Writ decision.
 . "$(dirname "$0")/env.sh"
@@ -42,7 +44,9 @@ fi
 Q=$(tail -n 2 "$L" | head -n 1)
 sed -n '/^ *Ijiraq 0\.21\.0~7351f8b$/,$p' "$L" | sed '1d' | head -n -2 > "$C"
 FR=0
-if writ_is_pm_shutdown_fragment "$(tail -n 1 "$C")"; then head -n -1 "$C" > "$C.f" && mv "$C.f" "$C"; FR=1; fi
+if FT=$(writ_kernel_fragment "$W/$S/logs/run-$LB.raw") && [ "$(tail -n 1 "$C")" = "$FT" ]; then
+  head -n -1 "$C" > "$C.f" && mv "$C.f" "$C"; FR=1
+fi
 echo "kernel shutdown fragment after exit: dropped $FR"
 grep -v '^\[ *[0-9][0-9.]*\] ' "$C" > "$C.f"; mv "$C.f" "$C"
 if diff "$C" "$REF"; then echo "program lines: equal"; else echo "program lines: DIFFER"; BAD=1; fi

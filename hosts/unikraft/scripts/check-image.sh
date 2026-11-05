@@ -17,13 +17,13 @@
 # QEMU 33 counts as success only with checks 1 to 3 passing. QEMU's own startup errors
 # exit 1, which the hook never produces, and leave no banner, so console.sh fails on
 # them as well.
-# Kernel shutdown fragment: if the capture's last line, after writ_strip_serial, is a
-# prefix of Unikraft's pm.c:69 shutdown line (writ_is_pm_shutdown_fragment, env.sh),
-# that one line is dropped before console.sh, and only that line. Under KVM the guest
-# runs briefly past exit_device.c's port write, contradicting that file's "QEMU does not
-# return here" (verification/unikernel-kvm.txt, "Finding: the guest runs on after the
-# exit-device write (KVM)"). Every run prints "kernel shutdown fragment after exit:
-# dropped <0|1>", so each occurrence shows in the evidence.
+# Kernel fragment after the exit write (writ_kernel_fragment, env.sh): if the raw
+# capture ends with an unterminated last line that is the start of a timestamped kernel
+# line (a cut-off timestamp, or the pm.c:69 shutdown line), that one line is removed
+# before console.sh; nothing else is. Under KVM the guest runs briefly past
+# exit_device.c's port write, contradicting that file's "QEMU does not return here"
+# (verification/unikernel-kvm.txt). Counted every time: each run prints "kernel shutdown
+# fragment after exit: dropped <0|1>".
 # Prints one line per check and exits 1 if any expected outcome changed, 0 otherwise.
 . "$(dirname "$0")/env.sh"
 S=${1:?usage}; LB=${2:?usage}; P=${3:?usage}; REF=${4:?usage}; XQ=${5:?usage}
@@ -37,7 +37,7 @@ else
 fi
 BAD=0
 RAW="$W/$S/logs/run-$LB.raw"; FR=0
-if [ -f "$RAW" ] && writ_is_pm_shutdown_fragment "$(tail -n 1 "$RAW" | writ_strip_serial)"; then
+if [ -f "$RAW" ] && writ_kernel_fragment "$RAW" > /dev/null; then
   head -n -1 "$RAW" > "$RT"; RAW=$RT; FR=1
 fi
 echo "kernel shutdown fragment after exit: dropped $FR"

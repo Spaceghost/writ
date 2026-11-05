@@ -54,7 +54,7 @@ Default check: run.sh sigcodes kvmt-tcgdefault hello "+RTS --threads 1 --gpu off
 (no accel) logged a first line byte-identical to the TCG record's run-hello1.log; QEMU 33.
 run.sh with accel "bogus": "run.sh: accel 'bogus' is not tcg or kvm", exit 2, no QEMU.
 
-== Result (KVM) ==
+== Result (KVM), strict checks before the fragment rule ==
 
 | Probe | Set / image | -m | Expected | QEMU (every KVM boot) | Check, first boot | Checks over all boots | KVM wall, first boot | TCG wall (record) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -64,6 +64,9 @@ run.sh with accel "bogus": "run.sh: accel 'bogus' is not tcg or kvm", exit 2, no
 | Exhaust.bend (crash) | sigfault/exhaust-qemu | 1024 | 253, crash screen | 253 (1 of 1) | check-fault.sh PASS | PASS 1 of 1 | 18.0 s | 3.7 s (exs1) |
 | Overflow.bend (fault) | sigfault/overflow-qemu | 4096 | message, then 253 | 253 (1 of 1) | check-fault.sh PASS, message before crash screen | PASS 1 of 1 | 29.0 s | 17.8 s, 13.5 s (ovs1, ovs2) |
 | Tests.bend (corpus) | sigcorpustests/tests-qemu | 4096 | 33, 782 PASS, last line | 33 (3 of 3) | check-corpus.sh PASS: diff empty, 782 PASS, ALL LIBRARY TESTS PASSED | PASS 2 of 3 | 8.5 s | 2.2 s (tests-m4096) |
+
+Strict checks as they stood before the fragment rule; after it all of these captures
+pass, see Fix round and Fix round 2.
 
 The exit map holds on every KVM boot (23 boots): 33, 35, 39, 253, 253, 33. The corpus count
 holds on every corpus boot: 782 PASS lines. On every boot, the program's lines equal the
@@ -179,15 +182,14 @@ not tested).
 == Fix round (2026-11-05 UTC): the kernel shutdown fragment rule ==
 
 Ruling (controller): do not change exit_device.c now; make the checks honest about the one
-known kernel line. hosts/unikraft/scripts/env.sh now defines writ_is_pm_shutdown_fragment
-<line>: true only when the line, after writ_strip_serial (NUL bytes, escapes and CR
-removed), is a nonempty prefix of
-  [ <digits>.<digits>] ERR:  [libukpm] <pm.c @   69> PM driver failed the operation: -5. Falling back on busy loop...
-check-image.sh (and so check-corpus.sh) applies it to the last line of the raw capture and,
-if it matches, gives console.sh the capture without that one line; check-fault.sh applies it
-to the last program line (before its own "[ <s>] " filter, so a whole timestamped line is
-counted rather than dropped silently). Nothing else is dropped. Each prints
-"kernel shutdown fragment after exit: dropped <0|1>".
+known kernel line. The rule, as tightened in Fix round 2 (below; this round's first
+definition, "a prefix of the pm.c line" with a loose timestamp, is superseded): a trailing
+unterminated fragment that is the start of a timestamped kernel line after the exit write
+(a cut-off timestamp, or the pm.c:69 line) is dropped, and counted every time.
+check-image.sh (and so check-corpus.sh) drops it from the raw capture before console.sh;
+check-fault.sh drops the matching last program line, before its own "[ <s>] " filter, so a
+whole timestamped line is counted rather than dropped silently. Nothing else is dropped.
+Each prints "kernel shutdown fragment after exit: dropped <0|1>".
 
 Limit of the rule: a fragment cut inside the timestamp ("[  ", "[    0.133495] ") is a
 prefix of the pm.c line and also of any Unikraft log line, so it cannot be attributed to
@@ -196,10 +198,11 @@ next; on kvmfix-overflow1 (crash path) the dropped "[    2.27112" is the start o
 crash-screen line, not a pm.c line (it would have failed check-fault.sh's program-line check
 without the rule). The count shows every such drop.
 
-Helper unit check (strings): yes for "[", "[  ", "[    0", "[    0.13", "[    0.133495]",
-"[    0.133495] ", "[    0.117238] ERR:  [li", the whole line; no for "", "hi",
-"ALL LIBRARY TESTS PASSED", "[    0.1] ERR:  [libukpm] <pm.c @   70>", "[    0.1] CRIT: x",
-the whole line plus "x", "[x".
+Helper unit check of the first definition (superseded; the review found it also accepted
+"[1.5]", "[12", "[1", "[5.25]", "[ 1.0]", "[3.0] E", "["; see Fix round 2): yes for "[", "[  ",
+"[    0", "[    0.13", "[    0.133495]", "[    0.133495] ", "[    0.117238] ERR:  [li", the whole
+line; no for "", "hi", "ALL LIBRARY TESTS PASSED", "[    0.1] ERR:  [libukpm] <pm.c @   70>",
+"[    0.1] CRIT: x", the whole line plus "x", "[x".
 
 Negative controls (WRIT_NO_BOOT=1 check-image.sh fragneg <label> die $W/sigcodes/die-ref.txt 35,
 captures derived from run-kvm-die1.raw; each must fail):
@@ -240,7 +243,7 @@ Fresh KVM boots (run.sh ... "" kvm, then the changed check with WRIT_NO_BOOT=1; 
 | sigfault kvmfix-exhaust1 | 253 | 5.1 s | 0 | PASS | 2d85c7a8d847da3ad4de51ac1dc55892c817c3059e6b1214855c06677673d594 |
 | sigfault kvmfix-overflow1 | 253 | 2.5 s | 1 ("[    2.27112", crash screen cut) | PASS, message before the crash screen | e216954b790376b5a4919826bda56bea22a1bc3e5c6cf6fec9052ccc86b0cc6b |
 
-TCG through the changed scripts (booting; TCG, not KVM):
+TCG through the changed scripts (booting; TCG, not KVM; first rule):
   check-image.sh sigcodes tcgfix-hello1 hello $W/sigcodes/hello-ref.txt 33 "" 60 1024
     -> dropped 0 / diff: empty / QEMU exit: 33 / PASS (wall 0.2 s; log ebecaa9d..., = tcgnow-hello2)
   check-corpus.sh sigcorpustests tcgfix-tests-m4096 600 4096
@@ -258,3 +261,60 @@ KVM boot was slower than TCG (hello 1.1 s against 0.2 s; corpus 6.4 to 10.0 s ag
 3.1 s; exhaust 18.0 s against 11.5 s). At load average 31 to 47 the fresh KVM boots took
 hello/die/exit 0.3 s (TCG 0.2 s), corpus 4.8 to 5.0 s (TCG 1.7 s), exhaust 5.1 s (TCG
 record 3.7 s), overflow 2.5 s (TCG record 17.8 / 13.5 s). Not explained.
+
+== Fix round 2 (2026-11-05 UTC): the rule tightened ==
+
+Review (docs/superpowers/records/2026-11-05-unikraft-closing/task-1-review.md, finding 1):
+the first definition also dropped complete program lines such as "[1.5]", "[12" and "[".
+The rule is now, in env.sh (writ_kernel_fragment <raw>, writ_is_kernel_fragment_text
+<line>): a trailing unterminated fragment that is the start of a timestamped kernel line
+after the exit write (a cut-off timestamp, or the pm.c:69 line), counted every time. All of:
+  (a) it is the capture's last line and the capture does not end with a newline (the
+      guest stopped mid-line; a program's last line is printed with its terminator);
+  (b) after writ_strip_serial (NUL bytes removed) it is a nonempty prefix of Unikraft's
+      timestamp "[%5lu.%06lu] " (a 5-wide field of spaces then digits with at least one
+      space, i.e. an uptime below 10000 s; ".", exactly 6 digits; "] "), or that complete
+      timestamp followed by a prefix of "ERR:  [libukpm] <pm.c @   69> PM driver failed the
+      operation: -5. Falling back on busy loop...";
+  (c) nothing else.
+check-fault.sh drops its last program line only when it equals that fragment of the raw
+capture. Accepted limit: "[" alone (or "[" and spaces) cannot be told from program text by
+shape; (a) is what keeps a program line out. An uptime of 10000 s or more, or an empty
+unterminated last line (NUL or CR only), is not dropped and so fails the check (the safe
+direction).
+
+Self-test (scratch script sourcing env.sh, text in task-1-report.md fix round 2): 26 of 26
+as expected.
+  drop: "[", "[   ", "[    2", "[    2.27112", "[    2.271123] ", "[    0.117238] ERR:  [li",
+        the whole pm.c:69 line
+  keep: "[1.5]", "[12", "[1", "[5.25]", "[ 1.0]", "[3.0] E", "[1, 2]", "hi", "[    0.1] ERR:",
+        "[    0.173610] CRIT: x", the whole pm.c line plus "x", ""
+  captures: keep "hi CRLF [ CRLF", "hi CRLF [1.5] CRLF" (terminated), "hi CRLF [1.5]"
+        (unterminated, wrong shape), "die CRLF <pm.c line> CRLF" (terminated), "hi CRLF NUL";
+        drop "hi CRLF [    2.27112", "die CRLF <pm.c line with a NUL>" (unterminated)
+
+Recheck through the tightened rule (WRIT_NO_BOOT=1; captures unchanged): every count equals
+the Fix round's, every result PASS.
+  dropped 1 (17): kvm-hello2, kvm-hello5, kvm-die1, kvm-die2, kvm-die4, kvm-die5, kvm-die6,
+    kvm-exit2 to kvm-exit6, kvm-tests2-m4096, kvmfix-die1, kvmfix-exit1, kvmfix-tests2-m4096,
+    kvmfix-overflow1 (each capture ends unterminated: the guest stopped mid-line)
+  dropped 0 (18): kvm-hello1, 3, 4, 6, kvm-die3, kvm-exit1, kvm-tests-m4096,
+    kvm-tests3-m4096, kvm-exhaust1, kvm-overflow1, kvmfix-hello1, 2, kvmfix-die2, 3,
+    kvmfix-exit2, 3, kvmfix-tests1-m4096, kvmfix-exhaust1
+  Negative controls: fragneg notlast dropped 0 FAIL; other dropped 0 FAIL; twofrag dropped 1
+    (the last, unterminated) FAIL. Exit 1 each.
+
+TCG through the tightened scripts (TCG, not KVM), all dropped 0, PASS:
+  rechecks (WRIT_NO_BOOT=1): tcgnow-hello1..3, tcgnow-die1..3, tcgnow-exit1..3, tcgfix-hello1
+    (check-image.sh); tcgnow-tests-m4096, tcgfix-tests-m4096 (check-corpus.sh);
+    tcgnow-exhaust1, tcgnow-overflow1 (check-fault.sh)
+  booting (load average 38 to 41):
+    check-image.sh sigcodes tcgfix2-die1 die $W/sigcodes/die-ref.txt 35 "" 60 1024    -> QEMU 35, PASS (wall 0.3 s)
+    check-image.sh sigcodes tcgfix2-exit1 exit $W/sigcodes/exit-ref.txt 39 "" 60 1024 -> QEMU 39, PASS (wall 0.3 s)
+    check-image.sh sigcodes tcgfix2-hello1 hello $W/sigcodes/hello-ref.txt 33 "" 60 1024 -> QEMU 33, PASS (wall 0.3 s)
+    check-fault.sh sigfault tcgfix2-exhaust1 exhaust verification/unikernel-exhaust-reference.txt 253 120 1024
+      -> program lines equal, crash screen present, QEMU 253, PASS (wall 8.3 s)
+    check-fault.sh sigfault tcgfix2-overflow1 overflow verification/unikernel-overflow-reference.txt 253 60 4096
+      -> program lines equal, crash screen present, fault message before it, QEMU 253, PASS (wall 10.3 s)
+    check-corpus.sh sigcorpustests tcgfix2-tests-m4096 600 4096 -> 782 PASS, last line, QEMU 33, PASS (wall 2.1 s)
+TCG results unchanged; fragment count 0 throughout.
