@@ -8,6 +8,7 @@ import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
 import ./Negotiation.bend as Negotiation
+import ./Rendezvous.bend as Rendezvous
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -221,3 +222,68 @@ law publication_refused_emits_nothing:
   for ledger: Ledger.State
   for reason: HostPrimitives.Error
   {HostPublication.PublishResult.effects(HostPublication.Refused{state, session, ledger, reason}) == [] : List<&2, HostPublication.PublishEffect>}
+
+# No natural number is strictly below itself under `Nat.is_lt`. Auxiliary
+# arithmetic fact for offer_order_irreflexive (the quote and serial clauses of
+# the ranking compare a value with itself); it says nothing about the
+# rendezvous by itself.
+law nat_lt_irreflexive:
+  for n: Nat
+  {Nat.is_lt(n, n) == False{} : Bool}
+
+# Every natural number equals itself under `Nat.is_eq`. Auxiliary arithmetic
+# fact for offer_order_irreflexive (the tie conditions of the ranking compare
+# a value with itself, and the strict clause behind each tie is reached only
+# through it); it says nothing about the rendezvous by itself.
+law nat_eq_reflexive:
+  for n: Nat
+  {Nat.is_eq(n, n) == True{} : Bool}
+
+# ER-003: the selection comparator is strict on its diagonal. For every offer
+# record, `Rendezvous.before(a, a)` is False, so no offer is ever ranked ahead
+# of an identical record. This rules out a `<=`-style comparator at any of its
+# three levels (quote, provider id, serial), which would make the winner among
+# records under one identity depend on list order. It does not prove
+# transitivity, totality on distinct identities, or that `best` returns the
+# minimum; order independence of the selection is tested (RendezvousTests,
+# section `selection`).
+law offer_order_irreflexive:
+  for a: Rendezvous.Offer
+  {Rendezvous.before(a, a) == False{} : Bool}
+
+# ER-002: eligibility precedes ranking. For every list of offers before it,
+# offer `o`, list after it, state and snapshot, if `o` is not `eligible` in
+# that state and snapshot then removing `o` leaves `eligible_offers`, the only
+# list `select` ranks, unchanged. So an ineligible offer, at any position and
+# whatever its quote, contributes nothing to ranking, and no price can
+# override a denial; in particular an offer whose grant was revoked after
+# submission drops out wherever it sits. It does not prove that `select`
+# ranks only `eligible_offers` (the structure of `select_checked` and the
+# tests show that), nor that the eligibility gates are the right ones.
+law rendezvous_ineligible_offer_dropped:
+  for before_list: Rendezvous.Offers
+  for o: Rendezvous.Offer
+  for rest: Rendezvous.Offers
+  for state: Rendezvous.State
+  for snapshot: Rendezvous.Snapshot
+  for ineligible: {Rendezvous.eligible(o, state, snapshot) == False{} : Bool}
+  {Rendezvous.eligible_offers(Rendezvous.Offers.append(before_list, Rendezvous.Offers{o, rest}), state, snapshot) == Rendezvous.eligible_offers(Rendezvous.Offers.append(before_list, rest), state, snapshot) : Rendezvous.Offers}
+
+# A selection whose expected revision is one past the state's revision is not
+# accepted and returns exactly the supplied state, for every state, Negotiation
+# session, expected session revision, Negotiation context and snapshot. This
+# is the race between ranking and a changed offer set: a selection ranked at
+# revision r cannot commit after any submission, withdrawal or abandonment has
+# moved the state, and the attempt stores no selection and allocates no id.
+# The proof pins `select`'s outer `revision_current` match and that its
+# Rejected branch carries the caller's state. It covers the successor
+# revision only (other stale revisions are denied by the same match and
+# shown by RendezvousTests), says nothing about the denial reason, and does
+# not claim that the host serializes installs.
+law rendezvous_stale_selection_keeps_state:
+  for state: Rendezvous.State
+  for session: Negotiation.Session
+  for expected_session: Nat
+  for n_context: Negotiation.Context
+  for snapshot: Rendezvous.Snapshot
+  {(Rendezvous.Change.accepted(Rendezvous.select(state, 1n+Rendezvous.revision(state), session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.select(state, 1n+Rendezvous.revision(state), session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}

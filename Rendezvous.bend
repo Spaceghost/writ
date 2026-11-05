@@ -69,8 +69,11 @@ import ./Issuance.bend as I
 # the existing law `failed_check_denies` covers a failed rendezvous check at
 # any position. The denial reason is the first failing gate of the same list,
 # so acceptance and reason cannot drift apart. `submit_offer`,
-# `submit_approval` and `withdraw_approval` have no outer revision match: no
-# law pins one, and each one's revision gate is its first gate.
+# `submit_approval`, `withdraw_approval`, `abandon` and `withdraw_offer` have
+# no outer revision match: no law pins one, and each one's revision gate is
+# its first gate. `select` matches `revision_current` outermost, before its
+# gate list, because the law `rendezvous_stale_selection_keeps_state` pins
+# that match; its gate list therefore holds no revision gate.
 #
 # Submission is not eligibility (plan ruling). `submit_offer` checks the
 # offer's identity, plan, backing grant, lifetime and record uniqueness. The
@@ -94,14 +97,58 @@ import ./Issuance.bend as I
 # approval without editing it; `origins_approved` requires every origin
 # `T.required_origins` lists, and a Missing or empty lookup is False.
 #
-# Public entry points: `open`, `submit_offer`, `submit_approval`,
-# `withdraw_approval`, `valid`, the `Change.*`
-# accessors and the state, snapshot and record accessors. Every other def is
-# an exported implementation helper; calling one does not perform a
-# transition's checks.
+# Eligibility precedes ranking (ER-002). An offer is eligible only when it
+# passes every gate of the ordered list `eligibility_gates`, re-read from the
+# state and snapshot supplied at the call: the record format, the identity,
+# the plan, the backing grant (present, for the provider claim, for exactly
+# the request plan, `I.current`, holding provider_rights()), the offer's
+# lifetime, the reader's quote ceiling, the execution constraint, and every
+# required origin's approval for this provider, profile and plan.
+# `select` ranks only `eligible_offers`, so no price overrides a denial, and
+# a grant revoked between submission and selection drops its offer wherever
+# it sits in the list. A later placement profile may append gates; it can
+# only remove candidates, never reorder them.
 #
-# Laws. None yet. The module relies on the existing law `failed_check_denies`
-# through its gate structure, without modifying it.
+# Ranking (ER-003, ranking_profile() 1). `before` is the strict
+# lexicographic order on (quote, provider id, serial). Distinct identities
+# are always ordered, so on an unambiguous offer list the first-ranked
+# eligible offer does not depend on list order. `select` refuses a list in
+# which one OfferId carries two contents (ER-008, ConflictingOffer); only the
+# identity's own provider can resolve that, by `withdraw_offer` and a fresh
+# serial. A selection stores the complete offer record, the request, the
+# issuer's live stamp, the time and the ranking profile; it grants nothing
+# by itself. It is never re-ranked: a cheaper newcomer does not displace it,
+# and only `abandon` or the selected offer's withdrawal retires it (its id
+# becomes `retired` and is never restored).
+#
+# Public entry points: `open`, `submit_offer`, `submit_approval`,
+# `withdraw_approval`, `select`, `abandon` (a monitor action),
+# `withdraw_offer`, the read-only diagnostic `ineligibility`, `valid`, the
+# `Change.*` accessors and the state, snapshot and record accessors. Every
+# other def is an exported implementation helper; calling one does not
+# perform a transition's checks.
+#
+# Laws. The module relies on the existing law `failed_check_denies` through
+# its gate structure, without modifying it, and adds three (LAWS.bend):
+# - `offer_order_irreflexive`: `before(a, a)` is False for every offer, so
+#   the ER-003 comparator is strict on its diagonal and an offer is never
+#   ranked ahead of an identical record; a `<=`-style comparator, which would
+#   let list order pick among equal-identity duplicates, fails it. It does
+#   not prove transitivity, totality or that `best` returns the minimum
+#   (order independence is tested).
+# - `rendezvous_ineligible_offer_dropped`: an offer that is not `eligible`,
+#   at any position of the stored list and whatever its quote, contributes
+#   nothing to `eligible_offers`, the only list ranking reads (ER-002). It
+#   does not prove that `select` ranks only that list (the structure and the
+#   tests show it).
+# - `rendezvous_stale_selection_keeps_state`: a `select` at one past the
+#   state's revision is not accepted and returns exactly the supplied state,
+#   so a selection ranked before a submission, withdrawal or abandonment
+#   moved the state cannot commit. It pins `select`'s outer revision match,
+#   covers the successor revision only and does not claim the host
+#   serializes installs.
+# Two auxiliary arithmetic laws, `nat_lt_irreflexive` and
+# `nat_eq_reflexive`, are what the irreflexivity proof needs.
 
 # --- Records -----------------------------------------------------------------
 
@@ -824,13 +871,21 @@ def origin_required(lookup: T.OriginLookup, +origin: T.ObjectVersion) -> Bool:
     case T.Found{objects}:
       origin_listed(objects, origin)
 
+# The request plan's stamp is the snapshot issuer's live stamp. Without it an
+# approval submitted while the issuer has moved to a new epoch, but the host's
+# transfer context is still at the plan's, would be stored although
+# `origin_approved` can never count it (the request stamp is fixed by `open`).
+def request_at_live(+state: State, +snapshot: Snapshot) -> Bool:
+  T.Stamp.equal(T.Plan.stamp(request_plan(state)), I.live(Snapshot.issuer(snapshot)))
+
 # Every check an origin-approval submission must pass, in denial order: the
 # race (revision), the format, identity (the issuer claim is `from`), the
 # origin's placement in the snapshot issuer (exactly one read domain), the
 # authority (`from`, not the claim, is that domain's read authority in the
 # snapshot directory), the plan (exactly the request's), the origin's need
 # (the request plan's `T.required_origins` under the snapshot's transfer
-# context lists it; a Missing lookup lists nothing), the lifetime, and last
+# context lists it; a Missing lookup lists nothing), the epoch (the request
+# plan's stamp is the snapshot issuer's live stamp), the lifetime, and last
 # replay. The provider and profile are not checked here: an approval for
 # a provider without a grant, or at a profile outside the constraint, is
 # stored but never makes an offer eligible (eligibility, a later task).
@@ -845,9 +900,10 @@ def approval_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
       Gate{speaks_for_origin(Snapshot.issuer(snapshot), from, origin), NotAuthority{},
       Gate{plan_is_request(plan, state), ScopeMismatch{},
       Gate{origin_required(T.required_origins(request_plan(state), Snapshot.transfer(snapshot)), origin), ScopeMismatch{},
+      Gate{request_at_live(state, snapshot), StaleEpoch{},
       Gate{unexpired(Snapshot.now(snapshot), valid_until), Expired{},
       Gate{Bool.not(approval_serial_seen(seen(state), from, serial)), Replay{},
-      Open{}}}}}}}}}}
+      Open{}}}}}}}}}}}
 
 def approval_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
     +approval: OriginApproval, +snapshot: Snapshot) -> Guard.Checks:
@@ -884,16 +940,17 @@ def submit_approval_checked(ok: Bool, +state: State, +expected_revision: Nat, +f
 # one read domain and its directory names `from` that domain's read
 # authority; the approval's plan is exactly the request plan; the origin is
 # one `T.required_origins(request plan, snapshot transfer)` lists (inherited
-# origins included; a Missing lookup admits none); `now <
-# valid_until`; and `(from, serial)` is unseen as an approval serial. The
+# origins included; a Missing lookup admits none); the request plan's stamp
+# is the snapshot issuer's live stamp; `now < valid_until`; and `(from, serial)` is unseen as an approval serial. The
 # approval is then stored unedited under a fresh id (the change id), not
 # withdrawn, its serial recorded, and `next_id` and the revision advanced
 # once. A stored approval covers one origin, one provider, one profile and
 # one plan, and confers nothing by itself: `origin_approved` re-derives its
 # issuer's authority from the issuer state at every use. Denial order:
 # StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority,
-# ScopeMismatch (plan, then an origin the plan does not need), Expired,
-# Replay; the state is returned unchanged.
+# ScopeMismatch (plan, then an origin the plan does not need), StaleEpoch
+# (the issuer's live stamp is not the request plan's), Expired, Replay; the
+# state is returned unchanged.
 def submit_approval(+state: State, +expected_revision: Nat, +from: I.Principal,
     +approval: OriginApproval, +snapshot: Snapshot) -> Change:
   submit_approval_checked(Guard.all(approval_checks(state, expected_revision, from, approval, snapshot)),
@@ -1093,6 +1150,403 @@ def origins_approved(lookup: T.OriginLookup, +approvals: Approvals, +provider: I
       False{}
     case T.Found{+objects}:
       T.Objects.nonempty(objects) && origins_all(objects, approvals, provider, profile, plan, issuer, now)
+
+# --- Eligibility (ER-002) ----------------------------------------------------
+
+# The ranking profile every selection records: ER-003's order (lowest
+# approved total quote, then canonical provider identity, then canonical
+# offer identity). A later, separately versioned profile may only append
+# eligibility conditions; it is recorded as a different number.
+def ranking_profile() -> Nat:
+  1n
+
+# The reader's approved quote ceiling, fixed by `open` with the request.
+def ceiling_of(request: N.Request) -> Nat:
+  match request:
+    case N.Request{_, _, quote, _, _}:
+      quote
+
+def request_ceiling(state: State) -> Nat:
+  ceiling_of(request(state))
+
+# The quote is a positive amount no greater than the reader's ceiling (plan
+# ruling: the request quote is a ceiling; the selection records the agreed
+# quote). A zero quote names no billing term; submission already refuses it,
+# and a monitor-installed record carrying one is refused here too.
+def quote_admitted(+quote: Nat, state: State) -> Bool:
+  quote_named(quote) && Nat.is_le(quote, request_ceiling(state))
+
+# Whether the monitor's execution constraint admits `profile`.
+def profile_admitted(profiles: Profiles, +profile: Nat) -> Bool:
+  match profiles:
+    case NoProfiles{}:
+      False{}
+    case Profiles{head, tail}:
+      Nat.is_eq(head, profile) || profile_admitted(tail, profile)
+
+# The eligibility gates with the grant lookup `found` already made from the
+# snapshot's issuer state and the offer's grant id. Exported implementation
+# helper: only `eligibility_gates` supplies `found`.
+def eligibility_gates_found(+found: Maybe<&2, I.Grant>, +state: State, offer: Offer,
+    +snapshot: Snapshot) -> Gates:
+  match offer:
+    case Offer{version, id, +provider, _, plan, +profile, +quote, +valid_until}:
+      Gate{version_supported(version), UnknownVersion{},
+      Gate{id_owned_by(id, provider), Unauthenticated{},
+      Gate{plan_is_request(plan, state), ScopeMismatch{},
+      Gate{grant_meets(found, BelongsTo{}, provider, request_plan(state), Snapshot.issuer(snapshot), Snapshot.now(snapshot), valid_until), NoGrant{},
+      Gate{grant_meets(found, CoversPlan{}, provider, request_plan(state), Snapshot.issuer(snapshot), Snapshot.now(snapshot), valid_until), ScopeMismatch{},
+      Gate{grant_meets(found, IsCurrent{}, provider, request_plan(state), Snapshot.issuer(snapshot), Snapshot.now(snapshot), valid_until),
+        found_fault(found, Snapshot.issuer(snapshot), Snapshot.now(snapshot)),
+      Gate{grant_meets(found, HoldsRights{}, provider, request_plan(state), Snapshot.issuer(snapshot), Snapshot.now(snapshot), valid_until), RightsNotHeld{},
+      Gate{unexpired(Snapshot.now(snapshot), valid_until), Expired{},
+      Gate{grant_meets(found, Outlives{}, provider, request_plan(state), Snapshot.issuer(snapshot), Snapshot.now(snapshot), valid_until), Expired{},
+      Gate{quote_admitted(quote, state), OverBudget{},
+      Gate{profile_admitted(constraint(state), profile), Constraint{},
+      Gate{origins_approved(T.required_origins(request_plan(state), Snapshot.transfer(snapshot)),
+          approvals(state), provider, profile, request_plan(state), Snapshot.issuer(snapshot),
+          Snapshot.now(snapshot)), MissingApproval{},
+      Open{}}}}}}}}}}}}}
+
+# Every condition a stored offer must meet, at this call, to be ranked, in
+# reason order (plan ruling): the record format; the identity's provider part
+# is the provider claim's id; the offer plan is exactly the request plan; the
+# backing grant under the offer's grant id is present, unambiguous and for the
+# provider claim (NoGrant), for exactly the request plan (ScopeMismatch), and
+# `I.current` in the snapshot issuer at `now` (Expired, StaleEpoch or
+# Revoked), with rights covering provider_rights(); the offer is unexpired
+# and does not outlive its grant (Expired); the quote is positive and within
+# the reader's ceiling (OverBudget); the profile is in the execution
+# constraint (Constraint); and every origin `T.required_origins` lists for
+# the request plan under the snapshot's transfer context is approved for
+# this provider, profile and plan (MissingApproval). Everything is re-read
+# from the state and snapshot supplied now: an offer admitted at submission
+# whose grant has since been revoked fails here. The provider is the offer's
+# claim, which `submit_offer` bound to the authenticated submitter and which
+# is believed only through the grant subject and approval checks. A later
+# placement profile appends gates after these and can only remove offers.
+def eligibility_gates(+offer: Offer, +state: State, +snapshot: Snapshot) -> Gates:
+  eligibility_gates_found(grant_for(Snapshot.issuer(snapshot), Offer.grant(offer)), state,
+    offer, snapshot)
+
+# Whether `offer` passes every eligibility gate at this call.
+def eligible(+offer: Offer, +state: State, +snapshot: Snapshot) -> Bool:
+  Guard.all(Gates.checks(eligibility_gates(offer, state, snapshot)))
+
+def ineligibility_at(ok: Bool, +offer: Offer, +state: State, +snapshot: Snapshot) -> Maybe<&2, Error>:
+  match ok:
+    case True{}:
+      None{}
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the fallback is unreachable here.
+      Some{Gates.reason(eligibility_gates(offer, state, snapshot), NoEligibleOffer{})}
+
+# Public entry point (read-only diagnostic): None when `offer` is eligible at
+# this call, otherwise the reason of the first failing eligibility gate. It
+# changes nothing and grants nothing.
+def ineligibility(+offer: Offer, +state: State, +snapshot: Snapshot) -> Maybe<&2, Error>:
+  ineligibility_at(eligible(offer, state, snapshot), offer, state, snapshot)
+
+# Keep `offer` in front of `rest` exactly when it is eligible.
+def keep_if(ok: Bool, offer: Offer, rest: Offers) -> Offers:
+  match ok:
+    case True{}:
+      Offers{offer, rest}
+    case False{}:
+      rest
+
+# The stored offers that pass every eligibility gate at this call, in stored
+# order. Ranking reads only this list (ER-002), so an ineligible offer, at any
+# position and whatever its quote, never reaches the comparator (law
+# rendezvous_ineligible_offer_dropped).
+def eligible_offers(offers: Offers, +state: State, +snapshot: Snapshot) -> Offers:
+  match offers:
+    case NoOffers{}:
+      NoOffers{}
+    case Offers{+head, tail}:
+      keep_if(eligible(head, state, snapshot), head, eligible_offers(tail, state, snapshot))
+
+def Offers.append(front: Offers, back: Offers) -> Offers:
+  match front:
+    case NoOffers{}:
+      back
+    case Offers{head, tail}:
+      Offers{head, Offers.append(tail, back)}
+
+def Offers.nonempty(offers: Offers) -> Bool:
+  match offers:
+    case NoOffers{}:
+      False{}
+    case Offers{_, _}:
+      True{}
+
+# --- Ranking (ER-003) --------------------------------------------------------
+
+# Lexicographic strict order on (quote, provider id, serial): lower quote
+# first; on equal quotes, lower provider id; on equal provider ids too, lower
+# serial. Every clause is strict, so equal keys are never ranked ahead of
+# each other (law offer_order_irreflexive).
+def rank_before(+aq: Nat, +bq: Nat, +ap: Nat, +bp: Nat, as: Nat, bs: Nat) -> Bool:
+  Nat.is_lt(aq, bq) || (Nat.is_eq(aq, bq) && (Nat.is_lt(ap, bp) || (Nat.is_eq(ap, bp) && Nat.is_lt(as, bs))))
+
+# Whether `a` ranks strictly ahead of `b` under ranking_profile() 1. The key
+# is the approved total quote and the canonical OfferId (provider id, then
+# serial), so two offers with equal quotes and distinct identities are always
+# ordered, and only records under the same identity tie.
+def before(a: Offer, b: Offer) -> Bool:
+  match a b:
+    case Offer{_, OfferId{ap, as}, _, _, _, _, aq, _} Offer{_, OfferId{bp, bs}, _, _, _, _, bq, _}:
+      rank_before(aq, bq, ap, bp, as, bs)
+
+# Of two offers, `b` when it ranks strictly ahead of `a`, otherwise `a`.
+def better(+a: Offer, +b: Offer) -> Offer:
+  Guard.choose(Offer, before(b, a), b, a)
+
+# The first-ranked of `current` and every offer in `rest`, keeping the
+# earlier record on a tie (a tie only arises under one identity).
+def best_from(rest: Offers, current: Offer) -> Offer:
+  match rest:
+    case NoOffers{}:
+      current
+    case Offers{head, tail}:
+      best_from(tail, better(current, head))
+
+# The first-ranked offer of `offers`, or None for an empty list. On an
+# unambiguous list (no identity under two contents) the order is total, so
+# the result does not depend on list order.
+def best(offers: Offers) -> Maybe<&2, Offer>:
+  match offers:
+    case NoOffers{}:
+      None{}
+    case Offers{head, tail}:
+      Some{best_from(tail, head)}
+
+# --- Identity ambiguity (ER-008) ---------------------------------------------
+
+# Whether some record in `offers` has `offer`'s identity but other content.
+def conflicts_with(offers: Offers, +offer: Offer) -> Bool:
+  match offers:
+    case NoOffers{}:
+      False{}
+    case Offers{+head, tail}:
+      (OfferId.equal(Offer.id(head), Offer.id(offer)) && Bool.not(offer_equal(head, offer)))
+        || conflicts_with(tail, offer)
+
+# No two records share an OfferId with different content; identical
+# duplicates count once. Submission stores at most one record per identity,
+# so a violation can only come from a monitor-installed state (for example
+# two merged registries); `select` still refuses it rather than let list
+# order pick between two contents under one identity.
+def offers_unambiguous(offers: Offers) -> Bool:
+  match offers:
+    case NoOffers{}:
+      True{}
+    case Offers{+head, +tail}:
+      Bool.not(conflicts_with(tail, head)) && offers_unambiguous(tail)
+
+# --- Selection (ER-002, ER-003) ----------------------------------------------
+
+def no_selection(selection: Selection) -> Bool:
+  match selection:
+    case NoSelection{}:
+      True{}
+    case Selection{_, _, _, _, _, _}:
+      False{}
+
+# Every check a selection must pass after the outer revision match, in
+# denial order: the Negotiation session is at its expected revision, at
+# CandidateFixed and live under the Negotiation context (WrongStage); the
+# session's request is exactly the rendezvous request (ScopeMismatch); there
+# is no selection (AlreadySelected; a cheaper newcomer never displaces one,
+# only `abandon` or the selected offer's withdrawal clears it); no identity
+# carries two contents (ConflictingOffer); and at least one stored offer is
+# eligible at this call (NoEligibleOffer).
+def select_gates(+state: State, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Gates:
+  Gate{N.ready(session, expected_session, N.CandidateFixed{}, n_context), WrongStage{},
+  Gate{N.Request.equal(N.Session.request(session), request(state)), ScopeMismatch{},
+  Gate{no_selection(selection(state)), AlreadySelected{},
+  Gate{offers_unambiguous(offers(state)), ConflictingOffer{},
+  Gate{Offers.nonempty(eligible_offers(offers(state), state, snapshot)), NoEligibleOffer{},
+  Open{}}}}}}
+
+def select_checks(+state: State, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Guard.Checks:
+  Gates.checks(select_gates(state, session, expected_session, n_context, snapshot))
+
+# Store the first-ranked eligible offer as the selection under the fresh id
+# `next_id`, with the request, the issuer's live stamp, `now` and
+# ranking_profile(), and advance `next_id` and the revision once. Called only
+# after every gate held; the None arm is unreachable because the last gate
+# requires an eligible offer, and it denies rather than select nothing.
+def commit_selection(found: Maybe<&2, Offer>, state: State, +snapshot: Snapshot) -> Change:
+  match found:
+    case None{}:
+      Rejected{state, NoEligibleOffer{}}
+    case Some{offer}:
+      match state:
+        case State{revision, +next_id, +request, constraint, offers, approvals, _, retired,
+            evidence, dispatched, seen}:
+          Changed{State{1n+revision, 1n+next_id, request, constraint, offers, approvals,
+            Selection{next_id, offer, request, I.live(Snapshot.issuer(snapshot)), Snapshot.now(snapshot),
+              ranking_profile()},
+            retired, evidence, dispatched, seen}, next_id}
+
+def select_checked(ok: Bool, +state: State, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the fallback is unreachable here.
+      Rejected{state, Gates.reason(select_gates(state, session, expected_session, n_context, snapshot), StaleRevision{})}
+    case True{}:
+      commit_selection(best(eligible_offers(offers(state), state, snapshot)), state, snapshot)
+
+# The revision match stays outermost (law rendezvous_stale_selection_keeps_state).
+def select_current(current: Bool, +state: State, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  match current:
+    case False{}:
+      Rejected{state, StaleRevision{}}
+    case True{}:
+      select_checked(Guard.all(select_checks(state, session, expected_session, n_context, snapshot)),
+        state, session, expected_session, n_context, snapshot)
+
+# Public entry point (ER-002, ER-003): the monitor selects one provider offer
+# for the negotiation. Accepted only when the state is at
+# `expected_revision`; the Negotiation session is at `expected_session`, at
+# CandidateFixed and live under `n_context`; its request is exactly the
+# rendezvous request; there is no selection; no OfferId carries two
+# contents; and some stored offer passes every eligibility gate against the
+# snapshot supplied now. It then ranks only `eligible_offers` with `before`
+# and stores Selection{fresh id, the first-ranked eligible offer (complete
+# record), the request, the issuer's live stamp, now, ranking_profile()},
+# advancing `next_id` and the revision once; the change id is the selection
+# id. The selection authorizes nothing by itself. Denial order: StaleRevision,
+# WrongStage, ScopeMismatch, AlreadySelected, ConflictingOffer,
+# NoEligibleOffer; the state is returned unchanged.
+def select(+state: State, +expected_revision: Nat, +session: N.Session, +expected_session: Nat,
+    +n_context: N.Context, +snapshot: Snapshot) -> Change:
+  select_current(revision_current(state, expected_revision), state, session, expected_session,
+    n_context, snapshot)
+
+# --- Abandonment -------------------------------------------------------------
+
+def abandon_gates(+state: State, +expected_revision: Nat) -> Gates:
+  Gate{revision_current(state, expected_revision), StaleRevision{},
+  Gate{Bool.not(no_selection(selection(state))), NotSelected{},
+  Open{}}}
+
+def abandon_checks(+state: State, +expected_revision: Nat) -> Guard.Checks:
+  Gates.checks(abandon_gates(state, expected_revision))
+
+# The id a retirement records: the selection's id, or the previous `retired`
+# when there is no selection (never reached from a transition: both callers
+# retire only an existing selection).
+def retired_id(selection: Selection, retired: Nat) -> Nat:
+  match selection:
+    case NoSelection{}:
+      retired
+    case Selection{id, _, _, _, _, _}:
+      id
+
+# Clear the selection, record its id as `retired`, and advance the revision
+# once; `next_id` is kept, so a later selection gets a new id and the retired
+# one is never restored.
+def commit_abandon(state: State) -> Change:
+  match state:
+    case State{revision, next_id, request, constraint, offers, approvals, +selection, +retired,
+        evidence, dispatched, seen}:
+      Changed{State{1n+revision, next_id, request, constraint, offers, approvals, NoSelection{},
+        retired_id(selection, retired), evidence, dispatched, seen}, retired_id(selection, retired)}
+
+def abandon_checked(ok: Bool, +state: State, +expected_revision: Nat) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the fallback is unreachable here.
+      Rejected{state, Gates.reason(abandon_gates(state, expected_revision), StaleRevision{})}
+    case True{}:
+      commit_abandon(state)
+
+# Public entry point (monitor action): retire the current selection.
+# Accepted only when the state is at `expected_revision` and a selection
+# exists. It clears the selection, records its id as `retired` (never
+# restored), keeps every offer, approval and serial, and advances the
+# revision once; the change id is the retired selection id. Single use per
+# selection: a second abandon finds none. Denial order: StaleRevision,
+# NotSelected; the state is returned unchanged.
+def abandon(+state: State, +expected_revision: Nat) -> Change:
+  abandon_checked(Guard.all(abandon_checks(state, expected_revision)), state, expected_revision)
+
+# --- Offer withdrawal (ER-008 resolution) ------------------------------------
+
+# Every record not under `id`, in stored order.
+def remove_offers(offers: Offers, +id: OfferId) -> Offers:
+  match offers:
+    case NoOffers{}:
+      NoOffers{}
+    case Offers{+head, tail}:
+      keep_if(Bool.not(OfferId.equal(Offer.id(head), id)), head, remove_offers(tail, id))
+
+# Whether the selection is of an offer under `id`.
+def selection_of(selection: Selection, +id: OfferId) -> Bool:
+  match selection:
+    case NoSelection{}:
+      False{}
+    case Selection{_, offer, _, _, _, _}:
+      OfferId.equal(Offer.id(offer), id)
+
+def withdraw_offer_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +id: OfferId) -> Gates:
+  Gate{revision_current(state, expected_revision), StaleRevision{},
+  Gate{id_owned_by(id, from), Unauthenticated{},
+  Gate{offer_exists(offers(state), id), Revoked{},
+  Open{}}}}
+
+def withdraw_offer_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
+    +id: OfferId) -> Guard.Checks:
+  Gates.checks(withdraw_offer_gates(state, expected_revision, from, id))
+
+# Remove every record under `id`, keep `seen` (so the serial is never
+# reused), retire a selection of that offer (its id becomes `retired`; any
+# other selection is kept), and advance the revision once.
+def commit_offer_withdrawal(state: State, +id: OfferId) -> Change:
+  match state:
+    case State{revision, next_id, request, constraint, offers, approvals, +selection, +retired,
+        evidence, dispatched, seen}:
+      Changed{State{1n+revision, next_id, request, constraint, remove_offers(offers, id), approvals,
+        Guard.choose(Selection, selection_of(selection, id), NoSelection{}, selection),
+        Guard.choose(Nat, selection_of(selection, id), retired_id(selection, retired), retired),
+        evidence, dispatched, seen}, OfferId.serial(id)}
+
+def withdraw_offer_checked(ok: Bool, +state: State, +expected_revision: Nat, +from: I.Principal,
+    +id: OfferId) -> Change:
+  match ok:
+    case False{}:
+      # `ok` is Guard.all over the same gate list, so some gate failed and
+      # Gates.reason returns its reason; the fallback is unreachable here.
+      Rejected{state, Gates.reason(withdraw_offer_gates(state, expected_revision, from, id), StaleRevision{})}
+    case True{}:
+      commit_offer_withdrawal(state, id)
+
+# Public entry point (ER-008): the host withdraws every offer record under
+# `id` on behalf of the authenticated principal `from`. Only the identity's
+# own provider may withdraw (`id`'s provider part is `from`'s id), so no
+# principal can clear a competitor's offer. Accepted only when the state is
+# at `expected_revision` and some record is stored under `id`. It removes
+# every record under the id (all contents, so a conflicting identity in a
+# monitor-installed state is resolved), keeps `(provider, serial)` in `seen`
+# so the serial cannot be resubmitted (a replacement is a fresh serial),
+# retires a selection of that offer, and advances the revision once; the
+# change id is the serial. Single use: once removed, the id has no record.
+# Denial order: StaleRevision, Unauthenticated, Revoked (no record under the
+# id: already withdrawn or never stored; the closed set has no closer
+# reason); the state is returned unchanged.
+def withdraw_offer(+state: State, +expected_revision: Nat, +from: I.Principal, +id: OfferId) -> Change:
+  withdraw_offer_checked(Guard.all(withdraw_offer_checks(state, expected_revision, from, id)),
+    state, expected_revision, from, id)
 
 # --- Structural validity -----------------------------------------------------
 

@@ -7,10 +7,11 @@ import ./IssuanceTests.bend as IT
 import ./NegotiationTests.bend as NT
 import ./TransferTests.bend as TF
 import ./Test.bend as Test
+import ./Guard.bend as Guard
 
 # Tests for the executor rendezvous model, change add-executor-rendezvous.
-# Sections follow the change's tasks; this file holds `offers` (1.1) and
-# `approvals` (1.2, first half). Every denial check asserts the exact Error
+# Sections follow the change's tasks; this file holds `offers` (1.1),
+# `approvals` (1.2, first half) and `selection` (1.2, second half). Every denial check asserts the exact Error
 # and that the returned state equals the supplied one, field by field,
 # through `denied`.
 #
@@ -771,8 +772,396 @@ def approvals() -> IO(Unit):
     approval_denials()
     approval_predicates()
 
+# --- Section 1.2 (second half): eligibility and selection (ER-002, ER-003, ER-008)
+
+# Selection fixtures. Approvals by object 10's authority 101, for TF.plan():
+# approval_a() (serial 12, A, profile 1), approval_b1() (serial 16, B,
+# profile 1), approval_b_p2() (serial 17, B, profile 2), approval_a_p2()
+# (serial 18, A, profile 2). Offers quote 40 unless named otherwise. Every
+# state below is built through the public entry points unless it is marked
+# SYNTHETIC MONITOR STATE.
+def approval_b1() -> R.OriginApproval:
+  approval_with(16n, IT.source_authority(), TF.source_object(), provider_b(), profile(),
+    TF.plan(), approval_until())
+
+def approval_b_p2() -> R.OriginApproval:
+  approval_with(17n, IT.source_authority(), TF.source_object(), provider_b(), 2n,
+    TF.plan(), approval_until())
+
+def approval_a_p2() -> R.OriginApproval:
+  approval_with(18n, IT.source_authority(), TF.source_object(), provider_a(), 2n,
+    TF.plan(), approval_until())
+
+# Submit through the public entry points at the state's own revision.
+def put_offer(+state: R.State, +from: I.Principal, +offer: R.Offer) -> R.State:
+  R.Change.state(R.submit_offer(state, R.revision(state), from, offer, snapshot()))
+
+def put_approval(+state: R.State, +approval: R.OriginApproval) -> R.State:
+  R.Change.state(R.submit_approval(state, R.revision(state), IT.source_authority(), approval, snapshot()))
+
+# B's offers that undercut or tie A's. Each is B's serial 1 with grant 6.
+def offer_b_at(quote: Nat) -> R.Offer:
+  offer_with(R.OfferId{202n, 1n}, provider_b(), 6n, TF.plan(), quote, offer_until())
+
+def offer_b30() -> R.Offer:
+  offer_b_at(30n)
+
+# B quoting 30 at profile 2, outside the constraint {1}.
+def offer_b30_p2() -> R.Offer:
+  R.Offer{R.record_version(), R.OfferId{202n, 1n}, provider_b(), 6n, TF.plan(), 2n, 30n, offer_until()}
+
+# A's second candidate: serial 2 at profile 2, quote 40.
+def offer_a2_p2() -> R.Offer:
+  R.Offer{R.record_version(), R.OfferId{201n, 2n}, provider_a(), 3n, TF.plan(), 2n, quote(), offer_until()}
+
+# A under its serial 1 quoting 35: the conflicting content.
+def offer_a35() -> R.Offer:
+  offer_with(R.OfferId{201n, 1n}, provider_a(), 3n, TF.plan(), 35n, offer_until())
+
+# Object 10 approved for A and B at profile 1 (approval ids 1 and 2).
+def approved_ab() -> R.State:
+  put_approval(put_approval(opened(), approval_a()), approval_b1())
+
+# A and B both quoting 40 and both eligible, in both submission orders
+# (revision 4; the stored list is newest first).
+def state_ab() -> R.State:
+  put_offer(put_offer(approved_ab(), provider_a(), offer_a()), provider_b(), offer_b())
+
+def state_ba() -> R.State:
+  put_offer(put_offer(approved_ab(), provider_b(), offer_b()), provider_a(), offer_a())
+
+# Only A approved; B quotes 30 and A 40 (approval id 1, revision 3).
+def cheap_unapproved() -> R.State:
+  put_offer(put_offer(put_approval(opened(), approval_a()), provider_b(), offer_b30()), provider_a(), offer_a())
+
+# A and B both approved; B's cheaper or over-ceiling offer beside A's.
+def with_b_offer(+offer: R.Offer) -> R.State:
+  put_offer(put_offer(approved_ab(), provider_b(), offer), provider_a(), offer_a())
+
+# B at profile 2 (approved at profile 2) beside A at profile 1.
+def state_constraint() -> R.State:
+  put_offer(put_offer(put_approval(put_approval(opened(), approval_a()), approval_b_p2()),
+    provider_b(), offer_b30_p2()), provider_a(), offer_a())
+
+# SYNTHETIC MONITOR STATE: one more record placed ahead of the stored ones.
+def with_extra_offer(+state: R.State, offer: R.Offer) -> R.State:
+  with_offers(state, R.Offers{offer, R.offers(state)})
+
+# The execution constraint {1, 2}, both of A's profiles admitted.
+def opened_12() -> R.State:
+  R.open(NT.request(), R.Profiles{profile(), R.Profiles{2n, R.NoProfiles{}}})
+
+def approved_a12() -> R.State:
+  put_approval(put_approval(opened_12(), approval_a()), approval_a_p2())
+
+def state_a12() -> R.State:
+  put_offer(put_offer(approved_a12(), provider_a(), offer_a()), provider_a(), offer_a2_p2())
+
+def state_a21() -> R.State:
+  put_offer(put_offer(approved_a12(), provider_a(), offer_a2_p2()), provider_a(), offer_a())
+
+# Issuer after 101 revokes source approval 4, the approval behind B's grant 6.
+def revoked_b_issuer() -> I.State:
+  I.Change.state(I.revoke(issuer(), I.revision(issuer()), IT.source_authority(), 4n))
+
+# A grant for `provider` over the two-source plan IT.plan_two(), registered
+# through the public entry points: 101 approves object 10, 104 approves
+# object 11, 102 approves the write (serial `serial` each, rights 7 until
+# 200), and the provider registers rights 5 until 150. On issuer() the
+# approvals are ids 10, 11 and 12 and the grant is id 13.
+def with_grant_two(+state: I.State, +provider: I.Principal, +serial: Nat, token: T.CodeId) -> I.State:
+  +scope = provider_scope(provider, IT.plan_two())
+  +s1 = I.Change.state(I.submit_source(state, I.revision(state), IT.source_authority(),
+    I.SourceApproval{1n, serial, IT.source_authority(), TF.source_object(), IT.read5(), scope, 7, 200n}, IT.now()))
+  +s2 = I.Change.state(I.submit_source(s1, I.revision(s1), IT.second_source_authority(),
+    I.SourceApproval{1n, serial, IT.second_source_authority(), IT.second_source(), IT.read7(), scope, 7, 200n}, IT.now()))
+  +s3 = I.Change.state(I.submit_write(s2, I.revision(s2), IT.write_authority(),
+    I.WriteApproval{1n, serial, IT.write_authority(), TF.destination_object(), IT.write6(), scope, 7, 200n}, IT.now()))
+  I.Change.state(I.register(s3, I.revision(s3), provider,
+    I.Request{1n, scope, IT.two(I.next_id(state), 1n+I.next_id(state)), 2n+I.next_id(state), 5, 150n},
+    IT.now(), token))
+
+def token_a2() -> T.CodeId:
+  T.CodeId{9, 9, 9, 9, 9, 9, 2, 13}
+
+def two_issuer() -> I.State:
+  with_grant_two(issuer(), provider_a(), 4n, token_a2())
+
+def two_grant_snapshot() -> R.Snapshot:
+  R.Snapshot{two_issuer(), two_context(), IT.now()}
+
+# A's offer for the two-source request, backed by grant 13.
+def offer_a_two() -> R.Offer:
+  offer_with(R.OfferId{201n, 1n}, provider_a(), 13n, IT.plan_two(), quote(), offer_until())
+
+# B's offer for the two-source request citing grant 6, whose plan is the
+# one-source TF.plan(), narrower than the request. Submission refuses it.
+def offer_b_narrow() -> R.Offer:
+  offer_with(R.OfferId{202n, 1n}, provider_b(), 6n, IT.plan_two(), 30n, offer_until())
+
+def two_request() -> N.Request:
+  N.Request{IT.plan_two(), 7n, 42n, 30n, 180n}
+
+# SYNTHETIC MONITOR STATE: A's two-source offer submitted against the issuer
+# holding grant 13, with B's narrow-grant offer installed by the monitor.
+def state_narrow() -> R.State:
+  with_extra_offer(R.Change.state(R.submit_offer(two_both(), 2n, provider_a(), offer_a_two(), two_grant_snapshot())),
+    offer_b_narrow())
+
+# Negotiation sessions at CandidateFixed (revision 1) under NT.context(100).
+def n_context() -> N.Context:
+  NT.context(100n)
+
+def session_for(request: N.Request) -> N.Session:
+  N.Step.session(N.pin(N.open(request), 0n, TF.code(), n_context()))
+
+def select_with(+state: R.State, +session: N.Session, +snapshot: R.Snapshot) -> R.Change:
+  R.select(state, R.revision(state), session, 1n, n_context(), snapshot)
+
+def select_on(+state: R.State, +snapshot: R.Snapshot) -> R.Change:
+  select_with(state, NT.pinned(), snapshot)
+
+def select_now(+state: R.State) -> R.Change:
+  select_on(state, snapshot())
+
+def selection_offer_is(selection: R.Selection, wanted: R.Offer) -> Bool:
+  match selection:
+    case R.NoSelection{}:
+      False{}
+    case R.Selection{_, offer, _, _, _, _}:
+      R.offer_equal(offer, wanted)
+
+def selection_id_is(selection: R.Selection, wanted: Nat) -> Bool:
+  match selection:
+    case R.NoSelection{}:
+      False{}
+    case R.Selection{id, _, _, _, _, _}:
+      Nat.is_eq(id, wanted)
+
+# The change committed a selection of exactly `wanted`.
+def selected(+change: R.Change, wanted: R.Offer) -> Bool:
+  R.Change.accepted(change) && selection_offer_is(R.selection(R.Change.state(change)), wanted)
+
+def reason_is(value: Maybe<&2, R.Error>, expected: R.Error) -> Bool:
+  match value:
+    case None{}:
+      False{}
+    case Some{reason}:
+      R.Error.equal(reason, expected)
+
+def eligible_now(value: Maybe<&2, R.Error>) -> Bool:
+  match value:
+    case None{}:
+      True{}
+    case Some{_}:
+      False{}
+
+def selected_ab() -> R.State:
+  R.Change.state(select_now(state_ab()))
+
+def abandon_change() -> R.Change:
+  R.abandon(selected_ab(), R.revision(selected_ab()))
+
+def abandoned() -> R.State:
+  R.Change.state(abandon_change())
+
+def reselect_change() -> R.Change:
+  select_now(abandoned())
+
+# SYNTHETIC MONITOR STATES: two records under OfferId{201, 1}, quoting 35
+# and 40, beside B's offer, as two merged registries might leave them. In
+# the first the conflicting pair is split by B's record; in the second B's
+# record comes first. `identical_dups` holds offer_a() twice.
+def conflict_base() -> R.State:
+  put_offer(put_offer(approved_ab(), provider_b(), offer_b()), provider_a(), offer_a())
+
+def conflicted() -> R.State:
+  with_offers(conflict_base(), R.Offers{offer_a35(), R.Offers{offer_b(), R.Offers{offer_a(), R.NoOffers{}}}})
+
+def conflicted_late() -> R.State:
+  with_offers(conflict_base(), R.Offers{offer_b(), R.Offers{offer_a35(), R.Offers{offer_a(), R.NoOffers{}}}})
+
+def identical_dups() -> R.State:
+  with_offers(conflict_base(), R.Offers{offer_a(), R.Offers{offer_b(), R.Offers{offer_a(), R.NoOffers{}}}})
+
+def resolve_change() -> R.Change:
+  R.withdraw_offer(conflicted(), R.revision(conflicted()), provider_a(), R.OfferId{201n, 1n})
+
+def resolved() -> R.State:
+  R.Change.state(resolve_change())
+
+# B's offer at quote 30 valid until `until`.
+def offer_b_until(until: Nat) -> R.Offer:
+  offer_with(R.OfferId{202n, 1n}, provider_b(), 6n, TF.plan(), 30n, until)
+
+def maybe_offer_is(value: Maybe<&2, R.Offer>, wanted: R.Offer) -> Bool:
+  match value:
+    case None{}:
+      False{}
+    case Some{offer}:
+      R.offer_equal(offer, wanted)
+
+# The cheapest offer violates an origin (ER-002), the record and the
+# accepting path.
+def selection_records() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(R.revision(cheap_unapproved()), 3n) && Nat.is_eq(offers_count(R.offers(cheap_unapproved())), 2n)
+      && reason_is(R.ineligibility(offer_b30(), cheap_unapproved(), snapshot()), R.MissingApproval{})
+      && eligible_now(R.ineligibility(offer_a(), cheap_unapproved(), snapshot()))
+      && selected(select_now(cheap_unapproved()), offer_a()), "ER-002 cheapest offer violates an origin: B quotes 30 without object 10's approval, A quotes 40 with it; A is selected and ineligibility(B) is MissingApproval")
+    Test.check(issued_is(R.Change.issued(select_now(cheap_unapproved())), 2n)
+      && selection_equal(R.selection(R.Change.state(select_now(cheap_unapproved()))),
+        R.Selection{2n, offer_a(), NT.request(), I.live(issuer()), IT.now(), 1n})
+      && T.Stamp.equal(I.live(issuer()), T.Plan.stamp(TF.plan()))
+      && Nat.is_eq(R.revision(R.Change.state(select_now(cheap_unapproved()))), 4n)
+      && Nat.is_eq(R.next_id(R.Change.state(select_now(cheap_unapproved()))), 3n)
+      && offers_equal(R.offers(R.Change.state(select_now(cheap_unapproved()))), R.offers(cheap_unapproved()))
+      && approvals_equal(R.approvals(R.Change.state(select_now(cheap_unapproved()))), R.approvals(cheap_unapproved()))
+      && R.valid(R.Change.state(select_now(cheap_unapproved()))), "ER-003 the selection record is Selection{2, A's complete offer, the request, the live stamp, 100, ranking profile 1}; id 2 issued, revision 4, next_id 3, offers and approvals unchanged")
+    Test.check(Nat.is_eq(R.ranking_profile(), 1n) && Nat.is_eq(R.retired(R.Change.state(select_now(cheap_unapproved()))), 0n), "ER-003 the first ranking profile is 1, and a first selection retires nothing")
+
+# Every other eligibility gate excludes a cheaper offer with its exact
+# reason, and the next eligible offer is selected.
+def selection_exclusions() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(R.revision(with_b_offer(offer_b_at(43n))), 4n)
+      && reason_is(R.ineligibility(offer_b_at(43n), with_b_offer(offer_b_at(43n)), snapshot()), R.OverBudget{})
+      && selected(select_now(with_b_offer(offer_b_at(43n))), offer_a())
+      && eligible_now(R.ineligibility(offer_b_at(42n), with_b_offer(offer_b_at(42n)), snapshot())), "ER-002 over the ceiling: B quoting 43 against the reader's ceiling 42 is excluded OverBudget and A is selected; B quoting exactly 42 is eligible")
+    Test.check(reason_is(R.ineligibility(offer_b_at(0n), with_extra_offer(approved_ab(), offer_b_at(0n)), snapshot()), R.OverBudget{}), "ER-002 a monitor-installed B offer quoting 0 names no billing term: ineligible OverBudget")
+    Test.check(Nat.is_eq(R.revision(state_constraint()), 4n)
+      && reason_is(R.ineligibility(offer_b30_p2(), state_constraint(), snapshot()), R.Constraint{})
+      && selected(select_now(state_constraint()), offer_a()), "ER-002 a profile outside the constraint: B quoting 30 at profile 2 (approved at profile 2) against the constraint {1} is excluded Constraint and A is selected")
+    Test.check(eligible_now(R.ineligibility(offer_b30(), with_b_offer(offer_b30()), snapshot()))
+      && reason_is(R.ineligibility(offer_b30(), with_b_offer(offer_b30()), snapshot_with(revoked_b_issuer(), IT.now())), R.Revoked{})
+      && selected(select_on(with_b_offer(offer_b30()), snapshot_with(revoked_b_issuer(), IT.now())), offer_a()), "ER-002 a grant revoked after submission: B quoting 30, eligible when submitted, is excluded Revoked once 101 revokes the source approval behind grant 6, and A is selected")
+    Test.check(eligible_now(R.ineligibility(offer_b_until(101n), with_b_offer(offer_b_until(101n)), snapshot()))
+      && reason_is(R.ineligibility(offer_b_until(101n), with_b_offer(offer_b_until(101n)), snapshot_with(issuer(), 101n)), R.Expired{})
+      && selected(select_on(with_b_offer(offer_b_until(101n)), snapshot_with(issuer(), 101n)), offer_a()), "ER-002 an expired offer: B quoting 30 valid until 101 is eligible at 100, excluded Expired at 101, and A is selected")
+    Test.check(reason_is(R.ineligibility(offer_b_until(160n), with_extra_offer(approved_ab(), offer_b_until(160n)), snapshot()), R.Expired{}), "ER-002 a monitor-installed B offer valid until 160, past grant 6's 150, is ineligible Expired")
+    Test.check(found_current(grant_record(two_issuer(), 13n), two_issuer(), IT.now())
+      && Nat.is_eq(offers_count(R.offers(state_narrow())), 2n)
+      && reason_is(R.ineligibility(offer_b_narrow(), state_narrow(), two_grant_snapshot()), R.ScopeMismatch{})
+      && selected(select_with(state_narrow(), session_for(two_request()), two_grant_snapshot()), offer_a_two()), "ER-002 a grant narrower than the request (monitor-installed): B quoting 30 for the two-source request on its one-source grant 6 is excluded ScopeMismatch, and A on its two-source grant 13 is selected")
+
+# The remaining eligibility gates, read through the diagnostic on
+# monitor-installed offers (submission refuses each of these records).
+def selection_gate_reasons() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(reason_is(R.ineligibility(R.Offer{2n, R.OfferId{202n, 1n}, provider_b(), 6n, TF.plan(), profile(), 30n, offer_until()},
+        approved_ab(), snapshot()), R.UnknownVersion{}), "ER-002 an offer record of version 2 is ineligible UnknownVersion")
+    Test.check(reason_is(R.ineligibility(offer_with(R.OfferId{201n, 1n}, provider_b(), 6n, TF.plan(), 30n, offer_until()),
+        approved_ab(), snapshot()), R.Unauthenticated{}), "ER-008 an offer under A's identity carrying B's claim and grant is ineligible Unauthenticated")
+    Test.check(reason_is(R.ineligibility(offer_with(R.OfferId{202n, 1n}, provider_b(), 6n, IT.plan_code(), 30n, offer_until()),
+        approved_ab(), snapshot()), R.ScopeMismatch{}), "ER-002 an offer whose plan differs from the request in one code word is ineligible ScopeMismatch")
+    Test.check(reason_is(R.ineligibility(offer_with(R.OfferId{202n, 1n}, provider_b(), 3n, TF.plan(), 30n, offer_until()),
+        approved_ab(), snapshot()), R.NoGrant{})
+      && reason_is(R.ineligibility(offer_with(R.OfferId{203n, 1n}, provider_c(), 99n, TF.plan(), 30n, offer_until()),
+        approved_ab(), snapshot()), R.NoGrant{}), "ER-002 B citing A's grant 3, and C citing the absent grant 99, are ineligible NoGrant")
+    Test.check(reason_is(R.ineligibility(offer_a(), with_a(), snapshot_with(epoch_issuer(), IT.now())), R.StaleEpoch{})
+      && reason_is(R.ineligibility(offer_a(), with_a(), snapshot_with(issuer(), 150n)), R.Expired{}), "ER-002 A's offer is ineligible StaleEpoch once the issuer is at epoch 5, and Expired at 150 when grant 3 has expired")
+    Test.check(reason_is(R.ineligibility(offer_with(R.OfferId{204n, 1n}, provider_d(), 9n, TF.plan(), 30n, offer_until()),
+        approved_ab(), snapshot()), R.RightsNotHeld{}), "ER-002 D's offer on its read-only grant 9 is ineligible RightsNotHeld")
+    Test.check(Bool.not(R.profile_admitted(R.NoProfiles{}, profile()))
+      && R.profile_admitted(R.Profiles{3n, R.Profiles{profile(), R.NoProfiles{}}}, profile()), "ER-002 profile_admitted: nothing is admitted by an empty constraint, and a profile listed second is admitted")
+
+# Ranking: ties, identity order and order independence (ER-003).
+def selection_ranking() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(R.revision(state_ab()), 4n) && Nat.is_eq(R.revision(state_ba()), 4n)
+      && selected(select_now(state_ab()), offer_a()) && selected(select_now(state_ba()), offer_a())
+      && selection_equal(R.selection(R.Change.state(select_now(state_ab()))), R.selection(R.Change.state(select_now(state_ab()))))
+      && selection_equal(R.selection(R.Change.state(select_now(state_ab()))), R.selection(R.Change.state(select_now(state_ba())))), "ER-003 equal approved quotes: A (201) and B (202) both quote 40 and are eligible; A is selected in both submission orders and the two runs give the same selection")
+    Test.check(Nat.is_eq(R.revision(state_a12()), 4n) && Nat.is_eq(R.revision(state_a21()), 4n)
+      && eligible_now(R.ineligibility(offer_a2_p2(), state_a12(), snapshot()))
+      && selected(select_now(state_a12()), offer_a()) && selected(select_now(state_a21()), offer_a()), "ER-003 one provider, two equally priced candidates: A's serials 1 (profile 1) and 2 (profile 2) both quote 40 and are admitted; serial 1 is selected in both orders")
+    Test.check(R.before(offer_a(), offer_a7()) && Bool.not(R.before(offer_a7(), offer_a()))
+      && R.before(offer_a(), offer_with(R.OfferId{202n, 1n}, provider_a(), 3n, TF.plan(), quote(), offer_until()))
+      && Bool.not(R.before(offer_with(R.OfferId{202n, 1n}, provider_a(), 3n, TF.plan(), quote(), offer_until()), offer_a()))
+      && Bool.not(R.before(offer_a(), offer_a())), "ER-008 offers equal in every field but OfferId are ranked by identity alone: {201, 1} before {201, 7} and before {202, 1}, never the reverse, and before is false both ways only for the same identity")
+    Test.check(R.before(offer_with(R.OfferId{202n, 1n}, provider_b(), 6n, TF.plan(), 35n, offer_until()), offer_a())
+      && Bool.not(R.before(offer_a(), offer_with(R.OfferId{202n, 1n}, provider_b(), 6n, TF.plan(), 35n, offer_until()))), "ER-003 a lower quote beats a lower provider id: B at 35 ranks ahead of A at 40")
+    Test.check(R.before(offer_with(R.OfferId{201n, 9n}, provider_a(), 3n, TF.plan(), quote(), offer_until()), offer_b())
+      && Bool.not(R.before(offer_b(), offer_with(R.OfferId{201n, 9n}, provider_a(), 3n, TF.plan(), quote(), offer_until()))), "ER-003 a lower provider id beats a lower serial: A's serial 9 ranks ahead of B's serial 1 at equal quotes")
+    Test.check(maybe_offer_is(R.best(R.Offers{offer_b(), R.Offers{offer_a7(), R.Offers{offer_a(), R.NoOffers{}}}}), offer_a())
+      && maybe_offer_is(R.best(R.Offers{offer_a(), R.Offers{offer_b(), R.Offers{offer_a7(), R.NoOffers{}}}}), offer_a())
+      && maybe_offer_is(R.best(R.Offers{offer_a7(), R.Offers{offer_b30(), R.Offers{offer_a(), R.NoOffers{}}}}), offer_b30())
+      && Bool.not(maybe_offer_is(R.best(R.NoOffers{}), offer_a())), "ER-003 best: the first-ranked of three offers wherever it sits, and nothing from an empty list")
+
+# Conflicting identities and their resolution (ER-008).
+def selection_conflicts() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Nat.is_eq(R.revision(conflict_base()), 4n)
+      && denied(select_now(conflicted()), conflicted(), R.ConflictingOffer{})
+      && denied(select_now(conflicted_late()), conflicted_late(), R.ConflictingOffer{}), "ER-008 conflicting offer identity: two records under OfferId{201, 1} quoting 40 and 35, with B's record between them or ahead of them, deny ConflictingOffer")
+    Test.check(Bool.not(R.offers_unambiguous(R.Offers{offer_a(), R.Offers{offer_a35(), R.NoOffers{}}}))
+      && R.offers_unambiguous(R.Offers{offer_a(), R.Offers{offer_a7(), R.Offers{offer_b(), R.NoOffers{}}}}), "ER-008 offers_unambiguous: false for one identity under two contents, true for three distinct identities")
+    Test.check(selected(select_now(identical_dups()), offer_a()), "ER-008 the same snapshot holding two identical records under OfferId{201, 1} selects normally (A)")
+    Test.check(R.Change.accepted(resolve_change()) && issued_is(R.Change.issued(resolve_change()), 1n)
+      && Nat.is_eq(R.revision(resolved()), 5n)
+      && offers_equal(R.offers(resolved()), R.Offers{offer_b(), R.NoOffers{}})
+      && serials_equal(R.seen(resolved()), R.seen(conflicted()))
+      && selected(select_now(resolved()), offer_b()), "ER-008 A's withdraw_offer of OfferId{201, 1} removes both records under it and keeps every serial; select then proceeds and picks B")
+    Test.check(denied(R.submit_offer(resolved(), 5n, provider_a(), offer_a(), snapshot()), resolved(), R.Replay{}), "ER-008 after the withdrawal, A resubmitting under serial 1 is denied Replay")
+    Test.check(denied(R.withdraw_offer(conflicted(), 4n, provider_b(), R.OfferId{201n, 1n}), conflicted(), R.Unauthenticated{}), "ER-008 a withdrawal of OfferId{201, 1} by B denied Unauthenticated")
+    Test.check(denied(R.withdraw_offer(resolved(), 5n, provider_a(), R.OfferId{201n, 1n}), resolved(), R.Revoked{})
+      && denied(R.withdraw_offer(state_ab(), 4n, provider_a(), R.OfferId{201n, 7n}), state_ab(), R.Revoked{}), "ER-008 withdrawing OfferId{201, 1} a second time, or A's never-stored serial 7, denied Revoked: withdrawal is single use")
+    Test.check(denied(R.withdraw_offer(conflicted(), 3n, provider_a(), R.OfferId{201n, 1n}), conflicted(), R.StaleRevision{}), "ER-008 a withdrawal validated at revision 3 against the state at revision 4 denied StaleRevision")
+
+# Selection racing revocation, stale ranking, and the selection lifecycle.
+def selection_races() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(selected(select_on(state_ab(), snapshot_with(revoked_issuer(), IT.now())), offer_b())
+      && selected(select_on(state_ba(), snapshot_with(revoked_issuer(), IT.now())), offer_b()), "ER-002 selection racing revocation: A's grant revoked in the issuer before select commits; with B also eligible, B is selected in both submission orders")
+    Test.check(denied(select_on(R.Change.state(R.submit_offer(approved_ab(), 2n, provider_a(), offer_a(), snapshot())),
+        snapshot_with(revoked_issuer(), IT.now())),
+        R.Change.state(R.submit_offer(approved_ab(), 2n, provider_a(), offer_a(), snapshot())), R.NoEligibleOffer{})
+      && Bool.not(Guard.all(R.select_checks(R.Change.state(R.submit_offer(approved_ab(), 2n, provider_a(), offer_a(), snapshot())),
+        NT.pinned(), 1n, n_context(), snapshot_with(revoked_issuer(), IT.now())))), "ER-002 selection racing revocation with no other offer: denied NoEligibleOffer, and the select gate list itself fails")
+    Test.check(denied(R.select(put_offer(state_ab(), provider_a(), offer_a7()), 4n, NT.pinned(), 1n, n_context(), snapshot()),
+        put_offer(state_ab(), provider_a(), offer_a7()), R.StaleRevision{})
+      && Nat.is_eq(R.revision(put_offer(state_ab(), provider_a(), offer_a7())), 5n), "ER-003 an offer submitted after the snapshot was ranked at revision 4 moves the state to 5; select at 4 is denied StaleRevision with the state unchanged")
+    Test.check(denied(select_now(selected_ab()), selected_ab(), R.AlreadySelected{}), "ER-003 select while a selection exists denied AlreadySelected")
+    Test.check(R.Change.accepted(abandon_change()) && issued_is(R.Change.issued(abandon_change()), 3n)
+      && selection_equal(R.selection(abandoned()), R.NoSelection{}) && Nat.is_eq(R.retired(abandoned()), 3n)
+      && Nat.is_eq(R.next_id(abandoned()), 4n) && Nat.is_eq(R.revision(abandoned()), 6n)
+      && offers_equal(R.offers(abandoned()), R.offers(selected_ab())) && R.valid(abandoned()), "ER-003 abandon retires selection 3: no selection, retired 3, next_id 4 kept, revision 6, offers kept")
+    Test.check(selected(reselect_change(), offer_a()) && issued_is(R.Change.issued(reselect_change()), 4n)
+      && selection_id_is(R.selection(R.Change.state(reselect_change())), 4n)
+      && Nat.is_eq(R.retired(R.Change.state(reselect_change())), 3n), "ER-003 after abandon a new selection gets the new id 4 and selection 3 stays retired")
+    Test.check(denied(R.abandon(abandoned(), 6n), abandoned(), R.NotSelected{})
+      && denied(R.abandon(selected_ab(), 4n), selected_ab(), R.StaleRevision{}), "ER-003 abandon with no selection denied NotSelected (single use); abandon at revision 4 against revision 5 denied StaleRevision")
+    Test.check(denied(select_with(state_ab(), NT.proposed(), snapshot()), state_ab(), R.WrongStage{})
+      && denied(R.select(state_ab(), 4n, NT.pinned(), 0n, n_context(), snapshot()), state_ab(), R.WrongStage{}), "ER-003 select on a Negotiation session at Proposed, or at the wrong session revision, denied WrongStage")
+    Test.check(denied(select_with(state_ab(), session_for(N.Request{TF.plan(), 7n, 41n, 30n, 180n}), snapshot()), state_ab(), R.ScopeMismatch{}), "ER-003 a session whose request differs in quote (41, not 42) denied ScopeMismatch")
+
+# withdraw_offer and the selection, and the approval live-stamp gate.
+def selection_withdrawals() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(selection_equal(R.selection(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_a(), R.OfferId{201n, 1n}))), R.NoSelection{})
+      && Nat.is_eq(R.retired(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_a(), R.OfferId{201n, 1n}))), 3n)
+      && offers_equal(R.offers(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_a(), R.OfferId{201n, 1n}))), R.Offers{offer_b(), R.NoOffers{}})
+      && R.valid(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_a(), R.OfferId{201n, 1n}))), "ER-008 withdrawing the selected offer retires selection 3 and leaves only B's record")
+    Test.check(selection_equal(R.selection(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), R.selection(selected_ab()))
+      && Nat.is_eq(R.retired(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), 0n)
+      && offers_equal(R.offers(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), R.Offers{offer_a(), R.NoOffers{}})
+      && Nat.is_eq(R.revision(R.Change.state(R.withdraw_offer(selected_ab(), 5n, provider_b(), R.OfferId{202n, 1n}))), 6n), "ER-008 B withdrawing its unselected offer keeps A's selection and retires nothing")
+    Test.check(denied(R.submit_approval(opened(), 0n, IT.source_authority(), approval_a(), snapshot_with(epoch_issuer(), IT.now())),
+        opened(), R.StaleEpoch{}), "ER-006 an approval submitted while the issuer is at epoch 5 and the transfer context still at the plan's epoch 3 denied StaleEpoch")
+
+def selection() -> IO(Unit):
+  do IO<Unit>:
+    selection_records()
+    selection_exclusions()
+    selection_gate_reasons()
+    selection_ranking()
+    selection_conflicts()
+    selection_races()
+    selection_withdrawals()
+
 def main() -> IO(Unit):
   do IO<Unit>:
     offers()
     approvals()
-    IO.print("Rendezvous: 72 checks passed")
+    selection()
+    IO.print("Rendezvous: 115 checks passed")

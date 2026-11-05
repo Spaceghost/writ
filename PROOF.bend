@@ -6,6 +6,7 @@ import ./Issuance.bend as Issuance
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
+import ./Rendezvous.bend as Rendezvous
 
 def Laws.failed_check_denies(before, after):
   match before:
@@ -115,3 +116,58 @@ def Laws.publication_refused_preserves_state(state, session, ledger, reason):
 
 def Laws.publication_refused_emits_nothing(state, session, ledger, reason):
   {==}
+
+# Induction on n: `Nat.cmp(1n+p, 1n+p)` reduces to `Nat.cmp(p, p)`.
+def Laws.nat_lt_irreflexive(n):
+  match n:
+    case 0n:
+      {==}
+    case 1n+p:
+      Laws.nat_lt_irreflexive(p)
+
+# Induction on n, as nat_lt_irreflexive.
+def Laws.nat_eq_reflexive(n):
+  match n:
+    case 0n:
+      {==}
+    case 1n+p:
+      Laws.nat_eq_reflexive(p)
+
+# Matching exposes the quote q, provider id p and serial s, so the goal is
+# `is_lt(q, q) || (is_eq(q, q) && (is_lt(p, p) || (is_eq(p, p) && is_lt(s, s))))`.
+# Rewriting each comparison of a value with itself (the strict ones to False,
+# the ties to True) reduces it to False by computation of `||` and `&&`.
+def Laws.offer_order_irreflexive(a):
+  match a:
+    case Rendezvous.Offer{version, Rendezvous.OfferId{+p, +s}, provider, grant, plan, profile, +q, valid_until}:
+      %Equal.sym(Bool, Nat.is_lt(q, q), False{}, Laws.nat_lt_irreflexive(q)) : {Bool.or(_, Bool.and(Nat.is_eq(q, q), Bool.or(Nat.is_lt(p, p), Bool.and(Nat.is_eq(p, p), Nat.is_lt(s, s))))) == False{} : Bool}
+      %Equal.sym(Bool, Nat.is_eq(q, q), True{}, Laws.nat_eq_reflexive(q)) : {Bool.and(_, Bool.or(Nat.is_lt(p, p), Bool.and(Nat.is_eq(p, p), Nat.is_lt(s, s)))) == False{} : Bool}
+      %Equal.sym(Bool, Nat.is_lt(p, p), False{}, Laws.nat_lt_irreflexive(p)) : {Bool.or(_, Bool.and(Nat.is_eq(p, p), Nat.is_lt(s, s))) == False{} : Bool}
+      %Equal.sym(Bool, Nat.is_eq(p, p), True{}, Laws.nat_eq_reflexive(p)) : {Bool.and(_, Nat.is_lt(s, s)) == False{} : Bool}
+      Laws.nat_lt_irreflexive(s)
+
+# Induction on before_list. Base: the left side unfolds to
+# `keep_if(eligible(o, state, snapshot), o, eligible_offers(rest, ..))`;
+# rewriting the scrutinee with the hypothesis (reversed) selects the skip
+# branch, which is the right side. Step: both sides unfold to
+# `keep_if(eligible(head, ..), head, eligible_offers(append(tail, ..), ..))`
+# and differ only in the inner list, which the induction hypothesis equates.
+def Laws.rendezvous_ineligible_offer_dropped(before_list, o, rest, state, snapshot, ineligible):
+  match before_list:
+    case Rendezvous.NoOffers{}:
+      %Equal.sym(Bool, Rendezvous.eligible(o, state, snapshot), False{}, ineligible) : {Rendezvous.keep_if(_, o, Rendezvous.eligible_offers(rest, state, snapshot)) == Rendezvous.eligible_offers(rest, state, snapshot) : Rendezvous.Offers}
+      {==}
+    case Rendezvous.Offers{head, tail}:
+      %Laws.rendezvous_ineligible_offer_dropped(tail, o, rest, state, snapshot, ineligible) : {Rendezvous.keep_if(Rendezvous.eligible(head, state, snapshot), head, Rendezvous.eligible_offers(Rendezvous.Offers.append(tail, Rendezvous.Offers{o, rest}), state, snapshot)) == Rendezvous.keep_if(Rendezvous.eligible(head, state, snapshot), head, _) : Rendezvous.Offers}
+      {==}
+
+# As issuance_stale_registration_keeps_state: matching exposes the revision
+# field, so `select` unfolds to `select_current(Nat.is_eq(revision,
+# 1n+revision), ...)`. Rewriting that scrutinee to False{} with
+# nat_eq_successor_false (reversed) selects `Rejected{state, StaleRevision{}}`,
+# whose `accepted` is False{} and whose `Change.state` is the matched state.
+def Laws.rendezvous_stale_selection_keeps_state(state, session, expected_session, n_context, snapshot):
+  match state:
+    case Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}:
+      %Equal.sym(Bool, Nat.is_eq(revision, 1n+revision), False{}, Laws.nat_eq_successor_false(revision)) : {(Rendezvous.Change.accepted(Rendezvous.select_current(_, Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.select_current(_, Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}, session, expected_session, n_context, snapshot))) == (False{}, Rendezvous.State{revision, next_id, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}) : Bool & Rendezvous.State}
+      {==}

@@ -19,3 +19,9 @@
 2026-11-05T15:15:35Z	implementer	fix round 1: F1 origin gate, F2 profile 3, F3 live stamp, F4 comment; 65 mutants (61 killed, 4 equivalent); Tests.bend 1500 PASS, PROOF.bend ALL PROOFS CHECK; committing
 2026-11-05T15:15:50Z	controller	fix round 1 reported; scoped re-review dispatched
 2026-11-05T15:16:50Z	controller	task 2 complete; task 3 dispatched (eligibility and selection)
+2026-11-05T15:17:25Z	implementer	task 3 started: read brief, task 1-2 records
+2026-11-05T15:23:00Z	implementer	eligibility, ranking, select, abandon, withdraw_offer added; approval submission now denies StaleEpoch when the issuer's live stamp is not the request plan's (task 2 gap); writing selection tests
+2026-11-05T15:25:51Z	implementer	selection section: 43 new checks green (115); writing laws
+2026-11-05T15:28:44Z	implementer	laws added, PROOF.bend ALL PROOFS CHECK; Tests.bend 1543 PASS; mutation sweep started (72 mutants)
+2026-11-05T15:31:55Z	implementer	mutation sweep: 74 mutants, 72 killed, 2 equivalent (unreachable None arm; live stamp equals plan stamp on acceptance); comparator, filter and outer-match mutants also fail PROOF.bend; writing report
+2026-11-05T15:33:23Z	implementer	report and mutants written; box 1.2 checked; Rendezvous 115 checks, Tests.bend 1543 PASS, PROOF.bend ALL PROOFS CHECK at 22 laws; committing
