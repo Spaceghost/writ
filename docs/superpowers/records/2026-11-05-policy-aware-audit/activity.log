@@ -37,3 +37,5 @@
 2026-11-05T16:31:20Z	implementer	fix round 1 started: read task-3-review.md (I1 stream membership for ScopeNotRead events, I2 duplicates beyond the head and first source, I3 version match and commit context influences, M1-M3 comments)
 2026-11-05T16:33:01Z	implementer	event_streams/streams_for added (ScopeNotRead joins the requester's stream only), header stream rule, residual one-bit channel and subject-numbering notes; 7 checks added (3 stream, duplicate behind the head, duplicate second source, other version, exact commit influence list); Audit 198; new mutants S1-S3, X2, X4, X6, X7 all killed; full batch (71) started
 2026-11-05T16:35:43Z	implementer	fix round 1: full batch 71 of 71 killed, 0 equivalent; Audit 198; Tests.bend 1428 plus 198 = 1626 ALL LIBRARY TESTS PASSED; PROOF.bend ALL PROOFS CHECK (23 laws, unchanged); report fix-round section written; committing
+2026-11-05T16:36:02Z	controller	fix round 1 reported (event_streams); scoped re-review dispatched
+2026-11-05T16:37:12Z	controller	task 3 complete; task 4 dispatched (queries)
