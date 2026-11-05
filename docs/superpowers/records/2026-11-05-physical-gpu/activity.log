@@ -251,3 +251,5 @@
 2026-11-05T08:17:32Z	implementer	final round: corpus runs done
 2026-11-05T08:18:13Z	implementer	merged-tree corpus: on 1428 / off 1428, 4915 bend_dev launches, gate PASS, cmp on/off and both against tests-native.txt (6faee219) exit 0; appended to gpu-corpus.txt; updating rows
 2026-11-05T08:19:50Z	implementer	final round: text fixes I-1 to I-3, M-1 to M-6, O-1, O-3 applied; Tests 1428 PASS, OpenSpec 44/0; committing
+2026-11-05T08:20:10Z	controller	final fix round reported (merged-tree device corpus); scoped re-review dispatched
+2026-11-05T08:22:04Z	controller	final re-review ready; merging to master
