@@ -42,3 +42,5 @@
 2026-11-05T04:30:05Z	implementer	task 4 fix round 1 started: read task-4-review.md
 2026-11-05T04:30:08Z	controller	review: speaks_for gap and id-0 grant; fix round 1 dispatched
 2026-11-05T04:33:33Z	implementer	fix round 1: subject 6 and principal 0 SubjectMismatch checks (I-1); id_named in own_checks and parent_present, forged id-0 grant and parent id 0 checks (M-1); header reason mapping (M-2); comment reflow (M-3); 5 new mutants all killed (54 total, 48 by tests, 1 proof-only, 5 equivalent); bend Tests.bend ALL LIBRARY TESTS PASSED 965 PASS (782 + 183); bend PROOF.bend ALL PROOFS CHECK, 12 laws; committing
+2026-11-05T04:33:51Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T04:35:34Z	controller	task 4 complete; task 5 dispatched (integration with admission and the facade; trusted inputs doc)

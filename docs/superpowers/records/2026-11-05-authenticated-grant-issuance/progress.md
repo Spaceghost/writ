@@ -19,3 +19,6 @@ Task 3: complete (re-review ALL CLOSED; 932 checks, 10 laws).
 Task 4: dispatched implementer
 Task 4: implementer DONE_WITH_CONCERNS (3af6527): 961 checks (+29), 12 laws (+2: the law and a helper lemma), 43 of 49 mutants killed by tests, 1 by PROOF, 5 equivalent. Rulings: the child's subject equals the authenticated caller through derive's from == parent subject check, no new Grant field (acceptable if the reviewer confirms the caller check cannot be bypassed); MissingApproval for a missing parent and Revoked for a non-current parent are acceptable within the fixed error set, stated in the header; valid rejecting widened children stands. Reviewer dispatched.
 Task 4: review spec APPROVED, security NEEDS_FIXES (speaks_for_subject is_eq to is_le survives; a forged id-0 grant counts as current; header mapping; a comment). Fix round 1 dispatched.
+Task 4: fix round 1 done (db5c38e): 965 checks; the is_le mutant and the id-0 mutants are killed. Scoped re-review dispatched.
+Task 4: complete (re-review ALL CLOSED; 965 checks, 12 laws).
+Task 5: dispatched implementer
