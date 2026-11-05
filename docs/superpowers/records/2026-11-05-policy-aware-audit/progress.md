@@ -29,3 +29,4 @@ Task 6: implementer DONE_WITH_CONCERNS (0d886cb): JS and native 1713 byte-identi
 Task 6: review APPROVED (spec + quality); two comment-only nits carried to the final fix round. Task 6: complete.
 Final review: Needs fixes before merge (B1, B2 documentation-only; N1-N5 optional). Ruling: one fix round takes B1, B2, N1-N5 and the Task 6 comment nits; no implementation token may change (compare with 0d886cb). Brief: final-fix-brief.md.
 Final fix round done (86bfddd): B1, B2, N1-N5 as document and comment edits, tokens identical to 0d886cb; 1713 checks, 29 laws, strict 44. Scoped re-review dispatched.
+Final re-review: ALL CLOSED (B1, B2, N1-N5, Task 6 nit); tokens identical to 0d886cb. Lane ready to merge.
