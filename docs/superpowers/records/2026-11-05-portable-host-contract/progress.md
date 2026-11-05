@@ -34,3 +34,4 @@ Final review: Needs fixes before merge. Blocking I-1: issue binds only the plan 
 Final fix round done (merge 63b3710, fix 6c2d2b6): issue binds owner, rights, expiry, plan (OwnerMismatch/RightsNotHeld/LeaseExceeded; vectors PH-005-12..14); recovery records the destination (PH-009-5); master merged, 1428 checks, 17 laws, vector hash 37816dd7…; 15 mutants killed. Scoped re-review dispatched.
 Final re-review: Ready to merge. Complete.
 Merge: to master; re-pin to 1428 and 17 laws on master in the same landing.
+Merge: merged to master (2ab09f6), re-pinned to 1428 and 17 laws (c65d53d), pushed as c65d53d
