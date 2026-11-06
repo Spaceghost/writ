@@ -205,7 +205,7 @@ c7b08db4356d676511e626e76e116c1883611acf4438735655622612fdd7d559  docs/FEATURE-S
 e722da0e5b0a7271b8749522f6415262deab9dc33e4f6bf54a07435e6f54388e  docs/GETTING-STARTED.md
 e1845b7a517339fa76a31e8a59aaeefe66808791045abf7e98c231947243f65b  docs/GRANT-ISSUANCE.md
 af1b59d3fd59d006cb5ae9df58a8e750e1d2bdb59e66a8817e188a1c2091cdb1  docs/HOST-PLATFORMS.md
-77ab8010c375a19af5694429bb082b1b3303cf6a0152dd19c759c04086d7dbed  docs/INSTALL.md
+ac090283b0357a2be36cb4a8b16a302699c3d439584618ab6203d101dab50c2a  docs/INSTALL.md
 18b6b6a73db03e8bd8578016c764bc79e46ade56298b945c18bea2be22abfbc9  docs/PLATFORMS.md
 66abdd91b34aff36194f8bac1382ddc11015adfb8542217e1afeb7c0137e1a45  docs/UNIKERNELS.md
 b462cc252a08971032c552a412bdb0977b7ac11c98649d7fe7a6e1fd9916df0c  docs/WRITFS-PRODUCT.md
@@ -457,7 +457,7 @@ af7a34351c2ddd32ab83bb7e06ce90e57b31846dea3900b3f9bba15e9b9cbcff  docs/superpowe
 e62657d9aedaf838e6a26bc8beb5b32934a5426aba5c7cf36c4a16c1786f2f87  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-report.md
 dae3195f63e115261c9e298e500c148e8ce54819a89d0877ccc1f5246c939536  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-review.md
 d185db1ad5c59d9cf2c25277e821e75db54a6dd749dd51fa7a64bb3672c65cab  docs/superpowers/records/2026-11-05-linux-host/activity.log
-af8384839274d2bd292555b3d65a84527ce0ad11182eeaaa7065ecdc75202795  docs/superpowers/records/2026-11-05-linux-host/integration-report.md
+eb1219cc1b332647f11eb3b0b7a0228161ae2637d3bde2542318bb7f9bd90015  docs/superpowers/records/2026-11-05-linux-host/integration-report.md
 19e27219b19f1bd33579d83594274eb7df7414c30b209f9c351b23d6c1b9ec6e  docs/superpowers/records/2026-11-05-linux-host/progress.md
 edf2ae43c324dd27de94a7dbe047313fa3472d154369dd8201458a7b13d70865  docs/superpowers/records/2026-11-05-linux-host/task-1-brief.md
 2ef291256cb8d18430017f6d69f33611b65b52c195e20c20fc272f57ac5576d3  docs/superpowers/records/2026-11-05-linux-host/task-1-report.md

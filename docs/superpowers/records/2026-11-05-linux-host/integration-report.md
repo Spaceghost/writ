@@ -33,4 +33,5 @@ not be relabeled as 2,060-check outcomes. The updated Nix and Genode checks
 have not yet been observed on this integration candidate. An offline Nix JS
 check started rebuilding many uncached toolchain dependencies and was stopped
 by the integration agent to avoid an extensive unrelated build; it did not
-reach the test.
+reach the test. Offline evaluation of the `tests-js` derivation succeeded; this
+is not a build or test result.

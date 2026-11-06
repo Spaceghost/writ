@@ -59,7 +59,8 @@ versions. The recorded commands and outputs are in
 [verification/nix-shell.txt](../verification/nix-shell.txt).
 
 The flake also builds and checks the library itself, offline in the Nix
-sandbox, from a source tree filtered to the root and `examples/` `.bend` files:
+sandbox, from a source tree filtered to authored `.bend` files, including the
+root, `examples/`, and `hosts/` modules:
 
 ```sh
 nix build .#tests-native
