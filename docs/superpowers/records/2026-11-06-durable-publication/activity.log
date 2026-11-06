@@ -20,3 +20,4 @@
 2026-11-06T22:54:00Z	controller	Added durable word-decoder long-suffix bound regression; List.length mutant escaped old Node tests and fails new one. Bend/Node/QuickJS 2161 pass; native rebuild running.
 2026-11-06T23:02:16Z	controller	Added complete-entry maximum-Nat roundtrip; 13 selected high-bit truncation mutants killed; 2162 Bend/Node/QuickJS pass, focused native CPU pass, full native build running.
 2026-11-06T23:12:00Z	controller	Full optimized native CPU suite passes 2162 checks after maximum-Nat roundtrip; output matches Bend exactly.
+2026-11-06T23:19:08Z	controller	Recorded design-only audit integration mapping: one final host decision, policy influences, atomic required append and crash/unknown gaps; no task closed.

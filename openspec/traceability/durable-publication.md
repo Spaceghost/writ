@@ -63,3 +63,8 @@ and unresolved storage, anchor, and receiver interfaces in
 Separate reviews outline the proposed [lookup and fencing boundary](../../docs/superpowers/records/2026-11-06-durable-publication/lookup-fencing-design.md)
 and [rollback witness requirements](../../docs/superpowers/records/2026-11-06-durable-publication/witness-design.md);
 these are design evidence only and do not qualify an implementation.
+
+The proposed [audit integration mapping](../../docs/superpowers/records/2026-11-06-durable-publication/audit-integration-design.md)
+records the unresolved final-host decision, policy influence, atomic append,
+and crash-ordering boundaries. It is design-only evidence; no audit or durable
+acceptance scenario is closed by it.
