@@ -37,5 +37,7 @@ passed the native File_system and libc VFS mount probes. Its retained
 [core and mount log](../../../../contrib/native-hosts/genode/evidence/corpus-42308258031.log),
 [filesystem log](../../../../contrib/native-hosts/genode/evidence/filesystem-42308258031.log),
 and [VFS log](../../../../contrib/native-hosts/genode/evidence/vfs-42308258031.log)
-preserve the actual output. The guest run validates that exact earlier source
+preserve the output with terminal escapes, carriage returns and trailing
+whitespace normalized. The [raw artifact hashes](../../../../contrib/native-hosts/genode/evidence/42308258031-artifact-raw-sha256.txt)
+identify the original downloaded files. The guest run validates that exact earlier source
 commit, not any later combined tree, GPU execution, or protected-host profile.
