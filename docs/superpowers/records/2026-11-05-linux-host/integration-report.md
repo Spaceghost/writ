@@ -7,9 +7,9 @@ The partial native broker and launcher remain unfinished and unqualified. Their
 identity, confinement, failure and cleanup evidence is still missing, and Linux
 host task 1.2 remains open.
 
-This isolated integration candidate combines master `41f8389` with Linux lane
-`7561f6e`. The later master update from `bddf411` records a hosted nelibc
-observation and changes no test inputs. The only textual merge conflict was the source manifest, regenerated
+This isolated integration candidate combines master `1a86884` with Linux lane
+`7561f6e`. Later master updates from `bddf411` record a hosted nelibc
+observation and a historical branch audit; they change no test inputs. The only textual merge conflict was the source manifest, regenerated
 from the combined files. It adds the 118-check Linux model module to the
 previous 1,942-check suite; no OpenSpec acceptance task is closed. The Linux
 source/trust inventory distinguishes the partial broker from the public WritFS
@@ -30,4 +30,7 @@ The executable Nix assertion and Genode workflow now expect the 2,060 current
 checks. Workflow filters include the newly imported Linux monitor sources.
 The prior recorded 1,942-check CPU and Genode results are historical and must
 not be relabeled as 2,060-check outcomes. The updated Nix and Genode checks
-have not yet been observed on this integration candidate.
+have not yet been observed on this integration candidate. An offline Nix JS
+check started rebuilding many uncached toolchain dependencies and was stopped
+by the integration agent to avoid an extensive unrelated build; it did not
+reach the test.

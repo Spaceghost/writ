@@ -457,7 +457,7 @@ af7a34351c2ddd32ab83bb7e06ce90e57b31846dea3900b3f9bba15e9b9cbcff  docs/superpowe
 e62657d9aedaf838e6a26bc8beb5b32934a5426aba5c7cf36c4a16c1786f2f87  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-report.md
 dae3195f63e115261c9e298e500c148e8ce54819a89d0877ccc1f5246c939536  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-review.md
 d185db1ad5c59d9cf2c25277e821e75db54a6dd749dd51fa7a64bb3672c65cab  docs/superpowers/records/2026-11-05-linux-host/activity.log
-379563587425d686b868857f43f738fac5f4d4aaba8ca6221a0acc655a36c37e  docs/superpowers/records/2026-11-05-linux-host/integration-report.md
+af8384839274d2bd292555b3d65a84527ce0ad11182eeaaa7065ecdc75202795  docs/superpowers/records/2026-11-05-linux-host/integration-report.md
 19e27219b19f1bd33579d83594274eb7df7414c30b209f9c351b23d6c1b9ec6e  docs/superpowers/records/2026-11-05-linux-host/progress.md
 edf2ae43c324dd27de94a7dbe047313fa3472d154369dd8201458a7b13d70865  docs/superpowers/records/2026-11-05-linux-host/task-1-brief.md
 2ef291256cb8d18430017f6d69f33611b65b52c195e20c20fc272f57ac5576d3  docs/superpowers/records/2026-11-05-linux-host/task-1-report.md
@@ -575,6 +575,7 @@ ff3be33f6ca00179cfe6f52c921527482d119f10b3576a94ef99adb18d7739e2  docs/superpowe
 e14076ad20573905cce011cc11efbfbaec21b5050bf607cf0e05695158ea0ba4  docs/superpowers/records/2026-11-05-unikraft-lanes/task-2-report.md
 57bb4d646fa174b4af02e933170df5350c69396af6d2f7c3d91f1e1539a71b1f  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-brief.md
 ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-report.md
+264ad1f1d36d5b97eaa0350a9962bcd0cad13e31bd3674a746861e92ec3a7d3c  docs/superpowers/records/2026-11-06-branch-audit/report.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html
 98cd65a0079843592b2a65911270d9add2ebca47c67c33015ad38f3ae424194e  docs/superpowers/records/questions/q10.answers.jsonl
