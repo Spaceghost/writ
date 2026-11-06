@@ -150,6 +150,34 @@ The complete Bend and generated Node runs also pass with identical output
 (SHA-256 `9888dbddd281f3a1deeb20066786954313d58fd04af38e8b61b016d8247b79bf`).
 The complete host QuickJS harness reports 2,161 checks, program exit 0, no
 exception, 17,855 ticks and 20,218,552 peak live bytes. Existing Bend proof
-checks pass without a Lean kernel verdict; OpenSpec strict passes 44/44. Full
-native CPU verification is running separately. This host QuickJS result is not
+checks pass without a Lean kernel verdict; OpenSpec strict passes 44/44. The
+full optimized native CPU run passes with output identical to Bend. This host
+QuickJS result is not
 a Genode guest or physical GPU test.
+
+## Maximum one-word numeric-field roundtrip
+
+A synthetic record sets every Nat field in the entry to `4294967295`, the
+largest admitted one-word value. It includes source and destination versions,
+the shared plan and epochs, request and receipt, an origin and charge,
+high-bit U32 code and artifact words, nested labels and a device backend.
+The public encoder/decoder must roundtrip the whole structure. These values
+are descriptions, not authenticated authority or valid evidence of a commit.
+
+In selected scratch mutations, each of the decoder's 13 U32-to-Nat conversion
+occurrences was individually truncated to 31 bits. All 13 mutated focused Node
+suites passed before this test; after adding the composite roundtrip, each
+mutated suite exits 1 on the new named check. This is sampled mutation evidence
+for these conversions, not an exhaustive proof of numeric preservation or
+codec invertibility, nor an authentication or recovery claim. No production
+codec code was changed.
+
+The focused decoder suite passes Bend, Node and optimized native CPU with
+identical output (SHA-256
+`87a51c5aa9d142ae78eb1a2bea2694cb8b5c1918c549a2d64908835773087c40`).
+The full Bend and Node suites match (SHA-256
+`a2bfec8ad99005b80039176da492cf7ffe5628b9d344dd393deaf6cddb1a148c`),
+and host QuickJS reports 2,162 checks, program exit 0, no exception, 17,855
+ticks and 20,235,712 peak live bytes. Existing Bend proof checks pass without a
+Lean kernel verdict; OpenSpec strict passes 44/44. Full optimized native CPU
+verification is running separately. Host QuickJS is not a Genode guest or GPU test.

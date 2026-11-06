@@ -148,6 +148,39 @@ def charged_words() -> +List<U32>:
 def free_entry() -> J.Entry:
   ET.entry_origin(ET.origin_payment(ET.origin(T.CEnd{}), T.Free{}))
 
+# Every Nat field is the largest value admitted by the one-word format. The
+# U32 identities and labels also use high bits; these are descriptions only.
+def boundary_nat() -> Nat:
+  4294967295n
+
+def boundary_code() -> T.CodeId:
+  T.CodeId{4294967295, 2147483648, 4294967295, 2147483648,
+    4294967295, 2147483648, 4294967295, 2147483648}
+
+def boundary_plan() -> T.Plan:
+  T.Plan{T.Stamp{boundary_nat(), boundary_nat(), boundary_nat()}, boundary_nat(),
+    T.OCons{T.ObjectVersion{boundary_nat(), boundary_nat()}, T.OEnd{}},
+    T.ObjectVersion{boundary_nat(), boundary_nat()}, boundary_code(), T.Summarize{}, 4294967295}
+
+def boundary_origin() -> T.OriginRule:
+  T.OriginRule{T.ObjectVersion{boundary_nat(), boundary_nat()}, T.Bits64{4294967295, 2147483648},
+    T.Bits64{2147483648, 4294967295}, 4294967295, T.CCons{boundary_code(), T.CEnd{}},
+    T.Charge{boundary_nat(), 4294967295}}
+
+def boundary_output() -> T.OutputPolicy:
+  T.OutputPolicy{4294967295, T.Bits64{4294967295, 2147483648},
+    T.Bits64{2147483648, 4294967295}, 4294967295, T.RCons{boundary_origin(), T.REnd{}}}
+
+def boundary_label() -> L.Label:
+  L.Label{L.Join{L.Rule{L.Named{4294967295}, L.Named{2147483648}}, L.Rule{L.Bottom{}, L.Top{}}},
+    L.Meet{L.Rule{L.Named{2147483648}, L.Named{4294967295}}, L.Rule{L.Top{}, L.Unsupported{}}}}
+
+def boundary_entry() -> J.Entry:
+  +plan = boundary_plan()
+  J.Entry{boundary_nat(), boundary_nat(),
+    N.Request{plan, boundary_nat(), boundary_nat(), boundary_nat(), boundary_nat()},
+    B.WriteIntent{plan, boundary_output(), boundary_label(), B.Device{}, B.ArtifactId{boundary_code()}}}
+
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(is_decoded_as(D.decode(ET.golden()), ET.entry()), "durable decoding reads the hand-calculated vector")
@@ -163,6 +196,8 @@ def main() -> IO(Unit):
     Test.check(roundtrip(ET.with_plan(ET.entry(), ET.with_kind(ET.plan(), T.Summarize{}))),
       "durable decoding retains a summarize operation")
     Test.check(roundtrip(ET.maximum_entry()), "durable decoding roundtrips the complete maximum-size entry")
+    Test.check(roundtrip(boundary_entry()),
+      "durable decoding roundtrips maximum one-word numeric fields across the complete entry")
     Test.check(all_short_prefixes(50n, ET.golden()), "durable decoding rejects every truncated golden prefix")
     Test.check(all_mutations_exact(50n, ET.golden(), 0),
       "durable decoding re-encodes every accepted single-word zero mutation exactly")
