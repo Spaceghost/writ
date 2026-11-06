@@ -4,3 +4,4 @@
 2026-11-06T08:51:11Z	controller	Bounded journal model and 64 focused checks integrated; full suite, existing proofs, OpenSpec and host QuickJS pass; final native CPU build running.
 2026-11-06T08:54:45Z	controller	Documented storage, rollback anchor and receiver crash ordering; no native primitive or witness is yet selected or qualified.
 2026-11-06T08:59:34Z	controller	Pinned full host-intent preservation with a killing mutant; 2007 Bend and host QuickJS checks pass; native rebuild running.
+2026-11-06T09:05:26Z	controller	Added DP-001–008 traceability with named model tests and explicit native/storage/witness/sink gaps; strict OpenSpec 44/44.
