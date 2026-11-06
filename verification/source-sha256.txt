@@ -125,7 +125,7 @@ def389f65b5b88522be4928c637e15a7947598f42611327504a9e52592e80de9  contrib/native
 3def8ffbdc2442d0e04329530956d9edeca562b71cb41b9261cf055a40836b10  contrib/native-hosts/runtime/genode/allocator_probe.c
 9db389dfed67d0c33c840a66c3338d86465eea55667d40fe0129ffa1ac277c1b  contrib/native-hosts/runtime/genode/core_checks.cc
 7064e9ad3fcfa3586d0f18f87a71ef3cdb9ffa6374c8036cc9ac5fdd2c29e325  contrib/native-hosts/runtime/genode/malloc_np.h
-0c43de8961a00269a579faaf628696917f2c5470fd0482830a5cd31274cdb6f1  contrib/native-hosts/runtime/genode/policy.cc
+0b67db007ec46500ee9278fd71006ecace5385af98dd2b3043c00fd1c96da95e  contrib/native-hosts/runtime/genode/policy.cc
 f24ca528ff1a10bdff93393cc20eef7eff3f9183f0a299dfbd472cf1f2cefae3  contrib/native-hosts/runtime/genode/policy.h
 f1b2d661173b480a6c4bd0598e9b7b069aa08d879f4cf72db3212be2d4130702  contrib/native-hosts/runtime/genode/quickjs_alloc.c
 a15619245618f54ba52a52ca9b74195b73edc54eb5fb123ac84d1bc3ff7bf005  contrib/native-hosts/runtime/genode/quickjs_alloc.h
@@ -449,6 +449,7 @@ af7a34351c2ddd32ab83bb7e06ce90e57b31846dea3900b3f9bba15e9b9cbcff  docs/superpowe
 60f69493c536bdd0c1e95d3022c7a197e34c121b8ab4a95d367380ee5678381b  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-brief.md
 1af94a649a63a7c8604d266b6f0411888fffad9cb3506f0c63877c51c3ede413  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-quickjs-profile.md
 e62657d9aedaf838e6a26bc8beb5b32934a5426aba5c7cf36c4a16c1786f2f87  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-report.md
+dae3195f63e115261c9e298e500c148e8ce54819a89d0877ccc1f5246c939536  docs/superpowers/records/2026-11-05-executor-rendezvous/task-9-review.md
 ec62ee4d7ef2a50e5efe638448ca9060415e73cd49bc61a298766a6fe092d18a  docs/superpowers/records/2026-11-05-physical-gpu/activity.log
 59b8a7d4866112e695bee8e3b8d3a0bcc2cf6fd84b59c4c3ffa97fda19fdba1d  docs/superpowers/records/2026-11-05-physical-gpu/final-rereview.md
 e6f2d8216246a32d4276d2ed569177f407943a64834fceaf4fe6060b452b826a  docs/superpowers/records/2026-11-05-physical-gpu/final-review.md

@@ -48,7 +48,7 @@ void Writ::Javascript::budget()
 JSValue Writ::Javascript::module(char const *source, size_t length, char const *name)
 {
     budget();
-    if (!length || length > 2U * 1024U * 1024U) throw Failed();
+    if (!length || length > 8U * 1024U * 1024U) throw Failed();
     char *copy = static_cast<char *>(malloc(length + 1));
     if (!copy) throw Failed();
     Genode::memcpy(copy, source, length);
@@ -89,7 +89,7 @@ JSValue Writ::Javascript::call(JSValue function, int count, JSValue *arguments)
 JSValue Writ::Javascript::script(char const *source, size_t length, char const *name)
 {
     budget();
-    if (!length || length > 2U * 1024U * 1024U) throw Failed();
+    if (!length || length > 8U * 1024U * 1024U) throw Failed();
     char *copy = static_cast<char *>(malloc(length + 1));
     if (!copy) throw Failed();
     Genode::memcpy(copy, source, length);
