@@ -646,3 +646,8 @@ Bend Linux x64 2.0.39 archive had SHA-256:
 `verification/source-sha256.txt` binds the final authored source and documentation
 to this test record. Native binaries, upstream toolchains, generated C/JavaScript,
 and unrelated prototypes are excluded from the repository.
+
+The evidence-only follow-up Windows CI [run 42311706534](verification/windows-native-rerun-42311706534/README.md)
+repeated the strict LPAC failure on source `1fcd29a`; its byte-worker probes
+remain incomplete and receive no confinement credit. The separate diagnostic
+passed and does not qualify the protected worker.
