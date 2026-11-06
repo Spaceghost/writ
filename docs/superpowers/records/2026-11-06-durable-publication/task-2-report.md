@@ -47,12 +47,14 @@ history coverage, inspection receipt/request/intent comparisons, and the
 record-count and capacity gates. Mutants were run against copies under
 `/tmp/writ-durable-publication/`, not against authoritative source. The
 enumeration is a review aid rather than a claim of exhaustive mutation coverage.
+Changing the backend while storing the host gate's committed result was also
+caught by the check comparing the journal's full intent to that gate's result.
 
-The pinned Bend 2.0.39 `bend Tests.bend` run passes 2006 checks (1942 baseline
-plus 64 new checks). `bend PROOF.bend` reports `ALL PROOFS CHECK` for the
+The pinned Bend 2.0.39 `bend Tests.bend` run passes 2007 checks (1942 baseline
+plus 65 new checks). `bend PROOF.bend` reports `ALL PROOFS CHECK` for the
 existing laws; it does not prove these new transitions. Lean is not on PATH,
 so no kernel verdict is claimed. The full JS corpus ran in the existing
-host QuickJS harness: 2006 passed, 17,649 ticks, no exception; this is not a
+host QuickJS harness: 2007 passed, 17,657 ticks, no exception; this is not a
 Genode guest run. OpenSpec 1.16.0 strict passed 44/44, structural validation
 only. The final native CPU build and output comparison are running separately;
 no GPU test is claimed.
@@ -65,3 +67,10 @@ sink-specific deduplication, correct audit projection of the final host result,
 native isolation/sealing, crash injection and independent security review all
 remain open. The model's `Matches` result cannot be exposed to an untrusted
 caller without separately authorizing and policy-gating the observation.
+
+The current reference journal never prunes records. At 64 entries it refuses
+every additional authorization; that is a fail-closed capacity limit, not a
+production retention or compaction design. A future bounded implementation
+needs an authenticated checkpoint and retained replay/epoch evidence before
+retiring history. Existing host publications without corresponding complete
+journal records also deny; migration must authenticate and reconcile them.

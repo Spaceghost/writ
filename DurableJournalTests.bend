@@ -3,6 +3,7 @@ import ./DurableJournal.bend as J
 import ./HostPrimitives.bend as P
 import ./HostPrimitivesTests.bend as PT
 import ./HostIdentity.bend as I
+import ./HostPublication.bend as H
 import ./Backplane.bend as B
 import ./BackplaneTests.bend as BT
 import ./Negotiation.bend as N
@@ -358,6 +359,27 @@ def stored_intent(state: J.State) -> Maybe<&2, B.WriteIntent>:
     case _:
       None{}
 
+def host_intent(result: H.PublishResult) -> Maybe<&2, B.WriteIntent>:
+  match result:
+    case H.Published{_, B.Committed{_, _, intent}, _}:
+      Some{intent}
+    case _:
+      None{}
+
+def transition_intent(result: J.Transition) -> Maybe<&2, B.WriteIntent>:
+  match result:
+    case J.Advanced{state}:
+      stored_intent(state)
+    case _:
+      None{}
+
+def intents_match(a: Maybe<&2, B.WriteIntent>, b: Maybe<&2, B.WriteIntent>) -> Bool:
+  match a b:
+    case Some{x} Some{y}:
+      E.intent_equal(x, y)
+    case _ _:
+      False{}
+
 def changed_backend(intent: B.WriteIntent) -> B.WriteIntent:
   match intent:
     case B.WriteIntent{plan, output, label, _, artifact}:
@@ -458,6 +480,8 @@ def committed_then_revoked(+state: J.State) -> Bool:
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(advanced_valid(advance()), "durable journal models one atomic host, session, ledger and intent update")
+    Test.check(intents_match(transition_intent(advance()), host_intent(PT.publish_on(PT.pub_sealed(), PT.clean_fact()))),
+      "durable journal retains the existing host gate's entire write intent")
     Test.check(rejected_stale(run(initial(), 1n+start_revision(), FT.context())),
       "durable journal refuses a stale serialization revision")
     Test.check(rejected_host(run(initial(), start_revision(), PT.revoked_registry_context())),
