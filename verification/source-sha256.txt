@@ -401,8 +401,9 @@ d9424326080aba242eba4367b098dd7f2158b59ddaf731889d7c00c0e47e75ae  docs/superpowe
 7f545d0720662f866a98f4b8c0e39b844a6f6383d9746618649c76150617d3ba  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-brief.md
 588de2b0d3eb7564ed842b6a8730b55e8e0d5d6c1a8ebce1fa8e0a5025e96dc7  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-report.md
 72598787d70bf5e61b6dee6eba49bc38fdbc320457b317c7b9a3a437cedff1aa  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-review.md
-b76682214a670e48830ad85cb9298b22ddbba29a5377491b6be6181963c3717c  docs/superpowers/records/2026-11-05-linux-host/activity.log
-11e9795798c69c02f876ba846d7b895c995b3594c728e96a29ca049bbe221fea  docs/superpowers/records/2026-11-05-linux-host/progress.md
+13d513a97f596f2f2932aead7e0018ece107c7b28cd2e705d17f526002dca086  docs/superpowers/records/2026-11-05-linux-host/activity.log
+6dbac0e2227a999edddaf73a942b6f10c288a4f51b16f854aeeabb1da0bbe481  docs/superpowers/records/2026-11-05-linux-host/progress.md
+559db686e16fa2d67b88c8e41d66aa591470122cb72a4d6377d5c856f9479c09  docs/superpowers/records/2026-11-05-linux-host/session-response-design.md
 333303045bef00d486d224396cf5bc22d900946dc2c59ee687977f6d8843867f  docs/superpowers/records/2026-11-05-linux-host/task-1-brief.md
 2ef291256cb8d18430017f6d69f33611b65b52c195e20c20fc272f57ac5576d3  docs/superpowers/records/2026-11-05-linux-host/task-1-report.md
 10b9405a39bd470312d5cf632689e41f8bf47bcd42a72488e73b8bbd43dbfa71  docs/superpowers/records/2026-11-05-linux-host/task-1-rereview.md
