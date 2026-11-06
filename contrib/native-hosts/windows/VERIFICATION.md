@@ -13,7 +13,17 @@ contract have separate results.
 
 This record addresses the bounded [native-host canary contract](../../../openspec/specs/native-host-canary-mounts/spec.md), especially NM004 through NM008, and the [private transport protocol](../PROTOCOL.md). It does not complete the broader [Windows host proposal](../../../openspec/changes/add-windows-host/specs/windows-host/spec.md).
 
-## Final source and run
+## Later master run
+
+[Run 42311207831](https://github.com/Spaceghost/writ/actions/runs/42311207831)
+at source `9c08eb9` also **failed** the strict LPAC canary gate. The retained
+[run record](verification/run-42311207831/README.md) includes the full
+normalized captures and raw artifact hashes. Mounted reads and revocation
+passed; the byte-worker network, clipboard and COM observations remained
+incomplete and received no restriction credit. Its separate no-data diagnostic
+is not a substitute. The cause is not yet established.
+
+## Prior detailed source and run
 
 - Tested source:
   [7b50d99d451f0f5b44dfa6d0ec23a8ced8790496](https://github.com/Spaceghost/writ/commit/7b50d99d451f0f5b44dfa6d0ec23a8ced8790496),
