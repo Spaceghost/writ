@@ -56,8 +56,11 @@ existing laws; it does not prove these new transitions. Lean is not on PATH,
 so no kernel verdict is claimed. The full JS corpus ran in the existing
 host QuickJS harness: 2007 passed, 17,657 ticks, no exception; this is not a
 Genode guest run. OpenSpec 1.16.0 strict passed 44/44, structural validation
-only. The final native CPU build and output comparison are running separately;
-no GPU test is claimed.
+only. The native CPU build and run (`+RTS --threads 4 --gpu off`) passed the
+same 2007 checks; its output is byte-identical to `bend Tests.bend` (SHA-256
+`66f490b4c4ef6486679efc07ed877e26f1a524d705d3c8d795dbef009178c77e`).
+The subsequent source-header-only clarification has identical implementation
+tokens and its focused tests pass. No GPU test is claimed.
 
 ## Still required
 

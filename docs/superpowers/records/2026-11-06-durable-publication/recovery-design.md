@@ -37,6 +37,18 @@ snapshot that predates I, it must not accept the old receipt again.
    a key. Sender-side retries alone cannot establish one logical result. The
    receiver's exact supported guarantees are a qualification prerequisite.
 
+## Existing native primitives are not this transaction
+
+The [WritFS native snapshot backend](../../../../writfs/README.md) creates private
+Btrfs snapshots and ZFS clones, but its documented model commit and native
+creation are not one atomic durable transaction. It does not publish a
+logical object or provide this recovery journal. The
+[Linux mounted-view canary](../../../../contrib/native-hosts/linux/README.md)
+also explicitly describes its event journal as non-durable. Neither is an
+authenticated rollback witness or a deduplicating receiver. They may inform a
+future storage integration, but their existing evidence does not close a DP
+requirement or qualify a protected host.
+
 ## Failure ordering to resolve before implementation
 
 - A transaction outcome may be **unknown** when an acknowledgement is lost.

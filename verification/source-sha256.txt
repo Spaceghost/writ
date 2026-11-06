@@ -567,11 +567,11 @@ ff3be33f6ca00179cfe6f52c921527482d119f10b3576a94ef99adb18d7739e2  docs/superpowe
 e14076ad20573905cce011cc11efbfbaec21b5050bf607cf0e05695158ea0ba4  docs/superpowers/records/2026-11-05-unikraft-lanes/task-2-report.md
 57bb4d646fa174b4af02e933170df5350c69396af6d2f7c3d91f1e1539a71b1f  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-brief.md
 ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-report.md
-8009352540a1ffc8ef9da92c952d23751f0e39587e274959774bf68fa625a6d4  docs/superpowers/records/2026-11-06-durable-publication/activity.log
-fdf7db757ca968244a606a7e925e363f3f3cd1c3753a5dc97519b2c213f29c57  docs/superpowers/records/2026-11-06-durable-publication/interface-review.md
-0b9d4fe8c36c65e5fea041e638b0c73021564a95f6acba3510999476f588895a  docs/superpowers/records/2026-11-06-durable-publication/progress.md
-a5115f0e647ad6365f9873a614767ca96da00efdadf3007197da6ca790d487d1  docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md
-52559223e0e0f2ac619c1bb5e1dbcc9b8c9c56069a853a036608e6b0aa001619  docs/superpowers/records/2026-11-06-durable-publication/task-2-report.md
+b45a924a098efaaf46de350d1bc9e972ff11be2911d7678818c486c2c7e78b66  docs/superpowers/records/2026-11-06-durable-publication/activity.log
+fdc6bf44476ad99e4e4227d020562daa60fe558e0c1145a442e2a45ef80b33a5  docs/superpowers/records/2026-11-06-durable-publication/interface-review.md
+0013e5f9e62724d44b5f3337aebe71649b6dcf13d567d28c6e0c19655b0ab2f2  docs/superpowers/records/2026-11-06-durable-publication/progress.md
+38d7aafc43dd1f4ca30877c5341a7b8a66ed93733e336048c0532f0a1a6b1778  docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md
+3cc8d071a5c18ff01d9fb82d406660ff8c330bfd91f356b9f4bb4e275215880b  docs/superpowers/records/2026-11-06-durable-publication/task-2-report.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html
 98cd65a0079843592b2a65911270d9add2ebca47c67c33015ad38f3ae424194e  docs/superpowers/records/questions/q10.answers.jsonl
