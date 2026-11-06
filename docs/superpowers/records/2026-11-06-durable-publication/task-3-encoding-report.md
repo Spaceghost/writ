@@ -1,7 +1,7 @@
 # Durable journal entry encoding — work in progress
 
-This is a versioned **word-level description of one journal entry**, not an
-authenticated record, durable transaction or byte-level protocol.
+This is a versioned **description of one journal entry** with an experimental
+byte mapping, not an authenticated record or durable transaction.
 No recovery, release, witness, sink, or OpenSpec acceptance task is complete.
 
 `DurableEncoding.encode` emits the version, invocation, receipt, complete
@@ -58,7 +58,7 @@ encoder-only tree; this is not a Genode guest or GPU test. The native CPU
 build of that tree passed with byte-identical output. At that point, full
 verification of the decoder and explicit resource-guard fixes was pending.
 
-## Current codec and guard revision
+## Word codec and guard revision
 
 The current `bend Tests.bend` and generated Node runs pass 2,129 checks with
 byte-identical output (SHA-256

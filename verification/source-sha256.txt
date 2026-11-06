@@ -579,7 +579,7 @@ d2aa19ed337f6ecd4a04322fce0785cf5c0194b20ffdd1820156908536ed3a5c  docs/superpowe
 8d3e08a287cee1ad9acda4575cefe2cbfc646a256265af1c64fa1d1f9c2c8b8e  docs/superpowers/records/2026-11-06-durable-publication/progress.md
 38d7aafc43dd1f4ca30877c5341a7b8a66ed93733e336048c0532f0a1a6b1778  docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md
 3cc8d071a5c18ff01d9fb82d406660ff8c330bfd91f356b9f4bb4e275215880b  docs/superpowers/records/2026-11-06-durable-publication/task-2-report.md
-2309159c4280eb1d10e97471cc1f6931cdf1f2ad15f0fe44d8c7208d0706650b  docs/superpowers/records/2026-11-06-durable-publication/task-3-encoding-report.md
+bf9fa5ab64665c665cc76526e5fbd5bfa1d8efa369de441ec0bd5b2055fc8250  docs/superpowers/records/2026-11-06-durable-publication/task-3-encoding-report.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html
 98cd65a0079843592b2a65911270d9add2ebca47c67c33015ad38f3ae424194e  docs/superpowers/records/questions/q10.answers.jsonl
