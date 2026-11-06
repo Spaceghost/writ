@@ -9,6 +9,11 @@ import ./Dlm.bend as D
 # would discard code, payment and label restrictions. Structural equality of
 # labels is intentionally stricter than semantic equivalence: recovery must
 # retain the committed representation rather than substitute another one.
+# This comparison has no intrinsic size or depth limits. Before calling it,
+# the monitor must bound each plan source list, output-origin and approved-code
+# list, and label policy tree on both inputs; unbounded input can exhaust the
+# backend stack. These limits are admission preconditions, not permission to
+# truncate data or ignore restrictions.
 # Public entry point: `intent_equal`. All other defs are implementation helpers.
 
 def codes_equal(a: T.Codes, b: T.Codes) -> Bool:

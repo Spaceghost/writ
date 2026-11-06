@@ -40,3 +40,34 @@ qualify a sink, or perform recovery. The companion
 [witness](witness-design.md) notes identify requirements for those missing
 boundaries. Independent human security review and real-host evidence remain
 outstanding.
+
+## Direct intent-comparison resource precondition
+
+A later separate-agent review built two equal synthetic intents containing
+10,000 origin records using a tail-recursive fixture and called the public
+`DurableIntent.intent_equal` directly. Generated Node exited 1 with
+`bend: memory fault (machine stack overflow?)`; no monitor, storage or native
+host was involved. This is a failed unbounded-input observation, not a security
+law or a demonstrated host exploit. The shared host must bound both inputs'
+plan sources, origins, approved-code lists and label depth before comparison;
+this direct entry point does not enforce those limits. The journal also requires
+independent bounds on the host and ledger collections, candidate graphs,
+context, requests, and nested policies. The entry-codec limits do not
+automatically bound separately constructed comparison arguments. Reproducing
+source: [`durable-intent-unbounded.bend`](../../../../verification/probes/durable-intent-unbounded.bend).
+
+`DurableIntent.bend` and `DurableJournal.bend` now state these preconditions
+explicitly. Their implementation tokens are unchanged from the prior revision;
+no length cap, truncation, authority decision, or equality semantics changed.
+Independent review and real host resource admission remain open.
+
+Reproduction with the pinned Bend toolchain and generated Node backend:
+
+```sh
+bend verification/probes/durable-intent-unbounded.bend -o /tmp/durable-intent-unbounded.js
+timeout 10s node /tmp/durable-intent-unbounded.js
+```
+
+Observed here: exit 1, `bend: memory fault (machine stack overflow?)`. A
+future backend may behave differently; callers still need reviewed resource
+admission before exposing this comparison to an untrusted input.
