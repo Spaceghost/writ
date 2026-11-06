@@ -18,6 +18,13 @@ monitor state, a sealed artifact, or an external acknowledgement.
 | DP-007 rollback resistance | `durable journal refuses a receipt absent from ledger replay state`; `durable journal rejects a publication absent from ledger committed invocations` | Membership and current revision checks do not authenticate history or detect restoration of a consistently old snapshot. No independent witness or reconciliation protocol exists. |
 | DP-008 unsupported idempotency | None | There is no registered or qualified sink, sink admission, or native delivery path. |
 
+The separate `DurableEncodingTests.bend` includes `durable encoding matches
+the complete hand-calculated word vector`, `durable encoding distinguishes
+origin payment quotes`, and `durable encoding refuses rather than truncating
+an oversized Nat`. These exercise an experimental bounded word representation
+of a single journal entry. They do not establish a decoder, complete transaction
+format, byte-order contract, authenticated storage, or DP-004/006 recovery.
+
 Additional model checks reject malformed duplicate records and enforce a
 64-record bound, including refusing an otherwise valid authorization at
 capacity. This bounded reference never prunes history; safe compaction and

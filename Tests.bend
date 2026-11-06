@@ -18,6 +18,7 @@ import ./RendezvousTests.bend as Rendezvous
 import ./DurablePublicationTests.bend as DurablePublication
 import ./DurableIntentTests.bend as DurableIntent
 import ./DurableJournalTests.bend as DurableJournal
+import ./DurableEncodingTests.bend as DurableEncoding
 import ./PropertyTests.bend as Properties
 
 def main() -> IO(Unit):
@@ -41,5 +42,6 @@ def main() -> IO(Unit):
     DurablePublication.main()
     DurableIntent.main()
     DurableJournal.main()
+    DurableEncoding.main()
     Properties.main()
     IO.print("ALL LIBRARY TESTS PASSED")
