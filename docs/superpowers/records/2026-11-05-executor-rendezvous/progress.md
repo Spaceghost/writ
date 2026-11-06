@@ -46,3 +46,4 @@ Ruling: the Genode native run cannot afford the rendezvous corpus (262.5 s host 
 Task 9: dispatched implementer (build scenario stages once per check; brief task-9-brief.md)
 Task 9: implementer DONE_WITH_CONCERNS (2b1da02): 262.5 s -> 8-13 s host QuickJS, 17,059 ticks; byte-identical output; concerns: large scripted diff, shared projection inside worlds, Kept relies on the pinned backend keeping recursive types boxed. Task review dispatched.
 Task 9: review APPROVED (spec + quality); three comment-only findings applied (tokens identical to 2b1da02). Task 9: complete.
+Task 9 merged to master (cceafbf, fast-forward, no re-pin); runner source bounds in dec74d1; Genode CI rerun pending.
