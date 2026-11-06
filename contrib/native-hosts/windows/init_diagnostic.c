@@ -3,7 +3,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <fwpmu.h>
-#include <fwperror.h>
+#include <winerror.h>
 #include <rpc.h>
 #include <userenv.h>
 #include <stdint.h>
@@ -42,7 +42,7 @@ static BOOL cleanup(WRIT_WORKER *worker)
             FWPM_FILTER0 *filter = NULL;
             DWORD status = worker->filters[i] ? FwpmFilterGetById0(observer, worker->filters[i], &filter) : ERROR_INVALID_DATA;
             if (filter) FwpmFreeMemory0((void **)&filter);
-            if (status != FWP_E_FILTER_NOT_FOUND) ok = FALSE;
+            if (status != (DWORD)FWP_E_FILTER_NOT_FOUND) ok = FALSE;
         }
     }
     if (observer && FwpmEngineClose0(observer) != ERROR_SUCCESS) ok = FALSE;

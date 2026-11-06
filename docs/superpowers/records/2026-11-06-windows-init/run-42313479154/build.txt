@@ -1,0 +1,18 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  init_child.c
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  init_report_test.c
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  init_diagnostic.c
+  init_worker.c
+  writfs-init-report-test.vcxproj -> D:\a\_temp\windows-init-build\Release\writfs-init-report-test.exe
+D:\a\writ\writ\contrib\native-hosts\windows\init_diagnostic.c(6,1): error C1083: Cannot open include file: 'fwperror.h': No such file or directory [D:\a\_temp\windows-init-build\writfs-init-diagnostic.vcxproj]
+  writfs-init-child.vcxproj -> D:\a\_temp\windows-init-build\Release\writfs-init-child.exe
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-init-build\writfs-init-diagnostic.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/init_worker.c')
+
+  isolation.c
+  Generating Code...

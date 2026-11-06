@@ -31,8 +31,9 @@ Checks in the Linux development environment:
 - Pinned Bend 2.0.39 `bend PROOF.bend`: `ALL PROOFS CHECK`; no independent Lean
   kernel verdict was run because `lean` is absent from PATH.
 - OpenSpec 1.16.0 strict: 44 passed, 0 failed.
-- The workflow parses as YAML. Its Windows/MSVC build, native initialization,
-  setup, and cleanup remain unrun and require review and isolated Windows CI.
+- The workflow parses as YAML. The first Windows/MSVC build failed on `fwperror.h` before any test ran; see
+  [run 42313479154](run-42313479154/README.md). The proposed header fix, native
+  initialization, setup and cleanup remain unrun and need isolated Windows CI.
 
 The new job in the already registered Windows policy workflow is branch-only,
 dispatch-only and uses a fresh Windows runner; it does not

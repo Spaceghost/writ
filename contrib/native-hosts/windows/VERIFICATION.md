@@ -29,7 +29,7 @@ The source now includes `writfs-init-diagnostic`, a standalone no-data
 initializer observer and synthetic `init-report-framing` test. Its LPAC
 launch reuses the same control setup and readbacks, but its executable,
 package, lifetime and single report handle differ from the byte worker.
-No Windows build or native diagnostic result is recorded for this source.
+The first [Windows diagnostic build](../../../docs/superpowers/records/2026-11-06-windows-init/run-42313479154/README.md) failed on a nonexistent SDK header before the diagnostic or its synthetic test ran. A header correction is proposed but has not been built on Windows; no native diagnostic result is recorded.
 Full token-group and privilege equivalence has not been independently
 verified, and the control-factor matrix is not implemented. This does not
 change the failed and incomplete outcomes recorded above.
