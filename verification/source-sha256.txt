@@ -576,14 +576,14 @@ ff3be33f6ca00179cfe6f52c921527482d119f10b3576a94ef99adb18d7739e2  docs/superpowe
 e14076ad20573905cce011cc11efbfbaec21b5050bf607cf0e05695158ea0ba4  docs/superpowers/records/2026-11-05-unikraft-lanes/task-2-report.md
 57bb4d646fa174b4af02e933170df5350c69396af6d2f7c3d91f1e1539a71b1f  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-brief.md
 ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-report.md
-559aa29a7f1a695b1636ac46d14de38c669619a2e15c94b72d4f6b9d9a0f7d24  docs/superpowers/records/2026-11-06-durable-publication/activity.log
+a34be12d9226a26ecc6dc6c116fd198adade461964588f37abc823294e82e6c0  docs/superpowers/records/2026-11-06-durable-publication/activity.log
 7aeec3be0d003a3587b3c9d2ce4a0c57da76eb7c91232d7ea5753b92f70ed0d4  docs/superpowers/records/2026-11-06-durable-publication/interface-review.md
 23dd293acfd8db6a283a1b330eeb547846df824eca1c37ac5a47422983b268b5  docs/superpowers/records/2026-11-06-durable-publication/lookup-fencing-design.md
 54a29c1440bb2c72a179ffe2cd5f6be79baca3df9f7d8c0cc8df201d3b957c52  docs/superpowers/records/2026-11-06-durable-publication/model-review.md
-bb97257ec749db0641a4012823826081e875759e2dd69923a13e4a8c76b6cfcb  docs/superpowers/records/2026-11-06-durable-publication/progress.md
+951fdd9aeb5352797a7c432e1c1ae8bb48e71686567e9728c1c42a3dbd405391  docs/superpowers/records/2026-11-06-durable-publication/progress.md
 e2fc4aa1043c1a78a417b00745a6d9e4180339b3fd1cd5d69fc4070252b018ef  docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md
 3cc8d071a5c18ff01d9fb82d406660ff8c330bfd91f356b9f4bb4e275215880b  docs/superpowers/records/2026-11-06-durable-publication/task-2-report.md
-f5ff658f0b1637f3482a924766bb3ec6fffd752d8025edaf57c9071f51185f4e  docs/superpowers/records/2026-11-06-durable-publication/task-3-encoding-report.md
+4e65f94bc2b4c8f27f49a1307953d4b049384370b537e2b819f7b8fdbd38cea4  docs/superpowers/records/2026-11-06-durable-publication/task-3-encoding-report.md
 be17b11ae5ea26b2ebb8c12b0394e003d1c04267da91867e032fbfd3dba420bf  docs/superpowers/records/2026-11-06-durable-publication/witness-design.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html

@@ -179,5 +179,5 @@ The full Bend and Node suites match (SHA-256
 `a2bfec8ad99005b80039176da492cf7ffe5628b9d344dd393deaf6cddb1a148c`),
 and host QuickJS reports 2,162 checks, program exit 0, no exception, 17,855
 ticks and 20,235,712 peak live bytes. Existing Bend proof checks pass without a
-Lean kernel verdict; OpenSpec strict passes 44/44. Full optimized native CPU
-verification is running separately. Host QuickJS is not a Genode guest or GPU test.
+Lean kernel verdict; OpenSpec strict passes 44/44. The full optimized native CPU suite also passes
+with output byte-identical to Bend. Host QuickJS is not a Genode guest or GPU test.

@@ -24,3 +24,4 @@ Byte decoder mutation review: independent removal of byte guards 0, 1, and 3 pre
 Byte guard verification update: full optimized native CPU suite passes 2160 checks and matches Bend output byte-for-byte.
 Word decoder stress: a maximum valid record followed by 50000 extra words is rejected. Replacing the bounded walk with unbounded List.length passed old Node tests but overflows with this regression. Full Bend/Node/host QuickJS pass 2161 checks, proofs and OpenSpec pass; optimized native CPU rebuild running.
 Maximum numeric roundtrip: one synthetic complete entry covers every one-word Nat at 4294967295 and high-bit identities. Thirteen decoder truncation mutants that passed old focused Node tests now fail. Bend/Node/host QuickJS pass 2162 checks; focused native CPU passes, full optimized CPU running. No authentication, host or proof claim.
+Maximum numeric roundtrip verification update: full optimized native CPU suite passes 2162 checks, byte-identical to Bend.
