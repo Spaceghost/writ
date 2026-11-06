@@ -65,8 +65,9 @@ byte-identical output (SHA-256
 `80275629cea60974ccf22b2acfe0d335966b4d2c064fb0c9bddbef9ef6ad6ea4`). The
 existing proof check reports `ALL PROOFS CHECK`; no codec or journal law and no
 Lean kernel verdict are claimed. OpenSpec strict passes 44/44. The host QuickJS
-harness passes all 2,129 checks with 17,694 ticks and no exception. The final
-native CPU build is running; QuickJS is not a Genode guest or GPU run.
+harness passes all 2,129 checks with 17,694 ticks and no exception. The
+optimized native CPU build of that word-codec revision also passes with
+byte-identical output; QuickJS is not a Genode guest or GPU run.
 The later confidentiality and byte-level-decoder header clarifications changed
 comments only; implementation tokens were compared with the prior revision and
 were identical. The 73 encoder and 48 decoder focused checks and OpenSpec strict
@@ -94,5 +95,7 @@ Host QuickJS passes all 2,149 checks at 17,764 ticks and 19,284,288 peak live
 bytes with no exception. Removing the byte-range gate made the unchanged-word
 malformed-byte test fail. Existing proofs pass and OpenSpec strict passes
 44/44; no Lean kernel verdict is available. The 20 byte-focused checks also
-pass as a native CPU executable. The full native CPU build is running.
-These checks do not establish GPU or Genode guest execution.
+pass as a native CPU executable. The full generated native CPU suite also
+passes with byte-identical output using Clang `-O0`; the separate optimized
+`bend` native build is still running. These checks do not establish GPU or
+Genode guest execution.
