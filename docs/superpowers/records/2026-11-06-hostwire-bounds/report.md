@@ -41,3 +41,7 @@ preserve the output with terminal escapes, carriage returns and trailing
 whitespace normalized. The [raw artifact hashes](../../../../contrib/native-hosts/genode/evidence/42308258031-artifact-raw-sha256.txt)
 identify the original downloaded files. The guest run validates that exact earlier source
 commit, not any later combined tree, GPU execution, or protected-host profile.
+
+The [Linux public-canary run 42308257803](../../../../contrib/native-hosts/linux/verification/run-42308257803/README.md)
+also passed on `b75382c`. Its retained expected setup-refusal output is not a
+protected-worker identity or confinement qualification.
