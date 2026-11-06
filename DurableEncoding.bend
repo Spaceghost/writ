@@ -8,8 +8,9 @@ import ./Dlm.bend as D
 # Version 1 reference encoding of a single journal Entry as U32 words. This
 # is a bounded description only: it does not authenticate the record, seal
 # bytes, persist a transaction, decode recovery data or authorize a release.
-# A future storage profile must specify byte order, integrity, a strict
-# byte-level decoder, full transactional state and an authenticated witness.
+# The experimental byte mapping and byte-level decoder live in DurableBytes.
+# A storage profile needs their independent review, full transaction framing,
+# integrity, complete transactional state and an authenticated witness.
 # This module encodes the complete request and intent but not the surrounding
 # session, ledger, host state or audit record, so it is not a transaction format.
 # Words may expose protected identities, origins, terms and labels; they are

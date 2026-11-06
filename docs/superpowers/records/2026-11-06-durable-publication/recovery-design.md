@@ -124,6 +124,16 @@ not authenticate observations, fence a transaction, survive restart, serialize
 other workers, or prevent a native binding from bypassing it. It is not a
 transaction protocol, a new release path or proof of crash recovery.
 
+The standalone synthetic
+[`durable-pending-rollback-gap.bend`](../../../../verification/probes/durable-pending-rollback-gap.bend)
+probe demonstrates that limit through the actual model gate: after a lost
+acknowledgement, an unknown state blocks a retry, but fabricating `TxnReady`
+from the original stale in-memory snapshot stages the same prospective
+transition again. The advanced model state refuses a replay. Its `PASS` records
+the observed gap and exits nonzero if the expected observation changes; it is
+not a security law permitting rollback. Neither staged candidate establishes a
+durable commit, spend, crash, release, or authenticated store observation.
+
 The integrated Bend and Node suites pass 2,157 checks with identical output
 (SHA-256 `d05bcd77076c6d9c81c82ccf929969a44a03947fa001e2551230ce6f4e7fd1ce`).
 The host QuickJS harness passes 2,157 checks at 17,839 ticks without exception;

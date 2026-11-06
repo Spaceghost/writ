@@ -39,6 +39,10 @@ retries with a changed expected revision`. This is a monitor-local simulation;
 it cannot authenticate a lookup, fence an in-flight commit, survive restart or
 qualify DP-001/002/007. The unresolved negative-lookup race is described in
 [`recovery-design.md`](../../docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md).
+The synthetic [`durable-pending-rollback-gap.bend`](../../verification/probes/durable-pending-rollback-gap.bend)
+counterexample observes that recreating `TxnReady` from the stale pre-attempt
+snapshot can restage a candidate; this demonstrates a model precondition, not
+two commits or a passed DP-007 recovery scenario.
 
 Additional model checks reject malformed duplicate records and enforce a
 64-record bound, including refusing an otherwise valid authorization at
