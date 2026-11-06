@@ -480,6 +480,18 @@ def decode_version(words: +List<U32>) -> DecodeResult:
     case Con{version, rest}:
       check_version(U32.is_eq(version, wire_version()), rest)
 
+# Bounded tail walk: inspect at most the limit plus one element before any
+# parser sees the input. A full length traversal can exhaust the host stack
+# before the decoder reports TooLong on an oversized untrusted message.
+def within(fuel: Nat, values: +List<U32>) -> Bool:
+  match fuel values:
+    case _ Nil{}:
+      True{}
+    case 0n Con{_, _}:
+      False{}
+    case 1n+remaining Con{_, rest}:
+      within(remaining, rest)
+
 # Implementation helper, step 1: the length cap.
 def check_cap(over: Bool, words: +List<U32>) -> DecodeResult:
   match over:
@@ -492,7 +504,7 @@ def check_cap(over: Bool, words: +List<U32>) -> DecodeResult:
 # tag, header length, body count, and field bounds in that order. The result
 # is a description to be resolved by the monitor, never authority.
 def decode(+words: +List<U32>) -> DecodeResult:
-  check_cap(Nat.is_gt(List.length(&2, U32, words), max_words()), words)
+  check_cap(Bool.not(within(max_words(), words)), words)
 
 # Implementation helper: four little-endian byte values as one word.
 # Out-of-range bytes may overlap here; `decode_in_range` discards the packed
@@ -556,4 +568,4 @@ def check_byte_cap(over: Bool, +bytes: +List<U32>) -> DecodeResult:
 # (TooLong), then alignment to whole words (BadLength), then that every value
 # is a byte (OutOfRange), and then runs `decode` on the packed words.
 def decode_bytes(+bytes: +List<U32>) -> DecodeResult:
-  check_byte_cap(Nat.is_gt(List.length(&2, U32, bytes), max_bytes()), bytes)
+  check_byte_cap(Bool.not(within(max_bytes(), bytes)), bytes)

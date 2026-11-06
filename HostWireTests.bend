@@ -271,6 +271,15 @@ def truncated_words() -> +List<U32>:
 def oversized_bytes() -> +List<U32>:
   List.append(&2, U32, W.encode_bytes(use_msg()), [0])
 
+# Synthetic hostile-size input; tail-recursive construction keeps the fixture
+# itself from imposing an unbounded call stack on the backend being checked.
+def many_words(n: Nat, tail: +List<U32>) -> +List<U32>:
+  match n:
+    case 0n:
+      tail
+    case 1n+rest:
+      many_words(rest, 0 <> tail)
+
 # --- Checks -------------------------------------------------------------------
 
 # PH-011 accepted messages: both round-trip directions for each tag.
@@ -325,6 +334,11 @@ def length_checks() -> IO(Unit):
     Test.check(rejected(W.decode(truncated_words()), W.BadLength{}), "PH-011 correct header with a truncated body denied BadLength")
     Test.check(rejected(W.decode(trailing_words()), W.BadLength{}), "PH-011 one trailing word denied BadLength")
     Test.check(rejected(W.decode(oversized_words()), W.TooLong{}), "PH-011 11 words denied TooLong")
+    Test.check(rejected(W.decode(many_words(10000n, [])), W.TooLong{}), "PH-011 very oversized word input denied TooLong before parsing")
+    Test.check(rejected(W.decode_bytes(many_words(10000n, [])), W.TooLong{}), "PH-011 very oversized byte input denied TooLong before parsing")
+    Test.check(rejected(W.decode_bytes(many_words(40n, [256])), W.TooLong{}), "PH-011 byte order: length cap precedes alignment and byte range")
+    Test.check(rejected(W.decode_bytes([256]), W.BadLength{}), "PH-011 byte order: alignment precedes byte range")
+    Test.check(rejected(W.decode_bytes([256, 0, 0, 0]), W.OutOfRange{}), "PH-011 byte order: byte range precedes version")
     Test.check(rejected(W.decode_bytes([1, 0, 0]), W.BadLength{}), "PH-011 3 bytes denied BadLength")
     Test.check(rejected(W.decode_bytes([1, 0, 0, 0, 4]), W.BadLength{}), "PH-011 5 bytes denied BadLength")
     Test.check(rejected(W.decode_bytes(oversized_bytes()), W.TooLong{}), "PH-011 41 bytes denied TooLong")
@@ -384,4 +398,4 @@ def main() -> IO(Unit):
     order_checks()
     ph003_checks()
     ph004_checks()
-    IO.print("HostWire: 63 checks passed")
+    IO.print("HostWire: 68 checks passed")

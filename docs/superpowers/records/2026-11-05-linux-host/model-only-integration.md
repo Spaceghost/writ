@@ -21,14 +21,18 @@ The full Bend and Node suites each pass 2,060 checks with byte-identical output
 (SHA-256 `c655abd826c42113d23cc2dae7a5795b971aa176251610398522a4f944740076`).
 Host QuickJS passes 2,060 checks, program exit 0, no exception, 19,944 ticks,
 and 16,089,224 peak live bytes. `bend PROOF.bend` reports `ALL PROOFS CHECK`;
-no Lean kernel verdict is available. OpenSpec strict passes 44/44. A native
-CPU build for this exact candidate is running. These are model and backend
+no Lean kernel verdict is available. OpenSpec strict passes 44/44. The optimized native CPU suite for the
+standalone 2060-check candidate also passed with the same output hash. These are model and backend
 checks, not authenticated Linux identity, native confinement, Genode guest,
 or GPU evidence.
 
-The Nix assertion and Genode workflow now expect 2,060 checks; workflow path
+At that candidate, the Nix assertion and Genode workflow expected 2,060 checks; workflow path
 filters include the imported Linux monitor. Existing 1,942-check recorded CPU
 and Genode results are historical and are not relabeled. The 2,060-check Nix
 and Genode guest runs have not been recorded. A related full integration
 preview attempted an offline Nix JS check and stopped it when uncached
 compiler dependencies began rebuilding; that attempt did not reach the test.
+
+The subsequent combined Linux and HostWire candidate expects 2,065 checks;
+see the root [verification record](../../../../VERIFICATION.md) for its
+separate results and remaining evidence gaps.

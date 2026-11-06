@@ -25,6 +25,14 @@ on evidence a later task or a qualified host must supply.
 
 ## Wire format (task 1.1)
 
+The public decoder's bounded preflight additionally has named regressions
+`PH-011 very oversized word input denied TooLong before parsing` and
+`PH-011 very oversized byte input denied TooLong before parsing`. These exercise
+synthetic 10,000-element inputs on model backends. Three named `PH-011 byte
+order` checks also retain length, alignment and range refusal precedence when
+an input violates multiple rules. They do not establish a qualified native
+transport or host confinement.
+
 Fixtures are the named zero-argument functions in `HostWireTests.bend`, all
 synthetic monitor state: host 3, incarnation 5, own slot 11, guessed slot 12,
 generation 2, target session 4, sequence 9, claimed subject 77 (1234 in the guessed-handle fixture), read right 1. Decode checks,

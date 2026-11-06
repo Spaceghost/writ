@@ -15,12 +15,16 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
-The historical 1942-check recordings below predate the Linux model integration.
-The current integrated suite expects 2060 checks, including 118 synthetic Linux
-monitor checks. The 2060-check Bend and Node runs pass with byte-identical output
-(SHA-256 `c655abd826c42113d23cc2dae7a5795b971aa176251610398522a4f944740076`);
-full native and Genode guest verification for this integrated tree is pending.
-These checks do not qualify the Linux host.
+The historical 1942-check recordings below predate the Linux model and
+HostWire bounds changes. Separate trees have recorded 2060 checks with the
+Linux model and 1947 checks with the HostWire change. The combined suite
+passes 2065 checks in Bend, Node and the host QuickJS harness. Bend and Node
+output matches byte-for-byte (SHA-256
+`6f7c55909c94af843f65152f51f453798d0684e3e19c1db766bfa79ed7b5d449`); the
+host QuickJS run reports 19,918 ticks and no exception. The combined native CPU
+build is running. The Linux cases use synthetic facts and do not qualify a
+native host. Genode guest and Nix checks for the combined tree have not been
+recorded.
 
 The historical combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
 the emitted JavaScript backend under Node and a native Bend executable using

@@ -132,7 +132,7 @@ sudo apt-get install --yes --no-install-recommends \
   curl xz-utils unzip rsync
 
 # Put the verified Bend 2.0.39 compiler on PATH first.
-WRIT_CORE_EXPECTED=2060 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
+WRIT_CORE_EXPECTED=2065 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
 ```
 
 The script first runs the allocator checks with host AddressSanitizer,
@@ -146,7 +146,7 @@ the chosen build directory. Use a fresh directory for a clean qualification
 run; existing extracted input trees are developer build caches.
 
 The required core assertion count is an explicit, reviewed build input. The
-workflow pins it to 2060 for the integrated source; the 2060-check guest run
+workflow pins it to 2065 for the integrated source; the 2065-check guest run
 has not yet been recorded. The native probe requires
 that exact number of successful assertions, the complete corpus summary, and a
 single successful exit; it does not infer success from whatever output appears.
@@ -160,7 +160,7 @@ build hashes, supervisor configurations, and serial logs.
 
 | QEMU boot | Native checks |
 | --- | --- |
-| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the generated core tests (2060 expected in the current workflow; the last recorded guest run had 1942); all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
+| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the generated core tests (2065 expected in the current workflow; the last recorded guest run had 1942); all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
 | `writfs` | Actual filesystem RPCs and packet streams; exact contents and ranges; directory metadata; EOF; write, traversal, and malformed-name denial; malformed lengths, negative/overflowing shared-memory descriptors, and oversized file offsets; stat-only, closed, and foreign-session handles; 32-handle exhaustion; unadmitted components; forged label suffix; denied direct ROM/admin routes; revocation of retained handles |
 | `writfs_vfs` | A separate native libc consumer mounting the service through VFS; `open`, full/ranged `read`, `lseek`, `fstat`, rejected write-open, rejected unknown object, and `close` |
 
