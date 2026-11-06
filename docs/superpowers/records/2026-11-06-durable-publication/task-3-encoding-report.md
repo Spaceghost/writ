@@ -67,3 +67,7 @@ existing proof check reports `ALL PROOFS CHECK`; no codec or journal law and no
 Lean kernel verdict are claimed. OpenSpec strict passes 44/44. The host QuickJS
 harness passes all 2,129 checks with 17,694 ticks and no exception. The final
 native CPU build is running; QuickJS is not a Genode guest or GPU run.
+The later confidentiality and byte-level-decoder header clarifications changed
+comments only; implementation tokens were compared with the prior revision and
+were identical. The 73 encoder and 48 decoder focused checks and OpenSpec strict
+validation passed again after those edits.

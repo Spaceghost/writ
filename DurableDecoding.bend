@@ -15,6 +15,8 @@ import ./Dlm.bend as D
 # evidence of a committed transaction or a grant. Decoding is not policy
 # validation: the explicitly encoded Unsupported DLM principal remains a
 # description and does not become an accepted principal.
+# The decoded contents can reveal protected identities, origins, terms and
+# labels. The monitor must keep them private and separately authorize any output.
 # Public entry point: `decode`. Other exported defs are parsing helpers.
 
 type Parsed<-A: Data> is Data:

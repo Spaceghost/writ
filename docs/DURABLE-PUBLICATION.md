@@ -15,6 +15,9 @@ transaction: it omits the surrounding host state, updated session, ledger,
 replay witness and any required audit record. It performs no I/O and defines
 no portable byte order. A decoded entry is untrusted data; neither its fields
 nor successful decoding authenticate a caller, store, artifact or authorization.
+Encoded and decoded records can reveal protected identities, origins, terms and
+labels. They belong to the private monitor; any external disclosure needs its
+own authorization and policy checks.
 
 ## Entry words, version 1
 
