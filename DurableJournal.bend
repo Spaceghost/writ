@@ -31,8 +31,9 @@ import ./DataOS.bend as OS
 # They are private monitor diagnostics, not responses to an untrusted caller;
 # a future host must separately authorize and policy-gate observable status.
 # The journal is bounded to `max_entries()` records before it performs the
-# quadratic uniqueness checks. The host must also bound the sizes and nesting
-# of individual intents, policies and requests before invoking the model.
+# quadratic uniqueness checks. The host must independently bound host and
+# ledger collections, and the sizes and nesting of individual intents,
+# policies and requests, before invoking the model.
 # Public entry points: `authorize`, `inspect`, and `max_entries`; other defs
 # are exported implementation helpers and confer no authority when called.
 
@@ -151,10 +152,16 @@ def publications_covered(publications: P.Publications, +entries: Entries) -> Boo
     case P.Publications{publication, rest}:
       entries_contain(entries, P.publication_invocation(publication)) && publications_covered(rest, entries)
 
+def coherent_bounded(ok: Bool, +primitive: P.State, +ledger: L.State, +entries: Entries) -> Bool:
+  match ok:
+    case False{}:
+      False{}
+    case True{}:
+      P.valid(primitive) && L.valid(ledger) && entries_unique(entries) && entries_valid(entries, primitive, ledger)
+        && publications_covered(P.publications(primitive), entries)
+
 def coherent(+primitive: P.State, +ledger: L.State, +entries: Entries) -> Bool:
-  within(max_entries(), entries) && P.valid(primitive) && L.valid(ledger)
-    && entries_unique(entries) && entries_valid(entries, primitive, ledger)
-    && publications_covered(P.publications(primitive), entries)
+  coherent_bounded(within(max_entries(), entries), primitive, ledger, entries)
 
 def lookup_one(matches: Bool, receipt: Nat, request: N.Request, intent: B.WriteIntent, rest: Lookup) -> Lookup:
   match matches rest:

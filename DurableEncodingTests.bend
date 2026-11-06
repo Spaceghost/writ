@@ -203,6 +203,13 @@ def sources(n: Nat) -> T.Objects:
     case 1n+rest:
       T.OCons{T.ObjectVersion{41n, 43n}, sources(rest)}
 
+def many_sources(n: Nat, tail: T.Objects) -> T.Objects:
+  match n:
+    case 0n:
+      tail
+    case 1n+rest:
+      many_sources(rest, T.OCons{T.ObjectVersion{41n, 43n}, tail})
+
 def codes(n: Nat) -> T.Codes:
   match n:
     case 0n:
@@ -457,6 +464,8 @@ def main() -> IO(Unit):
       "durable encoding refuses an oversized origin payment quote")
     Test.check(accepted(E.encode(with_plan(entry(), with_sources(plan(), sources(16n))))), "durable encoding accepts sixteen sources")
     Test.check(refused(with_plan(entry(), with_sources(plan(), sources(17n)))), "durable encoding refuses seventeen sources")
+    Test.check(refused(with_plan(entry(), with_sources(plan(), many_sources(10000n, T.OEnd{})))),
+      "durable encoding rejects a very large manifest before comparing plans")
     Test.check(accepted(E.encode(with_output(entry(), output_origins(origins(16n))))), "durable encoding accepts sixteen origins")
     Test.check(refused(with_output(entry(), output_origins(origins(17n)))), "durable encoding refuses seventeen origins")
     Test.check(accepted(E.encode(with_output(entry(), output_origins(T.RCons{origin(codes(16n)), T.REnd{}})))),

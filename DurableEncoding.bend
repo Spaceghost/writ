@@ -135,11 +135,18 @@ def entry_consistent(invocation: Nat, request: N.Request, intent: B.WriteIntent)
     case N.Request{+plan, _, _, _, _} B.WriteIntent{other, _, _, _, _}:
       Nat.is_eq(invocation, T.Plan.invocation(plan)) && T.Plan.equal(plan, other)
 
+def checked_consistency(ok: Bool, invocation: Nat, request: N.Request, intent: B.WriteIntent) -> Bool:
+  match ok:
+    case True{}:
+      entry_consistent(invocation, request, intent)
+    case False{}:
+      False{}
+
 def entry_fits(entry: J.Entry) -> Bool:
   match entry:
     case J.Entry{+invocation, receipt, +request, +intent}:
-      fits(invocation) && fits(receipt) && request_fits(request) && intent_fits(intent)
-        && entry_consistent(invocation, request, intent)
+      checked_consistency(fits(invocation) && fits(receipt) && request_fits(request) && intent_fits(intent),
+        invocation, request, intent)
 
 def object_words(object: T.ObjectVersion, tail: +List<U32>) -> +List<U32>:
   match object:

@@ -8,3 +8,4 @@
 2026-11-06T09:09:01Z	controller	Native CPU and Bend output match byte-for-byte at 2007 checks; tampering probe confirms authenticated recovery state remains a precondition.
 2026-11-06T16:38:58Z	controller	Started bounded versioned encoding of the committed journal entry; authentication, storage and decoding remain separate work.
 2026-11-06T17:00:22Z	controller	Bounded entry encoding: 72 checks; full Bend/Node 2079 pass, host QuickJS 17676 ticks; native CPU build running; decode and authentication remain open.
+2026-11-06T17:19:40Z	controller	Word-level decoder and resource guards: 2129 Bend/Node checks pass, QuickJS 17694 ticks, OpenSpec 44/44; native CPU rebuild running.

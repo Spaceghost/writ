@@ -45,6 +45,16 @@ def entries_of_length(n: Nat) -> J.Entries:
     case 1n+rest:
       J.More{J.Entry{101n, 103n, N.Session.request(NT.running()), ET.intent()}, entries_of_length(rest)}
 
+def many_entries(n: Nat, +entry: J.Entry, tail: J.Entries) -> J.Entries:
+  match n:
+    case 0n:
+      tail
+    case 1n+rest:
+      many_entries(rest, entry, J.More{entry, tail})
+
+def oversized_entries() -> J.Entries:
+  many_entries(10000n, J.Entry{101n, 103n, N.Session.request(NT.running()), ET.intent()}, J.Empty{})
+
 def historic_invocation(n: Nat) -> Nat:
   Nat.add(2000n, n)
 
@@ -537,3 +547,5 @@ def main() -> IO(Unit):
       "durable journal rejects an otherwise valid transition at capacity")
     Test.check(Bool.not(is_coherent(history_state(65n))),
       "durable journal rejects an otherwise coherent history beyond its capacity")
+    Test.check(Bool.not(J.coherent(PT.pub_sealed(), NT.held_ledger(), oversized_entries())),
+      "durable journal refuses a very large history before quadratic validation")

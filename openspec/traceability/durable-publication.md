@@ -22,8 +22,13 @@ The separate `DurableEncodingTests.bend` includes `durable encoding matches
 the complete hand-calculated word vector`, `durable encoding distinguishes
 origin payment quotes`, and `durable encoding refuses rather than truncating
 an oversized Nat`. These exercise an experimental bounded word representation
-of a single journal entry. They do not establish a decoder, complete transaction
-format, byte-order contract, authenticated storage, or DP-004/006 recovery.
+of a single journal entry. `DurableDecodingTests.bend` adds bounded word-level
+roundtrips and malformed-input checks, including `durable decoding rejects
+every truncated golden prefix` and `durable decoding roundtrips the complete
+maximum-size entry`. These do not establish a byte-order contract, complete
+transaction format, authenticated storage, or DP-004/006 recovery.
+The experimental word layout and its limits are documented in
+[`docs/DURABLE-PUBLICATION.md`](../../docs/DURABLE-PUBLICATION.md).
 
 Additional model checks reject malformed duplicate records and enforce a
 64-record bound, including refusing an otherwise valid authorization at
