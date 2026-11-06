@@ -204,8 +204,7 @@ and owned-resource teardown must all succeed for a complete observation. The
 minimal child has no intended static USER32/OLE32 imports; cold-load claims
 require PE dependency inspection and initial module checks. The LPAC initializer
 error numbers remain raw observations, not access denials;
-there is no fallback or mutation of the real worker's strict gate. This first
-slice has not been run on Windows. A factorial comparison and independent
+there is no fallback or mutation of the real worker's strict gate. The [standalone Windows run](../../../docs/superpowers/records/2026-11-06-windows-init/run-42313767360/README.md) completed its observation without confinement credit. A factorial comparison and independent
 final-token group/privilege equivalence are not implemented.
 
 The existing `.github/workflows/writfs-windows-policy.yml` runs the diagnostic only when explicitly dispatched with ref
@@ -213,7 +212,7 @@ The existing `.github/workflows/writfs-windows-policy.yml` runs the diagnostic o
 it does not affect the strict native workflow, ordinary default dispatch, or
 push jobs. This branch-specific workflow edit is a temporary execution aid and
 must not be merged into the registered policy workflow. The diagnostic job builds without WinFsp, checks child PE dependencies,
-and retains source hashes and raw output. It has not yet been dispatched.
+and retains source hashes and raw output. It was dispatched at source `9b02fa5`; see the run record for exact results.
 Setup failures in the shared launcher can erase cleanup state and therefore
 remain incomplete with cleanup unverified; the disposable runner's destruction
 is the fallback, not evidence of checked resource retirement. Successful

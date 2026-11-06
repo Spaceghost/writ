@@ -1,6 +1,6 @@
 # Windows LPAC initialization: no-data diagnostic plan
 
-Status: original design plan. The first standalone initialization observation has since been authored but has not been built or run on Windows. Its separate executable, package and report-only handle list differ from the byte worker; final-token group/privilege equivalence and the proposed factorial matrix remain unimplemented. No result changes admission, native confinement, or acceptance criteria.
+Status: original design plan. The first standalone initialization observation was built and run on Windows at source `9b02fa5`, with its separate observation recorded in [run 42313767360](run-42313767360/README.md). Its separate executable, package and report-only handle list differ from the byte worker; final-token group/privilege equivalence and the proposed factorial matrix remain unimplemented. No result changes admission, native confinement, or acceptance criteria.
 
 ## Observation and boundaries
 

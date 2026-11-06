@@ -23,13 +23,13 @@ passed; the byte-worker network, clipboard and COM observations remained
 incomplete and received no restriction credit. Its separate no-data diagnostic
 is not a substitute. The cause is not yet established.
 
-## Standalone initialization diagnostic (unrun on Windows)
+## Standalone initialization diagnostic (separate no-data observation)
 
 The source now includes `writfs-init-diagnostic`, a standalone no-data
 initializer observer and synthetic `init-report-framing` test. Its LPAC
 launch reuses the same control setup and readbacks, but its executable,
 package, lifetime and single report handle differ from the byte worker.
-The first [Windows diagnostic build](../../../docs/superpowers/records/2026-11-06-windows-init/run-42313479154/README.md) failed on a nonexistent SDK header before the diagnostic or its synthetic test ran. A header correction is proposed but has not been built on Windows; no native diagnostic result is recorded.
+The first [Windows diagnostic build](../../../docs/superpowers/records/2026-11-06-windows-init/run-42313479154/README.md) failed on a nonexistent SDK header before the diagnostic or its synthetic test ran. The corrected source `9b02fa5` was then built and executed in the separate [no-data diagnostic run 42313767360](../../../docs/superpowers/records/2026-11-06-windows-init/run-42313767360/README.md). Its ordinary controls initialized successfully, while its separate LPAC process reproduced Winsock 10107 and DLL load errors 1114 and 1359. The observation and owned-resource cleanup completed; it is not byte-worker confinement evidence.
 Full token-group and privilege equivalence has not been independently
 verified, and the control-factor matrix is not implemented. This does not
 change the failed and incomplete outcomes recorded above.

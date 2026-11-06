@@ -1,7 +1,7 @@
 # Standalone initialization diagnostic: first slice
 
 Source basis: master `1fcd29a4cddea3c67a0c71d26f8130e3e6babf59`.
-This record describes a worktree proposal, not a successful Windows run.
+This record describes the first slice and its limits; the separate Windows observation is [run 42313767360](run-42313767360/README.md).
 
 The no-data executable uses the existing worker launcher for a separate LPAC
 process with one report handle. The controlled launch supplies a fixed minimal child and a report pipe; the
@@ -32,8 +32,7 @@ Checks in the Linux development environment:
   kernel verdict was run because `lean` is absent from PATH.
 - OpenSpec 1.16.0 strict: 44 passed, 0 failed.
 - The workflow parses as YAML. The first Windows/MSVC build failed on `fwperror.h` before any test ran; see
-  [run 42313479154](run-42313479154/README.md). The proposed header fix, native
-  initialization, setup and cleanup remain unrun and need isolated Windows CI.
+  [run 42313479154](run-42313479154/README.md). The corrected source was built and run in [42313767360](run-42313767360/README.md), which completed the standalone observation and checked cleanup.
 
 The new job in the already registered Windows policy workflow is branch-only,
 dispatch-only and uses a fresh Windows runner; it does not
@@ -47,7 +46,7 @@ launcher may internally erase cleanup state on setup failure, so that outcome
 is incomplete and cleanup is unverified; disposal of the fresh runner is the
 fallback, not proof of scoped cleanup. No startup report or a target DLL
 already loaded before its observation is likewise incomplete. PE dependency
-inspection and module snapshots remain unrun on native Windows.
+inspection and module snapshots are recorded in the later standalone run, without byte-worker credit.
 
 The Windows policy workflow's diagnostic branch guard is a temporary execution
 aid: it skips ordinary policy jobs only for `lane/windows-init-diagnostic`

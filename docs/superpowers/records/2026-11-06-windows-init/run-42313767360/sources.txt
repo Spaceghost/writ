@@ -1,0 +1,44 @@
+
+Algorithm : SHA256
+Hash      : D80866BFC4129DF2964C9FDD4C7ED533B2445693EBDAB8B3F56B91AD09096763
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_diagnostic.c
+
+Algorithm : SHA256
+Hash      : 71FAC8416C9ED4572E22ED37A4A2B4A9C0F8BEACBCCEB40DC3F9B4A6B18B0AC6
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_worker.c
+
+Algorithm : SHA256
+Hash      : EC63EEFEE417C7968102BE8D4ED71CDE998F46B11564FF4B1BC9DAE11EA86327
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_child.c
+
+Algorithm : SHA256
+Hash      : 314082B9994AFE925CE14F46785E2C2CE3B72551794B7742778E20330361ECF6
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_report.h
+
+Algorithm : SHA256
+Hash      : 781C6D020C51516B8DB3FC97B667B2EDBCDDB2E6B714E0BDE1F8CD194D2AFB80
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_report_test.c
+
+Algorithm : SHA256
+Hash      : 71BB75B3A66C1B7C0C6A821E570D527A23554E563DE54205E7CA249EAFBAE595
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init-diagnostic\CMakeLists.txt
+
+Algorithm : SHA256
+Hash      : 1A1EB92243E54DBF41D1E63E8FCFA0B08FB76D245DDE0B3C86502C44DABF3409
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\worker.c
+
+Algorithm : SHA256
+Hash      : 1B54A1DE65A1DCD9B50D00D544AF715C64AE14CC02C8AF63A047E1A565739A99
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\worker.h
+
+Algorithm : SHA256
+Hash      : BBDD829DA75A4A1002F774F08BA1C6192573F245F159395761C7B9B968642627
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\isolation.c
+
+Algorithm : SHA256
+Hash      : 560307AC256CBAFE88D98226BF6754CE353F18EE2EBA51A408E572FBA5D02A70
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\isolation.h
+
+Algorithm : SHA256
+Hash      : 1926FD6B8AB59A9B91210A6FDE3B7D340786E1B110FE3BB52DEEA89796707C05
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\probe.h
