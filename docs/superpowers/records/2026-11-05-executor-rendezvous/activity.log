@@ -110,3 +110,4 @@
 2026-11-05T23:57:43Z	implementer	Task 9 native build heartbeat (still running)
 2026-11-06T00:00:07Z	implementer	Task 9 native build end (exit 0)
 2026-11-06T00:02:27Z	implementer	Task 9 commit: RendezvousTests builds scenario stages once per check; host QuickJS 262.5 s -> 8.0-13.3 s, ticks 616315 -> 17059; JS and native byte-identical to verification/tests-js.txt
+2026-11-06T00:03:01Z	controller	Task 9 DONE_WITH_CONCERNS (2b1da02): host QuickJS 262.5 s -> 8-13 s, ticks 616,315 -> 17,059; JS and native byte-identical to master captures; M1/M2 killed; worlds built once per check via trial_world/sc_world with Kept handles for arity. Task review dispatched (sample G_K defs against master, shared-projection concern).

@@ -44,3 +44,4 @@ Final re-review: ALL CLOSED (F1-F5, record items 1-4); gate-removal mutants kill
 Merged to master as 7718403; re-pin 6e49420 (1942 checks, thirty-six laws); pushed to origin/master.
 Ruling: the Genode native run cannot afford the rendezvous corpus (262.5 s host QuickJS, 616k ticks; zero-argument sc_* fixtures recompute their chains exponentially) — fix in the test file only, output byte-identical, no model change — cost if wrong: a wasted test refactor; the model and pins are untouched either way.
 Task 9: dispatched implementer (build scenario stages once per check; brief task-9-brief.md)
+Task 9: implementer DONE_WITH_CONCERNS (2b1da02): 262.5 s -> 8-13 s host QuickJS, 17,059 ticks; byte-identical output; concerns: large scripted diff, shared projection inside worlds, Kept relies on the pinned backend keeping recursive types boxed. Task review dispatched.
