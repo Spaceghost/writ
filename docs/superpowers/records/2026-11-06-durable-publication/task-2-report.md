@@ -65,8 +65,11 @@ The actual durability barrier and unknown-outcome reconciliation, complete
 authenticated checkpoint/witness protocol, protected canonical storage,
 sink-specific deduplication, correct audit projection of the final host result,
 native isolation/sealing, crash injection and independent security review all
-remain open. The model's `Matches` result cannot be exposed to an untrusted
-caller without separately authorizing and policy-gating the observation.
+remain open. Transition errors and inspection results can reveal protected
+state, including invocation presence and capacity; they cannot be exposed to
+an untrusted caller without separately authorizing and policy-gating the
+observation. The source-header clarification was checked against the prior
+revision with implementation tokens identical after comments were removed.
 
 The current reference journal never prunes records. At 64 entries it refuses
 every additional authorization; that is a fail-closed capacity limit, not a

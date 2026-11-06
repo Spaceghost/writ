@@ -26,9 +26,10 @@ import ./DataOS.bend as OS
 # history. They cannot authenticate a recovered journal or detect every altered
 # intent. A separately authenticated, current journal and witness are mandatory
 # preconditions, not guarantees of these pure comparisons.
-# Inspection answers can reveal that an invocation exists or matches. They are
-# private monitor diagnostics, not responses to an untrusted caller; a future
-# host must separately authorize and policy-gate any observable status.
+# Transition errors and inspection answers can reveal whether an invocation
+# exists or matches, whether the journal is full, or why the host gate denied.
+# They are private monitor diagnostics, not responses to an untrusted caller;
+# a future host must separately authorize and policy-gate observable status.
 # The journal is bounded to `max_entries()` records before it performs the
 # quadratic uniqueness checks. The host must also bound the sizes and nesting
 # of individual intents, policies and requests before invoking the model.
