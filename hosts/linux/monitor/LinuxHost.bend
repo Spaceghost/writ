@@ -918,10 +918,28 @@ def frame_in_range(in_range: Bool, packed: Packed) -> FrameResult:
     case Packed{words}:
       pick_frame(in_range, frame_words(words), Unframed{FrameRange{}})
 
+# Bound the input before running the non-tail-recursive frame parsers. A
+# branch, rather than a value-selecting helper, keeps generated backends from
+# evaluating the parser on an oversized frame.
+def frame_within(fuel: Nat, bytes: +List<U32>) -> Bool:
+  match fuel bytes:
+    case _ Nil{}:
+      True{}
+    case 0n Con{_, _}:
+      False{}
+    case 1n+remaining Con{_, rest}:
+      frame_within(remaining, rest)
+
+def decode_bounded(within: Bool, +bytes: +List<U32>) -> FrameResult:
+  match within:
+    case False{}:
+      Unframed{FrameTooLong{}}
+    case True{}:
+      frame_in_range(all_bytes(bytes), pack(bytes))
+
 # Public entry point: decode one broker-channel frame (see the layout above).
 def decode_frame(+bytes: +List<U32>) -> FrameResult:
-  pick_frame(Nat.is_gt(List.length(&2, U32, bytes), max_frame_bytes()), Unframed{FrameTooLong{}},
-    frame_in_range(all_bytes(bytes), pack(bytes)))
+  decode_bounded(frame_within(max_frame_bytes(), bytes), bytes)
 
 def served_of(result: FrameResult, +state: P.State, +now: Nat) -> Served:
   match result:

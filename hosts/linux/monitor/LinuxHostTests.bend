@@ -702,6 +702,184 @@ def replay_compare_checks() -> IO(Unit):
     Test.check(String.eq(compare_line(), V.expected_ph012_1()), "LH-010 PH-012-1 the Linux adapter compared with adapters A and B renders the expected compare line")
     IO.print(joined(replay_lines()))
 
+# Synthetic framed facts only. These exercise the actual LINUXB decode/serve
+# path; they do not authenticate a process, establish a kernel observation,
+# enforce a descriptor boundary, or satisfy native Linux acceptance.
+# The launch record and current peer are monitor-owned test fixtures. The
+# broker must bind each Barrier's launch record to the session; the adapter
+# compares the credentials in one frame and does not retain that binding.
+
+def synthetic_words_of_token(token: T.CodeId, tail: +List<U32>) -> +List<U32>:
+  match token:
+    case T.CodeId{a, b, c, d, e, f, g, h}:
+      a <> b <> c <> d <> e <> f <> g <> h <> tail
+
+def synthetic_words_of_credential(credential: LH.Credential, tail: +List<U32>) -> +List<U32>:
+  match credential:
+    case LH.Credential{uid, gid, pid, +start}:
+      U32.from_nat(uid) <> U32.from_nat(gid) <> U32.from_nat(pid) <>
+        U32.from_nat(Nat.mod(start, LH.word_span())) <> U32.from_nat(Nat.div(start, LH.word_span())) <> tail
+
+# Version 1's three mediated routes are fixed test data, not an OS inventory.
+def synthetic_route_words(tail: +List<U32>) -> +List<U32>:
+  3 <> 3 <> 101 <> 1 <> 4 <> 102 <> 1 <> 5 <> 103 <> 1 <> tail
+
+def synthetic_fact_words(subject: Nat, token: T.CodeId, incarnation: Nat, launch: LH.Credential,
+    peer: LH.Credential, tail: +List<U32>) -> +List<U32>:
+  U32.from_nat(subject) <> synthetic_words_of_token(token, U32.from_nat(incarnation) <>
+    synthetic_words_of_credential(launch, synthetic_words_of_credential(peer,
+      0 <> 0 <> P.all_families() <> LH.required_controls() <> synthetic_route_words(tail))))
+
+def synthetic_framed(tag: U32, +body: +List<U32>) -> +List<U32>:
+  V.le_bytes(LH.frame_version() <> tag <> U32.from_nat(List.length(&2, U32, body)) <> body)
+
+def synthetic_launch_bytes(+launch: LH.Credential, +peer: LH.Credential, incarnation: Nat) -> +List<U32>:
+  synthetic_framed(LH.frame_launch(), synthetic_fact_words(subject_a(), launch_token(), incarnation, launch, peer, []))
+
+def synthetic_barrier_bytes(session: Nat, subject: Nat, token: T.CodeId, incarnation: Nat,
+    launch: LH.Credential, peer: LH.Credential) -> +List<U32>:
+  +request = input_use(V.claim_none())
+  synthetic_framed(LH.frame_barrier(), U32.from_nat(session) <> synthetic_fact_words(subject, token, incarnation, launch, peer,
+    U32.from_nat(List.length(&2, U32, request)) <> request))
+
+def synthetic_launch_served(launch: LH.Credential, peer: LH.Credential, incarnation: Nat) -> LH.Served:
+  LH.serve(rooted(), synthetic_launch_bytes(launch, peer, incarnation), now())
+
+def synthetic_barrier_served(session: Nat, subject: Nat, token: T.CodeId, incarnation: Nat,
+    launch: LH.Credential, peer: LH.Credential) -> LH.Served:
+  LH.serve(delegated(), synthetic_barrier_bytes(session, subject, token, incarnation, launch, peer), now())
+
+def synthetic_denied(+served: LH.Served, +expected: P.State, reason: LH.Rejection) -> Bool:
+  match served:
+    case LH.Served{outcome}:
+      untranslated(outcome, expected, reason) && PT.state_equal(LH.next(served), expected)
+        && PT.effects_equal(LH.served_effects(served), [])
+    case _:
+      False{}
+
+def synthetic_launch_denied(peer: LH.Credential, reason: LH.Rejection) -> Bool:
+  synthetic_denied(synthetic_launch_served(launch_credential(), peer, LH.linux_incarnation()), rooted(), reason)
+
+def synthetic_barrier_denied(peer: LH.Credential, reason: LH.Rejection) -> Bool:
+  synthetic_denied(synthetic_barrier_served(V.session_worker(), subject_a(), launch_token(), LH.linux_incarnation(),
+    launch_credential(), peer), delegated(), reason)
+
+def synthetic_launch_accepted(served: LH.Served) -> Bool:
+  match served:
+    case LH.Served{+outcome}:
+      admitted_with(outcome, 1n+P.revision(rooted()), [])
+        && PT.state_equal(LH.Outcome.state(outcome), launched())
+        && session_is(I.session_at(I.sessions(P.identity(LH.Outcome.state(outcome))), V.session_worker()),
+          launch_caller())
+    case _:
+      False{}
+
+def synthetic_valid_launch() -> Bool:
+  synthetic_launch_accepted(synthetic_launch_served(launch_credential(), launch_credential(), LH.linux_incarnation()))
+
+def synthetic_valid_barrier() -> Bool:
+  +served = synthetic_barrier_served(V.session_worker(), subject_a(), launch_token(), LH.linux_incarnation(),
+    launch_credential(), launch_credential())
+  PT.state_equal(LH.next(served), admitted())
+    && PT.effects_equal(LH.served_effects(served), [P.DeliverInputs{worker(), input_ref()}])
+
+def synthetic_high_start() -> LH.Credential:
+  LH.Credential{1000n, 1000n, 4242n, Nat.add(LH.word_span(), 917n)}
+
+def synthetic_different_high_start() -> LH.Credential:
+  LH.Credential{1000n, 1000n, 4242n, Nat.add(Nat.mul(LH.word_span(), 2n), 917n)}
+
+def synthetic_high_start_matches() -> Bool:
+  synthetic_launch_accepted(synthetic_launch_served(synthetic_high_start(), synthetic_high_start(), LH.linux_incarnation()))
+
+def synthetic_high_start_mismatch() -> Bool:
+  synthetic_denied(synthetic_launch_served(synthetic_high_start(), synthetic_different_high_start(), LH.linux_incarnation()), rooted(), LH.PeerMismatch{})
+
+def synthetic_wrong_subject() -> Bool:
+  synthetic_denied(synthetic_barrier_served(V.session_worker(), 99n, launch_token(), LH.linux_incarnation(), launch_credential(),
+    launch_credential()), delegated(), LH.SessionMismatch{})
+
+def synthetic_wrong_token() -> Bool:
+  synthetic_denied(synthetic_barrier_served(V.session_worker(), subject_a(), token_of(V.client_caller()), LH.linux_incarnation(),
+    launch_credential(), launch_credential()), delegated(), LH.SessionMismatch{})
+
+def synthetic_wrong_session(session: Nat) -> Bool:
+  synthetic_denied(synthetic_barrier_served(session, subject_a(), launch_token(), LH.linux_incarnation(), launch_credential(),
+    launch_credential()), delegated(), LH.SessionMismatch{})
+
+def synthetic_stale_launch() -> Bool:
+  synthetic_denied(synthetic_launch_served(launch_credential(), launch_credential(), stale_incarnation()), rooted(),
+    LH.StaleLaunch{})
+
+def synthetic_stale_barrier() -> Bool:
+  synthetic_denied(synthetic_barrier_served(V.session_worker(), subject_a(), launch_token(), stale_incarnation(),
+    launch_credential(), launch_credential()), delegated(), LH.StaleLaunch{})
+
+# Synthetic raw frames for the public decoder's outer bound. Tail recursion
+# builds the over-limit input without asking the decoder to construct it.
+def synthetic_zero_bytes(size: Nat, tail: +List<U32>) -> +List<U32>:
+  match size:
+    case 0n:
+      tail
+    case 1n+n:
+      synthetic_zero_bytes(n, 0 <> tail)
+
+def synthetic_unframed(result: LH.FrameResult, expected: LH.FrameError) -> Bool:
+  match result:
+    case LH.Unframed{reason}:
+      LH.FrameError.equal(reason, expected)
+    case _:
+      False{}
+
+def synthetic_served_unframed(+served: LH.Served, +expected: P.State, reason: LH.FrameError) -> Bool:
+  match served:
+    case LH.NotFramed{state, got}:
+      LH.FrameError.equal(got, reason) && PT.state_equal(state, expected)
+        && PT.state_equal(LH.next(served), expected) && PT.effects_equal(LH.served_effects(served), [])
+    case _:
+      False{}
+
+def synthetic_frame_limit_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(synthetic_unframed(LH.decode_frame(synthetic_zero_bytes(512n, [])), LH.FrameVersion{}),
+      "synthetic LINUXB exact byte limit reaches frame validation")
+    Test.check(synthetic_unframed(LH.decode_frame(synthetic_zero_bytes(513n, [])), LH.FrameTooLong{}),
+      "synthetic LINUXB rejects a frame one byte above the limit")
+    Test.check(synthetic_unframed(LH.decode_frame(synthetic_zero_bytes(10000n, [])), LH.FrameTooLong{}),
+      "synthetic LINUXB rejects a very oversized frame before packing")
+    Test.check(synthetic_served_unframed(LH.serve(rooted(), synthetic_zero_bytes(10000n, []), now()), rooted(),
+      LH.FrameTooLong{}), "synthetic LINUXB over-limit service leaves state unchanged")
+    Test.check(synthetic_unframed(LH.decode_frame(256 <> synthetic_zero_bytes(512n, [])), LH.FrameTooLong{}),
+      "synthetic LINUXB oversized frame takes precedence over out-of-range byte")
+    Test.check(synthetic_unframed(LH.decode_frame(256 <> synthetic_zero_bytes(510n, [])), LH.FrameMisaligned{}),
+      "synthetic LINUXB in-bound misalignment takes precedence over out-of-range byte")
+    Test.check(synthetic_unframed(LH.decode_frame(256 <> synthetic_zero_bytes(511n, [])), LH.FrameRange{}),
+      "synthetic LINUXB aligned in-bound out-of-range byte is refused")
+
+# Entry point: synthetic monitor-service checks, not native qualification.
+def synthetic_identity_checks() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(synthetic_valid_launch(), "synthetic LINUXB launch with matching peer opens the expected worker session")
+    Test.check(synthetic_valid_barrier(), "synthetic LINUXB barrier with matching peer admits the expected input effect")
+    Test.check(synthetic_launch_denied(parent_credential(), LH.PeerMismatch{}), "synthetic LINUXB launch rejects parent socketpair peer")
+    Test.check(synthetic_launch_denied(other_uid_credential(), LH.PeerMismatch{}), "synthetic LINUXB launch rejects peer uid mismatch")
+    Test.check(synthetic_launch_denied(other_gid_credential(), LH.PeerMismatch{}), "synthetic LINUXB launch rejects peer gid mismatch")
+    Test.check(synthetic_launch_denied(other_pid_credential(), LH.PeerMismatch{}), "synthetic LINUXB launch rejects peer pid mismatch")
+    Test.check(synthetic_launch_denied(reused_pid_credential(), LH.PeerMismatch{}), "synthetic LINUXB launch rejects peer start-time low-word mismatch")
+    Test.check(synthetic_high_start_matches(), "synthetic LINUXB launch preserves a matching nonzero start-time high word")
+    Test.check(synthetic_high_start_mismatch(), "synthetic LINUXB launch rejects peer start-time high-word mismatch")
+    Test.check(synthetic_barrier_denied(parent_credential(), LH.PeerMismatch{}), "synthetic LINUXB barrier rejects parent socketpair peer")
+    Test.check(synthetic_barrier_denied(other_uid_credential(), LH.PeerMismatch{}), "synthetic LINUXB barrier rejects peer uid mismatch")
+    Test.check(synthetic_barrier_denied(other_gid_credential(), LH.PeerMismatch{}), "synthetic LINUXB barrier rejects peer gid mismatch")
+    Test.check(synthetic_barrier_denied(other_pid_credential(), LH.PeerMismatch{}), "synthetic LINUXB barrier rejects peer pid mismatch")
+    Test.check(synthetic_barrier_denied(reused_pid_credential(), LH.PeerMismatch{}), "synthetic LINUXB barrier rejects peer start-time mismatch")
+    Test.check(synthetic_stale_launch(), "synthetic LINUXB launch rejects an old monitor incarnation")
+    Test.check(synthetic_stale_barrier(), "synthetic LINUXB barrier rejects an old monitor incarnation")
+    Test.check(synthetic_wrong_subject(), "synthetic LINUXB barrier rejects a foreign launch subject")
+    Test.check(synthetic_wrong_token(), "synthetic LINUXB barrier rejects a foreign launch token")
+    Test.check(synthetic_wrong_session(V.session_client()), "synthetic LINUXB barrier rejects a different existing session")
+    Test.check(synthetic_wrong_session(9n), "synthetic LINUXB barrier rejects a missing session")
+
 # Public entry point, run by Tests.bend. Checks are grouped so that no do
 # block nears the native backend's arity limit (HostBindingTests.bend).
 def main() -> IO(Unit):
@@ -709,6 +887,8 @@ def main() -> IO(Unit):
     profile_checks()
     admission_checks()
     translator_checks()
+    synthetic_identity_checks()
+    synthetic_frame_limit_checks()
     launch_dispatch_checks()
     barrier_dispatch_checks()
     session_checks()
@@ -720,4 +900,4 @@ def main() -> IO(Unit):
     replay_revocation_checks()
     replay_restart_checks()
     replay_compare_checks()
-    IO.print("LinuxHost: 91 checks passed")
+    IO.print("LinuxHost: 118 checks passed")
