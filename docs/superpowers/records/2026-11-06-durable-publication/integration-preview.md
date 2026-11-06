@@ -56,7 +56,11 @@ Linux identity boundary or a durable service.
   --no-interactive` passes 44/44, a structural result.
 - `nix build --offline --no-link .#checks.x86_64-linux.tests-js` passes with
   the preview's 2,285-check pin. Nix native and the full flake have not been
-  rerun. The optimized native CPU build is running.
+  rerun. The optimized Bend-generated native CPU run of the initial combined
+  source (before a78d71b's comment-only edits and separate probe) passes and
+  its output is byte-identical to the Bend capture. The subsequent affected
+  implementation tokens and generated JavaScript are unchanged, as recorded
+  above; the optimized native binary was not rebuilt after those edits.
 
 The CI and local count pins are updated to 2,285 for this proposed tree so a
 future run must account for the new tests. The recorded 2,065-check Genode

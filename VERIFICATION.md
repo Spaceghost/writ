@@ -24,8 +24,10 @@ combined suite passes 2,285 checks in Bend and generated Node with byte-identica
 the host QuickJS harness reports 2,285 checks, 20,715 ticks and no exception.
 The existing ordinary proof check and strict OpenSpec 44/44 pass. The offline
 Nix JavaScript check with the current pin also passes; Nix native and the full
-flake check have not been rerun. Full optimized native CPU verification is
-running. The current 2,285-check tree has not been run in Genode or on a GPU;
+flake check have not been rerun. The optimized native CPU run of the initial
+combined source passes with the same output; the subsequent durable edits are
+comments plus a separate probe, with implementation tokens and generated JS
+unchanged. The current 2,285-check tree has not been run in Genode or on a GPU;
 the 2,065-check evidence below remains historical. Durable storage, audit append,
 rollback witness, qualified sink and host recovery remain unimplemented, and no acceptance task is closed.
 See the [integration preview](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
