@@ -40,6 +40,13 @@ current model, not evidence of an exploitable native acceptance; no caller of
 `launch_worker` is present in the partial broker. No passing security test
 asserts that an unverified zero is authenticated identity.
 
+A later static review found that `broker_reply_session` selects the largest
+listed session without checking the reply status, and its header does not
+require an admitted launch result. A future caller that treats this value as
+a new authenticated session after a denial could bind the wrong session. No
+call sites exist in this WIP and no native exploit or execution was observed;
+the helper needs correction, review and native evidence before use.
+
 Source review also found that `launch_worker` writes the child's release byte
 before returning failure on a zero start time. Whether a child executes after
 that failed setup and how it is stopped or reaped require a separate native

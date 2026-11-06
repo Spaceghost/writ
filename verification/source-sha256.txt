@@ -95,7 +95,7 @@ d642722d4861e5879bf090fe2bcca2bb120dfa428d24971d34bd573a2e1fb332  contrib/native
 e54d3c1ca9ed2247a09412de7ee3de23f75c89a00b4f1a2222129f4f8287c6fd  contrib/native-hosts/genode/src/test/writfs_vfs/main.cc
 0a4a60deef77fc84f77bae94368e0cdb405c51fdb41e24b964d7998a50060f4a  contrib/native-hosts/genode/src/test/writfs_vfs/target.mk
 d42ecd66002c1f614960fc932a9ffdd7cf904b19f67752e5808be8f8a2f2d2f9  contrib/native-hosts/linux/Makefile
-84e5ad4db58fd5fc24af024346ba3b35e06884cd0b571e4b8a4f7bad541e3c54  contrib/native-hosts/linux/README.md
+8d22988c8ca5d7dc60f99e772ab14d400de41fe86c51f44dc08b42c1d86a366b  contrib/native-hosts/linux/README.md
 52fbb1b0c4367d97d2852b93fe2fbc4b631481fbfcb7552acb158947b3fafa6b  contrib/native-hosts/linux/broker.c
 24d7ada0be75a0fdb97eb199458cc406911ba73091a23d6439dba2a89ccc36e5  contrib/native-hosts/linux/broker.h
 67c3b9525a8226987f1d986f8053dc557781f2a866b222efd268fd94f6e40169  contrib/native-hosts/linux/broker_monitor.mjs
@@ -401,14 +401,14 @@ d9424326080aba242eba4367b098dd7f2158b59ddaf731889d7c00c0e47e75ae  docs/superpowe
 7f545d0720662f866a98f4b8c0e39b844a6f6383d9746618649c76150617d3ba  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-brief.md
 588de2b0d3eb7564ed842b6a8730b55e8e0d5d6c1a8ebce1fa8e0a5025e96dc7  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-report.md
 72598787d70bf5e61b6dee6eba49bc38fdbc320457b317c7b9a3a437cedff1aa  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-review.md
-d185db1ad5c59d9cf2c25277e821e75db54a6dd749dd51fa7a64bb3672c65cab  docs/superpowers/records/2026-11-05-linux-host/activity.log
-19e27219b19f1bd33579d83594274eb7df7414c30b209f9c351b23d6c1b9ec6e  docs/superpowers/records/2026-11-05-linux-host/progress.md
+b76682214a670e48830ad85cb9298b22ddbba29a5377491b6be6181963c3717c  docs/superpowers/records/2026-11-05-linux-host/activity.log
+11e9795798c69c02f876ba846d7b895c995b3594c728e96a29ca049bbe221fea  docs/superpowers/records/2026-11-05-linux-host/progress.md
 333303045bef00d486d224396cf5bc22d900946dc2c59ee687977f6d8843867f  docs/superpowers/records/2026-11-05-linux-host/task-1-brief.md
 2ef291256cb8d18430017f6d69f33611b65b52c195e20c20fc272f57ac5576d3  docs/superpowers/records/2026-11-05-linux-host/task-1-report.md
 10b9405a39bd470312d5cf632689e41f8bf47bcd42a72488e73b8bbd43dbfa71  docs/superpowers/records/2026-11-05-linux-host/task-1-rereview.md
 edafdfcf0cf37783fcd2e9ed5df451d64441e422fb8eb7ded8036f14e797bca0  docs/superpowers/records/2026-11-05-linux-host/task-1-review.md
 d8270d21c01cfcde49aae64d6f1f98410199d1736ba8684839996695fde5c711  docs/superpowers/records/2026-11-05-linux-host/task-2-brief.md
-6618e26cd2703ac93b4075b9c62f1ccdce029bf1832ea015ee09708e150745ce  docs/superpowers/records/2026-11-05-linux-host/task-2-synthetic-report.md
+9d2d56b98e4df6945c564f3329c29d6615a8de60dfc4d589ceb862be0eada71c  docs/superpowers/records/2026-11-05-linux-host/task-2-synthetic-report.md
 ec62ee4d7ef2a50e5efe638448ca9060415e73cd49bc61a298766a6fe092d18a  docs/superpowers/records/2026-11-05-physical-gpu/activity.log
 59b8a7d4866112e695bee8e3b8d3a0bcc2cf6fd84b59c4c3ffa97fda19fdba1d  docs/superpowers/records/2026-11-05-physical-gpu/final-rereview.md
 e6f2d8216246a32d4276d2ed569177f407943a64834fceaf4fe6060b452b826a  docs/superpowers/records/2026-11-05-physical-gpu/final-review.md
