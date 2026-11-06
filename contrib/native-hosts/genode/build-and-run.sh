@@ -15,7 +15,7 @@ case "$writ_out" in
 esac
 mkdir -p "$writ_out/inputs" "$writ_out/logs" "$writ_out/generated"
 if [[ ! ${WRIT_CORE_EXPECTED:-} =~ ^[1-9][0-9]{0,4}$ ]]; then
-  printf 'Set WRIT_CORE_EXPECTED to the reviewed complete core assertion count (currently 1942)\n' >&2
+  printf 'Set WRIT_CORE_EXPECTED to the reviewed complete core assertion count (currently 2060)\n' >&2
   exit 2
 fi
 export WRIT_CORE_EXPECTED
@@ -138,7 +138,7 @@ done
 
 (
   cd "$writ_repo"
-  git ls-files -z -- contrib/native-hosts/genode contrib/native-hosts/runtime/genode \
+  git ls-files -z -- '*.bend' contrib/native-hosts/genode contrib/native-hosts/runtime/genode \
     writfs/Mount.bend writfs/MountAuthority.bend writfs/MountTests.bend \
     .github/workflows/writfs-genode-native.yml | xargs -0 sha256sum
   sha256sum "$writ_out"/generated/* "$writ_build"/var/run/*.iso

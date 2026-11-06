@@ -5,6 +5,7 @@ on:
     branches: [master, writfs-native-hosts-ci]
     paths:
       - '*.bend'
+      - 'hosts/linux/monitor/**'
       - 'lib/**'
       - 'writfs/**'
       - 'contrib/rclone/bend/**'
@@ -22,7 +23,7 @@ jobs:
     timeout-minutes: 40
     env:
       BEND_NO_TELEMETRY: '1'
-      WRIT_CORE_EXPECTED: '1942'
+      WRIT_CORE_EXPECTED: '2060'
     defaults:
       run:
         shell: bash
