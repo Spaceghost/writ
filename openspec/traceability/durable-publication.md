@@ -24,8 +24,9 @@ origin payment quotes`, and `durable encoding refuses rather than truncating
 an oversized Nat`. These exercise an experimental bounded word representation
 of a single journal entry. `DurableDecodingTests.bend` adds bounded word-level
 roundtrips and malformed-input checks, including `durable decoding rejects
-every truncated golden prefix` and `durable decoding roundtrips the complete
-maximum-size entry`. `DurableBytesTests.bend` adds the experimental
+every truncated golden prefix`, `durable decoding roundtrips the complete
+maximum-size entry`, and `durable decoding bounds a maximum valid record
+followed by 50000 words`. `DurableBytesTests.bend` adds the experimental
 little-endian byte mapping, including `durable bytes use the hand-calculated
 little-endian header` and rejection of out-of-range values in each byte position
 when the packed word would be unchanged. Named cases include `durable bytes

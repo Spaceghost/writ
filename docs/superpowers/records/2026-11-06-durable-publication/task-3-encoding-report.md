@@ -124,3 +124,32 @@ in Bend, Node and optimized native CPU with identical output (SHA-256
 Existing Bend proof checks pass without a Lean kernel verdict, and OpenSpec
 strict validation passes 44/44. The full optimized native CPU suite also
 passes with output byte-identical to Bend. These results are not Genode guest execution, a GPU test, or a proof law.
+
+## Oversized word input resource regression
+
+A further synthetic review tested the public word decoder with a valid
+maximum-sized entry followed by 50,000 extra words. The fixture is built with
+tail-recursive list walks; the current decoder rejects it within its existing
+word bound. The new named check is `durable decoding bounds a maximum valid
+record followed by 50000 words`. This is a resource-bound test, not evidence
+of authenticated recovery or a proof that all inputs have a particular cost.
+
+For a selected scratch mutation, `words_within` was replaced with an unbounded,
+non-tail `List.length` check. The old focused decoder suite still passed on
+Node, but the new case caused that mutated program to exit 1 with a machine
+stack-overflow error. The unchanged implementation passes all 49 focused
+decoder checks in Bend and Node with identical output (SHA-256
+`12b6ecd8e724ca003f08631d4dd5d5696f68bbbc5569a77edcf815da93cb389c`).
+The host QuickJS harness reports 49 checks, program exit 0, no exception and
+57 ticks; its standalone wrapper exits 1 because the full-suite summary is
+absent. Both the old and new focused test sets time out on the mutant in host
+QuickJS before reaching the new case, so the discriminating before/after
+mutation observation is specifically Node. No production parser was changed.
+
+The complete Bend and generated Node runs also pass with identical output
+(SHA-256 `9888dbddd281f3a1deeb20066786954313d58fd04af38e8b61b016d8247b79bf`).
+The complete host QuickJS harness reports 2,161 checks, program exit 0, no
+exception, 17,855 ticks and 20,218,552 peak live bytes. Existing Bend proof
+checks pass without a Lean kernel verdict; OpenSpec strict passes 44/44. Full
+native CPU verification is running separately. This host QuickJS result is not
+a Genode guest or physical GPU test.

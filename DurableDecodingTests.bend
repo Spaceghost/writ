@@ -104,6 +104,22 @@ def all_mutations_exact(+n: Nat, +words: +List<U32>, +replacement: U32) -> Bool:
 def with_extra(words: +List<U32>) -> +List<U32>:
   List.append(&2, U32, words, [0])
 
+# The long suffix deliberately exceeds the decoder cap; build the fixture with
+# tail-recursive list walks so a backend failure comes from the decoder guard.
+def prepend_reversed(words: +List<U32>, tail: +List<U32>) -> +List<U32>:
+  match words:
+    case Nil{}:
+      tail
+    case Con{head, rest}:
+      prepend_reversed(rest, head <> tail)
+
+def oversized_after_maximum(encoded: Maybe<&2, List<&2, U32>>) -> Bool:
+  match encoded:
+    case Some{words}:
+      rejected(prepend_reversed(List.reverse(&2, U32, words), ET.make_words(50000n, [])))
+    case None{}:
+      False{}
+
 def raw_oversized_sources() -> +List<U32>:
   E.entry_words(ET.with_plan(ET.entry(), ET.with_sources(ET.plan(), ET.sources(17n))))
 
@@ -174,6 +190,8 @@ def main() -> IO(Unit):
     Test.check(rejected(replace(42n, 4, ET.golden())), "durable decoding rejects an unknown backend tag")
     Test.check(rejected(with_extra(ET.golden())), "durable decoding rejects a trailing word")
     Test.check(rejected(ET.make_words(1n+E.max_words(), [])), "durable decoding rejects an oversized word list")
+    Test.check(oversized_after_maximum(E.encode(ET.maximum_entry())),
+      "durable decoding bounds a maximum valid record followed by 50000 words")
     Test.check(rejected(raw_oversized_sources()), "durable decoding rejects seventeen sources")
     Test.check(rejected(raw_oversized_origins()), "durable decoding rejects seventeen origins")
     Test.check(rejected(raw_oversized_codes()), "durable decoding rejects seventeen origin codes")
