@@ -677,3 +677,10 @@ The evidence-only follow-up Windows CI [run 42311706534](verification/windows-na
 repeated the strict LPAC failure on source `1fcd29a`; its byte-worker probes
 remain incomplete and receive no confinement credit. The separate diagnostic
 passed and does not qualify the protected worker.
+
+A separate, report-only Windows initialization diagnostic first failed to
+[compile](verification/windows-init-build-42313479154/README.md); after the
+header correction, an [isolated no-data run](verification/windows-init-observation-42313767360/README.md)
+reproduced the byte worker's initialization error codes while its ordinary
+controls and scoped cleanup completed. It used a different process and package,
+did not isolate a cause, and supplies no protected-worker confinement credit.

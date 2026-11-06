@@ -4,8 +4,10 @@
 
 Expose parallel and native device-requesting calculation for graph solving,
 decentralized-label queries, and transfer admission while preserving their
-decision contracts. Current validation covers JavaScript and native CPU fallback.
-Physical GPU execution, device isolation, and throughput are not established.
+decision contracts. Baseline validation covers JavaScript and native CPU fallback.
+Separate [one-host GPU evidence](../../../verification/gpu-validation-hosts.md)
+records observed execution for specified configurations. Device isolation and
+throughput are not established by those runs.
 
 ## Requirements
 

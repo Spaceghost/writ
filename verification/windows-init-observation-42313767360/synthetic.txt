@@ -1,0 +1,7 @@
+Test project D:/a/_temp/windows-init-build
+    Start 1: init-report-framing
+1/1 Test #1: init-report-framing ..............   Passed    0.02 sec
+
+100% tests passed out of 1
+
+Total Test time (real) =   0.06 sec
