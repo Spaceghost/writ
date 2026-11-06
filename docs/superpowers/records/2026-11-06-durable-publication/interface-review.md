@@ -130,9 +130,10 @@ then inspected the unchanged invocation, request and intent using receipt 9999.
 `inspect` returned `Matches`. The added receipt is structurally valid replay
 state, and the existing ledger has no receipt-to-committed-invocation mapping,
 so the pure coherence checks cannot establish that this was the receipt used
-for that invocation. The probe was run in a copied tree under
-`/tmp/writ-durable-publication/recovery-probe/Probe.bend` and printed `MATCHES`;
-it did not use or alter a real store. This is the documented trusted-journal
+for that invocation. The reproducible probe
+`bend verification/probes/durable-journal-authentication-gap.bend` printed
+`MATCHES: pure coherence did not authenticate the original receipt`; it did not
+use or alter a real store. This is the documented trusted-journal
 precondition, not recovery-integrity evidence. An authenticated complete
 transaction record and current witness are required before this model result
 can support a recovery decision. Do not freeze this acceptance as a security
