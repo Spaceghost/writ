@@ -1586,6 +1586,9 @@ def offer_id_tb() -> R.OfferId:
 # never unboxed, so `Rekept`, which no fixture builds, makes `Kept` one
 # word. `Kept.value` reads the value back; it is total, and a `Kept` built
 # by `keep_*` is always `Kept{value}`.
+# This holds for the pinned Bend 2.0.39 backend. A toolchain that unboxed
+# recursive types would fail the native build (`-o`) with an arity error,
+# never give a different result.
 type Kept<a, -A: Kind(a)> is Kind(a):
   Kept{value: A}
   Rekept{inner: Kept<a, A>}
@@ -3663,6 +3666,10 @@ def scenario_current_1_7(+w: Sc) -> Bool:
 def scenario_current_1_8(+w: Sc) -> Bool:
   R.valid(sc_dispatched(w))
 
+# The label says "projections rebuilt for each use": the host's procedure. The
+# world builds one projection of the evidenced state for the sample, approve,
+# reserve, start and dispatch steps; the inputs are the same at each use, so
+# the values are equal (see the `Sc` comment).
 def scenario_current_1(+w: Sc) -> Bool:
   scenario_current_1_0(w) && scenario_current_1_1(w) && scenario_current_1_2(w)
     && scenario_current_1_3(w) && scenario_current_1_4(w) && scenario_current_1_5(w)

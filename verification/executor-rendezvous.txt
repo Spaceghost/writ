@@ -394,7 +394,7 @@ grew exponentially with chain depth. Each check now builds its world once
 (`trial_world()` in Sections 1.3 to 1.5, `sc_world()` with `sc_b_world` and
 `sc_a2_world` in Section 2.1) through the same entry points and reads the
 stages from it; only RendezvousTests.bend changed, and the PASS output is
-byte-identical to verification/tests-js.txt (1942 lines) on JavaScript and
+byte-identical to verification/tests-js.txt (1942 PASS lines) on JavaScript and
 on native CPU (`--gpu off`, not a GPU test).
 Host QuickJS 2026-06-04 harness replicating the Genode runner (prelude,
 512 KiB stack, 128 MiB limit), whole 1942-check corpus:
