@@ -10,8 +10,9 @@ This is an **isolated integration preview**, not a landed change or acceptance
 claim. It combines master `9c08eb93b86a6025d3b254551557e394f7685f7c` with
 `lane/durable-publication` `dd18cb0657a2c030be7b258082683e19f837c85e`, then
 incorporates master `1fcd29a`, which only preserves failed Windows native CI
-evidence. The original worktrees and branches were not modified. The Windows
-run remains failed/partial as its own record states; no new Windows result is
+evidence, and durable `a78d71b`, which adds comparison-bound comments and a
+standalone failing resource probe. The original worktrees and branches were not
+modified. The Windows run remains failed/partial as its own record states; no new Windows result is
 implied. Independent security review remains outstanding, and the task-order
 review gates in the [durable plan](../../plans/2026-11-06-durable-publication.md)
 are unchanged. All DP acceptance tasks and audit durability tasks stay open.
@@ -37,8 +38,16 @@ Linux identity boundary or a durable service.
   The host QuickJS harness passes 2,285 checks with program exit 0, no exception,
   20,715 ticks, and 20,949,920 peak live bytes under a 128 MiB limit. Host
   QuickJS is not a Genode guest or physical GPU run.
-- The digest of sorted `sha256sum` lines for all Git-tracked `*.bend` files at
-  test time is `1e2bf86118771915683a4dc6e750dc8c4f625624c2e5fbf893d4c7edeea577a5`.
+- The digest of sorted `sha256sum` lines for all Git-tracked `*.bend` files
+  in the initial combined test tree (through durable dd18cb0) is
+  `1e2bf86118771915683a4dc6e750dc8c4f625624c2e5fbf893d4c7edeea577a5`.
+  After a78d71b's two comment-only edits and new standalone probe, this digest
+  is `80f4f1725b21b39b8f073c0e99322af67f90138d7bbd83df7d449a046e84a10f`.
+  Implementation tokens of `DurableIntent.bend` and `DurableJournal.bend` were
+  compared to dd18cb0 and match; their 25 and 35 focused checks pass. Generated
+  full-suite JavaScript and output are unchanged. The probe is deliberately
+  outside the suite and preserves a Node stack-overflow failure on unbounded
+  synthetic input, not an expected security law; see [the review](model-review.md).
   `Tests.bend` itself is
   `d1f530761d86ccb0629ae2c6e0d1f51b58837d758b3fe5860e0dc72b90a5df92`.
   The checked-in source manifest records each delivered file independently.

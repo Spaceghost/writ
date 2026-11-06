@@ -32,8 +32,8 @@ import ./DataOS.bend as OS
 # a future host must separately authorize and policy-gate observable status.
 # The journal is bounded to `max_entries()` records before it performs the
 # quadratic uniqueness checks. The host must independently bound host and
-# ledger collections, and the sizes and nesting of individual intents,
-# policies and requests, before invoking the model.
+# ledger collections, candidate graphs and context, and the sizes and nesting
+# of individual intents, policies and requests, before invoking the model.
 # Public entry points: `authorize`, `inspect`, and `max_entries`; other defs
 # are exported implementation helpers and confer no authority when called.
 

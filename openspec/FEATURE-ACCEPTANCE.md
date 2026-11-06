@@ -24,9 +24,9 @@ observable behavior to its complete normative contract and unchecked task list.
 These integration cases supplement the normative scenarios. Their identifiers are
 review references, not additional OpenSpec requirements or completed tests.
 
-The proposed retry and restore cases F10–F13 depend on durable authorization,
-authenticated recovery state and a qualified sink. The [experimental durable
-publication model](../docs/DURABLE-PUBLICATION.md) and its [traceability](traceability/durable-publication.md)
+The proposed cases F10–F13 depend on durable authorization and authenticated
+recovery state; F10 and F13 also require a qualified deduplicating sink. The
+[experimental durable publication model](../docs/DURABLE-PUBLICATION.md) and its [traceability](traceability/durable-publication.md)
 show partial synthetic checks and explicit gaps; no F10–F13 acceptance case
 is complete.
 
