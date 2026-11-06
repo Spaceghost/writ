@@ -401,14 +401,14 @@ d9424326080aba242eba4367b098dd7f2158b59ddaf731889d7c00c0e47e75ae  docs/superpowe
 7f545d0720662f866a98f4b8c0e39b844a6f6383d9746618649c76150617d3ba  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-brief.md
 588de2b0d3eb7564ed842b6a8730b55e8e0d5d6c1a8ebce1fa8e0a5025e96dc7  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-report.md
 72598787d70bf5e61b6dee6eba49bc38fdbc320457b317c7b9a3a437cedff1aa  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-review.md
-a3a1f0e41257ada82069ab35e762bea80914f401bddb153da45253b2e7680f73  docs/superpowers/records/2026-11-05-linux-host/activity.log
-69171ecb1f63e14cf1731ac4a62da9780c4230378be6a1381eefd6641cb2ff0c  docs/superpowers/records/2026-11-05-linux-host/progress.md
+4ead135887e2d6d0546eb45a09a5d57a07acd825c7038bd4a965538949344d43  docs/superpowers/records/2026-11-05-linux-host/activity.log
+79e352689d4c9aba49ab632029d29c3b7d12b7f20f1737e320ecfbbc1e373e9e  docs/superpowers/records/2026-11-05-linux-host/progress.md
 333303045bef00d486d224396cf5bc22d900946dc2c59ee687977f6d8843867f  docs/superpowers/records/2026-11-05-linux-host/task-1-brief.md
 2ef291256cb8d18430017f6d69f33611b65b52c195e20c20fc272f57ac5576d3  docs/superpowers/records/2026-11-05-linux-host/task-1-report.md
 10b9405a39bd470312d5cf632689e41f8bf47bcd42a72488e73b8bbd43dbfa71  docs/superpowers/records/2026-11-05-linux-host/task-1-rereview.md
 edafdfcf0cf37783fcd2e9ed5df451d64441e422fb8eb7ded8036f14e797bca0  docs/superpowers/records/2026-11-05-linux-host/task-1-review.md
 d8270d21c01cfcde49aae64d6f1f98410199d1736ba8684839996695fde5c711  docs/superpowers/records/2026-11-05-linux-host/task-2-brief.md
-9b59eb37898009e504243fb2d360d678b55a9ffd5b01888faf2d5532caed87a7  docs/superpowers/records/2026-11-05-linux-host/task-2-synthetic-report.md
+f077f64f1d040f98376260f994a31e7353c6111225dcc31508e6a7fd3afe793e  docs/superpowers/records/2026-11-05-linux-host/task-2-synthetic-report.md
 ec62ee4d7ef2a50e5efe638448ca9060415e73cd49bc61a298766a6fe092d18a  docs/superpowers/records/2026-11-05-physical-gpu/activity.log
 59b8a7d4866112e695bee8e3b8d3a0bcc2cf6fd84b59c4c3ffa97fda19fdba1d  docs/superpowers/records/2026-11-05-physical-gpu/final-rereview.md
 e6f2d8216246a32d4276d2ed569177f407943a64834fceaf4fe6060b452b826a  docs/superpowers/records/2026-11-05-physical-gpu/final-review.md

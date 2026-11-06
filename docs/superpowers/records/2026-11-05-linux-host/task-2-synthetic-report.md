@@ -61,5 +61,6 @@ OpenSpec strict validation passes 44/44. In a host QuickJS verbose run, all
 within 45 seconds. An unchanged baseline also timed out at the same point;
 the full host QuickJS run is incomplete, not a pass. The full generated
 native CPU suite compiled with Clang `-O0` passes with output identical to
-Bend; the optimized native build remains running. These results are for this older Linux lane and do not establish GPU execution
+Bend. The optimized native CPU build also passes with byte-identical output.
+These results are for this older Linux lane and do not establish GPU execution
 or a current-master integration result.
