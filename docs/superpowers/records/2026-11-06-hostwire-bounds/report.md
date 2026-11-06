@@ -23,5 +23,5 @@ Before the fix, both isolated Node probes exited 1 with `bend: memory fault
 `310404ca9024b3895fad05d73bfc2f3e159673c3844de2eb0b01266a8236e427`). The
 host QuickJS harness passes 1947 checks, 17049 ticks and no exception. Existing
 `bend PROOF.bend` checks pass; no Lean kernel verdict or new proof law is
-claimed. OpenSpec strict passes 44/44. Full optimized native CPU verification
-is running; the 1947-check Genode guest and Nix builds remain unrecorded.
+claimed. OpenSpec strict passes 44/44. The full optimized native CPU suite also passes with identical output; the
+1947-check Genode guest and Nix builds remain unrecorded.

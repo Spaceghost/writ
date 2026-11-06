@@ -19,7 +19,7 @@ The historical 1942-check records below predate five HostWire input-bound and er
 regressions. The current 1947-check suite passes in Bend and Node with
 byte-identical output (SHA-256
 `310404ca9024b3895fad05d73bfc2f3e159673c3844de2eb0b01266a8236e427`) and
-in the host QuickJS harness. The current native CPU build is running; Genode
+in the host QuickJS harness. The optimized native CPU suite also passes with identical output; Genode
 guest and Nix checks have not been recorded for this revision.
 
 The historical combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
