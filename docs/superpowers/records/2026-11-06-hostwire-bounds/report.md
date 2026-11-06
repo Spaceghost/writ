@@ -23,5 +23,19 @@ Before the fix, both isolated Node probes exited 1 with `bend: memory fault
 `310404ca9024b3895fad05d73bfc2f3e159673c3844de2eb0b01266a8236e427`). The
 host QuickJS harness passes 1947 checks, 17049 ticks and no exception. Existing
 `bend PROOF.bend` checks pass; no Lean kernel verdict or new proof law is
-claimed. OpenSpec strict passes 44/44. The full optimized native CPU suite also passes with identical output; the
-1947-check Genode guest and Nix builds remain unrecorded.
+claimed. OpenSpec strict passes 44/44. The full optimized native CPU suite also passes with identical output. The
+1947-check Nix build remains unrecorded.
+
+## Genode CI evidence
+
+[Run 42308258031](https://github.com/Spaceghost/writ/actions/runs/42308258031)
+executed source commit `b75382c` in a Genode base-hw x86-64 QEMU guest and
+passed the 1,947-check core corpus and 69-check mount corpus. The run also
+passed the native File_system and libc VFS mount probes. Its retained
+[environment](../../../../contrib/native-hosts/genode/evidence/42308258031-environment.log),
+[source/build hashes](../../../../contrib/native-hosts/genode/evidence/42308258031-source-and-build.sha256),
+[core and mount log](../../../../contrib/native-hosts/genode/evidence/corpus-42308258031.log),
+[filesystem log](../../../../contrib/native-hosts/genode/evidence/filesystem-42308258031.log),
+and [VFS log](../../../../contrib/native-hosts/genode/evidence/vfs-42308258031.log)
+preserve the actual output. The guest run validates that exact earlier source
+commit, not any later combined tree, GPU execution, or protected-host profile.

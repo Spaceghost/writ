@@ -20,7 +20,9 @@ regressions. The current 1947-check suite passes in Bend and Node with
 byte-identical output (SHA-256
 `310404ca9024b3895fad05d73bfc2f3e159673c3844de2eb0b01266a8236e427`) and
 in the host QuickJS harness. The optimized native CPU suite also passes with identical output; Genode
-guest and Nix checks have not been recorded for this revision.
+guest evidence is recorded for source commit `b75382c` in the
+[HostWire bounds report](docs/superpowers/records/2026-11-06-hostwire-bounds/report.md);
+the Nix check remains unrecorded.
 
 The historical combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
 the emitted JavaScript backend under Node and a native Bend executable using

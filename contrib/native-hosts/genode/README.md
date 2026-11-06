@@ -147,7 +147,7 @@ run; existing extracted input trees are developer build caches.
 
 The required core assertion count is an explicit, reviewed build input. The
 workflow pins it to 1947 for the current source. The 1947-check guest run
-has not yet been recorded. The native probe requires
+for source `b75382c` is retained in the [HostWire bounds record](../../../docs/superpowers/records/2026-11-06-hostwire-bounds/report.md). The native probe requires
 that exact number of successful assertions, the complete corpus summary, and a
 single successful exit; it does not infer success from whatever output appears.
 
