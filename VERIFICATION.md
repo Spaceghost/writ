@@ -4,7 +4,7 @@ Core regression rerun on 2026-11-04 using **Bend 2.0.39**, Linux x86_64, and
 **clang 19.1.1**. Earlier example/platform evidence is scoped below. The
 HostBinding records also include the 2026-11-03 review wave and 2026-11-04
 binding-gap fixes with Bend 2.0.39, **clang 23.1.1**, and Node v26.10.0.
-The core and examples contain 47 authored `.bend` files (34 originally verified,
+That recorded core and examples snapshot contained 47 authored `.bend` files (34 originally verified,
 plus `HostBinding.bend`, `HostBindingTests.bend`, `Issuance.bend`,
 `IssuanceTests.bend`, and the nine portable-host-contract files). Their implementation,
 test drivers, and proof declarations are Bend 2. The optional rclone contribution
@@ -14,6 +14,18 @@ Inventoried C/C++ bindings and small JavaScript runtime harnesses remain under
 contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
+
+This experimental integration combines `origin/master` 9c08eb9 (Linux model
+and HostWire bounds) with durable-publication dd18cb0. The combined suite
+passes 2,285 checks in Bend and generated Node with byte-identical output
+(SHA-256 `bac0e2b581c8f4ad7eae2812e34177cbe97f35ed3f87e2d352da119aaa19f67a`);
+the host QuickJS harness reports 2,285 checks, 20,715 ticks and no exception.
+The existing ordinary proof check and strict OpenSpec 44/44 pass. The offline
+Nix JavaScript check with the current pin also passes; Nix native and the full
+flake check have not been rerun. Full optimized native CPU verification is
+running. The current 2,285-check tree has not been run in Genode or on a GPU;
+the 2,065-check evidence below remains historical. Durable storage, audit append, rollback witness, qualified
+sink and host recovery remain unimplemented, and no acceptance task is closed.
 
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the

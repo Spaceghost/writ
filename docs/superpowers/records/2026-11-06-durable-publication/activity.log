@@ -1,0 +1,23 @@
+2026-11-06T08:15:03Z	controller	Interface and threat-model review recorded; preparation-only Bend slice added; full tests and native build running.
+2026-11-06T08:22:37Z	controller	Added exact intent comparison and 22 synthetic substitution checks; nine selected comparator-removal mutants fail; full Bend suite and proofs pass, final native CPU build running.
+2026-11-06T08:45:07Z	controller	Pure journal prototype passes focused stale, replay, revocation, scope substitution and malformed-state checks; no storage, witness, sink or delivery exists. Native CPU verification pending for this revision.
+2026-11-06T08:51:11Z	controller	Bounded journal model and 64 focused checks integrated; full suite, existing proofs, OpenSpec and host QuickJS pass; final native CPU build running.
+2026-11-06T08:54:45Z	controller	Documented storage, rollback anchor and receiver crash ordering; no native primitive or witness is yet selected or qualified.
+2026-11-06T08:59:34Z	controller	Pinned full host-intent preservation with a killing mutant; 2007 Bend and host QuickJS checks pass; native rebuild running.
+2026-11-06T09:05:26Z	controller	Added DP-001–008 traceability with named model tests and explicit native/storage/witness/sink gaps; strict OpenSpec 44/44.
+2026-11-06T09:09:01Z	controller	Native CPU and Bend output match byte-for-byte at 2007 checks; tampering probe confirms authenticated recovery state remains a precondition.
+2026-11-06T16:38:58Z	controller	Started bounded versioned encoding of the committed journal entry; authentication, storage and decoding remain separate work.
+2026-11-06T17:00:22Z	controller	Bounded entry encoding: 72 checks; full Bend/Node 2079 pass, host QuickJS 17676 ticks; native CPU build running; decode and authentication remain open.
+2026-11-06T17:19:40Z	controller	Word-level decoder and resource guards: 2129 Bend/Node checks pass, QuickJS 17694 ticks, OpenSpec 44/44; native CPU rebuild running.
+2026-11-06T17:30:49Z	controller	Experimental entry byte mapping: 2149 Bend/Node and host QuickJS checks pass; proof and OpenSpec checks pass; native CPU rebuild running; transaction, authentication and recovery remain open.
+2026-11-06T17:39:02Z	controller	Current byte revision: full generated native CPU suite compiled with Clang -O0 passes with output identical to Bend; optimized build continues.
+2026-11-06T18:36:51Z	controller	Lost-ack simulation blocks another authorization; 2157 Bend/Node/host QuickJS checks and focused native CPU pass, two selected mutants fail; full native rebuild running.
+2026-11-06T18:45:03Z	controller	Lost-ack revision: full generated native CPU suite compiled with Clang -O0 passes with output identical to Bend; optimized build continues.
+2026-11-06T18:56:02Z	controller	Separate-agent lookup, witness and model reviews recorded; optimized prior native suite passed with matching output; model comment clarified with implementation tokens unchanged.
+2026-11-06T21:48:19Z	controller	Added synthetic pending-rollback gap probe; Bend/Node match and a selected probe mutation fails. Corrected byte-codec header with implementation tokens unchanged.
+2026-11-06T22:39:32Z	controller	Added three byte-position range regressions after individual guard-removal mutants survived; all four selected mutants killed; 2160 Bend/Node/QuickJS pass, focused native CPU pass, full native build running.
+2026-11-06T22:47:34Z	controller	Full optimized native CPU suite passes 2160 checks after byte guard coverage changes; output matches Bend exactly.
+2026-11-06T22:54:00Z	controller	Added durable word-decoder long-suffix bound regression; List.length mutant escaped old Node tests and fails new one. Bend/Node/QuickJS 2161 pass; native rebuild running.
+2026-11-06T23:02:16Z	controller	Added complete-entry maximum-Nat roundtrip; 13 selected high-bit truncation mutants killed; 2162 Bend/Node/QuickJS pass, focused native CPU pass, full native build running.
+2026-11-06T23:12:00Z	controller	Full optimized native CPU suite passes 2162 checks after maximum-Nat roundtrip; output matches Bend exactly.
+2026-11-06T23:19:08Z	controller	Recorded design-only audit integration mapping: one final host decision, policy influences, atomic required append and crash/unknown gaps; no task closed.

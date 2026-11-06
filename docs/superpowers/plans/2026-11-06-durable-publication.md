@@ -156,9 +156,10 @@ check a combined OpenSpec box for a model-only result.
 
 - The confined worker and native storage/sink needed for end-to-end evidence
   are not qualified here; no platform is selected by this plan.
-- Linux identity evidence is separately awaiting the decision on board question
-  q19. No answer to that question or to Spaceghost's broader questions is
-  assumed here.
+- Board question q19 selected synthetic monitor-side Linux identity cases;
+  those model checks are recorded in the [Linux synthetic report](../records/2026-11-05-linux-host/task-2-synthetic-report.md).
+  Native Linux identity and confinement evidence remain open. No answer to
+  Spaceghost's broader questions is assumed here.
 - The atomic transaction, witness and sink protocols must be chosen and reviewed
   before implementation claims their guarantees. If a host cannot provide one,
   record the gap and refuse the unsupported profile.

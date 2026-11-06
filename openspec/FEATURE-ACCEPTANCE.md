@@ -24,6 +24,12 @@ observable behavior to its complete normative contract and unchecked task list.
 These integration cases supplement the normative scenarios. Their identifiers are
 review references, not additional OpenSpec requirements or completed tests.
 
+The proposed retry and restore cases F10–F13 depend on durable authorization,
+authenticated recovery state and a qualified sink. The [experimental durable
+publication model](../docs/DURABLE-PUBLICATION.md) and its [traceability](traceability/durable-publication.md)
+show partial synthetic checks and explicit gaps; no F10–F13 acceptance case
+is complete.
+
 | Case | Setup and action | Required result |
 | --- | --- | --- |
 | F01 — Browse | An indexer traverses a mount containing a deferred view and hidden objects | It neither executes the view nor reveals hidden names, counts, tokens, or job status |

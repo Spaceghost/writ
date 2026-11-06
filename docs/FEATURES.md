@@ -53,6 +53,12 @@ tasks naming the evidence needed to complete it. The
 [acceptance index](../openspec/FEATURE-ACCEPTANCE.md) connects the contracts into
 whole-operation checks.
 
+For the retry and recovery example, the experimental [durable publication
+entry model](DURABLE-PUBLICATION.md) describes a single exact intent and its
+limits. It does not yet provide authenticated storage, a current rollback
+witness, sink deduplication or crash-tested recovery; the acceptance index's
+retry and restore cases remain open.
+
 ## What the mount looks like
 
 These are illustrative paths, not a committed wire format or executable CLI.
