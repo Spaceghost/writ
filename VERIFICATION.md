@@ -15,7 +15,14 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
-The final combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
+The historical 1942-check records below predate five HostWire input-bound and error-order
+regressions. The current 1947-check suite passes in Bend and Node with
+byte-identical output (SHA-256
+`310404ca9024b3895fad05d73bfc2f3e159673c3844de2eb0b01266a8236e427`) and
+in the host QuickJS harness. The current native CPU build is running; Genode
+guest and Nix checks have not been recorded for this revision.
+
+The historical combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
 the emitted JavaScript backend under Node and a native Bend executable using
 four CPU threads with GPU execution explicitly disabled. After integrating
 master 58cdbfa4's final binding fixes, the native-host work reran all 782 checks
@@ -573,7 +580,7 @@ bounded handles and supervisor revocation.
 
 The [execution record](contrib/native-hosts/VERIFICATION.md) captures 69 mount
 vectors plus a count-consistency check: 70 PASS lines on each local backend.
-The integrated core passes 1942 checks, 41 HostBinding vectors and 37
+The historical core record covers 1942 checks, 41 HostBinding vectors and 37
 portable-host vector lines on both CPU backends; all thirty-six ordinary laws pass. Linux native CI passes its actual mounts, fixed
 worker probes, revocation, interpreter/broker failure and owned cleanup.
 Genode clean CI passes the 782-core and 69-mount corpus, 24 allocator checks

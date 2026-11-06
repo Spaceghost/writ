@@ -111,8 +111,10 @@ See the [backend guide](writfs/README.md) and its
 ## Status
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
-The recorded suite passes **1942 checks on each of the JavaScript and native CPU
-backends**. Physical GPU execution and independent Lean kernel verification have
+The historical suite recorded **1942 checks on each of the JavaScript and native
+CPU backends**. The current suite includes five additional HostWire bounds and error-order
+checks; see the verification record for backend results. Physical GPU execution
+and independent Lean kernel verification have
 not been established.
 
 This is an executable security library and protocol model. Real POSIX devices,
