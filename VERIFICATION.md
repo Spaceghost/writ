@@ -17,8 +17,8 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 This experimental integration combines `origin/master` 9c08eb9 (Linux model
 and HostWire bounds) with durable-publication dd18cb0, then incorporates the
-Windows failure evidence-only master commit 1fcd29a and durable a78d71b's
-comment-only resource preconditions plus a standalone failed probe. The
+Windows failure evidence-only master commits 1fcd29a and 1646a8d, and durable
+a78d71b's comment-only resource preconditions plus a standalone failed probe. The
 combined suite passes 2,285 checks in Bend and generated Node with byte-identical output
 (SHA-256 `bac0e2b581c8f4ad7eae2812e34177cbe97f35ed3f87e2d352da119aaa19f67a`);
 the host QuickJS harness reports 2,285 checks, 20,715 ticks and no exception.
@@ -664,3 +664,8 @@ Bend Linux x64 2.0.39 archive had SHA-256:
 `verification/source-sha256.txt` binds the final authored source and documentation
 to this test record. Native binaries, upstream toolchains, generated C/JavaScript,
 and unrelated prototypes are excluded from the repository.
+
+The evidence-only follow-up Windows CI [run 42311706534](verification/windows-native-rerun-42311706534/README.md)
+repeated the strict LPAC failure on source `1fcd29a`; its byte-worker probes
+remain incomplete and receive no confinement credit. The separate diagnostic
+passed and does not qualify the protected worker.

@@ -9,9 +9,9 @@ model result cannot authorize real publication or qualify the Linux host.
 This is an **isolated integration preview**, not a landed change or acceptance
 claim. It combines master `9c08eb93b86a6025d3b254551557e394f7685f7c` with
 `lane/durable-publication` `dd18cb0657a2c030be7b258082683e19f837c85e`, then
-incorporates master `1fcd29a`, which only preserves failed Windows native CI
-evidence, and durable `a78d71b`, which adds comparison-bound comments and a
-standalone failing resource probe. The original worktrees and branches were not
+incorporates master `1fcd29a` and `1646a8d`, which preserve two failed Windows
+native CI runs, and durable `a78d71b`, which adds comparison-bound comments
+and a standalone failing resource probe. The original worktrees and branches were not
 modified. The Windows run remains failed/partial as its own record states; no new Windows result is
 implied. Independent security review remains outstanding, and the task-order
 review gates in the [durable plan](../../plans/2026-11-06-durable-publication.md)
