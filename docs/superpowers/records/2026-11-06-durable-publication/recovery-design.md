@@ -131,4 +131,6 @@ the eight new checks also pass as a native CPU executable. Removing the
 unknown-state block or replacing a lost acknowledgement with a fresh state
 causes named checks to fail. This samples two mutations, not a security review
 or proof. Existing proof checks pass without a Lean kernel verdict, and
-OpenSpec strict passes 44/44. The complete native CPU rebuild is running.
+OpenSpec strict passes 44/44. The complete generated native CPU suite also
+passes with byte-identical output using Clang `-O0`. The optimized native CPU
+build is still running; neither CPU run is a GPU or Genode guest test.

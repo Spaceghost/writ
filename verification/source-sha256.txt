@@ -576,10 +576,10 @@ ff3be33f6ca00179cfe6f52c921527482d119f10b3576a94ef99adb18d7739e2  docs/superpowe
 e14076ad20573905cce011cc11efbfbaec21b5050bf607cf0e05695158ea0ba4  docs/superpowers/records/2026-11-05-unikraft-lanes/task-2-report.md
 57bb4d646fa174b4af02e933170df5350c69396af6d2f7c3d91f1e1539a71b1f  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-brief.md
 ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-report.md
-9372f1e243642bce4e79d27d57357f77ebfd6203ef8eb0644d606ce165c2e31a  docs/superpowers/records/2026-11-06-durable-publication/activity.log
+bc78833bd8db911014d514fca8f70b6f012736e7735793749c5403da18842fd8  docs/superpowers/records/2026-11-06-durable-publication/activity.log
 7aeec3be0d003a3587b3c9d2ce4a0c57da76eb7c91232d7ea5753b92f70ed0d4  docs/superpowers/records/2026-11-06-durable-publication/interface-review.md
-76e820e707f648e4076c13b2d5af6a76d43f46ac5755f301e50a533d959c839c  docs/superpowers/records/2026-11-06-durable-publication/progress.md
-ed139f4e03a9d55c0b17f94d9faae09bf4b27ce29c41a55183b5a83f4a598c21  docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md
+d472edf069ea3f9d925364a9b32267ae1386abda24519c81133b60d9ba3c37ab  docs/superpowers/records/2026-11-06-durable-publication/progress.md
+3140682bfdc92e860224b3982ff9d597cff46e7b7a17b11119c7c684447219b6  docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md
 3cc8d071a5c18ff01d9fb82d406660ff8c330bfd91f356b9f4bb4e275215880b  docs/superpowers/records/2026-11-06-durable-publication/task-2-report.md
 d2ff0504f4383292c7e2265a3722ecebb972828b989433c469f6aa341115b522  docs/superpowers/records/2026-11-06-durable-publication/task-3-encoding-report.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
