@@ -30,6 +30,12 @@ import ./HostPublication.bend as HPub
 # and that the returned state equals the supplied one, field by field,
 # through `denied`.
 #
+# Each check builds the stages of its scenario once (`trial_world()` in
+# Sections 1.3 to 1.5, `sc_world()` in Section 2.1) and reads them from that
+# world, because the Genode QuickJS run of the whole corpus has a fixed time
+# budget and neither backend memoizes a zero-argument def, so stage fixtures
+# that rebuilt their prefixes on every call grew exponentially with the chain.
+#
 # Every fixture here is a SYNTHETIC AUTHORITY RECORD and SYNTHETIC MONITOR
 # STATE, not an authenticated issuer. Provider grants are built through
 # Issuance's public entry points (`submit_source`, `submit_write`,
@@ -1492,6 +1498,132 @@ def selection() -> IO(Unit):
     selection_races()
     selection_withdrawals()
 
+# --- Host and trial-step fixtures (Sections 1.3 to 1.5) ---------------------
+
+# Host fixtures: SYNTHETIC MONITOR STATE built through HostPrimitives'
+# public `open_session` on host 61, incarnation 57, with configured
+# profiles 1 and 2. The callers stand in for authenticated native
+# evidence. Sessions are bound in this order, so HostIdentity allocates
+# these ids (6 and 7 stay clear of profile ids 1 and 2, approval ids 1, 2
+# and 4, and selection ids 2 to 5):
+#   1 A's delegable client session    2 A's non-delegable client session
+#   3 C's worker at profile 1         4 A's worker at profile 2
+#   5 B's worker at profile 2         6 A's worker at profile 1
+#   7 B's worker at profile 1
+def host_id() -> Nat:
+  61n
+
+def host_incarnation() -> Nat:
+  57n
+
+def token_c() -> T.CodeId:
+  T.CodeId{9, 9, 9, 9, 9, 9, 2, 3}
+
+def caller_a() -> F.Caller:
+  F.Caller{201n, token_a()}
+
+def caller_b() -> F.Caller:
+  F.Caller{202n, token_b()}
+
+def caller_c() -> F.Caller:
+  F.Caller{203n, token_c()}
+
+def host_profiles() -> HP.Profiles:
+  HP.Profiles{HP.Configured{HP.Profile{profile(), HP.family_worker(), HP.control_address_isolation(), HP.Cpu{}}, 64n},
+  HP.Profiles{HP.Configured{HP.Profile{2n, HP.family_worker(), HP.control_quota(), HP.Cpu{}}, 48n}, HP.NoProfiles{}}}
+
+def host_report() -> HP.TargetReport:
+  HP.TargetReport{HP.all_families(), HP.no_controls()}
+
+def bind_on(+host: HP.State, caller: F.Caller, delegable: Bool, role: HP.Role) -> HP.State:
+  HP.Step.state(HP.open_session(host, HP.revision(host), host_report(),
+    HP.SessionEvidence{caller, HI.Authenticated{}, delegable}, role))
+
+# The same seven bindings on host 61 in incarnation `incarnation`.
+def host_at(incarnation: Nat) -> HP.State:
+  bind_on(bind_on(bind_on(bind_on(bind_on(bind_on(bind_on(
+    HP.empty(HI.empty(host_id(), incarnation), host_profiles()),
+    caller_a(), True{}, HP.ClientRole{True{}}),
+    caller_a(), False{}, HP.ClientRole{False{}}),
+    caller_c(), False{}, HP.WorkerRole{profile()}),
+    caller_a(), False{}, HP.WorkerRole{2n}),
+    caller_b(), False{}, HP.WorkerRole{2n}),
+    caller_a(), False{}, HP.WorkerRole{profile()}),
+    caller_b(), False{}, HP.WorkerRole{profile()})
+
+def host() -> HP.State:
+  host_at(host_incarnation())
+
+def worker_a() -> Nat:
+  6n
+
+def worker_b() -> Nat:
+  7n
+
+# A's trial session advanced through approve (3), reserve (4, receipt 11,
+# a fresh ledger) and start (5) on `context`, through Negotiation's entry
+# points: Running at revision 6.
+def reserved_on(+sampled: N.Session, +context: N.Context) -> N.ReservationStep:
+  N.reserve(N.Step.session(N.approve(sampled, 3n, context)), 4n, 0n, 11n, context, NT.initial_ledger())
+
+def running_on(+sampled: N.Session, +context: N.Context) -> N.Session:
+  +reserved = reserved_on(sampled, context)
+  N.Step.session(N.start(N.ReservationStep.session(reserved), 5n, context, N.ReservationStep.ledger(reserved)))
+
+def offer_id_ta() -> R.OfferId:
+  R.OfferId{201n, 4n}
+
+def offer_id_tb() -> R.OfferId:
+  R.OfferId{202n, 5n}
+
+# --- Stage handles ----------------------------------------------------------
+
+# A stage value a fixture world keeps: a transition's Change or Step. The
+# native backend unboxes a record or a non-recursive sum into one word per
+# field, so a Change (its whole R.State inline) is 85 words, and a world
+# holding several of them, or a def holding such a world beside the states it
+# reads, would exceed the 247-word function-arity limit. A recursive type is
+# never unboxed, so `Rekept`, which no fixture builds, makes `Kept` one
+# word. `Kept.value` reads the value back; it is total, and a `Kept` built
+# by `keep_*` is always `Kept{value}`.
+type Kept<a, -A: Kind(a)> is Kind(a):
+  Kept{value: A}
+  Rekept{inner: Kept<a, A>}
+
+def Kept.value(a, -A: Kind(a), k: Kept<a, A>) -> A:
+  match k:
+    case Kept{value}:
+      value
+    case Rekept{inner}:
+      Kept.value(a, A, inner)
+
+def keep_change(+change: R.Change) -> Kept<&2, R.Change>:
+  Kept{change}
+
+def keep_step(+step: N.Step) -> Kept<&2, N.Step>:
+  Kept{step}
+
+def keep_reservation(+step: N.ReservationStep) -> Kept<&2, N.ReservationStep>:
+  Kept{step}
+
+def kept_change(+kept: Kept<&2, R.Change>) -> R.Change:
+  Kept.value(&2, R.Change, kept)
+
+def kept_state(+kept: Kept<&2, R.Change>) -> R.State:
+  R.Change.state(kept_change(kept))
+
+def kept_session(+kept: Kept<&2, N.Step>) -> N.Session:
+  N.Step.session(Kept.value(&2, N.Step, kept))
+
+def kept_reservation(+kept: Kept<&2, N.ReservationStep>) -> N.ReservationStep:
+  Kept.value(&2, N.ReservationStep, kept)
+
+def keep_context(+context: N.Context) -> Kept<&2, N.Context>:
+  Kept{context}
+
+def kept_context(+kept: Kept<&2, N.Context>) -> N.Context:
+  Kept.value(&2, N.Context, kept)
+
 # --- Section 1.3: trial evidence and the Negotiation projection (ER-004 to ER-006)
 
 # Trial fixtures. Every field carries its own value. A's trial offer is
@@ -1521,13 +1653,6 @@ def offer_tb() -> R.Offer:
 # Revision 4, no selection.
 def trial_offers() -> R.State:
   put_offer(put_offer(trial_approved(), provider_a(), offer_ta()), provider_b(), offer_tb())
-
-def trial_select() -> R.Change:
-  R.select(trial_offers(), 4n, NT.pinned(), 1n, NT.context(103n), snapshot_with(issuer(), 103n))
-
-# Selection 3 of A's trial offer at 103, revision 5.
-def selected_t() -> R.State:
-  R.Change.state(trial_select())
 
 def trial_snapshot() -> R.Snapshot:
   snapshot_with(issuer(), 110n)
@@ -1588,19 +1713,6 @@ def trial_raw() -> N.Context:
 def proj_on(+state: R.State) -> N.Context:
   R.negotiation_context(state, trial_raw(), trial_snapshot())
 
-def proj0() -> N.Context:
-  proj_on(selected_t())
-
-# The negotiation session after N.challenge with 21 on the projection.
-def challenged_t() -> N.Session:
-  N.Step.session(N.challenge(NT.pinned(), 1n, 21n, proj0()))
-
-# A session for `request`, pinned at 100 and challenged with 21 on the
-# projection, through Negotiation's entry points.
-def challenged_for(request: N.Request) -> N.Session:
-  N.Step.session(N.challenge(N.Step.session(N.pin(N.open(request), 0n, TF.code(), NT.context(100n))),
-    1n, 21n, proj0()))
-
 # SYNTHETIC MONITOR STATE: a session at Challenged with challenge `id`,
 # otherwise as challenged_t(), as a host that skipped the projection might
 # hold it.
@@ -1620,25 +1732,115 @@ def good_evidence() -> R.Evidence:
 def submit_t(+state: R.State, +from: I.Principal, +evidence: R.Evidence, +session: N.Session) -> R.Change:
   R.submit_evidence(state, R.revision(state), from, evidence, session, trial_raw(), trial_snapshot())
 
-def submit_a(+evidence: R.Evidence, +session: N.Session) -> R.Change:
-  submit_t(selected_t(), provider_a(), evidence, session)
+# The trial world, built once per check (`trial_world()`; see "Scenario
+# worlds" in Section 2.1 for why). `Tw` holds, behind `Kept` handles:
+# selection 3 of A's trial offer at 103 (revision 5) and its projection at
+# 110 (proj0); the session challenged with 21 on it; A's evidence (revision
+# 6) and the projection after it (proj1); the session sampled with 31,
+# then approved (3), reserved (4, receipt 11, a fresh ledger) and started
+# (5) on proj1, Running at revision 6; and the dispatch of selection 3 to
+# A's worker session 6 (revision 7). Check K of a group G is the def
+# `G_K(tw)`, called on a fresh `trial_world()`; a def `G_K_J` is conjunct J
+# of that check, as the native-arity notes below describe.
+type Tw is Data:
+  Tw{select: Kept<&2, R.Change>, proj0: Kept<&2, N.Context>, challenge: Kept<&2, N.Step>,
+    evidence: Kept<&2, R.Change>, proj1: Kept<&2, N.Context>, sample: Kept<&2, N.Step>,
+    reservation: Kept<&2, N.ReservationStep>, start: Kept<&2, N.Step>, dispatch: Kept<&2, R.Change>}
 
-def evidence_change() -> R.Change:
-  submit_a(good_evidence(), challenged_t())
+def trial_world_on(+select: Kept<&2, R.Change>, +p0: Kept<&2, N.Context>, +challenge: Kept<&2, N.Step>,
+    +evidence: Kept<&2, R.Change>, +p1: Kept<&2, N.Context>) -> Tw:
+  +sample = keep_step(N.sample(kept_session(challenge), 2n, 31n, kept_context(p1)))
+  +reservation = keep_reservation(reserved_on(kept_session(sample), kept_context(p1)))
+  +start = keep_step(N.start(N.ReservationStep.session(kept_reservation(reservation)), 5n, kept_context(p1),
+    N.ReservationStep.ledger(kept_reservation(reservation))))
+  Tw{select, p0, challenge, evidence, p1, sample, reservation, start,
+    keep_change(R.dispatch(kept_state(evidence), R.revision(kept_state(evidence)), offer_id_ta(), host(),
+      HP.revision(host()), worker_a(), kept_session(start), 6n, kept_context(p1), trial_snapshot()))}
+
+def trial_world() -> Tw:
+  +select = keep_change(R.select(trial_offers(), 4n, NT.pinned(), 1n, NT.context(103n), snapshot_with(issuer(), 103n)))
+  +p0 = keep_context(proj_on(kept_state(select)))
+  +challenge = keep_step(N.challenge(NT.pinned(), 1n, 21n, kept_context(p0)))
+  +evidence = keep_change(submit_t(kept_state(select), provider_a(), good_evidence(), kept_session(challenge)))
+  trial_world_on(select, p0, challenge, evidence, keep_context(proj_on(kept_state(evidence))))
+
+def trial_select(+tw: Tw) -> R.Change:
+  match tw:
+    case Tw{select, _, _, _, _, _, _, _, _}:
+      kept_change(select)
+
+# Selection 3 of A's trial offer at 103, revision 5.
+def selected_t(+tw: Tw) -> R.State:
+  R.Change.state(trial_select(tw))
+
+def proj0(+tw: Tw) -> N.Context:
+  match tw:
+    case Tw{_, p0, _, _, _, _, _, _, _}:
+      kept_context(p0)
+
+# The negotiation session after N.challenge with 21 on the projection.
+def challenged_t(+tw: Tw) -> N.Session:
+  match tw:
+    case Tw{_, _, challenge, _, _, _, _, _, _}:
+      kept_session(challenge)
+
+def evidence_change(+tw: Tw) -> R.Change:
+  match tw:
+    case Tw{_, _, _, evidence, _, _, _, _, _}:
+      kept_change(evidence)
 
 # Revision 6, A's evidence stored under selection 3.
-def evidenced() -> R.State:
-  R.Change.state(evidence_change())
+def evidenced(+tw: Tw) -> R.State:
+  R.Change.state(evidence_change(tw))
 
-def proj1() -> N.Context:
-  proj_on(evidenced())
+def proj1(+tw: Tw) -> N.Context:
+  match tw:
+    case Tw{_, _, _, _, p1, _, _, _, _}:
+      kept_context(p1)
 
-def sampled_t() -> N.Session:
-  N.Step.session(N.sample(challenged_t(), 2n, 31n, proj1()))
+def sampled_t(+tw: Tw) -> N.Session:
+  match tw:
+    case Tw{_, _, _, _, _, sample, _, _, _}:
+      kept_session(sample)
+
+def reservation_t(+tw: Tw) -> N.ReservationStep:
+  match tw:
+    case Tw{_, _, _, _, _, _, reservation, _, _}:
+      kept_reservation(reservation)
+
+def reserved_t(+tw: Tw) -> N.Session:
+  N.ReservationStep.session(reservation_t(tw))
+
+def ledger_t(+tw: Tw) -> L.State:
+  N.ReservationStep.ledger(reservation_t(tw))
+
+def running_t(+tw: Tw) -> N.Session:
+  match tw:
+    case Tw{_, _, _, _, _, _, _, start, _}:
+      kept_session(start)
+
+def dispatch_change(+tw: Tw) -> R.Change:
+  match tw:
+    case Tw{_, _, _, _, _, _, _, _, dispatch}:
+      kept_change(dispatch)
+
+# Revision 7: selection 3 dispatched to A's worker session 6.
+def dispatched_t(+tw: Tw) -> R.State:
+  R.Change.state(dispatch_change(tw))
+
+# A session for `request`, pinned at 100 and challenged with 21 on the
+# projection, through Negotiation's entry points.
+def challenged_for(+tw: Tw, request: N.Request) -> N.Session:
+  N.Step.session(N.challenge(N.Step.session(N.pin(N.open(request), 0n, TF.code(), NT.context(100n))),
+    1n, 21n, proj0(tw)))
+
+
+def submit_a(+tw: Tw, +evidence: R.Evidence, +session: N.Session) -> R.Change:
+  submit_t(selected_t(tw), provider_a(), evidence, session)
 
 # A denial of `evidence` from A on the selected state, with the state kept.
-def trial_denied(+evidence: R.Evidence, +session: N.Session, reason: R.Error) -> Bool:
-  denied(submit_a(evidence, session), selected_t(), reason)
+def trial_denied(+tw: Tw, +evidence: R.Evidence, +session: N.Session, reason: R.Error) -> Bool:
+  denied(submit_a(tw, evidence, session), selected_t(tw), reason)
 
 # SYNTHETIC MONITOR STATE: a state with `selection` installed directly.
 def with_selection(state: R.State, selection: R.Selection) -> R.State:
@@ -1739,65 +1941,113 @@ def post_fixation() -> N.Challenges:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `trial_happy_K_J` is conjunct J of the K-th check of `trial_happy`, counting
 # from 0.
-def trial_happy_0_0() -> Bool:
-  R.Change.accepted(trial_select())
+def trial_happy_0_0(+tw: Tw) -> Bool:
+  R.Change.accepted(trial_select(tw))
 
-def trial_happy_0_1() -> Bool:
-  Nat.is_eq(R.revision(selected_t()), 5n)
+def trial_happy_0_1(+tw: Tw) -> Bool:
+  Nat.is_eq(R.revision(selected_t(tw)), 5n)
 
-def trial_happy_0_2() -> Bool:
-  selection_equal(R.selection(selected_t()), R.Selection{3n, offer_ta(), NT.request(), I.live(issuer()), 103n, 1n})
+def trial_happy_0_2(+tw: Tw) -> Bool:
+  selection_equal(R.selection(selected_t(tw)), R.Selection{3n, offer_ta(), NT.request(), I.live(issuer()), 103n, 1n})
 
-def trial_happy_0_3() -> Bool:
-  R.selection_current(selected_t(), trial_snapshot())
+def trial_happy_0_3(+tw: Tw) -> Bool:
+  R.selection_current(selected_t(tw), trial_snapshot())
 
-def trial_happy_3_0() -> Bool:
-  R.Change.accepted(evidence_change())
+def trial_happy_3_0(+tw: Tw) -> Bool:
+  R.Change.accepted(evidence_change(tw))
 
-def trial_happy_3_1() -> Bool:
-  issued_is(R.Change.issued(evidence_change()), 3n)
+def trial_happy_3_1(+tw: Tw) -> Bool:
+  issued_is(R.Change.issued(evidence_change(tw)), 3n)
 
-def trial_happy_3_2() -> Bool:
-  Nat.is_eq(R.revision(evidenced()), 6n)
+def trial_happy_3_2(+tw: Tw) -> Bool:
+  Nat.is_eq(R.revision(evidenced(tw)), 6n)
 
-def trial_happy_3_3() -> Bool:
-  Nat.is_eq(R.next_id(evidenced()), 4n)
+def trial_happy_3_3(+tw: Tw) -> Bool:
+  Nat.is_eq(R.next_id(evidenced(tw)), 4n)
 
-def trial_happy_3_4() -> Bool:
-  evidence_equal(R.evidence(evidenced()), R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}})
+def trial_happy_3_4(+tw: Tw) -> Bool:
+  evidence_equal(R.evidence(evidenced(tw)), R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}})
 
-def trial_happy_3_5() -> Bool:
-  selection_equal(R.selection(evidenced()), R.selection(selected_t()))
+def trial_happy_3_5(+tw: Tw) -> Bool:
+  selection_equal(R.selection(evidenced(tw)), R.selection(selected_t(tw)))
 
-def trial_happy_3_6() -> Bool:
-  offers_equal(R.offers(evidenced()), R.offers(selected_t()))
+def trial_happy_3_6(+tw: Tw) -> Bool:
+  offers_equal(R.offers(evidenced(tw)), R.offers(selected_t(tw)))
 
-def trial_happy_3_7() -> Bool:
-  approvals_equal(R.approvals(evidenced()), R.approvals(selected_t()))
+def trial_happy_3_7(+tw: Tw) -> Bool:
+  approvals_equal(R.approvals(evidenced(tw)), R.approvals(selected_t(tw)))
 
-def trial_happy_3_8() -> Bool:
-  serials_equal(R.seen(evidenced()), R.seen(selected_t()))
+def trial_happy_3_8(+tw: Tw) -> Bool:
+  serials_equal(R.seen(evidenced(tw)), R.seen(selected_t(tw)))
 
-def trial_happy_3_9() -> Bool:
-  R.valid(evidenced())
+def trial_happy_3_9(+tw: Tw) -> Bool:
+  R.valid(evidenced(tw))
+
+def trial_happy_0(+tw: Tw) -> Bool:
+  trial_happy_0_0(tw) && trial_happy_0_1(tw) && trial_happy_0_2(tw)
+    && trial_happy_0_3(tw)
+
+def trial_happy_1(+tw: Tw) -> Bool:
+  context_is(proj0(tw), a_approvals(113n), post_fixation(), N.NoSamples{}, trial_budgets(), 110n)
+
+def trial_happy_2(+tw: Tw) -> Bool:
+  N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, proj0(tw)))
+    && Nat.is_eq(R.session_challenge(challenged_t(tw)), 21n)
+
+def trial_happy_3(+tw: Tw) -> Bool:
+  trial_happy_3_0(tw) && trial_happy_3_1(tw) && trial_happy_3_2(tw)
+    && trial_happy_3_3(tw) && trial_happy_3_4(tw) && trial_happy_3_5(tw)
+    && trial_happy_3_6(tw) && trial_happy_3_7(tw) && trial_happy_3_8(tw)
+    && trial_happy_3_9(tw)
+
+def trial_happy_4(+tw: Tw) -> Bool:
+  context_is(proj1(tw), a_approvals(113n), post_fixation(), N.Samples{good_sample(), N.NoSamples{}}, trial_budgets(), 110n)
+    && Bool.not(N.Step.accepted(N.sample(challenged_t(tw), 2n, 31n, proj0(tw))))
+    && N.Step.accepted(N.sample(challenged_t(tw), 2n, 31n, proj1(tw)))
+
+def trial_happy_5(+tw: Tw) -> Bool:
+  N.Step.accepted(N.approve(sampled_t(tw), 3n, proj1(tw)))
+    && N.ReservationStep.accepted(N.reserve(N.Step.session(N.approve(sampled_t(tw), 3n, proj1(tw))), 4n, 0n, 11n, proj1(tw), NT.initial_ledger()))
 
 # The happy path: the projection, the evidence and Negotiation's stages.
 def trial_happy() -> IO(Unit):
   do IO<Unit>:
-    Test.check(trial_happy_0_0() && trial_happy_0_1() && trial_happy_0_2()
-      && trial_happy_0_3(), "ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110")
-    Test.check(context_is(proj0(), a_approvals(113n), post_fixation(), N.NoSamples{}, trial_budgets(), 110n), "ER-004 the projection for selection 3 carries exactly challenges 21 and 24, no sample, one approval for 10v4 valid until 113 (the offer's end, before approval 130 and grant 150), and the supplied budgets and transfer")
-    Test.check(N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, proj0()))
-      && Nat.is_eq(R.session_challenge(challenged_t()), 21n), "ER-004 happy path: N.challenge with 21 advances on the projected context")
-    Test.check(trial_happy_3_0() && trial_happy_3_1() && trial_happy_3_2()
-      && trial_happy_3_3() && trial_happy_3_4() && trial_happy_3_5()
-      && trial_happy_3_6() && trial_happy_3_7() && trial_happy_3_8()
-      && trial_happy_3_9(), "ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed")
-    Test.check(context_is(proj1(), a_approvals(113n), post_fixation(), N.Samples{good_sample(), N.NoSamples{}}, trial_budgets(), 110n)
-      && Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
-      && N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj1())), "ER-005 after the evidence the projection carries exactly sample 31 for challenge 21 and the selected plan; N.sample with 31 is rejected before the evidence and advances after it")
-    Test.check(N.Step.accepted(N.approve(sampled_t(), 3n, proj1()))
-      && N.ReservationStep.accepted(N.reserve(N.Step.session(N.approve(sampled_t(), 3n, proj1())), 4n, 0n, 11n, proj1(), NT.initial_ledger())), "ER-006 happy path: N.approve and then N.reserve advance on the projected context for the selected provider")
+    Test.check(trial_happy_0(trial_world()), "ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110")
+    Test.check(trial_happy_1(trial_world()), "ER-004 the projection for selection 3 carries exactly challenges 21 and 24, no sample, one approval for 10v4 valid until 113 (the offer's end, before approval 130 and grant 150), and the supplied budgets and transfer")
+    Test.check(trial_happy_2(trial_world()), "ER-004 happy path: N.challenge with 21 advances on the projected context")
+    Test.check(trial_happy_3(trial_world()), "ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed")
+    Test.check(trial_happy_4(trial_world()), "ER-005 after the evidence the projection carries exactly sample 31 for challenge 21 and the selected plan; N.sample with 31 is rejected before the evidence and advances after it")
+    Test.check(trial_happy_5(trial_world()), "ER-006 happy path: N.approve and then N.reserve advance on the projected context for the selected provider")
+
+def trial_currency_1(+tw: Tw) -> Bool:
+  denied(submit_t(trial_offers(), provider_a(), good_evidence(), challenged_t(tw)), trial_offers(), R.NotSelected{})
+
+def trial_currency_2(+tw: Tw) -> Bool:
+  denied(R.submit_evidence(selected_t(tw), 5n, provider_a(), good_evidence(), challenged_t(tw), trial_raw(), snapshot_with(epoch_issuer(), 110n)),
+      selected_t(tw), R.StaleEpoch{})
+    && empty_at(R.negotiation_context(selected_t(tw), trial_raw(), snapshot_with(epoch_issuer(), 110n)), trial_budgets(), 110n)
+
+def trial_currency_3(+tw: Tw) -> Bool:
+  denied(R.submit_evidence(selected_t(tw), 5n, provider_a(), good_evidence(), challenged_t(tw), trial_raw(), snapshot_with(revoked_issuer(), 110n)),
+      selected_t(tw), R.Revoked{})
+    && empty_at(R.negotiation_context(selected_t(tw), trial_raw(), snapshot_with(revoked_issuer(), 110n)), trial_budgets(), 110n)
+
+def trial_currency_4(+tw: Tw) -> Bool:
+  denied(submit_t(with_selection(selected_t(tw), sel_t(NT.request(), next_epoch())), provider_a(), good_evidence(), challenged_t(tw)),
+      with_selection(selected_t(tw), sel_t(NT.request(), next_epoch())), R.StaleEpoch{})
+    && R.selection_current(with_selection(selected_t(tw), sel_t(NT.request(), I.live(issuer()))), trial_snapshot())
+
+def trial_currency_5(+tw: Tw) -> Bool:
+  denied(submit_t(with_selection(selected_t(tw), sel_t(N.Request{TF.plan(), 7n, 41n, 30n, 180n}, I.live(issuer()))), provider_a(), good_evidence(), challenged_t(tw)),
+      with_selection(selected_t(tw), sel_t(N.Request{TF.plan(), 7n, 41n, 30n, 180n}, I.live(issuer()))), R.NotSelected{})
+
+def trial_currency_6(+tw: Tw) -> Bool:
+  denied(submit_t(with_offers(selected_t(tw), R.NoOffers{}), provider_a(), good_evidence(), challenged_t(tw)),
+      with_offers(selected_t(tw), R.NoOffers{}), R.NotSelected{})
+    && denied(submit_t(with_offers(selected_t(tw), R.Offers{offer_tb(), R.NoOffers{}}), provider_a(), good_evidence(), challenged_t(tw)),
+      with_offers(selected_t(tw), R.Offers{offer_tb(), R.NoOffers{}}), R.NotSelected{})
+    && denied(submit_t(with_extra_offer(selected_t(tw), offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 37n, 113n)), provider_a(), good_evidence(), challenged_t(tw)),
+      with_extra_offer(selected_t(tw), offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 37n, 113n)), R.NotSelected{})
 
 # Before any selection, and when the selection is not current.
 def trial_currency() -> IO(Unit):
@@ -1806,51 +2056,66 @@ def trial_currency() -> IO(Unit):
       && Bool.not(R.selection_current(trial_offers(), trial_snapshot()))
       && N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, trial_raw()))
       && Bool.not(N.Step.accepted(N.challenge(NT.pinned(), 1n, 21n, proj_on(trial_offers())))), "ER-004 before any selection the projection has no approvals, challenges or samples, so N.challenge with 21 is rejected on it though the raw context admits it")
-    Test.check(denied(submit_t(trial_offers(), provider_a(), good_evidence(), challenged_t()), trial_offers(), R.NotSelected{}), "ER-005 evidence with no selection denied NotSelected")
-    Test.check(denied(R.submit_evidence(selected_t(), 5n, provider_a(), good_evidence(), challenged_t(), trial_raw(), snapshot_with(epoch_issuer(), 110n)),
-        selected_t(), R.StaleEpoch{})
-      && empty_at(R.negotiation_context(selected_t(), trial_raw(), snapshot_with(epoch_issuer(), 110n)), trial_budgets(), 110n), "ER-005 epoch substitution: once the issuer's live stamp advances to epoch 5 the selection is not current; evidence denied StaleEpoch and the projection is empty")
-    Test.check(denied(R.submit_evidence(selected_t(), 5n, provider_a(), good_evidence(), challenged_t(), trial_raw(), snapshot_with(revoked_issuer(), 110n)),
-        selected_t(), R.Revoked{})
-      && empty_at(R.negotiation_context(selected_t(), trial_raw(), snapshot_with(revoked_issuer(), 110n)), trial_budgets(), 110n), "ER-006 once 101 revokes the source approval behind A's grant 3, evidence is denied Revoked and the projection carries no approval, challenge or sample")
-    Test.check(denied(submit_t(with_selection(selected_t(), sel_t(NT.request(), next_epoch())), provider_a(), good_evidence(), challenged_t()),
-        with_selection(selected_t(), sel_t(NT.request(), next_epoch())), R.StaleEpoch{})
-      && R.selection_current(with_selection(selected_t(), sel_t(NT.request(), I.live(issuer()))), trial_snapshot()), "ER-004 a monitor-installed selection recorded at epoch 5 while the issuer and grant are at epoch 3 is not current: StaleEpoch; at the live stamp it is current")
-    Test.check(denied(submit_t(with_selection(selected_t(), sel_t(N.Request{TF.plan(), 7n, 41n, 30n, 180n}, I.live(issuer()))), provider_a(), good_evidence(), challenged_t()),
-        with_selection(selected_t(), sel_t(N.Request{TF.plan(), 7n, 41n, 30n, 180n}, I.live(issuer()))), R.NotSelected{}), "ER-004 a monitor-installed selection made for a request with quote 41 is not current for the rendezvous request: NotSelected")
-    Test.check(denied(submit_t(with_offers(selected_t(), R.NoOffers{}), provider_a(), good_evidence(), challenged_t()),
-        with_offers(selected_t(), R.NoOffers{}), R.NotSelected{})
-      && denied(submit_t(with_offers(selected_t(), R.Offers{offer_tb(), R.NoOffers{}}), provider_a(), good_evidence(), challenged_t()),
-        with_offers(selected_t(), R.Offers{offer_tb(), R.NoOffers{}}), R.NotSelected{})
-      && denied(submit_t(with_extra_offer(selected_t(), offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 37n, 113n)), provider_a(), good_evidence(), challenged_t()),
-        with_extra_offer(selected_t(), offer_with(R.OfferId{201n, 4n}, provider_a(), 3n, TF.plan(), 37n, 113n)), R.NotSelected{}), "ER-004 a selection whose offer record is no longer stored (no records, or only B's), or whose identity also carries a record quoting 37, is not current: NotSelected")
+    Test.check(trial_currency_1(trial_world()), "ER-005 evidence with no selection denied NotSelected")
+    Test.check(trial_currency_2(trial_world()), "ER-005 epoch substitution: once the issuer's live stamp advances to epoch 5 the selection is not current; evidence denied StaleEpoch and the projection is empty")
+    Test.check(trial_currency_3(trial_world()), "ER-006 once 101 revokes the source approval behind A's grant 3, evidence is denied Revoked and the projection carries no approval, challenge or sample")
+    Test.check(trial_currency_4(trial_world()), "ER-004 a monitor-installed selection recorded at epoch 5 while the issuer and grant are at epoch 3 is not current: StaleEpoch; at the live stamp it is current")
+    Test.check(trial_currency_5(trial_world()), "ER-004 a monitor-installed selection made for a request with quote 41 is not current for the rendezvous request: NotSelected")
+    Test.check(trial_currency_6(trial_world()), "ER-004 a selection whose offer record is no longer stored (no records, or only B's), or whose identity also carries a record quoting 37, is not current: NotSelected")
+
+def trial_substitutions_0(+tw: Tw) -> Bool:
+  trial_denied(tw, evidence_with(2n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.code()), challenged_t(tw), R.UnknownVersion{})
+    && trial_denied(tw, evidence_with(1n, 31n, provider_b(), R.OfferId{201n, 4n}, 21n, TF.code()), challenged_t(tw), R.Unauthenticated{})
+
+def trial_substitutions_1(+tw: Tw) -> Bool:
+  trial_denied(tw, evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 9n}, 21n, TF.code()), challenged_t(tw), R.NotSelected{})
+    && trial_denied(tw, evidence_with(1n, 31n, provider_a(), R.OfferId{202n, 5n}, 21n, TF.code()), challenged_t(tw), R.NotSelected{})
+
+def trial_substitutions_2(+tw: Tw) -> Bool:
+  trial_denied(tw, evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.other_code()), challenged_t(tw), R.ScopeMismatch{})
+    && n_samples_equal(R.projected_samples(N.Samples{sample_rec(31n, IT.plan_code(), 21n, nonce_of(1), True{}, 160n), N.NoSamples{}},
+      R.evidence(evidenced(tw)), 3n, offer_ta(), TF.plan()), N.NoSamples{})
+
+def trial_substitutions_3(+tw: Tw) -> Bool:
+  trial_denied(tw, ev_a(31n, 24n), challenged_t(tw), R.WrongTrial{})
+    && trial_denied(tw, ev_a(31n, 23n), session_at(23n), R.WrongTrial{})
+    && trial_denied(tw, ev_a(31n, 29n), session_at(29n), R.WrongTrial{})
+
+def trial_substitutions_4(+tw: Tw) -> Bool:
+  N.Step.accepted(N.challenge(NT.pinned(), 1n, 22n, trial_raw()))
+    && Bool.not(N.Step.accepted(N.challenge(NT.pinned(), 1n, 22n, proj0(tw))))
+    && trial_denied(tw, ev_a(33n, 22n), N.Step.session(N.challenge(NT.pinned(), 1n, 22n, trial_raw())), R.ChallengeBeforeFixation{})
+
+def trial_substitutions_5(+tw: Tw) -> Bool:
+  trial_denied(tw, ev_a(39n, 21n), challenged_t(tw), R.WrongTrial{})
+    && trial_denied(tw, ev_a(32n, 21n), challenged_t(tw), R.WrongTrial{})
+
+def trial_substitutions_6(+tw: Tw) -> Bool:
+  trial_denied(tw, ev_a(34n, 21n), challenged_t(tw), R.WrongTrial{})
+    && trial_denied(tw, ev_a(35n, 21n), challenged_t(tw), R.WrongTrial{})
+    && trial_denied(tw, ev_a(37n, 21n), challenged_t(tw), R.WrongTrial{})
+    && trial_denied(tw, ev_a(38n, 21n), challenged_t(tw), R.WrongTrial{})
+
+def trial_substitutions_7(+tw: Tw) -> Bool:
+  denied(submit_t(evidenced(tw), provider_a(), good_evidence(), challenged_t(tw)), evidenced(tw), R.Replay{})
+
+def trial_substitutions_8(+tw: Tw) -> Bool:
+  denied(R.submit_evidence(selected_t(tw), 4n, provider_a(), good_evidence(), challenged_t(tw), trial_raw(), trial_snapshot()), selected_t(tw), R.StaleRevision{})
+    && trial_denied(tw, good_evidence(), NT.pinned(), R.WrongStage{})
+    && trial_denied(tw, good_evidence(), sampled_t(tw), R.WrongStage{})
 
 # Each field of the evidence substituted, and the session.
 def trial_substitutions() -> IO(Unit):
   do IO<Unit>:
-    Test.check(trial_denied(evidence_with(2n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.code()), challenged_t(), R.UnknownVersion{})
-      && trial_denied(evidence_with(1n, 31n, provider_b(), R.OfferId{201n, 4n}, 21n, TF.code()), challenged_t(), R.Unauthenticated{}), "ER-005 field substitution: version 2 denied UnknownVersion; provider claim B from A denied Unauthenticated")
-    Test.check(trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 9n}, 21n, TF.code()), challenged_t(), R.NotSelected{})
-      && trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{202n, 5n}, 21n, TF.code()), challenged_t(), R.NotSelected{}), "ER-005 offer substitution: A's evidence naming OfferId{201, 9} or B's OfferId{202, 5} denied NotSelected")
-    Test.check(trial_denied(evidence_with(1n, 31n, provider_a(), R.OfferId{201n, 4n}, 21n, TF.other_code()), challenged_t(), R.ScopeMismatch{})
-      && n_samples_equal(R.projected_samples(N.Samples{sample_rec(31n, IT.plan_code(), 21n, nonce_of(1), True{}, 160n), N.NoSamples{}},
-        R.evidence(evidenced()), 3n, offer_ta(), TF.plan()), N.NoSamples{}), "ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31")
-    Test.check(trial_denied(ev_a(31n, 24n), challenged_t(), R.WrongTrial{})
-      && trial_denied(ev_a(31n, 23n), session_at(23n), R.WrongTrial{})
-      && trial_denied(ev_a(31n, 29n), session_at(29n), R.WrongTrial{}), "ER-005 challenge substitution: evidence naming 24 on a session challenged with 21, or a session at 23 (the other plan's challenge) or at the absent 29, denied WrongTrial")
-    Test.check(N.Step.accepted(N.challenge(NT.pinned(), 1n, 22n, trial_raw()))
-      && Bool.not(N.Step.accepted(N.challenge(NT.pinned(), 1n, 22n, proj0())))
-      && trial_denied(ev_a(33n, 22n), N.Step.session(N.challenge(NT.pinned(), 1n, 22n, trial_raw())), R.ChallengeBeforeFixation{}), "ER-004 a challenge issued at 103, the selection's own time: absent from the projection, so N.challenge with 22 is rejected there (the raw context admits it); evidence naming it denied ChallengeBeforeFixation")
-    Test.check(trial_denied(ev_a(39n, 21n), challenged_t(), R.WrongTrial{})
-      && trial_denied(ev_a(32n, 21n), challenged_t(), R.WrongTrial{}), "ER-005 sample substitution: the absent sample 39, or sample 32 for the plan with the other code (another input scope), denied WrongTrial")
-    Test.check(trial_denied(ev_a(34n, 21n), challenged_t(), R.WrongTrial{})
-      && trial_denied(ev_a(35n, 21n), challenged_t(), R.WrongTrial{})
-      && trial_denied(ev_a(37n, 21n), challenged_t(), R.WrongTrial{})
-      && trial_denied(ev_a(38n, 21n), challenged_t(), R.WrongTrial{}), "ER-005 a failed sample (34), one expiring at 110 (35), one carrying challenge 24's nonce (37), or one answering challenge 22 (38) denied WrongTrial")
-    Test.check(denied(submit_t(evidenced(), provider_a(), good_evidence(), challenged_t()), evidenced(), R.Replay{}), "ER-005 a second evidence for selection 3 denied Replay")
-    Test.check(denied(R.submit_evidence(selected_t(), 4n, provider_a(), good_evidence(), challenged_t(), trial_raw(), trial_snapshot()), selected_t(), R.StaleRevision{})
-      && trial_denied(good_evidence(), NT.pinned(), R.WrongStage{})
-      && trial_denied(good_evidence(), sampled_t(), R.WrongStage{}), "ER-005 evidence at revision 4 against 5 denied StaleRevision; a session at CandidateFixed or at Sampled denied WrongStage")
+    Test.check(trial_substitutions_0(trial_world()), "ER-005 field substitution: version 2 denied UnknownVersion; provider claim B from A denied Unauthenticated")
+    Test.check(trial_substitutions_1(trial_world()), "ER-005 offer substitution: A's evidence naming OfferId{201, 9} or B's OfferId{202, 5} denied NotSelected")
+    Test.check(trial_substitutions_2(trial_world()), "ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31")
+    Test.check(trial_substitutions_3(trial_world()), "ER-005 challenge substitution: evidence naming 24 on a session challenged with 21, or a session at 23 (the other plan's challenge) or at the absent 29, denied WrongTrial")
+    Test.check(trial_substitutions_4(trial_world()), "ER-004 a challenge issued at 103, the selection's own time: absent from the projection, so N.challenge with 22 is rejected there (the raw context admits it); evidence naming it denied ChallengeBeforeFixation")
+    Test.check(trial_substitutions_5(trial_world()), "ER-005 sample substitution: the absent sample 39, or sample 32 for the plan with the other code (another input scope), denied WrongTrial")
+    Test.check(trial_substitutions_6(trial_world()), "ER-005 a failed sample (34), one expiring at 110 (35), one carrying challenge 24's nonce (37), or one answering challenge 22 (38) denied WrongTrial")
+    Test.check(trial_substitutions_7(trial_world()), "ER-005 a second evidence for selection 3 denied Replay")
+    Test.check(trial_substitutions_8(trial_world()), "ER-005 evidence at revision 4 against 5 denied StaleRevision; a session at CandidateFixed or at Sampled denied WrongStage")
 
 # Native arity: each check of `trial_helpers` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -1862,11 +2127,14 @@ def trial_substitutions() -> IO(Unit):
 def trial_helpers_2_0() -> Bool:
   Bool.not(R.selected_provider_is(trial_offers(), provider_a()))
 
-def trial_helpers_2_1() -> Bool:
-  R.selected_provider_is(selected_t(), provider_a())
+def trial_helpers_2_1(+tw: Tw) -> Bool:
+  R.selected_provider_is(selected_t(tw), provider_a())
 
-def trial_helpers_2_2() -> Bool:
-  Bool.not(R.selected_provider_is(selected_t(), provider_b()))
+def trial_helpers_2_2(+tw: Tw) -> Bool:
+  Bool.not(R.selected_provider_is(selected_t(tw), provider_b()))
+
+def trial_helpers_2(+tw: Tw) -> Bool:
+  trial_helpers_2_0() && trial_helpers_2_1(tw) && trial_helpers_2_2(tw)
 
 # Exported helpers whose conjuncts an earlier gate masks at the entry point.
 def trial_helpers() -> IO(Unit):
@@ -1876,18 +2144,18 @@ def trial_helpers() -> IO(Unit):
     Test.check(Bool.not(R.nonce_posted(N.Challenges{challenge_rec(21n, IT.plan_code(), nonce_of(6), 108n), N.NoChallenges{}}, 21n, TF.plan(), nonce_of(6), 103n))
       && Bool.not(R.nonce_posted(trial_challenges(), 22n, TF.plan(), nonce_of(2), 103n))
       && R.nonce_posted(trial_challenges(), 21n, TF.plan(), nonce_of(1), 103n), "ER-005 nonce_posted: nonce 6 of another plan's challenge 21, or challenge 22's nonce at fixation time, does not answer; challenge 21's nonce 1 does")
-    Test.check(trial_helpers_2_0() && trial_helpers_2_1() && trial_helpers_2_2(), "ER-005 selected_provider_is: false with no selection, true only for A while A is selected")
+    Test.check(trial_helpers_2(trial_world()), "ER-005 selected_provider_is: false with no selection, true only for A while A is selected")
 # Phase 2: A's selection abandoned, B selected at 116, B's trial at 120 with
 # challenge 26 (issued 118, nonce 6) and sample 36, beside A's records.
-def abandoned_t() -> R.State:
-  R.Change.state(R.abandon(evidenced(), 6n))
+def abandoned_t(+tw: Tw) -> R.State:
+  R.Change.state(R.abandon(evidenced(tw), 6n))
 
 def session2() -> N.Session:
   N.Step.session(N.pin(N.open(NT.request()), 0n, TF.code(), NT.context(114n)))
 
 # A's offer expired at 113, so B is selected as selection 4, revision 8.
-def selected_b() -> R.State:
-  R.Change.state(R.select(abandoned_t(), 7n, session2(), 1n, NT.context(116n), snapshot_with(issuer(), 116n)))
+def selected_b(+tw: Tw) -> R.State:
+  R.Change.state(R.select(abandoned_t(tw), 7n, session2(), 1n, NT.context(116n), snapshot_with(issuer(), 116n)))
 
 def raw2() -> N.Context:
   raw_with(120n, N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), trial_challenges()},
@@ -1899,20 +2167,20 @@ def snapshot2() -> R.Snapshot:
 def proj_b(+state: R.State) -> N.Context:
   R.negotiation_context(state, raw2(), snapshot2())
 
-def challenged_b() -> N.Session:
-  N.Step.session(N.challenge(session2(), 1n, 26n, proj_b(selected_b())))
+def challenged_b(+tw: Tw) -> N.Session:
+  N.Step.session(N.challenge(session2(), 1n, 26n, proj_b(selected_b(tw))))
 
-def submit_2(+from: I.Principal, +evidence: R.Evidence) -> R.Change:
-  R.submit_evidence(selected_b(), 8n, from, evidence, challenged_b(), raw2(), snapshot2())
+def submit_2(+tw: Tw, +from: I.Principal, +evidence: R.Evidence) -> R.Change:
+  R.submit_evidence(selected_b(tw), 8n, from, evidence, challenged_b(tw), raw2(), snapshot2())
 
 def ev_b(sample: Nat, challenge: Nat) -> R.Evidence:
   evidence_with(R.record_version(), sample, provider_b(), R.OfferId{202n, 5n}, challenge, TF.code())
 
-def b_evidence_change() -> R.Change:
-  submit_2(provider_b(), ev_b(36n, 26n))
+def b_evidence_change(+tw: Tw) -> R.Change:
+  submit_2(tw, provider_b(), ev_b(36n, 26n))
 
-def b_evidenced() -> R.State:
-  R.Change.state(b_evidence_change())
+def b_evidenced(+tw: Tw) -> R.State:
+  R.Change.state(b_evidence_change(tw))
 
 # SYNTHETIC MONITOR STATES: evidence under A's current selection id 3 that
 # names B's offer {202, 5} with A's claim, or A's offer {201, 4} with B's
@@ -1924,39 +2192,48 @@ def with_evidence(state: R.State, evidence: R.Evidences) -> R.State:
       R.State{revision, next_id, request, constraint, offers, approvals, selection,
         retired, evidence, dispatched, seen}
 
-def foreign_offer() -> R.State:
-  with_evidence(selected_t(), R.Evidences{R.StoredEvidence{3n,
+def foreign_offer(+tw: Tw) -> R.State:
+  with_evidence(selected_t(tw), R.Evidences{R.StoredEvidence{3n,
     evidence_with(1n, 31n, provider_a(), R.OfferId{202n, 5n}, 21n, TF.code())}, R.NoEvidence{}})
 
-def foreign_provider() -> R.State:
-  with_evidence(selected_t(), R.Evidences{R.StoredEvidence{3n,
+def foreign_provider(+tw: Tw) -> R.State:
+  with_evidence(selected_t(tw), R.Evidences{R.StoredEvidence{3n,
     evidence_with(1n, 31n, provider_b(), R.OfferId{201n, 4n}, 21n, TF.code())}, R.NoEvidence{}})
 
 # A's offer {201, 4} selected again after abandon, as selection 4 at 106.
-def reselected_a() -> R.Change:
-  R.select(abandoned_t(), 7n, NT.pinned(), 1n, NT.context(106n), snapshot_with(issuer(), 106n))
+def reselected_a(+tw: Tw) -> R.Change:
+  R.select(abandoned_t(tw), 7n, NT.pinned(), 1n, NT.context(106n), snapshot_with(issuer(), 106n))
 
 def b_approvals() -> N.Approvals:
   a_approvals(128n)
+
+def trial_bindings_0(+tw: Tw) -> Bool:
+  N.Step.accepted(N.approve(sampled_t(tw), 3n, proj_b(b_evidenced(tw))))
+    && Bool.not(R.session_follows_selection(b_evidenced(tw), sampled_t(tw)))
+    && Bool.not(R.session_follows_selection(b_evidenced(tw), N.Step.session(N.approve(sampled_t(tw), 3n, proj_b(b_evidenced(tw))))))
+    && R.session_follows_selection(b_evidenced(tw), challenged_b(tw))
+    && R.session_follows_selection(evidenced(tw), sampled_t(tw))
+    && Bool.not(R.session_follows_selection(selected_t(tw), challenged_t(tw)))
+    && Bool.not(R.session_follows_selection(abandoned_t(tw), sampled_t(tw)))
+    && Bool.not(R.session_follows_selection(evidenced(tw), challenged_for(tw, N.Request{TF.plan(), 7n, 41n, 30n, 180n})))
+
+def trial_bindings_1(+tw: Tw) -> Bool:
+  Bool.not(R.valid(foreign_offer(tw))) && Bool.not(R.valid(foreign_provider(tw)))
+    && R.valid(evidenced(tw)) && R.valid(b_evidenced(tw))
+    && n_samples_equal(samples_of(proj_on(foreign_offer(tw))), N.NoSamples{})
+    && n_samples_equal(samples_of(proj_on(foreign_provider(tw))), N.NoSamples{})
+
+def trial_bindings_2(+tw: Tw) -> Bool:
+  selected(reselected_a(tw), offer_ta()) && issued_is(R.Change.issued(reselected_a(tw)), 4n)
+    && context_is(proj_on(R.Change.state(reselected_a(tw))), a_approvals(113n), N.NoChallenges{}, N.NoSamples{}, trial_budgets(), 110n)
 
 # Session binding, foreign evidence and reselection of the same offer
 # (fix round 1).
 def trial_bindings() -> IO(Unit):
   do IO<Unit>:
-    Test.check(N.Step.accepted(N.approve(sampled_t(), 3n, proj_b(b_evidenced())))
-      && Bool.not(R.session_follows_selection(b_evidenced(), sampled_t()))
-      && Bool.not(R.session_follows_selection(b_evidenced(), N.Step.session(N.approve(sampled_t(), 3n, proj_b(b_evidenced())))))
-      && R.session_follows_selection(b_evidenced(), challenged_b())
-      && R.session_follows_selection(evidenced(), sampled_t())
-      && Bool.not(R.session_follows_selection(selected_t(), challenged_t()))
-      && Bool.not(R.session_follows_selection(abandoned_t(), sampled_t()))
-      && Bool.not(R.session_follows_selection(evidenced(), challenged_for(N.Request{TF.plan(), 7n, 41n, 30n, 180n}))), "ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but session_follows_selection rejects it and its approved successor; it holds for B's session and for A's under selection 3, and not before evidence, with no selection, or for a session with quote 41")
-    Test.check(Bool.not(R.valid(foreign_offer())) && Bool.not(R.valid(foreign_provider()))
-      && R.valid(evidenced()) && R.valid(b_evidenced())
-      && n_samples_equal(samples_of(proj_on(foreign_offer())), N.NoSamples{})
-      && n_samples_equal(samples_of(proj_on(foreign_provider())), N.NoSamples{}), "ER-005 evidence under A's selection id 3 naming B's offer, or A's offer with B's claim, is not a valid state and projects no sample")
-    Test.check(selected(reselected_a(), offer_ta()) && issued_is(R.Change.issued(reselected_a()), 4n)
-      && context_is(proj_on(R.Change.state(reselected_a())), a_approvals(113n), N.NoChallenges{}, N.NoSamples{}, trial_budgets(), 110n), "ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)")
+    Test.check(trial_bindings_0(trial_world()), "ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but session_follows_selection rejects it and its approved successor; it holds for B's session and for A's under selection 3, and not before evidence, with no selection, or for a session with quote 41")
+    Test.check(trial_bindings_1(trial_world()), "ER-005 evidence under A's selection id 3 naming B's offer, or A's offer with B's claim, is not a valid state and projects no sample")
+    Test.check(trial_bindings_2(trial_world()), "ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)")
 
 # Native arity: each check of `trial_reuse` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -1965,46 +2242,58 @@ def trial_bindings() -> IO(Unit):
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `trial_reuse_K_J` is conjunct J of the K-th check of `trial_reuse`, counting
 # from 0.
-def trial_reuse_0_0() -> Bool:
-  selection_equal(R.selection(selected_b()), R.Selection{4n, offer_tb(), NT.request(), I.live(issuer()), 116n, 1n})
+def trial_reuse_0_0(+tw: Tw) -> Bool:
+  selection_equal(R.selection(selected_b(tw)), R.Selection{4n, offer_tb(), NT.request(), I.live(issuer()), 116n, 1n})
 
-def trial_reuse_0_1() -> Bool:
-  Nat.is_eq(R.retired(selected_b()), 3n)
+def trial_reuse_0_1(+tw: Tw) -> Bool:
+  Nat.is_eq(R.retired(selected_b(tw)), 3n)
 
-def trial_reuse_0_2() -> Bool:
-  Nat.is_eq(R.revision(selected_b()), 8n)
+def trial_reuse_0_2(+tw: Tw) -> Bool:
+  Nat.is_eq(R.revision(selected_b(tw)), 8n)
 
-def trial_reuse_0_3() -> Bool:
-  context_is(proj_b(selected_b()), b_approvals(),
+def trial_reuse_0_3(+tw: Tw) -> Bool:
+  context_is(proj_b(selected_b(tw)), b_approvals(),
     N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}}, N.NoSamples{}, trial_budgets(), 120n)
 
-def trial_reuse_3_0() -> Bool:
-  R.Change.accepted(b_evidence_change())
+def trial_reuse_3_0(+tw: Tw) -> Bool:
+  R.Change.accepted(b_evidence_change(tw))
 
-def trial_reuse_3_1() -> Bool:
-  issued_is(R.Change.issued(b_evidence_change()), 4n)
+def trial_reuse_3_1(+tw: Tw) -> Bool:
+  issued_is(R.Change.issued(b_evidence_change(tw)), 4n)
 
-def trial_reuse_3_2() -> Bool:
-  evidence_equal(R.evidence(R.Change.state(b_evidence_change())),
+def trial_reuse_3_2(+tw: Tw) -> Bool:
+  evidence_equal(R.evidence(R.Change.state(b_evidence_change(tw))),
     R.Evidences{R.StoredEvidence{4n, ev_b(36n, 26n)}, R.Evidences{R.StoredEvidence{3n, good_evidence()}, R.NoEvidence{}}})
 
-def trial_reuse_3_3() -> Bool:
-  context_is(proj_b(R.Change.state(b_evidence_change())), b_approvals(),
+def trial_reuse_3_3(+tw: Tw) -> Bool:
+  context_is(proj_b(R.Change.state(b_evidence_change(tw))), b_approvals(),
     N.Challenges{challenge_rec(26n, TF.plan(), nonce_of(6), 118n), N.NoChallenges{}},
     N.Samples{sample_rec(36n, TF.plan(), 26n, nonce_of(6), True{}, 160n), N.NoSamples{}}, trial_budgets(), 120n)
 
+def trial_reuse_0(+tw: Tw) -> Bool:
+  trial_reuse_0_0(tw) && trial_reuse_0_1(tw) && trial_reuse_0_2(tw)
+    && trial_reuse_0_3(tw)
+
+def trial_reuse_1(+tw: Tw) -> Bool:
+  N.Step.accepted(N.challenge(session2(), 1n, 26n, proj_b(selected_b(tw))))
+    && denied(submit_2(tw, provider_b(), ev_b(31n, 21n)), selected_b(tw), R.WrongTrial{})
+    && denied(submit_2(tw, provider_b(), ev_b(31n, 26n)), selected_b(tw), R.WrongTrial{})
+
+def trial_reuse_2(+tw: Tw) -> Bool:
+  denied(submit_2(tw, provider_b(), good_evidence()), selected_b(tw), R.Unauthenticated{})
+    && denied(submit_2(tw, provider_a(), good_evidence()), selected_b(tw), R.NotSelected{})
+    && denied(submit_2(tw, provider_a(), ev_b(36n, 26n)), selected_b(tw), R.NotSelected{})
+
+def trial_reuse_3(+tw: Tw) -> Bool:
+  trial_reuse_3_0(tw) && trial_reuse_3_1(tw) && trial_reuse_3_2(tw)
+    && trial_reuse_3_3(tw)
+
 def trial_reuse() -> IO(Unit):
   do IO<Unit>:
-    Test.check(trial_reuse_0_0() && trial_reuse_0_1() && trial_reuse_0_2()
-      && trial_reuse_0_3(), "ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)")
-    Test.check(N.Step.accepted(N.challenge(session2(), 1n, 26n, proj_b(selected_b())))
-      && denied(submit_2(provider_b(), ev_b(31n, 21n)), selected_b(), R.WrongTrial{})
-      && denied(submit_2(provider_b(), ev_b(31n, 26n)), selected_b(), R.WrongTrial{}), "ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial")
-    Test.check(denied(submit_2(provider_b(), good_evidence()), selected_b(), R.Unauthenticated{})
-      && denied(submit_2(provider_a(), good_evidence()), selected_b(), R.NotSelected{})
-      && denied(submit_2(provider_a(), ev_b(36n, 26n)), selected_b(), R.NotSelected{}), "ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected")
-    Test.check(trial_reuse_3_0() && trial_reuse_3_1() && trial_reuse_3_2()
-      && trial_reuse_3_3(), "ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected")
+    Test.check(trial_reuse_0(trial_world()), "ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)")
+    Test.check(trial_reuse_1(trial_world()), "ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial")
+    Test.check(trial_reuse_2(trial_world()), "ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected")
+    Test.check(trial_reuse_3(trial_world()), "ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected")
 # Partial owner agreement (ER-006) on the two-source plan, and the reader
 # terms. The two-source fixtures are Task 3's: grant 13 for A over
 # IT.plan_two(), approvals by 101 (object 10, id 1) and 104 (object 11, id 2).
@@ -2039,6 +2328,17 @@ def two_approvals() -> N.Approvals:
   N.Approvals{N.Approval{TF.source_object(), IT.plan_two(), 130n},
   N.Approvals{N.Approval{IT.second_source(), IT.plan_two(), 130n}, N.NoApprovals{}}}
 
+def trial_owners_3(+tw: Tw) -> Bool:
+  trial_denied(tw, good_evidence(), challenged_for(tw, N.Request{TF.plan(), 7n, 41n, 30n, 180n}), R.ScopeMismatch{})
+    && trial_denied(tw, good_evidence(), challenged_for(tw, N.Request{TF.plan(), 7n, 42n, 31n, 180n}), R.ScopeMismatch{})
+    && trial_denied(tw, good_evidence(), challenged_for(tw, N.Request{TF.plan(), 8n, 42n, 30n, 180n}), R.ScopeMismatch{})
+
+def trial_owners_4(+tw: Tw) -> Bool:
+  Bool.not(N.ReservationStep.accepted(N.reserve(N.Step.session(N.approve(sampled_t(tw), 3n, proj1(tw))), 4n, 0n, 11n,
+      R.negotiation_context(evidenced(tw), raw_with(110n, trial_challenges(), trial_samples(),
+        N.Budgets{N.Budget{11n, TF.plan(), 8n, 42n, 30n, 180n}, N.NoBudgets{}}), trial_snapshot()), NT.initial_ledger())))
+    && n_budgets_equal(budgets_of(proj1(tw)), trial_budgets())
+
 def trial_owners() -> IO(Unit):
   do IO<Unit>:
     Test.check(reason_is(R.ineligibility(offer_a_two(), two_offer_on(two_ten()), two_snapshot_at(110n)), R.MissingApproval{})
@@ -2049,38 +2349,36 @@ def trial_owners() -> IO(Unit):
     Test.check(R.Change.accepted(R.withdraw_approval(two_selected(), 4n, IT.second_source_authority(), 2n, two_snapshot_at(110n)))
       && empty_at(two_proj(two_withdrawn()), N.NoBudgets{}, 110n)
       && Bool.not(N.Step.accepted(N.approve(two_sampled(), 3n, two_proj(two_withdrawn())))), "ER-006 after object 11's approval is withdrawn the projection carries no approvals and N.approve on it is rejected")
-    Test.check(trial_denied(good_evidence(), challenged_for(N.Request{TF.plan(), 7n, 41n, 30n, 180n}), R.ScopeMismatch{})
-      && trial_denied(good_evidence(), challenged_for(N.Request{TF.plan(), 7n, 42n, 31n, 180n}), R.ScopeMismatch{})
-      && trial_denied(good_evidence(), challenged_for(N.Request{TF.plan(), 8n, 42n, 30n, 180n}), R.ScopeMismatch{}), "ER-006 reader terms: a session whose request differs from the rendezvous request in quote (41), units (31) or reader (8) denied ScopeMismatch")
-    Test.check(Bool.not(N.ReservationStep.accepted(N.reserve(N.Step.session(N.approve(sampled_t(), 3n, proj1())), 4n, 0n, 11n,
-        R.negotiation_context(evidenced(), raw_with(110n, trial_challenges(), trial_samples(),
-          N.Budgets{N.Budget{11n, TF.plan(), 8n, 42n, 30n, 180n}, N.NoBudgets{}}), trial_snapshot()), NT.initial_ledger())))
-      && n_budgets_equal(budgets_of(proj1()), trial_budgets()), "ER-006 the projection keeps the supplied budgets, so N.reserve on it still binds the exact reader: a budget naming payer 8 is rejected")
+    Test.check(trial_owners_3(trial_world()), "ER-006 reader terms: a session whose request differs from the rendezvous request in quote (41), units (31) or reader (8) denied ScopeMismatch")
+    Test.check(trial_owners_4(trial_world()), "ER-006 the projection keeps the supplied budgets, so N.reserve on it still binds the exact reader: a budget naming payer 8 is rejected")
 
 # --- session_follows_selection binds offer and provider (final review, F4) --
 
 # `foreign_offer()` and `foreign_provider()` (SYNTHETIC MONITOR STATES,
 # above) hold one evidence record under selection 3 naming challenge 21,
 # for B's offer or under B's provider claim.
-def trial_follows_0_0() -> Bool:
-  Bool.not(R.session_follows_selection(foreign_offer(), challenged_t()))
+def trial_follows_0_0(+tw: Tw) -> Bool:
+  Bool.not(R.session_follows_selection(foreign_offer(tw), challenged_t(tw)))
 
-def trial_follows_0_1() -> Bool:
-  Bool.not(R.session_follows_selection(foreign_provider(), challenged_t()))
+def trial_follows_0_1(+tw: Tw) -> Bool:
+  Bool.not(R.session_follows_selection(foreign_provider(tw), challenged_t(tw)))
 
-def trial_follows_0_2() -> Bool:
-  R.session_follows_selection(evidenced(), challenged_t())
+def trial_follows_0_2(+tw: Tw) -> Bool:
+  R.session_follows_selection(evidenced(tw), challenged_t(tw))
 
 # Abandoned selection 3's evidence (A's offer, challenge 21) is kept; A's
 # same offer reselected as selection 4 has none of its own.
-def trial_follows_0_3() -> Bool:
-  R.Change.accepted(reselected_a())
-    && Bool.not(R.session_follows_selection(R.Change.state(reselected_a()), challenged_t()))
+def trial_follows_0_3(+tw: Tw) -> Bool:
+  R.Change.accepted(reselected_a(tw))
+    && Bool.not(R.session_follows_selection(R.Change.state(reselected_a(tw)), challenged_t(tw)))
+
+def trial_follows_0(+tw: Tw) -> Bool:
+  trial_follows_0_0(tw) && trial_follows_0_1(tw) && trial_follows_0_2(tw)
+    && trial_follows_0_3(tw)
 
 def trial_follows() -> IO(Unit):
   do IO<Unit>:
-    Test.check(trial_follows_0_0() && trial_follows_0_1() && trial_follows_0_2()
-      && trial_follows_0_3(), "ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names challenge 21 for B's offer {202, 5}, or for A's offer under B's provider claim, A's session challenged with 21 does not follow selection 3; on A's own stored evidence it does; and once A's same offer is reselected as selection 4, retired selection 3's evidence does not make it follow")
+    Test.check(trial_follows_0(trial_world()), "ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names challenge 21 for B's offer {202, 5}, or for A's offer under B's provider claim, A's session challenged with 21 does not follow selection 3; on A's own stored evidence it does; and once A's same offer is reselected as selection 4, retired selection 3's evidence does not make it follow")
 
 def trials() -> IO(Unit):
   do IO<Unit>:
@@ -2094,66 +2392,6 @@ def trials() -> IO(Unit):
     trial_follows()
 
 # --- Section 1.4: dispatch, invalidation and the provider registry (ER-007, ER-006, ER-001)
-
-# Host fixtures: SYNTHETIC MONITOR STATE built through HostPrimitives'
-# public `open_session` on host 61, incarnation 57, with configured
-# profiles 1 and 2. The callers stand in for authenticated native
-# evidence. Sessions are bound in this order, so HostIdentity allocates
-# these ids (6 and 7 stay clear of profile ids 1 and 2, approval ids 1, 2
-# and 4, and selection ids 2 to 5):
-#   1 A's delegable client session    2 A's non-delegable client session
-#   3 C's worker at profile 1         4 A's worker at profile 2
-#   5 B's worker at profile 2         6 A's worker at profile 1
-#   7 B's worker at profile 1
-def host_id() -> Nat:
-  61n
-
-def host_incarnation() -> Nat:
-  57n
-
-def token_c() -> T.CodeId:
-  T.CodeId{9, 9, 9, 9, 9, 9, 2, 3}
-
-def caller_a() -> F.Caller:
-  F.Caller{201n, token_a()}
-
-def caller_b() -> F.Caller:
-  F.Caller{202n, token_b()}
-
-def caller_c() -> F.Caller:
-  F.Caller{203n, token_c()}
-
-def host_profiles() -> HP.Profiles:
-  HP.Profiles{HP.Configured{HP.Profile{profile(), HP.family_worker(), HP.control_address_isolation(), HP.Cpu{}}, 64n},
-  HP.Profiles{HP.Configured{HP.Profile{2n, HP.family_worker(), HP.control_quota(), HP.Cpu{}}, 48n}, HP.NoProfiles{}}}
-
-def host_report() -> HP.TargetReport:
-  HP.TargetReport{HP.all_families(), HP.no_controls()}
-
-def bind_on(+host: HP.State, caller: F.Caller, delegable: Bool, role: HP.Role) -> HP.State:
-  HP.Step.state(HP.open_session(host, HP.revision(host), host_report(),
-    HP.SessionEvidence{caller, HI.Authenticated{}, delegable}, role))
-
-# The same seven bindings on host 61 in incarnation `incarnation`.
-def host_at(incarnation: Nat) -> HP.State:
-  bind_on(bind_on(bind_on(bind_on(bind_on(bind_on(bind_on(
-    HP.empty(HI.empty(host_id(), incarnation), host_profiles()),
-    caller_a(), True{}, HP.ClientRole{True{}}),
-    caller_a(), False{}, HP.ClientRole{False{}}),
-    caller_c(), False{}, HP.WorkerRole{profile()}),
-    caller_a(), False{}, HP.WorkerRole{2n}),
-    caller_b(), False{}, HP.WorkerRole{2n}),
-    caller_a(), False{}, HP.WorkerRole{profile()}),
-    caller_b(), False{}, HP.WorkerRole{profile()})
-
-def host() -> HP.State:
-  host_at(host_incarnation())
-
-def worker_a() -> Nat:
-  6n
-
-def worker_b() -> Nat:
-  7n
 
 # SYNTHETIC MONITOR STATE: a second session under id 6 in the identity
 # table, or a second binding for session 6, as a corrupted host might hold.
@@ -2215,48 +2453,16 @@ def subject_swap_host() -> HP.State:
 def p2_selected() -> R.State:
   R.Change.state(select_now(p2_state()))
 
-# A's trial session advanced through approve (3), reserve (4, receipt 11,
-# a fresh ledger) and start (5) on `context`, through Negotiation's entry
-# points: Running at revision 6.
-def reserved_on(+sampled: N.Session, +context: N.Context) -> N.ReservationStep:
-  N.reserve(N.Step.session(N.approve(sampled, 3n, context)), 4n, 0n, 11n, context, NT.initial_ledger())
-
-def running_on(+sampled: N.Session, +context: N.Context) -> N.Session:
-  +reserved = reserved_on(sampled, context)
-  N.Step.session(N.start(N.ReservationStep.session(reserved), 5n, context, N.ReservationStep.ledger(reserved)))
-
-def reserved_t() -> N.Session:
-  N.ReservationStep.session(reserved_on(sampled_t(), proj1()))
-
-def ledger_t() -> L.State:
-  N.ReservationStep.ledger(reserved_on(sampled_t(), proj1()))
-
-def running_t() -> N.Session:
-  running_on(sampled_t(), proj1())
-
-def offer_id_ta() -> R.OfferId:
-  R.OfferId{201n, 4n}
-
-def offer_id_tb() -> R.OfferId:
-  R.OfferId{202n, 5n}
-
 # A dispatch at the state's own revision on the trial projection at 110.
-def dispatch_on(+state: R.State, +offer: R.OfferId, +host: HP.State, +worker: Nat, +session: N.Session,
+def dispatch_on(+tw: Tw, +state: R.State, +offer: R.OfferId, +host: HP.State, +worker: Nat, +session: N.Session,
     +snapshot: R.Snapshot) -> R.Change:
-  R.dispatch(state, R.revision(state), offer, host, HP.revision(host), worker, session, 6n, proj1(), snapshot)
+  R.dispatch(state, R.revision(state), offer, host, HP.revision(host), worker, session, 6n, proj1(tw), snapshot)
 
-def dispatch_a(+state: R.State, +offer: R.OfferId, +worker: Nat) -> R.Change:
-  dispatch_on(state, offer, host(), worker, running_t(), trial_snapshot())
+def dispatch_a(+tw: Tw, +state: R.State, +offer: R.OfferId, +worker: Nat) -> R.Change:
+  dispatch_on(tw, state, offer, host(), worker, running_t(tw), trial_snapshot())
 
-def dispatch_change() -> R.Change:
-  dispatch_a(evidenced(), offer_id_ta(), worker_a())
-
-# Revision 7: selection 3 dispatched to A's worker session 6.
-def dispatched_t() -> R.State:
-  R.Change.state(dispatch_change())
-
-def dispatch_denied(+state: R.State, +offer: R.OfferId, +worker: Nat, reason: R.Error) -> Bool:
-  denied(dispatch_a(state, offer, worker), state, reason)
+def dispatch_denied(+tw: Tw, +state: R.State, +offer: R.OfferId, +worker: Nat, reason: R.Error) -> Bool:
+  denied(dispatch_a(tw, state, offer, worker), state, reason)
 
 def registry_count(registry: F.Registry) -> Nat:
   match registry:
@@ -2314,88 +2520,112 @@ def short_issuer() -> I.State:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `dispatch_happy_K_J` is conjunct J of the K-th check of `dispatch_happy`, counting
 # from 0.
-def dispatch_happy_0_0() -> Bool:
-  N.Session.is(running_t(), N.Running{})
+def dispatch_happy_0_0(+tw: Tw) -> Bool:
+  N.Session.is(running_t(tw), N.Running{})
 
-def dispatch_happy_0_1() -> Bool:
-  Nat.is_eq(N.Session.revision(running_t()), 6n)
+def dispatch_happy_0_1(+tw: Tw) -> Bool:
+  Nat.is_eq(N.Session.revision(running_t(tw)), 6n)
 
-def dispatch_happy_0_2() -> Bool:
-  R.Change.accepted(dispatch_change())
+def dispatch_happy_0_2(+tw: Tw) -> Bool:
+  R.Change.accepted(dispatch_change(tw))
 
-def dispatch_happy_0_3() -> Bool:
-  issued_is(R.Change.issued(dispatch_change()), 3n)
+def dispatch_happy_0_3(+tw: Tw) -> Bool:
+  issued_is(R.Change.issued(dispatch_change(tw)), 3n)
 
-def dispatch_happy_0_4() -> Bool:
-  Nat.is_eq(R.revision(dispatched_t()), 7n)
+def dispatch_happy_0_4(+tw: Tw) -> Bool:
+  Nat.is_eq(R.revision(dispatched_t(tw)), 7n)
 
-def dispatch_happy_0_5() -> Bool:
-  Nat.is_eq(R.next_id(dispatched_t()), 4n)
+def dispatch_happy_0_5(+tw: Tw) -> Bool:
+  Nat.is_eq(R.next_id(dispatched_t(tw)), 4n)
 
-def dispatch_happy_0_6() -> Bool:
-  dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+def dispatch_happy_0_6(+tw: Tw) -> Bool:
+  dispatches_equal(R.dispatched(dispatched_t(tw)), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
 
-def dispatch_happy_0_7() -> Bool:
-  selection_equal(R.selection(dispatched_t()), R.selection(evidenced()))
+def dispatch_happy_0_7(+tw: Tw) -> Bool:
+  selection_equal(R.selection(dispatched_t(tw)), R.selection(evidenced(tw)))
 
-def dispatch_happy_0_8() -> Bool:
-  evidence_equal(R.evidence(dispatched_t()), R.evidence(evidenced()))
+def dispatch_happy_0_8(+tw: Tw) -> Bool:
+  evidence_equal(R.evidence(dispatched_t(tw)), R.evidence(evidenced(tw)))
 
-def dispatch_happy_0_9() -> Bool:
-  offers_equal(R.offers(dispatched_t()), R.offers(evidenced()))
+def dispatch_happy_0_9(+tw: Tw) -> Bool:
+  offers_equal(R.offers(dispatched_t(tw)), R.offers(evidenced(tw)))
 
-def dispatch_happy_0_10() -> Bool:
-  approvals_equal(R.approvals(dispatched_t()), R.approvals(evidenced()))
+def dispatch_happy_0_10(+tw: Tw) -> Bool:
+  approvals_equal(R.approvals(dispatched_t(tw)), R.approvals(evidenced(tw)))
 
-def dispatch_happy_0_11() -> Bool:
-  serials_equal(R.seen(dispatched_t()), R.seen(evidenced()))
+def dispatch_happy_0_11(+tw: Tw) -> Bool:
+  serials_equal(R.seen(dispatched_t(tw)), R.seen(evidenced(tw)))
 
-def dispatch_happy_0_12() -> Bool:
-  R.valid(dispatched_t())
+def dispatch_happy_0_12(+tw: Tw) -> Bool:
+  R.valid(dispatched_t(tw))
+
+def dispatch_happy_0(+tw: Tw) -> Bool:
+  dispatch_happy_0_0(tw) && dispatch_happy_0_1(tw) && dispatch_happy_0_2(tw)
+    && dispatch_happy_0_3(tw) && dispatch_happy_0_4(tw) && dispatch_happy_0_5(tw)
+    && dispatch_happy_0_6(tw) && dispatch_happy_0_7(tw) && dispatch_happy_0_8(tw)
+    && dispatch_happy_0_9(tw) && dispatch_happy_0_10(tw) && dispatch_happy_0_11(tw)
+    && dispatch_happy_0_12(tw)
+
+def dispatch_happy_1(+tw: Tw) -> Bool:
+  single_token_is(R.provider_registry(dispatched_t(tw), trial_snapshot()), token_a())
+    && IT.registry_equal(R.provider_registry(dispatched_t(tw), trial_snapshot()), I.registry(issuer(), provider_a(), 110n))
+    && IT.plan_is(a_read(R.provider_registry(dispatched_t(tw), trial_snapshot())), TF.plan())
+
+def dispatch_happy_2(+tw: Tw) -> Bool:
+  registry_empty(R.provider_registry(evidenced(tw), trial_snapshot()))
+    && Nat.is_eq(registry_count(I.registry(issuer(), provider_a(), 110n)), 1n)
+    && IT.no_plan(a_read(R.provider_registry(evidenced(tw), trial_snapshot())))
+
+def dispatch_happy_3(+tw: Tw) -> Bool:
+  found_current(grant_record(short_issuer(), 12n), short_issuer(), 110n)
+    && Nat.is_eq(registry_count(I.registry(short_issuer(), provider_a(), 110n)), 2n)
+    && single_token_is(R.provider_registry(dispatched_t(tw), snapshot_with(short_issuer(), 110n)), token_a())
+
+def dispatch_happy_4(+tw: Tw) -> Bool:
+  dispatch_denied(tw, evidenced(tw), offer_id_ta(), worker_b(), R.NotSelected{})
+    && dispatch_denied(tw, evidenced(tw), offer_id_tb(), worker_b(), R.NotSelected{})
+    && dispatch_denied(tw, evidenced(tw), offer_id_tb(), worker_a(), R.NotSelected{})
+    && dispatch_denied(tw, evidenced(tw), R.OfferId{201n, 9n}, worker_a(), R.NotSelected{})
+
+def dispatch_happy_5(+tw: Tw) -> Bool:
+  dispatch_denied(tw, evidenced(tw), offer_id_ta(), 3n, R.NotSelected{})
+    && dispatch_denied(tw, evidenced(tw), offer_id_ta(), 9n, R.NotSelected{})
+    && denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), twin_session_host(), worker_a(), running_t(tw), trial_snapshot()), evidenced(tw), R.NotSelected{})
+    && dispatch_denied(tw, evidenced(tw), offer_id_ta(), 1n, R.NotSelected{})
+
+def dispatch_happy_6(+tw: Tw) -> Bool:
+  dispatch_denied(tw, evidenced(tw), offer_id_ta(), 4n, R.WrongProfile{})
+    && dispatch_denied(tw, evidenced(tw), offer_id_ta(), 2n, R.WrongProfile{})
+    && denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), twin_binding_host(), worker_a(), running_t(tw), trial_snapshot()), evidenced(tw), R.WrongProfile{})
+
+def dispatch_happy_8(+tw: Tw) -> Bool:
+  Bool.not(R.dispatch_target_selected(trial_offers(), offer_id_ta(), host(), worker_a()))
+    && R.dispatch_target_selected(evidenced(tw), offer_id_ta(), host(), worker_a())
+    && denied(R.dispatch(trial_offers(), 3n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(tw), 6n, proj1(tw), trial_snapshot()), trial_offers(), R.NotSelected{})
 
 # The accepting path, the registry it opens, and the unselected targets.
 def dispatch_happy() -> IO(Unit):
   do IO<Unit>:
-    Test.check(dispatch_happy_0_0() && dispatch_happy_0_1() && dispatch_happy_0_2()
-      && dispatch_happy_0_3() && dispatch_happy_0_4() && dispatch_happy_0_5()
-      && dispatch_happy_0_6() && dispatch_happy_0_7() && dispatch_happy_0_8()
-      && dispatch_happy_0_9() && dispatch_happy_0_10() && dispatch_happy_0_11()
-      && dispatch_happy_0_12(), "ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed")
-    Test.check(single_token_is(R.provider_registry(dispatched_t(), trial_snapshot()), token_a())
-      && IT.registry_equal(R.provider_registry(dispatched_t(), trial_snapshot()), I.registry(issuer(), provider_a(), 110n))
-      && IT.plan_is(a_read(R.provider_registry(dispatched_t(), trial_snapshot())), TF.plan()), "ER-001 provider_registry after dispatch holds exactly grant 3's capability for A, and F.mount, F.open and F.checked_plan resolve it to TF.plan() for caller A")
-    Test.check(registry_empty(R.provider_registry(evidenced(), trial_snapshot()))
-      && Nat.is_eq(registry_count(I.registry(issuer(), provider_a(), 110n)), 1n)
-      && IT.no_plan(a_read(R.provider_registry(evidenced(), trial_snapshot()))), "ER-007 before dispatch provider_registry is empty, though Issuance projects grant 3 for A, so F.mount finds no capability")
-    Test.check(found_current(grant_record(short_issuer(), 12n), short_issuer(), 110n)
-      && Nat.is_eq(registry_count(I.registry(short_issuer(), provider_a(), 110n)), 2n)
-      && single_token_is(R.provider_registry(dispatched_t(), snapshot_with(short_issuer(), 110n)), token_a()), "ER-001 with A also holding grant 12 (token word 17), the raw registry for A has two capabilities but provider_registry keeps only the selected grant 3's token")
-    Test.check(dispatch_denied(evidenced(), offer_id_ta(), worker_b(), R.NotSelected{})
-      && dispatch_denied(evidenced(), offer_id_tb(), worker_b(), R.NotSelected{})
-      && dispatch_denied(evidenced(), offer_id_tb(), worker_a(), R.NotSelected{})
-      && dispatch_denied(evidenced(), R.OfferId{201n, 9n}, worker_a(), R.NotSelected{}), "ER-001 dispatch to an unselected provider: A's offer with B's worker session 7, B's offer {202, 5} with B's or A's worker session, or A's unknown offer {201, 9}, denied NotSelected")
-    Test.check(dispatch_denied(evidenced(), offer_id_ta(), 3n, R.NotSelected{})
-      && dispatch_denied(evidenced(), offer_id_ta(), 9n, R.NotSelected{})
-      && denied(dispatch_on(evidenced(), offer_id_ta(), twin_session_host(), worker_a(), running_t(), trial_snapshot()), evidenced(), R.NotSelected{})
-      && dispatch_denied(evidenced(), offer_id_ta(), 1n, R.NotSelected{}), "ER-001 a worker session of C (3), an unbound session id 9, a session id 6 the identity table holds twice, or A's delegable client session 1, denied NotSelected")
-    Test.check(dispatch_denied(evidenced(), offer_id_ta(), 4n, R.WrongProfile{})
-      && dispatch_denied(evidenced(), offer_id_ta(), 2n, R.WrongProfile{})
-      && denied(dispatch_on(evidenced(), offer_id_ta(), twin_binding_host(), worker_a(), running_t(), trial_snapshot()), evidenced(), R.WrongProfile{}), "ER-001 A's worker session 4 bound under profile 2, A's non-delegable client session 2 with no worker binding, or a session 6 bound twice, denied WrongProfile")
+    Test.check(dispatch_happy_0(trial_world()), "ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed")
+    Test.check(dispatch_happy_1(trial_world()), "ER-001 provider_registry after dispatch holds exactly grant 3's capability for A, and F.mount, F.open and F.checked_plan resolve it to TF.plan() for caller A")
+    Test.check(dispatch_happy_2(trial_world()), "ER-007 before dispatch provider_registry is empty, though Issuance projects grant 3 for A, so F.mount finds no capability")
+    Test.check(dispatch_happy_3(trial_world()), "ER-001 with A also holding grant 12 (token word 17), the raw registry for A has two capabilities but provider_registry keeps only the selected grant 3's token")
+    Test.check(dispatch_happy_4(trial_world()), "ER-001 dispatch to an unselected provider: A's offer with B's worker session 7, B's offer {202, 5} with B's or A's worker session, or A's unknown offer {201, 9}, denied NotSelected")
+    Test.check(dispatch_happy_5(trial_world()), "ER-001 a worker session of C (3), an unbound session id 9, a session id 6 the identity table holds twice, or A's delegable client session 1, denied NotSelected")
+    Test.check(dispatch_happy_6(trial_world()), "ER-001 A's worker session 4 bound under profile 2, A's non-delegable client session 2 with no worker binding, or a session 6 bound twice, denied WrongProfile")
     Test.check(Bool.not(R.worker_caller_is(R.worker_lookup(host(), 9n), provider_a()))
       && Bool.not(R.worker_caller_is(R.worker_lookup(twin_session_host(), worker_a()), provider_a()))
       && R.worker_caller_is(R.worker_lookup(host(), worker_a()), provider_a()), "ER-001 worker_caller_is: no session under id 9, or two sessions under id 6 both with caller A, is not A's worker; the one session 6 is")
-    Test.check(Bool.not(R.dispatch_target_selected(trial_offers(), offer_id_ta(), host(), worker_a()))
-      && R.dispatch_target_selected(evidenced(), offer_id_ta(), host(), worker_a())
-      && denied(R.dispatch(trial_offers(), 3n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), trial_offers(), R.NotSelected{}), "ER-001 dispatch_target_selected is false with no selection and true for A's offer on A's worker session 6; with no selection a dispatch at a stale revision is denied NotSelected first")
+    Test.check(dispatch_happy_8(trial_world()), "ER-001 dispatch_target_selected is false with no selection and true for A's offer on A's worker session 6; with no selection a dispatch at a stale revision is denied NotSelected first")
 
 # Phase 2 of the trials (selection 4 of B's offer, evidence stored): B's
 # trial session and A's session from retired selection 3, each advanced to
 # Running on B's projection at 120.
-def b_running() -> N.Session:
-  running_on(N.Step.session(N.sample(challenged_b(), 2n, 36n, proj_b(b_evidenced()))), proj_b(b_evidenced()))
+def b_running(+tw: Tw) -> N.Session:
+  running_on(N.Step.session(N.sample(challenged_b(tw), 2n, 36n, proj_b(b_evidenced(tw)))), proj_b(b_evidenced(tw)))
 
-def a_carried() -> N.Session:
-  running_on(sampled_t(), proj_b(b_evidenced()))
+def a_carried(+tw: Tw) -> N.Session:
+  running_on(sampled_t(tw), proj_b(b_evidenced(tw)))
 
 # SYNTHETIC MONITOR STATES: A's evidence for selection 3 stored behind a
 # record of B's under another selection id 2; and the dispatched state with
@@ -2409,46 +2639,82 @@ def with_dispatches(state: R.State, dispatched: R.Dispatches) -> R.State:
       R.State{revision, next_id, request, constraint, offers, approvals, selection,
         retired, evidence, dispatched, seen}
 
-def evidence_behind() -> R.State:
-  with_evidence(evidenced(), R.Evidences{R.StoredEvidence{2n, ev_b(36n, 26n)}, R.evidence(evidenced())})
+def evidence_behind(+tw: Tw) -> R.State:
+  with_evidence(evidenced(tw), R.Evidences{R.StoredEvidence{2n, ev_b(36n, 26n)}, R.evidence(evidenced(tw))})
 
-def dispatch_behind() -> R.State:
-  with_dispatches(dispatched_t(), R.Dispatches{R.Dispatch{2n, host_incarnation(), worker_b()}, R.dispatched(dispatched_t())})
+def dispatch_behind(+tw: Tw) -> R.State:
+  with_dispatches(dispatched_t(tw), R.Dispatches{R.Dispatch{2n, host_incarnation(), worker_b()}, R.dispatched(dispatched_t(tw))})
+
+def dispatch_inner_0(+tw: Tw) -> Bool:
+  denied(R.dispatch(evidenced(tw), 5n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(tw), 6n, proj1(tw), trial_snapshot()), evidenced(tw), R.StaleRevision{})
+
+def dispatch_inner_1(+tw: Tw) -> Bool:
+  Nat.is_eq(HP.revision(host()), 7n)
+    && denied(R.dispatch(evidenced(tw), 6n, offer_id_ta(), host(), 6n, worker_a(), running_t(tw), 6n, proj1(tw), trial_snapshot()), evidenced(tw), R.StaleRevision{})
+    && denied(R.dispatch(evidenced(tw), 6n, offer_id_ta(), host(), 8n, worker_a(), running_t(tw), 6n, proj1(tw), trial_snapshot()), evidenced(tw), R.StaleRevision{})
+
+def dispatch_inner_2(+tw: Tw) -> Bool:
+  HP.valid(host()) && Bool.not(HP.valid(restarted_host())) && Bool.not(HP.valid(unconfigured_host()))
+    && Bool.not(HP.valid(twin_session_host())) && Bool.not(HP.valid(twin_binding_host()))
+    && denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), restarted_host(), worker_a(), running_t(tw), trial_snapshot()), evidenced(tw), R.StaleRevision{})
+    && denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), unconfigured_host(), worker_a(), running_t(tw), trial_snapshot()), evidenced(tw), R.StaleRevision{})
+
+def dispatch_inner_3(+tw: Tw) -> Bool:
+  HP.valid(token_swap_host()) && R.dispatch_target_selected(evidenced(tw), offer_id_ta(), token_swap_host(), 8n)
+    && denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), token_swap_host(), 8n, running_t(tw), trial_snapshot()), evidenced(tw), R.NotSelected{})
+    && R.Change.accepted(dispatch_on(tw, evidenced(tw), offer_id_ta(), token_swap_host(), worker_a(), running_t(tw), trial_snapshot()))
+
+def dispatch_inner_4(+tw: Tw) -> Bool:
+  HP.valid(subject_swap_host()) && Bool.not(R.dispatch_target_selected(evidenced(tw), offer_id_ta(), subject_swap_host(), 8n))
+    && denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), subject_swap_host(), 8n, running_t(tw), trial_snapshot()), evidenced(tw), R.NotSelected{})
+
+def dispatch_inner_6(+tw: Tw) -> Bool:
+  denied(R.dispatch(evidenced(tw), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), reserved_t(tw), 5n, proj1(tw), trial_snapshot()), evidenced(tw), R.WrongStage{})
+    && denied(R.dispatch(evidenced(tw), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(tw), 5n, proj1(tw), trial_snapshot()), evidenced(tw), R.WrongStage{})
+
+def dispatch_inner_7(+tw: Tw) -> Bool:
+  dispatch_denied(tw, dispatched_t(tw), offer_id_ta(), worker_a(), R.Replay{})
+
+def dispatch_inner_8(+tw: Tw) -> Bool:
+  dispatch_denied(tw, selected_t(tw), offer_id_ta(), worker_a(), R.MissingEvidence{})
+    && dispatch_denied(tw, foreign_offer(tw), offer_id_ta(), worker_a(), R.MissingEvidence{})
+    && dispatch_denied(tw, foreign_provider(tw), offer_id_ta(), worker_a(), R.MissingEvidence{})
+
+def dispatch_inner_9(+tw: Tw) -> Bool:
+  dispatch_denied(tw, R.Change.state(reselected_a(tw)), offer_id_ta(), worker_a(), R.MissingEvidence{})
+
+def dispatch_inner_10(+tw: Tw) -> Bool:
+  R.Change.accepted(dispatch_a(tw, evidence_behind(tw), offer_id_ta(), worker_a()))
+    && dispatch_denied(tw, dispatch_behind(tw), offer_id_ta(), worker_a(), R.Replay{})
+
+def dispatch_inner_11(+tw: Tw) -> Bool:
+  denied(dispatch_on(tw, b_evidenced(tw), offer_id_tb(), host(), worker_b(), a_carried(tw), snapshot2()), b_evidenced(tw), R.WrongTrial{})
+    && N.Session.is(a_carried(tw), N.Running{})
+    && R.Change.accepted(dispatch_on(tw, b_evidenced(tw), offer_id_tb(), host(), worker_b(), b_running(tw), snapshot2()))
+
+def dispatch_inner_12(+tw: Tw) -> Bool:
+  denied(dispatch_on(tw, b_evidenced(tw), offer_id_tb(), host(), 5n, b_running(tw), snapshot2()), b_evidenced(tw), R.WrongProfile{})
+    && denied(dispatch_on(tw, b_evidenced(tw), offer_id_ta(), host(), worker_a(), b_running(tw), snapshot2()), b_evidenced(tw), R.NotSelected{})
 
 # The inner gates: race, stage, request, evidence, trial and replay.
 def dispatch_inner() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(R.dispatch(evidenced(), 5n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 dispatch at revision 5 against 6 denied StaleRevision")
-    Test.check(Nat.is_eq(HP.revision(host()), 7n)
-      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), 6n, worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{})
-      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), 8n, worker_a(), running_t(), 6n, proj1(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision")
-    Test.check(HP.valid(host()) && Bool.not(HP.valid(restarted_host())) && Bool.not(HP.valid(unconfigured_host()))
-      && Bool.not(HP.valid(twin_session_host())) && Bool.not(HP.valid(twin_binding_host()))
-      && denied(dispatch_on(evidenced(), offer_id_ta(), restarted_host(), worker_a(), running_t(), trial_snapshot()), evidenced(), R.StaleRevision{})
-      && denied(dispatch_on(evidenced(), offer_id_ta(), unconfigured_host(), worker_a(), running_t(), trial_snapshot()), evidenced(), R.StaleRevision{}), "ER-007 a host state that is not HP.valid at its own revision (sessions of incarnation 57 under incarnation 58, or bindings to unconfigured profiles) denied StaleRevision; the twin-session and twin-binding hosts are not valid either")
-    Test.check(HP.valid(token_swap_host()) && R.dispatch_target_selected(evidenced(), offer_id_ta(), token_swap_host(), 8n)
-      && denied(dispatch_on(evidenced(), offer_id_ta(), token_swap_host(), 8n, running_t(), trial_snapshot()), evidenced(), R.NotSelected{})
-      && R.Change.accepted(dispatch_on(evidenced(), offer_id_ta(), token_swap_host(), worker_a(), running_t(), trial_snapshot())), "ER-001 A's worker session 8 authenticated under another token (word 3) is A's subject at profile 1 but not grant 3's holder: denied NotSelected; A's session 6 on the same host dispatches")
-    Test.check(HP.valid(subject_swap_host()) && Bool.not(R.dispatch_target_selected(evidenced(), offer_id_ta(), subject_swap_host(), 8n))
-      && denied(dispatch_on(evidenced(), offer_id_ta(), subject_swap_host(), 8n, running_t(), trial_snapshot()), evidenced(), R.NotSelected{}), "ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected")
+    Test.check(dispatch_inner_0(trial_world()), "ER-007 dispatch at revision 5 against 6 denied StaleRevision")
+    Test.check(dispatch_inner_1(trial_world()), "ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision")
+    Test.check(dispatch_inner_2(trial_world()), "ER-007 a host state that is not HP.valid at its own revision (sessions of incarnation 57 under incarnation 58, or bindings to unconfigured profiles) denied StaleRevision; the twin-session and twin-binding hosts are not valid either")
+    Test.check(dispatch_inner_3(trial_world()), "ER-001 A's worker session 8 authenticated under another token (word 3) is A's subject at profile 1 but not grant 3's holder: denied NotSelected; A's session 6 on the same host dispatches")
+    Test.check(dispatch_inner_4(trial_world()), "ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected")
     Test.check(selection_offer_is(R.selection(p2_selected()), offer_a2_p2_35())
       && R.dispatch_target_selected(p2_selected(), R.OfferId{201n, 2n}, host(), 4n)
       && Bool.not(R.dispatch_target_selected(p2_selected(), R.OfferId{201n, 2n}, host(), worker_a()))
       && R.Error.equal(R.Gates.reason(R.target_gates(R.selection(p2_selected()), R.OfferId{201n, 2n}, host(), worker_a()), R.NotSelected{}), R.WrongProfile{}), "ER-001 the binding is compared with the selected offer's profile: with A's profile-2 offer {201, 2} selected, A's worker session 4 (profile 2) is its target and session 6 (profile 1) is not, WrongProfile")
-    Test.check(denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), reserved_t(), 5n, proj1(), trial_snapshot()), evidenced(), R.WrongStage{})
-      && denied(R.dispatch(evidenced(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 5n, proj1(), trial_snapshot()), evidenced(), R.WrongStage{}), "ER-007 a session at Reserved, or a Running session at revision 6 named as 5, denied WrongStage")
-    Test.check(dispatch_denied(dispatched_t(), offer_id_ta(), worker_a(), R.Replay{}), "ER-007 a second dispatch of selection 3 denied Replay")
-    Test.check(dispatch_denied(selected_t(), offer_id_ta(), worker_a(), R.MissingEvidence{})
-      && dispatch_denied(foreign_offer(), offer_id_ta(), worker_a(), R.MissingEvidence{})
-      && dispatch_denied(foreign_provider(), offer_id_ta(), worker_a(), R.MissingEvidence{}), "ER-005 dispatch with no evidence for selection 3, or with evidence under id 3 naming B's offer or B's claim, denied MissingEvidence")
-    Test.check(dispatch_denied(R.Change.state(reselected_a()), offer_id_ta(), worker_a(), R.MissingEvidence{}), "ER-005 A's same offer {201, 4} reselected as selection 4: retired selection 3's evidence for that offer and provider does not count, so dispatch is denied MissingEvidence")
-    Test.check(R.Change.accepted(dispatch_a(evidence_behind(), offer_id_ta(), worker_a()))
-      && dispatch_denied(dispatch_behind(), offer_id_ta(), worker_a(), R.Replay{}), "ER-007 the evidence and dispatch lookups read the whole list: A's evidence for selection 3 behind a record for selection 2 still dispatches, and Dispatch{3, 6} behind a record for selection 2 still denies Replay")
-    Test.check(denied(dispatch_on(b_evidenced(), offer_id_tb(), host(), worker_b(), a_carried(), snapshot2()), b_evidenced(), R.WrongTrial{})
-      && N.Session.is(a_carried(), N.Running{})
-      && R.Change.accepted(dispatch_on(b_evidenced(), offer_id_tb(), host(), worker_b(), b_running(), snapshot2())), "ER-005 A's session sampled under retired selection 3 and advanced to Running on B's projection is denied WrongTrial for B's selection 4; B's own Running session dispatches")
-    Test.check(denied(dispatch_on(b_evidenced(), offer_id_tb(), host(), 5n, b_running(), snapshot2()), b_evidenced(), R.WrongProfile{})
-      && denied(dispatch_on(b_evidenced(), offer_id_ta(), host(), worker_a(), b_running(), snapshot2()), b_evidenced(), R.NotSelected{}), "ER-001 while B is selected, B's worker session 5 bound under profile 2 is denied WrongProfile, and A's offer on A's worker session is denied NotSelected")
+    Test.check(dispatch_inner_6(trial_world()), "ER-007 a session at Reserved, or a Running session at revision 6 named as 5, denied WrongStage")
+    Test.check(dispatch_inner_7(trial_world()), "ER-007 a second dispatch of selection 3 denied Replay")
+    Test.check(dispatch_inner_8(trial_world()), "ER-005 dispatch with no evidence for selection 3, or with evidence under id 3 naming B's offer or B's claim, denied MissingEvidence")
+    Test.check(dispatch_inner_9(trial_world()), "ER-005 A's same offer {201, 4} reselected as selection 4: retired selection 3's evidence for that offer and provider does not count, so dispatch is denied MissingEvidence")
+    Test.check(dispatch_inner_10(trial_world()), "ER-007 the evidence and dispatch lookups read the whole list: A's evidence for selection 3 behind a record for selection 2 still dispatches, and Dispatch{3, 6} behind a record for selection 2 still denies Replay")
+    Test.check(dispatch_inner_11(trial_world()), "ER-005 A's session sampled under retired selection 3 and advanced to Running on B's projection is denied WrongTrial for B's selection 4; B's own Running session dispatches")
+    Test.check(dispatch_inner_12(trial_world()), "ER-001 while B is selected, B's worker session 5 bound under profile 2 is denied WrongProfile, and A's offer on A's worker session is denied NotSelected")
 
 # Revocation, expiry, withdrawal and request changes between selection and
 # dispatch.
@@ -2461,8 +2727,8 @@ def approvals_of(context: N.Context) -> N.Approvals:
       approvals
 
 # Object 10's authority 101 withdraws A's approval (id 2) after dispatch.
-def unapproved_dispatched() -> R.State:
-  R.Change.state(R.withdraw_approval(dispatched_t(), 7n, IT.source_authority(), 2n, trial_snapshot()))
+def unapproved_dispatched(+tw: Tw) -> R.State:
+  R.Change.state(R.withdraw_approval(dispatched_t(tw), 7n, IT.source_authority(), 2n, trial_snapshot()))
 
 # The short grant world: 101 approves A at profile 1 (serial 14, valid
 # until 145, id 1); A offers {201, 6} on grant 12, quote 39, valid until
@@ -2491,47 +2757,71 @@ def raw_at(now: Nat) -> N.Context:
 def running_for(request: N.Request) -> N.Session:
   N.Session{6n, request, N.Running{}, 100n, 21n, 11n}
 
-def dispatch_denied_with(+session: N.Session, reason: R.Error) -> Bool:
-  denied(dispatch_on(evidenced(), offer_id_ta(), host(), worker_a(), session, trial_snapshot()), evidenced(), reason)
+def dispatch_denied_with(+tw: Tw, +session: N.Session, reason: R.Error) -> Bool:
+  denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), host(), worker_a(), session, trial_snapshot()), evidenced(tw), reason)
 
-def scope_denied(+request: N.Request) -> Bool:
-  dispatch_denied_with(running_for(request), R.ScopeMismatch{})
+def scope_denied(+tw: Tw, +request: N.Request) -> Bool:
+  dispatch_denied_with(tw, running_for(request), R.ScopeMismatch{})
 
 def request_with(plan: T.Plan, quote: Nat) -> N.Request:
   N.Request{plan, 7n, quote, 30n, 180n}
 
-def withdrawn_ta() -> R.State:
-  R.Change.state(R.withdraw_offer(evidenced(), 6n, provider_a(), offer_id_ta()))
+def withdrawn_ta(+tw: Tw) -> R.State:
+  R.Change.state(R.withdraw_offer(evidenced(tw), 6n, provider_a(), offer_id_ta()))
+
+def dispatch_invalidation_0(+tw: Tw) -> Bool:
+  denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), host(), worker_a(), running_t(tw), revoked_snapshot()), evidenced(tw), R.Revoked{})
+    && n_approvals_equal(approvals_of(R.negotiation_context(evidenced(tw), trial_raw(), revoked_snapshot())), N.NoApprovals{})
+    && N.Step.accepted(N.start(reserved_t(tw), 5n, proj1(tw), ledger_t(tw)))
+    && Bool.not(N.Step.accepted(N.start(reserved_t(tw), 5n, R.negotiation_context(evidenced(tw), trial_raw(), revoked_snapshot()), ledger_t(tw))))
+    && registry_empty(R.provider_registry(dispatched_t(tw), revoked_snapshot()))
+
+def dispatch_invalidation_1(+tw: Tw) -> Bool:
+  denied(dispatch_on(tw, evidenced(tw), offer_id_ta(), host(), worker_a(), running_t(tw), snapshot_with(epoch_issuer(), 110n)), evidenced(tw), R.StaleEpoch{})
+    && registry_empty(R.provider_registry(dispatched_t(tw), snapshot_with(epoch_issuer(), 110n)))
+
+def dispatch_invalidation_2(+tw: Tw) -> Bool:
+  registry_empty(R.provider_registry(unapproved_dispatched(tw), trial_snapshot()))
+    && Nat.is_eq(registry_count(I.registry(issuer(), provider_a(), 110n)), 1n)
+    && registry_empty(R.provider_registry(dispatched_t(tw), snapshot_with(issuer(), 113n)))
+    && found_current(grant_record(issuer(), 3n), issuer(), 113n)
+
+def dispatch_invalidation_3(+tw: Tw) -> Bool:
+  R.selection_current(short_selected(), short_at(120n))
+    && n_approvals_equal(approvals_of(R.negotiation_context(short_selected(), raw_at(120n), short_at(120n))), a_approvals(130n))
+    && denied(R.dispatch(short_selected(), 3n, R.OfferId{201n, 6n}, host(), HP.revision(host()), worker_a(), running_t(tw), 6n, raw_at(130n), short_at(130n)), short_selected(), R.Expired{})
+
+def dispatch_invalidation_4(+tw: Tw) -> Bool:
+  N.Step.accepted(N.start(reserved_t(tw), 5n, R.negotiation_context(short_selected(), raw_at(129n), short_at(120n)), ledger_t(tw)))
+    && Bool.not(N.Step.accepted(N.start(reserved_t(tw), 5n, R.negotiation_context(short_selected(), raw_at(130n), short_at(120n)), ledger_t(tw))))
+    && empty_at(R.negotiation_context(short_selected(), raw_at(130n), short_at(130n)), trial_budgets(), 130n)
+
+def dispatch_invalidation_5(+tw: Tw) -> Bool:
+  scope_denied(tw, request_with(IT.plan_invocation(), 42n)) && scope_denied(tw, request_with(IT.plan_source_version(), 42n))
+    && scope_denied(tw, request_with(IT.plan_redirect(), 42n)) && scope_denied(tw, request_with(TF.plan(), 41n))
+    && R.Change.accepted(dispatch_on(tw, evidenced(tw), offer_id_ta(), host(), worker_a(), running_for(NT.request()), trial_snapshot()))
+
+def dispatch_invalidation_6(+tw: Tw) -> Bool:
+  offers_equal(R.offers(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoOffers{})
+    && approvals_equal(R.approvals(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoApprovals{})
+    && evidence_equal(R.evidence(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoEvidence{})
+    && denied(R.dispatch(first_open(request_with(IT.plan_invocation(), 42n), constraint()), 0n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_for(request_with(IT.plan_invocation(), 42n)), 6n, proj1(tw), trial_snapshot()),
+      first_open(request_with(IT.plan_invocation(), 42n), constraint()), R.NotSelected{})
+
+def dispatch_invalidation_7(+tw: Tw) -> Bool:
+  dispatch_denied(tw, withdrawn_ta(tw), offer_id_ta(), worker_a(), R.NotSelected{})
+    && denied(R.dispatch(withdrawn_ta(tw), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(tw), 6n, proj1(tw), trial_snapshot()), withdrawn_ta(tw), R.NotSelected{})
 
 def dispatch_invalidation() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(dispatch_on(evidenced(), offer_id_ta(), host(), worker_a(), running_t(), revoked_snapshot()), evidenced(), R.Revoked{})
-      && n_approvals_equal(approvals_of(R.negotiation_context(evidenced(), trial_raw(), revoked_snapshot())), N.NoApprovals{})
-      && N.Step.accepted(N.start(reserved_t(), 5n, proj1(), ledger_t()))
-      && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, R.negotiation_context(evidenced(), trial_raw(), revoked_snapshot()), ledger_t())))
-      && registry_empty(R.provider_registry(dispatched_t(), revoked_snapshot())), "ER-007 selection racing revocation: once 101 revokes the source approval behind A's grant 3, dispatch is denied Revoked, the projection carries no approvals so N.start is rejected on it (it advances on the earlier one), and the dispatched selection's provider_registry is empty")
-    Test.check(denied(dispatch_on(evidenced(), offer_id_ta(), host(), worker_a(), running_t(), snapshot_with(epoch_issuer(), 110n)), evidenced(), R.StaleEpoch{})
-      && registry_empty(R.provider_registry(dispatched_t(), snapshot_with(epoch_issuer(), 110n))), "ER-007 epoch change between selection and dispatch: once the issuer's live stamp advances to epoch 5, dispatch is denied StaleEpoch and the dispatched selection's provider_registry is empty")
-    Test.check(registry_empty(R.provider_registry(unapproved_dispatched(), trial_snapshot()))
-      && Nat.is_eq(registry_count(I.registry(issuer(), provider_a(), 110n)), 1n)
-      && registry_empty(R.provider_registry(dispatched_t(), snapshot_with(issuer(), 113n)))
-      && found_current(grant_record(issuer(), 3n), issuer(), 113n), "ER-006 after dispatch, provider_registry is empty once object 10's approval of A is withdrawn, or at 113 when A's offer has expired, though grant 3 is still current and projected for A")
-    Test.check(R.selection_current(short_selected(), short_at(120n))
-      && n_approvals_equal(approvals_of(R.negotiation_context(short_selected(), raw_at(120n), short_at(120n))), a_approvals(130n))
-      && denied(R.dispatch(short_selected(), 3n, R.OfferId{201n, 6n}, host(), HP.revision(host()), worker_a(), running_t(), 6n, raw_at(130n), short_at(130n)), short_selected(), R.Expired{}), "ER-007 a grant that expires before dispatch: A's grant 12 and its offer {201, 6} both end at 130 (an offer cannot outlive its grant); selected at 110 and current at 120, dispatch at 130 is denied Expired, the grant's currency gate reporting first")
-    Test.check(N.Step.accepted(N.start(reserved_t(), 5n, R.negotiation_context(short_selected(), raw_at(129n), short_at(120n)), ledger_t()))
-      && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, R.negotiation_context(short_selected(), raw_at(130n), short_at(120n)), ledger_t())))
-      && empty_at(R.negotiation_context(short_selected(), raw_at(130n), short_at(130n)), trial_budgets(), 130n), "ER-007 the projected approval ends at 130 (the grant's and offer's end, before approval 145), so N.start at 130 is rejected even on a projection built at 120 (at 129 it advances), and the projection at 130 is empty")
-    Test.check(scope_denied(request_with(IT.plan_invocation(), 42n)) && scope_denied(request_with(IT.plan_source_version(), 42n))
-      && scope_denied(request_with(IT.plan_redirect(), 42n)) && scope_denied(request_with(TF.plan(), 41n))
-      && R.Change.accepted(dispatch_on(evidenced(), offer_id_ta(), host(), worker_a(), running_for(NT.request()), trial_snapshot())), "ER-007 a Running session whose request differs in invocation (98), manifest (source 10v5), destination (20v9) or quote (41) denied ScopeMismatch; the same session with the rendezvous request dispatches")
-    Test.check(offers_equal(R.offers(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoOffers{})
-      && approvals_equal(R.approvals(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoApprovals{})
-      && evidence_equal(R.evidence(first_open(request_with(IT.plan_invocation(), 42n), constraint())), R.NoEvidence{})
-      && denied(R.dispatch(first_open(request_with(IT.plan_invocation(), 42n), constraint()), 0n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_for(request_with(IT.plan_invocation(), 42n)), 6n, proj1(), trial_snapshot()),
-        first_open(request_with(IT.plan_invocation(), 42n), constraint()), R.NotSelected{}), "ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected")
-    Test.check(dispatch_denied(withdrawn_ta(), offer_id_ta(), worker_a(), R.NotSelected{})
-      && denied(R.dispatch(withdrawn_ta(), 6n, offer_id_ta(), host(), HP.revision(host()), worker_a(), running_t(), 6n, proj1(), trial_snapshot()), withdrawn_ta(), R.NotSelected{}), "ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal")
+    Test.check(dispatch_invalidation_0(trial_world()), "ER-007 selection racing revocation: once 101 revokes the source approval behind A's grant 3, dispatch is denied Revoked, the projection carries no approvals so N.start is rejected on it (it advances on the earlier one), and the dispatched selection's provider_registry is empty")
+    Test.check(dispatch_invalidation_1(trial_world()), "ER-007 epoch change between selection and dispatch: once the issuer's live stamp advances to epoch 5, dispatch is denied StaleEpoch and the dispatched selection's provider_registry is empty")
+    Test.check(dispatch_invalidation_2(trial_world()), "ER-006 after dispatch, provider_registry is empty once object 10's approval of A is withdrawn, or at 113 when A's offer has expired, though grant 3 is still current and projected for A")
+    Test.check(dispatch_invalidation_3(trial_world()), "ER-007 a grant that expires before dispatch: A's grant 12 and its offer {201, 6} both end at 130 (an offer cannot outlive its grant); selected at 110 and current at 120, dispatch at 130 is denied Expired, the grant's currency gate reporting first")
+    Test.check(dispatch_invalidation_4(trial_world()), "ER-007 the projected approval ends at 130 (the grant's and offer's end, before approval 145), so N.start at 130 is rejected even on a projection built at 120 (at 129 it advances), and the projection at 130 is empty")
+    Test.check(dispatch_invalidation_5(trial_world()), "ER-007 a Running session whose request differs in invocation (98), manifest (source 10v5), destination (20v9) or quote (41) denied ScopeMismatch; the same session with the rendezvous request dispatches")
+    Test.check(dispatch_invalidation_6(trial_world()), "ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected")
+    Test.check(dispatch_invalidation_7(trial_world()), "ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal")
 
 # A cheaper provider substituted after selection (ER-007). From the
 # dispatched state: 101 withdraws B's approval (id 1, revision 8); B offers
@@ -2549,42 +2839,42 @@ def offer_id_b20() -> R.OfferId:
 def approval_b25() -> R.OriginApproval:
   approval_with(25n, IT.source_authority(), TF.source_object(), provider_b(), profile(), TF.plan(), 135n)
 
-def sub_offered() -> R.State:
-  +unapproved = R.Change.state(R.withdraw_approval(dispatched_t(), 7n, IT.source_authority(), 1n, snapshot_with(issuer(), 112n)))
+def sub_offered(+tw: Tw) -> R.State:
+  +unapproved = R.Change.state(R.withdraw_approval(dispatched_t(tw), 7n, IT.source_authority(), 1n, snapshot_with(issuer(), 112n)))
   R.Change.state(R.submit_offer(unapproved, 8n, provider_b(), offer_b20(), snapshot_with(issuer(), 112n)))
 
-def sub_abandoned() -> R.State:
-  R.Change.state(R.abandon(sub_offered(), 9n))
+def sub_abandoned(+tw: Tw) -> R.State:
+  R.Change.state(R.abandon(sub_offered(tw), 9n))
 
-def sub_approved() -> R.State:
-  R.Change.state(R.submit_approval(sub_abandoned(), 10n, IT.source_authority(), approval_b25(), snapshot_with(issuer(), 114n)))
+def sub_approved(+tw: Tw) -> R.State:
+  R.Change.state(R.submit_approval(sub_abandoned(tw), 10n, IT.source_authority(), approval_b25(), snapshot_with(issuer(), 114n)))
 
-def sub_select() -> R.Change:
-  R.select(sub_approved(), 11n, session2(), 1n, NT.context(116n), snapshot_with(issuer(), 116n))
+def sub_select(+tw: Tw) -> R.Change:
+  R.select(sub_approved(tw), 11n, session2(), 1n, NT.context(116n), snapshot_with(issuer(), 116n))
 
-def sub_selected() -> R.State:
-  R.Change.state(sub_select())
+def sub_selected(+tw: Tw) -> R.State:
+  R.Change.state(sub_select(tw))
 
 def sub_proj(+state: R.State) -> N.Context:
   R.negotiation_context(state, raw2(), snapshot2())
 
-def sub_challenged() -> N.Session:
-  N.Step.session(N.challenge(session2(), 1n, 26n, sub_proj(sub_selected())))
+def sub_challenged(+tw: Tw) -> N.Session:
+  N.Step.session(N.challenge(session2(), 1n, 26n, sub_proj(sub_selected(tw))))
 
 def ev_b20() -> R.Evidence:
   evidence_with(R.record_version(), 36n, provider_b(), offer_id_b20(), 26n, TF.code())
 
-def sub_evidenced() -> R.State:
-  R.Change.state(R.submit_evidence(sub_selected(), 12n, provider_b(), ev_b20(), sub_challenged(), raw2(), snapshot2()))
+def sub_evidenced(+tw: Tw) -> R.State:
+  R.Change.state(R.submit_evidence(sub_selected(tw), 12n, provider_b(), ev_b20(), sub_challenged(tw), raw2(), snapshot2()))
 
-def sub_running() -> N.Session:
-  running_on(N.Step.session(N.sample(sub_challenged(), 2n, 36n, sub_proj(sub_evidenced()))), sub_proj(sub_evidenced()))
+def sub_running(+tw: Tw) -> N.Session:
+  running_on(N.Step.session(N.sample(sub_challenged(tw), 2n, 36n, sub_proj(sub_evidenced(tw)))), sub_proj(sub_evidenced(tw)))
 
 def sub_dispatch(+state: R.State, +session: N.Session) -> R.Change:
   R.dispatch(state, R.revision(state), offer_id_b20(), host(), HP.revision(host()), worker_b(), session, 6n, sub_proj(state), snapshot2())
 
-def sub_dispatched() -> R.Change:
-  sub_dispatch(sub_evidenced(), sub_running())
+def sub_dispatched(+tw: Tw) -> R.Change:
+  sub_dispatch(sub_evidenced(tw), sub_running(tw))
 
 # Native arity: each check of `dispatch_substitution` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -2593,60 +2883,72 @@ def sub_dispatched() -> R.Change:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `dispatch_substitution_K_J` is conjunct J of the K-th check of `dispatch_substitution`, counting
 # from 0.
-def dispatch_substitution_0_0() -> Bool:
-  Nat.is_eq(R.revision(sub_offered()), 9n)
+def dispatch_substitution_0_0(+tw: Tw) -> Bool:
+  Nat.is_eq(R.revision(sub_offered(tw)), 9n)
 
-def dispatch_substitution_0_1() -> Bool:
-  offers_hold(R.offers(sub_offered()), offer_b20())
+def dispatch_substitution_0_1(+tw: Tw) -> Bool:
+  offers_hold(R.offers(sub_offered(tw)), offer_b20())
 
-def dispatch_substitution_0_2() -> Bool:
-  denied(R.dispatch(sub_offered(), 9n, offer_id_b20(), host(), HP.revision(host()), worker_b(), running_t(), 6n, proj1(), snapshot_with(issuer(), 112n)), sub_offered(), R.NotSelected{})
+def dispatch_substitution_0_2(+tw: Tw) -> Bool:
+  denied(R.dispatch(sub_offered(tw), 9n, offer_id_b20(), host(), HP.revision(host()), worker_b(), running_t(tw), 6n, proj1(tw), snapshot_with(issuer(), 112n)), sub_offered(tw), R.NotSelected{})
 
-def dispatch_substitution_0_3() -> Bool:
-  denied(R.select(sub_offered(), 9n, NT.pinned(), 1n, NT.context(112n), snapshot_with(issuer(), 112n)), sub_offered(), R.AlreadySelected{})
+def dispatch_substitution_0_3(+tw: Tw) -> Bool:
+  denied(R.select(sub_offered(tw), 9n, NT.pinned(), 1n, NT.context(112n), snapshot_with(issuer(), 112n)), sub_offered(tw), R.AlreadySelected{})
 
-def dispatch_substitution_2_0() -> Bool:
-  selected(sub_select(), offer_b20())
+def dispatch_substitution_2_0(+tw: Tw) -> Bool:
+  selected(sub_select(tw), offer_b20())
 
-def dispatch_substitution_2_1() -> Bool:
-  issued_is(R.Change.issued(sub_select()), 5n)
+def dispatch_substitution_2_1(+tw: Tw) -> Bool:
+  issued_is(R.Change.issued(sub_select(tw)), 5n)
 
-def dispatch_substitution_2_2() -> Bool:
-  denied(sub_dispatch(sub_selected(), running_t()), sub_selected(), R.MissingEvidence{})
+def dispatch_substitution_2_2(+tw: Tw) -> Bool:
+  denied(sub_dispatch(sub_selected(tw), running_t(tw)), sub_selected(tw), R.MissingEvidence{})
 
-def dispatch_substitution_2_3() -> Bool:
-  registry_empty(R.provider_registry(sub_selected(), snapshot2()))
+def dispatch_substitution_2_3(+tw: Tw) -> Bool:
+  registry_empty(R.provider_registry(sub_selected(tw), snapshot2()))
 
-def dispatch_substitution_3_0() -> Bool:
-  Nat.is_eq(R.revision(sub_evidenced()), 13n)
+def dispatch_substitution_3_0(+tw: Tw) -> Bool:
+  Nat.is_eq(R.revision(sub_evidenced(tw)), 13n)
 
-def dispatch_substitution_3_1() -> Bool:
-  N.Session.is(sub_running(), N.Running{})
+def dispatch_substitution_3_1(+tw: Tw) -> Bool:
+  N.Session.is(sub_running(tw), N.Running{})
 
-def dispatch_substitution_3_2() -> Bool:
-  R.Change.accepted(sub_dispatched())
+def dispatch_substitution_3_2(+tw: Tw) -> Bool:
+  R.Change.accepted(sub_dispatched(tw))
 
-def dispatch_substitution_3_3() -> Bool:
-  issued_is(R.Change.issued(sub_dispatched()), 5n)
+def dispatch_substitution_3_3(+tw: Tw) -> Bool:
+  issued_is(R.Change.issued(sub_dispatched(tw)), 5n)
 
-def dispatch_substitution_3_4() -> Bool:
-  dispatches_equal(R.dispatched(R.Change.state(sub_dispatched())),
+def dispatch_substitution_3_4(+tw: Tw) -> Bool:
+  dispatches_equal(R.dispatched(R.Change.state(sub_dispatched(tw))),
     R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_b()}, R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}}})
 
-def dispatch_substitution_3_5() -> Bool:
-  single_token_is(R.provider_registry(R.Change.state(sub_dispatched()), snapshot2()), token_b())
+def dispatch_substitution_3_5(+tw: Tw) -> Bool:
+  single_token_is(R.provider_registry(R.Change.state(sub_dispatched(tw)), snapshot2()), token_b())
+
+def dispatch_substitution_0(+tw: Tw) -> Bool:
+  dispatch_substitution_0_0(tw) && dispatch_substitution_0_1(tw) && dispatch_substitution_0_2(tw)
+    && dispatch_substitution_0_3(tw)
+
+def dispatch_substitution_1(+tw: Tw) -> Bool:
+  reason_is(R.ineligibility(offer_b20(), sub_abandoned(tw), snapshot_with(issuer(), 114n)), R.MissingApproval{})
+    && denied(R.select(sub_abandoned(tw), 10n, session2(), 1n, NT.context(114n), snapshot_with(issuer(), 114n)), sub_abandoned(tw), R.NoEligibleOffer{})
+    && eligible_now(R.ineligibility(offer_b20(), sub_approved(tw), snapshot_with(issuer(), 114n)))
+
+def dispatch_substitution_2(+tw: Tw) -> Bool:
+  dispatch_substitution_2_0(tw) && dispatch_substitution_2_1(tw) && dispatch_substitution_2_2(tw)
+    && dispatch_substitution_2_3(tw)
+
+def dispatch_substitution_3(+tw: Tw) -> Bool:
+  dispatch_substitution_3_0(tw) && dispatch_substitution_3_1(tw) && dispatch_substitution_3_2(tw)
+    && dispatch_substitution_3_3(tw) && dispatch_substitution_3_4(tw) && dispatch_substitution_3_5(tw)
 
 def dispatch_substitution() -> IO(Unit):
   do IO<Unit>:
-    Test.check(dispatch_substitution_0_0() && dispatch_substitution_0_1() && dispatch_substitution_0_2()
-      && dispatch_substitution_0_3(), "ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected")
-    Test.check(reason_is(R.ineligibility(offer_b20(), sub_abandoned(), snapshot_with(issuer(), 114n)), R.MissingApproval{})
-      && denied(R.select(sub_abandoned(), 10n, session2(), 1n, NT.context(114n), snapshot_with(issuer(), 114n)), sub_abandoned(), R.NoEligibleOffer{})
-      && eligible_now(R.ineligibility(offer_b20(), sub_approved(), snapshot_with(issuer(), 114n))), "ER-007 after abandon, A's approval does not count for B: B's offer is ineligible MissingApproval and select finds no eligible offer at 114 (A's expired at 113) until 101 approves B")
-    Test.check(dispatch_substitution_2_0() && dispatch_substitution_2_1() && dispatch_substitution_2_2()
-      && dispatch_substitution_2_3(), "ER-007 B reselected as selection 5: A's evidence does not follow (dispatch with A's Running session denied MissingEvidence), and A's dispatch record of selection 3 opens no provider_registry for B")
-    Test.check(dispatch_substitution_3_0() && dispatch_substitution_3_1() && dispatch_substitution_3_2()
-      && dispatch_substitution_3_3() && dispatch_substitution_3_4() && dispatch_substitution_3_5(), "ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6")
+    Test.check(dispatch_substitution_0(trial_world()), "ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected")
+    Test.check(dispatch_substitution_1(trial_world()), "ER-007 after abandon, A's approval does not count for B: B's offer is ineligible MissingApproval and select finds no eligible offer at 114 (A's expired at 113) until 101 approves B")
+    Test.check(dispatch_substitution_2(trial_world()), "ER-007 B reselected as selection 5: A's evidence does not follow (dispatch with A's Running session denied MissingEvidence), and A's dispatch record of selection 3 opens no provider_registry for B")
+    Test.check(dispatch_substitution_3(trial_world()), "ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6")
 def dispatch() -> IO(Unit):
   do IO<Unit>:
     dispatch_happy()
@@ -2670,109 +2972,136 @@ def dispatch() -> IO(Unit):
 # commit path's own check, and a denied commit returns the Running session
 # and the ledger with its hold, so no reservation is spent.
 
-def final_proj(+raw: N.Context, +snapshot: R.Snapshot) -> N.Context:
-  R.commit_context(dispatched_t(), running_t(), host(), HP.revision(host()), worker_a(), raw, snapshot)
+def final_proj(+tw: Tw, +raw: N.Context, +snapshot: R.Snapshot) -> N.Context:
+  R.commit_context(dispatched_t(tw), running_t(tw), host(), HP.revision(host()), worker_a(), raw, snapshot)
 
 def final_context(+negotiation: N.Context) -> B.Context:
   BF.with_negotiation(BF.context(), negotiation)
 
 # The Backplane context on the dispatched selection's projection at 110.
-def dispatched_context() -> B.Context:
-  final_context(final_proj(trial_raw(), trial_snapshot()))
+def dispatched_context(+tw: Tw) -> B.Context:
+  final_context(final_proj(tw, trial_raw(), trial_snapshot()))
 
-def final_commit_with(+context: B.Context, candidate: C.Candidate) -> B.CommitResult:
-  B.commit(running_t(), 6n, 1n, ledger_t(), candidate, context)
+def final_commit_with(+tw: Tw, +context: B.Context, candidate: C.Candidate) -> B.CommitResult:
+  B.commit(running_t(tw), 6n, 1n, ledger_t(tw), candidate, context)
 
-def final_commit(+context: B.Context) -> B.CommitResult:
-  final_commit_with(context, BF.candidate())
+def final_commit(+tw: Tw, +context: B.Context) -> B.CommitResult:
+  final_commit_with(tw, context, BF.candidate())
 
 # The DataOS facade path: reader 7 commits through its execute descriptor
 # (handle 2, frontend revision 2), which re-resolves the capability and then
 # runs the whole Backplane commit.
-def facade_commit(+context: B.Context) -> B.CommitResult:
-  OS.commit_from_capability(running_t(), 6n, 1n, ledger_t(), BF.candidate(),
+def facade_commit(+tw: Tw, +context: B.Context) -> B.CommitResult:
+  OS.commit_from_capability(running_t(tw), 6n, 1n, ledger_t(tw), BF.candidate(),
     F.Ref{FT.caller(7n), 2n}, 2n, OS.Context{context, FT.descriptor(7n, 7), FT.registry(7n, 7)})
 
 # A rejection that keeps A's Running session and the reserved ledger: same
 # ledger revision and reader balance, and the hold for receipt 11 still live.
-def kept(+result: B.CommitResult) -> Bool:
+def kept(+tw: Tw, +result: B.CommitResult) -> Bool:
   Bool.not(B.accepted(result)) && N.Session.is(B.session(result), N.Running{})
     && Nat.is_eq(N.Session.revision(B.session(result)), 6n)
-    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(ledger_t()))
-    && Nat.is_eq(L.balance(B.ledger(result), 7n), L.balance(ledger_t(), 7n))
-    && N.hold_live(B.ledger(result), running_t(), 110n)
+    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(ledger_t(tw)))
+    && Nat.is_eq(L.balance(B.ledger(result), 7n), L.balance(ledger_t(tw), 7n))
+    && N.hold_live(B.ledger(result), running_t(tw), 110n)
 
 # The rendezvous side passed: selection 3 is current at 110, A's evidence is
 # stored under it and the dispatch is recorded.
-def rendezvous_passed() -> Bool:
-  R.selection_current(dispatched_t(), trial_snapshot())
-    && evidence_equal(R.evidence(dispatched_t()), R.evidence(evidenced()))
-    && dispatches_equal(R.dispatched(dispatched_t()), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+def rendezvous_passed(+tw: Tw) -> Bool:
+  R.selection_current(dispatched_t(tw), trial_snapshot())
+    && evidence_equal(R.evidence(dispatched_t(tw)), R.evidence(evidenced(tw)))
+    && dispatches_equal(R.dispatched(dispatched_t(tw)), R.Dispatches{R.Dispatch{3n, host_incarnation(), worker_a()}, R.NoDispatches{}})
 
-def successful_final() -> B.CommitResult:
-  final_commit(dispatched_context())
+def successful_final(+tw: Tw) -> B.CommitResult:
+  final_commit(tw, dispatched_context(tw))
 
-def successful_facade() -> B.CommitResult:
-  facade_commit(dispatched_context())
+def successful_facade(+tw: Tw) -> B.CommitResult:
+  facade_commit(tw, dispatched_context(tw))
 
 # SYNTHETIC MONITOR STATE: the reader's transfer write grant revoked (the
 # write list empty) in the unprojected context the projection keeps.
-def write_revoked_context() -> B.Context:
-  final_context(final_proj(NT.with_transfer(trial_raw(), TF.with_writes(TF.with_now(TF.context(), 110n), T.WriteEnd{})), trial_snapshot()))
+def write_revoked_context(+tw: Tw) -> B.Context:
+  final_context(final_proj(tw, NT.with_transfer(trial_raw(), TF.with_writes(TF.with_now(TF.context(), 110n), T.WriteEnd{})), trial_snapshot()))
 
 # The issuer revokes the source approval behind A's grant 3 after dispatch.
-def provider_revoked_context() -> B.Context:
-  final_context(final_proj(trial_raw(), revoked_snapshot()))
+def provider_revoked_context(+tw: Tw) -> B.Context:
+  final_context(final_proj(tw, trial_raw(), revoked_snapshot()))
 
 # The issuer's live stamp advances to authority epoch 5 after dispatch.
-def epoch_context() -> B.Context:
-  final_context(final_proj(trial_raw(), snapshot_with(epoch_issuer(), 110n)))
+def epoch_context(+tw: Tw) -> B.Context:
+  final_context(final_proj(tw, trial_raw(), snapshot_with(epoch_issuer(), 110n)))
 
 # The graph and sink carry control label 3, so the combined output policy
 # does not fit the destination's clearance, though every grant is current.
-def wide_output_context() -> B.Context:
-  BF.with_binding(dispatched_context(), BF.extra_control_binding())
+def wide_output_context(+tw: Tw) -> B.Context:
+  BF.with_binding(dispatched_context(tw), BF.extra_control_binding())
 
 def wide_output_candidate() -> C.Candidate:
   BF.candidate_result(C.solve_cpu(BF.graph_labels(C.Bits64{3, 0}), 0n))
 
 # SYNTHETIC MONITOR STATE: the reader's budget funds quote 41, one short of
 # the request's 42, so no budget matches the session.
-def short_budget_context() -> B.Context:
-  final_context(final_proj(raw_with(110n, trial_challenges(), trial_samples(),
+def short_budget_context(+tw: Tw) -> B.Context:
+  final_context(final_proj(tw, raw_with(110n, trial_challenges(), trial_samples(),
     N.Budgets{N.Budget{11n, TF.plan(), 7n, 41n, 30n, 180n}, N.NoBudgets{}}), trial_snapshot()))
 
 # The projection once object 10's authority withdraws A's approval (id 2)
 # before approval: the selection is no longer current.
-def unapproved_proj() -> N.Context:
-  R.negotiation_context(R.Change.state(R.withdraw_approval(evidenced(), 6n, IT.source_authority(), 2n, trial_snapshot())),
+def unapproved_proj(+tw: Tw) -> N.Context:
+  R.negotiation_context(R.Change.state(R.withdraw_approval(evidenced(tw), 6n, IT.source_authority(), 2n, trial_snapshot())),
     trial_raw(), trial_snapshot())
+
+def integration_commits_0(+tw: Tw) -> Bool:
+  rendezvous_passed(tw) && B.accepted(successful_final(tw)) && BF.retained(successful_final(tw))
+    && N.Session.is(B.session(successful_final(tw)), N.Committed{})
+    && Nat.is_eq(L.revision(B.ledger(successful_final(tw))), 2n)
+
+def integration_commits_1(+tw: Tw) -> Bool:
+  B.accepted(successful_facade(tw)) && BF.retained(successful_facade(tw))
+
+def integration_commits_2(+tw: Tw) -> Bool:
+  rendezvous_passed(tw) && kept(tw, final_commit(tw, write_revoked_context(tw))) && kept(tw, facade_commit(tw, write_revoked_context(tw)))
+
+def integration_commits_3(+tw: Tw) -> Bool:
+  kept(tw, final_commit(tw, provider_revoked_context(tw))) && kept(tw, facade_commit(tw, provider_revoked_context(tw)))
+    && n_approvals_equal(approvals_of(R.negotiation_context(dispatched_t(tw), trial_raw(), revoked_snapshot())), N.NoApprovals{})
+
+def integration_commits_4(+tw: Tw) -> Bool:
+  kept(tw, final_commit(tw, epoch_context(tw))) && kept(tw, facade_commit(tw, epoch_context(tw)))
+
+def integration_commits_5(+tw: Tw) -> Bool:
+  rendezvous_passed(tw) && kept(tw, final_commit_with(tw, wide_output_context(tw), wide_output_candidate()))
+
+def integration_commits_6(+tw: Tw) -> Bool:
+  rendezvous_passed(tw) && kept(tw, final_commit(tw, short_budget_context(tw))) && kept(tw, facade_commit(tw, short_budget_context(tw)))
 
 def integration_commits() -> IO(Unit):
   do IO<Unit>:
-    Test.check(rendezvous_passed() && B.accepted(successful_final()) && BF.retained(successful_final())
-      && N.Session.is(B.session(successful_final()), N.Committed{})
-      && Nat.is_eq(L.revision(B.ledger(successful_final())), 2n), "integration a dispatched, sampled execution commits through Backplane.commit on the projected context: Committed, the write intent keeps the plan, origins and label, and the ledger advances to revision 2")
-    Test.check(B.accepted(successful_facade()) && BF.retained(successful_facade()), "integration the same execution commits through DataOS.commit_from_capability with reader 7's execute descriptor")
-    Test.check(rendezvous_passed() && kept(final_commit(write_revoked_context())) && kept(facade_commit(write_revoked_context())), "integration with the selection current and dispatched, the reader's transfer write grant revoked: T.admit denies, Backplane and the facade reject and spend no reservation")
-    Test.check(kept(final_commit(provider_revoked_context())) && kept(facade_commit(provider_revoked_context()))
-      && n_approvals_equal(approvals_of(R.negotiation_context(dispatched_t(), trial_raw(), revoked_snapshot())), N.NoApprovals{}), "integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation")
-    Test.check(kept(final_commit(epoch_context())) && kept(facade_commit(epoch_context())), "integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation")
-    Test.check(rendezvous_passed() && kept(final_commit_with(wide_output_context(), wide_output_candidate())), "integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation")
-    Test.check(rendezvous_passed() && kept(final_commit(short_budget_context())) && kept(facade_commit(short_budget_context())), "integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation")
+    Test.check(integration_commits_0(trial_world()), "integration a dispatched, sampled execution commits through Backplane.commit on the projected context: Committed, the write intent keeps the plan, origins and label, and the ledger advances to revision 2")
+    Test.check(integration_commits_1(trial_world()), "integration the same execution commits through DataOS.commit_from_capability with reader 7's execute descriptor")
+    Test.check(integration_commits_2(trial_world()), "integration with the selection current and dispatched, the reader's transfer write grant revoked: T.admit denies, Backplane and the facade reject and spend no reservation")
+    Test.check(integration_commits_3(trial_world()), "integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation")
+    Test.check(integration_commits_4(trial_world()), "integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation")
+    Test.check(integration_commits_5(trial_world()), "integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation")
+    Test.check(integration_commits_6(trial_world()), "integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation")
 
 # The commit context of A's evidenced but undispatched selection 3.
-def undispatched_context() -> B.Context:
-  final_context(R.commit_context(evidenced(), running_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot()))
+def undispatched_context(+tw: Tw) -> B.Context:
+  final_context(R.commit_context(evidenced(tw), running_t(tw), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot()))
+
+def integration_dispatch_0(+tw: Tw) -> Bool:
+  Bool.not(R.selection_dispatched(R.selection(evidenced(tw)), evidenced(tw)))
+    && n_approvals_equal(approvals_of(R.commit_context(evidenced(tw), running_t(tw), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
+    && kept(tw, final_commit(tw, undispatched_context(tw))) && kept(tw, facade_commit(tw, undispatched_context(tw)))
+    && B.accepted(successful_facade(tw))
+
+def integration_dispatch_1(+tw: Tw) -> Bool:
+  B.accepted(final_commit(tw, final_context(R.commit_context(dispatch_behind(tw), running_t(tw), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot()))))
+    && kept(tw, final_commit(tw, final_context(R.commit_context(dispatch_behind(tw), running_t(tw), host(), HP.revision(host()), worker_b(), trial_raw(), trial_snapshot()))))
 
 def integration_dispatch() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Bool.not(R.selection_dispatched(R.selection(evidenced()), evidenced()))
-      && n_approvals_equal(approvals_of(R.commit_context(evidenced(), running_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
-      && kept(final_commit(undispatched_context())) && kept(facade_commit(undispatched_context()))
-      && B.accepted(successful_facade()), "integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched")
-    Test.check(B.accepted(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot()))))
-      && kept(final_commit(final_context(R.commit_context(dispatch_behind(), running_t(), host(), HP.revision(host()), worker_b(), trial_raw(), trial_snapshot())))), "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected")
+    Test.check(integration_dispatch_0(trial_world()), "integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched")
+    Test.check(integration_dispatch_1(trial_world()), "integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected")
 
 # Native arity: each check of `integration_samples` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -2781,26 +3110,32 @@ def integration_dispatch() -> IO(Unit):
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `integration_samples_K_J` is conjunct J of the K-th check of `integration_samples`, counting
 # from 0.
-def integration_samples_0_0() -> Bool:
-  N.Session.is(sampled_t(), N.Sampled{})
+def integration_samples_0_0(+tw: Tw) -> Bool:
+  N.Session.is(sampled_t(tw), N.Sampled{})
 
-def integration_samples_0_1() -> Bool:
-  Bool.not(N.Step.accepted(N.sample(challenged_t(), 2n, 31n, proj0())))
+def integration_samples_0_1(+tw: Tw) -> Bool:
+  Bool.not(N.Step.accepted(N.sample(challenged_t(tw), 2n, 31n, proj0(tw))))
 
-def integration_samples_0_2() -> Bool:
-  Bool.not(N.Step.accepted(N.approve(challenged_t(), 2n, proj1())))
+def integration_samples_0_2(+tw: Tw) -> Bool:
+  Bool.not(N.Step.accepted(N.approve(challenged_t(tw), 2n, proj1(tw))))
 
-def integration_samples_0_3() -> Bool:
-  Bool.not(B.accepted(B.commit(sampled_t(), 3n, 1n, ledger_t(), BF.candidate(),
-    final_context(R.commit_context(dispatched_t(), sampled_t(), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot())))))
+def integration_samples_0_3(+tw: Tw) -> Bool:
+  Bool.not(B.accepted(B.commit(sampled_t(tw), 3n, 1n, ledger_t(tw), BF.candidate(),
+    final_context(R.commit_context(dispatched_t(tw), sampled_t(tw), host(), HP.revision(host()), worker_a(), trial_raw(), trial_snapshot())))))
+
+def integration_samples_0(+tw: Tw) -> Bool:
+  integration_samples_0_0(tw) && integration_samples_0_1(tw) && integration_samples_0_2(tw)
+    && integration_samples_0_3(tw)
+
+def integration_samples_1(+tw: Tw) -> Bool:
+  Bool.not(N.Step.accepted(N.approve(sampled_t(tw), 3n, unapproved_proj(tw))))
+    && Bool.not(N.Step.accepted(N.start(reserved_t(tw), 5n, unapproved_proj(tw), ledger_t(tw))))
+    && N.Step.accepted(N.start(reserved_t(tw), 5n, proj1(tw), ledger_t(tw)))
 
 def integration_samples() -> IO(Unit):
   do IO<Unit>:
-    Test.check(integration_samples_0_0() && integration_samples_0_1() && integration_samples_0_2()
-      && integration_samples_0_3(), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
-    Test.check(Bool.not(N.Step.accepted(N.approve(sampled_t(), 3n, unapproved_proj())))
-      && Bool.not(N.Step.accepted(N.start(reserved_t(), 5n, unapproved_proj(), ledger_t())))
-      && N.Step.accepted(N.start(reserved_t(), 5n, proj1(), ledger_t())), "integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)")
+    Test.check(integration_samples_0(trial_world()), "integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)")
+    Test.check(integration_samples_1(trial_world()), "integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)")
 
 # --- The commit requires the current host state (final review, F2) ----------
 
@@ -2808,28 +3143,28 @@ def integration_samples() -> IO(Unit):
 def restarted_current() -> HP.State:
   HP.Step.state(HPub.restart(host(), HP.revision(host()), 58n))
 
-def commit_with_host(+host: HP.State, +expected_host_revision: Nat) -> B.CommitResult:
-  final_commit(final_context(R.commit_context(dispatched_t(), running_t(), host, expected_host_revision,
+def commit_with_host(+tw: Tw, +host: HP.State, +expected_host_revision: Nat) -> B.CommitResult:
+  final_commit(tw, final_context(R.commit_context(dispatched_t(tw), running_t(tw), host, expected_host_revision,
     worker_a(), trial_raw(), trial_snapshot())))
 
 def integration_host_0_0() -> Bool:
   HP.valid(restarted_current()) && Bool.not(Nat.is_eq(HP.revision(restarted_current()), HP.revision(host())))
 
-def integration_host_0_1() -> Bool:
-  kept(commit_with_host(host(), HP.revision(restarted_current())))
+def integration_host_0_1(+tw: Tw) -> Bool:
+  kept(tw, commit_with_host(tw, host(), HP.revision(restarted_current())))
 
-def integration_host_0_2() -> Bool:
-  n_approvals_equal(approvals_of(R.commit_context(dispatched_t(), running_t(), host(), HP.revision(restarted_current()),
+def integration_host_0_2(+tw: Tw) -> Bool:
+  n_approvals_equal(approvals_of(R.commit_context(dispatched_t(tw), running_t(tw), host(), HP.revision(restarted_current()),
     worker_a(), trial_raw(), trial_snapshot())), N.NoApprovals{})
 
-def integration_host_0_3() -> Bool:
-  B.accepted(commit_with_host(host(), HP.revision(host())))
+def integration_host_0_3(+tw: Tw) -> Bool:
+  B.accepted(commit_with_host(tw, host(), HP.revision(host())))
 
 def integration_host_1_0() -> Bool:
   Bool.not(HP.valid(unconfigured_host())) && Nat.is_eq(HP.revision(unconfigured_host()), HP.revision(host()))
 
-def integration_host_1_1() -> Bool:
-  kept(commit_with_host(unconfigured_host(), HP.revision(unconfigured_host())))
+def integration_host_1_1(+tw: Tw) -> Bool:
+  kept(tw, commit_with_host(tw, unconfigured_host(), HP.revision(unconfigured_host())))
 
 # A valid host in incarnation 58 with the same bindings, so A's worker
 # session 6 exists there, but selection 5 was dispatched in incarnation 57.
@@ -2840,15 +3175,24 @@ def integration_host_2_0() -> Bool:
   HP.valid(host58()) && HP.current(host58(), HP.revision(host58()))
     && Bool.not(Nat.is_eq(HI.incarnation(HP.identity(host58())), HI.incarnation(HP.identity(host()))))
 
-def integration_host_2_1() -> Bool:
-  kept(commit_with_host(host58(), HP.revision(host58())))
+def integration_host_2_1(+tw: Tw) -> Bool:
+  kept(tw, commit_with_host(tw, host58(), HP.revision(host58())))
+
+def integration_host_0(+tw: Tw) -> Bool:
+  integration_host_0_0() && integration_host_0_1(tw) && integration_host_0_2(tw)
+    && integration_host_0_3(tw)
+
+def integration_host_1(+tw: Tw) -> Bool:
+  integration_host_1_0() && integration_host_1_1(tw)
+
+def integration_host_2(+tw: Tw) -> Bool:
+  integration_host_2_0() && integration_host_2_1(tw)
 
 def integration_host() -> IO(Unit):
   do IO<Unit>:
-    Test.check(integration_host_0_0() && integration_host_0_1() && integration_host_0_2()
-      && integration_host_0_3(), "integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on the pre-restart host() named at that revision carries no approvals and Backplane.commit rejects and spends no reservation (the final review's scenario e5), while host() named at its own revision commits")
-    Test.check(integration_host_1_0() && integration_host_1_1(), "integration commit_context requires HP.valid: a host with A's worker session 6 at incarnation 57 whose bindings name unconfigured profiles, named at its own revision, yields no commit context and the commit is rejected and spends no reservation")
-    Test.check(integration_host_2_0() && integration_host_2_1(), "integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings, so A's worker session 6 exists there, named at its own revision, yields no commit context for selection 5 dispatched in incarnation 57, and the commit is rejected and spends no reservation")
+    Test.check(integration_host_0(trial_world()), "integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on the pre-restart host() named at that revision carries no approvals and Backplane.commit rejects and spends no reservation (the final review's scenario e5), while host() named at its own revision commits")
+    Test.check(integration_host_1(trial_world()), "integration commit_context requires HP.valid: a host with A's worker session 6 at incarnation 57 whose bindings name unconfigured profiles, named at its own revision, yields no commit context and the commit is rejected and spends no reservation")
+    Test.check(integration_host_2(trial_world()), "integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings, so A's worker session 6 exists there, named at its own revision, yields no commit context for selection 5 dispatched in incarnation 57, and the commit is rejected and spends no reservation")
 
 def integration() -> IO(Unit):
   do IO<Unit>:
@@ -2924,14 +3268,11 @@ def sc_a_until() -> Nat:
   125n
 
 # Grants 4 (reader 7), 8 (A), 12 (B) and 15 (D, the one-source plan).
-def sc_issuer() -> I.State:
+# Called once per scenario world (`sc_world`); checks read it as
+# `sc_issuer(w)`.
+def sc_registered() -> I.State:
   with_grant(sc_grant(sc_grant(IT.two_registered(), provider_a(), 2n, sc_a_until(), token_a()),
     provider_b(), 3n, 150n, token_b()), provider_d(), 4n, 5, token_d())
-
-# The issuer after object 10's authority 101 revokes source approval 5, the
-# approval behind A's grant 8.
-def sc_revoked() -> I.State:
-  I.Change.state(I.revoke(sc_issuer(), I.revision(sc_issuer()), IT.source_authority(), 5n))
 
 def sc_snap(+issuer: I.State, +now: Nat) -> R.Snapshot:
   R.Snapshot{issuer, sc_policies(), now}
@@ -2983,51 +3324,64 @@ def sc_offer_b() -> R.Offer:
 def sc_approval(serial: Nat, issuer: I.Principal, origin: T.ObjectVersion, provider: I.Principal) -> R.OriginApproval:
   approval_with(serial, issuer, origin, provider, profile(), sc_plan(), approval_until())
 
-# Submit at the state's own revision against the scenario issuer at 100.
-def sc_put_offer(+state: R.State, +from: I.Principal, +offer: R.Offer) -> R.State:
-  R.Change.state(R.submit_offer(state, R.revision(state), from, offer, sc_snap(sc_issuer(), 100n)))
+# Submit at the state's own revision against the scenario issuer `issuer`
+# (the world's `sc_issuer`) at 100.
+def sc_put_offer(+state: R.State, +from: I.Principal, +offer: R.Offer, +issuer: I.State) -> R.State:
+  R.Change.state(R.submit_offer(state, R.revision(state), from, offer, sc_snap(issuer, 100n)))
 
-def sc_put_approval(+state: R.State, +from: I.Principal, +approval: R.OriginApproval) -> R.State:
-  R.Change.state(R.submit_approval(state, R.revision(state), from, approval, sc_snap(sc_issuer(), 100n)))
+def sc_put_approval(+state: R.State, +from: I.Principal, +approval: R.OriginApproval, +issuer: I.State) -> R.State:
+  R.Change.state(R.submit_approval(state, R.revision(state), from, approval, sc_snap(issuer, 100n)))
 
 def sc_opened() -> R.State:
   first_open(two_request(), constraint())
 
-# Both offers stored (revision 2).
-def sc_offered() -> R.State:
-  sc_put_offer(sc_put_offer(sc_opened(), provider_a(), sc_offer_a()), provider_b(), sc_offer_b())
+# 101 and 104 approve A (ids 1 and 2), then B (ids 3 and 4), on `state`;
+# the last submission's Change.
+def sc_approve_all_change(+state: R.State, +issuer: I.State) -> R.Change:
+  +s3 = sc_put_approval(sc_put_approval(sc_put_approval(state,
+    IT.source_authority(), sc_approval(31n, IT.source_authority(), TF.source_object(), provider_a()), issuer),
+    IT.second_source_authority(), sc_approval(31n, IT.second_source_authority(), IT.second_source(), provider_a()), issuer),
+    IT.source_authority(), sc_approval(32n, IT.source_authority(), TF.source_object(), provider_b()), issuer)
+  R.submit_approval(s3, R.revision(s3), IT.second_source_authority(),
+    sc_approval(32n, IT.second_source_authority(), IT.second_source(), provider_b()), sc_snap(issuer, 100n))
 
-# 101 and 104 approve A (ids 1 and 2), then B (ids 3 and 4), on `state`.
-def sc_approve_all(+state: R.State) -> R.State:
-  sc_put_approval(sc_put_approval(sc_put_approval(sc_put_approval(state,
-    IT.source_authority(), sc_approval(31n, IT.source_authority(), TF.source_object(), provider_a())),
-    IT.second_source_authority(), sc_approval(31n, IT.second_source_authority(), IT.second_source(), provider_a())),
-    IT.source_authority(), sc_approval(32n, IT.source_authority(), TF.source_object(), provider_b())),
-    IT.second_source_authority(), sc_approval(32n, IT.second_source_authority(), IT.second_source(), provider_b()))
+def sc_approve_all(+state: R.State, +issuer: I.State) -> R.State:
+  R.Change.state(sc_approve_all_change(state, issuer))
 
-# Both offers and all four approvals stored: revision 6.
-def sc_approved() -> R.State:
-  sc_approve_all(sc_offered())
+# --- Scenario worlds: each stage built once per check -------------------------
 
-# The reader's negotiation, pinned at 100 through Negotiation's entry points.
-def sc_pinned() -> N.Session:
-  N.Step.session(N.pin(N.open(two_request()), 0n, TF.code(), sc_raw(sc_issuer(), 100n)))
+# The Genode native run executes this whole corpus under QuickJS within a
+# fixed time budget, and neither backend memoizes a zero-argument def: a
+# chain of zero-argument stage fixtures rebuilt its whole prefix at every
+# call, exponentially in the chain's depth. Each check therefore builds its
+# scenario world once (`sc_world()`, and `sc_b_world` or `sc_a2_world` from
+# it), threading every stage from the one before through the same public
+# entry points, and reads the stages through the accessors below. Stages
+# are immutable values, so a check reading `sc_evidenced(w)` twice sees
+# exactly what two rebuilds would return; likewise the four trial steps
+# and the dispatch read one projection of the evidenced state, equal to
+# the one each per-use rebuild returned. A check that needs a variant
+# (another `now`, the revoked issuer, another offer) still builds it from
+# the shared stage, as before.
+#
+# `Sc` is A's lifecycle at 110: the issuer; the last approval's Change
+# (revision 6); the reader's negotiation pinned at 100; selection 5 of A's
+# offer at 103 (revision 7); the session challenged with 41; A's evidence
+# (revision 8); the session sampled (51), owners-approved, reserved
+# (receipt 11, a fresh ledger) and started on the projection rebuilt at 110
+# from the evidenced state; and the dispatch to A's worker session 6
+# (revision 9). The world keeps each transition's result (its Change or
+# Step) behind a `Kept` handle; the accessors read the states and sessions
+# out of them. Check K of a group G is `G_K(w)`, called on a fresh
+# `sc_world()`.
+type Sc is Data:
+  Sc{issuer: I.State, approve: Kept<&2, R.Change>, pin: Kept<&2, N.Step>, select: Kept<&2, R.Change>,
+    challenge: Kept<&2, N.Step>, evidence: Kept<&2, R.Change>, sample: Kept<&2, N.Step>,
+    owners: Kept<&2, N.Step>, reservation: Kept<&2, N.ReservationStep>, start: Kept<&2, N.Step>,
+    dispatch: Kept<&2, R.Change>}
 
-def sc_select_on(+state: R.State, +issuer: I.State, +now: Nat) -> R.Change:
-  R.select(state, R.revision(state), sc_pinned(), 1n, sc_raw(issuer, now), sc_snap(issuer, now))
-
-def sc_select() -> R.Change:
-  sc_select_on(sc_approved(), sc_issuer(), 103n)
-
-# Selection 5 of A's offer at 103, revision 7.
-def sc_selected() -> R.State:
-  R.Change.state(sc_select())
-
-def sc_challenged_on(+state: R.State, +issuer: I.State, +id: Nat, +now: Nat) -> N.Session:
-  N.Step.session(N.challenge(sc_pinned(), 1n, id, sc_proj(state, issuer, now)))
-
-def sc_challenged() -> N.Session:
-  sc_challenged_on(sc_selected(), sc_issuer(), 41n, 110n)
+def sc_select_with(+state: R.State, +pinned: N.Session, +issuer: I.State, +now: Nat) -> R.Change:
+  R.select(state, R.revision(state), pinned, 1n, sc_raw(issuer, now), sc_snap(issuer, now))
 
 def sc_evidence_a() -> R.Evidence:
   evidence_with(R.record_version(), 51n, provider_a(), R.OfferId{201n, 1n}, 41n, TF.code())
@@ -3036,44 +3390,133 @@ def sc_submit_on(+state: R.State, +from: I.Principal, +evidence: R.Evidence, +se
     +issuer: I.State, +now: Nat) -> R.Change:
   R.submit_evidence(state, R.revision(state), from, evidence, session, sc_raw(issuer, now), sc_snap(issuer, now))
 
-def sc_evidence_change() -> R.Change:
-  sc_submit_on(sc_selected(), provider_a(), sc_evidence_a(), sc_challenged(), sc_issuer(), 110n)
-
-# A's evidence stored under selection 5, revision 8.
-def sc_evidenced() -> R.State:
-  R.Change.state(sc_evidence_change())
-
-# The trial session sampled, owners-approved, reserved (receipt 11, a fresh
-# ledger) and started on the projection rebuilt at 110 for each step.
-def sc_sampled() -> N.Session:
-  N.Step.session(N.sample(sc_challenged(), 2n, 51n, sc_proj(sc_evidenced(), sc_issuer(), 110n)))
-
-def sc_owners() -> N.Session:
-  N.Step.session(N.approve(sc_sampled(), 3n, sc_proj(sc_evidenced(), sc_issuer(), 110n)))
-
-def sc_reservation() -> N.ReservationStep:
-  N.reserve(sc_owners(), 4n, 0n, 11n, sc_proj(sc_evidenced(), sc_issuer(), 110n), NT.initial_ledger())
-
-def sc_reserved() -> N.Session:
-  N.ReservationStep.session(sc_reservation())
-
-def sc_ledger() -> L.State:
-  N.ReservationStep.ledger(sc_reservation())
-
-def sc_running() -> N.Session:
-  N.Step.session(N.start(sc_reserved(), 5n, sc_proj(sc_evidenced(), sc_issuer(), 110n), sc_ledger()))
+# A dispatch at the state's own revision to `worker` on host(), on the
+# projection `projection` the host rebuilt at `now`.
+def sc_dispatch_in(+state: R.State, +offer: R.OfferId, +worker: Nat, +session: N.Session, +projection: N.Context,
+    +issuer: I.State, +now: Nat) -> R.Change:
+  R.dispatch(state, R.revision(state), offer, host(), HP.revision(host()), worker, session, 6n,
+    projection, sc_snap(issuer, now))
 
 def sc_dispatch_on(+state: R.State, +offer: R.OfferId, +worker: Nat, +session: N.Session, +issuer: I.State,
     +now: Nat) -> R.Change:
-  R.dispatch(state, R.revision(state), offer, host(), HP.revision(host()), worker, session, 6n,
-    sc_proj(state, issuer, now), sc_snap(issuer, now))
+  sc_dispatch_in(state, offer, worker, session, sc_proj(state, issuer, now), issuer, now)
 
-def sc_dispatch() -> R.Change:
-  sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n)
+# The session sampled, owners-approved, reserved and started on
+# `projection`, the evidenced state's projection at 110, then selection 5
+# dispatched on it.
+def sc_world_trial(+issuer: I.State, +approve: Kept<&2, R.Change>, +pin: Kept<&2, N.Step>,
+    +select: Kept<&2, R.Change>, +challenge: Kept<&2, N.Step>, +evidence: Kept<&2, R.Change>,
+    +projection: N.Context) -> Sc:
+  +sample = keep_step(N.sample(kept_session(challenge), 2n, 51n, projection))
+  +owners = keep_step(N.approve(kept_session(sample), 3n, projection))
+  +reservation = keep_reservation(N.reserve(kept_session(owners), 4n, 0n, 11n, projection, NT.initial_ledger()))
+  +start = keep_step(N.start(N.ReservationStep.session(kept_reservation(reservation)), 5n, projection,
+    N.ReservationStep.ledger(kept_reservation(reservation))))
+  Sc{issuer, approve, pin, select, challenge, evidence, sample, owners, reservation, start,
+    keep_change(sc_dispatch_in(kept_state(evidence), R.OfferId{201n, 1n}, worker_a(), kept_session(start),
+      projection, issuer, 110n))}
+
+# Selection 5 at 103, the trial challenged with 41 at 110 on the selected
+# state's projection, and A's evidence stored under it.
+def sc_world_selected(+issuer: I.State, +approve: Kept<&2, R.Change>, +pin: Kept<&2, N.Step>) -> Sc:
+  +select = keep_change(sc_select_with(kept_state(approve), kept_session(pin), issuer, 103n))
+  +challenge = keep_step(N.challenge(kept_session(pin), 1n, 41n, sc_proj(kept_state(select), issuer, 110n)))
+  +evidence = keep_change(sc_submit_on(kept_state(select), provider_a(), sc_evidence_a(), kept_session(challenge),
+    issuer, 110n))
+  sc_world_trial(issuer, approve, pin, select, challenge, evidence, sc_proj(kept_state(evidence), issuer, 110n))
+
+# Both offers stored (revision 2), all four approvals (revision 6), and the
+# reader's negotiation pinned at 100 through Negotiation's entry points.
+def sc_world() -> Sc:
+  +issuer = sc_registered()
+  +offered = sc_put_offer(sc_put_offer(sc_opened(), provider_a(), sc_offer_a(), issuer), provider_b(), sc_offer_b(), issuer)
+  +approve = keep_change(sc_approve_all_change(offered, issuer))
+  sc_world_selected(issuer, approve, keep_step(N.pin(N.open(two_request()), 0n, TF.code(), sc_raw(issuer, 100n))))
+
+def sc_issuer(+w: Sc) -> I.State:
+  match w:
+    case Sc{issuer, _, _, _, _, _, _, _, _, _, _}:
+      issuer
+
+# Both offers and all four approvals stored: revision 6.
+def sc_approved(+w: Sc) -> R.State:
+  match w:
+    case Sc{_, approve, _, _, _, _, _, _, _, _, _}:
+      kept_state(approve)
+
+def sc_pinned(+w: Sc) -> N.Session:
+  match w:
+    case Sc{_, _, pin, _, _, _, _, _, _, _, _}:
+      kept_session(pin)
+
+def sc_select(+w: Sc) -> R.Change:
+  match w:
+    case Sc{_, _, _, select, _, _, _, _, _, _, _}:
+      kept_change(select)
+
+# Selection 5 of A's offer at 103, revision 7.
+def sc_selected(+w: Sc) -> R.State:
+  R.Change.state(sc_select(w))
+
+def sc_challenged(+w: Sc) -> N.Session:
+  match w:
+    case Sc{_, _, _, _, challenge, _, _, _, _, _, _}:
+      kept_session(challenge)
+
+def sc_evidence_change(+w: Sc) -> R.Change:
+  match w:
+    case Sc{_, _, _, _, _, evidence, _, _, _, _, _}:
+      kept_change(evidence)
+
+# A's evidence stored under selection 5, revision 8.
+def sc_evidenced(+w: Sc) -> R.State:
+  R.Change.state(sc_evidence_change(w))
+
+def sc_sampled(+w: Sc) -> N.Session:
+  match w:
+    case Sc{_, _, _, _, _, _, sample, _, _, _, _}:
+      kept_session(sample)
+
+def sc_owners(+w: Sc) -> N.Session:
+  match w:
+    case Sc{_, _, _, _, _, _, _, owners, _, _, _}:
+      kept_session(owners)
+
+def sc_reservation(+w: Sc) -> N.ReservationStep:
+  match w:
+    case Sc{_, _, _, _, _, _, _, _, reservation, _, _}:
+      kept_reservation(reservation)
+
+def sc_reserved(+w: Sc) -> N.Session:
+  N.ReservationStep.session(sc_reservation(w))
+
+def sc_ledger(+w: Sc) -> L.State:
+  N.ReservationStep.ledger(sc_reservation(w))
+
+def sc_running(+w: Sc) -> N.Session:
+  match w:
+    case Sc{_, _, _, _, _, _, _, _, _, start, _}:
+      kept_session(start)
+
+def sc_dispatch(+w: Sc) -> R.Change:
+  match w:
+    case Sc{_, _, _, _, _, _, _, _, _, _, dispatch}:
+      kept_change(dispatch)
 
 # Selection 5 dispatched to A's worker session 6, revision 9.
-def sc_dispatched() -> R.State:
-  R.Change.state(sc_dispatch())
+def sc_dispatched(+w: Sc) -> R.State:
+  R.Change.state(sc_dispatch(w))
+
+# The issuer after object 10's authority 101 revokes source approval 5, the
+# approval behind A's grant 8.
+def sc_revoked(+w: Sc) -> I.State:
+  I.Change.state(I.revoke(sc_issuer(w), I.revision(sc_issuer(w)), IT.source_authority(), 5n))
+
+def sc_select_on(+w: Sc, +state: R.State, +issuer: I.State, +now: Nat) -> R.Change:
+  sc_select_with(state, sc_pinned(w), issuer, now)
+
+def sc_challenged_on(+w: Sc, +state: R.State, +issuer: I.State, +id: Nat, +now: Nat) -> N.Session:
+  N.Step.session(N.challenge(sc_pinned(w), 1n, id, sc_proj(state, issuer, now)))
 
 # The Backplane binding for the scenario request (BackplaneTests' graph,
 # sink, labels, backend and artifact).
@@ -3096,18 +3539,18 @@ def sc_commit_with(+session: N.Session, +ledger: L.State, +state: R.State, +host
   sc_commit_at(session, ledger, state, host, HP.revision(host), worker, issuer, now)
 
 # A's Running session reported from A's worker session 6 on host().
-def sc_commit_on(+state: R.State, +issuer: I.State, +now: Nat) -> B.CommitResult:
-  sc_commit_with(sc_running(), sc_ledger(), state, host(), worker_a(), issuer, now)
+def sc_commit_on(+w: Sc, +state: R.State, +issuer: I.State, +now: Nat) -> B.CommitResult:
+  sc_commit_with(sc_running(w), sc_ledger(w), state, host(), worker_a(), issuer, now)
 
-def sc_commit() -> B.CommitResult:
-  sc_commit_on(sc_dispatched(), sc_issuer(), 110n)
+def sc_commit(+w: Sc) -> B.CommitResult:
+  sc_commit_on(w, sc_dispatched(w), sc_issuer(w), 110n)
 
 # A rejected commit that keeps the Running session and the reservation.
-def sc_kept(+result: B.CommitResult) -> Bool:
+def sc_kept(+w: Sc, +result: B.CommitResult) -> Bool:
   Bool.not(B.accepted(result)) && N.Session.is(B.session(result), N.Running{})
     && Nat.is_eq(N.Session.revision(B.session(result)), 6n)
-    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(sc_ledger()))
-    && N.hold_live(B.ledger(result), sc_running(), 110n)
+    && Nat.is_eq(L.revision(B.ledger(result)), L.revision(sc_ledger(w)))
+    && N.hold_live(B.ledger(result), sc_running(w), 110n)
 
 # A rejected commit that keeps `session` at Running revision 6 and `ledger`.
 def sc_kept_with(+result: B.CommitResult, ledger: L.State, session: N.Session) -> Bool:
@@ -3140,25 +3583,25 @@ def sc_provider_transfer(+issuer: I.State) -> T.Context:
   TF.with_now(TF.with_writes(TF.with_reads(sc_policies(), I.reads(issuer, provider_a(), 110n)),
     I.writes(issuer, provider_a(), 110n)), 110n)
 
-def sc_registry() -> F.Registry:
-  R.provider_registry(sc_dispatched(), sc_snap(sc_issuer(), 110n))
+def sc_registry(+w: Sc) -> F.Registry:
+  R.provider_registry(sc_dispatched(w), sc_snap(sc_issuer(w), 110n))
 
-def sc_checked() -> Maybe<&2, T.Plan>:
-  F.checked_plan(sc_descriptor(sc_registry()), sc_registry(), 2n, F.Ref{caller_a(), 2n}, F.Read{},
-    sc_provider_transfer(sc_issuer()))
+def sc_checked(+w: Sc) -> Maybe<&2, T.Plan>:
+  F.checked_plan(sc_descriptor(sc_registry(w)), sc_registry(w), 2n, F.Ref{caller_a(), 2n}, F.Read{},
+    sc_provider_transfer(sc_issuer(w)))
 
 # The monitor issues the worker's input (execute right 4, until 120) on A's
 # worker session 6 for handle 2, then admits the worker under the profile
 # session 6 was bound under (1). The input is identity slot 1, the first
 # the host's table allocates.
-def sc_issue() -> HP.Step:
-  HP.issue(host(), HP.revision(host()), worker_a(), sc_descriptor(sc_registry()), 2n, sc_plan(), 4, 120n)
+def sc_issue(+w: Sc) -> HP.Step:
+  HP.issue(host(), HP.revision(host()), worker_a(), sc_descriptor(sc_registry(w)), 2n, sc_plan(), 4, 120n)
 
 def sc_input() -> W.Ref:
   W.Ref{U32.from_nat(host_id()), U32.from_nat(host_incarnation()), U32.from_nat(1n), U32.from_nat(HI.first_generation())}
 
-def sc_admit() -> HP.Step:
-  +issued = HP.Step.state(sc_issue())
+def sc_admit(+w: Sc) -> HP.Step:
+  +issued = HP.Step.state(sc_issue(w))
   HP.admit_worker(issued, HP.revision(issued), HPT.full_report(), HPT.mediated_inventory(), worker_a(), sc_input(), 110n)
 
 # The admission delivered exactly the input `input` to one worker.
@@ -3186,57 +3629,69 @@ def sc_accepted(+step: HP.Step) -> Bool:
 # function-arity limit ("Error: an arity over 247" from
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `scenario_current_K_J` is conjunct J of the K-th check of `scenario_current`, counting
-# from 0.
-def scenario_current_1_0() -> Bool:
-  N.Session.is(sc_challenged(), N.Challenged{})
+# from 0. Each reads the world `w` its check built (`scenario_current_K`).
+def scenario_current_0(+w: Sc) -> Bool:
+  Nat.is_eq(R.revision(sc_approved(w)), 6n) && R.valid(sc_approved(w))
+    && eligible_now(R.ineligibility(sc_offer_a(), sc_approved(w), sc_snap(sc_issuer(w), 103n)))
+    && eligible_now(R.ineligibility(sc_offer_b(), sc_approved(w), sc_snap(sc_issuer(w), 103n)))
+    && selected(sc_select(w), sc_offer_a()) && issued_is(R.Change.issued(sc_select(w)), 5n)
 
-def scenario_current_1_1() -> Bool:
-  R.Change.accepted(sc_evidence_change())
+def scenario_current_1_0(+w: Sc) -> Bool:
+  N.Session.is(sc_challenged(w), N.Challenged{})
 
-def scenario_current_1_2() -> Bool:
-  N.Session.is(sc_sampled(), N.Sampled{})
+def scenario_current_1_1(+w: Sc) -> Bool:
+  R.Change.accepted(sc_evidence_change(w))
 
-def scenario_current_1_3() -> Bool:
-  N.Session.is(sc_owners(), N.OwnersApproved{})
+def scenario_current_1_2(+w: Sc) -> Bool:
+  N.Session.is(sc_sampled(w), N.Sampled{})
 
-def scenario_current_1_4() -> Bool:
-  N.Session.is(sc_reserved(), N.Reserved{})
+def scenario_current_1_3(+w: Sc) -> Bool:
+  N.Session.is(sc_owners(w), N.OwnersApproved{})
 
-def scenario_current_1_5() -> Bool:
-  N.Session.is(sc_running(), N.Running{})
+def scenario_current_1_4(+w: Sc) -> Bool:
+  N.Session.is(sc_reserved(w), N.Reserved{})
 
-def scenario_current_1_6() -> Bool:
-  R.Change.accepted(sc_dispatch())
+def scenario_current_1_5(+w: Sc) -> Bool:
+  N.Session.is(sc_running(w), N.Running{})
 
-def scenario_current_1_7() -> Bool:
-  dispatches_equal(R.dispatched(sc_dispatched()), R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+def scenario_current_1_6(+w: Sc) -> Bool:
+  R.Change.accepted(sc_dispatch(w))
 
-def scenario_current_1_8() -> Bool:
-  R.valid(sc_dispatched())
+def scenario_current_1_7(+w: Sc) -> Bool:
+  dispatches_equal(R.dispatched(sc_dispatched(w)), R.Dispatches{R.Dispatch{5n, host_incarnation(), worker_a()}, R.NoDispatches{}})
+
+def scenario_current_1_8(+w: Sc) -> Bool:
+  R.valid(sc_dispatched(w))
+
+def scenario_current_1(+w: Sc) -> Bool:
+  scenario_current_1_0(w) && scenario_current_1_1(w) && scenario_current_1_2(w)
+    && scenario_current_1_3(w) && scenario_current_1_4(w) && scenario_current_1_5(w)
+    && scenario_current_1_6(w) && scenario_current_1_7(w) && scenario_current_1_8(w)
+
+def scenario_current_2(+w: Sc) -> Bool:
+  B.accepted(sc_commit(w)) && sc_retained(sc_commit(w)) && N.Session.is(B.session(sc_commit(w)), N.Committed{})
+    && Nat.is_eq(L.revision(B.ledger(sc_commit(w))), 2n)
+
+def scenario_current_3(+w: Sc) -> Bool:
+  single_token_is(sc_registry(w), token_a()) && IT.plan_is(sc_checked(w), sc_plan())
+    && sc_accepted(sc_issue(w)) && sc_delivers(sc_admit(w), sc_input())
 
 def scenario_current() -> IO(Unit):
   do IO<Unit>:
-    Test.check(Nat.is_eq(R.revision(sc_approved()), 6n) && R.valid(sc_approved())
-      && eligible_now(R.ineligibility(sc_offer_a(), sc_approved(), sc_snap(sc_issuer(), 103n)))
-      && eligible_now(R.ineligibility(sc_offer_b(), sc_approved(), sc_snap(sc_issuer(), 103n)))
-      && selected(sc_select(), sc_offer_a()) && issued_is(R.Change.issued(sc_select()), 5n), "scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5")
-    Test.check(scenario_current_1_0() && scenario_current_1_1() && scenario_current_1_2()
-      && scenario_current_1_3() && scenario_current_1_4() && scenario_current_1_5()
-      && scenario_current_1_6() && scenario_current_1_7() && scenario_current_1_8(), "scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6")
-    Test.check(B.accepted(sc_commit()) && sc_retained(sc_commit()) && N.Session.is(B.session(sc_commit()), N.Committed{})
-      && Nat.is_eq(L.revision(B.ledger(sc_commit())), 2n), "scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2")
-    Test.check(single_token_is(sc_registry(), token_a()) && IT.plan_is(sc_checked(), sc_plan())
-      && sc_accepted(sc_issue()) && sc_delivers(sc_admit(), sc_input()), "scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6")
+    Test.check(scenario_current_0(sc_world()), "scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5")
+    Test.check(scenario_current_1(sc_world()), "scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6")
+    Test.check(scenario_current_2(sc_world()), "scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2")
+    Test.check(scenario_current_3(sc_world()), "scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6")
 
 # --- Scenarios: revocation at three points ------------------------------------
 
 # Before selection: 104 withdraws its approval of A for object 11 (id 2) at
 # revision 6, so the state is at revision 7.
-def sc_unapproved_a() -> R.State:
-  R.Change.state(R.withdraw_approval(sc_approved(), 6n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 100n)))
+def sc_unapproved_a(+w: Sc) -> R.State:
+  R.Change.state(R.withdraw_approval(sc_approved(w), 6n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(w), 100n)))
 
-def sc_select_b() -> R.Change:
-  sc_select_on(sc_unapproved_a(), sc_issuer(), 103n)
+def sc_select_b(+w: Sc) -> R.Change:
+  sc_select_on(w, sc_unapproved_a(w), sc_issuer(w), 103n)
 
 # The approvals the projection carries.
 def sc_approvals_of(+context: N.Context) -> N.Approvals:
@@ -3249,52 +3704,67 @@ def sc_approvals_of(+context: N.Context) -> N.Approvals:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `scenario_revocation_K_J` is conjunct J of the K-th check of `scenario_revocation`, counting
 # from 0.
-def scenario_revocation_0_0() -> Bool:
-  reason_is(R.ineligibility(sc_offer_a(), sc_unapproved_a(), sc_snap(sc_issuer(), 103n)), R.MissingApproval{})
+def scenario_revocation_0_0(+w: Sc) -> Bool:
+  reason_is(R.ineligibility(sc_offer_a(), sc_unapproved_a(w), sc_snap(sc_issuer(w), 103n)), R.MissingApproval{})
 
-def scenario_revocation_0_1() -> Bool:
-  selected(sc_select_b(), sc_offer_b())
+def scenario_revocation_0_1(+w: Sc) -> Bool:
+  selected(sc_select_b(w), sc_offer_b())
 
-def scenario_revocation_0_2() -> Bool:
-  issued_is(R.Change.issued(sc_select_b()), 5n)
+def scenario_revocation_0_2(+w: Sc) -> Bool:
+  issued_is(R.Change.issued(sc_select_b(w)), 5n)
 
-def scenario_revocation_0_3() -> Bool:
-  denied(sc_dispatch_on(R.Change.state(sc_select_b()), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n),
-    R.Change.state(sc_select_b()), R.NotSelected{})
+def scenario_revocation_0_3(+w: Sc) -> Bool:
+  denied(sc_dispatch_on(R.Change.state(sc_select_b(w)), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_issuer(w), 110n),
+    R.Change.state(sc_select_b(w)), R.NotSelected{})
+
+def scenario_revocation_0(+w: Sc) -> Bool:
+  scenario_revocation_0_0(w) && scenario_revocation_0_1(w) && scenario_revocation_0_2(w)
+    && scenario_revocation_0_3(w)
+
+def scenario_revocation_1(+w: Sc) -> Bool:
+  denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_revoked(w), 110n), sc_evidenced(w), R.Revoked{})
+    && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(w), sc_revoked(w), 110n)), N.NoApprovals{})
+    && Bool.not(N.Step.accepted(N.start(sc_reserved(w), 5n, sc_proj(sc_evidenced(w), sc_revoked(w), 110n), sc_ledger(w))))
+    && registry_empty(R.provider_registry(sc_evidenced(w), sc_snap(sc_revoked(w), 110n)))
+
+def scenario_revocation_2(+w: Sc) -> Bool:
+  sc_kept(w, sc_commit_on(w, sc_dispatched(w), sc_revoked(w), 110n))
+    && registry_empty(R.provider_registry(sc_dispatched(w), sc_snap(sc_revoked(w), 110n)))
+    && Bool.not(sc_accepted(HP.issue(host(), HP.revision(host()), worker_a(),
+      sc_descriptor(R.provider_registry(sc_dispatched(w), sc_snap(sc_revoked(w), 110n))), 2n, sc_plan(), 4, 120n)))
 
 def scenario_revocation() -> IO(Unit):
   do IO<Unit>:
-    Test.check(scenario_revocation_0_0() && scenario_revocation_0_1() && scenario_revocation_0_2()
-      && scenario_revocation_0_3(), "scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected")
-    Test.check(denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_revoked(), 110n), sc_evidenced(), R.Revoked{})
-      && n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_revoked(), 110n)), N.NoApprovals{})
-      && Bool.not(N.Step.accepted(N.start(sc_reserved(), 5n, sc_proj(sc_evidenced(), sc_revoked(), 110n), sc_ledger())))
-      && registry_empty(R.provider_registry(sc_evidenced(), sc_snap(sc_revoked(), 110n))), "scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty")
-    Test.check(sc_kept(sc_commit_on(sc_dispatched(), sc_revoked(), 110n))
-      && registry_empty(R.provider_registry(sc_dispatched(), sc_snap(sc_revoked(), 110n)))
-      && Bool.not(sc_accepted(HP.issue(host(), HP.revision(host()), worker_a(),
-        sc_descriptor(R.provider_registry(sc_dispatched(), sc_snap(sc_revoked(), 110n))), 2n, sc_plan(), 4, 120n))), "scenario revocation between dispatch and commit: once 101 revokes approval 5 after selection 5 is dispatched, Backplane.commit on the rebuilt projection rejects and spends no reservation, provider_registry is empty, and HostPrimitives.issue finds no handle to bind the worker's input to")
+    Test.check(scenario_revocation_0(sc_world()), "scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected")
+    Test.check(scenario_revocation_1(sc_world()), "scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty")
+    Test.check(scenario_revocation_2(sc_world()), "scenario revocation between dispatch and commit: once 101 revokes approval 5 after selection 5 is dispatched, Backplane.commit on the rebuilt projection rejects and spends no reservation, provider_registry is empty, and HostPrimitives.issue finds no handle to bind the worker's input to")
 
 # --- Scenarios: replay ---------------------------------------------------------
 
 # B withdraws its unselected offer {202, 1} (revision 7); 104 withdraws
 # approval 2 (revision 7).
-def sc_b_withdrawn() -> R.State:
-  R.Change.state(R.withdraw_offer(sc_approved(), 6n, provider_b(), R.OfferId{202n, 1n}))
+def sc_b_withdrawn(+w: Sc) -> R.State:
+  R.Change.state(R.withdraw_offer(sc_approved(w), 6n, provider_b(), R.OfferId{202n, 1n}))
 
-def sc_reapprove(serial: Nat) -> R.Change:
-  R.submit_approval(sc_unapproved_a(), 7n, IT.second_source_authority(),
-    sc_approval(serial, IT.second_source_authority(), IT.second_source(), provider_a()), sc_snap(sc_issuer(), 100n))
+def sc_reapprove(+w: Sc, serial: Nat) -> R.Change:
+  R.submit_approval(sc_unapproved_a(w), 7n, IT.second_source_authority(),
+    sc_approval(serial, IT.second_source_authority(), IT.second_source(), provider_a()), sc_snap(sc_issuer(w), 100n))
+
+def scenario_replay_0(+w: Sc) -> Bool:
+  denied(R.submit_offer(sc_b_withdrawn(w), 7n, provider_b(), sc_offer_b(), sc_snap(sc_issuer(w), 100n)), sc_b_withdrawn(w), R.Replay{})
+    && denied(R.submit_approval(sc_approved(w), 6n, IT.source_authority(),
+      sc_approval(31n, IT.source_authority(), TF.source_object(), provider_a()), sc_snap(sc_issuer(w), 100n)), sc_approved(w), R.Replay{})
+    && denied(sc_reapprove(w, 31n), sc_unapproved_a(w), R.Replay{})
+    && R.Change.accepted(sc_reapprove(w, 33n)) && issued_is(R.Change.issued(sc_reapprove(w, 33n)), 5n)
+
+def scenario_replay_1(+w: Sc) -> Bool:
+  denied(sc_submit_on(sc_dispatched(w), provider_a(), sc_evidence_a(), sc_challenged(w), sc_issuer(w), 110n), sc_dispatched(w), R.Replay{})
+    && denied(sc_dispatch_on(sc_dispatched(w), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_issuer(w), 110n), sc_dispatched(w), R.Replay{})
 
 def scenario_replay() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(R.submit_offer(sc_b_withdrawn(), 7n, provider_b(), sc_offer_b(), sc_snap(sc_issuer(), 100n)), sc_b_withdrawn(), R.Replay{})
-      && denied(R.submit_approval(sc_approved(), 6n, IT.source_authority(),
-        sc_approval(31n, IT.source_authority(), TF.source_object(), provider_a()), sc_snap(sc_issuer(), 100n)), sc_approved(), R.Replay{})
-      && denied(sc_reapprove(31n), sc_unapproved_a(), R.Replay{})
-      && R.Change.accepted(sc_reapprove(33n)) && issued_is(R.Change.issued(sc_reapprove(33n)), 5n), "scenario replay: B's offer serial 1 resubmitted after B withdraws it is denied Replay, 101's approval serial 31 resubmitted is denied Replay, and after 104 withdraws approval 2 its serial 31 is denied Replay while a fresh serial 33 is accepted as id 5")
-    Test.check(denied(sc_submit_on(sc_dispatched(), provider_a(), sc_evidence_a(), sc_challenged(), sc_issuer(), 110n), sc_dispatched(), R.Replay{})
-      && denied(sc_dispatch_on(sc_dispatched(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n), sc_dispatched(), R.Replay{}), "scenario replay: after dispatch, A's evidence for selection 5 resubmitted is denied Replay and a second dispatch of selection 5 to A's worker session 6 is denied Replay, the state kept each time")
+    Test.check(scenario_replay_0(sc_world()), "scenario replay: B's offer serial 1 resubmitted after B withdraws it is denied Replay, 101's approval serial 31 resubmitted is denied Replay, and after 104 withdraws approval 2 its serial 31 is denied Replay while a fresh serial 33 is accepted as id 5")
+    Test.check(scenario_replay_1(sc_world()), "scenario replay: after dispatch, A's evidence for selection 5 resubmitted is denied Replay and a second dispatch of selection 5 to A's worker session 6 is denied Replay, the state kept each time")
 
 # --- Scenarios: a substituted candidate, then abandon and reselect -------------
 
@@ -3306,48 +3776,77 @@ def scenario_replay() -> IO(Unit):
 def sc_offer_b2() -> R.Offer:
   offer_with(R.OfferId{202n, 2n}, provider_b(), 12n, sc_plan(), 20n, 140n)
 
-def sc_newcomer() -> R.State:
-  R.Change.state(R.submit_offer(sc_evidenced(), 8n, provider_b(), sc_offer_b2(), sc_snap(sc_issuer(), 112n)))
-
-def sc_abandoned() -> R.State:
-  R.Change.state(R.abandon(sc_newcomer(), 9n))
-
-def sc_reselect() -> R.Change:
-  sc_select_on(sc_abandoned(), sc_issuer(), 112n)
-
-def sc_reselected() -> R.State:
-  R.Change.state(sc_reselect())
-
-def sc_b_challenged() -> N.Session:
-  sc_challenged_on(sc_reselected(), sc_issuer(), 42n, 116n)
+def sc_newcomer(+w: Sc) -> R.State:
+  R.Change.state(R.submit_offer(sc_evidenced(w), 8n, provider_b(), sc_offer_b2(), sc_snap(sc_issuer(w), 112n)))
 
 def sc_evidence_b() -> R.Evidence:
   evidence_with(R.record_version(), 52n, provider_b(), R.OfferId{202n, 2n}, 42n, TF.code())
 
-def sc_b_evidenced() -> R.State:
-  R.Change.state(sc_submit_on(sc_reselected(), provider_b(), sc_evidence_b(), sc_b_challenged(), sc_issuer(), 116n))
+# `ScB`, built once per check from the world `w` (`sc_b_world`): the
+# reselection of B's {202, 2} at 112 after the newcomer state is abandoned,
+# B's session challenged with 42 at 116, B's evidence (selection 6), and
+# B's session sampled (52), owners-approved, reserved and started on the
+# projection rebuilt at 116 from B's evidenced state, then dispatched to B's
+# worker session 7. Like `Sc`, it keeps each result behind a `Kept` handle.
+type ScB is Data:
+  ScB{reselect: Kept<&2, R.Change>, challenge: Kept<&2, N.Step>, evidence: Kept<&2, R.Change>,
+    reservation: Kept<&2, N.ReservationStep>, start: Kept<&2, N.Step>, dispatch: Kept<&2, R.Change>}
 
-def sc_b_proj() -> N.Context:
-  sc_proj(sc_b_evidenced(), sc_issuer(), 116n)
+def sc_b_world_trial(+w: Sc, +reselect: Kept<&2, R.Change>, +challenge: Kept<&2, N.Step>,
+    +evidence: Kept<&2, R.Change>, +projection: N.Context) -> ScB:
+  +reservation = keep_reservation(N.reserve(N.Step.session(N.approve(N.Step.session(N.sample(kept_session(challenge),
+    2n, 52n, projection)), 3n, projection)), 4n, 0n, 11n, projection, NT.initial_ledger()))
+  +start = keep_step(N.start(N.ReservationStep.session(kept_reservation(reservation)), 5n, projection,
+    N.ReservationStep.ledger(kept_reservation(reservation))))
+  ScB{reselect, challenge, evidence, reservation, start,
+    keep_change(sc_dispatch_in(kept_state(evidence), R.OfferId{202n, 2n}, worker_b(), kept_session(start), projection,
+      sc_issuer(w), 116n))}
 
-def sc_b_reservation() -> N.ReservationStep:
-  N.reserve(N.Step.session(N.approve(N.Step.session(N.sample(sc_b_challenged(), 2n, 52n, sc_b_proj())), 3n, sc_b_proj())),
-    4n, 0n, 11n, sc_b_proj(), NT.initial_ledger())
+def sc_b_world(+w: Sc) -> ScB:
+  +reselect = keep_change(sc_select_on(w, R.Change.state(R.abandon(sc_newcomer(w), 9n)), sc_issuer(w), 112n))
+  +challenge = keep_step(N.challenge(sc_pinned(w), 1n, 42n, sc_proj(kept_state(reselect), sc_issuer(w), 116n)))
+  +evidence = keep_change(sc_submit_on(kept_state(reselect), provider_b(), sc_evidence_b(), kept_session(challenge),
+    sc_issuer(w), 116n))
+  sc_b_world_trial(w, reselect, challenge, evidence, sc_proj(kept_state(evidence), sc_issuer(w), 116n))
 
-def sc_b_ledger() -> L.State:
-  N.ReservationStep.ledger(sc_b_reservation())
+def sc_reselect(+b: ScB) -> R.Change:
+  match b:
+    case ScB{reselect, _, _, _, _, _}:
+      kept_change(reselect)
 
-def sc_b_running() -> N.Session:
-  N.Step.session(N.start(N.ReservationStep.session(sc_b_reservation()), 5n, sc_b_proj(), sc_b_ledger()))
+def sc_reselected(+b: ScB) -> R.State:
+  R.Change.state(sc_reselect(b))
 
-def sc_b_dispatch() -> R.Change:
-  sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_b_running(), sc_issuer(), 116n)
+def sc_b_challenged(+b: ScB) -> N.Session:
+  match b:
+    case ScB{_, challenge, _, _, _, _}:
+      kept_session(challenge)
 
-def sc_b_dispatched() -> R.State:
-  R.Change.state(sc_b_dispatch())
+def sc_b_evidenced(+b: ScB) -> R.State:
+  match b:
+    case ScB{_, _, evidence, _, _, _}:
+      kept_state(evidence)
 
-def sc_b_commit() -> B.CommitResult:
-  sc_commit_with(sc_b_running(), sc_b_ledger(), sc_b_dispatched(), host(), worker_b(), sc_issuer(), 116n)
+def sc_b_ledger(+b: ScB) -> L.State:
+  match b:
+    case ScB{_, _, _, reservation, _, _}:
+      N.ReservationStep.ledger(kept_reservation(reservation))
+
+def sc_b_running(+b: ScB) -> N.Session:
+  match b:
+    case ScB{_, _, _, _, start, _}:
+      kept_session(start)
+
+def sc_b_dispatch(+b: ScB) -> R.Change:
+  match b:
+    case ScB{_, _, _, _, _, dispatch}:
+      kept_change(dispatch)
+
+def sc_b_dispatched(+b: ScB) -> R.State:
+  R.Change.state(sc_b_dispatch(b))
+
+def sc_b_commit(+w: Sc, +b: ScB) -> B.CommitResult:
+  sc_commit_with(sc_b_running(b), sc_b_ledger(b), sc_b_dispatched(b), host(), worker_b(), sc_issuer(w), 116n)
 
 def sc_challenges_of(+context: N.Context) -> N.Challenges:
   match context:
@@ -3361,100 +3860,121 @@ def sc_challenges_of(+context: N.Context) -> N.Challenges:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `scenario_reselect_K_J` is conjunct J of the K-th check of `scenario_reselect`, counting
 # from 0.
-def scenario_reselect_0_0() -> Bool:
-  Nat.is_eq(R.revision(sc_newcomer()), 9n)
+def scenario_reselect_0_0(+w: Sc) -> Bool:
+  Nat.is_eq(R.revision(sc_newcomer(w)), 9n)
 
-def scenario_reselect_0_1() -> Bool:
-  denied(R.select(sc_newcomer(), 9n, sc_pinned(), 1n, sc_raw(sc_issuer(), 112n), sc_snap(sc_issuer(), 112n)), sc_newcomer(), R.AlreadySelected{})
+def scenario_reselect_0_1(+w: Sc) -> Bool:
+  denied(R.select(sc_newcomer(w), 9n, sc_pinned(w), 1n, sc_raw(sc_issuer(w), 112n), sc_snap(sc_issuer(w), 112n)), sc_newcomer(w), R.AlreadySelected{})
 
-def scenario_reselect_0_2() -> Bool:
-  denied(sc_dispatch_on(sc_newcomer(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 112n), sc_newcomer(), R.NotSelected{})
+def scenario_reselect_0_2(+w: Sc) -> Bool:
+  denied(sc_dispatch_on(sc_newcomer(w), R.OfferId{202n, 2n}, worker_b(), sc_running(w), sc_issuer(w), 112n), sc_newcomer(w), R.NotSelected{})
 
-def scenario_reselect_0_3() -> Bool:
-  selection_offer_is(R.selection(sc_newcomer()), sc_offer_a())
+def scenario_reselect_0_3(+w: Sc) -> Bool:
+  selection_offer_is(R.selection(sc_newcomer(w)), sc_offer_a())
 
-def scenario_reselect_1_0() -> Bool:
-  selected(sc_reselect(), sc_offer_b2())
+def scenario_reselect_0(+w: Sc) -> Bool:
+  scenario_reselect_0_0(w) && scenario_reselect_0_1(w) && scenario_reselect_0_2(w)
+    && scenario_reselect_0_3(w)
 
-def scenario_reselect_1_1() -> Bool:
-  issued_is(R.Change.issued(sc_reselect()), 6n)
+def scenario_reselect_1_0(+b: ScB) -> Bool:
+  selected(sc_reselect(b), sc_offer_b2())
 
-def scenario_reselect_1_2() -> Bool:
-  Nat.is_eq(R.retired(sc_reselected()), 5n)
+def scenario_reselect_1_1(+b: ScB) -> Bool:
+  issued_is(R.Change.issued(sc_reselect(b)), 6n)
 
-def scenario_reselect_1_3() -> Bool:
-  denied(sc_dispatch_on(sc_reselected(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_reselected(), R.MissingEvidence{})
+def scenario_reselect_1_2(+b: ScB) -> Bool:
+  Nat.is_eq(R.retired(sc_reselected(b)), 5n)
 
-def scenario_reselect_1_4() -> Bool:
-  Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_reselected(), sc_issuer(), 116n))))
+def scenario_reselect_1_3(+w: Sc, +b: ScB) -> Bool:
+  denied(sc_dispatch_on(sc_reselected(b), R.OfferId{202n, 2n}, worker_b(), sc_running(w), sc_issuer(w), 116n), sc_reselected(b), R.MissingEvidence{})
 
-def scenario_reselect_1_5() -> Bool:
-  N.Session.is(sc_b_challenged(), N.Challenged{})
+def scenario_reselect_1_4(+w: Sc, +b: ScB) -> Bool:
+  Bool.not(N.Step.accepted(N.challenge(sc_pinned(w), 1n, 41n, sc_proj(sc_reselected(b), sc_issuer(w), 116n))))
 
-def scenario_reselect_2_0() -> Bool:
-  denied(sc_dispatch_on(sc_b_evidenced(), R.OfferId{202n, 2n}, worker_b(), sc_running(), sc_issuer(), 116n), sc_b_evidenced(), R.WrongTrial{})
+def scenario_reselect_1_5(+b: ScB) -> Bool:
+  N.Session.is(sc_b_challenged(b), N.Challenged{})
 
-def scenario_reselect_2_1() -> Bool:
-  R.Change.accepted(sc_b_dispatch())
+def scenario_reselect_1_with(+w: Sc, +b: ScB) -> Bool:
+  scenario_reselect_1_0(b) && scenario_reselect_1_1(b) && scenario_reselect_1_2(b)
+    && scenario_reselect_1_3(w, b) && scenario_reselect_1_4(w, b) && scenario_reselect_1_5(b)
 
-def scenario_reselect_2_2() -> Bool:
-  B.accepted(sc_b_commit())
+def scenario_reselect_1(+w: Sc) -> Bool:
+  scenario_reselect_1_with(w, sc_b_world(w))
 
-def scenario_reselect_2_3() -> Bool:
-  sc_retained(sc_b_commit())
+def scenario_reselect_2_0(+w: Sc, +b: ScB) -> Bool:
+  denied(sc_dispatch_on(sc_b_evidenced(b), R.OfferId{202n, 2n}, worker_b(), sc_running(w), sc_issuer(w), 116n), sc_b_evidenced(b), R.WrongTrial{})
 
-def scenario_reselect_2_4() -> Bool:
-  single_token_is(R.provider_registry(R.Change.state(sc_b_dispatch()), sc_snap(sc_issuer(), 116n)), token_b())
+def scenario_reselect_2_1(+b: ScB) -> Bool:
+  R.Change.accepted(sc_b_dispatch(b))
+
+def scenario_reselect_2_2(+w: Sc, +b: ScB) -> Bool:
+  B.accepted(sc_b_commit(w, b))
+
+def scenario_reselect_2_3(+w: Sc, +b: ScB) -> Bool:
+  sc_retained(sc_b_commit(w, b))
+
+def scenario_reselect_2_4(+w: Sc, +b: ScB) -> Bool:
+  single_token_is(R.provider_registry(R.Change.state(sc_b_dispatch(b)), sc_snap(sc_issuer(w), 116n)), token_b())
+
+def scenario_reselect_2_with(+w: Sc, +b: ScB) -> Bool:
+  scenario_reselect_2_0(w, b) && scenario_reselect_2_1(b) && scenario_reselect_2_2(w, b)
+    && scenario_reselect_2_3(w, b) && scenario_reselect_2_4(w, b)
+
+def scenario_reselect_2(+w: Sc) -> Bool:
+  scenario_reselect_2_with(w, sc_b_world(w))
 
 def scenario_reselect() -> IO(Unit):
   do IO<Unit>:
-    Test.check(scenario_reselect_0_0() && scenario_reselect_0_1() && scenario_reselect_0_2()
-      && scenario_reselect_0_3(), "scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5")
-    Test.check(scenario_reselect_1_0() && scenario_reselect_1_1() && scenario_reselect_1_2()
-      && scenario_reselect_1_3() && scenario_reselect_1_4() && scenario_reselect_1_5(), "scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is")
-    Test.check(scenario_reselect_2_0() && scenario_reselect_2_1() && scenario_reselect_2_2()
-      && scenario_reselect_2_3() && scenario_reselect_2_4(), "scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12")
+    Test.check(scenario_reselect_0(sc_world()), "scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5")
+    Test.check(scenario_reselect_1(sc_world()), "scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is")
+    Test.check(scenario_reselect_2(sc_world()), "scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12")
 # --- Scenarios: denial cases ----------------------------------------------------
 
 # Principal C (203, authenticated, holding no grant) and D (204, holding
 # grant 15 for the one-source TF.plan() only), each on the approved state at
 # revision 6.
-def sc_on_approved(+from: I.Principal, +offer: R.Offer) -> R.Change:
-  R.submit_offer(sc_approved(), 6n, from, offer, sc_snap(sc_issuer(), 100n))
+def sc_on_approved(+w: Sc, +from: I.Principal, +offer: R.Offer) -> R.Change:
+  R.submit_offer(sc_approved(w), 6n, from, offer, sc_snap(sc_issuer(w), 100n))
 
 def sc_offer_d(plan: T.Plan) -> R.Offer:
   offer_with(R.OfferId{204n, 1n}, provider_d(), 15n, plan, 30n, 140n)
 
+def scenario_identity_0(+w: Sc) -> Bool:
+  denied(sc_on_approved(w, provider_c(), offer_with(R.OfferId{203n, 2n}, provider_a(), 8n, sc_plan(), 30n, 120n)), sc_approved(w), R.Unauthenticated{})
+    && denied(sc_on_approved(w, provider_c(), offer_with(R.OfferId{201n, 2n}, provider_c(), 8n, sc_plan(), 30n, 120n)), sc_approved(w), R.Unauthenticated{})
+    && denied(sc_on_approved(w, provider_c(), offer_with(R.OfferId{203n, 1n}, provider_c(), 8n, sc_plan(), 30n, 120n)), sc_approved(w), R.NoGrant{})
+    && denied(R.submit_approval(sc_approved(w), 6n, provider_c(), sc_approval(34n, IT.source_authority(), TF.source_object(), provider_c()), sc_snap(sc_issuer(w), 100n)), sc_approved(w), R.Unauthenticated{})
+    && selected(sc_select(w), sc_offer_a())
+
+def scenario_identity_1(+w: Sc) -> Bool:
+  denied(sc_on_approved(w, provider_d(), sc_offer_d(sc_plan())), sc_approved(w), R.ScopeMismatch{})
+    && denied(sc_on_approved(w, provider_d(), sc_offer_d(TF.plan())), sc_approved(w), R.ScopeMismatch{})
+    && denied(R.submit_approval(sc_approved(w), 6n, IT.source_authority(),
+      approval_with(35n, IT.source_authority(), TF.source_object(), provider_d(), profile(), TF.plan(), approval_until()), sc_snap(sc_issuer(w), 100n)), sc_approved(w), R.ScopeMismatch{})
+    && selected(sc_select(w), sc_offer_a())
+
 def scenario_identity() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(sc_on_approved(provider_c(), offer_with(R.OfferId{203n, 2n}, provider_a(), 8n, sc_plan(), 30n, 120n)), sc_approved(), R.Unauthenticated{})
-      && denied(sc_on_approved(provider_c(), offer_with(R.OfferId{201n, 2n}, provider_c(), 8n, sc_plan(), 30n, 120n)), sc_approved(), R.Unauthenticated{})
-      && denied(sc_on_approved(provider_c(), offer_with(R.OfferId{203n, 1n}, provider_c(), 8n, sc_plan(), 30n, 120n)), sc_approved(), R.NoGrant{})
-      && denied(R.submit_approval(sc_approved(), 6n, provider_c(), sc_approval(34n, IT.source_authority(), TF.source_object(), provider_c()), sc_snap(sc_issuer(), 100n)), sc_approved(), R.Unauthenticated{})
-      && selected(sc_select(), sc_offer_a()), "scenario unauthenticated provider: principal C submitting an offer under A's claim, or A's identity under its own claim, is denied Unauthenticated, its own offer citing A's grant 8 is denied NoGrant, and an approval it submits as 101 is denied Unauthenticated; the state is kept and A is selected")
-    Test.check(denied(sc_on_approved(provider_d(), sc_offer_d(sc_plan())), sc_approved(), R.ScopeMismatch{})
-      && denied(sc_on_approved(provider_d(), sc_offer_d(TF.plan())), sc_approved(), R.ScopeMismatch{})
-      && denied(R.submit_approval(sc_approved(), 6n, IT.source_authority(),
-        approval_with(35n, IT.source_authority(), TF.source_object(), provider_d(), profile(), TF.plan(), approval_until()), sc_snap(sc_issuer(), 100n)), sc_approved(), R.ScopeMismatch{})
-      && selected(sc_select(), sc_offer_a()), "scenario scope narrower than the plan: D's grant 15 covers only the one-source TF.plan(), so D's offer of the two-source plan on it, and its offer of TF.plan() itself, are denied ScopeMismatch, as is 101's approval of D for TF.plan(); A is selected")
+    Test.check(scenario_identity_0(sc_world()), "scenario unauthenticated provider: principal C submitting an offer under A's claim, or A's identity under its own claim, is denied Unauthenticated, its own offer citing A's grant 8 is denied NoGrant, and an approval it submits as 101 is denied Unauthenticated; the state is kept and A is selected")
+    Test.check(scenario_identity_1(sc_world()), "scenario scope narrower than the plan: D's grant 15 covers only the one-source TF.plan(), so D's offer of the two-source plan on it, and its offer of TF.plan() itself, are denied ScopeMismatch, as is 101's approval of D for TF.plan(); A is selected")
 
 # Selection racing revocation: A is selected at 103 on the issuer state
 # before the revocation; the revoked issuer is what every later call reads.
-def sc_raced_select() -> R.Change:
-  sc_select_on(sc_approved(), sc_revoked(), 103n)
+def sc_raced_select(+w: Sc) -> R.Change:
+  sc_select_on(w, sc_approved(w), sc_revoked(w), 103n)
 
 # Partial owner agreement: after A's session starts, 104 withdraws its
 # approval of A for object 11 (id 2), before dispatch at revision 8
 # (revision 9), or after dispatch at revision 9 (revision 10).
-def sc_partial() -> R.State:
-  R.Change.state(R.withdraw_approval(sc_evidenced(), 8n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 110n)))
+def sc_partial(+w: Sc) -> R.State:
+  R.Change.state(R.withdraw_approval(sc_evidenced(w), 8n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(w), 110n)))
 
-def sc_partial_dispatched() -> R.State:
-  R.Change.state(R.withdraw_approval(sc_dispatched(), 9n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(), 110n)))
+def sc_partial_dispatched(+w: Sc) -> R.State:
+  R.Change.state(R.withdraw_approval(sc_dispatched(w), 9n, IT.second_source_authority(), 2n, sc_snap(sc_issuer(w), 110n)))
 
 # Whether `origin`'s approval of A at profile 1 for the plan counts at 110.
-def sc_origin_approved(+state: R.State, +origin: T.ObjectVersion) -> Bool:
-  R.origin_approved(R.approvals(state), origin, provider_a(), profile(), sc_plan(), sc_issuer(), 110n)
+def sc_origin_approved(+w: Sc, +state: R.State, +origin: T.ObjectVersion) -> Bool:
+  R.origin_approved(R.approvals(state), origin, provider_a(), profile(), sc_plan(), sc_issuer(w), 110n)
 
 # Native arity: each check of `scenario_currency` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -3463,26 +3983,35 @@ def sc_origin_approved(+state: R.State, +origin: T.ObjectVersion) -> Bool:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `scenario_currency_K_J` is conjunct J of the K-th check of `scenario_currency`, counting
 # from 0.
-def scenario_currency_1_0() -> Bool:
-  R.Change.accepted(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 124n))
+def scenario_currency_0(+w: Sc) -> Bool:
+  denied(sc_submit_on(sc_selected(w), provider_a(), sc_evidence_a(), sc_challenged(w), sc_revoked(w), 110n), sc_selected(w), R.Revoked{})
+    && Bool.not(N.Step.accepted(N.challenge(sc_pinned(w), 1n, 41n, sc_proj(sc_selected(w), sc_revoked(w), 110n))))
+    && denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_revoked(w), 110n), sc_evidenced(w), R.Revoked{})
+    && selected(sc_raced_select(w), sc_offer_b())
 
-def scenario_currency_1_1() -> Bool:
-  denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 125n), sc_evidenced(), R.Expired{})
+def scenario_currency_1_0(+w: Sc) -> Bool:
+  R.Change.accepted(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_issuer(w), 124n))
 
-def scenario_currency_1_2() -> Bool:
-  n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(), sc_issuer(), 125n)), N.NoApprovals{})
+def scenario_currency_1_1(+w: Sc) -> Bool:
+  denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_issuer(w), 125n), sc_evidenced(w), R.Expired{})
+
+def scenario_currency_1_2(+w: Sc) -> Bool:
+  n_approvals_equal(sc_approvals_of(sc_proj(sc_evidenced(w), sc_issuer(w), 125n)), N.NoApprovals{})
+
+def scenario_currency_1(+w: Sc) -> Bool:
+  scenario_currency_1_0(w) && scenario_currency_1_1(w) && scenario_currency_1_2(w)
+
+def scenario_currency_2(+w: Sc) -> Bool:
+  denied(sc_dispatch_on(sc_partial(w), R.OfferId{201n, 1n}, worker_a(), sc_running(w), sc_issuer(w), 110n), sc_partial(w), R.MissingApproval{})
+    && sc_kept(w, sc_commit_on(w, sc_partial_dispatched(w), sc_issuer(w), 110n))
+    && sc_origin_approved(w, sc_partial(w), TF.source_object()) && Bool.not(sc_origin_approved(w, sc_partial(w), IT.second_source()))
+    && sc_origin_approved(w, sc_evidenced(w), IT.second_source())
 
 def scenario_currency() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(sc_submit_on(sc_selected(), provider_a(), sc_evidence_a(), sc_challenged(), sc_revoked(), 110n), sc_selected(), R.Revoked{})
-      && Bool.not(N.Step.accepted(N.challenge(sc_pinned(), 1n, 41n, sc_proj(sc_selected(), sc_revoked(), 110n))))
-      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_revoked(), 110n), sc_evidenced(), R.Revoked{})
-      && selected(sc_raced_select(), sc_offer_b()), "scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B")
-    Test.check(scenario_currency_1_0() && scenario_currency_1_1() && scenario_currency_1_2(), "scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals")
-    Test.check(denied(sc_dispatch_on(sc_partial(), R.OfferId{201n, 1n}, worker_a(), sc_running(), sc_issuer(), 110n), sc_partial(), R.MissingApproval{})
-      && sc_kept(sc_commit_on(sc_partial_dispatched(), sc_issuer(), 110n))
-      && sc_origin_approved(sc_partial(), TF.source_object()) && Bool.not(sc_origin_approved(sc_partial(), IT.second_source()))
-      && sc_origin_approved(sc_evidenced(), IT.second_source()), "scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval, and withdrawn after dispatch, Backplane.commit on the rebuilt commit_context rejects and spends no reservation")
+    Test.check(scenario_currency_0(sc_world()), "scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B")
+    Test.check(scenario_currency_1(sc_world()), "scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals")
+    Test.check(scenario_currency_2(sc_world()), "scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval, and withdrawn after dispatch, Backplane.commit on the rebuilt commit_context rejects and spends no reservation")
 
 # Identical candidates: A and B offer the same plan, code, profile 1, quote
 # 40 and lifetime (until 125), differing only in identity, provider and
@@ -3493,65 +4022,91 @@ def sc_twin_a() -> R.Offer:
 def sc_twin_b() -> R.Offer:
   offer_with(R.OfferId{202n, 1n}, provider_b(), 12n, sc_plan(), 40n, sc_a_until())
 
-def sc_twins_ab() -> R.State:
-  sc_approve_all(sc_put_offer(sc_put_offer(sc_opened(), provider_a(), sc_twin_a()), provider_b(), sc_twin_b()))
+def sc_twins_ab(+w: Sc) -> R.State:
+  sc_approve_all(sc_put_offer(sc_put_offer(sc_opened(), provider_a(), sc_twin_a(), sc_issuer(w)), provider_b(), sc_twin_b(), sc_issuer(w)), sc_issuer(w))
 
-def sc_twins_ba() -> R.State:
-  sc_approve_all(sc_put_offer(sc_put_offer(sc_opened(), provider_b(), sc_twin_b()), provider_a(), sc_twin_a()))
+def sc_twins_ba(+w: Sc) -> R.State:
+  sc_approve_all(sc_put_offer(sc_put_offer(sc_opened(), provider_b(), sc_twin_b(), sc_issuer(w)), provider_a(), sc_twin_a(), sc_issuer(w)), sc_issuer(w))
 
-def sc_twin_selected() -> R.State:
-  R.Change.state(sc_select_on(sc_twins_ba(), sc_issuer(), 103n))
+def sc_twin_selected(+w: Sc) -> R.State:
+  R.Change.state(sc_select_on(w, sc_twins_ba(w), sc_issuer(w), 103n))
 
 def sc_twin_b_evidence() -> R.Evidence:
   evidence_with(R.record_version(), 51n, provider_b(), R.OfferId{202n, 1n}, 41n, TF.code())
 
+def scenario_targets_0(+w: Sc) -> Bool:
+  denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{202n, 1n}, worker_b(), sc_running(w), sc_issuer(w), 110n), sc_evidenced(w), R.NotSelected{})
+    && denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, worker_b(), sc_running(w), sc_issuer(w), 110n), sc_evidenced(w), R.NotSelected{})
+    && denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, 3n, sc_running(w), sc_issuer(w), 110n), sc_evidenced(w), R.NotSelected{})
+    && denied(sc_dispatch_on(sc_evidenced(w), R.OfferId{201n, 1n}, 4n, sc_running(w), sc_issuer(w), 110n), sc_evidenced(w), R.WrongProfile{})
+    && R.Change.accepted(sc_dispatch(w))
+
+def scenario_targets_1(+w: Sc) -> Bool:
+  selected(sc_select_on(w, sc_twins_ab(w), sc_issuer(w), 103n), sc_twin_a()) && selected(sc_select_on(w, sc_twins_ba(w), sc_issuer(w), 103n), sc_twin_a())
+    && denied(sc_submit_on(sc_twin_selected(w), provider_b(), sc_twin_b_evidence(), sc_challenged_on(w, sc_twin_selected(w), sc_issuer(w), 41n, 110n), sc_issuer(w), 110n), sc_twin_selected(w), R.NotSelected{})
+    && denied(sc_dispatch_on(sc_twin_selected(w), R.OfferId{202n, 1n}, worker_b(), sc_running(w), sc_issuer(w), 110n), sc_twin_selected(w), R.NotSelected{})
+
 def scenario_targets() -> IO(Unit):
   do IO<Unit>:
-    Test.check(denied(sc_dispatch_on(sc_evidenced(), R.OfferId{202n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_evidenced(), R.NotSelected{})
-      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_evidenced(), R.NotSelected{})
-      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, 3n, sc_running(), sc_issuer(), 110n), sc_evidenced(), R.NotSelected{})
-      && denied(sc_dispatch_on(sc_evidenced(), R.OfferId{201n, 1n}, 4n, sc_running(), sc_issuer(), 110n), sc_evidenced(), R.WrongProfile{})
-      && R.Change.accepted(sc_dispatch()), "scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches")
-    Test.check(selected(sc_select_on(sc_twins_ab(), sc_issuer(), 103n), sc_twin_a()) && selected(sc_select_on(sc_twins_ba(), sc_issuer(), 103n), sc_twin_a())
-      && denied(sc_submit_on(sc_twin_selected(), provider_b(), sc_twin_b_evidence(), sc_challenged_on(sc_twin_selected(), sc_issuer(), 41n, 110n), sc_issuer(), 110n), sc_twin_selected(), R.NotSelected{})
-      && denied(sc_dispatch_on(sc_twin_selected(), R.OfferId{202n, 1n}, worker_b(), sc_running(), sc_issuer(), 110n), sc_twin_selected(), R.NotSelected{}), "scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)")
+    Test.check(scenario_targets_0(sc_world()), "scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches")
+    Test.check(scenario_targets_1(sc_world()), "scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)")
 
 # --- Scenarios: the commit is bound to the dispatch ---------------------------
 
 # The dispatched selection 5 abandoned by the monitor (revision 10).
-def sc_dispatched_abandoned() -> R.State:
-  R.Change.state(R.abandon(sc_dispatched(), 9n))
+def sc_dispatched_abandoned(+w: Sc) -> R.State:
+  R.Change.state(R.abandon(sc_dispatched(w), 9n))
 
 # The same offer reselected: after abandoning dispatched selection 5, the
 # monitor selects again at 112 and A's {201, 1} is selection 6 (revision
 # 11). A's new trial runs at 116 on challenge 42 and sample 52 from the
 # reader's negotiation pinned at 100; selection 6 is then dispatched to the
-# same worker session 6 (revision 13).
-def sc_a_reselected() -> R.State:
-  R.Change.state(sc_select_on(sc_dispatched_abandoned(), sc_issuer(), 112n))
+# same worker session 6 (revision 13). `ScA2`, built once per check from
+# the world `w` (`sc_a2_world`), holds the reselection, A's second evidence,
+# and the session sampled, owners-approved, reserved and started on the
+# projection rebuilt at 116 from that evidenced state.
+type ScA2 is Data:
+  ScA2{reselect: Kept<&2, R.Change>, evidence: Kept<&2, R.Change>, reservation: Kept<&2, N.ReservationStep>,
+    start: Kept<&2, N.Step>}
 
-def sc_a2_challenged() -> N.Session:
-  sc_challenged_on(sc_a_reselected(), sc_issuer(), 42n, 116n)
+def sc_a2_world_trial(+reselect: Kept<&2, R.Change>, +challenged: N.Session, +evidence: Kept<&2, R.Change>,
+    +projection: N.Context) -> ScA2:
+  +reservation = keep_reservation(N.reserve(N.Step.session(N.approve(N.Step.session(N.sample(challenged, 2n, 52n,
+    projection)), 3n, projection)), 4n, 0n, 11n, projection, NT.initial_ledger()))
+  ScA2{reselect, evidence, reservation,
+    keep_step(N.start(N.ReservationStep.session(kept_reservation(reservation)), 5n, projection,
+      N.ReservationStep.ledger(kept_reservation(reservation))))}
 
-def sc_a2_evidenced() -> R.State:
-  R.Change.state(sc_submit_on(sc_a_reselected(), provider_a(),
-    evidence_with(R.record_version(), 52n, provider_a(), R.OfferId{201n, 1n}, 42n, TF.code()), sc_a2_challenged(), sc_issuer(), 116n))
+def sc_a2_world(+w: Sc) -> ScA2:
+  +reselect = keep_change(sc_select_on(w, sc_dispatched_abandoned(w), sc_issuer(w), 112n))
+  +challenged = sc_challenged_on(w, kept_state(reselect), sc_issuer(w), 42n, 116n)
+  +evidence = keep_change(sc_submit_on(kept_state(reselect), provider_a(),
+    evidence_with(R.record_version(), 52n, provider_a(), R.OfferId{201n, 1n}, 42n, TF.code()), challenged,
+    sc_issuer(w), 116n))
+  sc_a2_world_trial(reselect, challenged, evidence, sc_proj(kept_state(evidence), sc_issuer(w), 116n))
 
-def sc_a2_proj() -> N.Context:
-  sc_proj(sc_a2_evidenced(), sc_issuer(), 116n)
+def sc_a_reselected(+a: ScA2) -> R.State:
+  match a:
+    case ScA2{reselect, _, _, _}:
+      kept_state(reselect)
 
-def sc_a2_reservation() -> N.ReservationStep:
-  N.reserve(N.Step.session(N.approve(N.Step.session(N.sample(sc_a2_challenged(), 2n, 52n, sc_a2_proj())), 3n, sc_a2_proj())),
-    4n, 0n, 11n, sc_a2_proj(), NT.initial_ledger())
+def sc_a2_evidenced(+a: ScA2) -> R.State:
+  match a:
+    case ScA2{_, evidence, _, _}:
+      kept_state(evidence)
 
-def sc_a2_ledger() -> L.State:
-  N.ReservationStep.ledger(sc_a2_reservation())
+def sc_a2_ledger(+a: ScA2) -> L.State:
+  match a:
+    case ScA2{_, _, reservation, _}:
+      N.ReservationStep.ledger(kept_reservation(reservation))
 
-def sc_a2_running() -> N.Session:
-  N.Step.session(N.start(N.ReservationStep.session(sc_a2_reservation()), 5n, sc_a2_proj(), sc_a2_ledger()))
+def sc_a2_running(+a: ScA2) -> N.Session:
+  match a:
+    case ScA2{_, _, _, start}:
+      kept_session(start)
 
-def sc_a2_dispatched() -> R.State:
-  R.Change.state(sc_dispatch_on(sc_a2_evidenced(), R.OfferId{201n, 1n}, worker_a(), sc_a2_running(), sc_issuer(), 116n))
+def sc_a2_dispatched(+w: Sc, +a: ScA2) -> R.State:
+  R.Change.state(sc_dispatch_on(sc_a2_evidenced(a), R.OfferId{201n, 1n}, worker_a(), sc_a2_running(a), sc_issuer(w), 116n))
 
 # Native arity: each check of `scenario_commit` named below is split into one def
 # per conjunct, unchanged and in the original order. Written inline in
@@ -3560,34 +4115,55 @@ def sc_a2_dispatched() -> R.State:
 # `bend Tests.bend -o <binary>`; see the note above HostBindingTests.main).
 # A def named `scenario_commit_K_J` is conjunct J of the K-th check of `scenario_commit`, counting
 # from 0.
-def scenario_commit_4_0() -> Bool:
-  selection_offer_is(R.selection(sc_a_reselected()), sc_offer_a())
+def scenario_commit_0(+w: Sc) -> Bool:
+  sc_kept(w, sc_commit_on(w, sc_evidenced(w), sc_issuer(w), 110n)) && sc_kept(w, sc_commit_on(w, sc_selected(w), sc_issuer(w), 110n))
+    && B.accepted(sc_commit_on(w, sc_dispatched(w), sc_issuer(w), 110n))
 
-def scenario_commit_4_1() -> Bool:
-  issued_is(R.Change.issued(sc_select_on(sc_dispatched_abandoned(), sc_issuer(), 112n)), 6n)
+def scenario_commit_1_with(+w: Sc, +b: ScB) -> Bool:
+  sc_kept(w, sc_commit_with(sc_running(w), sc_ledger(w), sc_b_dispatched(b), host(), worker_b(), sc_issuer(w), 116n))
+    && B.accepted(sc_b_commit(w, b))
 
-def scenario_commit_4_2() -> Bool:
-  N.Session.is(sc_a2_running(), N.Running{})
+def scenario_commit_1(+w: Sc) -> Bool:
+  scenario_commit_1_with(w, sc_b_world(w))
 
-def scenario_commit_4_3() -> Bool:
-  sc_kept_with(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_evidenced(), host(), worker_a(), sc_issuer(), 116n), sc_a2_ledger(), sc_a2_running())
+def scenario_commit_2(+w: Sc) -> Bool:
+  sc_kept(w, sc_commit_with(sc_running(w), sc_ledger(w), sc_dispatched(w), host(), worker_b(), sc_issuer(w), 110n))
+    && sc_kept(w, sc_commit_with(sc_running(w), sc_ledger(w), sc_dispatched(w), restarted_host(), worker_a(), sc_issuer(w), 110n))
+    && B.accepted(sc_commit_with(sc_running(w), sc_ledger(w), sc_dispatched(w), host(), worker_a(), sc_issuer(w), 110n))
 
-def scenario_commit_4_4() -> Bool:
-  B.accepted(sc_commit_with(sc_a2_running(), sc_a2_ledger(), sc_a2_dispatched(), host(), worker_a(), sc_issuer(), 116n))
+def scenario_commit_3(+w: Sc) -> Bool:
+  sc_kept(w, sc_commit_on(w, sc_dispatched_abandoned(w), sc_issuer(w), 110n))
+    && sc_kept(w, sc_commit_on(w, sc_dispatched(w), sc_issuer(w), 125n)) && B.accepted(sc_commit_on(w, sc_dispatched(w), sc_issuer(w), 124n))
+
+def scenario_commit_4_0(+a: ScA2) -> Bool:
+  selection_offer_is(R.selection(sc_a_reselected(a)), sc_offer_a())
+
+def scenario_commit_4_1(+w: Sc) -> Bool:
+  issued_is(R.Change.issued(sc_select_on(w, sc_dispatched_abandoned(w), sc_issuer(w), 112n)), 6n)
+
+def scenario_commit_4_2(+a: ScA2) -> Bool:
+  N.Session.is(sc_a2_running(a), N.Running{})
+
+def scenario_commit_4_3(+w: Sc, +a: ScA2) -> Bool:
+  sc_kept_with(sc_commit_with(sc_a2_running(a), sc_a2_ledger(a), sc_a2_evidenced(a), host(), worker_a(), sc_issuer(w), 116n), sc_a2_ledger(a), sc_a2_running(a))
+
+def scenario_commit_4_4(+w: Sc, +a: ScA2) -> Bool:
+  B.accepted(sc_commit_with(sc_a2_running(a), sc_a2_ledger(a), sc_a2_dispatched(w, a), host(), worker_a(), sc_issuer(w), 116n))
+
+def scenario_commit_4_with(+w: Sc, +a: ScA2) -> Bool:
+  scenario_commit_4_0(a) && scenario_commit_4_1(w) && scenario_commit_4_2(a)
+    && scenario_commit_4_3(w, a) && scenario_commit_4_4(w, a)
+
+def scenario_commit_4(+w: Sc) -> Bool:
+  scenario_commit_4_with(w, sc_a2_world(w))
 
 def scenario_commit() -> IO(Unit):
   do IO<Unit>:
-    Test.check(sc_kept(sc_commit_on(sc_evidenced(), sc_issuer(), 110n)) && sc_kept(sc_commit_on(sc_selected(), sc_issuer(), 110n))
-      && B.accepted(sc_commit_on(sc_dispatched(), sc_issuer(), 110n)), "scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched")
-    Test.check(sc_kept(sc_commit_with(sc_running(), sc_ledger(), sc_b_dispatched(), host(), worker_b(), sc_issuer(), 116n))
-      && B.accepted(sc_b_commit()), "scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits")
-    Test.check(sc_kept(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), host(), worker_b(), sc_issuer(), 110n))
-      && sc_kept(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), restarted_host(), worker_a(), sc_issuer(), 110n))
-      && B.accepted(sc_commit_with(sc_running(), sc_ledger(), sc_dispatched(), host(), worker_a(), sc_issuer(), 110n)), "scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits")
-    Test.check(sc_kept(sc_commit_on(sc_dispatched_abandoned(), sc_issuer(), 110n))
-      && sc_kept(sc_commit_on(sc_dispatched(), sc_issuer(), 125n)) && B.accepted(sc_commit_on(sc_dispatched(), sc_issuer(), 124n)), "scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits")
-    Test.check(scenario_commit_4_0() && scenario_commit_4_1() && scenario_commit_4_2()
-      && scenario_commit_4_3() && scenario_commit_4_4(), "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits")
+    Test.check(scenario_commit_0(sc_world()), "scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched")
+    Test.check(scenario_commit_1(sc_world()), "scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits")
+    Test.check(scenario_commit_2(sc_world()), "scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits")
+    Test.check(scenario_commit_3(sc_world()), "scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits")
+    Test.check(scenario_commit_4(sc_world()), "scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits")
 # --- One rendezvous per request (final review, F1) ---------------------------
 
 # SYNTHETIC MONITOR STATE: the index after the monitor opened the

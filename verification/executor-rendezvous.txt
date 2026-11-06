@@ -383,3 +383,23 @@ merged master tree the suite is 1942 checks (1713 plus 229 Rendezvous) on both
 backends, byte-identical, and LAWS.bend holds 36 laws (29 plus the 7 above);
 `bend PROOF.bend` ALL PROOFS CHECK; `--verdict` still refused (no Lean). See
 VERIFICATION.md and verification/environment.txt for the merged numbers.
+
+Corpus cost (Task 9: scenario stages built once per check)
+----------------------------------------------------------
+The Genode native run executes the whole generated Tests.bend JavaScript
+under QuickJS on a QEMU base-hw guest within 600 s. RendezvousTests.bend's
+stage fixtures were zero-argument defs that rebuilt their whole prefix at
+every call (neither backend memoizes them), so the rendezvous checks cost
+grew exponentially with chain depth. Each check now builds its world once
+(`trial_world()` in Sections 1.3 to 1.5, `sc_world()` with `sc_b_world` and
+`sc_a2_world` in Section 2.1) through the same entry points and reads the
+stages from it; only RendezvousTests.bend changed, and the PASS output is
+byte-identical to verification/tests-js.txt (1942 lines) on JavaScript and
+on native CPU (`--gpu off`, not a GPU test).
+Host QuickJS 2026-06-04 harness replicating the Genode runner (prelude,
+512 KiB stack, 128 MiB limit), whole 1942-check corpus:
+  before: 262.5 s (265.5 s re-measured), ticks 616,315
+  after:  8.0 to 13.3 s over five runs on a host at load average about 35,
+          ticks 17,059 (Genode budget 200,000 per script call)
+The QEMU guest itself was not run here; at the earlier ratio of about 13
+times the host QuickJS time the corpus would need roughly 105 to 175 s.
