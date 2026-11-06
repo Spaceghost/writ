@@ -87,184 +87,96 @@ qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EB
 qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
 qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.0DH:EAX.xsavec [bit 1]
 c[?7lSeaBIOS (version 1.16.3-debian-1.16.3-2)
-
 Booting from Hard Disk...
-
 Boot failed: could not read the boot disk
 
-
 Booting from DVD/CD...
-
 error: can't find command `loadfont'.
-
   Booting `Genode on base-hw'
 
 
-
-
 Bender Version 0.9-beta7-51-g28ba2ad-dirty
-
 Patching BDA with I/O port 0x3f8.
-
 Bender: Hello World.
-
 hwp config: eeo=na irq=na hwp=na epp=na epb=na
 Cpu apic_id=0x0 [0:0:0:0:0:0]
 
 
-
-
-
 kernel initialized
-
 Genode 26.08
-
 493 MiB RAM and 64536 caps assigned to init
-
 [init] Warning: reader: no route to service "ROM" (label="reader -> canary")
-
 [init -> reader] PASS supervisor denies direct canary ROM access
-
 [init] Warning: stranger: no route to service "ROM" (label="stranger -> canary")
-
 [init -> stranger] PASS supervisor denies direct canary ROM access
-
 [init] Warning: stranger: no route to service "Writ_control" (label="stranger -> ")
-
 [init -> stranger] PASS unknown component has no administrative route
-
 [init] Warning: forger: no route to service "ROM" (label="forger -> canary")
-
 [init -> forger] PASS supervisor denies direct canary ROM access
-
 [init] Warning: forger: no route to service "Writ_control" (label="forger -> ")
-
 [init -> forger] PASS unknown component has no administrative route
-
 [init -> writfs] Warning: clock_gettime(): missing real-time clock
-
 [init -> writfs] WRITFS READY public-canary bytes=33 sha256=4e69733490c465b5561bd477617265a72e614cbabb3ec570fcb1c1b54df32e6a native=genode heap_peak=2064846 reserved_peak=2064846
-
 [init -> writfs] SESSION actor=1 active=1
-
 [init -> writfs] SESSION actor=0 active=2
-
 [init -> stranger] PASS unknown native session cannot open root
-
 [init -> writfs] SESSION actor=0 active=3
-
 [init -> forger] PASS unknown native session cannot open root
-
 [init -> stranger] PASS unknown native session receives no object metadata
-
 [init -> reader] PASS immutable file has exact size and read-only attributes
-
 [init -> forger] PASS unknown native session receives no object metadata
-
 [init -> reader] PASS directory contains exactly one entry
-
 [init -> stranger] PASS packet acknowledgement preserves identity
-
 [init -> stranger] PASS forged handle returns no bytes and leaves shared memory unchanged
-
 [init -> forger] PASS packet acknowledgement preserves identity
-
 [init -> forger] PASS forged handle returns no bytes and leaves shared memory unchanged
-
 [init -> stranger] WRITFS NATIVE PASS role=stranger
-
 [init] child "stranger" exited with exit value 0
-
 [init -> forger] WRITFS NATIVE PASS role=forger
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS native directory packet succeeds
-
 [init -> reader] PASS directory exposes the sole canonical name
-
 [init] child "forger" exited with exit value 0
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS native packet read returns exact canary
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS native offset read is exact
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS EOF returns zero without touching payload
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS write packet is rejected
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS packet count exceeding buffer is rejected
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS native offset is checked before U32 narrowing
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS over-limit read is rejected
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS negative shared-memory descriptor is rejected
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS overflowing shared-memory descriptor is rejected
-
 [init -> reader] PASS native write-open is denied even on writeable session request
-
 [init -> reader] PASS path traversal alias is rejected
-
 [init -> reader] PASS embedded-NUL native name is rejected
-
 [init -> reader] PASS unterminated native name is rejected
-
 [init -> reader] PASS native truncate is rejected
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS stat-only handle cannot read payload
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS closed handle remains invalid
-
 [init -> reader] PASS native handles do not reuse retired Bend identities
-
 [init -> writfs] SESSION actor=0 active=2
-
 [init -> reader] PASS second session cannot inherit admitted invocation
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS handle ID is local to its native session
-
 [init -> reader] PASS native handle table is bounded at 32
-
 [init -> reader] PASS trusted controller revokes through Bend
-
 [init -> reader] PASS packet acknowledgement preserves identity
-
 [init -> reader] PASS retained handle cannot read after revocation
-
 [init -> reader] PASS revoked session receives no metadata
-
 [init -> reader] PASS new opens fail after revocation
-
 [init -> reader] PASS revoked handles still close cleanly
-
 [init -> reader] WRITFS NATIVE PASS role=reader
-
 WRIT GENODE FILE_SYSTEM ACCEPTED reader stranger forger
 
 Run script execution successful.
