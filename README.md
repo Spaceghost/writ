@@ -112,8 +112,10 @@ See the [backend guide](writfs/README.md) and its
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
-native CPU backends**. The current suite adds 118 synthetic Linux monitor
-checks and five HostWire bounds and error-order checks; see the verification record for backend-specific results.
+native CPU backends**. This experimental preview also includes 118 synthetic
+Linux monitor checks, five HostWire checks, and 220 durable-model checks. Its
+[2285-check results](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
+are scoped to the recorded source and backend; the durable model is not a host service.
 Physical GPU execution was observed for specific workloads on one RTX 4090 host;
 the [GPU evidence](verification/gpu-validation-hosts.md) does not establish
 device isolation, and the loaded-host timings are not representative. Independent
