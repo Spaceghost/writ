@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Linux host: how should we proceed with identity evidence?</title>
+<meta name="writ-topic" content="linux-host">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}code{background:var(--soft);padding:.05em .25em;border-radius:4px;overflow-wrap:anywhere}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>Linux host: how should we proceed with identity evidence?</h1>
+<p><strong>Decision needed:</strong> should I test the Bend monitor with synthetic identity facts now, or leave the identity task open and move on to Linux confinement? Both can be pursued while waiting for Spaceghost's broader architecture answers.</p>
+<h2>Why identity matters</h2>
+<p>A Linux broker launches a worker and needs to know which worker is sending a request. A claimed name or possession of a socket alone must not grant someone another worker's authority. The intended host checks associate kernel-observed credentials with a trusted launch record and the worker's lifetime; the Bend monitor then makes the authorization decision.</p>
+<p>For example, if a worker passes its socket to another process, the second process must not become the original worker merely by holding it. The host acceptance task also calls for testing claimed identities, parent-created socketpairs, process ID reuse, and namespace identity mapping.</p>
+<h2>What is done and what is missing</h2>
+<p>The Linux lane has an initial Bend adapter and a partial native broker, launch record, codec and invocation harness, saved at <code>b47fd90</code>. The native identity probe and its evidence were not completed. The work has not been qualified as a working Linux host; box 1.2 remains open. The prior session reported that an automatic safety classifier stopped two attempts to write the native probe.</p>
+<p>The full acceptance contract remains in <code>openspec/changes/add-linux-host/tasks.md</code>, item 1.2, and the LH-002 and LH-007 scenarios in <code>openspec/changes/add-linux-host/specs/linux-host/spec.md</code>. The task brief and partial-work ledger are in the <code>linux-host</code> worktree at <code>docs/superpowers/records/2026-11-05-linux-host/</code>.</p>
+<h2>Options and recommendation</h2>
+<p><strong>I recommend synthetic facts first.</strong> We can feed known mismatches such as a wrong start time or foreign session to the monitor and check that it denies them. That would exercise the Bend side only; it cannot establish that the broker obtains authentic credentials or resists transferred endpoints on Linux. The real kernel-level cases and box 1.2 stay open.</p>
+<p>Alternatively, we can defer those tests and start the confinement task: prepare and test the controls intended to be installed before protected input reaches a worker. This work must retain the identity gap and cannot qualify the whole host by itself. You can also provide native probe case bodies for integration, subject to any applicable tool restrictions and review.</p>
+<form method="post" action="/questions/q19/answer">
+<fieldset><legend>What should I do next?</legend>
+<label><input type="radio" name="linux_identity" value="synthetic" required>Run synthetic monitor-side identity cases first; keep native evidence and box 1.2 open. <strong>Recommended.</strong></label>
+<label><input type="radio" name="linux_identity" value="confinement">Leave identity evidence open and move to the Linux confinement task.</label>
+<label><input type="radio" name="linux_identity" value="provide-cases">I will provide native probe case bodies for you to assess and integrate.</label>
+<label><input type="radio" name="linux_identity" value="other">Something else; see my notes.</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form><p class="note">Your answer is recorded in the board's question thread. No acceptance box is closed by this choice alone.</p>
+</body></html>
