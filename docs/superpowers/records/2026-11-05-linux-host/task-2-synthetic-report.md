@@ -64,3 +64,20 @@ native CPU suite compiled with Clang `-O0` passes with output identical to
 Bend. The optimized native CPU build also passes with byte-identical output.
 These results are for this older Linux lane and do not establish GPU execution
 or a current-master integration result.
+
+## Host QuickJS output-limit follow-up
+
+The timeout was reproduced on the unchanged baseline. The Linux replay test
+wrote 37 lines as one 2,027-byte diagnostic, exceeding the host QuickJS
+harness's 1,024-byte write limit. Its returning exit hook let the generated
+write-failure loop retry indefinitely. The test now prints the same lines
+individually; complete Bend and Node output remains byte-identical to the prior
+capture. The full host QuickJS suite now terminates with 1,546 passing checks,
+program exit 0, no failure or exception, 7,062 ticks and 10,871,224 peak live
+bytes. The focused run reports 118 passing checks and program exit 0; its
+standalone wrapper returns 1 because it expects the full-suite summary. The
+focused native CPU executable also matches the 118-check Bend capture. An
+initial comparison used an older 115-check capture and differed only by the
+three subsequently added checks and summary; comparison with the correct
+118-check capture succeeds. This is host QuickJS and CPU evidence, not Genode
+guest, native identity, or GPU evidence.

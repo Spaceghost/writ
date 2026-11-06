@@ -1,13 +1,15 @@
 # Linux host trust inventory (add-linux-host)
 
-Status: started in the linux-host lane, Task 1 (2026-11-05). The Bend
-adapter for the direct Linux target exists and is model-tested; no native
-broker, launcher, or confinement exists yet (Tasks 2 to 4 of
-[the plan](../../docs/superpowers/plans/2026-11-05-linux-host.md), under
-`contrib/native-hosts/linux/`). Until those tasks supply executed evidence,
-the Linux host is **model-only**: protected execution is unavailable (LH-001
-"Model execution without a launcher"). A green `bend Tests.bend` on Linux is
-library evidence, not host qualification.
+Status: the direct Linux Bend adapter is model-tested. Partial native broker,
+launcher and invocation-harness source now exists under
+`contrib/native-hosts/linux/`, but it is unfinished and is not a qualified
+protected-worker host. The [plan](../../docs/superpowers/plans/2026-11-05-linux-host.md)
+Tasks 2 to 4 still need integration and executed native evidence, including
+identity, confinement and failure behavior. Protected execution remains
+unavailable for this host profile (LH-001). A green `bend Tests.bend` is
+library evidence, not native host qualification. The separate WritFS public
+canary and its evidence are described in the
+[native Linux README](../../contrib/native-hosts/linux/README.md).
 
 This file lists Linux host binding code. None of it is Writ policy: no
 authority, grant, label, budget, accounting, replay, or release decision is
@@ -21,24 +23,27 @@ made here. Every decision is a shared transition in `HostIdentity.bend`,
 | `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Adds no transition, no `Error`, and no law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
 
-No C, JavaScript, or other native file is in `hosts/linux/`. The native
-broker and launcher belong under `contrib/native-hosts/linux/` (AGENTS.md,
-the native-hosts exception) and will be inventoried there.
+No C, JavaScript, or other native file is in `hosts/linux/`. The partial
+protected-worker sources in `contrib/native-hosts/linux/` are inventoried in
+the [native Linux README](../../contrib/native-hosts/linux/README.md#separate-experimental-protected-worker-broker).
+They are separate from the WritFS canary; neither their presence nor model
+tests establish that they implement or qualify the proposed host profile.
 
 ## Authority
 
-The native broker's facts are inputs; the Bend monitor holds the authority.
-The broker is the trusted supervisor of the docs/PLATFORMS.md topology: it
-reports observations and executes only the effects of an `Admitted` step the
-monitor returned, after the monitor has retained the advanced state
-(contrib/native-hosts/PROTOCOL.md). **None of the facts below is an authority
-fact**: none is a grant, label, budget, plan, rights mask, profile, or release
+The target design treats the native broker's facts as inputs; the Bend monitor
+holds the authority. A qualified broker must be the trusted supervisor of the
+docs/PLATFORMS.md topology: it must report observations and execute only the
+effects of an `Admitted` step the monitor returned, after the monitor has
+retained the advanced state (contrib/native-hosts/PROTOCOL.md). The partial
+sources do not establish these host guarantees. **None of the facts below is
+an authority fact**: none is a grant, label, budget, plan, rights mask, profile, or release
 decision, and each reaches stored state only through a shared transition
 (`open_session`, `admit_worker`, `charge`, `diagnostic`) or not at all. A uid,
 gid, pid, start time, or descriptor number is a local fact, never a portable
 credential.
 
-### Facts the broker reports
+### Facts the target broker must report
 
 | Fact | Native source | Frame field | Contract destination | Why it is not authority |
 | --- | --- | --- | --- | --- |
@@ -81,9 +86,9 @@ credential.
    when its kernel mechanism (below) is installed for every thread.
 8. Use the monitor's trusted, monotone clock for every `now`.
 
-The worker channel carries only HostWire bytes on the session the broker's
-transport identified. A worker frame cannot carry a fact, and its claimed
-subject is never read.
+The intended worker channel carries only HostWire bytes on the session the
+broker's transport identified. A worker frame cannot carry a fact, and its
+claimed subject is never read.
 
 ## Profile `linux-worker-v1`
 

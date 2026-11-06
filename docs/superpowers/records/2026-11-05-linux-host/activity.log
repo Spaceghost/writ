@@ -20,3 +20,5 @@
 2026-11-05T15:39:09Z	controller	task 2: second stop at the probe; partial broker work committed as WIP; escalated to Josh
 2026-11-06T20:50:32Z	controller	q19 synthetic identity: 20 frame identity and seven decoder-bound cases; bounded decoder fix. Bend, Node and full native CPU -O0 match; proof and OpenSpec pass. QuickJS focused and baseline time out after final Linux check. Native identity remains unqualified.
 2026-11-06T21:45:28Z	controller	Full optimized native CPU suite for synthetic Linux identity revision passes with byte-identical Bend output; no host qualification claim.
+2026-11-06T21:49:54Z	controller	Diagnosed host QuickJS timeout as oversized test output; emit replay lines separately. Full host QuickJS passes 1546 checks, 7062 ticks; Bend/Node output unchanged.
+2026-11-06T21:51:41Z	controller	Corrected Linux source/trust inventory for unfinished broker, launcher and harness; native identity and confinement remain unqualified.

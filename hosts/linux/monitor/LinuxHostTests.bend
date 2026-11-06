@@ -635,14 +635,15 @@ def fixture_ok() -> Bool:
 def replay_lines() -> List<&2, String>:
   List.append(&2, String, linux_lines(), [compare_line()])
 
-def joined(lines: List<&2, String>) -> String:
+# Keep each vector in a separate diagnostic so bounded hosts can emit it.
+def emit_replay(lines: List<&2, String>) -> IO(Unit):
   match lines:
     case Nil{}:
-      ""
-    case Con{line, Nil{}}:
-      "LINUX " ++ line
+      IO.pure(Unit, Unit{})
     case Con{line, rest}:
-      "LINUX " ++ line ++ "\n" ++ joined(rest)
+      do IO<Unit>:
+        IO.print("LINUX " ++ line)
+        emit_replay(rest)
 
 def replay_plan_checks() -> IO(Unit):
   do IO<Unit>:
@@ -700,7 +701,7 @@ def replay_compare_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(CT.strings_equal(linux_lines(), V.expected_lines()) && CT.strings_equal(linux_lines(), CT.lines_for(V.adapter_a())) && CT.strings_equal(linux_lines(), CT.lines_for(V.adapter_b())), "LH-010 the Linux adapter's 36 decision lines equal V.expected_lines() and adapters A's and B's")
     Test.check(String.eq(compare_line(), V.expected_ph012_1()), "LH-010 PH-012-1 the Linux adapter compared with adapters A and B renders the expected compare line")
-    IO.print(joined(replay_lines()))
+    emit_replay(replay_lines())
 
 # Synthetic framed facts only. These exercise the actual LINUXB decode/serve
 # path; they do not authenticate a process, establish a kernel observation,
