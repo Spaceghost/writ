@@ -30,3 +30,4 @@ Task 6: review APPROVED (spec + quality); two comment-only nits carried to the f
 Final review: Needs fixes before merge (B1, B2 documentation-only; N1-N5 optional). Ruling: one fix round takes B1, B2, N1-N5 and the Task 6 comment nits; no implementation token may change (compare with 0d886cb). Brief: final-fix-brief.md.
 Final fix round done (86bfddd): B1, B2, N1-N5 as document and comment edits, tokens identical to 0d886cb; 1713 checks, 29 laws, strict 44. Scoped re-review dispatched.
 Final re-review: ALL CLOSED (B1, B2, N1-N5, Task 6 nit); tokens identical to 0d886cb. Lane ready to merge.
+Merged to master as b32a19d; re-pin 2cff5b2 (1713 checks, twenty-nine laws); pushed to origin/master. Section 1 landed; add-policy-aware-audit stays open for sections 2 and 3.

@@ -405,10 +405,10 @@ d9424326080aba242eba4367b098dd7f2158b59ddaf731889d7c00c0e47e75ae  docs/superpowe
 7f545d0720662f866a98f4b8c0e39b844a6f6383d9746618649c76150617d3ba  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-brief.md
 588de2b0d3eb7564ed842b6a8730b55e8e0d5d6c1a8ebce1fa8e0a5025e96dc7  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-report.md
 72598787d70bf5e61b6dee6eba49bc38fdbc320457b317c7b9a3a437cedff1aa  docs/superpowers/records/2026-11-05-authenticated-grant-issuance/task-7-review.md
-bd41a91e49d85ad2d2184f61e7c7b7f0017915092e81921b97e688ad79c62a63  docs/superpowers/records/2026-11-05-executor-rendezvous/activity.log
+c7811bbac2bd32596a568e19cd58062d82498def2883e36edb907ae3e50a6c3e  docs/superpowers/records/2026-11-05-executor-rendezvous/activity.log
 fcb68c2680563ef717c14d4142a22642009afa28a8890ef0ef3a1e2465508cfc  docs/superpowers/records/2026-11-05-executor-rendezvous/final-re-review.md
 01fc5f4c8cbb3479d9a550fd2f09370be0de15dda81475b68845874a50d36dcf  docs/superpowers/records/2026-11-05-executor-rendezvous/final-review.md
-5b391ddd6c764e591512e2d46b6db1a78770af6acc0ae591021dc4ccf4c53a29  docs/superpowers/records/2026-11-05-executor-rendezvous/progress.md
+d8f5fbaec4bf097041984283fc20b18a2be20f5344a18d40b2072b19f1da9fe2  docs/superpowers/records/2026-11-05-executor-rendezvous/progress.md
 3205672b9608cc8850e2212ab03fcbda6772d73fa1497921f35f303a04f093be  docs/superpowers/records/2026-11-05-executor-rendezvous/task-1-brief.md
 e99ce37c3d852476a3f563583d6170e27f5faa12f71bb972bc0b1ac5234d48e7  docs/superpowers/records/2026-11-05-executor-rendezvous/task-1-mutants.md
 32f02247add0bb95e94c134072bee2538b1a7fac9adf8b516787efe6b2bc9c4d  docs/superpowers/records/2026-11-05-executor-rendezvous/task-1-report.md
@@ -482,12 +482,12 @@ f261349c378da90917b9a1cbc8971ceacb24220529d08c81fcbd4787252abe1f  docs/superpowe
 8f48e519833ad2f3113ba4bee37681edcf392b9ed125fae15bc13cd5c5fc8109  docs/superpowers/records/2026-11-05-physical-gpu/task-9-brief.md
 ad68e0dfef8755852e1974bc968cda89d70e497f23731d3625c93768768f8c7d  docs/superpowers/records/2026-11-05-physical-gpu/task-9-report.md
 3f437ecba9ad2f87d477674c4da7a7037e8a0b5e741d0887275d8dba85f60066  docs/superpowers/records/2026-11-05-physical-gpu/task-9-review.md
-012bd52e727c30e9f00257d9d6cbcdbcafae43f94e1721890061f772916d1256  docs/superpowers/records/2026-11-05-policy-aware-audit/activity.log
+0cf9d76813c9696893b59fb97eea0402b5ef88370a3b27ef99784dca85c0a3d1  docs/superpowers/records/2026-11-05-policy-aware-audit/activity.log
 bb89f463cdc66518e3f02aeac6191ef4e967e41bdbdfd9f90cb2eef30bde3d90  docs/superpowers/records/2026-11-05-policy-aware-audit/final-fix-brief.md
 a47cab4d9b04a1e1c322616f0c06faaf40531c83bd90357f2e383aa7944bb6a7  docs/superpowers/records/2026-11-05-policy-aware-audit/final-fix-report.md
 8b0f9ffc19485ef20521e7fe0058589575a04435f0cb5e0b397f1fc0a29ea643  docs/superpowers/records/2026-11-05-policy-aware-audit/final-re-review.md
 2e8c07c8c4debc95fb778756adc9e6a64ccfb1f09acd928a75b8f9591ff76e26  docs/superpowers/records/2026-11-05-policy-aware-audit/final-review.md
-0178a2bd55925546fa86bbb2172cc3b4f1e4450a76c19382c2a3c001a20bff0b  docs/superpowers/records/2026-11-05-policy-aware-audit/progress.md
+257aa873903483ca1c536be6d1e6bdad477866280df6c79c6642c8b68e7f1625  docs/superpowers/records/2026-11-05-policy-aware-audit/progress.md
 85cfe078d7aaf5f6bce7ce0e92d7754d354070638dc00b1d7e04cc07ab12709d  docs/superpowers/records/2026-11-05-policy-aware-audit/task-1-brief.md
 107f220086eb7752fc0217b976793dfef0bb7441307e5c97ac53d79169694802  docs/superpowers/records/2026-11-05-policy-aware-audit/task-1-report.md
 0ca3dac753284601eafe3c3774d90b450d709a7b713ce3a057b1cd3263126d71  docs/superpowers/records/2026-11-05-policy-aware-audit/task-1-rereview.md
