@@ -91,4 +91,3 @@ Acceptance: every listed check is named and green on both backends with PASS
 count = 1428 + this task's checks; the 37-vector replay matches
 `V.expected_lines()`; `bend PROOF.bend` is unchanged; OpenSpec strict passes.
 One implementer dispatch.
-

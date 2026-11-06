@@ -37,6 +37,29 @@ the trust model better than a general-purpose libc. The selection task compares
 nelibc against a hand-written minimal host layer on exactly those symbols and
 records which rows each supplies. Either way the evaluator is not modified.
 
+Status, 2026-11-04: nelibc's `host-profile` branch ships a **host profile**
+([docs/host-profile.md](https://github.com/Spaceghost/nelibc/blob/host-profile/docs/host-profile.md)):
+the standalone x86-64 archive with its Linux entry point and `syscall`
+instructions removed, answering Linux syscall numbers from a `nelibc_host`
+callback table (console write, zero-filled memory reservation, monotonic
+clock, thread pointer, exit) shaped like Drift's `drift_hw`. It is single
+lane: `pthread_create` fails and waits no other thread could satisfy halt.
+Recorded with Linux as the host inside an Incus container: the archive links
+with no undefined symbols; the unmodified C emitted by Bend 2.0.39 for
+`IO.print("hi")` prints `hi`; the C emitted for this repository's
+`Example.bend` at `7ad85be` prints its 16 `PASS` lines and exits 0 with
+`+RTS --threads 1 --gpu off`. That is hosted execution, not a boot, and it
+is not evidence for any task in this change; it establishes that the rows in
+[docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md) are supplied by nelibc
+above the table. The inspected programs never reach the runtime's IO helper
+pool at one lane, so `pthread_create` is linked but not called; cooperative
+threads behind the same table are nelibc's next step if a corpus needs the
+helpers. Fault delivery remains the kernel's: nelibc records the
+`sigaction(SIGSEGV)`/`sigaltstack` registration for the host to invoke.
+This observation was reported by Spaceghost in
+[commit `6e713f2`](https://github.com/Spaceghost/writ/commit/6e713f21c7f05cdb5d41593c46b35f3b3569758b);
+it has not been independently rerun in this tree.
+
 ### 64-bit first
 
 The Bend term is one 64-bit word with pointers stored inline, and the runtime

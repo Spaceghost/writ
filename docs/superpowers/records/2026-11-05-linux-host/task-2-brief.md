@@ -62,4 +62,3 @@ Acceptance: the broker builds with `-Wall -Wextra -Werror`; each identity case
 produces its recorded `PASS` line against real kernel credentials on the
 qualification host (see the open question on where that host is); the Bend
 suite and proofs are unchanged. One implementer dispatch.
-

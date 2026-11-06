@@ -7,8 +7,9 @@ The partial native broker and launcher remain unfinished and unqualified. Their
 identity, confinement, failure and cleanup evidence is still missing, and Linux
 host task 1.2 remains open.
 
-This isolated integration candidate combines master `bddf411` with Linux lane
-`7561f6e`. The only textual merge conflict was the source manifest, regenerated
+This isolated integration candidate combines master `41f8389` with Linux lane
+`7561f6e`. The later master update from `bddf411` records a hosted nelibc
+observation and changes no test inputs. The only textual merge conflict was the source manifest, regenerated
 from the combined files. It adds the 118-check Linux model module to the
 previous 1,942-check suite; no OpenSpec acceptance task is closed. The Linux
 source/trust inventory distinguishes the partial broker from the public WritFS
