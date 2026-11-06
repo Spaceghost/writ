@@ -42,8 +42,8 @@ code; copies of the old eager forms each exceeded a 10-second timeout. The
 standalone harness exits 1 because it expects the full-suite summary, but both
 fixed probes reported a passing check and program exit code 0.
 
-Before this representation can be used for recovery, work still needs a
-specified byte order, full transaction framing and state including session,
+Before this representation can be used for recovery, work still needs an
+independently reviewed byte mapping, full transaction framing and state including session,
 ledger and audit, authenticated storage and rollback witness, and independent
 security review. The existing pure journal's stored-record authentication gap
 remains open. No formal inverse law has been proved.
@@ -71,3 +71,27 @@ The later confidentiality and byte-level-decoder header clarifications changed
 comments only; implementation tokens were compared with the prior revision and
 were identical. The 73 encoder and 48 decoder focused checks and OpenSpec strict
 validation passed again after those edits.
+
+On the current implementation, 23 selected encoder range/consistency mutations
+and ten selected decoder header, bound, canonicality and field mutations were
+killed by named checks. This is sampled mutation evidence, not an exhaustive
+review or a proof of codec invertibility.
+
+## Experimental entry byte mapping
+
+`DurableBytes` maps each word to four little-endian bytes, with a 16,476-byte
+cap. The decoder rejects out-of-range bytes and misaligned input before the
+word parser; the strict word parser rejects malformed and trailing data. Twenty
+focused checks exercise the header, maximum record, truncations, oversized
+input, and a noncanonical byte that would otherwise pack to the same word.
+This is an experimental single-entry representation, not transaction framing,
+authentication, durable storage, or recovery.
+
+The final byte-mapping revision passes 2,149 checks in Bend and generated Node
+with byte-identical output (SHA-256
+`49b5b6b70e551f3d0e427120c32af7582625fe74d1256b2baf19fa3c99701ac8`).
+Host QuickJS passes all 2,149 checks at 17,764 ticks and 19,284,288 peak live
+bytes with no exception. Removing the byte-range gate made the unchanged-word
+malformed-byte test fail. Existing proofs pass and OpenSpec strict passes
+44/44; no Lean kernel verdict is available. The native CPU build is running.
+These checks do not establish GPU or Genode guest execution.

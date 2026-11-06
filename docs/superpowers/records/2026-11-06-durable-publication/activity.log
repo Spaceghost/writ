@@ -9,3 +9,4 @@
 2026-11-06T16:38:58Z	controller	Started bounded versioned encoding of the committed journal entry; authentication, storage and decoding remain separate work.
 2026-11-06T17:00:22Z	controller	Bounded entry encoding: 72 checks; full Bend/Node 2079 pass, host QuickJS 17676 ticks; native CPU build running; decode and authentication remain open.
 2026-11-06T17:19:40Z	controller	Word-level decoder and resource guards: 2129 Bend/Node checks pass, QuickJS 17694 ticks, OpenSpec 44/44; native CPU rebuild running.
+2026-11-06T17:30:49Z	controller	Experimental entry byte mapping: 2149 Bend/Node and host QuickJS checks pass; proof and OpenSpec checks pass; native CPU rebuild running; transaction, authentication and recovery remain open.

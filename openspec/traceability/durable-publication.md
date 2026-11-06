@@ -25,9 +25,12 @@ an oversized Nat`. These exercise an experimental bounded word representation
 of a single journal entry. `DurableDecodingTests.bend` adds bounded word-level
 roundtrips and malformed-input checks, including `durable decoding rejects
 every truncated golden prefix` and `durable decoding roundtrips the complete
-maximum-size entry`. These do not establish a byte-order contract, complete
-transaction format, authenticated storage, or DP-004/006 recovery.
-The experimental word layout and its limits are documented in
+maximum-size entry`. `DurableBytesTests.bend` adds the experimental
+little-endian byte mapping, including `durable bytes use the hand-calculated
+little-endian header` and rejection of an out-of-range byte whose packed word
+would be unchanged. These do not establish a complete transaction format,
+authenticated storage, or DP-004/006 recovery.
+The experimental entry layout and its limits are documented in
 [`docs/DURABLE-PUBLICATION.md`](../../docs/DURABLE-PUBLICATION.md).
 
 Additional model checks reject malformed duplicate records and enforce a

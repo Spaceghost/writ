@@ -10,11 +10,11 @@ and its [traceability](../openspec/traceability/durable-publication.md) list
 the remaining requirements and evidence gaps.
 
 The current lane contains a pure journal model and an experimental versioned
-word encoding for **one journal entry**. The encoding is not the complete
-transaction: it omits the surrounding host state, updated session, ledger,
-replay witness and any required audit record. It performs no I/O and defines
-no portable byte order. A decoded entry is untrusted data; neither its fields
-nor successful decoding authenticate a caller, store, artifact or authorization.
+word and byte encoding for **one journal entry**. The encoding is not the
+complete transaction: it omits the surrounding host state, updated session, ledger,
+replay witness and any required audit record. It performs no I/O. A decoded
+entry is untrusted data; neither its fields nor successful decoding authenticate
+a caller, store, artifact or authorization.
 Encoded and decoded records can reveal protected identities, origins, terms and
 labels. They belong to the private monitor; any external disclosure needs its
 own authorization and policy checks.
@@ -60,10 +60,19 @@ named golden-vector, maximum-size, truncation, mutation and boundary tests are
 in `DurableEncodingTests.bend` and `DurableDecodingTests.bend`. They do not
 prove a general inverse law or authenticate recovered data.
 
+## Entry bytes, version 1
+
+`DurableBytes.encode` maps each encoded word to four little-endian byte
+values. `DurableBytes.decode` checks the 16,476-byte limit, alignment and
+each byte value before invoking the strict word decoder. The representation
+is experimental and still needs independent review; it does not frame a full
+transaction or authenticate data. `DurableBytesTests.bend` covers the
+hand-calculated header, maximum-size roundtrip and malformed byte values.
+
 ## What is still required
 
-A usable recovery profile needs an independently reviewed byte framing and
-canonical transaction format, authenticated and atomic storage, a trusted
+A usable recovery profile needs independent review of the entry byte mapping,
+full byte framing and a canonical transaction format, authenticated and atomic storage, a trusted
 current rollback witness, a sink-specific deduplication protocol, and policy-safe
 status and audit handling. It also needs real confinement, sealing and crash
 evidence on the selected host. The journal model currently accepts a
