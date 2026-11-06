@@ -15,6 +15,9 @@ import ./FacadeTests.bend as Facade
 import ./IssuanceTests.bend as Issuance
 import ./AuditTests.bend as Audit
 import ./RendezvousTests.bend as Rendezvous
+import ./DurablePublicationTests.bend as DurablePublication
+import ./DurableIntentTests.bend as DurableIntent
+import ./DurableJournalTests.bend as DurableJournal
 import ./PropertyTests.bend as Properties
 
 def main() -> IO(Unit):
@@ -35,5 +38,8 @@ def main() -> IO(Unit):
     Issuance.main()
     Audit.main()
     Rendezvous.main()
+    DurablePublication.main()
+    DurableIntent.main()
+    DurableJournal.main()
     Properties.main()
     IO.print("ALL LIBRARY TESTS PASSED")
