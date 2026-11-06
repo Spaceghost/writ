@@ -1,0 +1,24 @@
+2026-11-05T14:36:50Z	controller	lane created from master f970496
+2026-11-05T14:41:48Z	implementer	task 1 started: read brief, plan global constraints, contract modules, conformance harness
+2026-11-05T14:48:43Z	implementer	LinuxHost.bend and LinuxHostTests.bend written; standalone run 82 PASS, Linux replay cmp-identical to portable-host-vectors.txt; registered in Tests.bend; running suite
+2026-11-05T14:49:00Z	implementer	JS suite green: 1510 PASS (1428 + 82), ALL LIBRARY TESTS PASSED; native build started; running PROOF.bend
+2026-11-05T14:52:41Z	implementer	mutation pass: 31 mutants of LinuxHost.bend, all killed (one survivor M04 fixed by adding the other-pid check, now 83 checks); INVENTORY.md, traceability, tasks.md 1.1 written; OpenSpec strict 44 passed
+2026-11-05T14:54:10Z	implementer	first native build (pre-final tests) exit 0 in 4m17s; rebuilding native from the final tree
+2026-11-05T14:58:48Z	implementer	native rebuild exit 0 (4m21s), run 1511 PASS, cmp-identical to JS; PROOF.bend ALL PROOFS CHECK unchanged; --verdict unavailable (no lean); report written; committing
+2026-11-05T14:59:19Z	controller	task 1 reported; rulings; reviewer dispatched
+2026-11-05T15:07:39Z	controller	review: Barrier fact not bound to its session; fix round 1 dispatched
+2026-11-05T15:12:23Z	implementer	fix round 1: SessionMismatch barrier binding (I1), restart StaleLaunch checks (I2), INVENTORY facts table and obligations (I3), box 1.1 unchecked, minors m1-m6; 38/38 mutants killed; suite 1519 PASS (1428 + 91); replay cmp-identical; PROOF ALL PROOFS CHECK; OpenSpec 44/44
+2026-11-05T15:12:43Z	controller	fix round 1 reported; scoped re-review dispatched
+2026-11-05T15:14:06Z	controller	task 1 complete; task 2 dispatched (broker.c, launch.c)
+2026-11-05T15:20:27Z	implementer	task 2 started: read brief, plan constraints, task 1 report and re-review, LinuxHost.bend, INVENTORY, canary sources
+2026-11-05T15:26:51Z	implementer	Bend side: no byte layout existed for BrokerFrame; added the minimal LINUXB v1 broker-channel codec, serve/next/reply to LinuxHost.bend (no transition, no Error); LinuxHost still 91 checks; writing C broker next
+2026-11-05T15:29:43Z	implementer	stopped before broker_probe.c: part of the response was withheld by a safety classifier; uncommitted work left in the tree; reported BLOCKED
+2026-11-05T15:30:14Z	controller	task 2 implementer stopped (classifier); re-dispatched with the uncommitted broker work
+2026-11-05T15:30:58Z	implementer	task 2 resumed (fresh implementer): read brief, git diff, inherited broker sources
+2026-11-05T15:36:29Z	implementer	design: seven probe cases (claimed identity, socketpair, namespace mapping, transferred endpoint, unrecorded SCM_RIGHTS, pid reuse in a probe-owned user+PID namespace via clone3 set_tid, broker death); writing broker_probe.c
+2026-11-05T15:38:31Z	implementer	stopped while writing broker_probe.c: part of the response was withheld by a safety classifier; launch_fact (launch.c/.h) and broker_reply_session (broker.c/.h) added uncommitted; reported BLOCKED
+2026-11-05T15:39:09Z	controller	task 2: second stop at the probe; partial broker work committed as WIP; escalated to Josh
+2026-11-06T20:50:32Z	controller	q19 synthetic identity: 20 frame identity and seven decoder-bound cases; bounded decoder fix. Bend, Node and full native CPU -O0 match; proof and OpenSpec pass. QuickJS focused and baseline time out after final Linux check. Native identity remains unqualified.
+2026-11-06T21:45:28Z	controller	Full optimized native CPU suite for synthetic Linux identity revision passes with byte-identical Bend output; no host qualification claim.
+2026-11-06T21:49:54Z	controller	Diagnosed host QuickJS timeout as oversized test output; emit replay lines separately. Full host QuickJS passes 1546 checks, 7062 ticks; Bend/Node output unchanged.
+2026-11-06T21:51:41Z	controller	Corrected Linux source/trust inventory for unfinished broker, launcher and harness; native identity and confinement remain unqualified.

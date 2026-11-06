@@ -73,14 +73,13 @@ flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
 and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
 `examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
 library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
-binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 1942 lines
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 2060 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
-over `openspec/` (`openspec`). These reproduce the recorded outcomes (same pass
-counts, success lines, and validation totals) on the pinned Bend 2.0.39 and
-OpenSpec 1.16.0. The
-native checks use the flake's clang 23.1.3, not the clang 19.1.1 of the
+over `openspec/` (`openspec`). The current integrated 2060-check flake run has
+not yet been recorded; the historical artifacts below cover the previous
+1942-check tree. The native checks use the flake's clang 23.1.3, not the clang 19.1.1 of the
 recorded native run, and the JavaScript check uses Bend's bundled runtime, not
 the separate Node.js 24.22.1 run. The native test check is a CPU run; nothing
 in the flake builds a device program or tests a GPU. `nix flake check` does
@@ -158,7 +157,7 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **1942 passing checks** and
+Each complete test run should report **2060 passing checks** and
 `ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-six declared laws about guards,
 preservation of denied state, grant issuance, host-contract denials, policy-aware audit, and executor rendezvous; it does
 not prove the whole system secure.

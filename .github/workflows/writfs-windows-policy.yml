@@ -9,6 +9,7 @@ on:
       - writfs-native-ci
     paths:
       - '*.bend'
+      - 'hosts/linux/monitor/**'
       - 'lib/**'
       - 'writfs/**'
       - 'contrib/rclone/bend/Authority.bend'

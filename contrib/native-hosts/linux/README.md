@@ -142,3 +142,45 @@ Primary interface references: [libfuse low-level API](https://libfuse.github.io/
 [Landlock](https://docs.kernel.org/userspace-api/landlock.html),
 [seccomp filtering](https://docs.kernel.org/userspace-api/seccomp_filter.html),
 and [`no_new_privs`](https://docs.kernel.org/userspace-api/no_new_privs.html).
+
+
+## Separate experimental protected-worker broker
+
+The [direct Linux host proposal](../../../openspec/changes/add-linux-host/specs/linux-host/spec.md)
+needs a protected worker whose identity is bound to an authenticated process
+lifetime. The following sources are unfinished work towards that proposal;
+they are separate from the public WritFS/FUSE canary above. They have no
+qualified end-to-end broker, completed identity probe or confinement evidence.
+The existing canary's build commands and recorded native results do not test
+these files. Linux host tasks 1.1–1.4 remain unchecked.
+
+| File | WIP role and trust boundary |
+| --- | --- |
+| `broker.c`, `broker.h` | Private monitor-pipe setup and bounded `LINUXB` encoding; Unix socket and ancillary-message helpers obtain candidate kernel observations and close received rights. The broker must remain trusted to attribute facts correctly and execute only monitor-admitted effects. The helper layer is not a complete server or authentication proof. |
+| `launch.c`, `launch.h` | Launch-record and process-lifetime helpers use `clone3`, pidfds, `/proc` start times, optional user/PID namespaces, capability removal and an FD allowlist. They are incomplete launcher scaffolding, not a full confinement profile or evidence that setup, identity and cleanup are secure. |
+| `broker_monitor.mjs` | Small private-pipe Node harness converts bounded hex input to bytes, invokes generated `LinuxHost` functions, retains the returned state and frames replies. The monitor remains authoritative; a worker must not inherit the harness or its pipe ends. |
+
+These helpers depend on Linux `clone3`/pidfd and socket credential interfaces,
+procfs mounted in the appropriate PID namespace, and a configured Node runtime
+and generated Bend module. Required kernel, headers, runtime, configuration,
+and authority assumptions are not yet pinned as a protected-host profile.
+The launcher holds the child pidfd in its launch record until its caller reaps
+it. Broker monitor setup owns its process and pipes; a communication failure
+marks it unavailable and signals the child, while the stop helper closes the
+pipes and reaps it. The receive helper handles received ancillary descriptors.
+These ownership and failure paths still need native review and evidence.
+
+In particular, the launcher currently returns failure if its start-time
+observation is zero, but source review found it writes the child release byte
+before that return. Failed-setup execution and cleanup have not been tested.
+The Node harness uses a request sequence as its monitor clock; whether that is
+a valid trusted time source for a host profile remains unresolved. The monitor
+compares the launch and peer credentials supplied in one broker frame; it does
+not authenticate those facts or retain the native lifetime binding. The
+recorded session generation is not yet framed. These limits are described in
+the [synthetic identity report](../../../docs/superpowers/records/2026-11-05-linux-host/task-2-synthetic-report.md).
+
+Native identity, endpoint transfer, pid reuse, descriptor handling, full
+confinement, concurrent lifetime, setup failure and recovery require real-host
+adversarial tests before any protected-host claim. Model tests, source presence
+and the separate WritFS canary results do not close those gaps.
