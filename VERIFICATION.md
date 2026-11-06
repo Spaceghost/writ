@@ -16,7 +16,8 @@ contrib/native-hosts; their native evidence is separate from core tests.
 ## Executable checks
 
 This experimental integration combines `origin/master` 9c08eb9 (Linux model
-and HostWire bounds) with durable-publication dd18cb0. The combined suite
+and HostWire bounds) with durable-publication dd18cb0, then incorporates the
+Windows failure evidence-only master commit 1fcd29a. The combined suite
 passes 2,285 checks in Bend and generated Node with byte-identical output
 (SHA-256 `bac0e2b581c8f4ad7eae2812e34177cbe97f35ed3f87e2d352da119aaa19f67a`);
 the host QuickJS harness reports 2,285 checks, 20,715 ticks and no exception.
@@ -26,6 +27,8 @@ flake check have not been rerun. Full optimized native CPU verification is
 running. The current 2,285-check tree has not been run in Genode or on a GPU;
 the 2,065-check evidence below remains historical. Durable storage, audit append, rollback witness, qualified
 sink and host recovery remain unimplemented, and no acceptance task is closed.
+See the [integration preview](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
+for exact source hashes, test scope and retained failures.
 
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the

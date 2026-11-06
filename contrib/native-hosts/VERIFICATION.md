@@ -111,3 +111,9 @@ The broader host, WritFS namespace, issuer and durable-publication proposals
 retain their own unchecked tasks. See the
 [OpenSpec suite](../../openspec/README.md) and
 [product requirements](../../docs/WRITFS-PRODUCT.md).
+
+A later [Windows canary run 42311207831](windows/verification/run-42311207831/README.md)
+on source `9c08eb9` also failed its strict LPAC gate; byte-worker network,
+clipboard and COM observations remain incomplete and earn no restriction
+credit. Its expected and observed outcomes are retained separately from the
+passing Windows Node policy workflow.
