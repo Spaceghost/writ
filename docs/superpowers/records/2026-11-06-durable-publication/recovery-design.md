@@ -98,3 +98,37 @@ and how authority epochs are included in the protected history. Review those
 choices before enabling effects or claiming DP-001–008 on a host. A failed or
 unsupported native primitive remains a denied profile, not an excuse to
 relax these requirements.
+
+## Lost acknowledgement: model and unresolved lookup race
+
+Suppose transaction T is submitted, its acknowledgement is lost, and a read
+returns “absent” before T reaches its serialization point. Treating that read
+as proof of failure allows the monitor to authorize another spend while T can
+still commit. A safe negative result requires an authenticated, authoritative
+operation that also fences T from any future commit. Its scope must cover the
+same store, transaction identity and serialization domain as the original
+submission; ordinary absence, a timeout, or a stale replica is insufficient.
+A positive result must identify the exact committed transaction and its full
+record, including session, ledger, replay and required audit state, not just an
+entry or matching invocation. In either case, the separate current rollback
+witness remains required before a host may use recovered state.
+
+`DurablePending.bend` is a conservative monitor-local simulation of this gap.
+It stages the existing journal transition once, retains the original and proposed
+states, and blocks another attempt while pending or after a lost acknowledgement.
+There is intentionally no resolution transition or delivery effect. The named
+`DurablePendingTests.bend` checks exercise this blocking, repeated retries and
+state preservation under synthetic inputs. A public constructor can fabricate
+any model state, and a host can reconstruct an old `TxnReady`; the model does
+not authenticate observations, fence a transaction, survive restart, serialize
+other workers, or prevent a native binding from bypassing it. It is not a
+transaction protocol, a new release path or proof of crash recovery.
+
+The integrated Bend and Node suites pass 2,157 checks with identical output
+(SHA-256 `d05bcd77076c6d9c81c82ccf929969a44a03947fa001e2551230ce6f4e7fd1ce`).
+The host QuickJS harness passes 2,157 checks at 17,839 ticks without exception;
+the eight new checks also pass as a native CPU executable. Removing the
+unknown-state block or replacing a lost acknowledgement with a fresh state
+causes named checks to fail. This samples two mutations, not a security review
+or proof. Existing proof checks pass without a Lean kernel verdict, and
+OpenSpec strict passes 44/44. The complete native CPU rebuild is running.

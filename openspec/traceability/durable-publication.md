@@ -33,6 +33,13 @@ authenticated storage, or DP-004/006 recovery.
 The experimental entry layout and its limits are documented in
 [`docs/DURABLE-PUBLICATION.md`](../../docs/DURABLE-PUBLICATION.md).
 
+`DurablePendingTests.bend` adds `durable pending blocks a new authorization
+after a lost acknowledgement` and `durable pending remains blocked across
+retries with a changed expected revision`. This is a monitor-local simulation;
+it cannot authenticate a lookup, fence an in-flight commit, survive restart or
+qualify DP-001/002/007. The unresolved negative-lookup race is described in
+[`recovery-design.md`](../../docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md).
+
 Additional model checks reject malformed duplicate records and enforce a
 64-record bound, including refusing an otherwise valid authorization at
 capacity. This bounded reference never prunes history; safe compaction and

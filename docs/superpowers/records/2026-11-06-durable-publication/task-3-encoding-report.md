@@ -95,7 +95,7 @@ Host QuickJS passes all 2,149 checks at 17,764 ticks and 19,284,288 peak live
 bytes with no exception. Removing the byte-range gate made the unchanged-word
 malformed-byte test fail. Existing proofs pass and OpenSpec strict passes
 44/44; no Lean kernel verdict is available. The 20 byte-focused checks also
-pass as a native CPU executable. The full generated native CPU suite also
-passes with byte-identical output using Clang `-O0`; the separate optimized
-`bend` native build is still running. These checks do not establish GPU or
+pass as a native CPU executable. The full generated native CPU suite passes with byte-identical output using
+Clang `-O0`, and the separate optimized `bend` native build also passes with
+the same output. These checks do not establish GPU or
 Genode guest execution.
