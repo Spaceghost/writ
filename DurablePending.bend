@@ -17,7 +17,10 @@ import ./DataOS.bend as OS
 # results, and caller-provided values authenticate nothing. Recreating TxnReady from
 # an old snapshot bypasses this simulation. Its private diagnostic states may
 # disclose protected policy and transaction information; they are not a public
-# status API. Public entry points: `attempt` and `lost_ack`; `stage_from` is an
+# status API. Before a ready attempt, the host must independently bound the
+# primitive state, ledger, candidate graph, context, and nested request and
+# intent data; the journal entry-count limit does not bound those inputs.
+# Public entry points: `attempt` and `lost_ack`; `stage_from` is an
 # implementation helper. None returns or performs a publication effect.
 
 type State is Data:

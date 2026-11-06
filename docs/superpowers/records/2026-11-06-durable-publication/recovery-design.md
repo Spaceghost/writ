@@ -81,7 +81,7 @@ requirement or qualify a protected host.
 | Fault or adversary | Required result | Present evidence |
 | --- | --- | --- |
 | Crash before transaction | No visible output or committed spend | Pure model rejects without changing input; native atomicity missing |
-| Lost transaction acknowledgement | Unknown until authenticated lookup; no new spend or release | Not modeled; native lookup and failure test missing |
+| Lost transaction acknowledgement | Unknown until authenticated lookup and fencing; no new spend or release | Monitor-local blocking model only; persistent tracking, authenticated lookup, fencing and native failure tests missing |
 | Storage ahead of anchor | Fail closed unless authenticated extension reconciles it | No witness protocol or test |
 | Storage behind anchor or restored old backup | Fail closed for new publication | No witness protocol or test |
 | Revocation before authorization | Final host gate denies | Pure journal test only; native ordering missing |
@@ -133,4 +133,10 @@ causes named checks to fail. This samples two mutations, not a security review
 or proof. Existing proof checks pass without a Lean kernel verdict, and
 OpenSpec strict passes 44/44. The complete generated native CPU suite also
 passes with byte-identical output using Clang `-O0`. The optimized native CPU
-build is still running; neither CPU run is a GPU or Genode guest test.
+build also passes with byte-identical output; neither CPU run is a GPU or
+Genode guest test.
+
+The separate [lookup and fencing design](lookup-fencing-design.md) and
+[rollback witness review](witness-design.md) detail candidate boundary
+properties and cross-store failure cases. Neither selects an implementation or
+changes the proposed acceptance status.

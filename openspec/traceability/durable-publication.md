@@ -51,3 +51,6 @@ The detailed model limitations and test status are recorded in
 [`task-2-report.md`](../../docs/superpowers/records/2026-11-06-durable-publication/task-2-report.md),
 and unresolved storage, anchor, and receiver interfaces in
 [`recovery-design.md`](../../docs/superpowers/records/2026-11-06-durable-publication/recovery-design.md).
+Separate reviews outline the proposed [lookup and fencing boundary](../../docs/superpowers/records/2026-11-06-durable-publication/lookup-fencing-design.md)
+and [rollback witness requirements](../../docs/superpowers/records/2026-11-06-durable-publication/witness-design.md);
+these are design evidence only and do not qualify an implementation.

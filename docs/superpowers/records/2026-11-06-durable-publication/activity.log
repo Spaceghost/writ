@@ -13,3 +13,4 @@
 2026-11-06T17:39:02Z	controller	Current byte revision: full generated native CPU suite compiled with Clang -O0 passes with output identical to Bend; optimized build continues.
 2026-11-06T18:36:51Z	controller	Lost-ack simulation blocks another authorization; 2157 Bend/Node/host QuickJS checks and focused native CPU pass, two selected mutants fail; full native rebuild running.
 2026-11-06T18:45:03Z	controller	Lost-ack revision: full generated native CPU suite compiled with Clang -O0 passes with output identical to Bend; optimized build continues.
+2026-11-06T18:56:02Z	controller	Separate-agent lookup, witness and model reviews recorded; optimized prior native suite passed with matching output; model comment clarified with implementation tokens unchanged.
