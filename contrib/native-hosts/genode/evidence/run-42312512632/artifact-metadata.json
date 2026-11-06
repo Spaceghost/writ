@@ -1,0 +1,25 @@
+{
+  "total_count": 1,
+  "artifacts": [
+    {
+      "id": 13549657585,
+      "node_id": "MDg6QXJ0aWZhY3QxMzU0OTY1NzU4NQ==",
+      "name": "writfs-genode-native-1",
+      "size_in_bytes": 130197,
+      "url": "https://api.github.com/repos/Spaceghost/writ/actions/artifacts/13549657585",
+      "archive_download_url": "https://api.github.com/repos/Spaceghost/writ/actions/artifacts/13549657585/zip",
+      "expired": false,
+      "digest": "sha256:2c1b1856309c2bf643b4d63348897d57458b013701c6fc28f823c49bb58f75a3",
+      "created_at": "2026-11-06T23:44:01Z",
+      "updated_at": "2026-11-06T23:44:01Z",
+      "expires_at": "2026-11-20T23:44:00Z",
+      "workflow_run": {
+        "id": 42312512632,
+        "repository_id": 1444892433,
+        "head_repository_id": 1444892433,
+        "head_branch": "lane/durable-integration",
+        "head_sha": "61ab2a453915c4162e7ba726b9dfd6f1759f3410"
+      }
+    }
+  ]
+}

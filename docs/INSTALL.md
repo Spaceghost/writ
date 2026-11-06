@@ -79,8 +79,9 @@ beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
 over `openspec/` (`openspec`). The 2285-check integration preview passed the
-offline Nix JavaScript check; its Nix native and full flake checks have not
-been rerun. The 2065-check Nix JavaScript check passed for
+offline Nix JavaScript check. At source 61ab2a4, the full Nix flake check
+also passed, including optimized native CPU; see the [integration evidence](../verification/durable-integration-61ab2a4/nix/README.md).
+The 2065-check Nix JavaScript check passed for
 source `73a8055`; the Nix native CPU check also passed with the same output.
 The [combined flake check](../verification/nix-combined-flake-check.log) passed
 all checks with evidence-only files staged. The historical artifacts below cover the previous

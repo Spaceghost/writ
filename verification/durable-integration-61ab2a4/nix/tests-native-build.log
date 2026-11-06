@@ -1,0 +1,12 @@
+Running phase: unpackPhase
+@nix { "action": "setPhase", "phase": "unpackPhase" }
+unpacking source archive /nix/store/bdvlir5z0hvy0ljnmvc362kznc138z7m-source
+source root is source
+Running phase: patchPhase
+@nix { "action": "setPhase", "phase": "patchPhase" }
+Running phase: updateAutotoolsGnuConfigScriptsPhase
+@nix { "action": "setPhase", "phase": "updateAutotoolsGnuConfigScriptsPhase" }
+Running phase: buildPhase
+@nix { "action": "setPhase", "phase": "buildPhase" }
+bend Tests.bend -o /nix/store/9wridqsk2js10pn1c55kb0rsd4d02xff-writ-tests-native/bin/tests-native
+buildPhase completed in 7 minutes 49 seconds

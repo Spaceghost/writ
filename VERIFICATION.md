@@ -23,13 +23,21 @@ combined suite passes 2,285 checks in Bend and generated Node with byte-identica
 (SHA-256 `bac0e2b581c8f4ad7eae2812e34177cbe97f35ed3f87e2d352da119aaa19f67a`);
 the host QuickJS harness reports 2,285 checks, 20,715 ticks and no exception.
 The existing ordinary proof check and strict OpenSpec 44/44 pass. The offline
-Nix JavaScript check with the current pin also passes; Nix native and the full
-flake check have not been rerun. The optimized native CPU run of the initial
-combined source passes with the same output; the subsequent durable edits are
+Nix JavaScript check with the current pin also passes. At exact source 61ab2a4,
+full `nix flake check --no-update-lock-file --option max-jobs 1` passes all four
+checks, including optimized native CPU; its [logs and hashes](verification/durable-integration-61ab2a4/nix/README.md)
+record the scope. The optimized native CPU run of the initial combined source
+passes with the same output; the subsequent durable edits are
 comments plus a separate probe, with implementation tokens and generated JS
-unchanged. The current 2,285-check tree has not been run in Genode or on a GPU;
-the 2,065-check evidence below remains historical. Durable storage, audit append,
+unchanged. At exact source 61ab2a4, [Genode base-hw QEMU](contrib/native-hosts/genode/evidence/run-42312512632/README.md)
+passes 2,285 core and 69 mount assertions plus scoped native public-canary
+cases; this is not a physical GPU test. The 2,065-check evidence below remains
+historical. Durable storage, audit append,
 rollback witness, qualified sink and host recovery remain unimplemented, and no acceptance task is closed.
+At source `61ab2a4`, the [Windows Node policy run](verification/windows-policy-run-42312512618/README.md)
+and [Linux public canary run](contrib/native-hosts/linux/verification/run-42312512646/README.md)
+pass in their stated scopes; the latter retains its intentionally refused setup.
+Neither qualifies the proposed protected-worker host or durable recovery.
 See the [integration preview](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
 for exact source hashes, test scope and retained failures.
 

@@ -1,0 +1,25 @@
+{
+  "total_count": 1,
+  "artifacts": [
+    {
+      "id": 13549712330,
+      "node_id": "MDg6QXJ0aWZhY3QxMzU0OTcxMjMzMA==",
+      "name": "writfs-linux-native-1",
+      "size_in_bytes": 87193,
+      "url": "https://api.github.com/repos/Spaceghost/writ/actions/artifacts/13549712330",
+      "archive_download_url": "https://api.github.com/repos/Spaceghost/writ/actions/artifacts/13549712330/zip",
+      "expired": false,
+      "digest": "sha256:07215072c8fe25866974e9b45c035d946065117dee8ae813a6a50e12e056908c",
+      "created_at": "2026-11-06T23:41:35Z",
+      "updated_at": "2026-11-06T23:41:35Z",
+      "expires_at": "2026-11-20T23:41:34Z",
+      "workflow_run": {
+        "id": 42312512646,
+        "repository_id": 1444892433,
+        "head_repository_id": 1444892433,
+        "head_branch": "lane/durable-integration",
+        "head_sha": "61ab2a453915c4162e7ba726b9dfd6f1759f3410"
+      }
+    }
+  ]
+}
