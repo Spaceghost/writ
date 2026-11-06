@@ -105,3 +105,11 @@ in the [native-host canary contract](../../../../openspec/specs/native-host-cana
 and the [broader Linux host contract](../../../../openspec/changes/add-linux-host/proposal.md).
 In-memory event capture is not durable audit, and mediated revocation cannot
 erase bytes a worker already observed.
+
+## Later combined model run
+
+[Run 42308676909](https://github.com/Spaceghost/writ/actions/runs/42308676909)
+passed the existing public-canary workflow on source `73a8055`, with 2,065
+core checks in each backend. Its [retained evidence](run-42308676909/README.md)
+includes the expected unsupported-setup refusal and does not qualify the
+separate Linux protected-worker profile.

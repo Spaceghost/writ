@@ -78,8 +78,10 @@ binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 2065 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
-over `openspec/` (`openspec`). The current integrated 2065-check flake run has
-not yet been recorded; the historical artifacts below cover the previous
+over `openspec/` (`openspec`). The 2065-check Nix JavaScript check passed for
+source `73a8055`; the Nix native CPU check also passed with the same output.
+The [combined flake check](../verification/nix-combined-flake-check.log) passed
+all checks with evidence-only files staged. The historical artifacts below cover the previous
 1942-check tree. The native checks use the flake's clang 23.1.3, not the
 clang 19.1.1 of the recorded native run, and the JavaScript check uses Bend's bundled runtime, not
 the separate Node.js 24.22.1 run. The native test check is a CPU run; nothing

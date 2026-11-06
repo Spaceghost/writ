@@ -23,9 +23,17 @@ Before the fix, both isolated Node probes exited 1 with `bend: memory fault
 `310404ca9024b3895fad05d73bfc2f3e159673c3844de2eb0b01266a8236e427`). The
 host QuickJS harness passes 1947 checks, 17049 ticks and no exception. Existing
 `bend PROOF.bend` checks pass; no Lean kernel verdict or new proof law is
-claimed. OpenSpec strict passes 44/44. At the time of this standalone
-record, full optimized native CPU verification was running; the 1947-check Genode guest and Nix builds remain unrecorded.
+claimed. OpenSpec strict passes 44/44. For this standalone source the full optimized native CPU suite later passed
+with matching output. [Genode run 42308258031](https://github.com/Spaceghost/writ/actions/runs/42308258031)
+also passed 1,947 core and 69 mount checks for `b75382c`; the
+[environment](../../../../contrib/native-hosts/genode/evidence/42308258031-environment.log)
+and [corpus](../../../../contrib/native-hosts/genode/evidence/corpus-42308258031.log)
+are retained. The standalone Nix build was not recorded.
 
 The subsequent combined Linux and HostWire candidate expects 2,065 checks;
 see the root [verification record](../../../../VERIFICATION.md) for its
 separate results and remaining evidence gaps.
+
+The [Linux public-canary run 42308257803](../../../../contrib/native-hosts/linux/verification/run-42308257803/README.md)
+also passed on `b75382c`. Its retained expected setup-refusal output is not a
+protected-worker identity or confinement qualification.

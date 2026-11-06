@@ -21,10 +21,18 @@ Linux model and 1947 checks with the HostWire change. The combined suite
 passes 2065 checks in Bend, Node and the host QuickJS harness. Bend and Node
 output matches byte-for-byte (SHA-256
 `6f7c55909c94af843f65152f51f453798d0684e3e19c1db766bfa79ed7b5d449`); the
-host QuickJS run reports 19,918 ticks and no exception. The combined native CPU
-build is running. The Linux cases use synthetic facts and do not qualify a
-native host. Genode guest and Nix checks for the combined tree have not been
-recorded.
+host QuickJS run reports 19,918 ticks and no exception. The optimized native
+CPU output also matches. For source `73a8055`, the Nix JavaScript check matches
+the same hash; the Nix native CPU check also passes with the same hash. The
+[combined Nix flake check](verification/nix-combined-flake-check.log) passed
+all checks with evidence-only files staged. Native Windows Node passed
+2,065 checks, the existing Linux public canary passed its native cases, and a
+Genode base-hw QEMU guest passed 2,065 core plus 69 mount checks. The
+[Linux canary](contrib/native-hosts/linux/verification/run-42308676909/README.md),
+[Windows Node](verification/windows-policy-run-42308676869/README.md), and
+[combined integration record](docs/superpowers/records/2026-11-05-linux-host/model-only-integration.md)
+link exact source and retained evidence. The synthetic Linux cases do not
+qualify a protected-worker host.
 
 The historical combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both
 the emitted JavaScript backend under Node and a native Bend executable using

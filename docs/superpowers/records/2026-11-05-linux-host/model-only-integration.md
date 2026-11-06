@@ -29,10 +29,53 @@ or GPU evidence.
 At that candidate, the Nix assertion and Genode workflow expected 2,060 checks; workflow path
 filters include the imported Linux monitor. Existing 1,942-check recorded CPU
 and Genode results are historical and are not relabeled. The 2,060-check Nix
-and Genode guest runs have not been recorded. A related full integration
+run remains unrecorded. [Genode run 42307229741](https://github.com/Spaceghost/writ/actions/runs/42307229741)
+passed 2,060 core and 69 mount checks for `a88c5e5`; its retained
+[environment](../../../../contrib/native-hosts/genode/evidence/42307229741-environment.log)
+and [corpus](../../../../contrib/native-hosts/genode/evidence/corpus-42307229741.log)
+record the exact source and result. A related full integration
 preview attempted an offline Nix JS check and stopped it when uncached
 compiler dependencies began rebuilding; that attempt did not reach the test.
 
 The subsequent combined Linux and HostWire candidate expects 2,065 checks;
 see the root [verification record](../../../../VERIFICATION.md) for its
 separate results and remaining evidence gaps.
+
+## Combined candidate execution
+
+The combined [Nix flake check log](../../../../verification/nix-combined-flake-check.log)
+records `nix flake check --no-update-lock-file --option max-jobs 1` passing
+all checks, including the already built JavaScript, native CPU, ordinary proof
+and OpenSpec derivations plus both version checks. It ran on source `73a8055`
+with evidence-only files staged; no Bend, OpenSpec or Nix inputs changed in
+those staged files. The Nix native and JavaScript output hashes match the
+2,065-check Bend capture. This does not establish a Lean kernel verdict or GPU.
+
+
+Source `73a80554e1b11ef29282ec724ce23f2f71716401` adds the HostWire bounds
+fix to this model. Bend, Node and optimized native CPU passed 2,065 checks
+with byte-identical output (SHA-256
+`6f7c55909c94af843f65152f51f453798d0684e3e19c1db766bfa79ed7b5d449`).
+Host QuickJS passed 2,065 checks at 19,918 ticks, and the [Nix JavaScript
+check log](../../../../verification/nix-combined-tests-js.log) produced the
+same output (`nix build --no-link --option max-jobs 1
+.#checks.x86_64-linux.tests-js`, output
+`/nix/store/fhf011ifd1abbqm6jgsib2nicb69a26z-writ-tests-js`). The [Nix native CPU check log](../../../../verification/nix-combined-tests-native.log)
+also passes (`nix build --no-link --option max-jobs 1
+.#checks.x86_64-linux.tests-native`), with the same output hash and output
+`/nix/store/f9qxpwsi9bgarz3i1wfq6cfgav1az4h3-writ-tests-native-run`. Ordinary proofs
+pass without a Lean kernel verdict and OpenSpec strict passes 44/44.
+
+[Genode run 42308676812](https://github.com/Spaceghost/writ/actions/runs/42308676812)
+passed 2,065 core and 69 mount checks in a base-hw x86-64 QEMU guest; the
+[environment](../../../../contrib/native-hosts/genode/evidence/42308676812-environment.log),
+[source/build hashes](../../../../contrib/native-hosts/genode/evidence/42308676812-source-and-build.sha256),
+[corpus](../../../../contrib/native-hosts/genode/evidence/corpus-42308676812.log),
+[filesystem](../../../../contrib/native-hosts/genode/evidence/filesystem-42308676812.log),
+and [VFS](../../../../contrib/native-hosts/genode/evidence/vfs-42308676812.log)
+logs are retained. The [Linux public-canary run](../../../../contrib/native-hosts/linux/verification/run-42308676909/README.md)
+and [Windows Node run](../../../../verification/windows-policy-run-42308676869/README.md)
+also passed their stated scopes. The Linux setup-refusal failure output is
+preserved as an expected denial. Captured terminal output is normalized; raw
+artifact hashes are retained alongside it. None of these results qualifies the
+separate Linux protected-worker profile, a Windows protected host, or a GPU.
