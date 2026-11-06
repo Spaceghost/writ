@@ -22,6 +22,7 @@ permissions:
 
 jobs:
   build:
+    if: ${{ github.ref != 'refs/heads/lane/windows-init-diagnostic' }}
     name: Compile Bend policy tests to JavaScript
     runs-on: [self-hosted, linux, x64, bak]
     timeout-minutes: 20
@@ -210,5 +211,88 @@ jobs:
         with:
           name: writfs-windows-policy-${{ github.run_attempt }}
           path: ${{ runner.temp }}/writfs-windows-logs/
+          if-no-files-found: error
+          retention-days: 14
+
+  no-data:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/windows-init-diagnostic' }}
+    name: Isolated no-data observations (no confinement credit)
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Capture source and runner facts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-init-logs'
+          New-Item -ItemType Directory -Force $logs | Out-Null
+          @("source=$env:GITHUB_SHA", "runner=$env:ImageOS", "image=$env:ImageVersion", "os=$([Environment]::OSVersion.VersionString)", 'no_data=1 confinement_credit=none') |
+            Out-File (Join-Path $logs 'environment.txt') -Encoding utf8
+          Get-FileHash contrib/native-hosts/windows/init_diagnostic.c,contrib/native-hosts/windows/init_worker.c,contrib/native-hosts/windows/init_child.c,contrib/native-hosts/windows/init_report.h,contrib/native-hosts/windows/init_report_test.c,contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt,contrib/native-hosts/windows/worker.c,contrib/native-hosts/windows/worker.h,contrib/native-hosts/windows/isolation.c,contrib/native-hosts/windows/isolation.h,contrib/native-hosts/windows/probe.h -Algorithm SHA256 |
+            Format-List | Out-File (Join-Path $logs 'sources.txt') -Encoding utf8
+      - name: Build standalone diagnostic with MSVC
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-init-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-init-build'
+          & cmake -S contrib/native-hosts/windows/init-diagnostic -B $build -A x64 2>&1 | Tee-Object -FilePath (Join-Path $logs 'configure.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Standalone configure failed.' }
+          & cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $logs 'build.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Standalone build failed.' }
+          Get-FileHash (Join-Path $build 'Release\writfs-init-diagnostic.exe'),(Join-Path $build 'Release\writfs-init-report-test.exe'),(Join-Path $build 'Release\writfs-init-child.exe') -Algorithm SHA256 |
+            Format-List | Out-File (Join-Path $logs 'binaries.txt') -Encoding utf8
+      - name: Verify child PE dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-init-logs'
+          $log = Join-Path $logs 'child-dependencies.txt'
+          try {
+            $child = Join-Path $env:RUNNER_TEMP 'windows-init-build\Release\writfs-init-child.exe'
+            $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+            if (-not (Test-Path $vswhere) -or -not (Test-Path $child)) { throw 'vswhere or child image missing.' }
+            $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'MSVC installation not found.' }
+            $devcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
+            $dumpbin = Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe') | Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not (Test-Path $devcmd) -or -not $dumpbin) { throw 'Developer environment or dumpbin not found.' }
+            $command = 'call "{0}" -no_logo -arch=x64 && "{1}" /dependents "{2}"' -f $devcmd,$dumpbin.FullName,$child
+            $ErrorActionPreference = 'Continue'
+            $dependencies = & cmd.exe /d /s /c $command 2>&1
+            $dumpExit = $LASTEXITCODE
+            $dependencies | Out-File $log -Encoding utf8
+            if ($dumpExit -ne 0 -or -not ($dependencies -match '^\s*WS2_32\.dll\s*$') -or ($dependencies -match '^\s*(USER32|OLE32)\.dll\s*$')) {
+              throw 'Child dependency inspection failed or includes USER32/OLE32.'
+            }
+          } catch {
+            "Dependency inspection incomplete: $_" | Add-Content $log -Encoding utf8
+            throw
+          }
+      - name: Run synthetic fixed-report test
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-init-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-init-build'
+          & ctest --test-dir $build -C Release --output-on-failure 2>&1 | Tee-Object -FilePath (Join-Path $logs 'synthetic.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Synthetic report test failed.' }
+      - name: Run standalone no-data observations
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-init-logs'
+          $exe = Join-Path $env:RUNNER_TEMP 'windows-init-build\Release\writfs-init-diagnostic.exe'
+          & $exe 2>&1 | Tee-Object -FilePath (Join-Path $logs 'diagnostic.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'No-data observation incomplete or cleanup failed.' }
+      - name: Retain diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-init-no-data-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/windows-init-logs/
           if-no-files-found: error
           retention-days: 14

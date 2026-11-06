@@ -23,6 +23,17 @@ passed; the byte-worker network, clipboard and COM observations remained
 incomplete and received no restriction credit. Its separate no-data diagnostic
 is not a substitute. The cause is not yet established.
 
+## Standalone initialization diagnostic (unrun on Windows)
+
+The source now includes `writfs-init-diagnostic`, a standalone no-data
+initializer observer and synthetic `init-report-framing` test. Its LPAC
+launch reuses the same control setup and readbacks, but its executable,
+package, lifetime and single report handle differ from the byte worker.
+No Windows build or native diagnostic result is recorded for this source.
+Full token-group and privilege equivalence has not been independently
+verified, and the control-factor matrix is not implemented. This does not
+change the failed and incomplete outcomes recorded above.
+
 ## Prior detailed source and run
 
 - Tested source:

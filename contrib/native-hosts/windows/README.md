@@ -64,7 +64,9 @@ a native machine-code Bend runtime.
 | `probe.c` | Native canary reads and negative probes that Bend cannot directly express; fixed-size reports to the private supervisor |
 | `channels.c` | Fixed clipboard-open and local COM activation probes, with stage-specific results and ordinary-process positive controls |
 | `transport_probe.c` | Actual native pipe lifecycle, 64 KiB transfer and hostile-peer checks, including both read and write deadlines |
-| `CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; generated binaries stay outside the repository |
+| `init_diagnostic.c`, `init_worker.c`, `init_child.c`, `init_report.h` | Standalone supervisor, output-prefixed shared launcher, fixed no-data child, report-only initialization observations; shares the native launcher but has no mount, policy, Writ session or byte-input route |
+| `init_report_test.c` | Synthetic fixed-report framing and positive-control checks; no native confinement claim |
+| `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.
 The native host assigns actor slot 1 only when WinFsp's request PID and effective
@@ -174,3 +176,47 @@ and hardware/covert-channel guarantees are outside this profile.
 
 WinFsp installer SHA-256:
 `293ffb9bcc0b625c85079fe85fa77f8fe98170aba51a02ac9c83d58f6c3b0e2f`.
+
+## Standalone no-data initialization observation
+
+The prior LPAC byte-worker run failed before it could observe network, clipboard
+or COM restrictions. The separate `writfs-init-diagnostic.exe` launches an
+ordinary positive control, a zero-capability LPAC, and a second ordinary control.
+All three run a fixed Winsock startup and system DLL load observation. It takes
+no input path, data handle, Writ session, policy pipe, mount, or socket ports;
+the controlled child receives only a bounded report pipe. The separate child binary accepts a report-pipe handle when invoked directly, but never reads it or any data input. Run only on a disposable Windows
+machine without a protected-data worker. The LPAC reuses the byte-worker launcher
+and its native token, job, Win32k and owned WFP checks. It has a different image,
+package, process lifetime, command and handle list, so equal execution conditions
+are not established and it is never the byte worker. It does not isolate the effect
+of individual controls or confer confinement credit, even when it completes.
+
+After building, run the synthetic framing checks and then the optional native
+observation in elevated PowerShell:
+
+```powershell
+ctest --test-dir C:\writ-build -C Release --output-on-failure
+& C:\writ-build\Release\writfs-init-diagnostic.exe
+```
+
+The launch and readbacks, report framing, ordinary positive controls, deadlines
+and owned-resource teardown must all succeed for a complete observation. The
+minimal child has no intended static USER32/OLE32 imports; cold-load claims
+require PE dependency inspection and initial module checks. The LPAC initializer
+error numbers remain raw observations, not access denials;
+there is no fallback or mutation of the real worker's strict gate. This first
+slice has not been run on Windows. A factorial comparison and independent
+final-token group/privilege equivalence are not implemented.
+
+The existing `.github/workflows/writfs-windows-policy.yml` runs the diagnostic only when explicitly dispatched with ref
+`lane/windows-init-diagnostic`. That branch skips the unrelated policy jobs and runs only the standalone observer on a fresh hosted Windows VM;
+it does not affect the strict native workflow, ordinary default dispatch, or
+push jobs. This branch-specific workflow edit is a temporary execution aid and
+must not be merged into the registered policy workflow. The diagnostic job builds without WinFsp, checks child PE dependencies,
+and retains source hashes and raw output. It has not yet been dispatched.
+Setup failures in the shared launcher can erase cleanup state and therefore
+remain incomplete with cleanup unverified; the disposable runner's destruction
+is the fallback, not evidence of checked resource retirement. Successful
+launches require checked owned-resource cleanup and WFP filter disappearance.
+The [design record](../../../docs/superpowers/records/2026-11-06-windows-init/diagnostic-plan.md)
+identifies remaining comparison and equivalence limits.

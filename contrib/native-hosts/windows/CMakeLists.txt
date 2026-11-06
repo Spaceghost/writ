@@ -33,3 +33,23 @@ target_compile_definitions(writfs-transport-probe PRIVATE UNICODE _UNICODE _CRT_
 target_compile_options(writfs-transport-probe PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-transport-probe PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
 target_link_libraries(writfs-transport-probe PRIVATE advapi32)
+
+# Standalone initialization observations: no mount, policy, data input or actor.
+add_executable(writfs-init-diagnostic init_diagnostic.c init_worker.c isolation.c)
+target_compile_definitions(writfs-init-diagnostic PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-init-diagnostic PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-init-diagnostic PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-init-diagnostic PRIVATE advapi32 bcrypt fwpuclnt rpcrt4 userenv ole32 ws2_32 OneCoreUAP)
+
+add_executable(writfs-init-report-test init_report_test.c)
+target_compile_options(writfs-init-report-test PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-init-report-test PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+enable_testing()
+add_test(NAME init-report-framing COMMAND writfs-init-report-test)
+
+# Minimal child deliberately has no static USER32 or OLE32 imports.
+add_executable(writfs-init-child init_child.c)
+target_compile_definitions(writfs-init-child PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-init-child PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-init-child PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-init-child PRIVATE ws2_32)
