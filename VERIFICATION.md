@@ -19,7 +19,8 @@ The historical 1942-check recordings below predate the Linux model integration.
 The current integrated suite expects 2060 checks, including 118 synthetic Linux
 monitor checks. The 2060-check Bend and Node runs pass with byte-identical output
 (SHA-256 `c655abd826c42113d23cc2dae7a5795b971aa176251610398522a4f944740076`);
-full native and Genode guest verification for this integrated tree is pending.
+the optimized native CPU run also matches. The 2060-check Genode guest
+verification for this integrated tree is pending.
 These checks do not qualify the Linux host.
 
 The historical combined suite exits 0 and prints `ALL LIBRARY TESTS PASSED` on both

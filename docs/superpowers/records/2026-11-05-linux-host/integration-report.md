@@ -21,8 +21,9 @@ byte-identical output SHA-256
 `c655abd826c42113d23cc2dae7a5795b971aa176251610398522a4f944740076`.
 The host QuickJS harness passes all 2,060 checks, exit 0, 19,944 ticks and
 16,089,224 peak live bytes, with no exception. The ordinary proof check reports
-`ALL PROOFS CHECK`; no Lean kernel verdict is claimed. OpenSpec strict validation passes 44/44; full CPU native verification is
-pending for the candidate.
+`ALL PROOFS CHECK`; no Lean kernel verdict is claimed. OpenSpec strict validation passes 44/44. The full optimized native CPU
+suite, run with four threads and GPU disabled, also passes with output matching
+Bend byte for byte.
 These model/backend checks are not native Linux identity, confinement, GPU,
 or Genode guest evidence.
 
