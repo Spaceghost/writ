@@ -2,3 +2,4 @@
 2026-11-06T08:22:37Z	controller	Added exact intent comparison and 22 synthetic substitution checks; nine selected comparator-removal mutants fail; full Bend suite and proofs pass, final native CPU build running.
 2026-11-06T08:45:07Z	controller	Pure journal prototype passes focused stale, replay, revocation, scope substitution and malformed-state checks; no storage, witness, sink or delivery exists. Native CPU verification pending for this revision.
 2026-11-06T08:51:11Z	controller	Bounded journal model and 64 focused checks integrated; full suite, existing proofs, OpenSpec and host QuickJS pass; final native CPU build running.
+2026-11-06T08:54:45Z	controller	Documented storage, rollback anchor and receiver crash ordering; no native primitive or witness is yet selected or qualified.
