@@ -16,3 +16,4 @@
 2026-11-06T18:56:02Z	controller	Separate-agent lookup, witness and model reviews recorded; optimized prior native suite passed with matching output; model comment clarified with implementation tokens unchanged.
 2026-11-06T21:48:19Z	controller	Added synthetic pending-rollback gap probe; Bend/Node match and a selected probe mutation fails. Corrected byte-codec header with implementation tokens unchanged.
 2026-11-06T22:39:32Z	controller	Added three byte-position range regressions after individual guard-removal mutants survived; all four selected mutants killed; 2160 Bend/Node/QuickJS pass, focused native CPU pass, full native build running.
+2026-11-06T22:47:34Z	controller	Full optimized native CPU suite passes 2160 checks after byte guard coverage changes; output matches Bend exactly.

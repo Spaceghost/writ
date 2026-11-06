@@ -122,5 +122,5 @@ The host QuickJS harness passes all 2,160 checks, with 17,840 ticks,
 in Bend, Node and optimized native CPU with identical output (SHA-256
 `f67959a633a39dd40fc84ed8603f33ec2ad2bb2817f630fe8a53deb0039f4745`).
 Existing Bend proof checks pass without a Lean kernel verdict, and OpenSpec
-strict validation passes 44/44. Full native CPU verification is running.
-These results are not Genode guest execution, a GPU test, or a proof law.
+strict validation passes 44/44. The full optimized native CPU suite also
+passes with output byte-identical to Bend. These results are not Genode guest execution, a GPU test, or a proof law.
