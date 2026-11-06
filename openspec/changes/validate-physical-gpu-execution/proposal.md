@@ -2,16 +2,24 @@
 
 ## Why
 
-Writ has three native device-requesting paths, but its recorded execution evidence
-covers JavaScript and native CPU fallback. Hardware execution, full-pipeline
-performance, and any stronger device trust boundary need their own evidence.
+Writ has three native device-requesting paths. The recorded validation observed
+GPU launches on one Linux host with an NVIDIA RTX 4090; the evidence is limited
+to the recorded binaries, workloads and configuration. Full-pipeline measurement
+and any stronger device trust boundary still need their own evidence.
 
 ## What Changes
 
 Introduce [gpu-validation](specs/gpu-validation/spec.md) as a new capability for
 repeatable, hardware-observed validation. It adds a validation harness and reports;
 it does not turn existing fallback results into GPU evidence or remove the
-library's documented CPU fallback behavior. All implementation tasks are pending.
+library's documented CPU fallback behavior. The [tasks](tasks.md) identify the
+completed checks and the two open tasks. Device memory movement, dispatch and
+kernel time were not measured separately, and throughput was not reported.
+The measured host was loaded, so its timing results are not representative.
+No enforced boundary protects monitor state from untrusted device code or the
+driver; the recorded GT-1 profile trusts both. See the
+[per-configuration evidence](../../../verification/gpu-validation-hosts.md) and
+[trust profile](../../../verification/gpu-trust-profile.md).
 
 ## Capabilities
 

@@ -64,8 +64,10 @@ it cannot be converted to a legacy source by erasing labels.
 
 The authority-boundary spec records obligations of an enforcing integration.
 It does not claim those host services already exist. GPU-directed source is
-implemented; physical GPU execution remains unverified. The DLM is finite,
-and public record constructors are not unforgeable capabilities.
+implemented, and [physical GPU execution](../verification/gpu-validation-hosts.md)
+has been observed for recorded configurations on one host; the measurements and
+device trust boundary retain the gaps in the [GPU tasks](changes/validate-physical-gpu-execution/tasks.md).
+The DLM is finite, and public record constructors are not unforgeable capabilities.
 
 The [rclone contribution](../contrib/rclone/README.md) is executable within its
 explicit local reference profile. It does not qualify a native host platform or

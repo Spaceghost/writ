@@ -6,7 +6,11 @@ The Bend library models decisions and denied-state preservation. The proposed
 durable-publication service gives accepted effects a durable authorization point.
 Audit must attach evidence to that point and separately record denied attempts
 without turning diagnostics into an alternate output channel.
-See [proposal.md](proposal.md) for scope. All work in this package is pending.
+See [proposal.md](proposal.md) for scope. Event construction, policy assignment,
+queries and exports are implemented as a Bend model; no event is appended.
+Durable transactions, authenticated history and host integration remain pending.
+The [traceability record](../../traceability/policy-aware-audit.md) distinguishes
+the model's executable checks from host obligations and reviewed-only gaps.
 
 ## Goals and boundaries
 

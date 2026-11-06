@@ -11,8 +11,12 @@ another route for protected content, metadata, or decision reasons to escape.
 Introduce [policy-aware-audit](specs/policy-aware-audit/spec.md) as a new
 capability. Add protected event records, owner-scoped queries, verifiable append
 history, and an explicit required-audit failure policy coordinated with durable
-publication. This is a proposed service contract; none of these audit storage or
-query facilities is currently implemented.
+publication. This is a proposed service contract. The Bend library implements a
+model of event construction, policy assignment, owner-scoped queries and exports.
+No event is appended, and durable storage, authenticated history, required-audit
+transactions and host integration remain pending. See the [tasks](tasks.md) and
+[traceability](../../traceability/policy-aware-audit.md)
+for the modeled behavior and its limits.
 
 ## Capabilities
 
