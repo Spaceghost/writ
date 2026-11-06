@@ -234,6 +234,7 @@ aca761b44363b66569cc698e31cb1d37330fa364cceaeb583cbd61cbcaa6d510  docs/superpowe
 d4be7010514cfc90b35762a209af9401f50d6729a2698c4eaab12a42cca4940e  docs/superpowers/plans/2026-11-05-portable-host-contract.md
 c6358e4426f8fb32d7773b4ae31bf91956213031c76fffbab04494e78337f8e5  docs/superpowers/plans/2026-11-05-unikraft-closing.md
 efb3629019c61f766ad414ccf86a14a15fa3dca3d874f6790056cc6d4002bdc9  docs/superpowers/plans/2026-11-05-unikraft-lanes.md
+0ca01a697a0f195a725e2f3a129e0cb54f76b761381ec9759acf5df7a2fe0bdf  docs/superpowers/plans/2026-11-06-durable-publication.md
 476e0c3822a80ee75886d55645d4576e7a771d846b4013ff30a76ae6a48b8047  docs/superpowers/records/2026-11-03-dev-board/activity.log
 3860c51f7cd3b0020b1286742ad2c9893f68223ed8f4354bbea4f4fb7667022e  docs/superpowers/records/2026-11-03-dev-board/progress.md
 72efe72960ced15bad3f9e263357b00b14a4c436cd86d294960aee8f5300b24d  docs/superpowers/records/2026-11-03-dev-board/task-1-brief.md
