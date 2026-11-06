@@ -99,3 +99,28 @@ pass as a native CPU executable. The full generated native CPU suite passes with
 Clang `-O0`, and the separate optimized `bend` native build also passes with
 the same output. These checks do not establish GPU or
 Genode guest execution.
+
+## Byte-range guard coverage review
+
+The byte decoder checks four byte values before accepting each packed word.
+A separate review mutated each of those checks independently. The previous
+suite caught removal of the third-byte check, but removal of the first, second,
+or fourth check survived. The new synthetic cases place an out-of-range value
+in each position of the magic word and first confirm that packing still yields
+the original magic. Excess bits overlap bits already present in the next byte,
+or are shifted off the 32-bit word; without that position's range gate, the
+record could otherwise decode exactly as the original. All four selected
+range-check removal mutations now fail their corresponding named tests. This
+is regression evidence for those four mutations, not an exhaustive security
+review, authentication claim, or proof of the byte codec.
+
+After adding the cases, the full Bend and generated Node suites pass with
+byte-identical output (SHA-256
+`7034813a24c3f50a65922ba96a65ee64834620c43c78c1fdaea01251083a1614`).
+The host QuickJS harness passes all 2,160 checks, with 17,840 ticks,
+19,416,224 peak live bytes, and no exception. The focused byte suite passes
+in Bend, Node and optimized native CPU with identical output (SHA-256
+`f67959a633a39dd40fc84ed8603f33ec2ad2bb2817f630fe8a53deb0039f4745`).
+Existing Bend proof checks pass without a Lean kernel verdict, and OpenSpec
+strict validation passes 44/44. Full native CPU verification is running.
+These results are not Genode guest execution, a GPU test, or a proof law.

@@ -27,8 +27,11 @@ roundtrips and malformed-input checks, including `durable decoding rejects
 every truncated golden prefix` and `durable decoding roundtrips the complete
 maximum-size entry`. `DurableBytesTests.bend` adds the experimental
 little-endian byte mapping, including `durable bytes use the hand-calculated
-little-endian header` and rejection of an out-of-range byte whose packed word
-would be unchanged. These do not establish a complete transaction format,
+little-endian header` and rejection of out-of-range values in each byte position
+when the packed word would be unchanged. Named cases include `durable bytes
+reject an out-of-range first byte even when the packed word is unchanged` and
+`durable bytes reject an out-of-range fourth byte even when the packed word is
+unchanged`. These do not establish a complete transaction format,
 authenticated storage, or DP-004/006 recovery.
 The experimental entry layout and its limits are documented in
 [`docs/DURABLE-PUBLICATION.md`](../../docs/DURABLE-PUBLICATION.md).

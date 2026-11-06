@@ -61,6 +61,11 @@ def extra_word(bytes: Maybe<&2, List<&2, U32>>) -> Bool:
 def byte_pack_rejected(bytes: +List<U32>) -> Bool:
   DT.is_none(List<&2, U32>, W.pack(E.max_words(), bytes, [], True{}))
 
+# Each altered byte has a bit already set in its neighbour, or loses a bit
+# above bit 31. Packing alone would therefore produce the original magic word.
+def noncanonical_magic_byte(b0: U32, b1: U32, b2: U32, b3: U32, index: Nat, replacement: U32) -> Bool:
+  U32.is_eq(W.pack_word(b0, b1, b2, b3), E.magic()) && changed_byte(W.encode(ET.entry()), index, replacement)
+
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(header(W.encode(ET.entry())), "durable bytes use the hand-calculated little-endian header")
@@ -75,8 +80,14 @@ def main() -> IO(Unit):
     Test.check(truncated(W.encode(ET.entry()), 201n), "durable bytes reject three-byte truncation")
     Test.check(truncated(W.encode(ET.entry()), 200n), "durable bytes reject an aligned truncated word")
     Test.check(changed_byte(W.encode(ET.entry()), 4n, 2), "durable bytes reject an unknown version")
-    Test.check(changed_byte(W.encode(ET.entry()), 2n, 338),
+    Test.check(noncanonical_magic_byte(4170, 80, 82, 87, 0n, 4170),
+      "durable bytes reject an out-of-range first byte even when the packed word is unchanged")
+    Test.check(noncanonical_magic_byte(74, 592, 82, 87, 1n, 592),
+      "durable bytes reject an out-of-range second byte even when the packed word is unchanged")
+    Test.check(noncanonical_magic_byte(74, 80, 338, 87, 2n, 338),
       "durable bytes reject an out-of-range byte even when its packed word would be unchanged")
+    Test.check(noncanonical_magic_byte(74, 80, 82, 343, 3n, 343),
+      "durable bytes reject an out-of-range fourth byte even when the packed word is unchanged")
     Test.check(extra_word(W.encode(ET.entry())), "durable bytes reject an aligned trailing word")
     Test.check(rejected(ET.make_words(1n+W.max_bytes(), [])), "durable bytes reject an over-limit input")
     Test.check(Bool.not(W.bytes_within(W.max_bytes(), ET.make_words(1n+W.max_bytes(), []))),
