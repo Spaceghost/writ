@@ -1,0 +1,17 @@
+BEGIN_NO_DATA_LAUNCH ordinary-before; launcher output below is diagnostic only
+END_NO_DATA_LAUNCH ordinary-before
+INIT_PROFILE ordinary-before no_data=1 pid=5952 created=01dd6e48b3adf364 image_sha256=a1443e43a34694c5afdeb7a465407c9d70c8d350ef59cf65f88ad226ce9a6138 report_handles=1 session=none data=none
+INIT_RESULT ordinary-before initial_modules=0 after_winsock_modules=0 pre_ole32_modules=1 winsock=0 load_failures=0 cleanup_failures=0 user32=0 ole32=0 confinement_credit=none
+INIT_CLEANUP ordinary-before owned_resources=retired wfp_readback=not-applicable
+BEGIN_NO_DATA_LAUNCH lpac; launcher output below is diagnostic only
+NO_DATA_LAUNCH NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny
+END_NO_DATA_LAUNCH lpac
+INIT_PROFILE lpac no_data=1 pid=1372 created=01dd6e48b3b49ce5 image_sha256=a1443e43a34694c5afdeb7a465407c9d70c8d350ef59cf65f88ad226ce9a6138 report_handles=1 session=none data=none
+INIT_RESULT lpac initial_modules=0 after_winsock_modules=0 pre_ole32_modules=0 winsock=10107 load_failures=3 cleanup_failures=0 user32=1114 ole32=1359 confinement_credit=none
+INIT_CLEANUP lpac owned_resources=retired wfp_readback=absent
+BEGIN_NO_DATA_LAUNCH ordinary-after; launcher output below is diagnostic only
+END_NO_DATA_LAUNCH ordinary-after
+INIT_PROFILE ordinary-after no_data=1 pid=7816 created=01dd6e48b3b83839 image_sha256=a1443e43a34694c5afdeb7a465407c9d70c8d350ef59cf65f88ad226ce9a6138 report_handles=1 session=none data=none
+INIT_RESULT ordinary-after initial_modules=0 after_winsock_modules=0 pre_ole32_modules=1 winsock=0 load_failures=0 cleanup_failures=0 user32=0 ole32=0 confinement_credit=none
+INIT_CLEANUP ordinary-after owned_resources=retired wfp_readback=not-applicable
+INIT_OBSERVATION complete no_data=1 confinement_credit=none

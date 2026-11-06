@@ -1,0 +1,12 @@
+
+Algorithm : SHA256
+Hash      : 9959D8B2B962A220515B4F8A051944E2C1107B86DD0F313670424BA68D6694F7
+Path      : D:\a\_temp\windows-init-build\Release\writfs-init-diagnostic.exe
+
+Algorithm : SHA256
+Hash      : F54C1685EBF29811D2FDC315241A12718E133784FDD2A057F4D0B2A710EFD191
+Path      : D:\a\_temp\windows-init-build\Release\writfs-init-report-test.exe
+
+Algorithm : SHA256
+Hash      : A1443E43A34694C5AFDEB7A465407C9D70C8D350EF59CF65F88AD226CE9A6138
+Path      : D:\a\_temp\windows-init-build\Release\writfs-init-child.exe
