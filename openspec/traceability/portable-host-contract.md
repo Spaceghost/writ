@@ -23,6 +23,12 @@ Test names below are the exact `Test.check` names. "Reviewed-only" means the
 named part has no executable check in this model and rests on source review or
 on evidence a later task or a qualified host must supply.
 
+## Synthetic handoff sequencing
+
+[HostHandoff.bend](../../HostHandoff.bend) is a synthetic pre-admission sequencing model; [HostHandoffTests.bend](../../HostHandoffTests.bend) is run by `Tests.bend` as `HostHandoff`. Named checks `HH-001` through `HH-007` cover local phase/revision and fail-stop behavior, synthetic launch/session/image/control facts, handoff retirement assertions, real `HostPrimitives.admit_worker` denials for stale/revoked/expired input or unmediated routes, and exactly the existing `DeliverInputs` effect on successful admission. The local lifecycle's `Aborted` result changes only its own phase and emits no protected effect; HostPrimitives' denied authority state remains unchanged. A stale local revision returns unchanged and the trusted adapter must retire its failed stream separately. Copied old local/core records can be replayed unless the monitor atomically maintains and installs authoritative current state; the test labeled `identical synthetic snapshots` demonstrates this host obligation.
+
+`Evidence.at` matches a synthetic local revision only: it does not prove an OS fact was remeasured, authenticate any process, check a real pipe or establish complete native route inventory. The model does not parse real reports, deliver public parameters, implement native cleanup, prove all interleavings, or perform a DataOS/Backplane final commit or publication; budget, epoch/scope at commit and native enforcement remain with their existing gates and reviewed-only host obligations. It adds no new release route or native host qualification. The related [Windows handoff inventory](../../docs/superpowers/records/2026-11-06-windows-init/handoff-inventory-and-model-design.md) records the unimplemented adapter and peer/effect assumptions.
+
 ## Wire format (task 1.1)
 
 The public decoder's bounded preflight additionally has named regressions

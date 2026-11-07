@@ -15,10 +15,17 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The current synthetic handoff model adds 37 named checks to the 2,065-check
+combined baseline (2,102 total). Its monitor facts and current-state binding are
+assumptions, and model execution does not establish a Windows handoff or host
+confinement. See the [model record](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)
+for the scope and remaining native and commit-time gaps. The earlier native and
+cross-backend observations below remain historical evidence of their exact source.
+
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the
-Linux model and 1947 checks with the HostWire change. The combined suite
-passes 2065 checks in Bend, Node and the host QuickJS harness. Bend and Node
+Linux model and 1947 checks with the HostWire change. The combined suite at source `73a8055`
+passed 2065 checks in Bend, Node and the host QuickJS harness. Bend and Node
 output matches byte-for-byte (SHA-256
 `6f7c55909c94af843f65152f51f453798d0684e3e19c1db766bfa79ed7b5d449`); the
 host QuickJS run reports 19,918 ticks and no exception. The optimized native
