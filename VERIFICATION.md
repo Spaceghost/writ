@@ -1,5 +1,9 @@
 # Verification record
 
+The [4671e20 automatic CI checkpoint](verification/master-ci-4671e20/README.md)
+retains passing Windows Node and filesystem fixtures and the strict Windows
+worker failure. Linux and Genode results are pending in that checkpoint.
+
 The [frontend allocation-boundary record](verification/frontend-allocation-boundary/README.md)
 checks that exhausted handle IDs reject new allocation without preventing
 existing-handle use or owner cleanup when revision headroom exists. Terminal
