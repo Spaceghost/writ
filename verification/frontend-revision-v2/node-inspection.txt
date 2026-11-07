@@ -1,0 +1,7 @@
+Generated root Node artifact SHA-256: e776c57e2d0406d901e57fe39c2d2ef7d736febfc18029b58f0004834c062e5c
+Source inventory: bend-inputs.sha256; 36 focused checks and full root tests use this primitive.
+Observed carry: high-word max returns Refused; high increment appears only in the other branch.
+Observed low advance: low-word max calls guarded carry; low increment appears only in the other branch.
+Observed compare: each argument must be V2 before word comparison; other tags yield Incomparable.
+Observed checked wrapper: Equal reaches advance; other ordering returns Refused.
+This source inspection is not a proof, authenticated authority, process attestation or GPU test.

@@ -1,0 +1,5 @@
+--- a/FrontendRevisionV2.bend
++++ b/FrontendRevisionV2.bend
+@@ -56 +56 @@
+-    case 4294967295: Refused{V2{high, 4294967295}}
++    case 4294967295: Advanced{V2{0, 0}}

@@ -41,6 +41,13 @@ operations fail rather than being translated to a new expected value. A
 version tag does not authorize an operation; all original caller, token,
 registry, epoch, expiry, scope, budget and final-commit checks remain in force.
 
+A standalone [descriptive revision primitive](../../../FrontendRevisionV2.bend)
+and [synthetic controls](../../../verification/frontend-revision-v2/README.md)
+now exercise tagged V2 comparison and guarded two-word successor arithmetic.
+They are not wired into `Frontend`, `HostBinding` or `DataOS`, do not map V1
+state, and do not establish an authenticated current revision. FR-001 and all
+frontend migration/cleanup acceptance scenarios remain open.
+
 ## Reserve the remaining cleanup and retirement transitions
 
 Let `M = 2^64−1`, `R` be the current pair and `O` the exact count of all open

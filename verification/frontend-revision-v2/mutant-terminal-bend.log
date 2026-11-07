@@ -1,0 +1,23 @@
+PASS: revision V2 zero equals zero
+PASS: revision V2 maximum equals maximum
+PASS: revision low word increasing less
+PASS: revision low word decreasing greater
+PASS: revision high word dominates low maximum
+PASS: revision high word dominance reverse
+PASS: revision high bit unsigned less
+PASS: revision high bit unsigned greater
+PASS: revision low high bit unsigned less
+PASS: revision low high bit unsigned greater
+PASS: revision legacy and same numeric V2 incomparable
+PASS: revision V2 and same numeric legacy incomparable
+PASS: revision legacy is not accepted by V2 comparator
+PASS: revision unsupported tag incomparable with V2
+PASS: revision unsupported tag incomparable with itself
+PASS: revision zero advances one
+PASS: revision ordinary low increment
+PASS: revision low penultimate reaches maximum
+PASS: revision low maximum carries into high
+PASS: revision high penultimate carry reaches maximum
+PASS: revision high maximum permits low increment
+PASS: revision last successor reaches maximum
+FAIL: revision maximum refuses unchanged

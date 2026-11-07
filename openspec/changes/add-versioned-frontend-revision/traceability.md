@@ -1,14 +1,14 @@
 # Frontend revision V2 proposed traceability
 
 The [FR-001–FR-012 contracts](specs/frontend-revision-v2/spec.md) are proposed.
-No named executable case or implementing entry point currently exists. Their
-[tasks](tasks.md) are unchecked; structural OpenSpec validation is not evidence
-of implementation. The existing [CF-012 traceability](../../traceability/capability-frontend.md)
+The [tasks](tasks.md) remain open; structural OpenSpec validation is not
+evidence of acceptance. A standalone descriptive arithmetic primitive covers
+part of FR-001 only. The existing [CF-012 traceability](../../traceability/capability-frontend.md)
 links the confirmed V1 terminal failure and remains unresolved.
 
 | Proposed contract | Required named evidence | Current status |
 | --- | --- | --- |
-| FR-001 | Pair carry, max refusal and V1/V2 stale tag cases | Unimplemented; no test |
+| FR-001 | `FrontendRevisionV2.compare`, `advance`, `advance_if_current`; `FrontendRevisionV2Tests.bend` pair carry, max refusal and V1/V2 stale tag cases | Standalone descriptive primitive only; no authenticated frontend, actual migration or integrated mutation |
 | FR-002–003 | Exact open count, last cleanup, reserve denial, bounded original scan | Unimplemented; no test |
 | FR-004–006 | V1 max migration, complete original-state comparison, altered/omitted fields and authenticated current snapshot | Unimplemented; no test; source authenticity requires a monitor |
 | FR-007–008 | Atomic crash/replay recovery, rollback-resistant version fence and binding V1 request denial | Unimplemented; no host witness or qualified integration |

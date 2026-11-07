@@ -1,0 +1,5 @@
+--- a/FrontendRevisionV2.bend
++++ b/FrontendRevisionV2.bend
+@@ -34 +34 @@
+-  compare_low_equal(U32.is_eq(left, right), left, right)
++  compare_low_equal(True{}, left, right)

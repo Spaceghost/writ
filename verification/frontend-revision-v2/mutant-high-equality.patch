@@ -1,0 +1,5 @@
+--- a/FrontendRevisionV2.bend
++++ b/FrontendRevisionV2.bend
+@@ -51 +51 @@
+-      compare_high_equal(U32.is_eq(lh, rh), lh, ll, rh, rl)
++      compare_high_equal(True{}, lh, ll, rh, rl)

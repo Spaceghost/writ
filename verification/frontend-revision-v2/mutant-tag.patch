@@ -1,0 +1,4 @@
+--- a/FrontendRevisionV2.bend
++++ b/FrontendRevisionV2.bend
+@@ -51,0 +52 @@
++    case Legacy{_} V2{_, _}: Equal{}

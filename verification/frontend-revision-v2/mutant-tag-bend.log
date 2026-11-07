@@ -1,0 +1,11 @@
+PASS: revision V2 zero equals zero
+PASS: revision V2 maximum equals maximum
+PASS: revision low word increasing less
+PASS: revision low word decreasing greater
+PASS: revision high word dominates low maximum
+PASS: revision high word dominance reverse
+PASS: revision high bit unsigned less
+PASS: revision high bit unsigned greater
+PASS: revision low high bit unsigned less
+PASS: revision low high bit unsigned greater
+FAIL: revision legacy and same numeric V2 incomparable

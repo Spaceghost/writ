@@ -1,0 +1,6 @@
+tag: Bend 1, Node 1; detected by revision legacy and same numeric V2 incomparable
+high-equality: Bend 1, Node 1; detected by revision high word dominates low maximum
+low-equality: Bend 1, Node 1; detected by revision low word increasing less
+carry: Bend 1, Node 1; detected by revision low maximum carries into high
+terminal: Bend 1, Node 1; detected by revision maximum refuses unchanged
+stale: Bend 1, Node 1; detected by revision stale low refuses unchanged

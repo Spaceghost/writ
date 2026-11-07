@@ -1,0 +1,3 @@
+PASS: revision V2 zero equals zero
+PASS: revision V2 maximum equals maximum
+FAIL: revision low word increasing less

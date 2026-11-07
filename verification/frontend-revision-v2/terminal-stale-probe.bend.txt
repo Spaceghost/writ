@@ -1,0 +1,9 @@
+import Base
+import ./FrontendRevisionV2.bend as R
+import ./FrontendRevisionV2Tests.bend as T
+import ./Test.bend as Test
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(T.refused(R.advance_if_current(R.V2{4294967295, 4294967295}, R.V2{4294967295, 4294967294}), R.V2{4294967295, 4294967295}), "terminal revision with stale pair remains unchanged")
+    Test.check(T.refused(R.advance_if_current(R.V2{4294967295, 4294967295}, R.Legacy{7n}), R.V2{4294967295, 4294967295}), "terminal revision with legacy tag remains unchanged")
