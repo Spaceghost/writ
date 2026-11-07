@@ -1,0 +1,11 @@
+compressed_bytes= 2520918 sha256= 54aaee52678d1f9e239088b4c9e6da36a3b9437b885edadee51e72f4d5855cb9
+raw_bytes= 246349476 sha256= 5442c3472c9c12e97eec7cacd9b36c7d6a167e56e27bc6cb04b6f3c5ca4ec75b
+found= True writ_channel: channel 1 opened for 'clients -> writ_client_r -> channel' route subject 1
+found= True monitor: SYNTHETIC authority
+found= True monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0
+found= True client: PASS decision 1 reason 0 as expected
+found= True child "writ_client_r" exited with exit value 0
+found= True client: request record +0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+found= True client: result record +0x00000030: 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00
+found= True nested public R fixture: PASS
+bounded independent gzip/hash/fixture-line audit: PASS; cleanup unverified

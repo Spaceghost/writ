@@ -1,0 +1,30 @@
+{
+  "capture": "complete",
+  "raw_cap": 536870912,
+  "compressed_cap": 545259520,
+  "complete": true,
+  "raw": {
+    "bytes": 246349476,
+    "sha256": "5442c3472c9c12e97eec7cacd9b36c7d6a167e56e27bc6cb04b6f3c5ca4ec75b"
+  },
+  "compressed": {
+    "bytes": 2520918,
+    "sha256": "54aaee52678d1f9e239088b4c9e6da36a3b9437b885edadee51e72f4d5855cb9"
+  },
+  "child": {
+    "code": 0,
+    "signal": null
+  },
+  "audit": {
+    "complete": true,
+    "raw": {
+      "bytes": 246349476,
+      "sha256": "5442c3472c9c12e97eec7cacd9b36c7d6a167e56e27bc6cb04b6f3c5ca4ec75b"
+    },
+    "compressed": {
+      "bytes": 2520918,
+      "sha256": "54aaee52678d1f9e239088b4c9e6da36a3b9437b885edadee51e72f4d5855cb9"
+    },
+    "found": []
+  }
+}
