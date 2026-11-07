@@ -49,3 +49,8 @@ revocation. This does not repair the distinct pre-existing terminal *revision*
 problem: at maximum frontend revision, close may overflow instead of meeting
 CF-012, and that issue remains unresolved. No real identity or native host
 qualification follows from these synthetic records.
+
+The [proposed versioned frontend revision and migration](../changes/add-versioned-frontend-revision/proposal.md)
+describes a possible repair of the separate terminal-revision cleanup gap. Its
+contracts and tests are unimplemented; it does not change the current CF-012
+evidence or authenticate a host.
