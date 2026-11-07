@@ -42,8 +42,9 @@ in-guest cleanup is unverified. Evidence separately records whether the
 positive fixture or negative-control assertions matched; an assertion match
 does not change the overall incomplete classification.
 
-A [design-only complete compressed logging proposal](nested-routing-streaming-log-design.md)
-addresses the observed 32 MiB build-log limit; it has not been implemented or run.
+A [complete compressed logging candidate](nested-routing-streaming-log-design.md)
+addresses the observed 32 MiB build-log limit; its isolated implementation
+requires review and has not been run against Genode.
 
 ## Exact branch-only change to the existing workflow
 

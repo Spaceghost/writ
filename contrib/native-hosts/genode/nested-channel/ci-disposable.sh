@@ -78,8 +78,10 @@ export PATH="$writ_root/bin:$writ_root/llvm/bin:$PATH"
   printf 'Genode VERSION: '; cat "$writ_root/genode/VERSION"
   clang-23 --version
   clang-23 -print-resource-dir
+  printf 'Node: '; node --version
+  printf 'Node zlib: '; node -p 'process.versions.zlib'
   "${writ_cross}g++" --version | head -n 1
-  sha256sum "$writ_bend" "$(realpath -e "$writ_root/bin/clang-23")" "${writ_cross}g++"
+  sha256sum "$writ_bend" "$(realpath -e "$writ_root/bin/clang-23")" "${writ_cross}g++" "$(command -v node)"
 } > "$writ_evidence/tool-identity.txt"
 writ_clang_resource="$(clang-23 -print-resource-dir)"
 (cd "$writ_clang_resource" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum) \
@@ -138,15 +140,13 @@ printf 'CROSS_DEV_PREFIX = %s\n' "$writ_cross" > "$writ_root/build/etc/tools.con
 cp "$writ_root/build/etc/build.conf" "$writ_root/build/etc/tools.conf" "$writ_evidence/"
 sha256sum "$writ_evidence/build.conf" "$writ_evidence/tools.conf" > "$writ_evidence/build-config-sha256.txt"
 
-# The file size limit bounds the native run log and child-created files; any
-# resulting error/overflow is incomplete. It is not a process supervisor.
+# Fixed native I/O collector preserves the complete raw stream as bounded gzip.
+# The outer foreground timeout bounds waiting; it does not prove cleanup.
 set +e
-(ulimit -f 32768; make -C "$writ_root/build" run/writ_bend_monitor_nested_accept) \
-  > "$writ_evidence/run.log" 2>&1
-writ_run_status=$?
+node "$(dirname -- "$0")/ci-log-collect.mjs" "$writ_root/build" "$writ_evidence"
+writ_capture_status=$?
 set -e
-printf 'make_exit=%s\n' "$writ_run_status" > "$writ_evidence/run-status.txt"
-sha256sum "$writ_evidence/run.log" > "$writ_evidence/run-sha256.txt"
+printf 'collector_exit=%s\n' "$writ_capture_status" > "$writ_evidence/run-status.txt"
 writ_boot="$writ_root/build/var/run/writ_bend_monitor_nested_accept/genode"
 if [ -d "$writ_boot" ]; then
   (cd "$writ_boot" && find -L . -maxdepth 1 -type f -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum) \
@@ -164,19 +164,7 @@ printf '%s' "$writ_status" > "$writ_evidence/fixture-post-status.txt"
 [ "$(git -C "$writ_fixture" rev-parse HEAD)" = "$writ_source" ]
 (cd "$writ_fixture" && sha256sum --check --status verification/source-sha256.txt)
 printf 'tracked source manifest rechecked after run\n' > "$writ_evidence/fixture-post-manifest.txt"
-if [ "$(wc -c < "$writ_evidence/run.log")" -ge 33554432 ]; then
-  printf 'INCOMPLETE: output bound reached\n' >&2
-  exit 1
-fi
+[ "$writ_capture_status" -eq 0 ]
+node "$(dirname -- "$0")/ci-log-audit.mjs" "$writ_evidence" "$writ_scenario"
 [ -f "$writ_evidence/installed-config.txt" ]
-if [ "$writ_scenario" = positive ]; then
-  [ "$writ_run_status" -eq 0 ]
-  rg -F 'nested public R fixture: PASS' "$writ_evidence/run.log" >/dev/null
-else
-  [ "$writ_run_status" -ne 0 ]
-  rg -F 'decision=Committed reason=0' "$writ_evidence/run.log" >/dev/null
-  rg -F 'client: FAIL expected decision 2 reason 0, observed decision 1 reason 0' "$writ_evidence/run.log" >/dev/null
-  rg -F 'child "writ_client_r" exited with exit value 1' "$writ_evidence/run.log" >/dev/null
-  rg -F 'Error: nested client did not exit with value 0' "$writ_evidence/run.log" >/dev/null
-fi
 printf 'fixture_assertions=matched\ncleanup=unverified\noverall=incomplete\n' > "$writ_evidence/observed.txt"

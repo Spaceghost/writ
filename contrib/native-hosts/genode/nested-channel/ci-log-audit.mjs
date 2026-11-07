@@ -1,0 +1,68 @@
+// Fixed public-fixture evidence matching after full bounded gzip verification.
+import fs from 'node:fs';
+import path from 'node:path';
+import { auditGzip, RAW_CAP, COMPRESSED_CAP } from './ci-gzip.mjs';
+
+if (process.argv.length !== 4) process.exit(2);
+const [evidence, scenario] = process.argv.slice(2);
+if (!path.isAbsolute(evidence) || !['positive', 'negative'].includes(scenario)) process.exit(2);
+const metaPath = path.join(evidence, 'run-meta.json');
+const resultPath = path.join(evidence, 'run-audit.json');
+const resultTemp = path.join(evidence, 'run-audit.json.tmp');
+let result = { audit: 'incomplete', fixture_assertions: 'not_confirmed' };
+try {
+  const fd = fs.openSync(metaPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+  let meta;
+  try {
+    const stat = fs.fstatSync(fd, { bigint: true });
+    if (!stat.isFile() || stat.nlink !== 1n || stat.size > 65536n || stat.uid !== BigInt(process.getuid())) {
+      throw new Error('invalid metadata file');
+    }
+    const bytes = Buffer.alloc(65537);
+    let used = 0;
+    while (used < bytes.length) {
+      const count = fs.readSync(fd, bytes, used, bytes.length - used, null);
+      if (count === 0) break;
+      used += count;
+    }
+    if (used > 65536 || BigInt(used) !== stat.size) throw new Error('metadata size changed or exceeded limit');
+    meta = JSON.parse(bytes.subarray(0, used).toString('utf8'));
+    const after = fs.fstatSync(fd, { bigint: true });
+    if (stat.dev !== after.dev || stat.ino !== after.ino || stat.mode !== after.mode ||
+        stat.uid !== after.uid || stat.nlink !== after.nlink || stat.size !== after.size ||
+        stat.mtimeNs !== after.mtimeNs || stat.ctimeNs !== after.ctimeNs) {
+      throw new Error('metadata changed during read');
+    }
+  } finally { fs.closeSync(fd); }
+  if (meta.capture !== 'complete' || !meta.complete || meta.raw_cap !== RAW_CAP || meta.compressed_cap !== COMPRESSED_CAP ||
+      !meta.raw || !meta.compressed || !meta.child || !Number.isSafeInteger(meta.raw.bytes) ||
+      !Number.isSafeInteger(meta.compressed.bytes) || meta.raw.bytes < 0 || meta.raw.bytes > RAW_CAP ||
+      meta.compressed.bytes < 18 || meta.compressed.bytes > COMPRESSED_CAP ||
+      !/^[0-9a-f]{64}$/.test(meta.raw.sha256) || !/^[0-9a-f]{64}$/.test(meta.compressed.sha256)) {
+    throw new Error('capture metadata incomplete or invalid');
+  }
+  const needles = scenario === 'positive'
+    ? ['nested public R fixture: PASS']
+    : ['decision=Committed reason=0', 'client: FAIL expected decision 2 reason 0, observed decision 1 reason 0',
+      'child "writ_client_r" exited with exit value 1', 'Error: nested client did not exit with value 0'];
+  const checked = await auditGzip(path.join(evidence, 'run.log.gz'), meta, needles);
+  const expectedExit = scenario === 'positive' ? meta.child.code === 0 :
+    Number.isInteger(meta.child.code) && meta.child.code !== 0;
+  const matched = expectedExit && meta.child.signal === null && checked.found.every(Boolean);
+  result = { audit: 'complete', fixture_assertions: matched ? 'matched' : 'not_confirmed',
+    raw: checked.raw, compressed: checked.compressed, child: meta.child, matched_lines: checked.found };
+} catch (error) {
+  result.reason = String(error.message);
+}
+try {
+  fs.writeFileSync(resultTemp, JSON.stringify(result, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
+  fs.linkSync(resultTemp, resultPath);
+  fs.unlinkSync(resultTemp);
+} catch (error) {
+  console.error('INCOMPLETE: cannot finalize audit:', error.message);
+  process.exit(1);
+}
+if (result.audit !== 'complete' || result.fixture_assertions !== 'matched') {
+  console.error('INCOMPLETE: fixture assertions not confirmed');
+  process.exit(1);
+}

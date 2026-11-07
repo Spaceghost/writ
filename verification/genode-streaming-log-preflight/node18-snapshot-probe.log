@@ -1,0 +1,13 @@
+positive: accepted
+negative: accepted
+missing: refused
+partial: refused
+symlink: refused
+fifo: refused
+hardlink: refused
+oversize: refused
+wrong-directory: refused
+changed-after-audit: refused
+same-inode snapshot mutation: refused
+mid-copy timeout: unfinished staged file was not promoted
+pre-binding timeout: copied gzip was not promoted

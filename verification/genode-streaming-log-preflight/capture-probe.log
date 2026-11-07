@@ -1,0 +1,2 @@
+outer timeout returned 124 while the synthetic pipe was retained
+synthetic pipe output eventually arrived; cleanup is not attested

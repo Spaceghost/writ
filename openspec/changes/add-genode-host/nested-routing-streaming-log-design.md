@@ -9,8 +9,8 @@ Neither fixture nor negative control was observed. The existing `ulimit -f`
 also applies to **every file written by the build and descendants**, not just
 the log; evidence does not establish whether another file hit the bound.
 
-This is a design only: no logging implementation, build, CI dispatch or
-additional run is authorized by this document. Do not suppress warning classes,
+The isolated candidate implements the proposed logging for review; no Genode
+build, CI dispatch or additional run is recorded by this document. Do not suppress warning classes,
 change compiler flags or interpret a missing diagnostic as proof of correctness.
 Every existing no-qualification, same-UID artifact/credential and cleanup
 limitation remains in force.
@@ -60,16 +60,24 @@ warnings/errors nor buffers the entire stream in memory.
   scoped and reviewed; do not reuse a limit that silently affects every file.
 
 The exact compressed log and metadata must be retained in the public artifact
-allowlist. The existing snapshot helper currently buffers files and caps each at
-32 MiB; it would need a reviewed *streaming* FD-to-FD copy and per-name limit
-for `run.log.gz` of at most 520 MiB, with the existing directory identity,
+allowlist. The candidate replaces the earlier buffered 32 MiB snapshot with a
+streaming FD-to-FD copy and per-name limit for `run.log.gz` of at most 520 MiB,
+with the existing directory identity,
 regular-file, no-symlink/no-hardlink and pre/post checks. Do not expand every
 other artifact's bound. Missing, changing, oversized or unverified snapshots
 must fail incomplete, and the existing outer foreground timeout and reserved
-upload window remain. The current snapshot deadline is two minutes within a
-65-minute job; assess bounded copy, audit and upload time at the proposed
-maximum and reserve a realistic window before dispatch. A copy, audit or upload
-timeout remains incomplete, and delivery is not guaranteed. An explicitly bounded reader for the uploaded gzip is
+upload window remain. The candidate uses a 90-minute job limit: two checkouts
+at up to five minutes each, setup at one, dependency installation at ten,
+outer capture at 48 minutes plus 15 seconds, snapshot at five minutes plus
+five seconds, and upload at ten. These stated bounds total about 84 minutes
+20 seconds before other scheduling/step overhead, so there is no guaranteed
+upload window. Copying and rehashing a 520 MiB staged gzip in five minutes
+needs at least 3.47 MiB/s read and 1.73 MiB/s write, and a ten-minute upload
+needs at least 0.87 MiB/s before
+overhead; neither throughput nor 520 MiB end-to-end timing has been observed.
+Repeated bounded decompression/audit also consumes CPU and time within the
+capture window. A copy, audit or upload timeout remains incomplete, and
+delivery is not guaranteed. An explicitly bounded reader for the uploaded gzip is
 required; ordinary unrestricted decompression is not an audit policy. Snapshot
 and upload remain observations, not process attestation or protection against a
 malicious same-UID process after snapshot.

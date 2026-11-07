@@ -79,23 +79,26 @@ jobs:
   nested-public-positive:
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/genode-nested-public-ci' && github.repository == 'Spaceghost/writ' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 65
+    timeout-minutes: 90
     defaults:
       run:
         shell: bash
     steps:
       - name: Check out reviewed workflow tooling
+        timeout-minutes: 5
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: ci-tooling
       - name: Check out fixed public fixture source
+        timeout-minutes: 5
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: c14f125454e279011589b9527069161241419171
           persist-credentials: false
           path: fixture-source
       - name: Prepare public evidence directory and verify tooling
+        timeout-minutes: 1
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/writ-nested-positive" "$RUNNER_TEMP/writ-nested-positive-raw"
@@ -106,6 +109,10 @@ jobs:
           sha256sum "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-disposable.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-gzip.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-capture-core.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-collect.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-audit.mjs" \
             > "$RUNNER_TEMP/writ-nested-positive/tooling-sha256.txt"
           printf 'workflow_sha=%s\nworkflow_ref=%s\nrun_id=%s\nattempt=%s\nrunner_image=%s %s\n' \
             "$GITHUB_SHA" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
@@ -131,7 +138,7 @@ jobs:
             > "$RUNNER_TEMP/writ-nested-positive/capture-status.txt"
           raw_directory_id="$(cat "$RUNNER_TEMP/writ-nested-positive/raw-directory-id.txt")"
           set +e
-          timeout --foreground --signal=TERM --kill-after=5s 2m \
+          timeout --foreground --signal=TERM --kill-after=5s 5m \
             node "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
             "$RUNNER_TEMP/writ-nested-positive-raw" "$RUNNER_TEMP/writ-nested-positive" "$raw_directory_id" positive
           snapshot_status=$?
@@ -149,6 +156,7 @@ jobs:
           echo 'INCOMPLETE: in-guest descendant cleanup is not verified' >&2
           exit 1
       - name: Retain public evidence
+        timeout-minutes: 10
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -180,9 +188,12 @@ jobs:
             ${{ runner.temp }}/writ-nested-positive/build.conf
             ${{ runner.temp }}/writ-nested-positive/tools.conf
             ${{ runner.temp }}/writ-nested-positive/build-config-sha256.txt
-            ${{ runner.temp }}/writ-nested-positive/run.log
+            ${{ runner.temp }}/writ-nested-positive/run.log.gz
+            ${{ runner.temp }}/writ-nested-positive/run.log.gz.unverified
+            ${{ runner.temp }}/writ-nested-positive/run.log.gz.partial
+            ${{ runner.temp }}/writ-nested-positive/run-meta.json
+            ${{ runner.temp }}/writ-nested-positive/run-audit.json
             ${{ runner.temp }}/writ-nested-positive/run-status.txt
-            ${{ runner.temp }}/writ-nested-positive/run-sha256.txt
             ${{ runner.temp }}/writ-nested-positive/boot-inputs-sha256.txt
             ${{ runner.temp }}/writ-nested-positive/installed-config.txt
             ${{ runner.temp }}/writ-nested-positive/observed.txt
@@ -196,23 +207,26 @@ jobs:
   nested-public-negative:
     if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/genode-nested-public-ci' && github.repository == 'Spaceghost/writ' }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 65
+    timeout-minutes: 90
     defaults:
       run:
         shell: bash
     steps:
       - name: Check out reviewed workflow tooling
+        timeout-minutes: 5
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           path: ci-tooling
       - name: Check out fixed public fixture source
+        timeout-minutes: 5
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: c14f125454e279011589b9527069161241419171
           persist-credentials: false
           path: fixture-source
       - name: Prepare public evidence directory and verify tooling
+        timeout-minutes: 1
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/writ-nested-negative" "$RUNNER_TEMP/writ-nested-negative-raw"
@@ -223,6 +237,10 @@ jobs:
           sha256sum "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-disposable.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-gzip.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-capture-core.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-collect.mjs" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-audit.mjs" \
             > "$RUNNER_TEMP/writ-nested-negative/tooling-sha256.txt"
           printf 'workflow_sha=%s\nworkflow_ref=%s\nrun_id=%s\nattempt=%s\nrunner_image=%s %s\n' \
             "$GITHUB_SHA" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
@@ -248,7 +266,7 @@ jobs:
             > "$RUNNER_TEMP/writ-nested-negative/capture-status.txt"
           raw_directory_id="$(cat "$RUNNER_TEMP/writ-nested-negative/raw-directory-id.txt")"
           set +e
-          timeout --foreground --signal=TERM --kill-after=5s 2m \
+          timeout --foreground --signal=TERM --kill-after=5s 5m \
             node "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
             "$RUNNER_TEMP/writ-nested-negative-raw" "$RUNNER_TEMP/writ-nested-negative" "$raw_directory_id" negative
           snapshot_status=$?
@@ -266,6 +284,7 @@ jobs:
           echo 'INCOMPLETE: in-guest descendant cleanup is not verified' >&2
           exit 1
       - name: Retain public evidence
+        timeout-minutes: 10
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -297,9 +316,12 @@ jobs:
             ${{ runner.temp }}/writ-nested-negative/build.conf
             ${{ runner.temp }}/writ-nested-negative/tools.conf
             ${{ runner.temp }}/writ-nested-negative/build-config-sha256.txt
-            ${{ runner.temp }}/writ-nested-negative/run.log
+            ${{ runner.temp }}/writ-nested-negative/run.log.gz
+            ${{ runner.temp }}/writ-nested-negative/run.log.gz.unverified
+            ${{ runner.temp }}/writ-nested-negative/run.log.gz.partial
+            ${{ runner.temp }}/writ-nested-negative/run-meta.json
+            ${{ runner.temp }}/writ-nested-negative/run-audit.json
             ${{ runner.temp }}/writ-nested-negative/run-status.txt
-            ${{ runner.temp }}/writ-nested-negative/run-sha256.txt
             ${{ runner.temp }}/writ-nested-negative/boot-inputs-sha256.txt
             ${{ runner.temp }}/writ-nested-negative/installed-config.txt
             ${{ runner.temp }}/writ-nested-negative/observed.txt
