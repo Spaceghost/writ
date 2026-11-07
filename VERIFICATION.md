@@ -15,6 +15,12 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic 75e8818 platform CI checkpoint](verification/master-ci-75e8818/README.md)
+retains passing Windows Node, Linux public-canary and Btrfs/ZFS fixture results,
+and the failed strict Windows native run. Linux protected setup was refused
+before input; the Windows byte-worker observations were incomplete. Genode was
+still running at this checkpoint. These results do not qualify a protected host.
+
 The [bounded locality conjunction reference](verification/locality-conjunction/README.md)
 adds 37 synthetic checks and targeted mutation controls; its supplied rules and
 domains are not authenticated, and it performs no admission or host check.
