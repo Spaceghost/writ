@@ -60,8 +60,11 @@ Linux identity boundary or a durable service.
   `Tests.bend` itself is
   `d1f530761d86ccb0629ae2c6e0d1f51b58837d758b3fe5860e0dc72b90a5df92`.
   The checked-in source manifest records each delivered file independently.
-- `bend PROOF.bend` reports `ALL PROOFS CHECK`; no new durable proof law or
-  Lean kernel verdict is claimed. `openspec validate --all --strict
+- At the earlier source, `bend PROOF.bend` reports `ALL PROOFS CHECK`; no new
+  durable proof law or Lean kernel verdict was recorded there. A later
+  [combined-preview verdict](../../../../verification/durable-lean-verdict-b95669b/README.md)
+  covers the existing 36 laws at `b95669b`, not a durable-specific law.
+  `openspec validate --all --strict
   --no-interactive` passes 44/44, a structural result.
 - `nix build --offline --no-link .#checks.x86_64-linux.tests-js` passes with
   the preview's 2,285-check pin. At source 61ab2a4 the full `nix flake check
@@ -89,8 +92,8 @@ source files that could be compared to commit 61ab2a4; generated/native build
 artifacts are separately identified by CI hashes. This is not physical GPU,
 durable storage or a protected-worker qualification.
 
-The CI and local count pins are updated to 2,285 for this proposed tree so a
-future run must account for the new tests. The recorded 2,065-check Genode
+The CI and local count pins were updated to 2,285 for that earlier preview;
+the later combined preview uses 2,322. The recorded 2,065-check Genode
 QEMU and Nix results belong to their earlier source and remain historical. The
 2,285-check guest result above is scoped to exact source 61ab2a4; no physical
 GPU or protected-host result is claimed. The durable model

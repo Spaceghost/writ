@@ -15,6 +15,13 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
+passed for the 36 named laws in `PROOF.bend` at exact master source `be649f6`.
+A separate [verdict on combined preview `b95669b`](verification/durable-lean-verdict-b95669b/README.md)
+also passed those 36 laws. Earlier unavailable-Lean attempts remain historical.
+Neither verdict proves durable publication, a handoff-specific law or native
+host confinement; independent human security review remains outstanding.
+
 The earlier durable integration preview combines `origin/master` 9c08eb9 (Linux model
 and HostWire bounds) with durable-publication dd18cb0, then incorporates the
 Windows failure evidence-only master commits 1fcd29a and 1646a8d, and durable
@@ -41,8 +48,8 @@ Neither qualifies the proposed protected-worker host or durable recovery.
 See the [integration preview](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
 for exact source hashes, test scope and retained failures.
 
-The current unqualified durable-plus-handoff preview passes 2,322 core checks
-under Bend, Node and optimized native CPU with identical output, and its exact-source Nix JavaScript check passes; see the [reconciliation record](docs/superpowers/records/2026-11-06-durable-publication/handoff-integration-preview.md).
+The unqualified durable-plus-handoff preview at `52e8e01` passed 2,322 core checks
+under Bend, Node and optimized native CPU with identical output, and its exact-source Nix JavaScript check passed; see the [reconciliation record](docs/superpowers/records/2026-11-06-durable-publication/handoff-integration-preview.md).
 Its exact-source Windows Node, Genode QEMU and Linux public-canary CI records are linked from that reconciliation record. The Genode clock warning and the expected Linux Landlock setup refusal before input are retained; none establishes protected-host confinement, durable host recovery or independent human security review. It combines the two synthetic model suites; earlier native, Nix and CI evidence below remains tied to its original source. The handoff model adds 37 checks and does not establish a native Windows
 handoff or protected-host confinement. The [handoff model record](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)
 retains its separate 2,102-check source and evidence, including [Windows Node](verification/handoff-ci-817ab1f/windows-42327055068/README.md),
@@ -303,7 +310,8 @@ trusted device: the managed heap is shared and writable, and hostile device code
 and drivers are excluded from the threat model as a limit, not a boundary
 ([gpu-trust-profile.md](verification/gpu-trust-profile.md), "Threat-model
 exclusion"). The label and transfer checks reuse the producers' evaluators. No
-32-bit probe digest is equality evidence. No Lean verdict exists.
+32-bit probe digest is equality evidence. No Lean verdict was obtained for that
+historical GPU run.
 
 ## Explicit proof scope
 
@@ -343,7 +351,7 @@ any host) adds six laws, checked by the same `bend PROOF.bend`:
 On the issuance tree `bend PROOF.bend` printed `ALL PROOFS CHECK`, and the one
 `bend PROOF.bend --verdict` attempt exited 1 with the same missing-`lean`
 error quoted below (see `verification/kernel-verdict.txt`). No Lean-kernel
-verdict exists for these laws either.
+verdict was obtained for these laws on that issuance tree.
 
 The portable-host-contract lane adds five further laws. Each fixes
 the denial contract of one host-contract module and holds by computation of an
@@ -368,7 +376,7 @@ vectors cover those. That a binding executes only effects the monitor
 returned is a host obligation. On that lane's final tree, `bend PROOF.bend`
 printed `ALL PROOFS CHECK` for the earlier laws and these five, and
 `bend PROOF.bend --verdict` exited 1 with the same `lean: Executable not found`
-error shown below, so none of the five has a Lean-kernel verdict.
+error shown below, so no Lean-kernel verdict was obtained for that lane run.
 
 The policy-aware-audit lane (section 1 of `add-policy-aware-audit`; model
 only, no durable log and no host) adds twelve further laws, checked by the same
@@ -409,7 +417,7 @@ records the run:
 
 On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for all
 twenty-nine laws, and `bend PROOF.bend --verdict` exited 1 with the same
-missing-`lean` error, so none of the twelve has a Lean-kernel verdict.
+missing-`lean` error, so no Lean-kernel verdict was obtained for that lane run.
 
 The executor-rendezvous lane (`add-executor-rendezvous`; model only, no host)
 adds seven further laws, checked by the same `bend PROOF.bend`; each law's
@@ -440,7 +448,7 @@ and `verification/executor-rendezvous.txt` records the run:
 On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for its
 twenty-four laws, and on the merged tree for all thirty-six;
 `bend PROOF.bend --verdict` exited 1 with the same missing-`lean` error, so
-none of the seven has a Lean-kernel verdict.
+no Lean-kernel verdict was obtained for that earlier run.
 
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
@@ -449,7 +457,7 @@ The Bend policy/proof sources introduce no unsafe definitions or proof holes.
 Inventoried C/C++ OS/runtime bindings and native probes are separate from these
 laws; the ordinary proof check does not prove their correctness.
 
-The independent `--verdict` check **did not run successfully**. The official Lean
+The earlier independent `--verdict` check **did not run successfully**. The official Lean
 4.34.0 release archive was downloaded and hash-verified, but its executable exits
 before kernel compilation with `error: failed to locate application`. Supported
 path settings did not resolve that startup problem. No checker, compiler, or law
@@ -463,8 +471,9 @@ with:
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 ```
 
-No Lean-kernel verdict exists for any of the thirty-six laws. `kernel-verdict.txt`
-keeps the earlier three-law note and records the latest attempt verbatim.
+No Lean-kernel verdict was obtained in those earlier attempts. `kernel-verdict.txt`
+keeps the three-law note and later attempts verbatim; the subsequent successful
+`be649f6` verdict is recorded [separately](verification/lean-verdict-be649f6/README.md).
 Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
 ## OpenSpec suite

@@ -7,3 +7,11 @@ On Linux, pinned Bend 2.0.39 and emitted JavaScript under Node 26.10.0 each pass
 The handoff model assumes trusted current monitor/adapter facts and calls the existing HostPrimitives admission path; it does not authenticate Windows peers, prove route completeness or establish a native handoff. The durable model is not a durable host service and does not implement storage, audit append, rollback witness, qualified sink or host recovery. Neither model changes the failed strict Windows byte-worker gate or qualifies a protected host. See the earlier [durable integration record](integration-preview.md) and [handoff model record](../2026-11-06-windows-init/handoff-model-record.md) for exact historical evidence and limitations.
 
 The later master evidence-only commit `be649f6` was reconciled after those runs. It preserves the automatic `1ce6757` platform outcomes, including the strict Windows native failure. No Bend source, workflow or Nix input changed relative to `52e8e01`; the combined-source runs remain attributed to `52e8e01`, and the master runs remain attributed to `1ce6757`. This reconciliation is not a fresh run or durable independent security review.
+
+The [Lean-built BendTT verdict](../../../../verification/durable-lean-verdict-b95669b/README.md)
+subsequently passed the 36 existing `PROOF.bend` laws at exact preview source
+`b95669b`. No durable-publication or handoff-specific law is included; the
+independent human security review and dependent task-order gates remain open.
+This preview later reconciles master `7c43175`'s separate `be649f6` verdict
+evidence. The earlier 2,322-check runs still apply to `52e8e01`; this later
+evidence merge is not a new execution or host qualification.

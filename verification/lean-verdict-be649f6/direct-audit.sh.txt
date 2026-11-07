@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+set -u
+record_dir=/tmp/writ-lean-verdict-evidence/verification/lean-verdict-be649f6
+kernel_path=/tmp/writ-lean-434-isolated/kernel-audit/bendtt
+proof_path=/tmp/writ-lean-434-isolated/kernel/proof.bendtt
+{
+  date -u '+start_utc=%Y-%m-%dT%H:%M:%SZ'
+  printf 'bend_inputs_unchanged_from_be649f6='; if git diff --quiet be649f6 HEAD -- '*.bend'; then printf 'yes\n'; else printf 'no\n'; exit 2; fi
+  printf 'kernel_before='; sha256sum "$kernel_path"
+  printf 'proof_book_before='; sha256sum "$proof_path"
+  printf '%s\n' 'LEAN_STACK_SIZE_KB=4194304 timeout 1200 /tmp/writ-lean-434-isolated/kernel-audit/bendtt /tmp/writ-lean-434-isolated/kernel/proof.bendtt'
+} > "$record_dir/direct-audit-observations.txt"
+LEAN_STACK_SIZE_KB=4194304 timeout 1200 "$kernel_path" "$proof_path" > "$record_dir/direct-audit.stdout" 2> "$record_dir/direct-audit.stderr"
+result=$?
+{
+  printf 'direct_kernel_exit=%s\n' "$result"
+  printf 'kernel_after='; sha256sum "$kernel_path"
+  printf 'proof_book_after='; sha256sum "$proof_path"
+  date -u '+end_utc=%Y-%m-%dT%H:%M:%SZ'
+} >> "$record_dir/direct-audit-observations.txt"
+exit "$result"

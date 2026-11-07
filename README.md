@@ -120,8 +120,13 @@ are scoped to their recorded sources and backends. Neither model establishes a
 native Windows handoff, protected-host confinement or a durable host service.
 Physical GPU execution was observed for specific workloads on one RTX 4090 host;
 the [GPU evidence](verification/gpu-validation-hosts.md) does not establish
-device isolation, and the loaded-host timings are not representative. Independent
-Lean kernel verification has not been established.
+device isolation, and the loaded-host timings are not representative. A
+[Lean-built BendTT kernel verdict](verification/lean-verdict-be649f6/README.md)
+checked the 36 named laws at source `be649f6`; a separate
+[combined-preview verdict](verification/durable-lean-verdict-b95669b/README.md)
+checked those laws at `b95669b`. Neither proves durable publication, a
+handoff-specific law or the whole system. Independent human security review
+of the durable work remains outstanding.
 
 This is an executable security library and protocol model. Real POSIX devices,
 worker confinement, authenticated grant issuance, durable authorized publication, payment

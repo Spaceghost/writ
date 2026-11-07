@@ -1,0 +1,9 @@
+start_utc=2026-11-07T02:52:06Z
+bend_inputs_unchanged_from_be649f6=yes
+kernel_before=e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18  /tmp/writ-lean-434-isolated/kernel-audit/bendtt
+proof_book_before=efa1d4944bd1b3a9c35526c00b3dc1f0b96ca5df24aa6bcd0d1b2b5c578beb22  /tmp/writ-lean-434-isolated/kernel/proof.bendtt
+LEAN_STACK_SIZE_KB=4194304 timeout 1200 /tmp/writ-lean-434-isolated/kernel-audit/bendtt /tmp/writ-lean-434-isolated/kernel/proof.bendtt
+direct_kernel_exit=0
+kernel_after=e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18  /tmp/writ-lean-434-isolated/kernel-audit/bendtt
+proof_book_after=efa1d4944bd1b3a9c35526c00b3dc1f0b96ca5df24aa6bcd0d1b2b5c578beb22  /tmp/writ-lean-434-isolated/kernel/proof.bendtt
+end_utc=2026-11-07T02:52:06Z
