@@ -112,7 +112,7 @@ See the [backend guide](writfs/README.md) and its
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
-native CPU backends**. The 2,263-check suite adds 118 synthetic Linux monitor checks, five
+native CPU backends**. The 2,273-check suite adds ten synthetic duplicate-binding checks, alongside 118 synthetic Linux monitor checks, five
 HostWire bounds and error-order checks, 39 synthetic handoff checks, 60
 synthetic planner-envelope codec checks, one additional N48 boundary regression, 61 plan-comparison checks, two byte-range checks and 35 synthetic frontend-composition checks. The composition does not authenticate a planner request or implement an adapter. The codec produces untrusted descriptions;
 it does not implement a planner endpoint or admission. The

@@ -71,7 +71,11 @@ not an authenticated planner request or a production adapter.
 
 The later [synthetic handoff regression](verification/handoff-stale-admission/README.md)
 adds two checks for stale admission evidence and denied retry, giving 2,263
-checks in this suite. It does not establish native evidence freshness.
+checks at that source. It does not establish native evidence freshness.
+
+Ten synthetic duplicate-object and duplicate-alias checks bring the current
+suite to 2,273; see the [binding regression record](verification/host-binding-duplicate-ids/README.md).
+They test modeled state validation, not native identity or host qualification.
 
 The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
 retains its exact-source outcomes, Linux setup refusal and Genode clock warning;
