@@ -1,0 +1,164 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-11-07T01:09:00Z",
+  "databaseId": 42322440747,
+  "event": "workflow_dispatch",
+  "headBranch": "lane/windows-registry-ab",
+  "headSha": "deee3ccbe7622a902284b5666a26cc6e86c04af0",
+  "jobs": [
+    {
+      "completedAt": "2026-11-07T01:09:44Z",
+      "conclusion": "success",
+      "databaseId": 128249921376,
+      "name": "Isolated exploratory registryRead ABBA no-data PSS initialization (no confinement credit)",
+      "startedAt": "2026-11-07T01:09:03Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-07T01:09:04Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-07T01:09:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:11Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "startedAt": "2026-11-07T01:09:04Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:12Z",
+          "conclusion": "success",
+          "name": "Capture exploratory registryRead ABBA source and runner facts",
+          "number": 3,
+          "startedAt": "2026-11-07T01:09:11Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:35Z",
+          "conclusion": "success",
+          "name": "Build fixed exploratory registryRead ABBA observation targets",
+          "number": 4,
+          "startedAt": "2026-11-07T01:09:12Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:38Z",
+          "conclusion": "success",
+          "name": "Verify child PE dependencies",
+          "number": 5,
+          "startedAt": "2026-11-07T01:09:35Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:39Z",
+          "conclusion": "success",
+          "name": "Run synthetic exploratory registryRead ABBA classifiers",
+          "number": 6,
+          "startedAt": "2026-11-07T01:09:38Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:40Z",
+          "conclusion": "success",
+          "name": "Run fixed no-data observation sequence",
+          "number": 7,
+          "startedAt": "2026-11-07T01:09:39Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:41Z",
+          "conclusion": "success",
+          "name": "Retain PSS evidence",
+          "number": 8,
+          "startedAt": "2026-11-07T01:09:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:42Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 16,
+          "startedAt": "2026-11-07T01:09:41Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:09:42Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 17,
+          "startedAt": "2026-11-07T01:09:42Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249921376"
+    },
+    {
+      "completedAt": "2026-11-07T01:09:01Z",
+      "conclusion": "skipped",
+      "databaseId": 128249922645,
+      "name": "Isolated same-lifetime no-data PSS initialization (no confinement credit)",
+      "startedAt": "2026-11-07T01:09:01Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249922645"
+    },
+    {
+      "completedAt": "2026-11-07T01:09:01Z",
+      "conclusion": "skipped",
+      "databaseId": 128249922784,
+      "name": "Isolated no-data observations (no confinement credit)",
+      "startedAt": "2026-11-07T01:09:01Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249922784"
+    },
+    {
+      "completedAt": "2026-11-07T01:09:01Z",
+      "conclusion": "skipped",
+      "databaseId": 128249922882,
+      "name": "Compile Bend policy tests to JavaScript",
+      "startedAt": "2026-11-07T01:09:01Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249922882"
+    },
+    {
+      "completedAt": "2026-11-07T01:09:01Z",
+      "conclusion": "skipped",
+      "databaseId": 128249922950,
+      "name": "Isolated self-child PSS feasibility (no confinement credit)",
+      "startedAt": "2026-11-07T01:09:01Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249922950"
+    },
+    {
+      "completedAt": "2026-11-07T01:09:01Z",
+      "conclusion": "skipped",
+      "databaseId": 128249922954,
+      "name": "Run generated Bend tests on native Windows Node",
+      "startedAt": "2026-11-07T01:09:01Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249922954"
+    },
+    {
+      "completedAt": "2026-11-07T01:09:01Z",
+      "conclusion": "skipped",
+      "databaseId": 128249923042,
+      "name": "Isolated no-data LPAC PSS feasibility (no confinement credit)",
+      "startedAt": "2026-11-07T01:09:01Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747/job/128249923042"
+    }
+  ],
+  "status": "completed",
+  "updatedAt": "2026-11-07T01:09:45Z",
+  "url": "https://github.com/Spaceghost/writ/actions/runs/42322440747"
+}
