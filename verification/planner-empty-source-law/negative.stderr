@@ -1,0 +1,22 @@
+SOME PROOFS FAIL
+Error:
+- expected : True{}
+- observed : False{}
+Context:
+- request     : PlannerEnvelope.N48
+- expiry      : PlannerEnvelope.N48
+- manifest    : PlannerEnvelope.ManifestRef
+- stamp       : PlannerEnvelope.Stamp
+- invocation  : PlannerEnvelope.N48
+- destination : PlannerEnvelope.ObjectRef
+- code        : PlannerEnvelope.Id256
+- operation   : U32
+- output_type : U32
+- evidence    : List<&2, PlannerEnvelope.EvidenceRef>
+- selected    : Transfer.Plan
+Location: Laws.planner_empty_sources_rejects
+312 | def Laws.planner_empty_sources_rejects(request, expiry, manifest, stamp, invocation, destination, code, operation, output_type, evidence, selected):
+313>|   {==}
+    |   ^^^^
+314 |
+bend 2.0.40 is available: run bend update

@@ -1,0 +1,7 @@
+diff --git a/PlannerPlanMatch.bend b/PlannerPlanMatch.bend
+index 69032d8..8ffa180 100644
+--- a/PlannerPlanMatch.bend
++++ b/PlannerPlanMatch.bend
+@@ -105 +105 @@ def proposal_sources_checked(ok: Bool, proposed: P.Proposal, +selected: T.Plan)
+-    case False{} _: False{}
++    case False{} _: True{}
