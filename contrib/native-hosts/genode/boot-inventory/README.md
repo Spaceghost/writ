@@ -123,4 +123,19 @@ fixed public manifest/status syntax and hashes the original bounded manifest
 bytes. It has only syntax-match/malformed results: fabricated or replayed
 matching pairs remain syntactically valid. Its standalone [synthetic
 evidence](../../../../verification/genode-pair-syntax/README.md) does not add
-a native file reader, FFI, worker identity, completion or authority path.
+an FFI, worker identity, completion or authority path.
+
+
+The standalone [`writ_pair_capture`](capture.h) reads only the two fixed
+synthetic public filenames into bounded 4,096/512-byte snapshots. It holds
+`O_PATH` inodes, uses a verified Linux procfs FD view, rechecks both names and
+the directory, and exposes no partial bytes on failure. This independent native
+I/O slice does not parse, hash, authenticate or call the Bend checker; it has no
+worker, FFI or workflow connection. The trusted caller, exclusive stable FD
+table, exclusive owned output directory, Linux kernel and procfs/mount
+namespace remain prerequisites. Cleanup compares saved device/inode/type before closing each owned FD and
+refuses a demonstrably different inode, but that is not proof of ownership.
+A synthetic same-inode FD-number replacement returned partial and was closed;
+concurrent FD-table manipulation and adaptive same-UID mutation are not detected in general; blocked syscalls have no
+external deadline. The [owned-temp controls](../../../../verification/genode-pair-capture/README.md)
+do not qualify any host or establish worker exit or boot consumption.

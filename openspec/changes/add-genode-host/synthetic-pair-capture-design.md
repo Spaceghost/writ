@@ -7,9 +7,7 @@ returns a digest, not a byte snapshot, and the separate
 [Bend checker](synthetic-pair-checker-design.md) performs no filesystem I/O.
 A fixed-name, bounded snapshot primitive is a useful independent native I/O
 slice; neither file nor a successful capture establishes a worker result,
-authenticity, completeness, host qualification, or Writ authority. This is a
-proposal only: no capture, FFI, worker, launcher or workflow is implemented by
-this document.
+authenticity, completeness, host qualification, or Writ authority. The [standalone synthetic capture](../../../contrib/native-hosts/genode/boot-inventory/capture.h) now implements this bounded I/O slice; its [owned-temp evidence](../../../verification/genode-pair-capture/README.md) does not implement an FFI, worker, launcher or workflow.
 
 The native exception permits Linux OS ABI and descriptor lifetime operations,
 not a second protocol or policy engine. The only native outcome is a partial
@@ -89,8 +87,8 @@ supervisor establishes the boundary.
    reviewed syscall plumbing, but must preserve standalone reader behavior.
 4. Read each exact original size into a private fixed buffer using checked
    offset/remaining arithmetic and bounded requests; handle short reads and
-   EINTR without resetting any monotonic check used by the implementation; such
-   a check is not an external deadline. Require an additional one-byte
+   EINTR with at most 32 retries per file across data and EOF reads; persistent
+   interruption refuses. This retry bound is not an external deadline. Require an additional one-byte
    EOF probe and reject early EOF, growth, oversize, read failure or arithmetic
    failure. Recheck the original and data FD's full saved metadata. There is
    no string conversion, normalization, SHA, expected-byte comparison or schema
@@ -103,8 +101,13 @@ supervisor establishes the boundary.
    recheck. Refuse persistent same-text symlink or same-name inode replacement,
    missing entries and observed directory/metadata drift. Do not assume an
    inode/device comparison excludes mount changes: `NO_XDEV` is required.
-   Close every internally owned descriptor once, invalidate its slot before
-   close, and never retry an uncertain close. Only after all closes succeed may
+   For each internally owned descriptor, check saved device/inode/type before
+   close and refuse a demonstrably different object; this cannot establish
+   ownership of a same-inode replacement. Invalidate its slot before the
+   single close attempt and never retry an uncertain close. If its initial
+   acquisition `fstat` fails, the trusted stable-table precondition identifies
+   the just-opened descriptor for one close attempt; still report cleanup
+   unverified because its identity could not be recorded. Only after all closes succeed may
    private byte arrays and lengths be copied to the caller. On any failure,
    close all acquired owned descriptors, report close uncertainty separately,
    leave outputs zero and do not unlink or modify either file.
@@ -121,10 +124,9 @@ external deadline are still absent; timeout cannot guarantee termination of an
 uninterruptible I/O task. No raw contents or retained snapshots are to be
 published by this slice.
 
-## Proposed owned-temporary controls
+## Owned-temporary controls
 
-Before implementation, source review must confirm the exact ABI, ownership,
-error classes and fixture use. Tests operate only on test-owned temporary
+The recorded controls cover the ABI and failure cases below. Tests operate only on test-owned temporary
 files and processes, with no host fixture or protected input. Exercise the
 actual native entry, not a substitute parser:
 
@@ -158,8 +160,9 @@ actual native entry, not a substitute parser:
   than claiming generic FD ownership detection.
 * `interruption_and_boundary`: a deterministic test-only hook calls `_exit`
   in the exact owned capture child at each named phase; its parent waits on
-  its own child and uses no signal. Confirm no result is credited without a
-  separately observed child result. Any separate signaling test must use an
+  its own child and uses no signal. The child snapshot memory is private;
+  no output channel or consumer is implemented, so this checks exit reporting
+  only and does not exercise a completion-credit decision. Any separate signaling test must use an
   independently established race-resistant handle for the exact owned child,
   such as a verified pidfd with no concurrent reaping; refuse if unavailable,
   with no numeric-PID or process-group fallback. A test-owned unrelated

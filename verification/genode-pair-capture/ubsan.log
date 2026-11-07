@@ -1,0 +1,56 @@
+PASS null result refuses and leaves borrowed FD open
+PASS empty byte snapshots
+PASS binary bytes preserve NUL and 255
+PASS both exact caps and short reads
+PASS arbitrary malformed snapshots
+PASS manifest cap plus one
+PASS status cap plus one
+PASS single interrupted read recovers
+PASS early EOF refuses
+PASS growth EOF probe refuses
+PASS repeated EINTR bounded
+PASS wrong procfs
+PASS wrong PID view
+PASS reopen inode mismatch
+PASS cross-mount refusal
+PASS unsupported syscall
+PASS wrong owner simulation
+PASS device classification simulation
+PASS borrowed directory inheritable
+PASS borrowed directory mode
+PASS borrowed directory missing
+PASS nonregular or invalid manifest missing
+PASS nonregular or invalid status missing
+PASS nonregular or invalid manifest symlink
+PASS nonregular or invalid status symlink
+PASS nonregular or invalid manifest FIFO
+PASS nonregular or invalid status FIFO
+PASS nonregular or invalid manifest directory
+PASS nonregular or invalid status directory
+PASS nonregular or invalid manifest wrong mode
+PASS nonregular or invalid status wrong mode
+PASS nonregular or invalid manifest hardlink
+PASS nonregular or invalid status hardlink
+PASS nonregular or invalid manifest socket
+PASS nonregular or invalid status socket
+PASS manifest replacement after phase 3 link=False
+PASS manifest replacement after phase 3 link=True
+PASS manifest replacement after phase 4 link=False
+PASS manifest replacement after phase 4 link=True
+PASS status replacement after phase 3 link=False
+PASS status replacement after phase 3 link=True
+PASS status replacement after phase 4 link=False
+PASS status replacement after phase 4 link=True
+PASS manifest in-place late mutation
+PASS status in-place late mutation
+PASS manifest during-read mutation
+PASS status during-read mutation
+PASS 52 independent operation failures leave outputs zero and no owned FDs
+PASS 14 independent close uncertainties leave outputs zero and no owned FDs
+PASS 14 acquisition identity failures attempt one close and report cleanup unverified
+PASS acquisition identity plus close uncertainty
+PASS different-inode replacement left open with cleanup unverified
+PASS known limitation: same-inode FD replacement closes and returns partial
+PASS closed pin produces cleanup unverified and zero output
+PASS child-local _exit at each of five phases, parent wait without signals
+ALL 137 SYNTHETIC PAIR CAPTURE CHECKS PASSED

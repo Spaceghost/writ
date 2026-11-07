@@ -8,7 +8,7 @@ the fixed synthetic format and hash the exact manifest bytes without treating a
 match as an authenticated observation, successful worker, completed inventory
 or authority. No real worker, host probe, fixture or workflow is introduced.
 
-The pure checker has [standalone synthetic controls](../../../verification/genode-pair-syntax/README.md); optional native capture described below remains unimplemented. The [fixed pair format and staging scope](public-synthetic-manifest-design.md)
+The pure checker has [standalone synthetic controls](../../../verification/genode-pair-syntax/README.md); the separately reviewed native byte-capture slice is synthetic-only; FFI and worker integration remain unimplemented. The [fixed pair format and staging scope](public-synthetic-manifest-design.md)
 and [exclusive FD-table limitation](same-fd-observation-design.md) remain in
 force. The repo's rules place parsing, state machines and their tests in Bend;
 C may perform narrowly scoped host I/O and descriptor lifetime operations,
@@ -99,8 +99,7 @@ perform checked EOF/metadata/identity/close checks, and expose no partial
 buffers on failure. The captured bytes passed to Bend must be the very bytes
 observed and hashed by the pure checker; an FFI conversion or future transport
 needs its own byte-order, bounds, identity and failure review. Do not parse the
-schema or make a match/completion decision in C. Do not add this native capture
-or an FFI/transport in the first Bend-only slice.
+schema or make a match/completion decision in C. This capture remains disconnected from the checker; an FFI/transport requires a separate review.
 
 An owned output directory and an exclusive stable FD table are trust inputs,
 not established by a matching pair, `fstat` or this checker. Same-UID adaptive

@@ -1,0 +1,1 @@
+00000000000019f0 T writ_pair_capture
