@@ -252,6 +252,50 @@ close them. The existing host obligation to close/quarantine handles and
 invalidate authority remains; no native cleanup, host qualification, or
 alternative release path is established by this design.
 
+## Composite binding and frontend reserve
+
+The current [binding implementation](../../../HostBinding.bend) calls
+`Frontend.mount` once for `bind_mount` and `Frontend.open` once for
+`bind_open`. Each successful frontend allocation consumes one revision and
+adds one open handle, so each needs the original `D >= O + 3` reserve; the
+binding's own identity, revision, quota and authority checks still apply.
+
+`bind_attenuate` is different: `derive_frontend` calls `Frontend.dup`, then
+`attenuate_dup` calls `Frontend.attenuate` on the newly created descriptor.
+The first transition uses one successor and adds one open handle; the second
+uses another successor without changing the open count. Starting with `O`
+open handles, the complete operation needs **`D >= O + 4`** to leave the
+new `O + 1` open handles and retirement slot reserved. This is a necessary
+frontend capacity condition, not sufficient authorization for either step.
+
+At `D = O + 3`, the duplicate can satisfy the allocation reserve, but the
+subsequent attenuation cannot preserve the required reserve. The existing
+`derive_frontend_done` returns the original binding state when the frontend
+result rejects. The V2 composition must preserve that all-or-nothing outcome:
+the original frontend and binding records, handle and object/alias counters,
+routes, delegations and quotas remain unchanged, and no alias, native effect,
+charge or refund is committed. At `D = O + 4`, both frontend steps have
+sufficient reserve, but must still pass all caller, token, scope, epoch,
+rights, binding and quota checks. Do not accept a caller-supplied count or
+precomputed capacity as proof that either step is authorized.
+
+For a successful `bind_close` that must close `k` distinct still-open
+frontend handles from the complete original cut, `k <= O`. Each close spends
+one successor and removes one open handle, so an admitted starting reserve
+`D >= O + 1` implies `D - k >= (O - k) + 1`. This arithmetic does not prove
+the cut is complete, callers match, traversal finishes, or the separate
+binding revision, object generations and refunds fit. Preflight those facts
+against the original records as described above; any failure returns the
+entire original state, without a partial close or destruction.
+
+The existing `bind_delegate` and `revoke` do not call a frontend mutation;
+do not deny them solely because no additional frontend allocation reserve is
+available. They retain their own binding checks and numeric obligations, and
+`revoke` still lacks a frontend caller and leaves frontend cleanup to the host.
+Likewise, `DataOS.commit_from_capability` resolves the frontend without
+advancing it. A lack of *additional allocation* headroom alone must not
+bypass or disable its existing live frontend and backplane checks.
+
 ## Implementation and evidence gates
 
 The [integration dependency map](integration-sequencing.md) identifies the

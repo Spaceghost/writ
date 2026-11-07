@@ -62,6 +62,8 @@ descriptor (`R+1`, `O+1`), then attenuates that duplicate (`R+1`, unchanged
 duplicate may pass while attenuation must fail; the whole binding and frontend
 input, quotas and effects must remain unchanged. Other composite paths need
 their own exact prospective accounting, not a single-operation assumption.
+The [composite reserve design](design.md#composite-binding-and-frontend-reserve)
+specifies the complete threshold and rollback cases.
 
 `bind_close` currently closes a directly bound handle, then `close_doomed`
 retains the prior frontend whenever a derived close rejects, and finally
