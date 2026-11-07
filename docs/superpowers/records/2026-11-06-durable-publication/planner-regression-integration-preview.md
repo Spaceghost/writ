@@ -30,8 +30,13 @@ This checks the existing 36 laws; it does not prove the new comparator,
 durable publication or a native handoff. Strict OpenSpec validation reported
 44 passed, 0 failed; it is structural, not acceptance evidence.
 
-Nix and Genode count pins are updated to 2,444 for later runs; no Nix, native
-CPU, GPU or platform CI result is claimed for this combined source. The
+The Nix JavaScript check at exact source `25e70622c06b053ba1b8691da2fb6af6f5c73b4a`
+also passed 2,444 checks with the same output hash. Its derivation was
+`/nix/store/xmikj236v06l557zw72prcj053gfd26y-writ-tests-js.drv`, and its
+output was `/nix/store/6xpisrvpa1j9msmpsi8lwz711d0izbv5-writ-tests-js`.
+This is not a full Nix flake check or Nix native result. The Genode count pin
+is updated to 2,444; no native CPU, GPU or platform CI result is claimed for
+this combined source. The
 [previous durable/handoff/planner record](planner-integration-preview.md) and
 [planner regression records](../../../../verification/planner-comparator-ci-c5a02c7/README.md)
 retain their separate exact-source observations. A prior Genode missing-clock
