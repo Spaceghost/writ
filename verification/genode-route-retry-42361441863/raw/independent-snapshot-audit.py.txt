@@ -1,0 +1,23 @@
+# Read-only flat artifact audit. Never extract paths from the archive.
+# Run: python3 independent-snapshot-audit.py.txt ARTIFACT_ZIP
+import hashlib, json, sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as archive:
+    infos = archive.infolist(); names = [info.filename for info in infos]
+    assert len(names) == len(set(names)) and all('/' not in n and '\\' not in n for n in names)
+    assert 'snapshot-result.json' in names
+    snapshot = archive.getinfo('snapshot-result.json'); assert snapshot.file_size <= 1024 * 1024
+    record = json.loads(archive.read(snapshot))
+    for entry in record['files']:
+        if entry.get('status') != 'snapshot':
+            print('NOT_SNAPSHOT', entry['name'], entry.get('status'))
+            continue
+        info = archive.getinfo(entry['name']); assert info.file_size == entry['bytes']
+        assert info.file_size <= 32 * 1024 * 1024
+        digest = hashlib.sha256(); total = 0
+        with archive.open(info) as stream:
+            while chunk := stream.read(1024 * 1024):
+                total += len(chunk); assert total <= 32 * 1024 * 1024
+                digest.update(chunk)
+        assert total == entry['bytes'] and digest.hexdigest() == entry['sha256']
+        print('VERIFIED', entry['name'], total, digest.hexdigest())
+    print('all listed snapshot files verified; CRC checked by zipfile; no cleanup claim')

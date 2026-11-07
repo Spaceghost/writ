@@ -1,0 +1,11 @@
+# Compare positive public fixture and installed config to exact historical input.
+import hashlib, subprocess, sys, zipfile
+commit='e129c931ceb1d249cf0b0874a91390e5eef840c9'
+source=subprocess.check_output(['git','show',f'{commit}:contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_accept.run'])
+with zipfile.ZipFile(sys.argv[1]) as z:
+ original=z.read('original.run'); actual=z.read('actual.run'); installed=z.read('installed-config.txt')
+with zipfile.ZipFile(sys.argv[2]) as z: prior=z.read('installed-config.txt')
+assert original == source and actual == source and installed == prior
+for name, value in [('fixture',actual),('installed config',installed)]:
+ print(name,'bytes',len(value),'sha256',hashlib.sha256(value).hexdigest())
+print('positive source/config exact; no claim of process attestation')

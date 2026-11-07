@@ -1,0 +1,17 @@
+# Verify the artifact's recorded input list against its fixed Git tree.
+# This checks bytes, not actual process identity or execution history.
+import hashlib, subprocess, sys, zipfile
+commit='e129c931ceb1d249cf0b0874a91390e5eef840c9'
+with zipfile.ZipFile(sys.argv[1]) as z:
+    entries=[i for i in z.infolist() if i.filename=='source-sha256.txt']
+    assert len(entries)==1 and entries[0].file_size<=1024*1024
+    listing=z.read(entries[0]).decode('utf8')
+count=0
+for line in listing.splitlines():
+    expected, path = line.split('  ',1)
+    assert len(expected)==64 and path and not path.startswith('/') and '..' not in path.split('/')
+    source=subprocess.check_output(['git','show',f'{commit}:{path}'])
+    assert hashlib.sha256(source).hexdigest()==expected, path
+    count+=1
+print('fixed_git_source=',commit,'recorded_input_hashes_verified=',count)
+print('hash observations are not process attestation')

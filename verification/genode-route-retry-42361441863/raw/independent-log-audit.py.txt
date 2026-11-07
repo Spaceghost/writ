@@ -1,0 +1,46 @@
+# Public artifact read-only independent gzip integrity/marker observation.
+# Run: python3 independent-log-audit.py.txt SCENARIO_ARTIFACT_ZIP positive|negative
+import hashlib, json, pathlib, struct, sys, zipfile, zlib
+path = pathlib.Path(sys.argv[1]); scenario = sys.argv[2]
+assert scenario in ('positive', 'negative')
+with zipfile.ZipFile(path) as archive:
+    def one(name, limit):
+        entries = [entry for entry in archive.infolist() if entry.filename == name]
+        assert len(entries) == 1 and entries[0].file_size <= limit
+        with archive.open(entries[0]) as stream:
+            data = stream.read(limit + 1)
+        assert len(data) == entries[0].file_size and len(data) <= limit
+        return data
+    meta = json.loads(one('run-meta.json', 65536))
+    packed = one('run.log.gz', 32 * 1024 * 1024)
+assert meta['capture'] == 'complete' and meta['complete']
+assert len(packed) == meta['compressed']['bytes']
+assert hashlib.sha256(packed).hexdigest() == meta['compressed']['sha256']
+assert packed[:4] == b'\x1f\x8b\x08\x00'
+needles = ([b"writ_channel: channel 1 opened for 'clients -> writ_client_r -> channel' route subject 1",
+            b'monitor: SYNTHETIC authority',
+            b'monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0',
+            b'client: PASS decision 1 reason 0 as expected', b'child "writ_client_r" exited with exit value 0',
+            b'nested public R fixture: PASS'] if scenario == 'positive' else
+           [b'[init -> writ_bend_monitor] writ_channel: service announced',
+            b'[init -> writ_bend_monitor] monitor: SYNTHETIC authority',
+            b'[init -> clients] \x1b[34mWarning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")\x1b[0m',
+            b'[init -> clients -> writ_client_r] \x1b[31mError: stop because parent denied Writ_channel-session:',
+            b'nested public R route-negative fixture: PASS'])
+seen = [False] * len(needles); carry = b''; h = hashlib.sha256(); crc = 0; size = 0
+decoder = zlib.decompressobj(-15); pending = packed[10:]
+while not decoder.eof:
+    chunk = decoder.decompress(pending, 1024 * 1024); pending = decoder.unconsumed_tail
+    if not chunk and not pending and not decoder.eof: raise ValueError('unexpected end')
+    size += len(chunk); assert size <= 512 * 1024 * 1024
+    h.update(chunk); crc = zlib.crc32(chunk, crc); window = carry + chunk
+    seen = [previous or needle in window for previous, needle in zip(seen, needles)]
+    carry = window[-max(map(len, needles)):]
+trailer = decoder.unused_data
+assert len(trailer) == 8 and struct.unpack('<II', trailer) == (crc & 0xffffffff, size & 0xffffffff)
+assert size == meta['raw']['bytes'] and h.hexdigest() == meta['raw']['sha256']
+print('compressed_bytes=', len(packed), 'sha256=', meta['compressed']['sha256'])
+print('raw_bytes=', size, 'sha256=', h.hexdigest())
+print('child_status=', repr(meta.get('child')))
+for needle, found in zip(needles, seen): print('found=', found, repr(needle))
+print('gzip_crc_hash_integrity=verified; marker_observations_as_listed; cleanup=unverified')

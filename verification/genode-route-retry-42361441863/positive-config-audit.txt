@@ -1,0 +1,3 @@
+fixture bytes 4186 sha256 075f830a6054ca5ca2df61e4ed7ed8b3e778ee47bc39b6f4f474801edca77776
+installed config bytes 1710 sha256 2255cb427b821bdb8516aef7c0d6fe53bfaa40b4a43f8549f3a97fc774738b22
+positive source/config exact; no claim of process attestation

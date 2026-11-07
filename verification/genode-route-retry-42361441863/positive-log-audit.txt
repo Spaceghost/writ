@@ -1,0 +1,10 @@
+compressed_bytes= 2520919 sha256= 6a84cec68781082fdf1866cb3acb6859b860c065dfc57957a7c02d7afb14fd6f
+raw_bytes= 246349476 sha256= 611c9ea6aae25706b205c6daf9bfc3ebeb85ca404bd8e2316cb1180fca66904a
+child_status= {'code': 0, 'signal': None}
+found= True b"writ_channel: channel 1 opened for 'clients -> writ_client_r -> channel' route subject 1"
+found= True b'monitor: SYNTHETIC authority'
+found= True b'monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0'
+found= True b'client: PASS decision 1 reason 0 as expected'
+found= True b'child "writ_client_r" exited with exit value 0'
+found= True b'nested public R fixture: PASS'
+gzip_crc_hash_integrity=verified; marker_observations_as_listed; cleanup=unverified
