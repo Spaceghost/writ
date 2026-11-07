@@ -1,0 +1,10 @@
+PASS producer-drop-guard bend: exit 0, passed; node: exit 0, passed
+PASS producer-and-verifier-drop bend: exit 1, named assertion producer drop retains original cycle rejection; node: exit 1, named assertion producer drop retains original cycle rejection
+PASS verifier-skip-first bend: exit 1, named assertion stage verifier checks first original edge; node: exit 1, named assertion stage verifier checks first original edge
+PASS duplicate-guard bend: exit 1, named assertion stage separated duplicate first order rejected; node: exit 1, named assertion stage separated duplicate first order rejected
+PASS dangling-source-guard bend: exit 1, named assertion stage missing first source rejected; node: exit 1, named assertion stage missing first source rejected
+PASS stage-sentinel bend: exit 0, passed; node: exit 0, passed
+PASS stage-cap-bypass bend: exit 1, named assertion stage cap blocks sentinel; node: exit 1, named assertion stage cap blocks sentinel
+PASS edge-sentinel bend: exit 0, passed; node: exit 0, passed
+PASS edge-cap-bypass bend: exit 1, named assertion edge cap blocks sentinel; node: exit 1, named assertion edge cap blocks sentinel
+ALL STAGE MUTATION AND SENTINEL CONTROLS PASSED

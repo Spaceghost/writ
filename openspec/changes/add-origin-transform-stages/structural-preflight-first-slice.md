@@ -6,8 +6,9 @@ A public synthetic recipe with stage IDs `10`, `20`, and `30` and dependencies
 [stage contract](specs/origin-transform-stages/spec.md) requires bounded,
 acyclic graphs, but no staged transform is implemented. A small pure Bend
 preflight can test this subset without selecting a scheduler, authenticating a
-recipe or enabling protected execution. This document is design only: no
-checker or test described here has been implemented or run.
+recipe or enabling protected execution. The bounded [synthetic implementation](../../../StageGraph.bend) and
+[checks](../../../StageGraphTests.bend) now exercise this subset; they do not
+implement staged execution or complete OT-001.
 
 This synthetic subset supports part of [OT-001](specs/origin-transform-stages/spec.md),
 not its complete admission requirement. In particular it does not validate
@@ -113,9 +114,11 @@ constant-refusal evidence. `StructurallyAcyclic` says only the supplied relation
 passes this bounded subset. It cannot reveal an omitted dependency, typed input,
 protected configuration, hidden tool, mandatory hook or authority fact.
 
-## Proposed independent controls
+## Synthetic independent controls
 
-All tests are planned, not yet run. Use manually specified expected results,
+The named controls are exercised by the implemented suite and recorded in
+[traceability](../../traceability/origin-transform-stages.md) and
+[verification](../../../verification/stage-graph/README.md). Use manually specified expected results,
 not an oracle built from the production producer or verifier. Execute meaningful
 standalone and full-suite checks on pinned Bend and generated Node; compare
 outputs and inspect generated Node branches for the exact compiled source.

@@ -1,0 +1,2 @@
+PASS: edge cap blocks sentinel
+PASS: edge sentinel reachable in range

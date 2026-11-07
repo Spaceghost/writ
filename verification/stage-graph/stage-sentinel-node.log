@@ -1,0 +1,2 @@
+PASS: stage cap blocks sentinel
+PASS: stage sentinel reachable in range

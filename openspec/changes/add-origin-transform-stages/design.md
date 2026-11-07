@@ -28,8 +28,8 @@ or implement selective disclosure. This proposal defines orchestration in Bend
 | Requested computation | Only its declared prepared or otherwise approved inputs | A private result for required post-processing |
 | Release processing | The exact admitted result and its permitted validation inputs | A sealed release candidate for the final authorization path |
 
-A [design-only bounded structural preflight](structural-preflight-first-slice.md)
-examines a small synthetic subset; no stage graph admission is implemented.
+A [bounded synthetic structural preflight](structural-preflight-first-slice.md)
+checks a small subset; no stage graph admission is implemented.
 
 The graph has finite bounds, unique stage identities, explicit input ordering,
 typed edges, required dependencies, and named terminal outputs. Cycles, dangling

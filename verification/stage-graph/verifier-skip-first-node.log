@@ -1,0 +1,32 @@
+PASS: stage parallel branches accepted
+PASS: stage reordered branches accepted
+PASS: stage single isolated accepted
+PASS: stage 32 duplicate edge occurrences accepted
+PASS: stage self cycle rejected
+PASS: stage two cycle rejected
+PASS: stage three cycle rejected
+PASS: stage disconnected cycle rejected
+PASS: stage eight node chain accepted
+PASS: stage eight node return cycle rejected
+PASS: stage separated duplicate first order rejected
+PASS: stage separated duplicate other order rejected
+PASS: stage missing first source rejected
+PASS: stage missing first destination rejected
+PASS: stage missing last source rejected
+PASS: stage missing last destination rejected
+PASS: stage endpoint U32 extremes accepted
+PASS: stage empty refused
+PASS: stage count precedes edge count
+PASS: stage far over cap refused
+PASS: stage edge cap precedes empty
+PASS: stage far edge cap refused
+PASS: stage duplicate precedes dangling
+PASS: stage dangling precedes cycle
+PASS: stage original verifier accepts valid witness
+PASS: stage verifier missing witness rejected
+PASS: stage verifier duplicate witness rejected
+PASS: stage verifier unknown witness rejected
+PASS: stage verifier rank out of range rejected
+PASS: stage verifier incomplete witness rejected
+PASS: stage verifier checks original return edge
+FAIL: stage verifier checks first original edge

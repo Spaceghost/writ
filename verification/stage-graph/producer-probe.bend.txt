@@ -1,0 +1,10 @@
+import Base
+import ./StageGraph.bend as G
+import ./Test.bend as Test
+def rejected(x: G.Outcome) -> Bool:
+  match x:
+    case G.CyclicOrInvalidWitness{}: True{}
+    case _: False{}
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(rejected(G.check(G.Graph{[1, 2], [G.Edge{1, 2}, G.Edge{2, 1}]})), "producer drop retains original cycle rejection")

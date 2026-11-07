@@ -1,0 +1,12 @@
+import Base
+import ./StageGraph.bend as G
+import ./Test.bend as Test
+def tag(x: G.Outcome) -> U32:
+  match x:
+    case G.TooManyStages{}: 1
+    case G.StructurallyAcyclic{}: 7
+    case _: 0
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(U32.is_eq(tag(G.check(G.Graph{[1,2,3,4,5,6,7,8,9], []})), 1), "stage cap blocks sentinel")
+    Test.check(U32.is_eq(tag(G.check(G.Graph{[1,2,3,4,5,6,7,8], []})), 7), "stage sentinel reachable in range")

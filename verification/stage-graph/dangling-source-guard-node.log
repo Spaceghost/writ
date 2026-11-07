@@ -1,0 +1,13 @@
+PASS: stage parallel branches accepted
+PASS: stage reordered branches accepted
+PASS: stage single isolated accepted
+PASS: stage 32 duplicate edge occurrences accepted
+PASS: stage self cycle rejected
+PASS: stage two cycle rejected
+PASS: stage three cycle rejected
+PASS: stage disconnected cycle rejected
+PASS: stage eight node chain accepted
+PASS: stage eight node return cycle rejected
+PASS: stage separated duplicate first order rejected
+PASS: stage separated duplicate other order rejected
+FAIL: stage missing first source rejected

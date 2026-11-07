@@ -1,0 +1,16 @@
+import Base
+import ./StageGraph.bend as G
+import ./Test.bend as Test
+def tag(x: G.Outcome) -> U32:
+  match x:
+    case G.TooManyEdges{}: 2
+    case G.StructurallyAcyclic{}: 7
+    case _: 0
+def edges(n: Nat, acc: +List<G.Edge>) -> +List<G.Edge>:
+  match n:
+    case 0n: acc
+    case 1n+next: edges(next, Con{G.Edge{1, 1}, acc})
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(U32.is_eq(tag(G.check(G.Graph{[1], edges(33n, [])})), 2), "edge cap blocks sentinel")
+    Test.check(U32.is_eq(tag(G.check(G.Graph{[1], edges(32n, [])})), 7), "edge sentinel reachable in range")

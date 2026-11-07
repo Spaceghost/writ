@@ -1,0 +1,81 @@
+### producer-drop-guard
+--- StageGraph.bend
++++ StageGraph.producer-drop-guard.bend
+@@ -113,0 +114,5 @@
++def mutant_drop_first(edges: +List<Edge>) -> +List<Edge>:
++  match edges:
++    case Nil{}: Nil{}
++    case Con{_, rest}: rest
++
+@@ -197 +202 @@
+-    case True{}: witness_checked(peel(8n, stages, edges, 0, Some{Nil{}}), Graph{stages, edges})
++    case True{}: witness_checked(peel(8n, stages, mutant_drop_first(edges), 0, Some{Nil{}}), Graph{stages, edges})
+### producer-and-verifier-drop
+--- StageGraph.bend
++++ StageGraph.producer-and-verifier-drop.bend
+@@ -113,0 +114,5 @@
++def mutant_drop_first(edges: +List<Edge>) -> +List<Edge>:
++  match edges:
++    case Nil{}: Nil{}
++    case Con{_, rest}: rest
++
+@@ -120 +125 @@
+-      original_ordered(32n, edges, witness)
++      original_ordered(32n, mutant_drop_first(edges), witness)
+@@ -197 +202 @@
+-    case True{}: witness_checked(peel(8n, stages, edges, 0, Some{Nil{}}), Graph{stages, edges})
++    case True{}: witness_checked(peel(8n, stages, mutant_drop_first(edges), 0, Some{Nil{}}), Graph{stages, edges})
+### verifier-skip-first
+--- StageGraph.bend
++++ StageGraph.verifier-skip-first.bend
+@@ -113,0 +114,5 @@
++def mutant_drop_first(edges: +List<Edge>) -> +List<Edge>:
++  match edges:
++    case Nil{}: Nil{}
++    case Con{_, rest}: rest
++
+@@ -120 +125 @@
+-      original_ordered(32n, edges, witness)
++      original_ordered(32n, mutant_drop_first(edges), witness)
+### duplicate-guard
+--- StageGraph.bend
++++ StageGraph.duplicate-guard.bend
+@@ -58 +58 @@
+-      Bool.not(has_stage(8n, rest, head)) && unique(next, rest)
++      unique(next, rest)
+### dangling-source-guard
+--- StageGraph.bend
++++ StageGraph.dangling-source-guard.bend
+@@ -65 +65 @@
+-      has_stage(8n, stages, from) && has_stage(8n, stages, to) && valid_edges(next, rest, stages)
++      has_stage(8n, stages, to) && valid_edges(next, rest, stages)
+### stage-sentinel
+--- StageGraph.bend
++++ StageGraph.stage-sentinel.bend
+@@ -217 +217 @@
+-    case True{}: edge_cap_checked(edges_within(32n, edges), stages, edges)
++    case True{}: StructurallyAcyclic{}
+### stage-cap-bypass
+--- StageGraph.bend
++++ StageGraph.stage-cap-bypass.bend
+@@ -217 +217 @@
+-    case True{}: edge_cap_checked(edges_within(32n, edges), stages, edges)
++    case True{}: StructurallyAcyclic{}
+@@ -221 +221 @@
+-    case Graph{+stages, edges}: stage_cap_checked(stages_within(8n, stages), stages, edges)
++    case Graph{+stages, edges}: stage_cap_checked(True{}, stages, edges)
+### edge-sentinel
+--- StageGraph.bend
++++ StageGraph.edge-sentinel.bend
+@@ -212 +212 @@
+-    case True{}: nonempty(stages, edges)
++    case True{}: StructurallyAcyclic{}
+### edge-cap-bypass
+--- StageGraph.bend
++++ StageGraph.edge-cap-bypass.bend
+@@ -212 +212 @@
+-    case True{}: nonempty(stages, edges)
++    case True{}: StructurallyAcyclic{}
+@@ -217 +217 @@
+-    case True{}: edge_cap_checked(edges_within(32n, edges), stages, edges)
++    case True{}: edge_cap_checked(True{}, stages, edges)

@@ -937,3 +937,8 @@ The [automatic standard Genode CI for 189f42b](verification/master-ci-189f42b/RE
 passed its policy and public mount fixtures. Its source inventory includes the
 standalone pair-capture files; the workflow does not execute their controls and
 is not host qualification.
+
+The [synthetic stage-graph record](verification/stage-graph/README.md) covers a
+bounded structural preflight and its independent original-edge verifier. It
+neither authenticates a staged recipe nor implements stage admission or host
+execution; origin-stage acceptance tasks remain open.

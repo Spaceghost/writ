@@ -1,0 +1,6 @@
+Generated Node artifact inspected: /tmp/writ-stage-focused.js
+SHA-256: 20ba838ec9aef293ffa4a2b44f96ff84dbfaa2373b60eaec8e86eedbb7eb0153
+StageGraph.bend SHA-256: b25ea1b909c339795564c18894688fe64ab198de283bcf6cc67be9b36925ce64
+StageGraphTests.bend SHA-256: d983b5169457d5a578c36308243c4d14be95e4324357768e67648d79f6a86d19
+The generated stage_cap_checked false branch returns TooManyStages and its true branch calls edges_within. edge_cap_checked returns TooManyEdges before nonempty/duplicate/edge/cycle checks on its false branch. The verifier's stage/edge/rank caps likewise gate their later calls; after all fixed caps, its combined Boolean checks are eagerly evaluated but each traverses bounded input.
+This is inspection of this exact external generated file, not process attestation. Sentinel mutants separately demonstrate reachability in modified source; they do not alone observe the original downstream functions executing or not executing.

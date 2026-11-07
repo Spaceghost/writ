@@ -112,9 +112,9 @@ See the [backend guide](writfs/README.md) and its
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
-native CPU backends**. The 2,318-check suite adds 37 synthetic locality conjunction checks, eight independent planner order checks and ten synthetic duplicate-binding checks, alongside 118 synthetic Linux monitor checks, five
+native CPU backends**. The 2,356-check suite adds 38 synthetic stage-graph structural checks and 37 synthetic locality conjunction checks, eight independent planner order checks and ten synthetic duplicate-binding checks, alongside 118 synthetic Linux monitor checks, five
 HostWire bounds and error-order checks, 39 synthetic handoff checks, 60
-synthetic planner-envelope codec checks, one additional N48 boundary regression, 61 plan-comparison checks, two byte-range checks and 35 synthetic frontend-composition checks. The composition does not authenticate a planner request or implement an adapter. The codec produces untrusted descriptions;
+synthetic planner-envelope codec checks, one additional N48 boundary regression, 61 plan-comparison checks, two byte-range checks and 35 synthetic frontend-composition checks. The stage-graph checks describe only the supplied graph, not stage admission or completeness. The composition does not authenticate a planner request or implement an adapter. The codec produces untrusted descriptions;
 it does not implement a planner endpoint or admission. The
 handoff model does not establish a native Windows handoff or protected-host
 confinement; see the verification record for backend-specific results.
