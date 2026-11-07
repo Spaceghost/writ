@@ -68,6 +68,7 @@ a native machine-code Bend runtime.
 | `init_report_test.c` | Synthetic fixed-report framing and positive-control checks; no native confinement claim |
 | `pss_observer.c`, `pss_child.c`, `pss_table.[ch]`, `pss_progress.[ch]` | Fixed self-created, suspended synthetic-child handle-snapshot feasibility probe; bounded classification and cleanup, no environment proof or Writ authority |
 | `pss_table_test.c`, `pss_progress_test.c` | Portable synthetic table and completion-classification cases; no Windows API execution |
+| `pss_lpac_observer.c`, `pss_lpac_progress.[ch]`, `pss_lpac_progress_test.c` | Unrun no-data LPAC PSS observer, bounded progress/cleanup classifiers and synthetic tests; no Writ actor or data path |
 | `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.
@@ -244,3 +245,18 @@ not proof of checked cleanup, and cancellation may prevent artifact upload.
 This branch-only workflow aid must not be merged into the policy workflow. Neither the probe nor its results establish
 process environment equivalence, byte-worker confinement, or host qualification.
 See the [research record](../../../docs/superpowers/records/2026-11-06-windows-init/pss-readback-research.md).
+
+## LPAC PSS feasibility (not yet executed)
+
+The fixed-child LPAC PSS observer uses the existing unqualified canary launcher,
+keeps its child suspended, and checks a bounded handle snapshot and two owned
+synthetic objects. Its observer-only budget permits breakaway so the child can
+enter the unchanged UI-restricted LPAC job; the observer verifies both job
+memberships. Windows breakaway, outer job interaction, PSS access, filter and
+profile cleanup are untested. A distinct `lane/windows-pss-lpac` manual job is
+prepared but has not run, and must never be merged into the policy workflow.
+The portable classifier tests check missing/failed bits, timeout and cleanup
+ordering; **native adapter API, timeout and cleanup faults are not injected**.
+See the [design](../../../docs/superpowers/records/2026-11-06-windows-init/pss-lpac-feasibility-design.md).
+The observer has no fixture bytes or policy pipe; the environment is not
+independently read, and no result qualifies the byte worker or Windows host.

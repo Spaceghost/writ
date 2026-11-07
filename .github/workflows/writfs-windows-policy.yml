@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.ref != 'refs/heads/lane/windows-init-diagnostic' && github.ref != 'refs/heads/lane/windows-pss' }}
+    if: ${{ github.ref != 'refs/heads/lane/windows-init-diagnostic' && github.ref != 'refs/heads/lane/windows-pss' && github.ref != 'refs/heads/lane/windows-pss-lpac' }}
     name: Compile Bend policy tests to JavaScript
     runs-on: [self-hosted, linux, x64, bak]
     timeout-minutes: 20
@@ -378,5 +378,89 @@ jobs:
         with:
           name: windows-pss-no-data-evidence-${{ github.run_attempt }}
           path: ${{ runner.temp }}/windows-pss-logs/
+          if-no-files-found: error
+          retention-days: 14
+
+  pss-lpac-feasibility:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/windows-pss-lpac' }}
+    name: Isolated no-data LPAC PSS feasibility (no confinement credit)
+    runs-on: windows-2025
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Capture LPAC PSS source and runner facts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-logs'
+          New-Item -ItemType Directory -Force $logs | Out-Null
+          @("source=$env:GITHUB_SHA", "runner=$env:ImageOS", "image=$env:ImageVersion", "os=$([Environment]::OSVersion.VersionString)", 'self_created_child_only=1 no_data=1 confinement_credit=none') |
+            Out-File (Join-Path $logs 'environment.txt') -Encoding utf8
+          Get-FileHash contrib/native-hosts/windows/pss_lpac_observer.c,contrib/native-hosts/windows/pss_lpac_progress.c,contrib/native-hosts/windows/pss_lpac_progress.h,contrib/native-hosts/windows/pss_lpac_progress_test.c,contrib/native-hosts/windows/pss_child.c,contrib/native-hosts/windows/pss_table.c,contrib/native-hosts/windows/pss_table.h,contrib/native-hosts/windows/pss_table_test.c,contrib/native-hosts/windows/pss_progress.c,contrib/native-hosts/windows/pss_progress.h,contrib/native-hosts/windows/pss_progress_test.c,contrib/native-hosts/windows/init_worker.c,contrib/native-hosts/windows/worker.c,contrib/native-hosts/windows/worker.h,contrib/native-hosts/windows/isolation.c,contrib/native-hosts/windows/isolation.h,contrib/native-hosts/windows/probe.h,contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt -Algorithm SHA256 |
+            Format-List | Out-File (Join-Path $logs 'sources.txt') -Encoding utf8
+      - name: Build fixed LPAC PSS feasibility targets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-build'
+          & cmake -S contrib/native-hosts/windows/init-diagnostic -B $build -A x64 2>&1 | Tee-Object -FilePath (Join-Path $logs 'configure.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'PSS configuration failed.' }
+          & cmake --build $build --config Release --parallel 2 --target writfs-pss-lpac-observer writfs-pss-child writfs-pss-table-test writfs-pss-progress-test writfs-pss-lpac-progress-test 2>&1 | Tee-Object -FilePath (Join-Path $logs 'build.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'PSS build failed.' }
+          $ErrorActionPreference = 'Stop'
+          $binaryHashes = @(Get-FileHash (Join-Path $build 'Release\writfs-pss-lpac-observer.exe'),(Join-Path $build 'Release\writfs-pss-child.exe'),(Join-Path $build 'Release\writfs-pss-table-test.exe'),(Join-Path $build 'Release\writfs-pss-progress-test.exe'),(Join-Path $build 'Release\writfs-pss-lpac-progress-test.exe') -Algorithm SHA256)
+          if ($binaryHashes.Count -ne 5) { throw 'Expected all five LPAC PSS binary hashes.' }
+          $binaryHashes | Format-List | Out-File (Join-Path $logs 'binaries.txt') -Encoding utf8
+      - name: Run synthetic LPAC PSS classifiers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-build'
+          $results = & ctest --test-dir $build -C Release -R '^pss-.*-synthetic$' --no-tests=error --output-on-failure 2>&1
+          $testExit = $LASTEXITCODE
+          $results | Tee-Object -FilePath (Join-Path $logs 'synthetic.txt')
+          if ($testExit -ne 0 -or -not ($results -match 'pss-table-synthetic') -or -not ($results -match 'pss-progress-synthetic') -or -not ($results -match 'pss-lpac-progress-synthetic')) {
+            throw 'All three synthetic LPAC PSS classifier tests must run and pass.'
+          }
+      - name: Observe fixed suspended no-data LPAC child
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-logs'
+          $exe = Join-Path $env:RUNNER_TEMP 'windows-pss-lpac-build\Release\writfs-pss-lpac-observer.exe'
+          $statusLog = Join-Path $logs 'supervision.txt'
+          try {
+            $process = Start-Process -FilePath $exe -PassThru -NoNewWindow `
+              -RedirectStandardOutput (Join-Path $logs 'observer-stdout.txt') `
+              -RedirectStandardError (Join-Path $logs 'observer-stderr.txt')
+            if (-not $process.WaitForExit(30000)) {
+              'timeout=1 observer_termination=attempting cleanup=unverified' | Out-File $statusLog -Encoding utf8
+              try {
+                $process.Kill()
+                'observer_termination=requested' | Add-Content $statusLog -Encoding utf8
+              } catch {
+                "observer_termination=failed detail=$_" | Add-Content $statusLog -Encoding utf8
+              }
+              $retired = $process.WaitForExit(5000)
+              "observer_exit_observed=$retired child_cleanup=unverified vm_teardown=fallback" | Add-Content $statusLog -Encoding utf8
+              throw 'LPAC PSS observer timed out; scoped cleanup is unverified.'
+            }
+            $process.Refresh()
+            "timeout=0 observer_exit=$($process.ExitCode)" | Out-File $statusLog -Encoding utf8
+            if ($process.ExitCode -ne 0) { throw 'LPAC PSS observation incomplete or cleanup failed.' }
+          } catch {
+            "PSS supervision incomplete: $_" | Add-Content $statusLog -Encoding utf8
+            throw
+          }
+      - name: Retain PSS evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-pss-lpac-no-data-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/windows-pss-lpac-logs/
           if-no-files-found: error
           retention-days: 14
