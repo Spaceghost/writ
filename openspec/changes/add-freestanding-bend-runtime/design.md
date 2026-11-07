@@ -15,6 +15,9 @@ builds with GCC 16.2.1 and stops under QEMU 11.1.2 after printing its banner
 ([docs/BEND-RUNTIME.md](../../../docs/BEND-RUNTIME.md)). That failure belongs to
 Drift's reference kernel on this toolchain and is recorded, not resolved, here.
 
+The [implementation plan](implementation-plan.md) orders the remaining work
+and its evidence gates; all tasks remain pending.
+
 ## Decisions
 
 ### The evaluator and effect table are not modified
