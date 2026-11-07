@@ -75,6 +75,8 @@ a native machine-code Bend runtime.
 | `registry_ab_checks.[ch]`, `registry_ab_checks_test.c`, `registry_ab_token_test.c`, `registry_ab_run.ps1` | Synthetic capability/lifecycle/failure classifiers and fixed workflow supervisor; no confinement claim |
 | `win32k_ac_observer.c`, `win32k_ac_launch.[ch]`, `win32k_ac_checked.[ch]`, `win32k_ac_token.[ch]` | Fixed zero-capability no-data Win32k mitigation comparison and scoped native ownership/readbacks; no Writ actor, authority or release decision |
 | `win32k_ac_checks.[ch]`, `win32k_ac_checks_test.c`, `win32k_ac_token_test.c`, `win32k_ac_run.ps1` | Synthetic mitigation/lifecycle/failure classifiers and fixed-sequence workflow supervisor; no ambient or byte-worker confinement claim |
+| `combined_ad_observer.c`, `combined_ad_launch.[ch]`, `combined_ad_checked.[ch]`, `combined_ad_token.[ch]` | Fixed no-data combined registryRead/Win32k observation and scoped native ownership/readbacks; no Writ actor, authority or release decision |
+| `combined_ad_checks.[ch]`, `combined_ad_checks_test.c`, `combined_ad_token_test.c`, `combined_ad_run.ps1` | Synthetic capability/mitigation/lifecycle/failure classifiers and fixed-sequence supervisor; no confinement or causation claim |
 | `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.

@@ -102,3 +102,18 @@ target_compile_definitions(writfs-win32k-ac-token-test PRIVATE UNICODE _UNICODE 
 target_compile_options(writfs-win32k-ac-token-test PRIVATE /W4 /sdl /guard:cf)
 target_link_libraries(writfs-win32k-ac-token-test PRIVATE advapi32)
 add_test(NAME win32k-ac-token-synthetic COMMAND writfs-win32k-ac-token-test)
+
+# Exploratory no-data combined initializer observation; never run by configuration.
+add_executable(writfs-combined-ad-observer ../combined_ad_observer.c ../combined_ad_launch.c ../combined_ad_checked.c ../combined_ad_token.c ../combined_ad_checks.c ../pss_init_pipe.c ../pss_init_progress.c ../pss_lpac_progress.c ../pss_table.c ../isolation.c)
+target_compile_definitions(writfs-combined-ad-observer PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-combined-ad-observer PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-combined-ad-observer PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-combined-ad-observer PRIVATE advapi32 bcrypt fwpuclnt rpcrt4 userenv ole32 ws2_32 OneCoreUAP)
+add_executable(writfs-combined-ad-checks-test ../combined_ad_checks_test.c ../combined_ad_checks.c)
+target_compile_options(writfs-combined-ad-checks-test PRIVATE /W4 /sdl /guard:cf)
+add_test(NAME combined-ad-checks-synthetic COMMAND writfs-combined-ad-checks-test)
+add_executable(writfs-combined-ad-token-test ../combined_ad_token_test.c ../combined_ad_token.c ../combined_ad_checks.c)
+target_compile_definitions(writfs-combined-ad-token-test PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-combined-ad-token-test PRIVATE /W4 /sdl /guard:cf)
+target_link_libraries(writfs-combined-ad-token-test PRIVATE advapi32)
+add_test(NAME combined-ad-token-synthetic COMMAND writfs-combined-ad-token-test)
