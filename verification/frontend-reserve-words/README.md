@@ -42,4 +42,18 @@ records the same [exit](proof-no-lean-reproduction.exit),
 and the previously built Lean-backed kernel selected via `BENDTT`, SHA-256
 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`.
 The [successful stderr](proof.stderr) is empty. The existing laws do not prove
-this new arithmetic reference. Native CPU evidence will be recorded separately.
+this new arithmetic reference.
+
+The optimized native build and explicit GPU-off CPU run completed successfully.
+Its [output](native.log) matches the full Bend and Node logs byte-for-byte,
+with 2,698 PASS lines. [Build stdout](native-build.log),
+[build stderr](native-build.stderr) and [run stderr](native.stderr) are empty.
+The 134 inputs were checked before and after build and execution. This is CPU
+evidence, not GPU verification.
+
+Separate synthetic native checks passed: [24 allocator invariants](allocator.log)
+under ASan/UBSan and the owned-temp capture-to-Bend/Node [handoff](handoff.log).
+Their stderr logs are [allocator](allocator.stderr) and [handoff](handoff.stderr).
+They do not test a native frontend or authenticate a host. Strict OpenSpec
+validation is retained in [openspec.log](openspec.log); the evaluated Nix
+source filter and assertion gate are described in [nix-evaluation.txt](nix-evaluation.txt).
