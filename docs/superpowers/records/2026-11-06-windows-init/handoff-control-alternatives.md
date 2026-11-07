@@ -24,6 +24,10 @@ The best **candidate for a narrowly scoped feasibility design** is the inherited
 
 [Anonymous pipes do not support overlapped I/O](https://learn.microsoft.com/en-us/windows/win32/ipc/anonymous-pipe-operations), and a synchronous write may wait while a nonreading worker fills the pipe. The repository's `policy_pipe.c` uses a separate writer thread, `CancelSynchronousIo`, job termination and an emergency process termination if a writer cannot retire; that design is a precedent to study, not proof this new channel is safe. Any chosen deadline must account for cancellation races, writer buffer lifetime, exact close/EOF ordering, broker/worker crash and bounded cleanup; synthetic fault injection and an isolated Windows test are prerequisites. An overlapped named-pipe design may solve part of the I/O deadline problem but brings the namespace and access-control concerns above.
 
+The follow-up [endpoint inventory and Bend model design](handoff-inventory-and-model-design.md)
+records the proposed effects, trusted-input assumptions and native evidence
+gaps. It is a design sketch, not an implemented or qualified host path.
+
 ## Reachable-resource control: evidence and nonclaims
 
 The smallest reviewable authority deliverable is a per-channel matrix listing (a) construction and owner, (b) creation/transition/commit lifetime, (c) exact access rights and allowed peers, (d) enforcement for reads and writes, (e) how independently authenticated identity and current Bend scope are bound, (f) tested negative and ordinary positive controls, and (g) verified retirement or explicit unknown. It must include both pipe directions, both events, process/token handles, mount and public outside path, receiver sockets, profile/registry/cache state, console/desktop, mappings, logs/errors/timing and any resources opened by initialization. Object or token readback is evidence of a specific fact; the security argument must cover *all admitted routes and continuous enforcement*, not claim that a finite snapshot proves absence of all possible OS access.
