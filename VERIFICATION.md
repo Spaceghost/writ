@@ -15,6 +15,12 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
+passed for the 36 named laws in `PROOF.bend` at exact source `be649f6`. Its
+negative control and toolchain provenance are recorded; earlier unavailable
+Lean attempts remain historical. This does not establish native host
+confinement, durable publication or a handoff-specific law.
+
 The current synthetic handoff model adds 37 named checks to the 2,065-check
 combined baseline (2,102 total). Its monitor facts and current-state binding are
 assumptions, and model execution does not establish a Windows handoff or host
@@ -275,7 +281,8 @@ trusted device: the managed heap is shared and writable, and hostile device code
 and drivers are excluded from the threat model as a limit, not a boundary
 ([gpu-trust-profile.md](verification/gpu-trust-profile.md), "Threat-model
 exclusion"). The label and transfer checks reuse the producers' evaluators. No
-32-bit probe digest is equality evidence. No Lean verdict exists.
+32-bit probe digest is equality evidence. No Lean verdict was obtained for that
+historical GPU run.
 
 ## Explicit proof scope
 
@@ -315,7 +322,7 @@ any host) adds six laws, checked by the same `bend PROOF.bend`:
 On the issuance tree `bend PROOF.bend` printed `ALL PROOFS CHECK`, and the one
 `bend PROOF.bend --verdict` attempt exited 1 with the same missing-`lean`
 error quoted below (see `verification/kernel-verdict.txt`). No Lean-kernel
-verdict exists for these laws either.
+verdict was obtained for these laws on that issuance tree.
 
 The portable-host-contract lane adds five further laws. Each fixes
 the denial contract of one host-contract module and holds by computation of an
@@ -340,7 +347,7 @@ vectors cover those. That a binding executes only effects the monitor
 returned is a host obligation. On that lane's final tree, `bend PROOF.bend`
 printed `ALL PROOFS CHECK` for the earlier laws and these five, and
 `bend PROOF.bend --verdict` exited 1 with the same `lean: Executable not found`
-error shown below, so none of the five has a Lean-kernel verdict.
+error shown below, so no Lean-kernel verdict was obtained for that lane run.
 
 The policy-aware-audit lane (section 1 of `add-policy-aware-audit`; model
 only, no durable log and no host) adds twelve further laws, checked by the same
@@ -381,7 +388,7 @@ records the run:
 
 On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for all
 twenty-nine laws, and `bend PROOF.bend --verdict` exited 1 with the same
-missing-`lean` error, so none of the twelve has a Lean-kernel verdict.
+missing-`lean` error, so no Lean-kernel verdict was obtained for that lane run.
 
 The executor-rendezvous lane (`add-executor-rendezvous`; model only, no host)
 adds seven further laws, checked by the same `bend PROOF.bend`; each law's
@@ -412,7 +419,7 @@ and `verification/executor-rendezvous.txt` records the run:
 On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for its
 twenty-four laws, and on the merged tree for all thirty-six;
 `bend PROOF.bend --verdict` exited 1 with the same missing-`lean` error, so
-none of the seven has a Lean-kernel verdict.
+no Lean-kernel verdict was obtained for that earlier run.
 
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program
@@ -421,7 +428,7 @@ The Bend policy/proof sources introduce no unsafe definitions or proof holes.
 Inventoried C/C++ OS/runtime bindings and native probes are separate from these
 laws; the ordinary proof check does not prove their correctness.
 
-The independent `--verdict` check **did not run successfully**. The official Lean
+The earlier independent `--verdict` check **did not run successfully**. The official Lean
 4.34.0 release archive was downloaded and hash-verified, but its executable exits
 before kernel compilation with `error: failed to locate application`. Supported
 path settings did not resolve that startup problem. No checker, compiler, or law
@@ -435,8 +442,9 @@ with:
 Error: BendTT infrastructure: the kernel did not build (lean: Executable not found in $PATH: "lean"); --verdict needs Lean v4.34.0 (elan toolchain leanprover/lean4:v4.34.0), or $BENDTT set to a built kernel
 ```
 
-No Lean-kernel verdict exists for any of the thirty-six laws. `kernel-verdict.txt`
-keeps the earlier three-law note and records the latest attempt verbatim.
+No Lean-kernel verdict was obtained in those earlier attempts. `kernel-verdict.txt`
+keeps the three-law note and later attempts verbatim; the subsequent successful
+`be649f6` verdict is recorded [separately](verification/lean-verdict-be649f6/README.md).
 Ordinary `bend PROOF.bend` printed `ALL PROOFS CHECK` after the fix wave.
 
 ## OpenSpec suite

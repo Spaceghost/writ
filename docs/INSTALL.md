@@ -163,8 +163,9 @@ Each complete test run should report **2102 passing checks** and
 preservation of denied state, grant issuance, host-contract denials, policy-aware audit, and executor rendezvous; it does
 not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.
-The recorded Lean 4.34.0 installation could not start, so that result remains
-unverified. See the [verification record](../VERIFICATION.md).
+The [recorded verdict](../verification/lean-verdict-be649f6/README.md) passed at
+source `be649f6` using a BendTT kernel built with Lean 4.34.0. Earlier Lean
+startup failures remain recorded separately.
 
 To validate the specification structure, use OpenSpec **1.16.0** and the commands
 in [openspec/README.md](../openspec/README.md). OpenSpec scenarios and executable
