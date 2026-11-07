@@ -1,5 +1,5 @@
 #define _GNU_SOURCE
-#include "layout.h"
+#include "layout-internal.h"
 
 #include <dirent.h>
 #include <errno.h>
@@ -31,15 +31,35 @@ static const struct mapping map[] = {
     {"writ_channel_client", "writ_channel_client", "app/writ_channel_client/writ_channel_client.stripped", false},
 };
 enum { COUNT = sizeof(map) / sizeof(map[0]), NAMES = COUNT + 1, LINK_CAP = 4096 };
+_Static_assert((int)COUNT == (int)WRIT_BOOT_LINKS && (int)NAMES == (int)WRIT_BOOT_FILES, "fixed mapping sizes differ");
 
 #ifdef WRIT_BOOT_LAYOUT_TESTING
 static writ_boot_test_hook test_hook;
 static void *test_arg;
 static int test_open_error;
+static unsigned test_close_at, test_close_count, test_own_at, test_own_count, test_drop_at, test_drop_count;
+void writ_boot_test_own_at(unsigned n) { test_own_at = n; test_own_count = 0; }
+unsigned writ_boot_test_own_count(void) { return test_own_count; }
+void writ_boot_test_drop_at(unsigned n) { test_drop_at = n; test_drop_count = 0; }
+unsigned writ_boot_test_drop_count(void) { return test_drop_count; }
+void writ_boot_test_close_at(unsigned n) { test_close_at = n; test_close_count = 0; }
+unsigned writ_boot_test_close_count(void) { return test_close_count; }
 void writ_boot_test_open_error(int error) { test_open_error = error; }
 void writ_boot_test_between_scans(writ_boot_test_hook hook, void *arg)
 { test_hook = hook; test_arg = arg; }
 #endif
+
+static bool close_result(struct writ_layout_context *ctx, int result)
+{
+#ifdef WRIT_BOOT_LAYOUT_TESTING
+    ++test_close_count;
+    if (test_close_at && test_close_count == test_close_at) result = -1;
+#endif
+    if (result) ctx->cleanup_uncertain = true;
+    return result == 0;
+}
+static bool close_checked(struct writ_layout_context *ctx, int fd)
+{ return close_result(ctx, close(fd)); }
 
 static int fixed_open(int dir, const char *name, int flags)
 {
@@ -55,7 +75,7 @@ static int fixed_open(int dir, const char *name, int flags)
 }
 
 /* All paths are fixed table strings, never link text. Inspect each directory. */
-static int fixed_walk(int root, const char *path, int flags, dev_t dev)
+static int fixed_walk(struct writ_layout_context *ctx, int root, const char *path, int flags, dev_t dev)
 {
     char components[512];
     size_t len = strlen(path);
@@ -68,24 +88,24 @@ static int fixed_walk(int root, const char *path, int flags, dev_t dev)
         char *slash = strchr(part, '/');
         if (slash) *slash = 0;
         if (!*part || !strcmp(part, ".") || !strcmp(part, "..")) {
-            close(current); return -1;
+            close_checked(ctx, current); return -1;
         }
         int next = fixed_open(current, part, slash ?
                     O_PATH | O_DIRECTORY | O_CLOEXEC : flags);
-        bool closed = close(current) == 0;
-        if (next < 0 || !closed) { if (next >= 0) close(next); return -1; }
+        bool closed = close_checked(ctx, current);
+        if (next < 0 || !closed) { if (next >= 0) close_checked(ctx, next); return -1; }
         current = next;
         if (!slash) return current;
         struct stat st;
         if (fstat(current, &st) || !S_ISDIR(st.st_mode) ||
             st.st_uid != geteuid() || st.st_dev != dev) {
-            close(current); return -1;
+            close_checked(ctx, current); return -1;
         }
         part = slash + 1;
     }
 }
 
-static bool same(const struct stat *a, const struct stat *b)
+bool writ_layout_same_metadata(const struct stat *a, const struct stat *b)
 {
     return a->st_dev == b->st_dev && a->st_ino == b->st_ino &&
            a->st_mode == b->st_mode && a->st_uid == b->st_uid &&
@@ -103,15 +123,15 @@ static bool owned_dir(int fd, dev_t dev, struct stat *s)
 static bool same_fd(int a, int b)
 {
     struct stat x, y;
-    return fstat(a, &x) == 0 && fstat(b, &y) == 0 && same(&x, &y);
+    return fstat(a, &x) == 0 && fstat(b, &y) == 0 && writ_layout_same_metadata(&x, &y);
 }
-static bool child_matches(int dir, const char *name, int held)
+static bool child_matches(struct writ_layout_context *ctx, int dir, const char *name, int held)
 {
     struct stat parent;
     if (fstat(dir, &parent)) return false;
-    int fd = fixed_walk(dir, name, O_PATH | O_DIRECTORY | O_CLOEXEC, parent.st_dev);
+    int fd = fixed_walk(ctx, dir, name, O_PATH | O_DIRECTORY | O_CLOEXEC, parent.st_dev);
     bool ok = fd >= 0 && same_fd(fd, held);
-    if (fd >= 0 && close(fd) != 0) ok = false;
+    if (fd >= 0 && !close_checked(ctx, fd)) ok = false;
     return ok;
 }
 static bool link_matches(int parent, const char *name, int held, const char *expected)
@@ -123,17 +143,17 @@ static bool link_matches(int parent, const char *name, int held, const char *exp
     return fstat(held, &pinned) == 0 && S_ISLNK(pinned.st_mode) &&
            pinned.st_uid == geteuid() && pinned.st_nlink == 1 &&
            fstatat(parent, name, &current, AT_SYMLINK_NOFOLLOW) == 0 &&
-           same(&pinned, &current) && n >= 0 && n <= LINK_CAP &&
+           writ_layout_same_metadata(&pinned, &current) && n >= 0 && n <= LINK_CAP &&
            (size_t)n == len && memcmp(text, expected, len) == 0;
 }
-static bool scan(int boot)
+static bool scan(struct writ_layout_context *ctx, int boot)
 {
     bool found[NAMES] = {false};
     unsigned entries = 0, seen = 0;
     int fd = fixed_open(boot, ".", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
     if (fd < 0) return false;
     DIR *d = fdopendir(fd);
-    if (!d) { close(fd); return false; }
+    if (!d) { close_checked(ctx, fd); return false; }
     bool ok = true;
     for (;;) {
         errno = 0;
@@ -155,104 +175,198 @@ static bool scan(int boot)
         found[i] = true;
         ++seen;
     }
-    if (closedir(d) != 0) ok = false;
+    if (!close_result(ctx, closedir(d))) ok = false;
     return ok && seen == NAMES;
 }
 
-int writ_boot_layout_check(int root, int build, int source, uint64_t run,
-                           uint64_t attempt, enum writ_boot_scenario scenario)
+
+static void owned_init(struct writ_owned_fd *slot)
 {
-    int tmp = -1, via = -1, boot = -1, bin = -1, cfg = -1;
-    int first[COUNT], second[COUNT], leaf[COUNT];
-    struct stat initial_boot, initial_cfg, initial_leaf[COUNT], s;
-    uint64_t total = 0;
-    char root_name[128], root_path[160], boot_path[128];
+    slot->fd = -1;
+    memset(&slot->identity, 0, sizeof(slot->identity));
+}
+void writ_layout_init(struct writ_layout_context *ctx)
+{
+    memset(ctx, 0, sizeof(*ctx));
+    owned_init(&ctx->tmp); owned_init(&ctx->via); owned_init(&ctx->boot);
+    owned_init(&ctx->bin); owned_init(&ctx->config);
+    for (unsigned i = 0; i < WRIT_BOOT_LINKS; ++i) {
+        owned_init(&ctx->first[i]); owned_init(&ctx->second[i]); owned_init(&ctx->leaf[i]);
+    }
+    ctx->root = ctx->build = ctx->source = -1;
+}
+static bool own(struct writ_layout_context *ctx, struct writ_owned_fd *slot, int fd)
+{
+    if (fd < 0) return false;
+#ifdef WRIT_BOOT_LAYOUT_TESTING
+    ++test_own_count;
+    if (test_own_at && test_own_count == test_own_at) {
+        close_checked(ctx, fd); return false;
+    }
+#endif
+    struct stat identity;
+    int flags = fcntl(fd, F_GETFD);
+    if (flags < 0 || !(flags & FD_CLOEXEC) || fstat(fd, &identity)) {
+        close_checked(ctx, fd);
+        return false;
+    }
+    slot->fd = fd;
+    slot->identity = identity;
+    return true;
+}
+static bool still_owned(const struct writ_owned_fd *slot)
+{
+    struct stat now;
+    return slot->fd >= 0 && !fstat(slot->fd, &now) &&
+           now.st_dev == slot->identity.st_dev && now.st_ino == slot->identity.st_ino &&
+           (now.st_mode & S_IFMT) == (slot->identity.st_mode & S_IFMT);
+}
+static void drop(struct writ_layout_context *ctx, struct writ_owned_fd *slot)
+{
+    if (slot->fd < 0) return;
+    int fd = slot->fd;
+    bool ours = still_owned(slot);
+    slot->fd = -1; /* Never retry a close whose number may have been reused. */
+    if (!ours) { ctx->cleanup_uncertain = true; return; }
+    close_checked(ctx, fd);
+#ifdef WRIT_BOOT_LAYOUT_TESTING
+    ++test_drop_count;
+    if (test_drop_at && test_drop_count == test_drop_at) ctx->cleanup_uncertain = true;
+#endif
+}
+bool writ_layout_close(struct writ_layout_context *ctx)
+{
+    for (unsigned i = 0; i < WRIT_BOOT_LINKS; ++i) {
+        drop(ctx, &ctx->first[i]); drop(ctx, &ctx->second[i]); drop(ctx, &ctx->leaf[i]);
+    }
+    drop(ctx, &ctx->config); drop(ctx, &ctx->bin); drop(ctx, &ctx->boot);
+    drop(ctx, &ctx->via); drop(ctx, &ctx->tmp);
+    return !ctx->cleanup_uncertain;
+}
+static bool borrowed_matches(const struct writ_layout_context *ctx, int fd, const struct stat *initial)
+{
+    if (!ctx->strict_borrowed) return true;
+    struct stat now;
+    int flags = fcntl(fd, F_GETFD);
+    return flags >= 0 && (flags & FD_CLOEXEC) && !fstat(fd, &now) &&
+           writ_layout_same_metadata(initial, &now);
+}
+static bool descriptor_flags(const struct writ_owned_fd *owned)
+{
+    int flags = fcntl(owned->fd, F_GETFD);
+    return flags >= 0 && (flags & FD_CLOEXEC);
+}
+
+bool writ_layout_revalidate(struct writ_layout_context *ctx)
+{
+    struct stat s;
     char expected1[256], expected2[512];
-    bool ok = false;
-    for (unsigned i = 0; i < COUNT; ++i) first[i] = second[i] = leaf[i] = -1;
-    if (scenario != WRIT_BOOT_POSITIVE && scenario != WRIT_BOOT_NEGATIVE) goto done;
+    if (!descriptor_flags(&ctx->tmp) || !descriptor_flags(&ctx->via) ||
+        !descriptor_flags(&ctx->boot) || !descriptor_flags(&ctx->bin) ||
+        !descriptor_flags(&ctx->config)) return false;
+    for (unsigned i = 0; i < WRIT_BOOT_LINKS; ++i)
+        if (!descriptor_flags(&ctx->first[i]) || !descriptor_flags(&ctx->second[i]) ||
+            !descriptor_flags(&ctx->leaf[i])) return false;
+    if (!borrowed_matches(ctx, ctx->root, &ctx->root_identity) ||
+        !borrowed_matches(ctx, ctx->build, &ctx->build_identity) ||
+        !borrowed_matches(ctx, ctx->source, &ctx->source_identity) ||
+        !scan(ctx, ctx->boot.fd) || fstat(ctx->boot.fd, &s) ||
+        !writ_layout_same_metadata(&s, &ctx->boot_metadata) ||
+        !child_matches(ctx, ctx->tmp.fd, ctx->root_name, ctx->root) ||
+        !child_matches(ctx, ctx->root, "build", ctx->build) ||
+        !child_matches(ctx, ctx->root, "genode", ctx->source) ||
+        !child_matches(ctx, ctx->build, ctx->boot_path, ctx->boot.fd) ||
+        !child_matches(ctx, ctx->build, "bin", ctx->bin.fd)) return false;
+    int now = fixed_open(ctx->boot.fd, "config", O_PATH | O_NOFOLLOW | O_CLOEXEC);
+    bool eq = now >= 0 && same_fd(now, ctx->config.fd) &&
+              !fstat(ctx->config.fd, &s) &&
+              writ_layout_same_metadata(&ctx->config.identity, &s);
+    if (now >= 0 && !close_checked(ctx, now)) eq = false;
+    if (!eq) return false;
+    for (unsigned i = 0; i < COUNT; ++i) {
+        int n = snprintf(expected1, sizeof(expected1), "%s/build/bin/%s", ctx->root_path, map[i].bin);
+        if (n < 0 || (size_t)n >= sizeof(expected1)) return false;
+        n = snprintf(expected2, sizeof(expected2), "%s/%s/%s", ctx->root_path,
+                     map[i].source ? "genode" : "build", map[i].target);
+        if (n < 0 || (size_t)n >= sizeof(expected2)) return false;
+        if (!link_matches(ctx->boot.fd, map[i].boot, ctx->first[i].fd, expected1) ||
+            !link_matches(ctx->bin.fd, map[i].bin, ctx->second[i].fd, expected2)) return false;
+        now = fixed_walk(ctx, map[i].source ? ctx->source : ctx->build, map[i].target,
+                         O_PATH | O_NOFOLLOW | O_CLOEXEC, ctx->boot_metadata.st_dev);
+        eq = now >= 0 && same_fd(now, ctx->leaf[i].fd) &&
+             !fstat(ctx->leaf[i].fd, &s) &&
+             writ_layout_same_metadata(&ctx->leaf[i].identity, &s);
+        if (now >= 0 && !close_checked(ctx, now)) eq = false;
+        if (!eq) return false;
+    }
+    return !ctx->cleanup_uncertain;
+}
+bool writ_layout_open(struct writ_layout_context *ctx, int root, int build, int source,
+                      uint64_t run, uint64_t attempt, enum writ_boot_scenario scenario)
+{
+    struct stat s;
+    uint64_t total = 0;
+    char expected1[256], expected2[512];
+    if (scenario != WRIT_BOOT_POSITIVE && scenario != WRIT_BOOT_NEGATIVE) return false;
     const char *tag = scenario == WRIT_BOOT_POSITIVE ? "positive" : "negative";
-    int n = snprintf(root_name, sizeof(root_name), "writ-genode-ci.%" PRIu64 "-%" PRIu64 ".%s", run, attempt, tag);
-    if (n < 0 || (size_t)n >= sizeof(root_name)) goto done;
-    n = snprintf(root_path, sizeof(root_path), "/tmp/%s", root_name);
-    if (n < 0 || (size_t)n >= sizeof(root_path)) goto done;
-    n = snprintf(boot_path, sizeof(boot_path), "var/run/writ_bend_monitor_nested_guarded_%s/genode", tag);
-    if (n < 0 || (size_t)n >= sizeof(boot_path)) goto done;
-    tmp = open("/tmp", O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-    if (tmp < 0 || fstat(tmp, &s) != 0) goto done;
-    dev_t dev = s.st_dev;
-    via = fixed_open(tmp, root_name, O_PATH | O_DIRECTORY | O_CLOEXEC);
-    if (via < 0 || !same_fd(via, root) || !owned_dir(root, dev, &s) ||
+    int n = snprintf(ctx->root_name, sizeof(ctx->root_name), "writ-genode-ci.%" PRIu64 "-%" PRIu64 ".%s", run, attempt, tag);
+    if (n < 0 || (size_t)n >= sizeof(ctx->root_name)) return false;
+    n = snprintf(ctx->root_path, sizeof(ctx->root_path), "/tmp/%s", ctx->root_name);
+    if (n < 0 || (size_t)n >= sizeof(ctx->root_path)) return false;
+    n = snprintf(ctx->boot_path, sizeof(ctx->boot_path), "var/run/writ_bend_monitor_nested_guarded_%s/genode", tag);
+    if (n < 0 || (size_t)n >= sizeof(ctx->boot_path)) return false;
+    ctx->root = root; ctx->build = build; ctx->source = source;
+    if (fstat(root, &ctx->root_identity) || fstat(build, &ctx->build_identity) ||
+        fstat(source, &ctx->source_identity) ||
+        !borrowed_matches(ctx, root, &ctx->root_identity) ||
+        !borrowed_matches(ctx, build, &ctx->build_identity) ||
+        !borrowed_matches(ctx, source, &ctx->source_identity)) return false;
+    if (!own(ctx, &ctx->tmp, open("/tmp", O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC))) return false;
+    dev_t dev = ctx->tmp.identity.st_dev;
+    if (!own(ctx, &ctx->via, fixed_open(ctx->tmp.fd, ctx->root_name, O_PATH | O_DIRECTORY | O_CLOEXEC)) ||
+        !same_fd(ctx->via.fd, root) || !owned_dir(root, dev, &s) ||
         (s.st_mode & 0777) != 0700 || !owned_dir(build, dev, &s) ||
-        !owned_dir(source, dev, &s) || !child_matches(root, "build", build) ||
-        !child_matches(root, "genode", source)) goto done;
-    boot = fixed_walk(build, boot_path, O_PATH | O_DIRECTORY | O_CLOEXEC, dev);
-    bin = fixed_open(build, "bin", O_PATH | O_DIRECTORY | O_CLOEXEC);
-    if (boot < 0 || bin < 0 || !owned_dir(boot, dev, &initial_boot) ||
-        !owned_dir(bin, dev, &s) || !scan(boot)) goto done;
-    cfg = fixed_open(boot, "config", O_PATH | O_NOFOLLOW | O_CLOEXEC);
-    if (cfg < 0 || fstat(cfg, &s) || !S_ISREG(s.st_mode) || s.st_uid != geteuid() ||
-        s.st_dev != dev || s.st_nlink != 1 || s.st_size < 0 || s.st_size > 16384) goto done;
-    initial_cfg = s;
+        !owned_dir(source, dev, &s) || !child_matches(ctx, root, "build", build) ||
+        !child_matches(ctx, root, "genode", source)) return false;
+    if (!own(ctx, &ctx->boot, fixed_walk(ctx, build, ctx->boot_path, O_PATH | O_DIRECTORY | O_CLOEXEC, dev)) ||
+        !own(ctx, &ctx->bin, fixed_open(build, "bin", O_PATH | O_DIRECTORY | O_CLOEXEC)) ||
+        !owned_dir(ctx->boot.fd, dev, &ctx->boot_metadata) ||
+        !owned_dir(ctx->bin.fd, dev, &s) || !scan(ctx, ctx->boot.fd) ||
+        !own(ctx, &ctx->config, fixed_open(ctx->boot.fd, "config", O_PATH | O_NOFOLLOW | O_CLOEXEC))) return false;
+    s = ctx->config.identity;
+    if (!S_ISREG(s.st_mode) || s.st_uid != geteuid() || s.st_dev != dev ||
+        s.st_nlink != 1 || s.st_size < 0 || s.st_size > 16384) return false;
     total = (uint64_t)s.st_size;
     for (unsigned i = 0; i < COUNT; ++i) {
-        first[i] = fixed_open(boot, map[i].boot, O_PATH | O_NOFOLLOW | O_CLOEXEC);
-        second[i] = fixed_open(bin, map[i].bin, O_PATH | O_NOFOLLOW | O_CLOEXEC);
-        leaf[i] = fixed_walk(map[i].source ? source : build, map[i].target,
-                             O_PATH | O_NOFOLLOW | O_CLOEXEC, dev);
-        n = snprintf(expected1, sizeof(expected1), "%s/build/bin/%s", root_path, map[i].bin);
-        if (n < 0 || (size_t)n >= sizeof(expected1)) goto done;
-        n = snprintf(expected2, sizeof(expected2), "%s/%s/%s", root_path,
+        if (!own(ctx, &ctx->first[i], fixed_open(ctx->boot.fd, map[i].boot, O_PATH | O_NOFOLLOW | O_CLOEXEC)) ||
+            !own(ctx, &ctx->second[i], fixed_open(ctx->bin.fd, map[i].bin, O_PATH | O_NOFOLLOW | O_CLOEXEC)) ||
+            !own(ctx, &ctx->leaf[i], fixed_walk(ctx, map[i].source ? source : build, map[i].target,
+                                                O_PATH | O_NOFOLLOW | O_CLOEXEC, dev))) return false;
+        n = snprintf(expected1, sizeof(expected1), "%s/build/bin/%s", ctx->root_path, map[i].bin);
+        if (n < 0 || (size_t)n >= sizeof(expected1)) return false;
+        n = snprintf(expected2, sizeof(expected2), "%s/%s/%s", ctx->root_path,
                      map[i].source ? "genode" : "build", map[i].target);
-        if (n < 0 || (size_t)n >= sizeof(expected2)) goto done;
-        if (first[i] < 0 || second[i] < 0 || leaf[i] < 0 ||
-            !link_matches(boot, map[i].boot, first[i], expected1) ||
-            !link_matches(bin, map[i].bin, second[i], expected2) ||
-            fstat(first[i], &s) || s.st_dev != dev ||
-            fstat(second[i], &s) || s.st_dev != dev ||
-            fstat(leaf[i], &s) || !S_ISREG(s.st_mode) || s.st_uid != geteuid() ||
-            s.st_dev != dev || s.st_nlink != 1 || s.st_size < 0 || s.st_size > 268435456) goto done;
-        if (total > UINT64_C(1073741824) - (uint64_t)s.st_size) goto done;
+        if (n < 0 || (size_t)n >= sizeof(expected2)) return false;
+        s = ctx->leaf[i].identity;
+        if (!link_matches(ctx->boot.fd, map[i].boot, ctx->first[i].fd, expected1) ||
+            !link_matches(ctx->bin.fd, map[i].bin, ctx->second[i].fd, expected2) ||
+            ctx->first[i].identity.st_dev != dev || ctx->second[i].identity.st_dev != dev ||
+            !S_ISREG(s.st_mode) || s.st_uid != geteuid() || s.st_dev != dev ||
+            s.st_nlink != 1 || s.st_size < 0 || s.st_size > 268435456 ||
+            total > UINT64_C(1073741824) - (uint64_t)s.st_size) return false;
         total += (uint64_t)s.st_size;
-        initial_leaf[i] = s;
     }
 #ifdef WRIT_BOOT_LAYOUT_TESTING
     if (test_hook) test_hook(test_arg);
 #endif
-    if (!scan(boot) || fstat(boot, &s) || !same(&s, &initial_boot) ||
-        !child_matches(tmp, root_name, root) || !child_matches(root, "build", build) ||
-        !child_matches(root, "genode", source) || !child_matches(build, boot_path, boot) || !child_matches(build, "bin", bin)) goto done;
-    { int now = fixed_open(boot, "config", O_PATH | O_NOFOLLOW | O_CLOEXEC);
-      bool eq = now >= 0 && same_fd(now, cfg) &&
-                fstat(cfg, &s) == 0 && same(&initial_cfg, &s);
-      if (now >= 0 && close(now) != 0) eq = false;
-      if (!eq) goto done; }
-    for (unsigned i = 0; i < COUNT; ++i) {
-        n = snprintf(expected1, sizeof(expected1), "%s/build/bin/%s", root_path, map[i].bin);
-        if (n < 0 || (size_t)n >= sizeof(expected1)) goto done;
-        n = snprintf(expected2, sizeof(expected2), "%s/%s/%s", root_path,
-                     map[i].source ? "genode" : "build", map[i].target);
-        if (n < 0 || (size_t)n >= sizeof(expected2)) goto done;
-        if (!link_matches(boot, map[i].boot, first[i], expected1) ||
-            !link_matches(bin, map[i].bin, second[i], expected2)) goto done;
-        int now = fixed_walk(map[i].source ? source : build, map[i].target,
-                             O_PATH | O_NOFOLLOW | O_CLOEXEC, dev);
-        bool eq = now >= 0 && same_fd(now, leaf[i]) &&
-                  fstat(leaf[i], &s) == 0 && same(&initial_leaf[i], &s);
-        if (now >= 0 && close(now) != 0) eq = false;
-        if (!eq) goto done;
-    }
-    ok = true;
-done:
-    for (unsigned i = 0; i < COUNT; ++i) {
-        if (first[i] >= 0 && close(first[i])) ok = false;
-        if (second[i] >= 0 && close(second[i])) ok = false;
-        if (leaf[i] >= 0 && close(leaf[i])) ok = false;
-    }
-    if (cfg >= 0 && close(cfg)) ok = false;
-    if (bin >= 0 && close(bin)) ok = false;
-    if (boot >= 0 && close(boot)) ok = false;
-    if (via >= 0 && close(via)) ok = false;
-    if (tmp >= 0 && close(tmp)) ok = false;
+    return writ_layout_revalidate(ctx);
+}
+int writ_boot_layout_check(int root, int build, int source, uint64_t run,
+                           uint64_t attempt, enum writ_boot_scenario scenario)
+{
+    struct writ_layout_context ctx;
+    writ_layout_init(&ctx);
+    bool ok = writ_layout_open(&ctx, root, build, source, run, attempt, scenario);
+    if (!writ_layout_close(&ctx)) ok = false;
     return ok ? 0 : -1;
 }

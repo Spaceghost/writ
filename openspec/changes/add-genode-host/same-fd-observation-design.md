@@ -1,17 +1,19 @@
-# Proposed same-descriptor public boot observation
+# Same-descriptor public boot observation
 
 A synthetic `core` boot link can pass the fixed layout check and then be
 replaced before its bytes are read. The existing layout helper closes the
 checked leaf descriptor before returning; a later pathname reopen therefore
-cannot bind the digest to the checked inode. The smallest next slice is a
-single-process, no-path-reopen composition that privately retains the checked
-`O_PATH` descriptors and gives those exact objects to the separate held-read
-probe. It is a proposed native evidence probe, not a completed inventory or
-an authorization, policy, boot-consumption or cleanup claim.
+cannot bind the digest to the checked inode. The implemented synthetic slice is a single-process, no-path-reopen
+composition that privately retains the checked `O_PATH` descriptors and gives
+those exact objects to the separate held-read probe. It returns only a partial
+observation, not a completed inventory or an authorization, policy,
+boot-consumption or cleanup claim.
 
 The [layout](../../../contrib/native-hosts/genode/boot-inventory/layout.c)
 and [held-read](../../../contrib/native-hosts/genode/boot-inventory/read-held.c)
-helpers are independently checked, but currently disconnected. Their caller,
+helpers are composed by the partial observer and checked on owned temporary
+trees; the [synthetic evidence](../../../verification/genode-boot-same-fd/README.md)
+does not establish behavior on a disposable VM. Their caller,
 Linux kernel, process FD table, procfs, mount namespace and OpenSSL EVP
 provider/loader remain trusted. A hash is information: the reviewed caller
 must confine this public diagnostic to the fixed synthetic/public fixture;

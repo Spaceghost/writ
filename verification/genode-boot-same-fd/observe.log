@@ -1,0 +1,19 @@
+PASS positive ordered same-FD observation
+PASS negative ordered same-FD observation
+PASS observer refuses inheritable borrowed roots
+PASS private slot swap refused
+PASS closed checked descriptor is cleanup-unverified
+PASS reused descriptor preserves unrelated test-owned sentinel
+PASS post-read renamed leaf and replacement refused
+PASS post-read identical-text new symlink refused
+PASS post-read same-size metadata drift refused
+PASS post-read missing fixed path refused
+PASS reads stay on held FDs after boot path removal
+PASS observer refuses borrowed root metadata drift
+PASS post-read lost CLOEXEC is refused
+PASS all 14 hash-stage failures return no result
+PASS all 44 retained-acquisition failures close owned descriptors
+PASS all 44 retained-close failure injections report uncertainty
+PASS all 140 read-helper close failure injections propagate uncertainty
+PASS all 250 layout-close failure injections report uncertainty
+PASS 505 synthetic same-FD cases

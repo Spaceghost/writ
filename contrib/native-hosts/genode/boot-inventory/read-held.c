@@ -1,5 +1,6 @@
 #define _GNU_SOURCE
 #include "read-held.h"
+#include "read-held-internal.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -19,6 +20,9 @@
 static writ_read_test_hook stat_hook, chunk_hook;
 static void *stat_arg, *chunk_arg;
 static int fault_kind, replacement, injected_eintr;
+static unsigned test_close_at, test_close_count;
+void writ_read_test_close_at(unsigned n) { test_close_at = n; test_close_count = 0; }
+unsigned writ_read_test_close_count(void) { return test_close_count; }
 static int test_proc_fd = -1;
 void writ_read_test_proc_fd(int fd) { test_proc_fd = fd; }
 void writ_read_test_after_stat(writ_read_test_hook h, void *a) { stat_hook = h; stat_arg = a; }
@@ -53,6 +57,17 @@ static bool is_procfs(int fd, dev_t dev)
     return !fstat(fd, &s) && !fstatfs(fd, &fs) && s.st_dev == dev &&
            (unsigned long)fs.f_type == (unsigned long)PROC_SUPER_MAGIC;
 }
+static bool read_close(int fd, bool *uncertain)
+{
+    int result = close(fd);
+#ifdef WRIT_BOOT_READ_TESTING
+    ++test_close_count;
+    if (test_close_at && test_close_count == test_close_at) result = -1;
+#endif
+    if (result) *uncertain = true;
+    return result == 0;
+}
+
 static bool same_object(int left, int right)
 {
     struct stat a, b;
@@ -62,7 +77,7 @@ static bool same_object(int left, int right)
 }
 /* Recheck the same procfs mount and this process's fixed PID/FD view. */
 static bool proc_recheck(int proc, int bypid, int self, int fddir,
-                         dev_t dev, const char *pidtext)
+                         dev_t dev, const char *pidtext, bool *uncertain)
 {
     int root = -1, pid = -1, self2 = -1, fd2 = -1;
     bool ok = false;
@@ -80,10 +95,10 @@ static bool proc_recheck(int proc, int bypid, int self, int fddir,
     if (fd2 < 0 || !is_procfs(fd2, dev) || !same_object(fd2, fddir)) goto done;
     ok = true;
 done:
-    if (fd2 >= 0 && close(fd2)) ok = false;
-    if (self2 >= 0 && close(self2)) ok = false;
-    if (pid >= 0 && close(pid)) ok = false;
-    if (root >= 0 && close(root)) ok = false;
+    if (fd2 >= 0 && !read_close(fd2, uncertain)) ok = false;
+    if (self2 >= 0 && !read_close(self2, uncertain)) ok = false;
+    if (pid >= 0 && !read_close(pid, uncertain)) ok = false;
+    if (root >= 0 && !read_close(root, uncertain)) ok = false;
     return ok;
 }
 
@@ -109,7 +124,7 @@ static ssize_t bounded_read(int fd, void *buffer, size_t size)
     return read(fd, buffer, size);
 }
 
-int writ_boot_read_held(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)
+int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)
 {
     int pinned = -1, proc = -1, bypid = -1, self = -1, fddir = -1, data = -1;
     EVP_MD_CTX *ctx = NULL;
@@ -119,7 +134,7 @@ int writ_boot_read_held(int held, uint64_t cap, unsigned char digest[32], uint64
     unsigned int hash_size = 0;
     uint64_t got = 0;
     char pidtext[32], fdtext[32], selftext[32];
-    bool ok = false;
+    bool ok = false, cleanup_uncertain = false;
     if (digest) memset(digest, 0, 32);
     if (size) *size = 0;
     if (!digest || !size) return -1;
@@ -195,17 +210,22 @@ int writ_boot_read_held(int held, uint64_t cap, unsigned char digest[32], uint64
     }
     if (fstat(pinned, &current) || !same_identity(&original, &current) ||
         fstat(data, &current) || !same_identity(&original, &current) ||
-        !proc_recheck(proc, bypid, self, fddir, procstat.st_dev, pidtext) ||
+        !proc_recheck(proc, bypid, self, fddir, procstat.st_dev, pidtext, &cleanup_uncertain) ||
         EVP_DigestFinal_ex(ctx, hash, &hash_size) != 1 || hash_size != 32) goto done;
     ok = true;
 done:
     EVP_MD_CTX_free(ctx);
-    if (data >= 0 && close(data)) ok = false;
-    if (fddir >= 0 && close(fddir)) ok = false;
-    if (self >= 0 && close(self)) ok = false;
-    if (bypid >= 0 && close(bypid)) ok = false;
-    if (proc >= 0 && close(proc)) ok = false;
-    if (pinned >= 0 && close(pinned)) ok = false;
-    if (ok) { memcpy(digest, hash, 32); *size = got; return 0; }
-    return -1;
+    if (data >= 0 && !read_close(data, &cleanup_uncertain)) ok = false;
+    if (fddir >= 0 && !read_close(fddir, &cleanup_uncertain)) ok = false;
+    if (self >= 0 && !read_close(self, &cleanup_uncertain)) ok = false;
+    if (bypid >= 0 && !read_close(bypid, &cleanup_uncertain)) ok = false;
+    if (proc >= 0 && !read_close(proc, &cleanup_uncertain)) ok = false;
+    if (pinned >= 0 && !read_close(pinned, &cleanup_uncertain)) ok = false;
+    if (cleanup_uncertain) return WRIT_READ_CLEANUP_UNVERIFIED;
+    if (ok) { memcpy(digest, hash, 32); *size = got; return WRIT_READ_OK; }
+    return WRIT_READ_INCOMPLETE;
+}
+int writ_boot_read_held(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)
+{
+    return writ_boot_read_held_internal(held, cap, digest, size) == WRIT_READ_OK ? 0 : -1;
 }

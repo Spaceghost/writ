@@ -11,9 +11,9 @@ may still be retained.
 The proposed **complete inventory remains unimplemented**. A separate [layout-only
 primitive](../../../contrib/native-hosts/genode/boot-inventory/README.md) checks
 fixed metadata on synthetic trees. A separate held-file probe hashes a trusted
-caller-provided descriptor; the helpers are not connected, do not check exact
-config bytes, publish a manifest or establish completion. A [same-descriptor
-composition](same-fd-observation-design.md) is proposed separately. No guarded Genode run, new host result or
+caller-provided descriptor. Their [same-descriptor partial
+composition](same-fd-observation-design.md) now has synthetic checks; it does
+not check exact config bytes, publish a manifest or establish completion. No guarded Genode run, new host result or
 cleanup claim is made. The [guard design](public-fixture-config-guard-design.md)
 checks public fixture arguments before installation; this proposal concerns a
 separate post-run evidence read. The experimental e233 collector and the

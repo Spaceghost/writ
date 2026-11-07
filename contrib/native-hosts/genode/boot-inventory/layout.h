@@ -16,5 +16,11 @@ int writ_boot_layout_check(int root_fd, int build_fd, int source_fd,
 typedef void (*writ_boot_test_hook)(void *);
 void writ_boot_test_between_scans(writ_boot_test_hook hook, void *arg);
 void writ_boot_test_open_error(int error);
+void writ_boot_test_own_at(unsigned n);
+unsigned writ_boot_test_own_count(void);
+void writ_boot_test_drop_at(unsigned n);
+unsigned writ_boot_test_drop_count(void);
+void writ_boot_test_close_at(unsigned n);
+unsigned writ_boot_test_close_count(void);
 #endif
 #endif

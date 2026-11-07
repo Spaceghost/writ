@@ -23,11 +23,16 @@ and error injection are omitted from a normal build.
 No supervisor or fixture calls this helper. It does not itself establish `procfs`
 identity, reopen a held file, verify contents, stage/publish output, enforce an
 independent time limit or retire any process. A separate [held-file read](read-held.h)
-can hash a caller-supplied held regular inode; the two helpers are not connected
-and do not together implement a collector. The layout check closes the leaf
-FDs it observed, so reopening a pathname afterward would not bind the digest
-to the checked object. A future reviewed composition must retain or transfer
-the very same checked leaf FD, rather than re-resolving its path. The 32-entry and size caps do not
+can hash a caller-supplied held regular inode. The separate
+[`writ_boot_public_observe`](observe.h) retains the exact 14 checked leaf FDs
+through the reads and revalidates the fixed paths and held objects afterward.
+It returns only the distinctly named partial-observation status and in-memory
+hashes after successful checks and closes; failures return zero outputs, and
+cleanup uncertainty has its own status. Borrowed root FDs must be CLOEXEC and
+their metadata stable for this observer; the older layout-only API retains its
+earlier borrowed-FD behavior. This observer does not compare exact config
+bytes, publish a manifest, or implement an externally supervised total
+deadline, and is not a complete inventory. The 32-entry and size caps do not
 bound a blocking filesystem call. There is no automatic fallback if `openat2`
 is unsupported. Metadata checks and two scans cannot rule out same-UID
 A→B→A races or in-place adaptive changes, nor establish what an earlier process
@@ -69,3 +74,14 @@ that host library, dynamic loader and provider setup are trusted, not a pinned
 portable dependency. No Writ core dependency or policy functionality is added.
 The [synthetic read controls](../../../../verification/genode-boot-read-held/README.md)
 do not establish behavior on another runner or establish host qualification.
+
+
+The same-FD observer and its private descriptor-transfer/cleanup plumbing are
+experimental Linux public-fixture I/O only. Their test hooks are absent from
+production. A trusted caller must supply the fixed held roots and protect the
+process FD table; inode/metadata rechecks cannot rule out same-UID adaptive
+changes or prove earlier boot consumption. The 14 returned hashes are
+information and must be restricted to the fixed public test; they convey no
+policy decision. The [same-FD controls](../../../../verification/genode-boot-same-fd/README.md)
+cover both synthetic scenarios and failure/ownership boundaries. No fixture,
+workflow, supervisor or host calls this observer.

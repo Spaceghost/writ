@@ -14,5 +14,7 @@ void writ_read_test_after_stat(writ_read_test_hook hook, void *arg);
 void writ_read_test_after_chunk(writ_read_test_hook hook, void *arg);
 void writ_read_test_fault(int fault, int replacement_fd);
 void writ_read_test_proc_fd(int fd);
+void writ_read_test_close_at(unsigned n);
+unsigned writ_read_test_close_count(void);
 #endif
 #endif

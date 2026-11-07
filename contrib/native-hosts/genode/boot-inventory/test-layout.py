@@ -35,7 +35,7 @@ run = os.getpid()
 sequence = 0
 checks = 0
 
-def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_fd=False, fault=0, root_swap=False):
+def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_fd=False, fault=0, root_swap=False, inheritable=False):
     global sequence, checks
     sequence += 1
     root = Path('/tmp') / f'writ-genode-ci.{run}-{sequence}.{scenario}'
@@ -64,6 +64,8 @@ def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_
                 sock = outcome
         for path in (root, build, genode):
             opened.append(os.open(path, os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC))
+        if inheritable:
+            for fd in opened: os.set_inheritable(fd, True)
         if hook or root_swap:
             def run_hook(_arg):
                 nonlocal held_path
@@ -137,6 +139,8 @@ trial('leaf fifo', lambda r, b: ((r / MAPPING[0][2]).unlink(), os.mkfifo(r / MAP
 trial('leaf socket', socket_leaf)
 trial('hard-linked leaf', lambda r, b: os.link(r / MAPPING[0][2], r / 'other'))
 trial('swapped roots', wrong_fd=True)
+trial('legacy accepts inheritable borrowed roots', valid=True, inheritable=True)
+trial('legacy permits unrelated root metadata change', valid=True, hook=lambda r, b: (r / 'unrelated').write_bytes(b''))
 trial('late added entry', hook=lambda r, b: (b / 'late').write_bytes(b''))
 trial('late removed entry', hook=lambda r, b: (b / 'init').unlink())
 trial('late invocation-root replacement', root_swap=True)
