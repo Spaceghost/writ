@@ -1,0 +1,26 @@
+diff --git a/PlannerPlanMatch.bend b/PlannerPlanMatch.bend
+index 69032d8..e38372f 100644
+--- a/PlannerPlanMatch.bend
++++ b/PlannerPlanMatch.bend
+@@ -52,0 +53,18 @@ def n48_equal(word: P.N48, value: Nat) -> Bool:
++# Scratch mutation helper: preserve the high-word range check but ignore its value.
++def audit_low_checked(ok: Bool, lo: U32, value: Nat) -> Bool:
++  match ok:
++    case False{}: False{}
++    case True{}: U32.is_eq(lo, U32.from_nat(Nat.mod(value, Nat.double(2147483648n))))
++
++def audit_low_equal(word: P.N48, value: Nat) -> Bool:
++  match word:
++    case P.N48{lo, +hi}: audit_low_checked(U32.is_le(hi, 65535), lo, value)
++
++def audit_object_lo(proposed: P.ObjectRef, selected: T.ObjectVersion) -> Bool:
++  match proposed selected:
++    case P.ObjectRef{po, pv} T.ObjectVersion{so, sv}: audit_low_equal(po, so) && n48_equal(pv, sv)
++
++def audit_version_lo(proposed: P.ObjectRef, selected: T.ObjectVersion) -> Bool:
++  match proposed selected:
++    case P.ObjectRef{po, pv} T.ObjectVersion{so, sv}: n48_equal(po, so) && audit_low_equal(pv, sv)
++
+@@ -92 +110 @@ def compare_bounded(proposed: P.Proposal, selected: T.Plan) -> Bool:
+-      stamp_equal(ps, ss) && n48_equal(pi, si) && sources_equal(8n, px, sx) &&
++      stamp_equal(ps, ss) && audit_low_equal(pi, si) && sources_equal(8n, px, sx) &&

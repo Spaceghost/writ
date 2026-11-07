@@ -17,13 +17,32 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 The planner envelope adds 60 synthetic codec checks to the 2,102-check master
 suite, for 2,162 checks at its recorded source. This experimental preview also
-includes 220 durable-model checks, for 2,382 checks. Its reference-only
-descriptions do not authenticate identities or establish planner integration;
+includes one later codec boundary check, 61 plan-comparison checks and 220
+durable-model checks, for 2,444 checks. Its reference-only descriptions do not
+authenticate identities or establish planner integration;
 see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
+The [current integration record](docs/superpowers/records/2026-11-06-durable-publication/planner-regression-integration-preview.md)
+scopes the 2,444-check combined Bend/Node result and existing-law verdict.
+The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
+passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
+are scoped observations, not protected-worker or durable-service qualification.
+
+The planner integration reconciled reviewed branch `ef40aa2` with master
+`22c8522`; its Bend, workflow and Nix inputs were unchanged from `ef40aa2`.
+The [comparison record](verification/planner-plan-match-local.md) scopes its
+pre-integration checks. The [high-word mutation review](verification/planner-comparator-mutants-6985302/README.md)
+records the added regression; at exact source `c5a02c7`, its [native CPU run](verification/planner-comparator-native-c5a02c7/README.md)
+and [platform CI](verification/planner-comparator-ci-c5a02c7/README.md) passed
+in their stated scopes, with Linux setup refusal retained.
 Earlier evidence below remains tied to its own source and is not a claim that
 the combined preview ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its
 local and exact-source platform checks and retains their qualifications.
+The [N48 mutation review](verification/planner-n48-mutants-dd3dac9/README.md),
+[boundary-only CPU](verification/planner-boundary-native-262a8d4/README.md)
+and [boundary-only CI](verification/planner-boundary-ci-262a8d4/README.md)
+remain attributed to their exact sources. The [planner-only combined record](verification/planner-boundary-comparator-preview.md)
+reports the earlier 2,223-check source and its scoped platform evidence.
 The separate [three-way preview record](docs/superpowers/records/2026-11-06-durable-publication/planner-integration-preview.md)
 reports the 2,382-check combined Bend, Node, Nix JavaScript and native CPU
 runs, [platform CI](verification/durable-handoff-planner-ci-d0dc411/README.md)

@@ -1,0 +1,3 @@
+outside-tmp-guard: rejected (exit 1)
+archive-sha-guard: rejected (exit 1)
+git-status-failure: rejected (exit 1)

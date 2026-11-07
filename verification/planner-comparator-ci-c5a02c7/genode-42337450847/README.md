@@ -1,0 +1,5 @@
+# Genode at comparator regression c5a02c7
+
+GitHub Actions [run 42337450847](https://github.com/Spaceghost/writ/actions/runs/42337450847) succeeded at exact source `c5a02c7f3027ea45af7a9737fa2e9ed0801195ec`. Genode 26.08 base-hw under QEMU reported 24 allocator checks, 2,224 core checks, 69 mount checks and the corpus acceptance sentinel, plus the separate filesystem and VFS public-canary acceptance sentinels. Guest `clock_gettime(): missing real-time clock` warnings remain in the retained logs. These observations do not qualify a protected host.
+
+Of `source-and-build-sha256.txt`, 191 tracked paths were independently matched against the exact commit; 10 runner-only generated or binary paths could not be independently rehashed. `artifact-raw-sha256.txt` hashes every downloaded artifact file and the downloaded ZIP matches the GitHub artifact metadata digest. Retained text is normalized to UTF-8/LF with trailing whitespace removed; `workflow-log-raw-sha256.txt` identifies the unnormalized workflow output. Generated code and binaries are excluded.

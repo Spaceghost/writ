@@ -1,0 +1,1 @@
+3117788 3098792       00:24 clang-23 -DBEND_CUDA=1 -I/opt/cuda/include -L/opt/cuda/lib64 -L/opt/cuda/lib -std=c11 -O3 /tmp/bend-zts3Jr/tests-native.c -lpthread -lm -o /tmp/writ-comparator-native-c5a02c7/tests-native -lcuda -lnvrtc

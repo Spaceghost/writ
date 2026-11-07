@@ -1,0 +1,130 @@
+[
+  {
+    "mutant": "graph",
+    "phase": "before",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 2,
+    "failure": "FAIL: planner-plan graph high word differs"
+  },
+  {
+    "mutant": "policy",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "authority",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "invocation",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "source_object",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "source_version",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "destination_object",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "destination_version",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "graph",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 2,
+    "failure": "FAIL: planner-plan graph high word differs"
+  },
+  {
+    "mutant": "policy",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  },
+  {
+    "mutant": "authority",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  },
+  {
+    "mutant": "invocation",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  },
+  {
+    "mutant": "source_object",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  },
+  {
+    "mutant": "source_version",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  },
+  {
+    "mutant": "destination_object",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  },
+  {
+    "mutant": "destination_version",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-plan isolated high-word substitutions differ"
+  }
+]

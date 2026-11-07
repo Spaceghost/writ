@@ -161,7 +161,7 @@ verification record distinguish their observed scope from pending integration.
 | `planner-envelope-source-order-and-duplicates` | `[A,B]`, `[B,A]`, `[A,A]`, and `[A]` remain distinct; object and version differences survive. |
 | `planner-envelope-evidence-order-and-duplicates` | Evidence `[A,B]`, `[B,A]`, `[A,A]`, and `[A]` stay distinct and round trip exactly in that order. |
 | `planner-envelope-reference-namespaces` | Identical 256-bit words in manifest and evidence positions remain distinct typed fields after decoding; neither is resolved or authenticated. |
-| `planner-envelope-n48-boundaries` | Zero and 2^48−1 round trip; any high word at 65536 and all-ones reject without wrap. |
+| `planner-envelope-n48-boundaries` | Zero and 2^48−1 round trip; the structural maximum-high-word fixture covers every N48 field, and any high word at 65536 and all-ones reject without wrap. |
 | `planner-envelope-truncation` | Each word-boundary prefix and byte-boundary prefix shorter than a valid frame fails; malformed input produces no description. |
 | `planner-envelope-size-before-parse` | At cap, cap+1, and a much larger word/byte list, bounded scanning rejects oversize before checking version/alignment/range, without a wrapping counter. |
 | `planner-envelope-header` | Unknown version/kind, bad body length, count/length disagreement, and trailing data reject with the specified order. |

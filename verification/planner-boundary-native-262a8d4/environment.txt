@@ -1,0 +1,14 @@
+source_commit=262a8d4d683c4c48711e734bd1358bc4b33a3993
+clang=clang version 23.1.1
+bend=bend 2.0.39
+native_build_command=CC=clang-23 BEND_NO_TELEMETRY=1 nice -n 15 bend Tests.bend -o /tmp/writ-planner-boundary-native/tests-native
+native_build_exit=0
+native_run_command=nice -n 15 tests-native +RTS --threads 4 --gpu off
+native_run_exit=0
+exact_build_command=CC=clang-23 BEND_NO_TELEMETRY=1 nice -n 15 timeout 1800 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend Tests.bend -o /tmp/writ-planner-boundary-native/tests-native
+observed_compiler_flags=-std=c11 -O3
+exact_run_command=nice -n 15 timeout 1200 /tmp/writ-planner-boundary-native/tests-native +RTS --threads 4 --gpu off
+native_binary_sha256=0616d539dd0369f684214c10a99a3b8b6e9c31c2b72fb425a3ed3d0fb961eaa3
+clang_binary_sha256=939a882527432ec23b094c289e7f170bf2d6ec282e74dde75e31b08602fa3eae
+full_output_sha256=a2bdd3383323d06aa9bac21e698f30fe0c0aadbacae7c4ab8b04648e272dfa47
+bend_source_inventory_sha256=652e285c2e2443874e73d820f5377e2bdf7469158dd3efa119b3e325e914885e

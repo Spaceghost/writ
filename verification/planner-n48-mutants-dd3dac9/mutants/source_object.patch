@@ -1,0 +1,7 @@
+diff --git a/PlannerEnvelope.bend b/PlannerEnvelope.bend
+index 45084ba..16fcee6 100644
+--- a/PlannerEnvelope.bend
++++ b/PlannerEnvelope.bend
+@@ -118 +118 @@ def read_objects(fuel: Nat, words: +List<U32>) -> ObjectsRead:
+-        ObjectRef{N48{a, b}, N48{c, d}}, read_objects(next, rest))
++        ObjectRef{N48{a, 0}, N48{c, d}}, read_objects(next, rest))
