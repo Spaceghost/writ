@@ -7,8 +7,9 @@ At exact source `25e70622c06b053ba1b8691da2fb6af6f5c73b4a`, pinned Bend
 `fc22f84ecae8af226c0e88b94c5dac9ff6d15b53420dbfeccdc8b40814238e6c`
 matches the Bend/Node/Nix JavaScript output byte-for-byte. The build and run
 were joined by `&&`; the observed outer shell exited 0. Their individual exit
-codes were not separately captured. The [combined build log](build.log) is
-empty. After the run `/usr/bin/clang` reported version 23.1.1; its exact
+codes were not separately captured. The [combined build log](build.log) contains
+only a Bend update-availability notice; the run used pinned 2.0.39. After the
+run `/usr/bin/clang` reported version 23.1.1; its exact
 optimisation flag was not independently recorded.
 
 [observation.txt](observation.txt) records the commands and observed hashes.
