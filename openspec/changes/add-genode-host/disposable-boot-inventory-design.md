@@ -174,6 +174,9 @@ are proposed bounds, not a guarantee a future valid fixture fits. Limit,
 metadata, short read, content mismatch, unexpected hard-link count or any I/O
 failure yields incomplete; no smaller fallback set is reported as complete.
 
+A separate [synthetic partial-manifest format](public-synthetic-manifest-design.md)
+is proposed without connecting it to a worker or claiming completion.
+
 ## Publication, time and remaining trust
 
 The worker should write only bounded outputs under a separately held owned
