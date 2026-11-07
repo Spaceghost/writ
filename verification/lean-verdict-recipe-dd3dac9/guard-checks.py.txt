@@ -1,0 +1,32 @@
+from pathlib import Path
+import os
+import subprocess
+
+script = '/tmp/writ-lean-reproduction-final-reviewed.sh'
+cwd = '/tmp/writ-lean-verdict-clean'
+fixture = Path('/tmp/writ-lean-git-failure-fixture')
+fixture.mkdir(exist_ok=True)
+wrapper = fixture / 'git'
+wrapper.write_text('''#!/bin/sh
+if [ "${1:-}" = '-C' ] && [ "${3:-}" = 'status' ]; then
+  printf 'INJECTED_STATUS_FAILURE\n' >&2
+  exit 1
+fi
+exec /usr/bin/git "$@"
+''')
+wrapper.chmod(0o755)
+archive = Path('/tmp/writ-lean-invalid-archive.zst')
+archive.write_bytes(b'invalid archive fixture\n')
+env = os.environ.copy()
+env['WRIT_LEAN_ARCHIVE'] = str(archive)
+checks = [
+    ('outside-tmp-guard', {'TMPDIR': '.'}, b'TMPDIR must be outside the checkout'),
+    ('archive-sha-guard', {'TMPDIR': '/tmp'}, b'FAILED'),
+    ('git-status-failure', {'TMPDIR': '/tmp', 'PATH': str(fixture) + ':' + env['PATH']}, b'INJECTED_STATUS_FAILURE'),
+]
+for name, overrides, needle in checks:
+    result = subprocess.run(['timeout', '30', 'bash', script], cwd=cwd,
+                            env={**env, **overrides}, capture_output=True)
+    if result.returncode == 0 or needle not in result.stdout + result.stderr:
+        raise SystemExit(f'{name}: unexpected exit={result.returncode}')
+    print(f'{name}: rejected (exit {result.returncode})')
