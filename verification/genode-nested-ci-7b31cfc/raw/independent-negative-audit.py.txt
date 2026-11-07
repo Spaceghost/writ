@@ -1,0 +1,31 @@
+import hashlib,json,pathlib,struct,zlib
+root=pathlib.Path('/tmp/writ-nested-ci-7b31cfc/negative')
+meta=json.loads((root/'run-meta.json').read_text())
+with (root/'run.log.gz').open('rb') as f:
+    packed=f.read(32*1024*1024+1)
+assert len(packed)<=32*1024*1024 and len(packed)==meta['compressed']['bytes']
+assert hashlib.sha256(packed).hexdigest()==meta['compressed']['sha256']
+assert packed[:4]==b'\x1f\x8b\x08\x00'
+needles=[
+ b"writ_channel: channel 1 opened for 'clients -> writ_client_r -> channel' route subject 1",
+ b'monitor: SYNTHETIC authority',
+ b'monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0',
+ b'client: FAIL expected decision 2 reason 0, observed decision 1 reason 0',
+ b'child "writ_client_r" exited with exit value 1',
+ b'Error: nested client did not exit with value 0']
+seen=[False]*len(needles); carry=b''; h=hashlib.sha256(); crc=0; size=0; d=zlib.decompressobj(-15); pending=packed[10:]
+while not d.eof:
+    chunk=d.decompress(pending,1024*1024); pending=d.unconsumed_tail
+    if not chunk and not pending and not d.eof: raise ValueError('unexpected end')
+    size+=len(chunk); assert size<=512*1024*1024
+    h.update(chunk);crc=zlib.crc32(chunk,crc);window=carry+chunk
+    seen=[a or b in window for a,b in zip(seen,needles)]
+    carry=window[-max(map(len,needles)):]
+trailer=d.unused_data
+assert len(trailer)==8 and struct.unpack('<II',trailer)==(crc & 0xffffffff,size & 0xffffffff)
+assert size==meta['raw']['bytes'] and h.hexdigest()==meta['raw']['sha256']
+print('compressed_bytes=',len(packed),'sha256=',meta['compressed']['sha256'])
+print('raw_bytes=',size,'sha256=',h.hexdigest())
+for n,found in zip(needles,seen):print('found=',found,n.decode())
+assert all(seen)
+print('bounded independent gzip/hash/fixture-line audit: PASS; cleanup unverified')

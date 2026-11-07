@@ -1,0 +1,9 @@
+compressed_bytes= 2520924 sha256= e37b78bb42d699084cfc218cfba8ee0c68fc8378362afaa9d505f547d6edba44
+raw_bytes= 246349527 sha256= 262422075b5232e873f26c2b20fd84dfe37e4468f59541a999870436612788aa
+found= True writ_channel: channel 1 opened for 'clients -> writ_client_r -> channel' route subject 1
+found= True monitor: SYNTHETIC authority
+found= True monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 (untrusted, not used) decision=Committed reason=0
+found= True client: FAIL expected decision 2 reason 0, observed decision 1 reason 0
+found= True child "writ_client_r" exited with exit value 1
+found= True Error: nested client did not exit with value 0
+bounded independent gzip/hash/fixture-line audit: PASS; cleanup unverified

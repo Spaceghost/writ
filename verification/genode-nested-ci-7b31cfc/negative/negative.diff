@@ -1,0 +1,11 @@
+--- /home/runner/work/_temp/writ-nested-negative-raw/original.run	2026-11-07 08:07:23.940741926 +0000
++++ /home/runner/work/_temp/writ-nested-negative-raw/actual.run	2026-11-07 08:07:23.967550624 +0000
+@@ -34,7 +34,7 @@
+   |     + service ROM | + parent
+   |     + service RM | + parent
+   |     + service Timer | + parent
+-  |   + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 2000
++  |   + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 2 | expect_reason: 0 | delay_ms: 2000
+   + route
+     + service Writ_channel | + child writ_bend_monitor
+     + service Timer | + child timer

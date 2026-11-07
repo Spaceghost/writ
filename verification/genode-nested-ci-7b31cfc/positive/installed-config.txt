@@ -1,0 +1,63 @@
+
+config
++ parent-provides
+  + service LOG
+  + service PD
+  + service CPU
+  + service ROM
+  + service RM
++ default-route
+  + any-service
+    + parent
+    + any-child
++ default | caps: 200 | ram: 1M
++ start timer
+  + provides | + service Timer
++ start writ_bend_monitor | caps: 1000 | ram: 256M
+  + provides | + service Writ_channel
+  + config
+    + vfs
+      + dir dev | + log
+      + dir pipe | + pipe
+    + libc | stdout: /dev/log | stderr: /dev/log | pipe: /pipe
+    + arg | value: writ_bend_monitor
+    + arg | value: +RTS
+    + arg | value: --threads
+    + arg | value: 1
+    + arg | value: --gpu
+    + arg | value: off
+    + env | key: WRIT_MEM_REPORT | value: 1
+    + writ_channel
+      + policy | label_prefix: clients -> writ_client_r -> | subject: 1
++ start clients | caps: 1200 | ram: 16M
+  + binary init
+  + config
+  | + parent-provides
+  |   + service LOG
+  |   + service PD
+  |   + service CPU
+  |   + service ROM
+  |   + service RM
+  |   + service Timer
+  |   + service Writ_channel
+  | + start writ_client_r | caps: 200 | ram: 2M
+  |   + binary writ_channel_client
+  |   + route
+  |     + service Writ_channel | + parent
+  |     + service LOG | + parent
+  |     + service PD | + parent
+  |     + service CPU | + parent
+  |     + service ROM | + parent
+  |     + service RM | + parent
+  |     + service Timer | + parent
+  |   + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 2000
+  + route
+    + service Writ_channel | + child writ_bend_monitor
+    + service Timer | + child timer
+    + service LOG | + parent
+    + service PD | + parent
+    + service CPU | + parent
+    + service ROM | + parent
+    + service RM | + parent
+
+-

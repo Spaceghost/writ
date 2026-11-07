@@ -25,6 +25,12 @@ failed on a missing library; the [retry](verification/genode-nested-ci-9e888b7/R
 hit its output bound. Neither observed the nested fixture or negative control,
 and cleanup remained unverified. No protected host is qualified.
 
+The [isolated nested Genode run](verification/genode-nested-ci-7b31cfc/README.md)
+observed the public synthetic R route and decision on base-linux; a separate
+changed-expectation negative control produced the intended harness failure.
+Both remain incomplete because cleanup is unverified; no protected host is
+qualified.
+
 The [automatic Genode CI at `c14f125`](verification/master-ci-c14f125/README.md)
 passed scoped public checks and retained missing-clock warnings. It did not
 run the nested channel fixture or qualify a protected host.

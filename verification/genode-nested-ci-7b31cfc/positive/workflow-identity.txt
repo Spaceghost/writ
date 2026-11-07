@@ -1,0 +1,5 @@
+workflow_sha=7b31cfc3ea750ed25f9091e8723449cf89ea15f9
+workflow_ref=refs/heads/lane/genode-nested-public-ci
+run_id=42354001119
+attempt=1
+runner_image=ubuntu24 20261101.360.1

@@ -39,7 +39,9 @@ retry-only patch were never applied to the delivered model and tests.
 ## Local verification
 
 The base is `57706c973c2cc85dd7ab5e4e2bbc925af850cc3c` with the delivered
-two test additions and count/documentation updates. The
+two test additions and count/documentation updates. The Bend, Node and proof
+commands and native build started before commit `3a13c88`; their checked Bend
+inputs are the same as that commit. The
 [tracked Bend source inventory](bend-source-sha256.txt) has 110 entries.
 The pinned Bend 2.0.39 binary SHA-256 is
 `2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd`;
