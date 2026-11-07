@@ -1,0 +1,174 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-11-07T01:16:54Z",
+  "databaseId": 42323201217,
+  "event": "workflow_dispatch",
+  "headBranch": "lane/windows-win32k-ac",
+  "headSha": "c193857e092d9306f537d79898b5e8edcbf4d9df",
+  "jobs": [
+    {
+      "completedAt": "2026-11-07T01:17:56Z",
+      "conclusion": "success",
+      "databaseId": 128252354298,
+      "name": "Isolated exploratory Win32k ACCA no-data PSS initialization (no confinement credit)",
+      "startedAt": "2026-11-07T01:16:56Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-07T01:16:58Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-07T01:16:57Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:06Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "startedAt": "2026-11-07T01:16:58Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:07Z",
+          "conclusion": "success",
+          "name": "Capture exploratory Win32k ACCA source and runner facts",
+          "number": 3,
+          "startedAt": "2026-11-07T01:17:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:45Z",
+          "conclusion": "success",
+          "name": "Build fixed exploratory Win32k ACCA observation targets",
+          "number": 4,
+          "startedAt": "2026-11-07T01:17:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:50Z",
+          "conclusion": "success",
+          "name": "Verify child PE dependencies",
+          "number": 5,
+          "startedAt": "2026-11-07T01:17:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:51Z",
+          "conclusion": "success",
+          "name": "Run synthetic exploratory Win32k ACCA classifiers",
+          "number": 6,
+          "startedAt": "2026-11-07T01:17:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:52Z",
+          "conclusion": "success",
+          "name": "Run fixed no-data observation sequence",
+          "number": 7,
+          "startedAt": "2026-11-07T01:17:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:53Z",
+          "conclusion": "success",
+          "name": "Retain PSS evidence",
+          "number": 8,
+          "startedAt": "2026-11-07T01:17:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:55Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 16,
+          "startedAt": "2026-11-07T01:17:53Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T01:17:55Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 17,
+          "startedAt": "2026-11-07T01:17:55Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252354298"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:54Z",
+      "conclusion": "skipped",
+      "databaseId": 128252355303,
+      "name": "Isolated no-data LPAC PSS feasibility (no confinement credit)",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252355303"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:54Z",
+      "conclusion": "skipped",
+      "databaseId": 128252355368,
+      "name": "Isolated exploratory registryRead ABBA no-data PSS initialization (no confinement credit)",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252355368"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:54Z",
+      "conclusion": "skipped",
+      "databaseId": 128252355400,
+      "name": "Isolated same-lifetime no-data PSS initialization (no confinement credit)",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252355400"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:54Z",
+      "conclusion": "skipped",
+      "databaseId": 128252355494,
+      "name": "Isolated no-data observations (no confinement credit)",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252355494"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:54Z",
+      "conclusion": "skipped",
+      "databaseId": 128252355645,
+      "name": "Isolated self-child PSS feasibility (no confinement credit)",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252355645"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:54Z",
+      "conclusion": "skipped",
+      "databaseId": 128252355791,
+      "name": "Compile Bend policy tests to JavaScript",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252355791"
+    },
+    {
+      "completedAt": "2026-11-07T01:16:55Z",
+      "conclusion": "skipped",
+      "databaseId": 128252356534,
+      "name": "Run generated Bend tests on native Windows Node",
+      "startedAt": "2026-11-07T01:16:55Z",
+      "status": "completed",
+      "steps": [],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217/job/128252356534"
+    }
+  ],
+  "status": "completed",
+  "updatedAt": "2026-11-07T01:17:57Z",
+  "url": "https://github.com/Spaceghost/writ/actions/runs/42323201217"
+}

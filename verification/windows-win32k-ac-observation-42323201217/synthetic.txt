@@ -1,0 +1,15 @@
+Test project D:/a/_temp/windows-win32k-ac-build
+    Start  2: pss-table-synthetic
+1/5 Test  #2: pss-table-synthetic ..............   Passed    0.01 sec
+    Start  5: pss-init-progress-synthetic
+2/5 Test  #5: pss-init-progress-synthetic ......   Passed    0.01 sec
+    Start  6: pss-init-pipe-synthetic
+3/5 Test  #6: pss-init-pipe-synthetic ..........   Passed    0.01 sec
+    Start  9: win32k-ac-checks-synthetic
+4/5 Test  #9: win32k-ac-checks-synthetic .......   Passed    0.01 sec
+    Start 10: win32k-ac-token-synthetic
+5/5 Test #10: win32k-ac-token-synthetic ........   Passed    0.01 sec
+
+100% tests passed out of 5
+
+Total Test time (real) =   0.10 sec

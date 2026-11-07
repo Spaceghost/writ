@@ -1,0 +1,32 @@
+
+Algorithm : SHA256
+Hash      : 59FEB3FF543A66D9A3E790082F4877A8A77B8754440165C56F2694B375CC2F3F
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-win32k-ac-observer.exe
+
+Algorithm : SHA256
+Hash      : C5AF369686F588A43F7FFCD957E10D97BCBA23B67CE0381955C8821474F361EE
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-init-control.exe
+
+Algorithm : SHA256
+Hash      : 6BD1086E31BBF00E200578171BF35987398C4400E40486A3F2443AA6955F7FB1
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-init-child.exe
+
+Algorithm : SHA256
+Hash      : 44ABBBFC2ABDE40C8EAF366E7CFBEF9DECA81D80B4F8136C72371DB3038D392C
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-table-test.exe
+
+Algorithm : SHA256
+Hash      : D30271C57E4090B15E32464F4574F1C7CB447E41E88D4EECDC24155B5583BDEE
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-init-progress-test.exe
+
+Algorithm : SHA256
+Hash      : DFDC64941CC14B3FC8095621A2BEA800615928601F800C99CCE98176BD7A01C5
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-init-pipe-test.exe
+
+Algorithm : SHA256
+Hash      : BD29730E24837D9448ACC6D19B3A13AB0CCA29C149460DCF7FA66DFEC94D9D00
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-win32k-ac-checks-test.exe
+
+Algorithm : SHA256
+Hash      : 33B0531044BB2565A20523E112FF010FAB247687E9CBE983D32C49A08806AF96
+Path      : D:\a\_temp\windows-win32k-ac-build\Release\writfs-win32k-ac-token-test.exe
