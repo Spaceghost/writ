@@ -15,6 +15,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic Genode CI at `c14f125`](verification/master-ci-c14f125/README.md)
+passed scoped public checks and retained missing-clock warnings. It did not
+run the nested channel fixture or qualify a protected host.
+
 The [automatic master platform runs at `b18c0af`](verification/master-ci-b18c0af/README.md)
 passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 checks. **Strict Windows native failed** with incomplete byte-worker network,
