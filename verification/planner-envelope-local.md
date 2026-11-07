@@ -14,6 +14,16 @@ Bend inputs, including the driver and both codec files. Generated JavaScript and
 binaries were kept outside the checkout. These outcomes do not establish host
 confinement, protected-data delivery, or GPU execution.
 
+The Nix `checks.x86_64-linux.tests-js` check for source `b0c9863` also passed
+the 2,162-check pin. It produced
+`/nix/store/pxhbml0p2l7ixhh5sag16cjcj8kv11l3-writ-tests-js`, byte-identical
+to the capture above; its derivation was
+`/nix/store/riqvkq6mh73mca4cdhpv1grsq3i0j877-writ-tests-js.drv`.
+The later dispatched source `b4df8a5` differs from `b0c9863` only in the
+planner design document and source manifest. Its 107 inventoried Bend inputs
+verify byte-for-byte against this record. This is a Nix JavaScript check, not
+a new Nix native CPU check or a full flake-check result.
+
 `bend PROOF.bend --verdict` exited 0 and reported [ALL PROOFS CHECK](planner-envelope-verdict.log)
 with `BENDTT=/tmp/writ-lean-434-isolated/kernel-audit/bendtt`,
 `LEAN_STACK_SIZE_KB=4194304` and the Lean-built kernel SHA-256
@@ -22,5 +32,8 @@ That hash matches the separately retained master kernel audit. The existing
 `PROOF.bend`/`LAWS.bend` do not import or prove the new codec; this is a
 regression check of those existing laws, not a codec correctness proof.
 Strict OpenSpec validation reported 44 passed, 0 failed. Optimized native CPU
-execution and independent exact-candidate review are pending; none of these
-checks establishes a native host qualification.
+execution of source `b0c9863` with clang 23.1.1 and
+`+RTS --threads 4 --gpu off` passed all 2,162 checks and produced the same
+byte-identical stdout as the capture above. The 107 Bend input hashes still
+verify after this run. The executable and generated sources remain outside the
+checkout. This CPU run is not GPU evidence or native host qualification.
