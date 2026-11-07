@@ -1,5 +1,9 @@
 # Verification record
 
+The [ffa332d automatic CI checkpoint](verification/master-ci-ffa332d/README.md)
+retains passing Windows Node and filesystem fixtures and the strict Windows
+worker failure. Linux and Genode results are pending in that checkpoint.
+
 The [issuance allocation-boundary record](verification/issuance-allocation-boundary/README.md)
 checks exhausted approval/grant IDs without preventing existing grant use or
 authorized revocation when revision headroom exists. Terminal issuance revision

@@ -1,0 +1,10 @@
+PASS transport coalesced frames preserve sequence
+PASS transport fragmented frame remains one request
+PASS transport unterminated frame closes transport
+PASS transport oversized frame closes transport
+PASS transport carriage return closes transport
+PASS transport non-ASCII byte closes transport
+PASS transport NUL byte closes transport
+PASS transport 64 KiB frame reaches Bend with exact digest
+PASS transport Bend owns canonical parsing and error sequencing
+ALL 9 NATIVE TRANSPORT PROBES PASSED
