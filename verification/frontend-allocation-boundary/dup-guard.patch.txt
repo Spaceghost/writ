@@ -1,0 +1,5 @@
+--- a/Frontend.bend
++++ b/Frontend.bend
+@@ -381 +381 @@
+-      open_gate(allocation_room(state) && is_descriptor(handle), state, handle, handle_rights(handle))
++      open_gate(is_descriptor(handle), state, handle, handle_rights(handle))

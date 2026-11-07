@@ -1,5 +1,10 @@
 # Verification record
 
+The [frontend allocation-boundary record](verification/frontend-allocation-boundary/README.md)
+checks that exhausted handle IDs reject new allocation without preventing
+existing-handle use or owner cleanup when revision headroom exists. Terminal
+frontend revision and protected-host qualification remain separate gaps.
+
 The [487311a automatic CI record](verification/master-ci-487311a/README.md)
 retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
 strict Windows worker failure and the refused Linux protected setup.

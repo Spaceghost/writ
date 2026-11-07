@@ -1,0 +1,5 @@
+--- a/Frontend.bend
++++ b/Frontend.bend
+@@ -342 +342 @@
+-  authorized_checked(valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),
++  authorized_checked(allocation_room(state) && valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),

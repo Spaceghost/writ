@@ -33,3 +33,19 @@ output confinement must be enforced by the eventual host.
 There is no kernel character device, mounted filesystem, descriptor-passing ABI,
 or S3 server in this baseline. Those adapters must invoke the same live authority
 path rather than interpret a successful mount as unrestricted access.
+
+## Handle allocation exhaustion
+
+The pinned runtime supports Nat through 2^48 − 1. Since a successful allocation
+must keep `next` strictly above every allocated ID, max − 1 is the final
+allocatable ID; a terminal `next` rejects new mount/open/dup transitions
+unchanged. This refusal preserves CF-004 rather than weakening a security law:
+the alternative successor is unrepresentable. The
+[boundary tests](../../FrontendBoundaryTests.bend) cover all three operations,
+exact scope and state preservation, and HostBinding propagation. With revision
+headroom, exhaustion of the separate allocation counter does not prevent
+resolution, attenuation or owner cleanup, including after capability
+revocation. This does not repair the distinct pre-existing terminal *revision*
+problem: at maximum frontend revision, close may overflow instead of meeting
+CF-012, and that issue remains unresolved. No real identity or native host
+qualification follows from these synthetic records.

@@ -1,0 +1,5 @@
+--- a/Frontend.bend
++++ b/Frontend.bend
+@@ -461 +461 @@
+-  close_checked(valid(state) && Nat.is_eq(revision(state), expected_revision), state, ref)
++  close_checked(allocation_room(state) && valid(state) && Nat.is_eq(revision(state), expected_revision), state, ref)

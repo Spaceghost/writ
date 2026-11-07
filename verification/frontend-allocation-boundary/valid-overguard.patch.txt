@@ -1,0 +1,5 @@
+--- a/Frontend.bend
++++ b/Frontend.bend
+@@ -214 +214 @@
+-      Nat.is_gt(next, 0n) && handles_valid(handles, next)
++      Nat.is_gt(next, 0n) && Nat.is_lt(next, Nat.add(Nat.mul(65536n, 4294967295n), 65535n)) && handles_valid(handles, next)

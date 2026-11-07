@@ -1,0 +1,5 @@
+--- a/Frontend.bend
++++ b/Frontend.bend
+@@ -298 +298 @@
+-  mount_checked(allocation_room(state) && valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),
++  mount_checked(valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),

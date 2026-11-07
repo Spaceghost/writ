@@ -7,6 +7,7 @@ import ./LedgerBoundaryTests.bend as LedgerBoundary
 import ./NegotiationTests.bend as Negotiation
 import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
+import ./FrontendBoundaryTests.bend as FrontendBoundary
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
@@ -35,6 +36,7 @@ def main() -> IO(Unit):
     Negotiation.main()
     Backplane.main()
     Frontend.main()
+    FrontendBoundary.main()
     HostBinding.main()
     HostWire.main()
     PlannerEnvelope.main()

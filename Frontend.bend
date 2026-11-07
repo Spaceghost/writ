@@ -213,6 +213,15 @@ def valid(state: State) -> Bool:
     case State{_, +next, handles}:
       Nat.is_gt(next, 0n) && handles_valid(handles, next)
 
+# Only allocation needs the counter successor. The pinned runtime supports Nat
+# through 2^48 - 1; the final allocatable ID is therefore max - 1. This
+# predicate is provisional data, not authentication or an admission result.
+# Existing-handle resolution, attenuation and owner cleanup do not depend on it.
+def allocation_room(state: State) -> Bool:
+  match state:
+    case State{_, next, _}:
+      Nat.is_lt(next, Nat.add(Nat.mul(65536n, 4294967295n), 65535n))
+
 def choose_capability(ok: Bool, capability: Capability, rest: Maybe<&2, Capability>) -> Maybe<&2, Capability>:
   match ok:
     case True{}:
@@ -286,7 +295,7 @@ def mount_checked(ok: Bool, state: State, registry: Registry, +caller: Caller, l
 # This records a scoped attachment; it neither mints grants nor admits a read.
 # Transfer admission happens when checked_plan resolves an operational request.
 def mount(+state: State, +registry: Registry, expected_revision: Nat, caller: Caller, rights: U32, live: Live) -> Change:
-  mount_checked(valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),
+  mount_checked(allocation_room(state) && valid(state) && registry_valid(registry) && Nat.is_eq(revision(state), expected_revision),
     state, registry, caller, live, rights)
 
 def ref_matches(handle: Handle, ref: Ref) -> Bool:
@@ -351,12 +360,12 @@ def open_gate(ok: Bool, state: State, handle: Handle, rights: U32) -> Change:
     case False{}:
       Rejected{state}
 
-def open_found(found: Maybe<&2, Handle>, state: State, +rights: U32) -> Change:
+def open_found(found: Maybe<&2, Handle>, +state: State, +rights: U32) -> Change:
   match found:
     case None{}:
       Rejected{state}
     case Some{+handle}:
-      open_gate(is_mount(handle) && rights_valid(rights) && T.word_subset(rights, handle_rights(handle)),
+      open_gate(allocation_room(state) && is_mount(handle) && rights_valid(rights) && T.word_subset(rights, handle_rights(handle)),
         state, handle, rights)
 
 # Open a fresh Descriptor from a current Mounted handle. The mount survives;
@@ -364,12 +373,12 @@ def open_found(found: Maybe<&2, Handle>, state: State, +rights: U32) -> Change:
 def open(+state: State, registry: Registry, expected_revision: Nat, ref: Ref, rights: U32, live: Live) -> Change:
   open_found(authorized(state, registry, expected_revision, ref, live), state, rights)
 
-def dup_found(found: Maybe<&2, Handle>, state: State) -> Change:
+def dup_found(found: Maybe<&2, Handle>, +state: State) -> Change:
   match found:
     case None{}:
       Rejected{state}
     case Some{+handle}:
-      open_gate(is_descriptor(handle), state, handle, handle_rights(handle))
+      open_gate(allocation_room(state) && is_descriptor(handle), state, handle, handle_rights(handle))
 
 # Duplicate only a current Descriptor into a new ID with the same scope.
 # Future local attenuation or closure of one handle does not alter its sibling.

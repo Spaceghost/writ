@@ -1,0 +1,17 @@
+PASS: frontend maximum next is valid
+PASS: frontend final mount allocates max minus one
+PASS: frontend final open allocates max minus one
+PASS: frontend final duplicate allocates max minus one
+PASS: frontend final mount preserves exact scope
+PASS: frontend final open preserves exact scope
+PASS: frontend final duplicate preserves exact scope
+PASS: frontend final mount preserves complete state
+PASS: frontend final open preserves complete state
+PASS: frontend final duplicate preserves complete state
+PASS: frontend exhausted mount rejects unchanged
+PASS: frontend exhausted open rejects unchanged
+PASS: frontend exhausted duplicate rejects unchanged
+PASS: frontend exhausted stale mount rejects unchanged
+PASS: frontend exhausted stale open rejects unchanged
+PASS: frontend exhausted stale duplicate rejects unchanged
+FAIL: frontend exhausted allocator preserves descriptor read

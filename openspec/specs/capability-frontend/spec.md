@@ -88,6 +88,13 @@ operations only through a descriptor.
 Every successful mount, open, or descriptor duplication SHALL allocate the next
 positive identifier and advance the frontend revision and allocation counter.
 
+#### Scenario: Handle identifiers are exhausted
+
+- **GIVEN** a valid frontend whose next handle identifier is the maximum supported Nat value
+- **WHEN** mounting, opening or duplicating would require another identifier
+- **THEN** allocation is rejected with the supplied state unchanged
+- **AND** existing-handle resolution and owner cleanup do not depend on allocation availability
+
 #### Scenario: Mount followed by open
 
 - **GIVEN** an empty frontend with next identifier 1

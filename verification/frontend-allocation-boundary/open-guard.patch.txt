@@ -1,0 +1,5 @@
+--- a/Frontend.bend
++++ b/Frontend.bend
+@@ -368 +368 @@
+-      open_gate(allocation_room(state) && is_mount(handle) && rights_valid(rights) && T.word_subset(rights, handle_rights(handle)),
++      open_gate(is_mount(handle) && rights_valid(rights) && T.word_subset(rights, handle_rights(handle)),
