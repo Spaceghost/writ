@@ -1,0 +1,5 @@
+offline evaluated derivation: /nix/store/v6bmld93hkflh33mvvgbqd59kdcl3y0i-writ-tests-js.drv
+filtered source: /nix/store/31nw21rbsscb189xwr184xb4qj54k17s-source
+all 92 filtered Bend files match working-tree inputs
+derivation PASS gate: 2508
+evaluation only: derivation not built, no flake check

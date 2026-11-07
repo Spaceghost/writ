@@ -2,8 +2,8 @@
 
 The [frontend revision V2 primitive record](verification/frontend-revision-v2/README.md)
 covers descriptive tagged comparison and two-word successor arithmetic. It is
-not integrated with frontend authority, migration or cleanup. Its optimized
-native CPU result is pending in this source candidate.
+not integrated with frontend authority, migration or cleanup. Bend, generated
+Node and optimized native CPU outputs match; no GPU execution is claimed.
 
 The [70f05b2 automatic CI record](verification/master-ci-70f05b2/README.md)
 retains passing Windows Node, filesystem, Genode and Linux public fixtures, the

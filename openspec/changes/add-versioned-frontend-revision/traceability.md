@@ -1,9 +1,10 @@
 # Frontend revision V2 proposed traceability
 
 The [FR-001–FR-012 contracts](specs/frontend-revision-v2/spec.md) are proposed.
-The [tasks](tasks.md) remain open; structural OpenSpec validation is not
-evidence of acceptance. A standalone descriptive arithmetic primitive covers
-part of FR-001 only. The existing [CF-012 traceability](../../traceability/capability-frontend.md)
+Only primitive task 1.1 in the [tasks](tasks.md) is complete; all other work
+remains open, and structural OpenSpec validation is not acceptance evidence.
+A standalone descriptive arithmetic primitive covers part of FR-001 only.
+The existing [CF-012 traceability](../../traceability/capability-frontend.md)
 links the confirmed V1 terminal failure and remains unresolved.
 
 | Proposed contract | Required named evidence | Current status |

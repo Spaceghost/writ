@@ -1,11 +1,12 @@
 # Versioned frontend revision tasks
 
-All tasks are pending. This design and its structurally valid OpenSpec files are
-not implementation or qualification evidence.
+Only the standalone descriptive arithmetic primitive in task 1.1 is complete.
+All integration, migration, cleanup and qualification work remains pending.
+Structural OpenSpec validation is not implementation or qualification evidence.
 
 ## 1. V2 model and bounded cleanup
 
-- [ ] 1.1 Implement tagged two-U32 revision comparison, safe carry and no-wrap terminal behavior in Bend; test both word boundaries, stale tags, maximums, and eager Node branch staging.
+- [x] 1.1 Implement tagged two-U32 revision comparison, safe carry and no-wrap terminal behavior in Bend; test both word boundaries, stale tags, maximums, and eager Node branch staging. ([Primitive and recorded checks](../../../verification/frontend-revision-v2/README.md); descriptive only, with no authenticated frontend or migration.)
 - [ ] 1.2 Implement complete bounded original-handle counting and the cleanup-plus-retirement reserve for every V2 mutation; test all three allocators at `O + 2` and `O + 3` remaining successors, attenuation at `O + 1` and `O + 2`, zero-right/open revoked handles, exact last cleanup and retirement, caller mismatch, incomplete traversal and full unchanged denials.
 - [ ] 1.3 Recheck all existing frontend authority, epoch, token, scope and commit contracts through V2; test read-only resolution under allocation exhaustion and prove no compatibility fallback accepts V1 requests as V2.
 
