@@ -97,7 +97,8 @@ length and digest; it must not treat a match as an admission or completed
 inventory.
 
 A separate [pure Bend syntactic pair checker](synthetic-pair-checker-design.md)
-is proposed; no native schema parser or safe production reader exists yet.
+has standalone synthetic checks; no native schema parser or safe production
+reader exists yet.
 
 ## Fixed held directory, staging and interruption
 

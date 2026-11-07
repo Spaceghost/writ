@@ -1,0 +1,6 @@
+PASS: pair full 1462-byte fixture conversion and SHA
+PASS: pair 1466-byte conversion and SHA ceiling
+PASS: pair 1467-byte over-cap rejected
+PASS: pair far-over-cap rejected before conversion
+PASS: pair non-ASCII rejected before conversion
+ALL PAIR FEASIBILITY CHECKS PASSED

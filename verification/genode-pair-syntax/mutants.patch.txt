@@ -1,0 +1,54 @@
+### hash-binding
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -267 +267 @@
+-      digest_equal(String.eq(Sha.artifact_hex(artifact), expected))
++      digest_equal(True{})
+### fixed-names
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -161 +161 @@
+-        _ : Unit <- require(String.eq(name, expected))
++        _ : Unit <- require(True{})
+### decimal-length
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -71 +71 @@
+-  decimal_next_checked(count, U32.is_lt(count, maximum) && U32.is_ge(value, 48) && U32.is_le(value, 57))
++  decimal_next_checked(count, U32.is_ge(value, 48) && U32.is_le(value, 57))
+### u64-lexical-bound
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -82 +82 @@
+-    case True{}: String.is_le(s, limit)
++    case True{}: True{}
+### aggregate-cap
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -193 +193 @@
+-    case True{}: sum_checked(total, value, U32.is_le(total, (1073741824 - value : U32)))
++    case True{}: sum_checked(total, value, True{})
+### hex-cap
+--- PairBytes.bend
++++ PairBytes.bend.mutant
+@@ -62 +62 @@
+-  hex_cap_checked(bytes, within(bytes, max_manifest(), Some{0}))
++  hex_cap_checked(bytes, True{})
+### post-cap-sentinel
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -300 +300 @@
+-    case True{}: manifest_ascii_checked(manifest, status, Bytes.ascii(manifest, True{}))
++    case True{}: PairSyntaxMatch{}
+### manifest-cap-bypass-with-sentinel
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -309 +309 @@
+-  manifest_cap_checked(manifest, status, Bytes.within(manifest, 1466, Some{0}))
++  manifest_cap_checked(manifest, status, True{})
+### status-cap-bypass-with-sentinel
+--- PairSyntax.bend
++++ PairSyntax.bend.mutant
+@@ -305 +305 @@
+-    case True{}: status_cap_checked(manifest, status, Bytes.within(status, 225, Some{0}))
++    case True{}: status_cap_checked(manifest, status, True{})

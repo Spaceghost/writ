@@ -1,0 +1,10 @@
+PASS hash binding mutant rejected by named Bend and Node assertion
+PASS fixed names mutant rejected by named Bend and Node assertion
+PASS decimal length mutant rejected by named Bend and Node assertion
+PASS u64 lexical bound mutant rejected by named Bend and Node assertion
+PASS aggregate cap mutant rejected by named Bend and Node assertion
+PASS hex conversion cap mutant rejected by named Bend and Node assertion
+PASS post-cap sentinel blocked on oversize and reached in-range on Bend and Node
+PASS manifest cap bypass reaches sentinel and is rejected on Bend and Node
+PASS status cap bypass reaches sentinel and is rejected on Bend and Node
+ALL PAIR MUTATION AND STAGING CONTROLS PASSED

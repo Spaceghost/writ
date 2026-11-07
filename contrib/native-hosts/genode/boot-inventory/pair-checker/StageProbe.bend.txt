@@ -1,0 +1,26 @@
+import Base
+import ./PairSyntax.bend as Pair
+import ./Feasibility.bend as F
+import ../../../../../Test.bend as Test
+
+# This template runs only against the scratch post-cap sentinel mutation.
+def bad(result: Pair.PairResult) -> Bool:
+  match result:
+    case Pair.PairMalformed{}: True{}
+    case Pair.PairSyntaxMatch{}: False{}
+
+def hit(result: Pair.PairResult) -> Bool:
+  match result:
+    case Pair.PairMalformed{}: False{}
+    case Pair.PairSyntaxMatch{}: True{}
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(bad(Pair.check(F.repeat(1467n, []), [65])), "stage manifest cap prevents sentinel")
+    Test.check(bad(Pair.check(F.repeat(10000n, []), [65])), "stage far manifest cap prevents sentinel")
+    Test.check(bad(Pair.check([65], F.repeat(226n, []))), "stage status cap prevents sentinel")
+    Test.check(bad(Pair.check([65], F.repeat(10000n, []))), "stage far status cap prevents sentinel")
+    Test.check(hit(Pair.check(F.repeat(1466n, []), [65])), "stage manifest boundary reaches sentinel")
+    Test.check(hit(Pair.check([65], F.repeat(225n, []))), "stage status boundary reaches sentinel")
+    Test.check(hit(Pair.check([65], [65])), "stage short input reaches sentinel")
+    IO.print("ALL PAIR STAGE SENTINEL CHECKS PASSED")

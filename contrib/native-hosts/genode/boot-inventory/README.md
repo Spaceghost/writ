@@ -116,3 +116,11 @@ directory after the last check can leave an invalid pair even after a partial
 return. No actual worker may use this helper until that boundary is reviewed
 and implemented. The [publication evidence](../../../../verification/genode-synthetic-publication/README.md)
 records interruption, readback and no-overwrite controls and their limits.
+
+
+A separate [pure Bend pair checker](pair-checker/PairSyntax.bend) validates the
+fixed public manifest/status syntax and hashes the original bounded manifest
+bytes. It has only syntax-match/malformed results: fabricated or replayed
+matching pairs remain syntactically valid. Its standalone [synthetic
+evidence](../../../../verification/genode-pair-syntax/README.md) does not add
+a native file reader, FFI, worker identity, completion or authority path.

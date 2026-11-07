@@ -1,0 +1,3 @@
+PASS 40 fixed pair hashes independently checked (9 intentional mismatches)
+PASS 7 status-only variants retain the intended base hash
+PASS 1462-byte maximum-width fixture and status hash independently checked

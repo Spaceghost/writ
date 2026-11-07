@@ -1,4 +1,4 @@
-# Proposed bounded synthetic manifest-pair checker
+# Bounded synthetic manifest-pair checker
 
 A public manifest can have a matching status hash while containing malformed
 fields, and a copied or fabricated pair can also be internally consistent. The
@@ -8,8 +8,7 @@ the fixed synthetic format and hash the exact manifest bytes without treating a
 match as an authenticated observation, successful worker, completed inventory
 or authority. No real worker, host probe, fixture or workflow is introduced.
 
-This is design only. The checker and optional native capture described below
-are not implemented. The [fixed pair format and staging scope](public-synthetic-manifest-design.md)
+The pure checker has [standalone synthetic controls](../../../verification/genode-pair-syntax/README.md); optional native capture described below remains unimplemented. The [fixed pair format and staging scope](public-synthetic-manifest-design.md)
 and [exclusive FD-table limitation](same-fd-observation-design.md) remain in
 force. The repo's rules place parsing, state machines and their tests in Bend;
 C may perform narrowly scoped host I/O and descriptor lifetime operations,
@@ -112,7 +111,7 @@ supervisor/deadline and worker-exit binding remain absent. No status file,
 checker result or syntactic-match flag supplies those facts or authorizes a
 protected-data path.
 
-## Planned standalone controls and evidence
+## Standalone controls and evidence
 
 Use independently constructed full canonical positive/negative pair byte
 fixtures and Python/OpenSSL cross-checks for their exact public hashes; never

@@ -1,0 +1,71 @@
+PASS: pair aggregate exact limit
+PASS: pair aggregate limit plus one
+PASS: pair positive
+PASS: pair negative
+PASS: pair maximum_keys
+PASS: pair wrong_header
+PASS: pair missing_name
+PASS: pair duplicate_name
+PASS: pair reordered_name
+PASS: pair leading_zero_size
+PASS: pair over_leaf_cap
+PASS: pair u32_overflow
+PASS: pair u64_overflow
+PASS: pair leading_zero_key
+PASS: pair bad_config_size
+PASS: pair bad_config_hash
+PASS: pair uppercase_hash
+PASS: pair short_hash
+PASS: pair nul_byte
+PASS: pair extra_manifest_newline
+PASS: pair missing_manifest_lf
+PASS: pair aggregate_overflow
+PASS: pair fabricated_digest
+PASS: pair wrong_status_hash
+PASS: pair wrong_status_scenario
+PASS: pair wrong_status_run
+PASS: pair wrong_status_length
+PASS: pair trailing_status
+PASS: pair missing_status_lf
+PASS: pair hash_word_0
+PASS: pair hash_word_1
+PASS: pair hash_word_2
+PASS: pair hash_word_3
+PASS: pair hash_word_4
+PASS: pair hash_word_5
+PASS: pair hash_word_6
+PASS: pair hash_word_7
+PASS: pair status_leading_zero_length
+PASS: pair status_uppercase_hash
+PASS: pair status_bad_header
+PASS: pair status_wrong_marker
+PASS: pair status_unknown_scenario
+PASS: pair status_overflow_key
+PASS: pair u64 overflow with matching status
+PASS: pair leading-zero key with matching status
+PASS: pair overlong u64 with matching status
+PASS: pair maximum-width public fixture
+PASS: pair exact replay remains syntactic match
+PASS: pair manifest early invalid byte 128
+PASS: pair manifest late invalid byte 128
+PASS: pair status early invalid byte 128
+PASS: pair status late invalid byte 128
+PASS: pair manifest early invalid byte 255
+PASS: pair manifest late invalid byte 255
+PASS: pair status early invalid byte 255
+PASS: pair status late invalid byte 255
+PASS: pair manifest early invalid byte 256
+PASS: pair manifest late invalid byte 256
+PASS: pair status early invalid byte 256
+PASS: pair status late invalid byte 256
+PASS: pair manifest early invalid byte 4294967295
+PASS: pair manifest late invalid byte 4294967295
+PASS: pair status early invalid byte 4294967295
+PASS: pair status late invalid byte 4294967295
+PASS: pair all manifest truncation prefixes rejected
+PASS: pair all status truncation prefixes rejected
+PASS: pair manifest cap plus one rejected
+PASS: pair manifest far over cap rejected
+PASS: pair status cap plus one rejected
+PASS: pair status far over cap rejected
+ALL PAIR SYNTAX CHECKS PASSED

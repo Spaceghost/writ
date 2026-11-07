@@ -1,0 +1,7 @@
+Generated standalone Node artifact inspected: /tmp/writ-pair-tests.js
+SHA-256: e0f5cbd05abe862d9d48053e1bbd7d0ba8a74203035a20cdc6b97765e827db1c
+PairBytes.bend SHA-256: d25f13e71872ac779b43b6a5ce98cba2a0ec44d0ee5f6f811be5edee6f6b52db
+PairSyntax.bend SHA-256: 456e3ae26795693afb68be65eea11e1292bfc8bd31b2f280db4762fe100b367c
+PairTests.bend SHA-256: 7ec7542cd2159b539cd817565a9f4bf9378efe821ae82e9b3c713646826fa046
+Observed in generated functions: manifest_cap_checked returns malformed before status cap on false; status_cap_checked returns malformed before ASCII parsing on false; metadata_checked invokes manifest_hex only on true; hex_digest invokes Sha256.digest_hex only for a successful conversion.
+This is source inspection of this exact external generated file, not process attestation. The separate sentinel and bypass-mutant results test post-cap branch reachability; they do not alone observe the original SHA function's execution.
