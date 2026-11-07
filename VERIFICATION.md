@@ -15,6 +15,15 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
+passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
+are scoped observations, not protected-worker or durable-service qualification.
+
+This isolated integration preview reconciles the reviewed planner evidence
+branch `ef40aa2` with master `22c8522`. Its Bend, workflow and Nix inputs are
+unchanged from `ef40aa2`; earlier test and CI results retain the exact source
+identities stated in their records and were not rerun on this evidence merge.
+
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 checks at its recorded source. The later boundary regression adds one
 check, and the separate plan-comparison model adds 61 synthetic checks, for
