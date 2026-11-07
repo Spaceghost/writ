@@ -78,7 +78,11 @@ not an authenticated planner request or a production adapter.
 
 The later [synthetic handoff regression](verification/handoff-stale-admission/README.md)
 adds two checks for stale admission evidence and denied retry, giving 2,263
-checks in this suite. It does not establish native evidence freshness.
+checks at that source. It does not establish native evidence freshness.
+
+The later [planner order regression](verification/planner-independent-order/README.md)
+adds eight independent word-frame encode/decode checks, for 2,271 checks at
+this source. It does not authenticate a proposal or implement an endpoint.
 
 The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
 retains its exact-source outcomes, Linux setup refusal and Genode clock warning;

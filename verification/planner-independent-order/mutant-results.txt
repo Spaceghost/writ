@@ -1,0 +1,16 @@
+source forward-encode bend exit 1 FAIL: source forward-encode
+source forward-encode node exit 1 FAIL: source forward-encode
+source forward-decode bend exit 1 FAIL: source forward-decode
+source forward-decode node exit 1 FAIL: source forward-decode
+source reverse-encode bend exit 1 FAIL: source reverse-encode
+source reverse-encode node exit 1 FAIL: source reverse-encode
+source reverse-decode bend exit 1 FAIL: source reverse-decode
+source reverse-decode node exit 1 FAIL: source reverse-decode
+evidence forward-encode bend exit 1 FAIL: evidence forward-encode
+evidence forward-encode node exit 1 FAIL: evidence forward-encode
+evidence forward-decode bend exit 1 FAIL: evidence forward-decode
+evidence forward-decode node exit 1 FAIL: evidence forward-decode
+evidence reverse-encode bend exit 1 FAIL: evidence reverse-encode
+evidence reverse-encode node exit 1 FAIL: evidence reverse-encode
+evidence reverse-decode bend exit 1 FAIL: evidence reverse-decode
+evidence reverse-decode node exit 1 FAIL: evidence reverse-decode

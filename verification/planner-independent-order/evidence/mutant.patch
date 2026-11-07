@@ -1,0 +1,10 @@
+diff --git a/PlannerEnvelope.bend b/PlannerEnvelope.bend
+index 45084ba..0fcdb29 100644
+--- a/PlannerEnvelope.bend
++++ b/PlannerEnvelope.bend
+@@ -148 +148 @@ def accept_evidence(request: N48, expiry: N48, manifest: Id256, graph: N48, poli
+-    case GotEvidence{evidence, rest}: finish(request, expiry, manifest, graph, policy, authority, invocation, sources, dest_obj, dest_ver, code, operation, output, evidence, rest)
++    case GotEvidence{evidence, rest}: finish(request, expiry, manifest, graph, policy, authority, invocation, sources, dest_obj, dest_ver, code, operation, output, List.reverse(&2, EvidenceRef, evidence), rest)
+@@ -392 +392 @@ def serialize(+sources_count: U32, +evidence_count: U32, proposal: Proposal) ->
+-      tail = {operation <> output_type <> evidence_count <> evidence_words(evidence, Nil{}) : +List<U32>}
++      tail = {operation <> output_type <> evidence_count <> evidence_words(List.reverse(&2, EvidenceRef, evidence), Nil{}) : +List<U32>}
