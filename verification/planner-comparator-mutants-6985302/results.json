@@ -1,0 +1,66 @@
+[
+  {
+    "mutant": "graph",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 2,
+    "failure": "FAIL: planner-plan graph high word differs",
+    "sha256": "8956d1814be36c783610bb3ff7c47234404c5e089a952fd9064662f0d487b3b6"
+  },
+  {
+    "mutant": "policy",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "1c18c0e62b6def1d8a1b6dbe0ac8fdbd39f905dd685afc68f35301a58e766120"
+  },
+  {
+    "mutant": "authority",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "be68bca41665c959c14705eae31236d2adde40a30a018ce50cbe11af10a38302"
+  },
+  {
+    "mutant": "invocation",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "323cc68bb10ed27f6629023fdb7d8c593481f9d448df8419faec965fbaf56ed4"
+  },
+  {
+    "mutant": "source_object",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "b29cb2ae09d15a428a157c40b5b590265747a06da004c72cd3586ed50c16657a"
+  },
+  {
+    "mutant": "source_version",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "288331dd7701efba4818bb553f8b4c0dd9ba93cbe8bacbaba1037b40712ab117"
+  },
+  {
+    "mutant": "destination_object",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "6a39fbe9eb58e01d51dc551be366f720246435e0582e21805c89b340e03cb2ab"
+  },
+  {
+    "mutant": "destination_version",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "sha256": "474af52c81c6436d86d428d58e8007ac3d01d91fb28fc14571370cbaa13f2b0e"
+  }
+]

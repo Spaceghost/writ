@@ -1,0 +1,61 @@
+PASS: planner-plan independently constructed exact plan matches
+PASS: planner-plan graph low word differs
+PASS: planner-plan graph high word differs
+PASS: planner-plan policy stamp differs
+PASS: planner-plan authority stamp differs
+PASS: planner-plan invocation differs
+PASS: planner-plan request id deliberately ignored
+PASS: planner-plan unchecked expiry deliberately ignored
+PASS: planner-plan manifest deliberately ignored
+PASS: planner-plan unsupported evidence deliberately ignored
+PASS: planner-plan overlong evidence deliberately ignored
+PASS: planner-plan source order differs
+PASS: planner-plan repeated source differs
+PASS: planner-plan missing source differs
+PASS: planner-plan extra source differs
+PASS: planner-plan source object differs
+PASS: planner-plan source version differs
+PASS: planner-plan destination object differs
+PASS: planner-plan destination version differs
+PASS: planner-plan code word 1 differs
+PASS: planner-plan code word 2 differs
+PASS: planner-plan code word 3 differs
+PASS: planner-plan code word 4 differs
+PASS: planner-plan code word 5 differs
+PASS: planner-plan code word 6 differs
+PASS: planner-plan code word 7 differs
+PASS: planner-plan code word 8 differs
+PASS: planner-plan all operation mappings
+PASS: planner-plan summarize wire 4 rejected despite policy bit 4
+PASS: planner-plan unknown operation rejected
+PASS: planner-plan all eight atomic outputs
+PASS: planner-plan zero output rejected
+PASS: planner-plan multibit output rejected
+PASS: planner-plan unsupported output rejected
+PASS: planner-plan numeric zero
+PASS: planner-plan numeric 2^32 minus one
+PASS: planner-plan numeric 2^32
+PASS: planner-plan numeric 2^48 minus one
+PASS: planner-plan direct oversized invocation high word
+PASS: planner-plan direct oversized graph high word
+PASS: planner-plan direct oversized policy high word
+PASS: planner-plan direct oversized authority high word
+PASS: planner-plan direct oversized source object high word
+PASS: planner-plan direct oversized source version high word
+PASS: planner-plan direct oversized destination object high word
+PASS: planner-plan direct oversized destination version high word
+PASS: planner-plan minimum one source
+PASS: planner-plan maximum eight repeated sources
+PASS: planner-plan empty proposal sources rejected
+PASS: planner-plan empty selected sources rejected
+PASS: planner-plan nine proposal sources rejected
+PASS: planner-plan nine selected sources rejected
+PASS: planner-plan far oversized proposal cap
+PASS: planner-plan far oversized selected cap
+PASS: planner-plan cap stages before comparison
+PASS: planner-plan every numeric field zero
+PASS: planner-plan every numeric field 2^32 minus one
+PASS: planner-plan every numeric field 2^32
+PASS: planner-plan every numeric field 2^48 minus one
+PASS: planner-plan numeric high boundary remains distinct
+PASS: planner-plan isolated high-word substitutions differ

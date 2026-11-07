@@ -33,3 +33,6 @@ Existing proof declarations do not import or prove this comparator; this is a
 regression verdict for the existing laws, not a comparator proof. Strict
 OpenSpec validation passed 44/44. Native CPU, Nix, CI, GPU and any host or
 protected-data qualification of this source have not been established here.
+
+The later [high-word mutation review](planner-comparator-mutants-6985302/README.md)
+adds one comparison regression; the results above remain tied to their original source.

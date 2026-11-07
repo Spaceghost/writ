@@ -147,6 +147,17 @@ def uniform_plan(+value: Nat) -> T.Plan:
 def uniform_match(word: P.N48, value: Nat) -> Bool:
   M.same_plan_description(uniform_proposal(word), uniform_plan(value))
 
+# One-field high-word substitutions must remain distinct from the selected plan.
+def high_word_mismatch_matrix() -> Bool:
+  not_match(with_stamp(proposal(), P.Stamp{P.N48{10, 0}, P.N48{20, 0}, P.N48{30, 0}}), plan()) &&
+    not_match(with_stamp(proposal(), P.Stamp{P.N48{10, 1}, P.N48{20, 1}, P.N48{30, 0}}), plan()) &&
+    not_match(with_stamp(proposal(), P.Stamp{P.N48{10, 1}, P.N48{20, 0}, P.N48{30, 1}}), plan()) &&
+    not_match(with_invocation(proposal(), P.N48{40, 1}), plan()) &&
+    not_match(with_sources(proposal(), [P.ObjectRef{P.N48{50, 1}, P.N48{51, 0}}, source_b()]), plan()) &&
+    not_match(with_sources(proposal(), [P.ObjectRef{P.N48{50, 0}, P.N48{51, 1}}, source_b()]), plan()) &&
+    not_match(with_destination(proposal(), P.ObjectRef{P.N48{70, 1}, P.N48{72, 0}}), plan()) &&
+    not_match(with_destination(proposal(), P.ObjectRef{P.N48{70, 0}, P.N48{72, 1}}), plan())
+
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(M.same_plan_description(proposal(), plan()), "planner-plan independently constructed exact plan matches")
@@ -209,3 +220,4 @@ def main() -> IO(Unit):
     Test.check(uniform_match(P.N48{0, 1}, base()), "planner-plan every numeric field 2^32")
     Test.check(uniform_match(P.N48{4294967295, 65535}, big()), "planner-plan every numeric field 2^48 minus one")
     Test.check(not_match(uniform_proposal(P.N48{0, 1}), uniform_plan(U32.to_nat(4294967295))), "planner-plan numeric high boundary remains distinct")
+    Test.check(high_word_mismatch_matrix(), "planner-plan isolated high-word substitutions differ")

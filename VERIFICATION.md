@@ -17,12 +17,14 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 checks at its recorded source. The later boundary regression adds one
-check, and the separate plan-comparison model adds 60 synthetic checks, for
-2,223 checks in this integration preview; it checks plan
+check, and the separate plan-comparison model adds 61 synthetic checks, for
+2,224 checks in this integration preview; it checks plan
 fields only and does not resolve a request or establish authority. Its reference-only descriptions do not authenticate
 identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
 The separate [comparison record](verification/planner-plan-match-local.md)
 scopes its pre-integration tests and existing-law proof verdict.
+The [high-word mutation review](verification/planner-comparator-mutants-6985302/README.md)
+records the added comparison regression and its scoped local checks.
 Earlier evidence below remains tied to its own source and is not a claim that
 the new checks ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its
