@@ -1,0 +1,2362 @@
+PASS: exact 64-bit union across both words
+PASS: exact 64-bit intersection
+PASS: bit 63 cannot be satisfied by low word
+PASS: valid graph admitted
+PASS: CPU Jacobi propagation and final stability sweep
+PASS: Bend parallel producer matches sequential producer
+PASS: independent verifier checks original graph
+PASS: summary cannot escape source confidentiality
+PASS: covered destination and actual effect succeed
+PASS: untrusted provenance is checked separately
+PASS: actual network effect needs a live grant
+PASS: callee effect requires grant even when requested mask is zero
+PASS: sink index never wraps
+PASS: list lookup rejects maximal U32 index
+PASS: source secrecy omission rejected
+PASS: source provenance omission rejected
+PASS: source effect omission rejected
+PASS: derived secrecy omission rejected
+PASS: derived provenance omission rejected
+PASS: callee effect omission rejected
+PASS: static equality cannot keep a larger domain
+PASS: empty candidate domain rejected
+PASS: unsupported candidate domain rejected
+PASS: missing candidate nodes rejected
+PASS: extra candidate nodes rejected
+PASS: conservative extra restrictions remain valid
+PASS: extra restrictions still constrain the sink
+PASS: changed graph generation denies
+PASS: changed policy generation denies
+PASS: authority epoch high word is checked
+PASS: candidate stamp must match live snapshot
+PASS: one-sweep budget fails closed
+PASS: final convergence check consumes fuel
+PASS: exact convergence budget succeeds
+PASS: parallel budget fails closed
+PASS: missing flow endpoint rejected before solving
+PASS: parallel producer receives only validated graph
+PASS: missing equality endpoint rejected
+PASS: missing call endpoint rejected
+PASS: empty seed type domain rejected
+PASS: unsupported seed type domain rejected
+PASS: incompatible static types conflict
+PASS: parallel producer preserves type conflict
+PASS: cyclic flow reaches verified fixed point
+PASS: parallel cycle agrees with CPU
+PASS: empty graph succeeds in zero rounds
+PASS: empty parallel graph needs no dispatch
+PASS: bit 63 propagates in all three restriction domains
+PASS: parallel propagation retains high bits
+PASS: high-word restrictions can be explicitly covered
+PASS: high-word required effect cannot be dropped
+PASS: stable forged producer output fails independent verification
+Core: 52 checks passed; parallel dispatch does not attest GPU hardware
+PASS valid paired admission
+PASS summary retains origin and labels
+PASS read required
+PASS write required
+PASS read domain distinct
+PASS write domain distinct
+PASS read object version exact
+PASS write object exact
+PASS graph epoch current
+PASS policy epoch current
+PASS authority epoch current
+PASS expiry exclusive
+PASS all 256 code bits bound
+PASS invocation bound
+PASS read grant stamp bound
+PASS fresh writer cannot redirect old read destination
+PASS fresh writer cannot redirect old read write-domain
+PASS operation kind approved
+PASS operation code approved
+PASS origin code pin required
+PASS origin transform restrictions retained
+PASS empty origins rejected
+PASS unknown kind bits rejected
+PASS derived source cannot widen origin rights
+PASS source cannot erase origin secrecy
+PASS payment required
+PASS payment origin version
+PASS payment invocation
+PASS payment code
+PASS payment kind
+PASS payment destination
+PASS payment quote
+PASS payment expiry
+PASS ROT13 or summary cannot clear confidentiality
+PASS integrity independently enforced
+PASS own bucket only narrows output operations
+PASS multiple origins union labels including bit63
+PASS old read cannot approve expanded source manifest
+PASS every source read required
+PASS every original payment required
+PASS copy preserves schema and remains protected
+PASS parallel batch admission
+PASS parallel batch retains denial
+PASS preflight collects every inherited origin in order
+PASS origin discovery is independent of later grants and payment
+PASS preflight rejects stale authority
+PASS preflight source version exact
+PASS preflight rejects malformed source schema
+PASS preflight refuses missing provenance
+PASS preflight rejects source erasing origin labels
+PASS preflight rejects amplified origin rights
+PASS ambiguous runtime source schema denied
+PASS unknown payment operation bits denied
+Transfer: 53 checks passed
+PASS: DLM exact finite closure validates
+PASS: DLM transitive delegation closure validates
+PASS: delegation direction and transitivity
+PASS: delegation does not reverse
+PASS: Top acts for every registered principal
+PASS: every registered principal acts for Bottom
+PASS: ordinary principal has no implicit Top authority
+PASS: unregistered principal denies even for Top
+PASS: unsupported composite principal denies
+PASS: authority epoch mismatch denies
+PASS: invented closure authority denies
+PASS: omitted delegation edge in closure denies
+PASS: malformed relation shape denies
+PASS: out-of-universe relation bit denies
+PASS: unknown delegation endpoint denies preparation
+PASS: oversized principal universe denies
+PASS: unsupported delegation denies preparation
+PASS: empty name registry retains Top and Bottom
+PASS: highest supported principal uses bit 31 correctly
+PASS: preparation computes transitive authority
+PASS: owner-sensitive readers include owner and delegate
+PASS: untrusted owner imposes no policy on observer
+PASS: confidentiality join intersects readers
+PASS: confidentiality meet unions readers
+PASS: integrity join unions possible writers
+PASS: integrity meet intersects possible writers
+PASS: uncredited integrity owner gives unknown provenance
+PASS: public information may acquire secrecy restrictions
+PASS: protected information cannot flow to public
+PASS: narrowing the reader set is allowed
+PASS: widening the reader set requires separate authority
+PASS: trusted information may lose integrity
+PASS: untrusted information cannot endorse itself
+PASS: integrity ordering follows possible writer inclusion
+PASS: removing possible writers requires endorsement
+PASS: maximal restriction is a valid information-flow sink
+PASS: unknown policy principal denies reflexive-looking query
+PASS: unsupported policy principal denies
+PASS: stale flow query denies
+PASS: secret control dependency survives an otherwise-public result
+PASS: dependency joins retain untrusted influence
+PASS: join is an upper bound
+PASS: meet is a lower bound
+PASS: parallel batch agrees with four independent semantic outcomes
+PASS: complete CPU replay accepts correct batch results
+PASS: complete CPU replay rejects fabricated allows
+PASS: complete CPU replay rejects truncated result shape
+DLM: 47 checks passed
+PASS: ledger reserves reader expense
+PASS: reservation removes available funds
+PASS: stale revision denies
+PASS: overdraft denies
+PASS: one live reservation per invocation
+PASS: receipt cannot switch invocation
+PASS: receipt cannot switch payer
+PASS: receipt cannot switch amount
+PASS: scoped commit succeeds
+PASS: commit replay denies
+PASS: cancellation refunds hold
+PASS: cancelled receipt cannot replay
+PASS: expired hold cannot commit
+PASS: expiration refunds hold
+PASS: unexpired hold cannot be reaped
+PASS: duplicate payer registry denies
+Ledger: 16 checks passed
+PASS: negotiation reaches running in guarded order
+PASS: every stage retains immutable request
+PASS: candidate identity cannot change
+PASS: stale session revision denies
+PASS: challenge requires pinned candidate
+PASS: future challenge not yet usable
+PASS: protected sample has pre-execution gate
+PASS: sample cannot read without paired source grant
+PASS: old nonce cannot pair with fresh duplicate ID
+PASS: failed sample denies transition
+PASS: wrong sample nonce denies
+PASS: passing sample does not replace owner approval
+PASS: sample cannot skip negotiation
+PASS: every contributing origin must approve
+PASS: all contributing origins permit negotiation
+PASS: owner approval binds exact destination
+PASS: reader-funded reservation succeeds
+PASS: negotiation reserves reader balance
+PASS: reservation must name reader as payer
+PASS: quote substitution denies
+PASS: revoked budget denies start despite live hold
+PASS: revoked read grant denies execution
+PASS: revoked origin approval denies execution
+PASS: expiry is exclusive at deadline
+PASS: cannot execute before negotiation
+PASS: authority epoch drift denies start
+Negotiation: 26 checks passed
+PASS: backplane commits fully verified transaction
+PASS: write intent retains origins, types, restrictions and DLM label
+PASS: committed session is terminal
+PASS: commit advances ledger revision
+PASS: commit spends reserved amount once
+PASS: old running session cannot replay spent receipt
+PASS: terminal session cannot commit twice
+PASS: commit rejects stale session revision
+PASS: commit rejects stale ledger revision
+PASS: forged solver labels cannot authorize output
+PASS: passing sample cannot commit
+PASS: late owner revocation denies commit
+PASS: denied commit does not consume hold
+PASS: denied commit preserves original session
+PASS: late budget revocation denies commit
+PASS: late read revocation denies commit
+PASS: late write revocation denies commit
+PASS: missing origin payment witness denies commit
+PASS: transfer authority epoch drift denies commit
+PASS: DLM authority epoch drift denies commit
+PASS: graph policy epoch drift denies commit
+PASS: DLM blocks secret-to-public release
+PASS: network backend adds actual network effect
+PASS: storage backend adds actual write effect
+PASS: combined control label rechecked against actual destination
+PASS: oracle fixture has valid static narrowing
+PASS: static narrowing cannot change declared output schema
+PASS: binding includes reader and immutable negotiation terms
+PASS: exclusive deadline denies final commit
+PASS: stamp bridge preserves high word
+PASS: stamp bridge cannot truncate high word
+PASS: bit63 epoch mismatch cannot alias low epoch
+PASS: identical duplicate bindings deny closed
+PASS: conflicting bindings deny with permissive entry first
+PASS: conflicting bindings deny with restrictive entry first
+PASS: duplicate registry rejection preserves reservation
+PASS: write intent preserves all 256 artifact identity bits
+PASS: artifact identity differs in final word
+PASS: artifact identity comes from authoritative binding
+PASS: distinct full requests are separate binding keys
+Backplane: 40 checks passed
+PASS: frontend fixture has a valid paired read/write contract
+PASS: empty frontend state is valid
+PASS: unique capability registry validates
+PASS: capability mounts as a protocol handle
+PASS: mount allocates first monotonic ID
+PASS: mounted capability opens a descriptor record
+PASS: open allocates next descriptor ID
+PASS: open preserves frontend structural validity
+PASS: read request resolves exact immutable plan
+PASS: write request resolves same exact plan
+PASS: execute resolves exact plan with all rights
+PASS: mount handle itself cannot perform an operation
+PASS: descriptor cannot cross authenticated subjects
+PASS: descriptor cannot switch capability token
+PASS: all 256 token bits participate in lookup
+PASS: token possession does not change bound subject
+PASS: unknown rights bit denies mount
+PASS: mount cannot amplify registry rights
+PASS: open cannot amplify mounted rights
+PASS: descriptor is not a mount alias
+PASS: mount is not a duplicable operational descriptor
+PASS: descriptor duplication succeeds under live authority
+PASS: dup allocates a distinct descriptor ID
+PASS: dup preserves exact token and plan scope
+PASS: descriptor rights may be attenuated in current state
+PASS: attenuated read right remains usable
+PASS: attenuation removes write right
+PASS: attenuation removes execute right
+PASS: attenuation cannot restore removed rights
+PASS: duplication preserves attenuation
+PASS: zero-right descriptor authorizes no read
+PASS: zero-right descriptor authorizes no write
+PASS: zero-right descriptor authorizes no execution
+PASS: removing registry capability revokes existing descriptor
+PASS: revoked descriptor cannot duplicate itself
+PASS: registry rights reduction invalidates wider existing descriptor
+PASS: registry replacement cannot redirect existing descriptor plan
+PASS: altered descriptor plan disagrees with trusted registry
+PASS: read request still requires destination write approval
+PASS: write request still requires exact source read approval
+PASS: capability cannot bypass inherited payment requirement
+PASS: stale revision cannot resolve operation
+PASS: stale revision cannot duplicate descriptor
+PASS: rejected mutation leaves revision unchanged
+PASS: authority epoch change invalidates open descriptor
+PASS: stale capability cannot mount in new epoch
+PASS: stale mounted capability cannot open
+PASS: expiry is exclusive at exact deadline
+PASS: expired descriptor cannot duplicate itself
+PASS: expired capability cannot mount
+PASS: shortening registry expiry invalidates older broader handle
+PASS: duplicate capability token is ambiguous and invalid
+PASS: malformed registry denies mount
+PASS: malformed registry denies resolution
+PASS: malformed registry rights deny
+PASS: capability epoch must match immutable plan epoch
+PASS: duplicate descriptor IDs invalidate state
+PASS: ambiguous descriptor state denies resolution
+PASS: next descriptor ID must exceed every allocated ID
+PASS: unallocated zero descriptor denies
+PASS: unknown descriptor denies
+PASS: closing descriptor records tombstone
+PASS: closed descriptor cannot resolve
+PASS: closed descriptor cannot duplicate
+PASS: closed descriptor cannot be reactivated by attenuation
+PASS: close replay denies
+PASS: another subject cannot close descriptor
+PASS: another token cannot close descriptor
+PASS: closing one descriptor preserves independently duplicated descriptor
+PASS: new open never reuses tombstoned descriptor ID
+Frontend: 70 checks passed
+PASS: binding fixture state is valid
+PASS: state equality separates a committed change from its input
+PASS: state equality sees a single quota field
+PASS: state equality sees the embedded Frontend state
+PASS: denial checks assert the exact reason
+PASS: GA-001 generation fixture is a valid state
+PASS: GA-001 alias at generation 3 on object at generation 4 denied StaleGeneration
+VECTOR GA-001-1 bind_open denied StaleGeneration
+PASS: GA-001 stale alias cannot be delegated
+PASS: GA-001 stale alias cannot close the current object
+PASS: GA-001 alias at current generation 4 proceeds
+VECTOR GA-001-2 bind_open accepted alias=3;object=2
+PASS: GA-001 current alias reaches the Frontend check
+PASS: GA-002 mount on a recorded route naming the caller succeeds
+VECTOR GA-002-1 bind_mount accepted alias=1;object=1
+PASS: GA-002 mount issues the first alias id
+PASS: GA-002 mount mints a Session owned by the route subject on the route service
+PASS: GA-002 the routed child domain holds the Session alias
+PASS: GA-002 the Session is bound to the new Frontend handle
+PASS: GA-002 Frontend.mount was applied
+PASS: GA-002 mount preserves binding validity
+PASS: GA-002 route prefix naming R mounted for caller S denied RouteMismatch
+VECTOR GA-002-2 bind_mount denied RouteMismatch
+PASS: GA-002 a presented route the parent never recorded denied RouteMismatch
+VECTOR GA-002-3 bind_mount denied RouteMismatch
+PASS: GA-002 route for an unrouted service denied RouteMismatch
+PASS: GA-002 Session on the second service opens under its own route
+PASS: GA-002 route withdrawal fixture is a valid state
+PASS: GA-002 a route on another service does not authorize the holder
+VECTOR GA-002-4 bind_open denied SubjectMismatch
+PASS: GA-003 open from the Session issues a new alias
+VECTOR GA-003-1 bind_open accepted alias=2;object=2
+PASS: GA-003 opened alias names a distinct object
+PASS: GA-003 open mints a Descriptor object
+PASS: GA-003 the new object is bound to the new handle
+PASS: GA-003 the Session alias is unaffected by open
+PASS: GA-003 the Session alias still opens after open
+PASS: GA-003 open preserves binding validity
+PASS: GA-003 attenuate issues a new alias
+PASS: GA-003 attenuate mints a distinct object bound to a distinct handle
+VECTOR GA-003-2 bind_attenuate accepted alias=3;object=3
+PASS: GA-003 attenuate leaves the parent Frontend handle rights intact
+PASS: GA-003 the attenuated Frontend handle carries only read
+PASS: GA-003 parent alias keeps its rights and the copy gets the narrower rights
+PASS: GA-003 the parent descriptor alias is unaffected by attenuate
+PASS: GA-003 attenuate preserves binding validity
+PASS: GA-003 attenuating a Session alias denied FrontendRejected
+PASS: GA-003 attenuate outside the protocol rights denied WidenedRights
+PASS: GA-003 open through an unknown alias denied UnknownAlias
+VECTOR GA-003-3 bind_open denied UnknownAlias
+PASS: GA-003 open through a Descriptor alias denied FrontendRejected
+VECTOR GA-003-4 bind_open denied FrontendRejected
+PASS: GA-004 owner closes a descriptor held by two domains
+VECTOR GA-004-1 bind_close accepted object=2
+PASS: GA-004 after close the owner's alias is stale
+VECTOR GA-004-2 delegate denied StaleGeneration
+PASS: GA-004 after close the second holder's alias is stale
+VECTOR GA-004-3 delegate denied StaleGeneration
+PASS: GA-004 close applies Frontend.close to the bound handle
+PASS: GA-004 close leaves the parent Session usable
+PASS: GA-004 close preserves binding validity
+PASS: GA-004 close at a stale revision destroys nothing and leaves state unchanged
+VECTOR GA-004-4 bind_close denied StaleRevision
+PASS: GA-004 close Frontend rejects destroys nothing
+PASS: GA-004 a domain without the alias cannot close it and is told UnknownAlias
+PASS: GA-004 a non-holder of a destroyed alias is told UnknownAlias, not StaleGeneration
+PASS: GA-004 a delegatee holding a read copy of the Session cannot destroy it
+VECTOR GA-004-5 bind_close denied SubjectMismatch
+PASS: GA-004 a delegatee holding a copy of a descriptor cannot destroy it
+PASS: GA-004 a delegatee may close the descriptor it opened itself
+VECTOR GA-004-6 bind_close accepted object=2
+PASS: GA-004 closing a Session with a two-level derivation below it commits
+VECTOR GA-004-7 bind_close accepted object=1
+PASS: GA-004 closing a Session closes every derived descriptor's Frontend handle
+PASS: GA-004 after a Session close the Session alias is stale
+PASS: GA-004 after a Session close the opened descriptor alias is stale
+PASS: GA-004 after a Session close the attenuated descriptor alias is stale
+VECTOR GA-004-8 delegate denied StaleGeneration
+PASS: GA-004 a Session close stays valid and refunds all three objects
+PASS: GA-004 a Session close skips a derived handle that was already closed
+PASS: GA-005 holder-without-record fixture is a valid state
+PASS: GA-005 alias held by Q with no delegation record denied SubjectMismatch
+VECTOR GA-005-1 bind_attenuate denied SubjectMismatch
+PASS: GA-005 unrecorded holder cannot delegate onward
+PASS: GA-005 a domain that does not hold the alias denied UnknownAlias
+VECTOR GA-005-2 bind_open denied UnknownAlias
+PASS: GA-005 recorded delegation to the worker is accepted
+VECTOR GA-005-3 bind_attenuate accepted alias=4;object=3
+PASS: GA-005 delegatee opens through a delegated Session
+PASS: GA-005 the delegatee's opened alias is usable
+PASS: GA-005 the delegatee's opened alias resolves within the record
+PASS: GA-005 the delegatee is accepted only within the delegated scope
+PASS: GA-005 delegatee derivations preserve binding validity
+PASS: GA-005 while R's route stands the delegatee opens through the delegated Session
+VECTOR GA-005-4 bind_open accepted alias=3;object=2
+PASS: GA-005 route withdrawal after delegation fixture is a valid state
+PASS: GA-005 withdrawing the delegator's route withdraws the delegatee's authority
+VECTOR GA-005-5 bind_open denied SubjectMismatch
+PASS: GA-005 route withdrawal also withdraws the delegatee's derived alias
+PASS: GA-005 delegation to a domain routed as another subject on the service denied SubjectMismatch
+VECTOR GA-005-6 delegate denied SubjectMismatch
+PASS: GA-005 delegation to the same subject's unrouted worker is still recorded
+PASS: GA-005 a route on another service does not bar delegation
+PASS: GA-005 delegatee rerouted after delegation fixtures are valid states
+PASS: GA-005 a delegatee later routed as another subject on the service denied SubjectMismatch at use
+VECTOR GA-005-7 bind_open denied SubjectMismatch
+PASS: GA-005 rerouting the delegatee also withdraws its derived alias
+PASS: GA-005 a rerouted delegatee cannot delegate its derived alias onward
+PASS: GA-005 a rerouted delegatee cannot close its own derived object
+PASS: GA-005 a later route for the delegatee on another service leaves its delegation usable
+PASS: GA-005 delegation to a worker already routed as another subject is still denied SubjectMismatch
+PASS: GA-006 read-only descriptor delegated with read and write denied WidenedRights
+VECTOR GA-006-1 delegate denied WidenedRights
+PASS: GA-006 delegation outside the protocol rights denied WidenedRights
+PASS: GA-006 read delegation of the same read-only descriptor is recorded
+VECTOR GA-006-2 delegate accepted alias=4;object=3
+PASS: GA-006 delegatee of the read-only descriptor shares its object and carries read only
+PASS: GA-006 narrower read-only delegation is recorded
+VECTOR GA-006-3 delegate accepted alias=3;object=2
+PASS: GA-006 delegatee alias carries read only
+PASS: GA-006 delegator alias keeps its rights
+PASS: GA-006 delegatee cannot attenuate past its delegated rights
+PASS: GA-006 delegation preserves binding validity
+PASS: GA-007 mount with zero capability quota denied QuotaExhausted
+PASS: GA-007 open with zero capability quota denied QuotaExhausted
+VECTOR GA-007-1 bind_open denied QuotaExhausted
+PASS: GA-007 only the retried open adds a Frontend handle and advances Frontend
+PASS: GA-007 quota is checked before Frontend authority
+VECTOR GA-007-2 bind_open denied QuotaExhausted
+PASS: GA-007 after top-up the open proceeds at the same revision
+VECTOR GA-007-3 bind_open accepted alias=2;object=2
+PASS: GA-007 the retried open is charged and reaches Frontend
+PASS: GA-007 mount and open each charge one capability slot
+PASS: GA-007 destroying an object refunds its capability slot
+PASS: GA-007 destroying a Session refunds its derived objects too
+PASS: GA-007 revoking a domain refunds the slots of its live objects
+PASS: GA-007 revoke refunds each destroyed object to the domain charged for it
+PASS: GA-008 mount at a stale revision denied StaleRevision
+VECTOR GA-008-1 bind_mount denied StaleRevision
+PASS: GA-008 mount Frontend rejects returns the input state
+VECTOR GA-008-2 bind_mount denied FrontendRejected
+PASS: GA-008 open at a stale revision denied StaleRevision
+PASS: GA-008 attenuate at a stale revision denied StaleRevision
+PASS: GA-008 delegate at a stale revision denied StaleRevision
+PASS: GA-008 revoke at a stale revision denied StaleRevision
+PASS: GA-008 dangling alias fixture is invalid
+PASS: GA-008 an invalid input state is denied StaleRevision
+VECTOR GA-008-3 bind_mount denied StaleRevision
+PASS: GA-008 revoke on an invalid input state is denied
+PASS: GA-008 rebuilding a committed binding table keeps the state valid
+PASS: GA-008 two objects bound to one Frontend handle are rejected by valid
+PASS: GA-008 a transition on a shared-handle state is denied StaleRevision
+PASS: GA-008 two uncopied aliases for one live object are rejected by valid
+PASS: GA-008 a close on a two-minter state is denied StaleRevision and refunds nothing
+PASS: GA-008 a stale uncopied alias beside a current one on a live object is rejected by valid
+PASS: GA-008 a destroyed object's stale copies without records stay valid
+PASS: GA-008 delegate, open, and minter close outputs satisfy valid
+PASS: GA-008 derived and delegatee close and revoke outputs satisfy valid
+PASS: GA-008 the three-level Session close and the three-level chain close satisfy valid
+PASS: GA-008 a three-level Session close over a delegated copy satisfies valid and refunds all three objects
+PASS: GA-011 a two-level chain R to W to H is recorded
+PASS: GA-011 the chain preserves binding validity
+PASS: GA-011 revoking R's domain commits
+VECTOR GA-011-1 revoke accepted domain=7
+PASS: GA-011 revoking R makes W's alias stale
+VECTOR GA-011-2 delegate denied StaleGeneration
+PASS: GA-011 revoking R makes H's alias stale
+VECTOR GA-011-3 delegate denied StaleGeneration
+PASS: GA-011 revoke removes the whole subtree
+PASS: GA-011 closing R's descriptor makes W's alias stale
+PASS: GA-011 closing R's descriptor makes H's alias stale
+PASS: GA-011 close removes the whole subtree and stays valid
+PASS: GA-011 removing W's node removes H's node with it
+PASS: GA-011 removing H's node keeps W's node
+PASS: GA-011 child delegation wider than its read-only parent denied and no node added
+VECTOR GA-011-4 delegate denied WidenedRights
+PASS: GA-011 W's derived object is usable before its branch is cut
+PASS: GA-011 derived object is stale after its parent is closed
+VECTOR GA-011-5 bind_attenuate denied StaleGeneration
+PASS: GA-011 derived object is stale after its parent's holder is revoked
+PASS: GA-011 revoking the delegatee's domain commits
+VECTOR GA-011-6 revoke accepted domain=8
+PASS: GA-011 revoking a delegatee destroys the delegator's object too
+VECTOR GA-011-7 delegate denied StaleGeneration
+PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
+HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+PASS: PH-011 Use decode of encode is the same message
+PASS: PH-011 Use words decode and re-encode to the same words
+PASS: PH-011 Delegate decode of encode is the same message
+PASS: PH-011 Delegate words decode and re-encode to the same words
+PASS: PH-011 Complete decode of encode is the same message
+PASS: PH-011 Complete words decode and re-encode to the same words
+PASS: PH-011 Release decode of encode is the same message
+PASS: PH-011 Release words decode and re-encode to the same words
+PASS: PH-011 a byte-level round trip of a 40-byte Delegate is the same message
+PASS: PH-011 a byte-level round trip of a Use is the same message
+PASS: PH-011 a byte-level round trip of a Complete is the same message
+PASS: PH-011 byte transport carries each word little-endian
+PASS: PH-011 operation execute with rights equal to the mask is in bounds
+PASS: PH-011 lifetime equal to max_lifetime is in bounds
+PASS: PH-011 version 0 denied UnknownVersion
+PASS: PH-011 version 2 denied UnknownVersion
+PASS: PH-011 version 0xFFFFFFFF denied UnknownVersion
+PASS: PH-011 tag 0 denied UnknownTag
+PASS: PH-011 tag 5 denied UnknownTag
+PASS: PH-011 tag 0xFFFFFFFF denied UnknownTag
+PASS: PH-011 a tag-5 record shaped like a Context, Ledger, and caller denied UnknownTag
+PASS: PH-011 no record is built from a serialized trusted context
+PASS: PH-011 empty input denied BadLength
+PASS: PH-011 version word only denied BadLength
+PASS: PH-011 version and tag only denied BadLength
+PASS: PH-011 header only denied BadLength
+PASS: PH-011 Use header length one short denied BadLength
+PASS: PH-011 Use header length one long denied BadLength
+PASS: PH-011 Delegate header length one short denied BadLength
+PASS: PH-011 Delegate header length one long denied BadLength
+PASS: PH-011 Complete header length one short denied BadLength
+PASS: PH-011 Complete header length one long denied BadLength
+PASS: PH-011 Release header length one short denied BadLength
+PASS: PH-011 Release header length one long denied BadLength
+PASS: PH-011 correct header with a truncated body denied BadLength
+PASS: PH-011 one trailing word denied BadLength
+PASS: PH-011 11 words denied TooLong
+PASS: PH-011 very oversized word input denied TooLong before parsing
+PASS: PH-011 very oversized byte input denied TooLong before parsing
+PASS: PH-011 byte order: length cap precedes alignment and byte range
+PASS: PH-011 byte order: alignment precedes byte range
+PASS: PH-011 byte order: byte range precedes version
+PASS: PH-011 3 bytes denied BadLength
+PASS: PH-011 5 bytes denied BadLength
+PASS: PH-011 41 bytes denied TooLong
+PASS: PH-011 zero host denied OutOfRange
+PASS: PH-011 zero slot denied OutOfRange
+PASS: PH-011 zero sequence denied OutOfRange
+PASS: PH-011 zero target_session denied OutOfRange
+PASS: PH-011 operation 0 denied OutOfRange
+PASS: PH-011 operation 4 denied OutOfRange
+PASS: PH-011 rights 0 denied OutOfRange
+PASS: PH-011 rights 8 denied OutOfRange
+PASS: PH-011 lifetime 0 denied OutOfRange
+PASS: PH-011 lifetime max_lifetime plus 1 denied OutOfRange
+PASS: PH-011 status 0 denied OutOfRange
+PASS: PH-011 status 3 denied OutOfRange
+PASS: PH-011 a byte value of 256 denied OutOfRange
+PASS: PH-011 byte range rejects interior and final invalid values
+PASS: PH-011 order: the length cap precedes the version
+PASS: PH-011 order: the version precedes the tag
+PASS: PH-011 order: the tag precedes the header length
+PASS: PH-011 order: the body count precedes field bounds
+PASS: PH-003 a Use naming another session's slot decodes to a Ref of four identity words only
+PASS: PH-003 the guessed Use's subject stays a ClaimedSubject, untrusted
+PASS: PH-004 zero incarnation denied OutOfRange
+PASS: PH-004 zero generation denied OutOfRange
+PASS: PH-004 references differing only in incarnation encode and decode differently
+PASS: PH-004 references differing only in generation encode and decode differently
+HostWire: 69 checks passed
+PASS: planner-envelope independent expected encoding
+PASS: planner-envelope canonical words
+PASS: planner-envelope canonical bytes
+PASS: planner-envelope every truncated word prefix
+PASS: planner-envelope every truncated byte prefix
+PASS: planner-envelope full request low word
+PASS: planner-envelope request high boundary
+PASS: planner-envelope manifest final word
+PASS: planner-envelope destination full word
+PASS: planner-envelope code final word
+PASS: planner-envelope request overflow rejected
+PASS: planner-envelope stamp overflow rejected
+PASS: planner-envelope source overflow rejected
+PASS: planner-envelope destination overflow rejected
+PASS: planner-envelope unknown version
+PASS: planner-envelope unknown kind
+PASS: planner-envelope incorrect declared length
+PASS: planner-envelope maximum declared length rejected before conversion
+PASS: planner-envelope no source rejected
+PASS: planner-envelope too many sources rejected
+PASS: planner-envelope unknown operation
+PASS: planner-envelope non atomic output
+PASS: planner-envelope too many evidence references
+PASS: planner-envelope trailing word
+PASS: planner-envelope byte alignment before range
+PASS: planner-envelope invalid byte value
+PASS: planner-envelope byte range rejects interior and final invalid values
+PASS: planner-envelope word cap before version
+PASS: planner-envelope byte cap before alignment and range
+PASS: planner-envelope very large word input
+PASS: planner-envelope very large byte input
+PASS: planner-envelope overlong source encoding
+PASS: planner-envelope overlong evidence encoding
+PASS: planner-envelope bounded far overlong source encoding
+PASS: planner-envelope bounded far overlong evidence encoding
+PASS: planner-envelope unsupported evidence tag
+PASS: planner-envelope maximum frame
+PASS: planner-envelope maximum bytes
+PASS: planner-envelope evidence reference exact frame
+PASS: planner-envelope evidence final word
+PASS: planner-envelope source order preserved
+PASS: planner-envelope duplicate sources preserved
+PASS: planner-envelope evidence order preserved
+PASS: planner-envelope duplicate evidence preserved
+PASS: planner-envelope unknown evidence precedes missing id
+PASS: planner-envelope truncated supported evidence
+PASS: planner-envelope version before kind
+PASS: planner-envelope source count length mismatch
+PASS: planner-envelope directly constructed high word rejected
+PASS: planner-envelope directly constructed empty sources rejected
+PASS: planner-envelope identical manifest and evidence references stay in distinct fields
+PASS: planner-envelope explicit independent little endian prefix
+PASS: planner-envelope all three supported operations
+PASS: planner-envelope all eight atomic output types
+PASS: planner-envelope full 48-bit maximum
+PASS: planner-envelope zero numeric identity
+PASS: planner-envelope operation error precedes output error
+PASS: planner-envelope maximal source count rejected before conversion
+PASS: planner-envelope maximal evidence count rejected before conversion
+PASS: planner-envelope independent little endian decode
+PASS: planner-envelope structural roundtrip mixed full identities and repeated evidence
+PASS: planner-envelope structural roundtrip preserves every maximum N48 high word
+PASS: planner-plan independently constructed exact plan matches
+PASS: planner-plan graph low word differs
+PASS: planner-plan graph high word differs
+PASS: planner-plan policy stamp differs
+PASS: planner-plan authority stamp differs
+PASS: planner-plan invocation differs
+PASS: planner-plan request id deliberately ignored
+PASS: planner-plan unchecked expiry deliberately ignored
+PASS: planner-plan manifest deliberately ignored
+PASS: planner-plan unsupported evidence deliberately ignored
+PASS: planner-plan overlong evidence deliberately ignored
+PASS: planner-plan source order differs
+PASS: planner-plan repeated source differs
+PASS: planner-plan missing source differs
+PASS: planner-plan extra source differs
+PASS: planner-plan source object differs
+PASS: planner-plan source version differs
+PASS: planner-plan destination object differs
+PASS: planner-plan destination version differs
+PASS: planner-plan code word 1 differs
+PASS: planner-plan code word 2 differs
+PASS: planner-plan code word 3 differs
+PASS: planner-plan code word 4 differs
+PASS: planner-plan code word 5 differs
+PASS: planner-plan code word 6 differs
+PASS: planner-plan code word 7 differs
+PASS: planner-plan code word 8 differs
+PASS: planner-plan all operation mappings
+PASS: planner-plan summarize wire 4 rejected despite policy bit 4
+PASS: planner-plan unknown operation rejected
+PASS: planner-plan all eight atomic outputs
+PASS: planner-plan zero output rejected
+PASS: planner-plan multibit output rejected
+PASS: planner-plan unsupported output rejected
+PASS: planner-plan numeric zero
+PASS: planner-plan numeric 2^32 minus one
+PASS: planner-plan numeric 2^32
+PASS: planner-plan numeric 2^48 minus one
+PASS: planner-plan direct oversized invocation high word
+PASS: planner-plan direct oversized graph high word
+PASS: planner-plan direct oversized policy high word
+PASS: planner-plan direct oversized authority high word
+PASS: planner-plan direct oversized source object high word
+PASS: planner-plan direct oversized source version high word
+PASS: planner-plan direct oversized destination object high word
+PASS: planner-plan direct oversized destination version high word
+PASS: planner-plan minimum one source
+PASS: planner-plan maximum eight repeated sources
+PASS: planner-plan empty proposal sources rejected
+PASS: planner-plan empty selected sources rejected
+PASS: planner-plan nine proposal sources rejected
+PASS: planner-plan nine selected sources rejected
+PASS: planner-plan far oversized proposal cap
+PASS: planner-plan far oversized selected cap
+PASS: planner-plan cap stages before comparison
+PASS: planner-plan every numeric field zero
+PASS: planner-plan every numeric field 2^32 minus one
+PASS: planner-plan every numeric field 2^32
+PASS: planner-plan every numeric field 2^48 minus one
+PASS: planner-plan numeric high boundary remains distinct
+PASS: planner-plan isolated high-word substitutions differ
+PASS: PH-002 bind_session records the authenticated caller under a monitor-allocated id
+PASS: PH-003 mint records a root entry owned by the session's authenticated caller
+PASS: PH-003 resolve returns the holder's entry and its authenticated caller
+PASS: PH-005 delegate records a child with the same plan, narrower rights, and a shorter lifetime
+PASS: PH-005 the delegated child resolves for its holder with the narrowed rights
+PASS: PH-005 a child expiring exactly at the parent's expiry is accepted
+PASS: PH-004 retire advances the generation and clears live
+PASS: PH-004 restart starts a greater incarnation with an empty table
+PASS: PH-003 slot 0 denied Forged
+PASS: PH-003 a slot equal to next_slot denied Forged
+PASS: PH-003 another session presenting A's slot and generation denied NotHolder
+PASS: PH-003 another session of the same subject and token presenting the root's reference denied NotHolder
+PASS: PH-003 a same-subject session with another token presenting the root's reference denied NotHolder
+PASS: PH-003 an unbound presenting session denied UnknownSession
+PASS: PH-003 a reference naming another host denied ForeignHost
+PASS: PH-004 a live slot presented with another generation denied StaleGeneration
+PASS: PH-004 after retire the old reference denied Retired
+PASS: PH-004 after retire the bumped generation at the old slot denied Retired
+PASS: PH-004 the handle minted again resolves at its new slot and the old reference stays denied
+PASS: PH-004 after restart a prior-incarnation reference to the reused slot denied StaleIncarnation
+PASS: PH-004 after restart the new incarnation's reference to the reused slot resolves
+PASS: PH-004 a reference naming a later incarnation denied StaleIncarnation
+PASS: PH-004 restart to the current incarnation denied StaleIncarnation
+PASS: PH-004 restart to an earlier incarnation denied StaleIncarnation
+PASS: PH-004 two live entries for one slot denied Ambiguous and the state is not valid
+PASS: PH-004 two sessions under one id denied Ambiguous and the state is not valid
+PASS: PH-002 a transferred endpoint without a delegation edge denied TransferredEndpoint
+PASS: PH-002 a transferred endpoint with a delegation edge to it resolves
+PASS: PH-002 an endpoint transferred from another session denied NotHolder
+PASS: PH-002 an inherited endpoint without a delegation edge denied InheritedEndpoint
+PASS: PH-002 an inherited endpoint with a delegation edge to it resolves
+PASS: PH-002 an inherited session holding a root entry outside any edge denied InheritedEndpoint
+PASS: PH-002 an inherited endpoint presenting another session's reference denied NotHolder
+PASS: PH-002 an inherited endpoint presenting an entry delegated to its parent session denied InheritedEndpoint
+PASS: PH-002 a transferred endpoint's delegated entry at its expiry denied Expired
+PASS: PH-002 mint to a transferred session denied TransferredEndpoint
+PASS: PH-002 mint to an inherited session denied InheritedEndpoint
+PASS: PH-002 a Use claiming subject B on A's session resolves to caller A
+PASS: PH-002 Uses differing only in claimed subject resolve identically
+PASS: PH-005 delegation to another subject's session denied SubjectChanged
+PASS: PH-005 delegation with wider rights denied WidenedRights
+PASS: PH-005 delegation outliving the parent denied WidenedLifetime
+PASS: PH-005 delegation from a non-delegable worker session denied NotDelegable
+PASS: PH-005 delegation from a retired parent denied Retired
+PASS: PH-005 delegation from a stale-generation parent denied StaleGeneration
+PASS: PH-005 delegation to an unbound session denied UnknownSession
+PASS: PH-005 delegation to a same-subject session with another token records that session as holder and keeps the owner's caller
+PASS: PH-005 the child delegated to a session with another token resolves there with the owner's caller
+PASS: PH-005 the child delegated to one session is denied NotHolder from the parent's holder and from another same-subject session
+PASS: PH-005 after a narrower proxy the parent still resolves with full rights and stays live
+PASS: PH-004 retiring the parent retires the child
+PASS: PH-004 retiring the parent retires the grandchild
+PASS: PH-004 retiring a subtree leaves unrelated entries live
+PASS: PH-004 retiring the child leaves the parent live
+PASS: PH-004 retiring the child retires the grandchild
+PASS: PH-004 retiring an already retired slot denied Retired
+PASS: PH-004 retiring the parent after the child leaves the retired child's generation unchanged
+PASS: PH-004 retiring slot 0 denied Forged
+PASS: PH-004 retiring a slot equal to next_slot denied Forged
+PASS: PH-003 a use at the expiry denied Expired
+PASS: PH-003 a use just before the expiry resolves
+PASS: PH-002 bind_session at a stale revision denied StaleRevision
+PASS: PH-003 mint at a stale revision denied StaleRevision
+PASS: PH-003 resolve at a stale revision denied StaleRevision
+PASS: PH-005 delegate at a stale revision denied StaleRevision
+PASS: PH-004 retire at a stale revision denied StaleRevision
+PASS: PH-004 restart at a stale revision denied StaleRevision
+PASS: PH-002 bind_session inheriting from an unbound session denied UnknownSession
+PASS: PH-002 bind_session transferred from an unbound session denied UnknownSession
+PASS: PH-003 mint to an unbound session denied UnknownSession
+PASS: PH-004 a transition on a state that is not valid denied StaleRevision
+PASS: PH-004 valid rejects an entry at a slot not below next_slot
+PASS: PH-004 valid rejects an entry at slot 0
+PASS: PH-003 valid rejects an entry held by an unbound session
+PASS: PH-005 valid rejects a parent link that does not name a lower slot
+PASS: PH-004 valid rejects a session from another incarnation
+PASS: PH-002 valid rejects session id 0
+PASS: PH-004 valid rejects two sessions under one id that holds no entry
+PASS: PH-005 states built by delegation and retirement satisfy valid
+PASS: PH-002 valid rejects an entry whose owner's subject is not its holder's
+PASS: PH-002 valid rejects a root entry whose owner is not exactly its holder's caller
+PASS: PH-005 valid rejects a child whose parent slot holds no entry
+PASS: PH-005 valid rejects a child with rights outside its parent's
+PASS: PH-005 valid rejects a child expiring after its parent
+PASS: PH-005 valid rejects a child with another plan than its parent
+PASS: PH-005 valid rejects a child with another handle than its parent
+PASS: PH-005 valid rejects a child with another owner than its parent
+PASS: PH-004 valid rejects a live child of a retired parent
+PASS: PH-004 order: the host precedes the incarnation
+PASS: PH-004 order: the incarnation precedes forgery
+PASS: PH-004 order: the generation precedes the holder
+PASS: PH-002 order: the origin precedes expiry
+HostIdentity: 92 checks passed
+PASS: PH-006 an admission with every control established records the worker Running and delivers only its input reference
+PASS: PH-014 a CPU admission without accelerator isolation records backend Cpu
+PASS: PH-006 the lower report meets the lower profile when that profile is the admitted one
+PASS: PH-014 the same accelerator profile is admitted once isolation is established
+PASS: PH-006 an input whose earlier worker was reclaimed admits a new worker
+PASS: PH-006 address isolation missing alone denied MissingControl with no effect
+PASS: PH-006 no ambient network missing alone denied MissingControl with no effect
+PASS: PH-006 output mediation missing alone denied MissingControl with no effect
+PASS: PH-006 quota control missing alone denied MissingControl with no effect
+PASS: PH-006 no inherited routes missing alone denied MissingControl with no effect
+PASS: PH-006 accelerator isolation missing alone denied MissingControl with no effect
+PASS: PH-001 an admission on a non-delegable session with no bound profile denied UnknownProfile
+PASS: PH-001 a later request cannot switch profiles: a session bound under the accelerator profile is denied on a CPU-only report that the CPU profile accepts
+PASS: PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile
+PASS: PH-006 a profile not listing the worker family denied MissingControl with no effect
+PASS: PH-006 a profile requiring no controls admits nothing
+PASS: PH-006 a report without the publication family denied UnsupportedFamily with the monitor profile unchanged
+PASS: PH-006 a report meeting only a lower profile denied for the admitted profile with the monitor profile unchanged
+PASS: PH-006 a report with every family but only the lower profile's controls denied MissingControl
+PASS: PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs
+PASS: PH-006 an unmediated first route denied UnmediatedRoute
+PASS: PH-006 an admission given a fact other than an Inventory denied WrongPhase
+PASS: PH-014 an accelerator profile not listing isolation, on a target without it, denied UnisolatedAccelerator and not downgraded
+PASS: PH-006 an admission presenting an input reference the worker session does not hold denied Identity NotHolder
+PASS: PH-006 an admission presenting the worker's input reference on the client session denied Identity NotHolder
+PASS: PH-007 an admission on a delegable session denied DelegableSession with no effect
+PASS: PH-007 after admission a delegation from the worker session denied NotDelegable
+PASS: PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs
+PASS: PH-006 an input held by a running worker listed after a reclaimed one denied SlotOccupied
+PASS: PH-006 a worker on another slot does not block admission on the input
+PASS: PH-007 a charge within the quota adds only to quota_used and emits nothing
+PASS: PH-007 a charge reaching exactly the quota limit is accepted
+PASS: PH-007 a charge beyond the quota denied QuotaExhausted with the state unchanged and no effect
+PASS: PH-007 after exhaustion the worker's phase and its input entry's rights are unchanged
+PASS: PH-007 a charge for a worker never admitted denied UnknownWorker
+PASS: PH-007 a charge from a revoked worker denied WrongPhase
+PASS: PH-007 a charge from a prepared worker denied WrongPhase
+PASS: PH-007 a charge given a fact other than a ResourceRequest denied WrongPhase
+PASS: PH-007 a charge after the worker's input was retired denied Identity Retired
+PASS: PH-007 a charge at the input's expiry denied Identity Expired
+PASS: PH-007 a public diagnostic from a running worker denied DiagnosticSink
+PASS: PH-007 a non-public diagnostic is accepted with no effect
+PASS: PH-007 a diagnostic from a worker never admitted denied UnknownWorker
+PASS: PH-007 a diagnostic from a revoked worker denied WrongPhase
+PASS: PH-007 a diagnostic given a fact other than a Diagnostic denied WrongPhase
+PASS: PH-007 a diagnostic after the worker's input was retired denied Identity Retired
+PASS: PH-001 a native write offer for an admitted worker denied FastPathUnavailable
+PASS: PH-001 a native write offer given another fact denied WrongPhase
+PASS: PH-002 open_session binds the evidence's caller through HostIdentity with no effect
+PASS: PH-001 open_session on a target without the session family denied UnsupportedFamily
+PASS: PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession
+PASS: PH-001 open_session given a fact other than SessionEvidence denied WrongPhase
+PASS: PH-002 open_session as a worker binds the session non-delegable under its profile even when the target reports it delegable
+PASS: PH-007 a worker session the target reported delegable still cannot delegate
+PASS: PH-002 a client session the evidence reports non-delegable is bound non-delegable
+PASS: PH-002 a client session the monitor's role makes non-delegable is bound non-delegable even when the evidence reports it delegable
+PASS: PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile
+PASS: PH-002 open_session as a worker with evidence inherited from an unbound session denied Identity UnknownSession
+PASS: PH-002 open_session records the worker session's profile binding used by the fixtures
+PASS: PH-001 Error.equal compares the HostIdentity reason inside Identity
+PASS: PH-002 a Use claiming another subject on the client's session resolves to the client's caller
+PASS: PH-002 the worker's Use of its input resolves to the owner's caller, not the worker session's
+PASS: PH-002 a read and a write within the root's rights are granted
+PASS: PH-002 a Use requesting rights the entry lacks denied RightsNotHeld
+PASS: PH-002 a Use for a write outside its requested rights denied OperationNotPermitted
+PASS: PH-002 a Use for a read outside its requested rights denied OperationNotPermitted
+PASS: PH-002 a Use naming an operation outside the wire's set denied OperationNotPermitted
+PASS: PH-001 use given a Delegate message denied WrongPhase
+PASS: PH-002 a Use of the worker's input on the client session denied Identity NotHolder
+PASS: PH-001 open_session at a stale revision denied StaleRevision
+PASS: PH-001 use at a stale revision denied StaleRevision
+PASS: PH-006 admit_worker at a stale revision denied StaleRevision
+PASS: PH-007 charge at a stale revision denied StaleRevision
+PASS: PH-007 diagnostic at a stale revision denied StaleRevision
+PASS: PH-001 native_write_offered at a stale revision denied StaleRevision
+PASS: PH-001 states built by the transitions satisfy valid
+PASS: PH-001 valid rejects a state whose identity table is not valid
+PASS: PH-001 valid rejects worker id 0
+PASS: PH-001 valid rejects a worker id not below next_worker
+PASS: PH-001 valid rejects two workers under one id
+PASS: PH-006 valid rejects two unreclaimed workers on one input
+PASS: PH-001 valid rejects a profile id configured twice
+PASS: PH-001 valid rejects a profile binding for a session not in the identity table
+PASS: PH-007 valid rejects a profile binding for a delegable session
+PASS: PH-001 valid rejects a session bound to two profiles
+PASS: PH-001 valid rejects a binding to a profile id not configured
+PASS: PH-006 an admission over an identity table that is not valid denied StaleRevision
+PASS: PH-001 open_session on a state that is not valid denied StaleRevision
+PASS: PH-001 use on a state that is not valid denied StaleRevision
+PASS: PH-007 a charge on a state that is not valid denied StaleRevision
+PASS: PH-007 a diagnostic on a state that is not valid denied StaleRevision
+PASS: PH-001 a native write offer on a state that is not valid denied StaleRevision
+PASS: PH-001 order: the input reference precedes the bound profile
+PASS: PH-006 order: the input reference precedes the protected-profile check
+PASS: PH-006 order: the protected-profile check precedes the occupied slot
+PASS: PH-007 order: the delegable session precedes the occupied slot
+PASS: PH-006 order: the occupied slot precedes the inventory fact
+PASS: PH-006 order: the input reference precedes the inventory fact
+PASS: PH-006 order: the inventory fact precedes the families
+PASS: PH-014 order: accelerator isolation precedes the route inventory
+PASS: PH-007 order: the worker's phase precedes its quota
+PASS: PH-007 order: the input's re-resolution precedes the quota
+PASS: PH-007 order: the worker's phase precedes the diagnostic sink
+PASS: PH-007 order: the input's re-resolution precedes the diagnostic sink
+PASS: PH-002 order: the held rights precede the operation
+PASS: PH-001 issue commits HostIdentity.mint's table, advances the revision once, and emits nothing
+PASS: PH-001 issue on an unbound session denied Identity UnknownSession
+PASS: PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch
+PASS: PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch
+PASS: PH-005 order: issue's plan binding precedes HostIdentity's checks
+PASS: PH-005 issue on a session whose caller has another token than the Frontend handle's owner denied OwnerMismatch
+PASS: PH-005 issue on a session whose caller has another subject than the Frontend handle's owner denied OwnerMismatch
+PASS: PH-005 issue with rights wider than the Frontend handle's denied RightsNotHeld
+PASS: PH-005 issue with rights narrower than the Frontend handle's is accepted
+PASS: PH-005 issue expiring after the Frontend handle denied LeaseExceeded
+PASS: PH-005 order: issue's owner binding precedes its rights and lease bindings
+PASS: PH-005 order: issue's rights binding precedes its lease binding
+PASS: PH-005 delegate commits HostIdentity.delegate's table, advances the revision once, and emits nothing
+PASS: PH-007 a delegation from the worker session through the primitive layer denied Identity NotDelegable
+PASS: PH-008 a seal with zero writers records the exact object, version, and digest with no effect
+PASS: PH-008 a seal with one CPU writer denied LiveWriter
+PASS: PH-008 a read-only seal with one writable mapping left denied LiveWriter
+PASS: PH-008 a seal with one device writer denied LiveWriter
+PASS: PH-008 a seal for a worker never admitted denied UnknownWorker
+PASS: PH-008 a seal from a revoked worker denied WrongPhase
+PASS: PH-008 a seal after the worker's input was retired denied Identity Retired
+PASS: PH-008 a second seal for a sealed worker denied WrongPhase and the record is not replaced
+PASS: PH-008 order: the once-only seal precedes the writer counts
+PASS: PH-008 order: the worker's phase precedes the writer counts
+PASS: PH-009 a publication through DataOS.commit_from_capability emits exactly one Publish of the sealed digest and spends the ledger once
+PASS: PH-009 a publication before any seal denied NotSealed
+PASS: PH-009 another worker's sealed record does not seal this worker's publication: denied NotSealed
+PASS: PH-008 a path retargeted to another object denied Retargeted
+PASS: PH-008 a path retargeted to another version denied Retargeted
+PASS: PH-008 a path retargeted to another digest denied Retargeted
+PASS: PH-008 a current fact naming another worker denied Retargeted
+PASS: PH-008 a writable mapping reappearing before publication denied LiveWriter
+PASS: PH-008 order: the retarget check precedes the writer counts
+PASS: PH-009 a publication for a worker not Running denied WrongPhase
+PASS: PH-009 order: the writer counts precede the worker's phase
+PASS: PH-009 a publication at the input's expiry on the DataOS context's clock denied Identity Expired
+PASS: PH-001 a publication whose capability registry was revoked denied CommitRejected with the session and ledger returned
+PASS: PH-001 a publication at a stale frontend revision denied CommitRejected with the session and ledger returned
+PASS: PH-001 a publication to a public label denied CommitRejected with the session and ledger returned
+PASS: PH-009 a committed binding naming another artifact denied ArtifactMismatch with the session and ledger returned
+PASS: PH-009 order: the commit precedes the artifact binding
+PASS: PH-009 revocation of the input before authorization denies the publication Identity Retired
+PASS: PH-009 revocation of the client's root before authorization denies the publication Identity Retired
+PASS: PH-009 order: the current artifact precedes the re-resolution
+PASS: PH-009 a second publication of the same invocation denied Replay with no second spend
+PASS: PH-009 order: the replay check precedes the commit
+PASS: PH-009 order: the re-resolution precedes the replay check
+PASS: PH-009 reconcile of a recorded invocation with its digest emits Reconcile with no commit and no spending
+PASS: PH-009 reconcile with a different digest denied Substitution
+PASS: PH-009 reconcile with a logged destination other than the recorded one denied Substitution
+PASS: PH-009 publish records the invocation, the sealed digest, and the committed intent's destination
+PASS: PH-009 reconcile of an unrecorded invocation denied Unrecorded
+PASS: PH-009 reconcile before any publication denied Unrecorded and authorizes nothing
+PASS: PH-010 after revocation the recorded publication still reconciles to the same outcome
+PASS: PH-010 revocation after publication leaves the record unchanged and emits only StopEffects, no recall
+PASS: PH-009 after a restart the recorded publication still reconciles to the same outcome
+PASS: PH-010 revoke retires the input, moves its worker to Revoked, and emits StopEffects for it
+PASS: PH-010 revoking the client's root revokes the worker on the delegated input
+PASS: PH-010 revoking one input leaves a worker on another entry Running
+PASS: PH-010 a later revocation does not stop an already revoked worker again
+PASS: PH-010 a revocation stops every running worker whose input reference is not live at its host, incarnation, and generation
+PASS: PH-010 a later revocation leaves a quiesced worker Quiesced
+PASS: PH-010 quiescing one worker leaves another worker's phase unchanged
+PASS: PH-010 revoke of a slot never allocated denied Identity Forged
+PASS: PH-010 revoke of an already retired slot denied Identity Retired
+PASS: PH-010 reclaim after revoke but before quiesce denied NotQuiesced
+PASS: PH-010 reclaim of a running worker denied NotQuiesced
+PASS: PH-010 quiesce naming the pre-revocation generation denied Identity StaleGeneration
+PASS: PH-010 order: quiesce of a running worker denied WrongPhase before its generation
+PASS: PH-010 quiesce of a worker never admitted denied UnknownWorker
+PASS: PH-010 quiesce with the retired generation moves the worker to Quiesced with no effect
+PASS: PH-010 the order revoke, quiesce, reclaim is accepted and reclaim emits only Reclaim
+PASS: PH-010 reclaim of a worker never admitted denied UnknownWorker
+PASS: PH-010 a second quiesce denied WrongPhase
+PASS: PH-010 a second reclaim denied NotQuiesced
+PASS: PH-010 restart drops the bindings, moves running workers to Revoked, and emits StopEffects
+PASS: PH-010 restart to an incarnation not greater denied Identity StaleIncarnation
+PASS: PH-010 a worker revoked by restart is quiesced and reclaimed in order
+PASS: PH-010 a completion for the running worker's live input is accepted with no effect
+PASS: PH-010 a completion after revoke with the old generation denied Identity Retired
+PASS: PH-010 a completion after restart with the old incarnation denied Identity StaleIncarnation
+PASS: PH-010 a completion fact carrying a Use message denied WrongPhase
+PASS: PH-010 a completion for a revoked worker whose entry is still live denied WrongPhase
+PASS: PH-010 a completion naming an entry no worker holds denied UnknownWorker
+PASS: PH-010 a completion for an entry held only by a reclaimed worker denied UnknownWorker
+PASS: PH-010 a completion for the worker's input on the client session denied Identity NotHolder
+PASS: PH-008 seal at a stale revision denied StaleRevision
+PASS: PH-009 publish at a stale revision denied StaleRevision
+PASS: PH-009 reconcile at a stale revision denied StaleRevision
+PASS: PH-010 revoke at a stale revision denied StaleRevision
+PASS: PH-010 restart at a stale revision denied StaleRevision
+PASS: PH-010 quiesce at a stale revision denied StaleRevision
+PASS: PH-010 reclaim at a stale revision denied StaleRevision
+PASS: PH-010 complete at a stale revision denied StaleRevision
+PASS: PH-001 issue at a stale revision denied StaleRevision
+PASS: PH-005 the primitive delegate at a stale revision denied StaleRevision
+PASS: PH-001 states built by the family 1 and 3 to 5 transitions satisfy valid
+PASS: PH-008 valid rejects a sealed record naming no worker
+PASS: PH-008 valid rejects a worker sealed twice
+PASS: PH-009 valid rejects an invocation recorded twice
+PASS: PH-008 a seal on a state that is not valid denied StaleRevision
+PASS: PH-009 a publication on a state that is not valid denied StaleRevision
+PASS: PH-009 reconcile on a state that is not valid denied StaleRevision
+PASS: PH-010 revoke on a state that is not valid denied StaleRevision
+PASS: PH-010 restart on a state that is not valid denied StaleRevision
+PASS: PH-010 quiesce on a state that is not valid denied StaleRevision
+PASS: PH-010 reclaim on a state that is not valid denied StaleRevision
+PASS: PH-010 complete on a state that is not valid denied StaleRevision
+PASS: PH-001 issue on a state that is not valid denied StaleRevision
+PASS: PH-005 the primitive delegate on a state that is not valid denied StaleRevision
+PASS: PH-001 Error.equal distinguishes the publication and revocation reasons
+HostPrimitives: 216 checks passed
+PASS: HH-001 preflight report changes only synthetic phase
+PASS: HH-001 malformed report poisons local preflight
+PASS: HH-001 stale preflight revision denied
+PASS: HH-002 wrong launch lifetime denied
+PASS: HH-002 wrong monitor incarnation denied
+PASS: HH-002 wrong session denied
+PASS: HH-002 wrong held image denied
+PASS: HH-002 dead worker denied
+PASS: HH-003 duplicate report denied
+PASS: HH-003 unretired handoff denied
+PASS: HH-003 unmediated channel denied
+PASS: HH-003 verified synthetic handoff consumes phase
+PASS: HH-003 duplicate handoff denied
+PASS: HH-004 early admission has no effect
+PASS: HH-004 core stale revision denied by existing gate
+PASS: HH-004 core rejects unmediated native route fact
+PASS: HH-004 core rejects revoked input
+PASS: HH-004 only real admission emits exact DeliverInputs effect
+PASS: HH-005 timeout retirement has no protected effect
+PASS: HH-005 retired preflight cannot admit
+PASS: HH-006 copied old handoff revision denied against current state
+PASS: HH-006 duplicate admission with current monitor state denied
+PASS: HH-006 copied ready phase cannot readmit occupied core slot
+PASS: HH-006 existing identity gate rejects expired input
+PASS: HH-006 identical synthetic snapshots require trusted current-state installation
+PASS: HH-007 malformed report cannot be retried after poison
+PASS: HH-007 uncertain handoff cannot be retried after poison
+PASS: HH-007 denied native-route fact consumes the attempt
+PASS: HH-007 trusted adapter retires connection after stale protocol failure
+PASS: HH-004 existing gate rejects missing control
+PASS: HH-007 duplicate report poisons preflight before retry
+PASS: HH-007 duplicate handoff poisons preflight before retry
+PASS: HH-006 restarted monitor incarnation aborts stale preflight
+PASS: HH-006 stale trusted evidence cannot advance a later phase
+PASS: HH-002 unauthenticated synthetic peer aborts preflight
+PASS: HH-002 missing synthetic control aborts preflight
+PASS: HH-006 route facts rechecked before actual admission
+PASS: PH-012 the two adapters differ in host, incarnation, slot allocation, and target report
+PASS: PH-012 every vector's raw bytes decode through HostWire.decode_bytes on both adapters
+PASS: PH-005 the destination-E and changed-input sessions are Running at the baseline revisions with another plan
+PASS: PH-009-1 the baseline delegated input publishes once through DataOS.commit_from_capability on both adapters
+VECTOR PH-009-1 publish accepted invocation=99;input=input
+PASS: PH-005-1 the delegated input used on a session negotiated for destination E is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-1 publish denied PlanMismatch
+PASS: PH-005-2 a session negotiated for a changed input object is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-2 publish denied PlanMismatch
+PASS: PH-005-3 a decoded Delegate narrows the root to the proxy session
+VECTOR PH-005-3 delegate accepted slot=proxy
+PASS: PH-005-4 the proxy delegates a narrower entry to the worker and the delegation copies the parent's plan unchanged
+VECTOR PH-005-4 delegate accepted slot=narrow
+PASS: PH-005-5 the narrower delegated use of the same plan publishes the same full intent as the baseline
+VECTOR PH-005-5 publish accepted invocation=99;input=narrow
+PASS: PH-005-6 after the narrower proxy the broader root still resolves live with all its rights
+VECTOR PH-005-6 use accepted slot=root
+PASS: PH-005-7 a root issued for destination E's plan on a plan-D Frontend handle is denied PlanMismatch with the state unchanged
+VECTOR PH-005-7 issue denied PlanMismatch
+PASS: PH-005-8 a sealed worker on an entry minted for plan E publishing plan D is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-8 publish denied PlanMismatch
+PASS: PH-005-9 a delegated child cannot publish a plan other than its parent's: denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-9 publish denied PlanMismatch
+PASS: PH-005-10 a root issued for a plan with a changed input object on handle 2 is denied PlanMismatch with the state unchanged
+VECTOR PH-005-10 issue denied PlanMismatch
+PASS: PH-005-11 a root issued on a Frontend handle the monitor's Frontend state does not hold is denied PlanMismatch with the state unchanged
+VECTOR PH-005-11 issue denied PlanMismatch
+PASS: PH-005-12 a root issued on a session whose caller does not own the Frontend handle is denied OwnerMismatch with the state unchanged
+VECTOR PH-005-12 issue denied OwnerMismatch
+PASS: PH-005-13 a root issued with rights wider than the Frontend handle's is denied RightsNotHeld with the state unchanged
+VECTOR PH-005-13 issue denied RightsNotHeld
+PASS: PH-005-14 a root expiring after the Frontend handle is denied LeaseExceeded with the state unchanged
+VECTOR PH-005-14 issue denied LeaseExceeded
+PASS: PH-009 the accepted intent retains the source labels and origins (BackplaneTests.retained) on both adapters
+PASS: PH-005 the delegated path's intent label and full origin records equal the root path's
+PASS: PH-005 delegation copies the parent's plan unchanged
+PASS: PH-002-1 a Use claiming subject B on the worker session resolves to the owner's caller
+VECTOR PH-002-1 use accepted slot=input
+PASS: PH-002-2 the same Use with no claim resolves to the same entry and caller
+VECTOR PH-002-2 use accepted slot=input
+PASS: PH-002-3 admission on the claiming Use publishes the same full intent as with no claim
+VECTOR PH-002-3 publish accepted invocation=99;input=input
+PASS: PH-002-4 a transferred endpoint with no delegation edge is denied TransferredEndpoint with the state unchanged
+VECTOR PH-002-4 admit_worker denied Identity.TransferredEndpoint
+PASS: PH-002-5 an inherited endpoint is denied InheritedEndpoint with the state unchanged
+VECTOR PH-002-5 admit_worker denied Identity.InheritedEndpoint
+PASS: PH-003-1 a slot guessed from another session is denied NotHolder with the state unchanged
+VECTOR PH-003-1 admit_worker denied Identity.NotHolder
+PASS: PH-003-2 a reference naming the other adapter's host is denied ForeignHost with the state unchanged
+VECTOR PH-003-2 admit_worker denied Identity.ForeignHost
+PASS: PH-003-3 a proxy session with the client's subject and token presenting the client's root is denied NotHolder with the state unchanged
+VECTOR PH-003-3 admit_worker denied Identity.NotHolder
+PASS: PH-010-1 revoking the resolved input before authorization stops its worker
+VECTOR PH-010-1 revoke accepted slot=input;stopped=input
+PASS: PH-009-2 a publication after the revocation is denied Identity Retired with the state, session, and ledger unchanged
+VECTOR PH-009-2 publish denied Identity.Retired
+PASS: PH-010-2 revoking the root after publication stops the worker and keeps the publication record
+VECTOR PH-010-2 revoke accepted slot=root;stopped=input
+PASS: PH-010-3 after revocation reconcile returns the same invocation and digest
+VECTOR PH-010-3 reconcile accepted invocation=99
+PASS: PH-010-4 the revoked worker is quiesced at the retired generation
+VECTOR PH-010-4 quiesce accepted slot=input
+PASS: PH-010-5 the quiesced worker is reclaimed
+VECTOR PH-010-5 reclaim accepted slot=input
+PASS: PH-010-6 a stale completion after teardown is denied Identity Retired with the state unchanged
+VECTOR PH-010-6 complete denied Identity.Retired
+PASS: PH-009-3 a second publication is denied Replay with the state, session, and ledger unchanged
+VECTOR PH-009-3 publish denied Replay
+PASS: PH-004-1 restart moves to the next incarnation and stops the running worker
+VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
+PASS: PH-004-2 after restart the reissued root has the old slot and generation in the next incarnation
+VECTOR PH-004-2 use accepted slot=root
+PASS: PH-004-3 the prior-incarnation reference to that slot is denied StaleIncarnation with the state unchanged
+VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
+PASS: PH-009-4 reconcile with a substituted digest is denied Substitution with the state unchanged
+VECTOR PH-009-4 reconcile denied Substitution
+PASS: PH-009-5 recovery from a log naming another destination than the recorded publication is denied Substitution with the state unchanged
+VECTOR PH-009-5 reconcile denied Substitution
+PASS: PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector
+VECTOR PH-012-1 compare accepted vectors=36
+HostConformance: 43 checks passed, 37 vectors emitted
+PASS: LH-001 linux_host and linux_incarnation are nonzero, differ from adapters A and B, and the profile is named linux-worker-v1 with a nonzero quota
+PASS: LH-001 initial() is a valid empty state on the Linux host and incarnation whose only configured profile is linux-worker-v1: every family, every control but accelerator isolation, Cpu, quota_limit
+PASS: LH-001 a worker session under any profile id but linux-worker-v1 is denied UnknownProfile with the state unchanged and no effect
+PASS: LH-005 a barrier report without control_address_isolation is denied MissingControl with the state unchanged and no effect
+PASS: LH-005 a barrier report without control_no_ambient_network is denied MissingControl with the state unchanged and no effect
+PASS: LH-005 a barrier report without control_output_mediation is denied MissingControl with the state unchanged and no effect
+PASS: LH-005 a barrier report without control_quota is denied MissingControl with the state unchanged and no effect
+PASS: LH-005 a barrier report without control_no_inherited_routes is denied MissingControl with the state unchanged and no effect
+PASS: LH-001 a barrier report omitting any one of the five families is denied UnsupportedFamily with the state unchanged and no effect
+PASS: LH-001 a Launch whose report omits family_session is denied UnsupportedFamily by open_session with the state unchanged and no effect
+PASS: LH-001 LH-003 a barrier report with every required control admits once and its only effect, in the step and in Outcome.effects, is one DeliverInputs naming the worker's input
+PASS: LH-003 the state retained before DeliverInputs records the worker Running on the worker session with the delivered input reference
+PASS: LH-001 under a hypothetical accelerator profile the Linux report is denied UnisolatedAccelerator by the shared path with the state unchanged and no effect
+PASS: LH-004 a barrier inventory with an unmediated inherited descriptor is denied UnmediatedRoute with the state unchanged and no effect
+PASS: LH-002 session_evidence_of gives the launch record's subject and token, Authenticated, non-delegable
+PASS: LH-007 session_evidence_of reports an inherited or transferred endpoint as Inherited or Transferred from that session
+PASS: LH-002 session_evidence_of rejects a launch record from another monitor incarnation StaleLaunch
+PASS: LH-002 session_evidence_of rejects a parent-created socketpair peer PeerMismatch
+PASS: LH-002 session_evidence_of rejects a reused pid with another start time PeerMismatch
+PASS: LH-002 session_evidence_of rejects a peer under another uid PeerMismatch
+PASS: LH-002 session_evidence_of rejects an endpoint held by another pid PeerMismatch
+PASS: LH-002 session_evidence_of rejects a peer under another gid PeerMismatch
+PASS: LH-001 report_of copies the binding's families and established controls exactly
+PASS: LH-001 report_of rejects a family bit outside all_families UnknownFamily
+PASS: LH-001 report_of rejects an accelerator isolation bit the Linux broker cannot credit UncreditedControl
+PASS: LH-001 report_of rejects an unnamed control bit UncreditedControl
+PASS: LH-004 inventory_of gives one route per descriptor in order with its kind and mediation and no descriptor number
+PASS: synthetic LINUXB launch with matching peer opens the expected worker session
+PASS: synthetic LINUXB barrier with matching peer admits the expected input effect
+PASS: synthetic LINUXB launch rejects parent socketpair peer
+PASS: synthetic LINUXB launch rejects peer uid mismatch
+PASS: synthetic LINUXB launch rejects peer gid mismatch
+PASS: synthetic LINUXB launch rejects peer pid mismatch
+PASS: synthetic LINUXB launch rejects peer start-time low-word mismatch
+PASS: synthetic LINUXB launch preserves a matching nonzero start-time high word
+PASS: synthetic LINUXB launch rejects peer start-time high-word mismatch
+PASS: synthetic LINUXB barrier rejects parent socketpair peer
+PASS: synthetic LINUXB barrier rejects peer uid mismatch
+PASS: synthetic LINUXB barrier rejects peer gid mismatch
+PASS: synthetic LINUXB barrier rejects peer pid mismatch
+PASS: synthetic LINUXB barrier rejects peer start-time mismatch
+PASS: synthetic LINUXB launch rejects an old monitor incarnation
+PASS: synthetic LINUXB barrier rejects an old monitor incarnation
+PASS: synthetic LINUXB barrier rejects a foreign launch subject
+PASS: synthetic LINUXB barrier rejects a foreign launch token
+PASS: synthetic LINUXB barrier rejects a different existing session
+PASS: synthetic LINUXB barrier rejects a missing session
+PASS: synthetic LINUXB exact byte limit reaches frame validation
+PASS: synthetic LINUXB rejects a frame one byte above the limit
+PASS: synthetic LINUXB rejects a very oversized frame before packing
+PASS: synthetic LINUXB over-limit service leaves state unchanged
+PASS: synthetic LINUXB oversized frame takes precedence over out-of-range byte
+PASS: synthetic LINUXB in-bound misalignment takes precedence over out-of-range byte
+PASS: synthetic LINUXB aligned in-bound out-of-range byte is refused
+PASS: LH-002 a broker Launch opens one non-delegable worker session with the launch caller bound to linux-worker-v1 and no effect
+PASS: LH-002 a Launch from a socketpair parent is refused PeerMismatch before any transition with the state unchanged and no effect
+PASS: LH-002 a Launch with another incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+PASS: LH-001 a Launch reporting an unknown family bit is refused UnknownFamily with the state unchanged and no effect
+PASS: LH-001 a Launch crediting accelerator isolation is refused UncreditedControl with the state unchanged and no effect
+PASS: LH-002 a Barrier with another incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+PASS: LH-002 a Barrier from a reused pid is refused PeerMismatch with the state unchanged and no effect
+PASS: LH-001 a Barrier crediting an unnamed control is refused UncreditedControl with the state unchanged and no effect
+PASS: LH-006 a Barrier whose request snapshot is not a whole frame is Undecoded with the state unchanged and no effect
+PASS: LH-006 a Barrier whose request is not a Use admits nothing: Unrouted with the state unchanged and no effect
+PASS: LH-002 a Barrier request claiming subject B admits exactly as the unclaimed request
+PASS: LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the state unchanged and no effect
+PASS: LH-002 a Barrier whose fact names the session's subject with another token is refused SessionMismatch with the state unchanged and no effect
+PASS: LH-002 a Barrier attributing the worker's fact to the client session is refused SessionMismatch with the state unchanged and no effect
+PASS: LH-002 a Barrier naming a session the identity table does not hold is refused SessionMismatch with the state unchanged and no effect
+PASS: LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+PASS: LH-002 after a restart a Launch carrying the successor incarnation's launch record opens a worker session with the launch caller and no effect
+PASS: LH-002 LH-008 after a restart a Barrier carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect
+PASS: LH-002 a worker Use claiming subject B on A's session resolves to A's entry, reference, and owner, as with no claim, read-only with no effect
+PASS: LH-007 a worker Delegate from the worker session is denied NotDelegable with the state unchanged and no effect
+PASS: LH-006 worker bytes that are not a whole frame are Undecoded with the state unchanged and no effect
+PASS: LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the state unchanged and no effect
+PASS: PH-007 a broker Usage within quota_limit is charged once with no effect
+PASS: PH-007 a broker Usage past quota_limit is denied QuotaExhausted with the state unchanged and no effect
+PASS: LH-009 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect
+PASS: LH-010 the Linux adapter fixture is the Linux host and incarnation with report_of and inventory_of of the broker fact
+PASS: LH-010 PH-009-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-6 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-7 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-8 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-9 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-10 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-11 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-12 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-13 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-14 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-003-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-003-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-003-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-6 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-004-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-004-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-004-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 the Linux adapter's 36 decision lines equal V.expected_lines() and adapters A's and B's
+PASS: LH-010 PH-012-1 the Linux adapter compared with adapters A and B renders the expected compare line
+LINUX VECTOR PH-009-1 publish accepted invocation=99;input=input
+LINUX VECTOR PH-005-1 publish denied PlanMismatch
+LINUX VECTOR PH-005-2 publish denied PlanMismatch
+LINUX VECTOR PH-005-3 delegate accepted slot=proxy
+LINUX VECTOR PH-005-4 delegate accepted slot=narrow
+LINUX VECTOR PH-005-5 publish accepted invocation=99;input=narrow
+LINUX VECTOR PH-005-6 use accepted slot=root
+LINUX VECTOR PH-005-7 issue denied PlanMismatch
+LINUX VECTOR PH-005-8 publish denied PlanMismatch
+LINUX VECTOR PH-005-9 publish denied PlanMismatch
+LINUX VECTOR PH-005-10 issue denied PlanMismatch
+LINUX VECTOR PH-005-11 issue denied PlanMismatch
+LINUX VECTOR PH-005-12 issue denied OwnerMismatch
+LINUX VECTOR PH-005-13 issue denied RightsNotHeld
+LINUX VECTOR PH-005-14 issue denied LeaseExceeded
+LINUX VECTOR PH-002-1 use accepted slot=input
+LINUX VECTOR PH-002-2 use accepted slot=input
+LINUX VECTOR PH-002-3 publish accepted invocation=99;input=input
+LINUX VECTOR PH-002-4 admit_worker denied Identity.TransferredEndpoint
+LINUX VECTOR PH-002-5 admit_worker denied Identity.InheritedEndpoint
+LINUX VECTOR PH-003-1 admit_worker denied Identity.NotHolder
+LINUX VECTOR PH-003-2 admit_worker denied Identity.ForeignHost
+LINUX VECTOR PH-003-3 admit_worker denied Identity.NotHolder
+LINUX VECTOR PH-010-1 revoke accepted slot=input;stopped=input
+LINUX VECTOR PH-009-2 publish denied Identity.Retired
+LINUX VECTOR PH-010-2 revoke accepted slot=root;stopped=input
+LINUX VECTOR PH-010-3 reconcile accepted invocation=99
+LINUX VECTOR PH-010-4 quiesce accepted slot=input
+LINUX VECTOR PH-010-5 reclaim accepted slot=input
+LINUX VECTOR PH-010-6 complete denied Identity.Retired
+LINUX VECTOR PH-009-3 publish denied Replay
+LINUX VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
+LINUX VECTOR PH-004-2 use accepted slot=root
+LINUX VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
+LINUX VECTOR PH-009-4 reconcile denied Substitution
+LINUX VECTOR PH-009-5 reconcile denied Substitution
+LINUX VECTOR PH-012-1 compare accepted vectors=36
+LinuxHost: 118 checks passed
+PASS: facade links capability descriptor through complete commit
+PASS: facade preserves output provenance
+PASS: capability revocation is checked at commit
+PASS: revoked capability spends no reservation
+PASS: authenticated caller must own descriptor
+PASS: authenticated subject must be negotiated reader
+PASS: execution requires execute right as well as read and write
+PASS: closed descriptor cannot commit
+PASS: stale frontend revision cannot commit
+PASS: capability possession cannot override label denial
+PASS: GI-008 a grant registered by the issuer, projected into the transfer grants and registry, commits through the facade
+PASS: GI-008 after the issuer revokes the write approval the rebuilt projections deny the facade commit and spend no reservation
+Facade: 12 checks passed
+PASS: GI-001 synthetic directory and placements form a valid empty issuer state
+PASS: GI-001 source approval from its read authority is accepted as id 1 and advances the revision once
+PASS: GI-001 forged source issuer: the write-domain-6 principal submitting a source approval for object 10 under its own identity denied NotAuthority
+PASS: GI-001 approval naming the true source authority as issuer but submitted by the write principal denied Unauthenticated
+PASS: GI-001 read-domain-9 authority approving object 10 placed in read domain 5 denied WrongDomain
+PASS: GI-001 source authority submitting a destination-write approval denied NotAuthority
+PASS: GI-001 write-domain-5 authority does not control read domain 5: denied NotAuthority
+PASS: GI-001 read-domain-5 authority does not control write domain 5: denied NotAuthority
+PASS: GI-001 principal absent from the directory denied NotAuthority
+PASS: GI-001 object placed in two read domains resolves to none and is denied WrongDomain
+PASS: GI-001 an object placed twice in one namespace is not a valid state
+PASS: GI-001 the first of two placements does not win: read-domain-9 authority approving object 10 also placed in read domain 9 denied WrongDomain
+PASS: GI-001 source_domain of an object placed twice is None
+PASS: GI-001 the first of two destination placements does not win: write-domain-5 authority approving destination 20v8 also placed in write domain 5 denied WrongDomain
+PASS: GI-001 destination-write approval from its write authority is accepted as id 2
+PASS: GI-001 submitting both approvals registers no grant for the plan
+PASS: GI-001 state after both submissions is structurally valid
+PASS: GI-001 source approval record version 2 denied UnknownVersion
+PASS: GI-001 submission validated at revision 0 against state at revision 1 denied StaleRevision
+PASS: GI-001 source approval with rights 8 denied InvalidRights
+PASS: GI-001 source approval for an object outside the scope manifest denied ScopeMismatch
+PASS: GI-001 source approval whose scope stamp is not the live stamp denied StaleEpoch
+PASS: GI-004 source approval naming subject 0 denied SubjectMismatch
+PASS: GI-001 source approval submitted at its valid_until denied Expired
+PASS: GI-001 repeated (issuer, serial) denied Replay
+PASS: GI-001 write approval for destination version 9 when the plan names version 8 denied ScopeMismatch
+PASS: GI-001 write approval for write domain 6 under a scope naming write domain 9 denied ScopeMismatch
+PASS: GI-001 write-domain-5 authority approving destination 20v8 placed in write domain 6 denied WrongDomain
+PASS: GI-001 write approval naming the true write authority as issuer but submitted by the source principal denied Unauthenticated
+PASS: GI-001 write submission validated at revision 0 against state at revision 1 denied StaleRevision
+PASS: GI-001 the write check list alone is false at a stale revision
+PASS: GI-001 the source check list alone is false at a stale revision
+PASS: GI-001 write approval record version 2 denied UnknownVersion
+PASS: GI-001 write approval whose scope stamp is not the live stamp denied StaleEpoch
+PASS: GI-004 write approval naming subject 0 denied SubjectMismatch
+PASS: GI-001 write approval under a scope with an empty source manifest denied ScopeMismatch
+PASS: GI-001 write approval with rights 8 denied InvalidRights
+PASS: GI-001 write approval submitted at its valid_until denied Expired
+PASS: GI-001 repeated write (issuer, serial) denied Replay
+PASS: GI-002 one-source paired registration is accepted as grant 3 and advances the revision once
+PASS: GI-004 the registered grant binds the approved scope and subject 7, the cited ids, the requested rights and lifetime, and no parent
+PASS: GI-002 registration consumes both cited approvals for grant 3, records no serial, and leaves a valid state
+PASS: GI-003 two-source plan from read domains 5 and 7 is accepted with both source approvals in manifest order
+PASS: GI-003 two-source plan with the source approvals reordered denied ScopeMismatch
+PASS: GI-003 two-source plan citing no approval for object 11 denied MissingApproval
+PASS: GI-003 two-source plan citing a third source approval beyond the manifest denied ScopeMismatch
+PASS: GI-002 missing destination approval: no write approval cited denied MissingApproval
+PASS: GI-002 missing destination approval: cited write approval id does not exist denied MissingApproval
+PASS: GI-002 a source approval cited as the write approval denied MissingApproval
+PASS: GI-003 cited source approval id does not exist denied MissingApproval
+PASS: GI-003 the write approval cited as a source approval denied MissingApproval
+PASS: GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval
+PASS: GI-003 write approval issued for write domain 6 under a request scope naming write domain 9 denied ScopeMismatch
+PASS: GI-003 stored write approval for write domain 6 whose own scope names write domain 9 is revalidated and denied ScopeMismatch
+PASS: GI-003 stored write approval for destination 20v9 under a plan naming 20v8 is revalidated and denied ScopeMismatch
+PASS: GI-003 redirecting an existing read: source approval for 10 to 20v8 with a write approval for 20v9, under the read's scope, denied ScopeMismatch
+PASS: GI-003 redirecting an existing read: the same pair under the redirected write's scope denied ScopeMismatch
+PASS: GI-003 expanded manifest: write approval whose scope adds source 11 denied ScopeMismatch
+PASS: GI-003 approvals differing only in invocation denied ScopeMismatch
+PASS: GI-003 approvals differing only in the eighth code word denied ScopeMismatch
+PASS: GI-003 approvals differing only in operation kind denied ScopeMismatch
+PASS: GI-003 approvals differing only in the source object's version denied ScopeMismatch
+PASS: GI-003 approvals differing only in output type denied ScopeMismatch
+PASS: GI-003 source approval differing from the request scope only in invocation denied ScopeMismatch
+PASS: GI-004 recipient substitution: approvals for subject 7 and a request for subject 8 denied SubjectMismatch
+PASS: GI-004 principal 8, neither an authority nor subject 7, registering subject 7's pair with rights 0 until 101 denied SubjectMismatch, both approvals unconsumed
+PASS: GI-004 the source authority or the write authority registering subject 7's request denied SubjectMismatch
+PASS: GI-004 after principal 8's registration is denied, subject 7 registers the same pair as grant 3
+PASS: GI-004 write approval for subject 8 paired with a source approval and request for subject 7 denied SubjectMismatch
+PASS: GI-004 source approval for subject 8 paired with a write approval and request for subject 7 denied SubjectMismatch
+PASS: GI-003 requested rights 7 exceeding the source approval's 3 denied Widened
+PASS: GI-003 requested rights 7 exceeding the write approval's 3 denied Widened
+PASS: GI-003 requested rights 8 denied InvalidRights
+PASS: GI-002 registration at the write approval's valid_until denied Expired
+PASS: GI-002 registration at the source approval's valid_until denied Expired
+PASS: GI-002 requested valid_until equal to now denied Expired
+PASS: GI-002 requested valid_until equal to both approvals' valid_until is accepted
+PASS: GI-003 requested rights 1, a strict subset of both approvals' 3, are accepted
+PASS: GI-002 requested lifetime beyond the write approval's denied Widened
+PASS: GI-002 requested lifetime beyond the source approval's denied Widened
+PASS: GI-002 a fresh approval pair registers a second grant with a fresh token
+PASS: GI-002 a second registration keeps the first grant in the grant list
+PASS: GI-002 registration leaves an uncited approval unconsumed
+PASS: GI-003 source approval whose scope names write domain 9, paired with a write approval and request for write domain 6, denied ScopeMismatch
+PASS: GI-002 registration with a token a registered grant holds denied DuplicateToken
+PASS: GI-002 a consumed source approval cited by a second registration denied Replay
+PASS: GI-002 a consumed write approval cited by a second registration denied Replay
+PASS: GI-003 one source approval cited for two manifest entries denied Replay
+PASS: GI-002 a revoked write approval denied Revoked
+PASS: GI-002 a revoked source approval denied Revoked
+PASS: GI-001 source authority removed from the directory between submission and registration denied NotAuthority
+PASS: GI-001 write authority removed from the directory between submission and registration denied NotAuthority
+PASS: GI-001 source object moved to read domain 9 between submission and registration denied WrongDomain
+PASS: GI-001 destination moved to write domain 5 between submission and registration denied WrongDomain
+PASS: GI-003 registration after the monitor advanced the authority epoch denied StaleEpoch
+PASS: GI-002 registration request version 2 denied UnknownVersion
+PASS: GI-002 registration validated at revision 1 against state at revision 2 denied StaleRevision
+PASS: GI-002 the registration check list alone is false at a stale revision
+PASS: GI-005 approvals 1 and 2 are valid for registration at revision 7
+PASS: GI-005 the source authority revokes approval 1, moving the state to revision 8
+PASS: GI-005 revocation during issuance: registration validated at revision 7 against state at revision 8 denied StaleRevision
+PASS: GI-005 the raced registration exposes no grant for the plan and no current grant
+PASS: GI-005 registration revalidated at revision 8 against the revoked approval denied Revoked
+PASS: GI-005 the registered grant is current at registration time
+PASS: GI-005 the registered grant is not current after its source approval is revoked
+PASS: GI-005 the registered grant is not current after its write approval is revoked
+PASS: GI-005 revocation advances the revision once, keeps the approval's consumption, the grant record and the seen serials, and leaves a valid state
+PASS: GI-005 revoking approval 1 leaves approval 2 unrevoked
+PASS: GI-005 a later revocation keeps an earlier revocation
+PASS: GI-005 after approval 1 and then approval 4 are revoked, grant 3 (backed by approval 1) is still not current
+PASS: GI-005 revocation of source approval 1 by the write authority, not its issuer, denied Unauthenticated
+PASS: GI-005 revocation by the source issuer after the monitor removed it from the directory denied NotAuthority
+PASS: GI-005 revocation by the write issuer after the monitor removed it from the directory denied NotAuthority
+PASS: GI-005 revocation validated at revision 2 against state at revision 3 denied StaleRevision
+PASS: GI-005 the revocation check list alone is false at a stale revision
+PASS: GI-005 revocation of an approval id that does not exist denied MissingApproval
+PASS: GI-005 revoking an already revoked approval denied Revoked
+PASS: GI-005 replay: a second registration citing the consumed approvals denied Replay
+PASS: GI-005 replay: re-submitting a revoked approval's serial denied Replay
+PASS: GI-005 the grant copied into a fresh empty state is not valid and not current
+PASS: GI-005 the grant in a state that lacks its approvals is not valid and not current
+PASS: GI-005 the grant copied into a state whose approvals are unconsumed is not valid and not current
+PASS: GI-005 the grant whose write approval is consumed by another grant is not valid and not current
+PASS: GI-005 the grant whose source approval is consumed by another grant is not valid and not current
+PASS: GI-005 after the monitor advances the authority epoch the old grant is not current
+PASS: GI-005 after the epoch advance a registration with the old scope denied StaleEpoch
+PASS: GI-005 the grant is current before its valid_until and not at it
+PASS: GI-005 a grant record with the registered id but another token is not current
+PASS: GI-005 a grant id registered twice resolves to no grant and is not current
+PASS: GI-005 the grant is not current after the monitor removes its source authority from the directory
+PASS: GI-005 the grant is not current after the monitor removes its write authority from the directory
+PASS: GI-005 the grant is not current after its source object moves to read domain 9
+PASS: GI-005 the grant is not current after its destination moves to write domain 5
+PASS: GI-005 the synthetic backing state reproduces the registered grant as current
+PASS: GI-005 a grant citing one source approval for two manifest entries is not current
+PASS: GI-005 a two-source grant is current, and its record with the source ids reordered is not
+PASS: GI-005 a grant whose stored write approval names destination 20v9 under a plan naming 20v8 is not current
+PASS: GI-005 a grant whose stored write approval for write domain 6 names write domain 9 in its scope is not current
+PASS: GI-005 a grant whose write approval's scope differs in invocation is not current
+PASS: GI-005 a grant whose source approval's scope differs in invocation is not current
+PASS: GI-005 a grant with rights 7 over its source approval's 3 is not current
+PASS: GI-005 a grant with rights 7 over its write approval's 3 is not current
+PASS: GI-005 a grant outliving its write approval is not current at the write approval's valid_until
+PASS: GI-005 a grant outliving its source approval is not current at the source approval's valid_until
+PASS: GI-005 a grant whose scope names subject 0 is not current
+PASS: GI-005 a grant whose scope has an empty source manifest is not current
+PASS: GI-005 a derived grant of the registered grant is current and valid
+PASS: GI-005 revoking the parent's source approval makes the derived grant not current
+PASS: GI-005 a derived grant whose parent does not exist is not current and not valid
+PASS: GI-005 a derived grant that is its own parent is not current and not valid
+PASS: GI-005 a derived grant with rights 7 over its parent's 3 is not current and not valid
+PASS: GI-005 a derived grant outliving its parent is not current and not valid
+PASS: GI-005 a derived grant whose scope differs from its parent's is not current and not valid
+PASS: GI-005 a derived grant is current before its own valid_until and not at it while its parent still is
+PASS: GI-005 a derived grant record that the state never registered is not current
+PASS: GI-006 extending an expiry: a child of a parent expiring at 100 asking for 101 denied Widened
+PASS: GI-006 a child asking for its parent's expiry 100 is accepted and current
+PASS: GI-006 a child asking for expiry 50 under a parent expiring at 100 is accepted and current
+PASS: GI-006 widened rights: a child asking for rights 3 of a parent holding 1 denied Widened
+PASS: GI-006 a child asking for its parent's rights 1 is accepted and current
+PASS: GI-006 a child narrowing rights 3 to 1 is stored with rights 1 and current only as that record
+PASS: GI-006 the source authority, not subject 7, deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 subject 8 deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 subject 6 deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 principal 0 deriving from subject 7's grant denied SubjectMismatch
+PASS: GI-006 the derived child's plan equals its parent's, and so do its write domain and subject
+PASS: GI-006 derive stores grant 4 with the parent's scope, the requested rights and lifetime, parent 3 and no cited approvals, keeps approvals, seen serials and the parent, and advances the revision once
+PASS: GI-006 a grandchild asking for 130, within its grandparent's 150 but past its parent's 120, denied Widened
+PASS: GI-006 a grandchild within its parent's 120 is accepted, current and valid
+PASS: GI-006 revoking the root's source approval makes the grandchild not current
+PASS: GI-006 revoking the parent's source approval makes both the parent and the child not current
+PASS: GI-007 deriving at the parent's valid_until 150 denied Expired
+PASS: GI-006 deriving from a parent whose source approval is revoked denied Revoked
+PASS: GI-006 derivation record version 2 denied UnknownVersion
+PASS: GI-006 derivation validated at revision 2 against state at revision 3 denied StaleRevision
+PASS: GI-006 a stale derivation that also outlives its parent still reads StaleRevision
+PASS: GI-006 deriving from a grant id that does not exist denied MissingApproval
+PASS: GI-006 derivation asking for rights 8 denied InvalidRights
+PASS: GI-007 derivation whose requested valid_until equals now denied Expired
+PASS: GI-006 derivation with the token the parent holds denied DuplicateToken
+PASS: GI-006 a derived grant record citing source approval 1 is not current and not valid
+PASS: GI-006 a derived grant record citing write approval 2 is not current and not valid
+PASS: GI-006 a forged grant under id 0 over unconsumed approvals is not current and not valid
+PASS: GI-006 deriving from parent id 0 denied MissingApproval
+PASS: GI-007 an approval valid while now < 100 is accepted on submission at 99 and denied Expired at 100
+PASS: GI-007 issuance at the deadline: registration at 100 after both approvals were submitted at 99 denied Expired, no grant registered
+PASS: GI-007 a grant with valid_until 100 is current at 99 and not at 100
+PASS: GI-007 a requested grant lifetime 150 beyond the shorter approval's 100 denied Widened
+PASS: GI-008 grant 3 projects exactly one read of 10v4 in read domain 5, one write of 20v8 in write domain 6 and one capability for subject 7, each bound to TF.plan() until 150
+PASS: GI-008 the two-source grant projects one read per manifest entry, in manifest order, each in its placed read domain
+PASS: GI-008 the read-projection helper gives a source placed twice, or not placed, no read rather than a guessed domain (defensive: no current grant has such a source)
+PASS: GI-008 the projection of registered grant 3 makes T.admit admit TF.plan()
+PASS: GI-008 F.mount, F.open and F.checked_plan resolve grant 3's projected capability for subject 7 to TF.plan()
+PASS: GI-008 revocation after registration: with the write approval revoked the rebuilt projection is empty and T.admit denies Write
+PASS: GI-008 revocation after registration: checked_plan on the descriptor opened while grant 3 was current gives None
+PASS: GI-008 with the source approval revoked the rebuilt read projection denies Read even beside a write list that still permits; both projections rebuilt deny at Write, the first check
+PASS: GI-008 every projection of grant 3 is empty at its valid_until 150 and not at 149
+PASS: GI-008 two current grants both project, newest first
+PASS: GI-008 a withdrawn grant is filtered without dropping the current grant behind it
+PASS: GI-008 a derived child projects its own attenuated rights and lifetime into the registry and the Transfer scopes, and revoking the root's source approval withdraws parent and child together
+PASS: GI-008 an authority epoch advance or a directory change withdraws grant 3 from every projection
+PASS: GI-008 subject-scoped projections: subject 7's current grant 3 projects nothing for principal 8, principal 6 or principal 0
+PASS: GI-008 subject-scoped projections: on a path that runs T.admit without Frontend's caller check, principal 8 gets no admission from subject 7's grant
+PASS: GI-008 subject-scoped projections: with grants for subjects 7 and 8 on one plan, each principal's projections hold exactly its own grant
+PASS: GI-008 the registry layer alone denies another subject: subject 6 presenting grant 3's token on subject 7's descriptor gets no plan
+PASS: GI-008 partial staleness: a rebuilt registry beside stale transfer lists, or a stale registry beside rebuilt lists, still gives no plan after the write revocation
+PASS: scenario current authority: from an empty state the read-domain-5 and read-domain-9 authorities each approve their source of TF.pair_plan(), the write-domain-6 authority approves its destination, and the cited approvals register grant 4 at revision 4
+PASS: scenario current authority: subject 7's rebuilt projections of grant 4 hold one read per source in its own read domain and make T.admit admit TF.pair_plan() under TF.pair_context()'s policies
+PASS: scenario current authority: F.mount, F.open and F.checked_plan resolve grant 4's projected capability for subject 7 to TF.pair_plan()
+PASS: scenario current authority: principal 8's rebuilt projections of the same state admit nothing at Write and give it nothing to mount
+PASS: scenario revocation mid-flow: after the read-domain-9 authority revokes approval 2 at revision 4, registering the pair at revision 4 is denied Revoked, and a registration validated at revision 3 is denied StaleRevision
+PASS: scenario revocation mid-flow: use is denied too, with nothing projected for subject 7, T.admit denying TF.pair_plan() at Write and nothing to mount
+PASS: scenario revocation after derivation: subject 7 derives child 4 (rights 1 until 120) from grant 3, and a descriptor opened from the child's capability resolves TF.plan()
+PASS: scenario revocation after derivation: once the write authority revokes the root's approval 2 the child dies with its parent: neither is current, nothing is projected, the child's descriptor resolves no plan and T.admit denies Write
+PASS: scenario replay: a second registration of grant 3's request with a fresh token denied Replay
+PASS: scenario replay: grant 3's consumed source approval 1 cited by another request beside a fresh write approval denied Replay
+PASS: scenario replay: after its issuer revokes approval 1, resubmitting serial 1 is denied Replay while a fresh serial 2 is accepted as id 5
+PASS: scenario replay: grant 3's consumed write approval 2 cited beside the fresh source approval 5 denied Replay
+PASS: scenario replay: the fresh pair registers grant 6, the only grant projected for subject 7, which T.admit admits while revoked grant 3 is not current
+PASS: scenario forged issuer: the write-domain-6 principal's own source approval for object 10 is denied NotAuthority, its genuine write approval is accepted, a request citing that write approval as the source is denied MissingApproval, and T.admit denies Write
+PASS: scenario forged issuer: once the read-domain-5 authority itself approves object 10, the same plan registers as grant 3 and T.admit admits it
+PASS: scenario redirect: a read of 10 into 20v8 paired with a write approval for 20v9 is denied ScopeMismatch under either scope, nothing is projected, and T.admit denies the redirected plan at Write
+PASS: scenario expanded manifest: a write approval whose scope adds source 11 is denied ScopeMismatch beside the one-source read and MissingApproval under its own scope, and T.admit denies Write
+PASS: scenario subject substitution: subject 7's approvals with a request for subject 8 are denied SubjectMismatch; after grant 3 registers for subject 7, principal 8 deriving from it is denied SubjectMismatch and gets no projection or mount, while subject 7 is admitted
+PASS: scenario subject substitution: when the source authority approved subject 8 but the write authority approved subject 7, a request for subject 8 is denied SubjectMismatch and nothing is projected for principal 8
+PASS: scenario third-party registration: principal 8 registering subject 7's approved pair with rights 0 until 101 is denied SubjectMismatch and nothing is projected; subject 7 then registers the pair as grant 3 and T.admit admits TF.plan()
+PASS: scenario epoch advance: grant 3 admitted at epoch 3 is not current once the monitor installs epoch 4, nothing is projected, T.admit denies the old plan Stale and a fresh approval of the old scope is denied StaleEpoch
+PASS: scenario epoch advance: approvals of the plan at the new stamp register grant 6, the only capability projected, at authority epoch 4
+PASS: scenario deadline: approvals valid while now < 100 and submitted at 99 deny registration at 100 Expired with no grant registered, and a request whose own lifetime ends at 100 is denied Expired at 100 beside approvals valid until 200
+PASS: scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write
+Issuance: 230 checks passed
+PASS: AU-001 error includes protected content: admitted event equals the one with an empty diagnostic and another caller token
+PASS: AU-001 error includes protected content: denied event equals the one with an empty diagnostic and another caller token
+PASS: AU-001 error includes protected content: committed event equals the one with an empty diagnostic
+PASS: AU-001 no payload, error-text, credential or caller-token sentinel occurs in an admission event
+PASS: AU-001 no diagnostic or Ref-token sentinel occurs in a commit event, accepted or rejected
+PASS: AU-001 a Ref carrying an unregistered token is rejected by the facade and recorded as CommitRejected
+PASS: AU-001 the payment receipt number of an admitted transfer is absent from its event
+PASS: AU-001 grant scope domains, quote and expiry are absent from the event
+PASS: AU-001 the capability token words are absent from admission and commit events
+PASS: AU-001 committed operation: the wrapper returns the facade's accepted result
+PASS: AU-001 committed operation: kind CommitAccepted, phase Commit, outcome Committed
+PASS: AU-001 committed operation: invocation is the plan's
+PASS: AU-001 committed operation: exact ordered source versions
+PASS: AU-001 committed operation: exact destination version
+PASS: AU-001 committed operation: graph, policy and authority epochs are the plan's
+PASS: AU-001 committed operation: code and operation kind
+PASS: AU-001 committed operation: the sealed artifact from the committed WriteIntent
+PASS: AU-001 committed operation: authenticated subject 7, monitor event id and format version
+PASS: AU-001 committed operation: the artifact follows the binding, not a constant
+PASS: AU-001 commit scope is the session's negotiated plan
+PASS: AU-001 a changed source version changes the event's sources
+PASS: AU-001 a changed destination version changes the event's destination
+PASS: AU-001 a changed graph epoch changes the event's stamp
+PASS: AU-001 a changed policy epoch changes the event's stamp
+PASS: AU-001 a changed authority epoch changes the event's stamp
+PASS: AU-001 Stale denial is returned unchanged and recorded as AdmissionDenied DeniedFor Stale with no scope
+PASS: AU-001 Source denial is returned unchanged and recorded as AdmissionDenied DeniedFor Source with no scope
+PASS: AU-001 Read denial is returned unchanged and recorded as AdmissionDenied DeniedFor Read with the plan scope
+PASS: AU-001 Write denial is returned unchanged and recorded as AdmissionDenied DeniedFor Write with no scope
+PASS: AU-001 Schema denial is returned unchanged and recorded as AdmissionDenied DeniedFor Schema with no scope
+PASS: AU-001 Operation denial is returned unchanged and recorded as AdmissionDenied DeniedFor Operation with no scope
+PASS: AU-001 Origin denial is returned unchanged and recorded as AdmissionDenied DeniedFor Origin with the plan scope
+PASS: AU-001 Payment denial is returned unchanged and recorded as AdmissionDenied DeniedFor Payment with the plan scope
+PASS: AU-001 Destination denial is returned unchanged and recorded as AdmissionDenied DeniedFor Destination with no scope
+PASS: AU-001 InvalidPolicy denial is returned unchanged and recorded as AdmissionDenied DeniedFor InvalidPolicy with no scope
+PASS: AU-001 a Stale-denied plan's caller-written stamp, invocation, sources, destination and code are absent from its event
+PASS: AU-001 a Source-denied plan's caller-written scope is absent from its event
+PASS: AU-001 a Destination-denied plan's caller-written scope is absent from its event
+PASS: AU-001 an Operation-denied plan's caller-written scope is absent from its event
+PASS: AU-001 a Schema-denied plan's caller-written scope is absent from its event
+PASS: AU-001 a Write-denied plan's caller-written scope is absent from its event
+PASS: AU-001 an early-denied event is the same whatever the plan contains
+PASS: AU-001 once the write grant has bound the plan, a Read denial records the plan's scope
+PASS: AU-001 an admitted decision is returned with its ticket
+PASS: AU-001 an admitted decision is recorded as AdmissionAdmitted with no artifact
+PASS: AU-001 an admitted decision's event carries the plan's scope
+PASS: AU-005 a commit rejected for a revoked capability is returned unchanged, keeps the hold and session, and is recorded as CommitRejected NotCommitted
+PASS: AU-005 a commit rejected for the wrong subject is returned unchanged, keeps the hold and session, and is recorded as CommitRejected NotCommitted
+PASS: AU-001 EventRecord.equal holds for two projections of the same decision
+PASS: AU-001 EventRecord.equal separates event id and subject
+PASS: AU-001 EventRecord.equal separates invocation, sources and destination
+PASS: AU-001 EventRecord.equal separates each of the three epochs
+PASS: AU-001 EventRecord.equal separates code and operation kind
+PASS: AU-001 EventRecord.equal separates two denial reasons
+PASS: AU-001 EventRecord.equal separates the sealed artifact
+PASS: AU-001 Outcome.equal separates the four outcomes
+PASS: AU-001 EventKind.equal and Phase.equal separate their constructors
+PASS: AU-001 artifact_equal separates a missing from a present artifact
+PASS: AU-001 Scope.equal separates the not-read marker from a read scope
+PASS: AU-001 denial_equal separates all ten denial reasons
+PASS: AU-001 format: a projected AdmissionAdmitted event round trips
+PASS: AU-001 format: projected AdmissionDenied events for all ten denial reasons round trip, early ones with ScopeNotRead
+PASS: AU-001 format: projected CommitAccepted events round trip with their artifact
+PASS: AU-001 format: a projected CommitRejected event round trips with no artifact
+PASS: AU-001 format: ScopeNotRead events round trip and no caller-written plan word occurs in their encoding
+PASS: AU-001 format: no diagnostic or caller-token sentinel occurs in an encoded event
+PASS: AU-001 format: distinct-valued AdmissionAdmitted, CommitAccepted and CommitRejected records round trip
+PASS: AU-001 format: distinct-valued AdmissionDenied records round trip for every denial reason
+PASS: AU-001 format: distinct-valued ScopeNotRead records round trip
+PASS: AU-001 format: encode emits the documented layout (header, then tag, length and values per field in allowlist order)
+PASS: AU-001 format: under ScopeNotRead every scope field and the absent artifact are length 0
+PASS: AU-001 format: accepted word lists re-encode to exactly themselves
+PASS: AU-001 format: a decoded record and one differing only in version compare unequal
+PASS: AU-001 format: a decoded record and one differing only in kind compare unequal
+PASS: AU-001 format: a decoded record and one differing only in phase compare unequal
+PASS: AU-001 format: field_allowlist() is exactly tags 1 to 11 in order
+PASS: AU-001 format: field_allowed accepts every allowlisted tag
+PASS: AU-001 format: field_allowed refuses the reserved payload, token and text tags, 0 and 15
+PASS: AU-001 format: the length cap is 3 header words, 2 per field and 60 value words
+PASS: AU-001 format: encode of an invocation of 2^32 is None
+PASS: AU-001 format: an invocation of 2^32 - 1 encodes and round trips
+PASS: AU-001 format: encode of an event id or subject of 2^32 is None
+PASS: AU-001 format: encode of a source object or version of 2^32 is None
+PASS: AU-001 format: encode of a destination object or version of 2^32 is None
+PASS: AU-001 format: encode of any of the three epochs at 2^32 is None
+PASS: AU-001 format: encode of 17 sources (more than max_sources) is None
+PASS: AU-001 format: 16 sources encode and round trip
+PASS: AU-001 format: encode of a record whose version is not the format's is None
+PASS: AU-001 format: encode of a record whose kind contradicts its outcome is None
+PASS: AU-001 format: encode of a record whose phase contradicts its kind is None
+PASS: AU-001 format: encode of an artifact on a rejected commit, or none on an accepted one, is None
+PASS: AU-001 format: encode of a scope on an early denial, or none on a scope-reading outcome, is None
+PASS: AU-001 format: version 0 denied UnknownVersion
+PASS: AU-001 format: version 2 denied UnknownVersion
+PASS: AU-001 format: version 0xFFFFFFFF denied UnknownVersion
+PASS: AU-001 format: kind 0 denied UnknownKind
+PASS: AU-001 format: kind 5 denied UnknownKind
+PASS: AU-001 format: empty input, a version word only, and version and kind only denied BadLength
+PASS: AU-001 format: a body length word one short denied BadLength
+PASS: AU-001 format: a body length word one long denied BadLength
+PASS: AU-001 format: a truncated body denied BadLength
+PASS: AU-001 format: one trailing word denied BadLength
+PASS: AU-001 format: a field tagged as payload (12) is denied NotAllowed and builds no event
+PASS: AU-001 format: a field tagged as a token (13) in place of the code is denied NotAllowed and builds no event
+PASS: AU-001 format: a field tagged as text (14) before the event id is denied NotAllowed and builds no event
+PASS: AU-001 format: field tags 0 and 15 are denied NotAllowed
+PASS: AU-001 format: two fields out of allowlist order denied OutOfOrder
+PASS: AU-001 format: a duplicate field denied OutOfOrder
+PASS: AU-001 format: a missing middle field (the subject) denied OutOfOrder
+PASS: AU-001 format: a missing last field (the outcome) denied BadLength
+PASS: AU-001 format: a word after the last field, counted by the body length, denied BadLength
+PASS: AU-001 format: a field length word naming more words than remain denied BadLength
+PASS: AU-001 format: a field one word short (stamp length 2) denied BadLength
+PASS: AU-001 format: a field one word long (stamp length 4) denied BadLength
+PASS: AU-001 format: event id, subject and phase of other than one word denied BadLength
+PASS: AU-001 format: invocation, destination, code and operation of the wrong width denied BadLength
+PASS: AU-001 format: an odd number of source words denied BadLength
+PASS: AU-001 format: more than max_sources sources denied TooLong (inside the length cap)
+PASS: AU-001 format: exactly max_sources sources decode
+PASS: AU-001 format: more than max_words words denied TooLong
+PASS: AU-001 format: an artifact of seven words denied BadLength
+PASS: AU-001 format: an empty invocation with another scope field present denied BadLength
+PASS: AU-001 format: a present invocation with an empty destination denied BadLength
+PASS: AU-001 format: a DeniedFor outcome without its reason word denied BadLength
+PASS: AU-001 format: a Committed outcome with a second word denied BadLength
+PASS: AU-001 format: phase word 2 denied OutOfRange
+PASS: AU-001 format: operation words 0 and 3 denied OutOfRange
+PASS: AU-001 format: outcome word 7 denied OutOfRange
+PASS: AU-001 format: reason word 10 denied OutOfRange
+PASS: AU-001 format: an Admission phase on a CommitAccepted event denied OutOfRange
+PASS: AU-001 format: a Committed outcome under kind AdmissionAdmitted denied OutOfRange
+PASS: AU-001 format: an artifact on a CommitRejected or AdmissionAdmitted event denied OutOfRange
+PASS: AU-001 format: a scope on a Stale denial, or none on a Read denial, denied OutOfRange
+PASS: AU-001 format: a CommitAccepted event without a scope denied OutOfRange
+PASS: AU-001 format order: the length cap precedes the version
+PASS: AU-001 format order: the version precedes the kind
+PASS: AU-001 format order: the kind precedes the body length
+PASS: AU-001 format order: the field walk precedes field widths
+PASS: AU-001 format order: field widths and values precede coherence
+PASS: AU-001 format: a field tag with no length word denied BadLength
+PASS: AU-001 format: phase word 2 on an admission event denied OutOfRange
+PASS: AU-001 format: outcome word 7 on an admission event denied OutOfRange
+PASS: AU-001 format: an outcome of three words or of none denied BadLength
+PASS: AU-001 format: an outcome contradicting only the kind (a Read denial under AdmissionAdmitted, Committed under CommitRejected) denied OutOfRange
+PASS: AU-001 format: encode of a record whose kind alone contradicts its outcome is None
+PASS: AU-001 format: the encoder has no value for a reserved tag, so it could not emit one even if the allowlist named it
+PASS: AU-001 format: FormatError.equal separates all seven reasons
+PASS: AU-001 format: DecodeResult.equal separates events, reasons, and an event from a rejection
+PASS: AU-002 denial reveals a protected source fact: an Origin denial for Bob's object 11 is recorded DeniedFor Origin with Bob's label as data and as control
+PASS: AU-002 denial reveals a protected source fact: the Origin denial event is not releasable to Alice-only sink 1 and is releasable to sink 3
+PASS: AU-002 denial reveals a protected source fact: a Payment denial carries Bob's label, withheld from sink 1, released to sink 3
+PASS: AU-002 denial reveals a protected source fact: a Schema denial carries Bob's label, withheld from sink 1, released to sink 3
+PASS: AU-002 the Origin denial event is withheld from Bob-only sink 2 (Alice's destination and request) and from Mallory's sink 7
+PASS: AU-002 the destination's owner label is an influence as data and as control
+PASS: AU-002 the record holds the same event the wrapper returns
+PASS: AU-002 an admission event carries the requester's own label (Alice, subject 0) as a control influence
+PASS: AU-002 Mallory's denied request is withheld from the Alice-and-Bob sink 3, which may not learn that Mallory asked, and released to sink 4
+PASS: AU-002 a subject of 2^32 does not wrap onto Alice's id 0: its requester influence is the maximal restriction
+PASS: AU-002 a requester outside the DLM registry (subject 7) makes the event releasable to no fixture sink
+PASS: AU-002 multiple owners contribute evidence: Bob and Alice are separate influences and event_owners gives Bob then Alice
+PASS: AU-002 multiple owners contribute evidence: no owner's influence is merged into another's label
+PASS: AU-002 multiple owners contribute evidence: a sink satisfying Alice but not Bob is withheld, one satisfying both is released
+PASS: AU-002 multiple owners contribute evidence: a second Alice entry in the label table does not remove Bob's influence
+PASS: AU-002 event_owners lists each owner once
+PASS: AU-002 an unlabelled source gives the maximal-restriction influence and the event is releasable to no fixture sink
+PASS: AU-002 two identical label entries for one object give the maximal-restriction influence and no fixture sink
+PASS: AU-002 two label entries naming different owners give the maximal-restriction influence and no fixture sink
+PASS: AU-002 a duplicate label entry behind an unrelated head entry gives the maximal-restriction influence and no fixture sink
+PASS: AU-002 a duplicated entry for the second source gives the maximal restriction at that source's position
+PASS: AU-002 a label entry for another version of the same object does not match: maximal restriction, no fixture sink
+PASS: AU-002 an empty label table gives an event releasable to no fixture sink
+PASS: AU-002 object_influence returns the table entry, or the maximal restriction on a missing or ambiguous entry
+PASS: AU-002 a sink whose DLM label flows but whose clearance lacks the source's secrecy bit is withheld
+PASS: AU-002 a sink whose DLM label flows but which does not tolerate the source's untrusted bit is withheld
+PASS: AU-002 the event's secrecy and untrusted sets are the source policy's
+PASS: AU-002 context secrecy and untrusted sets join every source policy in the context
+PASS: AU-002 context secrecy and untrusted sets include an origin rule's bits outside its source's
+PASS: AU-002 context secrecy and untrusted sets join every origin rule of a source
+PASS: AU-002 an event is withheld when the snapshot epoch is not the expected epoch
+PASS: AU-002 an admitted event and an Origin-denied event for the same plan and label table have equal influences, secrecy and untrusted sets
+PASS: AU-002 a Payment-denied event has the admitted event's policy, which is admission_policy of the request
+PASS: AU-002 the test-side EventPolicy.equal separates a different requester and a different label table
+PASS: AU-002 decision_influences is the sources and destination as data, then the same objects as control
+PASS: AU-002 source_influences gives one data influence per source in manifest order
+PASS: AU-002 a context source policy for another object (13, Mallory's) is a control influence of the Source denial
+PASS: AU-002 the control copies of the plan's objects are on the event
+PASS: AU-002 context_influences is every context source policy's object, then the destination policy's object, as control
+PASS: AU-002 a commit event's policy includes BF.binding()'s joined source and destination labels as a control influence owned by the destination's owner
+PASS: AU-002 the commit binding influence follows the resolved binding's labels
+PASS: AU-002 a committed event is withheld from a sink that satisfies the object and requester labels but not the binding's
+PASS: AU-002 a commit with no resolvable binding carries the maximal-restriction control influence
+PASS: AU-002 a commit event carries the requester, the session plan's objects and the transfer context's secrecy and untrusted sets
+PASS: AU-002 the commit record holds the same event the wrapper returns
+PASS: AU-002 a commit event's influences are the plan's objects as data and control, the transfer context's policy objects, the binding and the requester, in that order
+PASS: AU-002 a rejected commit has the accepted commit's policy (the policy does not read the result)
+PASS: AU-002 an early-denied (ScopeNotRead) event joins only the requester's stream, whatever objects the plan names
+PASS: AU-002 a ScopeRead denial joins every influence owner's stream
+PASS: AU-002 an early-denied event from a subject of 2^32 joins only Top's stream
+PASS: AU-003 owner queries another owner's stream: Alice's query of Bob's stream is refused, identically with zero and with five Bob events
+PASS: AU-003 an Alice-stream query omits Bob-only events and withholds the mixed event through Alice's sink 1
+PASS: AU-003 a reader holding Alice and Bob grants through sink 1 sees no mixed event in either stream: there is no operator widening
+PASS: AU-003 Bob's reader sees Bob's own event through Bob's sink 2 and neither Alice's nor the mixed one
+PASS: AU-008 Mallory's early-denied request naming Alice's objects is releasable to sink 4 yet absent from Alice's stream: the response equals the one for an empty log
+PASS: AU-008 Alice's own early-denied request joins her stream while Mallory's, naming the same objects, does not
+PASS: AU-003 baseline: Alice's reader with her current grant through sink 1 receives her five visible events
+PASS: AU-003 an authorized reader uses an unauthorized sink: the same query through registered sink 2, which her grant does not name, is refused
+PASS: AU-003 the same query through unregistered sink 9 is refused although grant 107 names sink 9
+PASS: AU-003 a sink id registered twice is ambiguous and refused
+PASS: AU-003 query grant is revoked: at revision r the page is released, and revoke_read moves the state to r+1
+PASS: AU-003 a query validated at revision r is refused after the revocation moved the state to r+1 (stale)
+PASS: AU-003 the same query at revision r+1 is refused and first_failed_gate names GrantRevoked
+PASS: AU-003 revoke_read marks only the named grant: Bob's grant 102 still answers
+PASS: AU-003 revoke_read at a stale revision is rejected and keeps the revision
+PASS: AU-003 revoke_read of an unknown or ambiguous grant id is rejected
+PASS: AU-003 revoking an already revoked grant is rejected and advances no revision
+PASS: AU-003 a later revocation of another grant keeps the earlier revocation in force
+PASS: AU-003 a grant is expired at now == valid_until (refused, GrantExpired) and still current one tick before
+PASS: AU-003 a grant for another reader does not answer: Bob's reader asking for Alice's stream through sink 1 is refused
+PASS: AU-003 a grant issued at an earlier epoch is refused (GrantEpoch)
+PASS: AU-003 an epoch advance withdraws a grant of the old epoch (GrantEpoch)
+PASS: AU-003 visibility is judged at the state's epoch: with grants and snapshot at epoch 4 the events show, with the snapshot still at epoch 3 none does
+PASS: AU-003 two grants matching one reader, owner and sink are ambiguous and refused
+PASS: AU-003 grant_current is unrevoked, of the state's epoch and unexpired, re-derived from the state at the call
+PASS: AU-003 a query at an older or a later revision than the state's is refused
+PASS: AU-008 Response has no total field; the page holds exactly the five visible events of eight stored
+PASS: AU-008 Alice's stream holding only a hidden mixed denial gives exactly Page{[], None}, the response for no events at all
+PASS: AU-008 a hidden denial placed first changes nothing in the response
+PASS: AU-008 a hidden denial placed in the middle changes nothing in the response
+PASS: AU-008 a hidden denial placed last changes nothing in the response
+PASS: AU-008 pagination: page 1 of limit 2 holds the first two visible events and a cursor at view offset 2, equal to the run without hidden events
+PASS: AU-008 pagination: page 2 from that cursor holds the next two visible events and a cursor at view offset 4, equal to the run without hidden events
+PASS: AU-008 pagination: the last page holds the fifth visible event and no cursor, equal to the run without hidden events
+PASS: AU-008 a cursor issued to another reader (Bob's) is refused
+PASS: AU-008 a cursor for another owner's stream is refused
+PASS: AU-008 a cursor from an older epoch is refused
+PASS: AU-008 a view never contains event_id: the views of two logs whose events differ only in event_id are equal
+PASS: AU-008 the page follows the visible view's append order; Query has no sort input
+PASS: AU-008 distinct secret denial reasons: unknown version, no grant, wrong sink, revoked, expired, bad cursor, limit 0, limit 17 and an exhausted budget all give Refused{public_denial()}
+PASS: AU-008 an unknown query format version is refused (UnknownVersion)
+PASS: AU-009 a page limit of 0 or of max_page()+1 is refused (LimitOutOfRange)
+PASS: AU-009 limits 1 and max_page() are accepted
+PASS: AU-009 query exceeds its work budget: work 3 over five visible events with limit 5 is refused, with no partial page
+PASS: AU-009 the same query with work 5 succeeds
+PASS: AU-009 hidden events consume no work: with three hidden events added, work 5 still succeeds
+PASS: AU-009 skipping to a cursor charges one unit per visible event skipped: offset 2 and limit 3 need work 5
+PASS: AU-009 a budget that runs out while skipping to the cursor is refused, not answered with an empty page
+PASS: AU-009 seeing that visible events remain after a full page costs no work
+PASS: AU-003 a reader whose sink satisfies both owners sees the mixed denial event with DeniedFor{Origin{}}
+PASS: AU-007 remote telemetry has no grant: from empty(...) every channel to every sink, for either owner and any exporter, is Withheld{} with no effects
+PASS: AU-007 baseline: Alice's exporter with her Events grant for sink 1 is Sent one emission to sink 1 holding her five visible views
+PASS: AU-007 a grant for another sink does not answer: the same Events export to registered sink 2 is withheld
+PASS: AU-007 a grant for another channel does not answer: a Metric grant used for Events is withheld, while the Metric export it names is sent
+PASS: AU-007 a grant for another exporter does not answer: exporters 63 and 61 sending Alice's stream to sink 1 are withheld
+PASS: AU-007 a grant for another owner does not answer: Alice's exporter sending Bob's stream to sink 1 is withheld
+PASS: AU-007 an unregistered sink is withheld although grant 205 names sink 9
+PASS: AU-007 two export grants naming one exporter, owner, sink and channel are ambiguous and withheld
+PASS: AU-007 an export request of format version 0 or 2 is withheld (UnknownVersion)
+PASS: AU-007 export authority is revoked: at revision r the export is Sent, and revoke_export moves the state to r+1
+PASS: AU-007 after revoke_export the export at revision r+1 is withheld and first_failed_gate names GrantRevoked
+PASS: AU-007 after revoke_export the export validated at revision r is withheld (stale)
+PASS: AU-007 an export at an older or a later revision than the state's is withheld
+PASS: AU-007 a revoked exporter is not rerouted: its Events export to sinks 2, 3 and 4 is withheld too
+PASS: AU-007 revoke_export marks only the named grant: Alice's Metric grant 202 still sends
+PASS: AU-007 an expired export grant is withheld at now == valid_until (GrantExpired) and sends one tick before
+PASS: AU-007 an epoch advance withdraws an export grant of the old epoch, and a grant of an earlier epoch is withheld (GrantEpoch)
+PASS: AU-007 an installed grant whose revoked flag is set is withheld (GrantRevoked)
+PASS: AU-007 revoke_export is rejected at a stale revision (keeping it), for an unknown or ambiguous id, and for an already revoked grant
+PASS: AU-007 a later revocation of another export grant keeps the earlier revocation in force
+PASS: AU-007 a re-installed grant beside its revoked record is ambiguous and withheld (NoGrant), at the same epoch and after an epoch advance
+PASS: AU-007 the Events emission for Alice's sink 1 omits the mixed Bob event, and its words equal those for a log without it
+PASS: AU-007 Bob's own event, a commit by subject 7 and Mallory's early denial change no Events word; a log of only hidden events sends an empty batch
+PASS: AU-007 an event releasable to the export sink but outside the grant owner's stream (Mallory's early denial through sink 4) changes no Events, Metric or Alert word
+PASS: AU-007 through the both-owners sink 3 the mixed event is releasable and its view is emitted to sink 3
+PASS: AU-007 the metric over a log with three visible matching events and two hidden ones is 3, equal to the metric over the log without the hidden ones
+PASS: AU-007 the metric counts only visible events of the rule's kind: 1 admission, 0 when every denial is hidden, 0 commits
+PASS: AU-007 metric_count is a count over the visible view, and a count of 2^32 is withheld rather than wrapped
+PASS: AU-007 an alert rule matching AdmissionDenied emits nothing for a hidden denial, and the result equals that for a log without it
+PASS: AU-007 an alert rule matching AdmissionDenied emits one alert for a visible denial, one per visible matching event in append order
+PASS: AU-007 a view encoding has no event id field and is rejected by the event decoder (OutOfOrder), so it never passes as a stored event
+PASS: AU-007 exports never carry event_id: Events of two logs whose events differ only in event_id are equal
+PASS: AU-007 view_encode is Task 2's encoding without the event id, and is None for a wrong version, kind, phase, artifact or scope, a subject or invocation of 2^32, or more than max_sources() sources
+PASS: AU-007 content with a view that does not encode is withheld, never sent truncated, partial or as an empty batch
+PASS: AU-007 no Events, Metric or Alert emission word equals a Task 1 payload, error-text, credential or caller-token sentinel
+PASS: AU-007 no fallback: Transmission has only Sent and Withheld (an exhaustive match without a wildcard), and Withheld carries nothing
+PASS: AU-007 no grant, an unregistered sink, revoked, expired, other-epoch, unknown version and stale revision all give exactly Withheld{} with no effects
+Audit: 285 checks passed
+PASS: ER-001 open: a fresh rendezvous for NT.request() is valid at revision 0 with no offers
+PASS: ER-001 synthetic issuer: grants 3 (A), 6 (B) and 9 (D) are registered through Issuance and current at 100
+PASS: ER-001 grant_backs: grant 3 backs A for TF.plan() and neither B nor the two-source plan
+PASS: ER-001 provider A's offer backed by its current grant 3 is stored at revision 1 and (A, serial 1) is recorded as seen
+PASS: ER-001 an offer valid until 150, exactly grant 3's own valid_until, is accepted
+PASS: ER-001 same code different provider: B's offer with A's code, plan, profile and quote is stored as a second record
+PASS: ER-001 same code different provider: the two offers share a code identity but are not equal records and have distinct identities
+PASS: ER-008 valid: an offer whose identity names another provider, or a serial recorded twice, is not a valid state
+PASS: ER-008 valid: A's offer serial 1 beside an approval serial 1 from the same principal is valid, the two namespaces being separate
+PASS: ER-008 a second A offer under OfferId{201, 7} is accepted beside OfferId{201, 1}, issues 7, and seen is exactly (A, 7) then (A, 1)
+PASS: ER-008 offer_equal distinguishes every single-field change: version 2, grant 4, another code word, profile 2, quote 35, valid_until 139
+PASS: ER-001 projection agreement: grant 3 behind A's accepted offer passes I.usable_by for A, the filter of I.registry, and not for B
+PASS: ER-001 unauthenticated provider: from B submitting an offer claiming provider A denied Unauthenticated
+PASS: ER-008 from A submitting under OfferId{202, 1}, B's identity namespace, denied Unauthenticated
+PASS: ER-001 provider C with no registered grant denied NoGrant
+PASS: ER-001 provider B citing A's grant 3, whose subject is not B, denied NoGrant
+PASS: ER-001 scope narrower than the plan: A's grant 3 for the one-source plan behind an offer for the two-source request denied ScopeMismatch
+PASS: ER-001 an offer whose plan drops object 11 from the two-source request's manifest denied ScopeMismatch
+PASS: ER-001 an offer whose plan names destination 20v9 instead of the request's 20v8 denied ScopeMismatch
+PASS: ER-001 an offer whose plan differs from the request's in one code word denied ScopeMismatch
+PASS: ER-001 after object 10's read authority revokes the source approval behind grant 3, A's offer is denied Revoked
+PASS: ER-001 A's offer at 150, when grant 3 (valid while now < 150) has expired, denied Expired
+PASS: ER-001 once the monitor installs authority epoch 5 in the issuer, A's grant scoped at epoch 3 is stale: denied StaleEpoch
+PASS: ER-001 provider D's current grant 9 with rights 1 does not cover read plus execute: denied RightsNotHeld
+PASS: ER-001 an offer valid until 160, past grant 3's 150, denied Expired
+PASS: ER-001 an offer submitted at its own valid_until 100 denied Expired
+PASS: ER-001 an offer quoting 0 names no billing term: denied OverBudget
+PASS: ER-008 a second identical record under OfferId{201, 1} denied DuplicateOffer
+PASS: ER-008 a second record under OfferId{201, 1} quoting 35 instead of 40 denied DuplicateOffer
+PASS: ER-008 A's serial 1 already seen with no record stored under it (the shape a withdrawal leaves) denied Replay
+PASS: ER-001 offer record version 2 denied UnknownVersion
+PASS: ER-001 offer record version 0 denied UnknownVersion
+PASS: ER-008 A's serial 7 already seen with no record stored under it: an offer under OfferId{201, 7} denied Replay
+PASS: ER-001 B's offer validated at revision 0 against the state at revision 1 denied StaleRevision
+PASS: ER-006 object 10's read authority 101 approves provider A at profile 1 for TF.plan(): stored unwithdrawn under id 1 at revision 1, (101, serial 12) seen
+PASS: ER-006 101's second approval, serial 13 for provider B at profile 3, is stored under id 2 beside id 1; seen is exactly (101, 13) then (101, 12)
+PASS: ER-006 object 11's authority 104 may use serial 12 after 101 used it: replay is per issuer
+PASS: ER-006 an offer serial 12 recorded for 101 does not replay 101's approval serial 12: separate namespaces
+PASS: ER-006 an approval valid until 101 is accepted at 100
+PASS: ER-006 101 withdraws approval 1: the record stays in place marked withdrawn, its serial stays seen, revision 2
+PASS: ER-006 withdrawing approval 1 leaves approval 2 unwithdrawn, and withdrawing 2 later keeps 1 withdrawn
+PASS: ER-006 after the withdrawal a new approval for object 10 and A under serial 15 is a new record, id 2, and approves A again
+PASS: ER-006 unauthenticated approver: from the write authority 102, an approval claiming object 10's authority 101 denied Unauthenticated
+PASS: ER-006 the write authority 102 approving object 10 under its own identity denied NotAuthority
+PASS: ER-006 read authority 103 for read domain 9, where object 10 is not placed, approving object 10 denied NotAuthority
+PASS: ER-006 the inherited origin 30v6, listed by T.required_origins but placed nowhere in the issuer, denied WrongDomain
+PASS: ER-006 object 10 placed twice in the issuer is in no domain: denied WrongDomain
+PASS: ER-006 an approval for a plan that differs from the request's in invocation (98, not 99) denied ScopeMismatch
+PASS: ER-006 an approval for object 11, which TF.plan() does not need, denied ScopeMismatch; with a stale transfer context (Missing lookup), denied ScopeMismatch
+PASS: ER-006 an approval submitted at its own valid_until 100 denied Expired
+PASS: ER-006 101 reusing serial 12 for a different approval (provider B, profile 2) denied Replay
+PASS: ER-006 101's serial 12, recorded behind its serial 13, denied Replay
+PASS: ER-006 resubmitting withdrawn approval serial 12 denied Replay
+PASS: ER-006 approval record versions 2 and 0 denied UnknownVersion
+PASS: ER-006 an approval validated at revision 0 against the state at revision 1 denied StaleRevision
+PASS: ER-006 withdrawal of approval 1 by 103, not its issuer, denied Unauthenticated
+PASS: ER-006 withdrawal by 101 after the monitor removed it from the directory denied NotAuthority
+PASS: ER-006 withdrawal by 101 after the monitor moved object 10 to read domain 9 denied NotAuthority
+PASS: ER-006 a withdrawal validated at revision 0 against the state at revision 1 denied StaleRevision
+PASS: ER-006 withdrawal of an absent id 5, or of id 1 held by two records with id 2 between them (synthetic, not valid), denied MissingApproval
+PASS: ER-006 withdrawal helpers behind the MissingApproval gate: a missing approval has no issuer, no authority and no unwithdrawn flag
+PASS: ER-006 a second withdrawal of approval 1 denied Revoked: withdrawal is single use
+PASS: ER-006 origin_approved: object 10 approved for A at profile 1 at 100 and 129, also with B's approval stored ahead of it, and for B at profile 3
+PASS: ER-006 origin_approved is false once the issuer installs a new live stamp (epoch 5)
+PASS: ER-006 origin_approved is false for provider B and for profile 2 when only A at profile 1 was approved
+PASS: ER-006 origin_approved is false for another plan and for another origin (object 11)
+PASS: ER-006 origin_approved is false after withdrawal
+PASS: ER-006 origin_approved is false at now = valid_until 130
+PASS: ER-006 origin_approved re-reads the issuer: false once 101 leaves the directory, once object 10 moves to read domain 9, or once object 10 is placed twice
+PASS: ER-006 origins_approved: true for TF.plan() with object 10 approved; false for a Missing lookup (also via a stale context) and for an empty one
+PASS: ER-006 two-source plan: approval of object 10 only leaves origins_approved false; approving object 11 too makes it true
+PASS: ER-006 the inherited origin 30v6 listed by T.required_origins but unapproved leaves origins_approved false
+PASS: ER-002 cheapest offer violates an origin: B quotes 30 without object 10's approval, A quotes 40 with it; A is selected and ineligibility(B) is MissingApproval
+PASS: ER-003 the selection record is Selection{2, A's complete offer, the request, the live stamp, 100, ranking profile 1}; id 2 issued, revision 4, next_id 3, offers and approvals unchanged
+PASS: ER-003 the first ranking profile is 1, and a first selection retires nothing
+PASS: ER-002 over the ceiling: B quoting 43 against the reader's ceiling 42 is excluded OverBudget and A is selected; B quoting exactly 42 is eligible
+PASS: ER-002 a monitor-installed B offer quoting 0 names no billing term: ineligible OverBudget
+PASS: ER-002 a profile outside the constraint: B quoting 30 at profile 2 (approved at profile 2) against the constraint {1} is excluded Constraint and A is selected
+PASS: ER-002 a grant revoked after submission: B quoting 30, eligible when submitted, is excluded Revoked once 101 revokes the source approval behind grant 6, and A is selected
+PASS: ER-002 an expired offer: B quoting 30 valid until 101 is eligible at 100, excluded Expired at 101, and A is selected
+PASS: ER-002 a monitor-installed B offer valid until 160, past grant 6's 150, is ineligible Expired
+PASS: ER-002 a grant narrower than the request (monitor-installed): B quoting 30 for the two-source request on its one-source grant 6 is excluded ScopeMismatch, and A on its two-source grant 13 is selected
+PASS: ER-002 an offer record of version 2 is ineligible UnknownVersion
+PASS: ER-008 an offer under A's identity carrying B's claim and grant is ineligible Unauthenticated
+PASS: ER-002 an offer whose plan differs from the request in one code word is ineligible ScopeMismatch
+PASS: ER-002 B citing A's grant 3, and C citing the absent grant 99, are ineligible NoGrant
+PASS: ER-002 A's offer is ineligible StaleEpoch once the issuer is at epoch 5, and Expired at 150 when grant 3 has expired
+PASS: ER-002 D's offer on its read-only grant 9 is ineligible RightsNotHeld
+PASS: ER-002 profile_admitted: nothing is admitted by an empty constraint, and a profile listed second is admitted
+PASS: ER-003 equal approved quotes: A (201) and B (202) both quote 40 and are eligible; A is selected in both submission orders and the two runs give the same selection
+PASS: ER-003 one provider, two equally priced candidates: A's serials 1 (profile 1) and 2 (profile 2) both quote 40 and are admitted; serial 1 is selected in both orders
+PASS: ER-008 offers equal in every field but OfferId are ranked by identity alone: {201, 1} before {201, 7} and before {202, 1}, never the reverse, and before is false both ways only for the same identity
+PASS: ER-003 a lower quote beats a lower provider id: B at 35 ranks ahead of A at 40
+PASS: ER-003 a lower provider id beats a lower serial: A's serial 9 ranks ahead of B's serial 1 at equal quotes
+PASS: ER-003 best: the first-ranked of three offers wherever it sits, and nothing from an empty list
+PASS: ER-008 conflicting offer identity: two records under OfferId{201, 1} quoting 40 and 35, with B's record between them or ahead of them, deny ConflictingOffer
+PASS: ER-008 offers_unambiguous: false for one identity under two contents, true for three distinct identities
+PASS: ER-008 the same snapshot holding two identical records under OfferId{201, 1} selects normally (A)
+PASS: ER-008 A's withdraw_offer of OfferId{201, 1} removes both records under it and keeps every serial; select then proceeds and picks B
+PASS: ER-008 after the withdrawal, A resubmitting under serial 1 is denied Replay
+PASS: ER-008 a withdrawal of OfferId{201, 1} by B denied Unauthenticated
+PASS: ER-008 withdrawing OfferId{201, 1} a second time, or A's never-stored serial 7, denied Revoked: withdrawal is single use
+PASS: ER-008 a withdrawal validated at revision 3 against the state at revision 4 denied StaleRevision
+PASS: ER-002 selection racing revocation: A's grant revoked in the issuer before select commits; with B also eligible, B is selected in both submission orders
+PASS: ER-002 selection racing revocation with no other offer: denied NoEligibleOffer, and the select gate list itself fails
+PASS: ER-003 an offer submitted after the snapshot was ranked at revision 4 moves the state to 5; select at 4 is denied StaleRevision with the state unchanged
+PASS: ER-003 select while a selection exists denied AlreadySelected
+PASS: ER-003 abandon retires selection 3: no selection, retired 3, next_id 4 kept, revision 6, offers kept
+PASS: ER-003 after abandon a new selection gets the new id 4 and selection 3 stays retired
+PASS: ER-003 abandon with no selection denied NotSelected (single use); abandon at revision 4 against revision 5 denied StaleRevision
+PASS: ER-003 select on a Negotiation session at Proposed, or at the wrong session revision, denied WrongStage
+PASS: ER-003 a session whose request differs in quote (41, not 42) denied ScopeMismatch
+PASS: ER-008 withdrawing the selected offer retires selection 3 and leaves only B's record
+PASS: ER-008 B withdrawing its unselected offer keeps A's selection and retires nothing
+PASS: ER-008 B withdrawing its unselected offer after a reselection keeps selection 4 and the earlier retirement 3
+PASS: ER-003 a selection of A's profile-2 offer records ranking profile 1, not the offer's profile: Selection{3, the offer, the request, the live stamp, 100, 1}
+PASS: ER-006 an approval submitted while the issuer is at epoch 5 and the transfer context still at the plan's epoch 3 denied StaleEpoch
+PASS: ER-004 A's trial offer (quote 38) is selected as selection 3 at 103 and is current at 110
+PASS: ER-004 the projection for selection 3 carries exactly challenges 21 and 24, no sample, one approval for 10v4 valid until 113 (the offer's end, before approval 130 and grant 150), and the supplied budgets and transfer
+PASS: ER-004 happy path: N.challenge with 21 advances on the projected context
+PASS: ER-005 A's evidence (sample 31, challenge 21, A's code) is stored as StoredEvidence{3, evidence} at revision 6; id 3 issued, nothing else changed
+PASS: ER-005 after the evidence the projection carries exactly sample 31 for challenge 21 and the selected plan; N.sample with 31 is rejected before the evidence and advances after it
+PASS: ER-006 happy path: N.approve and then N.reserve advance on the projected context for the selected provider
+PASS: ER-004 before any selection the projection has no approvals, challenges or samples, so N.challenge with 21 is rejected on it though the raw context admits it
+PASS: ER-005 evidence with no selection denied NotSelected
+PASS: ER-005 epoch substitution: once the issuer's live stamp advances to epoch 5 the selection is not current; evidence denied StaleEpoch and the projection is empty
+PASS: ER-006 once 101 revokes the source approval behind A's grant 3, evidence is denied Revoked and the projection carries no approval, challenge or sample
+PASS: ER-004 a monitor-installed selection recorded at epoch 5 while the issuer and grant are at epoch 3 is not current: StaleEpoch; at the live stamp it is current
+PASS: ER-004 a monitor-installed selection made for a request with quote 41 is not current for the rendezvous request: NotSelected
+PASS: ER-004 a selection whose offer record is no longer stored (no records, or only B's), or whose identity also carries a record quoting 37, is not current: NotSelected
+PASS: ER-005 field substitution: version 2 denied UnknownVersion; provider claim B from A denied Unauthenticated
+PASS: ER-005 offer substitution: A's evidence naming OfferId{201, 9} or B's OfferId{202, 5} denied NotSelected
+PASS: ER-004 provider swaps code after challenge: same challenge 21, code differing in its last word, denied ScopeMismatch; a sample 31 whose plan carries the other code is not projected even though selection 3's evidence names 31
+PASS: ER-005 challenge substitution: evidence naming 24 on a session challenged with 21, or a session at 23 (the other plan's challenge) or at the absent 29, denied WrongTrial
+PASS: ER-004 a challenge issued at 103, the selection's own time: absent from the projection, so N.challenge with 22 is rejected there (the raw context admits it); evidence naming it denied ChallengeBeforeFixation
+PASS: ER-005 sample substitution: the absent sample 39, or sample 32 for the plan with the other code (another input scope), denied WrongTrial
+PASS: ER-005 a failed sample (34), one expiring at 110 (35), one carrying challenge 24's nonce (37), or one answering challenge 22 (38) denied WrongTrial
+PASS: ER-005 a second evidence for selection 3 denied Replay
+PASS: ER-005 evidence at revision 4 against 5 denied StaleRevision; a session at CandidateFixed or at Sampled denied WrongStage
+PASS: ER-004 challenge_posted: a challenge 22 issued at 107 for the other plan does not follow fixation for TF.plan(); one for TF.plan() at 104 does
+PASS: ER-005 nonce_posted: nonce 6 of another plan's challenge 21, or challenge 22's nonce at fixation time, does not answer; challenge 21's nonce 1 does
+PASS: ER-005 selected_provider_is: false with no selection, true only for A while A is selected
+PASS: ER-005 after abandon, B is selected as selection 4 at 116; its projection carries only challenge 26, no sample (A's evidence is under retired selection 3), and 10v4's approval until 128 (B's own approval's end, before B's offer 140; A's approval until 130 is stored first)
+PASS: ER-005 reusing another provider's sample: B naming A's challenge 21 and sample 31 on its session challenged with 26, or A's sample 31 under its challenge 26, denied WrongTrial
+PASS: ER-005 B submitting A's evidence with the provider claim A denied Unauthenticated; A submitting its own evidence, or B's, while B is selected denied NotSelected
+PASS: ER-005 B's own evidence (sample 36, challenge 26) is stored under selection 4 beside A's under 3, and only sample 36 is projected
+PASS: ER-005 Negotiation alone does not bind a session to the selection: A's session sampled under retired selection 3 still passes N.approve on B's projection, but session_follows_selection rejects it and its approved successor; it holds for B's session and for A's under selection 3, and not before evidence, with no selection, or for a session with quote 41
+PASS: ER-005 evidence under A's selection id 3 naming B's offer, or A's offer with B's claim, is not a valid state and projects no sample
+PASS: ER-005 after abandon, A's same offer {201, 4} reselected as selection 4 at 106 projects no sample, although retired selection 3's evidence names sample 31 for that offer, and none of selection 3's challenges (all issued before 106)
+PASS: ER-006 partial owner agreement: with only object 10's authority approving A for the two-source plan, A's offer is ineligible MissingApproval
+PASS: ER-006 with both objects approved A is selected; the projection carries one approval each for 10v4 and 11v4 (until 130) and N.approve advances on it
+PASS: ER-006 after object 11's approval is withdrawn the projection carries no approvals and N.approve on it is rejected
+PASS: ER-006 reader terms: a session whose request differs from the rendezvous request in quote (41), units (31) or reader (8) denied ScopeMismatch
+PASS: ER-006 the projection keeps the supplied budgets, so N.reserve on it still binds the exact reader: a budget naming payer 8 is rejected
+PASS: ER-005 session_follows_selection binds the evidence's selection, offer and provider: on monitor-installed states whose only evidence under selection 3 names challenge 21 for B's offer {202, 5}, or for A's offer under B's provider claim, A's session challenged with 21 does not follow selection 3; on A's own stored evidence it does; and once A's same offer is reselected as selection 4, retired selection 3's evidence does not make it follow
+PASS: ER-007 after N.start on the projected context, A's Running session dispatches selection 3 to A's worker session 6 (profile 1): Dispatch{3, incarnation 57, 6} at revision 7, id 3 issued, nothing else changed
+PASS: ER-001 provider_registry after dispatch holds exactly grant 3's capability for A, and F.mount, F.open and F.checked_plan resolve it to TF.plan() for caller A
+PASS: ER-007 before dispatch provider_registry is empty, though Issuance projects grant 3 for A, so F.mount finds no capability
+PASS: ER-001 with A also holding grant 12 (token word 17), the raw registry for A has two capabilities but provider_registry keeps only the selected grant 3's token
+PASS: ER-001 dispatch to an unselected provider: A's offer with B's worker session 7, B's offer {202, 5} with B's or A's worker session, or A's unknown offer {201, 9}, denied NotSelected
+PASS: ER-001 a worker session of C (3), an unbound session id 9, a session id 6 the identity table holds twice, or A's delegable client session 1, denied NotSelected
+PASS: ER-001 A's worker session 4 bound under profile 2, A's non-delegable client session 2 with no worker binding, or a session 6 bound twice, denied WrongProfile
+PASS: ER-001 worker_caller_is: no session under id 9, or two sessions under id 6 both with caller A, is not A's worker; the one session 6 is
+PASS: ER-001 dispatch_target_selected is false with no selection and true for A's offer on A's worker session 6; with no selection a dispatch at a stale revision is denied NotSelected first
+PASS: ER-007 dispatch at revision 5 against 6 denied StaleRevision
+PASS: ER-007 the host state at revision 7 named as 6 or 8 denied StaleRevision
+PASS: ER-007 a host state that is not HP.valid at its own revision (sessions of incarnation 57 under incarnation 58, or bindings to unconfigured profiles) denied StaleRevision; the twin-session and twin-binding hosts are not valid either
+PASS: ER-001 A's worker session 8 authenticated under another token (word 3) is A's subject at profile 1 but not grant 3's holder: denied NotSelected; A's session 6 on the same host dispatches
+PASS: ER-001 a worker session 8 presenting grant 3's token under B's subject 202 is not A's worker: dispatch_target_selected is false and dispatch is denied NotSelected
+PASS: ER-001 the binding is compared with the selected offer's profile: with A's profile-2 offer {201, 2} selected, A's worker session 4 (profile 2) is its target and session 6 (profile 1) is not, WrongProfile
+PASS: ER-007 a session at Reserved, or a Running session at revision 6 named as 5, denied WrongStage
+PASS: ER-007 a second dispatch of selection 3 denied Replay
+PASS: ER-005 dispatch with no evidence for selection 3, or with evidence under id 3 naming B's offer or B's claim, denied MissingEvidence
+PASS: ER-005 A's same offer {201, 4} reselected as selection 4: retired selection 3's evidence for that offer and provider does not count, so dispatch is denied MissingEvidence
+PASS: ER-007 the evidence and dispatch lookups read the whole list: A's evidence for selection 3 behind a record for selection 2 still dispatches, and Dispatch{3, 6} behind a record for selection 2 still denies Replay
+PASS: ER-005 A's session sampled under retired selection 3 and advanced to Running on B's projection is denied WrongTrial for B's selection 4; B's own Running session dispatches
+PASS: ER-001 while B is selected, B's worker session 5 bound under profile 2 is denied WrongProfile, and A's offer on A's worker session is denied NotSelected
+PASS: ER-007 selection racing revocation: once 101 revokes the source approval behind A's grant 3, dispatch is denied Revoked, the projection carries no approvals so N.start is rejected on it (it advances on the earlier one), and the dispatched selection's provider_registry is empty
+PASS: ER-007 epoch change between selection and dispatch: once the issuer's live stamp advances to epoch 5, dispatch is denied StaleEpoch and the dispatched selection's provider_registry is empty
+PASS: ER-006 after dispatch, provider_registry is empty once object 10's approval of A is withdrawn, or at 113 when A's offer has expired, though grant 3 is still current and projected for A
+PASS: ER-007 a grant that expires before dispatch: A's grant 12 and its offer {201, 6} both end at 130 (an offer cannot outlive its grant); selected at 110 and current at 120, dispatch at 130 is denied Expired, the grant's currency gate reporting first
+PASS: ER-007 the projected approval ends at 130 (the grant's and offer's end, before approval 145), so N.start at 130 is rejected even on a projection built at 120 (at 129 it advances), and the projection at 130 is empty
+PASS: ER-007 a Running session whose request differs in invocation (98), manifest (source 10v5), destination (20v9) or quote (41) denied ScopeMismatch; the same session with the rendezvous request dispatches
+PASS: ER-007 a rendezvous opened for the request with invocation 98 has no offers, approvals or evidence, and dispatching A there is denied NotSelected
+PASS: ER-007 once A withdraws the selected offer {201, 4} before dispatch, dispatch is denied NotSelected, also at the revision before the withdrawal
+PASS: ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected
+PASS: ER-007 after abandon, A's approval does not count for B: B's offer is ineligible MissingApproval and select finds no eligible offer at 114 (A's expired at 113) until 101 approves B
+PASS: ER-007 B reselected as selection 5: A's evidence does not follow (dispatch with A's Running session denied MissingEvidence), and A's dispatch record of selection 3 opens no provider_registry for B
+PASS: ER-007 with B's own approval and trial, selection 5 dispatches to B's worker session 7 beside A's earlier Dispatch{3, 6}, which does not count as a replay, and provider_registry holds only B's grant 6
+PASS: integration a dispatched, sampled execution commits through Backplane.commit on the projected context: Committed, the write intent keeps the plan, origins and label, and the ledger advances to revision 2
+PASS: integration the same execution commits through DataOS.commit_from_capability with reader 7's execute descriptor
+PASS: integration with the selection current and dispatched, the reader's transfer write grant revoked: T.admit denies, Backplane and the facade reject and spend no reservation
+PASS: integration A's grant 3 revoked after dispatch: the projected approvals are empty, N.owners denies, Backplane and the facade reject and spend no reservation
+PASS: integration the issuer's live stamp advanced to epoch 5 after dispatch: the projection is empty, Backplane and the facade reject and spend no reservation
+PASS: integration with the selection current and dispatched, an output carrying control label 3 does not fit the destination: Backplane rejects and spends no reservation
+PASS: integration with the selection current and dispatched, the reader's budget funds quote 41 against the request's 42: N.budget_live denies, Backplane and the facade reject and spend no reservation
+PASS: integration before dispatch, commit_context of A's evidenced selection 3 carries no approvals: Backplane and the facade reject and spend no reservation, and both commit once selection 3 is dispatched
+PASS: integration commit_context reads the whole dispatch list: with Dispatch{3, 57, 6} behind a record for selection 2 on B's worker session 7, A's output from session 6 commits and one reported from session 7 is rejected
+PASS: integration a sample is not a commit: before A's evidence is stored the passing sample 31 is not projected so N.sample rejects, a Challenged session cannot approve, and a Sampled session cannot commit (on A's evidence it samples)
+PASS: integration once object 10 withdraws A's approval, A's Sampled session cannot approve and its Reserved session cannot reach Running on the projection (it starts on the approved one)
+PASS: integration commit_context requires the current host state: after HostPublication.restart moves the host to incarnation 58 at a new revision, commit_context on the pre-restart host() named at that revision carries no approvals and Backplane.commit rejects and spends no reservation (the final review's scenario e5), while host() named at its own revision commits
+PASS: integration commit_context requires HP.valid: a host with A's worker session 6 at incarnation 57 whose bindings name unconfigured profiles, named at its own revision, yields no commit context and the commit is rejected and spends no reservation
+PASS: integration commit_context requires the dispatch's incarnation: a valid, current host in incarnation 58 with the same bindings, so A's worker session 6 exists there, named at its own revision, yields no commit context for selection 5 dispatched in incarnation 57, and the commit is rejected and spends no reservation
+PASS: scenario current authority: providers A and B offer the two-source plan on their own current grants, 101 and 104 each approve both, both are eligible, and A's lower quote 38 is selected as selection 5
+PASS: scenario current authority: on projections rebuilt for each use, A's trial is challenged with 41, its evidence stored, sampled, owner-approved for both origins, reserved and started, and selection 5 dispatches to A's worker session 6
+PASS: scenario current authority: Backplane.commit on the dispatched selection's commit_context for A's worker session 6 commits, the write intent keeps the plan and both origins, and the ledger advances to revision 2
+PASS: scenario current authority: provider_registry holds only grant 8's capability, F.mount, F.open and F.checked_plan resolve it for A to the plan, and HostPrimitives.issue and admit_worker deliver the input to A's worker session 6
+PASS: scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected
+PASS: scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty
+PASS: scenario revocation between dispatch and commit: once 101 revokes approval 5 after selection 5 is dispatched, Backplane.commit on the rebuilt projection rejects and spends no reservation, provider_registry is empty, and HostPrimitives.issue finds no handle to bind the worker's input to
+PASS: scenario replay: B's offer serial 1 resubmitted after B withdraws it is denied Replay, 101's approval serial 31 resubmitted is denied Replay, and after 104 withdraws approval 2 its serial 31 is denied Replay while a fresh serial 33 is accepted as id 5
+PASS: scenario replay: after dispatch, A's evidence for selection 5 resubmitted is denied Replay and a second dispatch of selection 5 to A's worker session 6 is denied Replay, the state kept each time
+PASS: scenario substituted candidate: after A's selection holds evidence, B offers {202, 2} at quote 20; select is denied AlreadySelected and dispatching B's offer to B's worker session 7 is denied NotSelected, so the cheaper newcomer does not displace selection 5
+PASS: scenario abandon and reselect: the monitor abandons selection 5 and B's {202, 2} is selected as selection 6; A's evidence does not follow (dispatch with A's Running session denied MissingEvidence) and challenge 41, issued before the new selection, is not projected while challenge 42 is
+PASS: scenario abandon and reselect: with B's own trial on challenge 42 stored under selection 6, A's Running session is denied WrongTrial, B's started session dispatches to B's worker session 7, Backplane.commit commits, and provider_registry holds only B's grant 12
+PASS: scenario unauthenticated provider: principal C submitting an offer under A's claim, or A's identity under its own claim, is denied Unauthenticated, its own offer citing A's grant 8 is denied NoGrant, and an approval it submits as 101 is denied Unauthenticated; the state is kept and A is selected
+PASS: scenario scope narrower than the plan: D's grant 15 covers only the one-source TF.plan(), so D's offer of the two-source plan on it, and its offer of TF.plan() itself, are denied ScopeMismatch, as is 101's approval of D for TF.plan(); A is selected
+PASS: scenario selection racing revocation: A is selected at 103 on the issuer state before 101 revokes approval 5 behind grant 8; on the revoked issuer A's evidence is denied Revoked, the projection carries no challenge so N.challenge is rejected, and dispatch is denied Revoked, while select run on the revoked issuer picks B
+PASS: scenario grant expiry before dispatch: A's grant 8 and its offer end at 125; selected at 103 and started at 110, selection 5 dispatches at 124 but is denied Expired at 125, and the projection at 125 carries no approvals
+PASS: scenario partial owner agreement: after A's session starts, 104 withdraws its approval of A for object 11 while 101's stands; dispatch is denied MissingApproval, and withdrawn after dispatch, Backplane.commit on the rebuilt commit_context rejects and spends no reservation
+PASS: scenario dispatch to an unselected provider: with A's selection 5 evidenced and its session Running, B's offer on B's worker session 7, and A's offer on B's session 7 or C's session 3, are denied NotSelected, A's profile-2 session 4 is denied WrongProfile, and only A's session 6 dispatches
+PASS: scenario identical candidates distinguished only by identity: A and B offer the same plan, code, profile, quote and lifetime under their own grants; A (201) is selected in both submission orders, and B can neither attach evidence to the selection nor be dispatched (NotSelected)
+PASS: scenario commit before dispatch: A's Running session on commit_context of selection 5, evidenced but undispatched, or with no evidence, is rejected and spends no reservation; the same session commits once selection 5 is dispatched
+PASS: scenario commit with a retired trial: after abandon, reselect and dispatch of B's selection 6, A's Running session, whose trial ran under retired selection 5, is rejected on commit_context and spends no reservation, while B's own session commits
+PASS: scenario commit from another worker: on dispatched selection 5, an output reported from B's worker session 7, or from session 6 of host incarnation 58, is rejected on commit_context; reported from A's session 6 at incarnation 57 it commits
+PASS: scenario commit after abandon or expiry: commit_context rebuilt after the monitor abandons dispatched selection 5 is empty and the commit is rejected; at 125, when grant 8 and the offer end, the commit is rejected, and at 124 it commits
+PASS: scenario commit under a reselected offer: after dispatched selection 5 is abandoned, A's same offer is reselected as selection 6 and A's new trial on challenge 42 starts; Dispatch{5, 57, 6} for the same worker does not count, so the commit is rejected until selection 6 is dispatched, and then commits
+PASS: F1 scenario one rendezvous per request: R.open of the two-source request on the empty index is accepted with exactly sc_opened()'s state and an index holding that request, and a second R.open of the same request on that index is denied AlreadyOpen with the index unchanged, so the second rendezvous of the final review's scenario (b), in which B counted A's challenge 41 and sample 51 as its own, cannot be opened
+PASS: F1 scenario one rendezvous per request: a request differing only in units (31) opens beside it; with both in the index, the scenario request (second entry) and the units-31 request (first entry, with another constraint) are denied AlreadyOpen with the index unchanged; NT.request() opens on the empty index
+Rendezvous: 229 checks passed
+PASS: oracle fixture: disconnected vertices
+PASS: oracle fixture: directed chain
+PASS: oracle fixture: directed cycle
+PASS: oracle fixture: undirected component
+PASS: reachable-seed oracle, topology 0
+PASS: reachable-seed oracle, topology 1
+PASS: reachable-seed oracle, topology 2
+PASS: reachable-seed oracle, topology 3
+PASS: reachable-seed oracle, topology 4
+PASS: reachable-seed oracle, topology 5
+PASS: reachable-seed oracle, topology 6
+PASS: reachable-seed oracle, topology 7
+PASS: reachable-seed oracle, topology 8
+PASS: reachable-seed oracle, topology 9
+PASS: reachable-seed oracle, topology 10
+PASS: reachable-seed oracle, topology 11
+PASS: reachable-seed oracle, topology 12
+PASS: reachable-seed oracle, topology 13
+PASS: reachable-seed oracle, topology 14
+PASS: reachable-seed oracle, topology 15
+PASS: reachable-seed oracle, topology 16
+PASS: reachable-seed oracle, topology 17
+PASS: reachable-seed oracle, topology 18
+PASS: reachable-seed oracle, topology 19
+PASS: reachable-seed oracle, topology 20
+PASS: reachable-seed oracle, topology 21
+PASS: reachable-seed oracle, topology 22
+PASS: reachable-seed oracle, topology 23
+PASS: reachable-seed oracle, topology 24
+PASS: reachable-seed oracle, topology 25
+PASS: reachable-seed oracle, topology 26
+PASS: reachable-seed oracle, topology 27
+PASS: reachable-seed oracle, topology 28
+PASS: reachable-seed oracle, topology 29
+PASS: reachable-seed oracle, topology 30
+PASS: reachable-seed oracle, topology 31
+PASS: reachable-seed oracle, topology 32
+PASS: reachable-seed oracle, topology 33
+PASS: reachable-seed oracle, topology 34
+PASS: reachable-seed oracle, topology 35
+PASS: reachable-seed oracle, topology 36
+PASS: reachable-seed oracle, topology 37
+PASS: reachable-seed oracle, topology 38
+PASS: reachable-seed oracle, topology 39
+PASS: reachable-seed oracle, topology 40
+PASS: reachable-seed oracle, topology 41
+PASS: reachable-seed oracle, topology 42
+PASS: reachable-seed oracle, topology 43
+PASS: reachable-seed oracle, topology 44
+PASS: reachable-seed oracle, topology 45
+PASS: reachable-seed oracle, topology 46
+PASS: reachable-seed oracle, topology 47
+PASS: reachable-seed oracle, topology 48
+PASS: reachable-seed oracle, topology 49
+PASS: reachable-seed oracle, topology 50
+PASS: reachable-seed oracle, topology 51
+PASS: reachable-seed oracle, topology 52
+PASS: reachable-seed oracle, topology 53
+PASS: reachable-seed oracle, topology 54
+PASS: reachable-seed oracle, topology 55
+PASS: reachable-seed oracle, topology 56
+PASS: reachable-seed oracle, topology 57
+PASS: reachable-seed oracle, topology 58
+PASS: reachable-seed oracle, topology 59
+PASS: reachable-seed oracle, topology 60
+PASS: reachable-seed oracle, topology 61
+PASS: reachable-seed oracle, topology 62
+PASS: reachable-seed oracle, topology 63
+PASS: reachable-seed oracle, topology 64
+PASS: reachable-seed oracle, topology 65
+PASS: reachable-seed oracle, topology 66
+PASS: reachable-seed oracle, topology 67
+PASS: reachable-seed oracle, topology 68
+PASS: reachable-seed oracle, topology 69
+PASS: reachable-seed oracle, topology 70
+PASS: reachable-seed oracle, topology 71
+PASS: reachable-seed oracle, topology 72
+PASS: reachable-seed oracle, topology 73
+PASS: reachable-seed oracle, topology 74
+PASS: reachable-seed oracle, topology 75
+PASS: reachable-seed oracle, topology 76
+PASS: reachable-seed oracle, topology 77
+PASS: reachable-seed oracle, topology 78
+PASS: reachable-seed oracle, topology 79
+PASS: reachable-seed oracle, topology 80
+PASS: reachable-seed oracle, topology 81
+PASS: reachable-seed oracle, topology 82
+PASS: reachable-seed oracle, topology 83
+PASS: reachable-seed oracle, topology 84
+PASS: reachable-seed oracle, topology 85
+PASS: reachable-seed oracle, topology 86
+PASS: reachable-seed oracle, topology 87
+PASS: reachable-seed oracle, topology 88
+PASS: reachable-seed oracle, topology 89
+PASS: reachable-seed oracle, topology 90
+PASS: reachable-seed oracle, topology 91
+PASS: reachable-seed oracle, topology 92
+PASS: reachable-seed oracle, topology 93
+PASS: reachable-seed oracle, topology 94
+PASS: reachable-seed oracle, topology 95
+PASS: reachable-seed oracle, topology 96
+PASS: reachable-seed oracle, topology 97
+PASS: reachable-seed oracle, topology 98
+PASS: reachable-seed oracle, topology 99
+PASS: reachable-seed oracle, topology 100
+PASS: reachable-seed oracle, topology 101
+PASS: reachable-seed oracle, topology 102
+PASS: reachable-seed oracle, topology 103
+PASS: reachable-seed oracle, topology 104
+PASS: reachable-seed oracle, topology 105
+PASS: reachable-seed oracle, topology 106
+PASS: reachable-seed oracle, topology 107
+PASS: reachable-seed oracle, topology 108
+PASS: reachable-seed oracle, topology 109
+PASS: reachable-seed oracle, topology 110
+PASS: reachable-seed oracle, topology 111
+PASS: reachable-seed oracle, topology 112
+PASS: reachable-seed oracle, topology 113
+PASS: reachable-seed oracle, topology 114
+PASS: reachable-seed oracle, topology 115
+PASS: reachable-seed oracle, topology 116
+PASS: reachable-seed oracle, topology 117
+PASS: reachable-seed oracle, topology 118
+PASS: reachable-seed oracle, topology 119
+PASS: reachable-seed oracle, topology 120
+PASS: reachable-seed oracle, topology 121
+PASS: reachable-seed oracle, topology 122
+PASS: reachable-seed oracle, topology 123
+PASS: reachable-seed oracle, topology 124
+PASS: reachable-seed oracle, topology 125
+PASS: reachable-seed oracle, topology 126
+PASS: reachable-seed oracle, topology 127
+PASS: reachable-seed oracle, topology 128
+PASS: reachable-seed oracle, topology 129
+PASS: reachable-seed oracle, topology 130
+PASS: reachable-seed oracle, topology 131
+PASS: reachable-seed oracle, topology 132
+PASS: reachable-seed oracle, topology 133
+PASS: reachable-seed oracle, topology 134
+PASS: reachable-seed oracle, topology 135
+PASS: reachable-seed oracle, topology 136
+PASS: reachable-seed oracle, topology 137
+PASS: reachable-seed oracle, topology 138
+PASS: reachable-seed oracle, topology 139
+PASS: reachable-seed oracle, topology 140
+PASS: reachable-seed oracle, topology 141
+PASS: reachable-seed oracle, topology 142
+PASS: reachable-seed oracle, topology 143
+PASS: reachable-seed oracle, topology 144
+PASS: reachable-seed oracle, topology 145
+PASS: reachable-seed oracle, topology 146
+PASS: reachable-seed oracle, topology 147
+PASS: reachable-seed oracle, topology 148
+PASS: reachable-seed oracle, topology 149
+PASS: reachable-seed oracle, topology 150
+PASS: reachable-seed oracle, topology 151
+PASS: reachable-seed oracle, topology 152
+PASS: reachable-seed oracle, topology 153
+PASS: reachable-seed oracle, topology 154
+PASS: reachable-seed oracle, topology 155
+PASS: reachable-seed oracle, topology 156
+PASS: reachable-seed oracle, topology 157
+PASS: reachable-seed oracle, topology 158
+PASS: reachable-seed oracle, topology 159
+PASS: reachable-seed oracle, topology 160
+PASS: reachable-seed oracle, topology 161
+PASS: reachable-seed oracle, topology 162
+PASS: reachable-seed oracle, topology 163
+PASS: reachable-seed oracle, topology 164
+PASS: reachable-seed oracle, topology 165
+PASS: reachable-seed oracle, topology 166
+PASS: reachable-seed oracle, topology 167
+PASS: reachable-seed oracle, topology 168
+PASS: reachable-seed oracle, topology 169
+PASS: reachable-seed oracle, topology 170
+PASS: reachable-seed oracle, topology 171
+PASS: reachable-seed oracle, topology 172
+PASS: reachable-seed oracle, topology 173
+PASS: reachable-seed oracle, topology 174
+PASS: reachable-seed oracle, topology 175
+PASS: reachable-seed oracle, topology 176
+PASS: reachable-seed oracle, topology 177
+PASS: reachable-seed oracle, topology 178
+PASS: reachable-seed oracle, topology 179
+PASS: reachable-seed oracle, topology 180
+PASS: reachable-seed oracle, topology 181
+PASS: reachable-seed oracle, topology 182
+PASS: reachable-seed oracle, topology 183
+PASS: reachable-seed oracle, topology 184
+PASS: reachable-seed oracle, topology 185
+PASS: reachable-seed oracle, topology 186
+PASS: reachable-seed oracle, topology 187
+PASS: reachable-seed oracle, topology 188
+PASS: reachable-seed oracle, topology 189
+PASS: reachable-seed oracle, topology 190
+PASS: reachable-seed oracle, topology 191
+PASS: reachable-seed oracle, topology 192
+PASS: reachable-seed oracle, topology 193
+PASS: reachable-seed oracle, topology 194
+PASS: reachable-seed oracle, topology 195
+PASS: reachable-seed oracle, topology 196
+PASS: reachable-seed oracle, topology 197
+PASS: reachable-seed oracle, topology 198
+PASS: reachable-seed oracle, topology 199
+PASS: reachable-seed oracle, topology 200
+PASS: reachable-seed oracle, topology 201
+PASS: reachable-seed oracle, topology 202
+PASS: reachable-seed oracle, topology 203
+PASS: reachable-seed oracle, topology 204
+PASS: reachable-seed oracle, topology 205
+PASS: reachable-seed oracle, topology 206
+PASS: reachable-seed oracle, topology 207
+PASS: reachable-seed oracle, topology 208
+PASS: reachable-seed oracle, topology 209
+PASS: reachable-seed oracle, topology 210
+PASS: reachable-seed oracle, topology 211
+PASS: reachable-seed oracle, topology 212
+PASS: reachable-seed oracle, topology 213
+PASS: reachable-seed oracle, topology 214
+PASS: reachable-seed oracle, topology 215
+PASS: reachable-seed oracle, topology 216
+PASS: reachable-seed oracle, topology 217
+PASS: reachable-seed oracle, topology 218
+PASS: reachable-seed oracle, topology 219
+PASS: reachable-seed oracle, topology 220
+PASS: reachable-seed oracle, topology 221
+PASS: reachable-seed oracle, topology 222
+PASS: reachable-seed oracle, topology 223
+PASS: reachable-seed oracle, topology 224
+PASS: reachable-seed oracle, topology 225
+PASS: reachable-seed oracle, topology 226
+PASS: reachable-seed oracle, topology 227
+PASS: reachable-seed oracle, topology 228
+PASS: reachable-seed oracle, topology 229
+PASS: reachable-seed oracle, topology 230
+PASS: reachable-seed oracle, topology 231
+PASS: reachable-seed oracle, topology 232
+PASS: reachable-seed oracle, topology 233
+PASS: reachable-seed oracle, topology 234
+PASS: reachable-seed oracle, topology 235
+PASS: reachable-seed oracle, topology 236
+PASS: reachable-seed oracle, topology 237
+PASS: reachable-seed oracle, topology 238
+PASS: reachable-seed oracle, topology 239
+PASS: reachable-seed oracle, topology 240
+PASS: reachable-seed oracle, topology 241
+PASS: reachable-seed oracle, topology 242
+PASS: reachable-seed oracle, topology 243
+PASS: reachable-seed oracle, topology 244
+PASS: reachable-seed oracle, topology 245
+PASS: reachable-seed oracle, topology 246
+PASS: reachable-seed oracle, topology 247
+PASS: reachable-seed oracle, topology 248
+PASS: reachable-seed oracle, topology 249
+PASS: reachable-seed oracle, topology 250
+PASS: reachable-seed oracle, topology 251
+PASS: reachable-seed oracle, topology 252
+PASS: reachable-seed oracle, topology 253
+PASS: reachable-seed oracle, topology 254
+PASS: reachable-seed oracle, topology 255
+PASS: equality-conflict oracle, topology 0
+PASS: equality-conflict oracle, topology 1
+PASS: equality-conflict oracle, topology 2
+PASS: equality-conflict oracle, topology 3
+PASS: equality-conflict oracle, topology 4
+PASS: equality-conflict oracle, topology 5
+PASS: equality-conflict oracle, topology 6
+PASS: equality-conflict oracle, topology 7
+PASS: equality-conflict oracle, topology 8
+PASS: equality-conflict oracle, topology 9
+PASS: equality-conflict oracle, topology 10
+PASS: equality-conflict oracle, topology 11
+PASS: equality-conflict oracle, topology 12
+PASS: equality-conflict oracle, topology 13
+PASS: equality-conflict oracle, topology 14
+PASS: equality-conflict oracle, topology 15
+PASS: equality-conflict oracle, topology 16
+PASS: equality-conflict oracle, topology 17
+PASS: equality-conflict oracle, topology 18
+PASS: equality-conflict oracle, topology 19
+PASS: equality-conflict oracle, topology 20
+PASS: equality-conflict oracle, topology 21
+PASS: equality-conflict oracle, topology 22
+PASS: equality-conflict oracle, topology 23
+PASS: equality-conflict oracle, topology 24
+PASS: equality-conflict oracle, topology 25
+PASS: equality-conflict oracle, topology 26
+PASS: equality-conflict oracle, topology 27
+PASS: equality-conflict oracle, topology 28
+PASS: equality-conflict oracle, topology 29
+PASS: equality-conflict oracle, topology 30
+PASS: equality-conflict oracle, topology 31
+PASS: equality-conflict oracle, topology 32
+PASS: equality-conflict oracle, topology 33
+PASS: equality-conflict oracle, topology 34
+PASS: equality-conflict oracle, topology 35
+PASS: equality-conflict oracle, topology 36
+PASS: equality-conflict oracle, topology 37
+PASS: equality-conflict oracle, topology 38
+PASS: equality-conflict oracle, topology 39
+PASS: equality-conflict oracle, topology 40
+PASS: equality-conflict oracle, topology 41
+PASS: equality-conflict oracle, topology 42
+PASS: equality-conflict oracle, topology 43
+PASS: equality-conflict oracle, topology 44
+PASS: equality-conflict oracle, topology 45
+PASS: equality-conflict oracle, topology 46
+PASS: equality-conflict oracle, topology 47
+PASS: equality-conflict oracle, topology 48
+PASS: equality-conflict oracle, topology 49
+PASS: equality-conflict oracle, topology 50
+PASS: equality-conflict oracle, topology 51
+PASS: equality-conflict oracle, topology 52
+PASS: equality-conflict oracle, topology 53
+PASS: equality-conflict oracle, topology 54
+PASS: equality-conflict oracle, topology 55
+PASS: equality-conflict oracle, topology 56
+PASS: equality-conflict oracle, topology 57
+PASS: equality-conflict oracle, topology 58
+PASS: equality-conflict oracle, topology 59
+PASS: equality-conflict oracle, topology 60
+PASS: equality-conflict oracle, topology 61
+PASS: equality-conflict oracle, topology 62
+PASS: equality-conflict oracle, topology 63
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+final line: ALL LIBRARY TESTS PASSED
+PASS lines: 2226
