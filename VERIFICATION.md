@@ -42,7 +42,7 @@ See the [integration preview](docs/superpowers/records/2026-11-06-durable-public
 for exact source hashes, test scope and retained failures.
 
 The current unqualified durable-plus-handoff preview passes 2,322 core checks
-under Bend and Node with identical output, and its exact-source Nix JavaScript check passes; see the [reconciliation record](docs/superpowers/records/2026-11-06-durable-publication/handoff-integration-preview.md).
+under Bend, Node and optimized native CPU with identical output, and its exact-source Nix JavaScript check passes; see the [reconciliation record](docs/superpowers/records/2026-11-06-durable-publication/handoff-integration-preview.md).
 It combines the two synthetic model suites; prior native, Nix and CI evidence
 below remains tied to its original source and does not validate this combined
 source. The handoff model adds 37 checks and does not establish a native Windows
