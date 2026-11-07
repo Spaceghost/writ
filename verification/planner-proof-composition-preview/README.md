@@ -15,6 +15,7 @@ notice, matches [Node output](node.log), SHA-256
 The [37-law Lean-built BendTT verdict](verdict.log) printed `ALL PROOFS CHECK`
 using the previously audited kernel; this does not prove the whole system.
 Generated JavaScript stays outside the source tree. Native CPU, Nix and platform
-CI for this merged source have not been run at the time of this record; older
-runs do not establish those results. No GPU or protected-host qualification is
+CI for this merged source have not been run at the time of this record; see
+the later [Nix JavaScript observation](nix-js.md). Older runs do not establish
+those results. No GPU or protected-host qualification is
 claimed.
