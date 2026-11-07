@@ -15,6 +15,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
+passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
+are scoped observations, not protected-worker or durable-service qualification.
+
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 current checks. Its reference-only descriptions do not authenticate
 identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
