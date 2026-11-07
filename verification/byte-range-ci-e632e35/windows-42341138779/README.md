@@ -1,0 +1,3 @@
+# Windows Node at byte-range regression e632e35
+
+[Run 42341138779](https://github.com/Spaceghost/writ/actions/runs/42341138779) succeeded at exact source `e632e35dc6108874677987c97b6bc050a141cdce`. Bend-generated JavaScript under native Windows Node passed 2,226 core and 78 WritFS model checks, both recording exit status zero. This is model execution evidence, not protected-host qualification. Raw artifact-file and archive hashes are retained; ZIP digests match GitHub metadata. Generated JavaScript remains outside the repository. Text copies are normalized and the original workflow log hash is retained.

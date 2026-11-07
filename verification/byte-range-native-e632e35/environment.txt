@@ -1,0 +1,12 @@
+source_commit=e632e35dc6108874677987c97b6bc050a141cdce
+bend=bend 2.0.39
+clang=clang version 23.1.1
+start_utc=2026-11-07T05:06:52Z
+build_command=CC=clang-23 BEND_NO_TELEMETRY=1 nice -n 15 timeout 1800 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend Tests.bend -o /tmp/writ-byte-native-e632e35/tests-native
+939a882527432ec23b094c289e7f170bf2d6ec282e74dde75e31b08602fa3eae  /usr/bin/clang-23
+build_exit=0
+run_command=nice -n 15 timeout 1200 /tmp/writ-byte-native-e632e35/tests-native +RTS --threads 4 --gpu off
+run_exit=0
+1c7faa05b0a1300328d8203537d515b6ff531a72929fbf41f83e8f7ea23cda93  /tmp/writ-byte-native-e632e35/tests-native
+255cd9aa1660a4c9e2d697ed1773c5a341bbc3b402c909238e07c8377401b02e  /tmp/writ-byte-native-e632e35/run.stdout
+end_utc=2026-11-07T05:21:47Z

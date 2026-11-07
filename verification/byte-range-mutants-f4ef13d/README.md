@@ -45,7 +45,10 @@ The available Lean-built BendTT kernel, SHA-256
 returned `ALL PROOFS CHECK` for the 36 existing driver laws. This is not a proof
 of the byte decoders. The focused, full, and proof outputs and the Bend source
 inventory are retained here. Strict OpenSpec validation is structural and
-separate from those checks. Native CPU and platform CI for these new tests are
-not yet run; prior records remain tied to their own sources. This synthetic
+separate from those checks. At exact source `e632e35`, the separate [Nix JavaScript check](../byte-range-nix-e632e35/README.md)
+and [platform CI](../byte-range-ci-e632e35/README.md) passed their scoped checks;
+Linux retained a protected-setup refusal and Genode clock warnings are recorded.
+A separate [optimized native CPU run](../byte-range-native-e632e35/README.md)
+also passed at `e632e35`; prior records remain tied to their own sources. This synthetic
 model evidence does not qualify a native host, authenticate a planner or
 establish a security property beyond the named checks.

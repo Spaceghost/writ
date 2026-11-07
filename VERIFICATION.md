@@ -47,6 +47,11 @@ at exact source `c5a02c7`. Linux retained a protected-setup refusal before input
 no result qualifies a protected host.
 The [byte-range mutation review](verification/byte-range-mutants-f4ef13d/README.md)
 records two later public-decoder regressions and their local checks.
+The [Nix JavaScript result](verification/byte-range-nix-e632e35/README.md),
+[optimized native CPU result](verification/byte-range-native-e632e35/README.md)
+and [platform CI](verification/byte-range-ci-e632e35/README.md) cover exact source
+`e632e35`, with Linux protected setup refused before input and Genode clock
+warnings retained. These checks do not qualify a protected host.
 Earlier evidence below remains tied to its own source and is not a claim that
 the new checks ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its

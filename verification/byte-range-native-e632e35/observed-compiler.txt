@@ -1,0 +1,1 @@
+  14057 4141795       00:24 clang-23 -DBEND_CUDA=1 -I/opt/cuda/include -L/opt/cuda/lib64 -L/opt/cuda/lib -std=c11 -O3 /tmp/bend-4T7eNc/tests-native.c -lpthread -lm -o /tmp/writ-byte-native-e632e35/tests-native -lcuda -lnvrtc
