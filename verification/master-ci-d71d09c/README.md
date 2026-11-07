@@ -1,0 +1,40 @@
+# Automatic platform CI for master d71d09c
+
+Five push-triggered workflows were listed at exact source
+`d71d09cd4079e94147121be24934f6699bbff790`. Three have completed in this
+checkpoint. None of these outcomes qualifies a protected host.
+
+- [Windows Node](windows-node-42409457709/README.md): passed 2,508 shared
+  library and 78 WritFS model checks.
+- [Btrfs and ZFS fixtures](filesystems-42409457851/README.md): **failed**;
+  Btrfs passed 11 checks with cleanup exit 0. ZFS stopped at the unprivileged
+  `zfs version` command with a permission error before its native tests.
+- [Windows native](windows-native-42409457698/README.md): **failed**; strict
+  byte-worker network, clipboard and COM observations were incomplete. The
+  separate no-data diagnostic reported pass.
+- Linux public-canary run 42409457716 and Genode base-hw run 42409457706 were
+  still in progress at this checkpoint; no outcome or artifacts are claimed.
+
+Each completed-run directory retains GitHub run, job and artifact metadata;
+original ZIP, entry and downloaded workflow-log SHA-256 values; normalized
+text copies; and an explicit list of generated or binary entries excluded from
+the source tree. The downloaded ZIP digests matched GitHub artifact metadata.
+Raw ZIPs and workflow logs are kept separately under
+`/mnt/MediaVolume/Media/writ-ci-temp/d71d09c/raw` for review; that location
+is not a durable repository record.
+
+Each run directory also contains a `raw-text-repacked.tar.gz` archive and its
+SHA-256. These are **repacked archives, not the original GitHub ZIPs**. They
+retain the exact downloaded workflow log and exact original bytes of included
+text artifact entries, including the UTF-16 Windows installer log. Generated
+JS entries are excluded and listed and hashed separately. The repacked entries
+and workflow log were checked byte-for-byte with the external downloads; the
+archives contain regular files only. Their hashes do not replace the original
+ZIP digests.
+
+Text copies remove ANSI color escapes, convert line endings to LF, trim trailing
+spaces/tabs and final blank lines, and retain one terminal newline for nonempty
+files. The Windows installer log was decoded from UTF-16 to UTF-8. These
+presentation copies are not byte-identical to originals; the original hash
+manifests identify the downloaded bytes. GitHub may redact or omit platform
+data, and hashes do not attest to the processes that produced it.

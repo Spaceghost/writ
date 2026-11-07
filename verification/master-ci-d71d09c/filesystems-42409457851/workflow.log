@@ -1,0 +1,1139 @@
+Native btrfs	Set up job	﻿2026-11-07T20:06:55.0263946Z Current runner version: '2.338.2'
+Native btrfs	Set up job	2026-11-07T20:06:55.0287902Z ##[group]Runner Image Provisioner
+Native btrfs	Set up job	2026-11-07T20:06:55.0288831Z Hosted Compute Agent
+Native btrfs	Set up job	2026-11-07T20:06:55.0289725Z Version: 20261028.624
+Native btrfs	Set up job	2026-11-07T20:06:55.0290365Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+Native btrfs	Set up job	2026-11-07T20:06:55.0291067Z Build Date: 2026-10-28T21:51:42Z
+Native btrfs	Set up job	2026-11-07T20:06:55.0291740Z Worker ID: {318a58b3-cf68-4750-9c2b-42670183a2de}
+Native btrfs	Set up job	2026-11-07T20:06:55.0292435Z Region: centralus
+Native btrfs	Set up job	2026-11-07T20:06:55.0293325Z Cloud: Azure
+Native btrfs	Set up job	2026-11-07T20:06:55.0293909Z ##[endgroup]
+Native btrfs	Set up job	2026-11-07T20:06:55.0295477Z ##[group]Operating System
+Native btrfs	Set up job	2026-11-07T20:06:55.0296098Z Ubuntu
+Native btrfs	Set up job	2026-11-07T20:06:55.0296676Z 24.04.5
+Native btrfs	Set up job	2026-11-07T20:06:55.0297148Z LTS
+Native btrfs	Set up job	2026-11-07T20:06:55.0297664Z ##[endgroup]
+Native btrfs	Set up job	2026-11-07T20:06:55.0298183Z ##[group]Runner Image
+Native btrfs	Set up job	2026-11-07T20:06:55.0298759Z Image: ubuntu-24.04
+Native btrfs	Set up job	2026-11-07T20:06:55.0299533Z Version: 20261101.360.1
+Native btrfs	Set up job	2026-11-07T20:06:55.0300579Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+Native btrfs	Set up job	2026-11-07T20:06:55.0302266Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+Native btrfs	Set up job	2026-11-07T20:06:55.0303174Z ##[endgroup]
+Native btrfs	Set up job	2026-11-07T20:06:55.0304265Z ##[group]GITHUB_TOKEN Permissions
+Native btrfs	Set up job	2026-11-07T20:06:55.0306535Z Contents: read
+Native btrfs	Set up job	2026-11-07T20:06:55.0307118Z Metadata: read
+Native btrfs	Set up job	2026-11-07T20:06:55.0307650Z ##[endgroup]
+Native btrfs	Set up job	2026-11-07T20:06:55.0309943Z Secret source: Actions
+Native btrfs	Set up job	2026-11-07T20:06:55.0310926Z Cache mode: write
+Native btrfs	Set up job	2026-11-07T20:06:55.0311636Z Prepare workflow directory
+Native btrfs	Set up job	2026-11-07T20:06:55.0872897Z Prepare all required actions
+Native btrfs	Set up job	2026-11-07T20:06:55.0944299Z Getting action download info
+Native btrfs	Set up job	2026-11-07T20:06:55.3177646Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Native btrfs	Set up job	2026-11-07T20:06:55.4168585Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+Native btrfs	Set up job	2026-11-07T20:06:55.7202156Z Complete job name: Native btrfs
+Native btrfs	Record runner environment	﻿2026-11-07T20:06:55.7838397Z ##[group]Run set -euo pipefail
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7839887Z ^[[36;1mset -euo pipefail^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7840696Z ^[[36;1mwritfs_log_directory="$RUNNER_TEMP/writfs-native-logs"^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7841504Z ^[[36;1mmkdir -p "$writfs_log_directory"^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7842371Z ^[[36;1mprintf 'WRITFS_LOG_DIRECTORY=%s\n' "$writfs_log_directory" >> "$GITHUB_ENV"^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7843170Z ^[[36;1m{^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7843872Z ^[[36;1m  printf 'Commit: %s\nBackend: %s\n' "$GITHUB_SHA" "$WRITFS_TEST_BACKEND"^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7844860Z ^[[36;1m  printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7845676Z ^[[36;1m  uname -a^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7846244Z ^[[36;1m  cat /etc/os-release^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7846929Z ^[[36;1m} 2>&1 | tee "$writfs_log_directory/environment.log"^[[0m
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7865075Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7866119Z env:
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7866642Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7867288Z   CC: clang-19
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7867796Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7868331Z ##[endgroup]
+Native btrfs	Record runner environment	2026-11-07T20:06:55.7999098Z Commit: d71d09cd4079e94147121be24934f6699bbff790
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8000413Z Backend: btrfs
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8001505Z Runner image: ubuntu24 20261101.360.1
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8002709Z Linux runnervm7aw5e 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8003841Z PRETTY_NAME="Ubuntu 24.04.5 LTS"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8004539Z NAME="Ubuntu"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8005243Z VERSION_ID="24.04"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8005894Z VERSION="24.04.5 LTS (Noble Numbat)"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8006484Z VERSION_CODENAME=noble
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8006997Z ID=ubuntu
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8007469Z ID_LIKE=debian
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8007995Z HOME_URL="https://www.ubuntu.com/"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8008620Z SUPPORT_URL="https://help.ubuntu.com/"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8009947Z BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8011017Z PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8012105Z UBUNTU_CODENAME=noble
+Native btrfs	Record runner environment	2026-11-07T20:06:55.8013085Z LOGO=ubuntu-logo
+Native btrfs	Check out source	﻿2026-11-07T20:06:55.8227585Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+Native btrfs	Check out source	2026-11-07T20:06:55.8228479Z with:
+Native btrfs	Check out source	2026-11-07T20:06:55.8229001Z   persist-credentials: false
+Native btrfs	Check out source	2026-11-07T20:06:55.8229960Z   repository: Spaceghost/writ
+Native btrfs	Check out source	2026-11-07T20:06:55.8233862Z   token: ***
+Native btrfs	Check out source	2026-11-07T20:06:55.8234379Z   ssh-strict: true
+Native btrfs	Check out source	2026-11-07T20:06:55.8234893Z   ssh-user: git
+Native btrfs	Check out source	2026-11-07T20:06:55.8235383Z   clean: true
+Native btrfs	Check out source	2026-11-07T20:06:55.8235897Z   sparse-checkout-cone-mode: true
+Native btrfs	Check out source	2026-11-07T20:06:55.8236549Z   fetch-depth: 1
+Native btrfs	Check out source	2026-11-07T20:06:55.8237043Z   fetch-tags: false
+Native btrfs	Check out source	2026-11-07T20:06:55.8237544Z   show-progress: true
+Native btrfs	Check out source	2026-11-07T20:06:55.8238051Z   lfs: false
+Native btrfs	Check out source	2026-11-07T20:06:55.8238522Z   submodules: false
+Native btrfs	Check out source	2026-11-07T20:06:55.8239099Z   set-safe-directory: true
+Native btrfs	Check out source	2026-11-07T20:06:55.8240160Z   allow-unsafe-pr-checkout: false
+Native btrfs	Check out source	2026-11-07T20:06:55.8240720Z env:
+Native btrfs	Check out source	2026-11-07T20:06:55.8241226Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Check out source	2026-11-07T20:06:55.8241734Z   CC: clang-19
+Native btrfs	Check out source	2026-11-07T20:06:55.8242293Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Check out source	2026-11-07T20:06:55.8243052Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native btrfs	Check out source	2026-11-07T20:06:55.8243813Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:56.0741087Z Syncing repository: Spaceghost/writ
+Native btrfs	Check out source	2026-11-07T20:06:56.0744185Z ##[group]Getting Git version info
+Native btrfs	Check out source	2026-11-07T20:06:56.0745786Z Working directory is '/home/runner/work/writ/writ'
+Native btrfs	Check out source	2026-11-07T20:06:56.0763924Z [command]/usr/bin/git version
+Native btrfs	Check out source	2026-11-07T20:06:56.0893762Z git version 2.56.0
+Native btrfs	Check out source	2026-11-07T20:06:56.0930945Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:56.0958744Z Temporarily overriding HOME='/home/runner/work/_temp/d5afd5ea-bf48-4578-a821-90015f137343' before making global git config changes
+Native btrfs	Check out source	2026-11-07T20:06:56.0960965Z Adding repository directory to the temporary git global config as a safe directory
+Native btrfs	Check out source	2026-11-07T20:06:56.0963114Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/writ/writ
+Native btrfs	Check out source	2026-11-07T20:06:56.0982617Z Deleting the contents of '/home/runner/work/writ/writ'
+Native btrfs	Check out source	2026-11-07T20:06:56.0986462Z ##[group]Determining repository object format
+Native btrfs	Check out source	2026-11-07T20:06:56.0988576Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:56.0990894Z ##[group]Initializing the repository
+Native btrfs	Check out source	2026-11-07T20:06:56.1004097Z [command]/usr/bin/git init /home/runner/work/writ/writ
+Native btrfs	Check out source	2026-11-07T20:06:56.1111212Z hint: Using 'master' as the name for the initial branch. This default branch name
+Native btrfs	Check out source	2026-11-07T20:06:56.1112968Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Native btrfs	Check out source	2026-11-07T20:06:56.1114061Z hint: to use in all of your new repositories, which will suppress this warning,
+Native btrfs	Check out source	2026-11-07T20:06:56.1114827Z hint: call:
+Native btrfs	Check out source	2026-11-07T20:06:56.1115336Z hint:
+Native btrfs	Check out source	2026-11-07T20:06:56.1115906Z hint: 	git config --global init.defaultBranch <name>
+Native btrfs	Check out source	2026-11-07T20:06:56.1116593Z hint:
+Native btrfs	Check out source	2026-11-07T20:06:56.1117249Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Native btrfs	Check out source	2026-11-07T20:06:56.1118184Z hint: 'development'. The just-created branch can be renamed via this command:
+Native btrfs	Check out source	2026-11-07T20:06:56.1119008Z hint:
+Native btrfs	Check out source	2026-11-07T20:06:56.1119755Z hint: 	git branch -m <name>
+Native btrfs	Check out source	2026-11-07T20:06:56.1120328Z hint:
+Native btrfs	Check out source	2026-11-07T20:06:56.1121022Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Native btrfs	Check out source	2026-11-07T20:06:56.1123522Z Initialized empty Git repository in /home/runner/work/writ/writ/.git/
+Native btrfs	Check out source	2026-11-07T20:06:56.1135426Z [command]/usr/bin/git remote add origin https://github.com/Spaceghost/writ
+Native btrfs	Check out source	2026-11-07T20:06:56.1183238Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:56.1184508Z ##[group]Disabling automatic garbage collection
+Native btrfs	Check out source	2026-11-07T20:06:56.1185637Z [command]/usr/bin/git config --local gc.auto 0
+Native btrfs	Check out source	2026-11-07T20:06:56.1219046Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:56.1220496Z ##[group]Setting up auth
+Native btrfs	Check out source	2026-11-07T20:06:56.1223463Z Removing SSH command configuration
+Native btrfs	Check out source	2026-11-07T20:06:56.1224906Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Native btrfs	Check out source	2026-11-07T20:06:56.1259181Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Native btrfs	Check out source	2026-11-07T20:06:56.1598652Z Removing HTTP extra header
+Native btrfs	Check out source	2026-11-07T20:06:56.1604374Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Native btrfs	Check out source	2026-11-07T20:06:56.1637921Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Native btrfs	Check out source	2026-11-07T20:06:56.1838809Z Removing includeIf entries pointing to credentials config files
+Native btrfs	Check out source	2026-11-07T20:06:56.1845565Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Native btrfs	Check out source	2026-11-07T20:06:56.1875683Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Native btrfs	Check out source	2026-11-07T20:06:56.2076366Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Native btrfs	Check out source	2026-11-07T20:06:56.2115724Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/writ/writ/.git.path /home/runner/work/_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:06:56.2148479Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:06:56.2182154Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:06:56.2214231Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:06:56.2244245Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:56.2245399Z ##[group]Fetching the repository
+Native btrfs	Check out source	2026-11-07T20:06:56.2250049Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d71d09cd4079e94147121be24934f6699bbff790:refs/remotes/origin/master
+Native btrfs	Check out source	2026-11-07T20:06:59.6699063Z From https://github.com/Spaceghost/writ
+Native btrfs	Check out source	2026-11-07T20:06:59.6701417Z  * [new ref]         d71d09cd4079e94147121be24934f6699bbff790 -> origin/master
+Native btrfs	Check out source	2026-11-07T20:06:59.6706958Z [command]/usr/bin/git branch --list --remote origin/master
+Native btrfs	Check out source	2026-11-07T20:06:59.6734425Z   origin/master
+Native btrfs	Check out source	2026-11-07T20:06:59.6742937Z [command]/usr/bin/git rev-parse refs/remotes/origin/master
+Native btrfs	Check out source	2026-11-07T20:06:59.6767432Z d71d09cd4079e94147121be24934f6699bbff790
+Native btrfs	Check out source	2026-11-07T20:06:59.6772711Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:59.6775259Z ##[group]Determining the checkout info
+Native btrfs	Check out source	2026-11-07T20:06:59.6778462Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:06:59.6780527Z [command]/usr/bin/git sparse-checkout disable
+Native btrfs	Check out source	2026-11-07T20:06:59.6833753Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Native btrfs	Check out source	2026-11-07T20:06:59.6869476Z ##[group]Checking out the ref
+Native btrfs	Check out source	2026-11-07T20:06:59.6872322Z [command]/usr/bin/git checkout --progress --force -B master refs/remotes/origin/master
+Native btrfs	Check out source	2026-11-07T20:07:00.0889402Z Reset branch 'master'
+Native btrfs	Check out source	2026-11-07T20:07:00.0894601Z branch 'master' set up to track 'origin/master'.
+Native btrfs	Check out source	2026-11-07T20:07:00.0924752Z ##[endgroup]
+Native btrfs	Check out source	2026-11-07T20:07:00.0970054Z [command]/usr/bin/git log -1 --format=%H
+Native btrfs	Check out source	2026-11-07T20:07:00.0996610Z d71d09cd4079e94147121be24934f6699bbff790
+Native btrfs	Check out source	2026-11-07T20:07:00.1008867Z ##[group]Removing auth
+Native btrfs	Check out source	2026-11-07T20:07:00.1009615Z Removing SSH command configuration
+Native btrfs	Check out source	2026-11-07T20:07:00.1019718Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Native btrfs	Check out source	2026-11-07T20:07:00.1041582Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Native btrfs	Check out source	2026-11-07T20:07:00.1237761Z Removing HTTP extra header
+Native btrfs	Check out source	2026-11-07T20:07:00.1240965Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Native btrfs	Check out source	2026-11-07T20:07:00.1271588Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Native btrfs	Check out source	2026-11-07T20:07:00.1467827Z Removing includeIf entries pointing to credentials config files
+Native btrfs	Check out source	2026-11-07T20:07:00.1469740Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Native btrfs	Check out source	2026-11-07T20:07:00.1500586Z includeif.gitdir:/home/runner/work/writ/writ/.git.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1501791Z includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1502743Z includeif.gitdir:/github/workspace/.git.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1503685Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1508572Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/writ/writ/.git.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1532140Z /home/runner/work/_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1542710Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/writ/writ/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-01dc3f17\-c404\-4356\-90d5\-ae43d879c931\.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1584327Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1608706Z /home/runner/work/_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1618790Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-01dc3f17\-c404\-4356\-90d5\-ae43d879c931\.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1655733Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1680255Z /github/runner_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1686402Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-01dc3f17\-c404\-4356\-90d5\-ae43d879c931\.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1722183Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Native btrfs	Check out source	2026-11-07T20:07:00.1744365Z /github/runner_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1752445Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-01dc3f17\-c404\-4356\-90d5\-ae43d879c931\.config
+Native btrfs	Check out source	2026-11-07T20:07:00.1788957Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Native btrfs	Check out source	2026-11-07T20:07:00.1983776Z Removing credentials config '/home/runner/work/_temp/git-credentials-01dc3f17-c404-4356-90d5-ae43d879c931.config'
+Native btrfs	Check out source	2026-11-07T20:07:00.1997323Z ##[endgroup]
+Native btrfs	Install native tools and require the kernel module	﻿2026-11-07T20:07:00.2119768Z ##[group]Run set -euo pipefail
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2120416Z ^[[36;1mset -euo pipefail^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2120774Z ^[[36;1m{^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2121199Z ^[[36;1m  sudo apt-get update^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2121660Z ^[[36;1m  sudo apt-get install --yes --no-install-recommends \^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2122242Z ^[[36;1m    clang-19 btrfs-progs zfsutils-linux kmod coreutils util-linux udev^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2122802Z ^[[36;1m  writfs_kernel="$(uname -r)"^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2123243Z ^[[36;1m  if ! sudo modprobe "$WRITFS_TEST_BACKEND"; then^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2123846Z ^[[36;1m    # Match the running kernel; a replacement kernel would need a reboot.^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2124440Z ^[[36;1m    sudo apt-get install --yes --reinstall --no-install-recommends \^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2125104Z ^[[36;1m      "linux-modules-$writfs_kernel"^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2125553Z ^[[36;1m    sudo depmod -a "$writfs_kernel"^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2126014Z ^[[36;1m    sudo modprobe "$WRITFS_TEST_BACKEND"^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2126558Z ^[[36;1m  fi^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2126908Z ^[[36;1m  clang-19 --version^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2127332Z ^[[36;1m  btrfs --version^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2127728Z ^[[36;1m  if [ "$WRITFS_TEST_BACKEND" = zfs ]; then^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2128167Z ^[[36;1m    zfs version^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2128534Z ^[[36;1m  fi^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2128892Z ^[[36;1m  modinfo "$WRITFS_TEST_BACKEND"^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2129685Z ^[[36;1m} 2>&1 | tee "$WRITFS_LOG_DIRECTORY/native-tools.log"^[[0m
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2144655Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2145162Z env:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2145521Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2145923Z   CC: clang-19
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2146306Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2146829Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2147315Z ##[endgroup]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.2843893Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.3224675Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.3950707Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [743 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.4278900Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [675 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.4305747Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.4340316Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.4450627Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.4469543Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5361637Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1425 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5405565Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [313 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5461925Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5535910Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5563119Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1840 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5665018Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [420 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5691258Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.5702868Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.6326895Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1157 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.6394589Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [234 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.6855119Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.6914889Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.6934516Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1721 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.7018793Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [394 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.7047618Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:00.7055216Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:04.1250435Z Fetched 13.0 MB in 1s (9071 kB/s)
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.2360974Z Reading package lists...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.2755248Z Reading package lists...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.5241441Z Building dependency tree...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.5248435Z Reading state information...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6985118Z btrfs-progs is already the newest version (6.6.3-1.1build2).
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6986163Z btrfs-progs set to manually installed.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6987055Z kmod is already the newest version (31+20240202-2ubuntu7.2).
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6987794Z kmod set to manually installed.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6988854Z coreutils is already the newest version (9.4-3ubuntu6.3).
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6989862Z util-linux is already the newest version (2.39.3-9ubuntu6.6).
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6990587Z udev is already the newest version (255.4-1ubuntu8.18).
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6991273Z udev set to manually installed.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6991930Z The following additional packages will be installed:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6993049Z   libclang-common-19-dev libclang-cpp19 libclang1-19 libnvpair3linux
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.6994866Z   libuutil3linux libzfs4linux libzpool5linux llvm-19-linker-tools
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7003529Z Suggested packages:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7004769Z   clang-19-doc wasi-libc nfs-kernel-server samba-common-bin zfs-initramfs
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7005863Z   | zfs-dracut
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7006539Z Recommended packages:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7007293Z   llvm-19-dev libclang-rt-19-dev zfs-zed
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7225581Z The following NEW packages will be installed:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7232879Z   clang-19 libclang-common-19-dev libclang-cpp19 libclang1-19 libnvpair3linux
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7235955Z   libuutil3linux libzfs4linux libzpool5linux llvm-19-linker-tools
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7433872Z   zfsutils-linux
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7435157Z 0 upgraded, 10 newly installed, 0 to remove and 27 not upgraded.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7435920Z Need to get 27.0 MB of archives.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7436521Z After this operation, 133 MB of additional disk space will be used.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.7437110Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.8019127Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libnvpair3linux amd64 2.2.2-0ubuntu9.5 [62.4 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.8378253Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libuutil3linux amd64 2.2.2-0ubuntu9.5 [53.4 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.8744507Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libzfs4linux amd64 2.2.2-0ubuntu9.5 [226 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.9081197Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libzpool5linux amd64 2.2.2-0ubuntu9.5 [1397 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.9538627Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 zfsutils-linux amd64 2.2.2-0ubuntu9.5 [551 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:05.9902551Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-cpp19 amd64 1:19.1.1-1ubuntu1~24.04.2 [14.3 MB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.1606768Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-common-19-dev amd64 1:19.1.1-1ubuntu1~24.04.2 [743 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.1937053Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 llvm-19-linker-tools amd64 1:19.1.1-1ubuntu1~24.04.2 [1314 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.2306243Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang1-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [8272 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.3270708Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 clang-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [78.9 kB]
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.5990113Z Fetched 27.0 MB in 1s (45.3 MB/s)
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6244695Z Selecting previously unselected package libnvpair3linux.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6439869Z (Reading database ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6440610Z (Reading database ... 5%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6441586Z (Reading database ... 10%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6442208Z (Reading database ... 15%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6442597Z (Reading database ... 20%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6442953Z (Reading database ... 25%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6443624Z (Reading database ... 30%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6443949Z (Reading database ... 35%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6444255Z (Reading database ... 40%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6444675Z (Reading database ... 45%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6445016Z (Reading database ... 50%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6490689Z (Reading database ... 55%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8457905Z (Reading database ... 60%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:07.0071675Z (Reading database ... 65%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:07.2381826Z (Reading database ... 70%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:07.4020794Z (Reading database ... 75%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:07.5435405Z (Reading database ... 80%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:07.7914581Z (Reading database ... 85%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:07.9957395Z (Reading database ... 90%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1496060Z (Reading database ... 95%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1497032Z (Reading database ... 100%
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1497748Z (Reading database ... 215960 files and directories currently installed.)
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1544862Z Preparing to unpack .../0-libnvpair3linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1674814Z Unpacking libnvpair3linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1904152Z Selecting previously unselected package libuutil3linux.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2037200Z Preparing to unpack .../1-libuutil3linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2053552Z Unpacking libuutil3linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2259821Z Selecting previously unselected package libzfs4linux.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2392891Z Preparing to unpack .../2-libzfs4linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2405252Z Unpacking libzfs4linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2861228Z Selecting previously unselected package libzpool5linux.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.2997422Z Preparing to unpack .../3-libzpool5linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.3011162Z Unpacking libzpool5linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.3560074Z Selecting previously unselected package zfsutils-linux.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.3689957Z Preparing to unpack .../4-zfsutils-linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.3721848Z Unpacking zfsutils-linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.4447137Z Selecting previously unselected package libclang-cpp19.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.4582366Z Preparing to unpack .../5-libclang-cpp19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:08.4598437Z Unpacking libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.0925576Z Selecting previously unselected package libclang-common-19-dev:amd64.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.1054903Z Preparing to unpack .../6-libclang-common-19-dev_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.1067443Z Unpacking libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.2588682Z Selecting previously unselected package llvm-19-linker-tools.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.2720818Z Preparing to unpack .../7-llvm-19-linker-tools_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.2731994Z Unpacking llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.3329181Z Selecting previously unselected package libclang1-19.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.3458927Z Preparing to unpack .../8-libclang1-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.3471820Z Unpacking libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7052551Z Selecting previously unselected package clang-19.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7182581Z Preparing to unpack .../9-clang-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7194919Z Unpacking clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7678813Z Setting up libnvpair3linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7710970Z Setting up libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7736546Z Setting up libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7766083Z Setting up llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7791040Z Setting up libuutil3linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7817134Z Setting up libzpool5linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7843875Z Setting up libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7869153Z Setting up libzfs4linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7894369Z Setting up clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.7918581Z Setting up zfsutils-linux (2.2.2-0ubuntu9.5) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.8032394Z insmod /lib/modules/7.0.0-1017-azure/kernel/zfs/spl.ko.zst
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:09.8089550Z insmod /lib/modules/7.0.0-1017-azure/kernel/zfs/zfs.ko.zst
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:11.8377876Z Created symlink /etc/systemd/system/zfs-import.target.wants/zfs-import-cache.service → /usr/lib/systemd/system/zfs-import-cache.service.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:11.8378874Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.0209460Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-import.target → /usr/lib/systemd/system/zfs-import.target.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.0210261Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.1132007Z Created symlink /etc/systemd/system/zfs-mount.service.wants/zfs-load-module.service → /usr/lib/systemd/system/zfs-load-module.service.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.1132842Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.1133752Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-load-module.service → /usr/lib/systemd/system/zfs-load-module.service.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.1134489Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.2069054Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-mount.service → /usr/lib/systemd/system/zfs-mount.service.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.2070034Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.2991986Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-share.service → /usr/lib/systemd/system/zfs-share.service.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.2992537Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.3928034Z Created symlink /etc/systemd/system/zfs-volumes.target.wants/zfs-volume-wait.service → /usr/lib/systemd/system/zfs-volume-wait.service.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.3928872Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.4867457Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-volumes.target → /usr/lib/systemd/system/zfs-volumes.target.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.4868048Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.5795176Z Created symlink /etc/systemd/system/multi-user.target.wants/zfs.target → /usr/lib/systemd/system/zfs.target.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.5796163Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.8148950Z zfs-import-scan.service is a disabled or a static unit, not starting it.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.9195088Z Processing triggers for man-db (2.12.0-4build2) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.9222369Z Not building database; man-db/auto-update is not 'true'.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:12.9238927Z Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5271587Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5272779Z Running kernel seems to be up-to-date.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5273150Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5273419Z No services need to be restarted.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5274022Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5274231Z No containers need to be restarted.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5274552Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5274834Z No user sessions are running outdated binaries.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5275196Z
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:13.5275688Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:17.9055278Z Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:17.9056063Z Target: x86_64-pc-linux-gnu
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:17.9056414Z Thread model: posix
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:17.9056777Z InstalledDir: /usr/lib/llvm-19/bin
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0617478Z btrfs-progs v6.6.3
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0743744Z filename:       /lib/modules/7.0.0-1017-azure/kernel/fs/btrfs/btrfs.ko.zst
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0744464Z license:        GPL
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0744822Z description:    B-Tree File System (BTRFS)
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0745375Z alias:          devname:btrfs-control
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0745886Z alias:          char-major-10-234
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0746416Z alias:          fs-btrfs
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0746923Z srcversion:     E143DF8AA39F69023F656E2
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0747405Z depends:        libblake2b,raid6_pq,xor
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0747917Z intree:         Y
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0748351Z name:           btrfs
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0748767Z retpoline:      Y
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0749453Z vermagic:       7.0.0-1017-azure SMP preempt mod_unload modversions
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0750534Z sig_id:         PKCS#7
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0750986Z signer:         Build time autogenerated kernel key
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0751681Z sig_key:        6A:79:12:C0:CB:48:3D:77:B0:33:73:E1:CE:C7:4C:2C:A2:16:EA:EF
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0752141Z sig_hashalgo:   sha512
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0752527Z signature:      25:5E:5C:18:84:BA:2D:83:B7:D5:C6:C5:14:78:58:1C:44:8A:C8:79:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0753054Z 		C0:F3:1C:8F:85:E8:B9:17:C2:CE:A7:C6:BF:39:48:CE:B4:33:CB:E3:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0753525Z 		D7:99:82:6F:85:15:E7:F3:BD:DF:75:53:9E:B8:40:C3:2D:B7:CA:5E:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0754011Z 		E2:52:41:70:BD:C0:AC:96:5F:74:85:80:03:73:92:94:82:64:2E:76:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0754455Z 		8E:00:B1:78:41:C6:37:BF:95:A2:89:FC:42:89:13:F8:5C:52:6C:93:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0754862Z 		E1:95:70:9E:31:9A:8C:86:43:8B:58:61:49:67:6A:1B:10:32:0D:06:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0755270Z 		8E:6E:98:93:80:03:86:C1:CB:C8:09:DE:22:E4:6D:78:37:C5:30:02:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0755675Z 		91:C5:58:A3:E2:77:DB:24:DB:67:23:7C:19:E5:21:EC:51:84:B7:AE:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0756076Z 		90:C8:A3:80:52:AF:73:C8:E9:4F:48:54:3E:5A:39:5C:0F:F5:A2:93:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0756494Z 		69:76:4A:5D:C8:63:BE:01:EC:32:E4:54:3E:7A:DB:6A:73:EB:FD:21:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0756922Z 		DD:8F:6B:CA:46:4B:C0:C0:8A:89:51:B9:4D:4B:A0:39:F3:E7:CF:38:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0757337Z 		1F:08:3E:82:19:1F:F1:B1:65:FD:B2:F2:77:BF:3A:1F:68:73:65:86:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0757728Z 		E9:EF:E1:53:6A:34:F0:CB:1F:7E:49:1D:7E:FF:E3:63:9D:4B:4C:8A:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0758122Z 		C3:1E:A7:DF:FF:3C:DC:A1:0D:FF:1D:24:6C:3D:A4:84:FC:71:E3:67:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0758550Z 		21:72:6F:07:D2:AE:B6:54:E4:1D:D6:9E:91:7F:FC:D2:EC:DD:96:D2:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0758936Z 		04:39:8E:15:D9:06:05:60:51:E8:0B:49:40:26:CF:2F:4B:90:EB:CB:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0759511Z 		1B:30:B2:1D:23:88:A7:72:20:8E:A0:C2:11:DE:99:81:86:38:5B:33:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0760088Z 		98:1F:26:A5:1F:2C:C5:0B:7D:87:8F:68:B3:E7:98:88:3D:9C:F9:50:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0760690Z 		75:EB:8B:15:38:4C:25:92:A1:B3:11:75:74:D4:28:F0:8C:69:49:ED:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0761255Z 		81:D9:7A:86:00:E3:96:C5:33:B6:7B:3E:CB:2D:80:7E:0C:A8:91:D3:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0761765Z 		37:C4:95:43:CE:A4:F0:36:7F:AB:10:BC:17:0F:D5:B6:96:19:A5:35:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0762837Z 		37:B4:CF:00:5A:88:11:BA:14:AF:0B:D3:90:F9:0F:E9:0A:5F:75:62:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0763289Z 		E7:19:1A:C1:4D:06:78:96:37:43:79:12:77:47:24:64:95:9E:D1:8C:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0763706Z 		DE:F5:A6:8B:33:F3:B6:5C:64:A4:80:44:5F:DB:1D:E9:B7:9D:19:F2:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0764118Z 		64:72:7B:AE:F8:A3:D0:68:EE:B6:96:E4:88:73:3C:67:EC:72:36:76:
+Native btrfs	Install native tools and require the kernel module	2026-11-07T20:07:18.0764522Z 		0B:4A:34:46:64:2C:26:D7:84:B2:3E:0E
+Native btrfs	Install and verify Bend 2.0.39	﻿2026-11-07T20:07:18.0807325Z ##[group]Run set -euo pipefail
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0807765Z ^[[36;1mset -euo pipefail^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0808091Z ^[[36;1m{^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0808561Z ^[[36;1m  writfs_bend_directory="$RUNNER_TEMP/writfs-bend-2.0.39"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0809015Z ^[[36;1m  mkdir -p "$writfs_bend_directory"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0809685Z ^[[36;1m  curl --proto '=https' --tlsv1.2 --retry 3 -fL \^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0810295Z ^[[36;1m    https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0810846Z ^[[36;1m    -o "$writfs_bend_directory/release.tar.gz"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0811302Z ^[[36;1m  printf '%s  %s\n' \^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0811759Z ^[[36;1m    6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0812362Z ^[[36;1m    "$writfs_bend_directory/release.tar.gz" | sha256sum -c -^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0812898Z ^[[36;1m  tar -xzf "$writfs_bend_directory/release.tar.gz" -C "$writfs_bend_directory"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0813629Z ^[[36;1m  writfs_bend_version="$("$writfs_bend_directory/bend/bin/bend" version)"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0814103Z ^[[36;1m  printf '%s\n' "$writfs_bend_version"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0814488Z ^[[36;1m  test "$writfs_bend_version" = 'bend 2.0.39'^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0814964Z ^[[36;1m  printf '%s\n' "$writfs_bend_directory/bend/bin" >> "$GITHUB_PATH"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0815566Z ^[[36;1m} 2>&1 | tee "$WRITFS_LOG_DIRECTORY/bend-toolchain.log"^[[0m
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0830997Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0831416Z env:
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0831771Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0832087Z   CC: clang-19
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0832480Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0832920Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0833369Z ##[endgroup]
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0954779Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0956465Z                                  Dload  Upload   Total   Spent    Left  Speed
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.0956844Z
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.2781372Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.2782630Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.2784252Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.4827035Z
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.4827919Z 100 35.2M  100 35.2M    0     0  90.9M      0 --:--:-- --:--:-- --:--:-- 90.9M
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5178093Z /home/runner/work/_temp/writfs-bend-2.0.39/release.tar.gz: OK
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5213609Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5215918Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5217217Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5218623Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5220154Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5221233Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5222295Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5229704Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5231312Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5232624Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5233743Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5234760Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5236315Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5237423Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5238543Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5240002Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5241157Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5242353Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5243403Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5244466Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5245509Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5246643Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5247738Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5248739Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5250457Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5251582Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5252681Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5253787Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5254828Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5255922Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5257059Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5258095Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5259489Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5260628Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5261815Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5262866Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5263984Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5265219Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5266301Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5267409Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5268460Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5269686Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5270882Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5271988Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5273074Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5274167Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5275194Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5276277Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5277646Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5278883Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5280170Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5281266Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5282389Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5283439Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5284627Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5285633Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5286703Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5287924Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5289012Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5290527Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5291937Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5293038Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5294735Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5295842Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5297055Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5298209Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5299511Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5300611Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5301727Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5302902Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5304061Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:18.5305194Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:19.1757570Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:19.1758756Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:19.1760577Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Native btrfs	Install and verify Bend 2.0.39	2026-11-07T20:07:19.2083818Z bend 2.0.39
+Native btrfs	Compile native Bend integration tests	﻿2026-11-07T20:07:19.2128676Z ##[group]Run set -euo pipefail
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2129124Z ^[[36;1mset -euo pipefail^[[0m
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2129716Z ^[[36;1m{^[[0m
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2130053Z ^[[36;1m  mkdir -p ../writfs-build^[[0m
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2130575Z ^[[36;1m  bend writfs/NativeIntegration.bend -o ../writfs-build/native-integration^[[0m
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2131123Z ^[[36;1m} 2>&1 | tee "$WRITFS_LOG_DIRECTORY/compile.log"^[[0m
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2149563Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2150057Z env:
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2150363Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2150678Z   CC: clang-19
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2151011Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2151452Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native btrfs	Compile native Bend integration tests	2026-11-07T20:07:19.2151859Z ##[endgroup]
+Native btrfs	Run Bend tests on an isolated native filesystem	﻿2026-11-07T20:08:00.5107145Z ##[group]Run set -euo pipefail
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5107660Z ^[[36;1mset -euo pipefail^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5108018Z ^[[36;1m(^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5108413Z ^[[36;1m  writfs_fixture="$(mktemp -d "$RUNNER_TEMP/writfs-native.XXXXXX")"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5108839Z ^[[36;1m  writfs_loop=''^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5109447Z ^[[36;1m  writfs_mount="$writfs_fixture/btrfs"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5109928Z ^[[36;1m  writfs_mounted=0^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5110317Z ^[[36;1m  writfs_pool=''^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5110636Z ^[[36;1m  writfs_pool_created=0^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5110941Z ^[[36;1m^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5111250Z ^[[36;1m  cleanup() {^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5111558Z ^[[36;1m    writfs_result=$?^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5111912Z ^[[36;1m    trap - EXIT INT TERM^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5112244Z ^[[36;1m    set +e^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5112648Z ^[[36;1m    # Ownership flags are set only after successful fixture creation.^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5113134Z ^[[36;1m    if [ "$writfs_pool_created" = 1 ]; then^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5113622Z ^[[36;1m      if ! sudo zpool destroy "$writfs_pool"; then^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5114064Z ^[[36;1m        writfs_result=1^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5114377Z ^[[36;1m      fi^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5114662Z ^[[36;1m    fi^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5114974Z ^[[36;1m    if [ "$writfs_mounted" = 1 ]; then^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5115351Z ^[[36;1m      if sudo umount "$writfs_mount"; then^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5115901Z ^[[36;1m        writfs_mounted=0^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5116223Z ^[[36;1m      else^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5116558Z ^[[36;1m        writfs_result=1^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5116882Z ^[[36;1m      fi^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5117184Z ^[[36;1m    fi^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5117546Z ^[[36;1m    if [ -n "$writfs_loop" ] && [ "$writfs_mounted" = 0 ]; then^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5117993Z ^[[36;1m      if ! sudo losetup --detach "$writfs_loop"; then^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5118355Z ^[[36;1m        writfs_result=1^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5118694Z ^[[36;1m      fi^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5118998Z ^[[36;1m    fi^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5119618Z ^[[36;1m    printf 'Native fixture cleanup finished; exit status: %s\n' "$writfs_result"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5120137Z ^[[36;1m    exit "$writfs_result"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5120440Z ^[[36;1m  }^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5120766Z ^[[36;1m  trap cleanup EXIT^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5121145Z ^[[36;1m  trap 'exit 130' INT^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5121471Z ^[[36;1m  trap 'exit 143' TERM^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5121801Z ^[[36;1m^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5122104Z ^[[36;1m  mkdir -p "$writfs_fixture/mounts"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5122492Z ^[[36;1m  case "$WRITFS_TEST_BACKEND" in^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5122896Z ^[[36;1m    btrfs)^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5123238Z ^[[36;1m      truncate -s 1G "$writfs_fixture/btrfs.img"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5123659Z ^[[36;1m      mkfs.btrfs "$writfs_fixture/btrfs.img"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5124127Z ^[[36;1m      writfs_loop="$(sudo losetup --find --show "$writfs_fixture/btrfs.img")"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5124594Z ^[[36;1m      mkdir -p "$writfs_mount"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5125015Z ^[[36;1m      sudo mount -t btrfs "$writfs_loop" "$writfs_mount"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5125393Z ^[[36;1m      writfs_mounted=1^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5125764Z ^[[36;1m      writfs_root="$writfs_mount"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5126161Z ^[[36;1m      findmnt --target "$writfs_mount"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5126511Z ^[[36;1m      ;;^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5126805Z ^[[36;1m    zfs)^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5127114Z ^[[36;1m      truncate -s 1G "$writfs_fixture/zfs.img"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5127591Z ^[[36;1m      writfs_pool="writfs_ci_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5128072Z ^[[36;1m      sudo zpool create -o cachefile=none -O mountpoint=none \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5128517Z ^[[36;1m        "$writfs_pool" "$writfs_fixture/zfs.img"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5128923Z ^[[36;1m      writfs_pool_created=1^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5129477Z ^[[36;1m      writfs_root="$writfs_pool"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5129885Z ^[[36;1m      sudo zpool status "$writfs_pool"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5130354Z ^[[36;1m      ;;^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5130632Z ^[[36;1m    *)^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5131052Z ^[[36;1m      printf 'Unsupported test backend: %s\n' "$WRITFS_TEST_BACKEND" >&2^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5131478Z ^[[36;1m      exit 1^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5132103Z ^[[36;1m      ;;^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5132383Z ^[[36;1m  esac^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5132691Z ^[[36;1m^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5133107Z ^[[36;1m  # The native Bend program owns the assertions and operation policy.^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5133534Z ^[[36;1m  sudo env -i \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5133876Z ^[[36;1m    PATH=/usr/sbin:/usr/bin:/sbin:/bin \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5134240Z ^[[36;1m    LC_ALL=C \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5134536Z ^[[36;1m    BEND_NO_TELEMETRY=1 \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5134965Z ^[[36;1m    WRITFS_TEST_BACKEND="$WRITFS_TEST_BACKEND" \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5135355Z ^[[36;1m    WRITFS_TEST_ROOT="$writfs_root" \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5135808Z ^[[36;1m    WRITFS_TEST_DIRECTORY="$writfs_fixture/mounts" \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5136265Z ^[[36;1m    "$GITHUB_WORKSPACE/../writfs-build/native-integration" \^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5136682Z ^[[36;1m    +RTS --threads 4 --gpu off^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5137150Z ^[[36;1m) 2>&1 | tee "$WRITFS_LOG_DIRECTORY/native-integration.log"^[[0m
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5151510Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5151923Z env:
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5152345Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5152697Z   CC: clang-19
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5152996Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5153459Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.5153893Z ##[endgroup]
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6341330Z btrfs-progs v6.6.3
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6342101Z See https://btrfs.readthedocs.io for more information.
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6342419Z
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6342648Z NOTE: several default settings have changed in version 5.15, please make sure
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6343174Z       this does not affect your deployments:
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6343600Z       - DUP for metadata (-m dup)
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6343983Z       - enabled no-holes (-O no-holes)
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6344396Z       - enabled free-space-tree (-R free-space-tree)
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6344658Z
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6344778Z Label:              (null)
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6345113Z UUID:               00a0e770-520b-4d68-a881-770f4c90a90e
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6345593Z Node size:          16384
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6346102Z Sector size:        4096
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6346554Z Filesystem size:    1.00GiB
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6346875Z Block group profiles:
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6347174Z   Data:             single            8.00MiB
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6347570Z   Metadata:         DUP              51.19MiB
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6347949Z   System:           DUP               8.00MiB
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6348289Z SSD detected:       no
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6348595Z Zoned device:       no
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6348980Z Incompat features:  extref, skinny-metadata, no-holes, free-space-tree
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6349715Z Runtime features:   free-space-tree
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6350086Z Checksum:           crc32c
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6350439Z Number of devices:  1
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6350744Z Devices:
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6351069Z    ID        SIZE  PATH
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6351558Z     1     1.00GiB  /home/runner/work/_temp/writfs-native.TNLcIS/btrfs.img
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6351889Z
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6625644Z TARGET                                             SOURCE     FSTYPE OPTIONS
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.6626687Z /home/runner/work/_temp/writfs-native.TNLcIS/btrfs /dev/loop0 btrfs  rw,relatime,discard=async,space_cache=v2,subvolid=5,subvol=/
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.7092279Z PASS: writable Btrfs subvolume is not an admitted immutable source
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.7165406Z PASS: ordinary directory cannot stand in for its containing subvolume
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.7282965Z PASS: public destination fails the complete Writ gate before native execution
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.7284583Z PASS: revoked capability fails before native execution
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.7673175Z PASS: actual native stage retains complete source origin and restrictions
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.7816062Z PASS: a repeated creation cannot overwrite or adopt the existing target
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8002110Z PASS: exact recorded native identity reconciles without creating another object
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8003003Z PASS: Btrfs native snapshot contains the public fixture bytes
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8003475Z PASS: Btrfs kernel rejects writes to the created read-only snapshot
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8005058Z PASS: later live-source edits do not change the native snapshot
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8145614Z PASS: nested Btrfs subvolumes are rejected instead of silently omitted
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8146160Z ALL NATIVE BTRFS CHECKS PASSED
+Native btrfs	Run Bend tests on an isolated native filesystem	2026-11-07T20:08:00.8330401Z Native fixture cleanup finished; exit status: 0
+Native btrfs	Retain native verification logs	﻿2026-11-07T20:08:00.8445346Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8445852Z with:
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8446163Z   name: writfs-native-btrfs-1
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8446547Z   path: /home/runner/work/_temp/writfs-native-logs/
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8446970Z   if-no-files-found: error
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8447293Z   retention-days: 14
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8447607Z   compression-level: 6
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8447967Z   overwrite: false
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8448400Z   include-hidden-files: false
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8448752Z   archive: true
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8449038Z env:
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8449534Z   BEND_NO_TELEMETRY: 1
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8450012Z   CC: clang-19
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8450335Z   WRITFS_TEST_BACKEND: btrfs
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8450754Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.8451170Z ##[endgroup]
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.9921132Z With the provided path, there will be 5 files uploaded
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.9921873Z Artifact name is valid!
+Native btrfs	Retain native verification logs	2026-11-07T20:08:00.9922406Z Root directory input is valid!
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.2915489Z Uploading artifact: writfs-native-btrfs-1.zip
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.2951745Z Beginning upload of artifact content to blob storage
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.4833666Z Uploaded bytes 5581
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.5193405Z Finished uploading artifact content to blob storage!
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.5194648Z SHA256 digest of uploaded artifact is 4a32e21072d4f5e1f2ccde4c36bc3f374e13667addad70e13b78a9ece6610b42
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.5195587Z Finalizing artifact upload
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.9957792Z Artifact writfs-native-btrfs-1 successfully finalized. Artifact ID 13588587418
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.9959160Z Artifact writfs-native-btrfs-1 has been successfully uploaded! Final size is 5581 bytes. Artifact ID is 13588587418
+Native btrfs	Retain native verification logs	2026-11-07T20:08:01.9962638Z Artifact download URL: https://github.com/Spaceghost/writ/actions/runs/42409457851/artifacts/13588587418
+Native btrfs	Post Check out source	﻿2026-11-07T20:08:02.0171785Z Post job cleanup.
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1022485Z [command]/usr/bin/git version
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1079693Z git version 2.56.0
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1111690Z Temporarily overriding HOME='/home/runner/work/_temp/aa85857a-f76c-4fa3-8c34-df594ca32621' before making global git config changes
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1113252Z Adding repository directory to the temporary git global config as a safe directory
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1116492Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/writ/writ
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1150903Z Removing SSH command configuration
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1157345Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1191519Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1408459Z Removing HTTP extra header
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1415305Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1449139Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1662797Z Removing includeIf entries pointing to credentials config files
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1668977Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Native btrfs	Post Check out source	2026-11-07T20:08:02.1702984Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Native btrfs	Complete job	﻿2026-11-07T20:08:02.2091853Z Cleaning up orphan processes
+Native zfs	Set up job	﻿2026-11-07T20:06:55.1503785Z Current runner version: '2.338.2'
+Native zfs	Set up job	2026-11-07T20:06:55.1531776Z ##[group]Runner Image Provisioner
+Native zfs	Set up job	2026-11-07T20:06:55.1532732Z Hosted Compute Agent
+Native zfs	Set up job	2026-11-07T20:06:55.1533370Z Version: 20261028.624
+Native zfs	Set up job	2026-11-07T20:06:55.1534036Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+Native zfs	Set up job	2026-11-07T20:06:55.1535458Z Build Date: 2026-10-28T21:51:42Z
+Native zfs	Set up job	2026-11-07T20:06:55.1536213Z Worker ID: {568340e5-0f9c-4cd8-90d7-516dffd8b461}
+Native zfs	Set up job	2026-11-07T20:06:55.1537685Z Region: eastus
+Native zfs	Set up job	2026-11-07T20:06:55.1538333Z Cloud: Azure
+Native zfs	Set up job	2026-11-07T20:06:55.1538874Z ##[endgroup]
+Native zfs	Set up job	2026-11-07T20:06:55.1540567Z ##[group]Operating System
+Native zfs	Set up job	2026-11-07T20:06:55.1541235Z Ubuntu
+Native zfs	Set up job	2026-11-07T20:06:55.1541739Z 24.04.5
+Native zfs	Set up job	2026-11-07T20:06:55.1542352Z LTS
+Native zfs	Set up job	2026-11-07T20:06:55.1542868Z ##[endgroup]
+Native zfs	Set up job	2026-11-07T20:06:55.1543583Z ##[group]Runner Image
+Native zfs	Set up job	2026-11-07T20:06:55.1544203Z Image: ubuntu-24.04
+Native zfs	Set up job	2026-11-07T20:06:55.1544759Z Version: 20261101.360.1
+Native zfs	Set up job	2026-11-07T20:06:55.1546396Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+Native zfs	Set up job	2026-11-07T20:06:55.1548254Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+Native zfs	Set up job	2026-11-07T20:06:55.1549230Z ##[endgroup]
+Native zfs	Set up job	2026-11-07T20:06:55.1550349Z ##[group]GITHUB_TOKEN Permissions
+Native zfs	Set up job	2026-11-07T20:06:55.1552570Z Contents: read
+Native zfs	Set up job	2026-11-07T20:06:55.1553305Z Metadata: read
+Native zfs	Set up job	2026-11-07T20:06:55.1553962Z ##[endgroup]
+Native zfs	Set up job	2026-11-07T20:06:55.1556478Z Secret source: Actions
+Native zfs	Set up job	2026-11-07T20:06:55.1557514Z Cache mode: write
+Native zfs	Set up job	2026-11-07T20:06:55.1558208Z Prepare workflow directory
+Native zfs	Set up job	2026-11-07T20:06:55.2119663Z Prepare all required actions
+Native zfs	Set up job	2026-11-07T20:06:55.2170234Z Getting action download info
+Native zfs	Set up job	2026-11-07T20:06:55.4090003Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Native zfs	Set up job	2026-11-07T20:06:55.5448481Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+Native zfs	Set up job	2026-11-07T20:06:55.7313843Z Complete job name: Native zfs
+Native zfs	Record runner environment	﻿2026-11-07T20:06:55.8093602Z ##[group]Run set -euo pipefail
+Native zfs	Record runner environment	2026-11-07T20:06:55.8094324Z ^[[36;1mset -euo pipefail^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8095227Z ^[[36;1mwritfs_log_directory="$RUNNER_TEMP/writfs-native-logs"^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8095962Z ^[[36;1mmkdir -p "$writfs_log_directory"^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8096764Z ^[[36;1mprintf 'WRITFS_LOG_DIRECTORY=%s\n' "$writfs_log_directory" >> "$GITHUB_ENV"^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8097526Z ^[[36;1m{^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8098140Z ^[[36;1m  printf 'Commit: %s\nBackend: %s\n' "$GITHUB_SHA" "$WRITFS_TEST_BACKEND"^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8099118Z ^[[36;1m  printf 'Runner image: %s %s\n' "${ImageOS:-unknown}" "${ImageVersion:-unknown}"^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8099888Z ^[[36;1m  uname -a^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8100361Z ^[[36;1m  cat /etc/os-release^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8100964Z ^[[36;1m} 2>&1 | tee "$writfs_log_directory/environment.log"^[[0m
+Native zfs	Record runner environment	2026-11-07T20:06:55.8127266Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native zfs	Record runner environment	2026-11-07T20:06:55.8128346Z env:
+Native zfs	Record runner environment	2026-11-07T20:06:55.8128785Z   BEND_NO_TELEMETRY: 1
+Native zfs	Record runner environment	2026-11-07T20:06:55.8129297Z   CC: clang-19
+Native zfs	Record runner environment	2026-11-07T20:06:55.8129735Z   WRITFS_TEST_BACKEND: zfs
+Native zfs	Record runner environment	2026-11-07T20:06:55.8130210Z ##[endgroup]
+Native zfs	Record runner environment	2026-11-07T20:06:55.8289234Z Commit: d71d09cd4079e94147121be24934f6699bbff790
+Native zfs	Record runner environment	2026-11-07T20:06:55.8290565Z Backend: zfs
+Native zfs	Record runner environment	2026-11-07T20:06:55.8291455Z Runner image: ubuntu24 20261101.360.1
+Native zfs	Record runner environment	2026-11-07T20:06:55.8293269Z Linux runnervm7aw5e 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+Native zfs	Record runner environment	2026-11-07T20:06:55.8295530Z PRETTY_NAME="Ubuntu 24.04.5 LTS"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8296526Z NAME="Ubuntu"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8297362Z VERSION_ID="24.04"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8298246Z VERSION="24.04.5 LTS (Noble Numbat)"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8299252Z VERSION_CODENAME=noble
+Native zfs	Record runner environment	2026-11-07T20:06:55.8300161Z ID=ubuntu
+Native zfs	Record runner environment	2026-11-07T20:06:55.8300952Z ID_LIKE=debian
+Native zfs	Record runner environment	2026-11-07T20:06:55.8301807Z HOME_URL="https://www.ubuntu.com/"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8302885Z SUPPORT_URL="https://help.ubuntu.com/"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8304540Z BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8307374Z PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+Native zfs	Record runner environment	2026-11-07T20:06:55.8309466Z UBUNTU_CODENAME=noble
+Native zfs	Record runner environment	2026-11-07T20:06:55.8310380Z LOGO=ubuntu-logo
+Native zfs	Check out source	﻿2026-11-07T20:06:55.8538567Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+Native zfs	Check out source	2026-11-07T20:06:55.8539370Z with:
+Native zfs	Check out source	2026-11-07T20:06:55.8539799Z   persist-credentials: false
+Native zfs	Check out source	2026-11-07T20:06:55.8540321Z   repository: Spaceghost/writ
+Native zfs	Check out source	2026-11-07T20:06:55.8544240Z   token: ***
+Native zfs	Check out source	2026-11-07T20:06:55.8544679Z   ssh-strict: true
+Native zfs	Check out source	2026-11-07T20:06:55.8545520Z   ssh-user: git
+Native zfs	Check out source	2026-11-07T20:06:55.8545956Z   clean: true
+Native zfs	Check out source	2026-11-07T20:06:55.8546397Z   sparse-checkout-cone-mode: true
+Native zfs	Check out source	2026-11-07T20:06:55.8546919Z   fetch-depth: 1
+Native zfs	Check out source	2026-11-07T20:06:55.8547351Z   fetch-tags: false
+Native zfs	Check out source	2026-11-07T20:06:55.8547794Z   show-progress: true
+Native zfs	Check out source	2026-11-07T20:06:55.8548234Z   lfs: false
+Native zfs	Check out source	2026-11-07T20:06:55.8548646Z   submodules: false
+Native zfs	Check out source	2026-11-07T20:06:55.8549113Z   set-safe-directory: true
+Native zfs	Check out source	2026-11-07T20:06:55.8549616Z   allow-unsafe-pr-checkout: false
+Native zfs	Check out source	2026-11-07T20:06:55.8550129Z env:
+Native zfs	Check out source	2026-11-07T20:06:55.8550519Z   BEND_NO_TELEMETRY: 1
+Native zfs	Check out source	2026-11-07T20:06:55.8550963Z   CC: clang-19
+Native zfs	Check out source	2026-11-07T20:06:55.8551385Z   WRITFS_TEST_BACKEND: zfs
+Native zfs	Check out source	2026-11-07T20:06:55.8552046Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native zfs	Check out source	2026-11-07T20:06:55.8552728Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:06:56.6590383Z Syncing repository: Spaceghost/writ
+Native zfs	Check out source	2026-11-07T20:06:56.6594635Z ##[group]Getting Git version info
+Native zfs	Check out source	2026-11-07T20:06:56.6596874Z Working directory is '/home/runner/work/writ/writ'
+Native zfs	Check out source	2026-11-07T20:06:56.6599431Z [command]/usr/bin/git version
+Native zfs	Check out source	2026-11-07T20:06:56.6822537Z git version 2.56.0
+Native zfs	Check out source	2026-11-07T20:06:56.6850177Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:06:56.6862978Z Temporarily overriding HOME='/home/runner/work/_temp/4d5f4222-5e62-48fa-ae5b-b798e773125b' before making global git config changes
+Native zfs	Check out source	2026-11-07T20:06:56.6867860Z Adding repository directory to the temporary git global config as a safe directory
+Native zfs	Check out source	2026-11-07T20:06:56.6873226Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/writ/writ
+Native zfs	Check out source	2026-11-07T20:06:56.6930636Z Deleting the contents of '/home/runner/work/writ/writ'
+Native zfs	Check out source	2026-11-07T20:06:56.6935365Z ##[group]Determining repository object format
+Native zfs	Check out source	2026-11-07T20:06:56.6939186Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:06:56.6942621Z ##[group]Initializing the repository
+Native zfs	Check out source	2026-11-07T20:06:56.6945957Z [command]/usr/bin/git init /home/runner/work/writ/writ
+Native zfs	Check out source	2026-11-07T20:06:56.7322929Z hint: Using 'master' as the name for the initial branch. This default branch name
+Native zfs	Check out source	2026-11-07T20:06:56.7327456Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Native zfs	Check out source	2026-11-07T20:06:56.7330920Z hint: to use in all of your new repositories, which will suppress this warning,
+Native zfs	Check out source	2026-11-07T20:06:56.7333722Z hint: call:
+Native zfs	Check out source	2026-11-07T20:06:56.7335578Z hint:
+Native zfs	Check out source	2026-11-07T20:06:56.7337935Z hint: 	git config --global init.defaultBranch <name>
+Native zfs	Check out source	2026-11-07T20:06:56.7340327Z hint:
+Native zfs	Check out source	2026-11-07T20:06:56.7342575Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Native zfs	Check out source	2026-11-07T20:06:56.7356297Z hint: 'development'. The just-created branch can be renamed via this command:
+Native zfs	Check out source	2026-11-07T20:06:56.7358530Z hint:
+Native zfs	Check out source	2026-11-07T20:06:56.7359681Z hint: 	git branch -m <name>
+Native zfs	Check out source	2026-11-07T20:06:56.7361066Z hint:
+Native zfs	Check out source	2026-11-07T20:06:56.7362860Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Native zfs	Check out source	2026-11-07T20:06:56.7381742Z Initialized empty Git repository in /home/runner/work/writ/writ/.git/
+Native zfs	Check out source	2026-11-07T20:06:56.7388510Z [command]/usr/bin/git remote add origin https://github.com/Spaceghost/writ
+Native zfs	Check out source	2026-11-07T20:06:56.7425732Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:06:56.7428837Z ##[group]Disabling automatic garbage collection
+Native zfs	Check out source	2026-11-07T20:06:56.7435033Z [command]/usr/bin/git config --local gc.auto 0
+Native zfs	Check out source	2026-11-07T20:06:56.7493425Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:06:56.7496673Z ##[group]Setting up auth
+Native zfs	Check out source	2026-11-07T20:06:56.7498766Z Removing SSH command configuration
+Native zfs	Check out source	2026-11-07T20:06:56.7502412Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Native zfs	Check out source	2026-11-07T20:06:56.7560333Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Native zfs	Check out source	2026-11-07T20:06:56.8096608Z Removing HTTP extra header
+Native zfs	Check out source	2026-11-07T20:06:56.8105358Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Native zfs	Check out source	2026-11-07T20:06:56.8157365Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Native zfs	Check out source	2026-11-07T20:06:56.8408705Z Removing includeIf entries pointing to credentials config files
+Native zfs	Check out source	2026-11-07T20:06:56.8421412Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Native zfs	Check out source	2026-11-07T20:06:56.8479932Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Native zfs	Check out source	2026-11-07T20:06:56.8781469Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Native zfs	Check out source	2026-11-07T20:06:56.8847419Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/writ/writ/.git.path /home/runner/work/_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:06:56.8901383Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:06:56.8954707Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:06:56.9011835Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:06:56.9062034Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:06:56.9063801Z ##[group]Fetching the repository
+Native zfs	Check out source	2026-11-07T20:06:56.9072538Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +d71d09cd4079e94147121be24934f6699bbff790:refs/remotes/origin/master
+Native zfs	Check out source	2026-11-07T20:07:00.2922495Z From https://github.com/Spaceghost/writ
+Native zfs	Check out source	2026-11-07T20:07:00.2925096Z  * [new ref]         d71d09cd4079e94147121be24934f6699bbff790 -> origin/master
+Native zfs	Check out source	2026-11-07T20:07:00.2938661Z [command]/usr/bin/git branch --list --remote origin/master
+Native zfs	Check out source	2026-11-07T20:07:00.2987567Z   origin/master
+Native zfs	Check out source	2026-11-07T20:07:00.2996567Z [command]/usr/bin/git rev-parse refs/remotes/origin/master
+Native zfs	Check out source	2026-11-07T20:07:00.3034456Z d71d09cd4079e94147121be24934f6699bbff790
+Native zfs	Check out source	2026-11-07T20:07:00.3039625Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:07:00.3040379Z ##[group]Determining the checkout info
+Native zfs	Check out source	2026-11-07T20:07:00.3046290Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:07:00.3047398Z [command]/usr/bin/git sparse-checkout disable
+Native zfs	Check out source	2026-11-07T20:07:00.3112940Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Native zfs	Check out source	2026-11-07T20:07:00.3159781Z ##[group]Checking out the ref
+Native zfs	Check out source	2026-11-07T20:07:00.3164308Z [command]/usr/bin/git checkout --progress --force -B master refs/remotes/origin/master
+Native zfs	Check out source	2026-11-07T20:07:00.7644133Z Reset branch 'master'
+Native zfs	Check out source	2026-11-07T20:07:00.7648922Z branch 'master' set up to track 'origin/master'.
+Native zfs	Check out source	2026-11-07T20:07:00.7723720Z ##[endgroup]
+Native zfs	Check out source	2026-11-07T20:07:00.7805755Z [command]/usr/bin/git log -1 --format=%H
+Native zfs	Check out source	2026-11-07T20:07:00.7828301Z d71d09cd4079e94147121be24934f6699bbff790
+Native zfs	Check out source	2026-11-07T20:07:00.7839831Z ##[group]Removing auth
+Native zfs	Check out source	2026-11-07T20:07:00.7840363Z Removing SSH command configuration
+Native zfs	Check out source	2026-11-07T20:07:00.7845351Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Native zfs	Check out source	2026-11-07T20:07:00.7894798Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Native zfs	Check out source	2026-11-07T20:07:00.8154752Z Removing HTTP extra header
+Native zfs	Check out source	2026-11-07T20:07:00.8159664Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Native zfs	Check out source	2026-11-07T20:07:00.8208093Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Native zfs	Check out source	2026-11-07T20:07:00.8465745Z Removing includeIf entries pointing to credentials config files
+Native zfs	Check out source	2026-11-07T20:07:00.8468958Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Native zfs	Check out source	2026-11-07T20:07:00.8514330Z includeif.gitdir:/home/runner/work/writ/writ/.git.path
+Native zfs	Check out source	2026-11-07T20:07:00.8515785Z includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path
+Native zfs	Check out source	2026-11-07T20:07:00.8516592Z includeif.gitdir:/github/workspace/.git.path
+Native zfs	Check out source	2026-11-07T20:07:00.8517322Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Native zfs	Check out source	2026-11-07T20:07:00.8525179Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/writ/writ/.git.path
+Native zfs	Check out source	2026-11-07T20:07:00.8561364Z /home/runner/work/_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:07:00.8577898Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/writ/writ/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-29c5f79a\-e2ce\-458e\-9efe\-27b47d73fbce\.config
+Native zfs	Check out source	2026-11-07T20:07:00.8627467Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path
+Native zfs	Check out source	2026-11-07T20:07:00.8665768Z /home/runner/work/_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:07:00.8676911Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-29c5f79a\-e2ce\-458e\-9efe\-27b47d73fbce\.config
+Native zfs	Check out source	2026-11-07T20:07:00.8726604Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Native zfs	Check out source	2026-11-07T20:07:00.8766931Z /github/runner_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:07:00.8777178Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-29c5f79a\-e2ce\-458e\-9efe\-27b47d73fbce\.config
+Native zfs	Check out source	2026-11-07T20:07:00.8828992Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Native zfs	Check out source	2026-11-07T20:07:00.8867669Z /github/runner_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config
+Native zfs	Check out source	2026-11-07T20:07:00.8953378Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-29c5f79a\-e2ce\-458e\-9efe\-27b47d73fbce\.config
+Native zfs	Check out source	2026-11-07T20:07:00.8956562Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Native zfs	Check out source	2026-11-07T20:07:00.9197053Z Removing credentials config '/home/runner/work/_temp/git-credentials-29c5f79a-e2ce-458e-9efe-27b47d73fbce.config'
+Native zfs	Check out source	2026-11-07T20:07:00.9207497Z ##[endgroup]
+Native zfs	Install native tools and require the kernel module	﻿2026-11-07T20:07:00.9350216Z ##[group]Run set -euo pipefail
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9350582Z ^[[36;1mset -euo pipefail^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9350821Z ^[[36;1m{^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9351022Z ^[[36;1m  sudo apt-get update^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9351357Z ^[[36;1m  sudo apt-get install --yes --no-install-recommends \^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9351833Z ^[[36;1m    clang-19 btrfs-progs zfsutils-linux kmod coreutils util-linux udev^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9352245Z ^[[36;1m  writfs_kernel="$(uname -r)"^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9352565Z ^[[36;1m  if ! sudo modprobe "$WRITFS_TEST_BACKEND"; then^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9352991Z ^[[36;1m    # Match the running kernel; a replacement kernel would need a reboot.^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9353496Z ^[[36;1m    sudo apt-get install --yes --reinstall --no-install-recommends \^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9354103Z ^[[36;1m      "linux-modules-$writfs_kernel"^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9354416Z ^[[36;1m    sudo depmod -a "$writfs_kernel"^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9354726Z ^[[36;1m    sudo modprobe "$WRITFS_TEST_BACKEND"^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9355421Z ^[[36;1m  fi^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9355642Z ^[[36;1m  clang-19 --version^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9355892Z ^[[36;1m  btrfs --version^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9356168Z ^[[36;1m  if [ "$WRITFS_TEST_BACKEND" = zfs ]; then^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9356481Z ^[[36;1m    zfs version^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9356702Z ^[[36;1m  fi^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9356919Z ^[[36;1m  modinfo "$WRITFS_TEST_BACKEND"^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9357256Z ^[[36;1m} 2>&1 | tee "$WRITFS_LOG_DIRECTORY/native-tools.log"^[[0m
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9378356Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9378705Z env:
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9378901Z   BEND_NO_TELEMETRY: 1
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9379126Z   CC: clang-19
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9379337Z   WRITFS_TEST_BACKEND: zfs
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9379696Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:00.9380051Z ##[endgroup]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.0210763Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.0471359Z Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.0578719Z Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.0601340Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.0656207Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.0689092Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.1425593Z Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [743 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.1693022Z Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [675 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.2855295Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1425 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.2936434Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [313 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.2978918Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.3078153Z Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.3089913Z Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1840 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.3209600Z Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [420 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.3240977Z Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.3256042Z Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4016262Z Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1157 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4082922Z Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [234 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4535688Z Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4640165Z Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4670647Z Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1721 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4760070Z Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [394 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4790110Z Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:01.4807460Z Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:05.0992263Z Fetched 13.0 MB in 1s (9518 kB/s)
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.3349862Z Reading package lists...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.3748826Z Reading package lists...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6459786Z Building dependency tree...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.6467323Z Reading state information...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8221457Z btrfs-progs is already the newest version (6.6.3-1.1build2).
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8222278Z btrfs-progs set to manually installed.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8222924Z kmod is already the newest version (31+20240202-2ubuntu7.2).
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8223770Z kmod set to manually installed.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8224622Z coreutils is already the newest version (9.4-3ubuntu6.3).
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8226041Z util-linux is already the newest version (2.39.3-9ubuntu6.6).
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8227140Z udev is already the newest version (255.4-1ubuntu8.18).
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8228035Z udev set to manually installed.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8228863Z The following additional packages will be installed:
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8229838Z   libclang-common-19-dev libclang-cpp19 libclang1-19 libnvpair3linux
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8230922Z   libuutil3linux libzfs4linux libzpool5linux llvm-19-linker-tools
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8234013Z Suggested packages:
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8234723Z   clang-19-doc wasi-libc nfs-kernel-server samba-common-bin zfs-initramfs
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8235620Z   | zfs-dracut
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8235925Z Recommended packages:
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8236265Z   llvm-19-dev libclang-rt-19-dev zfs-zed
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8514064Z The following NEW packages will be installed:
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8520063Z   clang-19 libclang-common-19-dev libclang-cpp19 libclang1-19 libnvpair3linux
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8523670Z   libuutil3linux libzfs4linux libzpool5linux llvm-19-linker-tools
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8524274Z   zfsutils-linux
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8736907Z 0 upgraded, 10 newly installed, 0 to remove and 27 not upgraded.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8737495Z Need to get 27.0 MB of archives.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8738131Z After this operation, 133 MB of additional disk space will be used.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.8738923Z Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.9205482Z Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libnvpair3linux amd64 2.2.2-0ubuntu9.5 [62.4 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.9662124Z Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libuutil3linux amd64 2.2.2-0ubuntu9.5 [53.4 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:06.9876170Z Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libzfs4linux amd64 2.2.2-0ubuntu9.5 [226 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.0296248Z Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libzpool5linux amd64 2.2.2-0ubuntu9.5 [1397 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.0824243Z Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 zfsutils-linux amd64 2.2.2-0ubuntu9.5 [551 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.1002627Z Get:7 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-cpp19 amd64 1:19.1.1-1ubuntu1~24.04.2 [14.3 MB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.1939016Z Get:8 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-common-19-dev amd64 1:19.1.1-1ubuntu1~24.04.2 [743 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.2127561Z Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 llvm-19-linker-tools amd64 1:19.1.1-1ubuntu1~24.04.2 [1314 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.2343270Z Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang1-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [8272 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.2929069Z Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 clang-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [78.9 kB]
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.5856592Z Fetched 27.0 MB in 0s (62.4 MB/s)
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6120947Z Selecting previously unselected package libnvpair3linux.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6406976Z (Reading database ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6407492Z (Reading database ... 5%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6407815Z (Reading database ... 10%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6408117Z (Reading database ... 15%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6408414Z (Reading database ... 20%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6408713Z (Reading database ... 25%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6409095Z (Reading database ... 30%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6409911Z (Reading database ... 35%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6410331Z (Reading database ... 40%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6410621Z (Reading database ... 45%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6410913Z (Reading database ... 50%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.6460905Z (Reading database ... 55%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.7917533Z (Reading database ... 60%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:07.9782938Z (Reading database ... 65%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.1879242Z (Reading database ... 70%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.3587685Z (Reading database ... 75%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.4830057Z (Reading database ... 80%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.6420316Z (Reading database ... 85%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.7897846Z (Reading database ... 90%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9091301Z (Reading database ... 95%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9092222Z (Reading database ... 100%
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9093355Z (Reading database ... 215960 files and directories currently installed.)
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9142344Z Preparing to unpack .../0-libnvpair3linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9181058Z Unpacking libnvpair3linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9484673Z Selecting previously unselected package libuutil3linux.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9634756Z Preparing to unpack .../1-libuutil3linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9643704Z Unpacking libuutil3linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:08.9925538Z Selecting previously unselected package libzfs4linux.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.0081341Z Preparing to unpack .../2-libzfs4linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.0091029Z Unpacking libzfs4linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.0402219Z Selecting previously unselected package libzpool5linux.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.0553673Z Preparing to unpack .../3-libzpool5linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.0563196Z Unpacking libzpool5linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.1023413Z Selecting previously unselected package zfsutils-linux.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.1175246Z Preparing to unpack .../4-zfsutils-linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.1219034Z Unpacking zfsutils-linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.2042378Z Selecting previously unselected package libclang-cpp19.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.2192053Z Preparing to unpack .../5-libclang-cpp19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.2203791Z Unpacking libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.4816388Z Selecting previously unselected package libclang-common-19-dev:amd64.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.4965206Z Preparing to unpack .../6-libclang-common-19-dev_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.4972857Z Unpacking libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.6072942Z Selecting previously unselected package llvm-19-linker-tools.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.6224357Z Preparing to unpack .../7-llvm-19-linker-tools_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.6236588Z Unpacking llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.6708206Z Selecting previously unselected package libclang1-19.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.6865579Z Preparing to unpack .../8-libclang1-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.6875147Z Unpacking libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.8643899Z Selecting previously unselected package clang-19.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.8854133Z Preparing to unpack .../9-clang-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.8866463Z Unpacking clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9447375Z Setting up libnvpair3linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9480415Z Setting up libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9507084Z Setting up libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9531710Z Setting up llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9556122Z Setting up libuutil3linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9582083Z Setting up libzpool5linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9607215Z Setting up libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9630495Z Setting up libzfs4linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9651943Z Setting up clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9675415Z Setting up zfsutils-linux (2.2.2-0ubuntu9.5) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9805734Z insmod /lib/modules/7.0.0-1017-azure/kernel/zfs/spl.ko.zst
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:09.9878641Z insmod /lib/modules/7.0.0-1017-azure/kernel/zfs/zfs.ko.zst
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.3043564Z Created symlink /etc/systemd/system/zfs-import.target.wants/zfs-import-cache.service → /usr/lib/systemd/system/zfs-import-cache.service.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.3045081Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.5252647Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-import.target → /usr/lib/systemd/system/zfs-import.target.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.5253789Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.6370918Z Created symlink /etc/systemd/system/zfs-mount.service.wants/zfs-load-module.service → /usr/lib/systemd/system/zfs-load-module.service.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.6372182Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.6373330Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-load-module.service → /usr/lib/systemd/system/zfs-load-module.service.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.6374470Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.7503281Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-mount.service → /usr/lib/systemd/system/zfs-mount.service.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.7504139Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.8609398Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-share.service → /usr/lib/systemd/system/zfs-share.service.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.8610024Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.9718206Z Created symlink /etc/systemd/system/zfs-volumes.target.wants/zfs-volume-wait.service → /usr/lib/systemd/system/zfs-volume-wait.service.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:12.9718998Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.0817605Z Created symlink /etc/systemd/system/zfs.target.wants/zfs-volumes.target → /usr/lib/systemd/system/zfs-volumes.target.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.0818295Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.1921988Z Created symlink /etc/systemd/system/multi-user.target.wants/zfs.target → /usr/lib/systemd/system/zfs.target.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.1922604Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.4859994Z zfs-import-scan.service is a disabled or a static unit, not starting it.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.6349354Z Processing triggers for man-db (2.12.0-4build2) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.6375865Z Not building database; man-db/auto-update is not 'true'.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:13.6396244Z Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3714014Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3714696Z Running kernel seems to be up-to-date.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3715456Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3715700Z No services need to be restarted.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3716120Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3716358Z No containers need to be restarted.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3716761Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3717038Z No user sessions are running outdated binaries.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3717528Z
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:14.3717838Z No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.3973926Z Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.3974570Z Target: x86_64-pc-linux-gnu
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.3975229Z Thread model: posix
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.3975601Z InstalledDir: /usr/lib/llvm-19/bin
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.4964423Z btrfs-progs v6.6.3
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.4998690Z Permission denied the ZFS utilities must be run as root.
+Native zfs	Install native tools and require the kernel module	2026-11-07T20:07:18.5023220Z ##[error]Process completed with exit code 1.
+Native zfs	Retain native verification logs	﻿2026-11-07T20:07:18.5144701Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5145516Z with:
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5145740Z   name: writfs-native-zfs-1
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5146044Z   path: /home/runner/work/_temp/writfs-native-logs/
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5146360Z   if-no-files-found: error
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5146597Z   retention-days: 14
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5146814Z   compression-level: 6
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5147032Z   overwrite: false
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5147241Z   include-hidden-files: false
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5147477Z   archive: true
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5147667Z env:
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5148067Z   BEND_NO_TELEMETRY: 1
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5148279Z   CC: clang-19
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5148484Z   WRITFS_TEST_BACKEND: zfs
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5148798Z   WRITFS_LOG_DIRECTORY: /home/runner/work/_temp/writfs-native-logs
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.5149141Z ##[endgroup]
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.6693775Z With the provided path, there will be 2 files uploaded
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.6700915Z Artifact name is valid!
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.6701746Z Root directory input is valid!
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.8591669Z Uploading artifact: writfs-native-zfs-1.zip
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.8634164Z Beginning upload of artifact content to blob storage
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.9629838Z Uploaded bytes 2679
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.9818933Z Finished uploading artifact content to blob storage!
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.9820373Z SHA256 digest of uploaded artifact is 2d42be14fc9af9b747b2ab2dad44734797053ab1b1eeceeab130583f1b7e7821
+Native zfs	Retain native verification logs	2026-11-07T20:07:18.9821997Z Finalizing artifact upload
+Native zfs	Retain native verification logs	2026-11-07T20:07:19.3981869Z Artifact writfs-native-zfs-1 successfully finalized. Artifact ID 13588224808
+Native zfs	Retain native verification logs	2026-11-07T20:07:19.3984069Z Artifact writfs-native-zfs-1 has been successfully uploaded! Final size is 2679 bytes. Artifact ID is 13588224808
+Native zfs	Retain native verification logs	2026-11-07T20:07:19.3986627Z Artifact download URL: https://github.com/Spaceghost/writ/actions/runs/42409457851/artifacts/13588224808
+Native zfs	Post Check out source	﻿2026-11-07T20:07:19.4221349Z Post job cleanup.
+Native zfs	Post Check out source	2026-11-07T20:07:19.5146586Z [command]/usr/bin/git version
+Native zfs	Post Check out source	2026-11-07T20:07:19.5237641Z git version 2.56.0
+Native zfs	Post Check out source	2026-11-07T20:07:19.5283702Z Temporarily overriding HOME='/home/runner/work/_temp/6b0aa2cd-1322-41f3-a76b-9ba6e3a6e620' before making global git config changes
+Native zfs	Post Check out source	2026-11-07T20:07:19.5285798Z Adding repository directory to the temporary git global config as a safe directory
+Native zfs	Post Check out source	2026-11-07T20:07:19.5290141Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/writ/writ
+Native zfs	Post Check out source	2026-11-07T20:07:19.5335818Z Removing SSH command configuration
+Native zfs	Post Check out source	2026-11-07T20:07:19.5345070Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Native zfs	Post Check out source	2026-11-07T20:07:19.5396230Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Native zfs	Post Check out source	2026-11-07T20:07:19.5693489Z Removing HTTP extra header
+Native zfs	Post Check out source	2026-11-07T20:07:19.5701015Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Native zfs	Post Check out source	2026-11-07T20:07:19.5758213Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Native zfs	Post Check out source	2026-11-07T20:07:19.6066364Z Removing includeIf entries pointing to credentials config files
+Native zfs	Post Check out source	2026-11-07T20:07:19.6071965Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Native zfs	Post Check out source	2026-11-07T20:07:19.6138243Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Native zfs	Complete job	﻿2026-11-07T20:07:19.6634615Z Cleaning up orphan processes
