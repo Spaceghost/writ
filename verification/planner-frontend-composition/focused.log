@@ -1,0 +1,36 @@
+PASS: composition mount succeeds
+PASS: composition mount has ID 1
+PASS: composition mount advances revision
+PASS: composition open succeeds
+PASS: composition descriptor has ID 2
+PASS: composition open advances revision
+PASS: composition frontend returns the independently selected plan
+PASS: composition matching plan fields
+PASS: composition source object substitution
+PASS: composition source version substitution
+PASS: composition destination object substitution
+PASS: composition destination version substitution
+PASS: composition code substitution
+PASS: composition stamp substitution
+PASS: composition operation substitution
+PASS: composition output substitution
+PASS: composition baseline description matches fixture plan
+PASS: composition revoked registry denies
+PASS: composition different subject denies
+PASS: composition different token denies
+PASS: composition stale revision denies
+PASS: composition capability expiry is exclusive
+PASS: composition missing read grant denies
+PASS: composition missing write grant denies
+PASS: composition missing payment denies
+PASS: composition changed live authority denies
+PASS: composition descriptor attenuation succeeds
+PASS: composition attenuation advances revision
+PASS: composition attenuated descriptor remains readable
+PASS: composition attenuated descriptor denies execute
+PASS: composition does not validate request ID
+PASS: composition does not validate claimed expiry
+PASS: composition does not resolve manifest
+PASS: composition does not resolve evidence
+PASS: composition ignores all unresolved metadata together
+bend 2.0.40 is available: run bend update

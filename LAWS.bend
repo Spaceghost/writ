@@ -17,6 +17,8 @@ import ./Dlm.bend as Dlm
 import ./AuditQuery.bend as AuditQuery
 import ./AuditExport.bend as AuditExport
 import ./Rendezvous.bend as Rendezvous
+import ./PlannerEnvelope.bend as PlannerEnvelope
+import ./PlannerPlanMatch.bend as PlannerPlanMatch
 
 # This theorem covers a failed check at ANY position in the commit guard.
 # It does not assert that the caller has supplied authentic registry state.
@@ -632,3 +634,21 @@ law rendezvous_unselected_dispatch_rejects:
   for snapshot: Rendezvous.Snapshot
   for unselected: {Rendezvous.dispatch_target_selected(state, offer, host, worker_session) == False{} : Bool}
   {(Rendezvous.Change.accepted(Rendezvous.dispatch(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.dispatch(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
+
+# An empty proposed source list never matches any selected plan. This pure
+# comparison fact neither authenticates its inputs nor grants permission; a
+# comparator that always returned False would satisfy this narrow law.
+law planner_empty_sources_rejects:
+  for request: PlannerEnvelope.N48
+  for expiry: PlannerEnvelope.N48
+  for manifest: PlannerEnvelope.ManifestRef
+  for stamp: PlannerEnvelope.Stamp
+  for invocation: PlannerEnvelope.N48
+  for destination: PlannerEnvelope.ObjectRef
+  for code: PlannerEnvelope.Id256
+  for operation: U32
+  for output_type: U32
+  for evidence: +List<PlannerEnvelope.EvidenceRef>
+  for selected: Transfer.Plan
+  {PlannerPlanMatch.same_plan_description(PlannerEnvelope.Proposal{request, expiry, manifest, stamp,
+    invocation, [], destination, code, operation, output_type, evidence}, selected) == False{} : Bool}

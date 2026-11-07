@@ -1,0 +1,258 @@
+[
+  {
+    "phase": "before",
+    "mutant": "baseline",
+    "suite": "HostWireTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 68,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "before",
+    "mutant": "baseline",
+    "suite": "HostWireTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 68,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "before",
+    "mutant": "baseline",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 61,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "before",
+    "mutant": "baseline",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 61,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "before",
+    "mutant": "prefix_only",
+    "suite": "HostWireTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 68,
+    "failures": [],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "before",
+    "mutant": "prefix_only",
+    "suite": "HostWireTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 68,
+    "failures": [],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "before",
+    "mutant": "prefix_only",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 61,
+    "failures": [],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "before",
+    "mutant": "prefix_only",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 61,
+    "failures": [],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "before",
+    "mutant": "skip_final",
+    "suite": "HostWireTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 68,
+    "failures": [],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "before",
+    "mutant": "skip_final",
+    "suite": "HostWireTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 68,
+    "failures": [],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "before",
+    "mutant": "skip_final",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 61,
+    "failures": [],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "before",
+    "mutant": "skip_final",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 61,
+    "failures": [],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "after",
+    "mutant": "baseline",
+    "suite": "HostWireTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 69,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "after",
+    "mutant": "baseline",
+    "suite": "HostWireTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 69,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "after",
+    "mutant": "baseline",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "bend",
+    "exit": 0,
+    "passes": 62,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "after",
+    "mutant": "baseline",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "node",
+    "exit": 0,
+    "passes": 62,
+    "failures": [],
+    "source_sha256": "05b9ec272a14895397fc413b0bde3f0ffa112f2f205752fe2d952586a775da98"
+  },
+  {
+    "phase": "after",
+    "mutant": "prefix_only",
+    "suite": "HostWireTests.bend",
+    "backend": "bend",
+    "exit": 1,
+    "passes": 58,
+    "failures": [
+      "FAIL: PH-011 byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "after",
+    "mutant": "prefix_only",
+    "suite": "HostWireTests.bend",
+    "backend": "node",
+    "exit": 1,
+    "passes": 58,
+    "failures": [
+      "FAIL: PH-011 byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "after",
+    "mutant": "prefix_only",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "bend",
+    "exit": 1,
+    "passes": 26,
+    "failures": [
+      "FAIL: planner-envelope byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "after",
+    "mutant": "prefix_only",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "node",
+    "exit": 1,
+    "passes": 26,
+    "failures": [
+      "FAIL: planner-envelope byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "8de534ef7a345de20d24bb8a4ebd1af3f04d464c1f16845feeb0bdac3630b78a"
+  },
+  {
+    "phase": "after",
+    "mutant": "skip_final",
+    "suite": "HostWireTests.bend",
+    "backend": "bend",
+    "exit": 1,
+    "passes": 58,
+    "failures": [
+      "FAIL: PH-011 byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "after",
+    "mutant": "skip_final",
+    "suite": "HostWireTests.bend",
+    "backend": "node",
+    "exit": 1,
+    "passes": 58,
+    "failures": [
+      "FAIL: PH-011 byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "after",
+    "mutant": "skip_final",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "bend",
+    "exit": 1,
+    "passes": 26,
+    "failures": [
+      "FAIL: planner-envelope byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  },
+  {
+    "phase": "after",
+    "mutant": "skip_final",
+    "suite": "PlannerEnvelopeTests.bend",
+    "backend": "node",
+    "exit": 1,
+    "passes": 26,
+    "failures": [
+      "FAIL: planner-envelope byte range rejects interior and final invalid values"
+    ],
+    "source_sha256": "f5ae5f8036f42a879eef9f68a804e51a2e30bd4213c19f870ad8c643d6bfdfa7"
+  }
+]

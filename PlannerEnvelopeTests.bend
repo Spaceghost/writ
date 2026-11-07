@@ -19,6 +19,19 @@ def words() -> +List<U32>:
    30, 0, 40, 0, 50, 0, 60, 0, 1, 70, 0, 71, 0, 80, 0, 81, 0,
    11, 12, 13, 14, 15, 16, 17, 18, 2, 4, 0]
 
+# Independent little-endian bytes for the fixed `words()` frame.
+def known_bytes() -> +List<U32>:
+  [
+   1, 0, 0, 0, 1, 0, 0, 0, 40, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0,
+   0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0,
+   6, 0, 0, 0, 7, 0, 0, 0, 8, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0,
+   0, 0, 0, 0, 50, 0, 0, 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+   70, 0, 0, 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0,
+   81, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 12, 0, 0, 0, 13, 0, 0, 0, 14, 0, 0, 0,
+   15, 0, 0, 0, 16, 0, 0, 0, 17, 0, 0, 0, 18, 0, 0, 0, 2, 0, 0, 0, 4, 0, 0, 0,
+   0, 0, 0, 0
+  ]
+
 def words_equal(a: +List<U32>, b: +List<U32>) -> Bool:
   match a b:
     case Nil{} Nil{}: True{}
@@ -72,6 +85,14 @@ def replace(index: Nat, value: U32, words: +List<U32>) -> +List<U32>:
     case _ Nil{}: Nil{}
     case 0n Con{_, rest}: value <> rest
     case 1n+next Con{head, rest}: head <> replace(next, value, rest)
+
+# Both in-range controls and isolated non-byte values use the fixed frame.
+def byte_range_positions() -> Bool:
+  reencode_is(P.decode_bytes(known_bytes()), words()) &&
+    reencode_is(P.decode_bytes(replace(28n, 255, known_bytes())), replace(7n, 255, words())) &&
+    rejected(P.decode_bytes(replace(1n, 256, known_bytes())), P.OutOfRange{}) &&
+    rejected(P.decode_bytes(replace(28n, 256, known_bytes())), P.OutOfRange{}) &&
+    rejected(P.decode_bytes(replace(171n, 256, known_bytes())), P.OutOfRange{})
 
 def repeat_words_go(fuel: Nat, +value: U32, acc: +List<U32>) -> +List<U32>:
   match fuel:
@@ -297,6 +318,7 @@ def main() -> IO(Unit):
     Test.check(rejected(P.decode_words(List.append(&2, U32, words(), [0])), P.BadLength{}), "planner-envelope trailing word")
     Test.check(rejected(P.decode_bytes(byte_misaligned()), P.BadLength{}), "planner-envelope byte alignment before range")
     Test.check(rejected(P.decode_bytes([256, 0, 0, 0]), P.OutOfRange{}), "planner-envelope invalid byte value")
+    Test.check(byte_range_positions(), "planner-envelope byte range rejects interior and final invalid values")
     Test.check(rejected(P.decode_words(repeat_words(108n, 0)), P.TooLong{}), "planner-envelope word cap before version")
     Test.check(rejected(P.decode_bytes(repeat_words(429n, 256)), P.TooLong{}), "planner-envelope byte cap before alignment and range")
     Test.check(rejected(P.decode_words(repeat_words(10000n, 0)), P.TooLong{}), "planner-envelope very large word input")

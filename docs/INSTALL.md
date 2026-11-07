@@ -74,7 +74,7 @@ flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
 and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
 `examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
 library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
-binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 2444 lines
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 2481 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
@@ -84,7 +84,7 @@ also passed, including optimized native CPU; see the [integration evidence](../v
 The [2,322-check Nix JavaScript preview](../verification/durable-handoff-52e8e01/README.md) passed for source `52e8e01`; no full current flake check is claimed. The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` handoff model inputs, not the combined preview.
 The separate [2,162-check planner Nix JavaScript result](../verification/planner-envelope-local.md) covers source `b0c9863`, not this combined preview.
 The [2,382-check combined-preview Nix JavaScript result](superpowers/records/2026-11-06-durable-publication/planner-integration-preview.md) covers source `d0dc411`; no combined-source full flake check or Nix native result is claimed.
-The [2,444-check current-preview Nix JavaScript result](superpowers/records/2026-11-06-durable-publication/planner-regression-integration-preview.md) covers source `25e7062`; no current-source full flake check or Nix native result is claimed.
+The [2,444-check earlier-preview Nix JavaScript result](superpowers/records/2026-11-06-durable-publication/planner-regression-integration-preview.md) covers source `25e7062`; no current-source full flake check or Nix native result is claimed.
 The 2065-check Nix JavaScript check passed for
 source `73a8055`; the Nix native CPU check also passed with the same output.
 The [2,223-check planner-preview Nix JavaScript result](../verification/planner-boundary-comparator-preview.md) covers source `6985302`; it is not a combined-source full flake or Nix native result.
@@ -167,9 +167,9 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **2444 passing checks** and
-`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-six declared laws about guards,
-preservation of denied state, grant issuance, host-contract denials, policy-aware audit, and executor rendezvous; it does
+Each complete test run should report **2481 passing checks** and
+`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-seven declared laws about guards,
+preservation of denied state, grant issuance, host-contract denials, policy-aware audit, executor rendezvous, and the empty-source planner comparison; it does
 not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.
 The [master verdict](../verification/lean-verdict-be649f6/README.md) passed at

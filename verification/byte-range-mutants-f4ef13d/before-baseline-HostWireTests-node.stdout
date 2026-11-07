@@ -1,0 +1,69 @@
+PASS: PH-011 Use decode of encode is the same message
+PASS: PH-011 Use words decode and re-encode to the same words
+PASS: PH-011 Delegate decode of encode is the same message
+PASS: PH-011 Delegate words decode and re-encode to the same words
+PASS: PH-011 Complete decode of encode is the same message
+PASS: PH-011 Complete words decode and re-encode to the same words
+PASS: PH-011 Release decode of encode is the same message
+PASS: PH-011 Release words decode and re-encode to the same words
+PASS: PH-011 a byte-level round trip of a 40-byte Delegate is the same message
+PASS: PH-011 a byte-level round trip of a Use is the same message
+PASS: PH-011 a byte-level round trip of a Complete is the same message
+PASS: PH-011 byte transport carries each word little-endian
+PASS: PH-011 operation execute with rights equal to the mask is in bounds
+PASS: PH-011 lifetime equal to max_lifetime is in bounds
+PASS: PH-011 version 0 denied UnknownVersion
+PASS: PH-011 version 2 denied UnknownVersion
+PASS: PH-011 version 0xFFFFFFFF denied UnknownVersion
+PASS: PH-011 tag 0 denied UnknownTag
+PASS: PH-011 tag 5 denied UnknownTag
+PASS: PH-011 tag 0xFFFFFFFF denied UnknownTag
+PASS: PH-011 a tag-5 record shaped like a Context, Ledger, and caller denied UnknownTag
+PASS: PH-011 no record is built from a serialized trusted context
+PASS: PH-011 empty input denied BadLength
+PASS: PH-011 version word only denied BadLength
+PASS: PH-011 version and tag only denied BadLength
+PASS: PH-011 header only denied BadLength
+PASS: PH-011 Use header length one short denied BadLength
+PASS: PH-011 Use header length one long denied BadLength
+PASS: PH-011 Delegate header length one short denied BadLength
+PASS: PH-011 Delegate header length one long denied BadLength
+PASS: PH-011 Complete header length one short denied BadLength
+PASS: PH-011 Complete header length one long denied BadLength
+PASS: PH-011 Release header length one short denied BadLength
+PASS: PH-011 Release header length one long denied BadLength
+PASS: PH-011 correct header with a truncated body denied BadLength
+PASS: PH-011 one trailing word denied BadLength
+PASS: PH-011 11 words denied TooLong
+PASS: PH-011 very oversized word input denied TooLong before parsing
+PASS: PH-011 very oversized byte input denied TooLong before parsing
+PASS: PH-011 byte order: length cap precedes alignment and byte range
+PASS: PH-011 byte order: alignment precedes byte range
+PASS: PH-011 byte order: byte range precedes version
+PASS: PH-011 3 bytes denied BadLength
+PASS: PH-011 5 bytes denied BadLength
+PASS: PH-011 41 bytes denied TooLong
+PASS: PH-011 zero host denied OutOfRange
+PASS: PH-011 zero slot denied OutOfRange
+PASS: PH-011 zero sequence denied OutOfRange
+PASS: PH-011 zero target_session denied OutOfRange
+PASS: PH-011 operation 0 denied OutOfRange
+PASS: PH-011 operation 4 denied OutOfRange
+PASS: PH-011 rights 0 denied OutOfRange
+PASS: PH-011 rights 8 denied OutOfRange
+PASS: PH-011 lifetime 0 denied OutOfRange
+PASS: PH-011 lifetime max_lifetime plus 1 denied OutOfRange
+PASS: PH-011 status 0 denied OutOfRange
+PASS: PH-011 status 3 denied OutOfRange
+PASS: PH-011 a byte value of 256 denied OutOfRange
+PASS: PH-011 order: the length cap precedes the version
+PASS: PH-011 order: the version precedes the tag
+PASS: PH-011 order: the tag precedes the header length
+PASS: PH-011 order: the body count precedes field bounds
+PASS: PH-003 a Use naming another session's slot decodes to a Ref of four identity words only
+PASS: PH-003 the guessed Use's subject stays a ClaimedSubject, untrusted
+PASS: PH-004 zero incarnation denied OutOfRange
+PASS: PH-004 zero generation denied OutOfRange
+PASS: PH-004 references differing only in incarnation encode and decode differently
+PASS: PH-004 references differing only in generation encode and decode differently
+HostWire: 68 checks passed

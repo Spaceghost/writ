@@ -15,13 +15,17 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [current isolated durable/proof preview](verification/durable-proof-current-preview/README.md)
+records the merged 2,481-check source and its current verification limits.
+
 The planner envelope adds 60 synthetic codec checks to the 2,102-check master
-suite, for 2,162 checks at its recorded source. This experimental preview also
-includes one later codec boundary check, 61 plan-comparison checks and 220
-durable-model checks, for 2,444 checks. Its reference-only descriptions do not
+suite, for 2,162 checks at its recorded source. The earlier durable preview
+also included one later codec boundary check, 61 plan-comparison checks and
+220 durable-model checks, for 2,444 checks at source `25e7062`. This preview
+adds two byte-range and 35 frontend-composition checks, for 2,481 checks. Its reference-only descriptions do not
 authenticate identities or establish planner integration;
 see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
-The [current integration record](docs/superpowers/records/2026-11-06-durable-publication/planner-regression-integration-preview.md)
+The [earlier integration record](docs/superpowers/records/2026-11-06-durable-publication/planner-regression-integration-preview.md)
 scopes the 2,444-check combined Bend/Node, Nix JavaScript, existing-law verdict,
 [native CPU](verification/durable-planner-current-native-25e7062/README.md)
 and [platform CI](verification/durable-planner-current-ci-25e7062/README.md).
@@ -35,13 +39,48 @@ The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
 passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
 are scoped observations, not protected-worker or durable-service qualification.
 
-The planner integration reconciled reviewed branch `ef40aa2` with master
-`22c8522`; its Bend, workflow and Nix inputs were unchanged from `ef40aa2`.
-The [comparison record](verification/planner-plan-match-local.md) scopes its
-pre-integration checks. The [high-word mutation review](verification/planner-comparator-mutants-6985302/README.md)
-records the added regression; at exact source `c5a02c7`, its [native CPU run](verification/planner-comparator-native-c5a02c7/README.md)
-and [platform CI](verification/planner-comparator-ci-c5a02c7/README.md) passed
-in their stated scopes, with Linux setup refusal retained.
+The planner integration reconciled the reviewed planner evidence
+branch `ef40aa2` with master `22c8522`. The reconciliation's Bend, workflow
+and Nix inputs were unchanged from `ef40aa2`; earlier test and CI results
+retain the exact source identities stated in their records and were not rerun
+on that evidence merge.
+
+The [isolated proof and test preview](verification/planner-proof-composition-preview/README.md)
+rechecks both test sets and the new law on their combined Bend inputs. Its
+[exact-source CI record](verification/planner-law-ci-cb54600/README.md) retains
+the Linux setup refusal and Genode clock warnings; no protected-host
+qualification follows. The
+[composition and byte-regression preview](verification/planner-composition-byte-preview/README.md)
+combines both test sets. The separately reviewed frontend-composition branch added 35 synthetic checks
+to the 2,224-check source, for 2,259 checks at that source. That source also retained the two byte-range checks, for 2,261 checks. These
+composition checks exercise a test-selected frontend and plan comparison,
+not an authenticated planner request or a production adapter.
+
+The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
+retains its exact-source outcomes, Linux setup refusal and Genode clock warning;
+it does not qualify a protected host or establish later-source CI.
+
+The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
+for 2,162 checks at its recorded source. The later boundary regression adds one
+check, and the separate plan-comparison model adds 61 synthetic checks, for
+2,224 checks at that source; two later byte-range regressions bring the
+byte-regression branch to 2,226 checks. The comparator checks plan fields only and does not resolve a request or establish authority. Its reference-only descriptions do not authenticate
+identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
+The separate [comparison record](verification/planner-plan-match-local.md)
+scopes its pre-integration tests and existing-law proof verdict.
+The [high-word mutation review](verification/planner-comparator-mutants-6985302/README.md)
+records the added comparison regression and its scoped local checks.
+The later high-word regression passed an [optimized native CPU run](verification/planner-comparator-native-c5a02c7/README.md)
+and scoped [platform CI](verification/planner-comparator-ci-c5a02c7/README.md)
+at exact source `c5a02c7`. Linux retained a protected-setup refusal before input;
+no result qualifies a protected host.
+The [byte-range mutation review](verification/byte-range-mutants-f4ef13d/README.md)
+records two later public-decoder regressions and their local checks.
+The [Nix JavaScript result](verification/byte-range-nix-e632e35/README.md),
+[optimized native CPU result](verification/byte-range-native-e632e35/README.md)
+and [platform CI](verification/byte-range-ci-e632e35/README.md) cover exact source
+`e632e35`, with Linux protected setup refused before input and Genode clock
+warnings retained. These checks do not qualify a protected host.
 Earlier evidence below remains tied to its own source and is not a claim that
 the combined preview ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its
@@ -363,7 +402,8 @@ historical GPU run.
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for thirty-six declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for thirty-seven declared laws.
+The thirty-six historical laws include:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
@@ -497,6 +537,12 @@ On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for its
 twenty-four laws, and on the merged tree for all thirty-six;
 `bend PROOF.bend --verdict` exited 1 with the same missing-`lean` error, so
 no Lean-kernel verdict was obtained for that earlier run.
+
+The added `planner_empty_sources_rejects` law states only that an empty
+proposed source list cannot compare equal to any selected plan. The
+[local proof record](verification/planner-empty-source-law/README.md) includes
+a negative mutation and its limits. It authenticates no caller or plan and
+does not establish any planner admission or commit.
 
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program

@@ -329,8 +329,10 @@ to a watched subtree, so unrelated edits elsewhere in a worktree do not trigger
 rescans. With six lanes this is about 700 watches, well under the default
 inotify limit.
 
-Known gap: a file change between a connection's initial render and its
-registration for pushes is not sent until the next change.
+After a connection's initial render is sent and registered, the board queues
+a reconciliation through the same serialized watcher used for file changes.
+This catches updates whose watcher flush completed while the initial render was
+still being built, without sending a newer view before the initial patch.
 
 ## Layout
 

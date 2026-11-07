@@ -114,8 +114,8 @@ The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
 native CPU backends**. This experimental preview combines 118 synthetic Linux
 monitor checks, five HostWire checks, 220 durable-model checks, 37 synthetic
-handoff checks, 61 planner-envelope checks and 61 planner-comparison checks,
-for 2,444 checks. Earlier
+handoff checks, 61 planner-envelope checks, 61 planner-comparison checks, two
+byte-range checks and 35 frontend-composition checks, for 2,481 checks. Earlier
 [2,285-check durable results](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md),
 [2,102-check handoff results](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md),
 and [2,162-check planner results](verification/planner-envelope-local.md) are
