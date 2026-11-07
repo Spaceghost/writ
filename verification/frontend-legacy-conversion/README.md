@@ -77,7 +77,8 @@ a1180db5ffb76cb3aa192f4c85946486accee020dd6b32f13effe3d62f1895dd  FrontendLegacy
 ee081d6dab2963d2e599181fb3952068e548c7cddf59783e781f01a4a1b006c9  Tests.bend
 ```
 
-All implementation, migration and host-acceptance tasks remain unchecked.
+The standalone revision primitive task 1.1 is complete; all other frontend
+migration, binding and host-acceptance tasks remain unchecked.
 Oversized, untraversable or unauthenticated legacy states still need an
 independent authenticated recovery and resource design; this 8/8 test profile
 must not silently relabel them invalid or discharge owner cleanup.

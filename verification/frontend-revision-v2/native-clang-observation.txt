@@ -1,0 +1,2 @@
+Observed a clang-23 compiler process with -O3 for the generated native test translation unit while the single requested build was running.
+This is an observation, not process attestation or evidence of GPU execution.

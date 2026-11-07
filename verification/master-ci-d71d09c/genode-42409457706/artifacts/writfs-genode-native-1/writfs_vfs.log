@@ -1,0 +1,145 @@
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/boot_dir/hw
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/power_on/qemu
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/log/qemu
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/image/iso
+including /home/runner/work/writ/writ/contrib/native-hosts/genode/run/writfs_vfs.run
+building targets:  core init timer lib/ld lib/libc lib/libm lib/vfs server/writfs test/writfs_vfs
+spawn make core init timer lib/ld lib/libc lib/libm lib/vfs server/writfs test/writfs_vfs
+  Library ld.abi.so
+  Library ldso_so_support.lib.a
+  Library base-hw-common.lib.a
+  Library startup-hw.lib.a
+  Library syscall-hw.lib.a
+  Library cxx.lib.a
+  Library timeout-hw.lib.a
+  Library base-hw.lib.a
+  Library ld-hw.lib.so
+  Library ld.lib.so
+  Library libc.abi.so
+  Library libc-string.lib.a
+  Library libc-locale.lib.a
+  Library libc-stdlib.lib.a
+  Library libc-stdio.lib.a
+  Library libc-gen.lib.a
+  Library libc-gdtoa.lib.a
+  Library libc-inet.lib.a
+  Library libc-stdtime.lib.a
+  Library libc-regex.lib.a
+  Library libc-compat.lib.a
+  Library libc-setjmp.lib.a
+  Library libc-mem.lib.a
+  Library libc-resolv.lib.a
+  Library libc-isc.lib.a
+  Library libc-nameser.lib.a
+  Library libc-net.lib.a
+  Library libc-rpc.lib.a
+  Library libc-tzcode.lib.a
+  Library libc-libkern.lib.a
+  Library base.lib.a
+  Library vfs.abi.so
+  Library libc.lib.so
+  Library libm.abi.so
+  Library libm.lib.so
+  Library vfs.lib.so
+  Library core-hw-pc.lib.a
+    COMPILE  version.o
+    MERGE    core-hw-pc.lib.a
+  Program core/hw/core-hw-pc
+  Program init/init
+  Library writ_quickjs.lib.a
+  Program server/writfs/writfs
+  Program test/writfs_vfs/test_writfs_vfs
+    COMPILE  main.o
+    LINK     test_writfs_vfs
+  Program timer/hpet/hpet_timer
+  Program timer/hw/hw_timer
+genode build completed
+building targets: bootstrap/hw core/hw
+spawn make bootstrap/hw core/hw
+  Library cxx.lib.a
+  Library bootstrap-hw-pc.lib.a
+  Program bootstrap/hw/bootstrap_hw_pc
+  Library syscall-hw.lib.a
+  Library base-hw-common.lib.a
+  Library core-hw-pc.lib.a
+    COMPILE  version.o
+    MERGE    core-hw-pc.lib.a
+  Program core/hw/core-hw-pc
+genode build completed
+using 'hw_timer' as 'timer'
+using 'ld-hw.lib.so' as 'ld.lib.so'
+core link address is 0xffffffc000000000
+install bootloader
+creating ISO image...
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+spawn qemu-system-x86_64 -nographic -accel tcg -m 512 -nic none -no-reboot -serial mon:stdio -cdrom var/run/writfs_vfs.iso -machine q35 -cpu Skylake-Client
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.pcid [bit 17]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.x2apic [bit 21]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.tsc-deadline [bit 24]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.hle [bit 4]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.invpcid [bit 10]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.0DH:EAX.xsavec [bit 1]
+cSeaBIOS (version 1.16.3-debian-1.16.3-2)
+
+Booting from Hard Disk...
+
+Boot failed: could not read the boot disk
+
+
+Booting from DVD/CD...
+
+error: can't find command `loadfont'.
+
+  Booting `Genode on base-hw'
+
+
+
+
+Bender Version 0.9-beta7-51-g28ba2ad-dirty
+
+Patching BDA with I/O port 0x3f8.
+
+Bender: Hello World.
+
+hwp config: eeo=na irq=na hwp=na epp=na epb=na
+Cpu apic_id=0x0 [0:0:0:0:0:0]
+
+
+
+
+
+kernel initialized
+
+Genode 26.08
+
+493 MiB RAM and 64536 caps assigned to init
+
+[init -> writfs] Warning: clock_gettime(): missing real-time clock
+
+[init -> writfs] WRITFS READY public-canary bytes=33 sha256=4e69733490c465b5561bd477617265a72e614cbabb3ec570fcb1c1b54df32e6a native=genode heap_peak=2085084 reserved_peak=2085084
+
+[init -> writfs] SESSION actor=1 active=1
+
+[init -> reader] PASS libc opens Writ through native VFS File_system mount
+
+[init -> reader] PASS libc reads exact immutable canary
+
+[init -> reader] PASS libc seek succeeds
+
+[init -> reader] PASS libc ranged read is exact
+
+[init -> reader] PASS libc stat reports exact registered size
+
+[init -> reader] PASS libc write-open is denied
+
+[init -> reader] PASS libc cannot open unregistered object
+
+[init -> reader] PASS libc closes the native handle
+
+[init -> reader] WRITFS VFS NATIVE PASS
+
+WRIT GENODE LIBC VFS ACCEPTED
+
+Run script execution successful.

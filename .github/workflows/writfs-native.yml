@@ -70,7 +70,8 @@ jobs:
             clang-19 --version
             btrfs --version
             if [ "$WRITFS_TEST_BACKEND" = zfs ]; then
-              zfs version
+              # Some runners require root to query ZFS version information.
+              sudo zfs version
             fi
             modinfo "$WRITFS_TEST_BACKEND"
           } 2>&1 | tee "$WRITFS_LOG_DIRECTORY/native-tools.log"
