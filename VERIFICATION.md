@@ -1,8 +1,8 @@
 # Verification record
 
-The [70f05b2 automatic CI checkpoint](verification/master-ci-70f05b2/README.md)
-retains passing Windows Node, filesystem and Linux public fixtures, the strict
-Windows worker failure and refused Linux protected setup. Genode is pending.
+The [70f05b2 automatic CI record](verification/master-ci-70f05b2/README.md)
+retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
+strict Windows worker failure and the refused Linux protected setup.
 
 The [rendezvous allocation-boundary record](verification/rendezvous-allocation-boundary/README.md)
 checks exhausted approval/selection IDs without blocking existing offers,

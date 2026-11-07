@@ -1,8 +1,7 @@
 # Automatic platform CI for master 70f05b2
 
 Five push-triggered workflows were listed at exact source
-`70f05b25eb92581c2f95993151e20ad6b4d71509`. This checkpoint retains four
-completed results; Genode base-hw remains pending in this record. None of these outcomes qualifies a protected host.
+`70f05b25eb92581c2f95993151e20ad6b4d71509`. All five have completed. None of these outcomes qualifies a protected host.
 
 - [Windows Node](windows-node-42388574240/README.md): passed 2,472 shared
   library and 78 WritFS model checks.
@@ -11,6 +10,8 @@ completed results; Genode base-hw remains pending in this record. None of these 
 - [Windows native](windows-native-42388574210/README.md): **failed**; strict
   byte-worker network, clipboard and COM observations remained incomplete.
   The separate no-data diagnostic reported pass.
+- [Genode base-hw](genode-42388574216/README.md): passed 2,472 core, 69 mount
+  and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
 - [Linux public canary](linux-42388574238/README.md): passed scoped checks;
   protected setup was refused at step 8 before input or admission and receives
   no protected-host qualification.
