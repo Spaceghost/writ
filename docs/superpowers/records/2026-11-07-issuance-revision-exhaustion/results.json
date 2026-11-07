@@ -1,0 +1,62 @@
+[
+  {
+    "case": "current-build",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "case": "current-max-bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1"
+  },
+  {
+    "case": "current-max-node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1"
+  },
+  {
+    "case": "current-near-bend",
+    "exit": 0,
+    "stdout": "CHANGED",
+    "stderr": ""
+  },
+  {
+    "case": "current-near-node",
+    "exit": 0,
+    "stdout": "CHANGED",
+    "stderr": ""
+  },
+  {
+    "case": "stale-build",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "case": "stale-max-bend",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "stale-max-node",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "stale-near-bend",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "stale-near-node",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  }
+]

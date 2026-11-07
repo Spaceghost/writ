@@ -1,0 +1,39 @@
+import Base
+import ./Guard.bend as G
+import ./Issuance.bend as I
+import ./IssuanceTests.bend as IT
+import ./Test.bend as Test
+
+def revised(state: I.State, rev: Nat) -> I.State:
+  match state:
+    case I.State{_, id, live, directory, placements, approvals, grants, seen}:
+      I.State{rev, id, live, directory, placements, approvals, grants, seen}
+
+def grant_current(found: Maybe<&2, I.Grant>, state: I.State) -> Bool:
+  match found:
+    case None{}: False{}
+    case Some{grant}: I.current(state, grant, IT.now())
+
+def check(+max: Nat) -> IO(Unit):
+  +near = Nat.sub(max, 1n)
+  +state = revised(IT.registered(), max)
+  +near_state = revised(IT.registered(), near)
+  +change = I.revoke(near_state, near, IT.write_authority(), 2n)
+  +after = I.Change.state(change)
+  do IO<Unit>:
+    Test.check(I.valid(state), "terminal issuer state structurally valid")
+    Test.check(G.all(I.revoke_checks(state, max, IT.write_authority(), 2n)), "terminal current write revocation passes existing gates")
+    Test.check(grant_current(I.find_grant(I.grants(state), 3n), state), "grant current before write revocation")
+    Test.check(I.Change.accepted(change) && Nat.is_eq(I.revision(after), max) && I.valid(after), "penultimate write revocation advances to terminal revision")
+    Test.check(Bool.not(grant_current(I.find_grant(I.grants(after), 3n), after)), "penultimate write revocation withdraws current grant")
+    Test.check(G.all(I.revoke_checks(after, max, IT.source_authority(), 1n)), "remaining source approval revocation passes terminal gates")
+
+def parsed(value: Maybe<&2, Nat>) -> IO(Unit):
+  match value:
+    case None{}: IO.die(Unit, 1, "BAD NUMBER")
+    case Some{x}: check(x)
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    value : String <- IO.try(String, IO.get_env("WRIT_ISSUANCE_TEST"))
+    parsed(Nat.read(value))
