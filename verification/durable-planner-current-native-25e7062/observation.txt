@@ -1,0 +1,13 @@
+source_commit=25e70622c06b053ba1b8691da2fb6af6f5c73b4a
+bend_version=bend 2.0.39
+clang_version_observed_after=clang version 23.1.1
+build_command=CC=/usr/bin/clang bend Tests.bend -o /tmp/writ-durable-planner-25e-native
+run_command=/tmp/writ-durable-planner-25e-native +RTS --threads 4 --gpu off
+outer_and_chain_exit=0
+pass_lines=2444
+run_stdout_sha256=fc22f84ecae8af226c0e88b94c5dac9ff6d15b53420dbfeccdc8b40814238e6c
+binary_sha256_observed_after=965ae89b702bf0471077ace5835df8fa33080c9d70566d131708bd97727fd166
+source_inventory_entries=128
+source_inventory_check_after=passed
+worktree_commit_after=25e70622c06b053ba1b8691da2fb6af6f5c73b4a
+worktree_status_after=clean

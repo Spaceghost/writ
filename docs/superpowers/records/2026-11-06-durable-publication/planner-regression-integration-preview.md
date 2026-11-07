@@ -42,8 +42,10 @@ base-hw QEMU passed 2,444 core, 69 mount and 24 allocator checks plus scoped
 public canaries while retaining its missing-clock warning; Linux passed 2,444
 core and 70 mount checks on both JS and native plus scoped public canaries.
 Linux's unsupported Landlock setup was refused before input and admission;
-workflow success is not successful protected-worker setup. No separate local
-native CPU or GPU test is claimed for this combined source here. The
+workflow success is not successful protected-worker setup. The separate
+[local native CPU record](../../../../verification/durable-planner-current-native-25e7062/README.md)
+reports the 2,444-check `--gpu off` run at exact source `25e7062`; no GPU test
+or durable-host qualification follows. The
 [previous durable/handoff/planner record](planner-integration-preview.md) and
 [planner regression records](../../../../verification/planner-comparator-ci-c5a02c7/README.md)
 retain their separate exact-source observations. A prior Genode missing-clock
