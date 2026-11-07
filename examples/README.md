@@ -1,8 +1,8 @@
 # Runnable examples
 
 The first four examples follow one story: **a restricted incident report becomes
-an approved internal summary**. A separate stage-graph example examines a
-synthetic dependency relation. They call the library directly, use named
+an approved internal summary**. Separate stage-graph and planner-proposal
+examples examine synthetic descriptions. They call the library directly, use named
 synthetic records, and import no test fixtures. Every stated outcome is
 checked; an unexpected result calls `IO.die` with status `1` and an
 expected-versus-observed message.
@@ -18,6 +18,7 @@ Run the commands below from the repository root, with `bend` on `PATH`.
 | [Commit.bend](Commit.bend) | Negotiate, reserve execution units, mount/open a capability, and recheck it at commit. | 16 |
 | [Parallel.bend](Parallel.bend) | Use the GPU-facing solver, DLM, and transfer APIs with verification and host replay. | 5 |
 | [StageGraph.bend](StageGraph.bend) | Check a bounded synthetic stage relation and reject cycles and missing endpoints. | 3 |
+| [PlannerProposal.bend](PlannerProposal.bend) | Encode an untrusted planner description and compare its plan fields with a synthetic selected plan. | 5 |
 
 ## 1. Flow and verification
 
@@ -153,7 +154,8 @@ BEND_NO_TELEMETRY=1 bend GpuExample.bend -o ../writ-build/parallel
 ```
 
 Use the same `-o` pattern for `examples/Flow.bend`, `examples/Transfer.bend`,
-`examples/StageGraph.bend`, and `Example.bend`. Keep generated C, JavaScript,
+`examples/StageGraph.bend`, `examples/PlannerProposal.bend`, and `Example.bend`.
+Keep generated C, JavaScript,
 GPU modules, and binaries outside the source package. The four outputs above were reproduced with Bend 2.0.39's
 JavaScript runner and native builds with four CPU threads and `--gpu off`.
 Physical GPU execution was not tested.
@@ -182,6 +184,40 @@ proposed [origin-stage contract](../openspec/changes/add-origin-transform-stages
 and its [tasks](../openspec/changes/add-origin-transform-stages/tasks.md) remain
 open. The output above was checked on pinned Bend 2.0.39, generated Node and a
 native CPU build with `--gpu off`; no GPU execution was tested.
+
+## 6. Planner proposal descriptions
+
+An external planner describes two ordered source versions and a destination.
+This package can encode that description and compare its plan fields, but has
+no planner endpoint or authenticated registry. The example builds a synthetic
+proposal and a separately specified synthetic selected plan:
+
+```sh
+BEND_NO_TELEMETRY=1 bend examples/PlannerProposal.bend
+```
+
+Captured output:
+
+```text
+Planner proposal: compare untrusted descriptions, not authority.
+PASS manifest, code and evidence encoded bytes match: True
+PASS exact frame bytes round-trip: True
+PASS decoded plan fields match: True
+PASS changed destination mismatches: False
+PASS unknown version refused: True
+```
+
+Independently specified little-endian byte sequences cover every byte of the
+manifest, code and evidence names; decoding and re-encoding the entire frame
+preserves its bytes. A changed destination fails the plan-field comparison, and
+an unsupported version is refused. A matching comparison does **not**
+authenticate the planner, selected plan, manifest or evidence; it does not
+check request expiry or confer permission to execute or publish. An enforcing
+host must independently resolve current authority and use the existing admission,
+verification and commit gates. The proposed [planner adapter contract](../openspec/changes/add-external-planner-adapters/specs/planner-adapters/spec.md)
+and its [tasks](../openspec/changes/add-external-planner-adapters/tasks.md) remain open.
+The example was checked on pinned Bend 2.0.39, generated Node and native CPU
+with `--gpu off`; no GPU execution was tested.
 
 ## Shared helpers and trust boundary
 
