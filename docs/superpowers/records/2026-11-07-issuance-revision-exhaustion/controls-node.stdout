@@ -1,0 +1,6 @@
+PASS: terminal issuer state structurally valid
+PASS: terminal current write revocation passes existing gates
+PASS: grant current before write revocation
+PASS: penultimate write revocation advances to terminal revision
+PASS: penultimate write revocation withdraws current grant
+PASS: remaining source approval revocation passes terminal gates

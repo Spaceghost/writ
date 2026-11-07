@@ -9,6 +9,13 @@ token in the tests is a synthetic fixture standing in for a trusted host
 input; [docs/GRANT-ISSUANCE.md](../../docs/GRANT-ISSUANCE.md) lists each one and
 who must supply it.
 
+Known numeric-boundary gap: an eligible revocation at the largest supported Nat
+revision raises a range error on the tested Bend and Node backends rather than
+returning a transition. The [synthetic record](../../docs/superpowers/records/2026-11-07-issuance-revision-exhaustion/README.md)
+also preserves the successful penultimate revocation and failed second
+revocation. This limits the existing GI-005/GI-008 revocation evidence; no
+issuer migration or host revocation qualification is established.
+
 Implementation: [Issuance.bend](../../Issuance.bend) (public entry points
 `empty`, `submit_source`, `submit_write`, `register`, `revoke`, `derive`,
 `current`, `valid`, `reads`, `writes`, `registry`). Use-time checks, unchanged:
