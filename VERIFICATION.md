@@ -23,6 +23,13 @@ the new checks ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its
 local and exact-source platform checks and retains their qualifications.
 
+The [automatic master runs at `60d6f6b`](verification/master-ci-60d6f6b/README.md)
+passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS
+fixture checks. **Strict Windows native failed**: actual-worker network,
+clipboard and COM observations remained incomplete. The Linux run retained an
+expected setup refusal before input; none of these results qualifies a protected
+host or authenticated planner.
+
 A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
 passed for the 36 named laws in `PROOF.bend` at exact source `be649f6`. Its
 negative control and toolchain provenance are recorded; earlier unavailable

@@ -1,0 +1,7 @@
+Commit: 60d6f6b3fd44748fe748a588a92968fba02d8ff1
+OS: Microsoft Windows Server 2025 Datacenter 10.0.26100 64-bit
+Image: win25-vs2026 20261103.298.1
+Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe v22.23.4
+Policy SHA256: 11595d6ad83fd3a072784a1feded3e39d0f23cd21843278be4f959a13cd235d8
+Profile: public-canary only; native WinFsp mount and separately observed LPAC probes.
+No WSL. No protected-data product qualification or administrator-resistant audit claim.
