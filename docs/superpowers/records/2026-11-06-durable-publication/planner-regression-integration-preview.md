@@ -34,9 +34,16 @@ The Nix JavaScript check at exact source `25e70622c06b053ba1b8691da2fb6af6f5c73b
 also passed 2,444 checks with the same output hash. Its derivation was
 `/nix/store/xmikj236v06l557zw72prcj053gfd26y-writ-tests-js.drv`, and its
 output was `/nix/store/6xpisrvpa1j9msmpsi8lwz711d0izbv5-writ-tests-js`.
-This is not a full Nix flake check or Nix native result. The Genode count pin
-is updated to 2,444; no native CPU, GPU or platform CI result is claimed for
-this combined source. The
+This is not a full Nix flake check or Nix native result.
+
+The [exact-source platform CI records](../../../../verification/durable-planner-current-ci-25e7062/README.md)
+cover `25e7062`: Windows Node passed 2,444 core and 78 model checks; Genode
+base-hw QEMU passed 2,444 core, 69 mount and 24 allocator checks plus scoped
+public canaries while retaining its missing-clock warning; Linux passed 2,444
+core and 70 mount checks on both JS and native plus scoped public canaries.
+Linux's unsupported Landlock setup was refused before input and admission;
+workflow success is not successful protected-worker setup. No separate local
+native CPU or GPU test is claimed for this combined source here. The
 [previous durable/handoff/planner record](planner-integration-preview.md) and
 [planner regression records](../../../../verification/planner-comparator-ci-c5a02c7/README.md)
 retain their separate exact-source observations. A prior Genode missing-clock

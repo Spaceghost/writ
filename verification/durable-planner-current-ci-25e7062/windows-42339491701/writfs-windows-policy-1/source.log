@@ -1,0 +1,4 @@
+Source commit: 25e70622c06b053ba1b8691da2fb6af6f5c73b4a
+bend 2.0.39
+Entries: Tests.bend; writfs/Tests.bend
+Scope: generated JavaScript policy/model tests on native Windows Node.

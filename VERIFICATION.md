@@ -22,7 +22,8 @@ durable-model checks, for 2,444 checks. Its reference-only descriptions do not
 authenticate identities or establish planner integration;
 see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
 The [current integration record](docs/superpowers/records/2026-11-06-durable-publication/planner-regression-integration-preview.md)
-scopes the 2,444-check combined Bend/Node result and existing-law verdict.
+scopes the 2,444-check combined Bend/Node, Nix JavaScript, existing-law verdict
+and [platform CI](verification/durable-planner-current-ci-25e7062/README.md).
 The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
 passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
 are scoped observations, not protected-worker or durable-service qualification.

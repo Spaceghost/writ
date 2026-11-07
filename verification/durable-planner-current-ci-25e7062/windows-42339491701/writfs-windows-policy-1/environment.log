@@ -1,0 +1,9 @@
+Commit: 25e70622c06b053ba1b8691da2fb6af6f5c73b4a
+OS: Microsoft Windows Server 2025 Datacenter 10.0.26100 build 26100
+Architecture: 64-bit
+Runner image: win25-vs2026 20261103.298.1
+PowerShell: 7.6.9
+Node executable: C:\Program Files\nodejs\node.exe
+Node version: v22.23.4
+Execution: Bend-generated JavaScript under native Windows Node; no WSL.
+Scope: policy/model execution; filesystem, machine-code, and host-enforcement qualification remain separate.
