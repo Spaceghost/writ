@@ -1,0 +1,12 @@
+[
+  {
+    "backend": "bend",
+    "exit": 1,
+    "stdout_sha256": "b6005d11cf71745431a627ca0e2600bb6541b9be3a79c01ab06ef74c5a0d3028"
+  },
+  {
+    "backend": "node",
+    "exit": 1,
+    "stdout_sha256": "b6005d11cf71745431a627ca0e2600bb6541b9be3a79c01ab06ef74c5a0d3028"
+  }
+]

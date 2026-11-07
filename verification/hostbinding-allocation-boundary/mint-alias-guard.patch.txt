@@ -1,0 +1,5 @@
+--- a/HostBinding.bend
++++ b/HostBinding.bend
+@@ -204 +204 @@
+-      id_has_successor(next_object) && id_has_successor(next_alias)
++      id_has_successor(next_object)

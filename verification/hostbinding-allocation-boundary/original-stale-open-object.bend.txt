@@ -1,0 +1,27 @@
+import Base
+import ./HostBinding.bend as H
+import ./HostBindingTests.bend as HT
+
+def counter(state: H.State, value: Nat) -> H.State:
+  match state:
+    case H.State{rev, obj, alias, objects, aliases, routes, quotas, delegations, bindings, frontend}:
+      H.State{rev, value, alias, objects, aliases, routes, quotas, delegations, bindings, frontend}
+
+def label(change: H.Change) -> String:
+  match change:
+    case H.Rejected{_, _}: "REJECTED"
+    case H.Changed{_, _}: "CHANGED"
+
+def run(value: Nat) -> String:
+  state = counter(HT.mounted(), value)
+  label(H.bind_open(state, 0n, 1n, HT.reader(), HT.reader_caller(), HT.registry(), HT.all_rights(), HT.live()))
+
+def parsed(value: Maybe<&2, Nat>) -> String:
+  match value:
+    case None{}: "BAD NUMBER"
+    case Some{x}: run(x)
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    value : String <- IO.try(String, IO.get_env("WRIT_HOSTBINDING_TEST"))
+    IO.print(parsed(Nat.read(value)))

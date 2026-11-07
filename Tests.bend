@@ -14,6 +14,7 @@ import ./FrontendCleanupReserveTests.bend as FrontendCleanupReserve
 import ./FrontendReserveWordsTests.bend as FrontendReserveWords
 import ./HostBindingSnapshotTests.bend as HostBindingSnapshot
 import ./HostBindingTests.bend as HostBinding
+import ./HostBindingBoundaryTests.bend as HostBindingBoundary
 import ./HostWireTests.bend as HostWire
 import ./PosixMountFrameTests.bend as PosixMountFrame
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
@@ -91,6 +92,7 @@ def main() -> IO(Unit):
     FrontendReserveWords.main()
     HostBindingSnapshot.main()
     HostBinding.main()
+    HostBindingBoundary.main()
     HostWire.main()
     PosixMountFrame.main()
     PlannerEnvelope.main()

@@ -1,0 +1,5 @@
+--- a/HostBinding.bend
++++ b/HostBinding.bend
+@@ -1183 +1183 @@
+-      delegate_ids(alias_id_available(state), state, alias, to_holder, rights)
++      delegate_ids(True{}, state, alias, to_holder, rights)

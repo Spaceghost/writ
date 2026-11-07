@@ -1,0 +1,62 @@
+import Base
+import ./HostBinding.bend as H
+import ./HostBindingTests.bend as HT
+import ./Test.bend as Test
+
+def with_object(state: H.State, value: Nat) -> H.State:
+  match state:
+    case H.State{rev, _, alias, objects, aliases, routes, quotas, delegations, bindings, frontend}:
+      H.State{rev, value, alias, objects, aliases, routes, quotas, delegations, bindings, frontend}
+
+def with_alias(state: H.State, value: Nat) -> H.State:
+  match state:
+    case H.State{rev, obj, _, objects, aliases, routes, quotas, delegations, bindings, frontend}:
+      H.State{rev, obj, value, objects, aliases, routes, quotas, delegations, bindings, frontend}
+
+def allocated_object(change: H.Change, max: Nat) -> Bool:
+  match change:
+    case H.Rejected{_, _}: False{}
+    case H.Changed{+state, _}:
+      match state:
+        case H.State{_, obj, _, _, _, _, _, _, _, _}: Nat.is_eq(obj, max) && H.valid(state)
+
+def allocated_alias(change: H.Change, max: Nat) -> Bool:
+  match change:
+    case H.Rejected{_, _}: False{}
+    case H.Changed{+state, _}:
+      match state:
+        case H.State{_, _, alias, _, _, _, _, _, _, _}: Nat.is_eq(alias, max) && H.valid(state)
+
+def close_ok(change: H.Change, expected: H.State) -> Bool:
+  match change:
+    case H.Rejected{_, _}: False{}
+    case H.Changed{+state, _}: HT.State.equal(state, expected) && H.valid(state)
+
+def run(+max: Nat) -> IO(Unit):
+  +near = Nat.sub(max, 1n)
+  +object_start = with_object(HT.initial(), max)
+  +alias_start = with_alias(HT.initial(), max)
+  +object_opened = with_object(HT.opened(), max)
+  +alias_opened = with_alias(HT.opened(), max)
+  +expected_close = H.Change.state(H.bind_close(HT.opened(), 2n, 2n, HT.reader(), HT.reader_caller()))
+  +expected_revoke = H.Change.state(H.revoke(HT.opened(), 2n, HT.reader()))
+  do IO<Unit>:
+    Test.check(H.valid(object_start) && H.valid(alias_start) && H.valid(object_opened) && H.valid(alias_opened), "terminal counter states validate")
+    Test.check(allocated_object(H.bind_mount(with_object(HT.initial(), near), 0n, HT.reader_route(), HT.reader_caller(), HT.registry(), HT.all_rights(), HT.live()), max), "penultimate object mint reaches max")
+    Test.check(allocated_alias(H.bind_mount(with_alias(HT.initial(), near), 0n, HT.reader_route(), HT.reader_caller(), HT.registry(), HT.all_rights(), HT.live()), max), "penultimate alias mint reaches max")
+    Test.check(allocated_alias(H.delegate(with_alias(HT.opened(), near), 2n, 2n, HT.reader(), HT.worker(), HT.read()), max), "penultimate delegation reaches max")
+    Test.check(close_ok(H.bind_close(object_opened, 2n, 2n, HT.reader(), HT.reader_caller()), with_object(expected_close, max)), "object counter max preserves exact close")
+    Test.check(close_ok(H.bind_close(alias_opened, 2n, 2n, HT.reader(), HT.reader_caller()), with_alias(expected_close, max)), "alias counter max preserves exact close")
+    Test.check(close_ok(H.revoke(object_opened, 2n, HT.reader()), with_object(expected_revoke, max)), "object counter max preserves exact revoke")
+    Test.check(close_ok(H.revoke(alias_opened, 2n, HT.reader()), with_alias(expected_revoke, max)), "alias counter max preserves exact revoke")
+    Test.check(close_ok(H.delegate(object_opened, 2n, 2n, HT.reader(), HT.worker(), HT.read()), with_object(HT.shared(), max)), "object counter max preserves exact alias delegation")
+
+def parsed(value: Maybe<&2, Nat>) -> IO(Unit):
+  match value:
+    case None{}: IO.die(Unit, 1, "BAD NUMBER")
+    case Some{x}: run(x)
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    value : String <- IO.try(String, IO.get_env("WRIT_HOSTBINDING_TEST"))
+    parsed(Nat.read(value))

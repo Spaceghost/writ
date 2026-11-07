@@ -1,0 +1,11 @@
+--- a/HostBinding.bend
++++ b/HostBinding.bend
+@@ -972,0 +973,5 @@
++def leak_frontend(state: State, frontend: F.State) -> State:
++  match state:
++    case State{revision, object, alias, objects, aliases, routes, quotas, delegations, bindings, _}:
++      State{revision, object, alias, objects, aliases, routes, quotas, delegations, bindings, frontend}
++
+@@ -977 +982 @@
+-      Rejected{state, IdExhausted{}}
++      Rejected{leak_frontend(state, next_frontend), IdExhausted{}}

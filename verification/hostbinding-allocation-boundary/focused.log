@@ -1,0 +1,28 @@
+PASS: host binding exhaustion reason is distinct
+PASS: host binding last object mount preserves full state
+PASS: host binding last alias mount preserves full state
+PASS: host binding last object open preserves full state
+PASS: host binding last alias open preserves full state
+PASS: host binding last object attenuation preserves full state
+PASS: host binding last alias attenuation preserves full state
+PASS: host binding last alias delegation preserves full state
+PASS: host binding exhausted object or alias rejects mount unchanged
+VECTOR GA-008-4 bind_mount denied IdExhausted
+PASS: host binding exhausted object or alias rejects open unchanged
+PASS: host binding exhausted object or alias rejects attenuation unchanged
+PASS: host binding exhausted alias rejects delegation unchanged
+PASS: host binding stale revision precedes exhaustion
+PASS: host binding mount route denial precedes exhaustion
+PASS: host binding mount quota denial precedes exhaustion
+PASS: host binding mount frontend denial precedes exhaustion
+PASS: host binding derive identity rights and quota precede exhaustion
+PASS: host binding derive frontend denial precedes exhaustion
+PASS: host binding delegation identity and rights precede exhaustion
+PASS: host binding stale generation precedes exhaustion
+PASS: host binding original graph validation precedes exhaustion
+PASS: host binding object exhaustion does not deny delegation
+PASS: host binding exhausted allocators preserve exact owner close
+PASS: host binding exhausted allocators preserve exact revocation
+PASS: host binding exhausted allocators preserve existing resolution
+PASS: host binding object exhaustion preserves delegation graph and revocation
+Host binding allocation boundary: 26 checks passed
