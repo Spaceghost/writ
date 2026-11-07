@@ -1,0 +1,120 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-11-07T14:14:03Z",
+  "databaseId": 42380633568,
+  "event": "push",
+  "headSha": "487311a88821de8812b1fedf24e758434e55644a",
+  "jobs": [
+    {
+      "completedAt": "2026-11-07T14:22:11Z",
+      "conclusion": "success",
+      "databaseId": 128427304092,
+      "name": "linux",
+      "startedAt": "2026-11-07T14:14:06Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-07T14:14:07Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-07T14:14:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:14:10Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "startedAt": "2026-11-07T14:14:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:14:11Z",
+          "conclusion": "success",
+          "name": "Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 3,
+          "startedAt": "2026-11-07T14:14:10Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:14:23Z",
+          "conclusion": "success",
+          "name": "Install native dependencies and record the host",
+          "number": 4,
+          "startedAt": "2026-11-07T14:14:11Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:14:24Z",
+          "conclusion": "success",
+          "name": "Install the verified Bend compiler",
+          "number": 5,
+          "startedAt": "2026-11-07T14:14:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:21:51Z",
+          "conclusion": "success",
+          "name": "Build the shared policy and run the common gates",
+          "number": 6,
+          "startedAt": "2026-11-07T14:14:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:22:07Z",
+          "conclusion": "success",
+          "name": "Build and test native pipe transport",
+          "number": 7,
+          "startedAt": "2026-11-07T14:21:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:22:08Z",
+          "conclusion": "success",
+          "name": "Exercise the real mount, confinement, revocation and interpreter failure",
+          "number": 8,
+          "startedAt": "2026-11-07T14:22:07Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:22:09Z",
+          "conclusion": "success",
+          "name": "Retain native evidence",
+          "number": 9,
+          "startedAt": "2026-11-07T14:22:08Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:22:09Z",
+          "conclusion": "success",
+          "name": "Post Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
+          "number": 17,
+          "startedAt": "2026-11-07T14:22:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:22:09Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 18,
+          "startedAt": "2026-11-07T14:22:09Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T14:22:09Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 19,
+          "startedAt": "2026-11-07T14:22:09Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42380633568/job/128427304092"
+    }
+  ],
+  "name": "WritFS native Linux mount",
+  "status": "completed",
+  "updatedAt": "2026-11-07T14:22:12Z",
+  "url": "https://github.com/Spaceghost/writ/actions/runs/42380633568"
+}

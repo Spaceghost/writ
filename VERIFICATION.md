@@ -1,8 +1,8 @@
 # Verification record
 
-The [487311a automatic CI checkpoint](verification/master-ci-487311a/README.md)
-retains passing Windows Node, filesystem and Genode fixtures and the strict
-Windows worker failure. Linux is pending in that checkpoint.
+The [487311a automatic CI record](verification/master-ci-487311a/README.md)
+retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
+strict Windows worker failure and the refused Linux protected setup.
 
 The [ledger Nat-boundary regression record](verification/ledger-boundary/README.md)
 checks terminal revisions and refund headroom across all four ledger mutations.
