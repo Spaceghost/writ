@@ -1,0 +1,4 @@
+PSS_TARGET self_created=1 suspended=1 process_handle_rights=creation_returned_unqueried no_data=1
+PSS_LIFETIME pid=7328 created=01dd6e4be9665591 no_data=1
+PSS_OBSERVATION before=2 captured=2 walked=2 after=2 synthetic_result=4 no_data=1 confinement_credit=none
+PSS_OBSERVATION complete no_data=1 confinement_credit=none

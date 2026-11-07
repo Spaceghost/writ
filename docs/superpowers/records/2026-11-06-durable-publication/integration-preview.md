@@ -17,8 +17,9 @@ implied. Independent security review remains outstanding, and the task-order
 review gates in the [durable plan](../../plans/2026-11-06-durable-publication.md)
 are unchanged. All DP acceptance tasks and audit durability tasks stay open.
 
-The preview subsequently incorporates master `e6bb3c8`, which corrects
-documentation and preserves two additional Windows diagnostic records. The
+The preview subsequently incorporates master `c80271d`, which corrects
+documentation and preserves the Windows initialization and process-snapshot
+diagnostic records. The
 CI and Nix runs below remain attributed to their exact tested source
 `61ab2a453915c4162e7ba726b9dfd6f1759f3410`; the later documentation and
 evidence merge is not a new execution or host qualification.

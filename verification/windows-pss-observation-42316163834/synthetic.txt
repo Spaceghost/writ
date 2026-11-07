@@ -1,0 +1,9 @@
+Test project D:/a/_temp/windows-pss-build
+    Start 2: pss-table-synthetic
+1/2 Test #2: pss-table-synthetic ..............   Passed    0.02 sec
+    Start 3: pss-progress-synthetic
+2/2 Test #3: pss-progress-synthetic ...........   Passed    0.01 sec
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.09 sec

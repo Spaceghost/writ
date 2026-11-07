@@ -1,0 +1,9 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_observer.c
+  pss_table.c
+  pss_progress.c
+  Generating Code...
+LINK : fatal error LNK1181: cannot open input file 'kernelbase.lib' [D:\a\_temp\windows-pss-build\writfs-pss-observer.vcxproj]

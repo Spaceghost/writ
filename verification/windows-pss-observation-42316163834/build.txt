@@ -1,0 +1,28 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_observer.c
+  pss_table.c
+  pss_progress.c
+  Generating Code...
+  writfs-pss-observer.vcxproj -> D:\a\_temp\windows-pss-build\Release\writfs-pss-observer.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_child.c
+  writfs-pss-child.vcxproj -> D:\a\_temp\windows-pss-build\Release\writfs-pss-child.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_table_test.c
+  pss_table.c
+  Generating Code...
+  writfs-pss-table-test.vcxproj -> D:\a\_temp\windows-pss-build\Release\writfs-pss-table-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_progress_test.c
+  pss_progress.c
+  Generating Code...
+  writfs-pss-progress-test.vcxproj -> D:\a\_temp\windows-pss-build\Release\writfs-pss-progress-test.exe
