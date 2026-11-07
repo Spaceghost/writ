@@ -1,0 +1,7 @@
+diff --git a/HostBinding.bend b/HostBinding.bend
+index a2c3743..1f4cfe2 100644
+--- a/HostBinding.bend
++++ b/HostBinding.bend
+@@ -343 +343 @@ def objects_valid(objects: Objects, +all: Objects, +next: Nat) -> Bool:
+-      allocated(object_id(object), next) && Bool.not(object_exists(rest, object_id(object)))
++      allocated(object_id(object), next) && True{}

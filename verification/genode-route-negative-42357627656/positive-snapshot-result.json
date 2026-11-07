@@ -1,0 +1,161 @@
+{
+  "observation": "bounded snapshots; cleanup unverified",
+  "files": [
+    {
+      "name": "identity.txt",
+      "status": "snapshot",
+      "bytes": 125,
+      "sha256": "93390eb70b0cb45d0f3345aec5c93f366855cd2c55452581db377b0b6ae3beec"
+    },
+    {
+      "name": "input-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/input-sha256.txt'"
+    },
+    {
+      "name": "tool-identity.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/tool-identity.txt'"
+    },
+    {
+      "name": "clang-resource-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/clang-resource-sha256.txt'"
+    },
+    {
+      "name": "genode-git-status.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/genode-git-status.txt'"
+    },
+    {
+      "name": "genode-archive-comparison.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/genode-archive-comparison.txt'"
+    },
+    {
+      "name": "genode-archive-git-status.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/genode-archive-git-status.txt'"
+    },
+    {
+      "name": "genode-commit.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/genode-commit.txt'"
+    },
+    {
+      "name": "environment.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/environment.txt'"
+    },
+    {
+      "name": "source-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/source-sha256.txt'"
+    },
+    {
+      "name": "overlay-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/overlay-sha256.txt'"
+    },
+    {
+      "name": "generated-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/generated-sha256.txt'"
+    },
+    {
+      "name": "original.run",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/original.run'"
+    },
+    {
+      "name": "actual.run",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/actual.run'"
+    },
+    {
+      "name": "config-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/config-sha256.txt'"
+    },
+    {
+      "name": "negative.diff",
+      "status": "not-applicable"
+    },
+    {
+      "name": "build.conf",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/build.conf'"
+    },
+    {
+      "name": "tools.conf",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/tools.conf'"
+    },
+    {
+      "name": "build-config-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/build-config-sha256.txt'"
+    },
+    {
+      "name": "run.log.gz",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/run.log.gz'"
+    },
+    {
+      "name": "run.log.gz.partial",
+      "status": "not-applicable"
+    },
+    {
+      "name": "run-meta.json",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/run-meta.json'"
+    },
+    {
+      "name": "run-audit.json",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/run-audit.json'"
+    },
+    {
+      "name": "run-status.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/run-status.txt'"
+    },
+    {
+      "name": "boot-inputs-sha256.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/boot-inputs-sha256.txt'"
+    },
+    {
+      "name": "installed-config.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/installed-config.txt'"
+    },
+    {
+      "name": "observed.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/observed.txt'"
+    },
+    {
+      "name": "fixture-post-status.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/fixture-post-status.txt'"
+    },
+    {
+      "name": "fixture-post-manifest.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/fixture-post-manifest.txt'"
+    },
+    {
+      "name": "setup.log",
+      "status": "snapshot",
+      "bytes": 514,
+      "sha256": "62356731a508f562cc5a92f0294ba33cffb4c763fcf818eae4b93f3504400b1b"
+    },
+    {
+      "name": "driver-status.txt",
+      "status": "snapshot",
+      "bytes": 53,
+      "sha256": "bc6529bae89f89fd75d47551e37a5ba3b290c95d321a4024183ad6e728b0a8c8"
+    }
+  ]
+}

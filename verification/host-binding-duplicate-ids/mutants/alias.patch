@@ -1,0 +1,7 @@
+diff --git a/HostBinding.bend b/HostBinding.bend
+index a2c3743..c705c6d 100644
+--- a/HostBinding.bend
++++ b/HostBinding.bend
+@@ -355 +355 @@ def aliases_valid(aliases: Aliases, +objects: Objects, +next: Nat) -> Bool:
+-      allocated(alias_id(alias), next) && Bool.not(alias_exists(rest, alias_id(alias)))
++      allocated(alias_id(alias), next) && True{}

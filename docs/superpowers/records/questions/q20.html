@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Who can independently review the durable-publication model?</title>
+<meta name="writ-topic" content="durable-publication">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}a{color:var(--accent)}code{background:var(--soft);padding:.05em .25em;border-radius:4px;overflow-wrap:anywhere}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>Who can independently review the durable-publication model?</h1>
+<p>Josh, do you know a person who can independently review the model and its security assumptions, or would you rather defer finding a reviewer? We can keep working on independent tasks either way.</p>
+<h2>What the review would cover</h2>
+<p>When a publication acknowledgement is lost, the monitor must not repeat the spend or publish a different result. The <a href="https://github.com/Spaceghost/writ/tree/00f8c7cdc63183400a55038defd4be63cdeb42f4" target="_blank" rel="noopener">off-master preview 00f8c7c</a> models parts of authorization, exact-intent comparison and recovery bookkeeping. A <a href="https://github.com/Spaceghost/writ/blob/00f8c7cdc63183400a55038defd4be63cdeb42f4/openspec/traceability/durable-publication.md" target="_blank" rel="noopener">scenario matrix</a> maps the modeled checks to what is still missing. The review packet at <a href="https://github.com/Spaceghost/writ/blob/master/docs/superpowers/records/2026-11-07-durable-review/packet.md" target="_blank" rel="noopener"><code>docs/superpowers/records/2026-11-07-durable-review/packet.md</code></a> gathers the exact source, questions and evidence.</p>
+<p>The code assumes trusted current monitor inputs; it does not authenticate a durable store, provide a rollback witness or qualified sink, or demonstrate native crash recovery. A synthetic direct comparison of 10,000 origins failed with a Node stack overflow; the necessary resource bounds are not implemented by that comparison. The 2,481-check and 37-law evidence belongs to tested source <a href="https://github.com/Spaceghost/writ/commit/c3a6092f5553f3e83fa1dd1107acefda62616349" target="_blank" rel="noopener">c3a6092</a>; those laws do not prove durable publication.</p>
+<p>We are asking who could review these specific assumptions and gaps, not for approval to deploy or close a task. The plan's review-before-dependent-task ordering remains open, as do all durable-publication acceptance tasks.</p>
+<form method="post" action="/questions/q20/answer">
+<fieldset><legend>Who should review it?</legend>
+<label><input type="radio" name="reviewer" value="suggest-person" required>I can suggest an independent person; details are in the notes.</label>
+<label><input type="radio" name="reviewer" value="defer">Defer finding a reviewer for now.</label>
+<label><input type="radio" name="reviewer" value="other">Another approach; see the notes.</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form><p class="note">Your answer is recorded in the board question thread. It does not complete the review or any acceptance task.</p>
+</body></html>

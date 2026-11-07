@@ -1,0 +1,188 @@
+{
+  "observation": "bounded snapshots; cleanup unverified",
+  "files": [
+    {
+      "name": "identity.txt",
+      "status": "snapshot",
+      "bytes": 125,
+      "sha256": "f40dd1546bf656a1bb3f173d4edd9c865b3f161e8d069b2a531b36a6d85df293"
+    },
+    {
+      "name": "input-sha256.txt",
+      "status": "snapshot",
+      "bytes": 644,
+      "sha256": "eb7019f5c75c8e12ba8e2de22a85a3f3d772466b73fea37dc78fdcdd2d8396ce"
+    },
+    {
+      "name": "tool-identity.txt",
+      "status": "snapshot",
+      "bytes": 912,
+      "sha256": "13c3c63c9ea1da31c439c08a06884518ecf37d2e6d7f71a674f4eb2c44b0c0cc"
+    },
+    {
+      "name": "clang-resource-sha256.txt",
+      "status": "snapshot",
+      "bytes": 34172,
+      "sha256": "924dde8739c468b24d7d2c57519d027cf974cd2fa0caee4c17cb2cac959cb638"
+    },
+    {
+      "name": "genode-git-status.txt",
+      "status": "snapshot",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "genode-archive-comparison.txt",
+      "status": "snapshot",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "genode-archive-git-status.txt",
+      "status": "snapshot",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "genode-commit.txt",
+      "status": "snapshot",
+      "bytes": 55,
+      "sha256": "8b4042447457ac95256e6b0a5f7ff66efa1310a0459107542d30c97ad8db4c5c"
+    },
+    {
+      "name": "environment.txt",
+      "status": "snapshot",
+      "bytes": 373,
+      "sha256": "0ceaeb7d7aa7e2facafb60cd891ef762d5ea5de6f4d3dbf9cd3e1cef2cf4cd33"
+    },
+    {
+      "name": "source-sha256.txt",
+      "status": "snapshot",
+      "bytes": 10983,
+      "sha256": "89c7cff96752fc660b738755ff4248963e672450395440016afcffed9f0a173b"
+    },
+    {
+      "name": "overlay-sha256.txt",
+      "status": "snapshot",
+      "bytes": 981,
+      "sha256": "8d9a3d938577ab890d89c61cde63ea145786a495772d8ef25962775aa82752b2"
+    },
+    {
+      "name": "generated-sha256.txt",
+      "status": "snapshot",
+      "bytes": 146,
+      "sha256": "b0dcc48945226d55eb0c31f98f57a254dcae9cb9e9bbabd81e781b9f708d42f1"
+    },
+    {
+      "name": "original.run",
+      "status": "snapshot",
+      "bytes": 4186,
+      "sha256": "075f830a6054ca5ca2df61e4ed7ed8b3e778ee47bc39b6f4f474801edca77776"
+    },
+    {
+      "name": "actual.run",
+      "status": "snapshot",
+      "bytes": 2812,
+      "sha256": "8e154b3b37322c795835829d6f413354bee94cdbb0e99e8ea7bb98f7a9cf054e"
+    },
+    {
+      "name": "config-sha256.txt",
+      "status": "snapshot",
+      "bytes": 254,
+      "sha256": "e112482612b1144cfdb6298d2883a87ce26766a715bf1c78c1d8550d841aa860"
+    },
+    {
+      "name": "negative.diff",
+      "status": "snapshot",
+      "bytes": 3657,
+      "sha256": "1d61294621ecfe3f128a944642c5948e2989b7e00d8167020ea895e67644a4fe"
+    },
+    {
+      "name": "build.conf",
+      "status": "snapshot",
+      "bytes": 2869,
+      "sha256": "f359b3792262c7a8f31f1e85674dc55c86edee8d06c8452b8781d8bb74822e25"
+    },
+    {
+      "name": "tools.conf",
+      "status": "snapshot",
+      "bytes": 116,
+      "sha256": "6ba22658bdbb2fdb96e81123578bd29961d8cbcd13a3116dcafb5beaa10a0e55"
+    },
+    {
+      "name": "build-config-sha256.txt",
+      "status": "snapshot",
+      "bytes": 252,
+      "sha256": "43a20615e5428fa99504165e05a47a70cf1af610b541cd8c11928921c3fae8b6"
+    },
+    {
+      "name": "run.log.gz",
+      "status": "snapshot",
+      "bytes": 2520515,
+      "sha256": "139235c89561aa7e3df6757cade6e295cbdc4836b1203267ff189dad0df0d083"
+    },
+    {
+      "name": "run.log.gz.partial",
+      "status": "not-applicable"
+    },
+    {
+      "name": "run-meta.json",
+      "status": "snapshot",
+      "bytes": 721,
+      "sha256": "7c177274cfea4f5bc5ebaa19458ad3043217b8fcf3bc914e358b4603d179a12e"
+    },
+    {
+      "name": "run-audit.json",
+      "status": "snapshot",
+      "bytes": 442,
+      "sha256": "466de893107c4c791bd18b69f0123d115eb01afe52290dc27b66c1df690e4c9d"
+    },
+    {
+      "name": "run-status.txt",
+      "status": "snapshot",
+      "bytes": 17,
+      "sha256": "4f1ab4d400ed5e3e0d6cef0a65fb18900345379642bc0a028da4cb38e467407b"
+    },
+    {
+      "name": "boot-inputs-sha256.txt",
+      "status": "snapshot",
+      "bytes": 1103,
+      "sha256": "6d5706c6b21931f5f422a2bdd1982d6a8164108e5f9d79a9f589ef13be74bbaa"
+    },
+    {
+      "name": "installed-config.txt",
+      "status": "snapshot",
+      "bytes": 1668,
+      "sha256": "e2f60b4d32db4ab16259b4e5da762cf4a17ff919aad86cb9e41061c87d27865a"
+    },
+    {
+      "name": "observed.txt",
+      "status": "refused",
+      "reason": "ENOENT: no such file or directory, open '/proc/self/fd/20/observed.txt'"
+    },
+    {
+      "name": "fixture-post-status.txt",
+      "status": "snapshot",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "fixture-post-manifest.txt",
+      "status": "snapshot",
+      "bytes": 44,
+      "sha256": "b46f939481a46a07f88f6ab50aae8fef7af7f15a94925106cd8f32e9581f05e2"
+    },
+    {
+      "name": "setup.log",
+      "status": "snapshot",
+      "bytes": 11934,
+      "sha256": "55ff4cde9a5f43a9aa98a9f7afc0a718b62dea45f12ddf297d8a74396e19795e"
+    },
+    {
+      "name": "driver-status.txt",
+      "status": "snapshot",
+      "bytes": 52,
+      "sha256": "f1b5379062c00242efc73e426a7b260ab6279071b7cb0e108cc3f386395fb22c"
+    }
+  ]
+}

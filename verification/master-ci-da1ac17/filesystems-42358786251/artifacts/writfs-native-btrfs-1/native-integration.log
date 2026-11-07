@@ -1,0 +1,43 @@
+btrfs-progs v6.6.3
+See https://btrfs.readthedocs.io for more information.
+
+NOTE: several default settings have changed in version 5.15, please make sure
+      this does not affect your deployments:
+      - DUP for metadata (-m dup)
+      - enabled no-holes (-O no-holes)
+      - enabled free-space-tree (-R free-space-tree)
+
+Label:              (null)
+UUID:               c3997541-4af0-4c09-88c8-7e0e06dbc295
+Node size:          16384
+Sector size:        4096
+Filesystem size:    1.00GiB
+Block group profiles:
+  Data:             single            8.00MiB
+  Metadata:         DUP              51.19MiB
+  System:           DUP               8.00MiB
+SSD detected:       no
+Zoned device:       no
+Incompat features:  extref, skinny-metadata, no-holes, free-space-tree
+Runtime features:   free-space-tree
+Checksum:           crc32c
+Number of devices:  1
+Devices:
+   ID        SIZE  PATH
+    1     1.00GiB  /home/runner/work/_temp/writfs-native.cm9otx/btrfs.img
+
+TARGET                                             SOURCE     FSTYPE OPTIONS
+/home/runner/work/_temp/writfs-native.cm9otx/btrfs /dev/loop0 btrfs  rw,relatime,ssd,discard=async,space_cache=v2,subvolid=5,subvol=/
+PASS: writable Btrfs subvolume is not an admitted immutable source
+PASS: ordinary directory cannot stand in for its containing subvolume
+PASS: public destination fails the complete Writ gate before native execution
+PASS: revoked capability fails before native execution
+PASS: actual native stage retains complete source origin and restrictions
+PASS: a repeated creation cannot overwrite or adopt the existing target
+PASS: exact recorded native identity reconciles without creating another object
+PASS: Btrfs native snapshot contains the public fixture bytes
+PASS: Btrfs kernel rejects writes to the created read-only snapshot
+PASS: later live-source edits do not change the native snapshot
+PASS: nested Btrfs subvolumes are rejected instead of silently omitted
+ALL NATIVE BTRFS CHECKS PASSED
+Native fixture cleanup finished; exit status: 0

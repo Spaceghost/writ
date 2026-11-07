@@ -579,6 +579,31 @@ def session_copy_change() -> H.Change:
 def session_shared() -> H.State:
   H.Change.state(session_copy_change())
 
+# Synthetic malformed monitor input: the same object id names two generations.
+# Order is varied so a first-match lookup would either find the current object
+# or the stale one. This is not a native selector or authenticated state.
+def duplicate_object_state(state: H.State, objects: H.Objects) -> H.State:
+  match state:
+    case H.State{r, o, a, _, aliases, routes, quotas, delegations, bindings, frontend}:
+      H.State{r, o, a, objects, aliases, routes, quotas, delegations, bindings, frontend}
+
+def duplicate_objects(current_first: Bool) -> H.State:
+  match current_first:
+    case True{}:
+      duplicate_object_state(mounted(), H.Objects{H.Object{1n, 0n, subject(), H.Session{}, 0n, service()}, H.Objects{H.Object{1n, 1n, subject(), H.Session{}, 0n, service()}, H.NoObjects{}}})
+    case False{}:
+      duplicate_object_state(mounted(), H.Objects{H.Object{1n, 1n, subject(), H.Session{}, 0n, service()}, H.Objects{H.Object{1n, 0n, subject(), H.Session{}, 0n, service()}, H.NoObjects{}}})
+
+# Alias 2 is an already recorded delegated copy, duplicated with different
+# generations. Both entries keep the same holder and object so the duplicate-id
+# check, not the single-minter or delegation checks, is the intended guard.
+def duplicate_aliases(current_first: Bool) -> H.State:
+  match current_first:
+    case True{}:
+      with_aliases(session_shared(), H.Aliases{H.Alias{2n, worker(), 1n, 0n}, H.Aliases{H.Alias{2n, worker(), 1n, 1n}, H.Aliases{H.Alias{1n, reader(), 1n, 0n}, H.NoAliases{}}}})
+    case False{}:
+      with_aliases(session_shared(), H.Aliases{H.Alias{2n, worker(), 1n, 1n}, H.Aliases{H.Alias{2n, worker(), 1n, 0n}, H.Aliases{H.Alias{1n, reader(), 1n, 0n}, H.NoAliases{}}}})
+
 # W opens a read descriptor through the delegated Session: alias 3 on object 2,
 # derived from the Session and recorded under W's node. Revision 3.
 def worker_open_change() -> H.Change:
@@ -1008,6 +1033,16 @@ def ga008_checks() -> IO(Unit):
     Test.check(denied(invalid_mount(), dangling_state(), H.StaleRevision{}), "GA-008 an invalid input state is denied StaleRevision")
     vector("GA-008-3", "bind_mount", alias_outcome(invalid_mount()))
     Test.check(denied(H.revoke(dangling_state(), 0n, reader()), dangling_state(), H.StaleRevision{}), "GA-008 revoke on an invalid input state is denied")
+    Test.check(H.valid(mounted()) && H.Change.accepted(H.bind_open(mounted(), 1n, 1n, reader(), reader_caller(), registry(), read(), live())), "PH-004 original object control is valid and open succeeds")
+    Test.check(Bool.not(H.valid(duplicate_objects(True{}))), "PH-004 duplicate object id with current generation first is invalid")
+    Test.check(Bool.not(H.valid(duplicate_objects(False{}))), "PH-004 duplicate object id with stale generation first is invalid")
+    Test.check(denied(H.bind_open(duplicate_objects(True{}), 1n, 1n, reader(), reader_caller(), registry(), read(), live()), duplicate_objects(True{}), H.StaleRevision{}), "PH-004 duplicate object id current first denies unchanged")
+    Test.check(denied(H.bind_open(duplicate_objects(False{}), 1n, 1n, reader(), reader_caller(), registry(), read(), live()), duplicate_objects(False{}), H.StaleRevision{}), "PH-004 duplicate object id stale first denies unchanged")
+    Test.check(H.valid(session_shared()) && H.Change.accepted(H.bind_open(session_shared(), 2n, 2n, worker(), reader_caller(), registry(), read(), live())), "PH-004 original delegated alias control is valid and open succeeds")
+    Test.check(Bool.not(H.valid(duplicate_aliases(True{}))), "PH-004 duplicate alias id with current generation first is invalid")
+    Test.check(Bool.not(H.valid(duplicate_aliases(False{}))), "PH-004 duplicate alias id with stale generation first is invalid")
+    Test.check(denied(H.bind_open(duplicate_aliases(True{}), 2n, 2n, worker(), reader_caller(), registry(), read(), live()), duplicate_aliases(True{}), H.StaleRevision{}), "PH-004 duplicate alias id current first denies unchanged")
+    Test.check(denied(H.bind_open(duplicate_aliases(False{}), 2n, 2n, worker(), reader_caller(), registry(), read(), live()), duplicate_aliases(False{}), H.StaleRevision{}), "PH-004 duplicate alias id stale first denies unchanged")
     Test.check(H.valid(with_bindings(opened(), H.Bindings{H.Binding{2n, 2n}, H.Bindings{H.Binding{1n, 1n}, H.NoBindings{}}})), "GA-008 rebuilding a committed binding table keeps the state valid")
     Test.check(Bool.not(H.valid(shared_handle())), "GA-008 two objects bound to one Frontend handle are rejected by valid")
     Test.check(denied(H.bind_open(shared_handle(), 2n, 1n, reader(), reader_caller(), registry(), read(), live()), shared_handle(), H.StaleRevision{}), "GA-008 a transition on a shared-handle state is denied StaleRevision")
@@ -1064,4 +1099,4 @@ def main() -> IO(Unit):
     ga007_checks()
     ga008_checks()
     ga011_checks()
-    IO.print("HostBinding: 144 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")
+    IO.print("HostBinding: 154 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test")

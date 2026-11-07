@@ -1,0 +1,14 @@
+# Synthetic text only. No Genode, QEMU, host workload or shared cache.
+set timeout 2
+set mode [lindex $argv 0]
+if {$mode eq "octal"} {
+  set pattern {\[init -> clients -> writ_client_r\] \033\[31mError: stop because parent denied Writ_channel-session:}
+} elseif {$mode eq "literal"} {
+  set pattern [format {\[init -> clients -> writ_client_r\] %s\[31mError: stop because parent denied Writ_channel-session:} [format %c 27]]
+} else {exit 2}
+spawn sh -c {printf '\133init -> clients -> writ_client_r\135 \033\13331mError: stop because parent denied Writ_channel-session: args\033\1330m\n'}
+expect {
+  -re $pattern {puts "MATCHED"; exit 0}
+  eof {puts "EOF"; exit 1}
+  timeout {puts "TIMEOUT"; exit 1}
+}
