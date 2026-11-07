@@ -254,6 +254,10 @@ alternative release path is established by this design.
 
 ## Implementation and evidence gates
 
+The [integration dependency map](integration-sequencing.md) identifies the
+existing facade and channel call sites, composite mutation accounting, and
+the monitor-owned migration prerequisites that must be resolved together.
+
 The [tasks](tasks.md) and [traceability](traceability.md) name all intended
 model and integration checks. They remain unchecked. Bend owns the state,
 policy and independent validation; native components may only translate
