@@ -25,6 +25,10 @@ The separate [comparison record](verification/planner-plan-match-local.md)
 scopes its pre-integration tests and existing-law proof verdict.
 The [high-word mutation review](verification/planner-comparator-mutants-6985302/README.md)
 records the added comparison regression and its scoped local checks.
+The later high-word regression passed an [optimized native CPU run](verification/planner-comparator-native-c5a02c7/README.md)
+and scoped [platform CI](verification/planner-comparator-ci-c5a02c7/README.md)
+at exact source `c5a02c7`. Linux retained a protected-setup refusal before input;
+no result qualifies a protected host.
 Earlier evidence below remains tied to its own source and is not a claim that
 the new checks ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its

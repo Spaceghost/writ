@@ -1,0 +1,7 @@
+# Linux public canary at comparator regression c5a02c7
+
+GitHub Actions [run 42337450706](https://github.com/Spaceghost/writ/actions/runs/42337450706) succeeded at exact source `c5a02c7f3027ea45af7a9737fa2e9ed0801195ec`. Both JavaScript and native CPU core runs reported 2,224 checks and identical output SHA-256 `88a8143b694304655307af8dc5d24700ab4d6a7830e74da9c999f5cf360e142a`. Each mount model run reported 70 checks with matching SHA-256 `f378302f40f49d45202b171b807a5fc9ff3a5b0a84f05bfc8f70c58909e014f6`. Transport, revocation, policy-failure and broker-crash public-canary logs have separate success sentinels.
+
+The setup-refusal log contains `FAIL native worker ready`, `SETUP step=8`, refusal before input loading or Bend admission, and `LINUX NATIVE CANARY CHECK FAILED; no protected-data qualification`. This expected refusal is retained as a failure of that protected setup, not reclassified as qualification. Ordinary proof output is not a Lean verdict. Eight tracked source paths independently match the exact commit; two runner-only generated or binary paths could not be independently rehashed.
+
+`artifact-raw-sha256.txt` hashes every downloaded artifact file and the downloaded ZIP matches GitHub's artifact metadata digest. Retained text is normalized to UTF-8/LF with trailing whitespace removed; `workflow-log-raw-sha256.txt` identifies the unnormalized workflow output. Generated code and binaries are excluded. These results do not establish protected-host qualification, an authenticated planner, or planner admission.

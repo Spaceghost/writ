@@ -1,0 +1,5 @@
+# Windows Node at comparator regression c5a02c7
+
+GitHub Actions [run 42337450839](https://github.com/Spaceghost/writ/actions/runs/42337450839) succeeded at exact source `c5a02c7f3027ea45af7a9737fa2e9ed0801195ec`. Native Windows Node ran Bend-generated JavaScript: 2,224 library checks and 78 WritFS model checks passed, both with exit status zero. The library output through the success sentinel, normalized to LF, has SHA-256 `88a8143b694304655307af8dc5d24700ab4d6a7830e74da9c999f5cf360e142a`.
+
+`artifact-raw-sha256.txt` hashes every downloaded artifact file and `artifact-archive-sha256.txt` hashes each downloaded ZIP; all ZIP hashes matched the GitHub artifact metadata digests. The generated JavaScript's raw hashes match the retained `SHA256SUMS`, but generated files are excluded. Retained text is normalized to UTF-8/LF with trailing whitespace removed; `workflow-log-raw-sha256.txt` identifies the unnormalized `gh run view --log` output. This is model execution evidence, not filesystem, native machine-code, protected-host enforcement, or planner authentication qualification.

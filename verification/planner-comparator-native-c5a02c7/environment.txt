@@ -1,0 +1,12 @@
+source_commit=c5a02c7f3027ea45af7a9737fa2e9ed0801195ec
+bend=bend 2.0.39
+clang=clang version 23.1.1
+start_utc=2026-11-07T04:13:00Z
+build_command=CC=clang-23 BEND_NO_TELEMETRY=1 nice -n 15 timeout 1800 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend Tests.bend -o /tmp/writ-comparator-native-c5a02c7/tests-native
+939a882527432ec23b094c289e7f170bf2d6ec282e74dde75e31b08602fa3eae  /usr/bin/clang-23
+build_exit=0
+run_command=nice -n 15 timeout 1200 /tmp/writ-comparator-native-c5a02c7/tests-native +RTS --threads 4 --gpu off
+run_exit=0
+89d109115f4be28a6bfa12096e69371888621c22b2e9916ff0854757ddf2c231  /tmp/writ-comparator-native-c5a02c7/tests-native
+88a8143b694304655307af8dc5d24700ab4d6a7830e74da9c999f5cf360e142a  /tmp/writ-comparator-native-c5a02c7/run.stdout
+end_utc=2026-11-07T04:23:16Z
