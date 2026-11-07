@@ -15,6 +15,11 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [bounded Nix evaluation at 0689636](verification/nix-evaluation-0689636/README.md)
+inspected the 2,281-check derivation, filtered source and local gate controls;
+the offline dry run listed 344 uncached derivations. It did not build or run
+the Nix check or a full flake check.
+
 The [automatic da1ac17 platform CI](verification/master-ci-da1ac17/README.md)
 passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 checks. Strict Windows native **failed** with incomplete byte-worker network,

@@ -1,0 +1,8 @@
+import pathlib,subprocess,tempfile,os
+p=pathlib.Path('verification/planner-order-binding-combined/bend.log');lines=p.read_text().splitlines(keepends=True)
+assert sum(s.startswith('PASS') for s in lines)==2281 and lines[-1]=='ALL LIBRARY TESTS PASSED\n'
+with tempfile.TemporaryDirectory(prefix='writ-nix-gate-') as d:
+ path=pathlib.Path(d)/'tests.log';env={**os.environ,'TMPDIR':d};i=next(i for i,s in enumerate(lines) if s.startswith('PASS'))
+ for name,body,expect in [('recorded-suite',lines,0),('one-pass-removed',lines[:i]+lines[i+1:],1),('sentinel-removed',lines[:-1],1)]:
+  path.write_text(''.join(body));r=subprocess.run(['bash','/tmp/writ-nix-0689636-assert.sh'],env=env,capture_output=True,text=True,timeout=10)
+  assert (r.returncode==0)==(expect==0); print(f'case={name} exit={r.returncode}\n{r.stdout}{r.stderr}',end='')

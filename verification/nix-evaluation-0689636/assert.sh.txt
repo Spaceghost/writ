@@ -1,0 +1,11 @@
+set -e
+last=$(tail -n 1 $TMPDIR/tests.log)
+passes=$(grep -c '^PASS' $TMPDIR/tests.log || true)
+echo "final line: $last"
+echo "PASS lines: $passes"
+if [ "$last" != "ALL LIBRARY TESTS PASSED" ]; then
+  echo "expected final line ALL LIBRARY TESTS PASSED" >&2; exit 1
+fi
+if [ "$passes" != 2281 ]; then
+  echo "expected 2281 PASS lines, found $passes" >&2; exit 1
+fi

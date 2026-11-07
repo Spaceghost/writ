@@ -1,0 +1,11 @@
+case=recorded-suite exit=0
+final line: ALL LIBRARY TESTS PASSED
+PASS lines: 2281
+case=one-pass-removed exit=1
+final line: ALL LIBRARY TESTS PASSED
+PASS lines: 2280
+expected 2281 PASS lines, found 2280
+case=sentinel-removed exit=1
+final line: Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+PASS lines: 2281
+expected final line ALL LIBRARY TESTS PASSED
