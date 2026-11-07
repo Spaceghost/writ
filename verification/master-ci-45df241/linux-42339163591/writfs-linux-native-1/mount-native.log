@@ -1,0 +1,71 @@
+PASS: exported case count matches corpus
+PASS: reject protocol version
+PASS: reject leading zero
+PASS: reject numeric sign
+PASS: reject U32 overflow
+PASS: reject missing field
+PASS: reject extra field
+PASS: reject CRLF alias
+PASS: reject embedded LF
+PASS: reject non-ASCII
+PASS: reject unknown operation
+PASS: reject alternate control actor
+PASS: reject odd payload hex
+PASS: reject uppercase payload hex
+PASS: reject payload separator
+PASS: reject oversized frame
+PASS: actual SHA-256 binds INIT bytes
+PASS: empty immutable file supported
+PASS: different payload changes seal
+PASS: INIT cannot replace registered bytes
+PASS: admission requires input
+PASS: fixed profile cannot be escalated
+PASS: full capability commit admits reader
+PASS: complete commit and origin policy retained
+PASS: duplicate admission denied
+PASS: public destination refused by full gate
+PASS: revoked registry refused at commit
+PASS: source seal matches retained intent
+PASS: metadata unavailable before admission
+PASS: unknown actor cannot stat
+PASS: unknown actor cannot list
+PASS: unknown actor cannot open
+PASS: another actor cannot open
+PASS: admitted metadata returns exact size
+PASS: admitted root has fixed metadata
+PASS: list admits exactly one entry
+PASS: namespace alias denied
+PASS: alternate stream denied
+PASS: admitted open allocates first handle
+PASS: read requires an existing handle
+PASS: read clips to immutable bytes
+PASS: range read clips at EOF
+PASS: EOF read returns zero
+PASS: far EOF cannot underflow length
+PASS: zero length read returns zero
+PASS: oversized read denied
+PASS: another actor cannot reuse handle
+PASS: root handle cannot release bytes
+PASS: close requires owning binding
+PASS: close retires exact handle
+PASS: closed handle cannot read
+PASS: new open never reuses old handle
+PASS: live handle limit enforced
+PASS: closing releases capacity without reuse
+PASS: revocation closes future reads
+PASS: revocation closes metadata
+PASS: revocation closes new opens
+PASS: revocation cannot be readmitted
+PASS: revocation cannot replace input
+PASS: revocation retains committed state
+PASS: revoked handle can be cleaned up
+PASS: fresh instance rejects old handle
+PASS: STOP is terminal
+PASS: denials advance audit sequence
+PASS: parse failures advance audit sequence
+PASS: full 64 KiB payload accepted
+PASS: payload byte cap enforced before hashing
+PASS: handle counter cannot wrap
+PASS: request budget stops admission
+PASS: exhausted state retains commit evidence
+ALL NATIVE MOUNT MODEL TESTS PASSED

@@ -1,0 +1,5 @@
+# Strict Windows native, automatic master CI
+
+[Run 42339163573](https://github.com/Spaceghost/writ/actions/runs/42339163573) **failed** at exact source `45df241e69dba4b964325aa975aac5749b66135a`. The LPAC canary's actual byte-worker network, clipboard and COM probes were incomplete, and the network probe was also incomplete after WFP removal; the retained logs assign no restriction credit. The final result records `FAIL native Windows profile=lpac-canary win32=10035` and byte-worker confinement as incomplete. The separate no-data diagnostic reported pass; it does not repair the byte-worker evidence or establish protected-host qualification.
+
+The artifact hashes include excluded generated `mount.mjs`; no generated code is retained. The WinFsp installer log was decoded from UTF-16 to UTF-8 for this text copy. Other retained text was normalized to LF with trailing whitespace removed; raw artifact-file, ZIP and original workflow log hashes are retained. The ZIP hashes match GitHub metadata.
