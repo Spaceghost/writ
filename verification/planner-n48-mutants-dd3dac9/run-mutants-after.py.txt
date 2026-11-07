@@ -1,0 +1,14 @@
+from pathlib import Path
+import subprocess,os,json
+root=Path('/tmp/writ-planner-boundary-scratch');path=root/'PlannerEnvelope.bend';base=path.read_text();out=Path('/tmp/writ-planner-boundary-audit');bend='/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend';old=json.loads((out/'results-before.json').read_text());env=os.environ.copy();env['BEND_NO_TELEMETRY']='1';results=[]
+try:
+ for item in old:
+  label=item['mutant'];subprocess.run(['git','apply','--unidiff-zero','--',str(out/(label+'.patch'))],cwd=root,check=True)
+  p=subprocess.run([bend,'PlannerEnvelopeTests.bend'],cwd=root,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=120)
+  (out/(label+'.after.stdout')).write_text(p.stdout);(out/(label+'.after.stderr')).write_text(p.stderr)
+  passes=sum(line.startswith('PASS') for line in p.stdout.splitlines());failure=next((x for x in (p.stdout+'\n'+p.stderr).splitlines() if x.startswith('FAIL:')),None)
+  classification='survived' if p.returncode==0 and passes==61 else ('killed' if p.returncode!=0 and failure else 'invalid-or-unexpected')
+  result={'mutant':label,'before':item['result'],'after':classification,'exit':p.returncode,'pass_lines':passes,'failure':failure};results.append(result);print(json.dumps(result),flush=True)
+  path.write_text(base)
+finally:path.write_text(base)
+(out/'results-after.json').write_text(json.dumps(results,indent=2)+'\n')

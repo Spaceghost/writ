@@ -258,6 +258,17 @@ def mixed() -> P.Proposal:
      P.EvidenceRef{1, P.Id256{40, 41, 42, 43, 44, 45, 46, 47}},
      P.EvidenceRef{1, P.Id256{30, 31, 32, 33, 34, 35, 36, 37}}]}
 
+# Distinct low words and maximum valid high words exercise every numeric field,
+# including each component of both ordered sources and the destination.
+def max_n48_fields() -> P.Proposal:
+  P.Proposal{P.N48{4294967295, 65535}, P.N48{4294967294, 65535}, P.ManifestRef{id()},
+    P.Stamp{P.N48{4294967293, 65535}, P.N48{4294967292, 65535}, P.N48{4294967291, 65535}},
+    P.N48{4294967290, 65535},
+    [P.ObjectRef{P.N48{4294967289, 65535}, P.N48{4294967288, 65535}},
+     P.ObjectRef{P.N48{4294967287, 65535}, P.N48{4294967286, 65535}}],
+    P.ObjectRef{P.N48{4294967285, 65535}, P.N48{4294967284, 65535}},
+    code(), 3, 128, [P.EvidenceRef{1, id()}]}
+
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(encode_is(P.encode(example()), words()), "planner-envelope independent expected encoding")
@@ -320,3 +331,4 @@ def main() -> IO(Unit):
     Test.check(rejected(P.decode_words(replace(42n, 4294967295, words())), P.OutOfRange{}), "planner-envelope maximal evidence count rejected before conversion")
     Test.check(decode_external_endian(P.encode_bytes(example())), "planner-envelope independent little endian decode")
     Test.check(structurally_roundtrips(P.encode(mixed()), mixed()), "planner-envelope structural roundtrip mixed full identities and repeated evidence")
+    Test.check(structurally_roundtrips(P.encode(max_n48_fields()), max_n48_fields()), "planner-envelope structural roundtrip preserves every maximum N48 high word")

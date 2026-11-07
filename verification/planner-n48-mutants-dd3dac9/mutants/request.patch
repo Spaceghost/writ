@@ -1,0 +1,12 @@
+diff --git a/PlannerEnvelope.bend b/PlannerEnvelope.bend
+index 45084ba..f867c36 100644
+--- a/PlannerEnvelope.bend
++++ b/PlannerEnvelope.bend
+@@ -137,0 +138,4 @@ def output_ok(+x: U32) -> Bool:
++def audit_zero_hi(n: N48) -> N48:
++  match n:
++    case N48{lo, _}: N48{lo, 0}
++
+@@ -141 +145 @@ def finish(request: N48, expiry: N48, manifest: Id256, graph: N48, policy: N48,
+-      Decoded{Proposal{request, expiry, ManifestRef{manifest}, Stamp{graph, policy, authority}, invocation,
++      Decoded{Proposal{audit_zero_hi(request), expiry, ManifestRef{manifest}, Stamp{graph, policy, authority}, invocation,
