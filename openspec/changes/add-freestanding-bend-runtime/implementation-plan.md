@@ -35,6 +35,10 @@ that a kernel already boots or a delivery commitment.
   revision. If the historical scenario cannot be reconstructed, retain the gap
   or propose an explicitly reviewed contract change with rationale; do not
   silently replace its count or call a partial current suite complete.
+  A [hosted Linux rerun](../../../verification/freestanding-historical-638-20261107/README.md)
+  reconstructs a 638-check source candidate and matches the original suite
+  capture. Four historical examples also match their captures. Freestanding
+  execution and the original worktree's exact provenance remain unproven.
 
 ## Execution boundary
 
