@@ -74,25 +74,16 @@ reference bytes and expected observation; selecting the negative must never
 make a missing route count as an R success.
 
 Before sourcing the fixed fixture, a contribution-owned wrapper may rename and
-wrap the existing Tcl `install_config`, `build_boot_image`, and
-`run_genode_until` procedures. This is a proposed mechanism requiring offline
-validation against the pinned tool; it is not an existing interception point in
-the shim. The wrapper must preserve the exact original arguments and delegate
-once, without parsing policy or rewriting the generated configuration. It is
-not a general-purpose selector, configuration editor, authority service, or
-way to route a protected request.
-
-Use a monotone one-shot state machine: initially `Ready`; one installation
-attempt may progress through `Installing` to `Installed`; one image build and
-one fixture launch may then progress through `Building`, `Built`, `Launching`
-and `Consumed`. A wrong order, second call, mismatch, exception or failed
-readback permanently poisons that invocation. A poisoned or incomplete state
-must block both the wrapped image build and fixture launch, even if a surrounding
-Tcl caller catches the original error. The guard must not re-open a poisoned
-invocation or fall back to the unwrapped procedure. If the delegated installer
-or builder has already had an effect, preserve the failure; do not claim it was
-undone. The trusted wrapper must preserve the original fixture's error handling,
-exit statuses and positive/negative outcome checks.
+wrap only the existing Tcl `install_config` procedure. This is a proposed
+mechanism requiring offline validation against the pinned tool; it is not an
+existing interception point in the shim. The wrapper forwards the unchanged
+argument once to the original installer after exact comparison. It does not
+wrap or change `build_boot_image` or `run_genode_until`, parse policy, rewrite
+configuration, or select an actor. Each invocation is validated independently;
+there is no native policy or lifecycle state machine and no one-shot latch.
+The reviewed fixture calls the installer once. If a future caller invokes it
+again, each valid invocation is forwarded and each invalid one is refused; the
+guard does not itself enforce a total invocation count.
 
 At `install_config` require exactly one argument, at most **16,384 characters**
 before any conversion or comparison, and ASCII only. The fixed expected argument
@@ -106,18 +97,33 @@ additional comparison work; they do not bound construction of a Tcl string
 already supplied by its trusted producer.
 
 Only after exact comparison may the wrapper call the original installer with
-the unchanged one argument. It must check the returned status and then read back
-the installed configuration through a bounded **cap+1** byte read, rejecting a
-missing, non-regular, unexpected link, oversized, short, different or otherwise
-unverifiable file. For these Linux fixture inputs the expected installed bytes
-are the fixed argument plus one LF, exactly as observed above; any different Tcl
-encoding or line ending is incomplete, not normalized. Check the same expected
-installed bytes again immediately before the wrapped image build and immediately
-before the wrapped fixture launch. Resource ownership, path resolution, file
-lifetime and read failures need explicit implementation review: checks are
-observations in a trusted private run directory, not a claim of atomicity or
-proof against a concurrent same-UID writer. If the pin/tool/runtime cannot produce
-these exact bytes, stop rather than derive a replacement reference automatically.
+the unchanged one argument. Installer errors propagate. The controlled entry
+point must source the fixed fixture under a top-level error handler that exits
+nonzero on mismatch or installer failure, with no fallback or retry; in the
+reviewed fixed call path, `writ_bend_boot` calls `install_config` before image
+construction and the fixture calls `run_genode_until` afterward. The existing
+fixed fixture has no inner handler that catches an installation error and
+continues. This ordering is an assumption to verify against each pinned script,
+not enforcement against arbitrary Tcl. If the original installer has already
+had an effect before failing, preserve the failure; do not claim it was undone.
+If the pin/tool/runtime cannot generate the exact argument, stop rather than
+derive a replacement reference automatically.
+
+The guard does not open, inspect, or verify the installed file and does not
+intercept boot or runtime waits. In particular, it makes no no-follow,
+nonblocking, regular-file, or concurrent-replacement claim; a future installed
+file checker would require a separately reviewed descriptor-based OS design.
+A trusted post-run collector may record the installed bytes as an observation,
+but that capture is not a pre-boot guard or proof of what Genode consumed.
+For these Linux fixture inputs the historically installed form is the argument
+plus one LF, exactly as observed above; changed Tcl encoding or line translation
+remains an unverified delivery gap, not a reason to normalize the guard input.
+
+The route-negative experiment can call `run_genode_until` multiple times while
+waiting for late markers from the same existing spawn. The proposed guard must
+leave that pinned continuation logic and its overall deadline unchanged; a
+repeated wait must not be mistaken for another launch. A future negative fixture
+still needs independent review of its exact source and bounded waits.
 
 ## Reference ownership and trust
 
@@ -136,9 +142,9 @@ an actor who can alter the wrapper *and* its committed reference can defeat
 this check. Pinning a Git commit/hash or placing files in a private directory is
 not by itself independent process attestation. Before any real public fixture
 run, independently record the wrapper, reference, fixture, source overlay,
-Genode/toolchain and build/boot inputs and hashes; verify the staging procedure
-and installed/boot configuration; and preserve status, refusal and cleanup
-records. The existing [overlay preparer](../../../contrib/native-hosts/genode/nested-channel/prepare-overlay.sh)
+Genode/toolchain and build/boot inputs and hashes; record the staging procedure
+and any independently captured installed/boot configuration; and preserve status,
+refusal and cleanup records. The existing [overlay preparer](../../../contrib/native-hosts/genode/nested-channel/prepare-overlay.sh)
 copies the legacy `writ_mem.cc` byte-for-byte and hashes its staged inputs;
 any new wrapper/reference files must also be inventoried and staged by an
 explicit reviewed arrangement. The pinned `run_boot_dir` and `power_on` path,
@@ -146,15 +152,14 @@ run directory, binaries, Tcl interpreter and supervisor remain trusted. The
 legacy source stays outside the approved new native-source exception; this plan
 adds no code there.
 
-Checking a path before image construction and launch does not prove that the
-same bytes were consumed: the file may change between observations or be
-substituted by another same-UID actor; the build tool may transform or use a
-different object; direct invocations of an unwrapped installer, boot helper or
-old fixture can bypass the wrapper. The wrapper is a controlled test guard, not a
-sandbox against malicious Tcl in the same interpreter. A future implementation
-must document and test supported ownership/lifetime controls and keep any
-unverified interval explicit; protected profiles would need their own live,
-current configuration and authority binding. This guard neither validates
+The argument comparison does not prove that the same bytes were installed or
+consumed: the file may change after installation or be substituted by another
+same-UID actor; the build tool may transform or use a different object; direct
+invocations of an unwrapped installer, boot helper or old fixture can bypass
+the wrapper. The wrapper is a controlled test guard, not a sandbox against
+malicious Tcl in the same interpreter. A future implementation must keep all
+unverified delivery intervals explicit; protected profiles would need their own
+live, current configuration and authority binding. This guard neither validates
 subject identity nor checks runtime configuration changes, delegation, complete
 routes, confinement, cleanup or revocation. Public LOG and the broad outer
 fallback remain in the existing fixture.
@@ -169,7 +174,8 @@ handwritten configuration. Exercise the separately reviewed fixed negative
 variant the same way. Capture input/reference hashes and expected status.
 
 - `positive_exact_and_installed_lf`: the independent positive vector forwards
-  exactly once; the delegated installed bytes include exactly one added LF.
+  exactly once; an offline installer stub reproduces and checks the pinned
+  `puts` behavior of adding one LF. The guard does not inspect a real file.
 - `negative_exact_distinct_entry`: the independent missing-route vector passes
   its own fixed gate; positive and negative references cannot be interchanged.
 - `policy_conflict_and_prefix_mutations`: added duplicate/conflicting subject,
@@ -178,10 +184,16 @@ variant the same way. Capture input/reference hashes and expected status.
 - `format_and_boundary_mutations`: missing final argument LF, extra LF/space,
   NUL, non-ASCII, extra argument, missing argument, exact-cap and cap+1 inputs
   fail without forwarding unless identical to the fixed under-cap reference.
-- `readback_failure`: failed installer, missing/changed/oversized installed
-  file, unexpected link and read error each poison; no build or launch follows.
-- `one_shot_and_caught_failure`: duplicate install/build/launch, wrong order and
-  a caught mismatch cannot later reach image construction or launch.
+- `installer_error_no_boot`: a failing original installer causes the controlled
+  outer entry point to exit; the test observes no image-build or launch call,
+  without claiming to reverse any earlier installer side effect.
+- `repeated_install_is_checked`: each valid call is forwarded and a subsequent
+  changed call is refused; the fixed entry point propagates a fixture error to
+  nonzero exit without boot. It does not undo an earlier successful install or
+  prevent arbitrary Tcl from invoking unwrapped procedures.
+- `negative_late_marker_continuation`: the fixed negative run's offline stub
+  delivers markers in a late arrival order and verifies that repeated waits on
+  the original spawn and their deadline are passed through unchanged.
 - `reference_mismatch_and_source_parity`: corrupted expected bytes or hash
   inventory fail verification; independently generated positive and reviewed
   negative vectors match the pinned historical bytes, without updating them.
