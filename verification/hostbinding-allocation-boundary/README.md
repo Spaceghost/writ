@@ -78,7 +78,12 @@ gate, a full flake check, or a Nix native run.
 
 The separate synthetic [allocator check](allocator.log) passed 24 checks under
 ASan/UBSan; the owned-temporary [capture-to-Bend/Node handoff](handoff.log)
-also passed. Neither runs a native host-binding service. The optimized full
-native CPU build is still pending and no native result is claimed yet. No GPU
-test, Linux identity probe, native confinement, protected-host qualification or
+also passed. Neither runs a native host-binding service. The [full native CPU
+suite](native.log) passed 2,498 checks with `+RTS --threads 1 --gpu off -RTS`;
+its output is byte-identical to Bend and Node. Build and run exited zero, with
+empty retained [build stdout](native-build.log), [build stderr](native-build.stderr)
+and [run stderr](native.stderr). The native build began before source commit
+`a4d8bd0`; the 125 inventoried Bend input files match both before and after it.
+The final independent review remains incomplete as noted above. No GPU test,
+Linux identity probe, native confinement, protected-host qualification or
 durable recovery is claimed.
