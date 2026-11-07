@@ -1,0 +1,5 @@
+FAIL native worker ready
+PROBE number=41 ok=0 value=8
+SETUP step=8
+SETUP REFUSED before input loading or Bend admission
+LINUX NATIVE CANARY CHECK FAILED; no protected-data qualification

@@ -16,6 +16,7 @@ Structural OpenSpec validation is not implementation or qualification evidence.
 - [ ] 2.2 Specify and implement monitor-authenticated migration control, instance identity, serialization, resource admission, atomic state/fence/replay installation and rollback-resistant recovery. Exercise stale, forged, replayed, interrupted, ambiguous and restored snapshots against a real qualified integration; pure model fixtures are not host evidence.
 - [ ] 2.3 Version the `HostBinding` facade and make multi-handle `bind_close` atomic over the independently verified original cut. Test repeated aliases, descendants, prior tombstones, missing/rejected later close, caller mismatch, denied work and unchanged whole-state/quota outcomes.
 - [ ] 2.4 Bound and validate the binding revision, generation and quota/refund counters for each accepted binding transition; keep `revoke` without a frontend caller separate and demonstrate its remaining host cleanup obligation.
+- [ ] 2.5 Inventory and version the Genode and Unikraft fixed-width channel codecs and monitor call sites for V2, or explicitly leave a range-limited V1 profile incompatible or incomplete. Test distinct revision high words with equal low words, unsupported versions, descriptor narrowing and stale requests; retain monitor-owned state and subject provenance, and do not treat a reply word or wire tag as caller authentication.
 
 ## 3. Evidence and qualification
 
