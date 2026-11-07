@@ -58,6 +58,12 @@ writ_stage() {
 writ_stage scripts/genode/writ_bend.tcl run/writ_bend.tcl
 writ_stage scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl run/writ_bend_monitor.tcl
 writ_stage contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_accept.run run/writ_bend_monitor_nested_accept.run
+writ_stage contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_route_negative.run run/writ_bend_monitor_nested_route_negative.run
+writ_stage contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_guarded_positive.run run/writ_bend_monitor_nested_guarded_positive.run
+writ_stage contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_guarded_negative.run run/writ_bend_monitor_nested_guarded_negative.run
+writ_stage contrib/native-hosts/genode/nested-channel/writ_fixture_config_guard.tcl run/writ_fixture_config_guard.tcl
+writ_stage contrib/native-hosts/genode/nested-channel/writ_guard_positive.args run/writ_guard_positive.args
+writ_stage contrib/native-hosts/genode/nested-channel/writ_guard_negative.args run/writ_guard_negative.args
 writ_stage scripts/genode/writ_bend.inc src/app/writ_bend.inc
 writ_stage scripts/genode/writ_bend_monitor/target.mk src/app/writ_bend_monitor/target.mk
 writ_stage hosts/genode/probes/client/target.mk src/app/writ_channel_client/target.mk
@@ -65,6 +71,19 @@ writ_stage hosts/genode/probes/client/writ_channel_client.cc src/app/writ_channe
 writ_stage hosts/genode/shim/writ_mem.cc src/writ_shim/writ_mem.cc
 writ_stage hosts/genode/shim/writ_channel_session.h src/writ_shim/writ_channel_session.h
 writ_stage hosts/genode/shim/writ_shim.mk src/writ_shim/writ_shim.mk
+
+# Fixed historical argument vectors and negative fixture; do not regenerate
+# expected bytes from the configuration being tested. A source/overlay with a
+# changed reference must be reviewed and these fixed pins deliberately updated.
+if ! (cd "$writ_overlay" && sha256sum --check --status <<'PINS'
+9832324d540f478108e0df4063468163702be4b2716ffb0663e59e35fe7e577e  run/writ_guard_positive.args
+bb05c8aef62045425f71da1fee373b06e9b8539adc457592fdb50266856fe48c  run/writ_guard_negative.args
+175a8e32cceaa6c4d38498a95e7754fc4fe5438ad0960a2ebadccb2f808e0c6e  run/writ_bend_monitor_nested_route_negative.run
+PINS
+); then
+  printf 'Fixed public fixture reference or negative source hash differs\n' >&2
+  exit 1
+fi
 
 {
   printf 'source_commit=%s\n' "$writ_head"
@@ -79,6 +98,12 @@ writ_stage hosts/genode/shim/writ_shim.mk src/writ_shim/writ_shim.mk
     scripts/genode/writ_bend.tcl \
     scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl \
     contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_accept.run \
+    contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_route_negative.run \
+    contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_guarded_positive.run \
+    contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_guarded_negative.run \
+    contrib/native-hosts/genode/nested-channel/writ_fixture_config_guard.tcl \
+    contrib/native-hosts/genode/nested-channel/writ_guard_positive.args \
+    contrib/native-hosts/genode/nested-channel/writ_guard_negative.args \
     scripts/genode/writ_bend.inc \
     scripts/genode/writ_bend_monitor/target.mk \
     hosts/genode/probes/client/target.mk \
@@ -90,7 +115,10 @@ writ_stage hosts/genode/shim/writ_shim.mk src/writ_shim/writ_shim.mk
 (
   cd "$writ_overlay"
   sha256sum -- run/writ_bend.tcl run/writ_bend_monitor.tcl \
-    run/writ_bend_monitor_nested_accept.run src/app/writ_bend.inc \
+    run/writ_bend_monitor_nested_accept.run run/writ_bend_monitor_nested_route_negative.run \
+    run/writ_bend_monitor_nested_guarded_positive.run run/writ_bend_monitor_nested_guarded_negative.run \
+    run/writ_fixture_config_guard.tcl run/writ_guard_positive.args run/writ_guard_negative.args \
+    src/app/writ_bend.inc \
     src/app/writ_bend_monitor/target.mk src/app/writ_channel_client/target.mk \
     src/app/writ_channel_client/writ_channel_client.cc src/writ_shim/writ_mem.cc \
     src/writ_shim/writ_channel_session.h src/writ_shim/writ_shim.mk

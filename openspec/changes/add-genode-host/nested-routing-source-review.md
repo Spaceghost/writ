@@ -169,8 +169,8 @@ actor identity, nondelegability, current generation, or confinement.
 For future independently reviewed work, a narrowly scoped native-fact
 ambiguity veto may refuse an ambiguous best-scoring configuration before
 channel allocation while continuing to route protected decisions through Bend.
-The proposed [fixed public-fixture configuration guard](public-fixture-config-guard-design.md)
-is a narrower pre-boot test guard; it is not that runtime ambiguity veto.
+The [fixed public-fixture configuration guard](public-fixture-config-guard-design.md)
+is a narrower pre-install test guard; it is not that runtime ambiguity veto.
 It must not introduce a native authorization or release engine, accept
 worker-supplied authority, or reinterpret a refused best match as permission to
 try a weaker one. A design must specify the treatment of equal-score identical

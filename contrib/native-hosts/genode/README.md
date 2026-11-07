@@ -189,8 +189,10 @@ QuickJS is MIT-licensed. Those upstream licenses are not replaced by this bindin
 The [nested R fixture](nested-channel/writ_bend_monitor_nested_accept.run)
 places the existing fixed-label public channel probe under a second `init` and
 expects the existing Bend monitor to commit the synthetic R request. The
-predicted `clients -> writ_client_r -> channel` label is a source-derived
-expectation; it has not been observed in a nested run. The
+label `clients -> writ_client_r -> channel` was observed in the public
+[route-control retry](../../../verification/genode-route-retry-42361441863/README.md);
+the paired missing-route control also matched, but both jobs remained incomplete
+with in-guest cleanup unverified. The
 [reviewed plan](../../../openspec/changes/add-genode-host/nested-routing-first-slice.md)
 describes the routes, quotas, source pins, negative control and evidence still
 needed. This is not a protected worker or a qualified host.
@@ -214,6 +216,43 @@ is retained for inspection; remove only the caller's own output when finished.
 The standalone `tclsh contrib/native-hosts/genode/nested-channel/check-structure.tcl sample` check and its
 `wrong-label`, `wrong-byte` and `missing-exit` modes exercise the harness with
 synthetic logged text, not Genode or a native negative control.
+
+The fixed guarded [positive](nested-channel/writ_bend_monitor_nested_guarded_positive.run)
+and [route-negative](nested-channel/writ_bend_monitor_nested_guarded_negative.run)
+entry points wrap only `install_config` and compare its entire ASCII argument
+with a separate fixed [positive](nested-channel/writ_guard_positive.args) or
+[negative](nested-channel/writ_guard_negative.args) reference. The negative
+[fixture](nested-channel/writ_bend_monitor_nested_route_negative.run) is copied
+byte-for-byte from the archived route-control retry, including its bounded
+same-spawn continuation waits. The wrapper refuses a mismatched argument before
+the original installer; it does not parse policy, select a subject, alter the
+shim or verify the installed/boot configuration. Each call is checked separately;
+the wrapper does not enforce a call count or stop arbitrary Tcl from bypassing it.
+The overlay preparer checks the recorded SHA-256 pins for both references and
+the negative fixture, then records all source and overlay hashes. Those hashes
+depend on the trusted reviewed checkout and staging process, not independent
+actor authentication. Direct invocation without that preparer does not perform
+its pin check.
+
+The reference reader, overlay and Tcl interpreter are trusted. The 16 KiB read
+and comparison caps do not bound file-open/read latency or defend against a
+FIFO, symlink or concurrent same-UID path replacement. An independently bounded
+outer supervisor is needed to bound a stall; the guard makes no no-follow,
+atomic-delivery or verified-cleanup claim. No guarded Genode run has been made.
+The offline controls below use stubs for build, image construction and launch;
+they do not start Genode or QEMU:
+
+```sh
+tclsh contrib/native-hosts/genode/nested-channel/test-fixture-config-guard.tcl
+python3 contrib/native-hosts/genode/nested-channel/test-fixture-config-references.py
+```
+
+These controls verify the actual boot helper's generated arguments, both fixed
+entry points and selected mismatch/boundary/continuation cases. The reference
+check compares the separate source files against fixed hashes and the archived
+ZIP bytes; it never derives a new expected value from a guarded invocation.
+See the [guard design](../../../openspec/changes/add-genode-host/public-fixture-config-guard-design.md)
+for the remaining trust, process-lifetime and host qualification gaps.
 
 For a future reviewed run, use fresh external Genode source and build trees,
 the pinned toolchain and prepared libc, plus this overlay. Set the fresh
@@ -253,7 +292,7 @@ are not rejected by the existing shim; trusted configuration must avoid them.
 | `../runtime/genode/allocator_checks.{h,c}` and `allocator_probe.c` | Shared native/host allocator checks and the host sanitizer entry point; no service authority |
 | `src/test/writfs/`, `src/test/writfs_vfs/` | Native diagnostic clients; never a protected worker profile |
 | `run/` | Trusted supervisor topology, fixed public fixture, explicit ROM/service routes, and native completion gates |
-| `nested-channel/` | Experimental trusted nested-init topology, source staging and public fixture assertions; no policy, host qualification or identity attestation |
+| `nested-channel/` | Experimental trusted nested-init topology, source staging, public fixture assertions and exact-argument guard; fixed reference reads rely on the trusted checkout/overlay and bounded outer supervision. No policy, host qualification or identity attestation |
 | `build-and-run.sh`, workflow | Pinned inputs, cross-build packaging, fresh generated Bend artifacts, QEMU execution and evidence |
 
 Authorization, original policy/provenance, grant checking, state transitions,

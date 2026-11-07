@@ -15,6 +15,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [public Genode fixture configuration guard](verification/genode-fixture-config-guard/README.md)
+has offline stub and fixed-reference controls; it is not a guarded Genode run,
+runtime ambiguity veto, or host-qualification result.
+
 The [automatic 75e8818 platform CI](verification/master-ci-75e8818/README.md)
 retains passing Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 results, and the failed strict Windows native run. Linux protected setup was

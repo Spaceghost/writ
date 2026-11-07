@@ -1,0 +1,19 @@
+PASS: fixed_pin_writ_guard_positive.args
+PASS: corrupt_reference_rejected_writ_guard_positive.args
+PASS: corrupt_pin_rejected_writ_guard_positive.args
+PASS: fixed_pin_writ_guard_negative.args
+PASS: corrupt_reference_rejected_writ_guard_negative.args
+PASS: corrupt_pin_rejected_writ_guard_negative.args
+PASS: fixed_pin_writ_bend_monitor_nested_route_negative.run
+PASS: corrupt_reference_rejected_writ_bend_monitor_nested_route_negative.run
+PASS: corrupt_pin_rejected_writ_bend_monitor_nested_route_negative.run
+PASS: archived_installed_bound_positive
+PASS: independent_archived_config_positive
+PASS: archived_installed_bound_negative
+PASS: independent_archived_config_negative
+PASS: archived_fixture_bound
+PASS: negative_fixture_exact_archive
+PASS: only_negative_route_removed
+PASS: reference_ascii_positive
+PASS: reference_ascii_negative
+ALL FIXTURE REFERENCE CONTROLS PASSED (offline only)

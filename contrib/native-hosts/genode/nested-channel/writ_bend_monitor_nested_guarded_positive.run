@@ -1,0 +1,10 @@
+# Fixed public fixture. Source/overlay, reference, interpreter and runner are trusted.
+# Errors stop this entry point; there is no fallback to the unwrapped fixture.
+if {[catch {
+  source [select_from_repositories run/writ_fixture_config_guard.tcl]
+  writ_fixture_config_guard_install [select_from_repositories run/writ_guard_positive.args] 1709
+  source [select_from_repositories run/writ_bend_monitor_nested_accept.run]
+} problem]} {
+  puts stderr "guarded public fixture incomplete: $problem"
+  exit 1
+}

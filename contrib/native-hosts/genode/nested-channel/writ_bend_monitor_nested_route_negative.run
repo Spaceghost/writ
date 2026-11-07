@@ -1,0 +1,75 @@
+# Public synthetic R fixture. Native test configuration only; the Bend monitor,
+# fixed-label client and host shim are the existing unchanged components.
+# This is not evidence of a real actor, confinement or native publication.
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+# Only this trusted configuration supplies the identity prefix and subject.
+# The predicted nested label must be observed; a mismatch is a failed run.
+set policies {
+      + policy | label_prefix: clients -> writ_client_r -> | subject: 1}
+
+# The parent forwards explicit environment services and Writ_channel to the
+# nested init; the nested client receives only the listed services. LOG is for
+# synthetic public data. The generic boot helper still has a broad default
+# route for components without their own route, so this is not confinement.
+set clients {
++ start clients | caps: 1200 | ram: 16M
+  + binary init
+  + config
+  | + parent-provides
+  |   + service LOG
+  |   + service PD
+  |   + service CPU
+  |   + service ROM
+  |   + service RM
+  |   + service Timer
+  |   + service Writ_channel
+  | + start writ_client_r | caps: 200 | ram: 2M
+  |   + binary writ_channel_client
+  |   + route
+  |     + service LOG | + parent
+  |     + service PD | + parent
+  |     + service CPU | + parent
+  |     + service ROM | + parent
+  |     + service RM | + parent
+  |     + service Timer | + parent
+  |   + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 2000
+  + route
+    + service Writ_channel | + child writ_bend_monitor
+    + service Timer | + child timer
+    + service LOG | + parent
+    + service PD | + parent
+    + service CPU | + parent
+    + service ROM | + parent
+    + service RM | + parent
+}
+
+writ_bend_boot writ_bend_monitor 256M 1000 /dev/log \
+  "
+  + provides | + service Writ_channel" \
+  "
+    + writ_channel$policies" $clients [list app/writ_channel_client]
+
+# Source predicts that nested init refuses this absent route. The fixed client
+# sleeps after parent denial; its exit or a timeout is not the expected signal.
+set esc [format %c 27]
+set client_pattern [format {\[init -> clients -> writ_client_r\] %s\[31mError: stop because parent denied Writ_channel-session:} $esc]
+set warning_pattern [format {\[init -> clients\] %s\[34mWarning: writ_client_r: no route to service "Writ_channel" \(label="writ_client_r -> channel"\)%s\[0m} $esc $esc]
+set service_pattern {\[init -> writ_bend_monitor\] writ_channel: service announced}
+set authority_pattern {\[init -> writ_bend_monitor\] monitor: SYNTHETIC authority}
+set writ_deadline_ms [expr {[clock clicks -milliseconds] + 122000}]
+run_genode_until $client_pattern 122
+# Expect returns after its first match. Other required markers may have arrived
+# before that match or may arrive later; retain and recheck the same output.
+set markers [list $service_pattern "monitor service" $authority_pattern "synthetic authority" \
+  $warning_pattern "nested init no route" $client_pattern "client session refusal"]
+foreach {pattern description} $markers {
+  if {![regexp -- $pattern $output]} {
+    set remaining [expr {$writ_deadline_ms - [clock clicks -milliseconds]}]
+    if {$remaining <= 0} { puts stderr "Error: marker deadline expired ($description)"; exit 1 }
+    set seconds [expr {($remaining + 999) / 1000}]
+    run_genode_until $pattern $seconds [output_spawn_id]
+  }
+}
+writ_bend_monitor_require $markers
+puts "nested public R route-negative fixture: PASS (synthetic public data; cleanup unverified)"

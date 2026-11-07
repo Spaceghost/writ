@@ -1,14 +1,16 @@
-# Proposed fixed-configuration guard for the public Genode fixture
+# Fixed-configuration guard for the public Genode fixture
 
 Suppose the public nested-R test's generated monitor configuration gains a
 second `writ_client_r` policy. The current channel shim can choose the first
-of two equally scored policies. A proposed guard would stop this particular
+of two equally scored policies. The fixture guard is designed to stop this
 supervised fixture before boot because its complete generated configuration is
 not the independently reviewed, exact fixture configuration. It would not fix
 the shim or evaluate arbitrary route policies.
 
-This is **design only**: no guard, guarded run, new acceptance test, or host
-qualification is claimed. The [source review](nested-routing-source-review.md)
+The contribution-owned guarded entry points and offline synthetic controls are
+now implemented and inventoried in the [Genode contribution](../../../contrib/native-hosts/genode/README.md#experimental-nested-channel-fixture).
+No guarded Genode run, host acceptance test, or host qualification is claimed.
+The [source review](nested-routing-source-review.md)
 describes the tie, empty-prefix and byte-prefix hazards. The public
 [route-control retry](../../../verification/genode-route-retry-42361441863/README.md)
 observed an R session and a separate missing-route refusal; both jobs remained
@@ -62,22 +64,21 @@ what another process installed.
 
 ## Proposed guarded entry points
 
-Add new test tooling only under `contrib/native-hosts/genode/nested-channel/`.
+The new test tooling is under `contrib/native-hosts/genode/nested-channel/`.
 Keep the legacy shim, `writ_bend.tcl`, existing client and Bend monitor unchanged.
-A positive entry point may source the existing fixed R fixture; a separate
-route-negative entry point would need its own fixed, reviewed fixture variant
-with that one route removed and its existing route-refusal assertions. The
-negative variant is not currently a tracked guarded fixture. Neither entry point
+A positive entry point sources the existing fixed R fixture; the separate
+route-negative entry point uses the tracked exact archived fixture variant
+with that one route removed and its route-refusal assertions. Neither entry point
 accepts a caller-supplied subject, policy, configuration path, expected digest,
 mode switch or arbitrary Tcl script. The two entry points bind their own exact
 reference bytes and expected observation; selecting the negative must never
 make a missing route count as an R success.
 
-Before sourcing the fixed fixture, a contribution-owned wrapper may rename and
-wrap only the existing Tcl `install_config` procedure. This is a proposed
-mechanism requiring offline validation against the pinned tool; it is not an
-existing interception point in the shim. The wrapper forwards the unchanged
-argument once to the original installer after exact comparison. It does not
+Before sourcing the fixed fixture, the contribution-owned wrapper renames and
+wraps only the existing Tcl `install_config` procedure. Offline controls exercise
+the real Writ boot helper with the original installer stubbed; a guarded Genode
+run remains unperformed. This is not an interception point in the shim. The
+wrapper forwards the unchanged argument once after exact comparison. It does not
 wrap or change `build_boot_image` or `run_genode_until`, parse policy, rewrite
 configuration, or select an actor. Each invocation is validated independently;
 there is no native policy or lifecycle state machine and no one-shot latch.
@@ -113,6 +114,9 @@ The guard does not open, inspect, or verify the installed file and does not
 intercept boot or runtime waits. In particular, it makes no no-follow,
 nonblocking, regular-file, or concurrent-replacement claim; a future installed
 file checker would require a separately reviewed descriptor-based OS design.
+The guard opens its trusted reference path before its bounded read. The byte cap
+does not bound that open/read's latency or prevent a FIFO, symlink, or same-UID
+replacement; a separately bounded outer supervisor is needed to bound a stall.
 A trusted post-run collector may record the installed bytes as an observation,
 but that capture is not a pre-boot guard or proof of what Genode consumed.
 For these Linux fixture inputs the historically installed form is the argument
@@ -127,7 +131,7 @@ still needs independent review of its exact source and bounded waits.
 
 ## Reference ownership and trust
 
-Each future reference must be a separate, committed byte fixture with a recorded
+Each reference is a separate, committed byte fixture with a recorded
 length and SHA-256, reviewed against the fixed source and archived evidence above.
 The expected bytes and scenario selection must be fixed before generating the
 runtime argument. The test must never copy the just-generated argument into its
@@ -166,12 +170,14 @@ fallback remain in the existing fixture.
 
 ## Planned offline controls and later evidence
 
-These named controls are proposed; none is claimed to have run for the guard.
-Run them with Tcl stubs that record installer, image-build and launch calls and
-cannot spawn Genode or QEMU. Source the actual pinned `writ_bend_boot` and the
-fixed positive fixture under those stubs, rather than testing only a duplicate
-handwritten configuration. Exercise the separately reviewed fixed negative
-variant the same way. Capture input/reference hashes and expected status.
+The contribution's named offline controls use Tcl stubs that record installer,
+image-build and launch calls and cannot spawn Genode or QEMU. They source the
+actual `writ_bend_boot`, fixed positive fixture and fixed negative fixture under
+those stubs. Their exact names and captured outcomes are in the
+[local verification record](../../../verification/genode-fixture-config-guard/README.md).
+The names below are design scenario groups, not necessarily individual assertion
+names; the bypass item documents an explicit limitation rather than a security
+sandbox test.
 
 - `positive_exact_and_installed_lf`: the independent positive vector forwards
   exactly once; an offline installer stub reproduces and checks the pinned

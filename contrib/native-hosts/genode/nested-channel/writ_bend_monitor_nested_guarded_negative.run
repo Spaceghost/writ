@@ -1,0 +1,9 @@
+# Fixed route-negative public fixture. A route refusal is not a Bend denial.
+if {[catch {
+  source [select_from_repositories run/writ_fixture_config_guard.tcl]
+  writ_fixture_config_guard_install [select_from_repositories run/writ_guard_negative.args] 1667
+  source [select_from_repositories run/writ_bend_monitor_nested_route_negative.run]
+} problem]} {
+  puts stderr "guarded public fixture incomplete: $problem"
+  exit 1
+}

@@ -1,0 +1,31 @@
+nested public R fixture: PASS (synthetic authority; no host qualification)
+PASS: positive_exact_and_actual_boot
+PASS: positive_stub_puts_lf
+PASS: exact_argument_forwarded
+nested public R route-negative fixture: PASS (synthetic public data; cleanup unverified)
+PASS: negative_late_marker_continuation
+PASS: negative_stub_puts_lf
+PASS: distinct_references
+PASS: repeated_valid_forwarded
+PASS: negative_reference_rejected_by_positive
+PASS: positive_reference_rejected_by_negative
+PASS: mutation_extra_policy
+PASS: mutation_empty_prefix
+PASS: mutation_space_prefix
+PASS: mutation_sibling_prefix
+PASS: mutation_changed_subject
+PASS: mutation_policy_ordered
+PASS: mutation_policy_reversed
+PASS: boundary_removed_route
+PASS: boundary_missing_final_lf
+PASS: boundary_added_lf
+PASS: boundary_nul
+PASS: boundary_non_ascii
+PASS: boundary_exact_cap
+PASS: boundary_over_cap
+PASS: missing_argument
+PASS: extra_argument
+PASS: actual_boot_mutation_stops_before_install_image
+PASS: installer_error_no_boot
+PASS: entrypoint_mutation_exits_before_install_image_launch
+ALL 28 FIXTURE GUARD CONTROLS PASSED (stubs only; no Genode)
