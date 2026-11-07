@@ -78,9 +78,17 @@ an open-only operation on a fixed known existing key and checks its API result;
 another attempts a fixed absent synthetic name and checks `ERROR_FILE_NOT_FOUND`
 without creating a key. If either premise, exact version/type, status mapping,
 PID/window association or expected control event fails, the observation is
-incomplete. Observe the controls' held identities separately, and verify that an
-event from the other child is not attributed to the target. No registry value is
-read, no key or ACL is created or modified, and no event key name is exported.
+incomplete. Matching an arbitrary event with the same PID, window and status is
+insufficient: unrelated startup or other-thread operations may have that
+status. Calibration must privately and within bounded memory match the specific
+fixed requested key identity and registry view to the actual event key
+name/handle using a documented and reviewed request-to-event mapping. Account
+for handle-relative names, key redirection, registry view and any other mapping
+ambiguity. This note has not established such a mapping; if it cannot be
+established unambiguously for the actual event, calibration is incomplete.
+Observe the controls' held identities separately, and verify that an event from
+the other child is not attributed to the target. No registry value is read, no
+key or ACL is created or modified, and no event key name is exported.
 A passing control shows this observation path worked for that operation on that
 runner; it does not establish capture of every registry call or prove a denial
 was made by Winsock. Do not assume that all failures appear as `REGOPEN`, that
