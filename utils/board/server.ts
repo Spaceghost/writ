@@ -992,7 +992,7 @@ const clients = new Set<Client>();
  * client's page (so a reconnect always resynchronizes); afterwards `flush`
  * pushes only fragments whose HTML changed. Comment keepalives hold the stream.
  */
-function events(flags: Flags, page: string): Response {
+export function events(flags: Flags, page: string, reconcile: () => void, afterInitialRender?: () => Promise<void>): Response {
   let client: Client | undefined;
   const stream = new ReadableStream({
     async start(controller) {
@@ -1002,6 +1002,9 @@ function events(flags: Flags, page: string): Response {
       let v: View | null = null;
       try {
         v = await view(flags, page, snapshot(flags));
+        // The optional pause is used only by the smoke test to reproduce a
+        // filesystem update after this snapshot but before registration.
+        await afterInitialRender?.();
       } catch (err) {
         console.error(`board: initial render of ${page} failed: ${err}`);
       }
@@ -1020,7 +1023,13 @@ function events(flags: Flags, page: string): Response {
       };
       client = c;
       const first = v === null ? ": initial render failed; waiting for the next change\n\n" : patchElements(v.nav) + patchElements(v.main);
-      if (c.send(first)) clients.add(c);
+      if (c.send(first)) {
+        clients.add(c);
+        // A watcher flush may have completed while the first view was being
+        // built and this client was absent. Queue a fresh scan only after the
+        // initial patch, through the same serialized path as watcher events.
+        reconcile();
+      }
     },
     cancel() {
       if (client) clients.delete(client);
@@ -1079,17 +1088,34 @@ const LANE_TREES = [...ROOT_TREES, ".superpowers/sdd"];
  * root, each lane, `.superpowers`, a gitdir's `logs/`) only report entries that
  * lead to a watched subtree, so unrelated edits in a worktree do not re-render.
  */
-class Watcher {
+export class Watcher {
   private watchers = new Map<string, FSWatcher>();
   private filters = new Map<string, Set<string> | null>();
   private timer: ReturnType<typeof setTimeout> | undefined;
   private running = false;
   private again = false;
+  private stopped = false;
 
   constructor(private flags: Flags, private onFlush: (events: number) => void = () => {}) {}
 
   start(): void {
+    this.stopped = false;
     this.sync();
+  }
+
+  /** Reconcile a newly registered connection with the current filesystem. */
+  reconcile(): void {
+    this.schedule();
+  }
+
+  /** Close watchers and any pending debounce timer. */
+  stop(): void {
+    this.stopped = true;
+    this.again = false;
+    if (this.timer !== undefined) clearTimeout(this.timer);
+    this.timer = undefined;
+    for (const watcher of this.watchers.values()) watcher.close();
+    this.watchers.clear();
   }
 
   /** Directories to watch, each with its name filter (null: any entry). */
@@ -1177,6 +1203,7 @@ class Watcher {
 
   /** Coalesces a burst of events into one flush about DEBOUNCE_MS after the first. */
   private schedule(): void {
+    if (this.stopped) return;
     if (this.running) {
       this.again = true;
       return;
@@ -1221,7 +1248,7 @@ export function allowedHosts(host: string, port: number): Set<string> {
   return new Set([`${h.includes(":") && !h.startsWith("[") ? `[${h}]` : h}:${port}`]);
 }
 
-async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<Response> {
+async function handle(flags: Flags, hosts: Set<string>, req: Request, reconcile: () => void): Promise<Response> {
   if (!hosts.has((req.headers.get("host") ?? "").toLowerCase())) return new Response("forbidden host\n", { status: 403 });
   const url = new URL(req.url);
   let path: string;
@@ -1271,7 +1298,7 @@ async function handle(flags: Flags, hosts: Set<string>, req: Request): Promise<R
     return Response.json(await scanLanes(flags.root, scanChanges(flags.root), flags.lanes));
   }
   if (path === "/events") {
-    return events(flags, url.searchParams.get("page") ?? "/");
+    return events(flags, url.searchParams.get("page") ?? "/", reconcile);
   }
   const explainer = path.match(/^\/change\/([^/]+)\/html\/([^/]+)$/);
   if (explainer) {
@@ -1316,7 +1343,7 @@ if (import.meta.main) {
       console.error(`board: request failed: ${err}`);
       return new Response("internal error\n", { status: 500, headers: { "content-type": "text/plain; charset=utf-8" } });
     },
-    fetch: (req) => handle(flags, hosts, req),
+    fetch: (req) => handle(flags, hosts, req, () => watcher.reconcile()),
   });
   hosts = allowedHosts(flags.host, server.port);
   console.log(`board: reading ${flags.root}${flags.lanes ? ` and lanes in ${flags.lanes}` : ""}; answers are appended under ${questionsDir(flags)}`);
