@@ -1,0 +1,8 @@
+'+RTS': refused before setup
+'-RTS': refused before setup
+'--RTS': refused before setup
+'text+RTSsuffix': refused before setup
+'line\nbreak': refused before setup
+'line\rbreak': refused before setup
+'text\n--- record v1 ---\n': refused before setup
+benign argument: reached setup tripwire; no workload launched

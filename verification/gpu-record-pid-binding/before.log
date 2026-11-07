@@ -1,4 +1,5 @@
 long matching PID and maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+derive accepts absent final gate: expected DERIVE_ONLY; got PASS; derive=0; check=2; stderr=empty; OK
 valid sized standalone GPU option: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
 valid integral MB size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
 valid upper bound GPU size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
@@ -15,6 +16,15 @@ GPU option outside RTS block: expected FAIL; got PASS; derive=0; check=3; stderr
 duplicate GPU options: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
 GPU off: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required)); derive=0; check=1; stderr=empty; OK
 GPU default: expected FAIL; got FAIL (mode: rts_options 'none' requests no device (--gpu on or a size is required)); derive=0; check=1; stderr=empty; OK
+workload later GPU-off block: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+workload closing delimiter: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+workload stop delimiter: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+workload embedded delimiter: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+workload greedy args delimiter: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+injected non-field delimiter line: expected MALFORMED; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+injected unknown field: expected MALFORMED; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+injected non-final gate: expected MALFORMED; got PASS; derive=0; check=2; stderr=empty; MISMATCH
+injected record delimiter: expected MALFORMED; got MALFORMED: unbalanced record markers in /tmp/writ-gpu-record-controls-vgbsgp2p/record; derive=2; check=2; stderr=empty; OK
 long different PID and false maximum: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
 long different PID only: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
 long false maximum only: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH

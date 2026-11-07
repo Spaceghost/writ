@@ -9,6 +9,8 @@
 #   `+RTS --gpu MODE -RTS`), or `default` (no +RTS block: the runtime's own
 #   default, which probes the device and falls back to the CPU in silence).
 #   ARGS are the probe's arguments (for bang: REPEATS).
+#   CR/LF and RTS delimiter substrings in ARGS are refused before launch:
+#   v1 flattens arguments and cannot safely represent them.
 #   GV_SOURCES lists, relative to the worktree root, the probe source and
 #   every library `.bend` it imports. When it is unset the `source_sha256`
 #   field stays empty and the record is INCOMPLETE; nothing is guessed.
@@ -51,6 +53,18 @@ usage() {
 }
 
 [ $# -ge 2 ] || usage
+# Refuse ambiguous workload arguments before creating output or starting any
+# probe. The v1 record flattens argv, and later RTS blocks can override MODE.
+writ_cr=$(printf '\r')
+writ_lf='
+'
+for writ_arg do
+  case "$writ_arg" in
+    *"$writ_cr"*|*"$writ_lf"*|*+RTS*|*-RTS*)
+      echo 'observe.sh: argument contains a line break or RTS delimiter' >&2
+      exit 64 ;;
+  esac
+done
 HERE=$(cd "$(dirname "$0")" && pwd)
 ROOT=$(cd "$HERE/../.." && pwd)
 CHECK="$HERE/check-record.sh"

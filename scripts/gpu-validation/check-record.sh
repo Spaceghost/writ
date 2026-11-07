@@ -31,6 +31,7 @@
 #          (source, toolchain, build, device, environment, options, workload)
 #          and identical stdout;
 #        - `rts_options` is the single GPU option block emitted by observe.sh;
+#        - the flattened workload field contains no RTS delimiter substring;
 #        - `exit_status` is 0 in both;
 #        - `correctness` is `PASS p, FAIL 0` with p >= 1 in both;
 #        - the observed target saw the caller's CUDA_VISIBLE_DEVICES;
@@ -125,6 +126,24 @@ if [ "$NREC" -eq 0 ]; then
   echo "INCOMPLETE: no '--- record v1 ---' block in $FILE"
   exit 2
 fi
+
+# An embedded newline in flattened argv must not hide later RTS delimiters as
+# an ignored record line. Only v1 fields are accepted; a gate, when present,
+# is a single final field. The producer writes no gate for --derive.
+i=1
+while [ "$i" -le "$NREC" ]; do
+  if ! awk -v fields="$REQUIRED" '
+    BEGIN { n = split(fields, names, " "); for (j = 1; j <= n; j++) allowed[names[j]] = 1 }
+    { pos = index($0, ": "); key = substr($0, 1, pos - 1)
+      if (!pos || !(key in allowed)) bad = 1
+      if (key == "gate") { gates++; gate_line = NR } }
+    END { if (bad || gates > 1 || (gates == 1 && gate_line != NR)) exit 1 }
+  ' "$WORK/rec.$i"; then
+    echo "MALFORMED: unsupported record line or misplaced gate (record $i)"
+    exit 2
+  fi
+  i=$((i + 1))
+done
 
 # field N KEY: the value of KEY in record N (empty when absent).
 field() {
@@ -233,6 +252,12 @@ else
   rts=$(field "$OBS" rts_options)
   if ! printf '%s\n' "$rts" | grep -E -q -e '^\+RTS --gpu (on|[1-9][0-9]{0,5}(GB|MB)) -RTS$'; then
     fail "mode: rts_options '$rts' is not the supported single GPU option block"
+  fi
+  # observe.sh flattens workload argv using $*. Refuse delimiter substrings
+  # anywhere in that field, since a later RTS block could override --gpu.
+  workload=$(field "$OBS" workload)
+  if printf '%s\n' "$workload" | grep -E -q -e '\+RTS|--?RTS'; then
+    fail "mode: flattened workload contains an RTS delimiter"
   fi
 
   for r in "$OBS" "$PLN"; do

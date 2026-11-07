@@ -1,4 +1,5 @@
 long matching PID and maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+derive accepts absent final gate: expected DERIVE_ONLY; got PASS; derive=0; check=2; stderr=empty; OK
 valid sized standalone GPU option: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
 valid integral MB size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
 valid upper bound GPU size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
@@ -15,6 +16,15 @@ GPU option outside RTS block: expected FAIL; got FAIL (mode: rts_options '+RTS -
 duplicate GPU options: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu on --gpu off -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
 GPU off: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu off -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
 GPU default: expected FAIL; got FAIL (mode: rts_options 'none' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+workload later GPU-off block: expected FAIL; got FAIL (mode: flattened workload contains an RTS delimiter); derive=0; check=1; stderr=empty; OK
+workload closing delimiter: expected FAIL; got FAIL (mode: flattened workload contains an RTS delimiter); derive=0; check=1; stderr=empty; OK
+workload stop delimiter: expected FAIL; got FAIL (mode: flattened workload contains an RTS delimiter); derive=0; check=1; stderr=empty; OK
+workload embedded delimiter: expected FAIL; got FAIL (mode: flattened workload contains an RTS delimiter); derive=0; check=1; stderr=empty; OK
+workload greedy args delimiter: expected FAIL; got FAIL (mode: flattened workload contains an RTS delimiter); derive=0; check=1; stderr=empty; OK
+injected non-field delimiter line: expected MALFORMED; got MALFORMED: unsupported record line or misplaced gate (record 1); derive=2; check=2; stderr=empty; OK
+injected unknown field: expected MALFORMED; got MALFORMED: unsupported record line or misplaced gate (record 1); derive=2; check=2; stderr=empty; OK
+injected non-final gate: expected MALFORMED; got MALFORMED: unsupported record line or misplaced gate (record 1); derive=2; check=2; stderr=empty; OK
+injected record delimiter: expected MALFORMED; got MALFORMED: unbalanced record markers in /tmp/writ-gpu-record-controls-c1riajhm/record; derive=2; check=2; stderr=empty; OK
 long different PID and false maximum: expected FAIL; got FAIL (samplers: compute-apps PID 111 differs from pmon PID 222); derive=0; check=1; stderr=empty; OK
 long different PID only: expected FAIL; got FAIL (samplers: compute-apps PID 111 differs from pmon PID 222); derive=0; check=1; stderr=empty; OK
 long false maximum only: expected FAIL; got FAIL (samplers: record claims pmon maximum 99, log shows 42); derive=0; check=1; stderr=empty; OK

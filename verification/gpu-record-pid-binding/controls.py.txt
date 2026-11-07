@@ -14,12 +14,12 @@ with tempfile.TemporaryDirectory(prefix='writ-gpu-record-controls-') as temp:
     apps.write_text('111, synthetic\n')
     pmon.write_text('# gpu pid type sm mem\n0 111 C 42 0\n0 222 C 73 0\n')
     util.write_text('17 %\n')
-    san_template = ('========= Target application: /tmp/synthetic-bang{rts} 600\n'
+    san_template = ('========= Target application: /tmp/synthetic-bang{rts} {args}\n'
                     '========= Display Driver version: synthetic\n'
                     '========= Launch #1\n=========   Kernel: bend_dev\n'
                     '========= Host Frame: synthetic in synthetic-bang\n'
                     '========= ERROR SUMMARY: 0 errors\n')
-    sanitizer.write_text(san_template.format(rts=' +RTS --gpu on -RTS'))
+    sanitizer.write_text(san_template.format(rts=' +RTS --gpu on -RTS', args='600'))
     no_samples = root / 'pmon-no-samples'
     no_samples.write_text('# gpu pid type sm mem\n0 111 C - -\n')
     zero_samples = root / 'pmon-zero'
@@ -47,24 +47,33 @@ with tempfile.TemporaryDirectory(prefix='writ-gpu-record-controls-') as temp:
 
     def check(name, changes, expected):
         candidate = dict(plain, **changes)
-        current_observed = dict(observed, rts_options=candidate['rts_options'])
+        current_observed = dict(observed, rts_options=candidate['rts_options'], workload=candidate['workload'])
         rts = candidate['rts_options']
-        sanitizer.write_text(san_template.format(rts='' if rts == 'none' else ' ' + rts))
+        args = candidate['workload'].rsplit(' args=', 1)[-1]
+        sanitizer.write_text(san_template.format(rts='' if rts == 'none' else ' ' + rts, args=args))
         current_observed['observer'] = (f'compute-sanitizer caller_cuda_visible_devices=unset '
                                        f'target_cuda_visible_devices=unset log={sanitizer} log_sha256={sha(sanitizer)}')
         text = ''
         for item in (candidate, current_observed):
             text += '--- record v1 ---\nrecord_version: gpu-validation-record v1\n'
-            text += ''.join(f'{key}: {item[key]}\n' for key in required)
-            text += f'gate: {expected}\n'
+            for key in required:
+                text += f'{key}: {item[key]}\n'
+                if key == 'workload' and '_extra_line' in changes:
+                    text += changes['_extra_line'] + '\n'
+            if expected != 'DERIVE_ONLY':
+                text += f'gate: {"FAIL" if expected == "MALFORMED" else expected}\n'
             text += '--- end record ---\n'
         record = root / 'record'; record.write_text(text)
         result = subprocess.run(['sh', str(checker), '--derive', str(record)], text=True, capture_output=True)
         checked = subprocess.run(['sh', str(checker), str(record)], text=True, capture_output=True)
         verdict = result.stdout.strip()
-        ok = (result.returncode == 0 and not result.stderr and not checked.stderr and
-              checked.returncode == (0 if expected == 'PASS' else 1) and
-              (verdict == 'PASS' if expected == 'PASS' else verdict.startswith('FAIL (')))
+        ok = (not result.stderr and not checked.stderr and
+              (result.returncode == 0 and verdict == 'PASS' and checked.returncode == 2
+               if expected == 'DERIVE_ONLY' else
+               result.returncode == 2 and checked.returncode == 2 and verdict.startswith('MALFORMED:')
+               if expected == 'MALFORMED' else
+               result.returncode == 0 and checked.returncode == (0 if expected == 'PASS' else 1) and
+               (verdict == 'PASS' if expected == 'PASS' else verdict.startswith('FAIL ('))))
         print(f'{name}: expected {expected}; got {verdict}; derive={result.returncode}; '
               f'check={checked.returncode}; stderr={"present" if result.stderr or checked.stderr else "empty"}; '
               f'{"OK" if ok else "MISMATCH"}')
@@ -73,6 +82,7 @@ with tempfile.TemporaryDirectory(prefix='writ-gpu-record-controls-') as temp:
     pv = plain['pmon_max_sm']; cv = plain['compute_app_seen']
     checks = [
         ('long matching PID and maximum', {}, 'PASS'),
+        ('derive accepts absent final gate', {}, 'DERIVE_ONLY'),
         ('valid sized standalone GPU option', {'rts_options':'+RTS --gpu 1GB -RTS'}, 'PASS'),
         ('valid integral MB size', {'rts_options':'+RTS --gpu 1MB -RTS'}, 'PASS'),
         ('valid upper bound GPU size', {'rts_options':'+RTS --gpu 999999GB -RTS'}, 'PASS'),
@@ -89,6 +99,15 @@ with tempfile.TemporaryDirectory(prefix='writ-gpu-record-controls-') as temp:
         ('duplicate GPU options', {'rts_options':'+RTS --gpu on --gpu off -RTS'}, 'FAIL'),
         ('GPU off', {'rts_options':'+RTS --gpu off -RTS'}, 'FAIL'),
         ('GPU default', {'rts_options':'none'}, 'FAIL'),
+        ('workload later GPU-off block', {'workload':'probe=bang mode=on args=600 +RTS --gpu off -RTS'}, 'FAIL'),
+        ('workload closing delimiter', {'workload':'probe=bang mode=on args=600 -RTS'}, 'FAIL'),
+        ('workload stop delimiter', {'workload':'probe=bang mode=on args=600 --RTS'}, 'FAIL'),
+        ('workload embedded delimiter', {'workload':'probe=bang mode=on args=600 prefix+RTSsuffix'}, 'FAIL'),
+        ('workload greedy args delimiter', {'workload':'probe=bang mode=on args=600 +RTS --gpu off -RTS args=mask'}, 'FAIL'),
+        ('injected non-field delimiter line', {'_extra_line':' +RTS --gpu off -RTS'}, 'MALFORMED'),
+        ('injected unknown field', {'_extra_line':'unknown: +RTS'}, 'MALFORMED'),
+        ('injected non-final gate', {'_extra_line':'gate: PASS'}, 'MALFORMED'),
+        ('injected record delimiter', {'_extra_line':'--- record v1 ---'}, 'MALFORMED'),
         ('long different PID and false maximum', {'pmon_max_sm': pv.replace('42 pid=111', '99 pid=222')}, 'FAIL'),
         ('long different PID only', {'pmon_max_sm': pv.replace('pid=111', 'pid=222')}, 'FAIL'),
         ('long false maximum only', {'pmon_max_sm': pv.replace('42 pid=', '99 pid=')}, 'FAIL'),
