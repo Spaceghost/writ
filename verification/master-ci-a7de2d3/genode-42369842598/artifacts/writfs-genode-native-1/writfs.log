@@ -1,0 +1,270 @@
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/boot_dir/hw
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/power_on/qemu
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/log/qemu
+including /home/runner/work/_temp/writfs-genode/inputs/genode/tool/run/image/iso
+including /home/runner/work/writ/writ/contrib/native-hosts/genode/run/writfs.run
+building targets:  core init timer lib/ld lib/libc lib/libm lib/vfs server/writfs test/writfs
+spawn make core init timer lib/ld lib/libc lib/libm lib/vfs server/writfs test/writfs
+  Library ld.abi.so
+  Library ldso_so_support.lib.a
+  Library base-hw-common.lib.a
+  Library startup-hw.lib.a
+  Library syscall-hw.lib.a
+  Library cxx.lib.a
+  Library timeout-hw.lib.a
+  Library base-hw.lib.a
+  Library ld-hw.lib.so
+    MERGE    ld-hw.lib.so
+  Library ld.lib.so
+  Library libc.abi.so
+  Library libc-string.lib.a
+  Library libc-locale.lib.a
+  Library libc-stdlib.lib.a
+  Library libc-stdio.lib.a
+  Library libc-gen.lib.a
+  Library libc-gdtoa.lib.a
+  Library libc-inet.lib.a
+  Library libc-stdtime.lib.a
+  Library libc-regex.lib.a
+  Library libc-compat.lib.a
+  Library libc-setjmp.lib.a
+  Library libc-mem.lib.a
+  Library libc-resolv.lib.a
+  Library libc-isc.lib.a
+  Library libc-nameser.lib.a
+  Library libc-net.lib.a
+  Library libc-rpc.lib.a
+  Library libc-tzcode.lib.a
+  Library libc-libkern.lib.a
+  Library base.lib.a
+  Library vfs.abi.so
+  Library libc.lib.so
+  Library libm.abi.so
+  Library libm.lib.so
+  Library vfs.lib.so
+  Library core-hw-pc.lib.a
+    COMPILE  version.o
+    MERGE    core-hw-pc.lib.a
+  Program core/hw/core-hw-pc
+  Program init/init
+  Library writ_quickjs.lib.a
+  Program server/writfs/writfs
+    COMPILE  main.o
+    COMPILE  policy.o
+    COMPILE  quickjs_alloc.o
+    LINK     writfs
+  Program test/writfs/test_writfs
+    COMPILE  main.o
+    LINK     test_writfs
+  Program timer/hpet/hpet_timer
+  Program timer/hw/hw_timer
+genode build completed
+building targets: bootstrap/hw core/hw
+spawn make bootstrap/hw core/hw
+  Library cxx.lib.a
+  Library bootstrap-hw-pc.lib.a
+  Program bootstrap/hw/bootstrap_hw_pc
+  Library syscall-hw.lib.a
+  Library base-hw-common.lib.a
+  Library core-hw-pc.lib.a
+    COMPILE  version.o
+    MERGE    core-hw-pc.lib.a
+  Program core/hw/core-hw-pc
+genode build completed
+using 'hw_timer' as 'timer'
+using 'ld-hw.lib.so' as 'ld.lib.so'
+core link address is 0xffffffc000000000
+install bootloader
+creating ISO image...
+xorriso 1.5.6 : RockRidge filesystem manipulator, libburnia project.
+
+spawn qemu-system-x86_64 -nographic -accel tcg -m 512 -nic none -no-reboot -serial mon:stdio -cdrom var/run/writfs.iso -machine q35 -cpu Skylake-Client
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.pcid [bit 17]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.x2apic [bit 21]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.tsc-deadline [bit 24]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.hle [bit 4]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.invpcid [bit 10]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.0DH:EAX.xsavec [bit 1]
+cSeaBIOS (version 1.16.3-debian-1.16.3-2)
+
+Booting from Hard Disk...
+
+Boot failed: could not read the boot disk
+
+
+Booting from DVD/CD...
+
+error: can't find command `loadfont'.
+
+  Booting `Genode on base-hw'
+
+
+
+
+Bender Version 0.9-beta7-51-g28ba2ad-dirty
+
+Patching BDA with I/O port 0x3f8.
+
+Bender: Hello World.
+
+hwp config: eeo=na irq=na hwp=na epp=na epb=na
+Cpu apic_id=0x0 [0:0:0:0:0:0]
+
+
+
+
+
+kernel initialized
+
+Genode 26.08
+
+493 MiB RAM and 64536 caps assigned to init
+
+[init] Warning: stranger: no route to service "ROM" (label="stranger -> canary")
+
+[init -> stranger] PASS supervisor denies direct canary ROM access
+
+[init] Warning: stranger: no route to service "Writ_control" (label="stranger -> ")
+
+[init] Warning: reader: no route to service "ROM" (label="reader -> canary")
+
+[init -> reader] PASS supervisor denies direct canary ROM access
+
+[init -> stranger] PASS unknown component has no administrative route
+
+[init] Warning: forger: no route to service "ROM" (label="forger -> canary")
+
+[init -> forger] PASS supervisor denies direct canary ROM access
+
+[init] Warning: forger: no route to service "Writ_control" (label="forger -> ")
+
+[init -> forger] PASS unknown component has no administrative route
+
+[init -> writfs] Warning: clock_gettime(): missing real-time clock
+
+[init -> writfs] WRITFS READY public-canary bytes=33 sha256=4e69733490c465b5561bd477617265a72e614cbabb3ec570fcb1c1b54df32e6a native=genode heap_peak=2064846 reserved_peak=2064846
+
+[init -> writfs] SESSION actor=1 active=1
+
+[init -> writfs] SESSION actor=0 active=2
+
+[init -> writfs] SESSION actor=0 active=3
+
+[init -> stranger] PASS unknown native session cannot open root
+
+[init -> stranger] PASS unknown native session receives no object metadata
+
+[init -> forger] PASS unknown native session cannot open root
+
+[init -> reader] PASS immutable file has exact size and read-only attributes
+
+[init -> reader] PASS directory contains exactly one entry
+
+[init -> forger] PASS unknown native session receives no object metadata
+
+[init -> stranger] PASS packet acknowledgement preserves identity
+
+[init -> stranger] PASS forged handle returns no bytes and leaves shared memory unchanged
+
+[init -> stranger] WRITFS NATIVE PASS role=stranger
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS native directory packet succeeds
+
+[init -> reader] PASS directory exposes the sole canonical name
+
+[init] child "stranger" exited with exit value 0
+
+[init -> forger] PASS packet acknowledgement preserves identity
+
+[init -> forger] PASS forged handle returns no bytes and leaves shared memory unchanged
+
+[init -> forger] WRITFS NATIVE PASS role=forger
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS native packet read returns exact canary
+
+[init] child "forger" exited with exit value 0
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS native offset read is exact
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS EOF returns zero without touching payload
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS write packet is rejected
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS packet count exceeding buffer is rejected
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS native offset is checked before U32 narrowing
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS over-limit read is rejected
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS negative shared-memory descriptor is rejected
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS overflowing shared-memory descriptor is rejected
+
+[init -> reader] PASS native write-open is denied even on writeable session request
+
+[init -> reader] PASS path traversal alias is rejected
+
+[init -> reader] PASS embedded-NUL native name is rejected
+
+[init -> reader] PASS unterminated native name is rejected
+
+[init -> reader] PASS native truncate is rejected
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS stat-only handle cannot read payload
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS closed handle remains invalid
+
+[init -> reader] PASS native handles do not reuse retired Bend identities
+
+[init -> writfs] SESSION actor=0 active=2
+
+[init -> reader] PASS second session cannot inherit admitted invocation
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS handle ID is local to its native session
+
+[init -> reader] PASS native handle table is bounded at 32
+
+[init -> reader] PASS trusted controller revokes through Bend
+
+[init -> reader] PASS packet acknowledgement preserves identity
+
+[init -> reader] PASS retained handle cannot read after revocation
+
+[init -> reader] PASS revoked session receives no metadata
+
+[init -> reader] PASS new opens fail after revocation
+
+[init -> reader] PASS revoked handles still close cleanly
+
+[init -> reader] WRITFS NATIVE PASS role=reader
+
+WRIT GENODE FILE_SYSTEM ACCEPTED reader stranger forger
+
+Run script execution successful.
