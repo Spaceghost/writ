@@ -1,0 +1,27 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+  probe.c
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+  writfs.c
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+  transport_probe.c
+  policy_pipe.c
+  isolation.c
+  isolation.c
+  worker.c
+C:\Program Files (x86)\WinFsp\inc\winfsp\fsctl.h(541,44): warning C4324: '<unnamed-tag>': structure was padded due to alignment specifier [D:\a\_temp\windows-native-build\writfs-windows.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/writfs.c')
+
+  channels.c
+  Generating Code...
+  Generating Code...
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-native-build\writfs-windows.vcxproj]
+  policy_pipe.c
+  isolation.c
+  Generating Code...
+  writfs-transport-probe.vcxproj -> D:\a\_temp\windows-native-build\Release\writfs-transport-probe.exe
+  writfs-probe.vcxproj -> D:\a\_temp\windows-native-build\Release\writfs-probe.exe
+  writfs-windows.vcxproj -> D:\a\_temp\windows-native-build\Release\writfs-windows.exe
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
