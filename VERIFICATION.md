@@ -339,7 +339,8 @@ historical GPU run.
 
 ## Explicit proof scope
 
-`bend PROOF.bend` prints `ALL PROOFS CHECK` for thirty-six declared laws:
+`bend PROOF.bend` prints `ALL PROOFS CHECK` for thirty-seven declared laws.
+The thirty-six historical laws include:
 
 1. A false guard at any position in a sequence makes the full guard false.
 2. A denied selector returns the original state.
@@ -473,6 +474,12 @@ On that lane's final tree `bend PROOF.bend` printed `ALL PROOFS CHECK` for its
 twenty-four laws, and on the merged tree for all thirty-six;
 `bend PROOF.bend --verdict` exited 1 with the same missing-`lean` error, so
 no Lean-kernel verdict was obtained for that earlier run.
+
+The added `planner_empty_sources_rejects` law states only that an empty
+proposed source list cannot compare equal to any selected plan. The
+[local proof record](verification/planner-empty-source-law/README.md) includes
+a negative mutation and its limits. It authenticates no caller or plan and
+does not establish any planner admission or commit.
 
 These laws are in `LAWS.bend`, with implementations in `PROOF.bend`. They are
 selected guard/state laws, not a proof of noninterference, whole-program

@@ -1,14 +1,13 @@
-# Proposed empty-source comparator law
+# Empty-source comparator law
 
 A planner description with no proposed source objects must not compare equal to
 an already selected transfer plan. `PlannerPlanMatch.same_plan_description`
 currently rejects this input before comparing plan fields. Existing synthetic
-tests cover representative inputs; a small universal law could additionally
-check this one property for every value of the remaining fields and every
-selected plan. This is a proposed proof obligation, not an implemented proof or
-a planner admission path.
+tests cover representative inputs; a small universal law now checks this one property for every value of the remaining fields and every
+selected plan. This is a narrow pure-model proof, not a planner admission path. See the
+[local proof evidence](../../../verification/planner-empty-source-law/README.md).
 
-The proposed declaration, using `P` for `PlannerEnvelope`, `T` for `Transfer`
+The declaration, using `P` for `PlannerEnvelope`, `T` for `Transfer`
 and `M` for `PlannerPlanMatch`, is:
 
 ```bend
@@ -41,19 +40,17 @@ keep request ID, expiry, manifest/evidence, registry lookup, trusted state and
 admission/commit gaps explicit. Existing authority and security laws remain
 unchanged; this new, narrow behavioral law requires its own rationale and review.
 
-The prospective proof may reduce definitionally: pattern matching the proposal
+The proof reduces definitionally: pattern matching the proposal
 in `same_plan_description` passes the empty `sources` to
 `proposal_sources_nonempty`; its `Nil{}` branch yields `False{}`;
 `proposal_sources_checked(False{}, ...)` yields `False{}` regardless of the
-selected plan. A candidate `{==}` proof is therefore plausible in the existing
-`LAWS.bend`/`PROOF.bend` architecture. This has not been type-checked or
-accepted by Bend or BendTT; syntax, normalization and translation must be
-verified rather than assumed. No unsafe definition, hole, checker change or
+selected plan. The `{==}` proof is accepted by Bend and the available BendTT verdict at the
+source and kernel recorded in the local evidence. No unsafe definition, hole, checker change or
 alteration of an existing law is allowed.
 
-As a negative control, in a temporary isolated copy only, mutate
-`proposal_sources_checked`'s `False{}` branch to return `True{}` and require the
-new law/proof check to fail. This directly makes the empty-source result true;
+The negative control mutates `proposal_sources_checked`'s `False{}` branch
+to return `True{}` in a temporary isolated copy, and records the new law/proof
+check failure. This directly makes the empty-source result true;
 merely changing the initial empty-list test might still leave the later selected
 list or source-equality checks rejecting, so it is not a sufficient independent
 control. Preserve the exact mutation and the named failing diagnostic, identifying
@@ -61,12 +58,12 @@ whether Bend rejects the proof before the kernel is invoked or the Lean kernel
 rejects it; never imply a kernel rejection from a Bend-only failure. Never deliver
 the mutation in the implementation branch.
 
-After independent design review, implementation should add only the necessary
-law/proof imports and declarations, the new proof and scoped traceability. Run
+The implementation adds only the necessary law/proof
+imports and declarations, the new proof and scoped traceability. Run
 the pinned Bend 2.0.39 test suite and native CPU tests, the ordinary proof check,
 and `bend PROOF.bend --verdict` with the documented Lean-built kernel when
 available. Run the negative control separately, validate strict OpenSpec and
-source manifest, and preserve exact source and kernel identities, and update references to the existing-law count.
+source manifest, and preserve exact source and kernel identities, and update references to the law count.
 Require an unmodified-source successful `--verdict`. Do not count
 a CPU fallback as GPU evidence. A successful law would constrain a pure
 Boolean comparison only: it neither authenticates a caller or plan, resolves

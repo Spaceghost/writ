@@ -160,8 +160,8 @@ bend PROOF.bend
 ```
 
 Each complete test run should report **2224 passing checks** and
-`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-six declared laws about guards,
-preservation of denied state, grant issuance, host-contract denials, policy-aware audit, and executor rendezvous; it does
+`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-seven declared laws about guards,
+preservation of denied state, grant issuance, host-contract denials, policy-aware audit, executor rendezvous, and the empty-source planner comparison; it does
 not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.
 The [recorded verdict](../verification/lean-verdict-be649f6/README.md) passed at

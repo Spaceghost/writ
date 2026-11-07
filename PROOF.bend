@@ -307,3 +307,7 @@ def Laws.rendezvous_wrong_provider_evidence_rejects(state, expected_revision, fr
 def Laws.rendezvous_unselected_dispatch_rejects(state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot, unselected):
   %Equal.sym(Bool, Rendezvous.dispatch_target_selected(state, offer, host, worker_session), False{}, unselected) : {(Rendezvous.Change.accepted(Rendezvous.dispatch_by(_, state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot)), Rendezvous.Change.state(Rendezvous.dispatch_by(_, state, expected_revision, offer, host, expected_host_revision, worker_session, session, expected_session, n_context, snapshot))) == (False{}, state) : Bool & Rendezvous.State}
   {==}
+
+# The public comparator's empty source list takes its False guard branch.
+def Laws.planner_empty_sources_rejects(request, expiry, manifest, stamp, invocation, destination, code, operation, output_type, evidence, selected):
+  {==}
