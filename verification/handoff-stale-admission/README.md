@@ -54,5 +54,16 @@ Generated JavaScript stayed outside the source tree.
 kernel SHA-256 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`.
 It checks the existing 37 laws; no law for HostHandoff is added or claimed.
 The source inventory and kernel hash are observations taken after the run,
-not process attestation. The native CPU build and any CI or Nix result are separate from
-the above and must be recorded only if actually obtained.
+not process attestation.
+
+The same Bend inputs, with `CC=clang` (clang 23.1.1), were compiled outside
+the checkout and run as `suite-native +RTS --threads 4 --gpu off`. Build and
+run each exited 0. The [native stdout](native-cpu.log) has 2,263 PASS lines and
+the same `f417d996...cf9262f` SHA-256 as Bend and Node; the retained
+[build output](native-build.log) and [run stderr](native-stderr.log) are empty.
+The executable's SHA-256 observed after the run was
+`c7b1368a86bb656503e5fa0ae3f8ed798f314b675edd9f3a86b7e89835b9db19`;
+the 110-file Bend inventory still verified afterward. These hashes do not
+attest which process executed. Generated binaries stayed outside the checkout.
+This CPU run is not GPU evidence. CI and Nix results remain separate and are
+not claimed here.
