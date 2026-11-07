@@ -90,7 +90,7 @@ undifferentiated malformed result; no partial parsed fields escape. Native
 capture limits, synthetic checker limits and run-time/stack limits must be
 measured separately, not inferred from a passed typecheck.
 
-An optional **later separately reviewed** native capture can open only the
+A [separate design-only native capture proposal](synthetic-pair-capture-design.md) can open only the
 fixed manifest/status names relative to a trusted held output directory as
 `O_PATH|O_NOFOLLOW`, classify bounded owned regular files without opening a
 FIFO/socket/device as data, and use the existing verified procfs held-inode

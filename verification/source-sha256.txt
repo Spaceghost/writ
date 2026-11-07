@@ -895,7 +895,8 @@ f853c318aac12930f716e7aa9ca894c548b97b6ce050f0ef884be18339592835  openspec/chang
 fe9dfa995502c9d2338596c94765b2e3f45c1eaa706aff50f88f783bc7575eb5  openspec/changes/add-genode-host/same-fd-exact-config-design.md
 420c9f4e435b0415b79dde7ccfcf706e44ecc907dc531afa16475066ba02fc03  openspec/changes/add-genode-host/same-fd-observation-design.md
 5b5f4737427ae3fe42bce75a4f7d6fc7fb85f0ef9d4ba829b5fb009909b3e2ca  openspec/changes/add-genode-host/specs/genode-host/spec.md
-52e81afaf51ba6bd57dd9e7ebf5870a2fdf1016a6409f51823fdd415c2f13e8f  openspec/changes/add-genode-host/synthetic-pair-checker-design.md
+2d25fa4c2c635e84d8f59ba456c6f005d9b54df9e0af156c9beb0b5b27013b2e  openspec/changes/add-genode-host/synthetic-pair-capture-design.md
+a45751c53a633a849cb96b9a6d6ec613032e086fd227a8d20b09d6fe7afb0767  openspec/changes/add-genode-host/synthetic-pair-checker-design.md
 17f2603dbf31f4ba8c5bbc5c133b8ce9bc71ae86cab749e5f86efded23a9a019  openspec/changes/add-genode-host/tasks.md
 416272f0aa121d13234e2b6db837eaa9648f3158ed4d705349592e697f4eda8b  openspec/changes/add-linux-host/.openspec.yaml
 3c394af798a50534d31076704a2f0de539943b617e0fca88f56247668d26a094  openspec/changes/add-linux-host/design.md
