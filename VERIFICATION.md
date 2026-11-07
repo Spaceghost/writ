@@ -19,15 +19,16 @@ The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
 passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
 are scoped observations, not protected-worker or durable-service qualification.
 
-This isolated integration preview reconciles the reviewed planner evidence
-branch `ef40aa2` with master `22c8522`. Its Bend, workflow and Nix inputs are
-unchanged from `ef40aa2`; earlier test and CI results retain the exact source
-identities stated in their records and were not rerun on this evidence merge.
+The planner integration reconciled the reviewed planner evidence
+branch `ef40aa2` with master `22c8522`. The reconciliation's Bend, workflow
+and Nix inputs were unchanged from `ef40aa2`; earlier test and CI results
+retain the exact source identities stated in their records and were not rerun
+on that evidence merge.
 
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 checks at its recorded source. The later boundary regression adds one
 check, and the separate plan-comparison model adds 61 synthetic checks, for
-2,224 checks in this integration preview; it checks plan
+2,224 checks in the combined suite; it checks plan
 fields only and does not resolve a request or establish authority. Its reference-only descriptions do not authenticate
 identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
 The separate [comparison record](verification/planner-plan-match-local.md)
