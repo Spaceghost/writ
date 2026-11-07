@@ -225,6 +225,24 @@ try {
     check("the index lists archived changes apart from the pending table", archivedPart.includes(`/change/${arch.name}"`) && !pendingPart.includes(`/change/${arch.name}"`));
     check("the nav's archived group starts collapsed", /<details data-preserve-attr="open"><summary>archived /.test(indexHtml));
   }
+  // Follow links rendered from real archived proposals, rather than testing
+  // only the separately generated explainer list or navigation links.
+  const archivedExplainerName = "2026-11-04-add-genode-capability-adoption";
+  const archivedExplainerPage = await fetch(`${base}/change/${archivedExplainerName}`);
+  const archivedExplainerHtml = await archivedExplainerPage.text();
+  const archivedExplainerHref = archivedExplainerHtml.match(/<a href="([^"]+)">explainer\.html<\/a>/)?.[1] ?? "";
+  const archivedExplainerUrl = new URL(archivedExplainerHref || "/missing", `${base}/change/${archivedExplainerName}`);
+  const followedArchivedExplainer = await fetch(archivedExplainerUrl);
+  const archivedExplainerBytes = readFileSync(join(root, "openspec", "changes", "archive", archivedExplainerName, "explainer.html"), "utf8");
+  check("archived proposal explainer link follows the scanned HTML route", archivedExplainerPage.status === 200 && archivedExplainerUrl.pathname === `/change/${archivedExplainerName}/html/explainer.html` && followedArchivedExplainer.status === 200 && (await followedArchivedExplainer.text()) === archivedExplainerBytes && followedArchivedExplainer.headers.get("content-security-policy") === "sandbox allow-scripts allow-popups");
+
+  const archivedSpecName = "2026-11-05-add-executor-rendezvous";
+  const archivedSpecPage = await fetch(`${base}/change/${archivedSpecName}`);
+  const archivedSpecHtml = await archivedSpecPage.text();
+  const archivedSpecHref = archivedSpecHtml.match(/<a href="([^"]+)">executor-rendezvous<\/a>/)?.[1] ?? "";
+  const archivedSpecUrl = new URL(archivedSpecHref || "/missing", `${base}/change/${archivedSpecName}`);
+  const followedArchivedSpec = await fetch(archivedSpecUrl);
+  check("archived proposal spec link follows the rendered spec section", archivedSpecPage.status === 200 && archivedSpecUrl.pathname === `/change/${archivedSpecName}` && archivedSpecUrl.hash === "#spec-executor-rendezvous" && followedArchivedSpec.status === 200 && (await followedArchivedSpec.text()).includes('id="spec-executor-rendezvous"'));
   check("reference change tasks counted", (profile?.tasks.total ?? 0) > 0, `${profile?.tasks.done}/${profile?.tasks.total}`);
   check("reference change lists explainer.html", profile?.html.includes("explainer.html") === true);
 
