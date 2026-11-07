@@ -1,0 +1,32 @@
+
+Algorithm : SHA256
+Hash      : 416F25E22EC29699B8A151DDA60C5B36AC6D4C390944E5A4AEB23D2271EE2B8A
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-registry-ab-observer.exe
+
+Algorithm : SHA256
+Hash      : FBEEFEE13DC52F54AE5B69103EEEE44C7CBC206B2F733BEF057D9D70EB130A4E
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-pss-init-control.exe
+
+Algorithm : SHA256
+Hash      : 1FD85453BF634CB3DD4914B965DD55C35CCF13751BB8B0122BBA22D3AC1DEAB7
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-init-child.exe
+
+Algorithm : SHA256
+Hash      : 2FD2CA1F6024D62F44F3CD6B11A4E05E37CB7D52AE106C94EB407939B2969CA8
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-pss-table-test.exe
+
+Algorithm : SHA256
+Hash      : F42090832DC7E55B15BA414D4A9BA73A1406E3D98B00F7E51BA5A925DA34B351
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-pss-init-progress-test.exe
+
+Algorithm : SHA256
+Hash      : EABC269016CF7D1F4F5BBBD02DEBB3D16748AEC11119110373BC8DC346742E7A
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-pss-init-pipe-test.exe
+
+Algorithm : SHA256
+Hash      : 50770FECAE75449B7DDC6BD2850241B5B7D4D8A4D440D41190D6F861900BAE35
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-registry-ab-checks-test.exe
+
+Algorithm : SHA256
+Hash      : 532C113FB7E097E260C46AF07752010C50EEE2A24CA6633B4453A0FF738924AD
+Path      : D:\a\_temp\windows-registry-ab-build\Release\writfs-registry-ab-token-test.exe
