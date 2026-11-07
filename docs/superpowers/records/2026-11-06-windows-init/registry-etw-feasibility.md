@@ -92,14 +92,22 @@ was caused by that initializer rather than another thread or OS activity.
 The [StartTrace documentation](https://learn.microsoft.com/en-us/windows/win32/api/evntrace/nf-evntrace-starttracea)
 says NT Kernel Logger control requires administrative privilege or LocalSystem,
 that sessions consume finite system resources and can remain active until
-stopped. Verify actual controller rights and session ownership; never elevate
-or alter the child. Use a fixed descriptive session name and a creation-returned
-session handle; an existing name, unsupported concurrent logger, access
-failure, unknown handle ownership or failed readback means incomplete. Never
-stop or alter an existing session merely because its name matches. Stop only
-the session created by this invocation, check stop and consumer retirement, and
-record uncertainty. A disposable VM's destruction may bound the environment;
-it is not proof of successful in-guest cleanup.
+stopped. For the documented **deprecated** NT Kernel Logger, the candidate
+uses `InstanceName = KERNEL_LOGGER_NAME` and
+`Properties.Wnode.Guid = SystemTraceControlGuid`; Microsoft warns that these
+legacy identifiers may conflict with other components. Microsoft prefers the
+newer `EVENT_TRACE_SYSTEM_LOGGER_MODE` for system loggers, but its equivalence
+for this exact registry observation, filtering and ownership plan has not been
+established and is not assumed here.
+
+Verify actual controller rights and session ownership; never elevate or alter
+the child. Use only the session handle returned by successful creation; an
+existing name or GUID, unsupported concurrent logger, access failure, unknown
+handle ownership or failed readback means incomplete. Never stop or alter an
+existing session merely because its name or GUID matches. Stop only the session
+created by this invocation, check stop and consumer retirement, and record
+uncertainty. A disposable VM's destruction may bound the environment; it is not
+proof of successful in-guest cleanup.
 
 Candidate limits for review, not verified implementation properties: at most
 64 KiB per ETW buffer and 64 buffers after querying effective properties; at
