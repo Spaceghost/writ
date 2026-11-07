@@ -57,6 +57,15 @@ mutant runs exited nonzero; the overflow mutants are runtime failures, not
 proof-kernel rejections. Generated JavaScript and native binaries stay outside
 the checkout.
 
+The separately built [optimized native CPU suite](native.log) also passed all
+2,381 checks, byte-identical to Bend and Node, with `+RTS --threads 1 --gpu off
+-RTS`. Build and run both exited 0; [build stdout](native-build.log),
+[build stderr](native-build.stderr) and [run stderr](native.stderr) are empty.
+An [observed compiler command](native-clang-observation.txt) used `-O3`, which
+is not process attestation. The build started against the pre-comment inventory
+before source commit `a87b38d`; the only later Bend input difference is the
+comment clarification described above. No GPU execution is claimed.
+
 The separately run [allocator test](allocator.log) passed 24 checks with
 ASan/UBSan, and the [owned-temp synthetic pair handoff](handoff.log) passed its
 capture-to-Bend/Node controls. Neither exercises a ledger host integration.
