@@ -1,0 +1,23 @@
+make: Entering directory '/tmp/writ-genode-ci.42350985833-1.positive/build'
+including /tmp/writ-genode-ci.42350985833-1.positive/genode/tool/run/power_on/linux
+including /tmp/writ-genode-ci.42350985833-1.positive/genode/tool/run/log/linux
+including /tmp/writ-genode-ci.42350985833-1.positive/genode/tool/run/boot_dir/linux
+including /tmp/writ-genode-nested-overlay.42350985833-1.positive/writ-repo/run/writ_bend_monitor_nested_accept.run
+building targets: core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_monitor app/writ_channel_client
+spawn make core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_monitor app/writ_channel_client
+make[1]: Entering directory '/tmp/writ-genode-ci.42350985833-1.positive/build'
+  Library ld.abi.so
+    CONVERT  symbols.s
+    ASSEMBLE symbols.o
+    MERGE    ld.abi.so
+  Library ldso_so_support.lib.a
+    COMPILE  so_support.o
+    MERGE    ldso_so_support.lib.a
+/tmp/writ-genode-ci.42350985833-1.positive/toolchain/usr/local/genode/tool/25.05/bin/genode-x86-ar: error while loading shared libraries: libfl.so.2: cannot open shared object file: No such file or directory
+make[3]: *** [/tmp/writ-genode-ci.42350985833-1.positive/genode/repos/base/mk/a.mk:97: ldso_so_support.lib.a] Error 127
+make[2]: *** [var/libdeps:162: ldso_so_support.lib.a] Error 2
+make[1]: *** [Makefile:351: gen_deps_and_build_targets] Error 2
+make[1]: Leaving directory '/tmp/writ-genode-ci.42350985833-1.positive/build'
+Error: Genode build failed
+make: *** [Makefile:446: run/writ_bend_monitor_nested_accept] Error 252
+make: Leaving directory '/tmp/writ-genode-ci.42350985833-1.positive/build'
