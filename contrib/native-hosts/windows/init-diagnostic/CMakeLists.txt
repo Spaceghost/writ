@@ -23,3 +23,22 @@ target_compile_definitions(writfs-init-child PRIVATE UNICODE _UNICODE _CRT_SECUR
 target_compile_options(writfs-init-child PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-init-child PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
 target_link_libraries(writfs-init-child PRIVATE ws2_32)
+
+# Fixed no-data PSS feasibility probe; built but never run by this configuration.
+add_executable(writfs-pss-observer ../pss_observer.c ../pss_table.c ../pss_progress.c)
+target_compile_definitions(writfs-pss-observer PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-pss-observer PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-pss-observer PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-pss-observer PRIVATE kernelbase)
+add_executable(writfs-pss-child ../pss_child.c)
+target_compile_options(writfs-pss-child PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-pss-child PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+add_executable(writfs-pss-table-test ../pss_table_test.c ../pss_table.c)
+target_compile_options(writfs-pss-table-test PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-pss-table-test PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+add_test(NAME pss-table-synthetic COMMAND writfs-pss-table-test)
+
+add_executable(writfs-pss-progress-test ../pss_progress_test.c ../pss_progress.c)
+target_compile_options(writfs-pss-progress-test PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-pss-progress-test PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+add_test(NAME pss-progress-synthetic COMMAND writfs-pss-progress-test)

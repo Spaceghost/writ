@@ -66,6 +66,8 @@ a native machine-code Bend runtime.
 | `transport_probe.c` | Actual native pipe lifecycle, 64 KiB transfer and hostile-peer checks, including both read and write deadlines |
 | `init_diagnostic.c`, `init_worker.c`, `init_child.c`, `init_report.h` | Standalone supervisor, output-prefixed shared launcher, fixed no-data child, report-only initialization observations; shares the native launcher but has no mount, policy, Writ session or byte-input route |
 | `init_report_test.c` | Synthetic fixed-report framing and positive-control checks; no native confinement claim |
+| `pss_observer.c`, `pss_child.c`, `pss_table.[ch]`, `pss_progress.[ch]` | Fixed self-created, suspended synthetic-child handle-snapshot feasibility probe; bounded classification and cleanup, no environment proof or Writ authority |
+| `pss_table_test.c`, `pss_progress_test.c` | Portable synthetic table and completion-classification cases; no Windows API execution |
 | `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.
@@ -219,3 +221,25 @@ is the fallback, not evidence of checked resource retirement. Successful
 launches require checked owned-resource cleanup and WFP filter disappearance.
 The [design record](../../../docs/superpowers/records/2026-11-06-windows-init/diagnostic-plan.md)
 identifies remaining comparison and equivalence limits.
+
+## PSS feasibility probe (not yet executed)
+
+The isolated build includes `writfs-pss-observer.exe`, its fixed suspended
+`writfs-pss-child.exe`, and two synthetic classifier tests. The observer
+accepts no arguments, data or external process identity; it snapshots only its
+own child, with fixed synthetic handles. Its separate child job is configured
+kill-on-close and the observer job supplies memory and CPU limits. Windows
+nested-job compatibility, PSS access rights, API behavior, internal allocation
+and abrupt-termination cleanup remain untested. A hard external VM deadline
+and a disposable runner are required for any future native execution. Extra
+entries, unverified cleanup or incomplete walks do not pass; the excluded
+handle check uses the same launch as the positive controls, so the proposed
+separate negative-launch scenario is still unimplemented. Synthetic progress
+tests verify completion classification; OS API and cleanup fault paths are
+not injected through the native adapter. CTest runs only the synthetic classifiers. The temporary `lane/windows-pss`
+workflow job can run the observer only on explicit dispatch of that exact ref;
+it has not been dispatched. Its five-minute hosted-runner deadline is fallback,
+not proof of checked cleanup, and cancellation may prevent artifact upload.
+This branch-only workflow aid must not be merged into the policy workflow. Neither the probe nor its results establish
+process environment equivalence, byte-worker confinement, or host qualification.
+See the [research record](../../../docs/superpowers/records/2026-11-06-windows-init/pss-readback-research.md).
