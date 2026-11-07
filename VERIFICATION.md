@@ -684,3 +684,9 @@ network, clipboard and COM observations remained incomplete and receive no
 confinement credit. The newly added optional standalone diagnostic was not run
 by that workflow. The native evidence text and raw artifact hashes preserve the
 outcome; generated policy JavaScript is not checked in.
+
+An [exploratory no-data registryRead sequence](verification/windows-registry-ab-observation-42322440747/README.md)
+observed Winsock `10107/0/0/10107` in A/B/B/A cases; USER32 and OLE32
+initialization errors remained in every LPAC case. The child environments and
+other OS state were not independently controlled, so this does not establish
+cause, byte-worker confinement or host qualification.
