@@ -87,12 +87,6 @@ int broker_monitor_start(struct broker_monitor *, const char *node,
 int broker_monitor_call(struct broker_monitor *, const uint8_t *frame,
                         size_t length, struct broker_reply *);
 void broker_monitor_stop(struct broker_monitor *);
-/* The session id the monitor allocated, read back from a reply's table:
- * the largest listed id (HostIdentity allocates ids in increasing order).
- * The broker records the monitor's allocation; it does not choose it.
- * Returns 0 with `*session` set, or -1 when the table lists no session. */
-int broker_reply_session(const struct broker_reply *, uint32_t *session);
-
 /* Frame encoders (LINUXB v1, little-endian words). Return the byte length,
  * or 0 when a bound is exceeded. */
 size_t broker_encode_launch(const struct broker_fact *, uint8_t *out, size_t cap);

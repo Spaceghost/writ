@@ -173,9 +173,11 @@ These ownership and failure paths still need native review and evidence.
 In particular, the launcher currently returns failure if its start-time
 observation is zero, but source review found it writes the child release byte
 before that return. Failed-setup execution and cleanup have not been tested.
-The `broker_reply_session` helper selects a listed session without checking
-the reply status; no caller exists in this WIP, and the helper requires
-correction and review before it is used to bind a session.
+The unused `broker_reply_session` helper that inferred an allocated session
+from the diagnostic table has been removed. The partial broker still has no
+supported typed launch-session return; its diagnostic table must not be used
+to bind a session. A reviewed monitor-issued result and transport binding remain
+future work, as described in the [session-response design](../../../docs/superpowers/records/2026-11-05-linux-host/session-response-design.md).
 The Node harness uses a request sequence as its monitor clock; whether that is
 a valid trusted time source for a host profile remains unresolved. The monitor
 compares the launch and peer credentials supplied in one broker frame; it does

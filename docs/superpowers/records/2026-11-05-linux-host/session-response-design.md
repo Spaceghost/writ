@@ -2,9 +2,12 @@
 
 A broker asks the monitor to open worker B while a session for worker A already
 exists. If B's launch is denied, the retained session table still contains A.
-The current WIP helper can report A's session as though it were the result of
-B's request. No complete broker calls that helper in this tree; this is a
-prospective integration hazard, not a demonstrated native host exploit.
+The former WIP helper could report A's session as though it were the result of
+B's request. No complete broker called that helper in the recorded WIP; this was a
+prospective integration hazard, not a demonstrated native host exploit. The
+unused helper and its header promise have since been removed. The typed
+session-open result described below is still not implemented, so the broker
+cannot yet obtain a supported launch-session binding from a reply.
 
 This note proposes a boundary for review. It does not implement a protocol,
 authenticate a native process, authorize effects, or complete Linux host task
@@ -14,16 +17,15 @@ remain subject to their existing requirements. The [synthetic identity
 report](task-2-synthetic-report.md) records the unqualified Linux work and the
 prior withheld native-probe attempts.
 
-## Current gap
+## Recorded gap before removal
 
-`contrib/native-hosts/linux/broker.c:189–206` implements
-`broker_reply_session`: it scans the table in a reply and returns the largest
-numeric session it sees. It does not check that the reply represents an
-admitted Launch. Its header promises the allocated ID but does not state that
+The former `broker_reply_session` in `contrib/native-hosts/linux/broker.c`
+scanned the table in a reply and returned the largest numeric session it saw. It did not check that the reply represented an
+admitted Launch. Its header promised the allocated ID but did not state that
 precondition. A denied or untranslated response can retain an older session
-table. The helper stops scanning at the `+` truncation marker and can still
-report success. It also writes its output while parsing, so callers cannot
-assume their output remains untouched after a later parse failure.
+table. The helper stopped scanning at the `+` truncation marker and could still
+report success. It also wrote its output while parsing, so callers could not
+assume their output remained untouched after a later parse failure.
 
 The retained table is diagnostic, not an allocation receipt.
 `hosts/linux/monitor/LinuxHost.bend:1105–1125` renders at most eight sessions;

@@ -186,26 +186,6 @@ broken:
     return -1;
 }
 
-int broker_reply_session(const struct broker_reply *r, uint32_t *session)
-{
-    const char *p = strchr(r->table, ';');
-    if (!p) return -1;
-    ++p;
-    int found = -1;
-    while (*p >= '0' && *p <= '9') {
-        char *end = NULL;
-        errno = 0;
-        unsigned long id = strtoul(p, &end, 10);
-        if (errno || end == p || *end != ':' || id == 0 || id > UINT32_MAX) return -1;
-        if (found < 0 || (uint32_t)id > *session) *session = (uint32_t)id;
-        found = 0;
-        p = strchr(end, ',');
-        if (!p) break;
-        ++p;
-    }
-    return found;
-}
-
 void broker_monitor_stop(struct broker_monitor *m)
 {
     m->live = 0;

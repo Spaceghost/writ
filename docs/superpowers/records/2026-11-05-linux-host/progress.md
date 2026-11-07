@@ -18,3 +18,5 @@ QuickJS follow-up: Linux replay now writes each vector separately, avoiding the 
 Integration review: the Linux host inventory and native README now list the partial broker, launcher and invocation harness and their known gaps, separately from the existing WritFS canary. No host acceptance is claimed.
 Separate integration review: partial broker_reply_session selects a listed session without validating reply status; no callers exist and no native exploit is demonstrated. Keep this native WIP off the proposed model-only integration until corrected and qualified.
 Separate review developed session-response-design.md: a typed monitor-issued Launch result is proposed because the bounded diagnostic session table cannot authenticate or identify a newly allocated session. Design only; no native identity, restart or acceptance claim.
+
+The unused session-table inference helper and its header promise were removed in a [separate WIP mitigation](session-inference-removal.md). No supported typed launch-session return has been implemented; native identity and host acceptance remain unqualified.
