@@ -25,6 +25,16 @@ each downloaded ZIP digest matched GitHub artifact metadata. Raw ZIPs and
 workflow logs were kept separately under `/tmp/writ-master-ci-e129c93-raw`
 for review; that temporary location is not a durable repository record.
 
+Each run directory also contains a `raw-text-repacked.tar.gz` archive and its
+SHA-256. These are **repacked archives, not the original GitHub ZIPs**. They
+retain the exact downloaded workflow log and exact original bytes of every
+text artifact entry, including the UTF-16 Windows installer log. The four
+generated JS/MJS entries are excluded and remain listed and hashed separately.
+All 62 included artifact members and five workflow logs were independently
+compared byte-for-byte with the external downloads and their recorded hashes;
+the archives contain regular files only. Their hashes do not replace the
+original downloaded ZIP digests.
+
 Text copies remove ANSI color escapes, convert line endings to LF, trim
 trailing spaces/tabs and final blank lines, and retain one terminal newline
 for nonempty files. The Windows installer log was decoded from UTF-16 to UTF-8.
