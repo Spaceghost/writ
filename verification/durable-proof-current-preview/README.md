@@ -15,6 +15,7 @@ The [37-law BendTT verdict](verdict.log) printed `ALL PROOFS CHECK` using the
 previously audited kernel; it does not prove durable publication or an
 authenticated planner integration. Generated JavaScript is outside the source
 tree. Native CPU, Nix and platform CI for these combined inputs have not been
-run at this record; see the later [Nix JavaScript observation](nix-js.md).
+run at this record; see the later [Nix JavaScript observation](nix-js.md)
+and [native CPU run](../durable-proof-native-c3a6092/README.md).
 Earlier results retain their exact source attribution. No
 GPU or protected-host qualification follows.
