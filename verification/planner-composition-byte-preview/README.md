@@ -16,4 +16,5 @@ The existing Lean-built kernel returned `ALL PROOFS CHECK` for the existing
 laws, as shown in [verdict output](verdict.log). This is not a proof of host
 confinement or complete planner authorization. Generated JavaScript remains
 outside the source tree. Optimized native CPU, Nix and platform CI for these
-combined inputs were not run at the time of this record; no GPU result follows.
+combined inputs were not run at the time of this record; see the later
+[Nix JavaScript observation](nix-js.md); no GPU result follows.
