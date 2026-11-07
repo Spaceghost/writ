@@ -97,7 +97,8 @@ The only success-like status must be distinctly named
 `WRIT_PUBLIC_PARTIAL_OBSERVATION`, not a generic inventory-success status;
 ordinary failure and cleanup uncertainty have distinct incomplete statuses.
 These in-process synthetic observations are not a file, upload, admission or
-release decision. No exact config-reference comparison, exclusive staging,
+release decision. An [exact same-read config comparison](same-fd-exact-config-design.md) is
+proposed separately. No exact config-reference comparison, exclusive staging,
 published manifest, supervisor, deadline enforcement, process retirement,
 workflow integration or real Genode run is included in this slice. In
 particular, matching digest output alone does not establish the expected

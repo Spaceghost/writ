@@ -877,7 +877,8 @@ de84dcb25ccbc2ea5fea1005c7980770f7ee214c7f93c859a8694c84bac0a924  openspec/chang
 2a93ee532778ac93bced753d9420f9c132aaf826e05c4a06584c678c3140d01f  openspec/changes/add-genode-host/nested-routing-source-review.md
 c01e27b367b2e4fa67f82496862087f3cc723d79a1c359dde0fbe56c81f4cf28  openspec/changes/add-genode-host/proposal.md
 320c8c4fa63446689327adb54cfb74479b674abf37d618fbe85b7c67b9de020e  openspec/changes/add-genode-host/public-fixture-config-guard-design.md
-a0f9c71b5f27d3e5137db6f2b9c6d2fbd00eb428220baafc9cc555b9c9486d44  openspec/changes/add-genode-host/same-fd-observation-design.md
+0339e78e2085095339bc7f3b63cdd144a3bb011e87de85ce768b80c5c3cd9ebd  openspec/changes/add-genode-host/same-fd-exact-config-design.md
+08a4500aa2c7e21af663cda47774d2f244a66ba745705271f02f690299a5cc87  openspec/changes/add-genode-host/same-fd-observation-design.md
 5b5f4737427ae3fe42bce75a4f7d6fc7fb85f0ef9d4ba829b5fb009909b3e2ca  openspec/changes/add-genode-host/specs/genode-host/spec.md
 17f2603dbf31f4ba8c5bbc5c133b8ce9bc71ae86cab749e5f86efded23a9a019  openspec/changes/add-genode-host/tasks.md
 416272f0aa121d13234e2b6db837eaa9648f3158ed4d705349592e697f4eda8b  openspec/changes/add-linux-host/.openspec.yaml
