@@ -15,6 +15,12 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic master platform runs at `45df241`](verification/master-ci-45df241/README.md)
+passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
+checks. **Strict Windows native failed** with incomplete byte-worker network,
+clipboard and COM observations. The Linux run retained a protected-setup
+refusal before input; none qualifies a protected host.
+
 The [automatic CI runs at `f7c47e9`](verification/master-ci-f7c47e9/README.md)
 passed Windows Node policy/model and public Btrfs/ZFS fixture checks. These
 are scoped observations, not protected-worker or durable-service qualification.
