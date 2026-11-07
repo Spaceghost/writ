@@ -17,4 +17,4 @@ laws, as shown in [verdict output](verdict.log). This is not a proof of host
 confinement or complete planner authorization. Generated JavaScript remains
 outside the source tree. Optimized native CPU, Nix and platform CI for these
 combined inputs were not run at the time of this record; see the later
-[Nix JavaScript observation](nix-js.md); no GPU result follows.
+[Nix JavaScript observation](nix-js.md) and [native CPU run](../planner-composition-byte-native-58c7ffe/README.md); no GPU result follows.
