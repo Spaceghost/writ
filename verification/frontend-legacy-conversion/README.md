@@ -47,7 +47,7 @@ direct forged-stage or excess-fuel calls. [Bend](focused-bend.log) and generated
 `eaf297e7a63fcd5802a1612d2f3717c601740ec513be6572af63994d2b99ab38`.
 
 The [13 targeted mutation pairs](mutants/summary.json) use the retained patches
-and Bend/Node output. They exercise producer high and low mapping, high-mask
+and Bend/Node output; patches apply with `git apply --unidiff-zero`. They exercise producer high and low mapping, high-mask
 collision, watermark, closed flag, token, code and source preservation,
 original-state validity and four independent fuel clamps. Each modified case
 exited nonzero with its named test failure on both backends; this is bounded
@@ -61,9 +61,31 @@ The full root suite passed **2,634 checks** on [Bend](root-bend.log) and
 The existing [Lean kernel verdict](proof-verdict.log) says `ALL PROOFS CHECK`;
 it covers existing laws and does not prove the new conversion. The exact
 [130-file Bend input inventory](bend-inputs.sha256) was recorded before the
-native build. The optimized native CPU build is currently running; no result,
-physical GPU test, authenticated binding comparison, durable recovery or host
-qualification is claimed here.
+native build. The optimized [native CPU run](native.log) passed the same 2,634
+checks using `+RTS --threads 4 --gpu off -RTS` and matched Bend and Node
+byte-for-byte. The build and run exited zero; [build stdout](native-build.log),
+[build stderr](native-build.stderr) and [run stderr](native.stderr) were empty.
+The build began on the uncommitted tested source before `7f7ef20`; all 130
+inventoried Bend inputs matched before and after the run and match this tree.
+This is CPU execution, not a physical GPU test.
+
+Separate synthetic native checks passed: 24 allocator invariants under
+ASan/UBSan ([output](allocator.log), [stderr](allocator.stderr)) and the
+owned-temp capture-to-Bend/Node [handoff](handoff.log) ([stderr](handoff.stderr)).
+They do not exercise a native frontend or authenticate a host. No authenticated
+binding comparison, durable recovery or host qualification is claimed.
+
+Offline [Nix evaluation](nix-eval.txt) produced the `tests-js` derivation with
+the 2,634-PASS gate. All 94 filtered Bend files, including both conversion
+files, match the [input inventory](nix-filtered-inputs.sha256) and working tree.
+This is evaluation and source comparison only: the derivation was not built and
+no flake check ran.
+
+The later merge includes the independently landed ZFS CI diagnostic change to
+`.github/workflows/writfs-native.yml`; that workflow change was not exercised by
+the local Bend/Node runs or the native CPU build. All 130 inventoried
+Bend inputs remain unchanged, and the [separate CI record](../master-ci-0c619ad/README.md)
+retains the ZFS workflow's own result.
 
 Pinned Bend 2.0.39 SHA-256 was
 `2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd`;
