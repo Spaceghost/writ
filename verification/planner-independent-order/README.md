@@ -50,13 +50,26 @@ and `ALL LIBRARY TESTS PASSED`. Their stdout was byte-identical to
 [suite.log](suite.log), SHA-256
 `0c680fb1bb12c5692e05250e642d0cf611ae87f6fc34caf508db58c2a41914bf`.
 The [110 tracked Bend input hashes](bend-inputs.sha256) were recorded after
-these runs; they are observations, not process attestation. Generated
+the Bend/Node/proof runs and before the native build; they match commit
+`4983595` and still matched afterward. These runs and the native build began
+before that commit; the hashes are observations, not process attestation. Generated
 JavaScript stayed outside the checkout.
 
 `bend PROOF.bend --verdict` exited 0 with [ALL PROOFS CHECK](proof-verdict.log),
 using the previously built Lean-backed kernel SHA-256
 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`.
 It checks the existing 37 laws and adds no planner-order proof. Strict
-OpenSpec validation is structural, not proof of host behavior. The native CPU
-build is in progress; no result from it, GPU, CI or host qualification is
-claimed by this record.
+OpenSpec validation is structural, not proof of host behavior.
+
+The same isolated Bend inputs built with `CC=clang-23`, `nice -n 15` and a
+1,800-second timeout; [process inspection](compiler-observed.txt) showed `-O3`.
+The [build](build.exit) exited 0 with an empty [build log](build.log). Bend's
+automatic post-build `--gpu-build` generated its device artifact outside the
+checkout; it was not a GPU test. The resulting executable ran with
+`+RTS --threads 4 --gpu off`, [exited 0](run.exit), and produced
+[2,271 PASS lines](run.log), byte-identical to `suite.log`; [run stderr](run.stderr)
+was empty. The executable's SHA-256 observed after the run was
+`1764a1875fb91a62e273863e55ec84f730a061cd2ee444ea08f92016dcf50c46`.
+The executable and generated device artifact remain outside the source tree;
+this CPU run does not qualify a GPU or host. CI and Nix results remain
+separate and are not claimed here.
