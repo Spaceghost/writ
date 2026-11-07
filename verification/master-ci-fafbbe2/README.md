@@ -1,8 +1,8 @@
 # Automatic platform CI for master fafbbe2
 
 Five push-triggered workflows were listed at exact source
-`fafbbe2bed9fecd30d92f98cd0be1e8dcef90dd0`. Four have completed in this
-checkpoint. None of these outcomes qualifies a protected host.
+`fafbbe2bed9fecd30d92f98cd0be1e8dcef90dd0`. All five have completed.
+None of these outcomes qualifies a protected host.
 
 - [Windows Node](windows-node-42414768590/README.md): passed 2,673 shared
   library and 78 WritFS model checks.
@@ -13,8 +13,9 @@ checkpoint. None of these outcomes qualifies a protected host.
   separate no-data diagnostic reported pass.
 - [Genode base-hw](genode-42414768625/README.md): passed 2,673 core, 69 mount
   and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
-- Linux public-canary run 42414768556 was still in progress at this checkpoint;
-  no outcome or artifacts are claimed.
+- [Linux public canary](linux-42414768556/README.md): passed scoped checks;
+  protected setup was refused at step 8 before input or admission and receives
+  no protected-host qualification.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized

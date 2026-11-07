@@ -2,8 +2,9 @@
 
 The [fafbbe2 automatic CI checkpoint](verification/master-ci-fafbbe2/README.md)
 retains passing Windows Node and native filesystem public fixtures alongside
-the strict Windows worker failure and a standard Genode pass; Linux is pending
-at this checkpoint.
+the strict Windows worker failure, a standard Genode pass and a scoped Linux
+public-canary pass. The separate Linux protected setup was refused before input
+or admission.
 
 The [b4e2e97 automatic CI checkpoint](verification/master-ci-b4e2e97/README.md)
 retains passing Windows Node and native filesystem public fixtures alongside
