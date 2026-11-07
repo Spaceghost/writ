@@ -81,7 +81,7 @@ beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 over `openspec/` (`openspec`). The earlier 2285-check integration preview passed the
 offline Nix JavaScript check. At source 61ab2a4, the full Nix flake check
 also passed, including optimized native CPU; see the [integration evidence](../verification/durable-integration-61ab2a4/nix/README.md).
-The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` handoff model inputs, not the combined preview.
+The [2,322-check Nix JavaScript preview](../verification/durable-handoff-52e8e01/README.md) passed for source `52e8e01`; no full current flake check is claimed. The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` handoff model inputs, not the combined preview.
 The 2065-check Nix JavaScript check passed for
 source `73a8055`; the Nix native CPU check also passed with the same output.
 The earlier [2,065-check combined flake check](../verification/nix-combined-flake-check.log) for the `73a8055` implementation inputs passed all checks with evidence-only files staged. The historical artifacts below cover the previous
