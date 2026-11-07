@@ -1,0 +1,5 @@
+source=4b0ed63d84cb6389e133f6f8c5fafc5d21c52982
+runner=win25-vs2026
+image=20261103.298.1
+os=Microsoft Windows NT 10.0.26100.0
+self_created_child_only=1 no_data=1 confinement_credit=none

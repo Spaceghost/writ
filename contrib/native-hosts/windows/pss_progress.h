@@ -12,7 +12,9 @@
 #define WRIT_PSS_SNAPSHOT_FREED UINT32_C(256)
 #define WRIT_PSS_CHILD_RETIRED UINT32_C(512)
 #define WRIT_PSS_HANDLES_CLOSED UINT32_C(1024)
-#define WRIT_PSS_ALL UINT32_C(2047)
+#define WRIT_PSS_COMPARE_RESOLVED UINT32_C(2048)
+#define WRIT_PSS_COMPARE_RELEASED UINT32_C(4096)
+#define WRIT_PSS_ALL UINT32_C(8191)
 
 /* Missing, failed, or unknown facts always prevent a complete observation. */
 int writ_pss_complete(uint32_t passed, uint32_t failed);

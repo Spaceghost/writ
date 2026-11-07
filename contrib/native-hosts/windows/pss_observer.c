@@ -37,15 +37,17 @@ static BOOL lifetime(HANDLE process, DWORD pid, FILETIME expected)
     return TRUE;
 }
 
+typedef BOOL (WINAPI *WRIT_COMPARE_HANDLES)(HANDLE, HANDLE);
+
 /* Only the two supervisor-created fixture values may be duplicated. */
-static BOOL same_fixture(HANDLE process, HANDLE value, HANDLE original, DWORD *error)
+static BOOL same_fixture(WRIT_COMPARE_HANDLES compare, HANDLE process, HANDLE value, HANDLE original, DWORD *error)
 {
     HANDLE copy = NULL;
     BOOL ok = DuplicateHandle(process, value, GetCurrentProcess(), &copy, 0, FALSE, DUPLICATE_SAME_ACCESS);
     if (!ok) *error = GetLastError();
     if (ok) {
         SetLastError(ERROR_SUCCESS);
-        if (!CompareObjectHandles(copy, original)) {
+        if (!compare(copy, original)) {
             *error = GetLastError();
             fprintf(stderr, "PSS_FIXTURE_COMPARE_FALSE last_error=%lu\n", *error);
             ok = FALSE;
@@ -77,6 +79,8 @@ int wmain(int argc, wchar_t **argv)
 
     HANDLE job = NULL, child_job = NULL, read_end = NULL, write_end = NULL, event = NULL, excluded = NULL;
     HANDLE image_file = INVALID_HANDLE_VALUE;
+    HMODULE compare_module = NULL;
+    WRIT_COMPARE_HANDLES compare = NULL;
     SECURITY_ATTRIBUTES security = { sizeof(security), NULL, TRUE };
     STARTUPINFOEXW startup = {0};
     PROCESS_INFORMATION child = {0};
@@ -102,6 +106,14 @@ int wmain(int argc, wchar_t **argv)
     if (image_info.dwFileAttributes & (FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY)) {
         status = ERROR_INVALID_DATA; goto done;
     }
+    stage = "resolve-compare-api";
+    /* Acquire a reference only to the already-loaded OS module. Missing module
+       or export is incomplete; no fallback to value-only identity is allowed. */
+    if (!GetModuleHandleExW(0, L"KernelBase.dll", &compare_module)) goto failed;
+    FARPROC address = GetProcAddress(compare_module, "CompareObjectHandles");
+    if (!address) goto failed;
+    compare = (WRIT_COMPARE_HANDLES)address;
+    passed |= WRIT_PSS_COMPARE_RESOLVED;
     stage = "job-budget";
     job = CreateJobObjectW(NULL, NULL);
     limit.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_ACTIVE_PROCESS |
@@ -208,9 +220,9 @@ int wmain(int argc, wchar_t **argv)
     if (result != WRIT_PSS_MATCH) { status = ERROR_INVALID_DATA; goto done; }
     passed |= WRIT_PSS_TABLE_OK;
     stage = "fixture-pipe-identity";
-    if (!same_fixture(child.hProcess, write_end, write_end, &status)) goto done;
+    if (!same_fixture(compare, child.hProcess, write_end, write_end, &status)) goto done;
     stage = "fixture-event-identity";
-    if (!same_fixture(child.hProcess, event, event, &status)) goto done;
+    if (!same_fixture(compare, child.hProcess, event, event, &status)) goto done;
     passed |= WRIT_PSS_OBJECTS_OK;
     ok = TRUE;
     goto done;
@@ -254,6 +266,10 @@ done:
     if (!close_checked(&image_file, "child-image")) cleanup_ok = FALSE;
     if (!close_checked(&child_job, "kill-on-close-child-job")) cleanup_ok = FALSE;
     if (!close_checked(&job, "observer-job")) cleanup_ok = FALSE;
+    if (compare_module) {
+        if (FreeLibrary(compare_module)) passed |= WRIT_PSS_COMPARE_RELEASED;
+        else { fprintf(stderr, "PSS_CLEANUP_FAILED compare-module error=%lu\n", GetLastError()); failed |= WRIT_PSS_COMPARE_RELEASED; }
+    }
     if (cleanup_ok) passed |= WRIT_PSS_HANDLES_CLOSED;
     else failed |= WRIT_PSS_HANDLES_CLOSED;
     ok = writ_pss_complete(passed, failed);

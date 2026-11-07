@@ -29,7 +29,6 @@ add_executable(writfs-pss-observer ../pss_observer.c ../pss_table.c ../pss_progr
 target_compile_definitions(writfs-pss-observer PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
 target_compile_options(writfs-pss-observer PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-pss-observer PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
-target_link_libraries(writfs-pss-observer PRIVATE kernelbase)
 add_executable(writfs-pss-child ../pss_child.c)
 target_compile_options(writfs-pss-child PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-pss-child PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)

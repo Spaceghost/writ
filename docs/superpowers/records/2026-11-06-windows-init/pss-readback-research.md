@@ -1,6 +1,6 @@
 # Research: bounded no-data Windows handle snapshots and environment
 
-Status: source research and feasibility design only. A fixed synthetic-child PSS observer and portable classifiers have been authored for review, but no Windows build or native execution, remote environment read or change to the strict worker has occurred. This is not evidence of complete inherited-handle or environment equivalence.
+Status: source research and feasibility design only. A fixed synthetic-child PSS observer and portable classifiers have been authored. The first [Windows build](run-42315743515/README.md) failed at link before any PSS or Windows classifier execution; no remote environment read or change to the strict worker has occurred. This is not evidence of complete inherited-handle or environment equivalence.
 
 The [controlled-comparison design](controlled-comparison-design.md) requires more than the launcher's intended handle list and environment input. Microsoft documents a potential independent **point-in-time handle-table observation** through Process Snapshotting, but the exact behavior, access rights and resource usage for this target are not yet established. The documented environment APIs found here expose the calling process's environment, not an independent pre-resume read of another process. Until those limits are resolved, comparisons requiring full independent environment readback remain inconclusive.
 
@@ -46,9 +46,17 @@ a bound on all PSS kernel-internal allocations.
 Portable `pss-table-synthetic` and `pss-progress-synthetic` test table and
 completion classification, including missing or failed stage bits, but do not
 inject API, timeout, cleanup or process-death faults into the native adapter.
-Native compilation, object identity, handle enumeration, rights, count
-behavior, PSS cleanup and all Windows execution remain untested. The observer is not invoked by CTest; a temporary exact-ref
+The first Windows compile reached linking but failed because the SDK lacked `kernelbase.lib`. A proposed runtime resolution of the documented `CompareObjectHandles` export is under review and has not been built on Windows. Object identity, handle enumeration, rights, count behavior, PSS cleanup and all PSS Windows execution remain untested. The observer is not invoked by CTest; a temporary exact-ref
 `lane/windows-pss` dispatch job exists but has not been dispatched. Its deadline
 may preclude artifact upload on cancellation, and the temporary workflow guard
 must not be merged. No additional evidence about
 the strict byte worker or its environment is claimed.
+
+The proposed link follow-up obtains a reference to already-loaded
+`KernelBase.dll` with [GetModuleHandleExW](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getmodulehandleexw),
+resolves the documented [CompareObjectHandles](https://learn.microsoft.com/en-us/windows/win32/api/handleapi/nf-handleapi-compareobjecthandles)
+by name with [GetProcAddress](https://learn.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-getprocaddress),
+using the declared `BOOL (WINAPI *)(HANDLE,HANDLE)` signature. Failure to acquire
+the module, find the export, compare either object or release the reference
+with `FreeLibrary` makes the observation incomplete; there is no value-only
+fallback. This code and runtime availability remain untested on Windows.

@@ -224,8 +224,8 @@ identifies remaining comparison and equivalence limits.
 
 ## PSS feasibility probe (not yet executed)
 
-The isolated build includes `writfs-pss-observer.exe`, its fixed suspended
-`writfs-pss-child.exe`, and two synthetic classifier tests. The observer
+The source defines `writfs-pss-observer.exe`, its fixed suspended
+`writfs-pss-child.exe`, and two synthetic classifier tests. The first [Windows build](../../../docs/superpowers/records/2026-11-06-windows-init/run-42315743515/README.md) failed to link and ran no PSS code. The observer
 accepts no arguments, data or external process identity; it snapshots only its
 own child, with fixed synthetic handles. Its separate child job is configured
 kill-on-close and the observer job supplies memory and CPU limits. Windows
@@ -238,7 +238,7 @@ separate negative-launch scenario is still unimplemented. Synthetic progress
 tests verify completion classification; OS API and cleanup fault paths are
 not injected through the native adapter. CTest runs only the synthetic classifiers. The temporary `lane/windows-pss`
 workflow job can run the observer only on explicit dispatch of that exact ref;
-it has not been dispatched. Its five-minute hosted-runner deadline is fallback,
+its first dispatch failed at link before observation. Its five-minute hosted-runner deadline is fallback,
 not proof of checked cleanup, and cancellation may prevent artifact upload.
 This branch-only workflow aid must not be merged into the policy workflow. Neither the probe nor its results establish
 process environment equivalence, byte-worker confinement, or host qualification.
