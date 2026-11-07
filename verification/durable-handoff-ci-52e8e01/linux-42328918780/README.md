@@ -1,0 +1,7 @@
+# Linux public-canary run 42328918780
+
+[Run 42328918780](https://github.com/Spaceghost/writ/actions/runs/42328918780) completed successfully at exact source `52e8e0135f128ff3356b29ff42fd06559ede5369`. Generated JavaScript and optimized native CPU core outputs each contain 2,322 PASS lines and match byte-for-byte (SHA-256 `eae44b5621b91bd50bef6fcaff870f282d4fa7d06d86364809d16844b79e5db0`), matching the integration preview's Bend output. Both mount-model outputs contain 70 PASS lines and match one another. Ordinary proof checking reports `ALL PROOFS CHECK`; no Lean kernel verdict is claimed. Native transport, revocation, policy-failure and broker-crash public canaries passed within their recorded scopes.
+
+The retained `setup-refusal.log` records the deliberate unsupported Landlock setup refusal at step 8, before input loading or Bend admission. The successful CI outcome confirms that refusal, not protected-worker setup or confinement qualification. The run does not establish durable storage, recovery or sink qualification, nor complete independent human security review.
+
+The source/build record has eight tracked source hashes verified against the exact commit; two generated or absolute paths were not compared against Git. `ci.json`, `artifact-metadata.json` and `artifact-raw-sha256.txt` preserve run identity and hashes of all 14 original files. `retained/` text is UTF-8/LF with trailing whitespace removed; failure and refusal lines remain.

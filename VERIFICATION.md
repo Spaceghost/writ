@@ -43,9 +43,7 @@ for exact source hashes, test scope and retained failures.
 
 The current unqualified durable-plus-handoff preview passes 2,322 core checks
 under Bend, Node and optimized native CPU with identical output, and its exact-source Nix JavaScript check passes; see the [reconciliation record](docs/superpowers/records/2026-11-06-durable-publication/handoff-integration-preview.md).
-It combines the two synthetic model suites; prior native, Nix and CI evidence
-below remains tied to its original source and does not validate this combined
-source. The handoff model adds 37 checks and does not establish a native Windows
+Its exact-source Windows Node, Genode QEMU and Linux public-canary CI records are linked from that reconciliation record. The Genode clock warning and the expected Linux Landlock setup refusal before input are retained; none establishes protected-host confinement, durable host recovery or independent human security review. It combines the two synthetic model suites; earlier native, Nix and CI evidence below remains tied to its original source. The handoff model adds 37 checks and does not establish a native Windows
 handoff or protected-host confinement. The [handoff model record](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)
 retains its separate 2,102-check source and evidence, including [Windows Node](verification/handoff-ci-817ab1f/windows-42327055068/README.md),
 [Genode QEMU](verification/handoff-ci-817ab1f/genode-42327054904/README.md), and

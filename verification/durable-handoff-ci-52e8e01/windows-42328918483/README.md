@@ -1,0 +1,5 @@
+# Windows Node policy/model run 42328918483
+
+[Run 42328918483](https://github.com/Spaceghost/writ/actions/runs/42328918483) completed successfully at exact source `52e8e0135f128ff3356b29ff42fd06559ede5369`. Windows Server 2025 Node 22.23.4 ran Bend-generated JavaScript: the core suite had 2,322 PASS lines and the separate mount-model suite had 78; both exited 0. Core output through its completion sentinel, normalized to LF, has SHA-256 `eae44b5621b91bd50bef6fcaff870f282d4fa7d06d86364809d16844b79e5db0`, matching the preview Bend/Node record. Both generated JavaScript files matched the downloaded SHA256SUMS; only their checksums are retained outside `raw/`.
+
+This is Windows Node model execution, not native machine-code, Windows worker confinement, durable-host qualification or an independent human security review. `ci.json` and `artifact-metadata.json` retain run and artifact identities; `artifact-raw-sha256.txt` records every downloaded original file before normalization. The `retained/` text uses UTF-8/LF and trims trailing whitespace; generated JavaScript remains only in the temporary raw download and must not enter the source package.
