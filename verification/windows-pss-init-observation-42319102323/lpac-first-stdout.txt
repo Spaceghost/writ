@@ -1,0 +1,8 @@
+BEGIN_NO_DATA_PSS_LPAC_LAUNCH launcher_output_is_diagnostic_only=1
+NO_DATA_LAUNCH NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny
+END_NO_DATA_PSS_LPAC_LAUNCH no_data=1 process_handle_rights=creation_returned_unqueried
+PSS_LPAC_JOBS observer_budget=separate child_in_observer_job=0 child_in_lpac_job=1 outer_jobs=unverified
+PSS_LPAC_LIFETIME pid=3588 created=01dd6e4fe9c0b4e1 image_sha256=edc48219013efe97acb061276fac265ecd1cdcb968ad54c879c9e47d45252ad0 no_data=1 confinement_credit=none
+PSS_LPAC_OBSERVATION before=1 captured=1 walked=1 after=1 synthetic_result=4 no_data=1 confinement_credit=none
+PSS_INIT_RAW pid=3588 initial_modules=0 after_winsock_modules=0 pre_ole32_modules=0 winsock=10107 load_failures=3 cleanup_failures=0 user32=1114 ole32=1359 no_data=1 confinement_credit=none
+PSS_INIT_OBSERVATION complete no_data=1 confinement_credit=none

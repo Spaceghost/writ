@@ -670,3 +670,9 @@ A separate [LPAC snapshot observation](verification/windows-pss-lpac-observation
 matched the two fixed synthetic handles in one suspended no-data LPAC child
 and verified normal owned-filter cleanup. It did not run the real byte worker,
 establish complete environment equivalence or qualify Windows confinement.
+
+In a [same-lifetime no-data observation](verification/windows-pss-init-observation-42319102323/README.md),
+two LPAC children each had the expected single synthetic report handle before
+resume and then reproduced the initialization errors. Ordinary controls
+succeeded. The observation does not establish cause, post-resume handle state,
+complete environment equivalence or byte-worker confinement.
