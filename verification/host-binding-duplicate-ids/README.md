@@ -35,9 +35,23 @@ Lean-built BendTT kernel SHA-256
 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`,
 matching the previously retained kernel record. It checks the 37 existing laws;
 there is no new duplicate-ID law. OpenSpec 1.16.0 strict validation passed
-44/44 and is structural, not proof of host behavior. Native CPU build and run
-are pending; no GPU or host identity probe was run. Earlier CI and native
-captures retain their original source attribution.
+44/44 and is structural, not proof of host behavior. No GPU or host identity
+probe was run. Earlier CI and native captures retain their original source
+attribution.
+
+The optimized native build started before commit `0be9dc9` with the 110 Bend
+input hashes above already recorded. Those hashes matched the committed tree
+after the run ([check](inputs-after.log)); this is a local observation, not
+process attestation. Pinned Bend built with `CC=clang-23`, `nice -n 15` and a
+1,800-second timeout; [process inspection](compiler-observed.txt) showed
+`-O3`. The [build](native-build.exit) exited 0 with an empty
+[build log](native-build.log). The executable ran with `+RTS --threads 4 --gpu
+off`, exited [0](native-run.exit), and its combined stdout/stderr
+([native-cpu.log](native-cpu.log)) contains 2,273 PASS lines and the success
+sentinel, byte-identical to `suite.log`. The native executable SHA-256 was
+`9b853c203664960c7a2f448e6096f0dcb66213ee9f9f95af7bab845f576ad0e4`;
+it and its generated GPU artifact remain outside the source tree. This CPU
+run is not a GPU test or native host qualification.
 
 ## Guard-specific negative controls
 
