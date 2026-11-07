@@ -1,5 +1,10 @@
 # Verification record
 
+The [automatic 89d0fce Genode CI](verification/master-ci-89d0fce/README.md)
+passed the standard policy and WritFS fixtures with missing-clock warnings. Its
+source inventory names the standalone synthetic capture-to-Bend handoff, but the
+logs do not show that test running; this result does not qualify a protected host.
+
 Core regression rerun on 2026-11-04 using **Bend 2.0.39**, Linux x86_64, and
 **clang 19.1.1**. Earlier example/platform evidence is scoped below. The
 HostBinding records also include the 2026-11-03 review wave and 2026-11-04
