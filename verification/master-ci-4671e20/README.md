@@ -1,9 +1,8 @@
 # Automatic platform CI for master 4671e20
 
 Five push-triggered workflows were listed at exact source
-`4671e205f0dc4f9e8ce8f1d85f6767497092e30f`. This checkpoint retains three
-completed results; Linux public canary and Genode base-hw remain pending in
-this record. None of these outcomes qualifies a protected host.
+`4671e205f0dc4f9e8ce8f1d85f6767497092e30f`. This checkpoint retains four
+completed results; Linux public canary remains pending in this record. None of these outcomes qualifies a protected host.
 
 - [Windows Node](windows-node-42382988239/README.md): passed 2,413 shared
   library and 78 WritFS model checks.
@@ -12,6 +11,8 @@ this record. None of these outcomes qualifies a protected host.
 - [Windows native](windows-native-42382988187/README.md): **failed**; strict
   byte-worker network, clipboard and COM observations remained incomplete.
   The separate no-data diagnostic reported pass.
+- [Genode base-hw](genode-42382988245/README.md): passed 2,413 core, 69 mount
+  and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized
