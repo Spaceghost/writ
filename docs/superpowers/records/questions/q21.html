@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>How should frontend cleanup survive revision exhaustion?</title>
+<meta name="writ-topic" content="capability-frontend">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}a{color:var(--accent)}code{background:var(--soft);padding:.05em .25em;border-radius:4px;overflow-wrap:anywhere}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>How should frontend cleanup survive revision exhaustion?</h1>
+<p>Josh, should we develop a versioned frontend revision and an authenticated migration design for existing states, or defer this work? We can continue on independent tasks either way.</p>
+
+<h2>What we found</h2>
+<p>The frontend keeps a revision so the monitor can reject stale operations. In synthetic tests, an owner trying to close an open handle at the largest revision the pinned Bend runtime supports caused a numeric-range error on both Bend and generated Node. The same close at the preceding revision succeeded. This requires roughly 281 trillion revision steps from zero; the test supplied a synthetic state directly, not a real native descriptor.</p>
+<p>Our current <a href="https://github.com/Spaceghost/writ/blob/43e68600bcdaefbbb570f50234aaf4154ac9a5eb/openspec/specs/capability-frontend/spec.md" target="_blank" rel="noopener">frontend contract</a> promises that an authenticated owner can close its handle even after revocation or expiry. Successful changes advance the revision, and closed handle IDs remain reserved. At the maximum there is no representable next revision. Simply refusing close would leave the handle open; wrapping or reusing a revision would undermine stale-request protection.</p>
+
+<h2>A possible direction</h2>
+<p>We recommend designing a versioned, multiword revision and a monitor-authenticated, atomic migration for already-existing states. The design would preserve open handles and tombstones, fence delayed requests and old snapshots, and retain enough revision capacity for cleanup. It must also handle closing a binding and all of its derived handles as one consistent transition. Reserving cleanup capacity in new states alone cannot repair an existing state already at the maximum; a wider finite counter alone can eventually run out too.</p>
+<p>This changes the frontend interface and requires a compatibility and recovery plan: who authenticates and stores the migrated state, how older callers obtain the current revision, and how replay or rollback is prevented. The <a href="https://github.com/Spaceghost/writ/blob/43e68600bcdaefbbb570f50234aaf4154ac9a5eb/docs/superpowers/records/2026-11-07-frontend-revision-exhaustion/README.md" target="_blank" rel="noopener">design record and synthetic results</a> explain the alternatives and remaining checks. The separate handle-ID allocation boundary has been addressed; revision exhaustion and the migration are not implemented.</p>
+<p>These results concern the pure model. They do not demonstrate a bypass, actual native cleanup, host confinement, durable recovery, or qualification of any host platform.</p>
+
+<form method="post" action="/questions/q21/answer">
+<fieldset><legend>Which direction should we develop?</legend>
+<label><input type="radio" name="direction" value="versioned-migration" required>Develop the versioned revision and authenticated migration design. <strong>Recommended.</strong></label>
+<label><input type="radio" name="direction" value="defer">Defer revision-exhaustion remediation for now.</label>
+<label><input type="radio" name="direction" value="other">Use another approach; explain it in the notes.</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form><p class="note">Your answer chooses a design direction. It does not approve weakening the cleanup contract, deploy a change, or mark the work complete.</p>
+</body></html>
