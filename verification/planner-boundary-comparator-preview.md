@@ -25,9 +25,15 @@ Existing proof declarations do not import or prove the new comparator or
 boundary tests. This is a regression verdict for existing laws, not a proof of
 the new code. Strict OpenSpec validation passed 44/44.
 
-No native CPU build, Nix check, platform CI, GPU test, protected-host
-qualification or endpoint has been performed for this combined source. Nix
-and Genode count pins were updated to 2,223 for future exact-source runs. The
+The Nix JavaScript check at exact source `6985302b7bbbd6ffaf2afcd7790c42f3a564f4c0`
+also passed 2,223 checks with the same output hash. Its derivation was
+`/nix/store/ikf417sz2b3zy3xz3cl5dfjj2wxdly8v-writ-tests-js.drv`, and its
+output was `/nix/store/a71kh2yac6yb6r346yfqxz0064lj4xkb-writ-tests-js`.
+This does not establish a full flake check or Nix native execution.
+
+No native CPU build, completed platform CI, GPU test, protected-host
+qualification or endpoint has been established for this combined source.
+The Genode count pin is updated to 2,223 for future exact-source runs. The
 prior [comparator record](planner-plan-match-local.md), [mutation review](planner-n48-mutants-dd3dac9/README.md)
 and [planner codec record](planner-envelope-local.md) retain their own source
 and limits.

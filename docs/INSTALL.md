@@ -79,6 +79,7 @@ beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
 over `openspec/` (`openspec`). The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` model inputs. The earlier 2,065-check Nix JavaScript and native CPU checks passed for source `73a8055` with the same output as each other.
+The [2,223-check integration-preview Nix JavaScript result](../verification/planner-boundary-comparator-preview.md) covers source `6985302`; no current full flake check or Nix native result is claimed.
 The earlier [2,065-check combined flake check](../verification/nix-combined-flake-check.log) for the `73a8055` implementation inputs passed all checks with evidence-only files staged. The historical artifacts below cover the previous
 1942-check tree. The native checks use the flake's clang 23.1.3, not the
 clang 19.1.1 of the recorded native run, and the JavaScript check uses Bend's bundled runtime, not
