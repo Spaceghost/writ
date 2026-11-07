@@ -44,7 +44,8 @@ Core regression rerun on 2026-11-04 using **Bend 2.0.39**, Linux x86_64, and
 **clang 19.1.1**. Earlier example/platform evidence is scoped below. The
 HostBinding records also include the 2026-11-03 review wave and 2026-11-04
 binding-gap fixes with Bend 2.0.39, **clang 23.1.1**, and Node v26.10.0.
-The core and examples contain 47 authored `.bend` files (34 originally verified,
+At historical source `c65d53d`, the root and examples contained 47 authored
+`.bend` files (34 originally verified,
 plus `HostBinding.bend`, `HostBindingTests.bend`, `Issuance.bend`,
 `IssuanceTests.bend`, and the nine portable-host-contract files). Their implementation,
 test drivers, and proof declarations are Bend 2. The optional rclone contribution
@@ -906,9 +907,12 @@ Bend Linux x64 2.0.39 archive had SHA-256:
 6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab
 ```
 
-`verification/source-sha256.txt` binds the final authored source and documentation
-to this test record. Native binaries, upstream toolchains, generated C/JavaScript,
-and unrelated prototypes are excluded from the repository.
+`verification/source-sha256.txt` records hashes for the tracked delivery tree,
+excluding the manifest itself. It identifies that tree's files; it does not
+establish that every historical test or CI run used that tree. Use each result's
+recorded source revision and input inventory, when available, to identify what
+was tested. Native binaries, upstream toolchains, generated C/JavaScript, and
+unrelated prototypes are excluded from the repository.
 
 The evidence-only follow-up Windows CI [run 42311706534](verification/windows-native-rerun-42311706534/README.md)
 repeated the strict LPAC failure on source `1fcd29a`; its byte-worker probes
