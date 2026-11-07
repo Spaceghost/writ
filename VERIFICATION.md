@@ -700,3 +700,8 @@ An [exploratory combined no-data sequence](verification/windows-combined-ad-obse
 observed all three initialization statuses as zero in two LPAC children with
 registryRead and Win32k calls enabled. Two settings changed together; this is
 not evidence of cause, worker confinement or host qualification.
+
+A [strict-worker research note](docs/superpowers/records/2026-11-06-windows-init/strict-worker-next-research.md)
+describes a possible same-lifetime pre-admission feasibility review and its
+transition and authority constraints. It establishes no fix or qualification
+and authorizes no implementation or native execution.
