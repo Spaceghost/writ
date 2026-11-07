@@ -1,0 +1,67 @@
+[
+  {
+    "mutant": "revision_high_mask",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "revision_producer_high",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "revision_producer_low",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "watermark",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "closed_flag",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "token",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "plan_code",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "plan_sources",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "validity_check",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "handle_fuel",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "source_fuel",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "handle_comparison_fuel",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "source_comparison_fuel",
+    "bend": 1,
+    "node": 1
+  }
+]

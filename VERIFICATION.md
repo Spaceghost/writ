@@ -61,6 +61,11 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [bounded synthetic legacy conversion record](verification/frontend-legacy-conversion/README.md)
+checks a V1-to-V2 candidate and independent original-state comparison under an
+eight-handle/eight-source profile. It does not authenticate or commit a
+migration, validate coupled binding state, or qualify a host.
+
 The [automatic 4a864b3 Genode CI](verification/master-ci-4a864b3/README.md)
 passed the standard policy and WritFS fixtures with missing-clock warnings.
 Its source inventory names the standalone pair checker, but does not show it

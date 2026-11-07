@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -122 +122 @@
+-      T.ObjectVersion.equal(ah, bh) && same_sources(at, bt, Nat.min(rest, 7n))
++      T.ObjectVersion.equal(ah, bh) && same_sources(at, bt, rest)

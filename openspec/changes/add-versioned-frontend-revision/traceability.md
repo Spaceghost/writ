@@ -2,15 +2,15 @@
 
 The [FR-001–FR-012 contracts](specs/frontend-revision-v2/spec.md) are proposed.
 The [tasks](tasks.md) remain open; structural OpenSpec validation is not
-evidence of acceptance. A standalone descriptive arithmetic primitive covers
-part of FR-001 only. The existing [CF-012 traceability](../../traceability/capability-frontend.md)
+evidence of acceptance. Standalone descriptive revision and bounded legacy
+conversion helpers cover only parts of FR-001 and FR-004–006. The existing [CF-012 traceability](../../traceability/capability-frontend.md)
 links the confirmed V1 terminal failure and remains unresolved.
 
 | Proposed contract | Required named evidence | Current status |
 | --- | --- | --- |
 | FR-001 | `FrontendRevisionV2.compare`, `advance`, `advance_if_current`; `FrontendRevisionV2Tests.bend` pair carry, max refusal and V1/V2 stale tag cases | Standalone descriptive primitive only; no authenticated frontend, actual migration or integrated mutation |
 | FR-002–003 | Exact open count, last cleanup, reserve denial, bounded original scan | Unimplemented; no test |
-| FR-004–006 | V1 max migration, complete original-state comparison, altered/omitted fields and authenticated current snapshot | Unimplemented; no test; source authenticity requires a monitor |
+| FR-004–006 | `FrontendLegacyConversionTests.bend`: max mapping, all handle fields, altered/omitted entries and bounded original/candidate scans | Synthetic frontend-only candidate comparison under fixed 8-handle/8-source limits; no binding comparison, authenticated current snapshot, installed migration, replay fencing or host test. Oversize is incomplete. |
 | FR-007–008 | Atomic crash/replay recovery, rollback-resistant version fence and binding V1 request denial | Unimplemented; no host witness or qualified integration |
 | FR-009 | Original-cut multi-handle close, later refusal and unchanged full-state/quota result | Unimplemented; existing derived-close fold retains prior frontend on failure |
 | FR-010 | Final cleanup, retirement and retained tombstones | Unimplemented; no test or authenticated instance lifecycle |

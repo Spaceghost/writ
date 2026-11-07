@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -129 +129 @@
+-        T.ObjectVersion.equal(ad, bd) && T.CodeId.equal(ac, bc) &&
++        T.ObjectVersion.equal(ad, bd) &&

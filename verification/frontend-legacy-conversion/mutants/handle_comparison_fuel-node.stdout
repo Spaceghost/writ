@@ -1,0 +1,38 @@
+PASS: legacy separately constructed candidate matches
+PASS: legacy builder positive verifies independently
+PASS: legacy producer manually preserves all original fields
+PASS: legacy revision zero maps exactly
+PASS: legacy revision low maximum maps exactly
+PASS: legacy revision crossing low word maps exactly
+PASS: legacy maximum maps both words exactly
+PASS: legacy producer maximum candidate verifies
+PASS: legacy producer maximum fields match manual expectation
+PASS: legacy changed revision low rejected
+PASS: legacy changed revision high rejected
+PASS: legacy oversized candidate high rejected safely
+PASS: legacy numeric same V1 tag rejected
+PASS: legacy unsupported tag rejected
+PASS: legacy changed allocation watermark rejected
+PASS: legacy omitted tombstone rejected
+PASS: legacy reordered handles rejected
+PASS: legacy duplicated candidate handle rejected
+PASS: legacy tombstone cannot reopen
+PASS: legacy tombstone high token word preserved
+PASS: legacy duplicate original rejected
+PASS: legacy duplicate original builder rejects
+PASS: legacy direct helper rejects high word 65536 safely
+PASS: legacy high-mask collision is rejected
+PASS: legacy direct helper rejects all-max high safely
+PASS: legacy direct helper accepts exact maximum
+PASS: legacy exactly eight valid handles admitted
+PASS: legacy exactly eight plan sources admitted
+PASS: legacy over-cap original sources incomplete
+PASS: legacy over-cap candidate sources incomplete
+PASS: legacy late over-cap original sources incomplete
+PASS: legacy late over-cap candidate sources incomplete
+PASS: legacy builder over-cap sources incomplete
+PASS: legacy over-cap original handles incomplete before validity
+PASS: legacy over-cap candidate handles incomplete
+PASS: legacy builder over-cap handles incomplete
+PASS: legacy direct handle fuel is capped
+PASS: legacy direct source fuel is capped

@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -137 +137 @@
+-        T.CodeId.equal(at, bt) && plan_equal(ap, bp) && U32.is_eq(ar, br) &&
++        plan_equal(ap, bp) && U32.is_eq(ar, br) &&

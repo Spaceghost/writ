@@ -1,0 +1,7 @@
+PASS: legacy separately constructed candidate matches
+PASS: legacy builder positive verifies independently
+PASS: legacy producer manually preserves all original fields
+PASS: legacy revision zero maps exactly
+PASS: legacy revision low maximum maps exactly
+PASS: legacy revision crossing low word maps exactly
+PASS: legacy maximum maps both words exactly

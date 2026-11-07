@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -172 +172 @@
+-          check_equal(valid_original(original) && revision_equal(rev, v2) && Nat.is_eq(next, other_next) &&
++          check_equal(revision_equal(rev, v2) && Nat.is_eq(next, other_next) &&

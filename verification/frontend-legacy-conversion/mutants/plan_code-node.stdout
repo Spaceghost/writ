@@ -1,0 +1,88 @@
+PASS: legacy separately constructed candidate matches
+PASS: legacy builder positive verifies independently
+PASS: legacy producer manually preserves all original fields
+PASS: legacy revision zero maps exactly
+PASS: legacy revision low maximum maps exactly
+PASS: legacy revision crossing low word maps exactly
+PASS: legacy maximum maps both words exactly
+PASS: legacy producer maximum candidate verifies
+PASS: legacy producer maximum fields match manual expectation
+PASS: legacy changed revision low rejected
+PASS: legacy changed revision high rejected
+PASS: legacy oversized candidate high rejected safely
+PASS: legacy numeric same V1 tag rejected
+PASS: legacy unsupported tag rejected
+PASS: legacy changed allocation watermark rejected
+PASS: legacy omitted tombstone rejected
+PASS: legacy reordered handles rejected
+PASS: legacy duplicated candidate handle rejected
+PASS: legacy tombstone cannot reopen
+PASS: legacy tombstone high token word preserved
+PASS: legacy duplicate original rejected
+PASS: legacy duplicate original builder rejects
+PASS: legacy direct helper rejects high word 65536 safely
+PASS: legacy high-mask collision is rejected
+PASS: legacy direct helper rejects all-max high safely
+PASS: legacy direct helper accepts exact maximum
+PASS: legacy exactly eight valid handles admitted
+PASS: legacy exactly eight plan sources admitted
+PASS: legacy over-cap original sources incomplete
+PASS: legacy over-cap candidate sources incomplete
+PASS: legacy late over-cap original sources incomplete
+PASS: legacy late over-cap candidate sources incomplete
+PASS: legacy builder over-cap sources incomplete
+PASS: legacy over-cap original handles incomplete before validity
+PASS: legacy over-cap candidate handles incomplete
+PASS: legacy builder over-cap handles incomplete
+PASS: legacy direct handle fuel is capped
+PASS: legacy direct source fuel is capped
+PASS: legacy direct handle comparison fuel is capped
+PASS: legacy direct source comparison fuel is capped
+PASS: legacy forged count stage remains bounded
+PASS: legacy direct handle comparison bounds nested sources
+PASS: legacy forged validation stage cannot accept duplicate source
+PASS: legacy forged bounds stage rejects long source safely
+PASS: legacy bounded validity agrees on valid state
+PASS: legacy bounded validity agrees on duplicate state
+PASS: legacy bounded validity agrees on zero watermark
+PASS: legacy bounded validity agrees on eight unique handles
+PASS: legacy bounded validity agrees on epoch mismatch
+PASS: legacy bounded validity agrees on ID at watermark
+PASS: legacy bounded validity agrees on empty state
+PASS: bounded plan comparison agrees on equal plans
+PASS: legacy candidate rejects changed handle field 15
+PASS: legacy candidate rejects changed handle field 14
+PASS: legacy candidate rejects changed handle field 13
+PASS: legacy candidate rejects changed handle field 12
+PASS: legacy candidate rejects changed handle field 11
+PASS: legacy candidate rejects changed handle field 10
+PASS: legacy candidate rejects changed handle field 9
+PASS: legacy candidate rejects changed handle field 8
+PASS: legacy candidate rejects changed handle field 7
+PASS: legacy candidate rejects changed handle field 6
+PASS: legacy candidate rejects changed handle field 5
+PASS: legacy candidate rejects changed handle field 4
+PASS: legacy candidate rejects changed handle field 3
+PASS: legacy candidate rejects changed handle field 2
+PASS: legacy candidate rejects changed handle field 1
+PASS: bounded legacy validity agrees with frontend on variant 15
+PASS: bounded legacy validity agrees with frontend on variant 14
+PASS: bounded legacy validity agrees with frontend on variant 13
+PASS: bounded legacy validity agrees with frontend on variant 12
+PASS: bounded legacy validity agrees with frontend on variant 11
+PASS: bounded legacy validity agrees with frontend on variant 10
+PASS: bounded legacy validity agrees with frontend on variant 9
+PASS: bounded legacy validity agrees with frontend on variant 8
+PASS: bounded legacy validity agrees with frontend on variant 7
+PASS: bounded legacy validity agrees with frontend on variant 6
+PASS: bounded legacy validity agrees with frontend on variant 5
+PASS: bounded legacy validity agrees with frontend on variant 4
+PASS: bounded legacy validity agrees with frontend on variant 3
+PASS: bounded legacy validity agrees with frontend on variant 2
+PASS: bounded legacy validity agrees with frontend on variant 1
+PASS: legacy candidate rejects changed plan field 22
+PASS: bounded plan comparison agrees with legacy on variant 22
+PASS: legacy candidate rejects changed plan field 21
+PASS: bounded plan comparison agrees with legacy on variant 21
+PASS: legacy candidate rejects changed plan field 20
+PASS: bounded plan comparison agrees with legacy on variant 20

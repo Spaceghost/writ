@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -128 +128 @@
+-      T.Stamp.equal(ast, bst) && Nat.is_eq(ai, bi) && same_sources(ax, bx, 8n) &&
++      T.Stamp.equal(ast, bst) && Nat.is_eq(ai, bi) && True{} &&

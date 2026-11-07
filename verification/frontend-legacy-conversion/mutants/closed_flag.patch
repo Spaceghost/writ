@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -138 +138 @@
+-        Nat.is_eq(ae, be) && Nat.is_eq(ax, bx) && Bool.not(Bool.xor(ac, bc))
++        Nat.is_eq(ae, be) && Nat.is_eq(ax, bx)

@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -94 +94 @@
+-          Built{Candidate{R.V2{U32.from_nat(Nat.div(revision, base())),
++          Built{Candidate{R.V2{0,

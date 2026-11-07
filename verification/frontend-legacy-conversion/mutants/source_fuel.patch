@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -45 +45 @@
+-    case T.OCons{_, tail} 1n+rest: sources_fit(tail, Nat.min(rest, 7n))
++    case T.OCons{_, tail} 1n+rest: sources_fit(tail, rest)

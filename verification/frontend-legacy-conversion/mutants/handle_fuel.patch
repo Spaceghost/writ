@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -39 +39 @@
+-    case F.Handles{_, tail} 1n+rest: handles_fit(tail, Nat.min(rest, 7n))
++    case F.Handles{_, tail} 1n+rest: handles_fit(tail, rest)

@@ -1,0 +1,20 @@
+Generated Node staging observation for the 126-check focused source
+
+Generated JS SHA-256: 22f481a14de44928421efd1458d8f3f1d3f50ea28c9cddd24954fa5bfd300485
+The generated JS remains outside the source tree. This is source inspection,
+not process attestation or a proof of all runtime behavior.
+
+- check_original_bounded returns Incomplete in its false branch; the candidate
+  preflight call is confined to the true branch.
+- check_candidate_bounded returns Incomplete in its false branch; original
+  structural validation and comparison are confined to the true branch.
+- bounded_after_count returns false in its false branch; the nested plan scans
+  are confined to the true branch.
+- Each handles/sources/plan/equality traversal checks fuel and clamps the next
+  value to seven. Eager conjunction evaluation performs only bounded traversals;
+  this observation does not assume Bool short-circuit evaluation.
+- revision_words_equal masks high to 16 bits before Nat multiplication and
+  addition. Even if equality is evaluated eagerly or the helper is called
+  directly, the largest intermediate is 2^48−1; high equality rejects truncation.
+- build_bounded performs validation only in its true branch. The producer's
+  split uses div/mod, independently checked by bounded reconstruction in check.

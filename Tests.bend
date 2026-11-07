@@ -9,6 +9,7 @@ import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
 import ./FrontendBoundaryTests.bend as FrontendBoundary
 import ./FrontendRevisionV2Tests.bend as FrontendRevisionV2
+import ./FrontendLegacyConversionTests.bend as FrontendLegacyConversion
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
@@ -41,6 +42,7 @@ def main() -> IO(Unit):
     Frontend.main()
     FrontendBoundary.main()
     FrontendRevisionV2.main()
+    FrontendLegacyConversion.main()
     HostBinding.main()
     HostWire.main()
     PlannerEnvelope.main()

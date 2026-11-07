@@ -48,6 +48,14 @@ They are not wired into `Frontend`, `HostBinding` or `DataOS`, do not map V1
 state, and do not establish an authenticated current revision. FR-001 and all
 frontend migration/cleanup acceptance scenarios remain open.
 
+A separate [bounded synthetic conversion and verifier](../../../FrontendLegacyConversion.bend)
+copies a supplied V1 description and independently compares its original and
+candidate within a fixed eight-handle/eight-source test profile. Its
+[controls and limits](../../../verification/frontend-legacy-conversion/README.md)
+are not an authenticated snapshot, V2 admission, migration, binding-state
+verification, or a deployment resource guarantee. Larger inputs remain
+incomplete in that profile; all migration tasks and acceptance remain open.
+
 ## Reserve the remaining cleanup and retirement transitions
 
 Let `M = 2^64−1`, `R` be the current pair and `O` the exact count of all open

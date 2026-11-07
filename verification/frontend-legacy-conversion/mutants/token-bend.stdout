@@ -1,0 +1,19 @@
+PASS: legacy separately constructed candidate matches
+PASS: legacy builder positive verifies independently
+PASS: legacy producer manually preserves all original fields
+PASS: legacy revision zero maps exactly
+PASS: legacy revision low maximum maps exactly
+PASS: legacy revision crossing low word maps exactly
+PASS: legacy maximum maps both words exactly
+PASS: legacy producer maximum candidate verifies
+PASS: legacy producer maximum fields match manual expectation
+PASS: legacy changed revision low rejected
+PASS: legacy changed revision high rejected
+PASS: legacy oversized candidate high rejected safely
+PASS: legacy numeric same V1 tag rejected
+PASS: legacy unsupported tag rejected
+PASS: legacy changed allocation watermark rejected
+PASS: legacy omitted tombstone rejected
+PASS: legacy reordered handles rejected
+PASS: legacy duplicated candidate handle rejected
+PASS: legacy tombstone cannot reopen

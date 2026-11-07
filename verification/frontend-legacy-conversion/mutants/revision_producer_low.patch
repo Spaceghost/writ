@@ -1,0 +1,5 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -95 +95 @@
+-            U32.from_nat(Nat.mod(revision, base()))}, next, handles}}
++            0}, next, handles}}

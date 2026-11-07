@@ -1,0 +1,6 @@
+--- a/FrontendLegacyConversion.bend
++++ b/FrontendLegacyConversion.bend
+@@ -153,2 +153 @@
+-  U32.is_eq(high, bounded_high) &&
+-    Nat.is_eq(original, Nat.add(Nat.mul(U32.to_nat(bounded_high), base()), U32.to_nat(low)))
++  Nat.is_eq(original, Nat.add(Nat.mul(U32.to_nat(bounded_high), base()), U32.to_nat(low)))
