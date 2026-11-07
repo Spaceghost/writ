@@ -15,6 +15,11 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic a7de2d3 Genode CI](verification/master-ci-a7de2d3/README.md)
+passed the standard policy and WritFS fixtures with missing-clock warnings.
+Its source inventory names the standalone observer, but does not show it
+running; this result does not qualify a protected host.
+
 The automatic Genode CI runs at [3267dc4](verification/master-ci-3267dc4/README.md)
 and [e151f51](verification/master-ci-e151f51/README.md) passed the standard
 policy and WritFS fixtures with missing-clock warnings. Their logs do not show
