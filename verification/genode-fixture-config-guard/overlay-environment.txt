@@ -1,0 +1,4 @@
+source_commit=69aecaa73aeee0745eac1ae8e042c3f88e262272
+bend_version=bend 2.0.39
+bend_executable_sha256=2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd  /mnt/MediaVolume/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+generated_c_command=bend hosts/genode/monitor/Monitor.bend -o /tmp/writ-genode-nested-overlay.configguard69aecaa/bend-c/monitor/monitor.c

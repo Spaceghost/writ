@@ -41,6 +41,24 @@ installer error propagation and pre-install/image/launch refusal for a mutated
 fixture. Stub `puts` reproduces the expected one LF; it is not actual installed
 file readback. Stub output is not Genode evidence.
 
+The [overlay preparation](overlay.stdout) was subsequently run from clean
+source commit `69aecaa73aeee0745eac1ae8e042c3f88e262272` using Bend 2.0.39:
+
+```sh
+timeout 120s contrib/native-hosts/genode/nested-channel/prepare-overlay.sh \
+  /tmp/writ-genode-nested-overlay.configguard69aecaa \
+  /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+```
+
+It [exited 0](overlay.exit) with [empty stderr](overlay.stderr). The captured
+[environment](overlay-environment.txt), [128 source-input hashes](overlay-source.sha256)
+and [16 staged-file hashes](overlay-staged.sha256) identify the observed
+inputs, including both fixed guarded entry points and references. Those hashes
+were verified again after preparation. The generated monitor C's
+[SHA-256](generated-c.sha256) is recorded; the file and external overlay stay
+outside the checkout. Preparation did not build, boot or run Genode, and the
+hashes do not establish process attestation or eliminate staging races.
+
 Python 3.14.7 separately ran, under the same 30-second bound:
 
 ```sh
