@@ -38,6 +38,10 @@ preview also retains the two byte-range checks, for 2,261 checks. These
 composition checks exercise a test-selected frontend and plan comparison,
 not an authenticated planner request or a production adapter.
 
+The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
+retains its exact-source outcomes, Linux setup refusal and Genode clock warning;
+it does not qualify a protected host or establish later-source CI.
+
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 checks at its recorded source. The later boundary regression adds one
 check, and the separate plan-comparison model adds 61 synthetic checks, for
