@@ -1,0 +1,7 @@
+WRIT-PUBLIC-BOOT-STATUS-V1
+status=synthetic-partial
+scenario=positive
+run=1
+attempt=2
+manifest_bytes=1344
+manifest_sha256=06ec82fad0da7986348a5ca0654acac209cd6bcb7a50ac7d4cae06a5da631048

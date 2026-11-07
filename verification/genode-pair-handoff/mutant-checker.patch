@@ -1,0 +1,5 @@
+--- a/contrib/native-hosts/genode/boot-inventory/pair-checker/PairSyntax.bend
++++ b/contrib/native-hosts/genode/boot-inventory/pair-checker/PairSyntax.bend
+@@ -309 +309 @@
+-  manifest_cap_checked(manifest, status, Bytes.within(manifest, 1466, Some{0}))
++  PairMalformed{}
