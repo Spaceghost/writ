@@ -1,0 +1,16 @@
+
+Algorithm : SHA256
+Hash      : C6CBCCB02715494293FABD03CC3755503C5099CEF2B5014FA506D8AD096FDCB6
+Path      : D:\a\_temp\windows-pss-build\Release\writfs-pss-observer.exe
+
+Algorithm : SHA256
+Hash      : 3707A38851BD14696AF554DCDD4B69D687FCA90BA2974789D236C2BA05B70BBA
+Path      : D:\a\_temp\windows-pss-build\Release\writfs-pss-child.exe
+
+Algorithm : SHA256
+Hash      : 6EBFE033A795D30FEAE02CEC43DABBF6001442F95981A4BCD95DECB881D7CA8F
+Path      : D:\a\_temp\windows-pss-build\Release\writfs-pss-table-test.exe
+
+Algorithm : SHA256
+Hash      : 4B092A5C3C2B9C2BD6450F682A8304B405E12BFC2A209007711E43A6BD3B0C3B
+Path      : D:\a\_temp\windows-pss-build\Release\writfs-pss-progress-test.exe

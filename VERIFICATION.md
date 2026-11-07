@@ -658,3 +658,10 @@ header correction, an [isolated no-data run](verification/windows-init-observati
 reproduced the byte worker's initialization error codes while its ordinary
 controls and scoped cleanup completed. It used a different process and package,
 did not isolate a cause, and supplies no protected-worker confinement credit.
+
+An isolated Windows process-snapshot experiment first had a
+[link failure](verification/windows-pss-build-42315743515/README.md). Its
+[subsequent observation](verification/windows-pss-observation-42316163834/README.md)
+matched two known handles in one suspended, ordinary synthetic child on one
+runner. It is not an LPAC or byte-worker result, does not establish complete
+environment equivalence, and supplies no host confinement credit.

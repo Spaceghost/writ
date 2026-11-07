@@ -1,0 +1,36 @@
+
+Algorithm : SHA256
+Hash      : 5260E9F16E68EB2852FF2B0768A6D989F4FBB4CEA5B0EE5DA17A5702869C1E6B
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_observer.c
+
+Algorithm : SHA256
+Hash      : 0E26F574474522721DAE8F3F14EF2DD789D3FB19B3FA17203213A4DF8481E695
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_child.c
+
+Algorithm : SHA256
+Hash      : 852789299F434E375E10C56B76D26DE1180DFF3CE659353A2E0EC47FFF2DA1CE
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_table.c
+
+Algorithm : SHA256
+Hash      : 34B2C060D771F502D3C555F12594124DB26D36D8FD2D40F63894EDE502C76B5E
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_table.h
+
+Algorithm : SHA256
+Hash      : 7F4998CAE8D393DC9FC03B2D772BB255EC2974B6776C397B20445600D5FCF900
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_table_test.c
+
+Algorithm : SHA256
+Hash      : 3CE0746F461AC35CCA40341033B8E1EF0A8E5E538E0CF33D1FB059AACE71A24C
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_progress.c
+
+Algorithm : SHA256
+Hash      : A1C886333A5E051ED64771E0620EF2E0498F60D379925990E516C3D78F80EE44
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_progress.h
+
+Algorithm : SHA256
+Hash      : 8362228DA1DDFDFBE8BDEB4A19D241D8EA079F9AB5B645ADF3C73A4FF65B67BB
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_progress_test.c
+
+Algorithm : SHA256
+Hash      : EC0D97B2DED7976DB4B0F8682E98D1EC3F3D4E4798AC1AA0447AF2CE4A1F0318
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init-diagnostic\CMakeLists.txt
