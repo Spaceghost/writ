@@ -46,7 +46,13 @@ native binaries stay outside the source tree.
 
 The separate [allocator test](allocator.log) passed 24 checks with ASan/UBSan,
 and the [owned-temp pair handoff test](handoff.log) passed its synthetic
-capture-to-Bend/Node controls. Neither exercises a frontend native host. The
-native CPU build began before the source commit; its result is recorded in a
-later evidence follow-up. No GPU, Linux identity, broker, launcher, protected
-host or durable recovery claim is made.
+capture-to-Bend/Node controls. Neither exercises a frontend native host. The [optimized native CPU suite](native.log) passed all 2,413 checks with
+`+RTS --threads 1 --gpu off -RTS`, byte-identical to Bend and Node. Build and
+run both exited 0; [build stdout](native-build.log), [build stderr](native-build.stderr)
+and [run stderr](native.stderr) are empty. The build began before source commit
+`dc2a276`, and all 122 inventoried Bend input bytes match that commit and the
+post-run tree. A compiler command with `-O3` was [observed](native-clang-observation.txt),
+not process attestation. The compiler also automatically launched a
+`tests-native +RTS --gpu-build` build subprocess; this is not a GPU test.
+No GPU execution result, Linux identity, broker, launcher, protected host or
+durable recovery claim is made.
