@@ -21,6 +21,7 @@ assumptions, and model execution does not establish a Windows handoff or host
 confinement. See the [model record](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)
 for the scope and remaining native and commit-time gaps. The earlier native and
 cross-backend observations below remain historical evidence of their exact source.
+The exact hardened `817ab1f` model source also passed the [Windows Node](verification/handoff-ci-817ab1f/windows-42327055068/README.md), [Genode QEMU](verification/handoff-ci-817ab1f/genode-42327054904/README.md) and [Linux public-canary](verification/handoff-ci-817ab1f/linux-42327055037/README.md) workflows. The Genode guest retained a missing-clock warning; the Linux protected setup deliberately refused unsupported Landlock before input and was not qualified. These results do not establish strict Windows worker confinement.
 
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the
