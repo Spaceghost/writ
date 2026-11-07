@@ -8,8 +8,11 @@ fixed descriptor-anchored objects, with explicit bounds. If it cannot establish
 the layout, the fixture evidence remains incomplete and its other bounded logs
 may still be retained.
 
-This is **design only**: no inventory helper, guarded Genode run, new host
-result or cleanup claim is made. The [guard design](public-fixture-config-guard-design.md)
+The proposed **complete inventory remains unimplemented**. A separate [layout-only
+primitive](../../../contrib/native-hosts/genode/boot-inventory/README.md) checks
+fixed metadata on synthetic trees; it cannot read or hash inputs, publish a
+manifest or establish completion. No guarded Genode run, new host result or
+cleanup claim is made. The [guard design](public-fixture-config-guard-design.md)
 checks public fixture arguments before installation; this proposal concerns a
 separate post-run evidence read. The experimental e233 collector and the
 [public route retry](../../../verification/genode-route-retry-42361441863/README.md)

@@ -293,6 +293,7 @@ are not rejected by the existing shim; trusted configuration must avoid them.
 | `src/test/writfs/`, `src/test/writfs_vfs/` | Native diagnostic clients; never a protected worker profile |
 | `run/` | Trusted supervisor topology, fixed public fixture, explicit ROM/service routes, and native completion gates |
 | `nested-channel/` | Experimental trusted nested-init topology, source staging, public fixture assertions and exact-argument guard; fixed reference reads rely on the trusted checkout/overlay and bounded outer supervision. No policy, host qualification or identity attestation |
+| `boot-inventory/` | Experimental Linux descriptor-anchored fixed-layout metadata checks for owned public synthetic fixtures; no content read, manifest, fixture integration, policy or qualification |
 | `build-and-run.sh`, workflow | Pinned inputs, cross-build packaging, fresh generated Bend artifacts, QEMU execution and evidence |
 
 Authorization, original policy/provenance, grant checking, state transitions,

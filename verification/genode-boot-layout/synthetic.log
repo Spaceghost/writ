@@ -1,0 +1,34 @@
+PASS positive fixture
+PASS negative fixture
+PASS missing entry
+PASS extra entry
+PASS too many entries
+PASS long name
+PASS nonascii name
+PASS direct non-config
+PASS wrong root
+PASS relative link
+PASS prefix collision
+PASS extra hop
+PASS parent component
+PASS wrong schema root
+PASS config symlink
+PASS config size limit accepted
+PASS oversize config
+PASS leaf size limit accepted
+PASS total size limit exceeded
+PASS oversize leaf
+PASS leaf fifo
+PASS leaf socket
+PASS hard-linked leaf
+PASS swapped roots
+PASS late added entry
+PASS late removed entry
+PASS late link replacement
+PASS late leaf replacement
+PASS late in-place leaf change
+PASS unsupported openat2
+PASS unsupported flags
+PASS structure size unsupported
+PASS different config contents do not establish exactness
+PASS 33 synthetic layout checks
