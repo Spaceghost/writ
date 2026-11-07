@@ -7,6 +7,11 @@ launcher and broker that establish authentic facts and confine the process using
 protected data. [Host research](../../../docs/HOST-PLATFORMS.md) records the Linux
 API behavior and primary sources behind this proposal.
 
+Josh selected a future convergence of the public FUSE canary and broker as a
+worker profile. The [convergence plan](canary-broker-convergence.md) maps the
+two current paths, their evidence and the requalification required before that
+composition can be claimed. It is proposed work, not an implemented host.
+
 ## Goals and boundaries
 
 Preserve the Genode-informed portable contract while using native Linux process
