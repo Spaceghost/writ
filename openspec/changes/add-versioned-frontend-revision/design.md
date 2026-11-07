@@ -188,6 +188,37 @@ and a reused retired V2 identity. Neither a migration marker inside a restored
 snapshot nor a caller-presented receipt is sufficient. No existing host or
 durable witness is claimed to provide this yet.
 
+## Existing fixed-width host channels
+
+The synthetic Genode and Unikraft V1 channels use fixed 16-word U32 records.
+Their request carries `expected_session`, not a client-supplied expected
+frontend revision. Each monitor passes its own stored frontend state and its
+current frontend revision into `DataOS.commit_from_capability`; this does not
+itself prove serialization against an authoritative host state. The reply's
+word 13 carries a descriptor and word 14 carries the frontend revision as
+single U32 values. The current monitors narrow both from Nat when producing
+the reply. See the [Genode channel](../../../hosts/genode/effects/Channel.md),
+[monitor](../../../hosts/genode/monitor/Monitor.bend), and corresponding
+[Unikraft channel](../../../hosts/unikraft/effects/Channel.md) and
+[monitor](../../../hosts/unikraft/monitor/Monitor.bend).
+
+Before exposing V2 through either channel, specify and validate a versioned
+codec that preserves the complete revision and descriptor identity, or
+explicitly report a range-limited V1 profile as incompatible or incomplete
+when it cannot represent a value. A high revision word, tag or identifier
+must not be silently truncated and presented as an exact identity. Test
+different high words with equal low words, unsupported versions, descriptor
+range boundaries and stale requests. Do not reinterpret an old request as a
+fresh V2 request by substituting the monitor's new expected revision.
+
+The record body's claimed subject remains untrusted. Genode's separately
+supplied subject is a configured route fact; Unikraft's synthetic subject is
+fixed by its build profile. Neither a wire tag, numeric identifier or route
+fact alone authenticates an original caller or a migrated state. The codec,
+host identity, migration and platform qualification are all unimplemented by
+this proposal; preserving the distinction between a reported reply field and
+an authority input is part of the review.
+
 ## Binding close and failure atomicity
 
 For `bind_close`, identify every distinct still-open frontend handle of the
