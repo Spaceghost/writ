@@ -116,7 +116,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            build-essential flex bison rpcsvc-proto expect tcl ripgrep git curl xz-utils python3 nodejs
+            build-essential libfl2 flex bison rpcsvc-proto expect tcl ripgrep git curl xz-utils python3 nodejs
       - name: Run public nested fixture and snapshot available evidence
         run: |
           set -uo pipefail
@@ -233,7 +233,7 @@ jobs:
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
-            build-essential flex bison rpcsvc-proto expect tcl ripgrep git curl xz-utils python3 nodejs
+            build-essential libfl2 flex bison rpcsvc-proto expect tcl ripgrep git curl xz-utils python3 nodejs
       - name: Run public nested fixture and snapshot available evidence
         run: |
           set -uo pipefail
