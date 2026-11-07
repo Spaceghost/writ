@@ -11,6 +11,7 @@ import ./HostWireTests.bend as HostWire
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
 import ./PlannerPlanMatchTests.bend as PlannerPlanMatch
 import ./PlannerFrontendCompositionTests.bend as PlannerFrontendComposition
+import ./LocalityConjunctionTests.bend as LocalityConjunction
 import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostHandoffTests.bend as HostHandoff
@@ -36,6 +37,7 @@ def main() -> IO(Unit):
     PlannerEnvelope.main()
     PlannerPlanMatch.main()
     PlannerFrontendComposition.main()
+    LocalityConjunction.main()
     HostIdentity.main()
     HostPrimitives.main()
     HostHandoff.main()

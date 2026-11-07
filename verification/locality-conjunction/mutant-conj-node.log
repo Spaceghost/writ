@@ -1,0 +1,2 @@
+PASS: locality overlap_later_member
+FAIL: locality disjoint_singletons

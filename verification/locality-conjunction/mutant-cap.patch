@@ -1,0 +1,5 @@
+--- a/LocalityConjunction.bend
++++ b/LocalityConjunction.bend
+@@ -41 +41 @@
+-    case 0n Con{_, _}: False{}
++    case 0n Con{_, _}: True{}

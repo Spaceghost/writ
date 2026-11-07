@@ -1,0 +1,16 @@
+PASS: locality overlap_later_member
+PASS: locality disjoint_singletons
+PASS: locality unrestricted_is_explicit
+PASS: locality missing_is_incomplete
+PASS: locality empty_allowed_denies
+PASS: locality empty_requirements_incomplete
+PASS: locality conflicting_rules_forward
+PASS: locality conflicting_rules_reverse
+PASS: locality valid_reorder_invariant
+PASS: locality duplicate_domain_invariant
+PASS: locality candidate_empty_no_listed_match
+PASS: locality opaque_full_width_ids
+PASS: locality opaque_ids_are_distinct
+PASS: locality version_before_caps
+PASS: locality requirement_cap_before_candidate_cap
+FAIL: locality candidate_cap_before_missing_requirements

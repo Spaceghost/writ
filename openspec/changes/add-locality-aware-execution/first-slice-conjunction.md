@@ -6,9 +6,11 @@ satisfies both rules. If the first rule instead allows `[A, B]` and the second
 still allows B, a listed match exists. This reports a property of those supplied
 descriptions, not an eligible executor or permission to run the join.
 
-Today the proposed [locality requirements](specs/locality-aware-execution/spec.md)
-are not implemented. This design proposes only a bounded Bend reference model for
-part of LE-001 and LE-009; no implementation or planned test below has been run.
+The proposed [locality requirements](specs/locality-aware-execution/spec.md)
+remain unimplemented as an integrated placement service. The bounded Bend
+reference model implements only the synthetic conjunction described below for
+part of LE-001 and LE-009; its [test and mutation evidence](../../../verification/locality-conjunction/README.md)
+does not establish the acceptance contracts.
 All [locality tasks](tasks.md) remain open. In particular, a no-match result for
 the supplied finite list does not establish that no executor exists elsewhere,
 and LE-009's local-subcomputation alternative still needs a distinct complete
@@ -102,11 +104,11 @@ the pinned Bend interpreter and generated Node evaluation. It does not bound the
 cost of constructing an already supplied list or a future parser/transport;
 those require their own allocation and framing limits.
 
-## Planned synthetic tests
+## Synthetic tests
 
-The names below describe future tests, not existing evidence. The tests should
-independently specify values and expected variants, execute in pinned Bend and
-generated Node, and retain named output and time-bounded overlong cases.
+The names below describe scenario groups. The exact named assertions appear in
+[`LocalityConjunctionTests.bend`](../../../LocalityConjunctionTests.bend); the
+linked evidence records the executions, limits, and temporary mutations.
 
 * `overlap_later_member` and `disjoint_singletons`: exercise the example above,
   including a positive match that is not the first allowed member.
@@ -128,10 +130,10 @@ generated Node, and retain named output and time-bounded overlong cases.
 * `unsupported_is_not_preference` and `added_rule_cannot_widen`: verify that an
   unsupported description does not become a hint and that adding a valid
   conjunct cannot create a match for the same candidate list.
-* `dropped_conjunct_mutant`: in a temporary isolated test copy, remove one
-  conjunction check and show a named disjoint/conflicting control fails. A
-  satisfying positive control must also pass on the unmodified model; a
-  constant-false implementation is not adequate evidence.
+* `dropped_conjunct_mutant`: a temporary isolated mutation removes one
+  conjunction check and the disjoint control fails. A satisfying positive
+  control passes on the unmodified model; a constant-false implementation is
+  not adequate evidence.
 
 Any later proof must state its exact assumptions and limitations; proving only
 that rejected candidates are never admitted can be vacuous for a constant-false

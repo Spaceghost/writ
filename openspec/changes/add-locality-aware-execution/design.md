@@ -93,8 +93,8 @@ Take the intersection of applicable requirements. If A requires raw input to sta
 in A and B requires raw input to stay in B, a raw-data join has no eligible common
 executor.
 
-The proposed [bounded conjunction reference model](first-slice-conjunction.md)
-specifies a small synthetic check for supplied domain descriptions. It does not
+The [bounded conjunction reference model](first-slice-conjunction.md) implements
+a small synthetic check for supplied domain descriptions. It does not
 implement placement or establish that the supplied descriptions are complete.
 
 A new plan may instead propose approved local subcomputations and combine only

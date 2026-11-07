@@ -1,0 +1,5 @@
+--- a/LocalityConjunction.bend
++++ b/LocalityConjunction.bend
+@@ -64 +64 @@
+-    case Con{rule, rest} Valid{}: check_rules(rest, check_one(rule))
++    case Con{rule, _} Valid{}: check_one(rule)

@@ -1,0 +1,5 @@
+--- a/LocalityConjunction.bend
++++ b/LocalityConjunction.bend
+@@ -88 +88 @@
+-      rule_matches(rule, value) && all_rules(next, rest, value)
++      all_rules(next, rest, value)

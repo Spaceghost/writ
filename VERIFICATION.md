@@ -15,6 +15,11 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [bounded locality conjunction reference](verification/locality-conjunction/README.md)
+adds 37 synthetic checks and targeted mutation controls; its supplied rules and
+domains are not authenticated, and it performs no admission or host check.
+The proposed locality acceptance tasks remain open.
+
 The [automatic 0689636 platform CI](verification/master-ci-0689636/README.md)
 retains passing Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 results, and the failed strict Windows native run. Linux protected setup was
