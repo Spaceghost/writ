@@ -1,8 +1,8 @@
 # Verification record
 
-The [ffa332d automatic CI checkpoint](verification/master-ci-ffa332d/README.md)
-retains passing Windows Node, filesystem and Genode fixtures and the strict
-Windows worker failure. Linux is pending in that checkpoint.
+The [ffa332d automatic CI record](verification/master-ci-ffa332d/README.md)
+retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
+strict Windows worker failure and the refused Linux protected setup.
 
 The [issuance allocation-boundary record](verification/issuance-allocation-boundary/README.md)
 checks exhausted approval/grant IDs without preventing existing grant use or
