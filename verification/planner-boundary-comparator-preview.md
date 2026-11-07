@@ -31,9 +31,16 @@ also passed 2,223 checks with the same output hash. Its derivation was
 output was `/nix/store/a71kh2yac6yb6r346yfqxz0064lj4xkb-writ-tests-js`.
 This does not establish a full flake check or Nix native execution.
 
-No native CPU build, completed platform CI, GPU test, protected-host
-qualification or endpoint has been established for this combined source.
-The Genode count pin is updated to 2,223 for future exact-source runs. The
+The [exact-source platform CI records](planner-boundary-comparator-ci-6985302/README.md)
+cover `6985302`: Windows Node passed 2,223 core and 78 model checks; Genode
+base-hw QEMU passed 2,223 core, 69 mount and 24 allocator checks plus scoped
+public canaries while retaining its missing-clock warning; Linux passed 2,223
+core and 70 mount checks on both JS and native plus scoped public canaries.
+Linux's unsupported Landlock setup was refused before input and admission;
+workflow success is not successful protected-worker setup.
+
+No separate local native CPU run, GPU test, protected-host qualification or
+endpoint has been established for this combined source. The
 prior [comparator record](planner-plan-match-local.md), [mutation review](planner-n48-mutants-dd3dac9/README.md)
 and [planner codec record](planner-envelope-local.md) retain their own source
 and limits.
