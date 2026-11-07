@@ -1,5 +1,9 @@
 # Verification record
 
+The [0c619ad automatic filesystem CI](verification/master-ci-0c619ad/README.md)
+passed Btrfs and ZFS public fixtures after the version-diagnostic fix. The
+earlier d71d09c ZFS setup failure remains recorded separately.
+
 The [d71d09c automatic CI checkpoint](verification/master-ci-d71d09c/README.md)
 retains Windows Node and Btrfs passes, the ZFS setup failure and strict Windows
 worker failure; Linux and Genode are pending at this checkpoint.
