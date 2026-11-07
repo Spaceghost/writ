@@ -71,3 +71,18 @@ rclone).
 Open in the model: there is no grant-level revocation. Only approvals can be
 revoked, so a derived grant or the middle of a chain can be withdrawn only by
 revoking the root's approval, which withdraws the whole chain.
+
+## Shared approval and grant identifier exhaustion
+
+The pinned runtime supports Nat through 2^48 − 1. The shared `next_id` must
+remain above every allocated approval and grant ID, so max − 1 is the last
+allocatable ID. Source/write submission, registration and derivation append
+`IdExhausted` as the final gate, preserving prior failure precedence and
+unchanged denial; the new error constructor extends the public model API.
+Unrepresentable successors cannot satisfy monotonic allocation, so refusal
+preserves rather than weakens the existing laws. The
+[boundary tests](../../IssuanceBoundaryTests.bend) exercise all four final
+allocations and exhausted/stale/multiple-fault denials with full state
+comparison, along with current-grant projections, paired admission and
+authenticated revocation at terminal `next_id`. Revision exhaustion is a
+separate unresolved issue; no host authentication or durability is established.

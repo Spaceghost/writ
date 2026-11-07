@@ -1,0 +1,34 @@
+PASS: issuance exhaustion reason equality distinguishes replay
+PASS: issuance terminal next ID states remain valid
+PASS: issuance last source approval allocates exact state
+PASS: issuance last write approval allocates exact state
+PASS: issuance last registration consumes exact approvals
+PASS: issuance last derivation preserves exact scope and state
+PASS: issuance last registered grant is current
+PASS: issuance last derived grant is current
+PASS: issuance exhausted source rejects unchanged
+PASS: issuance exhausted write rejects unchanged
+PASS: issuance exhausted registration rejects unchanged
+PASS: issuance exhausted derivation rejects unchanged
+PASS: issuance stale source precedes exhaustion
+PASS: issuance stale write precedes exhaustion
+PASS: issuance stale registration precedes exhaustion
+PASS: issuance stale derivation precedes lifetime and exhaustion
+PASS: issuance source identity denial precedes exhaustion
+PASS: issuance write identity denial precedes exhaustion
+PASS: issuance registration identity denial precedes exhaustion
+PASS: issuance derivation identity denial precedes exhaustion
+PASS: issuance expired source precedes exhaustion
+PASS: issuance expired write precedes exhaustion
+PASS: issuance expired registration precedes exhaustion
+PASS: issuance expired derivation precedes exhaustion
+PASS: issuance source replay precedes exhaustion
+PASS: issuance write replay precedes exhaustion
+PASS: issuance consumed approval precedes exhaustion
+PASS: issuance duplicate token precedes exhaustion
+PASS: issuance submission check lists include exhaustion
+PASS: issuance grant check lists include exhaustion
+PASS: issuance terminal counter preserves current grant
+PASS: issuance terminal counter preserves exact projections
+PASS: issuance terminal counter preserves paired admission and frontend read
+FAIL: issuance terminal counter permits authenticated revocation

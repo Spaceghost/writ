@@ -1,0 +1,5 @@
+--- a/Issuance.bend
++++ b/Issuance.bend
+@@ -1683 +1683 @@
+-  current_within(grants(state), Grant.parent(grant), find_grant(grants(state), Grant.parent(grant)),
++  id_room(state) && current_within(grants(state), Grant.parent(grant), find_grant(grants(state), Grant.parent(grant)),

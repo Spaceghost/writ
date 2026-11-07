@@ -1,0 +1,6 @@
+--- a/Issuance.bend
++++ b/Issuance.bend
+@@ -1785,2 +1785 @@
+-      Gate{id_room(state), IdExhausted{},
+-      Open{}}}}}}}}}}}}}
++      Open{}}}}}}}}}}}}

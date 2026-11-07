@@ -1,5 +1,10 @@
 # Verification record
 
+The [issuance allocation-boundary record](verification/issuance-allocation-boundary/README.md)
+checks exhausted approval/grant IDs without preventing existing grant use or
+authorized revocation when revision headroom exists. Terminal issuance revision
+and protected-host qualification remain separate gaps.
+
 The [4671e20 automatic CI record](verification/master-ci-4671e20/README.md)
 retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
 strict Windows worker failure and the refused Linux protected setup.

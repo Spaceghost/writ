@@ -1,0 +1,3 @@
+UTC 2026-11-07T15:11:23.092819+00:00
+Observed 1 compiler command(s) containing -O3 and the intended output path.
+This is not process attestation.

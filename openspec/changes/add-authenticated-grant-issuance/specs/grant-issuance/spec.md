@@ -50,6 +50,13 @@ The issuer SHALL bind a capability to the authenticated subject authorized to us
 
 The issuer SHALL atomically register a grant only while the snapshot and approvals used for its validation remain current.
 
+#### Scenario: Allocation identifier space is exhausted
+
+- **GIVEN** an otherwise valid issuer state with the shared next approval/grant identifier at the supported Nat maximum
+- **WHEN** an otherwise eligible source submission, write submission, registration or derivation requests a new identifier
+- **THEN** it is rejected without changing the supplied state
+- **AND** existing grant use and authenticated revocation are not denied merely by allocation exhaustion
+
 #### Scenario: Revocation during issuance
 
 - **GIVEN** a source approval is valid at revision 7

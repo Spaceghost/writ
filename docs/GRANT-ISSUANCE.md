@@ -184,6 +184,18 @@ new grant will carry.
   of defence. A token reused across issuer states, or across registries the
   host merges, is not caught by this issuer's freshness check.
 
+### Finite allocation counter
+
+The pinned runtime supports Nat through 2^48 − 1. Source/write submission,
+registration and derivation allocate from one positive, monotonic `next_id`,
+which must remain above every allocated ID. Max − 1 is the final allocatable
+ID. An otherwise eligible allocation at max returns the new closed-set
+`IdExhausted` reason and the original state; earlier failed gates retain their
+existing precedence. This is an observable model API addition. The bound is not
+an authority check: existing current grants and their projections remain usable
+and authorized revocation remains available when revision headroom exists.
+Exhaustion of the separate revision counter is not repaired by this change.
+
 ### Atomic installation at `expected_revision`, with durability
 
 Every transition takes `expected_revision` and returns the next state. A

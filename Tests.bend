@@ -22,6 +22,7 @@ import ./HostConformanceTests.bend as HostConformance
 import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
 import ./FacadeTests.bend as Facade
 import ./IssuanceTests.bend as Issuance
+import ./IssuanceBoundaryTests.bend as IssuanceBoundary
 import ./AuditTests.bend as Audit
 import ./RendezvousTests.bend as Rendezvous
 import ./PropertyTests.bend as Properties
@@ -51,6 +52,7 @@ def main() -> IO(Unit):
     LinuxHost.main()
     Facade.main()
     Issuance.main()
+    IssuanceBoundary.main()
     Audit.main()
     Rendezvous.main()
     Properties.main()

@@ -1,0 +1,7 @@
+PASS: issuance exhaustion reason equality distinguishes replay
+PASS: issuance terminal next ID states remain valid
+PASS: issuance last source approval allocates exact state
+PASS: issuance last write approval allocates exact state
+PASS: issuance last registration consumes exact approvals
+PASS: issuance last derivation preserves exact scope and state
+FAIL: issuance last registered grant is current

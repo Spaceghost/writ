@@ -275,6 +275,7 @@ type Error is Data:
   Widened{}
   InvalidRights{}
   DuplicateToken{}
+  IdExhausted{}
   StaleEpoch{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
@@ -306,6 +307,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case Widened{} Widened{}: True{}
     case InvalidRights{} InvalidRights{}: True{}
     case DuplicateToken{} DuplicateToken{}: True{}
+    case IdExhausted{} IdExhausted{}: True{}
     case StaleEpoch{} StaleEpoch{}: True{}
     case _ _: False{}
 
@@ -590,6 +592,13 @@ def unexpired(now: Nat, valid_until: Nat) -> Bool:
 def revision_current(state: State, expected_revision: Nat) -> Bool:
   Nat.is_eq(revision(state), expected_revision)
 
+# The pinned runtime supports Nat through 2^48 - 1. `next_id` must remain
+# above every allocated ID, so the maximum itself has no valid successor.
+# This predicate is an allocation gate, not authority or state validation;
+# it must not prevent projection, current-grant use or revocation.
+def id_room(state: State) -> Bool:
+  Nat.is_lt(next_id(state), Nat.add(Nat.mul(65536n, 4294967295n), 65535n))
+
 def manifest_contains(manifest: T.Objects, +wanted: T.ObjectVersion) -> Bool:
   match manifest:
     case T.OEnd{}:
@@ -700,7 +709,8 @@ def source_gates(+state: State, +expected_revision: Nat, +from: Principal,
       Gate{rights_valid(rights), InvalidRights{},
       Gate{unexpired(now, valid_until), Expired{},
       Gate{Bool.not(serial_seen(seen(state), issuer, serial)), Replay{},
-      Open{}}}}}}}}}}}
+      Gate{id_room(state), IdExhausted{},
+      Open{}}}}}}}}}}}}
 
 def source_checks(+state: State, +expected_revision: Nat, +from: Principal,
     +approval: SourceApproval, +now: Nat) -> Guard.Checks:
@@ -725,7 +735,8 @@ def write_gates(+state: State, +expected_revision: Nat, +from: Principal,
       Gate{rights_valid(rights), InvalidRights{},
       Gate{unexpired(now, valid_until), Expired{},
       Gate{Bool.not(serial_seen(seen(state), issuer, serial)), Replay{},
-      Open{}}}}}}}}}}}}
+      Gate{id_room(state), IdExhausted{},
+      Open{}}}}}}}}}}}}}
 
 def write_checks(+state: State, +expected_revision: Nat, +from: Principal,
     +approval: WriteApproval, +now: Nat) -> Guard.Checks:
@@ -776,7 +787,7 @@ def submit_source_current(current: Bool, +state: State, +expected_revision: Nat,
 # nothing reaches T.Reads or F.Registry from here. Denial order: StaleRevision,
 # UnknownVersion, Unauthenticated, NotAuthority, WrongDomain, StaleEpoch,
 # SubjectMismatch, ScopeMismatch (empty or not containing the source),
-# InvalidRights, Expired, Replay; the state is returned unchanged.
+# InvalidRights, Expired, Replay, IdExhausted; the state is returned unchanged.
 def submit_source(+state: State, +expected_revision: Nat, +from: Principal,
     +approval: SourceApproval, +now: Nat) -> Change:
   submit_source_current(revision_current(state, expected_revision), state, expected_revision,
@@ -1180,7 +1191,7 @@ def speaks_for_subject(from: Principal, scope: Scope) -> Bool:
 # authority revalidated against the directory and placements this state
 # carries, then the exact scope binding (live stamp, manifest coverage,
 # destination, write domain, subject, the whole scope), then the bounds on
-# rights and lifetime, and last the monitor-supplied token. Each requirement is
+# rights and lifetime, the monitor-supplied token, and finally ID headroom. Each requirement is
 # asked of the write approval before the source approvals; each has its own
 # gate so every denial is attributable. A cited approval's expiry is checked
 # before the request's own, so an expired approval reads as Expired, not as a
@@ -1221,7 +1232,8 @@ def register_gates(+state: State, +expected_revision: Nat, +from: Principal, +re
       Gate{write_cited_meets(LifetimeCovers{}, state, request, now), Widened{},
       Gate{sources_meet(LifetimeCovers{}, sources, state, request, now), Widened{},
       Gate{token_fresh(grants(state), token), DuplicateToken{},
-      Open{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
+      Gate{id_room(state), IdExhausted{},
+      Open{}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}
 
 def register_checks(+state: State, +expected_revision: Nat, +from: Principal, +request: Request,
     +now: Nat, +token: T.CodeId) -> Guard.Checks:
@@ -1751,7 +1763,7 @@ def parent_lifetime_covers(found: Maybe<&2, Grant>, +valid_until: Nat) -> Bool:
 # Every check a derivation must pass, in denial order: the race (revision),
 # the format, the parent's existence, identity (the authenticated principal is
 # the parent's subject), the parent's usability (unexpired, then current),
-# then the bounds on rights and lifetime, and last the monitor-supplied token.
+# then the bounds on rights and lifetime, the monitor-supplied token and ID headroom.
 # A parent that is not current for any reason other than its own expiry
 # (a revoked approval, a monitor change, an ancestor withdrawn) denies with
 # Revoked: its authority has been withdrawn.
@@ -1770,7 +1782,8 @@ def derive_gates(+found: Maybe<&2, Grant>, +parent_id: Nat, +state: State, +expe
       Gate{unexpired(now, valid_until), Expired{},
       Gate{parent_lifetime_covers(found, valid_until), Widened{},
       Gate{token_fresh(grants(state), token), DuplicateToken{},
-      Open{}}}}}}}}}}}}
+      Gate{id_room(state), IdExhausted{},
+      Open{}}}}}}}}}}}}}
 
 def derive_checks(+found: Maybe<&2, Grant>, +parent_id: Nat, +state: State, +expected_revision: Nat,
     +from: Principal, +child: Derivation, +now: Nat, +token: T.CodeId) -> Guard.Checks:
@@ -1843,7 +1856,7 @@ def derive_found(found: Maybe<&2, Grant>, +state: State, +expected_revision: Nat
 # UnknownVersion, MissingApproval (no such parent), SubjectMismatch, Expired
 # (the parent's deadline), Revoked (the parent not current), InvalidRights,
 # Widened (rights), Expired (the child's lifetime), Widened (lifetime),
-# DuplicateToken; the state is returned unchanged. The child is not usable by
+# DuplicateToken, IdExhausted; the state is returned unchanged. The child is not usable by
 # itself: `current` re-checks it, and its whole parent chain, at every use.
 def derive(+state: State, +expected_revision: Nat, +from: Principal, +parent_id: Nat,
     +child: Derivation, +now: Nat, +token: T.CodeId) -> Change:
