@@ -1,0 +1,20 @@
+
+Algorithm : SHA256
+Hash      : 51290E495373D4F81C190F91C12CE6DF90980590D6B33F4C0DF6A0C054F00C59
+Path      : D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-lpac-observer.exe
+
+Algorithm : SHA256
+Hash      : F9047C0BCA76648E44CC6CF69D53AB8F65E371FE50881020FC5059F2E7766160
+Path      : D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-child.exe
+
+Algorithm : SHA256
+Hash      : 108551C794E5BF6ED3293391F3C5C5F82F7DC8DD3AE40AB4D1DE7FD85858012A
+Path      : D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-table-test.exe
+
+Algorithm : SHA256
+Hash      : 1B13FD37CB0B48E6C8B21ED69ED4E88CC9D590049F375C86452B2982761E1EA7
+Path      : D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-progress-test.exe
+
+Algorithm : SHA256
+Hash      : B2B80EB759F34048713997D71C23B90AD00818EA252530D52BE2D7345756C64E
+Path      : D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-lpac-progress-test.exe

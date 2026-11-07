@@ -665,3 +665,8 @@ An isolated Windows process-snapshot experiment first had a
 matched two known handles in one suspended, ordinary synthetic child on one
 runner. It is not an LPAC or byte-worker result, does not establish complete
 environment equivalence, and supplies no host confinement credit.
+
+A separate [LPAC snapshot observation](verification/windows-pss-lpac-observation-42317376618/README.md)
+matched the two fixed synthetic handles in one suspended no-data LPAC child
+and verified normal owned-filter cleanup. It did not run the real byte worker,
+establish complete environment equivalence or qualify Windows confinement.
