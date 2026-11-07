@@ -31,6 +31,10 @@ and Nix inputs were unchanged from `ef40aa2`; earlier test and CI results
 retain the exact source identities stated in their records and were not rerun
 on that evidence merge.
 
+The current suite also includes 35 synthetic frontend-composition checks,
+for 2,259 checks; they exercise a test-selected frontend and plan comparison,
+not an authenticated planner request or a production adapter.
+
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 checks at its recorded source. The later boundary regression adds one
 check, and the separate plan-comparison model adds 61 synthetic checks, for

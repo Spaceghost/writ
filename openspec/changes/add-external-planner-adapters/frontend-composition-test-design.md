@@ -1,14 +1,14 @@
-# Proposed synthetic frontend and planner comparison tests
+# Synthetic frontend and planner comparison tests
 
 A planner can describe source `10:4`, destination `20:8`, and a summarize
 operation that matches a plan already held by a synthetic capability. Separately,
 the existing frontend can return that plan after checking a descriptor and its
-transfer context. A future test can exercise those two existing operations in
+transfer context. A test exercises those two existing operations in
 sequence and also show that a matching description does not bypass a denied
 frontend check. Today this proposed sequence is not an implemented planner
 adapter, endpoint, request resolver, or admission-to-commit path.
 
-This document proposes tests only. It changes no security law, production API,
+The implemented `PlannerFrontendCompositionTests.bend` is test-only. It changes no security law, production API,
 authority input, effect, or acceptance task. The [plan-comparison design](plan-comparison-design.md)
 and [planner traceability](traceability.md) retain their existing scope: the
 production comparator itself does not invoke frontend admission or commit.
@@ -70,7 +70,9 @@ Neither outcome performs an effect or proves a planner request valid.
 | `composition-rights` | Attenuate descriptor `2` from the opened state at revision `2` to rights `1`. Assert attenuation succeeded, the descriptor remains `2`, and the resulting state revision is `3`. At revision `3`, assert `F.Read` returns `Some` for that same descriptor and `F.Execute` returns `None`; the baseline description still matches the selected plan. This positive control prevents a stale-revision denial from masquerading as rights enforcement. |
 | `composition-unresolved-metadata` | Change planner request ID, claimed expiry, manifest reference and evidence, individually and together. Assert plan comparison remains true and the unchanged frontend result remains `Some`; label this an intentional comparison limitation, never proposal validation. Directly constructed malformed metadata, if used, is not a parser test. |
 
-These are proposed names and observations, not existing or executed tests. The
+The table names identify the intended case groups; the test module uses the
+individual `composition ...` check names and independently asserts the fixture
+and selected results. See its verification record for executed backends. The
 single-source fixture cannot demonstrate source reordering; any separate
 multi-source case must independently construct an accepted matching frontend
 fixture and establish its setup before testing order or multiplicity. Avoid
@@ -102,11 +104,12 @@ release.
 
 ## Implementation and verification, if separately reviewed
 
-After independent design review, implementation would add only synthetic Bend
-tests and required test registration/count and evidence updates. Run focused
+Implementation adds only synthetic Bend tests and required test
+registration/count and evidence updates. Run focused
 checks and generated Node tests with the pinned Bend toolchain, then the full
 Bend and native CPU suites and `bend PROOF.bend --verdict` where the documented
 kernel is available. Preserve exact source attribution and record the scope of
 proof and CPU results; neither implies GPU or host qualification. Validate the
 source manifest, `openspec validate --all --strict --no-interactive`, and diff.
-No tests or native runs are claimed by this design.
+The [local verification record](../../../verification/planner-frontend-composition-local.md)
+reports actual observations and pending native and CI work.
