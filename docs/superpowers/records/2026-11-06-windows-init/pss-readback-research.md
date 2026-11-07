@@ -1,8 +1,8 @@
 # Research: bounded no-data Windows handle snapshots and environment
 
-Status: source research and feasibility design only. A fixed synthetic-child PSS observer and portable classifiers have been authored. The first [Windows build](run-42315743515/README.md) failed at link before any PSS or Windows classifier execution; no remote environment read or change to the strict worker has occurred. This is not evidence of complete inherited-handle or environment equivalence.
+Status: research, feasibility design and one recorded observation. A fixed synthetic-child PSS observer and portable classifiers have been authored. The first [Windows build](run-42315743515/README.md) failed at link before execution; [run 42316163834](run-42316163834/README.md) then completed one ordinary fixed-child observation. No remote environment read or change to the strict worker has occurred. This is not evidence of complete inherited-handle or environment equivalence.
 
-The [controlled-comparison design](controlled-comparison-design.md) requires more than the launcher's intended handle list and environment input. Microsoft documents a potential independent **point-in-time handle-table observation** through Process Snapshotting, but the exact behavior, access rights and resource usage for this target are not yet established. The documented environment APIs found here expose the calling process's environment, not an independent pre-resume read of another process. Until those limits are resolved, comparisons requiring full independent environment readback remain inconclusive.
+The [controlled-comparison design](controlled-comparison-design.md) requires more than the launcher's intended handle list and environment input. Microsoft documents a potential independent **point-in-time handle-table observation** through Process Snapshotting, but the exact access rights, broader LPAC behavior and internal resource usage are not yet established. The documented environment APIs found here expose the calling process's environment, not an independent pre-resume read of another process. Until those limits are resolved, comparisons requiring full independent environment readback remain inconclusive.
 
 ## What the documented APIs actually offer
 
@@ -16,7 +16,7 @@ The [controlled-comparison design](controlled-comparison-design.md) requires mor
 
 ## Proposed small feasibility test
 
-On a fresh disposable Windows VM, with no Writ policy, mount, fixture bytes, data worker, arbitrary PID argument or other cross-process target, an independently reviewed fixed observer accepts no caller-selected child image, command line, fixture or handle and creates and retains one suspended synthetic child from its own fixed executable plus a supervisor-created private pipe/event fixture. The child is designed to perform no data reads or network operations. The observer may query or duplicate handles **only from that child**. It may create multiple sequential children for positive/negative controls, but never inspect an unrelated process. A dedicated, unprivileged environment, one child at a time, a parent job/process memory and time budget, fixed-size output, and an external CI deadline constrain the test; if PSS or cleanup hangs, the result is incomplete and disposable-VM destruction is fallback, not verified cleanup. Nested-job compatibility and any PSS internal resource limits remain untested.
+On a fresh disposable Windows VM, with no Writ policy, mount, fixture bytes, data worker, arbitrary PID argument or other cross-process target, an independently reviewed fixed observer accepts no caller-selected child image, command line, fixture or handle and creates and retains one suspended synthetic child from its own fixed executable plus a supervisor-created private pipe/event fixture. The child is designed to perform no data reads or network operations. The observer may query or duplicate handles **only from that child**. It may create multiple sequential children for positive/negative controls, but never inspect an unrelated process. A dedicated, unprivileged environment, one child at a time, a parent job/process memory and time budget, fixed-size output, and an external CI deadline constrain the test; if PSS or cleanup hangs, the result is incomplete and disposable-VM destruction is fallback, not verified cleanup. Nested jobs worked in the one recorded ordinary-child run; broader runner configurations and PSS internal resource limits remain untested.
 
 1. Create a suspended no-data child with a fixed explicit inherited list containing known owned synthetic handles, e.g. the report-pipe endpoint and one event; keep the parent's matching handles open. Record only local test identifiers, PID, creation time, and expected numeric handle values, never arbitrary object names or user data. Verify `GetProcessId`, `GetProcessTimes`, process liveness, child-thread suspension established by creation path, job limits, and exact launch flags before capture. Do not claim that a launch attribute is an independent readback.
 2. Request only `PSS_CAPTURE_HANDLES` on the retained child handle. Query `HandlesCaptured` and cap accepted counts at a proposed **256**. Create a walk marker, read at most 256 fixed-size `PSS_HANDLE_ENTRY` records plus one terminal call, accept only a documented `ERROR_NO_MORE_ITEMS` after all entries, require the number read to equal the reported count, reject duplicate/invalid values, and compare `GetProcessHandleCount` before and after. Any failure, unknown discrepancy, size overflow or inability to obtain the handle snapshot is **incomplete**. Record only bounded aggregate results and statuses; do not log names, pointers or memory. The cap is a proposed fixture limit, not a Windows limit.
@@ -38,16 +38,17 @@ and an excluded event in the same launch. This is not the separate negative
 launch proposed above. It limits walk count, checks lifetime and snapshot
 counts, compares the two known child objects to retained synthetic fixtures,
 and marks extra entries incomplete. A child-only kill-on-close job is intended
-to retire the child if the observer exits abruptly; Windows nested-job
-compatibility and abrupt-parent behavior are untested, so a disposable VM and
+to retire the child if the observer exits abruptly. Nested jobs worked once on
+the recorded runner, but broader compatibility and abrupt-parent behavior are
+untested, so a disposable VM and
 hard external deadline remain required. Per-process job limits do not establish
 a bound on all PSS kernel-internal allocations.
 
 Portable `pss-table-synthetic` and `pss-progress-synthetic` test table and
 completion classification, including missing or failed stage bits, but do not
 inject API, timeout, cleanup or process-death faults into the native adapter.
-The first Windows compile reached linking but failed because the SDK lacked `kernelbase.lib`. A proposed runtime resolution of the documented `CompareObjectHandles` export is under review and has not been built on Windows. Object identity, handle enumeration, rights, count behavior, PSS cleanup and all PSS Windows execution remain untested. The observer is not invoked by CTest; a temporary exact-ref
-`lane/windows-pss` dispatch job exists but has not been dispatched. Its deadline
+The first Windows compile reached linking but failed because the SDK lacked `kernelbase.lib`. The corrected source was subsequently built and ran one ordinary fixed-child observation with matching counts, synthetic object comparisons and checked normal cleanup. LPAC behavior, exact process-handle rights, abrupt termination and broader PSS behavior remain untested. The observer is not invoked by CTest; a temporary exact-ref
+`lane/windows-pss` dispatch job produced the one recorded observation. Its deadline
 may preclude artifact upload on cancellation, and the temporary workflow guard
 must not be merged. No additional evidence about
 the strict byte worker or its environment is claimed.
@@ -59,4 +60,4 @@ by name with [GetProcAddress](https://learn.microsoft.com/en-us/windows/win32/ap
 using the declared `BOOL (WINAPI *)(HANDLE,HANDLE)` signature. Failure to acquire
 the module, find the export, compare either object or release the reference
 with `FreeLibrary` makes the observation incomplete; there is no value-only
-fallback. This code and runtime availability remain untested on Windows.
+fallback. The corrected source resolved this API and completed both comparisons in the recorded Windows run; broader platform behavior remains unverified.

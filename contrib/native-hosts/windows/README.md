@@ -222,15 +222,16 @@ launches require checked owned-resource cleanup and WFP filter disappearance.
 The [design record](../../../docs/superpowers/records/2026-11-06-windows-init/diagnostic-plan.md)
 identifies remaining comparison and equivalence limits.
 
-## PSS feasibility probe (not yet executed)
+## PSS feasibility probe (one fixed-child observation)
 
 The source defines `writfs-pss-observer.exe`, its fixed suspended
 `writfs-pss-child.exe`, and two synthetic classifier tests. The first [Windows build](../../../docs/superpowers/records/2026-11-06-windows-init/run-42315743515/README.md) failed to link and ran no PSS code. The observer
 accepts no arguments, data or external process identity; it snapshots only its
 own child, with fixed synthetic handles. Its separate child job is configured
-kill-on-close and the observer job supplies memory and CPU limits. Windows
-nested-job compatibility, PSS access rights, API behavior, internal allocation
-and abrupt-termination cleanup remain untested. A hard external VM deadline
+kill-on-close and the observer job supplies memory and CPU limits. The [first fixed-child Windows observation](../../../docs/superpowers/records/2026-11-06-windows-init/run-42316163834/README.md)
+completed, including its normal cleanup. Exact process-handle rights, LPAC
+compatibility, PSS internal allocation and abrupt-termination cleanup remain
+unverified. A hard external VM deadline
 and a disposable runner are required for any future native execution. Extra
 entries, unverified cleanup or incomplete walks do not pass; the excluded
 handle check uses the same launch as the positive controls, so the proposed
@@ -238,7 +239,7 @@ separate negative-launch scenario is still unimplemented. Synthetic progress
 tests verify completion classification; OS API and cleanup fault paths are
 not injected through the native adapter. CTest runs only the synthetic classifiers. The temporary `lane/windows-pss`
 workflow job can run the observer only on explicit dispatch of that exact ref;
-its first dispatch failed at link before observation. Its five-minute hosted-runner deadline is fallback,
+its first dispatch failed at link; the second completed the fixed-child observation. Its five-minute hosted-runner deadline is fallback,
 not proof of checked cleanup, and cancellation may prevent artifact upload.
 This branch-only workflow aid must not be merged into the policy workflow. Neither the probe nor its results establish
 process environment equivalence, byte-worker confinement, or host qualification.
