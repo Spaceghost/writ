@@ -1,8 +1,7 @@
 # Automatic platform CI for master bfb8052
 
 Five push-triggered workflows ran at exact source
-`bfb805282a5beb390c923824bef52626303e6481`. Four have completed in this
-checkpoint. Their results are scoped to their recorded fixtures and do not
+`bfb805282a5beb390c923824bef52626303e6481`. All five have completed. Their results are scoped to their recorded fixtures and do not
 qualify a protected host.
 
 - [Windows Node](windows-node-42378765740/README.md): passed 2,356 shared
@@ -14,8 +13,9 @@ qualify a protected host.
   The different no-data diagnostic reported pass.
 - [Genode base-hw](genode-42378765762/README.md): passed 2,356 core, 69 mount
   and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
-- Linux public-canary run 42378765744 was still in progress at this checkpoint;
-  no outcome or artifacts are claimed.
+- [Linux public canary](linux-42378765744/README.md): passed scoped checks;
+  protected setup was refused at step 8 before input or admission and receives
+  no protected-host qualification.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized
