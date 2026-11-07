@@ -15,6 +15,13 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic e129c93 platform CI](verification/master-ci-e129c93/README.md)
+passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
+checks. Strict Windows native **failed** with incomplete byte-worker network,
+clipboard and COM observations. Linux protected setup was refused before input
+or admission; the Genode guest retained missing-clock warnings. None qualifies
+a protected host.
+
 The GPU record checker's later [synthetic file-only controls](verification/gpu-record-pid-binding/README.md)
 exercise PID/maximum binding, decimal overflow handling and its supported option
 profile. They do not run a GPU or change the historical GPU evidence below.
