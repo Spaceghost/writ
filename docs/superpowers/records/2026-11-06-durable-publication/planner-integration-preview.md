@@ -31,7 +31,16 @@ optimized native CPU build and run at exact source `d0dc411` also passed
 `+RTS --threads 4 --gpu off`. Its 126 inventoried Bend source hashes were
 verified after the run. The build-time GPU compilation and CPU fallback do not
 constitute a GPU execution test. The Genode count pin is updated, but platform
-CI execution of this combined source is not claimed here.
+CI execution remains scoped to the observations below.
+
+The [exact-source platform CI records](../../../../verification/durable-handoff-planner-ci-d0dc411/README.md)
+cover `d0dc411`: Windows Node passed 2,382 core and 78 WritFS model checks;
+Genode base-hw QEMU passed 2,382 core, 69 mount and 24 allocator checks plus
+scoped public canaries while retaining its missing-clock warning; Linux passed
+2,382 core and 70 mount checks on both JS and native plus scoped public
+canaries. Linux's unsupported Landlock setup was refused before input and
+admission; workflow success is not successful protected-worker setup. These
+observations do not establish a durable service or host qualification.
 
 `bend PROOF.bend --verdict` exited 0 and reported
 [ALL PROOFS CHECK](../../../../verification/durable-handoff-planner-verdict.log)

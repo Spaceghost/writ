@@ -26,7 +26,8 @@ The [planner codec record](verification/planner-envelope-local.md) links its
 local and exact-source platform checks and retains their qualifications.
 The separate [three-way preview record](docs/superpowers/records/2026-11-06-durable-publication/planner-integration-preview.md)
 reports the 2,382-check combined Bend, Node, Nix JavaScript and native CPU
-runs and their proof scope.
+runs, [platform CI](verification/durable-handoff-planner-ci-d0dc411/README.md)
+and their proof scope.
 
 A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
 passed for the 36 named laws in `PROOF.bend` at exact master source `be649f6`.
