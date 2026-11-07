@@ -2,9 +2,9 @@
 
 The isolated Linux C layout primitive checks the reviewed fixed public-fixture
 mapping on test-owned temporary trees; it is not the complete proposed
-inventory. The [33 control results](synthetic.log) include both scenarios,
+inventory. The [34 control results](synthetic.log) include both scenarios,
 changed and unsafe types, unsupported-operation injection and modifications
-between independent scans. Its deliberate wrong-config positive shows that
+between independent scans, including invocation-root replacement. Its deliberate wrong-config positive shows that
 passing layout checks does not establish contents. A separate ordinary
 non-test build exported only the [layout-check symbol](production-symbols.txt).
 

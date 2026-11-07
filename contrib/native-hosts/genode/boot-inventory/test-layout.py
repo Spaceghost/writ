@@ -35,7 +35,7 @@ run = os.getpid()
 sequence = 0
 checks = 0
 
-def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_fd=False, fault=0):
+def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_fd=False, fault=0, root_swap=False):
     global sequence, checks
     sequence += 1
     root = Path('/tmp') / f'writ-genode-ci.{run}-{sequence}.{scenario}'
@@ -43,6 +43,8 @@ def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_
     opened = []
     sock = None
     cb = None
+    held_path = None
+    hook_errors = []
     try:
         build, genode = root / 'build', root / 'genode'
         boot = build / 'var/run' / f'writ_bend_monitor_nested_guarded_{scenario}' / 'genode'
@@ -62,8 +64,21 @@ def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_
                 sock = outcome
         for path in (root, build, genode):
             opened.append(os.open(path, os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC))
-        if hook:
-            cb = HOOK(lambda _arg: hook(root, boot))
+        if hook or root_swap:
+            def run_hook(_arg):
+                nonlocal held_path
+                try:
+                    if root_swap:
+                        candidate = root.with_name(root.name + '.held')
+                        os.mkdir(candidate, 0o700)  # fails on any existing path
+                        held_path = candidate
+                        os.rename(root, held_path / 'original')
+                        os.mkdir(root, 0o700)
+                    else:
+                        hook(root, boot)
+                except BaseException as exc:
+                    hook_errors.append(exc)
+            cb = HOOK(run_hook)
             lib.writ_boot_test_between_scans(cb, None)
         fds = opened.copy()
         if wrong_fd:
@@ -72,6 +87,7 @@ def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_
         result = lib.writ_boot_layout_check(*fds, run, sequence, 1 if scenario == 'positive' else 2)
         lib.writ_boot_test_open_error(0)
         lib.writ_boot_test_between_scans(HOOK(), None)
+        assert not hook_errors, (name, hook_errors)
         assert (result == 0) == valid, (name, result)
         checks += 1
         print(f'PASS {name}')
@@ -81,7 +97,10 @@ def trial(name, change=None, valid=False, scenario='positive', hook=None, wrong_
         if sock:
             sock.close()
         # Only this invocation's exclusively created fixture tree is removed.
-        shutil.rmtree(root)
+        if root.exists():
+            shutil.rmtree(root)
+        if held_path is not None and held_path.exists():
+            shutil.rmtree(held_path)
 
 def replace(path, value):
     path.unlink()
@@ -120,6 +139,7 @@ trial('hard-linked leaf', lambda r, b: os.link(r / MAPPING[0][2], r / 'other'))
 trial('swapped roots', wrong_fd=True)
 trial('late added entry', hook=lambda r, b: (b / 'late').write_bytes(b''))
 trial('late removed entry', hook=lambda r, b: (b / 'init').unlink())
+trial('late invocation-root replacement', root_swap=True)
 trial('late link replacement', hook=lambda r, b: replace(b / 'core', '/tmp/unrelated'))
 trial('late leaf replacement', hook=lambda r, b: ((r / MAPPING[0][2]).unlink(), (r / MAPPING[0][2]).write_bytes(b'new')))
 trial('late in-place leaf change', hook=lambda r, b: (r / MAPPING[0][2]).write_bytes(b'changed'))

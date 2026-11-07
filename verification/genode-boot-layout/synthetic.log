@@ -24,6 +24,7 @@ PASS hard-linked leaf
 PASS swapped roots
 PASS late added entry
 PASS late removed entry
+PASS late invocation-root replacement
 PASS late link replacement
 PASS late leaf replacement
 PASS late in-place leaf change
@@ -31,4 +32,4 @@ PASS unsupported openat2
 PASS unsupported flags
 PASS structure size unsupported
 PASS different config contents do not establish exactness
-PASS 33 synthetic layout checks
+PASS 34 synthetic layout checks
