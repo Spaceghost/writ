@@ -6,7 +6,9 @@ their recorded fixtures; none qualifies a protected host.
 
 - [Windows Node](windows-node-42363675055/README.md) passed 2,318 shared
   library and 78 WritFS model checks.
-- Genode base-hw run 42363675046 remains in progress at this checkpoint.
+- [Genode base-hw](genode-42363675046/README.md) passed 2,318 core,
+  69 mount-model and 24 allocator checks and public canaries; missing-clock
+  and QEMU feature warnings remain.
 - [Linux public canary](linux-42363675039/README.md) passed its scoped
   checks; the separate protected setup was refused at step 8 before input or
   Bend admission and receives no qualification.
