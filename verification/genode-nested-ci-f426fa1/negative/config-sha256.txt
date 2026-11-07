@@ -1,0 +1,2 @@
+075f830a6054ca5ca2df61e4ed7ed8b3e778ee47bc39b6f4f474801edca77776  /home/runner/work/_temp/writ-nested-negative-raw/original.run
+4ce69b368b0e2fc81a2a6afd008ad415ce7417a55ca9e8d515f5da043ecc6fd9  /home/runner/work/_temp/writ-nested-negative-raw/actual.run

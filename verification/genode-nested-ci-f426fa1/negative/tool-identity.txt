@@ -1,0 +1,11 @@
+Bend: bend 2.0.39
+Genode VERSION: 26.08
+ClangBuiltLinux clang version 23.1.3 (https://github.com/llvm/llvm-project.git 0d261d1ca552c95a8f007e061c787ac7132fbcbc)
+Target: x86_64-unknown-linux-gnu
+Thread model: posix
+InstalledDir: /tmp/writ-genode-ci.42350985833-1.negative/llvm/bin
+/tmp/writ-genode-ci.42350985833-1.negative/llvm/lib/clang/23
+genode-x86-g++ (GCC) 14.2.0
+2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd  /tmp/writ-genode-ci.42350985833-1.negative/bend/bend/bin/bend
+3127f888c9cf13985fbca500432b46ba645943435644804fd800794e1fa9d94d  /tmp/writ-genode-ci.42350985833-1.negative/llvm/bin/llvm
+7df1f62cda0da4d3428b9d49996e04d161fc9c2a05adbfd008550ce84b991b2b  /tmp/writ-genode-ci.42350985833-1.negative/toolchain/usr/local/genode/tool/25.05/bin/genode-x86-g++

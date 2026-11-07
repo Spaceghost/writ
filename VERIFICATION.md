@@ -15,6 +15,12 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+Two isolated public nested Genode CI attempts, at workflow commits `f426fa1`
+and `9e888b7`, remained incomplete before boot. The [first](verification/genode-nested-ci-f426fa1/README.md)
+failed on a missing library; the [retry](verification/genode-nested-ci-9e888b7/README.md)
+hit its output bound. Neither observed the nested fixture or negative control,
+and cleanup remained unverified. No protected host is qualified.
+
 The [automatic Genode CI at `c14f125`](verification/master-ci-c14f125/README.md)
 passed scoped public checks and retained missing-clock warnings. It did not
 run the nested channel fixture or qualify a protected host.
