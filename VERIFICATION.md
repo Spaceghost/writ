@@ -88,6 +88,11 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [synthetic binding-snapshot record](verification/frontend-binding-snapshot/README.md)
+compares six ordered binding record lists and the existing frontend candidate
+within fixed bounds. It does not authenticate or validate the binding state,
+install a migration, or qualify a host.
+
 The [wide-word reserve arithmetic record](verification/frontend-reserve-words/README.md)
 checks supplied two-word count thresholds, including composite attenuation. It
 does not count handles, authenticate a state or authorize a transition.

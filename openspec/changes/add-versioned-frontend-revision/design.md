@@ -56,6 +56,14 @@ are not an authenticated snapshot, V2 admission, migration, binding-state
 verification, or a deployment resource guarantee. Larger inputs remain
 incomplete in that profile; all migration tasks and acceptance remain open.
 
+The separate [bounded binding snapshot comparator](../../../HostBindingSnapshot.bend)
+compares a supplied original's six ordered binding record lists and scalars to
+a supplied candidate, and delegates frontend comparison to that checker. Its
+[controls](../../../verification/frontend-binding-snapshot/README.md) describe
+preservation only: it does not establish `HostBinding.valid`, authenticate a
+snapshot, check external registries or replay state, or install a migration.
+Oversized binding lists are incomplete; task 2.1 and FR-006 remain open.
+
 ## Reserve the remaining cleanup and retirement transitions
 
 Let `M = 2^64−1`, `R` be the current pair and `O` the exact count of all open

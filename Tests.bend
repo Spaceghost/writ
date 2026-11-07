@@ -12,6 +12,7 @@ import ./FrontendRevisionV2Tests.bend as FrontendRevisionV2
 import ./FrontendLegacyConversionTests.bend as FrontendLegacyConversion
 import ./FrontendCleanupReserveTests.bend as FrontendCleanupReserve
 import ./FrontendReserveWordsTests.bend as FrontendReserveWords
+import ./HostBindingSnapshotTests.bend as HostBindingSnapshot
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
@@ -47,6 +48,7 @@ def main() -> IO(Unit):
     FrontendLegacyConversion.main()
     FrontendCleanupReserve.main()
     FrontendReserveWords.main()
+    HostBindingSnapshot.main()
     HostBinding.main()
     HostWire.main()
     PlannerEnvelope.main()

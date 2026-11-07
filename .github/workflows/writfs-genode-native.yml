@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 40
     env:
       BEND_NO_TELEMETRY: '1'
-      WRIT_CORE_EXPECTED: '2698'
+      WRIT_CORE_EXPECTED: '2809'
     defaults:
       run:
         shell: bash

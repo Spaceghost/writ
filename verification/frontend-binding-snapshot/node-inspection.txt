@@ -1,0 +1,9 @@
+Generated focused Node SHA-256: 8765b3b35a531a741093ce0b9ec51f929a2b16291b848fc0f4c65994f5e17213
+Generated focused C SHA-256: 06a5a953a60602f66c32dc1697b6e4ac5029c574cfa28fe4979dbe6564659761
+
+Each generated binding list comparison consumes no more than eight records
+per side, including when directly called with excessive fuel. It continues a
+remaining side after a length mismatch and combines Incomplete ahead of
+Mismatch, so a later over-cap tail cannot become an exact description. The
+separate existing frontend checker provides its own bounded comparison. None
+of these generated values authenticates state or grants admission.
