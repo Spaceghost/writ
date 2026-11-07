@@ -1,0 +1,79 @@
+PASS native worker ready
+PASS native worker ready
+ACTOR slot=1 uid=999 gid=987 pid=3380 start_ticks=88116 pidfd=retained
+PASS kernel-observed credentials, namespaces, seccomp and no_new_privs
+PROFILE linux-x86_64-canary-v1 landlock_abi=8 required=3
+PASS native memfd write and resize seals
+CANARY bytes=29 sha256=085bced4db355be6b54ddac3fbf9c54087140d4ebb33b6847a386ac0d6c6a98a
+PASS read before Bend admission denied
+PASS Bend capability-to-commit admission
+PASS other process open denied
+PASS other process metadata denied
+PASS other process listing denied
+PASS same-UID memory tracing denied
+PASS native probe phase complete
+PASS kernel-derived outsider requests reached Bend and were denied (round 1)
+PASS admitted native open
+PASS mounted bytes equal sealed canary
+PASS range read
+PASS EOF
+PASS native descriptor duplication
+PASS duplicate read
+PASS scoped directory listing
+PASS write denied
+PASS shared mapping denied
+PASS private mapping denied
+PASS IPv4 socket denied
+PASS IPv6 socket denied
+PASS Unix socket denied
+PASS exec denied
+PASS fork denied
+PASS ptrace denied
+PASS process memory read denied
+PASS signal syscall denied
+PASS System V shared memory denied
+PASS new memfd denied
+PASS io_uring denied
+PASS outside filesystem hidden
+PASS proc memory path hidden
+PASS public stdout write denied
+PASS descriptor sendmsg denied
+PASS ioctl denied
+PASS sendfile denied
+PASS copy_file_range denied
+PASS other process open denied
+PASS other process metadata denied
+PASS other process listing denied
+PASS same-UID memory tracing denied
+PASS native probe phase complete
+PASS kernel-derived outsider requests reached Bend and were denied (round 2)
+PASS Bend revocation committed
+PASS existing descriptor read denied after stop
+PASS duplicate read denied after stop
+PASS new open denied after stop
+PASS metadata denied after stop
+PASS native descriptors closed
+PASS native probe phase complete
+PASS Bend handle cleanup and STOP
+EVENT op=STAT pid=3380 uid=999 gid=987 actor=1 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=OPEN pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3380 uid=999 gid=987 actor=1 handle=0 status=0 value=29 reason=STAT
+EVENT op=STAT pid=3380 uid=999 gid=987 actor=1 handle=0 status=0 value=29 reason=STAT
+EVENT op=OPEN pid=3380 uid=999 gid=987 actor=1 handle=0 status=0 value=1 reason=OPEN
+EVENT op=READ pid=3380 uid=999 gid=987 actor=1 handle=1 status=0 value=29 reason=READ
+EVENT op=READ pid=3380 uid=999 gid=987 actor=1 handle=1 status=0 value=3 reason=READ
+EVENT op=READ pid=3380 uid=999 gid=987 actor=1 handle=1 status=0 value=0 reason=READ
+EVENT op=READ pid=3380 uid=999 gid=987 actor=1 handle=1 status=0 value=1 reason=READ
+EVENT op=OPEN pid=3380 uid=999 gid=987 actor=1 handle=0 status=0 value=2 reason=OPEN
+EVENT op=LIST pid=3380 uid=999 gid=987 actor=1 handle=0 status=0 value=1 reason=LIST
+EVENT op=STAT pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=OPEN pid=3381 uid=999 gid=987 actor=0 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=READ pid=3380 uid=999 gid=987 actor=1 handle=1 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=READ pid=3380 uid=999 gid=987 actor=1 handle=1 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3380 uid=999 gid=987 actor=1 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+EVENT op=STAT pid=3380 uid=999 gid=987 actor=1 handle=0 status=1 value=0 reason=ACTOR_OR_PHASE
+ALL LINUX NATIVE CANARY CHECKS PASSED; owned resources cleaned
