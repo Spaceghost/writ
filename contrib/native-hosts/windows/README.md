@@ -69,6 +69,8 @@ a native machine-code Bend runtime.
 | `pss_observer.c`, `pss_child.c`, `pss_table.[ch]`, `pss_progress.[ch]` | Fixed self-created, suspended synthetic-child handle-snapshot feasibility probe; bounded classification and cleanup, no environment proof or Writ authority |
 | `pss_table_test.c`, `pss_progress_test.c` | Portable synthetic table and completion-classification cases; no Windows API execution |
 | `pss_lpac_observer.c`, `pss_lpac_progress.[ch]`, `pss_lpac_progress_test.c` | Fixed no-data LPAC PSS observer, bounded progress/cleanup classifiers and synthetic tests; no Writ actor or data path |
+| `pss_init_observer.c`, `pss_init_control.c`, `pss_init_pipe.[ch]`, `pss_init_progress.[ch]` | Unrun same-lifetime no-data PSS/initializer observer, ordinary control, exact pipe-report reader and progress classifier |
+| `pss_init_pipe_test.c`, `pss_init_progress_test.c`, `pss_init_run.ps1` | Synthetic report/failure tests and fixed-sequence workflow supervisor; no actor or policy decisions |
 | `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.
@@ -254,10 +256,31 @@ synthetic objects. Its observer-only budget permits breakaway so the child can
 enter the unchanged UI-restricted LPAC job; the observer verifies both job
 memberships. One [Windows observation](../../../docs/superpowers/records/2026-11-06-windows-init/run-42317376618/README.md)
 completed the checks and normal cleanup. Broader breakaway/outer-job behavior,
-exact process-handle rights and native fault paths remain unverified. A distinct `lane/windows-pss-lpac` manual job is
+exact process-handle rights and native fault paths remain unverified. A distinct `lane/windows-pss-lpac` manual job
 produced the one recorded observation and must never be merged into the policy workflow.
 The portable classifier tests check missing/failed bits, timeout and cleanup
 ordering; **native adapter API, timeout and cleanup faults are not injected**.
 See the [design](../../../docs/superpowers/records/2026-11-06-windows-init/pss-lpac-feasibility-design.md).
 The observer has no fixture bytes or policy pipe; the environment is not
 independently read, and no result qualifies the byte worker or Windows host.
+
+## Same-lifetime PSS and initialization (unrun)
+
+The `lane/windows-pss-init` source joins a pre-resume one-pipe PSS snapshot
+and the fixed initializer on one separate no-data LPAC lifetime, bracketed by
+ordinary controls. It requires the retained original thread's previous
+suspend count to be exactly one, successful child exit, one exact report and
+pipe EOF, plus checked cleanup. PSS says nothing about handles created after
+resume. The Windows pipe/EOF controls, MSVC build, adapter fault paths and
+full sequence are unrun. The initial process environment remains independently
+unverified; initializer errors are raw observations, never denial or
+confinement evidence. The reviewed [design](../../../docs/superpowers/records/2026-11-06-windows-init/exploratory-initialization-design.md)
+keeps later factor variants unimplemented.
+
+The temporary exact-ref workflow builds and hashes the fixed targets, verifies
+the child PE dependencies, requires its named synthetic tests and stops after
+any incomplete case. Its fixed sequence script depends on the trusted GitHub
+hosted runner's `RUNNER_TEMP` for build/log locations; a standalone caller
+can choose that environment variable, so the fixed-path guarantee applies to
+the controlled workflow. The observer and control executables accept no target
+arguments. The temporary workflow guard/job must not be merged into master.

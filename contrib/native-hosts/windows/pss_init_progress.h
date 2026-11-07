@@ -1,0 +1,17 @@
+#ifndef WRIT_WINDOWS_PSS_INIT_PROGRESS_H
+#define WRIT_WINDOWS_PSS_INIT_PROGRESS_H
+#include <stdint.h>
+#include "pss_lpac_progress.h"
+#define WRIT_INIT_WRITER_CLOSED UINT32_C(524288)
+#define WRIT_INIT_RESUMED UINT32_C(1048576)
+#define WRIT_INIT_EXITED UINT32_C(2097152)
+#define WRIT_INIT_REPORT_OK UINT32_C(4194304)
+#define WRIT_INIT_PRE_RESUME (WRIT_LPAC_LAUNCH_OK | WRIT_PSS_COMPARE_RESOLVED | \
+    WRIT_PSS_CAPTURE_OK | WRIT_PSS_QUERY_OK | WRIT_PSS_MARKER_OK | WRIT_PSS_WALK_OK | \
+    WRIT_PSS_LIFETIME_OK | WRIT_PSS_TABLE_OK | WRIT_PSS_OBJECTS_OK | \
+    WRIT_PSS_MARKER_FREED | WRIT_PSS_SNAPSHOT_FREED | WRIT_INIT_WRITER_CLOSED)
+#define WRIT_INIT_ALL (WRIT_LPAC_ALL | WRIT_INIT_WRITER_CLOSED | WRIT_INIT_RESUMED | WRIT_INIT_EXITED | WRIT_INIT_REPORT_OK)
+int writ_pss_init_can_resume(uint32_t passed, uint32_t failed);
+int writ_pss_init_suspend_ok(uint32_t previous_count);
+int writ_pss_init_complete(uint32_t passed, uint32_t failed, int timed_out);
+#endif

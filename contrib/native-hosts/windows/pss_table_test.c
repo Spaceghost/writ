@@ -20,6 +20,14 @@ int main(void)
     if (writ_pss_check(values, 2, 2, 2, 2, 0, 16, 24, 40) != WRIT_PSS_INVALID) return 14;
     if (writ_pss_check(values, 2, 2, 1, 2, 1, 16, 24, 40) != WRIT_PSS_INVALID) return 15;
     if (writ_pss_check(values, 2, 2, 2, 3, 1, 16, 24, 40) != WRIT_PSS_INVALID) return 16;
-    puts("PASS synthetic bounded handle-table checks");
+    if (writ_pss_check_one(values, 1, 1, 1, 1, 1, 16, 40) != WRIT_PSS_MATCH) return 17;
+    if (writ_pss_check_one(values, 2, 2, 2, 2, 1, 16, 40) != WRIT_PSS_EXTRA) return 18;
+    if (writ_pss_check_one(values, 2, 2, 2, 2, 1, 16, 24) != WRIT_PSS_UNEXPECTED) return 19;
+    if (writ_pss_check_one(values, 0, 0, 0, 0, 1, 16, 40) != WRIT_PSS_MISSING) return 20;
+    if (writ_pss_check_one(values, 1, 1, 1, 1, 0, 16, 40) != WRIT_PSS_INVALID) return 21;
+    if (writ_pss_check_one(values, 1, 1, 1, 1, 1, 16, 16) != WRIT_PSS_INVALID) return 22;
+    values[1] = 16;
+    if (writ_pss_check_one(values, 2, 2, 2, 2, 1, 16, 40) != WRIT_PSS_INVALID) return 23;
+    puts("PASS synthetic bounded one- and two-fixture handle-table checks");
     return 0;
 }

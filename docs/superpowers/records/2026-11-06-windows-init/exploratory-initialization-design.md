@@ -1,6 +1,6 @@
 # Proposed exploratory no-data initialization experiments
 
-Status: design only, pending independent review. No experiment below has been implemented or run. The actual byte-worker profile and strict native gate are unchanged. Any contrast that requires an independently verified fact we cannot obtain, including the full pre-resume environment, remains **inconclusive as a controlled comparison** even if its raw observations differ.
+Status: reviewed design with the first same-lifetime slice implemented for source/workflow review; no experiment below has been built or run on Windows. The actual byte-worker profile and strict native gate are unchanged. Any contrast that requires an independently verified fact we cannot obtain, including the full pre-resume environment, remains **inconclusive as a controlled comparison** even if its raw observations differ.
 
 The separate [no-data initialization run](run-42313767360/README.md) reproduced Winsock `10107`, USER32 `1114` and OLE32 `1359` in a zero-capability, Win32k-disabled LPAC; its ordinary controls succeeded. The separate [LPAC PSS run](run-42317376618/README.md) observed two known handle values and normal cleanup in a never-resumed LPAC child. These are different processes and executables: neither shows that the PSS-observed child reached the initializers. The earlier real byte-worker run remains incomplete and receives no confinement credit. None of these results establishes a cause.
 
@@ -38,3 +38,21 @@ Keep any new launch variations in a standalone diagnostic-only executable. It mu
 Require synthetic tests for malformed/truncated/extra PSS reports, mismatched expected values, token or mitigation drift, missing readbacks, timeouts, failed child retirement and every owned-resource cleanup failure. Distinguish pure classifier tests from adapter-level fault injection; the latter remains a known gap in the current native diagnostics. Require separate independent source/workflow review before an isolated exact-ref dispatch. A job must build and hash the exact source and binaries, run named synthetic tests, enforce a bounded supervisor and retain logs and failures. Close only owned PSS marker/snapshot, process/thread/job, handles, WFP sessions/filters, private image and package, and verify cleanup after the child exits; when the shared launcher erases state or the observer is killed, report cleanup unverified and rely on disposal only as fallback. PSS kernel-internal allocation and abrupt-parent behavior are not proven bounded by the in-process limits.
 
 The most a future result can say is that a specific no-data child with recorded checks produced particular raw API results under the observed conditions. No result here changes the real strict LPAC failure, proves a Windows root cause, establishes complete environment identity or earns byte-worker confinement or host-qualification credit.
+
+## First-slice implementation status
+
+The source now includes a fixed observer, ordinary positive-control executable,
+one-pipe table and progress classifiers, a shared exact-report/EOF reader,
+and a fixed ordinary/LPAC/LPAC/ordinary workflow sequence. No capability,
+Win32k or WFP factor variation is implemented. The workflow tests the pipe
+reader with Windows synthetic complete, truncated, trailing-byte and open-writer
+cases before running observations; those Windows tests and the observer have
+not been executed. Portable tests cover table and progress classification only;
+native adapter API/cleanup fault injection remains unimplemented.
+
+The script's build/log paths use the trusted GitHub hosted runner's
+`RUNNER_TEMP`; a standalone caller can choose this variable, so fixed path
+selection is a controlled-workflow property, not a property of arbitrary script
+invocation. The native observer and control accept no caller-selected targets.
+A timeout or unverified cleanup stops the fixed sequence. PSS covers only the
+pre-resume snapshot and supplies no proof of later handles or environment.

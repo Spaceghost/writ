@@ -13,4 +13,8 @@ typedef enum {
 WRIT_PSS_RESULT writ_pss_check(const uint64_t *values, size_t read,
     size_t reported, size_t before, size_t after, int walk_complete,
     uint64_t first, uint64_t second, uint64_t excluded);
+/* One-pipe variant: source values are observational, never authority. */
+WRIT_PSS_RESULT writ_pss_check_one(const uint64_t *values, size_t read,
+    size_t reported, size_t before, size_t after, int walk_complete,
+    uint64_t expected, uint64_t excluded);
 #endif
