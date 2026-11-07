@@ -1,0 +1,3 @@
+80445abd4fb4dd773cafa2dd535c6bcdddc1ed9c5529b7a902886fe647601b92  writfs-windows-generated-1.zip
+9aef7d73d785685a86050bfa400d07d3ce73f54392063ba6f035baab074e3fa1  writfs-windows-build-1.zip
+95d8e19eae4fb35684ba7b1ecc45c6dfc1fd2486cfaebd18d2cc17b3083713c0  writfs-windows-policy-1.zip
