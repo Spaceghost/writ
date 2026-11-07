@@ -15,6 +15,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The GPU record checker's later [synthetic file-only controls](verification/gpu-record-pid-binding/README.md)
+exercise PID/maximum binding, decimal overflow handling and its supported option
+profile. They do not run a GPU or change the historical GPU evidence below.
+
 Two isolated public nested Genode CI attempts, at workflow commits `f426fa1`
 and `9e888b7`, remained incomplete before boot. The [first](verification/genode-nested-ci-f426fa1/README.md)
 failed on a missing library; the [retry](verification/genode-nested-ci-9e888b7/README.md)

@@ -1,0 +1,117 @@
+#!/usr/bin/env python3
+"""Synthetic file-only controls for the GPU record checker; no GPU execution."""
+import hashlib
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+checker = Path(sys.argv[1] if len(sys.argv) > 1 else 'scripts/gpu-validation/check-record.sh').resolve()
+sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
+with tempfile.TemporaryDirectory(prefix='writ-gpu-record-controls-') as temp:
+    root = Path(temp)
+    apps, pmon, util, sanitizer = (root / n for n in ('apps', 'pmon', 'util', 'sanitizer'))
+    apps.write_text('111, synthetic\n')
+    pmon.write_text('# gpu pid type sm mem\n0 111 C 42 0\n0 222 C 73 0\n')
+    util.write_text('17 %\n')
+    san_template = ('========= Target application: /tmp/synthetic-bang{rts} 600\n'
+                    '========= Display Driver version: synthetic\n'
+                    '========= Launch #1\n=========   Kernel: bend_dev\n'
+                    '========= Host Frame: synthetic in synthetic-bang\n'
+                    '========= ERROR SUMMARY: 0 errors\n')
+    sanitizer.write_text(san_template.format(rts=' +RTS --gpu on -RTS'))
+    no_samples = root / 'pmon-no-samples'
+    no_samples.write_text('# gpu pid type sm mem\n0 111 C - -\n')
+    zero_samples = root / 'pmon-zero'
+    zero_samples.write_text('0 111 C 0 0\n')
+    alias_pmon = root / 'pmon-leading-zero'
+    alias_pmon.write_text('0 0111 C 42 0\n')
+    alias_apps = root / 'apps-leading-zero'
+    alias_apps.write_text('0111, synthetic\n')
+    required = ('lane_commit source_sha256 bend_version base cc cuda_home nvrtc_version build_flags '
+                'emitted_c_sha256 binary_sha256 gpu_program_sha256 gpu_arch driver_version device_name '
+                'device_uuid device_bus cuda_visible_devices rts_options threads workload exit_status '
+                'stdout_sha256 stderr observer bend_dev_launches compute_app_seen pmon_max_sm '
+                'util_samples wall_ms load_avg correctness').split()
+    common = {key: 'synthetic' for key in required}
+    common.update(binary_sha256='0' * 64 + '  /tmp/synthetic-bang', driver_version='synthetic',
+                  rts_options='+RTS --gpu on -RTS', workload='probe=bang mode=on args=600',
+                  exit_status='0', correctness='PASS 1, FAIL 0', stdout_sha256='synthetic')
+    observed = dict(common, observer=f'compute-sanitizer caller_cuda_visible_devices=unset target_cuda_visible_devices=unset log={sanitizer} log_sha256={sha(sanitizer)}',
+                    bend_dev_launches='1', compute_app_seen='not sampled', pmon_max_sm='not sampled',
+                    util_samples='not sampled', wall_ms='10001')
+    plain = dict(common, observer='none', bend_dev_launches='not observed',
+                 compute_app_seen=f'yes pid=111 log={apps} log_sha256={sha(apps)}',
+                 pmon_max_sm=f'42 pid=111 log={pmon} log_sha256={sha(pmon)}',
+                 util_samples=f'1 log={util} log_sha256={sha(util)}', wall_ms='10000')
+
+    def check(name, changes, expected):
+        candidate = dict(plain, **changes)
+        current_observed = dict(observed, rts_options=candidate['rts_options'])
+        rts = candidate['rts_options']
+        sanitizer.write_text(san_template.format(rts='' if rts == 'none' else ' ' + rts))
+        current_observed['observer'] = (f'compute-sanitizer caller_cuda_visible_devices=unset '
+                                       f'target_cuda_visible_devices=unset log={sanitizer} log_sha256={sha(sanitizer)}')
+        text = ''
+        for item in (candidate, current_observed):
+            text += '--- record v1 ---\nrecord_version: gpu-validation-record v1\n'
+            text += ''.join(f'{key}: {item[key]}\n' for key in required)
+            text += f'gate: {expected}\n'
+            text += '--- end record ---\n'
+        record = root / 'record'; record.write_text(text)
+        result = subprocess.run(['sh', str(checker), '--derive', str(record)], text=True, capture_output=True)
+        checked = subprocess.run(['sh', str(checker), str(record)], text=True, capture_output=True)
+        verdict = result.stdout.strip()
+        ok = (result.returncode == 0 and not result.stderr and not checked.stderr and
+              checked.returncode == (0 if expected == 'PASS' else 1) and
+              (verdict == 'PASS' if expected == 'PASS' else verdict.startswith('FAIL (')))
+        print(f'{name}: expected {expected}; got {verdict}; derive={result.returncode}; '
+              f'check={checked.returncode}; stderr={"present" if result.stderr or checked.stderr else "empty"}; '
+              f'{"OK" if ok else "MISMATCH"}')
+        return ok
+
+    pv = plain['pmon_max_sm']; cv = plain['compute_app_seen']
+    checks = [
+        ('long matching PID and maximum', {}, 'PASS'),
+        ('valid sized standalone GPU option', {'rts_options':'+RTS --gpu 1GB -RTS'}, 'PASS'),
+        ('valid integral MB size', {'rts_options':'+RTS --gpu 1MB -RTS'}, 'PASS'),
+        ('valid upper bound GPU size', {'rts_options':'+RTS --gpu 999999GB -RTS'}, 'PASS'),
+        ('unsupported valid fractional GPU size', {'rts_options':'+RTS --gpu .5GB -RTS'}, 'FAIL'),
+        ('GPU zero size', {'rts_options':'+RTS --gpu 0GB -RTS'}, 'FAIL'),
+        ('GPU below minimum size', {'rts_options':'+RTS --gpu 0.001MB -RTS'}, 'FAIL'),
+        ('GPU leading-zero integer size', {'rts_options':'+RTS --gpu 01GB -RTS'}, 'FAIL'),
+        ('GPU oversized integer syntax', {'rts_options':'+RTS --gpu 1000000GB -RTS'}, 'FAIL'),
+        ('unsupported trailing-dot GPU size', {'rts_options':'+RTS --gpu 1.GB -RTS'}, 'FAIL'),
+        ('invalid multiple GPU size dots', {'rts_options':'+RTS --gpu 1..2GB -RTS'}, 'FAIL'),
+        ('invalid dot-only GPU size', {'rts_options':'+RTS --gpu .GB -RTS'}, 'FAIL'),
+        ('fake GPU option suffix', {'rts_options':'+RTS --fake--gpu on -RTS'}, 'FAIL'),
+        ('GPU option outside RTS block', {'rts_options':'+RTS --gpu off -RTS --gpu on'}, 'FAIL'),
+        ('duplicate GPU options', {'rts_options':'+RTS --gpu on --gpu off -RTS'}, 'FAIL'),
+        ('GPU off', {'rts_options':'+RTS --gpu off -RTS'}, 'FAIL'),
+        ('GPU default', {'rts_options':'none'}, 'FAIL'),
+        ('long different PID and false maximum', {'pmon_max_sm': pv.replace('42 pid=111', '99 pid=222')}, 'FAIL'),
+        ('long different PID only', {'pmon_max_sm': pv.replace('pid=111', 'pid=222')}, 'FAIL'),
+        ('long false maximum only', {'pmon_max_sm': pv.replace('42 pid=', '99 pid=')}, 'FAIL'),
+        ('long zero sample maximum', {'pmon_max_sm': pv.replace('42 pid=', '0 pid=')}, 'FAIL'),
+        ('long missing numeric maximum', {'pmon_max_sm': pv.replace('42 pid=', '- pid=')}, 'FAIL'),
+        ('long leading-zero maximum', {'pmon_max_sm': pv.replace('42 pid=', '042 pid=')}, 'FAIL'),
+        ('long leading-zero pmon PID', {'pmon_max_sm': pv.replace('pid=111', 'pid=0111')}, 'FAIL'),
+        ('long duplicate pmon PID', {'pmon_max_sm': pv.replace('pid=111', 'pid=111 pid=222')}, 'FAIL'),
+        ('long duplicate apps PID', {'compute_app_seen': cv.replace('pid=111', 'pid=111 pid=222')}, 'FAIL'),
+        ('long zero pmon PID', {'pmon_max_sm': pv.replace('pid=111', 'pid=0')}, 'FAIL'),
+        ('long nonnumeric pmon PID', {'pmon_max_sm': pv.replace('pid=111', 'pid=1x')}, 'FAIL'),
+        ('long missing samples', {'pmon_max_sm':f'- pid=111 log={no_samples} log_sha256={sha(no_samples)}'}, 'FAIL'),
+        ('long zero-only samples', {'pmon_max_sm':f'0 pid=111 log={zero_samples} log_sha256={sha(zero_samples)}'}, 'FAIL'),
+        ('long noncanonical pmon log PID', {'pmon_max_sm':f'42 pid=111 log={alias_pmon} log_sha256={sha(alias_pmon)}'}, 'FAIL'),
+        ('noncanonical apps log PID', {'compute_app_seen':f'yes pid=111 log={alias_apps} log_sha256={sha(alias_apps)}'}, 'FAIL'),
+        ('leading-zero long wall', {'wall_ms':'00010000', 'pmon_max_sm':pv.replace('pid=111', 'pid=222')}, 'FAIL'),
+        ('huge long wall', {'wall_ms':'9' * 150, 'pmon_max_sm':pv.replace('pid=111', 'pid=222')}, 'FAIL'),
+        ('huge positive PASS count', {'correctness':'PASS ' + '9' * 150 + ', FAIL 0'}, 'PASS'),
+        ('all-zero PASS count', {'correctness':'PASS ' + '0' * 150 + ', FAIL 0'}, 'FAIL'),
+        ('short unavailable maximum', {'wall_ms':'9999', 'pmon_max_sm':pv.replace('42 pid=', '- pid=')}, 'PASS'),
+        ('short different PID and maximum', {'wall_ms':'9999', 'pmon_max_sm':pv.replace('42 pid=111', '99 pid=222')}, 'PASS'),
+        ('leading-zero short wall', {'wall_ms':'0009999', 'pmon_max_sm':pv.replace('42 pid=', '- pid=')}, 'PASS'),
+        ('short no numeric sample', {'wall_ms':'1', 'pmon_max_sm':f'- pid=111 log={no_samples} log_sha256={sha(no_samples)}'}, 'PASS'),
+    ]
+    results = [check(*case) for case in checks]
+    sys.exit(0 if all(results) else 1)

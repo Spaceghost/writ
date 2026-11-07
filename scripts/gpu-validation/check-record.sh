@@ -24,13 +24,13 @@
 #   2. Gate. The verdict is re-derived from the records and from the run-local
 #      evidence files they name (sanitizer log, compute-apps poll log, pmon
 #      and utilisation logs), each re-hashed against the sha256 the record
-#      gives. The record's own `bend_dev_launches`, `compute_app_seen` and
-#      `pmon_max_sm` claims are compared with the recount, never trusted.
+#      gives. `bend_dev_launches` and `compute_app_seen` are recounted; the
+#      claimed `pmon_max_sm` is recounted for runs of 10 s or longer.
 #      A pair passes only if all of these hold:
 #        - exactly one observed and one plain record, with identical inputs
 #          (source, toolchain, build, device, environment, options, workload)
 #          and identical stdout;
-#        - `rts_options` contains `--gpu on` or `--gpu <size>`;
+#        - `rts_options` is the single GPU option block emitted by observe.sh;
 #        - `exit_status` is 0 in both;
 #        - `correctness` is `PASS p, FAIL 0` with p >= 1 in both;
 #        - the observed target saw the caller's CUDA_VISIBLE_DEVICES;
@@ -42,7 +42,8 @@
 #        - the plain pass's compute-apps polls list the probe's PID at least
 #          once (`compute_app_seen` yes, recounted);
 #        - if the plain pass ran 10 s or longer: at least one utilisation
-#          sample, and a per-PID pmon SM sample above 0.
+#          sample, and a per-PID pmon SM sample above 0 for the same PID as
+#          the compute-apps observation; the claimed maximum must match.
 #      It prints `gate: PASS` or `gate: FAIL (<reason>; ...)`.
 #   3. Consistency. Each record's `gate` value must name the derived verdict.
 #      A record that says PASS when the evidence says FAIL (or the reverse)
@@ -135,6 +136,16 @@ tok() {
   printf '%s\n' "$1" | tr ' ' '\n' | sed -n "s/^$2=//p" | head -n 1
 }
 
+# Long-run PID and maximum fields use canonical decimal to avoid ambiguous
+# matching or shell integer overflow on untrusted record text.
+canonical_uint() {
+  case "$1" in ''|*[!0-9]*|0[0-9]*) return 1 ;; *) return 0 ;; esac
+}
+
+token_count() {
+  printf '%s\n' "$1" | tr ' ' '\n' | grep -c "^$2=" || :
+}
+
 # 1. Completeness: every required field present once and non-empty.
 incomplete=""
 i=1
@@ -220,8 +231,8 @@ else
   done
 
   rts=$(field "$OBS" rts_options)
-  if ! printf '%s\n' "$rts" | grep -E -q -e '--gpu (on|[0-9.]+(GB|MB))( |$)'; then
-    fail "mode: rts_options '$rts' requests no device (--gpu on or a size is required)"
+  if ! printf '%s\n' "$rts" | grep -E -q -e '^\+RTS --gpu (on|[1-9][0-9]{0,5}(GB|MB)) -RTS$'; then
+    fail "mode: rts_options '$rts' is not the supported single GPU option block"
   fi
 
   for r in "$OBS" "$PLN"; do
@@ -231,7 +242,11 @@ else
     cor=$(field "$r" correctness)
     p=$(printf '%s\n' "$cor" | sed -n 's/^PASS \([0-9][0-9]*\), FAIL \([0-9][0-9]*\).*/\1/p')
     q=$(printf '%s\n' "$cor" | sed -n 's/^PASS \([0-9][0-9]*\), FAIL \([0-9][0-9]*\).*/\2/p')
-    if [ -z "$p" ] || [ "$p" -lt 1 ] || [ "$q" != 0 ]; then
+    case "$p" in
+      *[1-9]*) positive_pass=yes ;;
+      *) positive_pass=no ;;
+    esac
+    if [ "$positive_pass" != yes ] || [ "$q" != 0 ]; then
       fail "$which: correctness '$cor' is not all PASS"
     fi
   done
@@ -276,7 +291,7 @@ else
     pid=$(tok "$cv" pid)
     seen=0
     if [ -n "$pid" ]; then
-      seen=$(grep -v '^#' "$log" | awk -F', *' -v pid="$pid" '$1 == pid { n++ } END { print n + 0 }')
+      seen=$(grep -v '^#' "$log" | awk -F', *' -v pid="$pid" '"p" $1 == "p" pid { n++ } END { print n + 0 }')
     fi
     case "$cv" in
       yes*) [ "$seen" -ge 1 ] || fail "compute_app_seen: record says yes, polls show pid '$pid' $seen times" ;;
@@ -296,11 +311,28 @@ else
   case "$wall" in
     ''|*[!0-9]*) fail "plain: wall_ms '$wall' is not a number" ;;
     *)
-      if [ "$wall" -ge 10000 ]; then
+      # Decimal string comparison avoids the shell's bounded integer parser.
+      wall_normalized=$(printf '%s\n' "$wall" | sed 's/^0*//')
+      if [ "${#wall_normalized}" -ge 5 ]; then
         if [ -n "$plog" ]; then
-          pid=$(tok "$pv" pid)
-          max=$(awk -v pid="$pid" '$1 !~ /^#/ && $2 == pid && $4 ~ /^[0-9]+$/ { if ($4 + 0 > m + 0) m = $4 } END { print m + 0 }' "$plog")
-          [ "$max" -gt 0 ] || fail "samplers: run of $wall ms has no per-PID SM sample above 0"
+          apps_pid=$(tok "$cv" pid)
+          pmon_pid=$(tok "$pv" pid)
+          claim=${pv%% *}
+          if [ "$(token_count "$cv" pid)" != 1 ] || [ "$(token_count "$pv" pid)" != 1 ] ||
+             ! canonical_uint "$apps_pid" || [ "$apps_pid" = 0 ] ||
+             ! canonical_uint "$pmon_pid" || [ "$pmon_pid" = 0 ]; then
+            fail "samplers: long-run PIDs must each be one canonical positive decimal"
+          elif [ "$apps_pid" != "$pmon_pid" ]; then
+            fail "samplers: compute-apps PID $apps_pid differs from pmon PID $pmon_pid"
+          else
+            max=$(awk -v pid="$pmon_pid" '$1 !~ /^#/ && "p" $2 == "p" pid && $4 ~ /^[0-9]+$/ { if ($4 + 0 > m + 0) m = $4 } END { print m + 0 }' "$plog")
+            if ! canonical_uint "$claim"; then
+              fail "samplers: pmon maximum '$claim' is not canonical decimal"
+            elif [ "$claim" != "$max" ]; then
+              fail "samplers: record claims pmon maximum $claim, log shows $max"
+            fi
+            [ "$max" != 0 ] || fail "samplers: run of $wall ms has no per-PID SM sample above 0"
+          fi
         fi
         if [ -n "$ulog" ]; then
           c=$(grep -c -E '^[0-9]+ %' "$ulog")

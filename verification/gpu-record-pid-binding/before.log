@@ -1,0 +1,40 @@
+long matching PID and maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+valid sized standalone GPU option: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+valid integral MB size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+valid upper bound GPU size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+unsupported valid fractional GPU size: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+GPU zero size: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+GPU below minimum size: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+GPU leading-zero integer size: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+GPU oversized integer syntax: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+unsupported trailing-dot GPU size: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+invalid multiple GPU size dots: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+invalid dot-only GPU size: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+fake GPU option suffix: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+GPU option outside RTS block: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+duplicate GPU options: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+GPU off: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu off -RTS' requests no device (--gpu on or a size is required)); derive=0; check=1; stderr=empty; OK
+GPU default: expected FAIL; got FAIL (mode: rts_options 'none' requests no device (--gpu on or a size is required)); derive=0; check=1; stderr=empty; OK
+long different PID and false maximum: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long different PID only: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long false maximum only: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long zero sample maximum: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long missing numeric maximum: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long leading-zero maximum: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long leading-zero pmon PID: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long duplicate pmon PID: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long duplicate apps PID: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+long zero pmon PID: expected FAIL; got FAIL (samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+long nonnumeric pmon PID: expected FAIL; got FAIL (samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+long missing samples: expected FAIL; got FAIL (samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+long zero-only samples: expected FAIL; got FAIL (samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+long noncanonical pmon log PID: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+noncanonical apps log PID: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+leading-zero long wall: expected FAIL; got PASS; derive=0; check=3; stderr=empty; MISMATCH
+huge long wall: expected FAIL; got PASS; derive=0; check=3; stderr=present; MISMATCH
+huge positive PASS count: expected PASS; got PASS; derive=0; check=0; stderr=present; MISMATCH
+all-zero PASS count: expected FAIL; got FAIL (plain: correctness 'PASS 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, FAIL 0' is not all PASS); derive=0; check=1; stderr=empty; OK
+short unavailable maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+short different PID and maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+leading-zero short wall: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+short no numeric sample: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK

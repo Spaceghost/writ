@@ -1,0 +1,40 @@
+long matching PID and maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+valid sized standalone GPU option: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+valid integral MB size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+valid upper bound GPU size: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+unsupported valid fractional GPU size: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu .5GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU zero size: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu 0GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU below minimum size: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu 0.001MB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU leading-zero integer size: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu 01GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU oversized integer syntax: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu 1000000GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+unsupported trailing-dot GPU size: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu 1.GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+invalid multiple GPU size dots: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu 1..2GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+invalid dot-only GPU size: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu .GB -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+fake GPU option suffix: expected FAIL; got FAIL (mode: rts_options '+RTS --fake--gpu on -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU option outside RTS block: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu off -RTS --gpu on' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+duplicate GPU options: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu on --gpu off -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU off: expected FAIL; got FAIL (mode: rts_options '+RTS --gpu off -RTS' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+GPU default: expected FAIL; got FAIL (mode: rts_options 'none' is not the supported single GPU option block); derive=0; check=1; stderr=empty; OK
+long different PID and false maximum: expected FAIL; got FAIL (samplers: compute-apps PID 111 differs from pmon PID 222); derive=0; check=1; stderr=empty; OK
+long different PID only: expected FAIL; got FAIL (samplers: compute-apps PID 111 differs from pmon PID 222); derive=0; check=1; stderr=empty; OK
+long false maximum only: expected FAIL; got FAIL (samplers: record claims pmon maximum 99, log shows 42); derive=0; check=1; stderr=empty; OK
+long zero sample maximum: expected FAIL; got FAIL (samplers: record claims pmon maximum 0, log shows 42); derive=0; check=1; stderr=empty; OK
+long missing numeric maximum: expected FAIL; got FAIL (samplers: pmon maximum '-' is not canonical decimal); derive=0; check=1; stderr=empty; OK
+long leading-zero maximum: expected FAIL; got FAIL (samplers: pmon maximum '042' is not canonical decimal); derive=0; check=1; stderr=empty; OK
+long leading-zero pmon PID: expected FAIL; got FAIL (samplers: long-run PIDs must each be one canonical positive decimal); derive=0; check=1; stderr=empty; OK
+long duplicate pmon PID: expected FAIL; got FAIL (samplers: long-run PIDs must each be one canonical positive decimal); derive=0; check=1; stderr=empty; OK
+long duplicate apps PID: expected FAIL; got FAIL (samplers: long-run PIDs must each be one canonical positive decimal); derive=0; check=1; stderr=empty; OK
+long zero pmon PID: expected FAIL; got FAIL (samplers: long-run PIDs must each be one canonical positive decimal); derive=0; check=1; stderr=empty; OK
+long nonnumeric pmon PID: expected FAIL; got FAIL (samplers: long-run PIDs must each be one canonical positive decimal); derive=0; check=1; stderr=empty; OK
+long missing samples: expected FAIL; got FAIL (samplers: pmon maximum '-' is not canonical decimal; samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+long zero-only samples: expected FAIL; got FAIL (samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+long noncanonical pmon log PID: expected FAIL; got FAIL (samplers: record claims pmon maximum 42, log shows 0; samplers: run of 10000 ms has no per-PID SM sample above 0); derive=0; check=1; stderr=empty; OK
+noncanonical apps log PID: expected FAIL; got FAIL (compute_app_seen: record says yes, polls show pid '111' 0 times; compute_app_seen: probe pid '111' never listed by --query-compute-apps); derive=0; check=1; stderr=empty; OK
+leading-zero long wall: expected FAIL; got FAIL (samplers: compute-apps PID 111 differs from pmon PID 222); derive=0; check=1; stderr=empty; OK
+huge long wall: expected FAIL; got FAIL (samplers: compute-apps PID 111 differs from pmon PID 222); derive=0; check=1; stderr=empty; OK
+huge positive PASS count: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+all-zero PASS count: expected FAIL; got FAIL (plain: correctness 'PASS 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, FAIL 0' is not all PASS); derive=0; check=1; stderr=empty; OK
+short unavailable maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+short different PID and maximum: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+leading-zero short wall: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
+short no numeric sample: expected PASS; got PASS; derive=0; check=0; stderr=empty; OK
