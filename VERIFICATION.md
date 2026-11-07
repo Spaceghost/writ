@@ -1,9 +1,10 @@
 # Verification record
 
 The [e8d9191 automatic CI checkpoint](verification/master-ci-e8d9191/README.md)
-retains passing Windows Node and native filesystem public fixtures and a
-standard Genode pass alongside the strict Windows worker failure; Linux is
-pending at this checkpoint.
+retains passing Windows Node and native filesystem public fixtures alongside
+the strict Windows worker failure, a standard Genode pass and a scoped Linux
+public-canary pass. The separate Linux protected setup was refused before input
+or admission.
 
 The [fafbbe2 automatic CI checkpoint](verification/master-ci-fafbbe2/README.md)
 retains passing Windows Node and native filesystem public fixtures alongside
