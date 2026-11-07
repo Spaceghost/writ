@@ -657,7 +657,7 @@ ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowe
 4af4d359e550fd601fa442e8a4792a01d91e3f364affac18ab7e57958f999e1e  docs/superpowers/records/2026-11-06-hostwire-bounds/report.md
 70155a0de24706c12a40a77e75e3a5ee794f6e2f09f744d5e5d198a2d17983a1  docs/superpowers/records/2026-11-06-windows-init/handoff-control-alternatives.md
 8c840841b7215fec69d9961a37bdb0ae04576f22daa7ef9e97210a3872ecc3ca  docs/superpowers/records/2026-11-06-windows-init/handoff-inventory-and-model-design.md
-4592019d6f294d56a8119b98eb21db23c279178034ae55d9344ef16ef75e34af  docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md
+fd98a0bbbeea9460495ebe3a82aa765502e4cb4b849772a6fc86db66cb5d2253  docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md
 166b91d5d183f9f717b9e522ef6452b52d025186d9d62140201f3d9432439f83  docs/superpowers/records/2026-11-06-windows-init/pre-admission-handoff-obligations.md
 b8d893d3a898e9149bba13b4e4f9ddb690ebab1228564c6dba3c7d1155617837  docs/superpowers/records/2026-11-06-windows-init/same-worker-pre-admission-feasibility.md
 aaccb1be8600ad62a9ae527583a5cb613333d32281ecbd303d3c8198b90498fb  docs/superpowers/records/2026-11-06-windows-init/strict-worker-next-research.md
@@ -1105,6 +1105,7 @@ b867b3fb5433317025a93afc902fe20c3df5cc21373e5f1454058d048ca15916  verification/g
 6f909b7eeef04ddfbd5c6bf0618765c1e6ad1b4cb83ed5e37429b717998eb5de  verification/gpu-trust-profile.md
 7dafe02663191c9a68aaeb24064e734e569a92b1a825bdc89ab6bebe1517b322  verification/gpu-validation-hosts.md
 32af61de165de44aba218ed79d4404da42afd1b0deaa5ed2d851dee5617d1274  verification/grant-issuance.txt
+44312c9e4c40b3c71422b9f02cf05dd3be5e46879f1ab31df9783f137fadfdf3  verification/handoff-model-817ab1f-native.log
 637dd626b19d155f2b35c26efe5409d5ac9e0e92e255d7d525c5c6c4b5f8bc2b  verification/handoff-model-c0defe5-bend-source.sha256
 0fb92a34387ff14ea30bb97bb09fc8a79585b058a6057c6acdd54692f6dcf45c  verification/handoff-model-c0defe5-native.log
 8f24ae192ea86b483907a2bb75480fb1a5d9c0bbe2b43d54046375d383022247  verification/handoff-model-v2-bend-source.sha256
