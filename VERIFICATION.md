@@ -15,11 +15,12 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
-The [automatic 0689636 platform CI checkpoint](verification/master-ci-0689636/README.md)
-retains passing Windows Node, Linux public-canary and Btrfs/ZFS fixture results,
-and the failed strict Windows native run. Linux protected setup was refused
-before input; the Windows byte-worker observations were incomplete. Genode was
-still running at this checkpoint. These results do not qualify a protected host.
+The [automatic 0689636 platform CI](verification/master-ci-0689636/README.md)
+retains passing Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
+results, and the failed strict Windows native run. Linux protected setup was
+refused before input; the Windows byte-worker observations were incomplete.
+Genode retained missing-clock warnings. These results do not qualify a protected
+host.
 
 The [bounded Nix evaluation at 0689636](verification/nix-evaluation-0689636/README.md)
 inspected the 2,281-check derivation, filtered source and local gate controls;
