@@ -6,7 +6,9 @@ A comparison may establish that the proposal's *plan fields* describe exactly
 that selected plan. It does not establish that the planner is authenticated,
 that a request or manifest is current, that evidence is valid, or that the
 operation may run. There is currently no planner endpoint, authenticated
-planner registry or implemented comparison; this is a design-only proposal.
+planner registry. The pure `PlannerPlanMatch.bend` comparison and synthetic
+tests implement the narrow plan-field slice described here; no registry or
+authority integration is implemented.
 
 The existing [planner change](design.md) and [tasks](tasks.md) remain pending.
 The comparison is a small, independently testable precursor to task 1.3, not a
@@ -121,7 +123,8 @@ both bundled Bend and generated Node; native CPU regression is separate.
 
 ## Proposed adversarial fixtures
 
-These are test requirements, not results. Build valid proposal and plan records
+These are test-design requirements; executable cases are named in
+`PlannerPlanMatchTests.bend`. Build valid proposal and plan records
 independently, with distinct field values and distinct code words, so one
 encoder/decoder or conversion routine cannot make both sides wrong in the same
 way. Label all authority/context fixtures synthetic; never present them as
