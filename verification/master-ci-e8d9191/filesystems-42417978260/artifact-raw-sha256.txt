@@ -1,0 +1,10 @@
+79040194fc291e1f63ba3f9bad4f94f8fbcb6885b0aa75a2c079762c3853407c  writfs-native-zfs-1/bend-toolchain.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  writfs-native-zfs-1/compile.log
+ac7fc341087d63426d4ead552dffc45ee6dc1a81c0e2d0ffa884030c3c053948  writfs-native-zfs-1/environment.log
+6baf07c25ae6e7ad31938ae8d01db71118b92b615ccf1c48c473485e6169f910  writfs-native-zfs-1/native-integration.log
+32196865e9aeb755815f3cbaf1d3fd572e70664d3ab48073cf511516313a33a2  writfs-native-zfs-1/native-tools.log
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  writfs-native-btrfs-1/compile.log
+322909c80cdbb92b5feb9944c6793a7b8fa53fb7b92606ce883fba60239cc377  writfs-native-btrfs-1/environment.log
+03cea38bf6a167c7169cb67e9bf71021da08ae429299006e3134d73d80568aee  writfs-native-btrfs-1/bend-toolchain.log
+50442aae8df1d4465b8e7ef15f8839d23cfd1952155c63e89edf444bdb9b22b4  writfs-native-btrfs-1/native-integration.log
+b6dd108faf379a892cc34bd02ff7f0e24b9de0e0bfe3ae19af464ac796c35187  writfs-native-btrfs-1/native-tools.log
