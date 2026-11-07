@@ -53,6 +53,10 @@ sentinel, byte-identical to `suite.log`. The native executable SHA-256 was
 it and its generated GPU artifact remain outside the source tree. This CPU
 run is not a GPU test or native host qualification.
 
+The current Nix JavaScript check was attempted with `--offline` but interrupted
+after it began rebuilding an uncached dependency closure; no Nix result is
+claimed for this source.
+
 ## Guard-specific negative controls
 
 In two detached scratch worktrees based on `e765650`, the current test file

@@ -1,0 +1,156 @@
+Commit: e129c931ceb1d249cf0b0874a91390e5eef840c9
+Runner: ubuntu24 20261101.360.1
+Linux runnervm7aw5e 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+PRETTY_NAME="Ubuntu 24.04.5 LTS"
+NAME="Ubuntu"
+VERSION_ID="24.04"
+VERSION="24.04.5 LTS (Noble Numbat)"
+VERSION_CODENAME=noble
+ID=ubuntu
+ID_LIKE=debian
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+UBUNTU_CODENAME=noble
+LOGO=ubuntu-logo
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:7 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [675 kB]
+Get:8 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [743 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1425 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [313 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1840 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [420 kB]
+Get:15 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+Get:16 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1157 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [234 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1721 kB]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [394 kB]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+Fetched 13.0 MB in 1s (9573 kB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+gcc is already the newest version (4:13.2.0-7ubuntu1).
+make is already the newest version (4.3-4.1build2).
+pkg-config is already the newest version (1.8.1-2build1).
+fuse3 is already the newest version (3.14.0-5build1).
+fuse3 set to manually installed.
+kmod is already the newest version (31+20240202-2ubuntu7.2).
+kmod set to manually installed.
+The following additional packages will be installed:
+  libclang-common-19-dev libclang-cpp19 libclang1-19 libselinux1-dev
+  libsepol-dev llvm-19-linker-tools
+Suggested packages:
+  clang-19-doc wasi-libc
+Recommended packages:
+  llvm-19-dev libclang-rt-19-dev
+The following NEW packages will be installed:
+  clang-19 libclang-common-19-dev libclang-cpp19 libclang1-19 libfuse3-dev
+  libselinux1-dev libsepol-dev llvm-19-linker-tools
+0 upgraded, 8 newly installed, 0 to remove and 27 not upgraded.
+Need to get 25.4 MB of archives.
+After this operation, 129 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-cpp19 amd64 1:19.1.1-1ubuntu1~24.04.2 [14.3 MB]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-common-19-dev amd64 1:19.1.1-1ubuntu1~24.04.2 [743 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 llvm-19-linker-tools amd64 1:19.1.1-1ubuntu1~24.04.2 [1314 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang1-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [8272 kB]
+Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 clang-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [78.9 kB]
+Get:7 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libsepol-dev amd64 3.5-2build1 [384 kB]
+Get:8 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libselinux1-dev amd64 3.5-2ubuntu2.1 [164 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble/main amd64 libfuse3-dev amd64 3.14.0-5build1 [139 kB]
+Fetched 25.4 MB in 0s (60.9 MB/s)
+Selecting previously unselected package libclang-cpp19.
+(Reading database ...
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 215960 files and directories currently installed.)
+Preparing to unpack .../0-libclang-cpp19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package libclang-common-19-dev:amd64.
+Preparing to unpack .../1-libclang-common-19-dev_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package llvm-19-linker-tools.
+Preparing to unpack .../2-llvm-19-linker-tools_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package libclang1-19.
+Preparing to unpack .../3-libclang1-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package clang-19.
+Preparing to unpack .../4-clang-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package libsepol-dev:amd64.
+Preparing to unpack .../5-libsepol-dev_3.5-2build1_amd64.deb ...
+Unpacking libsepol-dev:amd64 (3.5-2build1) ...
+Selecting previously unselected package libselinux1-dev:amd64.
+Preparing to unpack .../6-libselinux1-dev_3.5-2ubuntu2.1_amd64.deb ...
+Unpacking libselinux1-dev:amd64 (3.5-2ubuntu2.1) ...
+Selecting previously unselected package libfuse3-dev:amd64.
+Preparing to unpack .../7-libfuse3-dev_3.14.0-5build1_amd64.deb ...
+Unpacking libfuse3-dev:amd64 (3.14.0-5build1) ...
+Setting up libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libsepol-dev:amd64 (3.5-2build1) ...
+Setting up llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libselinux1-dev:amd64 (3.5-2ubuntu2.1) ...
+Setting up clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libfuse3-dev:amd64 (3.14.0-5build1) ...
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+3.14.0
+v22.23.4
+fuse3	3.14.0-5build1
+libfuse3-3:amd64	3.14.0-5build1
+libfuse3-dev:amd64	3.14.0-5build1
