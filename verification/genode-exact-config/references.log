@@ -1,0 +1,17 @@
+PASS positive compiled size
+PASS positive archive size
+PASS positive exact argument and archive bytes
+PASS positive fixed installed hash
+PASS positive byte framing
+PASS positive changed test-owned source copy does not alter compiled constant
+PASS negative compiled size
+PASS negative archive size
+PASS negative exact argument and archive bytes
+PASS negative fixed installed hash
+PASS negative byte framing
+PASS negative changed test-owned source copy does not alter compiled constant
+PASS unknown reference scenario refused
+PASS mutated_reference rejected by named observer assertion
+PASS comparison_bypass rejected by named observer assertion
+PASS shifted_hash_input rejected by named observer assertion
+PASS 16 public reference and mutation controls

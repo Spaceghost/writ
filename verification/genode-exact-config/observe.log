@@ -1,0 +1,45 @@
+PASS positive ordered same-FD observation
+PASS negative ordered same-FD observation
+PASS observer rejects arbitrary config even at cap
+PASS observer oversized config refused
+PASS observer non-config uses larger cap
+PASS observer oversized leaf refused
+PASS positive short-read chunks compare and hash together
+PASS negative short-read chunks compare and hash together
+PASS config EINTR retry preserves exact comparison
+PASS config mutation during chunked same-FD read rejected
+PASS config read failure returns zero
+PASS config compare failure returns zero
+PASS config digest update failure returns zero
+PASS config digest final failure returns zero
+PASS config premature EOF failure returns zero
+PASS config growth probe failure returns zero
+PASS wrong scenario config rejected
+PASS config first byte mutation rejected
+PASS config interior byte mutation rejected
+PASS config last byte mutation rejected
+PASS config embedded NUL rejected
+PASS config non-ASCII rejected
+PASS config missing installer LF rejected
+PASS config extra LF rejected
+PASS config strict prefix rejected
+PASS config extension rejected
+PASS observer refuses inheritable borrowed roots
+PASS private slot swap refused
+PASS out-of-range private index refused
+PASS closed checked descriptor is cleanup-unverified
+PASS different-inode reused descriptor is not closed
+PASS known limitation: same-inode reused descriptor is closed
+PASS post-read renamed leaf and replacement refused
+PASS post-read identical-text new symlink refused
+PASS post-read same-size metadata drift refused
+PASS post-read missing fixed path refused
+PASS reads stay on held FDs after boot path removal
+PASS observer refuses borrowed root metadata drift
+PASS post-read lost CLOEXEC is refused
+PASS all 14 hash-stage failures return no result
+PASS all 44 retained-acquisition failures close owned descriptors
+PASS all 44 retained-close failure injections report uncertainty
+PASS all 140 read-helper close failure injections propagate uncertainty
+PASS all 250 layout-close failure injections report uncertainty
+PASS 531 synthetic same-FD cases

@@ -1,10 +1,10 @@
-# Proposed exact public configuration check during held-FD hashing
+# Exact public configuration check during held-FD hashing
 
 The current public partial observer can hash a `config` inode whose bytes are
 wrong: a matching-length regular file is sufficient for its layout check. The
-next synthetic slice would compare every config byte with the fixed expected
+implemented synthetic slice compares every config byte with the fixed expected
 public scenario **during the same read** that feeds its digest. A mismatch
-would leave all caller outputs zero and the observation incomplete. This is not
+leaves all caller outputs zero and the observation incomplete. This is not
 a complete inventory, a Writ policy decision or evidence of what an earlier
 Genode process consumed.
 
@@ -82,7 +82,7 @@ path becomes a new authority or policy input. The production dynamic export
 surface must remain unchanged. All outputs remain zero on any error and on
 cleanup uncertainty; propagate reader close failure distinctly as today.
 
-## Limits and planned synthetic controls
+## Limits and synthetic controls
 
 The config comparison and digest describe the byte stream observed in this one
 read. Stable metadata before/after, held inode identity and post-read path
@@ -94,9 +94,10 @@ publishes a manifest or qualifies a host. The [supervisor design](disposable-fd-
 exclusive worker FD-table boundary, overall deadline and publication remain
 unimplemented; do not integrate into a workflow or run Genode/QEMU.
 
-Tests use only owned temporary public files and test-only fault hooks compiled
-out of production. Independently verify both embedded fixed references and
-archived ZIP bytes, then exercise:
+The [recorded controls](../../../verification/genode-exact-config/README.md)
+use owned temporary public files and test-only fault hooks compiled out of
+production. They independently verify both embedded fixed references and
+archived ZIP bytes, and exercise:
 
 * `exact_positive` and `exact_negative`: each fixed installed vector succeeds
   in its scenario, with expected size/digest and the same retained FD; scenario

@@ -62,7 +62,9 @@ int writ_boot_public_observe(int root, int build, int source, uint64_t run,
         struct writ_owned_fd *actual = slot(&ctx, selected);
         uint64_t cap = i == 0 ? UINT64_C(16384) : UINT64_C(268435456);
         if (!expected || !actual || !valid_slot(actual, &expected->identity)) goto done;
-        int read_status = writ_boot_read_held_internal(actual->fd, cap, staged.digest[i], &staged.size[i]);
+        int read_status = i == 0 ?
+            writ_boot_read_config_internal(actual->fd, scenario, staged.digest[i], &staged.size[i]) :
+            writ_boot_read_held_internal(actual->fd, cap, staged.digest[i], &staged.size[i]);
         if (read_status == WRIT_READ_CLEANUP_UNVERIFIED) ctx.cleanup_uncertain = true;
         if (read_status != WRIT_READ_OK ||
             staged.size[i] > UINT64_C(1073741824) ||

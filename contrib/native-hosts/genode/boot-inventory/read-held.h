@@ -1,6 +1,7 @@
 #ifndef WRIT_BOOT_INVENTORY_READ_HELD_H
 #define WRIT_BOOT_INVENTORY_READ_HELD_H
 #include <stdint.h>
+#include <stddef.h>
 
 /* Hash a borrowed O_PATH descriptor of an owned regular file through a checked
  * current-process procfs FD view. cap must be the fixed config or file limit.
@@ -16,5 +17,12 @@ void writ_read_test_fault(int fault, int replacement_fd);
 void writ_read_test_proc_fd(int fd);
 void writ_read_test_close_at(unsigned n);
 unsigned writ_read_test_close_count(void);
+void writ_read_test_chunk_limit(size_t limit);
+uint64_t writ_read_test_compared(void);
+uint64_t writ_read_test_hashed(void);
+uint64_t writ_read_test_chunks(void);
+const unsigned char *writ_read_test_compare_digest(void);
+const unsigned char *writ_read_test_hash_digest(void);
+const unsigned char *writ_read_test_reference(int scenario, size_t *length);
 #endif
 #endif

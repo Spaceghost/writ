@@ -30,9 +30,12 @@ It returns only the distinctly named partial-observation status and in-memory
 hashes after successful checks and closes; failures return zero outputs, and
 cleanup uncertainty has its own status. Borrowed root FDs must be CLOEXEC and
 their metadata stable for this observer; the older layout-only API retains its
-earlier borrowed-FD behavior. This observer does not compare exact config
-bytes, publish a manifest, or implement an externally supervised total
-deadline, and is not a complete inventory. The 32-entry and size caps do not
+earlier borrowed-FD behavior. The observer also compares the config bytes to its fixed scenario reference
+during the same read that feeds SHA-256. It does not publish a manifest or
+implement an externally supervised total deadline, and is not a complete
+inventory. The embedded public references are trusted compiled constants;
+the [reference controls](../../../../verification/genode-exact-config/README.md)
+check them against independently retained archive bytes. The 32-entry and size caps do not
 bound a blocking filesystem call. There is no automatic fallback if `openat2`
 is unsupported. Metadata checks and two scans cannot rule out same-UID
 A→B→A races or in-place adaptive changes, nor establish what an earlier process
@@ -89,3 +92,13 @@ information and must be restricted to the fixed public test; they convey no
 policy decision. The [same-FD controls](../../../../verification/genode-boot-same-fd/README.md)
 cover both synthetic scenarios and failure/ownership boundaries. No fixture,
 workflow, supervisor or host calls this observer.
+
+
+`config-reference.h` contains the two fixed public installed-config vectors:
+the reviewed scenario argument bytes plus exactly one installer LF. These are
+compiled into this native diagnostic, not generated Bend backend source. The
+selected bytes are compared with each bounded config read buffer before the
+same buffer is hashed; the standalone held-read API retains its general
+trusted-FD hashing behavior. The fixed source, binary, OpenSSL/provider and
+caller are trusted. No synthetic check establishes that these constants or
+the executable were pinned before a hypothetical fixture child started.

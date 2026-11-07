@@ -1,0 +1,26 @@
+PASS ordinary held file
+PASS empty held file
+PASS exact config cap
+PASS oversize config
+PASS multi-chunk binary
+PASS non-profile cap
+PASS non-O_PATH input
+PASS missing input
+PASS held symlink
+PASS held fifo
+PASS held unix socket
+PASS hard-linked regular
+PASS unsupported openat2
+PASS synthetic procfs rejection
+PASS actual wrong filesystem
+PASS synthetic failed reopen
+PASS different reopened inode
+PASS expired deadline
+PASS wrong current PID view
+PASS interrupted read retry
+PASS procfs recheck failure
+PASS unlink after stat
+PASS replace inode after stat
+PASS length drift during read
+PASS same-size mutation during read
+PASS 25 synthetic held-read checks

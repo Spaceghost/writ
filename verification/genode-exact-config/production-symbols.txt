@@ -1,0 +1,3 @@
+0000000000003f90 T writ_boot_layout_check
+0000000000005010 T writ_boot_public_observe
+0000000000004ff0 T writ_boot_read_held

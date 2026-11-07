@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include "read-held.h"
 #include "read-held-internal.h"
+#include "config-reference.h"
 #include <errno.h>
 #include <fcntl.h>
 #include <inttypes.h>
@@ -19,7 +20,24 @@
 #ifdef WRIT_BOOT_READ_TESTING
 static writ_read_test_hook stat_hook, chunk_hook;
 static void *stat_arg, *chunk_arg;
-static int fault_kind, replacement, injected_eintr;
+static int fault_kind, replacement, injected_eintr, test_eof_probe;
+static size_t test_chunk_limit;
+static uint64_t test_compared, test_hashed, test_chunks;
+static unsigned char test_compare_digest[32], test_hash_digest[32];
+const unsigned char *writ_read_test_compare_digest(void) { return test_compare_digest; }
+const unsigned char *writ_read_test_hash_digest(void) { return test_hash_digest; }
+void writ_read_test_chunk_limit(size_t limit) { test_chunk_limit = limit; }
+uint64_t writ_read_test_compared(void) { return test_compared; }
+uint64_t writ_read_test_hashed(void) { return test_hashed; }
+uint64_t writ_read_test_chunks(void) { return test_chunks; }
+const unsigned char *writ_read_test_reference(int scenario, size_t *length)
+{
+    if (!length) return NULL;
+    *length = 0;
+    if (scenario == WRIT_BOOT_POSITIVE) { *length = sizeof(writ_config_positive); return writ_config_positive; }
+    if (scenario == WRIT_BOOT_NEGATIVE) { *length = sizeof(writ_config_negative); return writ_config_negative; }
+    return NULL;
+}
 static unsigned test_close_at, test_close_count;
 void writ_read_test_close_at(unsigned n) { test_close_at = n; test_close_count = 0; }
 unsigned writ_read_test_close_count(void) { return test_close_count; }
@@ -27,7 +45,7 @@ static int test_proc_fd = -1;
 void writ_read_test_proc_fd(int fd) { test_proc_fd = fd; }
 void writ_read_test_after_stat(writ_read_test_hook h, void *a) { stat_hook = h; stat_arg = a; }
 void writ_read_test_after_chunk(writ_read_test_hook h, void *a) { chunk_hook = h; chunk_arg = a; }
-void writ_read_test_fault(int f, int fd) { fault_kind = f; replacement = fd; injected_eintr = 0; }
+void writ_read_test_fault(int f, int fd) { fault_kind = f; replacement = fd; injected_eintr = 0; test_eof_probe = 0; }
 #endif
 
 static int proc_open(int dir, const char *name, int flags, bool self_link)
@@ -120,14 +138,38 @@ static ssize_t bounded_read(int fd, void *buffer, size_t size)
     if (fault_kind == 7 && !injected_eintr) {
         injected_eintr = 1; errno = EINTR; return -1;
     }
+    if (fault_kind == 9) { errno = EIO; return -1; }
+    if (fault_kind == 13 && !test_eof_probe) return 0;
+    if (fault_kind == 14 && test_eof_probe) return 1;
+    if (test_chunk_limit && size > test_chunk_limit) size = test_chunk_limit;
 #endif
     return read(fd, buffer, size);
 }
 
-int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)
+static int digest_chunk(EVP_MD_CTX *ctx, const void *data, size_t length
+#ifdef WRIT_BOOT_READ_TESTING
+                        , EVP_MD_CTX *test_ctx
+#endif
+)
+{
+#ifdef WRIT_BOOT_READ_TESTING
+    if (test_ctx && EVP_DigestUpdate(test_ctx, data, length) != 1) return 0;
+#endif
+    int result = EVP_DigestUpdate(ctx, data, length);
+#ifdef WRIT_BOOT_READ_TESTING
+    if (result == 1 && test_ctx) test_hashed += length;
+#endif
+    return result;
+}
+
+static int read_impl(int held, uint64_t cap, unsigned char digest[32], uint64_t *size,
+                     const unsigned char *reference, size_t reference_size)
 {
     int pinned = -1, proc = -1, bypid = -1, self = -1, fddir = -1, data = -1;
     EVP_MD_CTX *ctx = NULL;
+#ifdef WRIT_BOOT_READ_TESTING
+    EVP_MD_CTX *test_compare_ctx = NULL, *test_hash_ctx = NULL;
+#endif
     struct stat original, current, reopened, procstat, pidstat, selfstat;
     struct timespec start;
     unsigned char buffer[65536], hash[EVP_MAX_MD_SIZE];
@@ -135,6 +177,13 @@ int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32
     uint64_t got = 0;
     char pidtext[32], fdtext[32], selftext[32];
     bool ok = false, cleanup_uncertain = false;
+#ifdef WRIT_BOOT_READ_TESTING
+    if (reference) {
+        test_compared = test_hashed = test_chunks = 0; test_eof_probe = 0;
+        memset(test_compare_digest, 0, sizeof(test_compare_digest));
+        memset(test_hash_digest, 0, sizeof(test_hash_digest));
+    }
+#endif
     if (digest) memset(digest, 0, 32);
     if (size) *size = 0;
     if (!digest || !size) return -1;
@@ -145,7 +194,8 @@ int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32
     pinned = fcntl(held, F_DUPFD_CLOEXEC, 3);
     if (pinned < 0 || fstat(pinned, &original) || !S_ISREG(original.st_mode) ||
         original.st_uid != geteuid() || original.st_nlink != 1 || original.st_size < 0 ||
-        (uint64_t)original.st_size > cap) goto done;
+        (uint64_t)original.st_size > cap ||
+        (reference && (uint64_t)original.st_size != reference_size)) goto done;
 #ifdef WRIT_BOOT_READ_TESTING
     if (stat_hook) stat_hook(stat_arg);
 #endif
@@ -186,6 +236,14 @@ int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32
         !S_ISREG(reopened.st_mode)) goto done;
     ctx = EVP_MD_CTX_new();
     if (!ctx || EVP_DigestInit_ex(ctx, EVP_sha256(), NULL) != 1) goto done;
+#ifdef WRIT_BOOT_READ_TESTING
+    if (reference) {
+        test_compare_ctx = EVP_MD_CTX_new(); test_hash_ctx = EVP_MD_CTX_new();
+        if (!test_compare_ctx || !test_hash_ctx ||
+            EVP_DigestInit_ex(test_compare_ctx, EVP_sha256(), NULL) != 1 ||
+            EVP_DigestInit_ex(test_hash_ctx, EVP_sha256(), NULL) != 1) goto done;
+    }
+#endif
     bool ran_hook = false;
     while (got < (uint64_t)original.st_size) {
         if (!before_deadline(&start)) goto done;
@@ -193,7 +251,26 @@ int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32
         size_t want = remaining < sizeof(buffer) ? (size_t)remaining : sizeof(buffer);
         ssize_t r = bounded_read(data, buffer, want);
         if (r < 0 && errno == EINTR) continue;
-        if (r <= 0 || (size_t)r > want || EVP_DigestUpdate(ctx, buffer, (size_t)r) != 1) goto done;
+        if (r <= 0 || (size_t)r > want) goto done;
+        if (reference) {
+            if (got > reference_size || (uint64_t)r > reference_size - got ||
+                memcmp(buffer, reference + (size_t)got, (size_t)r)) goto done;
+#ifdef WRIT_BOOT_READ_TESTING
+            if (fault_kind == 10 || EVP_DigestUpdate(test_compare_ctx, buffer, (size_t)r) != 1) goto done;
+            test_compared += (uint64_t)r;
+#endif
+        }
+#ifdef WRIT_BOOT_READ_TESTING
+        if (fault_kind == 11) goto done; /* digest update failure */
+#endif
+        if (digest_chunk(ctx, buffer, (size_t)r
+#ifdef WRIT_BOOT_READ_TESTING
+                         , reference ? test_hash_ctx : NULL
+#endif
+                         ) != 1) goto done;
+#ifdef WRIT_BOOT_READ_TESTING
+        if (reference) ++test_chunks;
+#endif
         got += (uint64_t)r;
 #ifdef WRIT_BOOT_READ_TESTING
         if (!ran_hook && chunk_hook) { ran_hook = true; chunk_hook(chunk_arg); }
@@ -201,6 +278,10 @@ int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32
         (void)ran_hook;
 #endif
     }
+#ifdef WRIT_BOOT_READ_TESTING
+    test_eof_probe = 1;
+#endif
+    if (reference && got != reference_size) goto done;
     for (;;) {
         if (!before_deadline(&start)) goto done;
         ssize_t r = bounded_read(data, buffer, 1);
@@ -210,10 +291,24 @@ int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32
     }
     if (fstat(pinned, &current) || !same_identity(&original, &current) ||
         fstat(data, &current) || !same_identity(&original, &current) ||
-        !proc_recheck(proc, bypid, self, fddir, procstat.st_dev, pidtext, &cleanup_uncertain) ||
-        EVP_DigestFinal_ex(ctx, hash, &hash_size) != 1 || hash_size != 32) goto done;
+        !proc_recheck(proc, bypid, self, fddir, procstat.st_dev, pidtext, &cleanup_uncertain)) goto done;
+#ifdef WRIT_BOOT_READ_TESTING
+    if (fault_kind == 12) goto done; /* digest final failure */
+#endif
+    if (EVP_DigestFinal_ex(ctx, hash, &hash_size) != 1 || hash_size != 32) goto done;
+#ifdef WRIT_BOOT_READ_TESTING
+    if (reference) {
+        unsigned int compare_size = 0, hash_test_size = 0;
+        if (EVP_DigestFinal_ex(test_compare_ctx, test_compare_digest, &compare_size) != 1 || compare_size != 32 ||
+            EVP_DigestFinal_ex(test_hash_ctx, test_hash_digest, &hash_test_size) != 1 || hash_test_size != 32) goto done;
+    }
+#endif
     ok = true;
 done:
+#ifdef WRIT_BOOT_READ_TESTING
+    EVP_MD_CTX_free(test_compare_ctx);
+    EVP_MD_CTX_free(test_hash_ctx);
+#endif
     EVP_MD_CTX_free(ctx);
     if (data >= 0 && !read_close(data, &cleanup_uncertain)) ok = false;
     if (fddir >= 0 && !read_close(fddir, &cleanup_uncertain)) ok = false;
@@ -223,6 +318,19 @@ done:
     if (pinned >= 0 && !read_close(pinned, &cleanup_uncertain)) ok = false;
     if (cleanup_uncertain) return WRIT_READ_CLEANUP_UNVERIFIED;
     if (ok) { memcpy(digest, hash, 32); *size = got; return WRIT_READ_OK; }
+    return WRIT_READ_INCOMPLETE;
+}
+int writ_boot_read_held_internal(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)
+{ return read_impl(held, cap, digest, size, NULL, 0); }
+int writ_boot_read_config_internal(int held, enum writ_boot_scenario scenario,
+                                   unsigned char digest[32], uint64_t *size)
+{
+    if (scenario == WRIT_BOOT_POSITIVE)
+        return read_impl(held, UINT64_C(16384), digest, size, writ_config_positive, sizeof(writ_config_positive));
+    if (scenario == WRIT_BOOT_NEGATIVE)
+        return read_impl(held, UINT64_C(16384), digest, size, writ_config_negative, sizeof(writ_config_negative));
+    if (digest) memset(digest, 0, 32);
+    if (size) *size = 0;
     return WRIT_READ_INCOMPLETE;
 }
 int writ_boot_read_held(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)

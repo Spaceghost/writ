@@ -66,8 +66,8 @@ text with the still-held context, repeat bounded enumeration, compare the
 reopened fixed final objects with these same leaf FDs, and refuse any drift or
 error. These reopens observe identity and metadata only; file contents are
 still read solely through the original held FDs. This is still not a complete
-inventory: exact config-reference comparison, external deadline and safe
-publication remain unimplemented. The read helper's deliberate procfs
+inventory: an external deadline and safe publication remain unimplemented; the
+separate exact config comparison has synthetic controls. The read helper's deliberate procfs
 reopen duplicates the held inode; the composition does not resolve a boot,
 bin or target pathname to obtain file contents.
 
@@ -97,8 +97,8 @@ The only success-like status must be distinctly named
 `WRIT_PUBLIC_PARTIAL_OBSERVATION`, not a generic inventory-success status;
 ordinary failure and cleanup uncertainty have distinct incomplete statuses.
 These in-process synthetic observations are not a file, upload, admission or
-release decision. An [exact same-read config comparison](same-fd-exact-config-design.md) is
-proposed separately. No exact config-reference comparison, exclusive staging,
+release decision. The separate [exact same-read config comparison](same-fd-exact-config-design.md)
+now has synthetic controls. No exclusive staging,
 published manifest, supervisor, deadline enforcement, process retirement,
 workflow integration or real Genode run is included in this slice. In
 particular, matching digest output alone does not establish the expected
