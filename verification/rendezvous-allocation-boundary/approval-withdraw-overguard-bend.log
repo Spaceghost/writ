@@ -1,0 +1,20 @@
+PASS: rendezvous exhaustion reason equality distinguishes replay
+PASS: rendezvous terminal ID fixtures remain valid
+PASS: rendezvous last approval allocation preserves exact state
+PASS: rendezvous last selection allocation preserves exact state
+PASS: rendezvous exhausted approval rejects unchanged
+PASS: rendezvous exhausted selection rejects unchanged
+PASS: rendezvous stale approval precedes exhaustion
+PASS: rendezvous stale selection precedes exhaustion
+PASS: rendezvous approval identity precedes exhaustion
+PASS: rendezvous approval expiry precedes exhaustion
+PASS: rendezvous approval replay precedes exhaustion
+PASS: rendezvous selection stage denial precedes exhaustion
+PASS: rendezvous missing offer precedes exhaustion
+PASS: rendezvous existing selection precedes exhaustion
+PASS: rendezvous conflicting offer precedes exhaustion
+PASS: rendezvous selection scope mismatch precedes exhaustion
+PASS: rendezvous approval checklist includes exhaustion
+PASS: rendezvous selection checklist includes exhaustion
+PASS: rendezvous terminal counter permits exact offer submission
+FAIL: rendezvous terminal counter permits exact approval withdrawal

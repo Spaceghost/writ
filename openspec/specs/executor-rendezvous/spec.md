@@ -29,6 +29,13 @@ Selection SHALL exclude any candidate that fails an origin restriction, executio
 
 Selection SHALL choose the eligible offer with the lowest approved total quote, then canonical provider identity, then canonical offer identity to break remaining ties.
 
+#### Scenario: Selection identifiers are exhausted
+
+- **GIVEN** an otherwise valid rendezvous whose next approval/selection ID is the maximum supported Nat value
+- **WHEN** an otherwise eligible selection requires a fresh ID
+- **THEN** it is rejected and the supplied rendezvous state is unchanged
+- **AND** already selected work and non-allocating withdrawal do not fail merely because the counter is exhausted
+
 #### Scenario: Equal approved quotes
 
 - **GIVEN** two eligible offers have the same total quote in one snapshot
@@ -64,6 +71,12 @@ Selection SHALL reject sample evidence from a different provider, candidate, cha
 ### Requirement: ER-006 Every origin approves the selected scope
 
 Dispatch SHALL require current approval from every contributing origin for the selected provider and operation scope.
+
+#### Scenario: Approval identifiers are exhausted
+
+- **GIVEN** an otherwise valid rendezvous whose shared next ID is the maximum supported Nat value
+- **WHEN** an otherwise eligible origin approval requires a fresh ID
+- **THEN** it is rejected and the supplied rendezvous state is unchanged
 
 #### Scenario: Partial owner agreement
 

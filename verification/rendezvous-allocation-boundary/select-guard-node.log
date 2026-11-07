@@ -1,0 +1,6 @@
+PASS: rendezvous exhaustion reason equality distinguishes replay
+PASS: rendezvous terminal ID fixtures remain valid
+PASS: rendezvous last approval allocation preserves exact state
+PASS: rendezvous last selection allocation preserves exact state
+PASS: rendezvous exhausted approval rejects unchanged
+bend: a Nat past the largest immediate 2^48-1

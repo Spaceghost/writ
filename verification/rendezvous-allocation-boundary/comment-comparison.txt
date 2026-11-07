@@ -1,0 +1,3 @@
+Native build Rendezvous.bend SHA-256: 41616056c9d44e391709d90235ab15984c02e44eb762a33c346c8f8cf4fda6b4
+Delivered Rendezvous.bend SHA-256: 8892c9b6f4c92384b4a5f28b7fef180e07ae659d65e50b74d5e749a1f9c58974
+Only whole comment lines differ; all other lines (including implementation tokens) are byte-identical.

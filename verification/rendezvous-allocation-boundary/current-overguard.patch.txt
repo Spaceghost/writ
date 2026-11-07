@@ -1,0 +1,5 @@
+--- a/Rendezvous.bend
++++ b/Rendezvous.bend
+@@ -1839 +1839 @@
+-  Guard.all(Gates.checks(current_gates(selection(state), state, snapshot)))
++  id_room(state) && Guard.all(Gates.checks(current_gates(selection(state), state, snapshot)))

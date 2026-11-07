@@ -56,7 +56,7 @@ host must meet. None of them is evidence that a host meets it today.
 
 Contracts and evidence:
 
-- Proposed contract: [executor-rendezvous spec](../openspec/changes/add-executor-rendezvous/specs/executor-rendezvous/spec.md) (ER-001 to ER-008), with its [design](../openspec/changes/add-executor-rendezvous/design.md) and [tasks](../openspec/changes/add-executor-rendezvous/tasks.md).
+- Current contract: [executor-rendezvous spec](../openspec/specs/executor-rendezvous/spec.md) (ER-001 to ER-008), with the archived [design](../openspec/changes/archive/2026-11-05-add-executor-rendezvous/design.md) and [tasks](../openspec/changes/archive/2026-11-05-add-executor-rendezvous/tasks.md).
 - Traceability: [executor-rendezvous traceability](../openspec/traceability/executor-rendezvous.md), one row per requirement with its named tests and reviewed-only gaps (task 2.1).
 - Evidence: [verification/executor-rendezvous.txt](../verification/executor-rendezvous.txt), the recorded commands, counts, laws and mutation totals of this lane's tree.
 - Grant authority: [docs/GRANT-ISSUANCE.md](GRANT-ISSUANCE.md). A provider's authority is a registered Issuance grant, and every Issuance trusted input is also a rendezvous input.
@@ -599,6 +599,17 @@ It may not replace ranking profile 1 (quote, provider id, serial). A
 different preference order needs a new, separately versioned profile number
 and a coordinated change to ER-003. This change adds no placement field, no
 movement cost and no proximity input.
+
+## Finite allocation counter
+
+The pinned runtime supports Nat through 2^48 − 1. Approval submission and
+selection share a monotonic `next_id` that remains above every allocated ID;
+max − 1 is the final allocatable ID. An otherwise eligible allocation at max
+returns the new model error `IdExhausted` and the original state. Earlier
+denials retain their existing order. This is an observable error API addition;
+it does not affect existing offers or selections, non-allocating withdrawal,
+or their authority checks. Exhaustion of the separate revision counter is not
+repaired here.
 
 ## Remaining host preconditions
 

@@ -1,0 +1,6 @@
+--- a/Rendezvous.bend
++++ b/Rendezvous.bend
+@@ -1614,2 +1614 @@
+-  Gate{id_room(state), IdExhausted{},
+-  Open{}}}}}}}
++  Open{}}}}}}

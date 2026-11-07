@@ -1,0 +1,7 @@
+--- a/Rendezvous.bend
++++ b/Rendezvous.bend
+@@ -940,0 +941 @@
++      Gate{id_room(state), IdExhausted{},
+@@ -965 +966 @@
+-def offer_gates(+state: State, +expected_revision: Nat, +from: I.Principal, +offer: Offer,
++}def offer_gates(+state: State, +expected_revision: Nat, +from: I.Principal, +offer: Offer,

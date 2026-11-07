@@ -432,6 +432,7 @@ type Error is Data:
   Replay{}
   WrongProfile{}
   AlreadyOpen{}
+  IdExhausted{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
 # state and an id. For an accepted offer the id is the offer's serial (the
@@ -556,6 +557,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case Replay{} Replay{}: True{}
     case WrongProfile{} WrongProfile{}: True{}
     case AlreadyOpen{} AlreadyOpen{}: True{}
+    case IdExhausted{} IdExhausted{}: True{}
     case _ _: False{}
 
 # Public accessor: whether the transition committed.
@@ -736,6 +738,13 @@ def version_supported(version: Nat) -> Bool:
 
 def revision_current(state: State, expected_revision: Nat) -> Bool:
   Nat.is_eq(revision(state), expected_revision)
+
+# The pinned Nat runtime tops out at 2^48 - 1. Allocations must keep
+# next_id above every approval and selection ID, so max has no successor.
+# This predicate is only a gate for allocation, not identity or authority;
+# it must not block existing selections, offers or withdrawals.
+def id_room(state: State) -> Bool:
+  Nat.is_lt(next_id(state), Nat.add(Nat.mul(65536n, 4294967295n), 65535n))
 
 # Exclusive expiry: a record valid until t is already expired at t.
 def unexpired(now: Nat, valid_until: Nat) -> Bool:
@@ -1132,7 +1141,8 @@ def approval_gates(+state: State, +expected_revision: Nat, +from: I.Principal,
       Gate{request_at_live(state, snapshot), StaleEpoch{},
       Gate{unexpired(Snapshot.now(snapshot), valid_until), Expired{},
       Gate{Bool.not(approval_serial_seen(seen(state), from, serial)), Replay{},
-      Open{}}}}}}}}}}}
+      Gate{id_room(state), IdExhausted{},
+      Open{}}}}}}}}}}}}
 
 def approval_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
     +approval: OriginApproval, +snapshot: Snapshot) -> Guard.Checks:
@@ -1179,8 +1189,8 @@ def submit_approval_checked(ok: Bool, +state: State, +expected_revision: Nat, +f
 # from the issuer state at every use. Denial order:
 # StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority,
 # ScopeMismatch (plan, then an origin the plan does not need), StaleEpoch
-# (the issuer's live stamp is not the request plan's), Expired, Replay; the
-# state is returned unchanged.
+# (the issuer's live stamp is not the request plan's), Expired, Replay,
+# IdExhausted; the state is returned unchanged.
 def submit_approval(+state: State, +expected_revision: Nat, +from: I.Principal,
     +approval: OriginApproval, +snapshot: Snapshot) -> Change:
   submit_approval_checked(Guard.all(approval_checks(state, expected_revision, from, approval, snapshot)),
@@ -1600,7 +1610,8 @@ def select_gates(+state: State, +session: N.Session, +expected_session: Nat,
   Gate{no_selection(selection(state)), AlreadySelected{},
   Gate{offers_unambiguous(offers(state)), ConflictingOffer{},
   Gate{Offers.nonempty(eligible_offers(offers(state), state, snapshot)), NoEligibleOffer{},
-  Open{}}}}}}
+  Gate{id_room(state), IdExhausted{},
+  Open{}}}}}}}
 
 def select_checks(+state: State, +session: N.Session, +expected_session: Nat,
     +n_context: N.Context, +snapshot: Snapshot) -> Guard.Checks:
@@ -1609,8 +1620,8 @@ def select_checks(+state: State, +session: N.Session, +expected_session: Nat,
 # Store the first-ranked eligible offer as the selection under the fresh id
 # `next_id`, with the request, the issuer's live stamp, `now` and
 # ranking_profile(), and advance `next_id` and the revision once. Called only
-# after every gate held; the None arm is unreachable because the last gate
-# requires an eligible offer, and it denies rather than select nothing.
+# after every gate held; the None arm is unreachable because the eligibility
+# gate requires an offer, and it denies rather than select nothing.
 def commit_selection(found: Maybe<&2, Offer>, state: State, +snapshot: Snapshot) -> Change:
   match found:
     case None{}:
@@ -1656,7 +1667,7 @@ def select_current(current: Bool, +state: State, +session: N.Session, +expected_
 # advancing `next_id` and the revision once; the change id is the selection
 # id. The selection authorizes nothing by itself. Denial order: StaleRevision,
 # WrongStage, ScopeMismatch, AlreadySelected, ConflictingOffer,
-# NoEligibleOffer; the state is returned unchanged.
+# NoEligibleOffer, IdExhausted; the state is returned unchanged.
 def select(+state: State, +expected_revision: Nat, +session: N.Session, +expected_session: Nat,
     +n_context: N.Context, +snapshot: Snapshot) -> Change:
   select_current(revision_current(state, expected_revision), state, session, expected_session,

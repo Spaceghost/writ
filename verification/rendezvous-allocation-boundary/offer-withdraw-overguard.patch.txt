@@ -1,0 +1,7 @@
+--- a/Rendezvous.bend
++++ b/Rendezvous.bend
+@@ -1746,0 +1747 @@
++  Gate{id_room(state), IdExhausted{},
+@@ -1751 +1752 @@
+-def withdraw_offer_checks(+state: State, +expected_revision: Nat, +from: I.Principal,
++}def withdraw_offer_checks(+state: State, +expected_revision: Nat, +from: I.Principal,

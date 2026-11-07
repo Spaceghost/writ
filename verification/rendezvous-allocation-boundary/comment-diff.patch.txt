@@ -1,0 +1,23 @@
+--- a/Rendezvous.bend
++++ b/Rendezvous.bend
+@@ -1190,8 +1190,7 @@
+ # StaleRevision, UnknownVersion, Unauthenticated, WrongDomain, NotAuthority,
+ # ScopeMismatch (plan, then an origin the plan does not need), StaleEpoch
+ # (the issuer's live stamp is not the request plan's), Expired, Replay,
+-# IdExhausted; the
+-# state is returned unchanged.
++# IdExhausted; the state is returned unchanged.
+ def submit_approval(+state: State, +expected_revision: Nat, +from: I.Principal,
+     +approval: OriginApproval, +snapshot: Snapshot) -> Change:
+   submit_approval_checked(Guard.all(approval_checks(state, expected_revision, from, approval, snapshot)),
+@@ -1621,8 +1620,8 @@
+ # Store the first-ranked eligible offer as the selection under the fresh id
+ # `next_id`, with the request, the issuer's live stamp, `now` and
+ # ranking_profile(), and advance `next_id` and the revision once. Called only
+-# after every gate held; the None arm is unreachable because the last gate
+-# checks require an eligible offer, and it denies rather than select nothing.
++# after every gate held; the None arm is unreachable because the eligibility
++# gate requires an offer, and it denies rather than select nothing.
+ def commit_selection(found: Maybe<&2, Offer>, state: State, +snapshot: Snapshot) -> Change:
+   match found:
+     case None{}:

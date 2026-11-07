@@ -1,5 +1,10 @@
 # Verification record
 
+The [rendezvous allocation-boundary record](verification/rendezvous-allocation-boundary/README.md)
+checks exhausted approval/selection IDs without blocking existing offers,
+withdrawals or current selections when revision headroom exists. Terminal
+rendezvous revision and protected-host qualification remain separate gaps.
+
 The [ffa332d automatic CI record](verification/master-ci-ffa332d/README.md)
 retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
 strict Windows worker failure and the refused Linux protected setup.

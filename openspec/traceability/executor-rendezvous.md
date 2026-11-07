@@ -1,7 +1,8 @@
 # Executor rendezvous traceability
 
-Proposed change: [add-executor-rendezvous](../changes/add-executor-rendezvous/specs/executor-rendezvous/spec.md).
-This change is proposed. Nothing here marks a host adapter, a facade entry
+Baseline contract: [executor-rendezvous](../specs/executor-rendezvous/spec.md); the original
+change is [archived](../changes/archive/2026-11-05-add-executor-rendezvous/).
+Nothing here marks a host adapter, a facade entry
 point or an acceptance scenario as implemented: the rendezvous model exists in
 Bend only, it is not wired to any host, the DataOS facade has no rendezvous
 entry, and the path stays disabled until its host preconditions hold. Every
@@ -116,3 +117,17 @@ Not exercised anywhere in this change: transport authentication, signature
 verification for offers and approvals carried off-host, durable storage and
 recovery, concurrent hosts, trial metering, quote settlement, and any native
 host (Genode, Unikraft, Linux, Windows, rclone). A CPU run is not a GPU test.
+
+## Shared approval and selection identifier exhaustion
+
+The pinned Nat runtime supports values through 2^48 − 1. The shared `next_id`
+must remain above every allocated approval and selection ID, so max − 1 is
+the last allocatable ID. Approval submission and selection append
+`IdExhausted` as the final gate, preserving prior failure precedence and
+unchanged denial; the constructor extends the public model error API. Refusing
+an unrepresentable successor preserves monotonic IDs rather than weakening a
+security law. The [boundary tests](../../RendezvousBoundaryTests.bend) check
+both final allocations and exhausted/stale/multiple-fault denials with full
+state comparison, plus offer submission, withdrawal, current selection and
+abandonment at terminal `next_id`. Revision exhaustion is separate and remains
+unresolved; no authenticated host or durable serialization is established.

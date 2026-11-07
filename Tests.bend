@@ -25,6 +25,7 @@ import ./IssuanceTests.bend as Issuance
 import ./IssuanceBoundaryTests.bend as IssuanceBoundary
 import ./AuditTests.bend as Audit
 import ./RendezvousTests.bend as Rendezvous
+import ./RendezvousBoundaryTests.bend as RendezvousBoundary
 import ./PropertyTests.bend as Properties
 
 def main() -> IO(Unit):
@@ -55,5 +56,6 @@ def main() -> IO(Unit):
     IssuanceBoundary.main()
     Audit.main()
     Rendezvous.main()
+    RendezvousBoundary.main()
     Properties.main()
     IO.print("ALL LIBRARY TESTS PASSED")
