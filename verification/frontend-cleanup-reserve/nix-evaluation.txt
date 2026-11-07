@@ -1,0 +1,7 @@
+Nix offline evaluation of tests-js on merge a74bcb9:
+/nix/store/k76g8sm1ivali3wb9inal9bb865ykwbh-writ-tests-js.drv
+Its evaluated buildCommand uses /nix/store/whd8rd9n7jf5bz9siy3yjw4h8kkqwqq3-source,
+requires a successful Bend run, the ALL LIBRARY TESTS PASSED final line,
+and 2673 PASS lines. The 96 filtered .bend files, including both new reserve
+modules, match the working tree by SHA-256 (nix-filtered-inputs.sha256).
+This is evaluation and source inspection only; no derivation build was run.

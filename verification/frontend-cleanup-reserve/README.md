@@ -43,3 +43,22 @@ the focused test SHA-256 is
 and the root test driver SHA-256 is
 `c7dec0e3ceb142930daf31d549d3cc25436a25828c810827b093ffd7b6e1f254`.
 Native and filtered-source evidence is recorded separately when available.
+
+The optimized native build and GPU-off CPU run completed successfully. Its
+[output](native.log) matches the full Bend and Node logs byte-for-byte, with
+2,673 PASS lines; [build stdout](native-build.log), [build stderr](native-build.stderr)
+and [run stderr](native.stderr) are empty. The 132-input inventory was checked
+before and after the build and run. This is CPU evidence, not GPU verification.
+The six supplemental forged-count probes also matched on GPU-off native CPU;
+see [output](forged-native.log), [input hashes](forged-inputs.sha256),
+[build stdout](forged-native-build.log), [build stderr](forged-native-build.stderr)
+and [run stderr](forged-native.stderr). An initial shell invocation found no
+`bend` in PATH and produced no binary or test execution; the recorded successful
+build used the pinned Bend 2.0.39 executable by absolute path.
+
+Separate synthetic native checks passed: [24 allocator invariants](allocator.log)
+under ASan/UBSan and the owned-temp capture-to-Bend/Node [handoff](handoff.log).
+Their stderr logs are [allocator](allocator.stderr) and [handoff](handoff.stderr).
+They do not test a native frontend or authenticate a host. OpenSpec strict
+validation is recorded in [openspec.log](openspec.log), and the evaluated Nix
+source filter and assertion gate are described in [nix-evaluation.txt](nix-evaluation.txt).
