@@ -1,0 +1,8 @@
+positive: accepted
+negative: accepted
+missing: refused
+symlink: refused
+fifo: refused
+hardlink: refused
+oversize: refused
+wrong-directory: refused

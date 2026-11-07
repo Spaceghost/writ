@@ -3,8 +3,9 @@
 A public synthetic R request could run under nested Genode `init` on a fresh
 GitHub-hosted VM, while the user's existing local VMs and shared Genode cache
 are untouched. A failed route, incomplete build or timeout would be retained
-as such. This is a **design only**: no workflow change, CI dispatch, Genode run
-or negative control is performed here. The [first-slice plan](nested-routing-first-slice.md)
+as such. The isolated candidate now contains the proposed workflow and build
+tooling for review. No CI dispatch, Genode run or native negative control is
+recorded here. The [first-slice plan](nested-routing-first-slice.md)
 and [fixture](../../../contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_accept.run)
 remain experimental; no protected host is qualified.
 
@@ -36,10 +37,14 @@ artifacts separate from credentials. These measures do not prove the VM, its
 network, dependencies, runner services or same-user subprocesses are unable to
 access every platform credential. Public source/toolchain trust, provider and
 action integrity, and platform credential isolation remain explicit risks.
+Both experimental jobs intentionally conclude nonzero/incomplete while
+in-guest cleanup is unverified. Evidence separately records whether the
+positive fixture or negative-control assertions matched; an assertion match
+does not change the overall incomplete classification.
 
 ## Exact branch-only change to the existing workflow
 
-The proposed future implementation changes only the existing
+The candidate's workflow portion changes only the existing
 [WritFS Genode workflow](../../../.github/workflows/writfs-genode-native.yml),
 not a new workflow or a default acceptance route. Review its then-current
 source before implementing. Its current push filter includes `master` and
@@ -62,6 +67,9 @@ branch is proposed as `lane/genode-nested-public-ci`.
   source `c14f125454e279011589b9527069161241419171` in each job. Verify the
   exact HEAD, clean worktree and source manifest before build. This avoids a
   self-referential source hash in the separately committed workflow amendment.
+  The candidate also rechecks fixture HEAD, clean status and manifest after the
+  run; these before/after observations do not attest to uninterrupted source
+  identity during execution.
   Record both that fixture source SHA and the actual workflow/run SHA and ref;
   an independently reviewed exact workflow commit and job definitions must be
   checked against the run metadata. If current master later advances, do not
@@ -84,8 +92,8 @@ branch is proposed as `lane/genode-nested-public-ci`.
   or platform holds no credential. Third-party actions must remain pinned and
   independently reviewed; do not add `pull_request_target` or arbitrary input.
 
-No workflow code is supplied or approved by this note. The actual change must
-be reviewed before any run, including branch-guard and pin behavior. The
+The actual workflow and tooling must be independently reviewed before any run,
+including branch-guard and pin behavior. The
 existing workflow's `build-and-run.sh` exercises a different WritFS base-hw
 path; its successful run would not exercise this nested channel.
 
@@ -116,15 +124,20 @@ strings:
 - The Genode 26.08 `libc.port` pins FreeBSD 12.0 `src.txz` SHA-256
   `0da393ac2174168a71c1c527d1453e07372295187d05c288250800cb152a889b`.
   Its upstream URL in that pinned port uses HTTP. Before implementation,
-  review a verified HTTPS acquisition/cache procedure preserving these exact
+  use a verified HTTPS acquisition/cache procedure preserving these exact
   bytes and Genode's port checks; do not silently substitute input or alter
-  the checked-in port. Record errors if the input cannot be obtained.
+  the checked-in port. The candidate preloads the private cache and refuses
+  the port tool's `wget` fallback. The FreeBSD archive HTTPS bytes were locally
+  checked against this hash; record errors if the VM cannot obtain them.
 - This channel monitor's existing makefile requires host `clang-23`, including
   its matching resource directory. The Writ flake pins a clang 23.1.3 through
   `flake.lock`, while prior Genode host evidence used 23.1.1. Provision an
   independently verified, immutable clang-23 and record binary/resource
-  hashes, full version and origin; validate the exact pinned flake-derived
-  option or an equivalently pinned artifact before writing the workflow. Do
+  hashes, full version and origin. The candidate uses the kernel.org-mirrored
+  ClangBuiltLinux 23.1.3 archive SHA-256
+  `2998c82e4035d090e5e748d1a8fc118b1b7b48643f5d5b8f30c9135036a730f6`,
+  independently checked against the published checksum and fetched archive.
+  The actual VM input and complete resource directory still require validation. Do
   not assume the hosted image contains it or claim 23.1.3 was previously run
   on this channel. Pin or record all remaining packages and runner image;
   install Genode's required make, Tcl/Expect, flex, bison and rpcgen in the
@@ -172,7 +185,14 @@ input and generated-output hashes, exact run/workflow/source IDs, runner image
 and configuration, positive/negative distinction and teardown uncertainty.
 Use the existing pinned upload action with `if: always()` where execution
 reaches it, and retain public logs only; this cannot guarantee upload after a
-hard cancellation or VM failure. Missing evidence remains missing, not a pass.
+hard cancellation or VM failure. The candidate selects explicit artifact
+filenames and snapshots regular files through bounded, non-following file
+descriptors. This limits accidental path substitution during snapshot; a
+surviving same-UID process could still replace an output before or during the
+upload action. The approach does not prove credential isolation from such a
+process, and the platform/action credentials remain a residual risk. If that
+threat must be excluded, this candidate needs a stronger separately reviewed
+boundary. Missing evidence remains missing, not a pass.
 
 Even a successful run would show only this public synthetic base-linux route
 and decision under the observed configuration. It would not prove cleanup,

@@ -226,14 +226,16 @@ beside the overlay as prepared so the monitor target can find it; preserve the
 actual build/run commands, input hashes, logs and separate failing native
 negative control. The pinned Genode run tool can retry and its base-linux
 power-off fallback does not itself prove that descendants have exited. Before
-running, review a supervisor that creates and records a process group owned by
+running on a shared host, review a supervisor that creates and records a process group owned by
 that invocation, captures retries and cleanup status, and verifies retirement
 of that group's descendants on success, error and timeout. A bare process group
 cannot prove that escaped descendants are gone, and observed parent cgroup
 writability does not rule out migration. The [PID-namespace alternative](nested-channel/PID-NAMESPACE-DESIGN.md)
 is an unimplemented design with a separate synthetic test plan. The read-only
 `supervisor-preflight.py` probe accepts no workload and always reports incomplete.
-Report any run incomplete if cleanup cannot be verified. Never use global `core`
+The separately reviewed [disposable public-VM proposal](../../../openspec/changes/add-genode-host/nested-routing-disposable-ci.md)
+does not establish in-guest cleanup; its isolated workflow candidate needs
+review before dispatch. Report any run incomplete if cleanup cannot be verified. Never use global `core`
 or QEMU kills, overwrite shared caches or touch unrelated VMs.
 The helper's broad default route and diagnostic LOG remain present; the fixed
 client cannot vary its suffix, and this fixture establishes neither
@@ -254,6 +256,7 @@ are not rejected by the existing shim; trusted configuration must avoid them.
 | `src/test/writfs/`, `src/test/writfs_vfs/` | Native diagnostic clients; never a protected worker profile |
 | `run/` | Trusted supervisor topology, fixed public fixture, explicit ROM/service routes, and native completion gates |
 | `nested-channel/` | Experimental trusted nested-init topology, source staging and public fixture assertions; no policy, host qualification or identity attestation |
+| `nested-channel/ci-*.sh`, `ci-*.mjs` | Branch-scoped disposable-VM packaging, public evidence I/O and synthetic local I/O probes; no verified process cleanup or qualified host |
 | `build-and-run.sh`, workflow | Pinned inputs, cross-build packaging, fresh generated Bend artifacts, QEMU execution and evidence |
 
 Authorization, original policy/provenance, grant checking, state transitions,

@@ -19,6 +19,7 @@ permissions:
 
 jobs:
   base-hw:
+    if: ${{ !(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/genode-nested-public-ci' && github.repository == 'Spaceghost/writ') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
@@ -72,5 +73,239 @@ jobs:
         with:
           name: writfs-genode-native-${{ github.run_attempt }}
           path: ${{ runner.temp }}/writfs-genode/logs/
+          if-no-files-found: error
+          retention-days: 14
+
+  nested-public-positive:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/genode-nested-public-ci' && github.repository == 'Spaceghost/writ' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out reviewed workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: ci-tooling
+      - name: Check out fixed public fixture source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: c14f125454e279011589b9527069161241419171
+          persist-credentials: false
+          path: fixture-source
+      - name: Prepare public evidence directory and verify tooling
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writ-nested-positive" "$RUNNER_TEMP/writ-nested-positive-raw"
+          test "$(git -C "$GITHUB_WORKSPACE/ci-tooling" rev-parse HEAD)" = "$GITHUB_SHA"
+          git -C "$GITHUB_WORKSPACE/ci-tooling" status --porcelain --untracked-files=normal > "$RUNNER_TEMP/writ-nested-positive/tooling-status.txt"
+          stat -c '%d:%i:%u' "$RUNNER_TEMP/writ-nested-positive-raw" > "$RUNNER_TEMP/writ-nested-positive/raw-directory-id.txt"
+          test ! -s "$RUNNER_TEMP/writ-nested-positive/tooling-status.txt"
+          sha256sum "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-disposable.sh" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
+            > "$RUNNER_TEMP/writ-nested-positive/tooling-sha256.txt"
+          printf 'workflow_sha=%s\nworkflow_ref=%s\nrun_id=%s\nattempt=%s\nrunner_image=%s %s\n' \
+            "$GITHUB_SHA" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
+            "$ImageOS" "$ImageVersion" > "$RUNNER_TEMP/writ-nested-positive/workflow-identity.txt"
+      - name: Install public build dependencies
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential flex bison rpcsvc-proto expect tcl ripgrep git curl xz-utils python3 nodejs
+      - name: Run public nested fixture and snapshot available evidence
+        run: |
+          set -uo pipefail
+          set +e
+          timeout --foreground --signal=TERM --kill-after=15s 48m \
+            bash "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
+              positive "$GITHUB_WORKSPACE/fixture-source" "$RUNNER_TEMP/writ-nested-positive-raw" \
+              "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          capture_status=$?
+          set -e
+          printf 'outer_capture_exit=%s\ncleanup=unverified\nfiles=bounded_snapshots_may_be_incomplete\n' "$capture_status" \
+            > "$RUNNER_TEMP/writ-nested-positive/capture-status.txt"
+          raw_directory_id="$(cat "$RUNNER_TEMP/writ-nested-positive/raw-directory-id.txt")"
+          set +e
+          timeout --foreground --signal=TERM --kill-after=5s 2m \
+            node "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
+            "$RUNNER_TEMP/writ-nested-positive-raw" "$RUNNER_TEMP/writ-nested-positive" "$raw_directory_id" positive
+          snapshot_status=$?
+          set -e
+          printf 'snapshot_exit=%s\n' "$snapshot_status" >> "$RUNNER_TEMP/writ-nested-positive/capture-status.txt"
+          if [ "$capture_status" -eq 0 ] && [ "$snapshot_status" -eq 0 ] && \
+             [ -f "$RUNNER_TEMP/writ-nested-positive/observed.txt" ] && \
+             [ -f "$RUNNER_TEMP/writ-nested-positive/installed-config.txt" ]; then
+            printf 'fixture_assertions=matched\ncleanup=unverified\noverall=incomplete\n' \
+              > "$RUNNER_TEMP/writ-nested-positive/conclusion.txt"
+          else
+            printf 'fixture_assertions=not_confirmed\ncleanup=unverified\noverall=incomplete\n' \
+              > "$RUNNER_TEMP/writ-nested-positive/conclusion.txt"
+          fi
+          echo 'INCOMPLETE: in-guest descendant cleanup is not verified' >&2
+          exit 1
+      - name: Retain public evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writ-nested-positive-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/writ-nested-positive/workflow-identity.txt
+            ${{ runner.temp }}/writ-nested-positive/tooling-status.txt
+            ${{ runner.temp }}/writ-nested-positive/tooling-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/raw-directory-id.txt
+            ${{ runner.temp }}/writ-nested-positive/capture-status.txt
+            ${{ runner.temp }}/writ-nested-positive/conclusion.txt
+            ${{ runner.temp }}/writ-nested-positive/snapshot-result.json
+            ${{ runner.temp }}/writ-nested-positive/identity.txt
+            ${{ runner.temp }}/writ-nested-positive/input-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/tool-identity.txt
+            ${{ runner.temp }}/writ-nested-positive/clang-resource-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/genode-git-status.txt
+            ${{ runner.temp }}/writ-nested-positive/genode-archive-comparison.txt
+            ${{ runner.temp }}/writ-nested-positive/genode-archive-git-status.txt
+            ${{ runner.temp }}/writ-nested-positive/genode-commit.txt
+            ${{ runner.temp }}/writ-nested-positive/environment.txt
+            ${{ runner.temp }}/writ-nested-positive/source-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/overlay-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/generated-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/original.run
+            ${{ runner.temp }}/writ-nested-positive/actual.run
+            ${{ runner.temp }}/writ-nested-positive/config-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/negative.diff
+            ${{ runner.temp }}/writ-nested-positive/build.conf
+            ${{ runner.temp }}/writ-nested-positive/tools.conf
+            ${{ runner.temp }}/writ-nested-positive/build-config-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/run.log
+            ${{ runner.temp }}/writ-nested-positive/run-status.txt
+            ${{ runner.temp }}/writ-nested-positive/run-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/boot-inputs-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/installed-config.txt
+            ${{ runner.temp }}/writ-nested-positive/observed.txt
+            ${{ runner.temp }}/writ-nested-positive/fixture-post-status.txt
+            ${{ runner.temp }}/writ-nested-positive/fixture-post-manifest.txt
+            ${{ runner.temp }}/writ-nested-positive/setup.log
+            ${{ runner.temp }}/writ-nested-positive/driver-status.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  nested-public-negative:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/genode-nested-public-ci' && github.repository == 'Spaceghost/writ' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out reviewed workflow tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: ci-tooling
+      - name: Check out fixed public fixture source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: c14f125454e279011589b9527069161241419171
+          persist-credentials: false
+          path: fixture-source
+      - name: Prepare public evidence directory and verify tooling
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writ-nested-negative" "$RUNNER_TEMP/writ-nested-negative-raw"
+          test "$(git -C "$GITHUB_WORKSPACE/ci-tooling" rev-parse HEAD)" = "$GITHUB_SHA"
+          git -C "$GITHUB_WORKSPACE/ci-tooling" status --porcelain --untracked-files=normal > "$RUNNER_TEMP/writ-nested-negative/tooling-status.txt"
+          stat -c '%d:%i:%u' "$RUNNER_TEMP/writ-nested-negative-raw" > "$RUNNER_TEMP/writ-nested-negative/raw-directory-id.txt"
+          test ! -s "$RUNNER_TEMP/writ-nested-negative/tooling-status.txt"
+          sha256sum "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-disposable.sh" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
+            > "$RUNNER_TEMP/writ-nested-negative/tooling-sha256.txt"
+          printf 'workflow_sha=%s\nworkflow_ref=%s\nrun_id=%s\nattempt=%s\nrunner_image=%s %s\n' \
+            "$GITHUB_SHA" "$GITHUB_REF" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
+            "$ImageOS" "$ImageVersion" > "$RUNNER_TEMP/writ-nested-negative/workflow-identity.txt"
+      - name: Install public build dependencies
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            build-essential flex bison rpcsvc-proto expect tcl ripgrep git curl xz-utils python3 nodejs
+      - name: Run public nested fixture and snapshot available evidence
+        run: |
+          set -uo pipefail
+          set +e
+          timeout --foreground --signal=TERM --kill-after=15s 48m \
+            bash "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
+              negative "$GITHUB_WORKSPACE/fixture-source" "$RUNNER_TEMP/writ-nested-negative-raw" \
+              "$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          capture_status=$?
+          set -e
+          printf 'outer_capture_exit=%s\ncleanup=unverified\nfiles=bounded_snapshots_may_be_incomplete\n' "$capture_status" \
+            > "$RUNNER_TEMP/writ-nested-negative/capture-status.txt"
+          raw_directory_id="$(cat "$RUNNER_TEMP/writ-nested-negative/raw-directory-id.txt")"
+          set +e
+          timeout --foreground --signal=TERM --kill-after=5s 2m \
+            node "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
+            "$RUNNER_TEMP/writ-nested-negative-raw" "$RUNNER_TEMP/writ-nested-negative" "$raw_directory_id" negative
+          snapshot_status=$?
+          set -e
+          printf 'snapshot_exit=%s\n' "$snapshot_status" >> "$RUNNER_TEMP/writ-nested-negative/capture-status.txt"
+          if [ "$capture_status" -eq 0 ] && [ "$snapshot_status" -eq 0 ] && \
+             [ -f "$RUNNER_TEMP/writ-nested-negative/observed.txt" ] && \
+             [ -f "$RUNNER_TEMP/writ-nested-negative/installed-config.txt" ]; then
+            printf 'fixture_assertions=matched\ncleanup=unverified\noverall=incomplete\n' \
+              > "$RUNNER_TEMP/writ-nested-negative/conclusion.txt"
+          else
+            printf 'fixture_assertions=not_confirmed\ncleanup=unverified\noverall=incomplete\n' \
+              > "$RUNNER_TEMP/writ-nested-negative/conclusion.txt"
+          fi
+          echo 'INCOMPLETE: in-guest descendant cleanup is not verified' >&2
+          exit 1
+      - name: Retain public evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writ-nested-negative-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/writ-nested-negative/workflow-identity.txt
+            ${{ runner.temp }}/writ-nested-negative/tooling-status.txt
+            ${{ runner.temp }}/writ-nested-negative/tooling-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/raw-directory-id.txt
+            ${{ runner.temp }}/writ-nested-negative/capture-status.txt
+            ${{ runner.temp }}/writ-nested-negative/conclusion.txt
+            ${{ runner.temp }}/writ-nested-negative/snapshot-result.json
+            ${{ runner.temp }}/writ-nested-negative/identity.txt
+            ${{ runner.temp }}/writ-nested-negative/input-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/tool-identity.txt
+            ${{ runner.temp }}/writ-nested-negative/clang-resource-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/genode-git-status.txt
+            ${{ runner.temp }}/writ-nested-negative/genode-archive-comparison.txt
+            ${{ runner.temp }}/writ-nested-negative/genode-archive-git-status.txt
+            ${{ runner.temp }}/writ-nested-negative/genode-commit.txt
+            ${{ runner.temp }}/writ-nested-negative/environment.txt
+            ${{ runner.temp }}/writ-nested-negative/source-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/overlay-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/generated-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/original.run
+            ${{ runner.temp }}/writ-nested-negative/actual.run
+            ${{ runner.temp }}/writ-nested-negative/config-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/negative.diff
+            ${{ runner.temp }}/writ-nested-negative/build.conf
+            ${{ runner.temp }}/writ-nested-negative/tools.conf
+            ${{ runner.temp }}/writ-nested-negative/build-config-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/run.log
+            ${{ runner.temp }}/writ-nested-negative/run-status.txt
+            ${{ runner.temp }}/writ-nested-negative/run-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/boot-inputs-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/installed-config.txt
+            ${{ runner.temp }}/writ-nested-negative/observed.txt
+            ${{ runner.temp }}/writ-nested-negative/fixture-post-status.txt
+            ${{ runner.temp }}/writ-nested-negative/fixture-post-manifest.txt
+            ${{ runner.temp }}/writ-nested-negative/setup.log
+            ${{ runner.temp }}/writ-nested-negative/driver-status.txt
           if-no-files-found: error
           retention-days: 14

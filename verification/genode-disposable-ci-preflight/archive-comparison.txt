@@ -1,0 +1,2 @@
+reference_genode_commit=d18ee9e917200b059549e21f2dd9a55bfe61a0eb
+archive_git_status_lines=0
