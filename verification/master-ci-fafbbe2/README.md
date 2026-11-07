@@ -1,7 +1,7 @@
 # Automatic platform CI for master fafbbe2
 
 Five push-triggered workflows were listed at exact source
-`fafbbe2bed9fecd30d92f98cd0be1e8dcef90dd0`. Three have completed in this
+`fafbbe2bed9fecd30d92f98cd0be1e8dcef90dd0`. Four have completed in this
 checkpoint. None of these outcomes qualifies a protected host.
 
 - [Windows Node](windows-node-42414768590/README.md): passed 2,673 shared
@@ -11,8 +11,10 @@ checkpoint. None of these outcomes qualifies a protected host.
 - [Windows native](windows-native-42414768601/README.md): **failed**; strict
   byte-worker network, clipboard and COM observations were incomplete. The
   separate no-data diagnostic reported pass.
-- Linux public-canary run 42414768556 and Genode base-hw run 42414768625 were
-  still in progress at this checkpoint; no outcome or artifacts are claimed.
+- [Genode base-hw](genode-42414768625/README.md): passed 2,673 core, 69 mount
+  and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
+- Linux public-canary run 42414768556 was still in progress at this checkpoint;
+  no outcome or artifacts are claimed.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized

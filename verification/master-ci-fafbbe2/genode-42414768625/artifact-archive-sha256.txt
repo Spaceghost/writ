@@ -1,0 +1,1 @@
+3f0963c0a1b19fab93a5f1b8fe7342d3fd3fd16c7eefed165ab6e2a6774da890  writfs-genode-native-1.zip
