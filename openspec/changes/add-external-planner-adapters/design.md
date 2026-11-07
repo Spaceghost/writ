@@ -27,6 +27,11 @@ unsupported evidence kinds fail closed. Transport framing may vary by service;
 the canonical core facts and scope comparisons do not depend on JSON or a
 foreign language's object semantics.
 
+The proposed, deliberately narrower first slice and its unimplemented tests are
+specified in [first-slice-envelope.md](first-slice-envelope.md). It does not
+enable an endpoint or complete this change's candidate, evidence, or authority
+integration.
+
 ### Planner descriptions remain untrusted
 
 An adapter accepts proposed values and identifiers. It resolves current source
