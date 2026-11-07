@@ -13,6 +13,10 @@ A proposed no-data preflight in the same strict worker needs a way to hand publi
 
 These labels describe evidence boundaries only. Writ's authority and policy remain in Bend, not in a C handshake or a worker assertion. A real design must specify serialization between transition and revocation, exact revalidation/commit points and how it prevents stale or replayed handoffs; merely checking these facts at different times is insufficient.
 
+The follow-up [handoff and resource-control alternatives](handoff-control-alternatives.md)
+compares candidate endpoints and their unresolved security and evidence gaps;
+it makes no security-design decision and implements no transition.
+
 ## Alternatives requiring design assessment
 
 - **New private inbound handoff:** keep public fixture parameters absent at creation, but add an inherited or securely established broker-to-worker endpoint. Specify exactly who owns each end, how its peer and the retained creation lifetime/session are authenticated, bounded message grammar and sequencing, allowed contents, timeout, closure and treatment after protected input. Prevent the endpoint from becoming a new authority or output route. This is a new reachable handle/channel, requiring a security-design choice about its admitted authority and mediation.
