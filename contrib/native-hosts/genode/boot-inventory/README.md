@@ -131,7 +131,7 @@ synthetic public filenames into bounded 4,096/512-byte snapshots. It holds
 `O_PATH` inodes, uses a verified Linux procfs FD view, rechecks both names and
 the directory, and exposes no partial bytes on failure. This independent native
 I/O slice does not parse, hash, authenticate or call the Bend checker; it has no
-worker, FFI or workflow connection. The trusted caller, exclusive stable FD
+worker, production FFI or workflow connection. The trusted caller, exclusive stable FD
 table, exclusive owned output directory, Linux kernel and procfs/mount
 namespace remain prerequisites. Cleanup compares saved device/inode/type before closing each owned FD and
 refuses a demonstrably different inode, but that is not proof of ownership.
@@ -139,3 +139,9 @@ A synthetic same-inode FD-number replacement returned partial and was closed;
 concurrent FD-table manipulation and adaptive same-UID mutation are not detected in general; blocked syscalls have no
 external deadline. The [owned-temp controls](../../../../verification/genode-pair-capture/README.md)
 do not qualify any host or establish worker exit or boot consumption.
+
+A [test-only synthetic handoff](../../../../verification/genode-pair-handoff/README.md)
+uses ctypes capture, fixed public hex environment values and a Bend-owned
+decoder to exercise the pure pair checker. It does not add a worker, production
+FFI, process supervisor or authority path; the test has no enforced child
+deadline and must never receive secrets.

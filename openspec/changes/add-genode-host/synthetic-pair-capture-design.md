@@ -7,7 +7,7 @@ returns a digest, not a byte snapshot, and the separate
 [Bend checker](synthetic-pair-checker-design.md) performs no filesystem I/O.
 A fixed-name, bounded snapshot primitive is a useful independent native I/O
 slice; neither file nor a successful capture establishes a worker result,
-authenticity, completeness, host qualification, or Writ authority. The [standalone synthetic capture](../../../contrib/native-hosts/genode/boot-inventory/capture.h) now implements this bounded I/O slice; its [owned-temp evidence](../../../verification/genode-pair-capture/README.md) does not implement an FFI, worker, launcher or workflow.
+authenticity, completeness, host qualification, or Writ authority. The [standalone synthetic capture](../../../contrib/native-hosts/genode/boot-inventory/capture.h) now implements this bounded I/O slice; its [owned-temp evidence](../../../verification/genode-pair-capture/README.md) does not implement a production FFI, worker, launcher or workflow.
 
 The native exception permits Linux OS ABI and descriptor lifetime operations,
 not a second protocol or policy engine. The only native outcome is a partial
@@ -41,9 +41,8 @@ failure results leave the whole result zero. No file descriptors, partial
 lengths, hashes or file contents accompany failure. This result cannot be
 confused with a syntactic match, complete inventory or a successfully exited
 worker. A trusted caller owns the returned memory; no API supplies an
-implicit parser or invokes Bend. A later transport or FFI requires a separate
-byte-preservation, lifetime, bounds and failure review before passing these
-exact captured bytes to the Bend checker.
+implicit parser or invokes Bend. Production transport or FFI requires a separate byte-preservation, lifetime,
+bounds and failure review before passing captured bytes to the Bend checker.
 
 ## Trusted inputs and observation sequence
 
@@ -172,6 +171,8 @@ actual native entry, not a substitute parser:
 
 Native synthetic checks, sanitizers/analyzer, applicable root Bend/proof,
 OpenSpec and manifest evidence must identify the exact source. The pure Bend
-checker remains separate; matching `CAPTURED_PARTIAL` snapshots against its
-syntax requires future reviewed plumbing. No Genode/QEMU, identity probe,
-workflow, GPU or protected-host execution is implied.
+checker remains separate. A [test-only synthetic handoff](../../../verification/genode-pair-handoff/README.md)
+exercises `CAPTURED_PARTIAL` bytes through a fixed Bend decoder and checker;
+production FFI, worker identity and supervised transport remain unimplemented.
+No Genode/QEMU, identity probe, workflow, GPU or protected-host execution is
+implied.

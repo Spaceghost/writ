@@ -1,0 +1,5 @@
+--- a/contrib/native-hosts/genode/boot-inventory/pair-checker/HandoffTest.bend
++++ b/contrib/native-hosts/genode/boot-inventory/pair-checker/HandoffTest.bend
+@@ -18 +18 @@
+-    case True{}: Some{(value - 87 : U32)}
++    case True{}: Some{(value - 86 : U32)}

@@ -58,3 +58,10 @@ OpenSpec validation is structural; no task was closed and no GPU or host probe
 was run. Source/testing occurred on the reviewed design base
 `55343f5b790d2aceb36c7098fcf14fe0136f0ef3`, with changed files identified in
 the delivered manifest; local captures may precede their evidence commit.
+
+The later evidence-only reconciliation retains the separately reviewed
+[synthetic pair handoff](../genode-pair-handoff/README.md), including its new
+standalone contribution test `HandoffTest.bend`. That file was not present in
+the 119-file stage test inventory or used by the recorded root suite/native
+build. The tested 119 file contents and the root stage tests, workflow and Nix
+inputs remain unchanged; prior results retain their tested-source attribution.

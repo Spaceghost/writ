@@ -1,0 +1,24 @@
+PASS bounded stdout and stderr exact cap and cap plus one; direct children waited
+PASS selector setup failure closes pipes and waits the direct child
+generated test JS SHA-256 ac02541efb160aeb6f6a0890744f6005c56ad9882a9888a9e798953002bace1e
+PASS oversized ABI lengths rejected before slicing and invocation
+PASS canonical positive pair
+PASS changed manifest rejected
+PASS changed status rejected
+PASS swapped canonical pair exceeds status cap and does not launch
+PASS NUL LF high bytes preserved
+PASS empty snapshots preserved
+PASS both native caps preserved
+PASS manifest syntax cap plus one preserved
+PASS status syntax cap plus one preserved
+PASS manifest capture cap plus one does not launch
+PASS status capture cap plus one does not launch
+PASS missing entry does not launch
+Traceback (most recent call last):
+  File "/tmp/writ-pair-handoff-mutants/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py", line 249, in <module>
+    trial('close uncertainty does not launch', b'a', b'b', commands, fault_close=1)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/writ-pair-handoff-mutants/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py", line 157, in trial
+    assert calls == before_calls, 'capture failure must not launch Bend'
+           ^^^^^^^^^^^^^^^^^^^^^
+AssertionError: capture failure must not launch Bend

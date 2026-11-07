@@ -1,0 +1,15 @@
+PASS bounded stdout and stderr exact cap and cap plus one; direct children waited
+PASS selector setup failure closes pipes and waits the direct child
+generated test JS SHA-256 66c4a62a95fd043f93a29005d9272fe4595a41e88d595f93f09e0dde8f056f3d
+PASS oversized ABI lengths rejected before slicing and invocation
+Traceback (most recent call last):
+  File "/tmp/writ-pair-handoff-mutants/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py", line 235, in <module>
+    trial('canonical positive pair', fixture_manifest, fixture_status, commands, 'PairSyntaxMatch')
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/writ-pair-handoff-mutants/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py", line 164, in trial
+    for result in results: expect_result(result, m, s, outcome)
+                           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/writ-pair-handoff-mutants/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py", line 113, in expect_result
+    assert out == expected_output, 'Bend did not return exactly the captured bytes and outcome'
+           ^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Bend did not return exactly the captured bytes and outcome

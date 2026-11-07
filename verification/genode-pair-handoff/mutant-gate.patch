@@ -1,0 +1,5 @@
+--- a/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py
++++ b/contrib/native-hosts/genode/boot-inventory/pair-checker/test-handoff.py
+@@ -134 +134 @@
+-    if rc != 1:
++    if rc == 0:
