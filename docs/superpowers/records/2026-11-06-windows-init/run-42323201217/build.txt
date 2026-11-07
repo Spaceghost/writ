@@ -1,0 +1,74 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  win32k_ac_observer.c
+  win32k_ac_launch.c
+  win32k_ac_checked.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-win32k-ac-build\writfs-win32k-ac-observer.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/win32k_ac_launch.c')
+
+D:\a\writ\writ\contrib\native-hosts\windows\win32k_ac_launch.c(227,49): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-win32k-ac-build\writfs-win32k-ac-observer.vcxproj]
+  win32k_ac_token.c
+  win32k_ac_checks.c
+  pss_init_pipe.c
+  pss_init_progress.c
+  pss_lpac_progress.c
+  pss_table.c
+  isolation.c
+  Generating Code...
+  writfs-win32k-ac-observer.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-win32k-ac-observer.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_control.c
+  pss_init_progress.c
+  pss_init_pipe.c
+  init_worker.c
+  isolation.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-win32k-ac-build\writfs-pss-init-control.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/init_worker.c')
+
+  Generating Code...
+  writfs-pss-init-control.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-init-control.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  init_child.c
+  writfs-init-child.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-init-child.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_table_test.c
+  pss_table.c
+  Generating Code...
+  writfs-pss-table-test.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-table-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_progress_test.c
+  pss_init_progress.c
+  Generating Code...
+  writfs-pss-init-progress-test.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-init-progress-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_pipe_test.c
+  pss_init_pipe.c
+  Generating Code...
+  writfs-pss-init-pipe-test.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-pss-init-pipe-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  win32k_ac_checks_test.c
+  win32k_ac_checks.c
+  Generating Code...
+  writfs-win32k-ac-checks-test.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-win32k-ac-checks-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  win32k_ac_token_test.c
+  win32k_ac_token.c
+  win32k_ac_checks.c
+  Generating Code...
+  writfs-win32k-ac-token-test.vcxproj -> D:\a\_temp\windows-win32k-ac-build\Release\writfs-win32k-ac-token-test.exe
