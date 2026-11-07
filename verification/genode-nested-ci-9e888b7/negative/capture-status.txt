@@ -1,0 +1,4 @@
+outer_capture_exit=1
+cleanup=unverified
+files=bounded_snapshots_may_be_incomplete
+snapshot_exit=1

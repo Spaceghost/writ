@@ -1,0 +1,3 @@
+fixture_assertions=not_confirmed
+cleanup=unverified
+overall=incomplete

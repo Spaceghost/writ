@@ -1,0 +1,39 @@
+EXCERPTS ONLY; exact capped raw log is inside original artifact ZIP.
+
+FIRST 22 LINES
+make: Entering directory '/tmp/writ-genode-ci.42351492144-1.positive/build'
+including /tmp/writ-genode-ci.42351492144-1.positive/genode/tool/run/power_on/linux
+including /tmp/writ-genode-ci.42351492144-1.positive/genode/tool/run/log/linux
+including /tmp/writ-genode-ci.42351492144-1.positive/genode/tool/run/boot_dir/linux
+including /tmp/writ-genode-nested-overlay.42351492144-1.positive/writ-repo/run/writ_bend_monitor_nested_accept.run
+building targets: core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_monitor app/writ_channel_client
+spawn make core init timer lib/ld lib/libc lib/libm lib/vfs lib/vfs_pipe app/writ_bend_monitor app/writ_channel_client
+make[1]: Entering directory '/tmp/writ-genode-ci.42351492144-1.positive/build'
+  Library ld.abi.so
+    CONVERT  symbols.s
+    ASSEMBLE symbols.o
+    MERGE    ld.abi.so
+  Library ldso_so_support.lib.a
+    COMPILE  so_support.o
+    MERGE    ldso_so_support.lib.a
+  Library syscall-linux.lib.a
+    COMPILE  lx_clone.o
+    COMPILE  lx_restore_rt.o
+    COMPILE  lx_syscall.o
+    MERGE    syscall-linux.lib.a
+  Library base-linux-common.lib.a
+    COMPILE  allocator_avl.o
+
+LAST 12 LINES (each capped at 300 characters)
+/tmp/writ-genode-nested-overlay.42351492144-1.positive/writ-repo/../bend-c/monitor/monitor.c:21864:7: warning: variable 'r84' is uninitialized when used here [-Wuninitialized]
+ 21864 |       WL_RETN(1);
+       |       ^~~~~~~~~~
+/tmp/writ-genode-nested-overlay.42351492144-1.positive/writ-repo/../bend-c/monitor/monitor.c:133:50: note: expanded from macro 'WL_RETN'
+  133 | #define WL_RETN(N)  { rn = (N); sp -= LANE_STEP; WL_DYN((u32)STK(0)); }
+      |                                                  ^~~~~~~~~~~~~~~~~~~
+/tmp/writ-genode-nested-overlay.42351492144-1.positive/writ-repo/../bend-c/monitor/monitor.c:124:63: note: expanded from macro 'WL_DYN'
+  124 | #define WL_DYN(F)  __attribute__((musttail)) return wl_tab[F](WL_ALL)
+      |                                                               ^~~~~~
+/tmp/writ-genode-nested-overlay.42351492144-1.positive/writ-repo/../bend-c/monitor/monitor.c:1412:446: note: expanded from macro 'WL_ALL'
+ 1412 | #define WL_ALL e, sp, seq, rn, r0, r1, r2, r3, r4, r5, rp, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23, r24, r25, r26, r27, r28, r29, r30, r31, r32, r33, r34, r35, r36, r37, r38, r39, r40, r41, r42, r43, r44, r45, r46, r47, r48, r49, r50, r51, r52, r5
+      |

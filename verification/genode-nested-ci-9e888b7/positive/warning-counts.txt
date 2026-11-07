@@ -1,0 +1,8 @@
+raw_bytes=33554432
+raw_sha256=b5a063b72bbad83b5f5476b9d22d97a28960fa46f60ffa18d7a452b871633a43
+warning_lines=10484
+-Wuninitialized=9256
+-Wunused-variable=1227
+no bracketed option=1
+error_lines=0
+counts_scope=retained_prefix_only

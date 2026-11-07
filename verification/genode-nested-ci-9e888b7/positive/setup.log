@@ -1,0 +1,156 @@
+/tmp/writ-genode-ci.42351492144-1.positive/inputs/bend.tar.gz: OK
+/tmp/writ-genode-ci.42351492144-1.positive/inputs/genode.tar.gz: OK
+/tmp/writ-genode-ci.42351492144-1.positive/inputs/toolchain.tar.xz: OK
+/tmp/writ-genode-ci.42351492144-1.positive/inputs/libc.txz: OK
+/tmp/writ-genode-ci.42351492144-1.positive/inputs/llvm.tar.gz: OK
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+tar: Removing leading `/' from member names
+tar: Removing leading `/' from hard link targets
+warning: refs/tags/26.08 3d75dc71b1bea0c03ec0151912ef320e3d64fb92 is not a commit!
+Note: switching to 'd18ee9e917200b059549e21f2dd9a55bfe61a0eb'.
+
+You are in 'detached HEAD' state. You can look around, make experimental
+changes and commit them, and you can discard any commits you make in this
+state without impacting any branches by switching back to a branch.
+
+If you want to create a new branch to retain commits you create, you may
+do so (now or later) by using -c with the switch command. Example:
+
+  git switch -c <new-branch-name>
+
+Or undo this operation with:
+
+  git switch -
+
+Turn off this advice by setting config variable advice.detachedHead to false
+
+libc  extract src.txz (libc)
+libc  generate rpcb_prot.h
+libc  generate nis.h
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/MB_CUR_MAX.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/_CurrentRuneLocale.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/cdefs_no_hidden.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/fpmath_riscv.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/gdtoa.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/ieeefp_riscv.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/mktime.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/printfcommon.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/rcmd.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/res_init_c.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/runetype.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/semaphore.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/setlocale.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/sigsetjmp_riscv.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/thread_local.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/types.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/vfwprintf_c_warn.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/xlocale.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/xlocale_private.patch
+libc  apply /tmp/writ-genode-ci.42351492144-1.positive/genode/repos/libports/src/lib/libc/patches/xprintf_float.patch
+libc  install include/libc
+libc  install include/libc/rpc
+libc  install include/libc/rpcsvc
+libc  install include/libc/gssapi
+libc  install include/libc/arpa
+libc  install include/libc/vm
+libc  install include/libc/net
+libc  install include/libc/netinet
+libc  install include/libc/netinet6
+libc  install include/libc/bsm
+libc  install include/libc/sys/rpc
+libc  install include/libc/sys
+libc  install include/libc/sys/disk
+libc  install include/libc/xlocale
+libc  install include/spec/x86/libc
+libc  install include/libc/x86
+libc  install include/spec/x86_32/libc
+libc  install include/spec/x86_32/libc/machine
+libc  install include/spec/x86_64/libc
+libc  install include/spec/x86_64/libc/machine
+libc  install include/spec/arm/libc
+libc  install include/spec/arm/libc/machine
+libc  install include/spec/arm_64/libc
+libc  install include/spec/arm_64/libc/machine
+libc  install include/spec/riscv/libc
+libc  install include/spec/riscv/libc/machine
+libc  generate osreldate.h
+libc  create symlinks
+libc  generate libc.hash
+Prepared external overlay at /tmp/writ-genode-nested-overlay.42351492144-1.positive; no Genode build or run was started.
+Successfully created build directory at /tmp/writ-genode-ci.42351492144-1.positive/build.
+Please adjust /tmp/writ-genode-ci.42351492144-1.positive/build/etc/build.conf according to your needs.
+INCOMPLETE: output bound reached
