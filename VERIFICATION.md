@@ -15,13 +15,16 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
-The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
-for 2,162 current checks. Its reference-only descriptions do not authenticate
+The planner envelope adds 61 synthetic codec checks to the 2,102-check suite,
+for 2,163 current checks. Its reference-only descriptions do not authenticate
 identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
 Earlier evidence below remains tied to its own source and is not a claim that
 the new checks ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its
 local and exact-source platform checks and retains their qualifications.
+The later [N48 mutation review](verification/planner-n48-mutants-dd3dac9/README.md)
+records the additional structural check and its Bend/Node results; earlier
+platform evidence does not test that later revision.
 
 The [automatic master runs at `60d6f6b`](verification/master-ci-60d6f6b/README.md)
 passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS

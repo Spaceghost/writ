@@ -1,0 +1,6 @@
+PASS: planner-envelope independent expected encoding
+PASS: planner-envelope canonical words
+PASS: planner-envelope canonical bytes
+PASS: planner-envelope every truncated word prefix
+PASS: planner-envelope every truncated byte prefix
+PASS: planner-envelope full request low word

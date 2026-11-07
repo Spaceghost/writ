@@ -1,0 +1,38 @@
+from pathlib import Path
+import subprocess,os,hashlib,json
+root=Path('/tmp/writ-planner-boundary-scratch');path=root/'PlannerEnvelope.bend';base=path.read_text();out=Path('/tmp/writ-planner-boundary-audit'); bend='/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend'
+old='''Decoded{Proposal{request, expiry, ManifestRef{manifest}, Stamp{graph, policy, authority}, invocation,\n        sources, ObjectRef{dest_obj, dest_ver}, code, operation, output, evidence}}'''
+assert base.count(old)==1
+helper='''def audit_zero_hi(n: N48) -> N48:\n  match n:\n    case N48{lo, _}: N48{lo, 0}\n\n'''
+assert base.count('def finish(')==1
+cases={
+'request':('request, expiry,','audit_zero_hi(request), expiry,'),
+'expiry':('request, expiry,','request, audit_zero_hi(expiry),'),
+'graph':('Stamp{graph, policy, authority}','Stamp{audit_zero_hi(graph), policy, authority}'),
+'policy':('Stamp{graph, policy, authority}','Stamp{graph, audit_zero_hi(policy), authority}'),
+'authority':('Stamp{graph, policy, authority}','Stamp{graph, policy, audit_zero_hi(authority)}'),
+'invocation':('}, invocation,','}, audit_zero_hi(invocation),'),
+'destination_object':('ObjectRef{dest_obj, dest_ver}','ObjectRef{audit_zero_hi(dest_obj), dest_ver}'),
+'destination_version':('ObjectRef{dest_obj, dest_ver}','ObjectRef{dest_obj, audit_zero_hi(dest_ver)}'),
+}
+results=[]
+env=os.environ.copy();env['BEND_NO_TELEMETRY']='1'
+try:
+ for label,(a,b) in list(cases.items())+[('source_object',('ObjectRef{N48{a, b}, N48{c, d}}','ObjectRef{N48{a, 0}, N48{c, d}}')),('source_version',('ObjectRef{N48{a, b}, N48{c, d}}','ObjectRef{N48{a, b}, N48{c, 0}}'))]:
+  if label.startswith('source_'):
+   assert base.count(a)==1
+   mutated=base.replace(a,b)
+  else:
+   assert old.count(a)==1
+   mutated=base.replace(old,old.replace(a,b)).replace('def finish(',helper+'def finish(')
+  path.write_text(mutated)
+  patch=subprocess.check_output(['git','diff','--','PlannerEnvelope.bend'],cwd=root,text=True)
+  (out/(label+'.patch')).write_text(patch)
+  p=subprocess.run([bend,'PlannerEnvelopeTests.bend'],cwd=root,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,timeout=120)
+  (out/(label+'.stdout')).write_text(p.stdout);(out/(label+'.stderr')).write_text(p.stderr)
+  passes=sum(line.startswith('PASS') for line in p.stdout.splitlines())
+  failure=next((x for x in (p.stdout+'\n'+p.stderr).splitlines() if x.startswith('FAIL:')),None)
+  classification='survived' if p.returncode==0 and passes==60 else ('killed' if p.returncode!=0 and failure else 'invalid-or-unexpected')
+  item={'mutant':label,'result':classification,'exit':p.returncode,'pass_lines':passes,'failure':failure,'mutant_sha256':hashlib.sha256(mutated.encode()).hexdigest()};results.append(item); print(json.dumps(item),flush=True)
+finally:path.write_text(base)
+(out/'results-before.json').write_text(json.dumps(results,indent=2)+'\n')

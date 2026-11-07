@@ -1,0 +1,162 @@
+[
+  {
+    "mutant": "request",
+    "phase": "before",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 6,
+    "failure": "FAIL: planner-envelope request high boundary"
+  },
+  {
+    "mutant": "expiry",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "graph",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "policy",
+    "phase": "before",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 59,
+    "failure": "FAIL: planner-envelope structural roundtrip mixed full identities and repeated evidence"
+  },
+  {
+    "mutant": "authority",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "invocation",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "destination_object",
+    "phase": "before",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 59,
+    "failure": "FAIL: planner-envelope structural roundtrip mixed full identities and repeated evidence"
+  },
+  {
+    "mutant": "destination_version",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "source_object",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "source_version",
+    "phase": "before",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null
+  },
+  {
+    "mutant": "request",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 6,
+    "failure": "FAIL: planner-envelope request high boundary"
+  },
+  {
+    "mutant": "expiry",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  },
+  {
+    "mutant": "graph",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  },
+  {
+    "mutant": "policy",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 59,
+    "failure": "FAIL: planner-envelope structural roundtrip mixed full identities and repeated evidence"
+  },
+  {
+    "mutant": "authority",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  },
+  {
+    "mutant": "invocation",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  },
+  {
+    "mutant": "destination_object",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 59,
+    "failure": "FAIL: planner-envelope structural roundtrip mixed full identities and repeated evidence"
+  },
+  {
+    "mutant": "destination_version",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  },
+  {
+    "mutant": "source_object",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  },
+  {
+    "mutant": "source_version",
+    "phase": "after",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 60,
+    "failure": "FAIL: planner-envelope structural roundtrip preserves every maximum N48 high word"
+  }
+]

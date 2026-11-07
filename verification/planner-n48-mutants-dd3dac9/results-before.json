@@ -1,0 +1,82 @@
+[
+  {
+    "mutant": "request",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 6,
+    "failure": "FAIL: planner-envelope request high boundary",
+    "mutant_sha256": "b6a905eccb09ef74431cfe8494a2fdef59171abba4494d5b3b13cc97ac3a21a5"
+  },
+  {
+    "mutant": "expiry",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "325ed1852e880d2543910112fe3001e2fed77b43e8f59114881ea6743c0debd4"
+  },
+  {
+    "mutant": "graph",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "e46fe302a8207b32d9ad2377c91b639f952b7e4c608bce1110a8dad178fae04f"
+  },
+  {
+    "mutant": "policy",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 59,
+    "failure": "FAIL: planner-envelope structural roundtrip mixed full identities and repeated evidence",
+    "mutant_sha256": "2f04c6a6aac241e747dfaf9078a8689c07d8e507385a2e31c22116bdcaaeb00e"
+  },
+  {
+    "mutant": "authority",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "31a774dcaa33c0fadc72cf5cd255a96294c27fc83d1c7358242a714de237aa01"
+  },
+  {
+    "mutant": "invocation",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "0d17be2915c9ac89414d9f17997431cd2b3aa5c1655bab5457724c39938f2040"
+  },
+  {
+    "mutant": "destination_object",
+    "result": "killed",
+    "exit": 1,
+    "pass_lines": 59,
+    "failure": "FAIL: planner-envelope structural roundtrip mixed full identities and repeated evidence",
+    "mutant_sha256": "e161f3799b9ad40d480101420815c0828231983bd780e79e415c7e9d40f08225"
+  },
+  {
+    "mutant": "destination_version",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "9b0c09af86e40236c156a823e87148c22688a94f31d70119feef7fa67b95261d"
+  },
+  {
+    "mutant": "source_object",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "821de61b7e51e2a9ec8631e5188ee77fc94ee9ff28c59d1098aee56583a6a989"
+  },
+  {
+    "mutant": "source_version",
+    "result": "survived",
+    "exit": 0,
+    "pass_lines": 60,
+    "failure": null,
+    "mutant_sha256": "37c0a958fe9c940852c1a59c22a4d07cb6bfc39cf963d8c57922833183ee0b2e"
+  }
+]

@@ -1,8 +1,13 @@
 # Planner envelope local checks
 
-The first reference-only codec slice is exercised by 60 synthetic tests; it
+The initial reference-only codec slice was exercised by 60 synthetic tests; it
 has no endpoint, registry resolution, authority decision, protected-input path,
 or host qualification. See the change's [traceability](../openspec/changes/add-external-planner-adapters/traceability.md).
+
+A later [N48 mutation review](planner-n48-mutants-dd3dac9/README.md) adds one
+structural boundary regression to the earlier 60. It records the selected
+mutants and the new check's scope; the platform runs below remain attributed
+to their original sources and do not test that later regression.
 
 On 2026-11-06, the pinned Bend 2.0.39 runner and a separately generated Node
 run each completed the integrated suite with 2,162 PASS lines and
