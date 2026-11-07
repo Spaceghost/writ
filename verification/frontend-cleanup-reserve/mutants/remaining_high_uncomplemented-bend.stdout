@@ -1,0 +1,19 @@
+PASS: reserve empty original has no open handles
+PASS: reserve mixed list counts both open and skips tombstones
+PASS: reserve eight original open handles counted
+PASS: reserve eight tombstones consume no cleanup slots
+PASS: reserve ninth open handle makes count incomplete
+PASS: reserve ninth tombstone still makes scan incomplete
+PASS: reserve direct excessive fuel is capped
+PASS: reserve excessive fuel cannot hide a long tombstone list
+PASS: reserve forged max open count cannot increment
+PASS: reserve forged max closed count cannot pass
+PASS: reserve direct ninth open count refuses
+PASS: reserve direct maximum open count refuses without wrap
+PASS: reserve direct penultimate count reaches eight
+PASS: reserve forged maximum count is incomplete
+PASS: reserve forged scan count is incomplete
+PASS: reserve direct max-count helper has no true capacity
+PASS: reserve direct maximum count active arithmetic stays bounded
+PASS: reserve direct maximum count attenuation arithmetic stays bounded
+PASS: reserve direct maximum count allocation arithmetic stays bounded

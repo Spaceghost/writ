@@ -1,0 +1,82 @@
+[
+  {
+    "mutant": "active_threshold",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "allocation_threshold",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "attenuation_threshold",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "closed_counted_open",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "open_counted_closed",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "ninth_handle_ignored",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "scan_fuel_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "forged_count_accepted",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "active_cost_unmasked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "attenuation_cost_unmasked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "allocation_cost_unmasked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "remaining_high_uncomplemented",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "remaining_low_uncomplemented",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "close_ignores_open",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "retirement_ignores_open",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "forged_count_wraps",
+    "bend": 1,
+    "node": 1
+  }
+]

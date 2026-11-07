@@ -1,0 +1,27 @@
+import Base
+import ./FrontendCleanupReserve.bend as C
+import ./Test.bend as Test
+
+def count_incomplete(answer: C.Count) -> Bool:
+  match answer:
+    case C.CountIncomplete{}: True{}
+    case _: False{}
+
+def incomplete(answer: C.Assessment) -> Bool:
+  match answer:
+    case C.Incomplete{}: True{}
+    case _: False{}
+
+def safe(+count: U32) -> Bool:
+  incomplete(C.with_count(0, 0, count)) &&
+    incomplete(C.with_scan(0, 0, C.Counted{count})) &&
+    count_incomplete(C.keep_count(count)) && count_incomplete(C.one_more(count))
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(safe(9), "reserve forged count nine is incomplete")
+    Test.check(safe(16), "reserve forged count sixteen is incomplete")
+    Test.check(safe(24), "reserve forged count twenty-four is incomplete")
+    Test.check(safe(2147483648), "reserve forged high-bit count is incomplete")
+    Test.check(safe(4294967288), "reserve forged near-maximum count is incomplete")
+    Test.check(safe(4294967295), "reserve forged maximum count is incomplete")

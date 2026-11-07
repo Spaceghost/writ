@@ -70,6 +70,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [synthetic cleanup-reserve record](verification/frontend-cleanup-reserve/README.md)
+checks bounded open-handle counting and two-word capacity arithmetic. It does
+not authenticate a state, perform frontend mutations or qualify a host.
+
 The [bounded synthetic legacy conversion record](verification/frontend-legacy-conversion/README.md)
 checks a V1-to-V2 candidate and independent original-state comparison under an
 eight-handle/eight-source profile. It does not authenticate or commit a

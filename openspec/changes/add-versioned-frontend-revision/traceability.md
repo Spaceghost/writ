@@ -10,7 +10,7 @@ links the confirmed V1 terminal failure and remains unresolved.
 | Proposed contract | Required named evidence | Current status |
 | --- | --- | --- |
 | FR-001 | `FrontendRevisionV2.compare`, `advance`, `advance_if_current`; `FrontendRevisionV2Tests.bend` pair carry, max refusal and V1/V2 stale tag cases | Standalone descriptive primitive only; no authenticated frontend, actual migration or integrated mutation |
-| FR-002–003 | Exact open count, last cleanup, reserve denial, bounded original scan | Unimplemented; no test |
+| FR-002–003 | `FrontendCleanupReserveTests.bend`: bounded original-handle count, 144-case threshold matrix, last-cleanup arithmetic and excess-fuel refusal | Descriptive 8-handle arithmetic only; no V2 mutation, authenticated complete list, real cleanup/retirement or host resource guarantee. Task 1.2 and acceptance remain open. |
 | FR-004–006 | `FrontendLegacyConversionTests.bend`: max mapping, all handle fields, altered/omitted entries and bounded original/candidate scans | Synthetic frontend-only candidate comparison under fixed 8-handle/8-source limits; no binding comparison, authenticated current snapshot, installed migration, replay fencing or host test. Oversize is incomplete. |
 | FR-007–008 | Atomic crash/replay recovery, rollback-resistant version fence and binding V1 request denial | Unimplemented; no host witness or qualified integration |
 | FR-009 | Original-cut multi-handle close, later refusal and unchanged full-state/quota result | Unimplemented; existing derived-close fold retains prior frontend on failure |

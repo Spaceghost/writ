@@ -1,0 +1,9 @@
+Generated focused Node SHA-256: aa0f5cd50e46a17f1cc8a4f1f74bfe6278d11bc8bcadcd80a92e65d937a5a2c5
+
+The generated scan clamps recursive fuel to seven after consuming a constructor;
+the zero-fuel nonempty case is incomplete. The V2 match selects the scan; other
+revision constructors return UnsupportedRevision. with_count emits literal
+cases for zero through eight and a default Incomplete result. Capacity checks the
+original count, while each cost masks before addition, including under eager
+evaluation. The remaining distance uses unsigned complement on each word.
+Generated output was inspected as backend evidence, not as an authority check.

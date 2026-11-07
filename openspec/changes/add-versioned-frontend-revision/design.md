@@ -80,6 +80,13 @@ existing owner-cleanup law.
   stale request. Creating a new instance is a separately authenticated,
   non-reusing lifecycle, not a counter reset.
 
+A [standalone synthetic reserve arithmetic reference](../../../FrontendCleanupReserve.bend)
+counts up to eight supplied handles and describes capacity at these thresholds.
+Its [checks and limits](../../../verification/frontend-cleanup-reserve/README.md)
+do not authenticate the list, establish handle validity, admit a real V2 state,
+perform a close or retirement, or reserve host resources. Over-cap lists are
+incomplete; existing V1 and V2 cleanup acceptance remain open.
+
 Apply the same prospective inequality to every other successful mutation;
 inventory all current and future mutations. An unrepresentable or
 reserve-consuming non-cleanup mutation refuses unchanged, after the existing

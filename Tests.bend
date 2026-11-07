@@ -10,6 +10,7 @@ import ./FrontendTests.bend as Frontend
 import ./FrontendBoundaryTests.bend as FrontendBoundary
 import ./FrontendRevisionV2Tests.bend as FrontendRevisionV2
 import ./FrontendLegacyConversionTests.bend as FrontendLegacyConversion
+import ./FrontendCleanupReserveTests.bend as FrontendCleanupReserve
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
@@ -43,6 +44,7 @@ def main() -> IO(Unit):
     FrontendBoundary.main()
     FrontendRevisionV2.main()
     FrontendLegacyConversion.main()
+    FrontendCleanupReserve.main()
     HostBinding.main()
     HostWire.main()
     PlannerEnvelope.main()

@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -87 +87 @@
+-    base && U32.is_ne(open, 0), base && U32.is_eq(open, 0)}
++    base && U32.is_ne(open, 0), base}

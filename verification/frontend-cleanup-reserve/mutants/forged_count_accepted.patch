@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -83 +83 @@
+-  +within = U32.is_eq(open, bounded_open) && U32.is_le(bounded_open, 8)
++  +within : Bool = True{}

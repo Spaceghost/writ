@@ -1,0 +1,4 @@
+PASS: reserve empty original has no open handles
+PASS: reserve mixed list counts both open and skips tombstones
+PASS: reserve eight original open handles counted
+PASS: reserve eight tombstones consume no cleanup slots

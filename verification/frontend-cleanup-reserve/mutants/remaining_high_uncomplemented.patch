@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -106 +106 @@
+-    case Counted{open}: with_count(U32.not(high), U32.not(low), open)
++    case Counted{open}: with_count(high, U32.not(low), open)

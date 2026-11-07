@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -85 +85 @@
+-  Measured{open, base, within && enough(remaining_high, remaining_low, allocation_cost(open)),
++  Measured{open, base, within && enough(remaining_high, remaining_low, attenuation_cost(open)),

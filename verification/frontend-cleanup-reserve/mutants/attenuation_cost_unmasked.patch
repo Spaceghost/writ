@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -74 +74 @@
+-  U32.add(U32.and(open, 15), 2)
++  U32.add(open, 2)

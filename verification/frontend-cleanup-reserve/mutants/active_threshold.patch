@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -84 +84 @@
+-  +base = within && enough(remaining_high, remaining_low, active_cost(open))
++  +base = within && enough(remaining_high, remaining_low, attenuation_cost(open))

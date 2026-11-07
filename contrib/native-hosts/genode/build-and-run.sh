@@ -15,7 +15,7 @@ case "$writ_out" in
 esac
 mkdir -p "$writ_out/inputs" "$writ_out/logs" "$writ_out/generated"
 if [[ ! ${WRIT_CORE_EXPECTED:-} =~ ^[1-9][0-9]{0,4}$ ]]; then
-  printf 'Set WRIT_CORE_EXPECTED to the reviewed complete core assertion count (currently 2634)\n' >&2
+  printf 'Set WRIT_CORE_EXPECTED to the reviewed complete core assertion count (currently 2673)\n' >&2
   exit 2
 fi
 export WRIT_CORE_EXPECTED

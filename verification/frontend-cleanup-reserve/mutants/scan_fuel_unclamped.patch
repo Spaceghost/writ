@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -62 +62 @@
+-      count_step(closed, scan(tail, Nat.min(rest, 7n)))
++      count_step(closed, scan(tail, rest))

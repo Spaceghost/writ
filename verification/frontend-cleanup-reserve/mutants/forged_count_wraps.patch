@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -46 +46 @@
+-    case _: CountIncomplete{}
++    case _: Counted{0}

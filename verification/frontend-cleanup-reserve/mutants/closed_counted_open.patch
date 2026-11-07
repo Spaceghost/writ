@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -51 +51 @@
+-    case True{} Counted{open}: keep_count(open)
++    case True{} Counted{open}: one_more(open)

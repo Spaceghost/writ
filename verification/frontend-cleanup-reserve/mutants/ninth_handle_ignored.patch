@@ -1,0 +1,5 @@
+--- a/FrontendCleanupReserve.bend
++++ b/FrontendCleanupReserve.bend
+@@ -60 +60 @@
+-    case F.Handles{_, _} 0n: CountIncomplete{}
++    case F.Handles{_, _} 0n: Counted{0}

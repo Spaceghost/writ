@@ -1,0 +1,6 @@
+PASS: reserve forged count nine is incomplete
+PASS: reserve forged count sixteen is incomplete
+PASS: reserve forged count twenty-four is incomplete
+PASS: reserve forged high-bit count is incomplete
+PASS: reserve forged near-maximum count is incomplete
+PASS: reserve forged maximum count is incomplete
