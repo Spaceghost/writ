@@ -18,6 +18,8 @@ provides context about nested routing; the exact 26.08 source below, rather
 than a different documentation release, is the basis for the prediction. This
 is a proposal for independent review, not a claim of host qualification or a
 change to Writ authority rules.
+A later [first-slice patch plan](nested-routing-first-slice.md) confines new
+native fixture tooling to the approved contribution boundary and does not run it.
 
 ## What the pinned source actually says
 
