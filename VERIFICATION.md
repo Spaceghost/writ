@@ -1,5 +1,10 @@
 # Verification record
 
+The [host-binding allocation-boundary record](verification/hostbinding-allocation-boundary/README.md)
+checks object and alias exhaustion, preserving earlier denials and nonallocating
+resolution, close and revocation. Terminal binding revision, object generation,
+frontend revision and protected-host qualification remain separate gaps.
+
 The [rendezvous allocation-boundary record](verification/rendezvous-allocation-boundary/README.md)
 checks exhausted approval/selection IDs without blocking existing offers,
 withdrawals or current selections when revision headroom exists. Terminal

@@ -1,0 +1,450 @@
+[
+  {
+    "case": "mount-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "mount-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "mount-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "mount-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "mount-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "mount-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "mount-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "mount-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "open-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "open-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "open-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "open-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "open-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "open-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "open-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "open-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "attenuate-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "attenuate-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "attenuate-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "attenuate-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "attenuate-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "attenuate-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "attenuate-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "attenuate-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "delegate-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "delegate-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "delegate-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "delegate-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "delegate-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\nbend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "delegate-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1\n"
+  },
+  {
+    "case": "delegate-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "delegate-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "stale-open-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "stale-open-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": ""
+  },
+  {
+    "case": "stale-open-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "stale-open-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": ""
+  },
+  {
+    "case": "stale-open-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "stale-open-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": ""
+  },
+  {
+    "case": "stale-open-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "stale-open-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "REJECTED\n",
+    "stderr": ""
+  },
+  {
+    "case": "close-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "close-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "close-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "close-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "close-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "close-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "close-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "close-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "revoke-object",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "revoke-object",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "revoke-object",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "revoke-object",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "revoke-alias",
+    "value": "281474976710655",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "revoke-alias",
+    "value": "281474976710655",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  },
+  {
+    "case": "revoke-alias",
+    "value": "281474976710654",
+    "backend": "bend",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": "bend 2.0.40 is available: run bend update\n"
+  },
+  {
+    "case": "revoke-alias",
+    "value": "281474976710654",
+    "backend": "node",
+    "exit": 0,
+    "stdout": "CHANGED\n",
+    "stderr": ""
+  }
+]

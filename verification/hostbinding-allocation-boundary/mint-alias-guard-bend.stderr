@@ -1,0 +1,2 @@
+bend: a Nat past the largest immediate 2^48-1
+bend 2.0.40 is available: run bend update

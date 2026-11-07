@@ -1,0 +1,9 @@
+PASS: terminal counter states validate
+PASS: penultimate object mint reaches max
+PASS: penultimate alias mint reaches max
+PASS: penultimate delegation reaches max
+PASS: object counter max preserves exact close
+PASS: alias counter max preserves exact close
+PASS: object counter max preserves exact revoke
+PASS: alias counter max preserves exact revoke
+PASS: object counter max preserves exact alias delegation

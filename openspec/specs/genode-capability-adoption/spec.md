@@ -162,6 +162,21 @@ Every denied transition SHALL return the supplied state unchanged and a reason f
 - **WHEN** the result is inspected
 - **THEN** the state equals the input and the reason is one of the closed type's constructors.
 
+#### Scenario: Object or alias identifiers are exhausted
+
+- **GIVEN** a valid binding state whose next object identifier has no representable successor
+- **WHEN** an otherwise eligible `bind_mount` attempts to allocate a new object and alias
+- **THEN** it is denied with `IdExhausted` and the original binding and frontend states are unchanged.
+
+The same refusal applies when minting needs an exhausted alias identifier or
+delegation needs an exhausted alias identifier. Delegation does not allocate an
+object and must not be refused merely because the object counter is exhausted.
+Earlier identity, rights, quota and frontend denials retain their ordering;
+existing resolution, owner cleanup and revocation are not gated on allocation
+capacity. This bound preserves non-reuse and unchanged denial where the pinned
+Nat runtime has no representable successor; it does not relax any authority or
+cleanup law, solve revision exhaustion, or establish native-host qualification.
+
 #### Scenario: Law is proven
 
 - **GIVEN** the denial-preserves-state law in `LAWS.bend`

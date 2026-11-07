@@ -9,6 +9,7 @@ import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
 import ./FrontendBoundaryTests.bend as FrontendBoundary
 import ./HostBindingTests.bend as HostBinding
+import ./HostBindingBoundaryTests.bend as HostBindingBoundary
 import ./HostWireTests.bend as HostWire
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
 import ./PlannerPlanMatchTests.bend as PlannerPlanMatch
@@ -40,6 +41,7 @@ def main() -> IO(Unit):
     Frontend.main()
     FrontendBoundary.main()
     HostBinding.main()
+    HostBindingBoundary.main()
     HostWire.main()
     PlannerEnvelope.main()
     PlannerPlanMatch.main()
