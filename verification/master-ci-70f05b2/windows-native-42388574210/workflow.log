@@ -1,0 +1,908 @@
+Compile shared Bend mount policy	Set up job	﻿2026-11-07T15:53:46.2287095Z Current runner version: '2.338.2'
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2318067Z ##[group]Runner Image Provisioner
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2319274Z Hosted Compute Agent
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2320100Z Version: 20261028.624
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2320973Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2321976Z Build Date: 2026-10-28T21:51:42Z
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2322841Z Worker ID: {37c967de-76b8-4f43-b4fa-f965b02f9390}
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2323813Z Region: eastus2
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2324692Z Cloud: Azure
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2325555Z ##[endgroup]
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2327629Z ##[group]Operating System
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2328453Z Ubuntu
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2329214Z 24.04.5
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2329879Z LTS
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2330561Z ##[endgroup]
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2331354Z ##[group]Runner Image
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2332100Z Image: ubuntu-24.04
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2333220Z Version: 20261101.360.1
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2334799Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2337238Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2338490Z ##[endgroup]
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2340040Z ##[group]GITHUB_TOKEN Permissions
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2342541Z Contents: read
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2343458Z Metadata: read
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2344163Z ##[endgroup]
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2346489Z Secret source: Actions
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2347743Z Cache mode: write
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2349159Z Prepare workflow directory
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2781871Z Prepare all required actions
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.2838890Z Getting action download info
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.4756625Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:46.8382875Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+Compile shared Bend mount policy	Set up job	2026-11-07T15:53:47.1022823Z Complete job name: Compile shared Bend mount policy
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-11-07T15:53:47.1703048Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1703892Z with:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1704261Z   persist-credentials: false
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1704854Z   repository: Spaceghost/writ
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1708099Z   token: ***
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1708464Z   ssh-strict: true
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1708835Z   ssh-user: git
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1709185Z   clean: true
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1709549Z   sparse-checkout-cone-mode: true
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1709975Z   fetch-depth: 1
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1710327Z   fetch-tags: false
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1710690Z   show-progress: true
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1711059Z   lfs: false
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1711400Z   submodules: false
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1711765Z   set-safe-directory: true
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1712178Z   allow-unsafe-pr-checkout: false
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1712733Z env:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1713069Z   BEND_NO_TELEMETRY: 1
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.1713437Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.9881647Z Syncing repository: Spaceghost/writ
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.9883953Z ##[group]Getting Git version info
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.9885165Z Working directory is '/home/runner/work/writ/writ'
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.9886242Z [command]/usr/bin/git version
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.9970448Z git version 2.56.0
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:47.9993681Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0001255Z Temporarily overriding HOME='/home/runner/work/_temp/73c065ca-029f-4a07-9ca4-5b023fd04aad' before making global git config changes
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0003178Z Adding repository directory to the temporary git global config as a safe directory
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0006646Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/writ/writ
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0064003Z Deleting the contents of '/home/runner/work/writ/writ'
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0067838Z ##[group]Determining repository object format
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0069519Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0070574Z ##[group]Initializing the repository
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0074247Z [command]/usr/bin/git init /home/runner/work/writ/writ
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0215145Z hint: Using 'master' as the name for the initial branch. This default branch name
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0217195Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0218808Z hint: to use in all of your new repositories, which will suppress this warning,
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0220282Z hint: call:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0220938Z hint:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0221478Z hint: 	git config --global init.defaultBranch <name>
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0222037Z hint:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0222558Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0223351Z hint: 'development'. The just-created branch can be renamed via this command:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0223991Z hint:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0224360Z hint: 	git branch -m <name>
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0225116Z hint:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0226044Z hint: Disable this message with "git config set advice.defaultBranchName false"
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0227490Z Initialized empty Git repository in /home/runner/work/writ/writ/.git/
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0236164Z [command]/usr/bin/git remote add origin https://github.com/Spaceghost/writ
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0291421Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0292885Z ##[group]Disabling automatic garbage collection
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0294071Z [command]/usr/bin/git config --local gc.auto 0
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0337115Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0338313Z ##[group]Setting up auth
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0338911Z Removing SSH command configuration
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0339691Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0378880Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0723961Z Removing HTTP extra header
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0726046Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0765833Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0975352Z Removing includeIf entries pointing to credentials config files
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.0979885Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1028138Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1245417Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1290350Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/writ/writ/.git.path /home/runner/work/_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1329129Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1369423Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1408050Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1444767Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1445503Z ##[group]Fetching the repository
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:48.1450503Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +70f05b25eb92581c2f95993151e20ad6b4d71509:refs/remotes/origin/master
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.2925009Z From https://github.com/Spaceghost/writ
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.2927030Z  * [new ref]         70f05b25eb92581c2f95993151e20ad6b4d71509 -> origin/master
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.2932006Z [command]/usr/bin/git branch --list --remote origin/master
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.2966455Z   origin/master
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.2973246Z [command]/usr/bin/git rev-parse refs/remotes/origin/master
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3003666Z 70f05b25eb92581c2f95993151e20ad6b4d71509
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3007485Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3008085Z ##[group]Determining the checkout info
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3008876Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3012012Z [command]/usr/bin/git sparse-checkout disable
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3075870Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3113067Z ##[group]Checking out the ref
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.3116574Z [command]/usr/bin/git checkout --progress --force -B master refs/remotes/origin/master
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6553559Z Reset branch 'master'
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6557566Z branch 'master' set up to track 'origin/master'.
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6616995Z ##[endgroup]
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6685890Z [command]/usr/bin/git log -1 --format=%H
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6715111Z 70f05b25eb92581c2f95993151e20ad6b4d71509
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6724109Z ##[group]Removing auth
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6724471Z Removing SSH command configuration
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6727922Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.6768303Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7001670Z Removing HTTP extra header
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7006375Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7047431Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7270073Z Removing includeIf entries pointing to credentials config files
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7273418Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7311491Z includeif.gitdir:/home/runner/work/writ/writ/.git.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7312089Z includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7312781Z includeif.gitdir:/github/workspace/.git.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7313511Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7320018Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/writ/writ/.git.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7352155Z /home/runner/work/_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7366989Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/writ/writ/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-77f4ca2a\-9129\-4f14\-b5b8\-2e81a346e511\.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7408680Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7440695Z /home/runner/work/_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7449238Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/writ/writ/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-77f4ca2a\-9129\-4f14\-b5b8\-2e81a346e511\.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7489651Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7521094Z /github/runner_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7527659Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-77f4ca2a\-9129\-4f14\-b5b8\-2e81a346e511\.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7567742Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7598281Z /github/runner_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7604802Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-77f4ca2a\-9129\-4f14\-b5b8\-2e81a346e511\.config
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7644719Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7857645Z Removing credentials config '/home/runner/work/_temp/git-credentials-77f4ca2a-9129-4f14-b5b8-2e81a346e511.config'
+Compile shared Bend mount policy	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:51.7867762Z ##[endgroup]
+Compile shared Bend mount policy	Build the shared policy with verified Bend	﻿2026-11-07T15:53:51.8048715Z ##[group]Run set -euo pipefail
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8049075Z ^[[36;1mset -euo pipefail^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8049366Z ^[[36;1mwrit_bend="$RUNNER_TEMP/windows-native-bend"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8049695Z ^[[36;1mwrit_generated="$RUNNER_TEMP/windows-native-policy"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8050015Z ^[[36;1mmkdir -p "$writ_bend" "$writ_generated"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8050351Z ^[[36;1mcurl --proto '=https' --tlsv1.2 --retry 3 -fL \^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8050828Z ^[[36;1m  https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8051211Z ^[[36;1m  -o "$writ_bend/bend.tar.gz"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8051569Z ^[[36;1mprintf '%s  %s\n' 6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8051945Z ^[[36;1m  "$writ_bend/bend.tar.gz" | sha256sum -c -^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8052221Z ^[[36;1mtar -xzf "$writ_bend/bend.tar.gz" -C "$writ_bend"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8052489Z ^[[36;1m"$writ_bend/bend/bin/bend" version^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8052847Z ^[[36;1m"$writ_bend/bend/bin/bend" writfs/Mount.bend -o "$writ_generated/mount.mjs"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8053282Z ^[[36;1m"$writ_bend/bend/bin/bend" writfs/MountTests.bend -o "$writ_generated/mount-tests.js"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8053617Z ^[[36;1m(^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8053784Z ^[[36;1m  cd "$writ_generated"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8054024Z ^[[36;1m  sha256sum mount.mjs mount-tests.js > SHA256SUMS^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8054266Z ^[[36;1m)^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8054483Z ^[[36;1mprintf '%s\n' "$GITHUB_SHA" > "$writ_generated/commit.txt"^[[0m
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8076489Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8076784Z env:
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8076952Z   BEND_NO_TELEMETRY: 1
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8077135Z ##[endgroup]
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8214265Z   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8215040Z                                  Dload  Upload   Total   Spent    Left  Speed
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.8215407Z
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.9520241Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:51.9520862Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2141113Z
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2141901Z 100 35.2M  100 35.2M    0     0  89.6M      0 --:--:-- --:--:-- --:--:-- 89.6M
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2442150Z /home/runner/work/_temp/windows-native-bend/bend.tar.gz: OK
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2476053Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2476853Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2477566Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2478226Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2478762Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2479499Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2480082Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2489688Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2490371Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2491017Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2491694Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2492320Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2492996Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2493623Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2494610Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2495328Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2496041Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2496744Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2497449Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2498139Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2498828Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2499547Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2500251Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2500960Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2501660Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2502365Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2503070Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2503762Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2504458Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2505395Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2506112Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2506812Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2507525Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2508218Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2508917Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2509619Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2510311Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2511004Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2511696Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2512390Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2513090Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2513789Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2514479Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2515489Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2516186Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2597966Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2598779Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2599501Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2600254Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2600928Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2602010Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2602706Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2603464Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2604133Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2605029Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2605709Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2606446Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2607152Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2607847Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2608609Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2609296Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2610068Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2610861Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2611668Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2612444Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2613168Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2613858Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2614728Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2615474Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2616282Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2616991Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.2617714Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.7453791Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.7454772Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.7455270Z tar: Ignoring unknown extended header keyword 'LIBARCHIVE.xattr.com.apple.provenance'
+Compile shared Bend mount policy	Build the shared policy with verified Bend	2026-11-07T15:53:52.7699093Z bend 2.0.39
+Compile shared Bend mount policy	Retain generated policy	﻿2026-11-07T15:53:55.7732170Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7732502Z with:
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7732683Z   name: windows-native-policy-1
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7732935Z   path: /home/runner/work/_temp/windows-native-policy/
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7733191Z   if-no-files-found: error
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7733544Z   retention-days: 14
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7733725Z   compression-level: 6
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7733904Z   overwrite: false
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7734077Z   include-hidden-files: false
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7734274Z   archive: true
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7734439Z env:
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7734795Z   BEND_NO_TELEMETRY: 1
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.7734970Z ##[endgroup]
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.9334477Z With the provided path, there will be 4 files uploaded
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.9355237Z Artifact name is valid!
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:55.9355572Z Root directory input is valid!
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.1890712Z Uploading artifact: windows-native-policy-1.zip
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.1921832Z Beginning upload of artifact content to blob storage
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.5553894Z Uploaded bytes 93077
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.5714756Z Finished uploading artifact content to blob storage!
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.5715522Z SHA256 digest of uploaded artifact is 240492f916e6ac7f5edff144186354de45a3fc77b2874fb5172506f21ab5e398
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.5716162Z Finalizing artifact upload
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.9957192Z Artifact windows-native-policy-1 successfully finalized. Artifact ID 13580736424
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.9958113Z Artifact windows-native-policy-1 has been successfully uploaded! Final size is 93077 bytes. Artifact ID is 13580736424
+Compile shared Bend mount policy	Retain generated policy	2026-11-07T15:53:56.9961126Z Artifact download URL: https://github.com/Spaceghost/writ/actions/runs/42388574210/artifacts/13580736424
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-11-07T15:53:57.0166656Z Post job cleanup.
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.0868366Z [command]/usr/bin/git version
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.0949582Z git version 2.56.0
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.0979261Z Temporarily overriding HOME='/home/runner/work/_temp/10a2df85-637e-46e9-a71e-26375590c29c' before making global git config changes
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.0980333Z Adding repository directory to the temporary git global config as a safe directory
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.0983838Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/writ/writ
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1017046Z Removing SSH command configuration
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1022836Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1057918Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1283266Z Removing HTTP extra header
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1288161Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1328123Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1563593Z Removing includeIf entries pointing to credentials config files
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1569934Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+Compile shared Bend mount policy	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:53:57.1614303Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+Compile shared Bend mount policy	Complete job	﻿2026-11-07T15:53:57.1961218Z Evaluate and set job outputs
+Compile shared Bend mount policy	Complete job	2026-11-07T15:53:57.1966478Z Set output 'artifact-id'
+Compile shared Bend mount policy	Complete job	2026-11-07T15:53:57.1968167Z Cleaning up orphan processes
+WinFsp mount and LPAC public-canary probes	Set up job	﻿2026-11-07T15:54:01.7172162Z Current runner version: '2.338.2'
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7260392Z ##[group]Runner Image Provisioner
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7261464Z Hosted Compute Agent
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7262107Z Version: 20261103.629
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7262750Z Commit: 15dbd9ccb5dbf34fae002b6ed1a2670f52df37bc
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7263438Z Build Date: 2026-11-03T17:26:59Z
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7264032Z Worker ID: {5805c4bd-66bd-48a6-a6e9-255c76beb4a6}
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7264585Z Region: centralus
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7264990Z Cloud: Azure
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7265406Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7266748Z ##[group]Operating System
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7267337Z Microsoft Windows Server 2025
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7267891Z 10.0.26100
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7268312Z Datacenter
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7269189Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7269652Z ##[group]Runner Image
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7270116Z Image: windows-2025-vs2026
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7270574Z Version: 20261103.298.1
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7271450Z Included Software: https://github.com/actions/runner-images/blob/win25-vs2026/20261103.298/images/windows/Windows2025-VS2026-Readme.md
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7273395Z Image Release: https://github.com/actions/runner-images/releases/tag/win25-vs2026%2F20261103.298
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7274286Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7275320Z ##[group]GITHUB_TOKEN Permissions
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7277087Z Contents: read
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7277548Z Metadata: read
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7277956Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7279796Z Secret source: Actions
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7280502Z Cache mode: write
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7281089Z Prepare workflow directory
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7633029Z Prepare all required actions
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:01.7676162Z Getting action download info
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:02.0006027Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:02.1024886Z Download action repository 'actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333' (SHA:9000827ccba6bdab643e8b6fd33ac0654aef8333)
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:02.5189692Z Download action repository 'actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:02.6621896Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+WinFsp mount and LPAC public-canary probes	Set up job	2026-11-07T15:54:02.8438409Z Complete job name: WinFsp mount and LPAC public-canary probes
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-11-07T15:54:02.9988603Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9991172Z with:
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9991511Z   persist-credentials: false
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9991900Z   repository: Spaceghost/writ
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9995461Z   token: ***
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9995784Z   ssh-strict: true
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9996109Z   ssh-user: git
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9996411Z   clean: true
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9996732Z   sparse-checkout-cone-mode: true
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9997122Z   fetch-depth: 1
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9997488Z   fetch-tags: false
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9997810Z   show-progress: true
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9998127Z   lfs: false
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9998422Z   submodules: false
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9998741Z   set-safe-directory: true
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9999103Z   allow-unsafe-pr-checkout: false
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:02.9999730Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.1273400Z Syncing repository: Spaceghost/writ
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.1274957Z ##[group]Getting Git version info
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.1275498Z Working directory is 'D:\a\writ\writ'
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.1895537Z [command]"C:\Program Files\Git\bin\git.exe" version
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5254465Z git version 2.56.0.windows.4
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5299769Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5314196Z Temporarily overriding HOME='D:\a\_temp\1f646d80-c684-4afd-8395-e7f3fce86a0d' before making global git config changes
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5316320Z Adding repository directory to the temporary git global config as a safe directory
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5324669Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\writ\writ
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5928177Z Deleting the contents of 'D:\a\writ\writ'
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5933082Z ##[group]Determining repository object format
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5935333Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5936753Z ##[group]Initializing the repository
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.5942638Z [command]"C:\Program Files\Git\bin\git.exe" init D:\a\writ\writ
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.6864319Z Initialized empty Git repository in D:/a/writ/writ/.git/
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.6908312Z [command]"C:\Program Files\Git\bin\git.exe" remote add origin https://github.com/Spaceghost/writ
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.7632930Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.7634929Z ##[group]Disabling automatic garbage collection
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.7642480Z [command]"C:\Program Files\Git\bin\git.exe" config --local gc.auto 0
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.8021163Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.8022503Z ##[group]Setting up auth
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.8023551Z Removing SSH command configuration
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.8034126Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:03.8407131Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:05.2901735Z Removing HTTP extra header
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:05.2913486Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:05.3330914Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:05.8954206Z Removing includeIf entries pointing to credentials config files
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:05.8962250Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:05.9312795Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.4835349Z [command]"C:\Program Files\Git\bin\git.exe" config --file D:\a\_temp\git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config http.https://github.com/.extraheader "AUTHORIZATION: basic ***"
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.5187733Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/writ/writ/.git.path D:\a\_temp\git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.5520642Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:D:/a/writ/writ/.git/worktrees/*.path D:\a\_temp\git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.5895038Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.6257627Z [command]"C:\Program Files\Git\bin\git.exe" config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.6649714Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.6650263Z ##[group]Fetching the repository
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:06.6660020Z [command]"C:\Program Files\Git\bin\git.exe" -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +70f05b25eb92581c2f95993151e20ad6b4d71509:refs/remotes/origin/master
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.4450982Z From https://github.com/Spaceghost/writ
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.4451872Z  * [new ref]         70f05b25eb92581c2f95993151e20ad6b4d71509 -> origin/master
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.4512570Z [command]"C:\Program Files\Git\bin\git.exe" branch --list --remote origin/master
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.4900192Z   origin/master
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.4949564Z [command]"C:\Program Files\Git\bin\git.exe" rev-parse refs/remotes/origin/master
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.5330535Z 70f05b25eb92581c2f95993151e20ad6b4d71509
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.5367094Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.5367562Z ##[group]Determining the checkout info
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.5368579Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.5376760Z [command]"C:\Program Files\Git\bin\git.exe" sparse-checkout disable
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.5798166Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset-all extensions.worktreeConfig
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.6137786Z ##[group]Checking out the ref
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:10.6145773Z [command]"C:\Program Files\Git\bin\git.exe" checkout --progress --force -B master refs/remotes/origin/master
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:11.9519090Z Updating files:  72% (3348/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:11.9645970Z Updating files:  73% (3392/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:11.9793261Z Updating files:  74% (3439/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:11.9887318Z Updating files:  75% (3485/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0049793Z Updating files:  76% (3531/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0165805Z Updating files:  77% (3578/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0269364Z Updating files:  78% (3624/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0378007Z Updating files:  79% (3671/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0486993Z Updating files:  80% (3717/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0588286Z Updating files:  81% (3764/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0737075Z Updating files:  82% (3810/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0825171Z Updating files:  83% (3857/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0895506Z Updating files:  84% (3903/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.0989316Z Updating files:  85% (3950/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1085804Z Updating files:  86% (3996/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1190787Z Updating files:  87% (4043/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1324681Z Updating files:  88% (4089/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1441051Z Updating files:  89% (4135/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1509411Z Updating files:  90% (4182/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1578664Z Updating files:  91% (4228/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1684919Z Updating files:  92% (4275/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1770388Z Updating files:  93% (4321/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.1900593Z Updating files:  94% (4368/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2001313Z Updating files:  95% (4414/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2086505Z Updating files:  96% (4461/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2168973Z Updating files:  97% (4507/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2240494Z Updating files:  98% (4554/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2326250Z Updating files:  99% (4600/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2326665Z Updating files: 100% (4646/4646)
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2328217Z Updating files: 100% (4646/4646), done.
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2493648Z Reset branch 'master'
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2590815Z branch 'master' set up to track 'origin/master'.
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.2687253Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.3400876Z [command]"C:\Program Files\Git\bin\git.exe" log -1 --format=%H
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.3728542Z 70f05b25eb92581c2f95993151e20ad6b4d71509
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.3771513Z ##[group]Removing auth
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.3772002Z Removing SSH command configuration
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.3780021Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.4112991Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.9383248Z Removing HTTP extra header
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.9391130Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:12.9792143Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5380925Z Removing includeIf entries pointing to credentials config files
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5391051Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5698680Z includeif.gitdir:D:/a/writ/writ/.git.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5699168Z includeif.gitdir:D:/a/writ/writ/.git/worktrees/*.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5699524Z includeif.gitdir:/github/workspace/.git.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5699884Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.5753924Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/writ/writ/.git.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.6057061Z D:\a\_temp\git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.6109379Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/writ/writ/.git.path D\:\\a\\_temp\\git\-credentials\-7167bd43\-d711\-4557\-9108\-37bdec87af37\.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.6471253Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:D:/a/writ/writ/.git/worktrees/*.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.6772174Z D:\a\_temp\git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.6817691Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:D:/a/writ/writ/.git/worktrees/*.path D\:\\a\\_temp\\git\-credentials\-7167bd43\-d711\-4557\-9108\-37bdec87af37\.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.7162665Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.7457465Z /github/runner_temp/git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.7502258Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-7167bd43\-d711\-4557\-9108\-37bdec87af37\.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.7845286Z [command]"C:\Program Files\Git\bin\git.exe" config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.8147511Z /github/runner_temp/git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.8195273Z [command]"C:\Program Files\Git\bin\git.exe" config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-7167bd43\-d711\-4557\-9108\-37bdec87af37\.config
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:13.8542595Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:14.4069935Z Removing credentials config 'D:\a\_temp\git-credentials-7167bd43-d711-4557-9108-37bdec87af37.config'
+WinFsp mount and LPAC public-canary probes	Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:54:14.4079706Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	﻿2026-11-07T15:54:14.4443747Z ##[group]Run actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4444160Z with:
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4444312Z   artifact-ids: 13580736424
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4444523Z   path: D:\a\_temp/windows-native-policy
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4444727Z   merge-multiple: true
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4444906Z   digest-mismatch: error
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4445076Z   repository: Spaceghost/writ
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4445244Z   run-id: 42388574210
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4445395Z   skip-decompress: false
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.4445559Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.6010715Z Downloading artifacts by ID
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.7618246Z Found 1 artifact(s)
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.7618741Z Preparing to download the following artifacts:
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:14.7619341Z - windows-native-policy-1 (ID: 13580736424, Size: 93077, Expected Digest: sha256:240492f916e6ac7f5edff144186354de45a3fc77b2874fb5172506f21ab5e398)
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.1017557Z Redirecting to blob download url: https://productionresultssa12.blob.core.windows.net/actions-results/48a68d87-5b70-8fce-93bd-124fe80e3f2e/workflow-job-run-f8925c22-3062-524a-8fae-860b446adfc8/artifacts/0d69f416af85d6bc07678af5494533aec24d79af3c86b745dd96e5b06a63135f.zip
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.1019581Z Starting download of artifact to: D:\a\_temp\windows-native-policy
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.2636264Z (node:7364) [DEP0005] DeprecationWarning: Buffer() is deprecated due to security and usability issues. Please use the Buffer.alloc(), Buffer.allocUnsafe(), or Buffer.from() methods instead.
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.2637873Z (Use `node --trace-deprecation ...` to show where the warning was created)
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.3303789Z SHA256 digest of downloaded artifact is 240492f916e6ac7f5edff144186354de45a3fc77b2874fb5172506f21ab5e398
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.3324836Z Artifact download completed successfully.
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.3338147Z Total of 1 artifact(s) downloaded
+WinFsp mount and LPAC public-canary probes	Download the exact generated policy artifact	2026-11-07T15:54:15.3344919Z Download artifact has finished successfully
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	﻿2026-11-07T15:54:15.3764180Z ##[group]Run actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.3764743Z with:
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.3764964Z   node-version: 22.23.4
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.3765215Z   check-latest: false
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.3765458Z   always-auth: false
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.3768995Z   token: ***
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.3769283Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.5955270Z Found in cache @ C:\hostedtoolcache\windows\node\22.23.4\x64
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.5962135Z (node:7200) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.5963105Z (Use `node --trace-deprecation ...` to show where the warning was created)
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:15.5965840Z ##[group]Environment details
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:22.0971824Z node: v22.23.4
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:22.0972269Z npm: 10.9.9
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:22.0972501Z yarn: 1.22.22
+WinFsp mount and LPAC public-canary probes	Install pinned native Windows Node	2026-11-07T15:54:22.0973021Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	﻿2026-11-07T15:54:22.1253131Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1253559Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1253862Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1254263Z ^[[36;1mNew-Item -ItemType Directory -Path $writLogs | Out-Null^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1254627Z ^[[36;1m# Protect the fresh evidence directory before writing fixture records.^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1255004Z ^[[36;1m$logAcl = [Security.AccessControl.DirectorySecurity]::new()^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1255448Z ^[[36;1m$logAcl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)')^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1255856Z ^[[36;1mSet-Acl -LiteralPath $writLogs -AclObject $logAcl^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1256137Z ^[[36;1m$actualAcl = Get-Acl -LiteralPath $writLogs^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1256420Z ^[[36;1mif (-not $actualAcl.AreAccessRulesProtected -or^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1256824Z ^[[36;1m    $actualAcl.GetOwner([Security.Principal.SecurityIdentifier]).Value -ne 'S-1-5-32-544') {^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1257313Z ^[[36;1m  throw 'Fixture evidence directory ownership was not installed.'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1257578Z ^[[36;1m}^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1257809Z ^[[36;1mif (-not $IsWindows) { throw 'Native Windows execution is required.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1258297Z ^[[36;1m$principal = [Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent())^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1258848Z ^[[36;1mif (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1259282Z ^[[36;1m  throw 'The disposable native fixture requires an elevated broker.'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1259561Z ^[[36;1m}^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1259799Z ^[[36;1m$policyDir = Join-Path $env:RUNNER_TEMP 'windows-native-policy'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1260145Z ^[[36;1mforeach ($line in Get-Content (Join-Path $policyDir 'SHA256SUMS')) {^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1260440Z ^[[36;1m  $parts = $line -split '  ', 2^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1260819Z ^[[36;1m  if ($parts.Count -ne 2 -or $parts[1] -notin @('mount.mjs', 'mount-tests.js')) { throw 'Invalid policy manifest.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1261342Z ^[[36;1m  $actual = (Get-FileHash (Join-Path $policyDir $parts[1]) -Algorithm SHA256).Hash.ToLowerInvariant()^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1261776Z ^[[36;1m  if ($actual -ne $parts[0]) { throw 'Generated policy digest mismatch.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1262748Z ^[[36;1m}^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1263064Z ^[[36;1m$actual = (Get-FileHash (Join-Path $policyDir 'mount.mjs') -Algorithm SHA256).Hash.ToLowerInvariant()^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1263810Z ^[[36;1mif ((Get-Content (Join-Path $policyDir 'commit.txt')) -ne $env:GITHUB_SHA) { throw 'Wrong policy source commit.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1264228Z ^[[36;1m$os = Get-CimInstance Win32_OperatingSystem^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1264440Z ^[[36;1m@(^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1264664Z ^[[36;1m  "Commit: $env:GITHUB_SHA"^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1264932Z ^[[36;1m  "OS: $($os.Caption) $($os.Version) $($os.OSArchitecture)"^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1265212Z ^[[36;1m  "Image: $env:ImageOS $env:ImageVersion"^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1265497Z ^[[36;1m  "Node: $((Get-Command node.exe).Source) $(& node.exe --version)"^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1265763Z ^[[36;1m  "Policy SHA256: $actual"^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1266100Z ^[[36;1m  'Profile: public-canary only; native WinFsp mount and separately observed LPAC probes.'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1266579Z ^[[36;1m  'No WSL. No protected-data product qualification or administrator-resistant audit claim.'^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.1267171Z ^[[36;1m) | Tee-Object -FilePath (Join-Path $writLogs 'environment.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.2231508Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.2231846Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9838050Z Commit: 70f05b25eb92581c2f95993151e20ad6b4d71509
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9839365Z OS: Microsoft Windows Server 2025 Datacenter 10.0.26100 64-bit
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9840041Z Image: win25-vs2026 20261103.298.1
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9860643Z Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe v22.23.4
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9861455Z Policy SHA256: 4dea0e692616bf41ef086c4b6b16f94cddcaa172b76c7350e6813dfe46026882
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9862147Z Profile: public-canary only; native WinFsp mount and separately observed LPAC probes.
+WinFsp mount and LPAC public-canary probes	Verify policy and record native environment	2026-11-07T15:54:22.9862679Z No WSL. No protected-data product qualification or administrator-resistant audit claim.
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	﻿2026-11-07T15:54:23.0502678Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0503057Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0503355Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0503714Z ^[[36;1m$policyDir = Join-Path $env:RUNNER_TEMP 'windows-native-policy'^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0504207Z ^[[36;1m& node.exe (Join-Path $policyDir 'mount-tests.js') 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'mount-model.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0504698Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Windows Bend model checks failed.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0505173Z ^[[36;1m& node.exe contrib/native-hosts/runtime/check-bridge.mjs (Join-Path $policyDir 'mount.mjs') 2>&1 |^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0505617Z ^[[36;1m  Tee-Object -FilePath (Join-Path $writLogs 'transport.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0505997Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Native Windows transport probes failed.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0564349Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.0564742Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.6785528Z PASS: exported case count matches corpus
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8024420Z PASS: reject protocol version
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8025663Z PASS: reject leading zero
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8027897Z PASS: reject numeric sign
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8029469Z PASS: reject U32 overflow
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8031389Z PASS: reject missing field
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8033289Z PASS: reject extra field
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8035017Z PASS: reject CRLF alias
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8039114Z PASS: reject embedded LF
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8040117Z PASS: reject non-ASCII
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8042360Z PASS: reject unknown operation
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8044301Z PASS: reject alternate control actor
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8045829Z PASS: reject odd payload hex
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8047642Z PASS: reject uppercase payload hex
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8049279Z PASS: reject payload separator
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8050983Z PASS: reject oversized frame
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8053299Z PASS: actual SHA-256 binds INIT bytes
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8055577Z PASS: empty immutable file supported
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8056813Z PASS: different payload changes seal
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8058308Z PASS: INIT cannot replace registered bytes
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8059659Z PASS: admission requires input
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8061227Z PASS: fixed profile cannot be escalated
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8065248Z PASS: full capability commit admits reader
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8066935Z PASS: complete commit and origin policy retained
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8068120Z PASS: duplicate admission denied
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8069734Z PASS: public destination refused by full gate
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8072247Z PASS: revoked registry refused at commit
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8073044Z PASS: source seal matches retained intent
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8075259Z PASS: metadata unavailable before admission
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8077010Z PASS: unknown actor cannot stat
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8078234Z PASS: unknown actor cannot list
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8079944Z PASS: unknown actor cannot open
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8081712Z PASS: another actor cannot open
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8083009Z PASS: admitted metadata returns exact size
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8084566Z PASS: admitted root has fixed metadata
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8086141Z PASS: list admits exactly one entry
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8087372Z PASS: namespace alias denied
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8088826Z PASS: alternate stream denied
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8090392Z PASS: admitted open allocates first handle
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8092022Z PASS: read requires an existing handle
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8093860Z PASS: read clips to immutable bytes
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8095048Z PASS: range read clips at EOF
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8096452Z PASS: EOF read returns zero
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8097993Z PASS: far EOF cannot underflow length
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8099434Z PASS: zero length read returns zero
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8101158Z PASS: oversized read denied
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8102440Z PASS: another actor cannot reuse handle
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8105853Z PASS: root handle cannot release bytes
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8106226Z PASS: close requires owning binding
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8107041Z PASS: close retires exact handle
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8108542Z PASS: closed handle cannot read
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8110186Z PASS: new open never reuses old handle
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8111706Z PASS: live handle limit enforced
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8113098Z PASS: closing releases capacity without reuse
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8114578Z PASS: revocation closes future reads
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8115911Z PASS: revocation closes metadata
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8117481Z PASS: revocation closes new opens
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8118851Z PASS: revocation cannot be readmitted
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8120004Z PASS: revocation cannot replace input
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8122298Z PASS: revocation retains committed state
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8123906Z PASS: revoked handle can be cleaned up
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8125644Z PASS: fresh instance rejects old handle
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8127299Z PASS: STOP is terminal
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8128740Z PASS: denials advance audit sequence
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8129974Z PASS: parse failures advance audit sequence
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8131595Z PASS: full 64 KiB payload accepted
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8133050Z PASS: payload byte cap enforced before hashing
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8134334Z PASS: handle counter cannot wrap
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8135641Z PASS: request budget stops admission
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8137143Z PASS: exhausted state retains commit evidence
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.8138428Z ALL NATIVE MOUNT MODEL TESTS PASSED
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:23.9585308Z PASS transport coalesced frames preserve sequence
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.0508249Z PASS transport fragmented frame remains one request
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.1301958Z PASS transport unterminated frame closes transport
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.2199605Z PASS transport oversized frame closes transport
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.2918415Z PASS transport carriage return closes transport
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.3610554Z PASS transport non-ASCII byte closes transport
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.4338686Z PASS transport NUL byte closes transport
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.6314180Z PASS transport 64 KiB frame reaches Bend with exact digest
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.7124564Z PASS transport Bend owns canonical parsing and error sequencing
+WinFsp mount and LPAC public-canary probes	Run the shared mount model and transport probes on Windows	2026-11-07T15:54:24.7126601Z ALL 9 NATIVE TRANSPORT PROBES PASSED
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	﻿2026-11-07T15:54:24.7808469Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7808891Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7809202Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7809544Z ^[[36;1m$installer = Join-Path $env:RUNNER_TEMP 'winfsp-2.2.26286.msi'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7810105Z ^[[36;1mInvoke-WebRequest -Uri 'https://github.com/winfsp/winfsp/releases/download/v2.2B5/winfsp-2.2.26286.msi' -OutFile $installer^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7810853Z ^[[36;1mif ((Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant() -ne '293ffb9bcc0b625c85079fe85fa77f8fe98170aba51a02ac9c83d58f6c3b0e2f') {^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7811408Z ^[[36;1m  throw 'WinFsp installer digest mismatch.'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7811627Z ^[[36;1m}^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7811821Z ^[[36;1m$signature = Get-AuthenticodeSignature $installer^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7812216Z ^[[36;1mif ($signature.Status -ne 'Valid') { throw "WinFsp installer signature: $($signature.Status)" }^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7812878Z ^[[36;1m$signature | Format-List Status,StatusMessage,SignerCertificate | Out-File (Join-Path $writLogs 'winfsp-signature.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7813334Z ^[[36;1m$log = Join-Path $writLogs 'winfsp-install.txt'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7813807Z ^[[36;1m$install = Start-Process msiexec.exe -ArgumentList "/i `"$installer`" /qn /norestart ADDLOCAL=ALL /l*v `"$log`"" -Wait -PassThru^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7814398Z ^[[36;1mif ($install.ExitCode -ne 0) { throw "WinFsp install exit $($install.ExitCode); no reboot/driver fallback." }^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7814821Z ^[[36;1m$winfsp = Join-Path ${env:ProgramFiles(x86)} 'WinFsp'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7815101Z ^[[36;1m$dll = Join-Path $winfsp 'bin\winfsp-x64.dll'^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7815367Z ^[[36;1m$version = (Get-Item $dll).VersionInfo.FileVersion^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7815726Z ^[[36;1mif (-not $version.StartsWith('2.2.26286')) { throw "Unexpected WinFsp runtime $version" }^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7816310Z ^[[36;1m@("WinFsp: $version", 'Source: 14d6e0280ae15e2550c44d6dbc476be51649727f', 'Release: v2.2B5 prerelease with published security fixes') |^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7816828Z ^[[36;1m  Tee-Object -FilePath (Join-Path $writLogs 'winfsp-version.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7817151Z ^[[36;1m$env:PATH = (Join-Path $winfsp 'bin') + ';' + $env:PATH^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7817551Z ^[[36;1m(Join-Path $winfsp 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append^[[0m
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7878867Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:24.7879194Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:28.8357506Z WinFsp: 2.2.26286.14d6e02
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:28.8359737Z Source: 14d6e0280ae15e2550c44d6dbc476be51649727f
+WinFsp mount and LPAC public-canary probes	Install pinned security-fixed WinFsp prerelease	2026-11-07T15:54:28.8361140Z Release: v2.2B5 prerelease with published security fixes
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	﻿2026-11-07T15:54:28.9210872Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9211259Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9211553Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9211885Z ^[[36;1m$build = Join-Path $env:RUNNER_TEMP 'windows-native-build'^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9212372Z ^[[36;1m& cmake -S contrib/native-hosts/windows -B $build -A x64 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'configure.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9212878Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Native CMake configuration failed.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9213362Z ^[[36;1m& cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $writLogs 'build.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9214208Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Native Windows compilation failed.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9214545Z ^[[36;1m& (Join-Path $build 'Release\writfs-probe.exe') --exit^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9214949Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'The native probe could not initialize outside its restricted job.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9215576Z ^[[36;1mGet-FileHash (Join-Path $build 'Release\writfs-windows.exe'),(Join-Path $build 'Release\writfs-probe.exe') -Algorithm SHA256 |^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9216130Z ^[[36;1m  Format-Table -AutoSize | Out-File (Join-Path $writLogs 'native-source-artifacts.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9279659Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:28.9279972Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:50.0596157Z -- Building for: Visual Studio 18 2026
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:50.0598117Z -- The C compiler identification is MSVC 19.51.36260.0
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:50.5667100Z -- Detecting C compiler ABI info
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:51.9296496Z -- Detecting C compiler ABI info - done
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:51.9862712Z -- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/18/Enterprise/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe - skipped
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:51.9913842Z -- Detecting C compile features
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.0036893Z -- Detecting C compile features - done
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.1774148Z -- Configuring done (22.2s)
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.2184790Z -- Generating done (0.0s)
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.2190735Z -- Build files have been written to: D:/a/_temp/windows-native-build
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.3406756Z MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.4316378Z
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:52.7985696Z   1>Checking Build System
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:53.1243939Z   Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:53.2736894Z   probe.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:53.2989209Z   Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:53.3642704Z   writfs.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:53.4545171Z   Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:53.5684837Z   transport_probe.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:56.8594493Z   policy_pipe.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:56.8630201Z   isolation.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:56.9996960Z   isolation.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:57.2221549Z   worker.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:57.2493647Z   Generating Code...
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:57.2503926Z   channels.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:57.2665771Z C:\Program Files (x86)\WinFsp\inc\winfsp\fsctl.h(541,44): warning C4324: '<unnamed-tag>': structure was padded due to alignment specifier [D:\a\_temp\windows-native-build\writfs-windows.vcxproj]
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:57.2668866Z   (compiling source file '../../writ/writ/contrib/native-hosts/windows/writfs.c')
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:57.2669637Z
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:58.3120626Z   Generating Code...
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:58.4219864Z D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-native-build\writfs-windows.vcxproj]
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:58.4320434Z   policy_pipe.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:58.5851017Z   isolation.c
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:54:58.7346316Z   Generating Code...
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:55:00.2779277Z   writfs-transport-probe.vcxproj -> D:\a\_temp\windows-native-build\Release\writfs-transport-probe.exe
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:55:00.2789566Z   writfs-probe.vcxproj -> D:\a\_temp\windows-native-build\Release\writfs-probe.exe
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:55:00.7329146Z   writfs-windows.vcxproj -> D:\a\_temp\windows-native-build\Release\writfs-windows.exe
+WinFsp mount and LPAC public-canary probes	Compile native ABI and probe with MSVC	2026-11-07T15:55:00.7878825Z   Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/CMakeLists.txt
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	﻿2026-11-07T15:55:00.9215084Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9215471Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9216052Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9216608Z ^[[36;1m$build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9217775Z ^[[36;1m$fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9218425Z ^[[36;1m[IO.File]::WriteAllBytes($fixture, [Text.Encoding]::UTF8.GetBytes("Writ public native canary`n"))^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9219245Z ^[[36;1m$node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9219887Z ^[[36;1m$bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9220717Z ^[[36;1m$module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9221559Z ^[[36;1m[string[]] $nativeArgs = @('--public-fixture', $fixture, $node, $bridge, $module, (Join-Path $build 'writfs-probe.exe'), 'mount')^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9222732Z ^[[36;1mif ($nativeArgs.Count -ne 7 -or ($nativeArgs | Where-Object { [string]::IsNullOrEmpty($_) })) { throw 'Invalid native argument vector.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9223617Z ^[[36;1m"Native argument count: $($nativeArgs.Count); Node: $node" | Write-Output^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9224148Z ^[[36;1m& (Join-Path $build 'writfs-windows.exe') @nativeArgs 2>&1 |^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9224464Z ^[[36;1m  Tee-Object -FilePath (Join-Path $writLogs 'mount.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9224814Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Native mounted filesystem checks failed.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9283100Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:00.9283391Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.2663662Z Native argument count: 7; Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4047000Z IDENTITY pid=6720 created=01dd6ed058daa819 user=S-1-5-21-3289802278-1561746829-1498425070-500 auth=00000000000b9e32 package=none lpac=0 image_sha256=4793bf75930bbd933d05f7480673e21d59ec3b122c0fbbbfa22d20479bee624f
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4112165Z NATIVE_PASS native WinFsp filesystem mounted at Z:
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4114194Z EVENT n=1 policy=2 kind=stat pid=8984 actor=0 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4330351Z NATIVE_PASS ordinary reader receives access denied before admission
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4332024Z EVENT n=2 policy=4 kind=stat pid=8984 actor=0 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4447994Z NATIVE_PASS actual worker token presented by the wrong native process remains denied
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4449384Z EVENT n=3 policy=5 kind=stat pid=6720 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.4612748Z EVENT n=4 policy=6 kind=open pid=6720 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.5220728Z EVENT n=5 policy=13 kind=read-bound-open pid=6720 actor=1 result=allow reason=READ
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.5375662Z EVENT n=6 policy=14 kind=stat pid=6720 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.5435273Z EVENT n=7 policy=15 kind=open pid=6720 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.6179006Z EVENT n=8 policy=20 kind=read-bound-open pid=6720 actor=1 result=allow reason=READ
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.6483870Z EVENT n=9 policy=22 kind=read-bound-open pid=6720 actor=1 result=allow reason=READ
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.6641768Z EVENT n=10 policy=23 kind=stat pid=6720 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.6804380Z EVENT n=11 policy=24 kind=open pid=6720 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.7815886Z EVENT n=12 policy=31 kind=stat pid=6720 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.7817147Z EVENT n=13 policy=32 kind=open pid=6720 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8238289Z EVENT n=14 policy=37 kind=stat pid=6720 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8239869Z PROBE phase=1 passed=0000007f failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=5 e5=123 e6=5 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=0 e18=0 clipboard_stage=0 com_stage=0
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8387034Z NATIVE_PASS admitted worker read, digest, range, EOF and directory match
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8388655Z NATIVE_PASS write, alternate stream and new-file attempts fail
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8390422Z EVENT n=15 policy=38 kind=stat pid=8984 actor=0 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8457279Z NATIVE_PASS ordinary reader remains denied after worker admission
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8459409Z NATIVE_PASS limited same-user outsider denied VM_READ, DUP_HANDLE, WRITE_DAC and WRITE_OWNER for broker, policy and worker
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8461012Z PROBE phase=2 passed=00000000 failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=0 e18=0 clipboard_stage=0 com_stage=0
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8607018Z EVENT n=16 policy=40 kind=stat pid=6720 actor=1 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8708841Z EVENT n=17 policy=41 kind=read-bound-open pid=6720 actor=1 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8710127Z PROBE phase=3 passed=00060000 failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=5 e18=5 clipboard_stage=0 com_stage=0
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8935543Z NATIVE_PASS revocation denies new opens and a subsequent uncached read
+WinFsp mount and LPAC public-canary probes	Exercise a real native mount and actor-bound reads	2026-11-07T15:55:01.8936545Z ALL WINDOWS NATIVE CHECKS PASSED profile=mount-canary
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	﻿2026-11-07T15:55:01.9556741Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9557108Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9557405Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9557762Z ^[[36;1m$build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9558176Z ^[[36;1m$node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9558621Z ^[[36;1m$bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9559008Z ^[[36;1m$module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9559395Z ^[[36;1m& (Join-Path $build 'writfs-transport-probe.exe') $node $bridge $module 2>&1 |^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9559822Z ^[[36;1m  Tee-Object -FilePath (Join-Path $writLogs 'native-transport.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9560237Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Native Windows pipe validation or teardown failed.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9616710Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:01.9616996Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.4113354Z PASS native private pipes execute actual Bend admission, read, revocation and cleanup
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.4115323Z PASS native policy child ignores injected Node environment
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.5903192Z PASS native 64 KiB payload traverses private pipes with exact Bend digest
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6171625Z PASS native fragmented reply is accepted exactly once
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6327396Z PASS native malformed peer early poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6407448Z PASS native malformed peer after-lf poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6487889Z PASS native malformed peer sequence poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6656688Z PASS native malformed peer replay poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6802196Z PASS native malformed peer leading-zero poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.6959725Z PASS native malformed peer sequence-overflow poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7041255Z PASS native malformed peer value-overflow poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7119614Z PASS native malformed peer trailing-field poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7323102Z PASS native malformed peer status poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7438228Z PASS native malformed peer reason poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7596099Z PASS native malformed peer cr poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7755011Z PASS native malformed peer non-ascii poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7913961Z PASS native malformed peer nul poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.7996654Z PASS native malformed peer oversize poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.8043989Z PASS native malformed peer partial poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:02.8088203Z PASS native malformed peer eof poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:17.8173077Z PASS native malformed peer read-timeout poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:32.8210414Z PASS native malformed peer write-timeout poisons the pipe, retires the child and refuses retry
+WinFsp mount and LPAC public-canary probes	Exercise the actual native private-pipe transport	2026-11-07T15:55:32.8211672Z ALL WINDOWS NATIVE TRANSPORT CHECKS PASSED (22 assertions)
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	﻿2026-11-07T15:55:32.8565976Z ##[group]Run $ErrorActionPreference = 'Stop'
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8566341Z ^[[36;1m$ErrorActionPreference = 'Stop'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8566639Z ^[[36;1m$writLogs = Join-Path $env:RUNNER_TEMP 'windows-native-logs'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8566989Z ^[[36;1m$build = Join-Path $env:RUNNER_TEMP 'windows-native-build\Release'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8567430Z ^[[36;1m$fixture = Join-Path $env:RUNNER_TEMP 'windows-native-public-canary.bin'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8568038Z ^[[36;1m[IO.File]::WriteAllBytes($fixture, [Text.Encoding]::UTF8.GetBytes("Writ public native canary`n"))^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8568557Z ^[[36;1m$node = (Get-Command node.exe -CommandType Application | Select-Object -First 1).Source^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8569005Z ^[[36;1m$bridge = (Resolve-Path 'contrib/native-hosts/runtime/node-policy.mjs').Path^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8569411Z ^[[36;1m$module = Join-Path $env:RUNNER_TEMP 'windows-native-policy\mount.mjs'^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8569912Z ^[[36;1m[string[]] $nativeArgs = @('--public-fixture', $fixture, $node, $bridge, $module, (Join-Path $build 'writfs-probe.exe'), 'lpac')^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8570634Z ^[[36;1mif ($nativeArgs.Count -ne 7 -or ($nativeArgs | Where-Object { [string]::IsNullOrEmpty($_) })) { throw 'Invalid native argument vector.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8571179Z ^[[36;1m"Native argument count: $($nativeArgs.Count); Node: $node" | Write-Output^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8571550Z ^[[36;1m& (Join-Path $build 'writfs-windows.exe') @nativeArgs 2>&1 |^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8571875Z ^[[36;1m  Tee-Object -FilePath (Join-Path $writLogs 'lpac.txt')^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8572277Z ^[[36;1mif ($LASTEXITCODE -ne 0) { throw 'Native LPAC fixture checks failed; no weaker profile fallback.' }^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8627826Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:32.8628118Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.1814803Z Native argument count: 7; Node: C:\hostedtoolcache\windows\node\22.23.4\x64\node.exe
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3256312Z NATIVE_PASS TCP/UDP IPv4/IPv6 receivers accepted public positive controls before the worker test
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3258587Z NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3260830Z IDENTITY pid=9104 created=01dd6ed06be09956 user=S-1-5-21-3289802278-1561746829-1498425070-500 auth=00000000000b9e32 package=S-1-15-2-4129402147-2581439152-3775212398-2373263902-1313100029-141895102-1242260243 lpac=1 image_sha256=4793bf75930bbd933d05f7480673e21d59ec3b122c0fbbbfa22d20479bee624f
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3468680Z POSITIVE channels passed=00019000 failed=00000000 child=0 clipboard_stage=4 clipboard=00000000 com_stage=4 com=00000000
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3670870Z NATIVE_PASS owned volume device descriptor read back; actual LPAC token has traversal/read access to this device
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3672129Z NATIVE_PASS native WinFsp filesystem mounted at Z:
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3674006Z EVENT n=1 policy=2 kind=stat pid=6664 actor=0 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3842708Z NATIVE_PASS ordinary reader receives access denied before admission
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3843487Z EVENT n=2 policy=4 kind=stat pid=6664 actor=0 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3975237Z NATIVE_PASS actual worker token presented by the wrong native process remains denied
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.3976256Z EVENT n=3 policy=5 kind=stat pid=9104 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.4134830Z EVENT n=4 policy=6 kind=open pid=9104 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.4927382Z EVENT n=5 policy=13 kind=read-bound-open pid=9104 actor=1 result=allow reason=READ
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.5083685Z EVENT n=6 policy=14 kind=stat pid=9104 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.5143766Z EVENT n=7 policy=15 kind=open pid=9104 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.5626500Z EVENT n=8 policy=20 kind=read-bound-open pid=9104 actor=1 result=allow reason=READ
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.5765726Z EVENT n=9 policy=22 kind=read-bound-open pid=9104 actor=1 result=allow reason=READ
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.5821293Z EVENT n=10 policy=23 kind=stat pid=9104 actor=1 result=allow reason=STAT
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.5880215Z EVENT n=11 policy=24 kind=open pid=9104 actor=1 result=allow reason=OPEN
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6347448Z PROBE phase=1 passed=0000787f failed=00018780 e0=0 e1=0 e2=0 e3=0 e4=5 e5=123 e6=5 e7=10107 e8=10107 e9=10107 e10=10107 e11=5 e12=367 e13=6 e14=5 e15=2147943514 e16=2147943759 e17=0 e18=0 clipboard_stage=1 com_stage=1
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6513483Z INCOMPLETE byte-worker network/clipboard/COM probes: failed results receive no restriction credit
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6514415Z NATIVE_PASS admitted worker read, digest, range, EOF and directory match
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6516402Z NATIVE_PASS write, alternate stream and new-file attempts fail
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6517389Z EVENT n=12 policy=31 kind=stat pid=6664 actor=0 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6766774Z NATIVE_PASS ordinary reader remains denied after worker admission
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6768022Z DIAGNOSTIC_PROFILE phase=1 no_data=1 capabilities=registryRead win32k_disabled=0 pid=4176
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6769792Z DIAGNOSTIC_RESULT phase=1 passed=00019780 failed=00000000 tcp4=10013 tcp6=10013 udp4=10013 udp6=10013 child=367 clipboard_stage=3 clipboard=80070005 com_stage=3 com=80070005
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6771385Z NATIVE_PASS limited same-user outsider denied VM_READ, DUP_HANDLE, WRITE_DAC and WRITE_OWNER for broker, policy and worker
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6773440Z NATIVE_PASS LPAC has no capabilities, job and WFP setup verified before observation
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6775831Z NATIVE_PASS public file, child, console and broker-access probes blocked; live receivers stayed empty
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.6777366Z PROBE phase=2 passed=00000000 failed=00000780 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=10107 e8=10107 e9=10107 e10=10107 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=0 e18=0 clipboard_stage=0 com_stage=0
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7008543Z INCOMPLETE byte-worker network API probes after WFP removal; no restriction credit
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7009401Z DIAGNOSTIC_PROFILE phase=2 no_data=1 capabilities=registryRead win32k_disabled=0 pid=7648
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7011783Z DIAGNOSTIC_RESULT phase=2 passed=00019780 failed=00000000 tcp4=10013 tcp6=10013 udp4=10013 udp6=10013 child=367 clipboard_stage=3 clipboard=80070005 com_stage=3 com=80070005
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7012838Z EVENT n=13 policy=33 kind=stat pid=9104 actor=1 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7069620Z EVENT n=14 policy=34 kind=read-bound-open pid=9104 actor=1 result=deny reason=ACTOR_OR_PHASE
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7071160Z PROBE phase=3 passed=00060000 failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=5 e18=5 clipboard_stage=0 com_stage=0
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7857607Z ^[[31;1mFAIL native Windows profile=lpac-canary win32=10035^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7858376Z NATIVE_PASS revocation denies new opens and a subsequent uncached read
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.7860814Z LPAC_OBSERVATIONS mounted_and_revoked=pass byte_worker_confinement=incomplete no_data_diagnostic=pass
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.8697262Z ^[[31;1mException: ^[[0mD:\a\_temp\7db5fbd4-8274-4902-8c6a-a4639b4ed113.ps1:15^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.8698199Z ^[[31;1m^[[0m^[[36;1mLine |^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.8698979Z ^[[31;1m^[[0m^[[36;1m^[[36;1m  15 | ^[[0m … DE -ne 0) { ^[[36;1mthrow 'Native LPAC fixture checks failed; no weaker profi^[[0m …^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.8699941Z ^[[31;1m^[[0m^[[36;1m^[[36;1m^[[0m^[[36;1m^[[0m^[[36;1m     | ^[[31;1m               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.8701364Z ^[[31;1m^[[0m^[[36;1m^[[36;1m^[[0m^[[36;1m^[[0m^[[36;1m^[[31;1m^[[31;1m^[[36;1m     | ^[[31;1mNative LPAC fixture checks failed; no weaker profile fallback.^[[0m
+WinFsp mount and LPAC public-canary probes	Exercise LPAC, WFP, egress probes and revocation	2026-11-07T15:55:33.9153925Z ##[error]Process completed with exit code 1.
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	﻿2026-11-07T15:55:33.9309171Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9309588Z with:
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9309767Z   name: windows-native-evidence-1
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9309985Z   path: D:\a\_temp/windows-native-logs/
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9310203Z   if-no-files-found: error
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9310389Z   retention-days: 14
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9310553Z   compression-level: 6
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9310714Z   overwrite: false
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9310874Z   include-hidden-files: false
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9311048Z   archive: true
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:33.9311200Z ##[endgroup]
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.0743594Z With the provided path, there will be 12 files uploaded
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.0747356Z Artifact name is valid!
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.0748259Z Root directory input is valid!
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.3412650Z Uploading artifact: windows-native-evidence-1.zip
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.3442481Z Beginning upload of artifact content to blob storage
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.5873791Z Uploaded bytes 42685
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.6344457Z Finished uploading artifact content to blob storage!
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.6345389Z SHA256 digest of uploaded artifact is 6d5481be4feb33ef04b84c55cbbf87b4b92cd53d00f4b4b9b9d9f0b1564c1060
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:34.6346039Z Finalizing artifact upload
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:35.0988339Z Artifact windows-native-evidence-1 successfully finalized. Artifact ID 13580617091
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:35.0989056Z Artifact windows-native-evidence-1 has been successfully uploaded! Final size is 42685 bytes. Artifact ID is 13580617091
+WinFsp mount and LPAC public-canary probes	Retain all native evidence	2026-11-07T15:55:35.0995715Z Artifact download URL: https://github.com/Spaceghost/writ/actions/runs/42388574210/artifacts/13580617091
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	﻿2026-11-07T15:55:35.1298881Z Post job cleanup.
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.2676835Z [command]"C:\Program Files\Git\bin\git.exe" version
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.2961686Z git version 2.56.0.windows.4
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.3013763Z Temporarily overriding HOME='D:\a\_temp\c6b56ab3-c399-44e2-b6f3-167865870798' before making global git config changes
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.3014554Z Adding repository directory to the temporary git global config as a safe directory
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.3022294Z [command]"C:\Program Files\Git\bin\git.exe" config --global --add safe.directory D:\a\writ\writ
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.3336100Z Removing SSH command configuration
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.3346494Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp core\.sshCommand
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.3695435Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :\""
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.8458668Z Removing HTTP extra header
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.8467198Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:35.8767424Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "sh -c \"git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :\""
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:36.3317504Z Removing includeIf entries pointing to credentials config files
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:36.3326808Z [command]"C:\Program Files\Git\bin\git.exe" config --local --name-only --get-regexp ^includeIf\.gitdir:
+WinFsp mount and LPAC public-canary probes	Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1	2026-11-07T15:55:36.3621797Z [command]"C:\Program Files\Git\bin\git.exe" submodule foreach --recursive "git config --local --show-origin --name-only --get-regexp remote.origin.url"
+WinFsp mount and LPAC public-canary probes	Complete job	﻿2026-11-07T15:55:36.8401048Z Cleaning up orphan processes
+WinFsp mount and LPAC public-canary probes	Complete job	2026-11-07T15:55:36.8837941Z Terminate orphan process: pid (1632) (vctip)
+WinFsp mount and LPAC public-canary probes	Complete job	2026-11-07T15:55:36.8884403Z Terminate orphan process: pid (9176) (MSBuild)
+WinFsp mount and LPAC public-canary probes	Complete job	2026-11-07T15:55:36.8952334Z Terminate orphan process: pid (7508) (conhost)
+WinFsp mount and LPAC public-canary probes	Complete job	2026-11-07T15:55:36.9005250Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/

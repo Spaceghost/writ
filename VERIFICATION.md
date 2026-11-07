@@ -1,5 +1,9 @@
 # Verification record
 
+The [70f05b2 automatic CI checkpoint](verification/master-ci-70f05b2/README.md)
+retains passing Windows Node and filesystem fixtures and the strict Windows
+worker failure. Linux and Genode results are pending in that checkpoint.
+
 The [rendezvous allocation-boundary record](verification/rendezvous-allocation-boundary/README.md)
 checks exhausted approval/selection IDs without blocking existing offers,
 withdrawals or current selections when revision headroom exists. Terminal

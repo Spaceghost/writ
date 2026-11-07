@@ -1,0 +1,2 @@
+240492f916e6ac7f5edff144186354de45a3fc77b2874fb5172506f21ab5e398  windows-native-policy-1.zip
+6d5481be4feb33ef04b84c55cbbf87b4b92cd53d00f4b4b9b9d9f0b1564c1060  windows-native-evidence-1.zip
