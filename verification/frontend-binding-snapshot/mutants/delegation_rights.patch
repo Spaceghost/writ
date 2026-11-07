@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -136 +136 @@
+-        U32.is_eq(a2, b2) &&
++        True{} &&

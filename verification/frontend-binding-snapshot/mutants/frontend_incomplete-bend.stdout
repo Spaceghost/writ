@@ -1,0 +1,90 @@
+PASS: snapshot binding revision tamper
+PASS: snapshot next object watermark tamper
+PASS: snapshot next alias watermark tamper
+PASS: snapshot object id tamper
+PASS: snapshot object generation tamper
+PASS: snapshot object owner tamper
+PASS: snapshot object kind descriptor tamper
+PASS: snapshot object kind result channel tamper
+PASS: snapshot object derivation parent tamper
+PASS: snapshot object service tamper
+PASS: snapshot alias id tamper
+PASS: snapshot alias holder tamper
+PASS: snapshot alias object tamper
+PASS: snapshot alias generation tamper
+PASS: snapshot route parent tamper
+PASS: snapshot route child tamper
+PASS: snapshot route service tamper
+PASS: snapshot route subject tamper
+PASS: snapshot quota domain tamper
+PASS: snapshot quota ram tamper
+PASS: snapshot quota caps tamper
+PASS: snapshot delegation source tamper
+PASS: snapshot delegation holder tamper
+PASS: snapshot delegation rights tamper
+PASS: snapshot delegation child tamper
+PASS: snapshot binding object tamper
+PASS: snapshot binding handle tamper
+PASS: snapshot objects original over-cap unmatched tail
+PASS: snapshot objects candidate over-cap unmatched tail
+PASS: snapshot objects forged fuel remains capped
+PASS: snapshot objects oversized original incomplete
+PASS: snapshot objects oversized candidate incomplete
+PASS: snapshot aliases original over-cap unmatched tail
+PASS: snapshot aliases candidate over-cap unmatched tail
+PASS: snapshot aliases forged fuel remains capped
+PASS: snapshot aliases oversized original incomplete
+PASS: snapshot aliases oversized candidate incomplete
+PASS: snapshot routes original over-cap unmatched tail
+PASS: snapshot routes candidate over-cap unmatched tail
+PASS: snapshot routes forged fuel remains capped
+PASS: snapshot routes oversized original incomplete
+PASS: snapshot routes oversized candidate incomplete
+PASS: snapshot quotas original over-cap unmatched tail
+PASS: snapshot quotas candidate over-cap unmatched tail
+PASS: snapshot quotas forged fuel remains capped
+PASS: snapshot quotas oversized original incomplete
+PASS: snapshot quotas oversized candidate incomplete
+PASS: snapshot delegations original over-cap unmatched tail
+PASS: snapshot delegations candidate over-cap unmatched tail
+PASS: snapshot delegations forged fuel remains capped
+PASS: snapshot delegations oversized original incomplete
+PASS: snapshot delegations oversized candidate incomplete
+PASS: snapshot bindings original over-cap unmatched tail
+PASS: snapshot bindings candidate over-cap unmatched tail
+PASS: snapshot bindings forged fuel remains capped
+PASS: snapshot bindings oversized original incomplete
+PASS: snapshot bindings oversized candidate incomplete
+PASS: snapshot scalar mismatch cannot hide oversized later list
+PASS: snapshot head mismatch cannot hide oversized tail
+PASS: snapshot unequal lengths cannot hide oversized tail
+PASS: snapshot nonempty original fixture is structurally valid
+PASS: snapshot duplicate objects record differs
+PASS: snapshot reordered objects history differs
+PASS: snapshot objects exact eight records fit
+PASS: snapshot duplicate aliases record differs
+PASS: snapshot reordered aliases history differs
+PASS: snapshot aliases exact eight records fit
+PASS: snapshot duplicate routes record differs
+PASS: snapshot reordered routes history differs
+PASS: snapshot routes exact eight records fit
+PASS: snapshot duplicate quotas record differs
+PASS: snapshot reordered quotas history differs
+PASS: snapshot quotas exact eight records fit
+PASS: snapshot duplicate delegations record differs
+PASS: snapshot reordered delegations history differs
+PASS: snapshot delegations exact eight records fit
+PASS: snapshot duplicate bindings record differs
+PASS: snapshot reordered bindings history differs
+PASS: snapshot bindings exact eight records fit
+PASS: snapshot valid history including stale and closed records preserved
+PASS: snapshot omitted object history differs
+PASS: snapshot omitted alias history differs
+PASS: snapshot omitted route history differs
+PASS: snapshot omitted quota history differs
+PASS: snapshot omitted delegation history differs
+PASS: snapshot omitted binding history differs
+PASS: snapshot reordered binding edge differs
+PASS: snapshot duplicate binding differs
+PASS: snapshot frontend high word mismatch propagates
+PASS: snapshot frontend watermark mismatch propagates

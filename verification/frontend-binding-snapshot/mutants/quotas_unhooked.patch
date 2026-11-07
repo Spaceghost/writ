@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -193 +193 @@
+-        combine(compare_quotas(aq, bq, 8n),
++        combine(ExactDescription{},

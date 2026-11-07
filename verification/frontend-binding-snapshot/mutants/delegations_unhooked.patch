@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -194 +194 @@
+-        combine(compare_delegations(ad, bd, 8n),
++        combine(ExactDescription{},

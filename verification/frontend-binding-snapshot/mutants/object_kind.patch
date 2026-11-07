@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -48 +48 @@
+-        same_kind(a3, b3) &&
++        True{} &&

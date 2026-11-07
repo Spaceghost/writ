@@ -1,0 +1,2 @@
+PASS: snapshot binding revision tamper
+PASS: snapshot next object watermark tamper

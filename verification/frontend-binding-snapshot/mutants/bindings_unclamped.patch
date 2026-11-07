@@ -1,0 +1,11 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -167 +167 @@
+-      combine(field(same_binding(ah, bh)), compare_bindings(at, bt, Nat.min(rest, 7n)))
++      combine(field(same_binding(ah, bh)), compare_bindings(at, bt, rest))
+@@ -169 +169 @@
+-      combine(Mismatch{}, compare_bindings(at, H.NoBindings{}, Nat.min(rest, 7n)))
++      combine(Mismatch{}, compare_bindings(at, H.NoBindings{}, rest))
+@@ -171 +171 @@
+-      combine(Mismatch{}, compare_bindings(H.NoBindings{}, bt, Nat.min(rest, 7n)))
++      combine(Mismatch{}, compare_bindings(H.NoBindings{}, bt, rest))

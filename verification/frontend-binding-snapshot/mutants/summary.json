@@ -1,0 +1,247 @@
+[
+  {
+    "mutant": "object_id",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "object_generation",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "object_owner",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "object_kind",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "object_derived_from",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "object_service",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "alias_id",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "alias_holder",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "alias_object",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "alias_generation",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "route_parent",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "route_child",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "route_service",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "route_subject",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "quota_domain",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "quota_ram",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "quota_caps",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegation_from_alias",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegation_to_holder",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegation_rights",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegation_alias",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "binding_object",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "binding_handle",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "scalar_revision",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "scalar_next_object",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "scalar_next_alias",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "objects_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "objects_unhooked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "objects_tail_skipped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "aliases_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "aliases_unhooked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "aliases_tail_skipped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "routes_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "routes_unhooked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "routes_tail_skipped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "quotas_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "quotas_unhooked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "quotas_tail_skipped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegations_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegations_unhooked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "delegations_tail_skipped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "bindings_unclamped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "bindings_unhooked",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "bindings_tail_skipped",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "incomplete_left",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "incomplete_right",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "frontend_incomplete",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "frontend_mismatch",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "frontend_exact",
+    "bend": 1,
+    "node": 1
+  }
+]

@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -82 +82 @@
+-      combine(field(same_alias(ah, bh)), compare_aliases(at, bt, Nat.min(rest, 7n)))
++      combine(field(same_alias(ah, bh)), ExactDescription{})

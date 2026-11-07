@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -176 +176 @@
+-    case C.Mismatch{}: Mismatch{}
++    case C.Mismatch{}: ExactDescription{}

@@ -1,0 +1,11 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -125 +125 @@
+-      combine(field(same_quota(ah, bh)), compare_quotas(at, bt, Nat.min(rest, 7n)))
++      combine(field(same_quota(ah, bh)), compare_quotas(at, bt, rest))
+@@ -127 +127 @@
+-      combine(Mismatch{}, compare_quotas(at, H.NoQuotas{}, Nat.min(rest, 7n)))
++      combine(Mismatch{}, compare_quotas(at, H.NoQuotas{}, rest))
+@@ -129 +129 @@
+-      combine(Mismatch{}, compare_quotas(H.NoQuotas{}, bt, Nat.min(rest, 7n)))
++      combine(Mismatch{}, compare_quotas(H.NoQuotas{}, bt, rest))

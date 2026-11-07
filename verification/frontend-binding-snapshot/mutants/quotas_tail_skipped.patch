@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -125 +125 @@
+-      combine(field(same_quota(ah, bh)), compare_quotas(at, bt, Nat.min(rest, 7n)))
++      combine(field(same_quota(ah, bh)), ExactDescription{})

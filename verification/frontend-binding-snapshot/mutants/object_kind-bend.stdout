@@ -1,0 +1,6 @@
+PASS: snapshot binding revision tamper
+PASS: snapshot next object watermark tamper
+PASS: snapshot next alias watermark tamper
+PASS: snapshot object id tamper
+PASS: snapshot object generation tamper
+PASS: snapshot object owner tamper

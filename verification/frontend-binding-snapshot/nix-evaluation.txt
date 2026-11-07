@@ -1,0 +1,7 @@
+Nix offline tests-js evaluation at source candidate ae79b38:
+/nix/store/kr17rjfgc77d61hciffgjvjg5flz9wwx-writ-tests-js.drv
+Its evaluated buildCommand uses /nix/store/zvi3gg2r2hc35703q06zfkr6m1m7dnz9-source,
+requires a successful Bend run, the ALL LIBRARY TESTS PASSED final line,
+and 2809 PASS lines. The 100 filtered .bend files, including both new snapshot
+modules, match the working tree by SHA-256 (nix-filtered-inputs.sha256).
+This is evaluation and source inspection only; no derivation build was run.

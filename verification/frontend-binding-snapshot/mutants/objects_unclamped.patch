@@ -1,0 +1,11 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -60 +60 @@
+-      combine(field(same_object(ah, bh)), compare_objects(at, bt, Nat.min(rest, 7n)))
++      combine(field(same_object(ah, bh)), compare_objects(at, bt, rest))
+@@ -62 +62 @@
+-      combine(Mismatch{}, compare_objects(at, H.NoObjects{}, Nat.min(rest, 7n)))
++      combine(Mismatch{}, compare_objects(at, H.NoObjects{}, rest))
+@@ -64 +64 @@
+-      combine(Mismatch{}, compare_objects(H.NoObjects{}, bt, Nat.min(rest, 7n)))
++      combine(Mismatch{}, compare_objects(H.NoObjects{}, bt, rest))

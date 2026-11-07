@@ -1,0 +1,23 @@
+PASS: snapshot binding revision tamper
+PASS: snapshot next object watermark tamper
+PASS: snapshot next alias watermark tamper
+PASS: snapshot object id tamper
+PASS: snapshot object generation tamper
+PASS: snapshot object owner tamper
+PASS: snapshot object kind descriptor tamper
+PASS: snapshot object kind result channel tamper
+PASS: snapshot object derivation parent tamper
+PASS: snapshot object service tamper
+PASS: snapshot alias id tamper
+PASS: snapshot alias holder tamper
+PASS: snapshot alias object tamper
+PASS: snapshot alias generation tamper
+PASS: snapshot route parent tamper
+PASS: snapshot route child tamper
+PASS: snapshot route service tamper
+PASS: snapshot route subject tamper
+PASS: snapshot quota domain tamper
+PASS: snapshot quota ram tamper
+PASS: snapshot quota caps tamper
+PASS: snapshot delegation source tamper
+PASS: snapshot delegation holder tamper

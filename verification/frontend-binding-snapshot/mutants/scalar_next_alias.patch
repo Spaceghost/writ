@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -189 +189 @@
+-      combine(field(Nat.is_eq(ar, br) && Nat.is_eq(ano, bno) && Nat.is_eq(ana, bna)),
++      combine(field(Nat.is_eq(ar, br) && Nat.is_eq(ano, bno) && True{}),

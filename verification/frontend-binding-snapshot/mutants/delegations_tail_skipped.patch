@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -147 +147 @@
+-      combine(field(same_delegation(ah, bh)), compare_delegations(at, bt, Nat.min(rest, 7n)))
++      combine(field(same_delegation(ah, bh)), ExactDescription{})

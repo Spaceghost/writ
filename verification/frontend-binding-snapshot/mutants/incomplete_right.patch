@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -25 +25 @@
+-    case _ Incomplete{}: Incomplete{}
++    case _ Incomplete{}: Mismatch{}

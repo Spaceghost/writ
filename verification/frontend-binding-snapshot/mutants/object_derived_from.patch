@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -49 +49 @@
+-        Nat.is_eq(a4, b4) &&
++        True{} &&

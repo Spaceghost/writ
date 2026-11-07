@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -195 +195 @@
+-        combine(compare_bindings(ab, bb, 8n), frontend_result(C.check(af, bf)))))))))
++        combine(ExactDescription{}, frontend_result(C.check(af, bf)))))))))

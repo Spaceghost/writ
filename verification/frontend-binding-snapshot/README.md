@@ -40,4 +40,10 @@ and the previously built Lean-backed kernel selected via `BENDTT`, SHA-256
 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`;
 [stderr](proof.stderr) is empty. Existing laws do not prove this comparator.
 Focused C generation succeeded; generated code is outside the source package.
-Mutation and CPU evidence is recorded separately when complete.
+The 49 retained [mutation patches](mutants/) exercise every binding field and
+scalar, all six list clamps, hookups and tail traversals, incomplete
+precedence, and frontend result propagation. Each fails a named assertion on
+both Bend and Node; raw outputs, stderr and exits are retained. This is a
+control set, not a completeness proof. The evaluated Nix source filter and
+assertion gate are described in [nix-evaluation.txt](nix-evaluation.txt).
+CPU evidence is recorded separately when complete.

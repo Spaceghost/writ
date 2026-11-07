@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -192 +192 @@
+-        combine(compare_routes(at, bt, 8n),
++        combine(ExactDescription{},

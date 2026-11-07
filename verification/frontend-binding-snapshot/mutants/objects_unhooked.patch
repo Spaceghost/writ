@@ -1,0 +1,5 @@
+--- a/HostBindingSnapshot.bend
++++ b/HostBindingSnapshot.bend
+@@ -190 +190 @@
+-        combine(compare_objects(ao, bo, 8n),
++        combine(ExactDescription{},
