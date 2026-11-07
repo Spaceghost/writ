@@ -64,3 +64,31 @@ This tests only the extracted count/sentinel code against those three local
 inputs. It does not execute the derivation, validate all possible outputs or
 replace Nix's source, toolchain and sandbox build. The prior combined Bend,
 Node, CPU and Lean verdict records retain their original source and scope.
+
+## Direct run from the filtered store source
+
+As a separate local observation, the pinned Bend 2.0.39 binary (SHA-256
+`2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd`)
+ran the JavaScript suite from the evaluated filtered source, without executing
+the Nix derivation. The command used bubblewrap 0.13.0 (binary SHA-256
+`d9498f8b15b1c69e09791badee317d56f33abd359a306d6e96534f136381ad74`):
+
+```sh
+timeout 120s bwrap --unshare-net --ro-bind / / --dev-bind /dev /dev --proc /proc \
+  --bind /tmp/writ-nix-filtered-js-0689636 /tmp/writ-nix-filtered-js-0689636 \
+  --chdir /nix/store/7kxkq1ya23w32zrvji14lvf84q8yjz8d-source \
+  /usr/bin/env TMPDIR=/tmp/writ-nix-filtered-js-0689636 BEND_NO_TELEMETRY=1 \
+  /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend Tests.bend
+```
+
+The existing `HOME` was not changed; the filesystem view, including the home
+directory and store, was read-only except for the separately created temporary
+directory and the `/dev` and `/proc` mounts. The run [exited 0](filtered-run.exit),
+with [empty stderr](filtered-run.stderr), 2,281 PASS lines and the final
+sentinel. Its [stdout](filtered-run.stdout) is byte-identical to the prior
+combined-suite capture, SHA-256
+`b03250033ffabd8297d21375614e7e356a866548a2f0a23512178fc5adeb1248`.
+All 80 filtered input hashes [matched again afterward](filtered-source-after.log).
+These are local observations, not process attestation. The run used a local
+compiler and a separately configured sandbox; it is **not** a Nix derivation
+build, a full flake check, a native host test or a GPU test.
