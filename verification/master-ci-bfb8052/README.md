@@ -1,7 +1,7 @@
 # Automatic platform CI for master bfb8052
 
 Five push-triggered workflows ran at exact source
-`bfb805282a5beb390c923824bef52626303e6481`. Three have completed in this
+`bfb805282a5beb390c923824bef52626303e6481`. Four have completed in this
 checkpoint. Their results are scoped to their recorded fixtures and do not
 qualify a protected host.
 
@@ -12,8 +12,10 @@ qualify a protected host.
 - [Windows native](windows-native-42378765721/README.md): **failed**; strict
   byte-worker network, clipboard and COM observations remained incomplete.
   The different no-data diagnostic reported pass.
-- Linux public-canary run 42378765744 and Genode base-hw run 42378765762 were
-  still in progress at this checkpoint; no outcome or artifacts are claimed.
+- [Genode base-hw](genode-42378765762/README.md): passed 2,356 core, 69 mount
+  and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
+- Linux public-canary run 42378765744 was still in progress at this checkpoint;
+  no outcome or artifacts are claimed.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized
