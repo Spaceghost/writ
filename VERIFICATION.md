@@ -29,6 +29,13 @@ reports the 2,382-check combined Bend, Node, Nix JavaScript and native CPU
 runs, [platform CI](verification/durable-handoff-planner-ci-d0dc411/README.md)
 and their proof scope.
 
+The [automatic master runs at `60d6f6b`](verification/master-ci-60d6f6b/README.md)
+passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS
+fixture checks. **Strict Windows native failed**: actual-worker network,
+clipboard and COM observations remained incomplete. The Linux run retained an
+expected setup refusal before input; none of these results qualifies a protected
+host or authenticated planner.
+
 A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
 passed for the 36 named laws in `PROOF.bend` at exact master source `be649f6`.
 A separate [verdict on combined preview `b95669b`](verification/durable-lean-verdict-b95669b/README.md)
