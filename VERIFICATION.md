@@ -1,8 +1,8 @@
 # Verification record
 
-The [4671e20 automatic CI checkpoint](verification/master-ci-4671e20/README.md)
-retains passing Windows Node, filesystem and Genode fixtures and the strict
-Windows worker failure. Linux is pending in that checkpoint.
+The [4671e20 automatic CI record](verification/master-ci-4671e20/README.md)
+retains passing Windows Node, filesystem, Genode and Linux public fixtures, the
+strict Windows worker failure and the refused Linux protected setup.
 
 The [frontend allocation-boundary record](verification/frontend-allocation-boundary/README.md)
 checks that exhausted handle IDs reject new allocation without preventing
