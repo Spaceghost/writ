@@ -236,3 +236,5 @@ known 14-name histories without claiming their missing link metadata. Verify
 normal logs/refusals are still retained when inventory is incomplete. These
 controls test the inventory design only; they cannot prove Genode execution or
 protected-host authority.
+
+The [dedicated-VM FD handoff proposal](disposable-fd-supervisor-design.md) describes the unimplemented parent-side preparation, fixture and inventory split. It does not establish a shared-host lifecycle boundary or cleanup.
