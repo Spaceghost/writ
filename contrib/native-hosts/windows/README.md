@@ -73,6 +73,8 @@ a native machine-code Bend runtime.
 | `pss_init_pipe_test.c`, `pss_init_progress_test.c`, `pss_init_run.ps1` | Synthetic report/failure tests and fixed-sequence workflow supervisor; no actor or policy decisions |
 | `registry_ab_observer.c`, `registry_ab_launch.[ch]`, `registry_ab_checked.[ch]`, `registry_ab_token.[ch]` | Exploratory fixed no-data ABBA observer, owned Windows launch/resources, bounded actual-token readback and preparation; no Writ actor, policy or release decision |
 | `registry_ab_checks.[ch]`, `registry_ab_checks_test.c`, `registry_ab_token_test.c`, `registry_ab_run.ps1` | Synthetic capability/lifecycle/failure classifiers and fixed workflow supervisor; no confinement claim |
+| `win32k_ac_observer.c`, `win32k_ac_launch.[ch]`, `win32k_ac_checked.[ch]`, `win32k_ac_token.[ch]` | Fixed zero-capability no-data Win32k mitigation comparison and scoped native ownership/readbacks; no Writ actor, authority or release decision |
+| `win32k_ac_checks.[ch]`, `win32k_ac_checks_test.c`, `win32k_ac_token_test.c`, `win32k_ac_run.ps1` | Synthetic mitigation/lifecycle/failure classifiers and fixed-sequence workflow supervisor; no ambient or byte-worker confinement claim |
 | `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.

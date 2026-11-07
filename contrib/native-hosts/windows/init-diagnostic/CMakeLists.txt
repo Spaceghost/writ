@@ -87,3 +87,18 @@ target_compile_definitions(writfs-registry-ab-token-test PRIVATE UNICODE _UNICOD
 target_compile_options(writfs-registry-ab-token-test PRIVATE /W4 /sdl /guard:cf)
 target_link_libraries(writfs-registry-ab-token-test PRIVATE advapi32)
 add_test(NAME registry-ab-token-synthetic COMMAND writfs-registry-ab-token-test)
+
+# Exploratory no-data Win32k comparison; never run by configuration.
+add_executable(writfs-win32k-ac-observer ../win32k_ac_observer.c ../win32k_ac_launch.c ../win32k_ac_checked.c ../win32k_ac_token.c ../win32k_ac_checks.c ../pss_init_pipe.c ../pss_init_progress.c ../pss_lpac_progress.c ../pss_table.c ../isolation.c)
+target_compile_definitions(writfs-win32k-ac-observer PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-win32k-ac-observer PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-win32k-ac-observer PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-win32k-ac-observer PRIVATE advapi32 bcrypt fwpuclnt rpcrt4 userenv ole32 ws2_32 OneCoreUAP)
+add_executable(writfs-win32k-ac-checks-test ../win32k_ac_checks_test.c ../win32k_ac_checks.c)
+target_compile_options(writfs-win32k-ac-checks-test PRIVATE /W4 /sdl /guard:cf)
+add_test(NAME win32k-ac-checks-synthetic COMMAND writfs-win32k-ac-checks-test)
+add_executable(writfs-win32k-ac-token-test ../win32k_ac_token_test.c ../win32k_ac_token.c ../win32k_ac_checks.c)
+target_compile_definitions(writfs-win32k-ac-token-test PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-win32k-ac-token-test PRIVATE /W4 /sdl /guard:cf)
+target_link_libraries(writfs-win32k-ac-token-test PRIVATE advapi32)
+add_test(NAME win32k-ac-token-synthetic COMMAND writfs-win32k-ac-token-test)
