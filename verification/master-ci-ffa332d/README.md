@@ -1,9 +1,8 @@
 # Automatic platform CI for master ffa332d
 
 Five push-triggered workflows were listed at exact source
-`ffa332ddc289b54d34908ee6799b925550e12750`. This checkpoint retains three
-completed results; Linux public canary and Genode base-hw remain pending in
-this record. None of these outcomes qualifies a protected host.
+`ffa332ddc289b54d34908ee6799b925550e12750`. This checkpoint retains four
+completed results; Linux public canary remains pending in this record. None of these outcomes qualifies a protected host.
 
 - [Windows Node](windows-node-42386142962/README.md): passed 2,448 shared
   library and 78 WritFS model checks.
@@ -12,6 +11,8 @@ this record. None of these outcomes qualifies a protected host.
 - [Windows native](windows-native-42386142979/README.md): **failed**; strict
   byte-worker network, clipboard and COM observations remained incomplete.
   The separate no-data diagnostic reported pass.
+- [Genode base-hw](genode-42386142947/README.md): passed 2,448 core, 69 mount
+  and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized
