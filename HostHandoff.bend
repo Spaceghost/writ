@@ -16,7 +16,7 @@ type Phase is Data:
   Created{}
   Observed{}
   HandoffClosed{}
-  Admitted{}
+  Attempted{}
   Retired{}
 
 type Binding is Data:
@@ -34,13 +34,12 @@ type Error is Data:
   StaleRevision{}
   UntrustedFacts{}
   InvalidReport{}
-  Admission{reason: P.Error}
 
 type Step is Data:
   Moved{state: State}
   Denied{state: State, reason: Error}
   Aborted{state: State, reason: Error}
-  Granted{state: State, core: P.State, effects: +List<P.Effect>}
+  Attempt{state: State, outcome: P.Step}
 
 # The synthetic initial record is constructed by the trusted monitor only.
 def initial(binding: Binding) -> State:
@@ -51,7 +50,7 @@ def step_state(step: Step) -> State:
     case Moved{state}: state
     case Denied{state, _}: state
     case Aborted{state, _}: state
-    case Granted{state, _, _}: state
+    case Attempt{state, _}: state
 
 def same_binding(binding: Binding, evidence: Evidence, revision: Nat) -> Bool:
   Binding{+launch, +incarnation, +session, +image, _} = binding
@@ -126,17 +125,10 @@ def handoff(+state: State, expected: Nat, evidence: Evidence) -> Step:
   State{revision, _, _} = state
   handoff_revision(Nat.is_eq(revision, expected), state, evidence)
 
-# Effects are copied only from the actual HostPrimitives admission. A denied
-# core transition returns its core unchanged and contributes no effect.
-def admission_result(result: P.Step, +state: State) -> Step:
-  match result state:
-    case P.Denied{_, reason} state:
-      abort(state, Admission{reason})
-    case P.Admitted{core, effects} State{revision, HandoffClosed{}, binding}:
-      Granted{State{1n+revision, Admitted{}, binding}, core, effects}
-    case P.Admitted{_, _} state:
-      Denied{state, WrongPhase{}}
-
+# The public admit path calls this exported implementation helper, which calls
+# HostPrimitives. Attempt wraps the exact returned core Step and constructs no
+# additional effects. Public Data and helpers remain forgeable and are not host
+# authority APIs. Cleanup after a consumed attempt remains a host obligation.
 def admission_checked(ok: Bool, +state: State, +core: P.State, expected_core: Nat,
   report: P.TargetReport, inventory: P.Fact, +now: Nat) -> Step:
   match ok state:
@@ -144,8 +136,8 @@ def admission_checked(ok: Bool, +state: State, +core: P.State, expected_core: Na
       abort(State{revision, HandoffClosed{}, binding}, UntrustedFacts{})
     case True{} State{revision, HandoffClosed{}, binding}:
       Binding{_, _, session, _, input} = binding
-      admission_result(P.admit_worker(core, expected_core, report, inventory, session, input, now),
-        State{revision, HandoffClosed{}, binding})
+      Attempt{State{1n+revision, Attempted{}, binding},
+        P.admit_worker(core, expected_core, report, inventory, session, input, now)}
     case _ State{revision, Created{}, binding}:
       abort(State{revision, Created{}, binding}, WrongPhase{})
     case _ State{revision, Observed{}, binding}:
@@ -166,7 +158,8 @@ def admission_revision(ok: Bool, +state: State, +evidence: Evidence, +core: P.St
 # stale copy. The local State must also be current monitor-owned state. The
 # monitor must atomically check/install both revisions and order effect execution
 # against revocation and restart; copied old records cannot prove freshness.
-# `expected_core` is checked by HostPrimitives; execute only returned effects.
+# `expected_core` is checked by HostPrimitives; the monitor must inspect the
+# actual returned core Step and execute only effects it authorizes.
 # A stale local revision preserves the current State; a native stream adapter
 # must fail-stop its own connection on protocol failure without reusing it.
 def admit(+state: State, expected: Nat, evidence: Evidence, +core: P.State,
@@ -176,7 +169,8 @@ def admit(+state: State, expected: Nat, evidence: Evidence, +core: P.State,
     expected_core, report, inventory, now)
 
 # Retiring an unadmitted synthetic launch changes only local lifecycle state;
-# this does not stop an admitted worker or perform native cleanup.
+# this does not stop an admitted worker or perform native cleanup. Attempted
+# is terminal here; cleanup after an attempted admission is a host obligation.
 def retire_revision(ok: Bool, +state: State) -> Step:
   match ok state:
     case False{} state: Denied{state, StaleRevision{}}

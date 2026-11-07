@@ -67,7 +67,7 @@ def phase_equal(a: H.Phase, b: H.Phase) -> Bool:
     case H.Created{} H.Created{}: True{}
     case H.Observed{} H.Observed{}: True{}
     case H.HandoffClosed{} H.HandoffClosed{}: True{}
-    case H.Admitted{} H.Admitted{}: True{}
+    case H.Attempted{} H.Attempted{}: True{}
     case H.Retired{} H.Retired{}: True{}
     case _ _: False{}
 
@@ -83,7 +83,6 @@ def reason_equal(a: H.Error, b: H.Error) -> Bool:
     case H.StaleRevision{} H.StaleRevision{}: True{}
     case H.UntrustedFacts{} H.UntrustedFacts{}: True{}
     case H.InvalidReport{} H.InvalidReport{}: True{}
-    case H.Admission{x} H.Admission{y}: P.Error.equal(x, y)
     case _ _: False{}
 
 def denied(step: H.Step, state: H.State, reason: H.Error) -> Bool:
@@ -109,9 +108,15 @@ def attempt(state: H.State, expected: Nat, fact: H.Evidence, core: P.State,
 
 def success(step: H.Step) -> Bool:
   match step:
-    case H.Granted{H.State{revision, H.Admitted{}, _}, core, effects}:
+    case H.Attempt{H.State{revision, H.Attempted{}, _}, P.Admitted{core, effects}}:
       Nat.is_eq(revision, 3n) && PT.state_equal(core, PT.after_admit(PT.accel_profile())) &&
         PT.effects_equal(effects, [P.DeliverInputs{PT.worker_id(), PT.input_ref()}])
+    case _: False{}
+
+def core_denied(step: H.Step, revision: Nat, expected: P.State, reason: P.Error) -> Bool:
+  match step:
+    case H.Attempt{H.State{actual, H.Attempted{}, _}, P.Denied{core, got}}:
+      Nat.is_eq(actual, revision) && PT.state_equal(core, expected) && P.Error.equal(got, reason)
     case _: False{}
 
 def retired_core() -> P.State:
@@ -147,12 +152,12 @@ def main() -> IO(Unit):
       "HH-003 duplicate handoff denied")
     Test.check(aborted(attempt(observed(), 1n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.now()),
       2n, H.WrongPhase{}), "HH-004 early admission has no effect")
-    Test.check(aborted(attempt(ready(), 2n, evidence(2n), PT.base(), 1n, PT.mediated_inventory(), PT.now()),
-      3n, H.Admission{P.StaleRevision{}}), "HH-004 core stale revision denied by existing gate")
-    Test.check(aborted(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.leaky_inventory(), PT.now()),
-      3n, H.Admission{P.UnmediatedRoute{}}), "HH-004 core rejects unmediated native route fact")
-    Test.check(aborted(attempt(ready(), 2n, evidence(2n), retired_core(), 0n, PT.mediated_inventory(), PT.now()),
-      3n, H.Admission{P.Identity{I.Retired{}}}), "HH-004 core rejects revoked input")
+    Test.check(core_denied(attempt(ready(), 2n, evidence(2n), PT.base(), 1n, PT.mediated_inventory(), PT.now()),
+      3n, PT.base(), P.StaleRevision{}), "HH-004 core stale revision denied by existing gate")
+    Test.check(core_denied(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.leaky_inventory(), PT.now()),
+      3n, PT.base(), P.UnmediatedRoute{}), "HH-004 core rejects unmediated native route fact")
+    Test.check(core_denied(attempt(ready(), 2n, evidence(2n), retired_core(), 0n, PT.mediated_inventory(), PT.now()),
+      3n, retired_core(), P.Identity{I.Retired{}}), "HH-004 core rejects revoked input")
     Test.check(success(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.now())),
       "HH-004 only real admission emits exact DeliverInputs effect")
     Test.check(moved(H.retire(ready(), 2n), H.Retired{}, 3n),
@@ -167,11 +172,11 @@ def main() -> IO(Unit):
       PT.full_report(), PT.mediated_inventory(), PT.now()),
       H.step_state(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.now())), H.WrongPhase{}),
       "HH-006 duplicate admission with current monitor state denied")
-    Test.check(aborted(attempt(ready(), 2n, evidence(2n), PT.admitted(), P.revision(PT.admitted()),
-      PT.mediated_inventory(), PT.now()), 3n, H.Admission{P.SlotOccupied{}}),
+    Test.check(core_denied(attempt(ready(), 2n, evidence(2n), PT.admitted(), P.revision(PT.admitted()),
+      PT.mediated_inventory(), PT.now()), 3n, PT.admitted(), P.SlotOccupied{}),
       "HH-006 copied ready phase cannot readmit occupied core slot")
-    Test.check(aborted(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.input_expires()),
-      3n, H.Admission{P.Identity{I.Expired{}}}), "HH-006 existing identity gate rejects expired input")
+    Test.check(core_denied(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.input_expires()),
+      3n, PT.base(), P.Identity{I.Expired{}}), "HH-006 existing identity gate rejects expired input")
     Test.check(success(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.now())),
       "HH-006 identical synthetic snapshots require trusted current-state installation")
     Test.check(denied(H.observe(H.step_state(H.observe(initial(), 0n, evidence(0n), False{})), 1n, evidence(1n), True{}),
@@ -183,13 +188,13 @@ def main() -> IO(Unit):
     Test.check(denied(attempt(H.step_state(attempt(ready(), 2n, evidence(2n), PT.base(), 0n,
       PT.leaky_inventory(), PT.now())), 3n, evidence(3n), PT.base(), 0n, PT.mediated_inventory(), PT.now()),
       H.step_state(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.leaky_inventory(), PT.now())), H.WrongPhase{}),
-      "HH-007 denied native-route fact cannot be retried after poison")
+      "HH-007 denied native-route fact consumes the attempt")
     Test.check(denied(H.handoff(H.step_state(H.retire(observed(), 1n)), 2n, evidence(2n)),
       H.step_state(H.retire(observed(), 1n)), H.WrongPhase{}),
       "HH-007 trusted adapter retires connection after stale protocol failure")
-    Test.check(aborted(H.admit(ready(), 2n, evidence(2n), PT.base(), 0n,
+    Test.check(core_denied(H.admit(ready(), 2n, evidence(2n), PT.base(), 0n,
       PT.missing_report(P.control_no_ambient_network()), PT.mediated_inventory(), PT.now()),
-      3n, H.Admission{P.MissingControl{}}), "HH-004 existing gate rejects missing control")
+      3n, PT.base(), P.MissingControl{}), "HH-004 existing gate rejects missing control")
     Test.check(denied(H.observe(H.step_state(H.observe(observed(), 1n, evidence(1n), True{})), 2n,
       evidence(2n), True{}), H.step_state(H.observe(observed(), 1n, evidence(1n), True{})), H.WrongPhase{}),
       "HH-007 duplicate report poisons preflight before retry")
