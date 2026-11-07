@@ -1,5 +1,9 @@
 # Verification record
 
+The [d71d09c automatic CI checkpoint](verification/master-ci-d71d09c/README.md)
+retains Windows Node and Btrfs passes, the ZFS setup failure and strict Windows
+worker failure; Linux and Genode are pending at this checkpoint.
+
 The [frontend revision V2 primitive record](verification/frontend-revision-v2/README.md)
 covers descriptive tagged comparison and two-word successor arithmetic. It is
 not integrated with frontend authority, migration or cleanup. Bend, generated
