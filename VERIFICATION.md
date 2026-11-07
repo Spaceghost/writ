@@ -695,3 +695,8 @@ An [exploratory no-data Win32k sequence](verification/windows-win32k-ac-observat
 observed USER32/OLE32 load errors with Win32k calls disabled and zero load
 statuses with calls enabled; Winsock returned `10107` in all cases. These
 observations do not establish cause, GUI confinement or host qualification.
+
+An [exploratory combined no-data sequence](verification/windows-combined-ad-observation-42323792791/README.md)
+observed all three initialization statuses as zero in two LPAC children with
+registryRead and Win32k calls enabled. Two settings changed together; this is
+not evidence of cause, worker confinement or host qualification.

@@ -1,0 +1,32 @@
+
+Algorithm : SHA256
+Hash      : 563C6EF063053F313D67571154AEB0138C652F3752983601035EF2D70184F8D1
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-combined-ad-observer.exe
+
+Algorithm : SHA256
+Hash      : 74C9CDAA1D35330BBE4536E1F54D982E8EC1646FB1A07711974D7EBAB948A9F6
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-init-control.exe
+
+Algorithm : SHA256
+Hash      : C2F88C78E487D695A4F3E00A22A249D98C833BBB20D20963B8118083FBCADE83
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-init-child.exe
+
+Algorithm : SHA256
+Hash      : 52823FE3B45BB31DBA6762400FC4D992DECC1978DBE40A19AE04CBF66EEA8886
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-table-test.exe
+
+Algorithm : SHA256
+Hash      : D3378FC36FE27F38E096DEABC4DBA9BA4B126BDB43B8CF2734C8E336CF57C8A1
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-init-progress-test.exe
+
+Algorithm : SHA256
+Hash      : 5979B04C41E71DDA582B6F323CFB52A731CB69FAC919AA4C9228828397D3955A
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-init-pipe-test.exe
+
+Algorithm : SHA256
+Hash      : 50FB7749DDACB7C099F3F020F2A48CE3CA90005184E82C025628B89B6DA77D56
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-combined-ad-checks-test.exe
+
+Algorithm : SHA256
+Hash      : CD2D50622EC9F97035E757F04B97B815F7F016FF75B7898A9E98E7805A8C68E4
+Path      : D:\a\_temp\windows-combined-ad-build\Release\writfs-combined-ad-token-test.exe

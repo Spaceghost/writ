@@ -1,0 +1,25 @@
+AD_MITIGATION arm=A pid=1344 creation_policy=0000000010000000 observed_disabled=1 observed_flags=00000005 validation=pass no_data=1
+AD_LIFETIME index=0 arm=A pid=1344 created=01dd6e56acdf1e64 image_sha256=c2f88c78e487d695a4f3e00a22a249d98c833bbb20d20963b8118083fbcade83 selected_token_facts=baseline environment_input_equal=1 child_environment=unverified no_data=1 confinement_credit=none
+AD_TOKEN_COUNTS index=0 groups=14 restricted=0 privileges=1 capabilities=0 capability_attributes=00000000 raw_token_fields=not_retained
+AD_PSS index=0 before=1 captured=1 walked=1 after=1 result=4 no_data=1
+AD_RAW index=0 arm=A winsock=10107 load_failures=3 user32=1114 ole32=1359 cleanup_failures=0 initial_modules=0 after_winsock_modules=0 pre_ole32_modules=0 interpretation=inconclusive no_data=1
+AD_CASE_COMPLETE index=0 no_data=1 interpretation=inconclusive
+AD_MITIGATION arm=D pid=5548 creation_policy=0000000020000000 observed_disabled=0 observed_flags=00000004 validation=pass no_data=1
+AD_LIFETIME index=1 arm=D pid=5548 created=01dd6e56ace148e7 image_sha256=c2f88c78e487d695a4f3e00a22a249d98c833bbb20d20963b8118083fbcade83 selected_token_facts=match environment_input_equal=1 child_environment=unverified no_data=1 confinement_credit=none
+AD_TOKEN_COUNTS index=1 groups=14 restricted=0 privileges=1 capabilities=1 capability_attributes=00000004 raw_token_fields=not_retained
+AD_PSS index=1 before=1 captured=1 walked=1 after=1 result=4 no_data=1
+AD_RAW index=1 arm=D winsock=0 load_failures=0 user32=0 ole32=0 cleanup_failures=0 initial_modules=0 after_winsock_modules=0 pre_ole32_modules=1 interpretation=inconclusive no_data=1
+AD_CASE_COMPLETE index=1 no_data=1 interpretation=inconclusive
+AD_MITIGATION arm=D pid=8836 creation_policy=0000000020000000 observed_disabled=0 observed_flags=00000004 validation=pass no_data=1
+AD_LIFETIME index=2 arm=D pid=8836 created=01dd6e56ace3abc4 image_sha256=c2f88c78e487d695a4f3e00a22a249d98c833bbb20d20963b8118083fbcade83 selected_token_facts=match environment_input_equal=1 child_environment=unverified no_data=1 confinement_credit=none
+AD_TOKEN_COUNTS index=2 groups=14 restricted=0 privileges=1 capabilities=1 capability_attributes=00000004 raw_token_fields=not_retained
+AD_PSS index=2 before=1 captured=1 walked=1 after=1 result=4 no_data=1
+AD_RAW index=2 arm=D winsock=0 load_failures=0 user32=0 ole32=0 cleanup_failures=0 initial_modules=0 after_winsock_modules=0 pre_ole32_modules=1 interpretation=inconclusive no_data=1
+AD_CASE_COMPLETE index=2 no_data=1 interpretation=inconclusive
+AD_MITIGATION arm=A pid=6476 creation_policy=0000000010000000 observed_disabled=1 observed_flags=00000005 validation=pass no_data=1
+AD_LIFETIME index=3 arm=A pid=6476 created=01dd6e56ace5e9f7 image_sha256=c2f88c78e487d695a4f3e00a22a249d98c833bbb20d20963b8118083fbcade83 selected_token_facts=match environment_input_equal=1 child_environment=unverified no_data=1 confinement_credit=none
+AD_TOKEN_COUNTS index=3 groups=14 restricted=0 privileges=1 capabilities=0 capability_attributes=00000000 raw_token_fields=not_retained
+AD_PSS index=3 before=1 captured=1 walked=1 after=1 result=4 no_data=1
+AD_RAW index=3 arm=A winsock=10107 load_failures=3 user32=1114 ole32=1359 cleanup_failures=0 initial_modules=0 after_winsock_modules=0 pre_ole32_modules=0 interpretation=inconclusive no_data=1
+AD_CASE_COMPLETE index=3 no_data=1 interpretation=inconclusive
+AD_SEQUENCE_COMPLETE cases=4 no_data=1 interpretation=inconclusive confinement_credit=none
