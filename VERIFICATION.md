@@ -1,5 +1,9 @@
 # Verification record
 
+The [ledger Nat-boundary regression record](verification/ledger-boundary/README.md)
+checks terminal revisions and refund headroom across all four ledger mutations.
+It is a pure model result; it does not establish host authentication or recovery.
+
 The [automatic 89d0fce Genode CI](verification/master-ci-89d0fce/README.md)
 passed the standard policy and WritFS fixtures with missing-clock warnings. Its
 source inventory names the standalone synthetic capture-to-Bend handoff, but the

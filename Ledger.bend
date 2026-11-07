@@ -2,7 +2,8 @@ import Base
 
 # Pure authoritative ledger model. The hosting monitor serializes transitions
 # and persists the returned state before exposing their external effects.
-# Nat counters and amounts do not wrap. No monetary or signature API is implied.
+# Nat counters and amounts do not wrap. Terminal revisions and refunds outside
+# the supported Nat range are denied unchanged. No monetary or signature API is implied.
 # Public state values are not authenticated account balances. expected_revision
 # must match the monitor's current ledger, and the host must install an accepted
 # result atomically. Replaying a stale snapshot cannot be prevented by pure data.
@@ -183,8 +184,8 @@ def valid(state: State) -> Bool:
       accounts_valid(accounts) && ids_valid(seen) && ids_valid(committed) &&
       holds_valid(holds, accounts, seen, committed)
 
-# next is a provisional pure value. Computing it before this selection cannot
-# debit an account or persist a change when allowed is false.
+# next is provisional pure data; arithmetic used to construct it must be bounded
+# even on rejection because backends may eagerly evaluate function arguments.
 def result(allowed: Bool, next: State, old: State, reason: Error) -> Outcome:
   match allowed:
     case True{}:
@@ -219,6 +220,34 @@ def balance(state: State, principal: Nat) -> Nat:
 def empty(accounts: Accounts) -> State:
   State{0n, accounts, NoHolds{}, NoIds{}, NoIds{}}
 
+# The pinned runtime supports Nat up to 2^48 - 1. The guarded wrappers return
+# bounded provisional numbers, not authority. Exported .allowed implementation
+# steps require the Boolean from the matching guard and supported Nat inputs.
+def max_nat() -> Nat:
+  Nat.add(Nat.mul(65536n, 4294967295n), 65535n)
+
+def has_successor(rev: Nat) -> Bool:
+  Nat.is_lt(rev, max_nat())
+
+def bounded_successor.allowed(ok: Bool, rev: Nat) -> Nat:
+  match ok:
+    case True{}: 1n+rev
+    case False{}: rev
+
+def bounded_successor(+rev: Nat) -> Nat:
+  bounded_successor.allowed(has_successor(rev), rev)
+
+def add_fits(a: Nat, b: Nat) -> Bool:
+  Nat.is_le(b, Nat.sub(max_nat(), a))
+
+def bounded_add.allowed(ok: Bool, a: Nat, b: Nat) -> Nat:
+  match ok:
+    case True{}: Nat.add(a, b)
+    case False{}: a
+
+def bounded_add(+a: Nat, +b: Nat) -> Nat:
+  bounded_add.allowed(add_fits(a, b), a, b)
+
 # Receipt IDs are never recycled, including after cancellation. A reservation
 # immediately removes the amount from the payer's available balance.
 # It remains a hold, not a payment capture; now must be strictly before expiry.
@@ -229,11 +258,11 @@ def reserve(+old: State, expected_revision: Nat, +hold: Hold, now: Nat) -> Outco
       Hold{+receipt, +invocation, +payer, +units, until}:
       +found = account_find(accounts, payer)
       +amount = account_amount(found)
-      ok = valid(old) && Nat.is_eq(rev, expected_revision) &&
+      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) &&
         account_present(found) && Nat.is_ge(amount, units) && Nat.is_lt(now, until) &&
         Bool.not(contains(seen, receipt)) && Bool.not(contains(committed, invocation)) &&
         Bool.not(invocation_held(holds, invocation))
-      next = {State{1n+rev, account_set(accounts, payer, Nat.sub(amount, units)),
+      next = {State{bounded_successor(rev), account_set(accounts, payer, Nat.sub(amount, units)),
         Holds{hold, holds}, Id{receipt, seen}, committed} : State}
       result(ok, next, old, AdmissionDenied{})
 
@@ -253,19 +282,28 @@ def commit(+old: State, expected_revision: Nat, +receipt: Nat, +invocation: Nat,
   payer: Nat, units: Nat, now: Nat) -> Outcome:
   match old:
     case State{+rev, accounts, +holds, seen, +committed}:
-      ok = valid(old) && Nat.is_eq(rev, expected_revision) &&
+      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) &&
         Bool.not(contains(committed, invocation)) &&
         hold_matches(hold_find(holds, receipt), invocation, payer, units, now)
-      next = {State{1n+rev, accounts, hold_remove(holds, receipt), seen,
+      next = {State{bounded_successor(rev), accounts, hold_remove(holds, receipt), seen,
         Id{invocation, committed}} : State}
       result(ok, next, old, AdmissionDenied{})
 
+def refund_fits(found: FoundHold, accounts: Accounts) -> Bool:
+  match found:
+    case HoldMissing{}:
+      False{}
+    case HoldFound{Hold{_, _, payer, units, _}}:
+      add_fits(account_amount(account_find(accounts, payer)), units)
+
+# This helper constructs a bounded provisional account list; the public
+# transitions separately check the entire gate and refund_fits before applying.
 def refund(found: FoundHold, +accounts: Accounts) -> Accounts:
   match found:
     case HoldMissing{}:
       accounts
     case HoldFound{Hold{_, _, +payer, units, _}}:
-      account_set(accounts, payer, Nat.add(account_amount(account_find(accounts, payer)), units))
+      account_set(accounts, payer, bounded_add(account_amount(account_find(accounts, payer)), units))
 
 # Cancel a still-live exact hold and refund its full amount. The receipt stays
 # in seen_receipts, so even a refunded receipt cannot be reserved again.
@@ -274,9 +312,9 @@ def cancel(+old: State, expected_revision: Nat, +receipt: Nat, +invocation: Nat,
   match old:
     case State{+rev, accounts, +holds, seen, committed}:
       +found = hold_find(holds, receipt)
-      ok = valid(old) && Nat.is_eq(rev, expected_revision) &&
-        hold_matches(found, invocation, payer, units, now)
-      next = {State{1n+rev, refund(found, accounts), hold_remove(holds, receipt),
+      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) &&
+        hold_matches(found, invocation, payer, units, now) && refund_fits(found, accounts)
+      next = {State{bounded_successor(rev), refund(found, accounts), hold_remove(holds, receipt),
         seen, committed} : State}
       result(ok, next, old, AdmissionDenied{})
 
@@ -293,7 +331,7 @@ def expire(+old: State, expected_revision: Nat, +receipt: Nat, +now: Nat) -> Out
   match old:
     case State{+rev, accounts, +holds, seen, committed}:
       +found = hold_find(holds, receipt)
-      ok = valid(old) && Nat.is_eq(rev, expected_revision) && hold_expired(found, now)
-      next = {State{1n+rev, refund(found, accounts), hold_remove(holds, receipt),
+      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) && hold_expired(found, now) && refund_fits(found, accounts)
+      next = {State{bounded_successor(rev), refund(found, accounts), hold_remove(holds, receipt),
         seen, committed} : State}
       result(ok, next, old, AdmissionDenied{})

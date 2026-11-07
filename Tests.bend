@@ -3,6 +3,7 @@ import ./CoreTests.bend as Core
 import ./TransferTests.bend as Transfer
 import ./DlmTests.bend as Dlm
 import ./LedgerTests.bend as Ledger
+import ./LedgerBoundaryTests.bend as LedgerBoundary
 import ./NegotiationTests.bend as Negotiation
 import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
@@ -30,6 +31,7 @@ def main() -> IO(Unit):
     Transfer.main()
     Dlm.main()
     Ledger.main()
+    LedgerBoundary.main()
     Negotiation.main()
     Backplane.main()
     Frontend.main()

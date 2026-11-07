@@ -27,6 +27,12 @@ Ledger mutations SHALL reject state with duplicate account principals, duplicate
 - **WHEN** a mutation is attempted
 - **THEN** the mutation is rejected
 
+The runtime cannot represent a successor revision or refund above its supported
+Nat maximum. Refusing those operations preserves exact successor accounting and
+the unchanged-rejection requirement rather than wrapping or partially applying
+state. An exact-fit refund remains eligible; the domain bound does not weaken
+any existing security law.
+
 ### Requirement: RL-002 Revision-checked transitions
 
 Every applied ledger mutation SHALL require the supplied expected revision to equal the current revision and produce a successor revision exactly one greater.
@@ -36,6 +42,12 @@ Every applied ledger mutation SHALL require the supplied expected revision to eq
 - **GIVEN** a valid ledger at revision one
 - **WHEN** a new reservation supplies expected revision zero
 - **THEN** the reservation is rejected
+
+#### Scenario: Terminal revision cannot advance
+
+- **GIVEN** a ledger at the supported maximum revision
+- **WHEN** any mutation is requested, with either the current or a stale expected revision
+- **THEN** the mutation is rejected and the supplied state is unchanged
 
 #### Scenario: Successful commit revision
 
@@ -144,6 +156,13 @@ A successful commit SHALL remove the active hold and record its invocation as co
 ### Requirement: RL-009 Scoped live cancellation
 
 Cancellation SHALL refund and remove a hold only when its receipt, invocation, payer, amount, and unexpired lifetime match the request.
+
+#### Scenario: Refund exceeds the supported range
+
+- **GIVEN** an otherwise valid ledger whose payer balance plus a hold exceeds the supported Nat maximum
+- **WHEN** cancellation or expiry would refund that hold
+- **THEN** the operation is rejected and the supplied state is unchanged
+- **AND** a refund whose sum equals the maximum remains eligible
 
 #### Scenario: Refund a live hold
 

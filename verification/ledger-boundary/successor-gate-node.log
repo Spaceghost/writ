@@ -1,0 +1,6 @@
+PASS: ledger supported Nat maximum parses
+PASS: ledger terminal stale reserve unchanged
+PASS: ledger terminal stale commit unchanged
+PASS: ledger terminal stale cancel unchanged
+PASS: ledger terminal stale expire unchanged
+FAIL: ledger terminal current reserve unchanged

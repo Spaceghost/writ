@@ -1,0 +1,3 @@
+Native build Ledger.bend SHA-256: 266d0b422dc66e1beba402c7c2db8f26dfc76cbcc28bbcc23dbc1e61ed8140a7
+Delivered Ledger.bend SHA-256: 05b6e35a05bfb7cb102323be6187cf27ab8a6e9554ef35af884aa37a80aa55a4
+Only whole comment lines differ; all other lines (including implementation tokens) are byte-identical.

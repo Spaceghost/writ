@@ -1,0 +1,5 @@
+--- a/Ledger.bend
++++ b/Ledger.bend
+@@ -248 +248 @@
+-  bounded_add.allowed(add_fits(a, b), a, b)
++  Nat.add(a, b)

@@ -1,0 +1,5 @@
+--- a/Ledger.bend
++++ b/Ledger.bend
+@@ -237 +237 @@
+-  bounded_successor.allowed(has_successor(rev), rev)
++  1n+rev

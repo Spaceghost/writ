@@ -1,0 +1,14 @@
+--- a/Ledger.bend
++++ b/Ledger.bend
+@@ -260 +260 @@
+-      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) &&
++      ok = valid(old) && Nat.is_eq(rev, expected_revision) &&
+@@ -284 +284 @@
+-      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) &&
++      ok = valid(old) && Nat.is_eq(rev, expected_revision) &&
+@@ -314 +314 @@
+-      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) &&
++      ok = valid(old) && Nat.is_eq(rev, expected_revision) &&
+@@ -333 +333 @@
+-      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) && hold_expired(found, now) && refund_fits(found, accounts)
++      ok = valid(old) && Nat.is_eq(rev, expected_revision) && hold_expired(found, now) && refund_fits(found, accounts)

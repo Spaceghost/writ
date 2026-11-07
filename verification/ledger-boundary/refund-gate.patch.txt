@@ -1,0 +1,8 @@
+--- a/Ledger.bend
++++ b/Ledger.bend
+@@ -315 +315 @@
+-        hold_matches(found, invocation, payer, units, now) && refund_fits(found, accounts)
++        hold_matches(found, invocation, payer, units, now)
+@@ -333 +333 @@
+-      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) && hold_expired(found, now) && refund_fits(found, accounts)
++      ok = has_successor(rev) && valid(old) && Nat.is_eq(rev, expected_revision) && hold_expired(found, now)
