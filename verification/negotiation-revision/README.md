@@ -44,7 +44,8 @@ Pinned Bend 2.0.39 SHA-256
 BendTT SHA-256
 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18` were used.
 The [121-file Bend inventory](bend-inputs.sha256) identifies the source inputs;
-the native CPU build is running and its result is not yet recorded.
+the native CPU build was interrupted or otherwise ended without a retained
+result. No native result is claimed.
 
 Offline Nix evaluation produced [this derivation](nix-eval.txt), whose
 [description](nix-derivation.json) sets the 2,386-PASS gate. All 85 Bend
