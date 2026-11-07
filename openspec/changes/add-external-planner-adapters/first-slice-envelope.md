@@ -2,7 +2,7 @@
 
 For example, a planner proposes a summary of two ordered object versions to a
 destination, cites one evidence reference, and names the code and invocation
-manifest. Today Writ has no planner envelope or decoder. This design proposes a
+manifest. Before this slice, Writ had no planner envelope or decoder. This design proposes a
 bounded way to represent that request; successfully decoding it means only that
 its **untrusted description** has the specified shape. It does not mean the
 objects, manifest, code, evidence, planner, or request are authentic, current,
