@@ -57,8 +57,14 @@ not a mutant.
 
 The separate [allocator test](allocator.log) passed 24 checks with ASan/UBSan,
 and the [owned-temp pair handoff test](handoff.log) passed synthetic
-capture-to-Bend/Node controls. Neither exercises a native rendezvous host. At
-this checkpoint the optimized native CPU build is still in progress; no native
-suite result is claimed yet. Generated JS and native binaries stay outside the
-source tree. No GPU, Linux identity, broker, launcher, protected-host or durable
-recovery qualification is claimed.
+capture-to-Bend/Node controls. Neither exercises a native rendezvous host.
+The [optimized native CPU suite](native.log) passed all 2,472 checks with
+`+RTS --threads 1 --gpu off -RTS`, byte-identical to Bend/Node. Build and run
+both exited 0; [build stdout](native-build.log), [build stderr](native-build.stderr)
+and [run stderr](native.stderr) are empty. The build began before source commit
+`c79e34a`, with the pre-comment inventory and comparison described above; the
+current 124 Bend input hashes still match after the run. A compiler command with
+`-O3` was [observed](native-clang-observation.txt), not process attestation.
+Generated JS and native binaries stay outside the source tree. No GPU test,
+Linux identity, broker, launcher, protected-host or durable recovery
+qualification is claimed.
