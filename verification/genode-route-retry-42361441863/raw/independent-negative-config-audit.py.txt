@@ -1,0 +1,17 @@
+# Independent fixed-source and installed-config comparison; no extraction.
+import hashlib, pathlib, subprocess, sys, zipfile
+negative = pathlib.Path(sys.argv[1]); prior = pathlib.Path(sys.argv[2])
+source = subprocess.check_output(['git', 'show', 'e129c931ceb1d249cf0b0874a91390e5eef840c9:contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_accept.run'])
+with zipfile.ZipFile(negative) as z:
+    original=z.read('original.run'); actual=z.read('actual.run'); installed=z.read('installed-config.txt')
+with zipfile.ZipFile(prior) as z: prior_config=z.read('installed-config.txt')
+route=b'  |     + service Writ_channel | + parent\n'
+assert original == source and source.count(route)==1
+assert prior_config.count(route)==1
+assert installed == prior_config.replace(route,b'',1)
+old_head=original.split(b"# A nested client's exit is logged by its parent init.",1)[0]
+new_head=actual.split(b'# Source predicts that nested init refuses this absent route.',1)[0]
+assert old_head.replace(route,b'',1)==new_head
+for name, value in [('original.run',original),('actual.run',actual),('installed-config.txt',installed),('prior exact config',prior_config)]:
+    print(name,'bytes',len(value),'sha256',hashlib.sha256(value).hexdigest())
+print('original fixed source and both config comparisons verified; actual terminal assertion differs as documented')
