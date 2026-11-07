@@ -112,8 +112,10 @@ See the [backend guide](writfs/README.md) and its
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
-native CPU backends**. The current suite adds 118 synthetic Linux monitor
-checks and five HostWire bounds and error-order checks; see the verification record for backend-specific results.
+native CPU backends**. The current 2,102-check suite adds 118 synthetic Linux monitor checks, five
+HostWire bounds and error-order checks, and 37 synthetic handoff checks. The
+handoff model does not establish a native Windows handoff or protected-host
+confinement; see the verification record for backend-specific results.
 Physical GPU execution was observed for specific workloads on one RTX 4090 host;
 the [GPU evidence](verification/gpu-validation-hosts.md) does not establish
 device isolation, and the loaded-host timings are not representative. Independent
