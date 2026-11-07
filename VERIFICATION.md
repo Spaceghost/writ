@@ -682,4 +682,5 @@ on source `82c51e8` failed the strict LPAC public-canary step. Its mounted reads
 revocation and native transport passed in their recorded scopes; byte-worker
 network, clipboard and COM observations remained incomplete and receive no
 confinement credit. The newly added optional standalone diagnostic was not run
-by that workflow. Full artifact text and raw hashes preserve the outcome.
+by that workflow. The native evidence text and raw artifact hashes preserve the
+outcome; generated policy JavaScript is not checked in.
