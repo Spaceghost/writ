@@ -78,6 +78,8 @@ host process memory, raw environments, global jobs, and capability tokens are
 outside that view. Protected content still needs paired read/write authority,
 including authority for the eventual terminal, file, or network sink.
 
+The [Genode nested routing plan](../openspec/changes/add-genode-host/nested-routing-fixture-plan.md)
+is a proposed public fixture; it does not establish a qualified host.
 Genode, Linux, and Windows present the same semantics through their qualified
 native adapters. A VFS or filesystem plugin is presentation; the authoritative
 service remains behind the native protection boundary. Full POSIX compatibility,

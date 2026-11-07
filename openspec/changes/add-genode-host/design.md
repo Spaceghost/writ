@@ -7,6 +7,9 @@ object-capability model can enforce service reachability; Writ's Bend gate must
 still enforce the permitted use of information after that service is reachable.
 The researched source and supporting references are in
 [docs/GENODE.md](../../../docs/GENODE.md).
+The selected nested-init reference and proposed public routing fixture are
+scoped in the [nested routing plan](nested-routing-fixture-plan.md); no nested
+profile is implemented or qualified by that plan.
 
 ## Goals and boundaries
 

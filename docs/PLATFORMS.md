@@ -131,6 +131,10 @@ contract tasks](../openspec/changes/add-portable-host-contract/tasks.md).
 This is the proposed topology for protected transformations. The canary mounts do not
 implement this complete pipeline; Genode's current diagnostic clients also have
 explicit log capabilities.
+Spaceghost selected the monitor one level above clients in a nested init as
+the Genode reference; the [nested routing fixture plan](../openspec/changes/add-genode-host/nested-routing-fixture-plan.md)
+records the proposed public experiment and its unverified boundary. Existing
+channel evidence uses a same-init topology.
 
 ```mermaid
 flowchart TD
@@ -236,7 +240,7 @@ that links the monitor natively into an existing unikernel
 [freestanding runtime](../openspec/changes/add-freestanding-bend-runtime/proposal.md)
 for the later kernel. A unikernel's single address space hosts the monitor; it
 is not a worker confinement boundary. For Genode, the
-[Bend component](../openspec/changes/add-genode-bend-component/proposal.md) and
+[Bend component](../openspec/changes/archive/2026-11-04-add-genode-bend-component/proposal.md) and
 [capability adoption](../openspec/changes/archive/2026-11-04-add-genode-capability-adoption/proposal.md)
 changes supply the runtime, effects, and binding model the reference host's
 tasks assume. POSIX remains the first file-style interface, followed by S3. This
