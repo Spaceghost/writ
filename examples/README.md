@@ -1,8 +1,9 @@
 # Runnable examples
 
-All four examples follow one story: **a restricted incident report becomes an
-approved internal summary**. They call the production library directly, share
-named synthetic records, and import no test fixtures. Every stated outcome is
+The first four examples follow one story: **a restricted incident report becomes
+an approved internal summary**. A separate stage-graph example examines a
+synthetic dependency relation. They call the library directly, use named
+synthetic records, and import no test fixtures. Every stated outcome is
 checked; an unexpected result calls `IO.die` with status `1` and an
 expected-versus-observed message.
 
@@ -16,6 +17,7 @@ Run the commands below from the repository root, with `bend` on `PATH`.
 | [Transfer.bend](Transfer.bend) | Pair the source read with the destination write and preserve the complete origin policy. | 4 |
 | [Commit.bend](Commit.bend) | Negotiate, reserve execution units, mount/open a capability, and recheck it at commit. | 16 |
 | [Parallel.bend](Parallel.bend) | Use the GPU-facing solver, DLM, and transfer APIs with verification and host replay. | 5 |
+| [StageGraph.bend](StageGraph.bend) | Check a bounded synthetic stage relation and reject cycles and missing endpoints. | 3 |
 
 ## 1. Flow and verification
 
@@ -150,11 +152,36 @@ BEND_NO_TELEMETRY=1 bend GpuExample.bend -o ../writ-build/parallel
 ../writ-build/parallel +RTS --threads 4 --gpu off
 ```
 
-Use the same `-o` pattern for `examples/Flow.bend`, `examples/Transfer.bend`, and
-`Example.bend`. Keep generated C, JavaScript, GPU modules, and binaries outside
-the source package. All four outputs above were reproduced with Bend 2.0.39's
+Use the same `-o` pattern for `examples/Flow.bend`, `examples/Transfer.bend`,
+`examples/StageGraph.bend`, and `Example.bend`. Keep generated C, JavaScript,
+GPU modules, and binaries outside the source package. The four outputs above were reproduced with Bend 2.0.39's
 JavaScript runner and native builds with four CPU threads and `--gpu off`.
 Physical GPU execution was not tested.
+
+## 5. Stage-graph structural preflight
+
+```sh
+BEND_NO_TELEMETRY=1 bend examples/StageGraph.bend
+```
+
+Captured output:
+
+```text
+Stage graph: check synthetic predecessor-to-successor edges.
+PASS independent predecessors: StructurallyAcyclic
+PASS return edge creates a cycle: CyclicOrInvalidWitness
+PASS unknown successor rejected: DanglingEdge
+```
+
+Stages 10 and 20 are independent predecessors of stage 30. Adding the edge
+from 30 back to 10 makes a cycle; replacing an edge with one to absent stage 40
+makes a dangling endpoint. `StageGraph.check` describes only the supplied
+bounded relation. It does not establish a complete staged recipe, authenticate
+identities or approvals, admit or execute work, or prove a host profile. The
+proposed [origin-stage contract](../openspec/changes/add-origin-transform-stages/specs/origin-transform-stages/spec.md)
+and its [tasks](../openspec/changes/add-origin-transform-stages/tasks.md) remain
+open. The output above was checked on pinned Bend 2.0.39, generated Node and a
+native CPU build with `--gpu off`; no GPU execution was tested.
 
 ## Shared helpers and trust boundary
 
