@@ -1,0 +1,3 @@
+source=e129c931ceb1d249cf0b0874a91390e5eef840c9
+scenario=negative
+cleanup=unverified; dedicated VM disposal is fallback only

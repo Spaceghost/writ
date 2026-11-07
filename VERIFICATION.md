@@ -886,4 +886,4 @@ and authorizes no implementation or native execution.
 
 The public nested Genode [route-negative experiment](verification/genode-route-negative-42357627656/README.md) observed a no-route warning and client refusal, but its harness timed out; its same-run positive failed during source download. Both jobs remain incomplete with cleanup unverified.
 
-The public nested Genode route-control retry has a [positive checkpoint](verification/genode-route-retry-42361441863/README.md): synthetic R passed its fixture, while cleanup remained unverified and the paired negative was still pending.
+The public nested Genode [route-control retry](verification/genode-route-retry-42361441863/README.md) matched both synthetic R positive and nested no-route negative fixtures; both jobs remain incomplete with cleanup unverified.
