@@ -1,0 +1,29 @@
+  pool: writfs_ci_42414768630_1
+ state: ONLINE
+config:
+
+	NAME                                                    STATE     READ WRITE CKSUM
+	writfs_ci_42414768630_1                                 ONLINE       0     0     0
+	  /home/runner/work/_temp/writfs-native.yxRuz4/zfs.img  ONLINE       0     0     0
+
+errors: No known data errors
+PASS: public destination fails the complete Writ gate before native execution
+PASS: revoked capability fails before native execution
+PASS: actual native stage retains complete source origin and restrictions
+PASS: a repeated creation cannot overwrite or adopt the existing target
+PASS: exact recorded native identity reconciles without creating another object
+PASS: ZFS stage remains unmounted
+PASS: ZFS native clone contains the public fixture bytes
+PASS: ZFS kernel rejects writes to the read-only clone
+PASS: changed native mount controls invalidate the recorded private stage
+PASS: public destination fails the complete Writ gate before native execution
+PASS: revoked capability fails before native execution
+PASS: actual native stage retains complete source origin and restrictions
+PASS: a repeated creation cannot overwrite or adopt the existing target
+PASS: exact recorded native identity reconciles without creating another object
+PASS: native zvol clone remains unexposed with volmode=none
+PASS: native zvol clone preserves the actual block payload
+PASS: ZFS kernel rejects writing the read-only cloned zvol
+PASS: exposing a zvol invalidates its recorded private-stage controls
+ALL NATIVE ZFS CHECKS PASSED
+Native fixture cleanup finished; exit status: 0
