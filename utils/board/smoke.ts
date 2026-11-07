@@ -16,6 +16,7 @@ import { join, resolve } from "node:path";
 import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { connect } from "node:net";
+import { events, Watcher } from "./server.ts";
 
 const root = resolve(join(import.meta.dir, "..", ".."));
 // Created inside the try below so that a failure while building the fixture or
@@ -361,6 +362,48 @@ try {
   const added = await waitFor("task-2-report.md", 2000);
   check("a new report file is pushed within 2 s", added.ok, `${added.after} ms`);
   live.close();
+
+  // Reproduce the startup race without timing guesses: pause after the first
+  // view has been captured, change a watched file, and wait until its watcher
+  // flush has completed while the new client is still unregistered. Only
+  // then allow the original render to be sent and the client to register.
+  const raceReport = join(rec, "task-1-report.md");
+  writeFileSync(raceReport, "# Smoke report\n\nStatus: BEFORE RACE\n\nold startup view\n");
+  let releaseInitial!: () => void;
+  let markCaptured!: () => void;
+  let markFlushed!: (count: number) => void;
+  const initialCaptured = new Promise<void>((r) => { markCaptured = r; });
+  const initialRelease = new Promise<void>((r) => { releaseInitial = r; });
+  const flushed = new Promise<number>((r) => { markFlushed = r; });
+  const raceFlags = { root, lanes: lanesDir, port: 0, host: "127.0.0.1", questions: join(lanesDir, "questions") };
+  const raceWatcher = new Watcher(raceFlags, (count) => markFlushed(count));
+  raceWatcher.start();
+  const raceResponse = events(raceFlags, "/", () => raceWatcher.reconcile(), async () => {
+    markCaptured();
+    await initialRelease;
+  });
+  const raceReader = raceResponse.body!.getReader();
+  const deadline = <T>(p: Promise<T>, ms: number): Promise<T> => Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error("startup race test timed out")), ms)),
+  ]);
+  try {
+    await deadline(initialCaptured, 5000);
+    writeFileSync(raceReport, "# Smoke report\n\nStatus: AFTER RACE\n\ncurrent startup view\n");
+    const flushedBeforeRegistration = await deadline(flushed, 5000);
+    check("startup race flush occurs before client registration", flushedBeforeRegistration === 0);
+    releaseInitial();
+    const firstRace = await deadline(raceReader.read(), 5000);
+    const firstText = new TextDecoder().decode(firstRace.value);
+    check("startup race initial patch carries the captured old view", firstText.includes("old startup view") && !firstText.includes("current startup view"));
+    const secondRace = await deadline(raceReader.read(), 5000);
+    const secondText = new TextDecoder().decode(secondRace.value);
+    check("startup race reconciles the current view without another edit", secondText.includes("current startup view") && secondText.includes('id="lanes"'));
+  } finally {
+    releaseInitial();
+    await raceReader.cancel();
+    raceWatcher.stop();
+  }
 } catch (err) {
   check("smoke run completed", false, String(err));
 } finally {
