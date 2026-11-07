@@ -20,6 +20,8 @@ for 2,162 current checks. Its reference-only descriptions do not authenticate
 identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
 Earlier evidence below remains tied to its own source and is not a claim that
 the new checks ran in those historical environments.
+The [planner codec record](verification/planner-envelope-local.md) links its
+local and exact-source platform checks and retains their qualifications.
 
 A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
 passed for the 36 named laws in `PROOF.bend` at exact source `be649f6`. Its

@@ -37,3 +37,12 @@ execution of source `b0c9863` with clang 23.1.1 and
 byte-identical stdout as the capture above. The 107 Bend input hashes still
 verify after this run. The executable and generated sources remain outside the
 checkout. This CPU run is not GPU evidence or native host qualification.
+
+The independently collected [platform CI records](planner-ci-b4df8a5/README.md)
+are attributed to exact source `b4df8a5`. Windows Node passed 2,162 core and
+78 WritFS model checks; Genode base-hw QEMU passed 2,162 core, 69 mount-model
+checks and scoped public canaries while retaining its missing-clock warning;
+Linux passed 2,162 core and 70 mount-model checks plus scoped public canaries.
+Linux's unsupported Landlock setup was refused before input/admission: this is
+an expected refusal, not a passing protected-worker setup. No run establishes
+an authenticated planner adapter or protected-host qualification.
