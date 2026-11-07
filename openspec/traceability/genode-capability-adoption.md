@@ -149,3 +149,8 @@ Every fixture is synthetic monitor state. Constructing a `Route`, `Quota`,
 from native state it trusts. The model has no native selectors, incarnations,
 channels, or RAM accounting, and no host replays these vectors yet. Passing
 these checks does not qualify a Genode profile.
+
+The [proposed frontend revision V2](../changes/add-versioned-frontend-revision/design.md)
+includes a separately unimplemented atomic multi-handle binding close. It
+does not establish GA-004 cleanup at revision exhaustion, resolve binding's
+independent numeric limits, or supply a native host qualification.
