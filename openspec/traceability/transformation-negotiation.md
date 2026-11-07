@@ -14,7 +14,7 @@ row does not imply that every possible input or every scenario is covered.
 | --- | --- | --- |
 | TN-001 | `open` | Reviewed constructor: revision/stage/zero sentinels. Exercised as setup by "negotiation reaches running in guarded order"; no dedicated assertion for all initial fields. |
 | TN-002 | `Session.move`, `Session.finish`, `Request.equal` | Tested: "every stage retains immutable request". The test compares the final Running request with the original. Intermediate helpers are also reviewed. |
-| TN-003 | `ready`, `pin`, `challenge`, `sample`, `approve`, `reserve_found`, `start` | Tested: "negotiation reaches running in guarded order", "stale session revision denies", "challenge requires pinned candidate", "sample cannot skip negotiation", "cannot execute before negotiation". |
+| TN-003 | `ready`, `pin`, `challenge`, `sample`, `approve`, `reserve_found`, `start` | Tested: existing ordered/stale checks and [revision boundary controls](../../NegotiationRevisionTests.bend): matching and stale terminal revisions reject with unchanged full state, while valid max−1 transitions advance to max. |
 | TN-004 | `live`, `ready` | Tested: "expiry is exclusive at deadline", "authority epoch drift denies start". Graph/policy epoch equality is reviewed in the common live gate; other deadline boundaries have no individual negotiation tests. |
 | TN-005 | `pin`; admission through `sample_permit` and `start` | Tested: "candidate identity cannot change", "sample cannot read without paired source grant". Reviewed: pin only compares request code identity; registered operation approval occurs in transfer admission. |
 | TN-006 | `challenge`, `challenge_matches` | Tested: "future challenge not yet usable" and the successful fixture chain. Reviewed: positive ID, exact plan, strict post-pin issue time, and exclusive challenge expiry. The exact pin-time boundary has no dedicated test. |
@@ -25,7 +25,7 @@ row does not imply that every possible input or every scenario is covered.
 | TN-011 | `budget_matches`, `budget_find`, `reserve` | Tested: "reader-funded reservation succeeds", "negotiation reserves reader balance", "reservation must name reader as payer", "quote substitution denies". Full-plan/receipt/amount/expiry matching is also reviewed. |
 | TN-012 | `reserve_found`, `reservation_result`; `Ledger.reserve` | Tested indirectly by "sample cannot skip negotiation" and ledger "stale revision denies". The specific late-origin-revocation-at-reservation scenario is reviewed, not separately executed by an existing negotiation test. |
 | TN-013 | `start`, `budget_live`, `hold_live` | Tested: "revoked budget denies start despite live hold", "revoked read grant denies execution", "revoked origin approval denies execution", "negotiation reaches running in guarded order". Structural ledger and exact hold matching are reviewed and share ledger coverage. |
-| TN-014 | `step`, `reservation_result`, `reserve_found` | Reviewed unchanged-state branches. Negotiation tests assert denial but do not separately compare every original session/ledger field on rejection. State-preserving backplane denials have separate tests. |
+| TN-014 | `step`, `reservation_result`, `reserve_found` | [Revision-boundary controls](../../NegotiationRevisionTests.bend) compare all session fields, and both complete session and ledger states for terminal reserve and backplane/facade denials. Other denial-state cases remain covered or reviewed separately. |
 
 ## Model boundary
 

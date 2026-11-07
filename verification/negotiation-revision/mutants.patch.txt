@@ -1,0 +1,30 @@
+### ready-gate
+--- Negotiation.bend
++++ Negotiation.bend.mutant
+@@ -210 +210 @@
+-  revision_has_successor(Session.revision(session)) && Nat.is_eq(Session.revision(session), expected_revision) &&
++  Nat.is_eq(Session.revision(session), expected_revision) &&
+### unsafe-successor
+--- Negotiation.bend
++++ Negotiation.bend.mutant
+@@ -148 +148 @@
+-  Nat.add(revision, Nat.min(1n, Nat.sub(max_revision(), revision)))
++  1n+revision
+### move-terminal-preservation
+--- Negotiation.bend
++++ Negotiation.bend.mutant
+@@ -158 +158 @@
+-      Session.select_next(revision_has_successor(rev),
++      Session.select_next(True{},
+### finish-terminal-preservation
+--- Negotiation.bend
++++ Negotiation.bend.mutant
+@@ -166 +166 @@
+-      Session.select_next(revision_has_successor(rev),
++      Session.select_next(True{},
+### backplane-ready-gate
+--- Backplane.bend
++++ Backplane.bend.mutant
+@@ -195 +195 @@
+-      Guard.Require{N.ready(session, expected_session, N.Running{}, negotiation),
++      Guard.Require{True{},

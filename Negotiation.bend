@@ -134,17 +134,37 @@ def Session.receipt(session: Session) -> Nat:
 def Session.is(session: Session, stage: Stage) -> Bool:
   U32.is_eq(Stage.number(Session.stage(session)), Stage.number(stage))
 
-def Session.move(session: Session, stage: Stage, pinned_at: Nat, challenge: Nat, receipt: Nat) -> Session:
+# Compiled Nat values end at 2^48-1. A terminal revision cannot advance;
+# provisional construction uses bounded arithmetic even on eager backends. Helpers confer no authority.
+def max_revision() -> Nat:
+  Nat.add(Nat.mul(65536n, 4294967295n), 65535n)
+
+def revision_has_successor(revision: Nat) -> Bool:
+  Nat.is_lt(revision, max_revision())
+
+# This saturating arithmetic is safe even when a candidate value is eagerly
+# constructed before a denial. It is not a revision or authority decision.
+def bounded_successor(+revision: Nat) -> Nat:
+  Nat.add(revision, Nat.min(1n, Nat.sub(max_revision(), revision)))
+
+def Session.select_next(ok: Bool, next: Session, old: Session) -> Session:
+  match ok:
+    case True{}: next
+    case False{}: old
+
+def Session.move(+session: Session, stage: Stage, pinned_at: Nat, challenge: Nat, receipt: Nat) -> Session:
   match session:
-    case Session{rev, request, _, _, _, _}:
-      Session{1n+rev, request, stage, pinned_at, challenge, receipt}
+    case Session{+rev, request, _, _, _, _}:
+      Session.select_next(revision_has_successor(rev),
+        Session{bounded_successor(rev), request, stage, pinned_at, challenge, receipt}, session)
 
 # Pure construction helper for Backplane's final gate. Calling it directly does
 # not validate execution, consume a reservation, or authorize publication.
-def Session.finish(session: Session) -> Session:
+def Session.finish(+session: Session) -> Session:
   match session:
-    case Session{rev, request, _, pinned, challenge, receipt}:
-      Session{1n+rev, request, Committed{}, pinned, challenge, receipt}
+    case Session{+rev, request, _, pinned, challenge, receipt}:
+      Session.select_next(revision_has_successor(rev),
+        Session{bounded_successor(rev), request, Committed{}, pinned, challenge, receipt}, session)
 
 def Context.transfer(context: Context) -> T.Context:
   match context:
@@ -187,7 +207,7 @@ def live(session: Session, +context: Context) -> Bool:
       T.Stamp.equal(T.Plan.stamp(plan), T.Context.live(Context.transfer(context)))
 
 def ready(+session: Session, expected_revision: Nat, stage: Stage, context: Context) -> Bool:
-  Nat.is_eq(Session.revision(session), expected_revision) &&
+  revision_has_successor(Session.revision(session)) && Nat.is_eq(Session.revision(session), expected_revision) &&
   Session.is(session, stage) && live(session, context)
 
 # Fix the requested code identity before a challenge is issued. Equality here

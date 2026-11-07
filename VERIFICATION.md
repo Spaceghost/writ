@@ -952,3 +952,8 @@ The [automatic CI for bfb8052](verification/master-ci-bfb8052/README.md)
 records Windows Node, Btrfs/ZFS, Linux and Genode public-fixture results and
 the strict Windows native failure. Linux protected setup was refused before
 input; neither that refusal nor the other fixture results qualify a host.
+
+The [negotiation revision boundary record](verification/negotiation-revision/README.md)
+retains the pre-fix terminal-revision crashes and synthetic fail-closed controls.
+It does not authenticate sessions, implement a host, or by itself fix separate
+ledger arithmetic.

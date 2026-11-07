@@ -4,6 +4,7 @@ import ./TransferTests.bend as Transfer
 import ./DlmTests.bend as Dlm
 import ./LedgerTests.bend as Ledger
 import ./NegotiationTests.bend as Negotiation
+import ./NegotiationRevisionTests.bend as NegotiationRevision
 import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
 import ./HostBindingTests.bend as HostBinding
@@ -31,6 +32,7 @@ def main() -> IO(Unit):
     Dlm.main()
     Ledger.main()
     Negotiation.main()
+    NegotiationRevision.main()
     Backplane.main()
     Frontend.main()
     HostBinding.main()
