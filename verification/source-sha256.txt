@@ -664,6 +664,7 @@ ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowe
 2c3c268397a464f2f38be7b611ed04aae2ec795f4df33e6fa4901443b185c55e  docs/superpowers/records/2026-11-06-windows-init/controlled-comparison-design.md
 66d005c01ac7e9cbeffed0566fd5b9dc52038220f09fde4550959d9f4d98f3de  docs/superpowers/records/2026-11-06-windows-init/diagnostic-plan.md
 cb52ca610be640aa8a2450882e59bcb6cdcfa6b078cd5274be67adf0e5323303  docs/superpowers/records/2026-11-06-windows-init/first-slice.md
+66457c80a9872b94242b756652d4aaccf97a8703a84c66c6f00ca48d0dac1c73  docs/superpowers/records/2026-11-06-windows-init/pss-lpac-feasibility-design.md
 9395d26e95afc47adb04a0d906721a938654647bde96928a5a25f7ce298b6b30  docs/superpowers/records/2026-11-06-windows-init/pss-readback-research.md
 05f89b3cf6acfdaa9f6252ab1a6019acde92c871cf3bc0881ff1b2c053b8c4ac  docs/superpowers/records/2026-11-06-windows-init/run-42313479154/README.md
 19d3ae6b5189e6237d9453ae4c766807f03b5f6d744bc936966109e483171623  docs/superpowers/records/2026-11-06-windows-init/run-42313479154/build.txt
