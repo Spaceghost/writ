@@ -65,6 +65,9 @@ checked one gzip member, CRC/length, hashes and those lines. All 30 negative
 files marked `snapshot` in the [snapshot result](negative/snapshot-result.json)
 matched their recorded byte counts and SHA-256; the partial gzip was not
 applicable. The exact gzip and metadata are in the [negative artifact ZIP](raw/negative.zip).
+The negative `make` child exited 2; `collector_exit=0` and `driver_exit=0`
+indicate that capture and the expected-control check completed, not that the
+fixture process exited successfully. The job itself still concluded incomplete.
 
 [raw-sha256.txt](raw-sha256.txt) records the original ZIP, per-job raw HTTP log
 response compressed losslessly with `gzip -n`, initial GitHub metadata, ref
