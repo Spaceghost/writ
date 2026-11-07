@@ -30,3 +30,9 @@ the old recorded `/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/be
 failed with exit 127 because that path was absent. `bend --version` was also
 unsupported; the replacement path's executable hash was verified before use.
 OpenSpec 1.16.0 strict validation passed 44/44. No GPU execution was performed.
+
+An initial development run stopped after its fifth check because the Python
+fixture teardown treated a list returned by a setup callback as a socket. The
+test harness was fixed before the recorded normal and sanitized runs. The one
+owned temporary tree left by that failed teardown was removed after verifying
+its unique synthetic config, links and 33 generated extra names.
