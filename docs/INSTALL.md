@@ -83,6 +83,7 @@ offline Nix JavaScript check. At source 61ab2a4, the full Nix flake check
 also passed, including optimized native CPU; see the [integration evidence](../verification/durable-integration-61ab2a4/nix/README.md).
 The [2,322-check Nix JavaScript preview](../verification/durable-handoff-52e8e01/README.md) passed for source `52e8e01`; no full current flake check is claimed. The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` handoff model inputs, not the combined preview.
 The separate [2,162-check planner Nix JavaScript result](../verification/planner-envelope-local.md) covers source `b0c9863`, not this combined preview.
+The [2,382-check combined-preview Nix JavaScript result](superpowers/records/2026-11-06-durable-publication/planner-integration-preview.md) covers source `d0dc411`; no combined-source full flake check or Nix native result is claimed.
 The 2065-check Nix JavaScript check passed for
 source `73a8055`; the Nix native CPU check also passed with the same output.
 The earlier [2,065-check combined flake check](../verification/nix-combined-flake-check.log) for the `73a8055` implementation inputs passed all checks with evidence-only files staged. The historical artifacts below cover the previous

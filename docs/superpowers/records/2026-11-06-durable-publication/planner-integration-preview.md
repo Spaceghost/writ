@@ -20,10 +20,14 @@ byte-identical, SHA-256
 `cd3d4bd7f3a126af390f1143c8a2f141e63fbebcedccf3dbfe8d16780b45d149`;
 see the [capture](../../../../verification/durable-handoff-planner-bend-node.log)
 and [Bend input hashes](../../../../verification/durable-handoff-planner-bend-source.sha256).
-All generated code was kept outside the checkout. The Nix and Genode count pins
-are updated to 2,382, but their checks have not yet been run on this combined
-source. Native CPU, GPU and platform CI execution of this combined source are
-also not claimed here.
+All generated code was kept outside the checkout. The Nix JavaScript check at
+exact source `d0dc4118757e2673ac1404df1456425a1bee5962` also passed 2,382
+checks with the same output hash. Its derivation was
+`/nix/store/mp2hkng8zwa498lg5gz1x34mksb8vl4r-writ-tests-js.drv`, and its
+output was `/nix/store/hjddn7kwnr79glm54bw78rwm31a61zz2-writ-tests-js`.
+This does not establish a full Nix flake check or Nix native execution. The
+Genode count pin is updated, but native CPU, GPU and platform CI execution of
+this combined source are not claimed here.
 
 `bend PROOF.bend --verdict` exited 0 and reported
 [ALL PROOFS CHECK](../../../../verification/durable-handoff-planner-verdict.log)
