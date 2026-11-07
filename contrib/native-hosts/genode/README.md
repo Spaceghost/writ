@@ -253,7 +253,7 @@ are not rejected by the existing shim; trusted configuration must avoid them.
 | `../runtime/genode/allocator_checks.{h,c}` and `allocator_probe.c` | Shared native/host allocator checks and the host sanitizer entry point; no service authority |
 | `src/test/writfs/`, `src/test/writfs_vfs/` | Native diagnostic clients; never a protected worker profile |
 | `run/` | Trusted supervisor topology, fixed public fixture, explicit ROM/service routes, and native completion gates |
-| `nested-channel/` | Experimental trusted nested-init topology, source staging and public fixture assertions; no policy, host qualification or identity attestation |
+| `nested-channel/` | Experimental trusted nested-init topology, source staging, public fixture assertions and [route-negative disposable CI candidate](nested-channel/ROUTE-NEGATIVE-CI.md); no policy, host qualification or identity attestation |
 | `build-and-run.sh`, workflow | Pinned inputs, cross-build packaging, fresh generated Bend artifacts, QEMU execution and evidence |
 
 Authorization, original policy/provenance, grant checking, state transitions,
