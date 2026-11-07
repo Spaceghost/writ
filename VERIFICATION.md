@@ -951,3 +951,8 @@ The [synthetic stage-graph record](verification/stage-graph/README.md) covers a
 bounded structural preflight and its independent original-edge verifier. It
 neither authenticates a staged recipe nor implements stage admission or host
 execution; origin-stage acceptance tasks remain open.
+
+The [automatic CI for bfb8052](verification/master-ci-bfb8052/README.md)
+records Windows Node, Btrfs/ZFS, Linux and Genode public-fixture results and
+the strict Windows native failure. Linux protected setup was refused before
+input; neither that refusal nor the other fixture results qualify a host.

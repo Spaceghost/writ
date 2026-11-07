@@ -1,0 +1,203 @@
+{
+  "conclusion": "failure",
+  "createdAt": "2026-11-07T13:50:11Z",
+  "databaseId": 42378765721,
+  "event": "push",
+  "headSha": "bfb805282a5beb390c923824bef52626303e6481",
+  "jobs": [
+    {
+      "completedAt": "2026-11-07T13:50:26Z",
+      "conclusion": "success",
+      "databaseId": 128421744619,
+      "name": "Compile shared Bend mount policy",
+      "startedAt": "2026-11-07T13:50:13Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-07T13:50:15Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-07T13:50:14Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:18Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "startedAt": "2026-11-07T13:50:15Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:23Z",
+          "conclusion": "success",
+          "name": "Build the shared policy with verified Bend",
+          "number": 3,
+          "startedAt": "2026-11-07T13:50:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:24Z",
+          "conclusion": "success",
+          "name": "Retain generated policy",
+          "number": 4,
+          "startedAt": "2026-11-07T13:50:23Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:24Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 8,
+          "startedAt": "2026-11-07T13:50:24Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:24Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 9,
+          "startedAt": "2026-11-07T13:50:24Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42378765721/job/128421744619"
+    },
+    {
+      "completedAt": "2026-11-07T13:51:56Z",
+      "conclusion": "failure",
+      "databaseId": 128421802488,
+      "name": "WinFsp mount and LPAC public-canary probes",
+      "startedAt": "2026-11-07T13:50:28Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-07T13:50:30Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-07T13:50:29Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:39Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "startedAt": "2026-11-07T13:50:30Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:40Z",
+          "conclusion": "success",
+          "name": "Download the exact generated policy artifact",
+          "number": 3,
+          "startedAt": "2026-11-07T13:50:39Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:44Z",
+          "conclusion": "success",
+          "name": "Install pinned native Windows Node",
+          "number": 4,
+          "startedAt": "2026-11-07T13:50:40Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:45Z",
+          "conclusion": "success",
+          "name": "Verify policy and record native environment",
+          "number": 5,
+          "startedAt": "2026-11-07T13:50:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:47Z",
+          "conclusion": "success",
+          "name": "Run the shared mount model and transport probes on Windows",
+          "number": 6,
+          "startedAt": "2026-11-07T13:50:45Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:50:50Z",
+          "conclusion": "success",
+          "name": "Install pinned security-fixed WinFsp prerelease",
+          "number": 7,
+          "startedAt": "2026-11-07T13:50:47Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:18Z",
+          "conclusion": "success",
+          "name": "Compile native ABI and probe with MSVC",
+          "number": 8,
+          "startedAt": "2026-11-07T13:50:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:19Z",
+          "conclusion": "success",
+          "name": "Exercise a real native mount and actor-bound reads",
+          "number": 9,
+          "startedAt": "2026-11-07T13:51:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:50Z",
+          "conclusion": "success",
+          "name": "Exercise the actual native private-pipe transport",
+          "number": 10,
+          "startedAt": "2026-11-07T13:51:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:51Z",
+          "conclusion": "failure",
+          "name": "Exercise LPAC, WFP, egress probes and revocation",
+          "number": 11,
+          "startedAt": "2026-11-07T13:51:50Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:52Z",
+          "conclusion": "success",
+          "name": "Retain all native evidence",
+          "number": 12,
+          "startedAt": "2026-11-07T13:51:51Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:52Z",
+          "conclusion": "skipped",
+          "name": "Post Install pinned native Windows Node",
+          "number": 23,
+          "startedAt": "2026-11-07T13:51:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:54Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 24,
+          "startedAt": "2026-11-07T13:51:52Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T13:51:54Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 25,
+          "startedAt": "2026-11-07T13:51:54Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42378765721/job/128421802488"
+    }
+  ],
+  "name": "WritFS native Windows mount",
+  "status": "completed",
+  "updatedAt": "2026-11-07T13:51:56Z",
+  "url": "https://github.com/Spaceghost/writ/actions/runs/42378765721"
+}
