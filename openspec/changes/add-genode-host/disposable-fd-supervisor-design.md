@@ -77,8 +77,8 @@ incomplete; there is no unrestricted fallback.
    sources must refuse. Keep complete raw gzip capture, integrity checks, caps,
    error records and public credential assumptions.
 6. Once the bounded fixture/capture phase has returned, a distinct fixed
-   inventory worker receives only the held root, B, G, output and fixed-reference
-   FDs it actually needs and the parent's already-pinned private expected bytes.
+   inventory worker receives only the held root, B, G and output FDs it
+   actually needs and the parent's already-pinned private expected bytes.
    A forked worker may inherit that private memory through copy-on-write; an
    exec-based worker instead needs a separately reviewed immutable handoff,
    such as a verified sealed object. Reopening the original writable reference
@@ -113,7 +113,7 @@ only the intended standard streams and status channel, not assume descriptor
 numbers are free. Missing or blocked primitives do not authorize a weaker path.
 
 One narrow inventory handoff is a separately forked worker: duplicate exactly
-the retained directory/reference FDs into a collision-safe fixed table, close
+the retained directory/output FDs into a collision-safe fixed table, close
 all other nonstandard FDs in that child, and invoke the fixed worker library or
 exec the fixed reviewed worker with deliberate inheritance. If exec is used,
 only those intended duplicates may have close-on-exec cleared. The parent keeps
