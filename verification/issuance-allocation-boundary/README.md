@@ -48,7 +48,14 @@ synthetic controls, not exhaustive proofs or Lean-kernel rejections.
 The separate [allocator test](allocator.log) passed 24 checks with ASan/UBSan,
 and the [owned-temp pair handoff test](handoff.log) passed synthetic
 capture-to-Bend/Node controls. Neither exercises a native issuance host. At this
-checkpoint the optimized native CPU build is still in progress; no native suite
-result is claimed yet. Generated JS and native binaries stay outside the source
-tree. No GPU, Linux identity, broker, launcher, protected-host or durable
-recovery qualification is claimed.
+checkpoint the [optimized native CPU suite](native.log) passed all 2,448 checks
+with `+RTS --threads 1 --gpu off -RTS`, byte-identical to Bend/Node. Build and
+run both exited 0; [build stdout](native-build.log), [build stderr](native-build.stderr)
+and [run stderr](native.stderr) are empty. The build began before source commit
+`b918f49`, and all 123 inventoried Bend inputs match that commit and the
+post-run tree. An `-O3` compiler command was [observed](native-clang-observation.txt),
+not process attestation. The compiler also automatically launched a
+`tests-native +RTS --gpu-build` build subprocess; this is not a GPU test.
+Generated JS and native binaries stay outside the source tree. No GPU execution
+result, Linux identity, broker, launcher, protected-host or durable recovery
+qualification is claimed.
