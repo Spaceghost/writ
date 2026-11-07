@@ -22,6 +22,9 @@ about subsequent diagnostics or the build. Counts and raw SHA-256 are in
 [positive excerpt](positive/run-excerpt.txt) and
 [negative excerpt](negative/run-excerpt.txt) omit most content intentionally;
 the exact capped raw logs are preserved inside the original artifact ZIPs.
+The linked [positive](positive/setup.log) and [negative](negative/setup.log)
+setup logs are readability copies with ANSI escapes and line endings
+normalized; compare snapshot hashes against their originals in the ZIPs.
 
 The exact branch ref was observed immediately before the one dispatch in
 [raw/ref-check.txt](raw/ref-check.txt) and [raw/ref-check-time.txt](raw/ref-check-time.txt).
