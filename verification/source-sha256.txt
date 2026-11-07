@@ -653,7 +653,8 @@ e14076ad20573905cce011cc11efbfbaec21b5050bf607cf0e05695158ea0ba4  docs/superpowe
 ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowers/records/2026-11-05-unikraft-lanes/task-3-report.md
 264ad1f1d36d5b97eaa0350a9962bcd0cad13e31bd3674a746861e92ec3a7d3c  docs/superpowers/records/2026-11-06-branch-audit/report.md
 4af4d359e550fd601fa442e8a4792a01d91e3f364affac18ab7e57958f999e1e  docs/superpowers/records/2026-11-06-hostwire-bounds/report.md
-30c4b6535ea6efbfdf5d70c069e23bdf41b1667b315fd2e4b7281c008989d282  docs/superpowers/records/2026-11-06-windows-init/same-worker-pre-admission-feasibility.md
+6add4356d01dba3209e40eeca2d13841f7255c0dd2142390feda7261f70b6adb  docs/superpowers/records/2026-11-06-windows-init/pre-admission-handoff-obligations.md
+b8d893d3a898e9149bba13b4e4f9ddb690ebab1228564c6dba3c7d1155617837  docs/superpowers/records/2026-11-06-windows-init/same-worker-pre-admission-feasibility.md
 aaccb1be8600ad62a9ae527583a5cb613333d32281ecbd303d3c8198b90498fb  docs/superpowers/records/2026-11-06-windows-init/strict-worker-next-research.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html

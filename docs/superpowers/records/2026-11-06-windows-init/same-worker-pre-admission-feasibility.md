@@ -17,6 +17,10 @@ The report writer, both events, initialized DLL/provider state, any new handles 
 
 A suspended initial child gave the earlier PSS feasibility runs a bounded snapshot, not a continuing guarantee. Microsoft documents [handle-list launch inputs](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute), [PSS capture](https://learn.microsoft.com/en-us/windows/win32/api/processsnapshot/nf-processsnapshot-psscapturesnapshot) and [capture flags](https://learn.microsoft.com/en-us/windows/win32/api/processsnapshot/ne-processsnapshot-pss_capture_flags), but these citations do not establish a race-free, complete, independently authenticated handle and mutable-state view for a running process at admission. Microsoft warns [SuspendThread](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-suspendthread) is not intended for application synchronization and can deadlock; suspending the original thread alone does not show that every other thread or peer is quiescent. The existing process-child restriction is not a ban on threads. A successful earlier PSS walk cannot prove handles or alternate paths are absent after initialization. A supported bounded and race-safe transition mechanism, including independently identified target/peer lifetimes and access rights, remains an explicit unresolved prerequisite.
 
+The follow-up [handoff obligations and adversarial matrix](pre-admission-handoff-obligations.md)
+records unresolved security choices and proposed tests; none of those tests
+has been run, and the note authorizes no implementation.
+
 ## What a separate design must settle
 
 - Specify exact preflight and later messages, owned endpoints, deadlines, malformed/duplicate/truncated/replayed/out-of-order behavior, all surviving channels, cleanup and how no pre-admission protected data or caller-controlled authority enters. Bind every observation and reply to the same held process lifetime and authenticated broker; no PID-only or bearer-only authority.
