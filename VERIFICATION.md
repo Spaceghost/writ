@@ -51,6 +51,13 @@ retains its separate 2,102-check source and evidence, including [Windows Node](v
 The Genode guest retained a missing-clock warning, and Linux deliberately refused
 unsupported Landlock setup before input; neither result qualifies a protected host.
 
+The [automatic master runs at `1ce6757`](verification/master-ci-1ce6757/README.md)
+passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS
+fixture checks. **Strict Windows native failed**: the actual worker's network,
+clipboard and COM observations remained incomplete. The Linux run retained an
+expected setup refusal before input; none of these results qualifies a protected
+host.
+
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the
 Linux model and 1947 checks with the HostWire change. The combined suite at source `73a8055`
