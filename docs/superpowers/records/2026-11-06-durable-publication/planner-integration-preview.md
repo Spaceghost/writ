@@ -26,8 +26,12 @@ checks with the same output hash. Its derivation was
 `/nix/store/mp2hkng8zwa498lg5gz1x34mksb8vl4r-writ-tests-js.drv`, and its
 output was `/nix/store/hjddn7kwnr79glm54bw78rwm31a61zz2-writ-tests-js`.
 This does not establish a full Nix flake check or Nix native execution. The
-Genode count pin is updated, but native CPU, GPU and platform CI execution of
-this combined source are not claimed here.
+optimized native CPU build and run at exact source `d0dc411` also passed
+2,382 checks with the same output hash, using clang 23.1.1 and
+`+RTS --threads 4 --gpu off`. Its 126 inventoried Bend source hashes were
+verified after the run. The build-time GPU compilation and CPU fallback do not
+constitute a GPU execution test. The Genode count pin is updated, but platform
+CI execution of this combined source is not claimed here.
 
 `bend PROOF.bend --verdict` exited 0 and reported
 [ALL PROOFS CHECK](../../../../verification/durable-handoff-planner-verdict.log)
