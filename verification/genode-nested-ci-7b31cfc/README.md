@@ -1,4 +1,4 @@
-# Nested public Genode CI: positive observation, negative pending
+# Nested public Genode CI: positive and negative-control observations
 
 The positive job of [run 42354001119](https://github.com/Spaceghost/writ/actions/runs/42354001119)
 observed the expected **public synthetic** nested R channel on Genode 26.08
@@ -8,8 +8,11 @@ base-linux. Its client reached route subject 1 with the label
 intentionally concluded nonzero/incomplete because in-guest descendant cleanup
 is unverified. This does not establish protected-host qualification, actor
 identity, confinement, authenticated issuance, native publication or actual
-cleanup. The negative job was still running when this positive record was made;
-it is not credited here.
+cleanup. The separate negative job exercised a changed expected decision: the
+client expected 2, observed the same committed decision 1/reason 0 and exited
+1; the harness reported the intended failure. This is a negative control of
+the fixture expectation, not a Bend denial. It also remains overall incomplete
+because in-guest cleanup is unverified.
 
 The workflow/tooling ran at exact commit
 `7b31cfc3ea750ed25f9091e8723449cf89ea15f9` on
@@ -20,7 +23,10 @@ the workflow commit immediately before dispatch ([raw check](raw/ref-check.txt),
 assume trusted branch control. This evidence is attributed to that isolated
 workflow commit, not to the present master tree.
 
-The positive job ID was `128347973970`; the existing base-hw job was skipped.
+The positive job ID was `128347973970`, the negative job ID was `128347973763`,
+and the existing base-hw job was skipped. Both jobs concluded nonzero by design
+because cleanup was unverified; the [final job metadata](raw/jobs-final.json)
+retains their actual conclusions.
 The job's [conclusion](positive/conclusion.txt), [workflow identity](positive/workflow-identity.txt),
 [installed configuration](positive/installed-config.txt), [boot input hashes](positive/boot-inputs-sha256.txt),
 and [tool identities](positive/tool-identity.txt) are retained. The installed
@@ -46,11 +52,29 @@ All 29 positive files marked `snapshot` in the [snapshot result](positive/snapsh
 were independently checked against their recorded byte counts and SHA-256;
 the negative diff and partial gzip were not applicable.
 
+The negative job used the same fixed fixture source with exactly one overlay
+change, `expect_decision: 1` to `2` ([diff](negative/negative.diff)). The
+[negative independent audit](negative/independent-audit.txt) verified the
+same nested route and committed decision, the expected/observed mismatch,
+client exit 1 and harness error. Its raw gzip contains 246,349,527 bytes with
+SHA-256 `262422075b5232e873f26c2b20fd84dfe37e4468f59541a999870436612788aa`;
+its 2,520,924 compressed bytes hash to
+`e37b78bb42d699084cfc218cfba8ee0c68fc8378362afaa9d505f547d6edba44`.
+The bounded [audit script](raw/independent-negative-audit.py.txt) independently
+checked one gzip member, CRC/length, hashes and those lines. All 30 negative
+files marked `snapshot` in the [snapshot result](negative/snapshot-result.json)
+matched their recorded byte counts and SHA-256; the partial gzip was not
+applicable. The exact gzip and metadata are in the [negative artifact ZIP](raw/negative.zip).
+
 [raw-sha256.txt](raw-sha256.txt) records the original ZIP, per-job raw HTTP log
 response compressed losslessly with `gzip -n`, initial GitHub metadata, ref
-check and audit script. The uncompressed positive HTTP job log has SHA-256
-`c3f70df48f2db99c075f8101ef1009f68b44ca9de355f6e55e1be500193caef8`.
-The readable [setup log](positive/setup.log) has ANSI escapes and line endings
-normalized; compare raw snapshot hashes against the ZIP original. Upload and
+check and audit scripts. The uncompressed positive and negative HTTP job logs
+have SHA-256 respectively
+`c3f70df48f2db99c075f8101ef1009f68b44ca9de355f6e55e1be500193caef8` and
+`3db00bdf915aef77d9c32b99c4db332f1b23a82a0f50cb15a1707c43262864e4`.
+The readable [positive](positive/setup.log) and [negative](negative/setup.log)
+setup logs have ANSI escapes and line endings normalized, and each installed
+configuration copy has terminal whitespace normalized; compare raw snapshot
+hashes against the ZIP originals. Upload and
 same-UID credential-isolation limitations remain as documented in the reviewed
 workflow source; provider disposal is fallback containment only.
