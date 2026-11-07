@@ -719,6 +719,7 @@ cc69b661dcef4f467b492e93cf8afd30782fc73be22bf03eb7d306b153e3e1fd  docs/superpowe
 19e4dcf376d6f6484c95bb9ba83a05cb2f080698393a894af61d413d8e6c0613  docs/superpowers/records/2026-11-06-windows-init/exploratory-win32k-ac-design.md
 cb52ca610be640aa8a2450882e59bcb6cdcfa6b078cd5274be67adf0e5323303  docs/superpowers/records/2026-11-06-windows-init/first-slice.md
 60cc1cfc9fb0bdb79bcec3609b7c25f4048e9d9eca118411e6e32883ada921cf  docs/superpowers/records/2026-11-06-windows-init/handoff-control-alternatives.md
+8c840841b7215fec69d9961a37bdb0ae04576f22daa7ef9e97210a3872ecc3ca  docs/superpowers/records/2026-11-06-windows-init/handoff-inventory-and-model-design.md
 1e4f0e9f741043f6fe4fba8d66b176a8b0487473e088624d83d9447a26e179eb  docs/superpowers/records/2026-11-06-windows-init/pre-admission-handoff-obligations.md
 4a9c224efed42a46172f5e02f59587cbe305643997cf7da908df32dea96fc930  docs/superpowers/records/2026-11-06-windows-init/pss-lpac-feasibility-design.md
 9395d26e95afc47adb04a0d906721a938654647bde96928a5a25f7ce298b6b30  docs/superpowers/records/2026-11-06-windows-init/pss-readback-research.md
