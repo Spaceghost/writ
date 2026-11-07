@@ -4,4 +4,4 @@
 
 The retained `setup-refusal.log` records the deliberate unsupported Landlock setup refusal at step 8, before input loading or Bend admission. The successful CI outcome confirms that refusal, not protected-worker setup or confinement qualification. The run does not establish durable storage, recovery or sink qualification, nor complete independent human security review.
 
-The source/build record has eight tracked source hashes verified against the exact commit; two generated or absolute paths were not compared against Git. `ci.json`, `artifact-metadata.json` and `artifact-raw-sha256.txt` preserve run identity and hashes of all 14 original files. `retained/` text is UTF-8/LF with trailing whitespace removed; failure and refusal lines remain.
+The source/build record has eight tracked source hashes verified against the exact commit; two generated or absolute paths were not compared against Git. `ci.json`, `artifact-metadata.json` and `artifact-raw-sha256.txt` preserve run identity and hashes of all 14 original files. Retained text captures are UTF-8/LF with trailing whitespace removed; failure and refusal lines remain.
