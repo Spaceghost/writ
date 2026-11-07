@@ -196,7 +196,8 @@ without reopening, `ask` reopens the question, `close` closes it. A question
 reads `open` until the reader answers (or after the controller's last `ask`),
 `answered` otherwise, and `closed` when the page's meta or a `close` entry
 says so. A malformed or incomplete answer line remains visible in the thread,
-but an entry with no known author does not mark a question answered. A new
+but a reader entry must have a known author and at least one field to count as
+an answer. Controller ask and close entries may omit fields. A new
 answer is appended on a fresh line if the existing file has an unterminated
 last line; the prior bytes are retained. This does not synchronize with
 external writers modifying the same file concurrently.

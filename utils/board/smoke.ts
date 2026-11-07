@@ -371,6 +371,32 @@ try {
   symlinkSync(sentinel, join(lanesDir, "questions", "q8.answers.jsonl"));
   const symlinkPost = await fetch(`${base}/questions/q8/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: "text=ignored" });
   check("an answer append refuses a symlink and leaves its target unchanged", symlinkPost.status === 500 && readFileSync(sentinel, "utf8") === "sentinel\n");
+  // JSON can be syntactically complete while lacking the reader's answer.
+  const incompleteRecords = [
+    ['q10', '{"who":"josh"}'],
+    ['q11', '{"who":"josh","fields":{}}'],
+    ['q12', '{"who":"josh","fields":null}'],
+    ['q13', '{"who":"josh","fields":["not a field object"]}'],
+    ['q14', '{"who":17,"fields":{"text":"not an author"}}'],
+  ];
+  for (const [id, line] of incompleteRecords) {
+    writeFileSync(join(lanesDir, "questions", `${id}.html`), `<title>Incomplete ${id}</title>`);
+    writeFileSync(join(lanesDir, "questions", `${id}.answers.jsonl`), line + "\n");
+  }
+  writeFileSync(join(lanesDir, "questions", "q15.html"), '<title>Blank field is still an answer</title>');
+  writeFileSync(join(lanesDir, "questions", "q15.answers.jsonl"), '{"who":"josh","fields":{"text":""}}\n');
+  writeFileSync(join(lanesDir, "questions", "q16.html"), '<title>Controller ask without fields</title>');
+  writeFileSync(join(lanesDir, "questions", "q16.answers.jsonl"), '{"who":"josh","fields":{"text":"prior"}}\n{"who":"controller","kind":"ask"}\n');
+  writeFileSync(join(lanesDir, "questions", "q17.html"), '<title>Controller close without fields</title>');
+  writeFileSync(join(lanesDir, "questions", "q17.answers.jsonl"), '{"who":"controller","kind":"close"}\n');
+  writeFileSync(join(lanesDir, "questions", "q18.html"), '<title>Malformed controller close</title>');
+  writeFileSync(join(lanesDir, "questions", "q18.answers.jsonl"), '{"who":"controller","kind":"close","fields":[]}\n');
+  const schemaApi = (await (await fetch(`${base}/api/questions`)).json()) as { id: string; status: string; answers: { fields: Record<string, string> }[] }[];
+  check("incomplete JSON reader records remain raw and do not answer the question", incompleteRecords.every(([id, line]) => { const q = schemaApi.find((x) => x.id === id); return q?.status === "open" && q.answers[0]?.fields.text === line; }));
+  check("a submitted blank field remains a valid reader answer", schemaApi.find((q) => q.id === "q15")?.status === "answered");
+  check("a controller ask without fields reopens", schemaApi.find((q) => q.id === "q16")?.status === "open");
+  check("a controller close without fields closes", schemaApi.find((q) => q.id === "q17")?.status === "closed");
+  check("a malformed controller close remains visible without closing", schemaApi.find((q) => q.id === "q18")?.status === "open" && schemaApi.find((q) => q.id === "q18")?.answers[0]?.fields.text === '{"who":"controller","kind":"close","fields":[]}');
   const forgedOrigin = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://evil.example" }, body: "text=x" });
   check("a foreign Origin cannot post an answer", forgedOrigin.status === 403 && readFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), "utf8").split("\n").filter(Boolean).length === 2);
   check("posting to a question that does not exist is 404", (await fetch(`${base}/questions/q9/answer`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "text=x" })).status === 404);

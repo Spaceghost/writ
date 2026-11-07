@@ -325,6 +325,17 @@ export function parseAnswers(text: string): Answer[] {
     if (line.trim() === "") continue;
     try {
       const o = JSON.parse(line) as Partial<Answer>;
+      if (o === null || typeof o !== "object" || Array.isArray(o) ||
+          typeof o.who !== "string" || o.who.trim() === "") throw new Error("incomplete author");
+      const hasFields = Object.prototype.hasOwnProperty.call(o, "fields");
+      if (hasFields && (o.fields === null || typeof o.fields !== "object" || Array.isArray(o.fields))) {
+        throw new Error("invalid fields");
+      }
+      // A reader entry must carry at least one submitted field. Controller
+      // ask/close events may have no fields and still change question status.
+      if (o.who !== "controller" && (!hasFields || Object.keys(o.fields ?? {}).length === 0)) {
+        throw new Error("incomplete reader answer");
+      }
       const fields: Record<string, string> = {};
       for (const [k, v] of Object.entries(o.fields ?? {})) fields[String(k)] = String(v);
       const k = o.kind === "ask" || o.kind === "close" || o.kind === "note" ? o.kind : null;
@@ -351,7 +362,7 @@ function scanQuestions(flags: Flags): Question[] {
     let status: Question["status"] = "open";
     for (const a of answers) {
       if (a.who === "controller") { if (a.kind === "ask") status = "open"; }
-      // An unparseable entry is displayed with an unknown author; it is not
+      // A malformed or incomplete entry has an unknown author; it is not
       // evidence that the reader answered this question or its last follow-up.
       else if (a.who !== "") status = "answered";
     }
