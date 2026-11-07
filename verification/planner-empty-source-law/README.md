@@ -21,9 +21,9 @@ This is not a new kernel-build audit or a whole-system proof.
 
 The [negative patch](negative.patch), applied only in an isolated temporary
 copy, flips the false source guard to true. The `--verdict` invocation exited
-[1](negative.exit) and Bend reported `SOME PROOFS FAIL` in
-[stdout](negative.stdout), naming `Laws.planner_empty_sources_rejects` in the
-[diagnostic](negative.stderr) with expected `True{}` versus observed `False{}`.
+[1](negative.exit) and Bend reported `SOME PROOFS FAIL` in the
+[diagnostic](negative.stderr), naming `Laws.planner_empty_sources_rejects`
+there with expected `True{}` versus observed `False{}`.
 The diagnostic capture is normalized for trailing whitespace. Bend rejected
 the proof before a kernel verdict; this is not a claim that the
 Lean kernel rejected the mutant. The mutation is not part of the implementation.
