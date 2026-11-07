@@ -1,0 +1,43 @@
+import Base
+import ./Frontend.bend as F
+import ./FrontendTests.bend as FT
+import ./TransferTests.bend as TF
+import ./Test.bend as Test
+
+def closed_ok(change: F.Change, max: Nat) -> Bool:
+  match change:
+    case F.Rejected{_}: False{}
+    case F.Changed{F.State{revision, next, F.Handles{F.Handle{_, _, _, _, _, _, _, _, closed}, F.NoHandles{}}}, id}:
+      Nat.is_eq(revision, max) && Nat.is_eq(next, 2n) && Nat.is_eq(id, 1n) && closed
+    case _: False{}
+
+def mount_ok(change: F.Change, +max: Nat, near: Nat) -> Bool:
+  match change:
+    case F.Rejected{_}: False{}
+    case F.Changed{+state, id}:
+      match state:
+        case F.State{revision, next, _}:
+          Nat.is_eq(revision, 1n) && Nat.is_eq(next, max) && Nat.is_eq(id, near) && F.valid(state)
+
+def check(+max: Nat) -> IO(Unit):
+  +near = Nat.sub(max, 1n)
+  +handle = FT.raw_handle(1n, TF.plan())
+  +max_state = {F.State{max, 2n, F.Handles{handle, F.NoHandles{}}} : F.State}
+  +next_state = {F.State{0n, max, F.NoHandles{}} : F.State}
+  +near_state = {F.State{near, 2n, F.Handles{handle, F.NoHandles{}}} : F.State}
+  +near_alloc = {F.State{0n, near, F.NoHandles{}} : F.State}
+  do IO<Unit>:
+    Test.check(F.valid(max_state), "terminal revision state validates")
+    Test.check(F.valid(next_state), "terminal next ID state validates")
+    Test.check(closed_ok(F.close(near_state, near, FT.ref(1n)), max), "penultimate close preserves closed tombstone and reaches maximum")
+    Test.check(mount_ok(F.mount(near_alloc, FT.registry(7), 0n, FT.caller(7n), 7, FT.live()), max, near), "penultimate allocation advances next to maximum")
+
+def parsed(value: Maybe<&2, Nat>) -> IO(Unit):
+  match value:
+    case None{}: IO.die(Unit, 1, "BAD NUMBER")
+    case Some{x}: check(x)
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    value : String <- IO.try(String, IO.get_env("WRIT_FRONTEND_TEST"))
+    parsed(Nat.read(value))

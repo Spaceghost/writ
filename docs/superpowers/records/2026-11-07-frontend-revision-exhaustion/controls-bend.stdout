@@ -1,0 +1,4 @@
+PASS: terminal revision state validates
+PASS: terminal next ID state validates
+PASS: penultimate close preserves closed tombstone and reaches maximum
+PASS: penultimate allocation advances next to maximum

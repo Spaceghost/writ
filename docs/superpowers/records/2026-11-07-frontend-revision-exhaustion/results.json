@@ -1,0 +1,122 @@
+[
+  {
+    "case": "close-current-build",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "case": "close-current-max-bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1"
+  },
+  {
+    "case": "close-current-max-node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1"
+  },
+  {
+    "case": "close-current-near-bend",
+    "exit": 0,
+    "stdout": "CHANGED",
+    "stderr": ""
+  },
+  {
+    "case": "close-current-near-node",
+    "exit": 0,
+    "stdout": "CHANGED",
+    "stderr": ""
+  },
+  {
+    "case": "close-stale-build",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "case": "close-stale-max-bend",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "close-stale-max-node",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "close-stale-near-bend",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "close-stale-near-node",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "mount-current-build",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "case": "mount-current-max-bend",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1"
+  },
+  {
+    "case": "mount-current-max-node",
+    "exit": 1,
+    "stdout": "",
+    "stderr": "bend: a Nat past the largest immediate 2^48-1"
+  },
+  {
+    "case": "mount-current-near-bend",
+    "exit": 0,
+    "stdout": "CHANGED",
+    "stderr": ""
+  },
+  {
+    "case": "mount-current-near-node",
+    "exit": 0,
+    "stdout": "CHANGED",
+    "stderr": ""
+  },
+  {
+    "case": "mount-stale-build",
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "case": "mount-stale-max-bend",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "mount-stale-max-node",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "mount-stale-near-bend",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  },
+  {
+    "case": "mount-stale-near-node",
+    "exit": 0,
+    "stdout": "REJECTED",
+    "stderr": ""
+  }
+]
