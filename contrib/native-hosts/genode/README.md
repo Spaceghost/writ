@@ -228,9 +228,13 @@ negative control. The pinned Genode run tool can retry and its base-linux
 power-off fallback does not itself prove that descendants have exited. Before
 running, review a supervisor that creates and records a process group owned by
 that invocation, captures retries and cleanup status, and verifies retirement
-of that group's descendants on success, error and timeout. Report the run
-incomplete if cleanup cannot be verified. Never use global `core` or QEMU
-kills, overwrite shared caches or touch unrelated VMs.
+of that group's descendants on success, error and timeout. A bare process group
+cannot prove that escaped descendants are gone, and observed parent cgroup
+writability does not rule out migration. The [PID-namespace alternative](nested-channel/PID-NAMESPACE-DESIGN.md)
+is an unimplemented design with a separate synthetic test plan. The read-only
+`supervisor-preflight.py` probe accepts no workload and always reports incomplete.
+Report any run incomplete if cleanup cannot be verified. Never use global `core`
+or QEMU kills, overwrite shared caches or touch unrelated VMs.
 The helper's broad default route and diagnostic LOG remain present; the fixed
 client cannot vary its suffix, and this fixture establishes neither
 confinement nor original caller identity. Conflicting equally scored policies
