@@ -13,7 +13,7 @@
 // not exist, so the panel must degrade to "could not be read" lines.
 
 import { join, resolve } from "node:path";
-import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, appendFileSync, rmSync, symlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { connect } from "node:net";
 import { events, Watcher } from "./server.ts";
@@ -335,6 +335,42 @@ try {
   check("the drawer's frame allows forms so a question's form can submit from it", indexHtml.includes('sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"'));
   const after = await (await fetch(`${base}/questions/q1`)).text();
   check("the thread shows the reader's answer and the question reads answered", after.includes("base-hw first, then linux") && after.includes("answered"));
+  // An incomplete/corrupt JSONL line remains visible, but does not prove the
+  // reader answered. A corrupt line also must not undo an actual answer.
+  writeFileSync(join(lanesDir, "questions", "q4.html"), '<title>Incomplete answer</title>');
+  writeFileSync(join(lanesDir, "questions", "q4.answers.jsonl"), '{"who":"josh"');
+  writeFileSync(join(lanesDir, "questions", "q5.html"), '<title>Answer then incomplete line</title>');
+  writeFileSync(join(lanesDir, "questions", "q5.answers.jsonl"), JSON.stringify({ at: "2026-11-04T19:02:00Z", who: "josh", fields: { text: "actual answer" } }) + '\n{"who":"josh"');
+  writeFileSync(join(lanesDir, "questions", "q6.html"), '<title>Reopened then incomplete line</title>');
+  writeFileSync(join(lanesDir, "questions", "q6.answers.jsonl"), [
+    JSON.stringify({ at: "2026-11-04T19:02:00Z", who: "josh", fields: { text: "actual answer" } }),
+    JSON.stringify({ at: "2026-11-04T19:03:00Z", who: "controller", kind: "ask", fields: { text: "follow-up" } }),
+    '{"who":"josh"',
+  ].join('\n'));
+  const malformedApi = (await (await fetch(`${base}/api/questions`)).json()) as { id: string; status: string }[];
+  const malformedPage = await (await fetch(`${base}/questions/q4`)).text();
+  check("an incomplete answer line stays visible without marking the question answered", malformedApi.find((q) => q.id === "q4")?.status === "open" && malformedPage.includes('&quot;who&quot;:&quot;josh&quot;'));
+  check("an incomplete line does not undo an actual answer", malformedApi.find((q) => q.id === "q5")?.status === "answered");
+  check("an incomplete line does not answer a controller follow-up", malformedApi.find((q) => q.id === "q6")?.status === "open");
+  const recovered = await fetch(`${base}/questions/q4/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: "text=valid+subsequent+answer" });
+  const recoveredFile = readFileSync(join(lanesDir, "questions", "q4.answers.jsonl"), "utf8");
+  const recoveredApi = (await (await fetch(`${base}/api/questions`)).json()) as { id: string; status: string; answers: { who: string; fields: Record<string, string> }[] }[];
+  const recoveredQuestion = recoveredApi.find((q) => q.id === "q4");
+  check("a subsequent answer stays distinct from an unterminated corrupt line", recovered.status === 303 && recoveredFile.startsWith('{"who":"josh"\n') && recoveredQuestion?.status === "answered" && recoveredQuestion.answers.at(-1)?.fields.text === "valid subsequent answer");
+  writeFileSync(join(lanesDir, "questions", "q7.html"), '<title>Valid line without newline</title>');
+  const firstAnswer = JSON.stringify({ at: "2026-11-04T19:02:00Z", who: "josh", fields: { text: "first answer" } });
+  writeFileSync(join(lanesDir, "questions", "q7.answers.jsonl"), firstAnswer);
+  const secondPost = await fetch(`${base}/questions/q7/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: "text=second+answer" });
+  const secondFile = readFileSync(join(lanesDir, "questions", "q7.answers.jsonl"), "utf8");
+  const secondApi = (await (await fetch(`${base}/api/questions`)).json()) as { id: string; answers: { fields: Record<string, string> }[] }[];
+  const secondAnswers = secondApi.find((q) => q.id === "q7")?.answers;
+  check("an unterminated valid answer and its successor both remain readable", secondPost.status === 303 && secondFile.startsWith(firstAnswer + "\n") && secondAnswers?.length === 2 && secondAnswers[0].fields.text === "first answer" && secondAnswers[1].fields.text === "second answer");
+  writeFileSync(join(lanesDir, "questions", "q8.html"), '<title>Symlink answer file</title>');
+  const sentinel = join(lanesDir, "question-sentinel.txt");
+  writeFileSync(sentinel, "sentinel\n");
+  symlinkSync(sentinel, join(lanesDir, "questions", "q8.answers.jsonl"));
+  const symlinkPost = await fetch(`${base}/questions/q8/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: "text=ignored" });
+  check("an answer append refuses a symlink and leaves its target unchanged", symlinkPost.status === 500 && readFileSync(sentinel, "utf8") === "sentinel\n");
   const forgedOrigin = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://evil.example" }, body: "text=x" });
   check("a foreign Origin cannot post an answer", forgedOrigin.status === 403 && readFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), "utf8").split("\n").filter(Boolean).length === 2);
   check("posting to a question that does not exist is 404", (await fetch(`${base}/questions/q9/answer`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "text=x" })).status === 404);

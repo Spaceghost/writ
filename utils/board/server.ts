@@ -23,7 +23,7 @@
 // The board makes no claim about Writ's behavior, proofs, or verification. It
 // shows what the documents say, including checkbox counts as written.
 
-import { readdirSync, readFileSync, existsSync, lstatSync, openSync, closeSync, fstatSync, watch, constants, appendFileSync, mkdirSync, type FSWatcher } from "node:fs";
+import { readdirSync, readFileSync, readSync, existsSync, lstatSync, openSync, closeSync, fstatSync, watch, constants, appendFileSync, mkdirSync, type FSWatcher } from "node:fs";
 import { join, resolve, posix } from "node:path";
 import { Marked, type Tokens } from "marked";
 import * as T from "./template.ts";
@@ -351,7 +351,9 @@ function scanQuestions(flags: Flags): Question[] {
     let status: Question["status"] = "open";
     for (const a of answers) {
       if (a.who === "controller") { if (a.kind === "ask") status = "open"; }
-      else status = "answered";
+      // An unparseable entry is displayed with an unknown author; it is not
+      // evidence that the reader answered this question or its last follow-up.
+      else if (a.who !== "") status = "answered";
     }
     if (closed || answers.some((a) => a.who === "controller" && a.kind === "close")) status = "closed";
     return { id, title, topic, status, answers, lastAt: last?.at ?? null };
@@ -398,7 +400,22 @@ async function recordAnswer(flags: Flags, hosts: Set<string>, id: string, req: R
   if (Object.keys(fields).length === 0) return new Response("empty answer\n", { status: 400 });
   const entry: Answer = { at: new Date().toISOString(), who: "josh", kind: null, fields };
   mkdirSync(dir, { recursive: true });
-  appendFileSync(join(dir, `${id}.answers.jsonl`), JSON.stringify(entry) + "\n");
+  let fd: number | undefined;
+  try {
+    // Inspect and append through the same regular-file descriptor. Preserve an
+    // incomplete last line as its own entry, instead of joining the answer to it.
+    fd = openSync(join(dir, `${id}.answers.jsonl`), constants.O_RDWR | constants.O_APPEND | constants.O_CREAT | constants.O_NOFOLLOW | constants.O_NONBLOCK, 0o666);
+    const st = fstatSync(fd);
+    if (!st.isFile() || !Number.isSafeInteger(st.size)) throw new Error("not a regular answer file");
+    const last = Buffer.alloc(1);
+    if (st.size > 0 && readSync(fd, last, 0, 1, st.size - 1) !== 1) throw new Error("cannot read answer ending");
+    const separator = st.size > 0 && last[0] !== 10 ? "\n" : "";
+    appendFileSync(fd, separator + JSON.stringify(entry) + "\n");
+  } catch {
+    return new Response("cannot append answer\n", { status: 500 });
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
   // The form lands on a small confirmation inside its own frame; the board page's
   // thread around it is re-rendered by the watcher for every open stream.
   return new Response("", { status: 303, headers: { location: `/questions/${id}/answered?at=${encodeURIComponent(entry.at)}` } });
