@@ -55,6 +55,7 @@ byte-identical [output](full-bend-node.log), SHA-256
 `a2bdd3383323d06aa9bac21e698f30fe0c0aadbacae7c4ab8b04648e272dfa47`.
 The existing `PROOF.bend --verdict` passes with the previously verified
 Lean-built BendTT kernel; those 36 existing laws do not prove this codec.
-Strict OpenSpec validation passes 44/44. Native CPU and platform CI have not
-yet been run for this revision and require the planned source review first.
+Strict OpenSpec validation passes 44/44. After source review, a separate
+[native CPU run](../planner-boundary-native-262a8d4/README.md) and
+[platform CI](../planner-boundary-ci-262a8d4/README.md) tested source `262a8d4`.
 No protected-host qualification or planner integration is claimed.

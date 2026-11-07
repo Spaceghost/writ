@@ -32,6 +32,11 @@ records the additional structural check and its Bend/Node results; earlier
 platform evidence does not test that later revision.
 The [combined preview record](verification/planner-boundary-comparator-preview.md)
 scopes the separate 2,223-check Bend/Node and existing-law verdict results.
+At exact source `262a8d4`, the reviewed boundary revision also passed an
+[optimized native CPU run](verification/planner-boundary-native-262a8d4/README.md)
+and scoped [Windows Node, Genode and Linux CI](verification/planner-boundary-ci-262a8d4/README.md).
+The Linux run retains an unsupported setup refusal; none qualifies a protected
+host or authenticated planner.
 
 The [automatic master runs at `60d6f6b`](verification/master-ci-60d6f6b/README.md)
 passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS
