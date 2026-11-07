@@ -23,6 +23,13 @@ for the scope and remaining native and commit-time gaps. The earlier native and
 cross-backend observations below remain historical evidence of their exact source.
 The exact hardened `817ab1f` model source also passed the [Windows Node](verification/handoff-ci-817ab1f/windows-42327055068/README.md), [Genode QEMU](verification/handoff-ci-817ab1f/genode-42327054904/README.md) and [Linux public-canary](verification/handoff-ci-817ab1f/linux-42327055037/README.md) workflows. The Genode guest retained a missing-clock warning; the Linux protected setup deliberately refused unsupported Landlock before input and was not qualified. These results do not establish strict Windows worker confinement.
 
+The [automatic master runs at `1ce6757`](verification/master-ci-1ce6757/README.md)
+passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS
+fixture checks. **Strict Windows native failed**: the actual worker's network,
+clipboard and COM observations remained incomplete. The Linux run retained an
+expected setup refusal before input; none of these results qualifies a protected
+host.
+
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the
 Linux model and 1947 checks with the HostWire change. The combined suite at source `73a8055`
