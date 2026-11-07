@@ -32,7 +32,10 @@ retain the exact source identities stated in their records and were not rerun
 on that evidence merge.
 
 The [isolated proof and test preview](verification/planner-proof-composition-preview/README.md)
-rechecks both test sets and the new law on their combined Bend inputs. The
+rechecks both test sets and the new law on their combined Bend inputs. Its
+[exact-source CI record](verification/planner-law-ci-cb54600/README.md) retains
+the Linux setup refusal and Genode clock warnings; no protected-host
+qualification follows. The
 [composition and byte-regression preview](verification/planner-composition-byte-preview/README.md)
 combines both test sets. The separately reviewed frontend-composition branch added 35 synthetic checks
 to the 2,224-check source, for 2,259 checks at that source. The current
