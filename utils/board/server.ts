@@ -887,9 +887,11 @@ export function boardHref(href: string, repoPath: string): string {
   const target = posix.normalize(posix.join(posix.dirname(repoPath), pathPart));
   const frag = hash ? `#${hash}` : "";
   let m: RegExpMatchArray | null;
-  if ((m = target.match(/^openspec\/changes\/([^/]+)\/specs\/([^/]+)\/spec\.md$/))) return `/change/${m[1]}#spec-${m[2]}`;
-  if ((m = target.match(/^openspec\/changes\/([^/]+)\/([^/]+\.html)$/))) return `/change/${m[1]}/html/${m[2]}`;
-  if ((m = target.match(/^openspec\/changes\/([^/]+)(\/(proposal|design|tasks)\.md)?\/?$/))) return `/change/${m[1]}${frag}`;
+  // Archived changes keep their date-prefixed directory name as their board
+  // name; the route still resolves only names and files found by scanChanges.
+  if ((m = target.match(/^openspec\/changes\/(?:archive\/)?([^/]+)\/specs\/([^/]+)\/spec\.md$/))) return `/change/${m[1]}#spec-${m[2]}`;
+  if ((m = target.match(/^openspec\/changes\/(?:archive\/)?([^/]+)\/([^/]+\.html)$/))) return `/change/${m[1]}/html/${m[2]}`;
+  if ((m = target.match(/^openspec\/changes\/(?:archive\/)?([^/]+)(\/(proposal|design|tasks)\.md)?\/?$/))) return `/change/${m[1]}${frag}`;
   if ((m = target.match(/^openspec\/specs\/([^/]+)(\/spec\.md)?\/?$/))) return `/spec/${m[1]}${frag}`;
   if ((m = target.match(/^openspec\/traceability\/([^/]+)\.md$/))) return `/spec/${m[1]}/traceability${frag}`;
   return href;

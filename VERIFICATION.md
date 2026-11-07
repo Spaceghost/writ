@@ -29,6 +29,11 @@ The [earlier integration record](docs/superpowers/records/2026-11-06-durable-pub
 scopes the 2,444-check combined Bend/Node, Nix JavaScript, existing-law verdict,
 [native CPU](verification/durable-planner-current-native-25e7062/README.md)
 and [platform CI](verification/durable-planner-current-ci-25e7062/README.md).
+The [automatic master platform runs at `b18c0af`](verification/master-ci-b18c0af/README.md)
+passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
+checks. **Strict Windows native failed** with incomplete byte-worker network,
+clipboard and COM observations. Linux retained a protected-setup refusal
+before input; none qualifies a protected host.
 
 The [automatic master platform runs at `45df241`](verification/master-ci-45df241/README.md)
 passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture

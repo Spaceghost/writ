@@ -1,0 +1,40 @@
+NATIVE_PASS TCP/UDP IPv4/IPv6 receivers accepted public positive controls before the worker test
+NATIVE_PASS actual LPAC token AccessCheck exact-package=allow restricted-packages=allow all-packages=deny user-only=deny
+IDENTITY pid=988 created=01dd6e7c4aa2c843 user=S-1-5-21-3289802278-1561746829-1498425070-500 auth=00000000000b4bec package=S-1-15-2-294123341-3897228098-2587909999-2640049457-1824247618-3696637447-3420981598 lpac=1 image_sha256=e5db26689478ef2976819d7be0c1c287bc27be0976e891f9772f38ff71b83d24
+POSITIVE channels passed=00019000 failed=00000000 child=0 clipboard_stage=4 clipboard=00000000 com_stage=4 com=00000000
+NATIVE_PASS owned volume device descriptor read back; actual LPAC token has traversal/read access to this device
+NATIVE_PASS native WinFsp filesystem mounted at Z:
+EVENT n=1 policy=2 kind=stat pid=2240 actor=0 result=deny reason=ACTOR_OR_PHASE
+NATIVE_PASS ordinary reader receives access denied before admission
+EVENT n=2 policy=4 kind=stat pid=2240 actor=0 result=deny reason=ACTOR_OR_PHASE
+NATIVE_PASS actual worker token presented by the wrong native process remains denied
+EVENT n=3 policy=5 kind=stat pid=988 actor=1 result=allow reason=STAT
+EVENT n=4 policy=6 kind=open pid=988 actor=1 result=allow reason=OPEN
+EVENT n=5 policy=13 kind=read-bound-open pid=988 actor=1 result=allow reason=READ
+EVENT n=6 policy=14 kind=stat pid=988 actor=1 result=allow reason=STAT
+EVENT n=7 policy=15 kind=open pid=988 actor=1 result=allow reason=OPEN
+EVENT n=8 policy=20 kind=read-bound-open pid=988 actor=1 result=allow reason=READ
+EVENT n=9 policy=22 kind=read-bound-open pid=988 actor=1 result=allow reason=READ
+EVENT n=10 policy=23 kind=stat pid=988 actor=1 result=allow reason=STAT
+EVENT n=11 policy=24 kind=open pid=988 actor=1 result=allow reason=OPEN
+PROBE phase=1 passed=0000787f failed=00018780 e0=0 e1=0 e2=0 e3=0 e4=5 e5=123 e6=5 e7=10107 e8=10107 e9=10107 e10=10107 e11=5 e12=367 e13=6 e14=5 e15=2147943514 e16=2147943759 e17=0 e18=0 clipboard_stage=1 com_stage=1
+INCOMPLETE byte-worker network/clipboard/COM probes: failed results receive no restriction credit
+NATIVE_PASS admitted worker read, digest, range, EOF and directory match
+NATIVE_PASS write, alternate stream and new-file attempts fail
+EVENT n=12 policy=31 kind=stat pid=2240 actor=0 result=deny reason=ACTOR_OR_PHASE
+NATIVE_PASS ordinary reader remains denied after worker admission
+DIAGNOSTIC_PROFILE phase=1 no_data=1 capabilities=registryRead win32k_disabled=0 pid=2932
+DIAGNOSTIC_RESULT phase=1 passed=00019780 failed=00000000 tcp4=10013 tcp6=10013 udp4=10013 udp6=10013 child=367 clipboard_stage=3 clipboard=80070005 com_stage=3 com=80070005
+NATIVE_PASS limited same-user outsider denied VM_READ, DUP_HANDLE, WRITE_DAC and WRITE_OWNER for broker, policy and worker
+NATIVE_PASS LPAC has no capabilities, job and WFP setup verified before observation
+NATIVE_PASS public file, child, console and broker-access probes blocked; live receivers stayed empty
+PROBE phase=2 passed=00000000 failed=00000780 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=10107 e8=10107 e9=10107 e10=10107 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=0 e18=0 clipboard_stage=0 com_stage=0
+INCOMPLETE byte-worker network API probes after WFP removal; no restriction credit
+DIAGNOSTIC_PROFILE phase=2 no_data=1 capabilities=registryRead win32k_disabled=0 pid=1900
+DIAGNOSTIC_RESULT phase=2 passed=00019780 failed=00000000 tcp4=10013 tcp6=10013 udp4=10013 udp6=10013 child=367 clipboard_stage=3 clipboard=80070005 com_stage=3 com=80070005
+EVENT n=13 policy=33 kind=stat pid=988 actor=1 result=deny reason=ACTOR_OR_PHASE
+EVENT n=14 policy=34 kind=read-bound-open pid=988 actor=1 result=deny reason=ACTOR_OR_PHASE
+PROBE phase=3 passed=00060000 failed=00000000 e0=0 e1=0 e2=0 e3=0 e4=0 e5=0 e6=0 e7=0 e8=0 e9=0 e10=0 e11=0 e12=0 e13=0 e14=0 e15=0 e16=0 e17=5 e18=5 clipboard_stage=0 com_stage=0
+FAIL native Windows profile=lpac-canary win32=10035
+NATIVE_PASS revocation denies new opens and a subsequent uncached read
+LPAC_OBSERVATIONS mounted_and_revoked=pass byte_worker_confinement=incomplete no_data_diagnostic=pass
