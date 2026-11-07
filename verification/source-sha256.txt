@@ -700,6 +700,7 @@ ed3b233160784f5fbb93150372afa255a7a643441be9b25ca745bf4dd6502da9  docs/superpowe
 4af4d359e550fd601fa442e8a4792a01d91e3f364affac18ab7e57958f999e1e  docs/superpowers/records/2026-11-06-hostwire-bounds/report.md
 2c3c268397a464f2f38be7b611ed04aae2ec795f4df33e6fa4901443b185c55e  docs/superpowers/records/2026-11-06-windows-init/controlled-comparison-design.md
 66d005c01ac7e9cbeffed0566fd5b9dc52038220f09fde4550959d9f4d98f3de  docs/superpowers/records/2026-11-06-windows-init/diagnostic-plan.md
+2681b54eac630da02b4b6f46fa62dcdae02bca95c80801139530935f7b2dd357  docs/superpowers/records/2026-11-06-windows-init/exploratory-combined-ad-design.md
 6dd6c92ea4c059c3483f254b8856035004d5ce6ceb857426e70a35f731a8047f  docs/superpowers/records/2026-11-06-windows-init/exploratory-initialization-design.md
 cc69b661dcef4f467b492e93cf8afd30782fc73be22bf03eb7d306b153e3e1fd  docs/superpowers/records/2026-11-06-windows-init/exploratory-registryread-ab-design.md
 19e4dcf376d6f6484c95bb9ba83a05cb2f080698393a894af61d413d8e6c0613  docs/superpowers/records/2026-11-06-windows-init/exploratory-win32k-ac-design.md
