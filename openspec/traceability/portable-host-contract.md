@@ -29,6 +29,15 @@ on evidence a later task or a qualified host must supply.
 
 `Evidence.at` matches a synthetic local revision only: it does not prove an OS fact was remeasured, authenticate any process, check a real pipe or establish complete native route inventory. The model does not parse real reports, deliver public parameters, implement native cleanup, prove all interleavings, or perform a DataOS/Backplane final commit or publication; budget, epoch/scope at commit and native enforcement remain with their existing gates and reviewed-only host obligations. It adds no new release route or native host qualification. The related [Windows handoff inventory](../../docs/superpowers/records/2026-11-06-windows-init/handoff-inventory-and-model-design.md) records the unimplemented adapter and peer/effect assumptions.
 
+The HH-006 stale-admission regression exercises otherwise-valid revision-1
+evidence against the current ready state at revision 2. It expects an
+`UntrustedFacts` abort to retired revision 3, rather than a wrapped core
+attempt; the HH-007 follow-up rejects a later retry. The existing fresh
+revision-2 admission remains the positive control. The
+[synthetic mutation record](../../verification/handoff-stale-admission/README.md)
+describes the narrow admission-only check; it does not establish native fact
+freshness or host qualification.
+
 ## Wire format (task 1.1)
 
 The public decoder's bounded preflight additionally has named regressions

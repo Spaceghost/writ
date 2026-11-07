@@ -1,0 +1,9 @@
+diff --git a/HostHandoff.bend b/HostHandoff.bend
+index 07cfdee..0e8bebd 100644
+--- a/HostHandoff.bend
++++ b/HostHandoff.bend
+@@ -153 +153,3 @@ def admission_revision(ok: Bool, +state: State, +evidence: Evidence, +core: P.St
+-      admission_checked(same_binding(binding, evidence, revision) && retired(evidence) &&
++      Evidence{_, launch, actual_incarnation, session, image, live, authenticated, controls, channels, closed} = evidence
++      admission_checked(same_binding(binding, Evidence{revision, launch, actual_incarnation, session, image,
++        live, authenticated, controls, channels, closed}, revision) && retired(evidence) &&

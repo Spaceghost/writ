@@ -206,6 +206,13 @@ def main() -> IO(Unit):
       "HH-006 restarted monitor incarnation aborts stale preflight")
     Test.check(aborted(H.handoff(observed(), 1n, evidence(0n)), 2n, H.UntrustedFacts{}),
       "HH-006 stale trusted evidence cannot advance a later phase")
+    Test.check(aborted(attempt(ready(), 2n, evidence(1n), PT.base(), 0n,
+      PT.mediated_inventory(), PT.now()), 3n, H.UntrustedFacts{}),
+      "HH-006 stale evidence aborts admission without a core attempt")
+    Test.check(denied(attempt(H.step_state(attempt(ready(), 2n, evidence(1n), PT.base(), 0n,
+      PT.mediated_inventory(), PT.now())), 3n, evidence(3n), PT.base(), 0n,
+      PT.mediated_inventory(), PT.now()), H.State{3n, H.Retired{}, binding()}, H.WrongPhase{}),
+      "HH-007 stale-evidence abort cannot be retried")
     Test.check(aborted(H.observe(initial(), 0n, unauthenticated(0n), True{}), 1n, H.UntrustedFacts{}),
       "HH-002 unauthenticated synthetic peer aborts preflight")
     Test.check(aborted(H.observe(initial(), 0n, missing_controls(0n), True{}), 1n, H.UntrustedFacts{}),

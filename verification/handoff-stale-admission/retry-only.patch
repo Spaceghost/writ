@@ -1,0 +1,6 @@
+--- candidate/HostHandoffTests.bend
++++ retry-only/HostHandoffTests.bend
+@@ -209,3 +208,0 @@
+-    Test.check(aborted(attempt(ready(), 2n, evidence(1n), PT.base(), 0n,
+-      PT.mediated_inventory(), PT.now()), 3n, H.UntrustedFacts{}),
+-      "HH-006 stale evidence aborts admission without a core attempt")

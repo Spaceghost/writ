@@ -1,0 +1,37 @@
+PASS: HH-001 preflight report changes only synthetic phase
+PASS: HH-001 malformed report poisons local preflight
+PASS: HH-001 stale preflight revision denied
+PASS: HH-002 wrong launch lifetime denied
+PASS: HH-002 wrong monitor incarnation denied
+PASS: HH-002 wrong session denied
+PASS: HH-002 wrong held image denied
+PASS: HH-002 dead worker denied
+PASS: HH-003 duplicate report denied
+PASS: HH-003 unretired handoff denied
+PASS: HH-003 unmediated channel denied
+PASS: HH-003 verified synthetic handoff consumes phase
+PASS: HH-003 duplicate handoff denied
+PASS: HH-004 early admission has no effect
+PASS: HH-004 core stale revision denied by existing gate
+PASS: HH-004 core rejects unmediated native route fact
+PASS: HH-004 core rejects revoked input
+PASS: HH-004 only real admission emits exact DeliverInputs effect
+PASS: HH-005 timeout retirement has no protected effect
+PASS: HH-005 retired preflight cannot admit
+PASS: HH-006 copied old handoff revision denied against current state
+PASS: HH-006 duplicate admission with current monitor state denied
+PASS: HH-006 copied ready phase cannot readmit occupied core slot
+PASS: HH-006 existing identity gate rejects expired input
+PASS: HH-006 identical synthetic snapshots require trusted current-state installation
+PASS: HH-007 malformed report cannot be retried after poison
+PASS: HH-007 uncertain handoff cannot be retried after poison
+PASS: HH-007 denied native-route fact consumes the attempt
+PASS: HH-007 trusted adapter retires connection after stale protocol failure
+PASS: HH-004 existing gate rejects missing control
+PASS: HH-007 duplicate report poisons preflight before retry
+PASS: HH-007 duplicate handoff poisons preflight before retry
+PASS: HH-006 restarted monitor incarnation aborts stale preflight
+PASS: HH-006 stale trusted evidence cannot advance a later phase
+PASS: HH-002 unauthenticated synthetic peer aborts preflight
+PASS: HH-002 missing synthetic control aborts preflight
+PASS: HH-006 route facts rechecked before actual admission

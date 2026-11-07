@@ -58,10 +58,14 @@ the Linux setup refusal and Genode clock warnings; no protected-host
 qualification follows. The
 [composition and byte-regression preview](verification/planner-composition-byte-preview/README.md)
 combines both test sets. The separately reviewed frontend-composition branch added 35 synthetic checks
-to the 2,224-check source, for 2,259 checks at that source. The current
-preview also retains the two byte-range checks, for 2,261 checks. These
-composition checks exercise a test-selected frontend and plan comparison,
+to the 2,224-check source, for 2,259 checks at that source. That preview also
+retained the two byte-range checks, for 2,261 checks at its recorded source.
+These composition checks exercise a test-selected frontend and plan comparison,
 not an authenticated planner request or a production adapter.
+
+The later [synthetic handoff regression](verification/handoff-stale-admission/README.md)
+adds two checks for stale admission evidence and denied retry, giving 2,263
+checks in this suite. It does not establish native evidence freshness.
 
 The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
 retains its exact-source outcomes, Linux setup refusal and Genode clock warning;
