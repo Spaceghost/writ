@@ -1,0 +1,8 @@
+The coordinator reported that the pre-dispatch remote-ref check at
+2026-11-07T08:57:12Z returned:
+
+e4f2275cac8c5fcbf72ecf9fc61dbc6700bff97d	refs/heads/lane/genode-route-negative-ci
+
+This is a transcription of the coordinator's report; no raw check transcript
+was retained in this evidence branch. Ref verification and dispatch were not
+atomic and relied on trusted branch control.

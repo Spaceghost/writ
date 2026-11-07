@@ -1,0 +1,8 @@
+octal_exit=1
+literal_exit=0
+71fa46eedaaa3007dbbe5f743bc457b9cdc45dd84b84e142e0e2faf2733d280f  /mnt/MediaVolume/Media/src/github.com/spaceghost/writ-lanes/writ-genode/host-tools/expect/bin/expect
+6c0cdd16306ba3fa64813a52f52864a92353c6ba29d0ec0ce77a0ce0efac3e12  verification/genode-route-negative-42357627656/raw/expect-color-probe.tcl.txt
+observed_version=expect version 5.45.4
+method=local synthetic child output through a PTY; no Genode run
+interpretation=octal pattern reached EOF without match; literal ESC matched
+qualification=local reproduction only, not process attestation or proof of CI's internal cause

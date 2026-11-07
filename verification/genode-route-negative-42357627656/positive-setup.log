@@ -1,0 +1,6 @@
+/tmp/writ-genode-ci.42357627656-1.positive/inputs/bend.tar.gz: OK
+/tmp/writ-genode-ci.42357627656-1.positive/inputs/genode.tar.gz: OK
+/tmp/writ-genode-ci.42357627656-1.positive/inputs/toolchain.tar.xz: OK
+curl: (28) Operation timed out after 600000 milliseconds with 68288047 out of 159564768 bytes received
+curl: (28) Operation timed out after 600000 milliseconds with 78233135 out of 159564768 bytes received
+curl: (28) Operation timed out after 600001 milliseconds with 70909487 out of 159564768 bytes received

@@ -1,0 +1,32 @@
+VERIFIED identity.txt 125 93390eb70b0cb45d0f3345aec5c93f366855cd2c55452581db377b0b6ae3beec
+NOT_SNAPSHOT input-sha256.txt refused
+NOT_SNAPSHOT tool-identity.txt refused
+NOT_SNAPSHOT clang-resource-sha256.txt refused
+NOT_SNAPSHOT genode-git-status.txt refused
+NOT_SNAPSHOT genode-archive-comparison.txt refused
+NOT_SNAPSHOT genode-archive-git-status.txt refused
+NOT_SNAPSHOT genode-commit.txt refused
+NOT_SNAPSHOT environment.txt refused
+NOT_SNAPSHOT source-sha256.txt refused
+NOT_SNAPSHOT overlay-sha256.txt refused
+NOT_SNAPSHOT generated-sha256.txt refused
+NOT_SNAPSHOT original.run refused
+NOT_SNAPSHOT actual.run refused
+NOT_SNAPSHOT config-sha256.txt refused
+NOT_SNAPSHOT negative.diff not-applicable
+NOT_SNAPSHOT build.conf refused
+NOT_SNAPSHOT tools.conf refused
+NOT_SNAPSHOT build-config-sha256.txt refused
+NOT_SNAPSHOT run.log.gz refused
+NOT_SNAPSHOT run.log.gz.partial not-applicable
+NOT_SNAPSHOT run-meta.json refused
+NOT_SNAPSHOT run-audit.json refused
+NOT_SNAPSHOT run-status.txt refused
+NOT_SNAPSHOT boot-inputs-sha256.txt refused
+NOT_SNAPSHOT installed-config.txt refused
+NOT_SNAPSHOT observed.txt refused
+NOT_SNAPSHOT fixture-post-status.txt refused
+NOT_SNAPSHOT fixture-post-manifest.txt refused
+VERIFIED setup.log 514 62356731a508f562cc5a92f0294ba33cffb4c763fcf818eae4b93f3504400b1b
+VERIFIED driver-status.txt 53 bc6529bae89f89fd75d47551e37a5ba3b290c95d321a4024183ad6e728b0a8c8
+all listed snapshot files verified; CRC checked by zipfile; no cleanup claim

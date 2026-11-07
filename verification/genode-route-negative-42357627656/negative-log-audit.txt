@@ -1,0 +1,9 @@
+compressed_bytes= 2520515 sha256= 139235c89561aa7e3df6757cade6e295cbdc4836b1203267ff189dad0df0d083
+raw_bytes= 246347582 sha256= a5451013b3ea0faa5853c6fc63470023a2c6807e37986afc07c3b010e631b938
+child_status= {'code': 2, 'signal': None}
+found= True b'[init -> writ_bend_monitor] writ_channel: service announced'
+found= True b'[init -> writ_bend_monitor] monitor: SYNTHETIC authority'
+found= True b'[init -> clients] \x1b[34mWarning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")\x1b[0m'
+found= True b'[init -> clients -> writ_client_r] \x1b[31mError: stop because parent denied Writ_channel-session:'
+found= False b'nested public R route-negative fixture: PASS'
+gzip_crc_hash_integrity=verified; marker_observations_as_listed; cleanup=unverified
