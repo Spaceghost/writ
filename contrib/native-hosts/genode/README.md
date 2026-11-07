@@ -132,7 +132,7 @@ sudo apt-get install --yes --no-install-recommends \
   curl xz-utils unzip rsync
 
 # Put the verified Bend 2.0.39 compiler on PATH first.
-WRIT_CORE_EXPECTED=2285 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
+WRIT_CORE_EXPECTED=2322 bash contrib/native-hosts/genode/build-and-run.sh /absolute/path/writfs-genode-build
 ```
 
 The script first runs the allocator checks with host AddressSanitizer,
@@ -146,8 +146,9 @@ the chosen build directory. Use a fresh directory for a clean qualification
 run; existing extracted input trees are developer build caches.
 
 The required core assertion count is an explicit, reviewed build input. The
-workflow pins it to 2285 for this integration preview; the [recorded 2285-check
+workflow pins it to 2322 for this integration preview. The [recorded 2285-check
 guest run](evidence/run-42312512632/README.md) used source `61ab2a4`. The
+[separate 2102-check handoff guest run](../../../verification/handoff-ci-817ab1f/genode-42327054904/README.md) used source `817ab1f`. The
 [earlier 2065-check guest run](../../../docs/superpowers/records/2026-11-05-linux-host/model-only-integration.md)
 used source `73a8055`. The native probe requires
 that exact number of successful assertions, the complete corpus summary, and a

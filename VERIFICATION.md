@@ -15,15 +15,15 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
-This experimental integration combines `origin/master` 9c08eb9 (Linux model
+The earlier durable integration preview combines `origin/master` 9c08eb9 (Linux model
 and HostWire bounds) with durable-publication dd18cb0, then incorporates the
 Windows failure evidence-only master commits 1fcd29a and 1646a8d, and durable
 a78d71b's comment-only resource preconditions plus a standalone failed probe. The
-combined suite passes 2,285 checks in Bend and generated Node with byte-identical output
+earlier combined suite passed 2,285 checks in Bend and generated Node with byte-identical output
 (SHA-256 `bac0e2b581c8f4ad7eae2812e34177cbe97f35ed3f87e2d352da119aaa19f67a`);
 the host QuickJS harness reports 2,285 checks, 20,715 ticks and no exception.
-The existing ordinary proof check and strict OpenSpec 44/44 pass. The offline
-Nix JavaScript check with the current pin also passes. At exact source 61ab2a4,
+The earlier ordinary proof check and strict OpenSpec 44/44 passed. The offline
+Nix JavaScript check with that preview's pin also passed. At exact source 61ab2a4,
 full `nix flake check --no-update-lock-file --option max-jobs 1` passes all four
 checks, including optimized native CPU; its [logs and hashes](verification/durable-integration-61ab2a4/nix/README.md)
 record the scope. The optimized native CPU run of the initial combined source
@@ -41,10 +41,22 @@ Neither qualifies the proposed protected-worker host or durable recovery.
 See the [integration preview](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
 for exact source hashes, test scope and retained failures.
 
+The current unqualified durable-plus-handoff preview passes 2,322 core checks
+under Bend and Node with identical output; see the [reconciliation record](docs/superpowers/records/2026-11-06-durable-publication/handoff-integration-preview.md).
+It combines the two synthetic model suites; prior native, Nix and CI evidence
+below remains tied to its original source and does not validate this combined
+source. The handoff model adds 37 checks and does not establish a native Windows
+handoff or protected-host confinement. The [handoff model record](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)
+retains its separate 2,102-check source and evidence, including [Windows Node](verification/handoff-ci-817ab1f/windows-42327055068/README.md),
+[Genode QEMU](verification/handoff-ci-817ab1f/genode-42327054904/README.md), and
+[Linux public-canary](verification/handoff-ci-817ab1f/linux-42327055037/README.md).
+The Genode guest retained a missing-clock warning, and Linux deliberately refused
+unsupported Landlock setup before input; neither result qualifies a protected host.
+
 The historical 1942-check recordings below predate the Linux model and
 HostWire bounds changes. Separate trees have recorded 2060 checks with the
-Linux model and 1947 checks with the HostWire change. The combined suite
-passes 2065 checks in Bend, Node and the host QuickJS harness. Bend and Node
+Linux model and 1947 checks with the HostWire change. The combined suite at source `73a8055`
+passed 2065 checks in Bend, Node and the host QuickJS harness. Bend and Node
 output matches byte-for-byte (SHA-256
 `6f7c55909c94af843f65152f51f453798d0684e3e19c1db766bfa79ed7b5d449`); the
 host QuickJS run reports 19,918 ticks and no exception. The optimized native

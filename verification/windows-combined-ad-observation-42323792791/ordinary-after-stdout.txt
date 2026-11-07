@@ -1,0 +1,4 @@
+BEGIN_NO_DATA_ORDINARY_CONTROL launcher_output_is_diagnostic_only=1
+PSS_INIT_ORDINARY_LIFETIME pid=6032 created=01dd6e56aceb959d image_sha256=c2f88c78e487d695a4f3e00a22a249d98c833bbb20d20963b8118083fbcade83 no_data=1 confinement_credit=none
+PSS_INIT_ORDINARY_RESULT winsock=0 user32=0 ole32=0 no_data=1 confinement_credit=none
+PSS_INIT_ORDINARY complete no_data=1 confinement_credit=none

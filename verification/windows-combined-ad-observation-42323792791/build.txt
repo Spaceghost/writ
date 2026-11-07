@@ -1,0 +1,74 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  combined_ad_observer.c
+  combined_ad_launch.c
+  combined_ad_checked.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-combined-ad-build\writfs-combined-ad-observer.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/combined_ad_launch.c')
+
+D:\a\writ\writ\contrib\native-hosts\windows\combined_ad_launch.c(249,49): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-combined-ad-build\writfs-combined-ad-observer.vcxproj]
+  combined_ad_token.c
+  combined_ad_checks.c
+  pss_init_pipe.c
+  pss_init_progress.c
+  pss_lpac_progress.c
+  pss_table.c
+  isolation.c
+  Generating Code...
+  writfs-combined-ad-observer.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-combined-ad-observer.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_control.c
+  pss_init_progress.c
+  pss_init_pipe.c
+  init_worker.c
+  isolation.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-combined-ad-build\writfs-pss-init-control.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/init_worker.c')
+
+  Generating Code...
+  writfs-pss-init-control.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-init-control.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  init_child.c
+  writfs-init-child.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-init-child.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_table_test.c
+  pss_table.c
+  Generating Code...
+  writfs-pss-table-test.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-table-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_progress_test.c
+  pss_init_progress.c
+  Generating Code...
+  writfs-pss-init-progress-test.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-init-progress-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_pipe_test.c
+  pss_init_pipe.c
+  Generating Code...
+  writfs-pss-init-pipe-test.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-pss-init-pipe-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  combined_ad_checks_test.c
+  combined_ad_checks.c
+  Generating Code...
+  writfs-combined-ad-checks-test.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-combined-ad-checks-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  combined_ad_token_test.c
+  combined_ad_token.c
+  combined_ad_checks.c
+  Generating Code...
+  writfs-combined-ad-token-test.vcxproj -> D:\a\_temp\windows-combined-ad-build\Release\writfs-combined-ad-token-test.exe
