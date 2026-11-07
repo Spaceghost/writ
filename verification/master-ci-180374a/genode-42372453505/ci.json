@@ -1,0 +1,88 @@
+{
+  "conclusion": "success",
+  "createdAt": "2026-11-07T12:25:59Z",
+  "databaseId": 42372453505,
+  "event": "push",
+  "headSha": "180374a66d802c6bb2cd388556b01d5a38d9ad55",
+  "jobs": [
+    {
+      "completedAt": "2026-11-07T12:38:47Z",
+      "conclusion": "success",
+      "databaseId": 128403198595,
+      "name": "base-hw",
+      "startedAt": "2026-11-07T12:26:02Z",
+      "status": "completed",
+      "steps": [
+        {
+          "completedAt": "2026-11-07T12:26:03Z",
+          "conclusion": "success",
+          "name": "Set up job",
+          "number": 1,
+          "startedAt": "2026-11-07T12:26:02Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:26:06Z",
+          "conclusion": "success",
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 2,
+          "startedAt": "2026-11-07T12:26:03Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:26:18Z",
+          "conclusion": "success",
+          "name": "Install native build and emulator dependencies",
+          "number": 3,
+          "startedAt": "2026-11-07T12:26:06Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:26:19Z",
+          "conclusion": "success",
+          "name": "Install the verified Bend compiler",
+          "number": 4,
+          "startedAt": "2026-11-07T12:26:18Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:38:43Z",
+          "conclusion": "success",
+          "name": "Build and boot native Genode policy and mount probes",
+          "number": 5,
+          "startedAt": "2026-11-07T12:26:19Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:38:44Z",
+          "conclusion": "success",
+          "name": "Retain native Genode evidence",
+          "number": 6,
+          "startedAt": "2026-11-07T12:38:43Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:38:44Z",
+          "conclusion": "success",
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "number": 12,
+          "startedAt": "2026-11-07T12:38:44Z",
+          "status": "completed"
+        },
+        {
+          "completedAt": "2026-11-07T12:38:44Z",
+          "conclusion": "success",
+          "name": "Complete job",
+          "number": 13,
+          "startedAt": "2026-11-07T12:38:44Z",
+          "status": "completed"
+        }
+      ],
+      "url": "https://github.com/Spaceghost/writ/actions/runs/42372453505/job/128403198595"
+    }
+  ],
+  "name": "WritFS native Genode mount",
+  "status": "completed",
+  "updatedAt": "2026-11-07T12:38:47Z",
+  "url": "https://github.com/Spaceghost/writ/actions/runs/42372453505"
+}
