@@ -46,8 +46,16 @@ writ_fetch genode.tar.gz df74f96c70c72607d66f5440439680b63683f09edd92809996845f0
   https://codeberg.org/genodelabs/genode/archive/26.08.tar.gz
 writ_fetch toolchain.tar.xz 6cab8e5f4490399a296a73b01695d5fb055a40f6ac04d61a3f7a7344003eb739 \
   https://codeberg.org/genodelabs/genode/releases/download/25.05/genode-toolchain-25.05-ubuntu-24.04.tar.xz
-writ_fetch libc.txz 0da393ac2174168a71c1c527d1453e07372295187d05c288250800cb152a889b \
-  https://archive.freebsd.org/old-releases/amd64/12.0-RELEASE/src.txz
+if timeout --foreground --signal=TERM --kill-after=5s 21m \
+    "$(dirname -- "$0")/ci-fetch-libc.sh" "$writ_root/inputs" "$writ_evidence"; then
+  printf 'wrapper_exit=0\n' >> "$writ_evidence/libc-fetch.txt"
+else
+  writ_fetch_status=$?
+  # This is an observation when the wrapper returns; hard cancellation can
+  # prevent recording it and is already incomplete. No process-group kill.
+  printf 'wrapper_exit=%s\n' "$writ_fetch_status" >> "$writ_evidence/libc-fetch.txt"
+  exit 1
+fi
 writ_fetch llvm.tar.gz 2998c82e4035d090e5e748d1a8fc118b1b7b48643f5d5b8f30c9135036a730f6 \
   https://mirror.facebook.net/kernel.org/pub/tools/llvm/files/llvm-23.1.3-x86_64.tar.gz
 sha256sum "$writ_root"/inputs/* > "$writ_evidence/input-sha256.txt"

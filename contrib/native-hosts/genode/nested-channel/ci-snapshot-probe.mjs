@@ -6,7 +6,7 @@ import { spawn, spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 const script = fileURLToPath(new URL('./ci-snapshot.mjs', import.meta.url));
-const names = ['identity.txt','input-sha256.txt','tool-identity.txt','clang-resource-sha256.txt',
+const names = ['identity.txt','input-sha256.txt','libc-fetch.txt','tool-identity.txt','clang-resource-sha256.txt',
   'genode-git-status.txt','genode-archive-comparison.txt','genode-archive-git-status.txt','genode-commit.txt',
   'environment.txt','source-sha256.txt','overlay-sha256.txt','generated-sha256.txt','original.run','actual.run',
   'config-sha256.txt','negative.diff','build.conf','tools.conf','build-config-sha256.txt','run.log.gz',
@@ -14,7 +14,7 @@ const names = ['identity.txt','input-sha256.txt','tool-identity.txt','clang-reso
   'fixture-post-status.txt','fixture-post-manifest.txt','setup.log','driver-status.txt'];
 const root = fs.mkdtempSync('/tmp/writ-snapshot-probe-');
 try {
-  for (const kind of ['positive','negative','missing','partial','symlink','fifo','hardlink','oversize','wrong-directory','changed-after-audit']) {
+  for (const kind of ['positive','negative','missing','missing-fetch','partial','symlink','fifo','hardlink','oversize','wrong-directory','changed-after-audit']) {
     const dir = path.join(root, kind); const raw = path.join(dir, 'raw'); const out = path.join(dir, 'out');
     fs.mkdirSync(dir); fs.mkdirSync(raw); fs.mkdirSync(out);
     for (const name of names) {
@@ -27,6 +27,7 @@ try {
     fs.writeFileSync(path.join(raw, 'run-meta.json'), JSON.stringify({capture:'complete',compressed,raw:rawIdentity}));
     fs.writeFileSync(path.join(raw, 'run-audit.json'), JSON.stringify({audit:'complete',compressed,raw:rawIdentity}));
     if (kind === 'missing') fs.unlinkSync(log);
+    if (kind === 'missing-fetch') fs.unlinkSync(path.join(raw, 'libc-fetch.txt'));
     if (kind === 'partial') { fs.unlinkSync(log); fs.writeFileSync(path.join(raw, 'run.log.gz.partial'), 'partial synthetic'); }
     if (kind === 'symlink') { fs.unlinkSync(log); fs.writeFileSync(path.join(dir, 'sentinel'), 'private synthetic\n'); fs.symlinkSync(path.join(dir, 'sentinel'), log); }
     if (kind === 'fifo') { fs.unlinkSync(log); execFileSync('mkfifo', [log]); }

@@ -1,0 +1,40 @@
+empty: complete bytes verified
+multichunk: complete bytes verified
+warnings: complete bytes verified
+incompressible: complete bytes verified
+raw cap and success-before-overflow: incomplete on overflow
+compressed cap: exact accepted, one-byte-over refused
+truncated: refused
+concat: refused
+trailing: refused
+bad-crc: refused
+wrong raw hash: refused
+decompression cap: refused
+destination failure: incomplete
+synthetic disk write failure: incomplete
+same-inode rewrite: refused
+producer signal status: not confirmed
+failed spawn: incomplete metadata retained
+cap with writer ignoring EPIPE: failure metadata published promptly
+bad-json: not confirmed
+empty-meta: not confirmed
+large-meta: not confirmed
+good-positive: matched
+bad-exit: not confirmed
+missing-marker: not confirmed
+negative-full: matched
+negative-exit-nonzero: not confirmed
+negative-unrelated-failure: not confirmed
+negative-plain-warning: not confirmed
+negative-wrong-warning-color: not confirmed
+negative-missing-warning-reset: not confirmed
+negative-wrong-error-color: not confirmed
+negative-plain-error: not confirmed
+negative-wrong-child: not confirmed
+negative-wrong-client-origin: not confirmed
+negative-wrong-label: not confirmed
+negative-missing-0: not confirmed
+negative-missing-1: not confirmed
+negative-missing-2: not confirmed
+negative-missing-3: not confirmed
+negative-missing-4: not confirmed

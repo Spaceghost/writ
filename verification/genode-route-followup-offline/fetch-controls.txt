@@ -1,0 +1,10 @@
+primary-good verified
+transport-fallback verified
+badhash-fallback verified
+short-fallback verified
+oversize-fallback verified
+both-fail incomplete
+both-badhash incomplete
+existing target: refused
+existing partial symlink: untouched; fallback verified
+offline mock transfers only; no network used

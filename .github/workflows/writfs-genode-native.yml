@@ -108,6 +108,7 @@ jobs:
           test ! -s "$RUNNER_TEMP/writ-nested-positive/tooling-status.txt"
           sha256sum "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-disposable.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-route-fixture.py" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-fetch-libc.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-gzip.mjs" \
@@ -172,6 +173,7 @@ jobs:
             ${{ runner.temp }}/writ-nested-positive/snapshot-result.json
             ${{ runner.temp }}/writ-nested-positive/identity.txt
             ${{ runner.temp }}/writ-nested-positive/input-sha256.txt
+            ${{ runner.temp }}/writ-nested-positive/libc-fetch.txt
             ${{ runner.temp }}/writ-nested-positive/tool-identity.txt
             ${{ runner.temp }}/writ-nested-positive/clang-resource-sha256.txt
             ${{ runner.temp }}/writ-nested-positive/genode-git-status.txt
@@ -237,6 +239,7 @@ jobs:
           test ! -s "$RUNNER_TEMP/writ-nested-negative/tooling-status.txt"
           sha256sum "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-disposable.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-route-fixture.py" \
+            "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-fetch-libc.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-log-capture.sh" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-snapshot.mjs" \
             "$GITHUB_WORKSPACE/ci-tooling/contrib/native-hosts/genode/nested-channel/ci-gzip.mjs" \
@@ -301,6 +304,7 @@ jobs:
             ${{ runner.temp }}/writ-nested-negative/snapshot-result.json
             ${{ runner.temp }}/writ-nested-negative/identity.txt
             ${{ runner.temp }}/writ-nested-negative/input-sha256.txt
+            ${{ runner.temp }}/writ-nested-negative/libc-fetch.txt
             ${{ runner.temp }}/writ-nested-negative/tool-identity.txt
             ${{ runner.temp }}/writ-nested-negative/clang-resource-sha256.txt
             ${{ runner.temp }}/writ-nested-negative/genode-git-status.txt

@@ -1,0 +1,14 @@
+matched: matched
+plain warning: refused
+wrong warning color: refused
+missing warning reset: refused
+plain error: refused
+wrong error color: refused
+wrong client origin: refused
+wrong label: refused
+wrong child: refused
+missing warning: refused
+missing client: refused
+missing monitor: refused
+server policy rejection: refused
+exact-source/config transformations: checked; no Genode executed

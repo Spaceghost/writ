@@ -8,7 +8,7 @@ if (scenario !== 'positive' && scenario !== 'negative') process.exit(2);
 const names = [
   'identity.txt', 'input-sha256.txt', 'tool-identity.txt', 'clang-resource-sha256.txt',
   'genode-git-status.txt', 'genode-archive-comparison.txt', 'genode-archive-git-status.txt', 'genode-commit.txt',
-  'environment.txt', 'source-sha256.txt', 'overlay-sha256.txt', 'generated-sha256.txt', 'original.run', 'actual.run',
+  'libc-fetch.txt', 'environment.txt', 'source-sha256.txt', 'overlay-sha256.txt', 'generated-sha256.txt', 'original.run', 'actual.run',
   'config-sha256.txt', 'negative.diff', 'build.conf', 'tools.conf', 'build-config-sha256.txt',
   'run.log.gz', 'run.log.gz.partial', 'run-meta.json', 'run-audit.json', 'run-status.txt',
   'boot-inputs-sha256.txt', 'installed-config.txt', 'observed.txt',

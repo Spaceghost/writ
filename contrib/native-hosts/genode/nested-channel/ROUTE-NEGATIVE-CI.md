@@ -5,8 +5,9 @@ A public synthetic R client asks its nested Genode `init` for the fixed
 The proposed negative removes the one nested-client `Writ_channel -> parent`
 route, while keeping the monitor policy, parent route, quotas, client and public
 inputs. The pinned Genode source predicts that nested init reports no route and
-the client reports its parent denied the session. This is a **proposed** control;
-no route-negative native observation has been made by these files.
+the client reports its parent denied the session. A prior [incomplete run](../../../../verification/genode-route-negative-42357627656/README.md)
+captured those public messages, but its harness timed out and the paired
+positive did not boot. This follow-up is an unrun candidate.
 
 The earlier [observed nested public pair](../../../../verification/genode-nested-ci-7b31cfc/README.md)
 used an expected-decision mismatch: its negative still committed through the
@@ -38,11 +39,14 @@ session message. It waits boundedly for the client message: the existing client
 may sleep after refusal, so exit or timeout alone cannot establish the result.
 The pinned Genode logger frames warnings with `ESC [34m` and errors with
 `ESC [31m`; both fixture and raw-log auditor require those exact prefixes. The
-warning also requires the terminating `ESC [0m`. The terminal client wait may
-end before its reset, so the client assertion requires only its prefix and
-message. Capture and hashing retain all original bytes without color removal.
-If startup ordering prevents these markers from all appearing within the
-captured prefix, the outcome is incomplete. The monitor's no-policy refusal is
+warning also requires the terminating `ESC [0m`. The Expect patterns contain
+actual ESC bytes, rather than a braced octal escape; the terminal client wait
+may end before its reset. After that wait the fixture checks accumulated output
+and uses the same spawn to wait for any still-missing required marker, including
+the warning and both monitor markers. A 122-second total marker deadline,
+rounded up by at most one second on an individual wait, and the existing outer
+timeout bound this attempt. Capture and hashing retain original bytes without
+color removal. Any missing marker or timeout remains incomplete. The monitor's no-policy refusal is
 a separate condition and cannot substitute for the init route marker.
 
 The driver retains original and actual `.run` files, their hashes and the diff.
@@ -70,6 +74,22 @@ owned temporary subprocesses. None adds a Writ policy or alternate release
 path. Raw and compressed byte caps, integrity checks and incomplete failure
 records remain in force; build output disk use itself is not quota-proven.
 
+The source archive's [prior public run](../../../../verification/genode-route-negative-42357627656/README.md)
+hit three download timeouts. `ci-fetch-libc.sh` makes at most one 600-second
+HTTPS attempt to the fixed FreeBSD archive URL, then at most one to the fixed
+`ftpmirror.your.org` URL. HTTPS redirects and normal certificate validation
+remain required; curl's user configuration is disabled. This mirror is a
+candidate source, not a claim of official status or runner reliability. Each
+attempt has a separate private partial file and curl-only file-size cap; the
+archive is admitted only at exactly 159,564,768 bytes and the original pinned
+SHA-256 `0da393ac2174168a71c1c527d1453e07372295187d05c288250800cb152a889b`.
+The `libc-fetch.txt` record includes attempted URL, transfer status, observed
+size/hash and selected source when available; the download wrapper has a
+21-minute total timeout. A forced cancellation can prevent final metadata or
+leave a partial file; that is incomplete, not an admitted input or a cleanup
+claim. The snapshot and explicit upload list include this metadata. Same-UID
+interference and redirect trust remain within the stated VM assumptions.
+
 The runner has platform/action credentials even with minimum `contents: read`
 and checkout credential persistence disabled. No credentials are deliberately
 passed to the fixture. The VM, GitHub actions, public build sources, runner and
@@ -84,15 +104,21 @@ No shared-host Genode, QEMU or withheld Linux identity probe is authorized.
 
 ## Portable verification
 
-Before exact independent review, run the `ci-route-probe.py`, `ci-gzip-probe.mjs`,
+Before exact independent review, run the `ci-route-probe.py`,
+`ci-expect-probe.py`, `ci-fetch-libc-probe.py`, `ci-gzip-probe.mjs`,
 `ci-snapshot-probe.mjs`, and `ci-capture-probe.sh` controls, ShellCheck, strict
 OpenSpec and the source-manifest check. The route probe exercises the actual
 Tcl assertion against matching synthetic text, omitted/wrong child or label,
 missing monitor/client, and server-policy-only text; it checks the source and
 config differences and rejects the normalized historical copy. It also checks
 expected, absent and incorrect ANSI colors, warning reset and client origin.
-The gzip probe
+The Expect/PTY probe exercises all 24 synthetic marker arrival orders, split
+writes, missing/wrong markers and a real timeout. The offline mock-curl probe
+tests a primary success, fallback after transfer/size/hash failure, total
+failure and existing-target refusal; it makes no network request. The gzip probe
 requires each scenario marker and expected producer status. These controls do
 not boot Genode or validate the predicted native log ordering. Independent review
 of this exact fixture, workflow, provenance and all failure paths is still
 required before an experiment.
+
+The [local offline control record](../../../../verification/genode-route-followup-offline/README.md) identifies the tested harness sources and limits; it is not a Genode result.
