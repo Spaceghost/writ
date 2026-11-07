@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -u
+record_dir=/tmp/writ-durable-lean-verdict/verification/durable-lean-verdict-b95669b
+kernel_path=/tmp/writ-lean-434-isolated/kernel-audit/bendtt
+bend_bin=/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend
+{
+ date -u '+start_utc=%Y-%m-%dT%H:%M:%SZ'
+ printf 'source_commit='; git rev-parse HEAD
+ printf 'source_tree='; git rev-parse HEAD^{tree}
+ printf 'tracked_source_changes='; if git diff --quiet && git diff --cached --quiet; then printf 'none\n'; else printf 'present\n'; exit 2; fi
+ printf 'kernel_before='; sha256sum "$kernel_path"
+ printf 'proof_driver='; sha256sum PROOF.bend
+ printf 'law_declarations='; sha256sum LAWS.bend
+ printf 'bend_version='; "$bend_bin" version
+ printf '%s\n' 'BENDTT=/tmp/writ-lean-434-isolated/kernel-audit/bendtt TMPDIR=/tmp/writ-durable-lean-isolated BEND_NO_TELEMETRY=1 timeout 1200 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend PROOF.bend --verdict'
+} > "$record_dir/observations.txt"
+BENDTT="$kernel_path" TMPDIR=/tmp/writ-durable-lean-isolated BEND_NO_TELEMETRY=1 timeout 1200 "$bend_bin" PROOF.bend --verdict > "$record_dir/verdict.stdout" 2> "$record_dir/verdict.stderr"
+result=$?
+{
+ printf 'verdict_exit=%s\n' "$result"
+ printf 'kernel_after='; sha256sum "$kernel_path"
+ date -u '+end_utc=%Y-%m-%dT%H:%M:%SZ'
+} >> "$record_dir/observations.txt"
+exit "$result"

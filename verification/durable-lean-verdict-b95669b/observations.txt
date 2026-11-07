@@ -1,0 +1,12 @@
+start_utc=2026-11-07T02:54:09Z
+source_commit=b95669bd522ebae0b23664e26524fc10372cc779
+source_tree=e8e3a26f58e685a639cb0057b1e9979042bf275b
+tracked_source_changes=none
+kernel_before=e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18  /tmp/writ-lean-434-isolated/kernel-audit/bendtt
+proof_driver=3ca5d6b8aed002ea294fb5015eabeba9c6e1cc8a810cc5a86407aaecae795ff7  PROOF.bend
+law_declarations=ff64b48bba0411a43d9620746c9a92a348788afcd699ac66d668a2c2765b14c0  LAWS.bend
+bend_version=bend 2.0.39
+BENDTT=/tmp/writ-lean-434-isolated/kernel-audit/bendtt TMPDIR=/tmp/writ-durable-lean-isolated BEND_NO_TELEMETRY=1 timeout 1200 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend PROOF.bend --verdict
+verdict_exit=0
+kernel_after=e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18  /tmp/writ-lean-434-isolated/kernel-audit/bendtt
+end_utc=2026-11-07T02:54:10Z

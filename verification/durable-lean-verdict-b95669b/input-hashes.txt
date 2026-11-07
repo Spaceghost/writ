@@ -1,0 +1,5 @@
+0bbc5b992619e8b192d2f6265cde8930014e46f436063a0e5f33108b6596c0f0  verification/source-sha256.txt
+086a108570aa10527eca7c24a14d6eefe905ca8abb0352bc33369f232904bd8e  /tmp/writ-durable-lean-input-sources.sha256
+e5cf4b8e896c86fd175ebe775e4016c70718c5131fee73088a15417c85e6d059  /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend
+da5d7812a007594879626bc0862218a63d8d71803f3d72943b76d39f70e1a95d  /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bend/bin/bend
+caaa98356098c85dc0fcbbd28e1ec66f39eb6551829972b752ff20e1286b646b  /tmp/writ-lean-434-isolated/lean-4.34.0-linux.tar.zst
