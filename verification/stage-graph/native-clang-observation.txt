@@ -1,0 +1,4 @@
+UTC 2026-11-07T13:43:27.136780+00:00
+ps -eo comm,args; clang rows naming /tmp/writ-stage-root-native: 2
+Observed optimization flags: -O3, -O3
+This observation is not process attestation.

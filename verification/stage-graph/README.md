@@ -39,9 +39,8 @@ SHA-256 `2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd`
 and BendTT SHA-256
 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18` were
 used. The [119-file Bend input inventory](bend-inputs.sha256) identifies the
-source tree used for the suite and the separately running native build; its
-result is not yet recorded. Source hashes are observations, not independent
-process attestation.
+source tree used for the suite and native build. Source hashes are
+observations, not independent process attestation.
 
 Offline Nix evaluation gave [this derivation](nix-eval.txt); the retained
 [derivation description](nix-derivation.json) shows a 2,356-PASS gate and
@@ -52,6 +51,19 @@ network-unshared bubblewrap environment produced [identical output](nix-direct.l
 It did **not** execute a Nix derivation, a full flake check, or a Nix native
 build. `HOME` was not changed. Nix evaluation and direct test are distinct
 from host qualification.
+
+The separately built [native CPU suite](native.log) also passed 2,356 checks
+with `+RTS --threads 1 --gpu off -RTS`; output is byte-identical to Bend/Node.
+The build and run, source-hash rechecks and output comparison all completed in a
+`set -eu` command with exit 0. [Build stdout](native-build.log),
+[build stderr](native-build.stderr) and [run stderr](native.stderr) are empty.
+A [process observation](native-clang-observation.txt) saw `-O3`; it is not
+process attestation. All 119 source hashes matched before build, after build
+and after the run. The build started from the uncommitted tested sources before
+`0b29bc7` was created; those exact source contents match that commit and the
+reconciled tree, but the commit was not the checkout HEAD at build start. The
+new unrelated contribution test added during later reconciliation was not part
+of this build. No GPU execution is claimed.
 
 All generated JS and native binaries are outside the checkout. Strict
 OpenSpec validation is structural; no task was closed and no GPU or host probe
