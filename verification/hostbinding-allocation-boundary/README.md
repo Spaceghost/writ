@@ -53,6 +53,11 @@ and [two derive-leak outcomes](independent-derive-leak-results.json) identify
 their output hashes. Selected mutant checks are not exhaustive proofs or a
 Lean verdict about these cases.
 
+Independent review of the final source and evidence commit was interrupted by
+an automatic security filter without a specific action or reason. The exact
+final commit review is incomplete; the earlier focused-test and mutation
+observations above remain separately scoped.
+
 The complete suite passed **2,498 checks** on pinned [Bend](bend.log) and
 generated [Node](node.log), byte-identical SHA-256
 `38d6a2ea0a8b06c594deef5b69ffb1034bb6c0cfc9344fa15a7c0e61e4aa45f0`.
