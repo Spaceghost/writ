@@ -22,6 +22,24 @@ the fixture construction itself is not a transport or allocation bound.
 SHA-256 `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`.
 This checks the existing 37 laws; no locality law or proof is added.
 
+The optimized native CPU build started before source commit `3e21484`, using
+`CC=clang-23`, `nice -n 15`, and a 1,800-second build timeout. The recorded
+112 Bend inputs were checked before the build and again after the run, and match
+that commit; the commit itself was created while the build ran. The captured
+[compiler process](compiler-observed.txt) included `-O3`. The build
+[exited 0](native-build.exit) with an empty [build log](native-build.log). An
+earlier preliminary compile was deliberately stopped before these final tests
+and is not used as evidence.
+
+The resulting executable ran with `+RTS --threads 4 --gpu off`,
+[exited 0](native.exit), and its [2,318-check stdout](native.log) is byte-identical
+to the Bend and Node output above. [Stderr](native.stderr) was empty, and the
+post-run [input check](native-input-check.exit) exited 0. The observed executable
+SHA-256 is `a774d7afea0dde50a1facdc58f8428e5429e5fa95e779ffe1d25ba5d1bd55cca`;
+it and the generated device artifact remain outside the checkout. Generating
+that artifact is not GPU execution. The source and process observations are
+not process attestation.
+
 Three temporary, isolated one-change mutations were run against the same focused
 suite under Bend 2.0.39 and Node with 90-second timeouts. Each exited 1 on both
 backends, while the unmodified suite passed:
