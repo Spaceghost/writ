@@ -20,6 +20,10 @@ This would improve attribution to the same worker lifetime if safely implemented
 
 As a supplementary *separate no-data diagnostic only*, a fixed-key, open-only registry observation could distinguish the specific key/view's accessibility under zero-capability LPAC and ordinary controls. [RegOpenKeyExW](https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regopenkeyexw) returns an explicit status, but a guessed key or view is not proof of what Winsock actually accessed. Do not enumerate or read registry values, mutate ACLs/catalogs, infer an undocumented Windows path, or use a successful separate child as byte-worker evidence. A narrowly scoped OS tracing option should be considered only after its documented provider/schema, process-lifetime attribution, privileges, resource limits and no-data filtering are independently specified; absent that, leave it unimplemented.
 
+The separate [registry ETW feasibility note](registry-etw-feasibility.md)
+describes a possible bounded diagnostic and unresolved privacy and attribution
+prerequisites. It does not authorize an implementation or trace run.
+
 The follow-up [same-worker feasibility review](same-worker-pre-admission-feasibility.md)
 examines the existing protocol and unresolved transition controls. It does not
 establish a safe handoff or authorize implementation.
