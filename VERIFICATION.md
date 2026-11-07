@@ -15,6 +15,11 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic bb4803b Genode CI](verification/master-ci-bb4803b/README.md)
+passed the standard policy and WritFS fixtures with missing-clock warnings. Its
+source inventory names the guarded fixtures, but does not show them running;
+this result does not qualify a protected host.
+
 The [public Genode fixture configuration guard](verification/genode-fixture-config-guard/README.md)
 has offline stub and fixed-reference controls; it is not a guarded Genode run,
 runtime ambiguity veto, or host-qualification result.
