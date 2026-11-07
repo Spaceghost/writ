@@ -13,6 +13,9 @@ and clients under the same `init`. No nested-monitor configuration or result is
 established by those runs. This is a design and fixture plan, not a runnable
 profile, an authenticated-actor design, or a protected-host qualification. No
 nested fixture has been implemented or run as part of this document.
+A subsequent [pinned-source configuration proposal](nested-routing-source-review.md)
+traces the expected two-hop label and identifies the current equal-score policy
+tie gap; its predictions have not been observed in a nested run.
 
 ## Decision and source basis
 
