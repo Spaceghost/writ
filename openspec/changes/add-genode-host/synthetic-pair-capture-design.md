@@ -156,11 +156,16 @@ actual native entry, not a substitute parser:
   and no owned FD leak when close succeeds. Cover FD reuse only within the
   exclusive-table assumption; retain the known same-inode limitation rather
   than claiming generic FD ownership detection.
-* `interruption_and_boundary`: terminate a test-owned capture child at named
-  phases and demonstrate that no result is credited without a separately
-  observed child result; use only a test-owned sentinel for signal targeting.
-  This is a test harness fact, not an implemented supervisor, deadline,
-  process-authentication mechanism or guarantee of filesystem cleanup.
+* `interruption_and_boundary`: a deterministic test-only hook calls `_exit`
+  in the exact owned capture child at each named phase; its parent waits on
+  its own child and uses no signal. Confirm no result is credited without a
+  separately observed child result. Any separate signaling test must use an
+  independently established race-resistant handle for the exact owned child,
+  such as a verified pidfd with no concurrent reaping; refuse if unavailable,
+  with no numeric-PID or process-group fallback. A test-owned unrelated
+  sentinel must remain untouched. These are test-harness facts, not an
+  implemented supervisor, deadline, process-authentication mechanism or
+  guarantee of filesystem cleanup.
 
 Native synthetic checks, sanitizers/analyzer, applicable root Bend/proof,
 OpenSpec and manifest evidence must identify the exact source. The pure Bend
