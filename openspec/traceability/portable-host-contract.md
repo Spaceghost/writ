@@ -36,7 +36,9 @@ The public decoder's bounded preflight additionally has named regressions
 `PH-011 very oversized byte input denied TooLong before parsing`. These exercise
 synthetic 10,000-element inputs on model backends. Three named `PH-011 byte
 order` checks also retain length, alignment and range refusal precedence when
-an input violates multiple rules. They do not establish a qualified native
+an input violates multiple rules. `PH-011 byte range rejects interior and final
+invalid values` independently exercises aligned valid frames with invalid
+interior and final byte values. These checks do not establish a qualified native
 transport or host confinement.
 
 Fixtures are the named zero-argument functions in `HostWireTests.bend`, all

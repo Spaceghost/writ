@@ -1,0 +1,26 @@
+PASS: planner-envelope independent expected encoding
+PASS: planner-envelope canonical words
+PASS: planner-envelope canonical bytes
+PASS: planner-envelope every truncated word prefix
+PASS: planner-envelope every truncated byte prefix
+PASS: planner-envelope full request low word
+PASS: planner-envelope request high boundary
+PASS: planner-envelope manifest final word
+PASS: planner-envelope destination full word
+PASS: planner-envelope code final word
+PASS: planner-envelope request overflow rejected
+PASS: planner-envelope stamp overflow rejected
+PASS: planner-envelope source overflow rejected
+PASS: planner-envelope destination overflow rejected
+PASS: planner-envelope unknown version
+PASS: planner-envelope unknown kind
+PASS: planner-envelope incorrect declared length
+PASS: planner-envelope maximum declared length rejected before conversion
+PASS: planner-envelope no source rejected
+PASS: planner-envelope too many sources rejected
+PASS: planner-envelope unknown operation
+PASS: planner-envelope non atomic output
+PASS: planner-envelope too many evidence references
+PASS: planner-envelope trailing word
+PASS: planner-envelope byte alignment before range
+PASS: planner-envelope invalid byte value

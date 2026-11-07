@@ -31,15 +31,18 @@ and Nix inputs were unchanged from `ef40aa2`; earlier test and CI results
 retain the exact source identities stated in their records and were not rerun
 on that evidence merge.
 
-The current suite also includes 35 synthetic frontend-composition checks,
-for 2,259 checks; they exercise a test-selected frontend and plan comparison,
+The [isolated composition and byte-regression preview](verification/planner-composition-byte-preview/README.md)
+combines both test sets. The separately reviewed frontend-composition branch added 35 synthetic checks
+to the 2,224-check source, for 2,259 checks at that source. The current
+preview also retains the two byte-range checks, for 2,261 checks. These
+composition checks exercise a test-selected frontend and plan comparison,
 not an authenticated planner request or a production adapter.
 
 The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
 for 2,162 checks at its recorded source. The later boundary regression adds one
 check, and the separate plan-comparison model adds 61 synthetic checks, for
-2,224 checks in the combined suite; it checks plan
-fields only and does not resolve a request or establish authority. Its reference-only descriptions do not authenticate
+2,224 checks at that source; two later byte-range regressions bring the
+byte-regression branch to 2,226 checks. The comparator checks plan fields only and does not resolve a request or establish authority. Its reference-only descriptions do not authenticate
 identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
 The separate [comparison record](verification/planner-plan-match-local.md)
 scopes its pre-integration tests and existing-law proof verdict.
@@ -49,6 +52,8 @@ The later high-word regression passed an [optimized native CPU run](verification
 and scoped [platform CI](verification/planner-comparator-ci-c5a02c7/README.md)
 at exact source `c5a02c7`. Linux retained a protected-setup refusal before input;
 no result qualifies a protected host.
+The [byte-range mutation review](verification/byte-range-mutants-f4ef13d/README.md)
+records two later public-decoder regressions and their local checks.
 Earlier evidence below remains tied to its own source and is not a claim that
 the new checks ran in those historical environments.
 The [planner codec record](verification/planner-envelope-local.md) links its

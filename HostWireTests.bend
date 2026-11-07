@@ -123,6 +123,13 @@ def wide_msg() -> W.Message:
 def wide_release_bytes() -> +List<U32>:
   [1, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 1, 2, 3, 4, 5, 0, 0, 0, 11, 0, 0, 0, 2, 0, 0, 0]
 
+# Replace a byte in the independently specified Release frame.
+def substitute_byte(index: Nat, value: U32, bytes: +List<U32>) -> +List<U32>:
+  match index bytes:
+    case _ Nil{}: Nil{}
+    case 0n Con{_, rest}: value <> rest
+    case 1n+next Con{head, rest}: head <> substitute_byte(next, value, rest)
+
 # --- Helpers ------------------------------------------------------------------
 
 def words_equal(a: +List<U32>, b: +List<U32>) -> Bool:
@@ -139,6 +146,13 @@ def rejected(result: W.DecodeResult, reason: W.WireError) -> Bool:
 
 def decodes_to(result: W.DecodeResult, message: W.Message) -> Bool:
   W.DecodeResult.equal(result, W.Decoded{message})
+
+def byte_range_positions() -> Bool:
+  decodes_to(W.decode_bytes(wide_release_bytes()), W.Release{wide_ref()}) &&
+    decodes_to(W.decode_bytes(substitute_byte(13n, 255, wide_release_bytes())), W.Release{W.Ref{67370753, 5, 11, 2}}) &&
+    rejected(W.decode_bytes(substitute_byte(1n, 256, wide_release_bytes())), W.OutOfRange{}) &&
+    rejected(W.decode_bytes(substitute_byte(13n, 256, wide_release_bytes())), W.OutOfRange{}) &&
+    rejected(W.decode_bytes(substitute_byte(27n, 256, wide_release_bytes())), W.OutOfRange{})
 
 def round_trips(+message: W.Message) -> Bool:
   decodes_to(W.decode(W.encode(message)), message)
@@ -359,6 +373,7 @@ def range_checks() -> IO(Unit):
     Test.check(rejected(complete_with(sequence(), 0), W.OutOfRange{}), "PH-011 status 0 denied OutOfRange")
     Test.check(rejected(complete_with(sequence(), 3), W.OutOfRange{}), "PH-011 status 3 denied OutOfRange")
     Test.check(rejected(W.decode_bytes(with_first_byte(256, W.encode_bytes(release_msg()))), W.OutOfRange{}), "PH-011 a byte value of 256 denied OutOfRange")
+    Test.check(byte_range_positions(), "PH-011 byte range rejects interior and final invalid values")
 
 # PH-011 the fixed check order: each input fails two checks and must report
 # the earlier one.
@@ -398,4 +413,4 @@ def main() -> IO(Unit):
     order_checks()
     ph003_checks()
     ph004_checks()
-    IO.print("HostWire: 68 checks passed")
+    IO.print("HostWire: 69 checks passed")

@@ -1,0 +1,9 @@
+diff --git a/HostWire.bend b/HostWire.bend
+index 3cd0454..5f6a231 100644
+--- a/HostWire.bend
++++ b/HostWire.bend
+@@ -541 +541,3 @@ def bytes_in_bounds(bytes: +List<U32>) -> Bool:
+-      byte_in_bounds(byte) && bytes_in_bounds(rest)
++      match rest:
++        case Nil{}: True{}
++        case Con{_, _}: byte_in_bounds(byte) && bytes_in_bounds(rest)

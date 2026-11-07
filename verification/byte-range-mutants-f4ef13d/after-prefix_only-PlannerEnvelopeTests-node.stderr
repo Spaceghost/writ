@@ -1,0 +1,1 @@
+FAIL: planner-envelope byte range rejects interior and final invalid values
