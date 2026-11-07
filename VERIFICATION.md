@@ -15,7 +15,13 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
-The current synthetic handoff model adds 37 named checks to the 2,065-check
+The planner envelope adds 60 synthetic codec checks to the 2,102-check suite,
+for 2,162 current checks. Its reference-only descriptions do not authenticate
+identities or establish planner integration; see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
+Earlier evidence below remains tied to its own source and is not a claim that
+the new checks ran in those historical environments.
+
+The synthetic handoff model adds 37 named checks to the 2,065-check
 combined baseline (2,102 total). Its monitor facts and current-state binding are
 assumptions, and model execution does not establish a Windows handoff or host
 confinement. See the [model record](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)

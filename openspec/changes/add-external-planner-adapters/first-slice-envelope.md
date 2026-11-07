@@ -6,8 +6,10 @@ manifest. Today Writ has no planner envelope or decoder. This design proposes a
 bounded way to represent that request; successfully decoding it means only that
 its **untrusted description** has the specified shape. It does not mean the
 objects, manifest, code, evidence, planner, or request are authentic, current,
-permitted, or even present. No decoder, endpoint, adapter, test, or admission
-path is implemented by this document.
+permitted, or even present. The supported codec and synthetic tests are now in
+`PlannerEnvelope.bend` and `PlannerEnvelopeTests.bend`; this slice has no
+endpoint, adapter, or admission path. See [traceability](traceability.md) for
+the implemented subset and remaining acceptance gaps.
 
 The change's [proposal](proposal.md), [design](design.md), [tasks](tasks.md),
 and [PL-001 through PL-008](specs/planner-adapters/spec.md) remain controlling.
@@ -146,9 +148,11 @@ accidental disjointness authenticates nothing and is no promise about future
 formats. In particular, the earlier HostWire oversized-input overflow fix must
 not be lost by taking an unbounded length before checking the cap.
 
-## Proposed synthetic checks
+## Synthetic-check design
 
-Named tests below are acceptance targets only; none has been run or added.
+The following design labels group intended checks; the executable checks use
+their descriptive names in `PlannerEnvelopeTests.bend`. Traceability and the
+verification record distinguish their observed scope from pending integration.
 
 | Test name | Required observation |
 | --- | --- |
@@ -175,8 +179,8 @@ boundary: enforcement requires a trusted monitor and its actual current state.
 
 ## Acceptance and follow-up gaps
 
-This design alone completes none of the [tasks](tasks.md) or PL scenarios.
-An implemented/tested reference-only codec would cover only the supported
+This codec completes none of the [tasks](tasks.md) or full PL scenarios.
+The implemented/tested reference-only codec covers only the supported
 operation-description subset of tasks 1.1–1.2, not their full request,
 candidate, evidence-kind or adapter integration requirements. In particular,
 PL-001's same-proposal-to-admission scenario remains unimplemented. Tasks 1.3,
@@ -188,10 +192,8 @@ grant, epoch, budget and scope revalidation; actual effect mediation; and
 deterministic integration with existing admission and commit. No extra release
 path, policy engine, host-qualification or native execution claim follows.
 
-Before implementation, independently review the proposed widths, identifier
-namespaces, limits and failure precedence against the current models and this
-change. A later implementation should use pinned Bend, document public entry
-points, add named tests and traceability, retain all unchecked acceptance gaps,
-and run the applicable Bend/Node/native CPU tests, proof, strict OpenSpec and
-source-manifest checks. No passing synthetic codec test substitutes for host,
+The widths, identifier namespaces, limits and failure precedence were reviewed
+against the current models; independent source review and exact-source checks
+remain necessary before integration. Retain all unchecked acceptance gaps.
+No passing synthetic codec test substitutes for host,
 confinement, GPU, Lean-kernel or protected-execution evidence.
