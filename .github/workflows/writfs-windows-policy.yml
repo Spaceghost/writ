@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.ref != 'refs/heads/lane/windows-init-diagnostic' && github.ref != 'refs/heads/lane/windows-pss' && github.ref != 'refs/heads/lane/windows-pss-lpac' && github.ref != 'refs/heads/lane/windows-pss-init' }}
+    if: ${{ github.ref != 'refs/heads/lane/windows-init-diagnostic' && github.ref != 'refs/heads/lane/windows-pss' && github.ref != 'refs/heads/lane/windows-pss-lpac' && github.ref != 'refs/heads/lane/windows-pss-init' && github.ref != 'refs/heads/lane/windows-registry-ab' }}
     name: Compile Bend policy tests to JavaScript
     runs-on: [self-hosted, linux, x64, bak]
     timeout-minutes: 20
@@ -548,5 +548,91 @@ jobs:
         with:
           name: windows-pss-init-no-data-evidence-${{ github.run_attempt }}
           path: ${{ runner.temp }}/windows-pss-init-logs/
+          if-no-files-found: error
+          retention-days: 14
+
+  registry-ab-feasibility:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/lane/windows-registry-ab' }}
+    name: Isolated exploratory registryRead ABBA no-data PSS initialization (no confinement credit)
+    runs-on: windows-2025
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Capture exploratory registryRead ABBA source and runner facts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-logs'
+          New-Item -ItemType Directory -Force $logs | Out-Null
+          @("source=$env:GITHUB_SHA", "runner=$env:ImageOS", "image=$env:ImageVersion", "os=$([Environment]::OSVersion.VersionString)", 'self_created_child_only=1 no_data=1 confinement_credit=none') |
+            Out-File (Join-Path $logs 'environment.txt') -Encoding utf8
+          Get-FileHash contrib/native-hosts/windows/registry_ab_observer.c,contrib/native-hosts/windows/registry_ab_launch.c,contrib/native-hosts/windows/registry_ab_launch.h,contrib/native-hosts/windows/registry_ab_checked.c,contrib/native-hosts/windows/registry_ab_checked.h,contrib/native-hosts/windows/registry_ab_checks.c,contrib/native-hosts/windows/registry_ab_checks.h,contrib/native-hosts/windows/registry_ab_checks_test.c,contrib/native-hosts/windows/registry_ab_token.c,contrib/native-hosts/windows/registry_ab_token.h,contrib/native-hosts/windows/registry_ab_token_test.c,contrib/native-hosts/windows/pss_init_control.c,contrib/native-hosts/windows/pss_init_progress.c,contrib/native-hosts/windows/pss_init_progress.h,contrib/native-hosts/windows/pss_init_progress_test.c,contrib/native-hosts/windows/pss_init_pipe.c,contrib/native-hosts/windows/pss_init_pipe.h,contrib/native-hosts/windows/pss_init_pipe_test.c,contrib/native-hosts/windows/registry_ab_run.ps1,contrib/native-hosts/windows/pss_lpac_progress.c,contrib/native-hosts/windows/pss_lpac_progress.h,contrib/native-hosts/windows/pss_table.c,contrib/native-hosts/windows/pss_table.h,contrib/native-hosts/windows/pss_table_test.c,contrib/native-hosts/windows/pss_progress.h,contrib/native-hosts/windows/init_child.c,contrib/native-hosts/windows/init_report.h,contrib/native-hosts/windows/init_worker.c,contrib/native-hosts/windows/worker.c,contrib/native-hosts/windows/worker.h,contrib/native-hosts/windows/isolation.c,contrib/native-hosts/windows/isolation.h,contrib/native-hosts/windows/probe.h,contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt -Algorithm SHA256 |
+            Format-List | Out-File (Join-Path $logs 'sources.txt') -Encoding utf8
+      - name: Build fixed exploratory registryRead ABBA observation targets
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-build'
+          & cmake -S contrib/native-hosts/windows/init-diagnostic -B $build -A x64 2>&1 | Tee-Object -FilePath (Join-Path $logs 'configure.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'PSS configuration failed.' }
+          & cmake --build $build --config Release --parallel 2 --target writfs-registry-ab-observer writfs-pss-init-control writfs-init-child writfs-pss-table-test writfs-pss-init-progress-test writfs-pss-init-pipe-test writfs-registry-ab-checks-test writfs-registry-ab-token-test 2>&1 | Tee-Object -FilePath (Join-Path $logs 'build.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'PSS build failed.' }
+          $ErrorActionPreference = 'Stop'
+          $binaryHashes = @(Get-FileHash (Join-Path $build 'Release\writfs-registry-ab-observer.exe'),(Join-Path $build 'Release\writfs-pss-init-control.exe'),(Join-Path $build 'Release\writfs-init-child.exe'),(Join-Path $build 'Release\writfs-pss-table-test.exe'),(Join-Path $build 'Release\writfs-pss-init-progress-test.exe'),(Join-Path $build 'Release\writfs-pss-init-pipe-test.exe'),(Join-Path $build 'Release\writfs-registry-ab-checks-test.exe'),(Join-Path $build 'Release\writfs-registry-ab-token-test.exe') -Algorithm SHA256)
+          if ($binaryHashes.Count -ne 8) { throw 'Expected all eight exploratory registryRead ABBA binary hashes.' }
+          $binaryHashes | Format-List | Out-File (Join-Path $logs 'binaries.txt') -Encoding utf8
+      - name: Verify child PE dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-logs'
+          $log = Join-Path $logs 'child-dependencies.txt'
+          try {
+            $child = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-build\Release\writfs-init-child.exe'
+            $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
+            if (-not (Test-Path $vswhere) -or -not (Test-Path $child)) { throw 'vswhere or child image missing.' }
+            $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($LASTEXITCODE -ne 0 -or -not $vs) { throw 'MSVC installation not found.' }
+            $devcmd = Join-Path $vs 'Common7\Tools\VsDevCmd.bat'
+            $dumpbin = Get-ChildItem (Join-Path $vs 'VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe') | Sort-Object FullName -Descending | Select-Object -First 1
+            if (-not (Test-Path $devcmd) -or -not $dumpbin) { throw 'Developer environment or dumpbin not found.' }
+            $command = 'call "{0}" -no_logo -arch=x64 && "{1}" /dependents "{2}"' -f $devcmd,$dumpbin.FullName,$child
+            $ErrorActionPreference = 'Continue'
+            $dependencies = & cmd.exe /d /s /c $command 2>&1
+            $dumpExit = $LASTEXITCODE
+            $dependencies | Out-File $log -Encoding utf8
+            if ($dumpExit -ne 0 -or -not ($dependencies -match '^\s*WS2_32\.dll\s*$') -or ($dependencies -match '^\s*(USER32|OLE32)\.dll\s*$')) {
+              throw 'Child dependency inspection failed or includes USER32/OLE32.'
+            }
+          } catch {
+            "Dependency inspection incomplete: $_" | Add-Content $log -Encoding utf8
+            throw
+          }
+      - name: Run synthetic exploratory registryRead ABBA classifiers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-registry-ab-build'
+          $results = & ctest --test-dir $build -C Release -R '^(pss-table-synthetic|pss-init-progress-synthetic|pss-init-pipe-synthetic|registry-ab-checks-synthetic|registry-ab-token-synthetic)$' --no-tests=error --output-on-failure 2>&1
+          $testExit = $LASTEXITCODE
+          $results | Tee-Object -FilePath (Join-Path $logs 'synthetic.txt')
+          if ($testExit -ne 0 -or -not ($results -match 'pss-table-synthetic') -or -not ($results -match 'pss-init-progress-synthetic') -or -not ($results -match 'pss-init-pipe-synthetic') -or -not ($results -match 'registry-ab-checks-synthetic') -or -not ($results -match 'registry-ab-token-synthetic')) {
+            throw 'All five named exploratory registryRead ABBA synthetic tests must run and pass.'
+          }
+      - name: Run fixed no-data observation sequence
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./contrib/native-hosts/windows/registry_ab_run.ps1
+      - name: Retain PSS evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-registry-ab-no-data-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/windows-registry-ab-logs/
           if-no-files-found: error
           retention-days: 14

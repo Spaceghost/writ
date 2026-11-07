@@ -71,6 +71,8 @@ a native machine-code Bend runtime.
 | `pss_lpac_observer.c`, `pss_lpac_progress.[ch]`, `pss_lpac_progress_test.c` | Fixed no-data LPAC PSS observer, bounded progress/cleanup classifiers and synthetic tests; no Writ actor or data path |
 | `pss_init_observer.c`, `pss_init_control.c`, `pss_init_pipe.[ch]`, `pss_init_progress.[ch]` | Same-lifetime no-data PSS/initializer observer, ordinary control, exact pipe-report reader and progress classifier |
 | `pss_init_pipe_test.c`, `pss_init_progress_test.c`, `pss_init_run.ps1` | Synthetic report/failure tests and fixed-sequence workflow supervisor; no actor or policy decisions |
+| `registry_ab_observer.c`, `registry_ab_launch.[ch]`, `registry_ab_checked.[ch]`, `registry_ab_token.[ch]` | Exploratory fixed no-data ABBA observer, owned Windows launch/resources, bounded actual-token readback and preparation; no Writ actor, policy or release decision |
+| `registry_ab_checks.[ch]`, `registry_ab_checks_test.c`, `registry_ab_token_test.c`, `registry_ab_run.ps1` | Synthetic capability/lifecycle/failure classifiers and fixed workflow supervisor; no confinement claim |
 | `CMakeLists.txt`, `init-diagnostic/CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; standalone diagnostic build requires no WinFsp; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.

@@ -72,3 +72,18 @@ add_executable(writfs-pss-init-pipe-test ../pss_init_pipe_test.c ../pss_init_pip
 target_compile_options(writfs-pss-init-pipe-test PRIVATE /W4 /sdl /guard:cf)
 target_link_options(writfs-pss-init-pipe-test PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
 add_test(NAME pss-init-pipe-synthetic COMMAND writfs-pss-init-pipe-test)
+
+# Exploratory no-data capability comparison; never run by configuration.
+add_executable(writfs-registry-ab-observer ../registry_ab_observer.c ../registry_ab_launch.c ../registry_ab_checked.c ../registry_ab_token.c ../registry_ab_checks.c ../pss_init_pipe.c ../pss_init_progress.c ../pss_lpac_progress.c ../pss_table.c ../isolation.c)
+target_compile_definitions(writfs-registry-ab-observer PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-registry-ab-observer PRIVATE /W4 /sdl /guard:cf)
+target_link_options(writfs-registry-ab-observer PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT)
+target_link_libraries(writfs-registry-ab-observer PRIVATE advapi32 bcrypt fwpuclnt rpcrt4 userenv ole32 ws2_32 OneCoreUAP)
+add_executable(writfs-registry-ab-checks-test ../registry_ab_checks_test.c ../registry_ab_checks.c)
+target_compile_options(writfs-registry-ab-checks-test PRIVATE /W4 /sdl /guard:cf)
+add_test(NAME registry-ab-checks-synthetic COMMAND writfs-registry-ab-checks-test)
+add_executable(writfs-registry-ab-token-test ../registry_ab_token_test.c ../registry_ab_token.c ../registry_ab_checks.c)
+target_compile_definitions(writfs-registry-ab-token-test PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00)
+target_compile_options(writfs-registry-ab-token-test PRIVATE /W4 /sdl /guard:cf)
+target_link_libraries(writfs-registry-ab-token-test PRIVATE advapi32)
+add_test(NAME registry-ab-token-synthetic COMMAND writfs-registry-ab-token-test)
