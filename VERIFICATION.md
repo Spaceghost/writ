@@ -20,6 +20,9 @@ adds 37 synthetic checks and targeted mutation controls; its supplied rules and
 domains are not authenticated, and it performs no admission or host check.
 The proposed locality acceptance tasks remain open.
 
+The [filtered-source evaluation at 75e8818](verification/locality-filtered-nix-75e8818/README.md)
+and separate direct 2,318-check run did not build or run the Nix derivation.
+
 The [automatic 0689636 platform CI](verification/master-ci-0689636/README.md)
 retains passing Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 results, and the failed strict Windows native run. Linux protected setup was

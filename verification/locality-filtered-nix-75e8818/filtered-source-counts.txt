@@ -1,0 +1,3 @@
+filtered_bend=82
+tracked_bend=112
+excluded_bend=30
