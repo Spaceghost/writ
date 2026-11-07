@@ -16,6 +16,6 @@ The [37-law Lean-built BendTT verdict](verdict.log) printed `ALL PROOFS CHECK`
 using the previously audited kernel; this does not prove the whole system.
 Generated JavaScript stays outside the source tree. Native CPU, Nix and platform
 CI for this merged source have not been run at the time of this record; see
-the later [Nix JavaScript observation](nix-js.md). Older runs do not establish
+the later [Nix JavaScript observation](nix-js.md), [native CPU run](../planner-proof-composition-native-cb54600/README.md), and [platform CI](../planner-law-ci-cb54600/README.md). Older runs do not establish
 those results. No GPU or protected-host qualification is
 claimed.
