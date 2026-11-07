@@ -14,9 +14,9 @@ reference = repo / 'verification/genode-nested-ci-7b31cfc/raw/positive.zip'
 normalized = repo / 'verification/genode-nested-ci-7b31cfc/positive/installed-config.txt'
 program = here / 'ci-route-fixture.py'
 route = '  |     + service Writ_channel | + parent\n'
-warning = '[init -> clients] Warning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")'
+warning = '[init -> clients] \x1b[34mWarning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")\x1b[0m'
 monitor = '[init -> writ_bend_monitor] writ_channel: service announced\n[init -> writ_bend_monitor] monitor: SYNTHETIC authority'
-client = '[init -> clients -> writ_client_r] Error: stop because parent denied Writ_channel-session: args'
+client = '[init -> clients -> writ_client_r] \x1b[31mError: stop because parent denied Writ_channel-session: args'
 
 
 def invoke(*args):
@@ -74,6 +74,12 @@ set f [open [lindex $argv 0] r]; set body [read $f]; close $f
 if {[catch {eval $body} error]} {puts stderr $error; exit 1}
 ''')
     samples = [('matched', monitor + '\n' + warning + '\n' + client, True),
+               ('plain warning', monitor + '\n' + warning.replace('\x1b[34m', '') + '\n' + client, False),
+               ('wrong warning color', monitor + '\n' + warning.replace('\x1b[34m', '\x1b[31m') + '\n' + client, False),
+               ('missing warning reset', monitor + '\n' + warning.replace('\x1b[0m', '') + '\n' + client, False),
+               ('plain error', monitor + '\n' + warning + '\n' + client.replace('\x1b[31m', ''), False),
+               ('wrong error color', monitor + '\n' + warning + '\n' + client.replace('\x1b[31m', '\x1b[34m'), False),
+               ('wrong client origin', monitor + '\n' + warning + '\n' + client.replace('clients -> writ_client_r]', 'clients -> other]'), False),
                ('wrong label', monitor + '\n' + warning.replace('writ_client_r -> channel', 'other -> channel') + '\n' + client, False),
                ('wrong child', monitor + '\n' + warning.replace('Warning: writ_client_r', 'Warning: other') + '\n' + client, False),
                ('missing warning', monitor + '\n' + client, False), ('missing client', monitor + '\n' + warning, False),

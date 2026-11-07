@@ -14,12 +14,12 @@ SOURCE_ROUTE = '  |     + service Writ_channel | + parent\n'
 TAIL = '# A nested client\'s exit is logged by its parent init.'
 NEGATIVE_TAIL = r'''# Source predicts that nested init refuses this absent route. The fixed client
 # sleeps after parent denial; its exit or a timeout is not the expected signal.
-run_genode_until {stop because parent denied Writ_channel-session:} 122
+run_genode_until {\[init -> clients -> writ_client_r\] \033\[31mError: stop because parent denied Writ_channel-session:} 122
 writ_bend_monitor_require [list \
   {\[init -> writ_bend_monitor\] writ_channel: service announced} "monitor service" \
   {\[init -> writ_bend_monitor\] monitor: SYNTHETIC authority} "synthetic authority" \
-  {\[init -> clients\] Warning: writ_client_r: no route to service "Writ_channel" \(label="writ_client_r -> channel"\)} "nested init no route" \
-  {\[init -> clients -> writ_client_r\] Error: stop because parent denied Writ_channel-session:} "client session refusal"]
+  {\[init -> clients\] \033\[34mWarning: writ_client_r: no route to service "Writ_channel" \(label="writ_client_r -> channel"\)\033\[0m} "nested init no route" \
+  {\[init -> clients -> writ_client_r\] \033\[31mError: stop because parent denied Writ_channel-session:} "client session refusal"]
 puts "nested public R route-negative fixture: PASS (synthetic public data; cleanup unverified)"
 '''
 

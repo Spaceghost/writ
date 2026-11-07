@@ -45,8 +45,8 @@ try {
     ? ['nested public R fixture: PASS']
     : ['[init -> writ_bend_monitor] writ_channel: service announced',
       '[init -> writ_bend_monitor] monitor: SYNTHETIC authority',
-      '[init -> clients] Warning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")',
-      '[init -> clients -> writ_client_r] Error: stop because parent denied Writ_channel-session:',
+      '[init -> clients] \x1b[34mWarning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")\x1b[0m',
+      '[init -> clients -> writ_client_r] \x1b[31mError: stop because parent denied Writ_channel-session:',
       'nested public R route-negative fixture: PASS'];
   const checked = await auditGzip(path.join(evidence, 'run.log.gz'), meta, needles);
   const expectedExit = meta.child.code === 0;

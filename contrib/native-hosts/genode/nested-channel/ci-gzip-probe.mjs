@@ -128,11 +128,19 @@ try {
   }
   const markers = ['[init -> writ_bend_monitor] writ_channel: service announced',
     '[init -> writ_bend_monitor] monitor: SYNTHETIC authority',
-    '[init -> clients] Warning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")',
-    '[init -> clients -> writ_client_r] Error: stop because parent denied Writ_channel-session:',
+    '[init -> clients] \x1b[34mWarning: writ_client_r: no route to service "Writ_channel" (label="writ_client_r -> channel")\x1b[0m',
+    '[init -> clients -> writ_client_r] \x1b[31mError: stop because parent denied Writ_channel-session:',
     'nested public R route-negative fixture: PASS'];
   const controls = [['negative-full', markers, 0, 0], ['negative-exit-nonzero', markers, 2, 1],
     ['negative-unrelated-failure', ['unrelated build failure'], 2, 1],
+    ['negative-plain-warning', markers.map(s => s.replace('\x1b[34m', '')), 0, 1],
+    ['negative-wrong-warning-color', markers.map(s => s.replace('\x1b[34m', '\x1b[31m')), 0, 1],
+    ['negative-missing-warning-reset', markers.map(s => s.replace('\x1b[0m', '')), 0, 1],
+    ['negative-wrong-error-color', markers.map(s => s.replace('\x1b[31m', '\x1b[34m')), 0, 1],
+    ['negative-plain-error', markers.map(s => s.replace('\x1b[31m', '')), 0, 1],
+    ['negative-wrong-child', markers.map(s => s.replace('Warning: writ_client_r:', 'Warning: other:')), 0, 1],
+    ['negative-wrong-client-origin', markers.map(s => s.replace('clients -> writ_client_r] \x1b[31mError:', 'clients -> other] \x1b[31mError:')), 0, 1],
+    ['negative-wrong-label', markers.map(s => s.replace('label="writ_client_r -> channel"', 'label="other -> channel"')), 0, 1],
     ...markers.map((_, i) => [`negative-missing-${i}`, markers.filter((__, j) => i !== j), 0, 1])];
   for (const [name, lines, code, expected] of controls) {
     const dir=path.join(root,name), evidence=path.join(dir,'evidence');

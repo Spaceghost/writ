@@ -36,6 +36,11 @@ The negative requires the monitor's synthetic-authority and service logs, the
 nested init's exact child/service/label no-route message, and the client's denied
 session message. It waits boundedly for the client message: the existing client
 may sleep after refusal, so exit or timeout alone cannot establish the result.
+The pinned Genode logger frames warnings with `ESC [34m` and errors with
+`ESC [31m`; both fixture and raw-log auditor require those exact prefixes. The
+warning also requires the terminating `ESC [0m`. The terminal client wait may
+end before its reset, so the client assertion requires only its prefix and
+message. Capture and hashing retain all original bytes without color removal.
 If startup ordering prevents these markers from all appearing within the
 captured prefix, the outcome is incomplete. The monitor's no-policy refusal is
 a separate condition and cannot substitute for the init route marker.
@@ -84,7 +89,9 @@ Before exact independent review, run the `ci-route-probe.py`, `ci-gzip-probe.mjs
 OpenSpec and the source-manifest check. The route probe exercises the actual
 Tcl assertion against matching synthetic text, omitted/wrong child or label,
 missing monitor/client, and server-policy-only text; it checks the source and
-config differences and rejects the normalized historical copy. The gzip probe
+config differences and rejects the normalized historical copy. It also checks
+expected, absent and incorrect ANSI colors, warning reset and client origin.
+The gzip probe
 requires each scenario marker and expected producer status. These controls do
 not boot Genode or validate the predicted native log ordering. Independent review
 of this exact fixture, workflow, provenance and all failure paths is still
