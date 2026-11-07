@@ -16,6 +16,10 @@ their presence. The plan is based on repository commit
 [fixture design](nested-routing-fixture-plan.md) records q18 provenance,
 source hashes, same-init evidence and the wider adversarial matrix.
 
+A [design-only disposable CI amendment](nested-routing-disposable-ci.md)
+proposes a separate public-only VM alternative to the local cleanup prerequisite;
+it does not authorize a workflow or run and does not qualify a host.
+
 ## Existing pieces and source boundary
 
 - [Monitor.bend](../../../hosts/genode/monitor/Monitor.bend) is the existing
