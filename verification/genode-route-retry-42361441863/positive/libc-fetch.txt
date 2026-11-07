@@ -1,0 +1,13 @@
+input=FreeBSD-12.0-src.txz
+expected_bytes=159564768
+expected_sha256=0da393ac2174168a71c1c527d1453e07372295187d05c288250800cb152a889b
+attempt=primary
+url=https://archive.freebsd.org/old-releases/amd64/12.0-RELEASE/src.txz
+http_code=200
+effective_url=https://archive.freebsd.org/old-releases/amd64/12.0-RELEASE/src.txz
+transfer_exit=0
+received_bytes=159564768
+received_sha256=0da393ac2174168a71c1c527d1453e07372295187d05c288250800cb152a889b
+result=verified
+selected=primary
+wrapper_exit=0
