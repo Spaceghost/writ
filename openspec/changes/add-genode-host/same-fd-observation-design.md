@@ -83,8 +83,11 @@ replacement must not cause the wrapper to close a demonstrably different
 object; report cleanup unverified. Invalidate each owned slot before calling
 `close`, and never retry a close whose FD number may have been released and
 reused. Same-inode FD reuse cannot be reliably
-distinguished solely by `fstat`; no adversarial concurrent-FD-table guarantee
-is asserted.
+distinguished solely by `fstat`. A synthetic same-inode replacement actually
+returned partial success and closed the replacement FD; this is a recorded
+limitation, not a detected failure or general reuse protection. No actual
+worker may call this probe until an exclusive trusted FD-table boundary is
+established and independently reviewed.
 
 Only after all reads and all owned closes have succeeded may the wrapper copy
 the fixed 14 digests and lengths into a trusted caller's fixed-size memory.

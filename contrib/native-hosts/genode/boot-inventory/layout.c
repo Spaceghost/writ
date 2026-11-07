@@ -214,7 +214,10 @@ static bool own(struct writ_layout_context *ctx, struct writ_owned_fd *slot, int
     slot->identity = identity;
     return true;
 }
-static bool still_owned(const struct writ_owned_fd *slot)
+/* An identity match is not proof of FD-table ownership: reuse of a number for
+ * the same inode is indistinguishable. The caller must ensure an exclusive,
+ * trusted FD table throughout observation and cleanup. */
+static bool matches_cleanup_identity(const struct writ_owned_fd *slot)
 {
     struct stat now;
     return slot->fd >= 0 && !fstat(slot->fd, &now) &&
@@ -225,7 +228,7 @@ static void drop(struct writ_layout_context *ctx, struct writ_owned_fd *slot)
 {
     if (slot->fd < 0) return;
     int fd = slot->fd;
-    bool ours = still_owned(slot);
+    bool ours = matches_cleanup_identity(slot);
     slot->fd = -1; /* Never retry a close whose number may have been reused. */
     if (!ours) { ctx->cleanup_uncertain = true; return; }
     close_checked(ctx, fd);

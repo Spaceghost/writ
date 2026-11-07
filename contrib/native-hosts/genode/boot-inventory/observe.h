@@ -4,7 +4,11 @@
 #include <stdint.h>
 
 /* This success-like value denotes a public partial observation only. Exact
- * config, aggregate worker deadline, publication and supervisor are absent. */
+ * config, aggregate worker deadline, publication and supervisor are absent.
+ * A trusted, exclusive, stable FD table is mandatory throughout this call.
+ * An externally reused FD number can be closed, including reuse for the same
+ * inode; inode metadata cannot establish descriptor ownership. Do not use in a
+ * worker until that boundary has been independently established. */
 enum writ_public_observation_status {
     WRIT_PUBLIC_CLEANUP_UNVERIFIED = -1,
     WRIT_PUBLIC_INCOMPLETE = 0,

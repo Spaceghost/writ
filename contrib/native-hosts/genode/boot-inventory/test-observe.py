@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Fixed public synthetic trees and test-owned FDs only; no Genode or QEMU."""
 import ctypes
+import errno
 import hashlib
 import os
 from pathlib import Path
@@ -52,7 +53,7 @@ def reset():
 
 def trial(name, scenario='positive', expected=1, hook=None, swap=None,
           fail_read=-1, fail_own=0, fail_drop=0, fail_temp_close=0,
-          fail_read_close=0, reuse=False, quiet=False, inheritable=False):
+          fail_read_close=0, reuse=False, quiet=False, inheritable=False, tweak=None, reuse_same_inode=False):
     global sequence, checks
     sequence += 1
     root = Path('/tmp') / f'writ-genode-ci.{run}-{sequence}.{scenario}'
@@ -79,21 +80,25 @@ def trial(name, scenario='positive', expected=1, hook=None, swap=None,
             dest.write_bytes(payload)
             (build / 'bin' / bin_name).symlink_to(dest)
             (boot / entry).symlink_to(build / 'bin' / bin_name)
+        if tweak: tweak(root, boot, data)
         for path in (root, build, source):
             borrowed.append(os.open(path, os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC))
         if inheritable:
             for fd in borrowed: os.set_inheritable(fd, True)
-        if reuse:
-            extra = root / 'unrelated-test-owned'
-            extra.write_bytes(b'other owned object')
+        if reuse or reuse_same_inode:
+            if reuse_same_inode:
+                extra = root / MAPPING[0][2]  # separate open of the same synthetic inode
+            else:
+                extra = root / 'unrelated-test-owned'
+                extra.write_bytes(b'other owned object')
             extra_fd = os.open(extra, os.O_PATH | os.O_CLOEXEC)
         before = len(os.listdir('/proc/self/fd'))
-        if hook or reuse:
+        if hook or reuse or reuse_same_inode:
             def run_hook(phase, fd, _arg):
                 nonlocal reused_fd
                 try:
                     phases.append((phase, lib.writ_observe_test_read_count()))
-                    if reuse and phase == 1:
+                    if (reuse or reuse_same_inode) and phase == 1:
                         os.dup2(extra_fd, fd, inheritable=False)
                         reused_fd = fd
                     if hook: hook(phase, fd, root, boot)
@@ -122,11 +127,20 @@ def trial(name, scenario='positive', expected=1, hook=None, swap=None,
             assert bytes(result) == bytes(ctypes.sizeof(result)), name
         if hook and expected != 1 and any(phase == 2 for phase, _ in phases):
             assert (2, 14) in phases, (name, phases)
-        if reuse:
+        if reuse or reuse_same_inode:
             assert reused_fd >= 0, name
-            # The probe must not close the deliberately substituted owned object.
-            assert os.fstat(reused_fd).st_ino == os.fstat(extra_fd).st_ino, name
-            os.close(reused_fd)
+            if reuse_same_inode:
+                # Known limitation: same-inode reuse is indistinguishable here.
+                try:
+                    os.fstat(reused_fd)
+                except OSError as exc:
+                    assert exc.errno == errno.EBADF, (name, exc)
+                else:
+                    raise AssertionError((name, 'known same-inode behavior changed'))
+            else:
+                # A demonstrably different inode must not be closed by the probe.
+                assert os.fstat(reused_fd).st_ino == os.fstat(extra_fd).st_ino, name
+                os.close(reused_fd)
             reused_fd = -1
         assert len(os.listdir('/proc/self/fd')) == before, (name, 'FD leak')
         checks += 1
@@ -142,13 +156,33 @@ def trial(name, scenario='positive', expected=1, hook=None, swap=None,
 reset()
 base = trial('positive ordered same-FD observation')
 trial('negative ordered same-FD observation', scenario='negative')
+
+def config_at_limit(root, boot, data):
+    data[0] = b'c' * 16384
+    (boot / 'config').write_bytes(data[0])
+trial('observer config cap accepted', tweak=config_at_limit)
+
+def config_over_limit(root, boot, data):
+    (boot / 'config').write_bytes(b'c' * 16385)
+trial('observer oversized config refused', expected=0, tweak=config_over_limit)
+
+def leaf_above_config_cap(root, boot, data):
+    data[1] = b'b' * 16385
+    (root / MAPPING[0][2]).write_bytes(data[1])
+trial('observer non-config uses larger cap', tweak=leaf_above_config_cap)
+
+def leaf_over_limit(root, boot, data):
+    os.truncate(root / MAPPING[0][2], 268435457)
+trial('observer oversized leaf refused', expected=0, tweak=leaf_over_limit)
 trial('observer refuses inheritable borrowed roots', inheritable=True, expected=0)
 trial('private slot swap refused', swap=(1, 2), expected=0)
+trial('out-of-range private index refused', swap=(1, 14), expected=0)
 
 def close_fd(phase, fd, root, boot):
     if phase == 1: os.close(fd)
 trial('closed checked descriptor is cleanup-unverified', hook=close_fd, expected=-1)
-trial('reused descriptor preserves unrelated test-owned sentinel', reuse=True, expected=-1)
+trial('different-inode reused descriptor is not closed', reuse=True, expected=-1)
+trial('known limitation: same-inode reused descriptor is closed', reuse_same_inode=True)
 
 def moved_leaf(phase, fd, root, boot):
     if phase == 2:

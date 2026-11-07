@@ -21,7 +21,10 @@ int writ_observe_test_read_count(void) { return test_reads; }
 #endif
 
 static struct writ_owned_fd *slot(struct writ_layout_context *ctx, unsigned i)
-{ return i == 0 ? &ctx->config : &ctx->leaf[i - 1]; }
+{
+    if (i >= WRIT_PUBLIC_BOOT_FILES) return NULL;
+    return i == 0 ? &ctx->config : &ctx->leaf[i - 1];
+}
 static bool valid_slot(const struct writ_owned_fd *owned, const struct stat *expected)
 {
     struct stat now;
@@ -53,12 +56,12 @@ int writ_boot_public_observe(int root, int build, int source, uint64_t run,
 #ifdef WRIT_BOOT_OBSERVE_TESTING
         if ((int)i == test_left) selected = (unsigned)test_right;
         else if ((int)i == test_right) selected = (unsigned)test_left;
-        if (selected >= WRIT_PUBLIC_BOOT_FILES || (int)i == test_fail_read) goto done;
+        if ((int)i == test_fail_read) goto done;
 #endif
         struct writ_owned_fd *expected = slot(&ctx, i);
         struct writ_owned_fd *actual = slot(&ctx, selected);
         uint64_t cap = i == 0 ? UINT64_C(16384) : UINT64_C(268435456);
-        if (!valid_slot(actual, &expected->identity)) goto done;
+        if (!expected || !actual || !valid_slot(actual, &expected->identity)) goto done;
         int read_status = writ_boot_read_held_internal(actual->fd, cap, staged.digest[i], &staged.size[i]);
         if (read_status == WRIT_READ_CLEANUP_UNVERIFIED) ctx.cleanup_uncertain = true;
         if (read_status != WRIT_READ_OK ||

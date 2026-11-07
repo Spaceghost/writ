@@ -78,8 +78,12 @@ do not establish behavior on another runner or establish host qualification.
 
 The same-FD observer and its private descriptor-transfer/cleanup plumbing are
 experimental Linux public-fixture I/O only. Their test hooks are absent from
-production. A trusted caller must supply the fixed held roots and protect the
-process FD table; inode/metadata rechecks cannot rule out same-UID adaptive
+production. A trusted caller must supply the fixed held roots and ensure an exclusive,
+stable process FD table throughout observation and cleanup. A tested
+same-inode FD-number replacement is not detected and its replacement FD is
+closed; no actual worker may call this probe until the FD-table boundary is
+established and independently reviewed. The checks do not provide general FD
+reuse protection; inode/metadata rechecks cannot rule out same-UID adaptive
 changes or prove earlier boot consumption. The 14 returned hashes are
 information and must be restricted to the fixed public test; they convey no
 policy decision. The [same-FD controls](../../../../verification/genode-boot-same-fd/README.md)
