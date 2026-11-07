@@ -1,0 +1,23 @@
+Writ source: dff934fbbeef88dcd1059dfab76db14a335433b0
+Genode source: 26.08 d18ee9e917200b059549e21f2dd9a55bfe61a0eb
+QuickJS source: 2026-06-04
+Genode toolchain: 25.05
+Required complete core assertions: 2318
+Linux runnervm7aw5e 7.0.0-1017-azure #17~24.04.1-Ubuntu SMP PREEMPT Thu Sep 24 18:46:57 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
+genode-x86-gcc (GCC) 14.2.0
+Copyright (C) 2024 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+Copyright (C) 2023 Free Software Foundation, Inc.
+This is free software; see the source for copying conditions.  There is NO
+warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+QEMU emulator version 8.2.2 (Debian 1:8.2.2+ds-0ubuntu1.18)
+Copyright (c) 2003-2023 Fabrice Bellard and the QEMU Project developers
+expect version 5.45.4
+bend 2.0.39
+df74f96c70c72607d66f5440439680b63683f09edd92809996845f0f29453a74  /home/runner/work/_temp/writfs-genode/inputs/genode-26.08.tar.gz
+6cab8e5f4490399a296a73b01695d5fb055a40f6ac04d61a3f7a7344003eb739  /home/runner/work/_temp/writfs-genode/inputs/genode-toolchain-25.05.tar.xz
+b376e839b322978313d929fd20663b11ba58b75df5a46c126dd19ea2fa70ad2a  /home/runner/work/_temp/writfs-genode/inputs/quickjs-2026-06-04.tar.xz
