@@ -215,3 +215,7 @@ observation is incomplete. Such a run would not establish arbitrary-policy
 ambiguity rejection, actor identity, protected data confinement or Genode host
 qualification. No Genode/QEMU execution or workflow dispatch was performed for
 this design.
+
+The [bounded post-run boot inventory proposal](disposable-boot-inventory-design.md)
+addresses the pinned Linux boot tree's two-hop symlinks. It is design-only;
+neither its collector nor a guarded fixture run is established by this note.
