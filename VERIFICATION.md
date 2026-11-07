@@ -15,6 +15,12 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The automatic Genode CI runs at [3267dc4](verification/master-ci-3267dc4/README.md)
+and [e151f51](verification/master-ci-e151f51/README.md) passed the standard
+policy and WritFS fixtures with missing-clock warnings. Their logs do not show
+the standalone layout checker or held-file read probe executing; these results
+do not qualify a protected host.
+
 The [automatic bb4803b Genode CI](verification/master-ci-bb4803b/README.md)
 passed the standard policy and WritFS fixtures with missing-clock warnings. Its
 source inventory names the guarded fixtures, but does not show them running;
