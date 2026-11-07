@@ -333,6 +333,16 @@ int writ_boot_read_config_internal(int held, enum writ_boot_scenario scenario,
     if (size) *size = 0;
     return WRIT_READ_INCOMPLETE;
 }
+int writ_boot_read_expected_internal(int held, const unsigned char *expected,
+                                     size_t expected_size, unsigned char digest[32], uint64_t *size)
+{
+    if (!expected || expected_size > 4096) {
+        if (digest) memset(digest, 0, 32);
+        if (size) *size = 0;
+        return WRIT_READ_INCOMPLETE;
+    }
+    return read_impl(held, UINT64_C(16384), digest, size, expected, expected_size);
+}
 int writ_boot_read_held(int held, uint64_t cap, unsigned char digest[32], uint64_t *size)
 {
     return writ_boot_read_held_internal(held, cap, digest, size) == WRIT_READ_OK ? 0 : -1;

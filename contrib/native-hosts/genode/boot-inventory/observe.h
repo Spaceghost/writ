@@ -5,7 +5,7 @@
 
 /* This success-like value denotes a public partial observation only. The
  * fixed public config is compared during the held-FD read; an aggregate worker
- * deadline, publication and supervisor are absent.
+ * deadline, real-worker publication and supervisor are absent.
  * A trusted, exclusive, stable FD table is mandatory throughout this call.
  * An externally reused FD number can be closed, including reuse for the same
  * inode; inode metadata cannot establish descriptor ownership. Do not use in a

@@ -1,0 +1,4 @@
+0000000000003fd0 T writ_boot_layout_check
+00000000000050a0 T writ_boot_public_observe
+0000000000005080 T writ_boot_read_held
+0000000000005be0 T writ_public_synthetic_publish

@@ -1,0 +1,47 @@
+PASS positive canonical pair
+PASS negative canonical pair with maximum u64 keys
+PASS leading zero digest preserved
+PASS aggregate cap accepted
+PASS aggregate cap rejected
+PASS leaf cap rejected
+PASS u64 leaf overflow rejected
+PASS wrong config size rejected
+PASS wrong config digest rejected
+PASS inheritable output FD rejected
+PASS unsafe output directory mode rejected
+PASS unknown scenario rejected
+PASS all 16 fixed-name file/symlink/FIFO/socket sentinels preserved
+PASS partial writes and EINTR stage 1
+PASS write error stage 1
+PASS unsupported NOREPLACE stage 1
+PASS partial writes and EINTR stage 2
+PASS write error stage 2
+PASS unsupported NOREPLACE stage 2
+PASS close uncertainty stage 1
+PASS close uncertainty stage 2
+PASS close uncertainty stage 11
+PASS close uncertainty stage 12
+PASS close uncertainty stage 33
+PASS close uncertainty stage 34
+PASS readback failure stage 1
+PASS post-read digest failure stage 1
+PASS readback failure stage 2
+PASS post-read digest failure stage 2
+PASS readback failure stage 3
+PASS post-read digest failure stage 3
+PASS readback failure stage 4
+PASS post-read digest failure stage 4
+PASS format hash failure
+PASS substituted FIFO is not opened as data
+PASS post-check symlink replacement remains uncredited
+PASS post-status manifest drift rejected
+PASS known limitation: post-check mutation can leave invalid pair after partial return
+PASS manifest formatting cap refused
+PASS status formatting cap refused
+PASS all 16 formatting-stage failures leave no credited output
+PASS all 60 reader-close failure injections report uncertainty
+PASS 16 owned-child interruption phases retain no completion credit
+PASS exact owned-child exit zero and independently validated pair control
+PASS 8 pair mutations and 4 rehashed malformed records rejected
+PASS fabricated digest and copied replay remain unauthenticated syntax matches
+PASS 162 synthetic publication cases

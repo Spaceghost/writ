@@ -1,4 +1,4 @@
-# Proposed synthetic public boot manifest publication
+# Synthetic public boot manifest publication
 
 A synthetic observer can return 14 public digests in memory, but a file named
 `manifest` alone does not show that all bytes were written or that its writer
@@ -8,7 +8,7 @@ status binding its exact bytes. It performs native filesystem packaging only;
 it does not authenticate an observer, certify a fixture, grant Writ authority,
 claim boot consumption or establish host qualification.
 
-This is design only. The [current partial observer](same-fd-exact-config-design.md)
+The fixed packaging slice has [synthetic controls](../../../verification/genode-synthetic-publication/README.md); no actual worker or workflow calls it. The [current partial observer](same-fd-exact-config-design.md)
 has no publication caller. The writer described here is not connected to a
 fixture, worker, workflow, or protected data. The [full inventory design](disposable-boot-inventory-design.md)
 and [supervisor](disposable-fd-supervisor-design.md) remain incomplete. A
@@ -155,9 +155,9 @@ stalled filesystem syscall. Independent wall supervision, mount/FD-table
 ownership, post-publication replacement prevention and VM teardown are
 outside this slice and remain prerequisites for any later real run.
 
-## Planned owned-temporary synthetic controls
+## Owned-temporary synthetic controls
 
-All controls run on exclusive test-owned temporary directories and files; no
+The recorded controls run on exclusive test-owned temporary directories and files; no
 fixture, Genode/QEMU, protected input, worker or workflow is started.
 
 * `canonical_pair_both_scenarios` compares every output byte with independently

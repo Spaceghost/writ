@@ -102,3 +102,17 @@ same buffer is hashed; the standalone held-read API retains its general
 trusted-FD hashing behavior. The fixed source, binary, OpenSSL/provider and
 caller are trusted. No synthetic check establishes that these constants or
 the executable were pinned before a hypothetical fixture child started.
+
+
+The separate [`writ_public_synthetic_publish`](publish.h) encodes only the
+fixed public 14-slot format and writes a `synthetic-partial` status bound to
+the manifest bytes. It is tested only with owned synthetic output directories
+and is not connected to the observer or any worker/workflow. A matching pair
+can remain after a failed writer exit and caller-provided records can be
+fabricated; the pair is not completed inventory, provenance or authority.
+The caller must establish an exclusive stable FD table and an exclusive trusted
+output directory. Synthetic tests demonstrate that deliberately modifying the
+directory after the last check can leave an invalid pair even after a partial
+return. No actual worker may use this helper until that boundary is reviewed
+and implemented. The [publication evidence](../../../../verification/genode-synthetic-publication/README.md)
+records interruption, readback and no-overwrite controls and their limits.
