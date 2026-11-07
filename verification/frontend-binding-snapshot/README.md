@@ -46,4 +46,16 @@ precedence, and frontend result propagation. Each fails a named assertion on
 both Bend and Node; raw outputs, stderr and exits are retained. This is a
 control set, not a completeness proof. The evaluated Nix source filter and
 assertion gate are described in [nix-evaluation.txt](nix-evaluation.txt).
-CPU evidence is recorded separately when complete.
+
+The optimized native build and explicit GPU-off CPU run completed successfully.
+Its [output](native.log) matches the full Bend and Node logs byte-for-byte,
+with 2,809 PASS lines. [Build stdout](native-build.log),
+[build stderr](native-build.stderr) and [run stderr](native.stderr) are empty.
+The 136 input hashes were checked before and after the build and run. This is
+CPU evidence, not GPU verification.
+
+Separate synthetic native checks passed: [24 allocator invariants](allocator.log)
+under ASan/UBSan and the owned-temp capture-to-Bend/Node [handoff](handoff.log).
+Their stderr logs are [allocator](allocator.stderr) and [handoff](handoff.stderr).
+They do not test a native frontend or authenticate a host. Strict OpenSpec
+validation is retained in [openspec.log](openspec.log).
