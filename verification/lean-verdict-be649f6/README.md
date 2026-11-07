@@ -34,8 +34,10 @@ Both kernel build steps and the verdict exited 0; the control exited 1 with
 an infrastructure error when the selected executable returned no verdict.
 That control shows the verdict path does not accept an unsuccessful kernel;
 it is not a malformed-proof rejection test. A separate first run emitted a
-BendTT translation and the same built kernel checked it directly with exit 0;
-its captured output and translation hash are retained. The supported `BENDTT`
+BendTT translation; a [captured direct recheck](direct-audit-observations.txt)
+records the invocation, translation and kernel hashes before and after,
+exit 0 and separate stdout/stderr. These hashes are observations, not process
+attestation. The supported `BENDTT`
 override avoided Bend's shared home cache. The compiler, Lean runtime, C
 compiler, libraries, operating system and the recorded source remain trusted.
 
