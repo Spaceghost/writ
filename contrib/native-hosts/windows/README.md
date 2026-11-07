@@ -64,6 +64,9 @@ a native machine-code Bend runtime.
 | `probe.c` | Native canary reads and negative probes that Bend cannot directly express; fixed-size reports to the private supervisor |
 | `channels.c` | Fixed clipboard-open and local COM activation probes, with stage-specific results and ordinary-process positive controls |
 | `transport_probe.c` | Actual native pipe lifecycle, 64 KiB transfer and hostile-peer checks, including both read and write deadlines |
+| `init_diagnostic.c`, `init_worker.c`, `init_child.c`, `init_report.h` | Experimental no-data supervisor, output-prefixed shared launcher, fixed child and bounded initialization report; no mount, Writ session, policy pipe or byte-input route |
+| `init_report_test.c` | Synthetic report framing and positive-control checks; no native confinement claim |
+| `init-diagnostic/CMakeLists.txt` | Separate optional MSVC/Windows SDK diagnostic build, without WinFsp; generated binaries stay outside the checkout |
 | `CMakeLists.txt` | Windows SDK/MSVC linkage and native hardening flags; generated binaries stay outside the repository |
 
 Workers never receive the policy pipe or a general-purpose control endpoint.
@@ -158,6 +161,46 @@ binding. They are bounded fixture evidence, not an administrator-resistant
 journal, a complete Windows event collector, or proof of a human's intent.
 Administrator/kernel compromise, arbitrary desktop applications, GPU isolation,
 and hardware/covert-channel guarantees are outside this profile.
+
+## Experimental no-data initialization observation
+
+The strict byte worker could not initialize Winsock and two system DLLs, so
+its network, clipboard and COM restriction observations remain incomplete.
+This separate diagnostic runs an ordinary control, a zero-capability LPAC
+child and another ordinary control, recording only fixed initialization results.
+The controlled child has one bounded report pipe and no mount, input file,
+protected bytes, policy pipe or Writ session. Direct child invocation accepts
+a pipe handle but does not read data from it. Its executable, package, process
+lifetime, command and handle list differ from the byte worker; it is not an
+admitted Writ actor and does not establish equal execution conditions.
+
+On a disposable, isolated Windows x64 machine with MSVC and the Windows SDK,
+with no protected-data worker running, build outside the checkout and use an
+elevated PowerShell session:
+
+```powershell
+cmake -S contrib/native-hosts/windows/init-diagnostic -B C:\writ-init-build -A x64
+cmake --build C:\writ-init-build --config Release
+ctest --test-dir C:\writ-init-build -C Release --output-on-failure
+& C:\writ-init-build\Release\writfs-init-diagnostic.exe
+```
+
+The optional diagnostic creates its own package profile, private image and job;
+the LPAC launch also installs four temporary owned WFP filters. Successful
+launches require checked owned-resource teardown and readback that those filters
+are absent. A launcher setup failure can erase cleanup state: that result is
+incomplete and cleanup is not independently verified. Destruction of the
+disposable runner is fallback containment, not evidence of successful cleanup.
+Timeout, profile-readback and cleanup-failure paths have not been fault injected.
+
+The [recorded Windows run](../../../verification/windows-init-observation-42313767360/README.md)
+at source `9b02fa5` completed its ordinary controls, separate LPAC observation
+and checked cleanup. Its generic error values do not establish a cause or an
+access denial, and it gives no byte-worker confinement or host qualification
+credit. The [earlier build failure](../../../verification/windows-init-build-42313479154/README.md)
+is preserved. Independent full-token equivalence and controlled-factor
+comparisons remain open. The diagnostic is not part of the default native build
+or registered workflow; source presence does not establish a new Windows run.
 
 ## Pinned primary sources
 

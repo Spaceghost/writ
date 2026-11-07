@@ -691,3 +691,21 @@ An isolated Windows process-snapshot experiment first had a
 matched two known handles in one suspended, ordinary synthetic child on one
 runner. It is not an LPAC or byte-worker result, does not establish complete
 environment equivalence, and supplies no host confinement credit.
+
+A separate [LPAC snapshot observation](verification/windows-pss-lpac-observation-42317376618/README.md)
+matched the two fixed synthetic handles in one suspended no-data LPAC child
+and verified normal owned-filter cleanup. It did not run the real byte worker,
+establish complete environment equivalence or qualify Windows confinement.
+
+In a [same-lifetime no-data observation](verification/windows-pss-init-observation-42319102323/README.md),
+two LPAC children each had the expected single synthetic report handle before
+resume and then reproduced the initialization errors. Ordinary controls
+succeeded. The observation does not establish cause, post-resume handle state,
+complete environment equivalence or byte-worker confinement.
+
+The automatic Windows native [run 42320010013](verification/windows-native-run-42320010013/README.md)
+on source `82c51e8` failed the strict LPAC public-canary step. Its mounted reads,
+revocation and native transport passed in their recorded scopes; byte-worker
+network, clipboard and COM observations remained incomplete and receive no
+confinement credit. The newly added optional standalone diagnostic was not run
+by that workflow. Full artifact text and raw hashes preserve the outcome.

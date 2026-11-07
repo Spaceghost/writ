@@ -1,0 +1,24 @@
+
+Algorithm : SHA256
+Hash      : E6BC59EF85FEC1117D27C6DFEE8D3FB32F0C9DBBDAF63F9C1BC2005B8482A200
+Path      : D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-observer.exe
+
+Algorithm : SHA256
+Hash      : F3851DEC6E92738117325C6DDEAC56B4ECF5B9761BDE211692E4F79A84B1A9BE
+Path      : D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-control.exe
+
+Algorithm : SHA256
+Hash      : EDC48219013EFE97ACB061276FAC265ECD1CDCB968AD54C879C9E47D45252AD0
+Path      : D:\a\_temp\windows-pss-init-build\Release\writfs-init-child.exe
+
+Algorithm : SHA256
+Hash      : DC3AF22C878EFECBE80D6D22EDD001C7E2EDA30372FF9BE16ADB46992A154CBC
+Path      : D:\a\_temp\windows-pss-init-build\Release\writfs-pss-table-test.exe
+
+Algorithm : SHA256
+Hash      : 839139757B6917F0F83FF3193145FBBC911922A65565B81818C4EC12E30029B1
+Path      : D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-progress-test.exe
+
+Algorithm : SHA256
+Hash      : 157ED1CB55074E89964D6D7272C274EACC1B7812980928EF594B73F2C421DBDF
+Path      : D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-pipe-test.exe

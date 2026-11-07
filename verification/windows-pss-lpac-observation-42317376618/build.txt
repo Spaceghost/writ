@@ -1,0 +1,40 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_lpac_observer.c
+  pss_lpac_progress.c
+  pss_table.c
+  init_worker.c
+  isolation.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-pss-lpac-build\writfs-pss-lpac-observer.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/init_worker.c')
+
+  Generating Code...
+  writfs-pss-lpac-observer.vcxproj -> D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-lpac-observer.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_child.c
+  writfs-pss-child.vcxproj -> D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-child.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_table_test.c
+  pss_table.c
+  Generating Code...
+  writfs-pss-table-test.vcxproj -> D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-table-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_progress_test.c
+  pss_progress.c
+  Generating Code...
+  writfs-pss-progress-test.vcxproj -> D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-progress-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_lpac_progress_test.c
+  pss_lpac_progress.c
+  Generating Code...
+  writfs-pss-lpac-progress-test.vcxproj -> D:\a\_temp\windows-pss-lpac-build\Release\writfs-pss-lpac-progress-test.exe

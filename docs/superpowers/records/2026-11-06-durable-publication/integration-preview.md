@@ -17,12 +17,14 @@ implied. Independent security review remains outstanding, and the task-order
 review gates in the [durable plan](../../plans/2026-11-06-durable-publication.md)
 are unchanged. All DP acceptance tasks and audit durability tasks stay open.
 
-The preview subsequently incorporates master `c80271d`, which corrects
-documentation and preserves the Windows initialization and process-snapshot
-diagnostic records. The
-CI and Nix runs below remain attributed to their exact tested source
-`61ab2a453915c4162e7ba726b9dfd6f1759f3410`; the later documentation and
-evidence merge is not a new execution or host qualification.
+The preview subsequently incorporates master `05c4119`, which corrects
+documentation, preserves Windows diagnostic records, and adds an optional
+standalone no-data Windows initialization diagnostic. The CI and Nix runs
+below remain attributed to their exact tested source
+`61ab2a453915c4162e7ba726b9dfd6f1759f3410`; they did not test the later
+standalone diagnostic. Its separate Windows result and the subsequent failed
+strict gate are recorded on master. This merge is not a new execution or host
+qualification.
 
 The `Tests.bend` merge retains both Linux/HostWire and durable suites. The only
 textual merge conflict was `verification/source-sha256.txt`; it was regenerated
