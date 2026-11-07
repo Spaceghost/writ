@@ -1,0 +1,55 @@
+PASS mounted reader and policy are live before broker crash
+PASS broker was terminated without graceful cleanup
+PASS broker death retires confined reader and private policy process
+PASS abandoned FUSE connection returns ENOTCONN without bytes
+PASS native worker ready
+PASS native worker ready
+ACTOR slot=1 uid=999 gid=987 pid=3404 start_ticks=78771 pidfd=retained
+PASS kernel-observed credentials, namespaces, seccomp and no_new_privs
+PROFILE linux-x86_64-canary-v1 landlock_abi=8 required=3
+PASS native memfd write and resize seals
+CANARY bytes=29 sha256=085bced4db355be6b54ddac3fbf9c54087140d4ebb33b6847a386ac0d6c6a98a
+PASS read before Bend admission denied
+PASS Bend capability-to-commit admission
+PASS other process open denied
+PASS other process metadata denied
+PASS other process listing denied
+PASS same-UID memory tracing denied
+PASS native probe phase complete
+PASS kernel-derived outsider requests reached Bend and were denied (round 1)
+PASS admitted native open
+PASS mounted bytes equal sealed canary
+PASS range read
+PASS EOF
+PASS native descriptor duplication
+PASS duplicate read
+PASS scoped directory listing
+PASS write denied
+PASS shared mapping denied
+PASS private mapping denied
+PASS IPv4 socket denied
+PASS IPv6 socket denied
+PASS Unix socket denied
+PASS exec denied
+PASS fork denied
+PASS ptrace denied
+PASS process memory read denied
+PASS signal syscall denied
+PASS System V shared memory denied
+PASS new memfd denied
+PASS io_uring denied
+PASS outside filesystem hidden
+PASS proc memory path hidden
+PASS public stdout write denied
+PASS descriptor sendmsg denied
+PASS ioctl denied
+PASS sendfile denied
+PASS copy_file_range denied
+PASS other process open denied
+PASS other process metadata denied
+PASS other process listing denied
+PASS same-UID memory tracing denied
+PASS native probe phase complete
+PASS kernel-derived outsider requests reached Bend and were denied (round 2)
+READY for external broker-crash probe
+ALL LINUX BROKER CRASH CHECKS PASSED; owned abandoned mount removed

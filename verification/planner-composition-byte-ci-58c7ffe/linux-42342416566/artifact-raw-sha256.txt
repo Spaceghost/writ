@@ -1,0 +1,14 @@
+387381d94a1c43567aefa8887f646fd24baae94e316c3a969d016b541106cefb  writfs-linux-native-1/bridge.log
+012c789f9761c050961adcdde8ef4f689e3d1d3096cb272c359d5d5ff30cdf9b  writfs-linux-native-1/core-js.log
+012c789f9761c050961adcdde8ef4f689e3d1d3096cb272c359d5d5ff30cdf9b  writfs-linux-native-1/core-native.log
+b32883069f059567d12b2b871f03e09cbacb29b7c86a14feffdae481294d759c  writfs-linux-native-1/environment.log
+f378302f40f49d45202b171b807a5fc9ff3a5b0a84f05bfc8f70c58909e014f6  writfs-linux-native-1/mount-js.log
+f378302f40f49d45202b171b807a5fc9ff3a5b0a84f05bfc8f70c58909e014f6  writfs-linux-native-1/mount-native.log
+d97d1a3422b21dff0ec95360cab7e6c35f31da3bbf3c54517d4166a3ece4f336  writfs-linux-native-1/native-broker-crash.log
+8aaf5095a9b902fc589aa50373909078160c4cef0645ac5ebb65cb632128995c  writfs-linux-native-1/native-build.log
+d52700be4ae4d4f8059febba2b96e9eedad2407bd570fe267aeada2adf362537  writfs-linux-native-1/native-policy-failure.log
+04822441a9e4d5b6323a04cf636467771d2d43579303051f2d5fa0ef771fecd2  writfs-linux-native-1/native-revocation.log
+6f3c64625d82c00201f8763029ff9750e0fb65d4c90cdc41969e8a0445c723c1  writfs-linux-native-1/native-transport.log
+931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1  writfs-linux-native-1/ordinary-proofs.log
+cb0706e9f0b30345156da8ac613eb0f94a7c79eda41a7b5e37137708bb879d8a  writfs-linux-native-1/setup-refusal.log
+9335773082efe5d2e441c4953cb717103630c97737e42621f979a8026647f7ed  writfs-linux-native-1/source-and-build-sha256.txt
