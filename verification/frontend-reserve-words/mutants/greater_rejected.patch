@@ -1,0 +1,5 @@
+--- a/FrontendReserveWords.bend
++++ b/FrontendReserveWords.bend
+@@ -31 +31 @@
+-    case R.Greater{}: Sufficient{}
++    case R.Greater{}: Insufficient{}

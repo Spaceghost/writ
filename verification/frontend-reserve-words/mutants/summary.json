@@ -1,0 +1,52 @@
+[
+  {
+    "mutant": "remaining_high",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "remaining_low",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "active_step",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "attenuation_step",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "allocation_step",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "composite_step",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "equal_rejected",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "greater_rejected",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "less_accepted",
+    "bend": 1,
+    "node": 1
+  },
+  {
+    "mutant": "refusal_resumed",
+    "bend": 1,
+    "node": 1
+  }
+]

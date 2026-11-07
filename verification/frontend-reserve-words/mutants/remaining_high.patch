@@ -1,0 +1,5 @@
+--- a/FrontendReserveWords.bend
++++ b/FrontendReserveWords.bend
+@@ -43 +43 @@
+-  +distance : R.Revision = R.V2{U32.not(high), U32.not(low)}
++  +distance : R.Revision = R.V2{high, U32.not(low)}

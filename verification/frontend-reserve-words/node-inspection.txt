@@ -1,0 +1,9 @@
+Generated focused Node SHA-256: de49d8b5923766d2e58178e2245883b19d6a7a1d8269ad6cba12bd83e6b4ffe5
+Generated focused C SHA-256: ec3955c4022d372156afc6d72fc85d02fc50295cc52bb506d03e6500e5bce1f6
+
+The generated measure uses wordwise complements and computes each successive
+cost through the checked revision primitive. next_cost matches Refused before
+trying another successor. The primitive matches the low word maximum before
+incrementing low and matches the high word maximum before incrementing high.
+Comparison dispatches by explicit ordering; the public helper that accepts a
+supplied ordering is descriptive and cannot authenticate an admission.

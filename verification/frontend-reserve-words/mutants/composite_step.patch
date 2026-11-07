@@ -1,0 +1,5 @@
+--- a/FrontendReserveWords.bend
++++ b/FrontendReserveWords.bend
+@@ -49 +49 @@
+-    compare_cost(distance, three), compare_cost(distance, four)}
++    compare_cost(distance, three), compare_cost(distance, three)}

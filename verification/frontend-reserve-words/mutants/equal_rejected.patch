@@ -1,0 +1,5 @@
+--- a/FrontendReserveWords.bend
++++ b/FrontendReserveWords.bend
+@@ -30 +30 @@
+-    case R.Equal{}: Sufficient{}
++    case R.Equal{}: Insufficient{}

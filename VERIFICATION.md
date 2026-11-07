@@ -82,6 +82,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [wide-word reserve arithmetic record](verification/frontend-reserve-words/README.md)
+checks supplied two-word count thresholds, including composite attenuation. It
+does not count handles, authenticate a state or authorize a transition.
+
 The [synthetic cleanup-reserve record](verification/frontend-cleanup-reserve/README.md)
 checks bounded open-handle counting and two-word capacity arithmetic. It does
 not authenticate a state, perform frontend mutations or qualify a host.

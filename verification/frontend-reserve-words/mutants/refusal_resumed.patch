@@ -1,0 +1,5 @@
+--- a/FrontendReserveWords.bend
++++ b/FrontendReserveWords.bend
+@@ -26 +26 @@
+-    case R.Refused{revision}: R.Refused{revision}
++    case R.Refused{revision}: R.Advanced{revision}

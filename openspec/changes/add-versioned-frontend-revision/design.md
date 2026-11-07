@@ -87,6 +87,13 @@ do not authenticate the list, establish handle validity, admit a real V2 state,
 perform a close or retirement, or reserve host resources. Over-cap lists are
 incomplete; existing V1 and V2 cleanup acceptance remain open.
 
+A separate [wide-word arithmetic reference](../../../FrontendReserveWords.bend)
+accepts a supplied pair representing an open count and checks O+1 through O+4,
+distinguishing unrepresentable costs from insufficient remaining distance. It
+does not count an original list, validate or authenticate state, reserve
+resources, or perform a binding operation. The [recorded checks](../../../verification/frontend-reserve-words/README.md)
+do not complete task 1.2 or task 2.6.
+
 Apply the same prospective inequality to every other successful mutation;
 inventory all current and future mutations. An unrepresentable or
 reserve-consuming non-cleanup mutation refuses unchanged, after the existing

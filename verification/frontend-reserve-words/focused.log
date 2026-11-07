@@ -1,0 +1,25 @@
+PASS: wide reserve independent 221-case small Nat oracle
+PASS: wide reserve empty last retirement capacity
+PASS: wide reserve composite rejects O plus three
+PASS: wide reserve composite accepts O plus four
+PASS: wide reserve active threshold crosses low word
+PASS: wide reserve attenuation threshold crosses low word
+PASS: wide reserve allocation threshold crosses low word
+PASS: wide reserve composite threshold crosses low word
+PASS: wide reserve larger distance high word dominates smaller low word
+PASS: wide reserve smaller distance high word dominates larger low word
+PASS: wide reserve maximum representable four-step threshold
+PASS: wide reserve composite cost overflow distinct from shortage
+PASS: wide reserve allocation cost overflow
+PASS: wide reserve attenuation cost overflow
+PASS: wide reserve maximum count refuses every overflow
+PASS: wide reserve zero distance is insufficient not overflow
+PASS: wide reserve legacy revision unsupported
+PASS: wide reserve unknown revision unsupported
+PASS: wide reserve direct forged stage carry is checked
+PASS: wide reserve direct forged max stage refuses
+PASS: wide reserve direct forged legacy stage refuses
+PASS: wide reserve direct refused stage cannot resume
+PASS: wide reserve refused cost differs from shortage
+PASS: wide reserve incomparable direct distance cannot suffice
+PASS: wide reserve forged equal helper is descriptive only

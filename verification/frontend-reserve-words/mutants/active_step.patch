@@ -1,0 +1,5 @@
+--- a/FrontendReserveWords.bend
++++ b/FrontendReserveWords.bend
+@@ -48 +48 @@
+-  Measured{compare_cost(distance, one), compare_cost(distance, two),
++  Measured{compare_cost(distance, two), compare_cost(distance, two),
