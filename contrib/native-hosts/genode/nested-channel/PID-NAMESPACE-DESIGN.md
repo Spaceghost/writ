@@ -34,7 +34,7 @@ On this host, a read-only `bwrap --version` reported 0.13.0, and
 `kernel.unprivileged_userns_clone` read as 1. These observations do not verify
 binary provenance, kernel configuration, namespace creation, LSM permissions,
 or future availability. The source tag is a reference, not proof that the
-installed binary was built from it. No namespace was created for this record.
+installed binary was built from it. No namespace was created for this record. The subsequent [source-backed ownership review](OWNERSHIP-SOURCE-REVIEW.md) narrows the PID-1 identity case, identifies an early startup gap, and records a still-unproven guard architecture.
 
 ## Conditions a future supervisor must prove
 
