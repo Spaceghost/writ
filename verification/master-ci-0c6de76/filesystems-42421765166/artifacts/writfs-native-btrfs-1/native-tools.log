@@ -1,0 +1,207 @@
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:6 https://packages.microsoft.com/ubuntu/24.04/prod noble InRelease [3600 B]
+Hit:2 http://azure.archive.ubuntu.com/ubuntu noble InRelease
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates InRelease [126 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-backports InRelease [126 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-security InRelease [126 kB]
+Get:7 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 Packages [1425 kB]
+Get:8 http://azure.archive.ubuntu.com/ubuntu noble-updates/main Translation-en [313 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 Packages [1711 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe Translation-en [344 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted amd64 Packages [1840 kB]
+Get:12 http://azure.archive.ubuntu.com/ubuntu noble-updates/restricted Translation-en [420 kB]
+Get:13 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse amd64 Packages [50.7 kB]
+Get:14 http://azure.archive.ubuntu.com/ubuntu noble-updates/multiverse Translation-en [14.3 kB]
+Get:15 https://packages.microsoft.com/ubuntu/24.04/prod noble/main amd64 Packages [743 kB]
+Get:16 https://packages.microsoft.com/ubuntu/24.04/prod noble/main arm64 Packages [675 kB]
+Get:17 http://azure.archive.ubuntu.com/ubuntu noble-security/main amd64 Packages [1157 kB]
+Get:18 http://azure.archive.ubuntu.com/ubuntu noble-security/main Translation-en [234 kB]
+Get:19 http://azure.archive.ubuntu.com/ubuntu noble-security/universe amd64 Packages [1228 kB]
+Get:20 http://azure.archive.ubuntu.com/ubuntu noble-security/universe Translation-en [248 kB]
+Get:21 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted amd64 Packages [1721 kB]
+Get:22 http://azure.archive.ubuntu.com/ubuntu noble-security/restricted Translation-en [394 kB]
+Get:23 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse amd64 Packages [45.4 kB]
+Get:24 http://azure.archive.ubuntu.com/ubuntu noble-security/multiverse Translation-en [12.4 kB]
+Fetched 13.0 MB in 1s (12.4 MB/s)
+Reading package lists...
+Reading package lists...
+Building dependency tree...
+Reading state information...
+btrfs-progs is already the newest version (6.6.3-1.1build2).
+btrfs-progs set to manually installed.
+kmod is already the newest version (31+20240202-2ubuntu7.2).
+kmod set to manually installed.
+coreutils is already the newest version (9.4-3ubuntu6.3).
+util-linux is already the newest version (2.39.3-9ubuntu6.6).
+udev is already the newest version (255.4-1ubuntu8.18).
+udev set to manually installed.
+The following additional packages will be installed:
+  libclang-common-19-dev libclang-cpp19 libclang1-19 libnvpair3linux
+  libuutil3linux libzfs4linux libzpool5linux llvm-19-linker-tools
+Suggested packages:
+  clang-19-doc wasi-libc nfs-kernel-server samba-common-bin zfs-initramfs
+  | zfs-dracut
+Recommended packages:
+  llvm-19-dev libclang-rt-19-dev zfs-zed
+The following NEW packages will be installed:
+  clang-19 libclang-common-19-dev libclang-cpp19 libclang1-19 libnvpair3linux
+  libuutil3linux libzfs4linux libzpool5linux llvm-19-linker-tools
+  zfsutils-linux
+0 upgraded, 10 newly installed, 0 to remove and 27 not upgraded.
+Need to get 27.0 MB of archives.
+After this operation, 133 MB of additional disk space will be used.
+Get:1 file:/etc/apt/apt-mirrors.txt Mirrorlist [144 B]
+Get:2 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libnvpair3linux amd64 2.2.2-0ubuntu9.5 [62.4 kB]
+Get:3 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libuutil3linux amd64 2.2.2-0ubuntu9.5 [53.4 kB]
+Get:4 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libzfs4linux amd64 2.2.2-0ubuntu9.5 [226 kB]
+Get:5 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 libzpool5linux amd64 2.2.2-0ubuntu9.5 [1397 kB]
+Get:6 http://azure.archive.ubuntu.com/ubuntu noble-updates/main amd64 zfsutils-linux amd64 2.2.2-0ubuntu9.5 [551 kB]
+Get:7 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-cpp19 amd64 1:19.1.1-1ubuntu1~24.04.2 [14.3 MB]
+Get:8 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang-common-19-dev amd64 1:19.1.1-1ubuntu1~24.04.2 [743 kB]
+Get:9 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 llvm-19-linker-tools amd64 1:19.1.1-1ubuntu1~24.04.2 [1314 kB]
+Get:10 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 libclang1-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [8272 kB]
+Get:11 http://azure.archive.ubuntu.com/ubuntu noble-updates/universe amd64 clang-19 amd64 1:19.1.1-1ubuntu1~24.04.2 [78.9 kB]
+Fetched 27.0 MB in 1s (19.6 MB/s)
+Selecting previously unselected package libnvpair3linux.
+(Reading database ...
+(Reading database ... 5%
+(Reading database ... 10%
+(Reading database ... 15%
+(Reading database ... 20%
+(Reading database ... 25%
+(Reading database ... 30%
+(Reading database ... 35%
+(Reading database ... 40%
+(Reading database ... 45%
+(Reading database ... 50%
+(Reading database ... 55%
+(Reading database ... 60%
+(Reading database ... 65%
+(Reading database ... 70%
+(Reading database ... 75%
+(Reading database ... 80%
+(Reading database ... 85%
+(Reading database ... 90%
+(Reading database ... 95%
+(Reading database ... 100%
+(Reading database ... 215960 files and directories currently installed.)
+Preparing to unpack .../0-libnvpair3linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Unpacking libnvpair3linux (2.2.2-0ubuntu9.5) ...
+Selecting previously unselected package libuutil3linux.
+Preparing to unpack .../1-libuutil3linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Unpacking libuutil3linux (2.2.2-0ubuntu9.5) ...
+Selecting previously unselected package libzfs4linux.
+Preparing to unpack .../2-libzfs4linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Unpacking libzfs4linux (2.2.2-0ubuntu9.5) ...
+Selecting previously unselected package libzpool5linux.
+Preparing to unpack .../3-libzpool5linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Unpacking libzpool5linux (2.2.2-0ubuntu9.5) ...
+Selecting previously unselected package zfsutils-linux.
+Preparing to unpack .../4-zfsutils-linux_2.2.2-0ubuntu9.5_amd64.deb ...
+Unpacking zfsutils-linux (2.2.2-0ubuntu9.5) ...
+Selecting previously unselected package libclang-cpp19.
+Preparing to unpack .../5-libclang-cpp19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package libclang-common-19-dev:amd64.
+Preparing to unpack .../6-libclang-common-19-dev_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package llvm-19-linker-tools.
+Preparing to unpack .../7-llvm-19-linker-tools_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package libclang1-19.
+Preparing to unpack .../8-libclang1-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Selecting previously unselected package clang-19.
+Preparing to unpack .../9-clang-19_1%3a19.1.1-1ubuntu1~24.04.2_amd64.deb ...
+Unpacking clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libnvpair3linux (2.2.2-0ubuntu9.5) ...
+Setting up libclang1-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libclang-common-19-dev:amd64 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up llvm-19-linker-tools (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libuutil3linux (2.2.2-0ubuntu9.5) ...
+Setting up libzpool5linux (2.2.2-0ubuntu9.5) ...
+Setting up libclang-cpp19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up libzfs4linux (2.2.2-0ubuntu9.5) ...
+Setting up clang-19 (1:19.1.1-1ubuntu1~24.04.2) ...
+Setting up zfsutils-linux (2.2.2-0ubuntu9.5) ...
+insmod /lib/modules/7.0.0-1017-azure/kernel/zfs/spl.ko.zst
+insmod /lib/modules/7.0.0-1017-azure/kernel/zfs/zfs.ko.zst
+Created symlink /etc/systemd/system/zfs-import.target.wants/zfs-import-cache.service → /usr/lib/systemd/system/zfs-import-cache.service.
+
+Created symlink /etc/systemd/system/zfs.target.wants/zfs-import.target → /usr/lib/systemd/system/zfs-import.target.
+
+Created symlink /etc/systemd/system/zfs-mount.service.wants/zfs-load-module.service → /usr/lib/systemd/system/zfs-load-module.service.
+
+Created symlink /etc/systemd/system/zfs.target.wants/zfs-load-module.service → /usr/lib/systemd/system/zfs-load-module.service.
+
+Created symlink /etc/systemd/system/zfs.target.wants/zfs-mount.service → /usr/lib/systemd/system/zfs-mount.service.
+
+Created symlink /etc/systemd/system/zfs.target.wants/zfs-share.service → /usr/lib/systemd/system/zfs-share.service.
+
+Created symlink /etc/systemd/system/zfs-volumes.target.wants/zfs-volume-wait.service → /usr/lib/systemd/system/zfs-volume-wait.service.
+
+Created symlink /etc/systemd/system/zfs.target.wants/zfs-volumes.target → /usr/lib/systemd/system/zfs-volumes.target.
+
+Created symlink /etc/systemd/system/multi-user.target.wants/zfs.target → /usr/lib/systemd/system/zfs.target.
+
+zfs-import-scan.service is a disabled or a static unit, not starting it.
+Processing triggers for man-db (2.12.0-4build2) ...
+Not building database; man-db/auto-update is not 'true'.
+Processing triggers for libc-bin (2.39-0ubuntu8.9) ...
+
+Running kernel seems to be up-to-date.
+
+No services need to be restarted.
+
+No containers need to be restarted.
+
+No user sessions are running outdated binaries.
+
+No VM guests are running outdated hypervisor (qemu) binaries on this host.
+Ubuntu clang version 19.1.1 (1ubuntu1~24.04.2)
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/lib/llvm-19/bin
+btrfs-progs v6.6.3
+filename:       /lib/modules/7.0.0-1017-azure/kernel/fs/btrfs/btrfs.ko.zst
+license:        GPL
+description:    B-Tree File System (BTRFS)
+alias:          devname:btrfs-control
+alias:          char-major-10-234
+alias:          fs-btrfs
+srcversion:     E143DF8AA39F69023F656E2
+depends:        libblake2b,raid6_pq,xor
+intree:         Y
+name:           btrfs
+retpoline:      Y
+vermagic:       7.0.0-1017-azure SMP preempt mod_unload modversions
+sig_id:         PKCS#7
+signer:         Build time autogenerated kernel key
+sig_key:        6A:79:12:C0:CB:48:3D:77:B0:33:73:E1:CE:C7:4C:2C:A2:16:EA:EF
+sig_hashalgo:   sha512
+signature:      25:5E:5C:18:84:BA:2D:83:B7:D5:C6:C5:14:78:58:1C:44:8A:C8:79:
+		C0:F3:1C:8F:85:E8:B9:17:C2:CE:A7:C6:BF:39:48:CE:B4:33:CB:E3:
+		D7:99:82:6F:85:15:E7:F3:BD:DF:75:53:9E:B8:40:C3:2D:B7:CA:5E:
+		E2:52:41:70:BD:C0:AC:96:5F:74:85:80:03:73:92:94:82:64:2E:76:
+		8E:00:B1:78:41:C6:37:BF:95:A2:89:FC:42:89:13:F8:5C:52:6C:93:
+		E1:95:70:9E:31:9A:8C:86:43:8B:58:61:49:67:6A:1B:10:32:0D:06:
+		8E:6E:98:93:80:03:86:C1:CB:C8:09:DE:22:E4:6D:78:37:C5:30:02:
+		91:C5:58:A3:E2:77:DB:24:DB:67:23:7C:19:E5:21:EC:51:84:B7:AE:
+		90:C8:A3:80:52:AF:73:C8:E9:4F:48:54:3E:5A:39:5C:0F:F5:A2:93:
+		69:76:4A:5D:C8:63:BE:01:EC:32:E4:54:3E:7A:DB:6A:73:EB:FD:21:
+		DD:8F:6B:CA:46:4B:C0:C0:8A:89:51:B9:4D:4B:A0:39:F3:E7:CF:38:
+		1F:08:3E:82:19:1F:F1:B1:65:FD:B2:F2:77:BF:3A:1F:68:73:65:86:
+		E9:EF:E1:53:6A:34:F0:CB:1F:7E:49:1D:7E:FF:E3:63:9D:4B:4C:8A:
+		C3:1E:A7:DF:FF:3C:DC:A1:0D:FF:1D:24:6C:3D:A4:84:FC:71:E3:67:
+		21:72:6F:07:D2:AE:B6:54:E4:1D:D6:9E:91:7F:FC:D2:EC:DD:96:D2:
+		04:39:8E:15:D9:06:05:60:51:E8:0B:49:40:26:CF:2F:4B:90:EB:CB:
+		1B:30:B2:1D:23:88:A7:72:20:8E:A0:C2:11:DE:99:81:86:38:5B:33:
+		98:1F:26:A5:1F:2C:C5:0B:7D:87:8F:68:B3:E7:98:88:3D:9C:F9:50:
+		75:EB:8B:15:38:4C:25:92:A1:B3:11:75:74:D4:28:F0:8C:69:49:ED:
+		81:D9:7A:86:00:E3:96:C5:33:B6:7B:3E:CB:2D:80:7E:0C:A8:91:D3:
+		37:C4:95:43:CE:A4:F0:36:7F:AB:10:BC:17:0F:D5:B6:96:19:A5:35:
+		37:B4:CF:00:5A:88:11:BA:14:AF:0B:D3:90:F9:0F:E9:0A:5F:75:62:
+		E7:19:1A:C1:4D:06:78:96:37:43:79:12:77:47:24:64:95:9E:D1:8C:
+		DE:F5:A6:8B:33:F3:B6:5C:64:A4:80:44:5F:DB:1D:E9:B7:9D:19:F2:
+		64:72:7B:AE:F8:A3:D0:68:EE:B6:96:E4:88:73:3C:67:EC:72:36:76:
+		0B:4A:34:46:64:2C:26:D7:84:B2:3E:0E
