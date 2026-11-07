@@ -50,7 +50,10 @@ returned `ALL PROOFS CHECK` for `bend PROOF.bend --verdict`. These are the 36
 existing driver laws, not a proof of the comparator or planner integration.
 Strict OpenSpec validation passed. `candidate-*` files retain the outputs;
 `bend-source-sha256.txt` identifies the tested Bend inputs. These are local
-observations, not process attestation. Optimized native CPU and platform CI for
-this later regression remain unrun pending independent review; historical
-results for other sources do not test it. No protected-host qualification,
-authenticated planner, or acceptance claim follows from these tests.
+observations, not process attestation. After independent review, exact source
+`c5a02c7` passed a separate [optimized native CPU run](../planner-comparator-native-c5a02c7/README.md)
+and scoped [platform CI](../planner-comparator-ci-c5a02c7/README.md); the Linux
+protected-setup refusal and Genode clock warnings remain recorded there.
+Historical results for other sources do not test this regression. No
+protected-host qualification, authenticated planner, or acceptance claim
+follows from these tests.
