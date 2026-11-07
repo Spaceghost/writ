@@ -1,0 +1,21 @@
+from pathlib import Path
+import subprocess,os,json,hashlib
+root=Path('/tmp/writ-byte-range-mutation-scratch');out=Path('/tmp/writ-byte-range-mutants/replay');out.mkdir(exist_ok=True);source=root/'HostWire.bend';base=source.read_text();bend='/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend';env=os.environ.copy();env['BEND_NO_TELEMETRY']='1'; tests=['HostWireTests.bend','PlannerEnvelopeTests.bend']; changed={n:(root/n).read_bytes() for n in tests}; original={n:subprocess.check_output(['git','show','HEAD:'+n],cwd=root) for n in tests}; results=[]
+try:
+ for phase in ['before','after']:
+  for n in tests:(root/n).write_bytes((original if phase=='before' else changed)[n])
+  for label in ['baseline','prefix_only','skip_final']:
+   source.write_text(base)
+   if label!='baseline':subprocess.run(['git','apply','--unidiff-zero',str(out.parent/(label+'.patch'))],cwd=root,check=True)
+   sh=hashlib.sha256(source.read_bytes()).hexdigest()
+   for test in tests:
+    stem=phase+'-'+label+'-'+test.removesuffix('.bend')
+    for backend in ['bend','node']:
+     if backend=='bend':cmd=[bend,test]
+     else:
+      js='/tmp/writ-byte-range-replay.js'; c=subprocess.run([bend,test,'-o',js],cwd=root,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120);assert c.returncode==0,(stem,c.stderr);cmd=['node',js]
+     p=subprocess.run(cmd,cwd=root,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=120); (out/(stem+'-'+backend+'.stdout')).write_bytes(p.stdout);(out/(stem+'-'+backend+'.stderr')).write_bytes(p.stderr);ls=(p.stdout+b'\n'+p.stderr).decode().splitlines();r={'phase':phase,'mutant':label,'suite':test,'backend':backend,'exit':p.returncode,'passes':sum(x.startswith('PASS') for x in ls),'failures':[x for x in ls if x.startswith('FAIL:')],'source_sha256':sh};results.append(r);print(json.dumps(r),flush=True)
+finally:
+ source.write_text(base)
+ for n in tests:(root/n).write_bytes(changed[n])
+(out/'results.json').write_text(json.dumps(results,indent=2)+'\n')

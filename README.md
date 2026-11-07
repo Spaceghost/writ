@@ -112,9 +112,9 @@ See the [backend guide](writfs/README.md) and its
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
-native CPU backends**. The 2,224-check suite adds 118 synthetic Linux monitor checks, five
+native CPU backends**. The 2,226-check suite adds 118 synthetic Linux monitor checks, five
 HostWire bounds and error-order checks, 37 synthetic handoff checks, 60
-synthetic planner-envelope codec checks, one additional N48 boundary regression and 61 plan-comparison checks. The codec produces untrusted descriptions;
+synthetic planner-envelope codec checks, one additional N48 boundary regression, 61 plan-comparison checks and two byte-range checks. The codec produces untrusted descriptions;
 it does not implement a planner endpoint or admission. The
 handoff model does not establish a native Windows handoff or protected-host
 confinement; see the verification record for backend-specific results.
