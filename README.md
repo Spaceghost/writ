@@ -120,8 +120,9 @@ handoff model does not establish a native Windows handoff or protected-host
 confinement; see the verification record for backend-specific results.
 Physical GPU execution was observed for specific workloads on one RTX 4090 host;
 the [GPU evidence](verification/gpu-validation-hosts.md) does not establish
-device isolation, and the loaded-host timings are not representative. Independent
-Lean kernel verification has not been established.
+device isolation, and the loaded-host timings are not representative. A
+[Lean-built BendTT kernel verdict](verification/lean-verdict-be649f6/README.md)
+checked the 36 named laws at source `be649f6`; it does not prove the whole system.
 
 This is an executable security library and protocol model. Real POSIX devices,
 worker confinement, authenticated grant issuance, durable authorized publication, payment

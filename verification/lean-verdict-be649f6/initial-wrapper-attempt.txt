@@ -1,0 +1,5 @@
+Before the successful builds, the initial attempt wrapped Lean with
+/usr/bin/time. The wrapper was absent; no Lean process started.
+Captured command result: exit 127
+timeout: failed to run command ‘/usr/bin/time’: No such file or directory
+The build was retried without that timing wrapper.

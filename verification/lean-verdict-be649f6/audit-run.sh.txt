@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -u
+record_dir=/tmp/writ-lean-verdict-evidence/verification/lean-verdict-be649f6
+kernel_dir=/tmp/writ-lean-434-isolated/kernel-audit
+lean_bin=/tmp/writ-lean-434-isolated/lean-4.34.0-linux/bin
+bend_bin=/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend
+{
+  date -u '+start_utc=%Y-%m-%dT%H:%M:%SZ'
+  printf 'source_commit='; git -C /tmp/writ-lean-verdict-evidence rev-parse HEAD
+  printf 'kernel_source_before='; sha256sum "$kernel_dir/bendtt.lean"
+} > "$record_dir/audit-observations.txt"
+cd "$kernel_dir" || exit 90
+printf '%s\n' 'timeout 1200 /tmp/writ-lean-434-isolated/lean-4.34.0-linux/bin/lean -c bendtt.c bendtt.lean' >> "$record_dir/audit-observations.txt"
+timeout 1200 "$lean_bin/lean" -c bendtt.c bendtt.lean > "$record_dir/lean-compile.stdout" 2> "$record_dir/lean-compile.stderr"
+compile_result=$?
+printf 'lean_compile_exit=%s\n' "$compile_result" >> "$record_dir/audit-observations.txt"
+if [ "$compile_result" -ne 0 ]; then exit "$compile_result"; fi
+printf '%s\n' 'timeout 1200 /tmp/writ-lean-434-isolated/lean-4.34.0-linux/bin/leanc -O3 -DNDEBUG bendtt.c -o bendtt' >> "$record_dir/audit-observations.txt"
+timeout 1200 "$lean_bin/leanc" -O3 -DNDEBUG bendtt.c -o bendtt > "$record_dir/leanc.stdout" 2> "$record_dir/leanc.stderr"
+link_result=$?
+printf 'leanc_exit=%s\n' "$link_result" >> "$record_dir/audit-observations.txt"
+if [ "$link_result" -ne 0 ]; then exit "$link_result"; fi
+printf 'kernel_binary_before=' >> "$record_dir/audit-observations.txt"
+sha256sum "$kernel_dir/bendtt" >> "$record_dir/audit-observations.txt"
+cd /tmp/writ-lean-verdict-evidence || exit 91
+printf '%s\n' 'BENDTT=/tmp/writ-lean-434-isolated/kernel-audit/bendtt TMPDIR=/tmp/writ-lean-434-isolated/tmp BEND_NO_TELEMETRY=1 timeout 1200 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend PROOF.bend --verdict' >> "$record_dir/audit-observations.txt"
+BENDTT="$kernel_dir/bendtt" TMPDIR=/tmp/writ-lean-434-isolated/tmp BEND_NO_TELEMETRY=1 timeout 1200 "$bend_bin" PROOF.bend --verdict > "$record_dir/verdict.stdout" 2> "$record_dir/verdict.stderr"
+verdict_result=$?
+printf 'verdict_exit=%s\n' "$verdict_result" >> "$record_dir/audit-observations.txt"
+printf 'kernel_binary_after=' >> "$record_dir/audit-observations.txt"
+sha256sum "$kernel_dir/bendtt" >> "$record_dir/audit-observations.txt"
+printf '%s\n' 'BENDTT=/bin/false TMPDIR=/tmp/writ-lean-434-isolated/tmp BEND_NO_TELEMETRY=1 timeout 120 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend PROOF.bend --verdict' >> "$record_dir/audit-observations.txt"
+BENDTT=/bin/false TMPDIR=/tmp/writ-lean-434-isolated/tmp BEND_NO_TELEMETRY=1 timeout 120 "$bend_bin" PROOF.bend --verdict > "$record_dir/negative.stdout" 2> "$record_dir/negative.stderr"
+negative_result=$?
+printf 'negative_control_exit=%s\n' "$negative_result" >> "$record_dir/audit-observations.txt"
+date -u '+end_utc=%Y-%m-%dT%H:%M:%SZ' >> "$record_dir/audit-observations.txt"
+test "$verdict_result" -eq 0 && test "$negative_result" -ne 0

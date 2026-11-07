@@ -1,0 +1,14 @@
+start_utc=2026-11-07T02:48:09Z
+source_commit=be649f6b0784e12e9b91e39028cb6f87b8629b70
+kernel_source_before=d7268ff461de974bd4cd875d9766c71c62ee6b2e6411b9bab84839870db68a80  /tmp/writ-lean-434-isolated/kernel-audit/bendtt.lean
+timeout 1200 /tmp/writ-lean-434-isolated/lean-4.34.0-linux/bin/lean -c bendtt.c bendtt.lean
+lean_compile_exit=0
+timeout 1200 /tmp/writ-lean-434-isolated/lean-4.34.0-linux/bin/leanc -O3 -DNDEBUG bendtt.c -o bendtt
+leanc_exit=0
+kernel_binary_before=e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18  /tmp/writ-lean-434-isolated/kernel-audit/bendtt
+BENDTT=/tmp/writ-lean-434-isolated/kernel-audit/bendtt TMPDIR=/tmp/writ-lean-434-isolated/tmp BEND_NO_TELEMETRY=1 timeout 1200 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend PROOF.bend --verdict
+verdict_exit=0
+kernel_binary_after=e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18  /tmp/writ-lean-434-isolated/kernel-audit/bendtt
+BENDTT=/bin/false TMPDIR=/tmp/writ-lean-434-isolated/tmp BEND_NO_TELEMETRY=1 timeout 120 /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend PROOF.bend --verdict
+negative_control_exit=1
+end_utc=2026-11-07T02:48:39Z
