@@ -5,6 +5,7 @@ import ./DlmTests.bend as Dlm
 import ./LedgerTests.bend as Ledger
 import ./LedgerBoundaryTests.bend as LedgerBoundary
 import ./NegotiationTests.bend as Negotiation
+import ./NegotiationRevisionTests.bend as NegotiationRevision
 import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
 import ./FrontendBoundaryTests.bend as FrontendBoundary
@@ -83,6 +84,7 @@ def main() -> IO(Unit):
     Ledger.main()
     LedgerBoundary.main()
     Negotiation.main()
+    NegotiationRevision.main()
     Backplane.main()
     Frontend.main()
     FrontendBoundary.main()

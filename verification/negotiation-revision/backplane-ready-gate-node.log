@@ -1,0 +1,17 @@
+PASS: neg revision exact supported limit and successor
+PASS: neg revision terminal direct move preserves session
+PASS: neg revision terminal direct finish preserves session
+PASS: neg revision terminal pin matching unchanged
+PASS: neg revision terminal pin stale unchanged
+PASS: neg revision terminal challenge matching unchanged
+PASS: neg revision terminal challenge stale unchanged
+PASS: neg revision terminal sample matching unchanged
+PASS: neg revision terminal sample stale unchanged
+PASS: neg revision terminal sample permit denied
+PASS: neg revision terminal approve matching unchanged
+PASS: neg revision terminal approve stale unchanged
+PASS: neg revision terminal reserve matching preserves both
+PASS: neg revision terminal reserve stale preserves both
+PASS: neg revision terminal start matching unchanged
+PASS: neg revision terminal start stale unchanged
+FAIL: neg revision terminal backplane matching preserves both

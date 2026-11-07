@@ -1159,3 +1159,8 @@ covers one unprivileged Linux 7.2.9 run of `SCM_PIDFD` attribution across an
 endpoint transfer, a reaped sender and fail-closed receive rejections, with 25
 repeats and a failing negative control. It is not an authenticated bridge,
 capable-sender test or host qualification.
+
+The [negotiation revision boundary record](verification/negotiation-revision/README.md)
+retains the pre-fix terminal-revision crashes and synthetic fail-closed controls.
+It does not authenticate sessions, implement a host, or by itself fix separate
+ledger arithmetic.

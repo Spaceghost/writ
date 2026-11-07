@@ -48,6 +48,13 @@ A negotiation transition SHALL advance only from its required stage at the exact
 - **WHEN** pinning supplies expected revision one
 - **THEN** the transition is rejected
 
+#### Scenario: Terminal revision cannot advance
+
+- **GIVEN** a session revision at the compiled Nat limit, 2^48−1
+- **WHEN** a transition is requested with a matching or stale expected revision
+- **THEN** it is rejected without changing the session or its ledger
+- **AND** a valid transition at 2^48−2 can advance once to 2^48−1
+
 #### Scenario: A sample cannot skip approval
 
 - **GIVEN** a Sampled session with otherwise valid budget evidence
