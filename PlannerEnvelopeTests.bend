@@ -270,6 +270,56 @@ def structurally_roundtrips(result: P.EncodeResult, expected: P.Proposal) -> Boo
     case P.Invalid{_}: False{}
     case P.Encoded{encoded}: decoded_equal(P.decode_words(encoded), expected)
 
+# Independent external words specify both occurrences in wire order; these
+# checks do not infer ordering from an encoder/decoder round trip.
+def external_sources() -> +List<U32>:
+  [1, 1, 44, 10, 0, 20, 0, 1, 2, 3, 4, 5, 6, 7, 8,
+   30, 0, 40, 0, 50, 0, 60, 0, 2, 70, 0, 71, 0, 90, 0, 91, 0,
+   80, 0, 81, 0, 11, 12, 13, 14, 15, 16, 17, 18, 2, 4, 0]
+
+def external_evidence() -> +List<U32>:
+  [1, 1, 58, 10, 0, 20, 0, 1, 2, 3, 4, 5, 6, 7, 8,
+   30, 0, 40, 0, 50, 0, 60, 0, 1, 70, 0, 71, 0,
+   80, 0, 81, 0, 11, 12, 13, 14, 15, 16, 17, 18, 2, 4, 2,
+   1, 1, 2, 3, 4, 5, 6, 7, 8, 1, 21, 22, 23, 24, 25, 26, 27, 28]
+
+def external_sources_reversed() -> +List<U32>:
+  [1, 1, 44, 10, 0, 20, 0, 1, 2, 3, 4, 5, 6, 7, 8,
+   30, 0, 40, 0, 50, 0, 60, 0, 2, 90, 0, 91, 0, 70, 0, 71, 0,
+   80, 0, 81, 0, 11, 12, 13, 14, 15, 16, 17, 18, 2, 4, 0]
+
+def external_evidence_reversed() -> +List<U32>:
+  [1, 1, 58, 10, 0, 20, 0, 1, 2, 3, 4, 5, 6, 7, 8,
+   30, 0, 40, 0, 50, 0, 60, 0, 1, 70, 0, 71, 0,
+   80, 0, 81, 0, 11, 12, 13, 14, 15, 16, 17, 18, 2, 4, 2,
+   1, 21, 22, 23, 24, 25, 26, 27, 28, 1, 1, 2, 3, 4, 5, 6, 7, 8]
+
+def external_source_proposal() -> P.Proposal:
+  extended([obj(), P.ObjectRef{P.N48{90, 0}, P.N48{91, 0}}], [])
+
+def external_evidence_proposal() -> P.Proposal:
+  extended([obj()], [P.EvidenceRef{1, id()},
+    P.EvidenceRef{1, P.Id256{21, 22, 23, 24, 25, 26, 27, 28}}])
+
+def external_source_reversed_proposal() -> P.Proposal:
+  extended([P.ObjectRef{P.N48{90, 0}, P.N48{91, 0}}, obj()], [])
+
+def external_evidence_reversed_proposal() -> P.Proposal:
+  extended([obj()], [P.EvidenceRef{1, P.Id256{21, 22, 23, 24, 25, 26, 27, 28}},
+    P.EvidenceRef{1, id()}])
+
+def external_source_encode() -> Bool:
+  encode_is(P.encode(external_source_proposal()), external_sources())
+
+def external_source_decode() -> Bool:
+  decoded_equal(P.decode_words(external_sources()), external_source_proposal())
+
+def external_evidence_encode() -> Bool:
+  encode_is(P.encode(external_evidence_proposal()), external_evidence())
+
+def external_evidence_decode() -> Bool:
+  decoded_equal(P.decode_words(external_evidence()), external_evidence_proposal())
+
 def mixed() -> P.Proposal:
   P.Proposal{P.N48{4294967295, 65535}, P.N48{0, 0}, P.ManifestRef{P.Id256{10, 11, 12, 13, 14, 15, 16, 17}},
     P.Stamp{P.N48{1, 0}, P.N48{2, 65535}, P.N48{3, 0}}, P.N48{4, 0},
@@ -293,6 +343,14 @@ def max_n48_fields() -> P.Proposal:
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(encode_is(P.encode(example()), words()), "planner-envelope independent expected encoding")
+    Test.check(external_source_encode(), "planner-envelope external two-source frame encodes in order")
+    Test.check(external_source_decode(), "planner-envelope external two-source frame decodes in order")
+    Test.check(external_evidence_encode(), "planner-envelope external two-evidence frame encodes in order")
+    Test.check(external_evidence_decode(), "planner-envelope external two-evidence frame decodes in order")
+    Test.check(encode_is(P.encode(external_source_reversed_proposal()), external_sources_reversed()), "planner-envelope external reversed-source frame encodes in order")
+    Test.check(decoded_equal(P.decode_words(external_sources_reversed()), external_source_reversed_proposal()), "planner-envelope external reversed-source frame decodes in order")
+    Test.check(encode_is(P.encode(external_evidence_reversed_proposal()), external_evidence_reversed()), "planner-envelope external reversed-evidence frame encodes in order")
+    Test.check(decoded_equal(P.decode_words(external_evidence_reversed()), external_evidence_reversed_proposal()), "planner-envelope external reversed-evidence frame decodes in order")
     Test.check(reencode_is(P.decode_words(words()), words()), "planner-envelope canonical words")
     Test.check(valid_byte_roundtrip(P.encode_bytes(example())), "planner-envelope canonical bytes")
     Test.check(prefixes_words(words(), []), "planner-envelope every truncated word prefix")

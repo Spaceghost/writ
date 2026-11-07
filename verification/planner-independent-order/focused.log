@@ -1,0 +1,70 @@
+PASS: planner-envelope independent expected encoding
+PASS: planner-envelope external two-source frame encodes in order
+PASS: planner-envelope external two-source frame decodes in order
+PASS: planner-envelope external two-evidence frame encodes in order
+PASS: planner-envelope external two-evidence frame decodes in order
+PASS: planner-envelope external reversed-source frame encodes in order
+PASS: planner-envelope external reversed-source frame decodes in order
+PASS: planner-envelope external reversed-evidence frame encodes in order
+PASS: planner-envelope external reversed-evidence frame decodes in order
+PASS: planner-envelope canonical words
+PASS: planner-envelope canonical bytes
+PASS: planner-envelope every truncated word prefix
+PASS: planner-envelope every truncated byte prefix
+PASS: planner-envelope full request low word
+PASS: planner-envelope request high boundary
+PASS: planner-envelope manifest final word
+PASS: planner-envelope destination full word
+PASS: planner-envelope code final word
+PASS: planner-envelope request overflow rejected
+PASS: planner-envelope stamp overflow rejected
+PASS: planner-envelope source overflow rejected
+PASS: planner-envelope destination overflow rejected
+PASS: planner-envelope unknown version
+PASS: planner-envelope unknown kind
+PASS: planner-envelope incorrect declared length
+PASS: planner-envelope maximum declared length rejected before conversion
+PASS: planner-envelope no source rejected
+PASS: planner-envelope too many sources rejected
+PASS: planner-envelope unknown operation
+PASS: planner-envelope non atomic output
+PASS: planner-envelope too many evidence references
+PASS: planner-envelope trailing word
+PASS: planner-envelope byte alignment before range
+PASS: planner-envelope invalid byte value
+PASS: planner-envelope byte range rejects interior and final invalid values
+PASS: planner-envelope word cap before version
+PASS: planner-envelope byte cap before alignment and range
+PASS: planner-envelope very large word input
+PASS: planner-envelope very large byte input
+PASS: planner-envelope overlong source encoding
+PASS: planner-envelope overlong evidence encoding
+PASS: planner-envelope bounded far overlong source encoding
+PASS: planner-envelope bounded far overlong evidence encoding
+PASS: planner-envelope unsupported evidence tag
+PASS: planner-envelope maximum frame
+PASS: planner-envelope maximum bytes
+PASS: planner-envelope evidence reference exact frame
+PASS: planner-envelope evidence final word
+PASS: planner-envelope source order preserved
+PASS: planner-envelope duplicate sources preserved
+PASS: planner-envelope evidence order preserved
+PASS: planner-envelope duplicate evidence preserved
+PASS: planner-envelope unknown evidence precedes missing id
+PASS: planner-envelope truncated supported evidence
+PASS: planner-envelope version before kind
+PASS: planner-envelope source count length mismatch
+PASS: planner-envelope directly constructed high word rejected
+PASS: planner-envelope directly constructed empty sources rejected
+PASS: planner-envelope identical manifest and evidence references stay in distinct fields
+PASS: planner-envelope explicit independent little endian prefix
+PASS: planner-envelope all three supported operations
+PASS: planner-envelope all eight atomic output types
+PASS: planner-envelope full 48-bit maximum
+PASS: planner-envelope zero numeric identity
+PASS: planner-envelope operation error precedes output error
+PASS: planner-envelope maximal source count rejected before conversion
+PASS: planner-envelope maximal evidence count rejected before conversion
+PASS: planner-envelope independent little endian decode
+PASS: planner-envelope structural roundtrip mixed full identities and repeated evidence
+PASS: planner-envelope structural roundtrip preserves every maximum N48 high word

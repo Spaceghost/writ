@@ -1,0 +1,10 @@
+diff --git a/PlannerEnvelope.bend b/PlannerEnvelope.bend
+index 45084ba..37f79b6 100644
+--- a/PlannerEnvelope.bend
++++ b/PlannerEnvelope.bend
+@@ -208 +208 @@ def accept_sources(request: N48, expiry: N48, manifest: Id256, graph: N48, polic
+-    case GotObjects{sources, rest}: parse_dest_obj(request, expiry, manifest, graph, policy, authority, invocation, sources, rest)
++    case GotObjects{sources, rest}: parse_dest_obj(request, expiry, manifest, graph, policy, authority, invocation, List.reverse(&2, ObjectRef, sources), rest)
+@@ -394 +394 @@ def serialize(+sources_count: U32, +evidence_count: U32, proposal: Proposal) ->
+-      tail = {sources_count <> objects_words(sources, tail) : +List<U32>}
++      tail = {sources_count <> objects_words(List.reverse(&2, ObjectRef, sources), tail) : +List<U32>}

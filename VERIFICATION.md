@@ -87,9 +87,15 @@ The later [synthetic handoff regression](verification/handoff-stale-admission/RE
 adds two checks for stale admission evidence and denied retry, giving 2,263
 checks at that source. It does not establish native evidence freshness.
 
-Ten synthetic duplicate-object and duplicate-alias checks bring the current
-suite to 2,273; see the [binding regression record](verification/host-binding-duplicate-ids/README.md).
+Ten synthetic duplicate-object and duplicate-alias checks bring the suite to
+2,273 at their recorded source; see the [binding regression record](verification/host-binding-duplicate-ids/README.md).
 They test modeled state validation, not native identity or host qualification.
+
+The separately developed [planner order regression](verification/planner-independent-order/README.md)
+adds eight independent word-frame encode/decode checks, for 2,271 checks at
+its recorded source. It does not authenticate a proposal or implement an endpoint.
+The [integrated local checks](verification/planner-order-binding-combined/README.md)
+contain both sets, for 2,281 checks at `1e90104`.
 
 The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
 retains its exact-source outcomes, Linux setup refusal and Genode clock warning;

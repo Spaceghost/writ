@@ -1,0 +1,6 @@
+import Base
+import ./PlannerEnvelope.bend as P
+import ./PlannerEnvelopeTests.bend as T
+import ./Test.bend as Test
+def main() -> IO(Unit):
+  Test.check(T.decoded_equal(P.decode_words(T.external_evidence_reversed()), T.external_evidence_reversed_proposal()), "evidence reverse-decode")
