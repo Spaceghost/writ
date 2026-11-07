@@ -850,10 +850,11 @@ a321460f7d2fd459d4b5043eb769c2b4dbdbcbf5fcb28adbe401a166d5896a1a  openspec/chang
 03fcc96a3e27d0d94f8032dc816b8d9ec1d116c823073ae7bd35ba15532d6016  openspec/changes/add-freestanding-bend-runtime/tasks.md
 416272f0aa121d13234e2b6db837eaa9648f3158ed4d705349592e697f4eda8b  openspec/changes/add-genode-host/.openspec.yaml
 45741419001abd0a92f6ae63457e4d8647abcc61098daffa509e76dda1ab8832  openspec/changes/add-genode-host/design.md
-6b9166f5d2295ec52b998d0103f356d388b67a11beb67f8fcc6f93a4a18addb8  openspec/changes/add-genode-host/nested-routing-disposable-ci.md
+e7426ecc93e61957e0755839d059f576c716309bd9a623865392bda2acc53dfe  openspec/changes/add-genode-host/nested-routing-disposable-ci.md
 c704cbb7c3813e1974776a5d9cc9e08d859dbcb9e4ea76d2c7c4140d7293b5a9  openspec/changes/add-genode-host/nested-routing-first-slice.md
 0a84d26f03378c5dc404e1c21927db21426f8eadfc67f0ec4bac1fe83d600d3e  openspec/changes/add-genode-host/nested-routing-fixture-plan.md
 442e8d00839ea884c5b95d0f2779525754de0d687d64f73a12fba3ddc493ac6d  openspec/changes/add-genode-host/nested-routing-source-review.md
+927f617d68e727f182ad15078cab4f6de46d4e6f1ae4d13db145a6f054156428  openspec/changes/add-genode-host/nested-routing-streaming-log-design.md
 c01e27b367b2e4fa67f82496862087f3cc723d79a1c359dde0fbe56c81f4cf28  openspec/changes/add-genode-host/proposal.md
 5b5f4737427ae3fe42bce75a4f7d6fc7fb85f0ef9d4ba829b5fb009909b3e2ca  openspec/changes/add-genode-host/specs/genode-host/spec.md
 17f2603dbf31f4ba8c5bbc5c133b8ce9bc71ae86cab749e5f86efded23a9a019  openspec/changes/add-genode-host/tasks.md
