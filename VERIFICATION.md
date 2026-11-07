@@ -1,5 +1,10 @@
 # Verification record
 
+The [fafbbe2 automatic CI checkpoint](verification/master-ci-fafbbe2/README.md)
+retains passing Windows Node and native filesystem public fixtures alongside
+the strict Windows worker failure; Linux and Genode are pending at this
+checkpoint.
+
 The [b4e2e97 automatic CI checkpoint](verification/master-ci-b4e2e97/README.md)
 retains passing Windows Node and native filesystem public fixtures alongside
 the strict Windows worker failure, a standard Genode pass and a scoped Linux
