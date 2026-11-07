@@ -16,7 +16,10 @@ contrib/native-hosts; their native evidence is separate from core tests.
 ## Executable checks
 
 The [current isolated durable/proof preview](verification/durable-proof-current-preview/README.md)
-records the merged 2,481-check source and its current verification limits.
+records the 2,481-check source `c3a6092` and its verification limits. The
+later nested-channel fixture, overlay preparation and supervisor preflight
+tooling introduced on master were not inputs to those preview runs; no nested
+fixture execution or new host qualification is established.
 
 The planner envelope adds 60 synthetic codec checks to the 2,102-check master
 suite, for 2,162 checks at its recorded source. The earlier durable preview
@@ -29,6 +32,10 @@ The [earlier integration record](docs/superpowers/records/2026-11-06-durable-pub
 scopes the 2,444-check combined Bend/Node, Nix JavaScript, existing-law verdict,
 [native CPU](verification/durable-planner-current-native-25e7062/README.md)
 and [platform CI](verification/durable-planner-current-ci-25e7062/README.md).
+The [automatic Genode CI at `c14f125`](verification/master-ci-c14f125/README.md)
+passed scoped public checks and retained missing-clock warnings. It did not
+run the nested channel fixture or qualify a protected host.
+
 The [automatic master platform runs at `b18c0af`](verification/master-ci-b18c0af/README.md)
 passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 checks. **Strict Windows native failed** with incomplete byte-worker network,

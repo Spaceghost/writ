@@ -187,6 +187,62 @@ Upstream sources: [Genode 26.08](https://codeberg.org/genodelabs/genode/src/comm
 Genode's own source includes AGPLv3 components and separately licensed ports;
 QuickJS is MIT-licensed. Those upstream licenses are not replaced by this binding.
 
+## Experimental nested channel fixture
+
+The [nested R fixture](nested-channel/writ_bend_monitor_nested_accept.run)
+places the existing fixed-label public channel probe under a second `init` and
+expects the existing Bend monitor to commit the synthetic R request. The
+predicted `clients -> writ_client_r -> channel` label is a source-derived
+expectation; it has not been observed in a nested run. The
+[reviewed plan](../../../openspec/changes/add-genode-host/nested-routing-first-slice.md)
+describes the routes, quotas, source pins, negative control and evidence still
+needed. This is not a protected worker or a qualified host.
+
+To prepare the tracked sources and generated Bend C without running Genode,
+use a clean committed worktree and an absolute path to the pinned Bend 2.0.39
+executable:
+
+```sh
+contrib/native-hosts/genode/nested-channel/prepare-overlay.sh \
+  /tmp/writ-genode-nested-overlay.example /absolute/path/to/bend
+```
+
+The output must be a new direct `/tmp/writ-genode-nested-overlay.*` directory.
+It contains the external `writ-repo` overlay, generated C, and source, overlay
+and output hashes. The script clears inherited Git overrides, checks the Git
+top level, observes a clean source tree, and checks the HEAD and source hashes
+again after generation; these observations do not attest to
+the process or exclude concurrent changes between checks. A failed preparation
+is retained for inspection; remove only the caller's own output when finished.
+The standalone `tclsh contrib/native-hosts/genode/nested-channel/check-structure.tcl sample` check and its
+`wrong-label`, `wrong-byte` and `missing-exit` modes exercise the harness with
+synthetic logged text, not Genode or a native negative control.
+
+For a future reviewed run, use fresh external Genode source and build trees,
+the pinned toolchain and prepared libc, plus this overlay. Set the fresh
+base-linux build's repository list to include the overlay, `base`, `libports`
+and `gems`; set `BOARD` and `KERNEL` to `linux`, the toolchain prefix and a
+bounded make parallelism, and add `writ_bend_monitor_nested_accept` to the
+existing local-expect run rule from `scripts/genode/writ_hello/build.conf.fragment`.
+That fragment's shared paths and `-j16` are not suitable. Keep the generated C
+beside the overlay as prepared so the monitor target can find it; preserve the
+actual build/run commands, input hashes, logs and separate failing native
+negative control. The pinned Genode run tool can retry and its base-linux
+power-off fallback does not itself prove that descendants have exited. Before
+running, review a supervisor that creates and records a process group owned by
+that invocation, captures retries and cleanup status, and verifies retirement
+of that group's descendants on success, error and timeout. A bare process group
+cannot prove that escaped descendants are gone, and observed parent cgroup
+writability does not rule out migration. The [PID-namespace alternative](nested-channel/PID-NAMESPACE-DESIGN.md)
+is an unimplemented design with a separate synthetic test plan. The read-only
+`supervisor-preflight.py` probe accepts no workload and always reports incomplete.
+Report any run incomplete if cleanup cannot be verified. Never use global `core`
+or QEMU kills, overwrite shared caches or touch unrelated VMs.
+The helper's broad default route and diagnostic LOG remain present; the fixed
+client cannot vary its suffix, and this fixture establishes neither
+confinement nor original caller identity. Conflicting equally scored policies
+are not rejected by the existing shim; trusted configuration must avoid them.
+
 ## Source and trust inventory
 
 | Source | Responsibility and authority |
@@ -200,6 +256,7 @@ QuickJS is MIT-licensed. Those upstream licenses are not replaced by this bindin
 | `../runtime/genode/allocator_checks.{h,c}` and `allocator_probe.c` | Shared native/host allocator checks and the host sanitizer entry point; no service authority |
 | `src/test/writfs/`, `src/test/writfs_vfs/` | Native diagnostic clients; never a protected worker profile |
 | `run/` | Trusted supervisor topology, fixed public fixture, explicit ROM/service routes, and native completion gates |
+| `nested-channel/` | Experimental trusted nested-init topology, source staging and public fixture assertions; no policy, host qualification or identity attestation |
 | `build-and-run.sh`, workflow | Pinned inputs, cross-build packaging, fresh generated Bend artifacts, QEMU execution and evidence |
 
 Authorization, original policy/provenance, grant checking, state transitions,
