@@ -25,6 +25,11 @@ local and exact-source platform checks and retains their qualifications.
 The later [N48 mutation review](verification/planner-n48-mutants-dd3dac9/README.md)
 records the additional structural check and its Bend/Node results; earlier
 platform evidence does not test that later revision.
+At exact source `262a8d4`, the reviewed revision also passed an [optimized
+native CPU run](verification/planner-boundary-native-262a8d4/README.md) and
+scoped [Windows Node, Genode and Linux CI](verification/planner-boundary-ci-262a8d4/README.md).
+The Linux run retains an unsupported setup refusal; none qualifies a protected
+host or authenticated planner.
 
 The [automatic master runs at `60d6f6b`](verification/master-ci-60d6f6b/README.md)
 passed their scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS
