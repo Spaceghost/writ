@@ -37,8 +37,8 @@ The later [N48 mutation review](verification/planner-n48-mutants-dd3dac9/README.
 records the additional structural check and its Bend/Node results; earlier
 platform evidence does not test that later revision.
 The [combined preview record](verification/planner-boundary-comparator-preview.md)
-scopes the separate 2,223-check Bend/Node, Nix JavaScript and existing-law
-verdict results and links the [platform CI](verification/planner-boundary-comparator-ci-6985302/README.md).
+scopes the separate 2,223-check Bend/Node, Nix JavaScript, native CPU and
+existing-law verdict results and links the [platform CI](verification/planner-boundary-comparator-ci-6985302/README.md).
 At exact source `262a8d4`, the reviewed boundary revision also passed an
 [optimized native CPU run](verification/planner-boundary-native-262a8d4/README.md)
 and scoped [Windows Node, Genode and Linux CI](verification/planner-boundary-ci-262a8d4/README.md).
