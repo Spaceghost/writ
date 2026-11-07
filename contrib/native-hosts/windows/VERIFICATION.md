@@ -23,6 +23,17 @@ passed; the byte-worker network, clipboard and COM observations remained
 incomplete and received no restriction credit. Its separate no-data diagnostic
 is not a substitute. The cause is not yet established.
 
+## Separate no-data initialization observation
+
+The experimental standalone initialization diagnostic now has a separate
+optional build; it does not change the byte-worker gate. The earlier
+[Windows run 42313767360](../../../verification/windows-init-observation-42313767360/README.md)
+compiled and ran it at source `9b02fa5`, with ordinary controls and checked
+owned-resource cleanup. Its LPAC initialization errors are observations, not
+confinement denials. The [first build failure](../../../verification/windows-init-build-42313479154/README.md)
+is retained. Complete token equivalence, isolated control factors, and
+failure-path cleanup remain unverified; this evidence does not qualify a host.
+
 ## Prior detailed source and run
 
 - Tested source:
