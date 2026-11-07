@@ -20,6 +20,11 @@ is a proposal for independent review, not a claim of host qualification or a
 change to Writ authority rules.
 A later [first-slice patch plan](nested-routing-first-slice.md) confines new
 native fixture tooling to the approved contribution boundary and does not run it.
+The statements above about an unrun nested configuration describe this original
+proposal. A later [public route-control retry](../../../verification/genode-route-retry-42361441863/README.md)
+observed the predicted R label and a separate missing-route refusal. Both jobs
+remained incomplete with in-guest cleanup unverified; neither exercised the
+conflicting-policy cases below or established protected-host qualification.
 
 ## What the pinned source actually says
 
@@ -35,6 +40,7 @@ They do not attest to a future build or prove an observed route.
 | `repos/base/include/base/session_state.h:260–275` and `repos/base/include/base/service.h:333–350` | `e7eccd82145104a602d94eff78ccf25ae2fcc01b830065fbea20531e078126e3`; `16245ba41b16e75e861c6b32d3ad98457a7de885cf2c25a0ed0a584712d8d1c0` | `Server_args` replaces the outgoing argument label with the route's label; `Try_parent_service` forwards those arguments via the parent session call. |
 | `repos/os/src/lib/sandbox/utils.h:30–110` and `repos/os/src/lib/sandbox/route_model.h:253–276` | `0e00d79d326dd008ea3a487e4fbde93fa4f6184ec0841f3572564e400ad69d8f`; `493b42ea9881c365243bd6ab9b118a31a833b41c6246ce825bcef49483d3d979` | Scoped route selectors remove the direct-child prefix before comparing the child-supplied portion. Explicit service and wildcard route failure have different fallback behavior; configuration order and reachable targets matter. |
 | `repos/os/include/os/session_policy.h:35–143, 160–198` | `68a9a438c03601ebaf1ba44f1c39d39b214e1bc601b1c1a18ee7c108f0b806bb` | Server matching scores exact labels, prefixes and suffixes; equally scored later policies do not replace the first. A tie is not an ambiguity refusal. |
+| `repos/base/include/util/string.h:134–150, 190–205` | `37a46b286023ba1b113761e131e98f025380f9ade355548724d1dedd419d9740` | Span prefix matching compares bytes, including a successful zero-length prefix; the score logic trims values before matching. It does not enforce a component boundary. |
 | `repos/os/src/init/config.xsd` and `repos/os/run/tar_rom.run` | `8fbae1eb5894151e794a7b7b012227dd3490f5fa3fd98f4d4d844999eb3a0d50`; `4d7b6059850dd1d64c6754288ff84798eb996d727053d1387e97a25b788f93ff` | The schema and nested-init example show the relevant configuration shape. The example's broad fallback is not a confinement model. |
 
 The existing Writ client hardcodes `Writ_channel::Connection { _env,
@@ -130,6 +136,83 @@ order changes the selected subject. An adversarial test that expects the
 fail; the shim has no such duplicate-conflict check. No such test has been run.
 A future configuration validator or different native behavior would require its
 own design and review; this proposal does not implement or assume one.
+
+### Additional source finding: prefix scope and ambiguity veto
+
+This subsection is a read-only source finding at Writ source `ad5e5c0` and
+the pinned Genode commit above, not a runtime exploit or a new host result. The
+[legacy channel shim](../../../hosts/genode/shim/writ_mem.cc) has SHA-256
+`9d9d32d2402bd947c96a4632ae945c6825d1291a3ce97e5ac45b7d0349f71b5d`.
+Its `_subject` passes the trusted configuration and routed label to Genode's
+`with_matching_policy`, then checks whether the chosen policy has a `label` or
+`label_prefix` attribute and has a nonzero subject. It does not check that an
+attribute's trimmed prefix is nonempty. The pinned trim removes ASCII spaces,
+not arbitrary whitespace. An empty or space-only prefix becomes an empty span
+and matches every label; if such a policy is the selected best match, its
+nonzero configured subject can be used.
+A suffix-only or default winner and a zero subject still produce refusal, and a
+rejected winner is not a reason to fall back to a lower-scoring policy.
+
+Likewise, a configured `label_prefix="writ_client_r"` also matches a routed
+label beginning `writ_client_r_extra`, because the match is a byte prefix, not
+a component-name comparison. This is a possible trusted-configuration error,
+not a claim that the client can edit that configuration. The current
+[same-init runner](../../../scripts/genode/writ_bend_monitor/writ_bend_monitor.tcl)
+uses distinct R and S prefixes ending in ` ->`; the
+[nested fixture](../../../contrib/native-hosts/genode/nested-channel/writ_bend_monitor_nested_accept.run)
+uses one nonempty R prefix ending in that delimiter. Those specific policies do
+not instantiate the equal-score conflict or empty-prefix examples. The linked
+public retry tests R and removal of a route, not these hypothetical policies.
+Neither those observations nor this source review prove the nested remainder's
+actor identity, nondelegability, current generation, or confinement.
+
+For future independently reviewed work, a narrowly scoped native-fact
+ambiguity veto may refuse an ambiguous best-scoring configuration before
+channel allocation while continuing to route protected decisions through Bend.
+It must not introduce a native authorization or release engine, accept
+worker-supplied authority, or reinterpret a refused best match as permission to
+try a weaker one. A design must specify the treatment of equal-score identical
+subjects as well as conflicting/invalid subjects; calculate ambiguity for the
+actual strongest matching policies, including a stronger policy appearing after
+an earlier tie; and use the pinned scorer's actual semantics, not a guessed
+string equality. It must bound configuration and work, examine the same
+trusted configuration snapshot used to derive the subject, and handle malformed,
+missing or truncated values fail-closed. The trusted identity namespace,
+component-boundary format, empty prefix, and any influence of a client-selected
+suffix on subject choice remain separate design questions. This is an
+obligation for a future reviewed design, not an implemented veto or a decision
+that the demonstrated fixtures are a protected profile.
+
+The shim is existing legacy native code under `hosts/genode/shim/`, outside the
+approved new native-source exception at `contrib/native-hosts/`. Its location is
+not precedent to add new native code there. Any integration of a future guard
+needs a separately reviewed arrangement within the approved boundary and an
+updated source/trust inventory; this record changes no C++ or policy law.
+
+Planned synthetic controls, not yet executed, should name and distinguish:
+
+- `equal_best_conflicting_both_orders` and `equal_best_same_subject`: exercise
+  conflict order and the explicitly chosen duplicate semantics.
+- `later_stronger_clears_prior_tie` and `equal_best_exact_prefix_suffix`: check
+  complete pinned score ordering, including mixed selector forms.
+- `empty_or_space_only_prefix` and `sibling_byte_prefix`: test the namespace
+  rule against empty/space-only values and a longer sibling name, alongside the
+  delimiter-terminated current fixture.
+- `default_suffix_only_zero_no_fallback` and `unknown_overlong_config`: preserve
+  refusal and check malformed/configuration limits without selecting a weaker
+  mapping; test a supported valid unique match as a positive control.
+- `same_snapshot_and_bounded_scan`: exercise configuration snapshot consistency,
+  configured-size boundaries and over-limit rejection; synthetic controls alone
+  do not establish the native runtime's configuration lifetime or identity.
+
+Real-host evidence would additionally need a separately reviewed public-only
+run with exact source, framework, image and complete route/policy hashes;
+positive controls and conflicting-policy refusals in both orders; observed
+session-open/refusal and subject logs; and recorded exits, resource cleanup and
+failure scope. Actual actor/delegation authentication, reconfiguration and
+generation revalidation, mediation of every effect, and protected-input and
+release gates remain separate acceptance work. None is established by adding
+this source note or by the existing route-control pair.
 
 ## Review cases and remaining gaps
 
