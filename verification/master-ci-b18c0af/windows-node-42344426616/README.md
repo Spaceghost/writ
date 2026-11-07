@@ -1,0 +1,3 @@
+# Windows Node, automatic master CI
+
+[Run 42344426616](https://github.com/Spaceghost/writ/actions/runs/42344426616) succeeded at exact source `b18c0af917ac7bb6fdf4d5f9c02857a75f393d68`. Bend-generated JavaScript under Windows Node passed 2,261 core and 78 WritFS model checks, each recording exit status zero. The core output through its success sentinel, normalized to LF, has SHA-256 `012c789f9761c050961adcdde8ef4f689e3d1d3096cb272c359d5d5ff30cdf9b`. This is model execution, not protected-host qualification. Raw artifact-file and ZIP hashes are retained; generated JS stays outside the repository. Text copies are normalized, and the hash of the original workflow log is retained separately.
