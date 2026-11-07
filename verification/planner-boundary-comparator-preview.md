@@ -39,11 +39,11 @@ core and 70 mount checks on both JS and native plus scoped public canaries.
 Linux's unsupported Landlock setup was refused before input and admission;
 workflow success is not successful protected-worker setup.
 
-The separate optimized native CPU run at exact source `6985302` passed 2,223
-checks with the same output hash, using clang 23.1.1 and
-`+RTS --threads 4 --gpu off`. The 109 inventoried Bend source hashes still
-verified after the run. Generated sources and executable remained outside the
-checkout. This CPU run is not a GPU execution test. A subsequent mutation audit
+The separate [historical native CPU record](planner-comparator-native-6985302/README.md)
+retains the reported `6985302` run and its available logs. Its capture contains
+2,223 checks with the same output hash; the original process status and
+contemporaneous binary hash were not retained. This CPU run is not a GPU
+execution test. A subsequent mutation audit
 identified gaps in valid-high-word comparator test coverage; these passing
 results do not close that gap or establish a production defect.
 
