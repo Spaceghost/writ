@@ -15,6 +15,18 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The planner envelope adds 60 synthetic codec checks to the 2,102-check master
+suite, for 2,162 checks at its recorded source. This experimental preview also
+includes 220 durable-model checks, for 2,382 checks. Its reference-only
+descriptions do not authenticate identities or establish planner integration;
+see the [change traceability](openspec/changes/add-external-planner-adapters/traceability.md).
+Earlier evidence below remains tied to its own source and is not a claim that
+the combined preview ran in those historical environments.
+The [planner codec record](verification/planner-envelope-local.md) links its
+local and exact-source platform checks and retains their qualifications.
+The separate [three-way preview record](docs/superpowers/records/2026-11-06-durable-publication/planner-integration-preview.md)
+reports the 2,382-check combined Bend/Node run and its proof scope.
+
 A [Lean-built BendTT verdict](verification/lean-verdict-be649f6/README.md)
 passed for the 36 named laws in `PROOF.bend` at exact master source `be649f6`.
 A separate [verdict on combined preview `b95669b`](verification/durable-lean-verdict-b95669b/README.md)

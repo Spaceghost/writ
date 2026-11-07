@@ -8,6 +8,7 @@ import ./BackplaneTests.bend as Backplane
 import ./FrontendTests.bend as Frontend
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
+import ./PlannerEnvelopeTests.bend as PlannerEnvelope
 import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostHandoffTests.bend as HostHandoff
@@ -37,6 +38,7 @@ def main() -> IO(Unit):
     Frontend.main()
     HostBinding.main()
     HostWire.main()
+    PlannerEnvelope.main()
     HostIdentity.main()
     HostPrimitives.main()
     HostHandoff.main()

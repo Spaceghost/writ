@@ -113,11 +113,14 @@ See the [backend guide](writfs/README.md) and its
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
 native CPU backends**. This experimental preview combines 118 synthetic Linux
-monitor checks, five HostWire checks, 220 durable-model checks, and 37 synthetic
-handoff checks, for 2,322 checks. Earlier [2,285-check durable results](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md)
-and [2,102-check handoff results](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md)
-are scoped to their recorded sources and backends. Neither model establishes a
-native Windows handoff, protected-host confinement or a durable host service.
+monitor checks, five HostWire checks, 220 durable-model checks, 37 synthetic
+handoff checks, and 60 planner-envelope checks, for 2,382 checks. Earlier
+[2,285-check durable results](docs/superpowers/records/2026-11-06-durable-publication/integration-preview.md),
+[2,102-check handoff results](docs/superpowers/records/2026-11-06-windows-init/handoff-model-record.md),
+and [2,162-check planner results](verification/planner-envelope-local.md) are
+scoped to their recorded sources and backends. The codec has no planner endpoint
+or admission; the models do not establish a native Windows handoff,
+protected-host confinement or a durable host service.
 Physical GPU execution was observed for specific workloads on one RTX 4090 host;
 the [GPU evidence](verification/gpu-validation-hosts.md) does not establish
 device isolation, and the loaded-host timings are not representative. A

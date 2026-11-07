@@ -27,6 +27,12 @@ unsupported evidence kinds fail closed. Transport framing may vary by service;
 the canonical core facts and scope comparisons do not depend on JSON or a
 foreign language's object semantics.
 
+The deliberately narrower first slice and its test design are
+specified in [first-slice-envelope.md](first-slice-envelope.md). It does not
+enable an endpoint or complete this change's candidate, evidence, or authority
+integration. The supported codec subset and remaining gaps are tracked in
+[traceability.md](traceability.md).
+
 ### Planner descriptions remain untrusted
 
 An adapter accepts proposed values and identifiers. It resolves current source

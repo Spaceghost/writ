@@ -74,7 +74,7 @@ flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
 and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
 `examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
 library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
-binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 2322 lines
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 2382 lines
 beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
@@ -82,6 +82,7 @@ over `openspec/` (`openspec`). The earlier 2285-check integration preview passed
 offline Nix JavaScript check. At source 61ab2a4, the full Nix flake check
 also passed, including optimized native CPU; see the [integration evidence](../verification/durable-integration-61ab2a4/nix/README.md).
 The [2,322-check Nix JavaScript preview](../verification/durable-handoff-52e8e01/README.md) passed for source `52e8e01`; no full current flake check is claimed. The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` handoff model inputs, not the combined preview.
+The separate [2,162-check planner Nix JavaScript result](../verification/planner-envelope-local.md) covers source `b0c9863`, not this combined preview.
 The 2065-check Nix JavaScript check passed for
 source `73a8055`; the Nix native CPU check also passed with the same output.
 The earlier [2,065-check combined flake check](../verification/nix-combined-flake-check.log) for the `73a8055` implementation inputs passed all checks with evidence-only files staged. The historical artifacts below cover the previous
@@ -163,7 +164,7 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **2322 passing checks** and
+Each complete test run should report **2382 passing checks** and
 `ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-six declared laws about guards,
 preservation of denied state, grant issuance, host-contract denials, policy-aware audit, and executor rendezvous; it does
 not prove the whole system secure.
