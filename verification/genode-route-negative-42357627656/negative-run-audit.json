@@ -1,0 +1,23 @@
+{
+  "audit": "complete",
+  "fixture_assertions": "not_confirmed",
+  "raw": {
+    "bytes": 246347582,
+    "sha256": "a5451013b3ea0faa5853c6fc63470023a2c6807e37986afc07c3b010e631b938"
+  },
+  "compressed": {
+    "bytes": 2520515,
+    "sha256": "139235c89561aa7e3df6757cade6e295cbdc4836b1203267ff189dad0df0d083"
+  },
+  "child": {
+    "code": 2,
+    "signal": null
+  },
+  "matched_lines": [
+    true,
+    true,
+    true,
+    true,
+    false
+  ]
+}

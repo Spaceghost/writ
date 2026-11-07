@@ -1,0 +1,5 @@
+original.run bytes 4186 sha256 075f830a6054ca5ca2df61e4ed7ed8b3e778ee47bc39b6f4f474801edca77776
+actual.run bytes 2812 sha256 8e154b3b37322c795835829d6f413354bee94cdbb0e99e8ea7bb98f7a9cf054e
+installed-config.txt bytes 1668 sha256 e2f60b4d32db4ab16259b4e5da762cf4a17ff919aad86cb9e41061c87d27865a
+prior exact config bytes 1710 sha256 2255cb427b821bdb8516aef7c0d6fe53bfaa40b4a43f8549f3a97fc774738b22
+original fixed source and both config comparisons verified; actual terminal assertion differs as documented

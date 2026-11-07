@@ -1,0 +1,3 @@
+driver_exit=28
+log_capture_exit=0
+cleanup=unverified
