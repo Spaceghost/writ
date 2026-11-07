@@ -87,7 +87,8 @@ They test modeled state validation, not native identity or host qualification.
 The separately developed [planner order regression](verification/planner-independent-order/README.md)
 adds eight independent word-frame encode/decode checks, for 2,271 checks at
 its recorded source. It does not authenticate a proposal or implement an endpoint.
-The integrated suite contains both sets, for 2,281 checks.
+The [integrated local checks](verification/planner-order-binding-combined/README.md)
+contain both sets, for 2,281 checks at `1e90104`.
 
 The [58c7ffe platform CI record](verification/planner-composition-byte-ci-58c7ffe/README.md)
 retains its exact-source outcomes, Linux setup refusal and Genode clock warning;
