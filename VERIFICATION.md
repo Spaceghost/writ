@@ -15,6 +15,13 @@ contrib/native-hosts; their native evidence is separate from core tests.
 
 ## Executable checks
 
+The [automatic da1ac17 platform CI](verification/master-ci-da1ac17/README.md)
+passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
+checks. Strict Windows native **failed** with incomplete byte-worker network,
+clipboard and COM observations. Linux protected setup was refused before input
+or admission; Genode retained missing-clock warnings. None qualifies a
+protected host.
+
 The [automatic e129c93 platform CI](verification/master-ci-e129c93/README.md)
 passed scoped Windows Node, Genode, Linux public-canary and Btrfs/ZFS fixture
 checks. Strict Windows native **failed** with incomplete byte-worker network,
