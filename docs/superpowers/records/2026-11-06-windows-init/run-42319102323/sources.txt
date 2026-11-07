@@ -1,0 +1,96 @@
+
+Algorithm : SHA256
+Hash      : 66DEB76C22A2A91621DBE289CF629154B2CE4E060312EA54B08C39BF5218EE68
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_observer.c
+
+Algorithm : SHA256
+Hash      : 406D3BCEFA78EBEE0C7C44CB62695FD1B9922FF4BB13BB39A6908B5084D790A9
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_control.c
+
+Algorithm : SHA256
+Hash      : 576DF99140097982CB0B1E91B50AE6C5922614A0AD70532763C60E0E5ABD24CA
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_progress.c
+
+Algorithm : SHA256
+Hash      : C7EF253B49AE343E3707ED6C9CD690BE8143C72F6B5899401826DD647C973452
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_progress.h
+
+Algorithm : SHA256
+Hash      : 9FCB957F5263A1ADC2533E46B6002126739DDAD3466B23C7AB568BD1C9797331
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_progress_test.c
+
+Algorithm : SHA256
+Hash      : 80C648D448C191CD5DA22141FC5FE13A7F979D560E40EB061C36419E834C12B9
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_pipe.c
+
+Algorithm : SHA256
+Hash      : 8DD6718867B00093406244C89B8B68A1CB63630D09935063B3EFEC18BC924EAA
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_pipe.h
+
+Algorithm : SHA256
+Hash      : 96B9AA37657508A2FEB2B795E8FE9F02F720E829E48F368D71B95A5ECDF7C847
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_pipe_test.c
+
+Algorithm : SHA256
+Hash      : 783853F2C4E4C65BBB60704E793D9119A927F9D2F0010B863583F8C97F5583B8
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_init_run.ps1
+
+Algorithm : SHA256
+Hash      : 52BC11F9975C31AB26620AD7F7443A11B74678E7688FA3F19A89701DC90F1879
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_lpac_progress.c
+
+Algorithm : SHA256
+Hash      : CBF766149E6B7DAE2A461DAF37C08B725338E31DA28CFEFA10E0056E176BDB5B
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_lpac_progress.h
+
+Algorithm : SHA256
+Hash      : 01654BBDB13A54349A50FAF0B98C1A6994EDF9B1518D81149A54AF76E0BA5D65
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_table.c
+
+Algorithm : SHA256
+Hash      : 068F97B433C74242FD1E4228A229FDF7297C2D5C8ED16383C4B24B322D153830
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_table.h
+
+Algorithm : SHA256
+Hash      : E79013C25FCBF0F326D7D833C25155CAE2CA7435AF7CD0C785D7FC1EE5043FA7
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_table_test.c
+
+Algorithm : SHA256
+Hash      : 35F567FFE0C1F1B6B7862A7CED0B381865C52163B98FFA7DE80EE7DA01153974
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\pss_progress.h
+
+Algorithm : SHA256
+Hash      : EC63EEFEE417C7968102BE8D4ED71CDE998F46B11564FF4B1BC9DAE11EA86327
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_child.c
+
+Algorithm : SHA256
+Hash      : 314082B9994AFE925CE14F46785E2C2CE3B72551794B7742778E20330361ECF6
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_report.h
+
+Algorithm : SHA256
+Hash      : 71FAC8416C9ED4572E22ED37A4A2B4A9C0F8BEACBCCEB40DC3F9B4A6B18B0AC6
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init_worker.c
+
+Algorithm : SHA256
+Hash      : 1A1EB92243E54DBF41D1E63E8FCFA0B08FB76D245DDE0B3C86502C44DABF3409
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\worker.c
+
+Algorithm : SHA256
+Hash      : 1B54A1DE65A1DCD9B50D00D544AF715C64AE14CC02C8AF63A047E1A565739A99
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\worker.h
+
+Algorithm : SHA256
+Hash      : BBDD829DA75A4A1002F774F08BA1C6192573F245F159395761C7B9B968642627
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\isolation.c
+
+Algorithm : SHA256
+Hash      : 560307AC256CBAFE88D98226BF6754CE353F18EE2EBA51A408E572FBA5D02A70
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\isolation.h
+
+Algorithm : SHA256
+Hash      : 1926FD6B8AB59A9B91210A6FDE3B7D340786E1B110FE3BB52DEEA89796707C05
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\probe.h
+
+Algorithm : SHA256
+Hash      : 851782FB1642E329375238B6E8E2153A0EE3B1AC8B7B8D897E2F72FC9CA3B89D
+Path      : D:\a\writ\writ\contrib\native-hosts\windows\init-diagnostic\CMakeLists.txt

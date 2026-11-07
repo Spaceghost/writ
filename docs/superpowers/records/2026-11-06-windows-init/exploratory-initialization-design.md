@@ -1,6 +1,6 @@
 # Proposed exploratory no-data initialization experiments
 
-Status: reviewed design with the first same-lifetime slice implemented for source/workflow review; no experiment below has been built or run on Windows. The actual byte-worker profile and strict native gate are unchanged. Any contrast that requires an independently verified fact we cannot obtain, including the full pre-resume environment, remains **inconclusive as a controlled comparison** even if its raw observations differ.
+Status: reviewed design with one fixed-sequence [same-lifetime observation](run-42319102323/README.md) completed on Windows. The factor-variation experiments below remain unimplemented and unrun. The actual byte-worker profile and strict native gate are unchanged. Any contrast that requires an independently verified fact we cannot obtain, including the full pre-resume environment, remains **inconclusive as a controlled comparison** even if its raw observations differ.
 
 The separate [no-data initialization run](run-42313767360/README.md) reproduced Winsock `10107`, USER32 `1114` and OLE32 `1359` in a zero-capability, Win32k-disabled LPAC; its ordinary controls succeeded. The separate [LPAC PSS run](run-42317376618/README.md) observed two known handle values and normal cleanup in a never-resumed LPAC child. These are different processes and executables: neither shows that the PSS-observed child reached the initializers. The earlier real byte-worker run remains incomplete and receives no confinement credit. None of these results establishes a cause.
 
@@ -46,8 +46,7 @@ one-pipe table and progress classifiers, a shared exact-report/EOF reader,
 and a fixed ordinary/LPAC/LPAC/ordinary workflow sequence. No capability,
 Win32k or WFP factor variation is implemented. The workflow tests the pipe
 reader with Windows synthetic complete, truncated, trailing-byte and open-writer
-cases before running observations; those Windows tests and the observer have
-not been executed. Portable tests cover table and progress classification only;
+cases before running observations; those Windows tests passed and the fixed sequence completed in [run 42319102323](run-42319102323/README.md). Portable tests cover table and progress classification only;
 native adapter API/cleanup fault injection remains unimplemented.
 
 The script's build/log paths use the trusted GitHub hosted runner's

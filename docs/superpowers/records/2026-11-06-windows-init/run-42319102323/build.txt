@@ -1,0 +1,55 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_observer.c
+  pss_init_progress.c
+  pss_lpac_progress.c
+  pss_init_pipe.c
+  pss_table.c
+  init_worker.c
+  isolation.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-pss-init-build\writfs-pss-init-observer.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/init_worker.c')
+
+  Generating Code...
+  writfs-pss-init-observer.vcxproj -> D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-observer.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_control.c
+  pss_init_progress.c
+  pss_init_pipe.c
+  init_worker.c
+  isolation.c
+D:\a\writ\writ\contrib\native-hosts\windows\worker.c(115,21): warning C4389: '!=': signed/unsigned mismatch [D:\a\_temp\windows-pss-init-build\writfs-pss-init-control.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/init_worker.c')
+
+  Generating Code...
+  writfs-pss-init-control.vcxproj -> D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-control.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  init_child.c
+  writfs-init-child.vcxproj -> D:\a\_temp\windows-pss-init-build\Release\writfs-init-child.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_table_test.c
+  pss_table.c
+  Generating Code...
+  writfs-pss-table-test.vcxproj -> D:\a\_temp\windows-pss-init-build\Release\writfs-pss-table-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_progress_test.c
+  pss_init_progress.c
+  Generating Code...
+  writfs-pss-init-progress-test.vcxproj -> D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-progress-test.exe
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/init-diagnostic/CMakeLists.txt
+  pss_init_pipe_test.c
+  pss_init_pipe.c
+  Generating Code...
+  writfs-pss-init-pipe-test.vcxproj -> D:\a\_temp\windows-pss-init-build\Release\writfs-pss-init-pipe-test.exe
