@@ -7,8 +7,10 @@ first patch can exercise this one public round trip with the existing monitor,
 client and Genode run machinery; it does not need a new native client or a
 change to Writ policy. The predicted nested label is not yet observed.
 
-This is a **patch plan only**. No fixture, build, host run, protected profile or
-new release path is created by this document. It is based on repository commit
+This document records the original **patch plan**. The experimental
+[fixture and preparation instructions](../../../contrib/native-hosts/genode/README.md#experimental-nested-channel-fixture)
+are now present; no nested host run or protected profile is established by
+their presence. The plan is based on repository commit
 `68392ecea45a4c771783903da1f9eb18083c201b` and the previously reviewed
 [pinned-source routing analysis](nested-routing-source-review.md). The
 [fixture design](nested-routing-fixture-plan.md) records q18 provenance,
@@ -60,7 +62,7 @@ source hashes, same-init evidence and the wider adversarial matrix.
    list the fixture, exact pre-existing inputs, trust boundary, external
    overlay/build/output locations, public-only logs, cleanup and unsupported
    cases. Update matching Genode design/traceability with the precise fixture
-   name and mark it **planned** until a real run is recorded. Do not check any
+   name and distinguish the implemented fixture from an actual run. Do not check any
    acceptance task or label a host qualified. Update the source manifest.
 3. Stage the new `.run` file as `run/writ_bend_monitor_nested_accept.run` in a
    **fresh external Genode repository overlay** together with verbatim copies

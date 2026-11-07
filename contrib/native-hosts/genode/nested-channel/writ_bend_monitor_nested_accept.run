@@ -1,0 +1,81 @@
+# Public synthetic R fixture. Native test configuration only; the Bend monitor,
+# fixed-label client and host shim are the existing unchanged components.
+# This is not evidence of a real actor, confinement or native publication.
+source [select_from_repositories run/writ_bend_monitor.tcl]
+
+# Only this trusted configuration supplies the identity prefix and subject.
+# The predicted nested label must be observed; a mismatch is a failed run.
+set policies {
+      + policy | label_prefix: clients -> writ_client_r -> | subject: 1}
+
+# The parent forwards explicit environment services and Writ_channel to the
+# nested init; the nested client receives only the listed services. LOG is for
+# synthetic public data. The generic boot helper still has a broad default
+# route for components without their own route, so this is not confinement.
+set clients {
++ start clients | caps: 1200 | ram: 16M
+  + binary init
+  + config
+  | + parent-provides
+  |   + service LOG
+  |   + service PD
+  |   + service CPU
+  |   + service ROM
+  |   + service RM
+  |   + service Timer
+  |   + service Writ_channel
+  | + start writ_client_r | caps: 200 | ram: 2M
+  |   + binary writ_channel_client
+  |   + route
+  |     + service Writ_channel | + parent
+  |     + service LOG | + parent
+  |     + service PD | + parent
+  |     + service CPU | + parent
+  |     + service ROM | + parent
+  |     + service RM | + parent
+  |     + service Timer | + parent
+  |   + config | session: 1 | expected_session: 6 | claimed_subject: 1 | expect_decision: 1 | expect_reason: 0 | delay_ms: 2000
+  + route
+    + service Writ_channel | + child writ_bend_monitor
+    + service Timer | + child timer
+    + service LOG | + parent
+    + service PD | + parent
+    + service CPU | + parent
+    + service ROM | + parent
+    + service RM | + parent
+}
+
+writ_bend_boot writ_bend_monitor 256M 1000 /dev/log \
+  "
+  + provides | + service Writ_channel" \
+  "
+    + writ_channel$policies" $clients [list app/writ_channel_client]
+
+# A nested client's exit is logged by its parent init. Do not classify a
+# startup/route/quota failure as a successful Bend denial or a passed test.
+run_genode_until {child "writ_client_r" exited with exit value .*\n} 122
+if {![regexp {child "writ_client_r" exited with exit value 0\r*\n} $output]} {
+  puts stderr "Error: nested client did not exit with value 0"
+  exit 1
+}
+
+# Predicted prefixes are strict assertions, not observations until a run.
+# Record words are independent expected values from the final same-init R
+# capture and must all match; any difference fails without rewriting policy.
+set m {\[init -> writ_bend_monitor\]}
+set c {\[init -> clients -> writ_client_r\]}
+writ_bend_monitor_require [list \
+  "$m writ_channel: service announced" "monitor channel service" \
+  "$m writ_channel: channel 1 opened for 'clients -> writ_client_r -> channel' route subject 1" "nested label and route subject" \
+  "$m monitor: SYNTHETIC authority" "synthetic authority" \
+  "$m monitor: channel=1 route_subject=1 session=1 body_claimed_subject=1 \\(untrusted, not used\\) decision=Committed reason=0 " "Bend R decision" \
+  "$c client: PASS decision 1 reason 0 as expected" "client verdict" \
+  "$c client: request record \\+0x00000000: 01 00 00 00 01 00 00 00 01 00 00 00 06 00 00 00" "request words 0–3" \
+  "$c client: request record \\+0x00000010: 01 00 00 00 02 00 00 00 03 00 00 00 63 00 00 00" "request words 4–7" \
+  "$c client: request record \\+0x00000020: 0a 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00" "request words 8–11" \
+  "$c client: request record \\+0x00000030: 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00" "request words 12–15" \
+  "$c client: result record \\+0x00000000: 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00" "result words 0–3" \
+  "$c client: result record \\+0x00000010: 01 00 00 00 01 00 00 00 14 00 00 00 01 00 00 00" "result words 4–7" \
+  "$c client: result record \\+0x00000020: 63 00 00 00 03 00 00 00 01 00 00 00 07 00 00 00" "result words 8–11" \
+  "$c client: result record \\+0x00000030: 2d 00 00 00 02 00 00 00 02 00 00 00 00 00 00 00" "result words 12–15" ]
+puts "nested public R fixture: PASS (synthetic authority; no host qualification)"
