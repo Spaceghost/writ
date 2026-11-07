@@ -6,7 +6,8 @@ earlier d71d09c ZFS setup failure remains recorded separately.
 
 The [d71d09c automatic CI checkpoint](verification/master-ci-d71d09c/README.md)
 retains Windows Node and Btrfs passes, the ZFS setup failure and strict Windows
-worker failure, and a standard Genode pass; Linux is pending at this checkpoint.
+worker failure, a standard Genode pass and a scoped Linux public-canary pass.
+The separate Linux protected setup was refused before input or admission.
 
 The [frontend revision V2 primitive record](verification/frontend-revision-v2/README.md)
 covers descriptive tagged comparison and two-word successor arithmetic. It is

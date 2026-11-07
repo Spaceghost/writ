@@ -1,8 +1,8 @@
 # Automatic platform CI for master d71d09c
 
 Five push-triggered workflows were listed at exact source
-`d71d09cd4079e94147121be24934f6699bbff790`. Four have completed in this
-checkpoint. None of these outcomes qualifies a protected host.
+`d71d09cd4079e94147121be24934f6699bbff790`. All five have completed.
+None of these outcomes qualifies a protected host.
 
 - [Windows Node](windows-node-42409457709/README.md): passed 2,508 shared
   library and 78 WritFS model checks.
@@ -14,8 +14,9 @@ checkpoint. None of these outcomes qualifies a protected host.
   separate no-data diagnostic reported pass.
 - [Genode base-hw](genode-42409457706/README.md): passed 2,508 core, 69 mount
   and 24 allocator checks plus public canaries; clock/QEMU warnings retained.
-- Linux public-canary run 42409457716 was still in progress at this checkpoint;
-  no outcome or artifacts are claimed.
+- [Linux public canary](linux-42409457716/README.md): passed scoped checks;
+  protected setup was refused at step 8 before input or admission and receives
+  no protected-host qualification.
 
 Each completed-run directory retains GitHub run, job and artifact metadata;
 original ZIP, entry and downloaded workflow-log SHA-256 values; normalized
