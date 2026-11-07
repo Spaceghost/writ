@@ -859,7 +859,7 @@ a321460f7d2fd459d4b5043eb769c2b4dbdbcbf5fcb28adbe401a166d5896a1a  openspec/chang
 416272f0aa121d13234e2b6db837eaa9648f3158ed4d705349592e697f4eda8b  openspec/changes/add-genode-host/.openspec.yaml
 45741419001abd0a92f6ae63457e4d8647abcc61098daffa509e76dda1ab8832  openspec/changes/add-genode-host/design.md
 39e6100571da9128cd2cc60a0f137663d483f3475b34d68640f5d3b371e2586a  openspec/changes/add-genode-host/disposable-boot-inventory-design.md
-b22c4be2bc36d70fcb77b8d65037a1d9b48fd21f757f8c9e26a090ec8a6d774e  openspec/changes/add-genode-host/disposable-fd-supervisor-design.md
+21d7438aaca1d41bded7832495f4a9eff3c955a21f5fbeeccbfab97c7186a16b  openspec/changes/add-genode-host/disposable-fd-supervisor-design.md
 de84dcb25ccbc2ea5fea1005c7980770f7ee214c7f93c859a8694c84bac0a924  openspec/changes/add-genode-host/nested-routing-first-slice.md
 0a84d26f03378c5dc404e1c21927db21426f8eadfc67f0ec4bac1fe83d600d3e  openspec/changes/add-genode-host/nested-routing-fixture-plan.md
 2a93ee532778ac93bced753d9420f9c132aaf826e05c4a06584c678c3140d01f  openspec/changes/add-genode-host/nested-routing-source-review.md

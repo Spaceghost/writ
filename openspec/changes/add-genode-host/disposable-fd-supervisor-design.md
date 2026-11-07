@@ -37,14 +37,26 @@ incomplete; there is no unrestricted fallback.
    numeric run key names the invocation only; it is not an authority fact.
    Reuse, ambiguous ancestry, wrong owner/mode or unsupported mount checks
    refuses the attempt.
-2. A fixed preparation child downloads and verifies the pinned public inputs,
+2. Before starting any writable child, the parent loads the scenario's fixed,
+   independently reviewed expected argument/config bytes from the pinned
+   trusted source into a bounded private memory snapshot. It verifies the
+   expected fixed length and SHA-256, records source identity and observations,
+   and does not derive expected bytes from a generated fixture output. A held
+   FD alone would not freeze a writable reference. The private snapshot must
+   not be a writable shared mapping; trusted-kernel and no-parent-memory-
+   injection assumptions remain explicit. If stable source identity or the
+   expected bytes cannot be established, stop incomplete. The pinned guard
+   vector is the Tcl argument; the historical installed-byte expectation adds
+   the one `puts` LF documented by the inventory design, without trimming or
+   regenerating either expectation from the run.
+3. A fixed preparation child downloads and verifies the pinned public inputs,
    extracts the pinned Genode source directory **G**, and invokes the existing
    tool to create fresh build directory **B**. This phase may create files and
    compile prerequisites; it is not a protected workload. The parent retains
    its own root/evidence handles and waits for the exact child result. A failure,
    timeout or missing verification is incomplete, not permission to start the
    fixture. Preparatory child exit does not prove its descendants are gone.
-3. Before launching the fixture, the parent opens G and B by their fixed names
+4. Before launching the fixture, the parent opens G and B by their fixed names
    relative to the still-held invocation root. It retains both FDs, verifies
    directory type, owner/mode, identity and ancestry, and uses the reviewed
    `openat2` no-symlink/no-cross-mount rules from the inventory design. It checks
@@ -52,16 +64,26 @@ incomplete; there is no unrestricted fallback.
    mapping are present; record source/tooling identities and both observations.
    Merely recording device/inode and reopening the names after the fixture does
    **not** satisfy this held-descriptor requirement.
-4. Only after those checks does the parent start the fixed scenario's existing
-   bounded log collector and guarded fixture. That child receives no root, B,
-   G, reference or evidence-directory handles. The legacy e233 driver would
-   need an independently reviewed split at its preparation/make boundary; a
-   second accidental `make`, different target or runtime overwrite of fixed
-   fixture sources must refuse. Keep the existing full raw gzip capture,
-   integrity checks, caps, error records and public credential assumptions.
-5. Once the bounded fixture/capture phase has returned, a distinct fixed
+5. Only after those checks does the parent start the fixed scenario's bounded
+   capture writer and guarded fixture as **separate, individually bound child
+   processes**. A dedicated pipe carries the fixture's stdout/stderr to the
+   capture writer. The writer gets only that read end and the minimum fixed
+   capture-output handles; the fixture gets only the intended standard streams
+   and its pipe write end. The fixture gets no capture-output, root, B, G,
+   reference or evidence-directory handles. The legacy e233 collector spawns
+   `make` itself and must be independently refactored or shown to preserve this
+   separation; the old combined behavior does not establish it. A second
+   accidental `make`, different target or runtime overwrite of fixed fixture
+   sources must refuse. Keep complete raw gzip capture, integrity checks, caps,
+   error records and public credential assumptions.
+6. Once the bounded fixture/capture phase has returned, a distinct fixed
    inventory worker receives only the held root, B, G, output and fixed-reference
-   FDs it actually needs. It opens the fixed post-run boot path relative to B
+   FDs it actually needs and the parent's already-pinned private expected bytes.
+   A forked worker may inherit that private memory through copy-on-write; an
+   exec-based worker instead needs a separately reviewed immutable handoff,
+   such as a verified sealed object. Reopening the original writable reference
+   pathname or assuming an FD freezes its bytes is not sufficient. It opens the
+   fixed post-run boot path relative to B
    and applies the 14-name inventory design. The boot directory itself is
    created during the fixture; its post-run handle is an observation, not a
    pre-held claim. The worker's output cannot make the fixture authoritative
@@ -101,6 +123,38 @@ message/FD-count and peer-binding review; it is not assumed by this proposal.
 The [`recvmsg`](https://man7.org/linux/man-pages/man2/recvmsg.2.html) contract
 supports close-on-exec on received FDs but does not by itself authenticate the
 sender, establish the fixed mapping, or close unrelated inherited FDs.
+
+The intended FD/process table is fixed before any child starts:
+
+| Process | Held or received resources | Explicitly excluded |
+| --- | --- | --- |
+| Supervisor parent | Invocation/root, B/G and evidence FDs; private expected-byte snapshot; exact child pidfds and bounded status/control channels | No Writ authority or generic command endpoint |
+| Preparation child | Fixed standard streams and any narrowly reviewed pre-exec status channel | No parent root, B/G, expected-reference or evidence FDs after exec |
+| Capture writer | Fixture pipe read end, fixed capture-output handles and a bounded supervisor status channel | No B/G, expected-reference or inventory-output handles |
+| Fixture exec | Fixed standard input and fixture pipe write end for stdout/stderr | No pipe read end, capture-output, root, B/G, reference or evidence FDs after exec |
+| Inventory worker | Exact root/B/G and inventory-output FDs; the pre-pinned private expected bytes | No fixture pipe endpoints, capture-output handles, arbitrary path or selector |
+
+The actual control and exec-status descriptors must be enumerated separately
+and checked against this table before exec; this table is not an assertion that
+standard streams or same-UID paths are a sandbox. Each capture writer and
+fixture process is a separately identified direct child. Capture timeout,
+signal and wait status must be bound to the exact collector being timed, while
+fixture exit status is recorded separately. No child PID or pipe EOF is a
+substitute for the other's status. If the fixture exits but a descendant keeps
+the pipe open, the capture deadline still applies and the result is incomplete;
+do not wait indefinitely or infer descendant retirement.
+The supervisor must obtain the exact fixture child's actual wait status and
+deliver it to the capture writer over the bounded private status channel, or
+combine the two statuses itself after capture. The fixture cannot report its
+own authoritative exit status. The existing collector's child-status promise
+cannot be retained unchanged after making the processes siblings; missing,
+duplicate, late or inconsistent status must remain incomplete.
+The parent alone retains the capture output directory handle and controls
+publication; the writer's fixed preopened temporary output handle does not
+authorize arbitrary output paths. Only after a complete bounded capture, close
+and integrity audit may the parent publish a result. If the implementation
+instead gives a writer a directory handle, that wider authority needs separate
+review and must never reach the fixture exec.
 
 A fixture child can still reopen public paths using its own same-UID access;
 withholding these FDs is descriptor hygiene, not filesystem confinement. The
@@ -160,11 +214,16 @@ pass. Independently review source and tests before any future disposable-VM run.
 - Run fixed mock preparation, fixture and inventory children, covering normal
   exit, early failure, failed source/target checks and no fixture start after
   failed preparation. Verify the inventory actually receives the originally
-  held B/G objects, not a later pathname replacement.
+  held B/G objects, not a later pathname replacement. Mutate or replace the
+  original reference file after pre-pinning: the inventory must use the
+  parent's original private byte snapshot, or report incomplete; it must not
+  accept a new value merely because a held reference FD still exists.
 - Have a test-owned fixture child report its **own** open descriptors and
   object identities; verify it lacks parent root/B/G/reference/evidence
-  handles after exec. The worker must receive the exact expected handles and
-  no extra ones. Include CLOEXEC failure, descriptor-number collisions,
+  handles and the writer's capture-output handles after exec. Verify the
+  capture writer, fixture and inventory worker have only their own table rows,
+  and bind their separate exit/timeout statuses. The worker must receive the
+  exact expected handles and no extra ones. Include CLOEXEC failure, descriptor-number collisions,
   remapping errors, missing/swapped/duplicate/extra FD, early parent/child exit
   and cleanup of partial handoffs. Enumeration's own test FD is not a leak.
 - Exercise replaced/symlinked root names, G/B renamed after open, parent/child
