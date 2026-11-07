@@ -862,6 +862,7 @@ ca4c8f5d1fe1197f6fda51c1059599e188cab40aed41a52568b78aa448ece560  docs/superpowe
 264c5bc867e26d65d5513783044263587103ed14d9ec1fed2bcce245021f83e1  docs/superpowers/records/2026-11-06-windows-init/run-42323792791/sha256.txt
 8a74b2a8f27787541225f35a9eb9e1ec12c1552cfccb6d2ce59d2994aac7a514  docs/superpowers/records/2026-11-06-windows-init/run-42323792791/sources.txt
 376bb2f5eb0691435837150a7e5b8439d360f3ba8e8d45212f8d772fe34717b4  docs/superpowers/records/2026-11-06-windows-init/run-42323792791/synthetic.txt
+f181fcc095b4fc9430b8d2d776984a6323a4e93825fca68dd3b7c530fd6717b1  docs/superpowers/records/2026-11-06-windows-init/strict-worker-next-research.md
 3cb54174764026bd1ff303c2966681314a54c2b718ddb55c435487a49af9f79c  docs/superpowers/records/2026-11-06-windows-init/win32k-ac-implementation.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html
