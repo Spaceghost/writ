@@ -190,7 +190,9 @@ with a link back to the form; the thread on the board page around it updates
 over its live stream. The quick-view drawer's iframe allows forms for this. Every field becomes a capped string with
 control characters removed; files are ignored; a body over 16 KiB, a foreign
 `Origin` (the board's own or the sandbox's `null` are accepted), a missing page,
-or any other method is refused. The controller appends its own replies to the
+or any other method is refused. The limit counts the actual received bytes,
+including multipart framing, even when the request has no `Content-Length`.
+The controller appends its own replies to the
 same file with `"who":"controller"` and a `kind`: `note` (default) replies
 without reopening, `ask` reopens the question, `close` closes it. A question
 reads `open` until the reader answers (or after the controller's last `ask`),

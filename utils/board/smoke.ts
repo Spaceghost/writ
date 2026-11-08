@@ -150,6 +150,34 @@ function statusWithHost(base: string, path: string, host: string): Promise<numbe
   });
 }
 
+/** Send an actual chunked POST without Content-Length to a synthetic question. */
+function chunkedAnswer(base: string, id: string, contentType: string, chunks: Buffer[], finishBody = true): Promise<number> {
+  const { hostname, port } = new URL(base);
+  return new Promise((done) => {
+    const sock = connect(Number(port), hostname);
+    let text = "";
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      sock.destroy();
+      done(Number(text.match(/^HTTP\/1\.1 (\d{3})/)?.[1] ?? 0));
+    };
+    const timer = setTimeout(finish, 5000);
+    sock.write(`POST /questions/${id}/answer HTTP/1.1\r\nHost: ${hostname}:${port}\r\nOrigin: null\r\nContent-Type: ${contentType}\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n`);
+    for (const chunk of chunks) {
+      sock.write(`${chunk.length.toString(16)}\r\n`);
+      sock.write(chunk);
+      sock.write("\r\n");
+    }
+    if (finishBody) sock.write("0\r\n\r\n");
+    sock.on("data", (d: Buffer) => { text += d.toString("latin1"); if (text.includes("\r\n")) finish(); });
+    sock.on("error", finish);
+    sock.on("end", finish);
+  });
+}
+
 try {
   lanesDir = mkdtempSync(join(tmpdir(), "writ-board-smoke-"));
   const lane = join(lanesDir, "smoke-lane");
@@ -397,6 +425,34 @@ try {
   check("a controller ask without fields reopens", schemaApi.find((q) => q.id === "q16")?.status === "open");
   check("a controller close without fields closes", schemaApi.find((q) => q.id === "q17")?.status === "closed");
   check("a malformed controller close remains visible without closing", schemaApi.find((q) => q.id === "q18")?.status === "open" && schemaApi.find((q) => q.id === "q18")?.answers[0]?.fields.text === '{"who":"controller","kind":"close","fields":[]}');
+  // The body limit is in wire bytes, even when no Content-Length is supplied.
+  writeFileSync(join(lanesDir, "questions", "q19.html"), '<title>Bounded answer</title>');
+  const exact = Buffer.from("text=" + "a".repeat(16379));
+  const exactStatus = await chunkedAnswer(base, "q19", "application/x-www-form-urlencoded", [exact.subarray(0, 8000), exact.subarray(8000)]);
+  const q19file = join(lanesDir, "questions", "q19.answers.jsonl");
+  const afterExact = readFileSync(q19file, "utf8");
+  const tooLarge = Buffer.from("text=" + "b".repeat(16380));
+  const tooLargeStatus = await chunkedAnswer(base, "q19", "application/x-www-form-urlencoded", [tooLarge.subarray(0, 8000), tooLarge.subarray(8000)], false);
+  check("chunked answer accepts exactly 16 KiB and rejects the next byte without waiting for the tail or appending", exactStatus === 303 && tooLargeStatus === 413 && readFileSync(q19file, "utf8") === afterExact);
+  const declaredLarge = await fetch(`${base}/questions/q19/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "null" }, body: tooLarge });
+  check("declared oversized body is rejected without appending", declaredLarge.status === 413 && readFileSync(q19file, "utf8") === afterExact);
+  writeFileSync(join(lanesDir, "questions", "q20.html"), '<title>Split UTF-8 answer</title>');
+  const unicode = Buffer.from("text=é");
+  const unicodeStatus = await chunkedAnswer(base, "q20", "application/x-www-form-urlencoded", [unicode.subarray(0, 6), unicode.subarray(6)]);
+  check("chunked UTF-8 split across wire chunks remains intact", unicodeStatus === 303 && JSON.parse(readFileSync(join(lanesDir, "questions", "q20.answers.jsonl"), "utf8")).fields.text === "é");
+  const q20file = join(lanesDir, "questions", "q20.answers.jsonl");
+  const afterUnicode = readFileSync(q20file, "utf8");
+  const oversizedUnicode = Buffer.from("text=" + "é".repeat(8190));
+  const unicodeLimit = await chunkedAnswer(base, "q20", "application/x-www-form-urlencoded", [oversizedUnicode]);
+  check("answer size counts UTF-8 bytes rather than characters", oversizedUnicode.length === 16385 && unicodeLimit === 413 && readFileSync(q20file, "utf8") === afterUnicode);
+  writeFileSync(join(lanesDir, "questions", "q21.html"), '<title>JSON answer</title>');
+  const jsonStatus = await chunkedAnswer(base, "q21", "application/json", [Buffer.from('{"text":"json answer"}')]);
+  check("bounded chunked JSON still records an answer", jsonStatus === 303 && JSON.parse(readFileSync(join(lanesDir, "questions", "q21.answers.jsonl"), "utf8")).fields.text === "json answer");
+  writeFileSync(join(lanesDir, "questions", "q22.html"), '<title>Multipart answer</title>');
+  const multipart = Buffer.from('--board-test\r\nContent-Disposition: form-data; name="tag"\r\n\r\none\r\n--board-test\r\nContent-Disposition: form-data; name="tag"\r\n\r\ntwo\r\n--board-test\r\nContent-Disposition: form-data; name="upload"; filename="x.txt"\r\nContent-Type: text/plain\r\n\r\nignored\r\n--board-test--\r\n');
+  const multipartStatus = await chunkedAnswer(base, "q22", "multipart/form-data; boundary=board-test", [multipart]);
+  const multipartFields = JSON.parse(readFileSync(join(lanesDir, "questions", "q22.answers.jsonl"), "utf8")).fields;
+  check("bounded multipart preserves repeated text and ignores files", multipartStatus === 303 && multipartFields.tag === "one, two" && multipartFields.upload === undefined);
   const forgedOrigin = await fetch(`${base}/questions/q1/answer`, { method: "POST", redirect: "manual", headers: { "content-type": "application/x-www-form-urlencoded", origin: "https://evil.example" }, body: "text=x" });
   check("a foreign Origin cannot post an answer", forgedOrigin.status === 403 && readFileSync(join(lanesDir, "questions", "q1.answers.jsonl"), "utf8").split("\n").filter(Boolean).length === 2);
   check("posting to a question that does not exist is 404", (await fetch(`${base}/questions/q9/answer`, { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: "text=x" })).status === 404);

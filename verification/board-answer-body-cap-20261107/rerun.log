@@ -1,0 +1,96 @@
+PASS server binds to loopback (http://127.0.0.1:40267)
+PASS GET / is 200
+PASS index lists the reference change
+PASS index pins Datastar v1.0.4
+PASS index delegates link clicks to the quick-view panel
+PASS ?embed=1 renders a page without the header and nav, with its own live stream
+PASS a plain page keeps the header and nav
+PASS /api/changes contains add-unikernel-library-runtime (32 changes)
+PASS archive/ is not a change
+PASS archived changes are listed with their archive dir and date (2026-11-04-add-bend-runtime-host-profile)
+PASS an archived change's page renders from its archive directory
+PASS archived changes are listed by title, not by date and name
+PASS the index lists archived changes apart from the pending table
+PASS the nav's archived group starts collapsed
+PASS archived proposal explainer link follows the scanned HTML route
+PASS archived proposal spec link follows the rendered spec section
+PASS reference change tasks counted (9/10)
+PASS reference change lists explainer.html
+PASS change page renders proposal, design, tasks, specs in order (5634,9087,14863,35621)
+PASS change page shows the proposal title
+PASS change page embeds the explainer in an iframe
+PASS explainer iframe is sandboxed without same-origin
+PASS explainer served as-is with text/html
+PASS standalone explainer carries the CSP sandbox
+PASS traversal is not served
+PASS forged Host header is refused with 403 (403, 403)
+PASS loopback Host header is served with 200 (200, 200)
+PASS /api/baselines lists a baseline with traceability (20 baselines)
+PASS baseline page links traceability (authority-boundary)
+PASS lanes panel lists the synthetic lane
+PASS lanes panel skips a directory without .git
+PASS unreadable branch degrades to a note
+PASS ledger shows only the last ten lines
+PASS report rendered in a collapsible section with its status
+PASS report raw HTML is escaped
+PASS unsafe link schemes become #
+PASS index shows summary tiles
+PASS the change the lane's plan names carries the lane's chip
+PASS the chip shows the ledger phase and an age
+PASS the change row starts with a chevron that flips its task signal
+PASS the task row follows the change row, spans the table, and is shown by the signal
+PASS open tasks come first, done ones behind a nested toggle
+PASS the table declares one signal per change with a task list
+PASS the change row carries an activity icon with the last lines as its tooltip
+PASS a ticker row under the change shows its newest activity line with a content-keyed id
+PASS the activity row follows the change row and lists the lane's lines newest-first in a reversed list
+PASS changes with no task and no lane are collapsed
+PASS lane card shows its status line and the change it is on
+PASS lane card's activity feed is newest-first in the DOM inside a reversed list (rendered oldest to newest, scrolled to the end)
+PASS the committed records/<plan>/ record is read instead of the sdd workspace
+PASS reviewer reports are listed after task reports
+PASS /api/lanes carries the parsed activity and phase
+PASS index lists the open question with its title and status
+PASS index hides the answered question (it stays on /questions)
+PASS index tile counts open questions (q1 and the reopened q3; q2's controller note keeps it answered)
+PASS a controller note after the reader's answer does not reopen; an ask does
+PASS question page embeds the authored HTML sandboxed with forms allowed and shows the thread
+PASS question HTML is served as-is under a CSP sandbox with forms
+PASS posting the form appends one JSON line with the fields and redirects to the thread
+PASS the confirmation page renders inside the form's frame with a way back
+PASS the drawer's frame allows forms so a question's form can submit from it
+PASS the thread shows the reader's answer and the question reads answered
+PASS an incomplete answer line stays visible without marking the question answered
+PASS an incomplete line does not undo an actual answer
+PASS an incomplete line does not answer a controller follow-up
+PASS a subsequent answer stays distinct from an unterminated corrupt line
+PASS an unterminated valid answer and its successor both remain readable
+PASS an answer append refuses a symlink and leaves its target unchanged
+PASS incomplete JSON reader records remain raw and do not answer the question
+PASS a submitted blank field remains a valid reader answer
+PASS a controller ask without fields reopens
+PASS a controller close without fields closes
+PASS a malformed controller close remains visible without closing
+PASS chunked answer accepts exactly 16 KiB and rejects the next byte without waiting for the tail or appending
+PASS chunked UTF-8 split across wire chunks remains intact
+PASS answer size counts UTF-8 bytes rather than characters
+PASS bounded chunked JSON still records an answer
+PASS bounded multipart preserves repeated text and ignores files
+PASS a foreign Origin cannot post an answer
+PASS posting to a question that does not exist is 404
+PASS GET on the answer route is refused
+PASS POST elsewhere is still refused
+PASS /events sends a datastar-patch-elements full render
+PASS index stream starts with a full render
+PASS a CR in a lane file name never reaches the stream raw
+PASS touching a lane verification/ file pushes #lanes within 2 s (672 ms)
+PASS lane push does not resend unchanged fragments
+PASS editing a report pushes the new text within 2 s (544 ms)
+PASS appending to the record's activity.log pushes the index tables within 2 s (640 ms)
+PASS the pushed tables carry the new line as a new ticker element
+PASS appending to the record's activity.log pushes the lane feed within 2 s (0 ms)
+PASS a new report file is pushed within 2 s (610 ms)
+PASS startup race flush occurs before client registration
+PASS startup race initial patch carries the captured old view
+PASS startup race reconciles the current view without another edit
+smoke: all checks passed

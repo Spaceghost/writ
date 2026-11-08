@@ -376,6 +376,33 @@ function cleanField(v: string): string {
   return v.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, "").slice(0, 4000);
 }
 
+/** Read at most ANSWER_LIMIT wire bytes, including bodies without a length header. */
+async function boundedAnswerBody(req: Request): Promise<Uint8Array | null> {
+  const reader = req.body?.getReader();
+  if (!reader) return new Uint8Array(0);
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > ANSWER_LIMIT) {
+        // Do not wait for an untrusted sender to finish its remaining body.
+        void reader.cancel().catch(() => {});
+        return null;
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.byteLength; }
+  return body;
+}
+
 /**
  * The board's one write: append the reader's answer to `<id>.answers.jsonl`.
  * Accepts a form post (urlencoded or multipart) or JSON; every field becomes a
@@ -393,14 +420,21 @@ async function recordAnswer(flags: Flags, hosts: Set<string>, id: string, req: R
   }
   const length = Number(req.headers.get("content-length") ?? "0");
   if (length > ANSWER_LIMIT) return new Response("answer too large\n", { status: 413 });
+  let bytes: Uint8Array | null;
+  try { bytes = await boundedAnswerBody(req); }
+  catch { return new Response("bad body\n", { status: 400 }); }
+  if (bytes === null) return new Response("answer too large\n", { status: 413 });
   const type = req.headers.get("content-type") ?? "";
+  // Parse only after bounding the wire bytes; do not split-decode UTF-8 or
+  // discard the multipart boundary from the original Content-Type.
+  const bounded = new Response(bytes, { headers: { "content-type": type } });
   const fields: Record<string, string> = {};
   if (type.includes("application/json")) {
-    const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+    const body = (await bounded.json().catch(() => null)) as Record<string, unknown> | null;
     if (body === null) return new Response("bad json\n", { status: 400 });
     for (const [k, v] of Object.entries(body)) fields[cleanField(k).slice(0, 64)] = cleanField(typeof v === "string" ? v : JSON.stringify(v));
   } else {
-    const form = await req.formData().catch(() => null);
+    const form = await bounded.formData().catch(() => null);
     if (form === null) return new Response("bad form\n", { status: 400 });
     for (const [k, v] of form.entries()) {
       if (typeof v !== "string") continue; // files are not accepted
