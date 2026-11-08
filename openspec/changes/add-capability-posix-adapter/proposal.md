@@ -6,7 +6,7 @@ Frontend models capability mounts and descriptors but does not create real OS ha
 
 ## What Changes
 
-Introduce [posix-adapter](specs/posix-adapter/spec.md) as a new capability. The requirements are proposed behavior; all implementation tasks remain pending.
+Introduce [posix-adapter](specs/posix-adapter/spec.md) as a new capability. The requirements are proposed behavior; all implementation tasks remain pending. A [bounded descriptive mount-frame subset](mount-frame-description.md) is implemented without a device, authenticated session, or complete ABI.
 
 ## Capabilities
 

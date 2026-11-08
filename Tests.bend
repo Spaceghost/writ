@@ -15,6 +15,7 @@ import ./FrontendReserveWordsTests.bend as FrontendReserveWords
 import ./HostBindingSnapshotTests.bend as HostBindingSnapshot
 import ./HostBindingTests.bend as HostBinding
 import ./HostWireTests.bend as HostWire
+import ./PosixMountFrameTests.bend as PosixMountFrame
 import ./PlannerEnvelopeTests.bend as PlannerEnvelope
 import ./PlannerPlanMatchTests.bend as PlannerPlanMatch
 import ./PlannerFrontendCompositionTests.bend as PlannerFrontendComposition
@@ -51,6 +52,7 @@ def main() -> IO(Unit):
     HostBindingSnapshot.main()
     HostBinding.main()
     HostWire.main()
+    PosixMountFrame.main()
     PlannerEnvelope.main()
     PlannerPlanMatch.main()
     PlannerFrontendComposition.main()

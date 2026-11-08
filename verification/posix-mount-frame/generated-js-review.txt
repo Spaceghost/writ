@@ -1,0 +1,102 @@
+2baa400c5ae1bc6756dbdf94408516413beebfadd876971f32289809857ef635  /home/jadams/tmp/writ-posix-frame-verification/focused.js
+    }
+  }
+}
+
+function $PosixMountFrame_decode_words(_words_0) {
+  return $PosixMountFrame_check_word_cap(($Bool_not(($HostWire_within(($PosixMountFrame_max_words()), _words_0)))), _words_0);
+}
+
+function $PosixMountFrame_decode_bytes(_bytes_0) {
+  return $PosixMountFrame_check_byte_cap(($Bool_not(($HostWire_within(($PosixMountFrame_max_bytes()), _bytes_0)))), _bytes_0);
+}
+
+function $extreme() {
+  return {$: "MountDescription", "token": {$: "TokenWords", "a": 0, "b": 4294967295, "c": 0, "d": 4294967295, "e": 0, "f": 4294967295, "g": 0, "h": 4294967295}, "requested_rights": 4294967295};
+}
+
+                                                                                              const _b45_0 = _t_44["head"];
+                                                                                              const _t_45 = _t_44["tail"];
+                                                                                              if (_t_45.$ === "Con") {
+                                                                                                const _b46_0 = _t_45["head"];
+                                                                                                const _t_46 = _t_45["tail"];
+                                                                                                if (_t_46.$ === "Con") {
+                                                                                                  const _b47_0 = _t_46["head"];
+                                                                                                  const _t_47 = _t_46["tail"];
+                                                                                                  if (_t_47.$ === "Nil") {
+                                                                                                    return $PosixMountFrame_decode_fixed(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($Bool_and(($HostWire_byte_in_bounds(_b0_0)), ($HostWire_byte_in_bounds(_b1_0)))), ($HostWire_byte_in_bounds(_b2_0)))), ($HostWire_byte_in_bounds(_b3_0)))), ($HostWire_byte_in_bounds(_b4_0)))), ($HostWire_byte_in_bounds(_b5_0)))), ($HostWire_byte_in_bounds(_b6_0)))), ($HostWire_byte_in_bounds(_b7_0)))), ($HostWire_byte_in_bounds(_b8_0)))), ($HostWire_byte_in_bounds(_b9_0)))), ($HostWire_byte_in_bounds(_b10_0)))), ($HostWire_byte_in_bounds(_b11_0)))), ($HostWire_byte_in_bounds(_b12_0)))), ($HostWire_byte_in_bounds(_b13_0)))), ($HostWire_byte_in_bounds(_b14_0)))), ($HostWire_byte_in_bounds(_b15_0)))), ($HostWire_byte_in_bounds(_b16_0)))), ($HostWire_byte_in_bounds(_b17_0)))), ($HostWire_byte_in_bounds(_b18_0)))), ($HostWire_byte_in_bounds(_b19_0)))), ($HostWire_byte_in_bounds(_b20_0)))), ($HostWire_byte_in_bounds(_b21_0)))), ($HostWire_byte_in_bounds(_b22_0)))), ($HostWire_byte_in_bounds(_b23_0)))), ($HostWire_byte_in_bounds(_b24_0)))), ($HostWire_byte_in_bounds(_b25_0)))), ($HostWire_byte_in_bounds(_b26_0)))), ($HostWire_byte_in_bounds(_b27_0)))), ($HostWire_byte_in_bounds(_b28_0)))), ($HostWire_byte_in_bounds(_b29_0)))), ($HostWire_byte_in_bounds(_b30_0)))), ($HostWire_byte_in_bounds(_b31_0)))), ($HostWire_byte_in_bounds(_b32_0)))), ($HostWire_byte_in_bounds(_b33_0)))), ($HostWire_byte_in_bounds(_b34_0)))), ($HostWire_byte_in_bounds(_b35_0)))), ($HostWire_byte_in_bounds(_b36_0)))), ($HostWire_byte_in_bounds(_b37_0)))), ($HostWire_byte_in_bounds(_b38_0)))), ($HostWire_byte_in_bounds(_b39_0)))), ($HostWire_byte_in_bounds(_b40_0)))), ($HostWire_byte_in_bounds(_b41_0)))), ($HostWire_byte_in_bounds(_b42_0)))), ($HostWire_byte_in_bounds(_b43_0)))), ($HostWire_byte_in_bounds(_b44_0)))), ($HostWire_byte_in_bounds(_b45_0)))), ($HostWire_byte_in_bounds(_b46_0)))), ($HostWire_byte_in_bounds(_b47_0)))), {$: "Con", "head": ($HostWire_pack_word(_b0_0, _b1_0, _b2_0, _b3_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b4_0, _b5_0, _b6_0, _b7_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b8_0, _b9_0, _b10_0, _b11_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b12_0, _b13_0, _b14_0, _b15_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b16_0, _b17_0, _b18_0, _b19_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b20_0, _b21_0, _b22_0, _b23_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b24_0, _b25_0, _b26_0, _b27_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b28_0, _b29_0, _b30_0, _b31_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b32_0, _b33_0, _b34_0, _b35_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b36_0, _b37_0, _b38_0, _b39_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b40_0, _b41_0, _b42_0, _b43_0)), "tail": {$: "Con", "head": ($HostWire_pack_word(_b44_0, _b45_0, _b46_0, _b47_0)), "tail": {$: "Nil"}}}}}}}}}}}}});
+                                                                                                  } else {
+                                                                                                    return {$: "Malformed", "reason": {$: "BadLength"}};
+                                                                                                  }
+                                                                                                } else {
+                                                                                                  return {$: "Malformed", "reason": {$: "BadLength"}};
+                                                                                                }
+    }
+  } else {
+    return {$: "Malformed", "reason": {$: "BadLength"}};
+  }
+}
+
+function $PosixMountFrame_check_byte_cap(_over_0, _bytes_0) {
+  if (_over_0) {
+    return {$: "Malformed", "reason": {$: "TooLong"}};
+  } else {
+    return $PosixMountFrame_parse_exact_bytes(_bytes_0);
+  }
+}
+
+function $PosixMountFrame_decode_fixed(_in_range_0, _words_0) {
+  if (_in_range_0) {
+    return $PosixMountFrame_decode_words(_words_0);
+  } else {
+    return {$: "Malformed", "reason": {$: "OutOfRange"}};
+  }
+}
+
+function $PosixMountFrame_check_word_cap(_over_0, _words_0) {
+  if (_over_0) {
+    return {$: "Malformed", "reason": {$: "TooLong"}};
+  } else {
+    return $PosixMountFrame_parse_words(_words_0);
+  }
+}
+
+function $PosixMountFrame_check_version(_ok_0, _opcode_0, _length_0, _body_0) {
+  if (_ok_0) {
+    const _x_0 = ($PosixMountFrame_mount_opcode());
+    return $PosixMountFrame_check_opcode((_opcode_0 === _x_0), _length_0, _body_0);
+  } else {
+    return {$: "Malformed", "reason": {$: "UnknownVersion"}};
+  }
+}
+function $HostWire_within($0, $1) {
+  for (;;) {
+    {
+      const _fuel_0 = $0;
+      const _values_0 = $1;
+      if (_fuel_0 === 0) {
+        if (_values_0.$ === "Nil") {
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        const _remaining_0 = (_fuel_0 - 1);
+        if (_values_0.$ === "Nil") {
+          return true;
+        } else {
+          const _rest_0 = _values_0["tail"];
+          $0 = _remaining_0;
+          $1 = _rest_0;
+          continue;
+        }
+      }
+    }
+  }
+}
+
+function $PosixMountFrame_max_words() {
+  return 12;
+}
+
+function $PosixMountFrame_max_bytes() {

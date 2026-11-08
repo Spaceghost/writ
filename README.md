@@ -112,10 +112,12 @@ See the [backend guide](writfs/README.md) and its
 
 The core implementation, tests, examples, and proofs are **Bend 2**.
 The historical core record covers **1942 checks on each of the JavaScript and
-native CPU backends**. The 2,809-check suite includes 111 bounded synthetic binding-snapshot checks, 25 synthetic wide-word reserve checks, 39 bounded synthetic cleanup-reserve checks, 126 bounded synthetic legacy conversion checks, 36 descriptive frontend revision V2 primitive checks, 24 rendezvous allocation-boundary checks, 35 issuance allocation-boundary checks, 32 frontend allocation-boundary checks, 25 ledger numeric-boundary checks and 38 synthetic stage-graph structural checks and 37 synthetic locality conjunction checks, eight independent planner order checks and ten synthetic duplicate-binding checks, alongside 118 synthetic Linux monitor checks, five
+native CPU backends**. The 2,844-check suite includes 35 bounded POSIX mount-frame description checks, 111 bounded synthetic binding-snapshot checks, 25 synthetic wide-word reserve checks, 39 bounded synthetic cleanup-reserve checks, 126 bounded synthetic legacy conversion checks, 36 descriptive frontend revision V2 primitive checks, 24 rendezvous allocation-boundary checks, 35 issuance allocation-boundary checks, 32 frontend allocation-boundary checks, 25 ledger numeric-boundary checks and 38 synthetic stage-graph structural checks and 37 synthetic locality conjunction checks, eight independent planner order checks and ten synthetic duplicate-binding checks, alongside 118 synthetic Linux monitor checks, five
 HostWire bounds and error-order checks, 39 synthetic handoff checks, 60
 synthetic planner-envelope codec checks, one additional N48 boundary regression, 61 plan-comparison checks, two byte-range checks and 35 synthetic frontend-composition checks. The stage-graph checks describe only the supplied graph, not stage admission or completeness. The composition does not authenticate a planner request or implement an adapter. The codec produces untrusted descriptions;
-it does not implement a planner endpoint or admission. The
+it does not implement a planner endpoint or admission. The POSIX frame codec
+likewise parses one untrusted mount description and does not authenticate a
+caller or implement a native device. The
 handoff model does not establish a native Windows handoff or protected-host
 confinement; see the verification record for backend-specific results.
 Physical GPU execution was observed for specific workloads on one RTX 4090 host;

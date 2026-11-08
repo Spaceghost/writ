@@ -1,0 +1,36 @@
+PASS: PA-006 mount word encoding matches independent golden
+PASS: PA-006 mount byte encoding matches independent little-endian golden
+PASS: PA-006 exact golden words decode as untrusted description
+PASS: PA-006 exact 48-byte golden decodes as untrusted description
+PASS: PA-006 zero and maximum token and rights words round trip
+PASS: PA-006 all 256 token bits including the last word survive mutations
+PASS: PA-006 all 48 truncated byte prefixes refuse without partial output
+PASS: PA-006 all 12 truncated word prefixes refuse without partial output
+PASS: PA-006 zero version refused
+PASS: PA-006 maximum unsupported version refused
+PASS: PA-006 reserved opcode zero refused
+PASS: PA-006 unsupported next opcode refused
+PASS: PA-006 maximum opcode refused
+PASS: PA-006 zero declared body length refused
+PASS: PA-006 short declared body length refused
+PASS: PA-006 extended declared body length refused
+PASS: PA-006 maximum declared body length refused
+PASS: PA-006 out-of-range header byte refused
+PASS: PA-006 out-of-range final token byte refused
+PASS: PA-006 out-of-range final rights byte refused
+PASS: PA-006 short shape precedes byte-range error
+PASS: PA-006 byte cap precedes byte-range error
+PASS: PA-006 byte-range error precedes unsupported version
+PASS: PA-006 cap plus one byte refused
+PASS: PA-006 trailing word refused
+PASS: PA-006 appended 64-bit label-like extension refused
+PASS: PA-006 portable-host reference message is not a POSIX mount frame
+PASS: PA-006 POSIX mount frame is not a portable-host reference message
+PASS: PA-006 far over-cap byte list refused
+PASS: PA-006 far over-cap word list refused
+PASS: PA-006 direct exact-byte helper bounds oversized input
+PASS: PA-006 forged byte-cap success cannot accept a valid prefix
+PASS: PA-006 forged byte-range success still bounds word input
+PASS: PA-006 forged word-cap success cannot accept a valid prefix
+PASS: PA-006 forged version success cannot skip the exact body end
+ALL POSIX MOUNT FRAME DESCRIPTION TESTS PASSED

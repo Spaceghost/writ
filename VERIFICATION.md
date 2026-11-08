@@ -1,5 +1,11 @@
 # Verification record
 
+The [POSIX mount-frame record](verification/posix-mount-frame/README.md)
+covers one synthetic bounded decoder: 35 focused checks and a 2,844-check
+suite on Bend, generated Node and native CPU. Ordinary proofs and a Lean-backed
+verdict passed for the existing laws; no new codec law is claimed. This does
+not implement a native device, authenticated session or complete POSIX ABI.
+
 The [0c6de76 automatic CI checkpoint](verification/master-ci-0c6de76/README.md)
 retains passing Windows Node and native filesystem public fixtures alongside
 the strict Windows worker failure, a standard Genode pass and a scoped Linux

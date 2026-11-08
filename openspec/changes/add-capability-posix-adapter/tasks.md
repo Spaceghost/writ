@@ -4,7 +4,7 @@ All implementation and integration work below is pending.
 
 ## 1. Implement and verify
 
-- [ ] 1.1 Define and document the versioned binary device ABI in Bend; verify malformed lengths, unknown opcodes, and truncated identities deny.
+- [ ] 1.1 Define and document the versioned binary device ABI in Bend; verify malformed lengths, unknown opcodes, and truncated identities deny. Partial: [`PosixMountFrame.bend`](../../../PosixMountFrame.bend) and [`PosixMountFrameTests.bend`](../../../PosixMountFrameTests.bend) cover one bounded untrusted mount-description shape; [profile and limitations](mount-frame-description.md). Complete request/response ABI, label fields, authenticated dispatch and native buffering remain open.
 - [ ] 1.2 Implement authenticated capability-session open and verify token possession cannot substitute the host-authenticated subject.
 - [ ] 1.3 Map native read/write/execute requests to live capability resolution and final commit; verify revoked and expired descriptors stop working.
 - [ ] 1.4 Implement or explicitly deny dup, close, inheritance, descriptor passing, mmap, accelerated-copy, and asynchronous operations with bypass tests for each exposed route.

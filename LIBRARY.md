@@ -13,6 +13,10 @@ release decisions remain in Bend; the native boundary performs admitted effects.
 Generated backends and binaries stay outside the source package. Bend's compiler,
 Base effects, Node/QuickJS, operating systems and device drivers are dependencies.
 
+`PosixMountFrame` is a bounded codec for one synthetic, untrusted mount-frame
+description. It does not authenticate the caller or implement a device; see the
+[proposed profile and limits](openspec/changes/add-capability-posix-adapter/mount-frame-description.md).
+
 The core is an executable **security-core library and protocol model**. Its
 optional contribution now runs a bounded read-only public-canary view through
 Linux FUSE, Windows WinFsp and native Genode filesystem sessions. Those native
