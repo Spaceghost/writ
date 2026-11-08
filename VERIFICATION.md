@@ -1,5 +1,11 @@
 # Verification record
 
+The [Linux session credential binding record](verification/linux-session-credential-binding/README.md)
+covers synthetic session/lifetime comparisons and restart, not a native
+identity bridge or live authority gate. Bend, generated Node and focused native
+CPU checks and a restored BendTT kernel verdict passed. The initial attempt
+without the documented kernel remains recorded.
+
 The [synthetic typed-edge record](verification/typed-stage-ports/README.md)
 covers 52 focused observations and the 2,896-check suite on Bend, generated
 Node and native CPU, with existing-law Lean verdict and strict OpenSpec. The

@@ -1,0 +1,11 @@
+Invalid initial Node verification attempt (not counted as a test):
+
+bend hosts/linux/monitor/LinuxCredentialBindingTests.bend -o binding.mjs
+node binding.mjs
+
+Exit status: 0
+Standard output: empty (0 bytes)
+
+The .mjs output is an exported library module and does not invoke main when run
+this way. The later .js driver is executable and its focused output is retained
+in focused-node.txt.

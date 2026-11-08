@@ -1,0 +1,12 @@
+Generated C provenance comparison:
+
+After the final LinuxHost.bend comment correction, Bend 2.0.39 regenerated
+Tests.bend C from the final source tree using the same output basename. The
+result compared byte-for-byte equal to the frozen C compiled for the full
+native -O0 run and the incomplete -O3 attempt. Both SHA-256 hashes:
+
+f30006f729b563f33abdedcda60c3bb23c00589b435a6e5bfd8832459dbcd24f
+
+Generation exited 0 with empty stdout and stderr. The equality comparison
+exited 0. Generated files remained outside the repository. This does not
+change the independently recorded -O3 timeout.

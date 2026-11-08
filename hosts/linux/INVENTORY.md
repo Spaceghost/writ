@@ -11,16 +11,19 @@ does not qualify this adapter.
 
 This file lists Linux host binding code. None of it is Writ policy: no
 authority, grant, label, budget, accounting, replay, or release decision is
-made here. Every decision is a shared transition in `HostIdentity.bend`,
-`HostPrimitives.bend`, or `HostPublication.bend`.
+made here. The adapter also retains broker-framed launch credentials and rejects
+a Barrier whose session, incarnation or retained credential does not match.
+Shared transitions in `HostIdentity.bend`, `HostPrimitives.bend`, and
+`HostPublication.bend` still decide authority and effects.
 
 ## Files
 
 | File | Role | Run by |
 | --- | --- | --- |
-| `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Adds no transition, no `Error`, and no law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
+| `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Retains per-session launch observations and checks them at Barrier; adds no portable `Error` or law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
 | `hosts/linux/monitor/LinuxSessionOpenTests.bend` | Synthetic typed-open, denial, routing and legacy wire compatibility checks | `Tests.bend` as `LinuxSessionOpen` |
+| `hosts/linux/monitor/LinuxCredentialBindingTests.bend` | Synthetic binding, restart, denial and long-list controls | `Tests.bend` as `LinuxCredentialBinding` |
 
 No C, JavaScript, or other native file is in `hosts/linux/`. This tree does
 not include the separate branch’s unfinished protected-worker broker or
@@ -43,8 +46,9 @@ effects of an `Admitted` step the monitor returned, after the monitor has
 retained the advanced state
 (contrib/native-hosts/PROTOCOL.md). **None of the facts below is an authority
 fact**: none is a grant, label, budget, plan, rights mask, profile, or release
-decision, and each reaches stored state only through a shared transition
-(`open_session`, `admit_worker`, `charge`, `diagnostic`) or not at all. A uid,
+decision. The launch credential is retained only for an accepted Launch, next
+to the exact issued session and incarnation; it does not authenticate that
+frame. Other facts reach shared transitions or are compared and discarded. A uid,
 gid, pid, start time, or descriptor number is a local fact, never a portable
 credential.
 
@@ -55,13 +59,13 @@ credential.
 | Launch subject | trusted launch record | `LinuxFact.subject` | `SessionEvidence.caller` (with the token), consumed by `open_session`; compared with the session's caller at a Barrier | names who the launch record was issued for; the session id, delegability, and role are the monitor's |
 | Launch code token | trusted launch record | `LinuxFact.token` | as the subject | identifies code, grants nothing |
 | Launch record's monitor incarnation | trusted launch record | `LinuxFact.incarnation` | compared only (StaleLaunch) | a freshness check |
-| Expected process credential (uid, gid, pid, start time) | trusted launch record | `LinuxFact.launch` | compared only (PeerMismatch) | local fact |
+| Expected process credential (uid, gid, pid, start time) | trusted launch record | `LinuxFact.launch` | compared to peer, retained on accepted Launch and compared at Barrier | local fact, not proof of authentication |
 | Connected peer credential (uid, gid, pid, start time) | `SO_PEERCRED`, pidfd, `/proc/PID/stat` | `LinuxFact.peer` | compared only (PeerMismatch) | connection-time local fact; a socketpair endpoint does not relabel its holder |
 | How the endpoint arrived | broker launch bookkeeping | `LinuxFact.endpoint` | `SessionEvidence.origin` at Launch; ignored at a Barrier | HostIdentity decides what an inherited or transferred origin may do |
 | Contract families the binding implements | broker build | `LinuxFact.families` | `TargetReport.supported_families`, compared with the bound profile | can only fall short of the profile, never widen it |
 | Established controls | kernel state the broker installed and probed | `LinuxFact.controls` | `TargetReport.established_controls`, compared with the bound profile | as families; bits the broker cannot credit are refused (UncreditedControl) |
 | Descriptor inventory (number, kind, mediated) | the worker's fd table after the allowlist | `LinuxFact.routes` | `Inventory` of `RouteFact{kind, mediated}`; numbers dropped | an unmediated route can only deny |
-| Barrier session | the broker's attribution of the barrier to a session | `Barrier.session` | the session `admit_worker` resolves on; checked against the fact's caller (SessionMismatch) | the entry, profile, and delegability are the identity table's |
+| Barrier session | the broker's attribution of the barrier to a session | `Barrier.session` | the session `admit_worker` resolves on; checked against the fact's caller (SessionMismatch) and the same session's unique retained credential (LaunchMismatch) | the entry, profile, and delegability are the identity table's |
 | Request snapshot | worker bytes, copied once, bounded | `Barrier.request` | `W.decode_bytes`; only a Use's reference reaches `admit_worker` | a description that must resolve on the session; claim, operation, rights discarded |
 | Resource request | broker's observation of the worker | `Usage{worker, amount}` | `P.charge` | bounded by the configured quota; changes only `quota_used` |
 | Output attempt | broker's observation of the worker | `Emission{worker, public}` | `P.diagnostic` | a public emission is denied |
@@ -77,9 +81,14 @@ credential.
    authorization.
 2. Attribute each frame to the right session or worker: `Barrier.session`,
    `FromWorker.session`, and `Usage`/`Emission.worker` are trusted
-   attribution the monitor cannot check beyond the session's caller.
-3. Report as the barrier credential the session's own launch credential (the
-   monitor stores none), and fix the endpoint at Launch.
+   attribution; the monitor also checks the retained launch credential, but
+   cannot authenticate that either observation is true.
+3. Obtain truthful current peer and process-lifetime facts, bind them to the
+   exact issued session and endpoint, fix the endpoint at Launch, and report
+   the barrier credential from that binding. A successful modeled restart
+   clears credential records and returns the shared stop effects for execution;
+   a denied restart retains the original records. Do not restore arbitrary
+   primitive state as authenticated sessions.
 4. Take the request snapshot once, bounded, before deciding; act on nothing a
    worker writes after it.
 5. Execute nothing on a `Checked` result in section 1; the Task 4 resource

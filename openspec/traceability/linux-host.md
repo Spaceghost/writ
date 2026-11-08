@@ -12,7 +12,7 @@ Implementation and test modules:
 
 | Task | Implementation | Executable cases |
 | --- | --- | --- |
-| 1.1 (model half) | [LinuxHost.bend](../../hosts/linux/monitor/LinuxHost.bend) (adapter glue; no transition, no law) | [LinuxHostTests.bend](../../hosts/linux/monitor/LinuxHostTests.bend), run by `Tests.bend` as `LinuxHost`; trust inventory [INVENTORY.md](../../hosts/linux/INVENTORY.md) |
+| 1.1 (model half) | [LinuxHost.bend](../../hosts/linux/monitor/LinuxHost.bend) (adapter glue with session credential retention; no portable law) | [LinuxHostTests.bend](../../hosts/linux/monitor/LinuxHostTests.bend), run by `Tests.bend` as `LinuxHost`; trust inventory [INVENTORY.md](../../hosts/linux/INVENTORY.md) |
 
 The synthetic in-memory open result is additionally covered by
 [LinuxSessionOpenTests.bend](../../hosts/linux/monitor/LinuxSessionOpenTests.bend),
@@ -26,6 +26,17 @@ unchanged denials. `LH-open-typed-first`, `LH-open-typed-next`, and
 check the unchanged diagnostic wire bytes with a truncated table, and
 `LH-open-other-routes` covers accepted non-Launch operations. These are
 model checks, not correlation, native authentication or host qualification.
+
+The synthetic [LinuxCredentialBindingTests.bend](../../hosts/linux/monitor/LinuxCredentialBindingTests.bend)
+adds `LH-binding` cases for same-caller replaced credentials, every credential
+field including the high start-time word, missing and duplicate records,
+swapped sessions, unchanged denied launch/restart, direct `barrier_use`, framed
+service, a 4096-record synthetic traversal, combined denial order, restart with
+recycled IDs and stop effects, and revoked references. The credential lookup is
+tail-recursive, but the existing identity lookups and runtime resources still
+limit host capacity; no unlimited capacity is claimed.
+`LinuxHost.State` retain framed facts only: the native broker still has to obtain and
+bind authenticated process lifetime and these checks are not a live-registry gate.
 
 Test names below are the exact `Test.check` names. Fixtures are SYNTHETIC
 broker facts (subject 7, launch credential uid 1000, pid 4242, start 917).

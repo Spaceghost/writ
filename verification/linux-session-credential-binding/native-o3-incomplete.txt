@@ -1,0 +1,10 @@
+Full native Tests.bend build, Bend 2.0.39 / clang 23.1.1 -O3:
+
+bend Tests.bend -o tests-native
+
+Outcome: did not complete. After approximately 15 minutes of wall time a
+watchdog sent SIGTERM to this build's process group. The compiler was still
+running, so no native executable or full-suite result was produced. The exact
+observed clang subprocess command is in native-clang-command.txt. The process
+group ran at nice 15 with 1,200 CPU-second and 16 GiB address-space limits.
+This incomplete optimized run is not a test pass.

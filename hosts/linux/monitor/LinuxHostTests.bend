@@ -252,38 +252,54 @@ def linux_adapter() -> V.Adapter:
 def L() -> V.Adapter:
   linux_adapter()
 
+# Fixture helpers retain the Linux-owned provenance alongside shared transitions.
+def apply_step(+state: LH.State, step: P.Step) -> LH.State:
+  LH.State{P.Step.state(step), LH.credentials(state)}
+
+def credentials_equal(a: LH.CredentialRecords, b: LH.CredentialRecords) -> Bool:
+  match a b:
+    case LH.NoCredentials{} LH.NoCredentials{}: True{}
+    case LH.CredentialRecord{ai, as, ac, ar} LH.CredentialRecord{bi, bs, bc, br}:
+      Nat.is_eq(ai, bi) && Nat.is_eq(as, bs) && LH.credential_equal(ac, bc) && credentials_equal(ar, br)
+    case _ _: False{}
+
+def state_equal(+a: LH.State, +b: LH.State) -> Bool:
+  PT.state_equal(LH.portable(a), LH.portable(b)) && credentials_equal(LH.credentials(a), LH.credentials(b))
+
 # --- Dispatch fixtures (the Linux monitor from `LH.initial()`) ----------------------
 
 def now() -> Nat:
   V.now()
 
-def frame(+state: P.State, f: LH.BrokerFrame) -> LH.Outcome:
+def frame(+state: LH.State, f: LH.BrokerFrame) -> LH.Outcome:
   LH.dispatch(state, LH.FromBroker{f}, now())
 
-def worker_frame(+state: P.State, +session: Nat, bytes: +List<U32>) -> LH.Outcome:
+def worker_frame(+state: LH.State, +session: Nat, bytes: +List<U32>) -> LH.Outcome:
   LH.dispatch(state, LH.FromWorker{session, bytes}, now())
 
-def after(+outcome: LH.Outcome) -> P.State:
+def after(+outcome: LH.Outcome) -> LH.State:
   LH.Outcome.state(outcome)
 
 # The client session (id 1), opened through the shared transition.
-def with_client() -> P.State:
+def with_client() -> LH.State:
   +s = LH.initial()
-  P.Step.state(P.open_session(s, P.revision(s), linux_report(), V.client_evidence(), V.client_role()))
+  +p = LH.portable(s)
+  apply_step(s, P.open_session(p, P.revision(p), linux_report(), V.client_evidence(), V.client_role()))
 
 # The client's root on the vectors' Frontend handle and plan.
-def rooted_in(+s: P.State) -> P.State:
-  P.Step.state(P.issue(s, P.revision(s), V.session_client(), V.fixture_frontend_state(), V.root_handle(), V.plan(),
+def rooted_in(+s: LH.State) -> LH.State:
+  +p = LH.portable(s)
+  apply_step(s, P.issue(p, P.revision(p), V.session_client(), V.fixture_frontend_state(), V.root_handle(), V.plan(),
     V.root_rights(), V.root_expires()))
 
-def rooted() -> P.State:
+def rooted() -> LH.State:
   rooted_in(with_client())
 
 def launch_outcome() -> LH.Outcome:
   frame(rooted(), LH.Launch{full_fact()})
 
 # The worker session (id 2), opened by the broker's Launch.
-def launched() -> P.State:
+def launched() -> LH.State:
   after(launch_outcome())
 
 def root_ref() -> W.Ref:
@@ -292,12 +308,13 @@ def root_ref() -> W.Ref:
 def input_ref() -> W.Ref:
   V.ref_to(L(), V.Input{})
 
-def delegated_in(+s: P.State) -> P.State:
-  P.Step.state(P.delegate(s, P.revision(s), V.session_client(), root_ref(), V.session_worker(), V.root_rights(),
+def delegated_in(+s: LH.State) -> LH.State:
+  +p = LH.portable(s)
+  apply_step(s, P.delegate(p, P.revision(p), V.session_client(), root_ref(), V.session_worker(), V.root_rights(),
     U32.to_nat(V.input_lifetime()), now()))
 
 # The client delegates its root to the worker session as the input.
-def delegated() -> P.State:
+def delegated() -> LH.State:
   delegated_in(launched())
 
 def input_use(claim: U32) -> +List<U32>:
@@ -306,13 +323,13 @@ def input_use(claim: U32) -> +List<U32>:
 def barrier_of(fact: LH.LinuxFact, request: +List<U32>) -> LH.BrokerFrame:
   LH.Barrier{V.session_worker(), fact, request}
 
-def barrier_on(+s: P.State, fact: LH.LinuxFact) -> LH.Outcome:
+def barrier_on(+s: LH.State, fact: LH.LinuxFact) -> LH.Outcome:
   frame(s, barrier_of(fact, input_use(V.claim_none())))
 
 def admit_outcome() -> LH.Outcome:
   barrier_on(delegated(), full_fact())
 
-def admitted() -> P.State:
+def admitted() -> LH.State:
   after(admit_outcome())
 
 def worker() -> Nat:
@@ -334,78 +351,78 @@ def worker_delegation() -> +List<U32>:
 def no_effect(+outcome: LH.Outcome) -> Bool:
   PT.effects_equal(LH.Outcome.effects(outcome), [])
 
-def step_denied(outcome: LH.Outcome, +input: P.State, reason: P.Error) -> Bool:
+def step_denied(outcome: LH.Outcome, +input: LH.State, reason: P.Error) -> Bool:
   match outcome:
-    case LH.Stepped{step}:
-      PT.denied(step, input, reason)
+    case LH.Stepped{_, step}:
+      PT.denied(step, LH.portable(input), reason)
     case _:
       False{}
 
 # A shared transition's denial with exactly `reason`, the input state, and
 # no effect.
-def denied_as(+outcome: LH.Outcome, +input: P.State, reason: P.Error) -> Bool:
-  no_effect(outcome) && step_denied(outcome, input, reason)
+def denied_as(+outcome: LH.Outcome, +input: LH.State, reason: P.Error) -> Bool:
+  no_effect(outcome) && step_denied(outcome, input, reason) && state_equal(LH.Outcome.state(outcome), input)
 
-def step_identity_denied(outcome: LH.Outcome, +input: P.State, reason: I.Error) -> Bool:
+def step_identity_denied(outcome: LH.Outcome, +input: LH.State, reason: I.Error) -> Bool:
   match outcome:
-    case LH.Stepped{step}:
-      PT.denied_identity(step, input, reason)
+    case LH.Stepped{_, step}:
+      PT.denied_identity(step, LH.portable(input), reason)
     case _:
       False{}
 
-def identity_denied(+outcome: LH.Outcome, +input: P.State, reason: I.Error) -> Bool:
-  no_effect(outcome) && step_identity_denied(outcome, input, reason)
+def identity_denied(+outcome: LH.Outcome, +input: LH.State, reason: I.Error) -> Bool:
+  no_effect(outcome) && step_identity_denied(outcome, input, reason) && state_equal(LH.Outcome.state(outcome), input)
 
-def untranslated_as(outcome: LH.Outcome, +input: P.State, reason: LH.Rejection) -> Bool:
+def untranslated_as(outcome: LH.Outcome, +input: LH.State, reason: LH.Rejection) -> Bool:
   match outcome:
     case LH.Untranslated{state, got}:
-      LH.Rejection.equal(got, reason) && PT.state_equal(state, input)
+      LH.Rejection.equal(got, reason) && state_equal(state, input)
     case _:
       False{}
 
 # A broker fact refused before any transition: exactly `reason`, the input
 # state, no effect.
-def untranslated(+outcome: LH.Outcome, +input: P.State, reason: LH.Rejection) -> Bool:
+def untranslated(+outcome: LH.Outcome, +input: LH.State, reason: LH.Rejection) -> Bool:
   no_effect(outcome) && untranslated_as(outcome, input, reason)
 
-def undecoded_as(outcome: LH.Outcome, +input: P.State, reason: W.WireError) -> Bool:
+def undecoded_as(outcome: LH.Outcome, +input: LH.State, reason: W.WireError) -> Bool:
   match outcome:
     case LH.Undecoded{state, got}:
-      W.WireError.equal(got, reason) && PT.state_equal(state, input)
+      W.WireError.equal(got, reason) && state_equal(state, input)
     case _:
       False{}
 
-def undecoded(+outcome: LH.Outcome, +input: P.State, reason: W.WireError) -> Bool:
+def undecoded(+outcome: LH.Outcome, +input: LH.State, reason: W.WireError) -> Bool:
   no_effect(outcome) && undecoded_as(outcome, input, reason)
 
-def unrouted_as(outcome: LH.Outcome, +input: P.State) -> Bool:
+def unrouted_as(outcome: LH.Outcome, +input: LH.State) -> Bool:
   match outcome:
     case LH.Unrouted{state}:
-      PT.state_equal(state, input)
+      state_equal(state, input)
     case _:
       False{}
 
-def unrouted(+outcome: LH.Outcome, +input: P.State) -> Bool:
+def unrouted(+outcome: LH.Outcome, +input: LH.State) -> Bool:
   no_effect(outcome) && unrouted_as(outcome, input)
 
-def checked_as(outcome: LH.Outcome, +input: P.State, +slot: Nat, caller: F.Caller) -> Bool:
+def checked_as(outcome: LH.Outcome, +input: LH.State, +slot: Nat, caller: F.Caller) -> Bool:
   match outcome:
     case LH.Checked{state, P.Granted{+entry, got}}:
-      PT.state_equal(state, input) && Nat.is_eq(I.entry_slot(entry), slot) && I.caller_equal(got, caller)
-        && W.Ref.equal(P.entry_ref(P.identity(input), entry), input_ref())
+      state_equal(state, input) && Nat.is_eq(I.entry_slot(entry), slot) && I.caller_equal(got, caller)
+        && W.Ref.equal(P.entry_ref(P.identity(LH.portable(input)), entry), input_ref())
     case _:
       False{}
 
 # A read-only use granted at `slot` with effective caller `caller`, the input
 # state, no effect.
-def checked_at(+outcome: LH.Outcome, +input: P.State, +slot: Nat, caller: F.Caller) -> Bool:
+def checked_at(+outcome: LH.Outcome, +input: LH.State, +slot: Nat, caller: F.Caller) -> Bool:
   no_effect(outcome) && checked_as(outcome, input, slot, caller)
 
 def admitted_with(+outcome: LH.Outcome, +revision: Nat, effects: +List<P.Effect>) -> Bool:
   match outcome:
     case LH.Opened{state, _}:
-      Nat.is_eq(P.revision(state), revision) && PT.effects_equal([], effects)
-    case LH.Stepped{P.Admitted{state, got}}:
+      Nat.is_eq(P.revision(LH.portable(state)), revision) && PT.effects_equal([], effects)
+    case LH.Stepped{_, P.Admitted{state, got}}:
       Nat.is_eq(P.revision(state), revision) && PT.effects_equal(got, effects)
     case _:
       False{}
@@ -453,7 +470,7 @@ def table_is_v1(profiles: P.Profiles) -> Bool:
       False{}
 
 def initial_ok() -> Bool:
-  +s = LH.initial()
+  +s = LH.portable(LH.initial())
   P.valid(s) && Nat.is_eq(P.revision(s), 0n) && Nat.is_eq(I.host(P.identity(s)), LH.linux_host())
     && Nat.is_eq(I.incarnation(P.identity(s)), LH.linux_incarnation()) && table_is_v1(P.profiles(s))
 
@@ -479,18 +496,18 @@ def launch_without_session_family() -> Bool:
     P.UnsupportedFamily{})
 
 def complete_report_admits() -> Bool:
-  admitted_with(admit_outcome(), 1n+P.revision(delegated()), [P.DeliverInputs{worker(), input_ref()}])
+  admitted_with(admit_outcome(), 1n+P.revision(LH.portable(delegated())), [P.DeliverInputs{worker(), input_ref()}])
     && PT.effects_equal(LH.Outcome.effects(admit_outcome()), [P.DeliverInputs{worker(), input_ref()}])
 
 # The state the monitor retains before the broker delivers already records
 # the worker Running on the input the effect names.
 def retained_before_delivery() -> Bool:
-  worker_running(P.worker_at(P.workers(admitted()), worker()), V.session_worker(), input_ref())
+  worker_running(P.worker_at(P.workers(LH.portable(admitted())), worker()), V.session_worker(), input_ref())
 
 # Only `linux-worker-v1` is configured: a worker session under any other
 # profile id is refused by the shared transition.
 def other_profile_unknown() -> Bool:
-  +s = rooted()
+  +s = LH.portable(rooted())
   PT.denied(P.open_session(s, P.revision(s), linux_report(), V.worker_evidence(), P.WorkerRole{2n}), s,
     P.UnknownProfile{})
 
@@ -499,10 +516,10 @@ def accelerator_profiles() -> P.Profiles:
   P.Profiles{P.Configured{P.Profile{LH.linux_worker_v1(), P.all_families(), LH.required_controls(), P.Accelerator{}},
     LH.quota_limit()}, P.NoProfiles{}}
 
-def accelerator_delegated() -> P.State:
+def accelerator_delegated() -> LH.State:
   +s = P.empty(I.empty(LH.linux_host(), LH.linux_incarnation()), accelerator_profiles())
   +client = P.Step.state(P.open_session(s, P.revision(s), linux_report(), V.client_evidence(), V.client_role()))
-  delegated_in(after(frame(rooted_in(client), LH.Launch{full_fact()})))
+  delegated_in(after(frame(rooted_in(LH.without_credentials(client)), LH.Launch{full_fact()})))
 
 def accelerator_refused() -> Bool:
   denied_as(barrier_on(accelerator_delegated(), full_fact()), accelerator_delegated(), P.UnisolatedAccelerator{})
@@ -550,26 +567,26 @@ def translator_checks() -> IO(Unit):
 # --- Dispatch checks ----------------------------------------------------------------
 
 def launch_ok() -> Bool:
-  admitted_with(launch_outcome(), 1n+P.revision(rooted()), [])
-    && session_is(I.session_at(I.sessions(P.identity(launched())), V.session_worker()), launch_caller())
-    && bound_v1(P.binding_at(P.bindings(launched()), V.session_worker()))
+  admitted_with(launch_outcome(), 1n+P.revision(LH.portable(rooted())), [])
+    && session_is(I.session_at(I.sessions(P.identity(LH.portable(launched()))), V.session_worker()), launch_caller())
+    && bound_v1(P.binding_at(P.bindings(LH.portable(launched())), V.session_worker()))
 
-def charged() -> P.State:
+def charged() -> LH.State:
   after(frame(admitted(), LH.Usage{worker(), 1000n}))
 
 def usage_ok() -> Bool:
-  admitted_with(frame(admitted(), LH.Usage{worker(), 1000n}), 1n+P.revision(admitted()), [])
-    && Nat.is_eq(quota_used(P.worker_at(P.workers(charged()), worker())), 1000n)
+  admitted_with(frame(admitted(), LH.Usage{worker(), 1000n}), 1n+P.revision(LH.portable(admitted())), [])
+    && Nat.is_eq(quota_used(P.worker_at(P.workers(LH.portable(charged())), worker())), 1000n)
 
 # The monitor restarted as `linux_successor()` from the admitted state.
-def restarted() -> P.State:
+def restarted() -> LH.State:
   +s = admitted()
-  P.Step.state(H.restart(s, P.revision(s), linux_successor()))
+  LH.Outcome.state(LH.restart(s, P.revision(LH.portable(s)), linux_successor()))
 
 def restart_ok() -> Bool:
-  Nat.is_eq(I.incarnation(P.identity(restarted())), linux_successor())
-    && admitted_with(frame(restarted(), LH.Launch{successor_fact()}), 1n+P.revision(restarted()), [])
-    && session_is(I.session_at(I.sessions(P.identity(after(frame(restarted(), LH.Launch{successor_fact()})))),
+  Nat.is_eq(I.incarnation(P.identity(LH.portable(restarted()))), linux_successor())
+    && admitted_with(frame(restarted(), LH.Launch{successor_fact()}), 1n+P.revision(LH.portable(restarted())), [])
+    && session_is(I.session_at(I.sessions(P.identity(LH.portable(after(frame(restarted(), LH.Launch{successor_fact()}))))),
       I.first_slot()), launch_caller())
 
 def barrier_session(session: Nat) -> LH.Outcome:
@@ -603,7 +620,7 @@ def barrier_dispatch_checks() -> IO(Unit):
     Test.check(untranslated(barrier_on(delegated(), controls_fact(with_bit(LH.required_controls(), unnamed_bit()))), delegated(), LH.UncreditedControl{}), "LH-001 a Barrier crediting an unnamed control is refused UncreditedControl with the state unchanged and no effect")
     Test.check(undecoded(frame(delegated(), barrier_of(full_fact(), short_bytes())), delegated(), W.BadLength{}), "LH-006 a Barrier whose request snapshot is not a whole frame is Undecoded with the state unchanged and no effect")
     Test.check(unrouted(frame(delegated(), barrier_of(full_fact(), worker_delegation())), delegated()), "LH-006 a Barrier whose request is not a Use admits nothing: Unrouted with the state unchanged and no effect")
-    Test.check(PT.state_equal(after(frame(delegated(), barrier_of(full_fact(), input_use(V.claim_other())))), admitted()), "LH-002 a Barrier request claiming subject B admits exactly as the unclaimed request")
+    Test.check(state_equal(after(frame(delegated(), barrier_of(full_fact(), input_use(V.claim_other())))), admitted()), "LH-002 a Barrier request claiming subject B admits exactly as the unclaimed request")
 
 def worker_dispatch_checks() -> IO(Unit):
   do IO<Unit>:
@@ -613,7 +630,7 @@ def worker_dispatch_checks() -> IO(Unit):
     Test.check(unrouted(worker_frame(admitted(), V.session_worker(), V.complete_bytes(input_ref())), admitted()) && unrouted(worker_frame(admitted(), V.session_worker(), release_bytes(input_ref())), admitted()), "LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the state unchanged and no effect")
     Test.check(usage_ok(), "PH-007 a broker Usage within quota_limit is charged once with no effect")
     Test.check(denied_as(frame(charged(), LH.Usage{worker(), 25n}), charged(), P.QuotaExhausted{}), "PH-007 a broker Usage past quota_limit is denied QuotaExhausted with the state unchanged and no effect")
-    Test.check(denied_as(frame(admitted(), LH.Emission{worker(), True{}}), admitted(), P.DiagnosticSink{}) && admitted_with(frame(admitted(), LH.Emission{worker(), False{}}), 1n+P.revision(admitted()), []), "LH-009 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect")
+    Test.check(denied_as(frame(admitted(), LH.Emission{worker(), True{}}), admitted(), P.DiagnosticSink{}) && admitted_with(frame(admitted(), LH.Emission{worker(), False{}}), 1n+P.revision(LH.portable(admitted())), []), "LH-009 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect")
 
 # --- Conformance replay through the Linux adapter -----------------------------------
 
@@ -752,10 +769,10 @@ def synthetic_barrier_served(session: Nat, subject: Nat, token: T.CodeId, incarn
     launch: LH.Credential, peer: LH.Credential) -> LH.Served:
   LH.serve(delegated(), synthetic_barrier_bytes(session, subject, token, incarnation, launch, peer), now())
 
-def synthetic_denied(+served: LH.Served, +expected: P.State, reason: LH.Rejection) -> Bool:
+def synthetic_denied(+served: LH.Served, +expected: LH.State, reason: LH.Rejection) -> Bool:
   match served:
     case LH.Served{outcome}:
-      untranslated(outcome, expected, reason) && PT.state_equal(LH.next(served), expected)
+      untranslated(outcome, expected, reason) && state_equal(LH.next(served), expected)
         && PT.effects_equal(LH.served_effects(served), [])
     case _:
       False{}
@@ -767,23 +784,25 @@ def synthetic_barrier_denied(peer: LH.Credential, reason: LH.Rejection) -> Bool:
   synthetic_denied(synthetic_barrier_served(V.session_worker(), subject_a(), launch_token(), LH.linux_incarnation(),
     launch_credential(), peer), delegated(), reason)
 
-def synthetic_launch_accepted(served: LH.Served) -> Bool:
+def synthetic_launch_accepted(served: LH.Served, credential: LH.Credential) -> Bool:
   match served:
     case LH.Served{+outcome}:
-      admitted_with(outcome, 1n+P.revision(rooted()), [])
-        && PT.state_equal(LH.Outcome.state(outcome), launched())
-        && session_is(I.session_at(I.sessions(P.identity(LH.Outcome.state(outcome))), V.session_worker()),
+      admitted_with(outcome, 1n+P.revision(LH.portable(rooted())), [])
+        && PT.state_equal(LH.portable(LH.Outcome.state(outcome)), LH.portable(launched()))
+        && credentials_equal(LH.credentials(LH.Outcome.state(outcome)),
+          LH.CredentialRecord{LH.linux_incarnation(), V.session_worker(), credential, LH.NoCredentials{}})
+        && session_is(I.session_at(I.sessions(P.identity(LH.portable(LH.Outcome.state(outcome)))), V.session_worker()),
           launch_caller())
     case _:
       False{}
 
 def synthetic_valid_launch() -> Bool:
-  synthetic_launch_accepted(synthetic_launch_served(launch_credential(), launch_credential(), LH.linux_incarnation()))
+  synthetic_launch_accepted(synthetic_launch_served(launch_credential(), launch_credential(), LH.linux_incarnation()), launch_credential())
 
 def synthetic_valid_barrier() -> Bool:
   +served = synthetic_barrier_served(V.session_worker(), subject_a(), launch_token(), LH.linux_incarnation(),
     launch_credential(), launch_credential())
-  PT.state_equal(LH.next(served), admitted())
+  state_equal(LH.next(served), admitted())
     && PT.effects_equal(LH.served_effects(served), [P.DeliverInputs{worker(), input_ref()}])
 
 def synthetic_high_start() -> LH.Credential:
@@ -793,7 +812,7 @@ def synthetic_different_high_start() -> LH.Credential:
   LH.Credential{1000n, 1000n, 4242n, Nat.add(Nat.mul(LH.word_span(), 2n), 917n)}
 
 def synthetic_high_start_matches() -> Bool:
-  synthetic_launch_accepted(synthetic_launch_served(synthetic_high_start(), synthetic_high_start(), LH.linux_incarnation()))
+  synthetic_launch_accepted(synthetic_launch_served(synthetic_high_start(), synthetic_high_start(), LH.linux_incarnation()), synthetic_high_start())
 
 def synthetic_high_start_mismatch() -> Bool:
   synthetic_denied(synthetic_launch_served(synthetic_high_start(), synthetic_different_high_start(), LH.linux_incarnation()), rooted(), LH.PeerMismatch{})
@@ -834,11 +853,11 @@ def synthetic_unframed(result: LH.FrameResult, expected: LH.FrameError) -> Bool:
     case _:
       False{}
 
-def synthetic_served_unframed(+served: LH.Served, +expected: P.State, reason: LH.FrameError) -> Bool:
+def synthetic_served_unframed(+served: LH.Served, +expected: LH.State, reason: LH.FrameError) -> Bool:
   match served:
     case LH.NotFramed{state, got}:
-      LH.FrameError.equal(got, reason) && PT.state_equal(state, expected)
-        && PT.state_equal(LH.next(served), expected) && PT.effects_equal(LH.served_effects(served), [])
+      LH.FrameError.equal(got, reason) && state_equal(state, expected)
+        && state_equal(LH.next(served), expected) && PT.effects_equal(LH.served_effects(served), [])
     case _:
       False{}
 

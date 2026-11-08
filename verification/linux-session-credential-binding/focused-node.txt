@@ -1,0 +1,17 @@
+PASS: LH-binding: both credential fields replaced with a reused pid are denied
+PASS: LH-binding: full-width start time is retained and compared
+PASS: LH-binding: uid, gid and pid changes are denied
+PASS: LH-binding: importing an arbitrary portable state cannot invent session provenance
+PASS: LH-binding: duplicate records for one session are ambiguous
+PASS: LH-binding: a different same-caller session cannot lend its credential
+PASS: LH-binding: denied launch leaves both states unchanged
+PASS: LH-binding: direct barrier_use rechecks provenance
+PASS: LH-binding: more than eight launch records remain available
+PASS: LH-binding: accepted restart clears old bindings before an id is reused
+PASS: LH-binding: denied restart preserves bindings and state
+PASS: LH-binding: a matching session still cannot use a revoked reference
+PASS: LH-binding: combined failures retain denial precedence
+PASS: LH-binding: framed service rejects a replaced lifetime with no effects
+PASS: LH-binding: successful restart clears credentials and preserves StopEffects
+PASS: LH-binding: a synthetic 4096-record list reaches the earlier session
+LinuxCredentialBinding: 16 checks passed

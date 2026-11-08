@@ -14,15 +14,16 @@ import ../../../Transfer.bend as T
 # HostConformanceVectors.bend. It supplies only `P.Fact`, `P.TargetReport`,
 # `P.RouteFact`, and `P.SessionEvidence` values to the shared transitions and
 # hands the broker only the `P.Effect` values of an `Admitted` step one of
-# those transitions returned. It decides nothing: it adds no transition, no
-# `Error`, no `HostIdentity`/`HostPrimitives` case, and no law (LAWS.bend and
+# those transitions returned. It retains launch credentials and checks their
+# session binding before admission; it adds no `HostIdentity`/`HostPrimitives`
+# case and no law (LAWS.bend and
 # PROOF.bend are untouched), and no native fact it carries is an authority
 # fact. It imports nothing under `contrib/`, `examples/`, or another
 # `hosts/` target, and the contract never imports it.
 #
 # Authority. Every grant, binding, profile, delegation, admission, quota, and
 # release decision is a shared transition's. The monitor-owned records here
-# are constants: the Linux host id and starting incarnation, the versioned
+# include the successful Launch's session/credential records, plus the Linux host id and starting incarnation, the versioned
 # profile table (`profiles`, one configured profile `linux-worker-v1`), and
 # the role a broker-launched session is opened in (`worker_role`, the
 # monitor's decision, never a fact field). A `LinuxFact` is an observation
@@ -52,6 +53,8 @@ import ../../../Transfer.bend as T
 #                          exactly one session of the identity table, or
 #                          its caller is not the fact's launch subject and
 #                          token                    -> SessionMismatch
+#   `credential_check`      missing, duplicate or mismatched retained launch
+#                          credential for this incarnation/session -> LaunchMismatch
 #   `report_of`            a family bit outside `P.all_families()`
 #                                                   -> UnknownFamily
 #                          a control bit outside `linux_controls()` (the
@@ -103,12 +106,14 @@ import ../../../Transfer.bend as T
 # and the claimed subject is never read (the Use pattern below discards it,
 # and `P.use` ignores it).
 #
-# Barrier binding. A Barrier's fact must name the caller of the session it
-# admits (`session_check`, else SessionMismatch), so a barrier the broker
-# attributed to the wrong worker's session is refused. The monitor stores no
-# launch credential, so the barrier's `launch`/`peer` comparison is a
-# consistency check on the frame: that the barrier credential is the
-# session's launch credential is a broker obligation (Task 2). The endpoint is
+# Barrier binding. A Barrier's caller must match the session, and its launch
+# credential must match the unique record retained from that same session's
+# successful Launch in this incarnation (else LaunchMismatch). Both launch
+# and peer must agree within each frame. These are comparisons of broker-framed
+# model facts, not kernel authentication; the native broker must acquire and
+# correlate real credentials, process lifetime, endpoint and session (Task 2).
+# Imported primitive states have no launch records and fail closed at Barrier.
+# Accepted restart clears the records; denied restart retains them. The endpoint is
 # fixed at Launch (`open_session` records the origin) and ignored at the
 # Barrier. The request snapshot is the only request admission reads: only
 # its reference is used and it must resolve on the barrier's session, so a
@@ -122,8 +127,8 @@ import ../../../Transfer.bend as T
 # Dispatch. `dispatch` applies at most one shared transition per framed input:
 #   Launch{fact}            -> `session_evidence_of`, `report_of`, then
 #                              `P.open_session_result` with `worker_role()`
-#   Barrier{s, fact, bytes} -> the launch check, `session_check`, `report_of`,
-#                              `inventory_of`,
+#   Barrier{s, fact, bytes} -> the launch check, `session_check`, the retained
+#                              credential check, `report_of`, `inventory_of`,
 #                              `W.decode_bytes`; a Use's reference goes to
 #                              `P.admit_worker` on session `s`
 #   Usage{worker, amount}   -> `P.charge`
@@ -152,17 +157,18 @@ import ../../../Transfer.bend as T
 # admitted `DeliverInputs` is therefore issued only after the state recording
 # the worker `Running` is retained.
 #
-# Failure behavior: every refusal returns the supplied primitive state and no
+# Failure behavior: every refusal returns the supplied composite state and no
 # effect; a shared transition's denial is its `P.Denied` step unchanged.
 # Monitor time `now` is the monitor's trusted clock (host obligation (c)).
 #
 # Public entry points: `linux_host`, `linux_incarnation`; `linux_worker_v1`,
 # `profile_name`, `required_controls`, `linux_controls`, `quota_limit`,
 # `linux_worker_profile`, `profiles`, `worker_role`, `initial`; the types
-# `Credential`, `Endpoint`, `LinuxRoute`, `LinuxFact`, `Rejection`,
+# `State`, `Credential`, `CredentialRecords`, `Endpoint`, `LinuxRoute`, `LinuxFact`, `Rejection`,
 # `EvidenceResult`, `ReportResult`, `BrokerFrame`, `Input`, `Outcome`; the
-# translators `launch_check`, `session_check`, `session_evidence_of`, `report_of`,
-# `inventory_of`; `dispatch`, `Outcome.state`, `Outcome.effects`, and
+# translators `launch_check`, `session_check`, `credential_check`, `session_evidence_of`, `report_of`,
+# `inventory_of`; `portable`, `credentials`, `without_credentials`, `restart`,
+# `dispatch`, `serve`, `next`, `Outcome.state`, `Outcome.effects`, and
 # `Rejection.equal`. Every other def is an implementation helper.
 
 # --- Host identity and profile table (monitor constants) --------------------------
@@ -214,8 +220,8 @@ def worker_role() -> P.Role:
 
 # The Linux monitor's starting state: an empty identity table on this host
 # and incarnation, with the configured profile table.
-def initial() -> P.State:
-  P.empty(I.empty(linux_host(), linux_incarnation()), profiles())
+def initial() -> State:
+  State{P.empty(I.empty(linux_host(), linux_incarnation()), profiles()), NoCredentials{}}
 
 # --- Native facts (what the broker frames) ----------------------------------------
 
@@ -224,6 +230,54 @@ def initial() -> P.State:
 # only.
 type Credential is Data:
   Credential{uid: Nat, gid: Nat, pid: Nat, start: Nat}
+
+# These records are monitor-owned observations, not portable credentials.
+# A record is inserted only alongside the exact successful session opening.
+type CredentialRecords is Data:
+  NoCredentials{}
+  CredentialRecord{incarnation: Nat, session: Nat, credential: Credential, rest: CredentialRecords}
+
+type State is Data:
+  State{portable: P.State, credentials: CredentialRecords}
+
+def portable(state: State) -> P.State:
+  match state:
+    case State{p, _}: p
+
+def credentials(state: State) -> CredentialRecords:
+  match state:
+    case State{_, records}: records
+
+# Importing a primitive state never invents provenance for its sessions.
+def without_credentials(state: P.State) -> State:
+  State{state, NoCredentials{}}
+
+# Count all same-incarnation, same-session records; ambiguous state refuses.
+type CredentialLookup is Data:
+  NoCredential{}
+  OneCredential{credential: Credential}
+  ManyCredentials{}
+
+def credential_found(found: CredentialLookup, credential: Credential) -> CredentialLookup:
+  match found:
+    case NoCredential{}: OneCredential{credential}
+    case _: ManyCredentials{}
+
+def credential_choose(same: Bool, found: CredentialLookup, credential: Credential) -> CredentialLookup:
+  match same:
+    case False{}: found
+    case True{}: credential_found(found, credential)
+
+def credential_lookup_acc(records: CredentialRecords, +incarnation: Nat, +session: Nat,
+    found: CredentialLookup) -> CredentialLookup:
+  match records:
+    case NoCredentials{}: found
+    case CredentialRecord{i, s, credential, rest}:
+      credential_lookup_acc(rest, incarnation, session,
+        credential_choose(Nat.is_eq(i, incarnation) && Nat.is_eq(s, session), found, credential))
+
+def credential_lookup(records: CredentialRecords, incarnation: Nat, session: Nat) -> CredentialLookup:
+  credential_lookup_acc(records, incarnation, session, NoCredential{})
 
 # How the worker's session endpoint arrived, as the broker observed it.
 type Endpoint is Data:
@@ -254,6 +308,7 @@ type Rejection is Data:
   StaleLaunch{}
   PeerMismatch{}
   SessionMismatch{}
+  LaunchMismatch{}
   UnknownFamily{}
   UncreditedControl{}
 
@@ -270,6 +325,7 @@ def Rejection.equal(a: Rejection, b: Rejection) -> Bool:
     case StaleLaunch{} StaleLaunch{}: True{}
     case PeerMismatch{} PeerMismatch{}: True{}
     case SessionMismatch{} SessionMismatch{}: True{}
+    case LaunchMismatch{} LaunchMismatch{}: True{}
     case UnknownFamily{} UnknownFamily{}: True{}
     case UncreditedControl{} UncreditedControl{}: True{}
     case _ _: False{}
@@ -294,8 +350,9 @@ def reject_if(failed: Bool, reason: Rejection, rest: Maybe<&2, Rejection>) -> Ma
 # record names this monitor's current incarnation (else StaleLaunch), and the
 # peer credential it carries equals the launch credential it carries (else
 # PeerMismatch). Both are comparisons inside one frame: it authenticates
-# nothing and binds the fact to no session (`session_check` does that for a
-# Barrier); it refuses a fact whose own fields disagree.
+# nothing and binds the fact to no session; `session_check` and
+# `credential_check` provide the model's Barrier comparisons. It refuses a
+# fact whose own fields disagree.
 def launch_check(+fact: LinuxFact, +incarnation: Nat) -> Maybe<&2, Rejection>:
   match fact:
     case LinuxFact{_, _, launched, launch, peer, _, _, _, _}:
@@ -318,6 +375,18 @@ def session_check(+fact: LinuxFact, +identity: I.State, +session: Nat) -> Maybe<
     case LinuxFact{subject, token, _, _, _, _, _, _, _}:
       reject_if(Bool.not(session_caller_is(I.session_at(I.sessions(identity), session), F.Caller{subject, token})),
         SessionMismatch{}, None{})
+
+# Bind the barrier to the unique credential retained at this session's launch.
+def credential_matches(found: CredentialLookup, launch: Credential) -> Maybe<&2, Rejection>:
+  match found:
+    case OneCredential{credential}:
+      reject_if(Bool.not(credential_equal(credential, launch)), LaunchMismatch{}, None{})
+    case _: Some{LaunchMismatch{}}
+
+def credential_check(fact: LinuxFact, records: CredentialRecords, incarnation: Nat, session: Nat) -> Maybe<&2, Rejection>:
+  match fact:
+    case LinuxFact{_, _, _, launch, _, _, _, _, _}:
+      credential_matches(credential_lookup(records, incarnation, session), launch)
 
 # Implementation helper: the first rejection of two checks.
 def first_of(first: Maybe<&2, Rejection>, second: Maybe<&2, Rejection>) -> Maybe<&2, Rejection>:
@@ -411,140 +480,137 @@ type Input is Data:
 # `Checked` a read-only `P.use` result with the unchanged state; the other
 # three ran no transition and hold the supplied state.
 type Outcome is Data:
-  Opened{state: P.State, session: Nat}
-  Stepped{step: P.Step}
-  Checked{state: P.State, result: P.UseResult}
-  Untranslated{state: P.State, reason: Rejection}
-  Undecoded{state: P.State, reason: W.WireError}
-  Unrouted{state: P.State}
+  Opened{state: State, session: Nat}
+  Stepped{credentials: CredentialRecords, step: P.Step}
+  Checked{state: State, result: P.UseResult}
+  Untranslated{state: State, reason: Rejection}
+  Undecoded{state: State, reason: W.WireError}
+  Unrouted{state: State}
 
-# The state the monitor retains before the broker performs any effect.
-def Outcome.state(outcome: Outcome) -> P.State:
+def Outcome.state(outcome: Outcome) -> State:
   match outcome:
-    case Opened{state, _}:
-      state
-    case Stepped{step}:
-      P.Step.state(step)
-    case Checked{state, _}:
-      state
-    case Untranslated{state, _}:
-      state
-    case Undecoded{state, _}:
-      state
-    case Unrouted{state}:
-      state
+    case Opened{state, _}: state
+    case Stepped{records, step}: State{P.Step.state(step), records}
+    case Checked{state, _}: state
+    case Untranslated{state, _}: state
+    case Undecoded{state, _}: state
+    case Unrouted{state}: state
 
-# The only effects the broker may execute: an admitted step's, else none.
 def Outcome.effects(outcome: Outcome) -> +List<P.Effect>:
   match outcome:
-    case Stepped{step}:
-      P.Step.effects(step)
-    case _:
-      []
+    case Stepped{_, step}: P.Step.effects(step)
+    case _: []
 
-# --- Dispatch: broker channel -----------------------------------------------------
+def stepped(+state: State, +step: P.Step) -> Outcome:
+  Stepped{credentials(state), step}
 
-def current_incarnation(+state: P.State) -> Nat:
-  I.incarnation(P.identity(state))
+# Clear launch bindings only when the shared restart actually commits.
+def restart_result(+step: P.Step, state: State) -> Outcome:
+  match step:
+    case P.Admitted{_, _}: Stepped{NoCredentials{}, step}
+    case P.Denied{_, _}: Stepped{credentials(state), step}
 
-# Implementation helper: Launch after its evidence translated.
-def launch_result(+result: P.SessionOpen) -> Outcome:
+def restart(+state: State, +expected_revision: Nat, successor: Nat) -> Outcome:
+  restart_result(H.restart(portable(state), expected_revision, successor), state)
+
+def current_incarnation(state: State) -> Nat:
+  I.incarnation(P.identity(portable(state)))
+
+def launch_result(+result: P.SessionOpen, +state: State, credential: Credential) -> Outcome:
   match result:
-    case P.SessionOpened{state, session}:
-      Opened{state, session}
+    case P.SessionOpened{p, session}:
+      Opened{State{p, CredentialRecord{current_incarnation(state), session, credential, credentials(state)}}, session}
     case P.SessionOpenDenied{_, _}:
-      Stepped{P.SessionOpen.step(result)}
+      stepped(state, P.SessionOpen.step(result))
 
-def launch_report(report: ReportResult, +state: P.State, evidence: P.Fact) -> Outcome:
+def launch_report(report: ReportResult, +state: State, evidence: P.Fact, credential: Credential) -> Outcome:
   match report:
     case Report{target}:
-      launch_result(P.open_session_result(state, P.revision(state), target, evidence, worker_role()))
-    case NoReport{reason}:
-      Untranslated{state, reason}
+      +p = portable(state)
+      launch_result(P.open_session_result(p, P.revision(p), target, evidence, worker_role()), state, credential)
+    case NoReport{reason}: Untranslated{state, reason}
 
-def launch_with(evidence: EvidenceResult, report: ReportResult, +state: P.State) -> Outcome:
+def launch_with(evidence: EvidenceResult, report: ReportResult, +state: State, credential: Credential) -> Outcome:
   match evidence:
-    case Evidence{fact}:
-      launch_report(report, state, fact)
-    case NoEvidence{reason}:
-      Untranslated{state, reason}
+    case Evidence{fact}: launch_report(report, state, fact, credential)
+    case NoEvidence{reason}: Untranslated{state, reason}
 
-# Implementation helper: the barrier's request; only a Use names the input to
-# admit, and its claimed subject is discarded unread.
-def barrier_use(message: W.Message, report: P.TargetReport, inventory: P.Fact, +state: P.State,
-    +session: Nat, +now: Nat) -> Outcome:
-  match message:
-    case W.Use{ref, _, _, _}:
-      Stepped{P.admit_worker(state, P.revision(state), report, inventory, session, ref, now)}
-    case _:
-      Unrouted{state}
+def barrier_checks(+fact: LinuxFact, +state: State, +session: Nat) -> Maybe<&2, Rejection>:
+  first_of(launch_check(fact, current_incarnation(state)),
+    first_of(session_check(fact, P.identity(portable(state)), session),
+      credential_check(fact, credentials(state), current_incarnation(state), session)))
 
-def barrier_request(decoded: W.DecodeResult, report: P.TargetReport, inventory: P.Fact, +state: P.State,
-    +session: Nat, +now: Nat) -> Outcome:
-  match decoded:
-    case W.Decoded{message}:
-      barrier_use(message, report, inventory, state, session, now)
-    case W.Malformed{reason}:
-      Undecoded{state, reason}
-
-def barrier_report(report: ReportResult, inventory: P.Fact, +state: P.State, +session: Nat,
-    decoded: W.DecodeResult, +now: Nat) -> Outcome:
-  match report:
-    case Report{target}:
-      barrier_request(decoded, target, inventory, state, session, now)
-    case NoReport{reason}:
-      Untranslated{state, reason}
-
-def barrier_with(found: Maybe<&2, Rejection>, report: ReportResult, inventory: P.Fact, +state: P.State,
-    +session: Nat, decoded: W.DecodeResult, +now: Nat) -> Outcome:
+# Implementation helper, the success branch of the preexisting barrier gate.
+# Trusted in-process callers must not supply a forged check result.
+def barrier_with(found: Maybe<&2, Rejection>, message: W.Message, report: P.TargetReport,
+    inventory: P.Fact, +state: State, +session: Nat, +now: Nat) -> Outcome:
   match found:
+    case Some{reason}: Untranslated{state, reason}
     case None{}:
-      barrier_report(report, inventory, state, session, decoded, now)
-    case Some{reason}:
-      Untranslated{state, reason}
+      match message:
+        case W.Use{ref, _, _, _}:
+          +p = portable(state)
+          stepped(state, P.admit_worker(p, P.revision(p), report, inventory, session, ref, now))
+        case _: Unrouted{state}
 
-def on_broker(+state: P.State, frame: BrokerFrame, +now: Nat) -> Outcome:
+# Recheck provenance even when this helper is called directly.
+def barrier_use(message: W.Message, report: P.TargetReport, inventory: P.Fact, +state: State,
+    +session: Nat, +fact: LinuxFact, +now: Nat) -> Outcome:
+  barrier_with(barrier_checks(fact, state, session), message, report, inventory, state, session, now)
+
+def barrier_request(decoded: W.DecodeResult, report: P.TargetReport, inventory: P.Fact, +state: State,
+    +session: Nat, fact: LinuxFact, +now: Nat) -> Outcome:
+  match decoded:
+    case W.Decoded{message}: barrier_use(message, report, inventory, state, session, fact, now)
+    case W.Malformed{reason}: Undecoded{state, reason}
+
+def barrier_report(report: ReportResult, inventory: P.Fact, +state: State, +session: Nat,
+    fact: LinuxFact, decoded: W.DecodeResult, +now: Nat) -> Outcome:
+  match report:
+    case Report{target}: barrier_request(decoded, target, inventory, state, session, fact, now)
+    case NoReport{reason}: Untranslated{state, reason}
+
+def barrier_preflight(found: Maybe<&2, Rejection>, report: ReportResult, inventory: P.Fact, +state: State,
+    +session: Nat, fact: LinuxFact, decoded: W.DecodeResult, +now: Nat) -> Outcome:
+  match found:
+    case None{}: barrier_report(report, inventory, state, session, fact, decoded, now)
+    case Some{reason}: Untranslated{state, reason}
+
+def on_broker(+state: State, frame: BrokerFrame, +now: Nat) -> Outcome:
   match frame:
     case Launch{+fact}:
-      launch_with(session_evidence_of(fact, current_incarnation(state)), report_of(fact), state)
+      match fact:
+        case LinuxFact{_, _, _, credential, _, _, _, _, _}:
+          launch_with(session_evidence_of(fact, current_incarnation(state)), report_of(fact), state, credential)
     case Barrier{+session, +fact, request}:
-      barrier_with(first_of(launch_check(fact, current_incarnation(state)),
-        session_check(fact, P.identity(state), session)), report_of(fact), inventory_of(fact), state,
-        session, W.decode_bytes(request), now)
+      barrier_preflight(barrier_checks(fact, state, session), report_of(fact), inventory_of(fact), state,
+        session, fact, W.decode_bytes(request), now)
     case Usage{worker, amount}:
-      Stepped{P.charge(state, P.revision(state), P.ResourceRequest{worker, amount}, now)}
+      +p = portable(state)
+      stepped(state, P.charge(p, P.revision(p), P.ResourceRequest{worker, amount}, now))
     case Emission{worker, public}:
-      Stepped{P.diagnostic(state, P.revision(state), P.Diagnostic{worker, public}, now)}
+      +p = portable(state)
+      stepped(state, P.diagnostic(p, P.revision(p), P.Diagnostic{worker, public}, now))
 
-# --- Dispatch: worker channel -----------------------------------------------------
-
-# Implementation helper: a decoded worker message on its transport session.
-def worker_message(+message: W.Message, +state: P.State, +session: Nat, +now: Nat) -> Outcome:
+def worker_message(+message: W.Message, +state: State, +session: Nat, +now: Nat) -> Outcome:
   match message:
     case W.Use{_, _, _, _}:
-      Checked{state, P.use(state, P.revision(state), session, message, now)}
+      +p = portable(state)
+      Checked{state, P.use(p, P.revision(p), session, message, now)}
     case W.Delegate{ref, rights, lifetime, target}:
-      Stepped{P.delegate(state, P.revision(state), session, ref, U32.to_nat(target), rights, U32.to_nat(lifetime),
-        now)}
-    case _:
-      Unrouted{state}
+      +p = portable(state)
+      stepped(state, P.delegate(p, P.revision(p), session, ref, U32.to_nat(target), rights, U32.to_nat(lifetime), now))
+    case _: Unrouted{state}
 
-def on_worker(+state: P.State, +session: Nat, decoded: W.DecodeResult, +now: Nat) -> Outcome:
+def on_worker(+state: State, +session: Nat, decoded: W.DecodeResult, +now: Nat) -> Outcome:
   match decoded:
-    case W.Decoded{message}:
-      worker_message(message, state, session, now)
-    case W.Malformed{reason}:
-      Undecoded{state, reason}
+    case W.Decoded{message}: worker_message(message, state, session, now)
+    case W.Malformed{reason}: Undecoded{state, reason}
 
-# Public entry point: apply one framed input to the monitor's primitive state
-# at monitor time `now` (see the header). The caller retains
-# `Outcome.state(result)` before the broker performs `Outcome.effects(result)`.
-def dispatch(+state: P.State, input: Input, +now: Nat) -> Outcome:
+def dispatch(+state: State, input: Input, +now: Nat) -> Outcome:
   match input:
-    case FromBroker{frame}:
-      on_broker(state, frame, now)
-    case FromWorker{+session, bytes}:
-      on_worker(state, session, W.decode_bytes(bytes), now)
+    case FromBroker{frame}: on_broker(state, frame, now)
+    case FromWorker{+session, bytes}: on_worker(state, session, W.decode_bytes(bytes), now)
 
 # --- Broker channel codec and monitor service (task 1.2) --------------------------
 #
@@ -650,7 +716,7 @@ type FrameResult is Data:
 
 type Served is Data:
   Served{outcome: Outcome}
-  NotFramed{state: P.State, reason: FrameError}
+  NotFramed{state: State, reason: FrameError}
 
 # Implementation helper types for the decoder.
 type Packed is Data:
@@ -957,7 +1023,7 @@ def decode_bounded(within: Bool, +bytes: +List<U32>) -> FrameResult:
 def decode_frame(+bytes: +List<U32>) -> FrameResult:
   decode_bounded(frame_within(max_frame_bytes(), bytes), bytes)
 
-def served_of(result: FrameResult, +state: P.State, +now: Nat) -> Served:
+def served_of(result: FrameResult, +state: State, +now: Nat) -> Served:
   match result:
     case Framed{input}:
       Served{dispatch(state, input, now)}
@@ -965,11 +1031,11 @@ def served_of(result: FrameResult, +state: P.State, +now: Nat) -> Served:
       NotFramed{state, reason}
 
 # Public entry point: decode one frame and apply it at monitor time `now`.
-def serve(+state: P.State, +bytes: +List<U32>, +now: Nat) -> Served:
+def serve(+state: State, +bytes: +List<U32>, +now: Nat) -> Served:
   served_of(decode_frame(bytes), state, now)
 
 # Public entry point: the state the monitor retains before any effect.
-def next(served: Served) -> P.State:
+def next(served: Served) -> State:
   match served:
     case Served{outcome}:
       Outcome.state(outcome)
@@ -1041,6 +1107,7 @@ def rejection_name(reason: Rejection) -> String:
     case StaleLaunch{}: "StaleLaunch"
     case PeerMismatch{}: "PeerMismatch"
     case SessionMismatch{}: "SessionMismatch"
+    case LaunchMismatch{}: "LaunchMismatch"
     case UnknownFamily{}: "UnknownFamily"
     case UncreditedControl{}: "UncreditedControl"
 
@@ -1084,7 +1151,7 @@ def use_detail(result: P.UseResult) -> String:
 def outcome_status(outcome: Outcome) -> String:
   match outcome:
     case Opened{_, _}: "ADMITTED"
-    case Stepped{step}: step_status(step)
+    case Stepped{_, step}: step_status(step)
     case Checked{_, result}: use_status(result)
     case Untranslated{_, _}: "UNTRANSLATED"
     case Undecoded{_, _}: "UNDECODED"
@@ -1093,7 +1160,7 @@ def outcome_status(outcome: Outcome) -> String:
 def outcome_detail(outcome: Outcome) -> String:
   match outcome:
     case Opened{_, _}: "effects=0"
-    case Stepped{step}: step_detail(step)
+    case Stepped{_, step}: step_detail(step)
     case Checked{_, result}: use_detail(result)
     case Untranslated{_, reason}: rejection_name(reason)
     case Undecoded{_, reason}: wire_error_name(reason)
@@ -1138,9 +1205,10 @@ def sessions_field(texts: List<&2, String>) -> String:
     case first <> rest:
       String.join(first <> rest, ",")
 
-def table_of(+state: P.State) -> String:
-  "rev=" ++ Nat.show(P.revision(state)) ++ ";" ++
-    sessions_field(session_texts(I.sessions(P.identity(state)), max_rendered_sessions()))
+def table_of(+state: State) -> String:
+  +p = portable(state)
+  "rev=" ++ Nat.show(P.revision(p)) ++ ";" ++
+    sessions_field(session_texts(I.sessions(P.identity(p)), max_rendered_sessions()))
 
 # Public entry point: the one reply line for a served frame (see above).
 def reply(+served: Served) -> String:

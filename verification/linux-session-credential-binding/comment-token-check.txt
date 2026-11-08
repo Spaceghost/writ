@@ -1,0 +1,12 @@
+Comment-only LinuxHost.bend edit: implementation token comparison
+
+The prior source was reconstructed by reversing the exact single comment
+replacement recorded in this worktree session. The final source is the
+working-tree LinuxHost.bend. A quote-aware scanner removed # comments and
+whitespace and compared the remaining lexical tokens, including string and
+character literals; the lists were identical.
+
+Prior reconstructed source SHA-256: 25fc3486e23c5786148b6dac25d27d8fc62907a26b88eb91f98cad3e6f295fa0
+Final source SHA-256: 27cead1ca1c4148500ec25f1b8aefbdf9433c8ad90848934deb68c9fe835c65e
+Token count each: 7694
+Result: identical

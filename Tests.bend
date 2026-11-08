@@ -28,6 +28,7 @@ import ./HostHandoffTests.bend as HostHandoff
 import ./HostConformanceTests.bend as HostConformance
 import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
 import ./hosts/linux/monitor/LinuxSessionOpenTests.bend as LinuxSessionOpen
+import ./hosts/linux/monitor/LinuxCredentialBindingTests.bend as LinuxCredentialBinding
 import ./FacadeTests.bend as Facade
 import ./IssuanceTests.bend as Issuance
 import ./IssuanceBoundaryTests.bend as IssuanceBoundary
@@ -67,6 +68,7 @@ def main() -> IO(Unit):
     HostConformance.main()
     LinuxHost.main()
     LinuxSessionOpen.main()
+    LinuxCredentialBinding.main()
     Facade.main()
     Issuance.main()
     IssuanceBoundary.main()

@@ -1,0 +1,15 @@
+Static native CPU full-suite fallback, clang 23.1.1:
+
+clang -std=c11 -O0 -static tests-frozen.c -o tests-native-o0 -lpthread -lm
+./tests-native-o0 +RTS --threads 1 --gpu off
+
+Build exit status: 0; stdout and stderr empty.
+Run exit status: 0; stderr empty; stdout byte-identical to tests-bend.txt.
+Generated C SHA-256: f30006f729b563f33abdedcda60c3bb23c00589b435a6e5bfd8832459dbcd24f
+Executable SHA-256: 166772744b4bd1bc52ba08deb6ff439399fe08c3e7ce9a9792eeb2400188f3cd
+
+Both stages ran at nice 15 with separate 600-second CPU and wall-time limits.
+Build address-space limit: 16 GiB; run address-space limit: 20 GiB. Core dumps
+were disabled. The generated C and binary remained outside the source tree.
+This hosted -O0 compilation changes optimization-dependent runtime calling
+conventions compared with -O2/-O3 and is not a GPU test or native host evidence.

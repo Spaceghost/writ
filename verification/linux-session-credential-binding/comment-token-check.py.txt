@@ -1,0 +1,44 @@
+from pathlib import Path
+import hashlib, re
+new = Path('hosts/linux/monitor/LinuxHost.bend').read_text()
+before = '''# nothing and binds the fact to no session (`session_check` does that for a
+# Barrier); it refuses a fact whose own fields disagree.'''
+after = '''# nothing and binds the fact to no session; `session_check` and
+# `credential_check` provide the model's Barrier comparisons. It refuses a
+# fact whose own fields disagree.'''
+assert new.count(after) == 1
+old = new.replace(after, before, 1)
+Path('/home/jadams/tmp/writ-linux-witness/LinuxHost-before-comment.bend').write_text(old)
+def tokens(src):
+    result=[]
+    pattern=re.compile(r'''(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[A-Za-z_][A-Za-z_0-9]*|[0-9]+|\S)''')
+    for line in src.splitlines():
+        quote=None
+        escaped=False
+        for i,c in enumerate(line):
+            if quote:
+                if escaped: escaped=False
+                elif c=='\\': escaped=True
+                elif c==quote: quote=None
+            elif c in ('"', "'"): quote=c
+            elif c=='#':
+                line=line[:i]
+                break
+        result.extend(pattern.findall(line))
+    return result
+a=tokens(old)
+b=tokens(new)
+assert a == b
+h=lambda x: hashlib.sha256(x.encode()).hexdigest()
+out='''Comment-only LinuxHost.bend edit: implementation token comparison
+
+The prior source was reconstructed by reversing the exact single comment
+replacement recorded in this worktree session. The final source is the
+working-tree LinuxHost.bend. A quote-aware scanner removed # comments and
+whitespace and compared the remaining lexical tokens, including string and
+character literals; the lists were identical.
+
+'''
+out += f'Prior reconstructed source SHA-256: {h(old)}\nFinal source SHA-256: {h(new)}\nToken count each: {len(a)}\nResult: identical\n'
+Path('verification/linux-session-credential-binding/comment-token-check.txt').write_text(out)
+print(out)
