@@ -101,6 +101,12 @@ or timed out under the recorded resource limits. It does not establish any
 freestanding execution. Verify the recorded hashes and retain artifacts before
 relying on the freeze.
 
+An [exploratory hosted `-O0` build](../../../verification/freestanding-hosted-o0-20261107/README.md)
+of the frozen current suite completed and matched the recorded Node output.
+Its optimization-dependent calling-convention macro expansion differs from
+`-O2`; it does not erase the optimized build failures or establish a
+freestanding comparison.
+
 Trace one-lane evaluator, scheduler and effect dispatch through memory,
 thread-local storage, waits and IO helper calls for the *whole* selected
 corpus. Exercise or reject paths that would require a worker: the old hosted
