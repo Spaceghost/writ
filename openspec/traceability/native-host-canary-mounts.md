@@ -44,6 +44,12 @@ adds execution of the 70 model and nine JavaScript bridge checks, plus the
 2,809-check library suite. It does not add native mounting, native C transport,
 LPAC, or host-confinement evidence.
 
+The separate [Server 2025 VirtualBox native record](../../verification/windows-server2025-vbox-20261107/README.md)
+at `efcfba8` reports 22 native C transport assertions and an ordinary mounted
+read/revocation pass. Strict LPAC exits 1 with direct byte-worker channels
+incomplete, despite mounted/revoked and separate no-data diagnostic passes.
+It is not CI identity, independent failure-path cleanup, or host qualification.
+
 The native canary contribution does not complete `add-portable-host-contract`,
 `add-windows-host`, `add-linux-host`, `add-genode-host`,
 `add-genode-capability-adoption`, the machine-code runtime proposals, or the

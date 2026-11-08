@@ -1,0 +1,36 @@
+﻿
+
+Algorithm : SHA256
+Hash      : DCCC52DE28D8DF2EE22D2062424F8C563070D95D8AD70C54C4BF01D590DEC14F
+Path      : C:\writ-stage\public\portable-node\node.exe
+
+Algorithm : SHA256
+Hash      : 4DEA0E692616BF41EF086C4B6B16F94CDDCAA172B76C7350E6813DFE46026882
+Path      : C:\writ-stage\public\generated\mount.mjs
+
+Algorithm : SHA256
+Hash      : 6736A2CB79D2D873466470AD60C96DA5A56603727D874FF6A7B09BE245187BA7
+Path      : C:\writ-stage\public\generated\mount-tests.js
+
+Algorithm : SHA256
+Hash      : 84935C0B7CB09C140DE0D3B042D4E93E5FAC4E6371E75BF28EAE3D841F79DFB3
+Path      : C:\writ-stage\tools\cmake-4.4.5-windows-x86_64\bin\cmake.exe
+
+Algorithm : SHA256
+Hash      : 94323B3DE265C66A9B5428EE054313B9B14F179571201DFBAF5E7F15BA4918E3
+Path      : C:\Program Files (x86)\WinFsp\bin\winfsp-x64.dll
+
+Algorithm : SHA256
+Hash      : 293FFB9BCC0B625C85079FE85FA77F8FE98170ABA51A02AC9C83D58F6C3B0E2F
+Path      : C:\writ-stage\installers\winfsp-2.2.26286.msi
+
+Algorithm : SHA256
+Hash      : 610E78F66EFC960B3CEE586C1014F18865D6C51C96B9BE358A06FE63E32EED97
+Path      : C:\writ-stage\installers\vs_community_2026.exe
+
+Algorithm : SHA256
+Hash      : 326C826486D46A23CF9D5A1C9EE3A567D427BDD02C4A34071937A2A675CFF004
+Path      : C:\writ-stage\installers\cmake-4.4.5-windows-x86_64.zip
+
+
+

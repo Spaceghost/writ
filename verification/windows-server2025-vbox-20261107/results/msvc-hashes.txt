@@ -1,0 +1,14 @@
+﻿
+
+Algorithm : SHA256
+Hash      : B0A1818EBAE6DA7F18230A84E76CE839212584AC4C2AB55B97A0D5268085DA57
+Path      : C:\Program Files\Microsoft Visual 
+            Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\Hostx64\x64\cl.exe
+
+Algorithm : SHA256
+Hash      : A8C42E25C91CA2453E1110540AC08F0FC12D7539454A11B9AF8BAEECB469837D
+Path      : C:\Program Files\Microsoft Visual 
+            Studio\18\Community\VC\Tools\MSVC\14.51.36231\bin\Hostx64\x64\link.exe
+
+
+

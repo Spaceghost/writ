@@ -1,0 +1,9 @@
+﻿Strict LPAC failed; retain all INCOMPLETE and observation lines
+At C:\writ-stage\run-canary.ps1:181 char:70
++ ... c') 300)) { throw 'Strict LPAC failed; retain all INCOMPLETE and obse ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (Strict LPAC fai...servation lines:String) [], RuntimeExcept 
+   ion
+    + FullyQualifiedErrorId : Strict LPAC failed; retain all INCOMPLETE and observation lines
+ 
+

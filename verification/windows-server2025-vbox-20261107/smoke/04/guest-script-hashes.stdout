@@ -1,0 +1,20 @@
+
+
+Algorithm : SHA256
+Hash      : 50876F5BD581CDB5B59782299AD6325E603F14BEE48EDD7E19DEF5B04112A2E2
+Path      : C:\writ-stage\process-wrapper-smoke.ps1
+
+Algorithm : SHA256
+Hash      : 97286D9E1B895078590E6720D5718AF519F1FB28E58001775770E9130949964C
+Path      : C:\writ-stage\pipe-drain-smoke.ps1
+
+Algorithm : SHA256
+Hash      : 8ED644E54912E74B50DAF71F3B627797AED97269F71608B6C790A1C3831869AB
+Path      : C:\writ-stage\pipe-parent.cmd
+
+Algorithm : SHA256
+Hash      : 8D13100BA4C0C3A9D7F6270D8F51AC8F43525710FAA2644A090902A4EB501E77
+Path      : C:\writ-stage\pipe-child.cmd
+
+
+

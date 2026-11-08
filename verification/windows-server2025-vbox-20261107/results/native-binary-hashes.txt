@@ -1,0 +1,16 @@
+﻿
+
+Algorithm : SHA256
+Hash      : 5AC60AADF7A23BFACAFD1EC7B28678597418A6C010E3A8E59B96056F4F9776E4
+Path      : C:\writ-stage\native-build\Release\writfs-windows.exe
+
+Algorithm : SHA256
+Hash      : 9AB1786B607430A272AED5BA81410B058BB21E08CCC4B33CC72669D4100116C0
+Path      : C:\writ-stage\native-build\Release\writfs-probe.exe
+
+Algorithm : SHA256
+Hash      : 735D852725960038F3A932FBA29672E7484FA3CD03A30D68AF131A587C9AD74D
+Path      : C:\writ-stage\native-build\Release\writfs-transport-probe.exe
+
+
+

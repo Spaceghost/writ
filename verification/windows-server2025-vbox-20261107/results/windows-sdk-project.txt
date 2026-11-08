@@ -1,0 +1,13 @@
+﻿
+native-build\ALL_BUILD.vcxproj:30:    
+<WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+native-build\writfs-probe.vcxproj:27:    
+<WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+native-build\writfs-transport-probe.vcxproj:27:    
+<WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+native-build\writfs-windows.vcxproj:27:    
+<WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+native-build\ZERO_CHECK.vcxproj:30:    
+<WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+
+

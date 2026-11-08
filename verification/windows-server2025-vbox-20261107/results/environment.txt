@@ -1,0 +1,6 @@
+﻿OS: Microsoft Windows Server 2025 Datacenter Evaluation 10.0.26100 64-bit
+Build: 26100.32230
+Session: 1; UserInteractive: True; elevated administrator: True
+Source revision: efcfba835e133a3cb112e631b9ff352f1d38c488
+Public fixture only; generated policy runs through native Windows Node.
+WinFsp DLL: 2.2.26286.14d6e02

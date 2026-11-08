@@ -1,0 +1,95 @@
+winfsp-2.2.26286.msi
+command: Get-AuthenticodeSignature -LiteralPath 'C:\writ-stage\installers\winfsp-2.2.26286.msi'
+exit: 0
+stdout:
+
+
+    Directory: C:\writ-stage\installers
+
+
+SignerCertificate                         Status                                 Path                                  
+-----------------                         ------                                 ----                                  
+75C6C88B0B6C4556F13FCE3B081FC9051EAE457E  Valid                                  winfsp-2.2.26286.msi                  
+
+
+
+stderr:
+
+
+winfsp-2.2.26286.msi
+command: Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\writ-stage\installers\winfsp-2.2.26286.msi'
+exit: 0
+stdout:
+
+Algorithm       Hash                                                                   Path                            
+---------       ----                                                                   ----                            
+SHA256          293FFB9BCC0B625C85079FE85FA77F8FE98170ABA51A02AC9C83D58F6C3B0E2F       C:\writ-stage\installers\winf...
+
+
+
+stderr:
+
+
+vs_buildtools_2026.exe
+command: Get-AuthenticodeSignature -LiteralPath 'C:\writ-stage\installers\vs_buildtools_2026.exe'
+exit: 0
+stdout:
+
+
+    Directory: C:\writ-stage\installers
+
+
+SignerCertificate                         Status                                 Path                                  
+-----------------                         ------                                 ----                                  
+1D77A9B9E8FE2075D9AD15123257FB90DB0DA4A1  Valid                                  vs_buildtools_2026.exe                
+
+
+
+stderr:
+
+
+vs_buildtools_2026.exe
+command: Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\writ-stage\installers\vs_buildtools_2026.exe'
+exit: 0
+stdout:
+
+Algorithm       Hash                                                                   Path                            
+---------       ----                                                                   ----                            
+SHA256          5A2E8014AE21C6E2E0AAB37E12FA47357E8AC7A516F13F3AB1DED295AF119BED       C:\writ-stage\installers\vs_b...
+
+
+
+stderr:
+
+
+vs_community_2026.exe
+command: Get-AuthenticodeSignature -LiteralPath 'C:\writ-stage\installers\vs_community_2026.exe'
+exit: 0
+stdout:
+
+
+    Directory: C:\writ-stage\installers
+
+
+SignerCertificate                         Status                                 Path                                  
+-----------------                         ------                                 ----                                  
+1D77A9B9E8FE2075D9AD15123257FB90DB0DA4A1  Valid                                  vs_community_2026.exe                 
+
+
+
+stderr:
+
+
+vs_community_2026.exe
+command: Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\writ-stage\installers\vs_community_2026.exe'
+exit: 0
+stdout:
+
+Algorithm       Hash                                                                   Path                            
+---------       ----                                                                   ----                            
+SHA256          610E78F66EFC960B3CEE586C1014F18865D6C51C96B9BE358A06FE63E32EED97       C:\writ-stage\installers\vs_c...
+
+
+
+stderr:
+

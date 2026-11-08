@@ -13,6 +13,19 @@ contract have separate results.
 
 This record addresses the bounded [native-host canary contract](../../../openspec/specs/native-host-canary-mounts/spec.md), especially NM004 through NM008, and the [private transport protocol](../PROTOCOL.md). It does not complete the broader [Windows host proposal](../../../openspec/changes/add-windows-host/specs/windows-host/spec.md).
 
+## Separate disposable Server 2025 VM native run
+
+The [VirtualBox public-canary record](../../../verification/windows-server2025-vbox-20261107/README.md)
+at source `efcfba8` independently records a native C transport pass, an ordinary
+WinFsp mount and revocation pass, and **strict LPAC failure, exit 1**. The
+byte-worker network, clipboard and COM observations were incomplete; its
+separate no-data diagnostic passed without replacing that evidence. The VM
+used an interactive elevated Server 2025 Datacenter Evaluation session and
+Visual Studio Community, not the GitHub-hosted runner image. Both compiler
+warnings and the full failed LPAC result are retained. Normal mount cleanup
+does not establish independent LPAC failure cleanup, crash recovery or host
+qualification.
+
 ## Separate Windows 10 VM model run
 
 The [Windows 10 VM record](../../../verification/windev-model-bridge-20261107/README.md)

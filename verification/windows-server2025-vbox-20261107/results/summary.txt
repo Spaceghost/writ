@@ -1,0 +1,15 @@
+﻿Writ Windows public-canary; not protected-host qualification.
+Verified 52 entries from C:\writ-stage\public\source-SHA256SUMS
+Verified 2 entries from C:\writ-stage\public\generated\SHA256SUMS
+node-version EXIT=0
+cmake-version EXIT=0
+vswhere EXIT=0
+mount-model EXIT=0
+js-bridge EXIT=0
+configure EXIT=0
+build EXIT=0
+probe-startup EXIT=0
+native-transport EXIT=0
+mount EXIT=0
+lpac EXIT=1
+STOPPED: Strict LPAC failed; retain all INCOMPLETE and observation lines

@@ -1,0 +1,8 @@
+﻿
+
+Algorithm : SHA256
+Hash      : DC8C7FE7811185B1EEADBBA54E9A2C79A9B3741B11FABC30A055655549E794C2
+Path      : C:\writ-stage\results\public-canary.bin
+
+
+

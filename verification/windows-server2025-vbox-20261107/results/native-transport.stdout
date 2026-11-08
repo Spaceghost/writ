@@ -1,0 +1,23 @@
+PASS native private pipes execute actual Bend admission, read, revocation and cleanup
+PASS native policy child ignores injected Node environment
+PASS native 64 KiB payload traverses private pipes with exact Bend digest
+PASS native fragmented reply is accepted exactly once
+PASS native malformed peer early poisons the pipe, retires the child and refuses retry
+PASS native malformed peer after-lf poisons the pipe, retires the child and refuses retry
+PASS native malformed peer sequence poisons the pipe, retires the child and refuses retry
+PASS native malformed peer replay poisons the pipe, retires the child and refuses retry
+PASS native malformed peer leading-zero poisons the pipe, retires the child and refuses retry
+PASS native malformed peer sequence-overflow poisons the pipe, retires the child and refuses retry
+PASS native malformed peer value-overflow poisons the pipe, retires the child and refuses retry
+PASS native malformed peer trailing-field poisons the pipe, retires the child and refuses retry
+PASS native malformed peer status poisons the pipe, retires the child and refuses retry
+PASS native malformed peer reason poisons the pipe, retires the child and refuses retry
+PASS native malformed peer cr poisons the pipe, retires the child and refuses retry
+PASS native malformed peer non-ascii poisons the pipe, retires the child and refuses retry
+PASS native malformed peer nul poisons the pipe, retires the child and refuses retry
+PASS native malformed peer oversize poisons the pipe, retires the child and refuses retry
+PASS native malformed peer partial poisons the pipe, retires the child and refuses retry
+PASS native malformed peer eof poisons the pipe, retires the child and refuses retry
+PASS native malformed peer read-timeout poisons the pipe, retires the child and refuses retry
+PASS native malformed peer write-timeout poisons the pipe, retires the child and refuses retry
+ALL WINDOWS NATIVE TRANSPORT CHECKS PASSED (22 assertions)
