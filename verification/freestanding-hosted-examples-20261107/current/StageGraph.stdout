@@ -1,0 +1,4 @@
+Stage graph: check synthetic predecessor-to-successor edges.
+PASS independent predecessors: StructurallyAcyclic
+PASS return edge creates a cycle: CyclicOrInvalidWitness
+PASS unknown successor rejected: DanglingEdge

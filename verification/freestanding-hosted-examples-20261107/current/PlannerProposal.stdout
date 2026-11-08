@@ -1,0 +1,6 @@
+Planner proposal: compare untrusted descriptions, not authority.
+PASS manifest, code and evidence encoded bytes match: True
+PASS exact frame bytes round-trip: True
+PASS decoded plan fields match: True
+PASS changed destination mismatches: False
+PASS unknown version refused: True

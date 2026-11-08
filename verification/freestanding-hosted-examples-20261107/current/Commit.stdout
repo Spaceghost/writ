@@ -1,0 +1,17 @@
+Commit: negotiate, mount a capability, and recheck authority at release.
+PASS candidate identity pinned: True
+PASS fresh challenge accepted after pin: True
+PASS paired grants permit protected sampling: True
+PASS registered sample accepted: True
+PASS origin owner approved exact plan: True
+PASS reader execution units reserved: True
+PASS negotiation started: True
+PASS capability mounted in protocol model: True
+PASS descriptor opened in protocol model: True
+PASS authorized commit accepted: True
+PASS write intent retains origin policy and artifact: True
+PASS session reached Committed: True
+PASS reader available units after one reservation: 45
+PASS revoked capability committed: False
+PASS revoked attempt preserves exact held ledger: True
+PASS revoked attempt preserves exact running session: True

@@ -1,0 +1,5 @@
+Transfer: a source read and destination write must approve the same plan.
+PASS paired transfer keeps exact plan: True
+PASS summary retains full origin policy: True
+PASS write grant alone denied with Read reason: True
+PASS read grant alone denied with Write reason: True

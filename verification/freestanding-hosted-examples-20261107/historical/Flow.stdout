@@ -1,0 +1,5 @@
+Flow: a summary keeps its report's restrictions.
+PASS constraint candidate verified: True
+PASS internal summary write allowed: True
+PASS public summary write denied for confidentiality: True
+PASS stripped-label candidate rejected: True

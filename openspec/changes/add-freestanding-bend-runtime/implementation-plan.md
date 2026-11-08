@@ -107,6 +107,11 @@ Its optimization-dependent calling-convention macro expansion differs from
 `-O2`; it does not erase the optimized build failures or establish a
 freestanding comparison.
 
+A separate [hosted example record](../../../verification/freestanding-hosted-examples-20261107/README.md)
+builds and runs all four historical and six frozen current example C files
+with `-O2`. Their outputs match their identified references. This is hosted
+CPU evidence; the freestanding builds and comparisons remain open.
+
 Trace one-lane evaluator, scheduler and effect dispatch through memory,
 thread-local storage, waits and IO helper calls for the *whole* selected
 corpus. Exercise or reject paths that would require a worker: the old hosted

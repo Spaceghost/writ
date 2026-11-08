@@ -1,0 +1,7 @@
+Parallel: solver, DLM labels, and paired-transfer batch paths.
+Native GPU dispatch requested; CPU fallback is allowed. No device attestation.
+PASS solver path passes original-graph verifier: True
+PASS label path allows internal and denies public: True
+PASS label path matches complete host replay: True
+PASS transfer path admits paired grants and denies missing read: True
+PASS host transfer replay preserves both outcomes and provenance: True
