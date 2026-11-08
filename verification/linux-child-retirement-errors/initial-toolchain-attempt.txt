@@ -1,0 +1,3 @@
+Initial direct checks: bend Tests.bend and bend PROOF.bend --verdict exited 127: bend: command not found.
+Retry using /nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend exited 127: timeout: failed to run command '/nix/store/0zkagxgg1y0awz43syx8048diggprj1q-bend-2.0.39/bin/bend': No such file or directory.
+The repository's pinned Nix derivation was then rebuilt. Later checks are recorded separately.

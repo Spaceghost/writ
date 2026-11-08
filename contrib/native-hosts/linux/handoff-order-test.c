@@ -102,6 +102,7 @@ static struct {
     int pause_retire, retire_paused, retire_continue, reader_retires, other_retires;
     int exit_calls, unmount_calls, destroy_calls, forbidden_cleanup, forbidden_early_retire;
     int forbidden_session_calls;
+    int reader_retire_error, other_retire_error;
     pid_t retired_pid;
     int retired_pidfd, retired_command, retired_result, reused_fd, reused_fd_lookups;
     uint64_t retired_start;
@@ -172,11 +173,12 @@ void fake_session_destroy(struct fuse_session *session)
     mock.destroy_calls++;
 }
 
-void fake_retire_child(struct writ_child *child)
+int fake_retire_child(struct writ_child *child)
 {
-    if (child->pid <= 0) return;
+    if (child->pid <= 0) return 0;
     CHECK(!pthread_mutex_lock(&mock.lock));
     if (mock.forbidden_early_retire && !mock.joined) _Exit(79);
+    int failure = child->pid == 42 ? mock.reader_retire_error : mock.other_retire_error;
     if (child->pid == 42) {
         mock.reader_retires++;
         mock.retired_pid = child->pid;
@@ -194,6 +196,7 @@ void fake_retire_child(struct writ_child *child)
     }
     CHECK(!pthread_mutex_unlock(&mock.lock));
     child->pid = -1; child->pidfd = -1; child->command = -1; child->result = -1;
+    return failure;
 }
 
 static void assert_effect_locked(void)
@@ -350,6 +353,7 @@ static void reset(struct host *h, struct fake_request *request)
     mock.retire_paused = 0; mock.retire_continue = 0; mock.reader_retires = 0;
     mock.other_retires = 0; mock.exit_calls = 0; mock.unmount_calls = 0; mock.destroy_calls = 0;
     mock.forbidden_cleanup = 0; mock.forbidden_early_retire = 0; mock.forbidden_session_calls = 0;
+    mock.reader_retire_error = mock.other_retire_error = 0;
     mock.retired_pid = -1; mock.retired_pidfd = -1;
     mock.retired_command = -1; mock.retired_result = -1; mock.retired_start = 0;
     mock.reused_fd = -1; mock.reused_fd_lookups = 0;
@@ -584,7 +588,7 @@ static void busy_reader_then_join(void)
     CHECK(!pthread_cond_broadcast(&mock.changed));
     CHECK(!pthread_mutex_unlock(&mock.lock));
     CHECK(!pthread_join(cleanup, NULL));
-    CHECK(args.result == -1 && args.destroy_lock == 1 && mock.joined &&
+    CHECK(args.result == EBUSY && args.destroy_lock == 1 && mock.joined &&
           mock.reader_retires == 1 && mock.other_retires == 1 && mock.destroy_calls == 1);
     CHECK(h.reader.pid == -1 && h.reader.pidfd == -1);
     unlocked(&h);
@@ -650,6 +654,22 @@ static void no_thread_or_lock(void)
     CHECK(destroy_lock == 0 && mock.reader_retires == 1 && !atomic_load(&h.fatal));
 }
 
+static void retire_failures_continue_cleanup(void)
+{
+    struct host h; struct fake_request request;
+    reset(&h, &request);
+    h.session = (struct fuse_session *)(uintptr_t)1;
+    mock.reader_retire_error = EPERM; mock.other_retire_error = EIO;
+    struct writ_child other = { .pid = 43, .pidfd = 78, .command = 12, .result = 13 };
+    int destroy_lock = 0;
+    CHECK(retire_children_and_session(&h, &other, 1, 1, (pthread_t)0, 1, 1,
+                                      &destroy_lock) == EPERM);
+    CHECK(mock.reader_retires == 1 && mock.other_retires == 1 && mock.joined &&
+          mock.exit_calls == 1 && mock.unmount_calls == 1 && mock.destroy_calls == 1);
+    CHECK(destroy_lock == 1);
+    CHECK(!pthread_mutex_destroy(&h.effect_lock));
+}
+
 static void fail_stop_child(int scenario)
 {
     struct host h;
@@ -692,6 +712,7 @@ int main(void)
     busy_reader_then_join(); puts("PASS busy reader record stays intact until checked join");
     detached_reap_and_reuse(); puts("PASS detached pidfd retirement is outside the lock and cannot restore actor");
     no_thread_or_lock(); puts("PASS no-thread cleanup avoids the uninitialized lock");
+    retire_failures_continue_cleanup(); puts("PASS retirement failures preserve the first error and continue cleanup");
     fail_stop_child(0); puts("PASS unexpected trylock failure immediately fail-stops without cleanup");
     fail_stop_child(1); puts("PASS failed unlock fail-stops without retiring shared resources");
     fail_stop_child(2); puts("PASS failed join after detachment fail-stops without destroying shared state");

@@ -184,8 +184,21 @@ REVOKE is implied by this cleanup path. Unexpected trylock or unlock errors,
 and failed join, immediately fail-stop without claiming resource cleanup.
 
 Join success establishes only that the loop thread no longer uses the host; it
-does not establish that the loop succeeded. The existing `writ_retire_child`
-does not check all signal, wait and close results. Lock acquisition, unmount,
-join and retirement may block, and fail-stop does not prove that children,
-pipes or mounts were cleaned up. No new native mounted acceptance, crash
+does not establish that the loop succeeded. The dedicated supervisor sets
+SIGCHLD to its default before forking workers and is their sole reaper. A
+retirement checks pidfd child ownership before signaling and reports signal,
+wait and descriptor-close failures. Missing or unverified pidfds cause no
+numeric-PID signal or wait; a failed signal uses a nonblocking wait. Each
+descriptor is closed at most once, including after EINTR. Partial startup
+leaves the child record to the caller for cleanup. A reported failure leaves
+cleanup incomplete, even if another resource was subsequently retired.
+When the child is still alive, waitid's zero-info response confirms a child
+but not its numeric PID. The pidfd/PID pairing relies on the supervisor's
+original fork and protected pidfd acquisition and its unmodified record; an
+arbitrarily corrupted record is not independently authenticated here.
+This does not check all pipe-close errors in pre-child launch failure paths,
+policy-process teardown, or all other supervisor resource releases. The
+SIGCHLD failure path is source-reviewed, not fault-injected. Lock acquisition,
+unmount, join and a successful-signal retirement wait may block, and fail-stop
+does not prove that children, pipes or mounts were cleaned up. No new native mounted acceptance, crash
 recovery or protected-host qualification is claimed for the changed source.

@@ -23,11 +23,12 @@ enum writ_probe {
 };
 
 struct writ_report { uint32_t magic, probe, ok, value; };
-struct writ_child { pid_t pid; int command, result, pidfd; uint64_t start_time; };
+struct writ_child { pid_t pid; int command, result, pidfd; uint64_t start_time; int retirement_error; };
 
 int writ_spawn_worker(struct writ_child *, const char *root, uid_t, gid_t,
                       unsigned int required_landlock, int outsider);
-void writ_retire_child(struct writ_child *);
+/* Returns the first errno-style failure; a failed attempt is not retried. */
+int writ_retire_child(struct writ_child *);
 int writ_process_start(pid_t, uint64_t *);
 int writ_process_alive(const struct writ_child *);
 int writ_private_read(int, void *, size_t, int milliseconds);

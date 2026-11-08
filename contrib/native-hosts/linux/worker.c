@@ -380,7 +380,10 @@ int writ_spawn_worker(struct writ_child *child, const char *root, uid_t uid, gid
     child->command = child->result = child->pidfd = -1;
     int command[2], result[2];
     if (pipe2(command, O_CLOEXEC)) return -1;
-    if (pipe2(result, O_CLOEXEC)) { close(command[0]); close(command[1]); return -1; }
+    if (pipe2(result, O_CLOEXEC)) {
+        int failure = errno;
+        close(command[0]); close(command[1]); errno = failure; return -1;
+    }
     pid_t parent = getpid(), pid = fork();
     if (pid == 0) {
         /* The prelude runs before admission and before any untrusted work.
@@ -414,25 +417,71 @@ int writ_spawn_worker(struct writ_child *child, const char *root, uid_t uid, gid
         confined_probes(parent);
         _exit(133);
     }
+    int fork_error = pid < 0 ? errno : 0;
     close(command[0]); close(result[1]);
-    if (pid < 0) { close(command[1]); close(result[0]); return -1; }
+    if (pid < 0) {
+        close(command[1]); close(result[0]); errno = fork_error; return -1;
+    }
     child->pid = pid; child->command = command[1]; child->result = result[0];
     child->pidfd = (int)syscall(SYS_pidfd_open, pid, 0);
-    if (child->pidfd < 0 || writ_process_start(pid, &child->start_time)) {
-        writ_retire_child(child); return -1;
+    if (child->pidfd < 0) {
+        /* Ownership remains with the caller, including after partial setup. */
+        return -1;
+    }
+    errno = 0;
+    if (writ_process_start(pid, &child->start_time)) {
+        if (!errno) errno = EIO;
+        return -1;
     }
     return 0;
 }
 
-void writ_retire_child(struct writ_child *child)
+int writ_retire_child(struct writ_child *child)
 {
+    if (child->retirement_error) return child->retirement_error;
+    int failure = 0, signal_sent = 0, child_verified = 0;
+    if (child->pid <= 0 && child->pidfd >= 0) failure = EINVAL;
     if (child->pid > 0) {
-        if (child->pidfd >= 0) syscall(SYS_pidfd_send_signal, child->pidfd, SIGKILL, NULL, 0);
-        else kill(child->pid, SIGKILL);
-        while (waitpid(child->pid, NULL, 0) < 0 && errno == EINTR) {}
+        if (child->pidfd < 0) {
+            failure = ENOTSUP;
+        } else {
+            /* Check that the pinned lifetime is still a child. A zero-info
+               result does not identify its numeric pid: the pairing relies on
+               the original fork/pidfd_open and sole-reaper invariant. */
+            siginfo_t info = {0};
+            int check;
+            do {
+                memset(&info, 0, sizeof info);
+                check = waitid(P_PIDFD, (id_t)child->pidfd, &info, WEXITED | WNOHANG | WNOWAIT);
+            }
+            while (check && errno == EINTR);
+            if (check) failure = errno;
+            else if (info.si_pid && info.si_pid != child->pid) failure = ECHILD;
+            else {
+                child_verified = 1;
+                if (info.si_pid == child->pid) signal_sent = 1; /* Already exited. */
+                else if (syscall(SYS_pidfd_send_signal, child->pidfd, SIGKILL, NULL, 0)) failure = errno;
+                else signal_sent = 1;
+            }
+        }
+        if (child_verified) {
+            pid_t waited;
+            do { waited = waitpid(child->pid, NULL, signal_sent ? 0 : WNOHANG); }
+            while (waited < 0 && errno == EINTR);
+            if (waited == child->pid) child->pid = -1;
+            else if (!failure) failure = waited < 0 ? errno : ECHILD;
+        }
     }
-    if (child->command >= 0) close(child->command);
-    if (child->result >= 0) close(child->result);
-    if (child->pidfd >= 0) close(child->pidfd);
-    child->pid = -1; child->command = child->result = child->pidfd = -1;
+    int fds[] = {child->command, child->result, child->pidfd};
+    child->command = child->result = child->pidfd = -1;
+    for (size_t i = 0; i < sizeof fds / sizeof fds[0]; ++i) {
+        if (fds[i] < 0) continue;
+        int duplicate = 0;
+        for (size_t j = 0; j < i; ++j) if (fds[j] == fds[i]) duplicate = 1;
+        if (duplicate) { if (!failure) failure = EINVAL; continue; }
+        /* Linux close can release the number even when it reports EINTR. */
+        if (close(fds[i]) && !failure) failure = errno;
+    }
+    child->retirement_error = failure;
+    return failure;
 }

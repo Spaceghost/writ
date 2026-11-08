@@ -1,5 +1,9 @@
 # Verification record
 
+The [Linux child retirement error record](verification/linux-child-retirement-errors/README.md)
+covers mocked errors in the production worker teardown and cleanup propagation;
+it is not mounted, native-identity, recovery, or protected-host evidence.
+
 The [Linux reader-retirement record](verification/linux-reader-retirement/README.md)
 covers source-level PID/pidfd ownership transfer and synthetic lifecycle fault
 paths. It does not establish native teardown, recovery, or protected-host

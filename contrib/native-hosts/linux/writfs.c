@@ -428,15 +428,16 @@ static int retire_children_and_session(struct host *h, struct writ_child *other,
     int lock_initialized, int threaded, pthread_t thread, int mounted,
     int signal_handlers, int *destroy_lock)
 {
-    int defer_reader = 0;
+    int defer_reader = 0, failure = 0, error;
     *destroy_lock = lock_initialized;
     if (!threaded) {
-        writ_retire_child(&h->reader);
+        failure = writ_retire_child(&h->reader);
     } else {
-        int error = lock_initialized ? pthread_mutex_trylock(&h->effect_lock) : EINVAL;
+        error = lock_initialized ? pthread_mutex_trylock(&h->effect_lock) : EINVAL;
         if (error == EBUSY) {
             atomic_store(&h->fatal, 1);
             defer_reader = 1;
+            failure = EBUSY;
         } else if (error) {
             atomic_store(&h->fatal, 1);
             cleanup_fail_stop();
@@ -444,16 +445,21 @@ static int retire_children_and_session(struct host *h, struct writ_child *other,
             struct writ_child owned = h->reader;
             h->reader = (struct writ_child){ .pid = -1, .command = -1, .result = -1, .pidfd = -1 };
             if (effect_leave(h)) cleanup_fail_stop();
-            writ_retire_child(&owned);
+            failure = writ_retire_child(&owned);
         }
     }
-    if (!defer_reader) writ_retire_child(other);
+    if (!defer_reader) {
+        error = writ_retire_child(other);
+        if (!failure) failure = error;
+    }
     stop_session_or_exit(h, mounted, threaded, thread, signal_handlers);
     if (defer_reader) {
-        writ_retire_child(&h->reader);
-        writ_retire_child(other);
+        error = writ_retire_child(&h->reader);
+        if (!failure) failure = error;
+        error = writ_retire_child(other);
+        if (!failure) failure = error;
     }
-    return defer_reader ? -1 : 0;
+    return failure;
 }
 
 static int freeze(struct host *h, const char *path, unsigned char *bytes)
@@ -713,6 +719,14 @@ int main(int argc, char **argv)
         fputs("This native fixture requires root launch privileges and /dev/fuse.\n", stderr);
         return 1;
     }
+    /* This single-threaded supervisor is the only reaper of its workers.
+       Inherited SIG_IGN/SA_NOCLDWAIT could recycle a pid before pidfd_open. */
+    struct sigaction child_action = {0};
+    child_action.sa_handler = SIG_DFL;
+    if (sigemptyset(&child_action.sa_mask) || sigaction(SIGCHLD, &child_action, NULL)) {
+        fputs("Unable to establish worker reaping ownership.\n", stderr);
+        return 1;
+    }
     signal(SIGPIPE, SIG_IGN);
     setvbuf(stdout, NULL, _IOLBF, 0);
     struct host h;
@@ -745,7 +759,11 @@ int main(int argc, char **argv)
     /* Fork both probes before loading the canary or creating Bend authority.
        Otherwise fork would deliver a copy of broker memory before admission. */
     if (writ_spawn_worker(&h.reader, root, uid, gid, required, 0) ||
-        writ_spawn_worker(&other, root, uid, gid, required, 1)) goto cleanup;
+        writ_spawn_worker(&other, root, uid, gid, required, 1)) {
+        int launch_error = errno;
+        fprintf(stderr, "Worker launch incomplete: %s\n", strerror(launch_error ? launch_error : EIO));
+        goto cleanup;
+    }
     uint32_t abi;
     if (report(&h.reader, W_READY, &abi) || report(&other, W_READY, NULL) || verified_profile(&h)) {
         fputs("SETUP REFUSED before input loading or Bend admission\n", stderr); goto cleanup;
@@ -780,7 +798,11 @@ int main(int argc, char **argv)
     if (positive_probes(&h, bytes)) goto cleanup;
     /* Repeat after the admitted reader has populated dentry/attribute paths. */
     if (outsider_round(&h, &other, 2)) goto cleanup;
-    writ_retire_child(&other);
+    int retirement_error = writ_retire_child(&other);
+    if (retirement_error) {
+        fprintf(stderr, "Worker retirement incomplete: %s\n", strerror(retirement_error));
+        goto cleanup;
+    }
 
     if (!strcmp(test_case, "hold")) {
         if (readiness(ready_file, root, mount, &h)) goto cleanup;
@@ -803,8 +825,14 @@ int main(int argc, char **argv)
     result = 0;
 
 cleanup:
-    if (retire_children_and_session(&h, &other, effect_lock_initialized, threaded,
-                                    thread, mounted, signal_handlers, &destroy_lock)) result = 1;
+    {
+        int cleanup_error = retire_children_and_session(&h, &other, effect_lock_initialized, threaded,
+                                                        thread, mounted, signal_handlers, &destroy_lock);
+        if (cleanup_error) {
+            fprintf(stderr, "Worker/session cleanup incomplete: %s\n", strerror(cleanup_error));
+            result = 1;
+        }
+    }
     if (policy_started) {
         if (!strcmp(test_case, "revoke") && !result) {
             for (size_t i = 0; i < HANDLE_LIMIT; ++i) {

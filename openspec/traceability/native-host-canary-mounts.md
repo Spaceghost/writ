@@ -68,3 +68,7 @@ addresses the previously identified shared reader PID/pidfd mutation at the
 source and mocked-scheduling level. Its fail-stop and busy paths remain
 unqualified as native teardown; blocked FUSE replies, unmount, join and
 retirement, as well as mutex fairness, leave progress and cleanup unproven.
+The [child retirement error record](../../verification/linux-child-retirement-errors/README.md)
+adds synthetic signal, ownership, wait and close fault injection against the
+production helper and checks failure propagation through cleanup. It does not
+establish native process cleanup, bounded progress or mounted qualification.

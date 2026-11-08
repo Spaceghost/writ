@@ -35,3 +35,7 @@ $(OUT)/crash-probe: crash_probe.c | $(OUT)
 # it mocks FUSE/OS/policy calls and does not mount or probe native identity.
 $(OUT)/handoff-order-test: handoff-order-test.c writfs.c policy_pipe.c policy_pipe.h worker.c worker.h | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(FUSE_CFLAGS) handoff-order-test.c policy_pipe.c worker.c $(FUSE_LIBS) -o "$@"
+
+# Includes production worker.c with mocked process and descriptor operations.
+$(OUT)/retire-error-test: retire-error-test.c worker.c worker.h | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) -ffunction-sections -Wl,--gc-sections retire-error-test.c -o "$@"
