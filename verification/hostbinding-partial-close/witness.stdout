@@ -1,0 +1,16 @@
+PASS: baseline public-transition fixture is structurally valid
+PASS: synthetic changed descendant subject remains structurally valid
+PASS: root handle names caller subject seven
+PASS: altered descendant names subject eight
+PASS: caller subject and token match root handle
+PASS: caller subject and token do not match descendant
+PASS: unaltered descendant closes in positive control
+PASS: same caller is rejected by descendant close after root close
+PASS: binding close reports success despite descendant rejection
+PASS: direct handle closed
+PASS: descendant remains open
+PASS: root object generation advanced
+PASS: descendant object generation advanced
+PASS: descendant delegation was pruned
+PASS: descendant alias has stale generation
+PASS: reader quota refunded

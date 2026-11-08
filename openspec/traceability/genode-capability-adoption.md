@@ -19,6 +19,12 @@ field of a `VECTOR` line. "Reviewed-only" means the requirement, or the named
 part of it, has no executable vector in this model and rests on source review,
 a host obligation, or evidence a qualified host profile must supply.
 
+A [synthetic mixed-binding witness](../../verification/hostbinding-partial-close/README.md)
+records a structurally valid supplied state where a descendant frontend close
+rejects but the containing close reports success and destroys the cut. Its
+reachability through public model transitions and any native impact remain
+unestablished. The proposed V2 all-or-nothing close remains open.
+
 ## Vectors
 
 Each vector is rendered by `HostBindingTests.bend` from the transition's actual
