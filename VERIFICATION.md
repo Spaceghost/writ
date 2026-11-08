@@ -1,5 +1,10 @@
 # Verification record
 
+The [Linux canary handoff record](verification/linux-canary-handoff/README.md)
+covers mocked callback scheduling and a real private-pipe process-loss check.
+It does not establish a mounted concurrent race, bounded revocation or teardown,
+or current Linux host qualification.
+
 The [Linux session credential binding record](verification/linux-session-credential-binding/README.md)
 covers synthetic session/lifetime comparisons and restart, not a native
 identity bridge or live authority gate. Bend, generated Node and focused native

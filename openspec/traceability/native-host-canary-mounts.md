@@ -55,3 +55,13 @@ The native canary contribution does not complete `add-portable-host-contract`,
 `add-genode-capability-adoption`, the machine-code runtime proposals, or the
 WritFS namespace/issuer/durable-publication changes. Their task lists retain
 their independently established evidence and remaining gaps.
+
+The [Linux handoff-order record](../../verification/linux-canary-handoff/README.md)
+adds nonprivileged tests for the actual callback and supervisor lock sites
+against NM003–NM006. It forces a paused modeled read decision through reply
+attempt before REVOKE, checks the opposite order, cleanup and failure paths,
+and tests owned policy-process loss separately at the private pipe. This is
+not a mounted concurrency test or proof that a client consumed a reply. The
+fixed worker's native overlap has not been observed. The preexisting reader
+PID/pidfd mutation during teardown is an explicit unresolved race; blocked FUSE
+replies and mutex fairness leave revocation progress and teardown unqualified.

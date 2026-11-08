@@ -36,6 +36,8 @@ struct native_event {
 };
 struct host {
     struct writ_policy policy;
+    /* Lock order is effect_lock, then policy.lock. It spans reply handoff. */
+    pthread_mutex_t effect_lock;
     struct writ_child reader;
     uid_t uid; gid_t gid;
     int sealed;
@@ -47,6 +49,44 @@ struct host {
     atomic_size_t event_count;
     struct fuse_session *session;
 };
+
+/* The policy transport serializes frames; this lock additionally orders the
+   native handoff of authorized observations against supervisor revocation. */
+static int effect_enter(struct host *h)
+{
+    if (!pthread_mutex_lock(&h->effect_lock)) return 0;
+    atomic_store(&h->fatal, 1);
+    return -1;
+}
+
+static int effect_leave(struct host *h)
+{
+    if (!pthread_mutex_unlock(&h->effect_lock)) return 0;
+    atomic_store(&h->fatal, 1);
+    return -1;
+}
+
+/* A failed revocation is uncertain, so no subsequent byte service is allowed. */
+static int revoke_view(struct host *h)
+{
+    struct writ_reply reply;
+    if (effect_enter(h)) return -1;
+    int error = writ_policy_call(&h->policy, "REVOKE", 0, 0, 0, 0, "-", &reply);
+    if (error || reply.status != WRIT_OK) atomic_store(&h->fatal, 1);
+    if (effect_leave(h)) return -1;
+    return error || reply.status != WRIT_OK ? -1 : 0;
+}
+
+/* Supervisor-requested interpreter termination is ordered after prior response
+   attempts. Unsolicited process death is a separate transport failure. */
+static int terminate_policy(struct host *h)
+{
+    if (effect_enter(h)) return -1;
+    int error = h->policy.pid <= 0 || kill(h->policy.pid, SIGKILL);
+    atomic_store(&h->fatal, 1);
+    if (effect_leave(h)) return -1;
+    return error ? -1 : 0;
+}
 
 static uint32_t actor(struct host *h, const struct fuse_ctx *c)
 {
@@ -119,7 +159,7 @@ static void fs_init(void *userdata, struct fuse_conn_info *connection)
     atomic_store(&h->initialized, 1);
 }
 
-static void fs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
+static void fs_lookup_under_lock(fuse_req_t req, fuse_ino_t parent, const char *name)
 {
     struct host *h = fuse_req_userdata(req);
     struct writ_reply reply;
@@ -143,7 +183,7 @@ static void fs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
 static void fs_forget(fuse_req_t req, fuse_ino_t inode, uint64_t count)
 { (void)inode; (void)count; fuse_reply_none(req); }
 
-static void fs_getattr(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
+static void fs_getattr_under_lock(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
 {
     (void)fi;
     struct host *h = fuse_req_userdata(req);
@@ -160,7 +200,7 @@ static void fs_getattr(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
     fuse_reply_attr(req, &st, 0);
 }
 
-static void open_inode(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi, int directory)
+static void open_inode_under_lock(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi, int directory)
 {
     struct host *h = fuse_req_userdata(req);
     if (inode != (directory ? FUSE_ROOT_ID : DATA_INODE)) {
@@ -195,12 +235,7 @@ static void open_inode(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
     }
 }
 
-static void fs_open(fuse_req_t r, fuse_ino_t i, struct fuse_file_info *f)
-{ open_inode(r, i, f, 0); }
-static void fs_opendir(fuse_req_t r, fuse_ino_t i, struct fuse_file_info *f)
-{ open_inode(r, i, f, 1); }
-
-static void fs_read(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
+static void fs_read_under_lock(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
                     struct fuse_file_info *fi)
 {
     struct host *h = fuse_req_userdata(req);
@@ -227,7 +262,7 @@ static void fs_read(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
     fuse_reply_buf(req, (const char *)bytes, reply.value);
 }
 
-static void fs_readdir(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
+static void fs_readdir_under_lock(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
                        struct fuse_file_info *fi)
 {
     struct host *h = fuse_req_userdata(req);
@@ -252,7 +287,7 @@ static void fs_readdir(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offs
     fuse_reply_buf(req, buffer, used);
 }
 
-static void fs_release(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
+static void fs_release_under_lock(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
 {
     struct host *h = fuse_req_userdata(req);
     struct native_handle *slot = handle(h, fi->fh, inode);
@@ -265,7 +300,7 @@ static void fs_release(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
     fuse_reply_err(req, 0);
 }
 
-static void fs_flush(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
+static void fs_flush_under_lock(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
 {
     struct host *h = fuse_req_userdata(req);
     fuse_reply_err(req, handle(h, fi->fh, inode) ? 0 : EBADF);
@@ -280,6 +315,71 @@ static void fs_statfs(fuse_req_t req, fuse_ino_t inode)
     st.f_flag = ST_RDONLY | ST_NOSUID;
     st.f_namemax = 4;
     fuse_reply_statfs(req, &st);
+}
+
+/* The FUSE response attempt precedes REVOKE commit. Already submitted
+   responses and copied bytes are not recalled by this ordering. */
+static void fs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    fs_lookup_under_lock(req, parent, name);
+    (void)effect_leave(h);
+}
+
+static void fs_getattr(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    fs_getattr_under_lock(req, inode, fi);
+    (void)effect_leave(h);
+}
+
+static void open_inode(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi, int directory)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    open_inode_under_lock(req, inode, fi, directory);
+    (void)effect_leave(h);
+}
+
+static void fs_open(fuse_req_t r, fuse_ino_t i, struct fuse_file_info *f)
+{ open_inode(r, i, f, 0); }
+static void fs_opendir(fuse_req_t r, fuse_ino_t i, struct fuse_file_info *f)
+{ open_inode(r, i, f, 1); }
+
+static void fs_read(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
+                    struct fuse_file_info *fi)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    fs_read_under_lock(req, inode, size, offset, fi);
+    (void)effect_leave(h);
+}
+
+static void fs_readdir(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
+                       struct fuse_file_info *fi)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    fs_readdir_under_lock(req, inode, size, offset, fi);
+    (void)effect_leave(h);
+}
+
+static void fs_release(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    fs_release_under_lock(req, inode, fi);
+    (void)effect_leave(h);
+}
+
+static void fs_flush(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi)
+{
+    struct host *h = fuse_req_userdata(req);
+    if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
+    fs_flush_under_lock(req, inode, fi);
+    (void)effect_leave(h);
 }
 
 static const struct fuse_lowlevel_ops operations = {
@@ -564,6 +664,7 @@ int main(int argc, char **argv)
     struct writ_child other = { .pid = -1, .command = -1, .result = -1, .pidfd = -1 };
     char root[PATH_MAX] = {0}, mount[PATH_MAX] = {0};
     int result = 1, mounted = 0, policy_started = 0, threaded = 0, signal_handlers = 0;
+    int effect_lock_initialized = 0;
     pthread_t thread;
     int n = snprintf(root, sizeof root, "%s/writfs-linux.XXXXXX", directory);
     if (n <= 0 || (size_t)n >= sizeof root || !mkdtemp(root)) return 1;
@@ -601,6 +702,8 @@ int main(int argc, char **argv)
         goto cleanup;
     }
     policy_started = 1;
+    if (pthread_mutex_init(&h.effect_lock, NULL)) goto cleanup;
+    effect_lock_initialized = 1;
     if (fuse_set_signal_handlers(h.session)) goto cleanup;
     signal_handlers = 1;
     if (pthread_create(&thread, NULL, serve, &h)) goto cleanup;
@@ -625,12 +728,11 @@ int main(int argc, char **argv)
     }
     char stop = 'V';
     if (!strcmp(test_case, "policy-exit")) {
-        if (kill(h.policy.pid, SIGKILL)) goto cleanup;
+        if (terminate_policy(&h)) goto cleanup;
         stop = 'E';
         puts("POLICY terminated for fail-closed probe");
     } else {
-        if (writ_policy_call(&h.policy, "REVOKE", 0, 0, 0, 0, "-", &reply) ||
-            reply.status != WRIT_OK) goto cleanup;
+        if (revoke_view(&h)) goto cleanup;
         puts("PASS Bend revocation committed");
     }
     if (command(&h.reader, stop)) goto cleanup;
@@ -662,6 +764,7 @@ cleanup:
         }
         writ_policy_stop(&h.policy);
     }
+    if (effect_lock_initialized && pthread_mutex_destroy(&h.effect_lock)) result = 1;
     if (h.sealed >= 0) close(h.sealed);
     for (size_t i = 0; i < h.event_count; ++i) {
         const struct native_event *e = &h.events[i];

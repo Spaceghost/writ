@@ -1,0 +1,7 @@
+PASS paused READ reply attempt precedes REVOKE
+PASS paused READ reply attempt precedes intentional policy termination
+PASS REVOKE first denies later READ and permits CLOSE cleanup
+PASS canceled OPEN closes its admitted handle while locked
+PASS malformed and failed operations poison or release the lock
+PASS revoked lookup, getattr, open and directory listing deny
+PASS successful protected metadata replies hold the effect lock

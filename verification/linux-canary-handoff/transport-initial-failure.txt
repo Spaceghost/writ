@@ -1,0 +1,16 @@
+First invocation of the nonprivileged transport probe:
+
+  ulimit -v 1048576
+  timeout 60 nice -n 15 transport-probe /usr/bin/node .../node-policy.mjs .../mount.mjs
+
+Exit 1; output:
+
+  FAIL native pipe to generated Bend policy
+
+The child stderr was intentionally redirected by the transport. A separate
+unmounted Node startup check under the same 1-GiB address-space cap failed
+initializing V8 with "Fatal process out of memory: SegmentedTable::InitializeTable
+(subspace allocation)". That separate diagnostic produced a local core file,
+which was removed immediately. The actual transport probe was rerun with core
+dumps disabled and an 8-GiB virtual-address limit; its result is in transport.txt.
+The evidence does not establish a more specific cause for the first child failure.

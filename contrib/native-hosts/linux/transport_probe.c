@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 /* These malformed peers test only native framing failure. They never mount or
@@ -58,6 +59,32 @@ done:
     return result;
 }
 
+/* This tests a real owned interpreter's loss at the pipe, not FUSE service or
+   spontaneous death timing. WNOWAIT preserves normal policy_stop reaping. */
+static int real_policy_loss(const char *node, const char *bridge, const char *module)
+{
+    struct writ_policy p;
+    if (writ_policy_start(&p, node, bridge, module)) return 1;
+    struct writ_reply r;
+    int result = 1;
+    if (writ_policy_call(&p, "STATUS", 0, 0, 0, 0, "-", &r) || r.status != WRIT_OK)
+        goto done;
+    if (p.pid <= 0 || kill(p.pid, SIGKILL)) goto done;
+    siginfo_t info;
+    int waited;
+    do { waited = waitid(P_PID, (id_t)p.pid, &info, WEXITED | WNOWAIT); }
+    while (waited && errno == EINTR);
+    if (waited || info.si_pid != p.pid || info.si_code != CLD_KILLED || info.si_status != SIGKILL)
+        goto done;
+    int first = writ_policy_call(&p, "STATUS", 0, 0, 0, 0, "-", &r);
+    int retry = writ_policy_call(&p, "STATUS", 0, 0, 0, 0, "-", &r);
+    if (!first || !retry || p.live) goto done;
+    result = 0;
+done:
+    writ_policy_stop(&p);
+    return result;
+}
+
 int main(int argc, char **argv)
 {
     if (argc == 6 && !strcmp(argv[1], "--no-addons")) return malformed_peer(argv[4]);
@@ -75,6 +102,10 @@ int main(int argc, char **argv)
     }
     puts("PASS native private pipes execute actual Bend admission, read and revocation");
     puts("PASS Node and loader injection environment is removed");
+    if (real_policy_loss(argv[1], argv[2], argv[3])) {
+        fputs("FAIL actual policy-process loss poisons the private pipe\n", stderr); return 1;
+    }
+    puts("PASS actual policy-process loss poisons the private pipe and denies retry");
     char self[PATH_MAX];
     ssize_t n = readlink("/proc/self/exe", self, sizeof self - 1);
     if (n <= 0 || n == (ssize_t)sizeof self - 1) return 1;

@@ -30,3 +30,8 @@ $(OUT)/transport-probe: transport_probe.c policy_pipe.c policy_pipe.h | $(OUT)
 
 $(OUT)/crash-probe: crash_probe.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) crash_probe.c -o "$@"
+
+# Nonprivileged synthetic scheduling test. Includes the production callbacks;
+# it mocks FUSE/OS/policy calls and does not mount or probe native identity.
+$(OUT)/handoff-order-test: handoff-order-test.c writfs.c policy_pipe.c policy_pipe.h worker.c worker.h | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(FUSE_CFLAGS) handoff-order-test.c policy_pipe.c worker.c $(FUSE_LIBS) -o "$@"

@@ -1,0 +1,8 @@
+/home/jadams/tmp/writ-linux-effect-baseline/writfs.c:89:24: error: implicit conversion changes signedness: 'enum (unnamed at /home/jadams/tmp/writ-linux-effect-baseline/policy_pipe.h:18:5)' to 'int' [-Werror,-Wsign-conversion]
+   89 |     e->status = reply->status; e->value = reply->value;
+      |               ~ ~~~~~~~^~~~~~
+1 error generated.
+/home/jadams/tmp/writ-linux-effect-baseline/worker.c:139:22: error: implicit conversion changes signedness: 'int' to '__rlimit_resource_t' (aka 'enum __rlimit_resource') [-Werror,-Wsign-conversion]
+  139 |     return setrlimit(resource, &limit);
+      |            ~~~~~~~~~ ^~~~~~~~
+1 error generated.

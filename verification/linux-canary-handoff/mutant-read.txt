@@ -1,0 +1,1 @@
+FAIL /home/jadams/tmp/writ-linux-effect-mutants/read/handoff-order-test.c:270: pthread_mutex_trylock(&h.effect_lock) == EBUSY

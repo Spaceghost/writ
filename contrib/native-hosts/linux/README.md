@@ -99,10 +99,23 @@ Run as root, substituting that test account's numeric UID/GID:
   --uid 12345 --gid 12345 --case revoke
 ```
 
-`--case policy-exit` kills the policy interpreter after a successful read and
-checks that existing and new reads fail. `--require-landlock 4294967294` is an
+`--case policy-exit` serializes supervisor-requested policy termination with
+in-flight FUSE reply attempts, marks the host fatal, and checks that existing
+and new reads fail. Because the fatal flag is set deliberately, this case does
+not demonstrate pipe-detected loss or an unsolicited interpreter death. The
+separate nonprivileged transport probe kills its own policy child after a valid
+request and checks actual pipe poisoning and retry denial; it is not mounted
+host acceptance evidence. `--require-landlock 4294967294` is an
 intentional setup-refusal probe; no canary is loaded or admitted. `--case hold`
 and its private `--ready-file` are only for the external broker-crash test.
+
+The nonprivileged callback interleaving test compiles the actual callbacks with
+mocked FUSE, policy and OS boundaries. It does not mount or probe process identity:
+
+```sh
+make -C contrib/native-hosts/linux OUT="$WRIT_BUILD" "$WRIT_BUILD/handoff-order-test"
+timeout 35 "$WRIT_BUILD/handoff-order-test"
+```
 
 `crash-probe HOST NODE BRIDGE MODULE PUBLIC-FIXTURE WORK-DIR UID GID` starts the
 real harness, pins its child lifetimes with pidfds, kills the broker after a
@@ -122,7 +135,8 @@ actual kernel, library/runtime versions, source hashes and failed outcomes.
 | `writfs.c` | libfuse callbacks, sealed memfd ownership, native requester/lifetime mapping, bounded event capture and canary orchestration |
 | `policy_pipe.c`, `policy_pipe.h` | Private process/pipe setup, sanitized environment, canonical bounded replies, sequence checks, deadlines and teardown |
 | `worker.c`, `worker.h` | Trusted launch prelude and fixed native escape/read/revocation probes; these do not decide Writ authority |
-| `transport_probe.c` | Real C-to-Bend transport checks and explicitly malformed test peers with no filesystem/data-serving route |
+| `transport_probe.c` | Real C-to-Bend transport checks, owned policy-process loss and explicitly malformed test peers with no filesystem/data-serving route |
+| `handoff-order-test.c` | Nonprivileged mocked scheduling and failure checks of the real callbacks and supervisor helpers; no native identity or mount claim |
 | `crash_probe.c`, `Makefile` | Native lifecycle probe and build glue |
 
 Host events record the observed kernel identity, actor match, operation, handle,
@@ -142,3 +156,22 @@ Primary interface references: [libfuse low-level API](https://libfuse.github.io/
 [Landlock](https://docs.kernel.org/userspace-api/landlock.html),
 [seccomp filtering](https://docs.kernel.org/userspace-api/seccomp_filter.html),
 and [`no_new_privs`](https://docs.kernel.org/userspace-api/no_new_privs.html).
+
+## Handoff ordering and remaining teardown gap
+
+A single FUSE loop thread handles callbacks while the supervisor can issue
+REVOKE. An instance mutex now orders each protected callback's policy decision
+and FUSE reply **attempt** before the supervisor can commit REVOKE; intentional
+policy termination uses the same ordering. It does not recall a reply already
+submitted to the kernel or establish when a client observed it. The fixed probe
+worker waits for the supervisor before its post-revocation reads; the historical
+VM record did not demonstrate an actual overlapping authorized read and REVOKE.
+The new mock schedules that overlap without mounting FUSE.
+
+This mutex is held across the FUSE reply attempt. A stalled reply can delay
+revocation, POSIX mutex fairness gives no bounded progress guarantee, and the
+change does not qualify teardown, crash recovery or spontaneous interpreter
+death. An existing separate cleanup race remains: the supervisor retires and
+mutates the reader's PID/pidfd record before joining the FUSE thread, while an
+in-flight callback may still inspect that record. No new native mounted
+acceptance or protected-host qualification is claimed for the changed source.

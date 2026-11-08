@@ -1,0 +1,1 @@
+FAIL /home/jadams/tmp/writ-linux-effect-mutants/revoke/handoff-order-test.c:274: mock.attempted && !mock.completed

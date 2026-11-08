@@ -1,0 +1,12 @@
+PASS native private pipes execute actual Bend admission, read and revocation
+PASS Node and loader injection environment is removed
+PASS actual policy-process loss poisons the private pipe and denies retry
+PASS malformed native peer sequence stops without retry
+PASS malformed native peer leading-zero stops without retry
+PASS malformed native peer overflow stops without retry
+PASS malformed native peer trailing stops without retry
+PASS malformed native peer status stops without retry
+PASS malformed native peer partial stops without retry
+PASS malformed native peer oversize stops without retry
+PASS malformed native peer timeout stops without retry
+ALL LINUX NATIVE TRANSPORT CHECKS PASSED
