@@ -395,6 +395,67 @@ static void *serve(void *context)
     return (void *)(intptr_t)fuse_session_loop(h->session);
 }
 
+/* A failed join or mutex unlock leaves stack-backed state potentially in use.
+   Do not destroy it or return from main. The process exits without claiming
+   that the mount, interpreter, child or other resources were cleaned up. */
+static _Noreturn void cleanup_fail_stop(void)
+{
+    _Exit(1);
+}
+
+/* Stop the loop before touching a reader we could not detach. A successful
+   join establishes only that the loop thread no longer uses the host. */
+static void stop_session_or_exit(struct host *h, int mounted, int threaded,
+                                 pthread_t thread, int signal_handlers)
+{
+    if (!h->session) {
+        if (threaded) cleanup_fail_stop();
+        return;
+    }
+    fuse_session_exit(h->session);
+    if (mounted) fuse_session_unmount(h->session);
+    if (threaded && pthread_join(thread, NULL)) cleanup_fail_stop();
+    if (signal_handlers) fuse_remove_signal_handlers(h->session);
+    fuse_session_destroy(h->session);
+    h->session = NULL;
+}
+
+/* Transfer the exact reader lifetime under the same lock used by actor().
+   Never hold it while signaling, reaping, unmounting or joining. EBUSY leaves
+   the reader intact until join; unexpected errors fail-stop with ownership
+   and cleanup uncertain. */
+static int retire_children_and_session(struct host *h, struct writ_child *other,
+    int lock_initialized, int threaded, pthread_t thread, int mounted,
+    int signal_handlers, int *destroy_lock)
+{
+    int defer_reader = 0;
+    *destroy_lock = lock_initialized;
+    if (!threaded) {
+        writ_retire_child(&h->reader);
+    } else {
+        int error = lock_initialized ? pthread_mutex_trylock(&h->effect_lock) : EINVAL;
+        if (error == EBUSY) {
+            atomic_store(&h->fatal, 1);
+            defer_reader = 1;
+        } else if (error) {
+            atomic_store(&h->fatal, 1);
+            cleanup_fail_stop();
+        } else {
+            struct writ_child owned = h->reader;
+            h->reader = (struct writ_child){ .pid = -1, .command = -1, .result = -1, .pidfd = -1 };
+            if (effect_leave(h)) cleanup_fail_stop();
+            writ_retire_child(&owned);
+        }
+    }
+    if (!defer_reader) writ_retire_child(other);
+    stop_session_or_exit(h, mounted, threaded, thread, signal_handlers);
+    if (defer_reader) {
+        writ_retire_child(&h->reader);
+        writ_retire_child(other);
+    }
+    return defer_reader ? -1 : 0;
+}
+
 static int freeze(struct host *h, const char *path, unsigned char *bytes)
 {
     int input = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW | O_NONBLOCK);
@@ -664,8 +725,8 @@ int main(int argc, char **argv)
     struct writ_child other = { .pid = -1, .command = -1, .result = -1, .pidfd = -1 };
     char root[PATH_MAX] = {0}, mount[PATH_MAX] = {0};
     int result = 1, mounted = 0, policy_started = 0, threaded = 0, signal_handlers = 0;
-    int effect_lock_initialized = 0;
-    pthread_t thread;
+    int effect_lock_initialized = 0, destroy_lock = 0;
+    pthread_t thread = (pthread_t)0;
     int n = snprintf(root, sizeof root, "%s/writfs-linux.XXXXXX", directory);
     if (n <= 0 || (size_t)n >= sizeof root || !mkdtemp(root)) return 1;
     if (chmod(root, 0755)) goto cleanup;
@@ -742,15 +803,8 @@ int main(int argc, char **argv)
     result = 0;
 
 cleanup:
-    writ_retire_child(&h.reader);
-    writ_retire_child(&other);
-    if (h.session) {
-        fuse_session_exit(h.session);
-        if (mounted) fuse_session_unmount(h.session);
-        if (threaded) pthread_join(thread, NULL);
-        if (signal_handlers) fuse_remove_signal_handlers(h.session);
-        fuse_session_destroy(h.session);
-    }
+    if (retire_children_and_session(&h, &other, effect_lock_initialized, threaded,
+                                    thread, mounted, signal_handlers, &destroy_lock)) result = 1;
     if (policy_started) {
         if (!strcmp(test_case, "revoke") && !result) {
             for (size_t i = 0; i < HANDLE_LIMIT; ++i) {
@@ -764,7 +818,7 @@ cleanup:
         }
         writ_policy_stop(&h.policy);
     }
-    if (effect_lock_initialized && pthread_mutex_destroy(&h.effect_lock)) result = 1;
+    if (destroy_lock && pthread_mutex_destroy(&h.effect_lock)) result = 1;
     if (h.sealed >= 0) close(h.sealed);
     for (size_t i = 0; i < h.event_count; ++i) {
         const struct native_event *e = &h.events[i];
@@ -775,7 +829,7 @@ cleanup:
     }
     if (*mount && rmdir(mount) && errno != ENOENT) result = 1;
     if (rmdir(root)) result = 1;
-    if (!result) puts("ALL LINUX NATIVE CANARY CHECKS PASSED; owned resources cleaned");
+    if (!result) puts("ALL LINUX NATIVE CANARY CHECKS PASSED; cleanup attempted");
     else fputs("LINUX NATIVE CANARY CHECK FAILED; no protected-data qualification\n", stderr);
     return result;
 }

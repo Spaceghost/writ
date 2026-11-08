@@ -1,5 +1,10 @@
 # Verification record
 
+The [Linux reader-retirement record](verification/linux-reader-retirement/README.md)
+covers source-level PID/pidfd ownership transfer and synthetic lifecycle fault
+paths. It does not establish native teardown, recovery, or protected-host
+qualification.
+
 The [Linux canary handoff record](verification/linux-canary-handoff/README.md)
 covers mocked callback scheduling and a real private-pipe process-loss check.
 It does not establish a mounted concurrent race, bounded revocation or teardown,

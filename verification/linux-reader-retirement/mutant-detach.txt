@@ -1,0 +1,9 @@
+FAIL /home/jadams/tmp/writ-reader-mutants/detach/handoff-order-test.c:616: mock.retired_pid == 42 && mock.retired_pidfd == 77 && mock.retired_command == 10 && mock.retired_result == 11 && mock.retired_start == 999u && h.reader.pid == -1 && h.reader.pidfd == -1 && h.reader.command == -1 && h.reader.result == -1 && h.reader.start_time == 0
+PASS paused READ reply attempt precedes REVOKE
+PASS paused READ reply attempt precedes intentional policy termination
+PASS REVOKE first denies later READ and permits CLOSE cleanup
+PASS canceled OPEN closes its admitted handle while locked
+PASS malformed and failed operations poison or release the lock
+PASS revoked lookup, getattr, open and directory listing deny
+PASS successful protected metadata replies hold the effect lock
+PASS busy reader record stays intact until checked join

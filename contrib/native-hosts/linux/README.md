@@ -132,7 +132,7 @@ actual kernel, library/runtime versions, source hashes and failed outcomes.
 
 | File | Responsibility |
 | --- | --- |
-| `writfs.c` | libfuse callbacks, sealed memfd ownership, native requester/lifetime mapping, bounded event capture and canary orchestration |
+| `writfs.c` | libfuse callbacks, sealed memfd ownership, native requester/lifetime mapping, serialized reader detachment, bounded event capture and canary orchestration |
 | `policy_pipe.c`, `policy_pipe.h` | Private process/pipe setup, sanitized environment, canonical bounded replies, sequence checks, deadlines and teardown |
 | `worker.c`, `worker.h` | Trusted launch prelude and fixed native escape/read/revocation probes; these do not decide Writ authority |
 | `transport_probe.c` | Real C-to-Bend transport checks, owned policy-process loss and explicitly malformed test peers with no filesystem/data-serving route |
@@ -157,7 +157,7 @@ Primary interface references: [libfuse low-level API](https://libfuse.github.io/
 [seccomp filtering](https://docs.kernel.org/userspace-api/seccomp_filter.html),
 and [`no_new_privs`](https://docs.kernel.org/userspace-api/no_new_privs.html).
 
-## Handoff ordering and remaining teardown gap
+## Handoff ordering and teardown limits
 
 A single FUSE loop thread handles callbacks while the supervisor can issue
 REVOKE. An instance mutex now orders each protected callback's policy decision
@@ -171,7 +171,21 @@ The new mock schedules that overlap without mounting FUSE.
 This mutex is held across the FUSE reply attempt. A stalled reply can delay
 revocation, POSIX mutex fairness gives no bounded progress guarantee, and the
 change does not qualify teardown, crash recovery or spontaneous interpreter
-death. An existing separate cleanup race remains: the supervisor retires and
-mutates the reader's PID/pidfd record before joining the FUSE thread, while an
-in-flight callback may still inspect that record. No new native mounted
-acceptance or protected-host qualification is claimed for the changed source.
+death.
+
+During cleanup, if the FUSE thread exists and the effect mutex is immediately
+available, the supervisor detaches the entire reader record under that mutex,
+invalidates the shared record, then retires the detached copy without the lock.
+If the mutex is busy, cleanup marks the instance fatal and incomplete, requests
+FUSE exit/unmount, checks join and retires the original record only afterward.
+An in-flight callback that already passed the fatal check may still obtain a
+later allowed policy decision and reply while shutdown proceeds; no completed
+REVOKE is implied by this cleanup path. Unexpected trylock or unlock errors,
+and failed join, immediately fail-stop without claiming resource cleanup.
+
+Join success establishes only that the loop thread no longer uses the host; it
+does not establish that the loop succeeded. The existing `writ_retire_child`
+does not check all signal, wait and close results. Lock acquisition, unmount,
+join and retirement may block, and fail-stop does not prove that children,
+pipes or mounts were cleaned up. No new native mounted acceptance, crash
+recovery or protected-host qualification is claimed for the changed source.

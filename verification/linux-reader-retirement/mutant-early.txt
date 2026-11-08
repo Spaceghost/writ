@@ -1,0 +1,5 @@
+The scratch mutant moved retirement of the shared reader before the checked
+join in the EBUSY path. The callback harness exited 79: its mocked retirement
+sentinel detected that a child was being retired before the mocked successful
+join. _Exit(79) intentionally skips flushing buffered output. The mutant did
+not time out. The mutation and executable remained outside the source tree.

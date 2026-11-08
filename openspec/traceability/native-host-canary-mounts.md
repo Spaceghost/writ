@@ -62,6 +62,9 @@ against NM003–NM006. It forces a paused modeled read decision through reply
 attempt before REVOKE, checks the opposite order, cleanup and failure paths,
 and tests owned policy-process loss separately at the private pipe. This is
 not a mounted concurrency test or proof that a client consumed a reply. The
-fixed worker's native overlap has not been observed. The preexisting reader
-PID/pidfd mutation during teardown is an explicit unresolved race; blocked FUSE
-replies and mutex fairness leave revocation progress and teardown unqualified.
+fixed worker's native overlap has not been observed. The follow-up
+[reader-retirement record](../../verification/linux-reader-retirement/README.md)
+addresses the previously identified shared reader PID/pidfd mutation at the
+source and mocked-scheduling level. Its fail-stop and busy paths remain
+unqualified as native teardown; blocked FUSE replies, unmount, join and
+retirement, as well as mutex fairness, leave progress and cleanup unproven.

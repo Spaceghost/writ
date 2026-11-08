@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 void *fake_req_userdata(fuse_req_t);
@@ -27,8 +28,23 @@ int fake_fcntl(int, int, ...);
 ssize_t fake_pread(int, void *, size_t, off_t);
 int fake_kill(pid_t, int);
 int fake_mutex_lock(pthread_mutex_t *);
+int fake_mutex_trylock(pthread_mutex_t *);
+int fake_mutex_unlock(pthread_mutex_t *);
+int fake_thread_join(pthread_t, void **);
+void fake_session_exit(struct fuse_session *);
+void fake_session_unmount(struct fuse_session *);
+void fake_remove_signal_handlers(struct fuse_session *);
+void fake_session_destroy(struct fuse_session *);
 
 #define pthread_mutex_lock fake_mutex_lock
+#define pthread_mutex_trylock fake_mutex_trylock
+#define pthread_mutex_unlock fake_mutex_unlock
+#define pthread_join fake_thread_join
+#define fuse_session_exit fake_session_exit
+#define fuse_session_unmount fake_session_unmount
+#define fuse_remove_signal_handlers fake_remove_signal_handlers
+#define fuse_session_destroy fake_session_destroy
+#define writ_retire_child fake_retire_child
 #define main canary_program_main
 #define fuse_req_userdata fake_req_userdata
 #define fuse_req_ctx fake_req_ctx
@@ -45,6 +61,14 @@ int fake_mutex_lock(pthread_mutex_t *);
 #define kill fake_kill
 #include "writfs.c"
 #undef pthread_mutex_lock
+#undef pthread_mutex_trylock
+#undef pthread_mutex_unlock
+#undef pthread_join
+#undef fuse_session_exit
+#undef fuse_session_unmount
+#undef fuse_remove_signal_handlers
+#undef fuse_session_destroy
+#undef writ_retire_child
 #undef main
 #undef fuse_req_userdata
 #undef fuse_req_ctx
@@ -73,6 +97,14 @@ static struct {
     size_t count;
     int revoked, broken, kill_error, cancel_open, pause_read, paused, proceed, attempted, completed;
     int last_error, seals_error, mutex_error, revoke_deny;
+    int try_error, forbid_try, unlock_error, join_error, join_real, join_started, joined;
+    int pause_actor, actor_paused, actor_continue, actor_calls;
+    int pause_retire, retire_paused, retire_continue, reader_retires, other_retires;
+    int exit_calls, unmount_calls, destroy_calls, forbidden_cleanup, forbidden_early_retire;
+    int forbidden_session_calls;
+    pid_t retired_pid;
+    int retired_pidfd, retired_command, retired_result, reused_fd, reused_fd_lookups;
+    uint64_t retired_start;
     struct host *host;
 } mock = { .lock = PTHREAD_MUTEX_INITIALIZER, .changed = PTHREAD_COND_INITIALIZER };
 
@@ -91,6 +123,79 @@ int fake_mutex_lock(pthread_mutex_t *lock)
     return pthread_mutex_lock(lock);
 }
 
+int fake_mutex_trylock(pthread_mutex_t *lock)
+{
+    if (mock.host && lock == &mock.host->effect_lock && mock.forbid_try) _Exit(80);
+    if (mock.host && lock == &mock.host->effect_lock && mock.try_error == EOWNERDEAD) {
+        CHECK(!pthread_mutex_trylock(lock));
+        return EOWNERDEAD; /* Model an error that also acquired ownership. */
+    }
+    if (mock.host && lock == &mock.host->effect_lock && mock.try_error) return mock.try_error;
+    return pthread_mutex_trylock(lock);
+}
+
+int fake_mutex_unlock(pthread_mutex_t *lock)
+{
+    if (mock.host && lock == &mock.host->effect_lock && mock.unlock_error) return EPERM;
+    return pthread_mutex_unlock(lock);
+}
+
+int fake_thread_join(pthread_t thread, void **out)
+{
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    mock.join_started = 1;
+    CHECK(!pthread_cond_broadcast(&mock.changed));
+    int failure = mock.join_error, real = mock.join_real;
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    if (failure) return EINVAL;
+    int result = real ? pthread_join(thread, out) : 0;
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    mock.joined = !result;
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    return result;
+}
+
+void fake_session_exit(struct fuse_session *session)
+{
+    (void)session;
+    if (mock.forbidden_session_calls) _Exit(77);
+    mock.exit_calls++;
+}
+void fake_session_unmount(struct fuse_session *session)
+{ (void)session; mock.unmount_calls++; }
+void fake_remove_signal_handlers(struct fuse_session *session)
+{ (void)session; }
+void fake_session_destroy(struct fuse_session *session)
+{
+    (void)session;
+    if (mock.forbidden_cleanup && !mock.joined) _Exit(78);
+    mock.destroy_calls++;
+}
+
+void fake_retire_child(struct writ_child *child)
+{
+    if (child->pid <= 0) return;
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    if (mock.forbidden_early_retire && !mock.joined) _Exit(79);
+    if (child->pid == 42) {
+        mock.reader_retires++;
+        mock.retired_pid = child->pid;
+        mock.retired_pidfd = child->pidfd;
+        mock.retired_command = child->command;
+        mock.retired_result = child->result;
+        mock.retired_start = child->start_time;
+        if (mock.pause_retire) {
+            mock.retire_paused = 1;
+            CHECK(!pthread_cond_broadcast(&mock.changed));
+            while (!mock.retire_continue) CHECK(!pthread_cond_wait(&mock.changed, &mock.lock));
+        }
+    } else {
+        mock.other_retires++;
+    }
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    child->pid = -1; child->pidfd = -1; child->command = -1; child->result = -1;
+}
+
 static void assert_effect_locked(void)
 { CHECK(pthread_mutex_trylock(&mock.host->effect_lock) == EBUSY); }
 
@@ -107,7 +212,19 @@ const struct fuse_ctx *fake_req_ctx(fuse_req_t req)
 { return &((struct fake_request *)req)->context; }
 
 int fake_process_alive(const struct writ_child *child)
-{ (void)child; return 1; }
+{
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    mock.actor_calls++;
+    if (child->pidfd == mock.reused_fd) mock.reused_fd_lookups++;
+    if (mock.pause_actor) {
+        mock.actor_paused = 1;
+        CHECK(!pthread_cond_broadcast(&mock.changed));
+        while (!mock.actor_continue) CHECK(!pthread_cond_wait(&mock.changed, &mock.lock));
+        CHECK(child->pid == 42 && child->pidfd == 77 && child->start_time == 999u);
+    }
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    return 1;
+}
 
 int fake_policy_call(struct writ_policy *policy, const char *operation,
                      uint32_t actor, uint32_t id, uint32_t offset,
@@ -215,7 +332,9 @@ static void reset(struct host *h, struct fake_request *request)
     atomic_init(&h->initialized, 0);
     atomic_init(&h->event_count, 0);
     CHECK(!pthread_mutex_init(&h->effect_lock, NULL));
-    h->uid = 1000; h->gid = 1000; h->reader.pid = 42; h->policy.pid = 1234;
+    h->uid = 1000; h->gid = 1000; h->reader.pid = 42; h->reader.pidfd = 77;
+    h->reader.command = 10; h->reader.result = 11; h->reader.start_time = 999u;
+    h->policy.pid = 1234;
     h->length = 3; h->sealed = 55;
     h->handles[0] = (struct native_handle){1, 1, DATA_INODE};
     request->host = h;
@@ -225,6 +344,15 @@ static void reset(struct host *h, struct fake_request *request)
     mock.cancel_open = 0; mock.pause_read = 0; mock.paused = 0; mock.proceed = 0;
     mock.attempted = 0; mock.completed = 0; mock.last_error = 0; mock.seals_error = 0;
     mock.mutex_error = 0; mock.revoke_deny = 0; mock.host = h;
+    mock.try_error = 0; mock.forbid_try = 0; mock.unlock_error = 0; mock.join_error = 0; mock.join_real = 0;
+    mock.join_started = 0; mock.joined = 0; mock.pause_actor = 0; mock.actor_paused = 0;
+    mock.actor_continue = 0; mock.actor_calls = 0; mock.pause_retire = 0;
+    mock.retire_paused = 0; mock.retire_continue = 0; mock.reader_retires = 0;
+    mock.other_retires = 0; mock.exit_calls = 0; mock.unmount_calls = 0; mock.destroy_calls = 0;
+    mock.forbidden_cleanup = 0; mock.forbidden_early_retire = 0; mock.forbidden_session_calls = 0;
+    mock.retired_pid = -1; mock.retired_pidfd = -1;
+    mock.retired_command = -1; mock.retired_result = -1; mock.retired_start = 0;
+    mock.reused_fd = -1; mock.reused_fd_lookups = 0;
     CHECK(!pthread_mutex_unlock(&mock.lock));
 }
 
@@ -414,6 +542,142 @@ static void positive_metadata(void)
     CHECK(!pthread_mutex_destroy(&h.effect_lock));
 }
 
+/* The reader/pidfd values below are synthetic. No native identity lookup,
+   signal or descriptor close is performed by fake_process_alive/retire. */
+struct cleanup_args {
+    struct host *host;
+    struct writ_child other;
+    pthread_t callback;
+    int result, destroy_lock;
+};
+
+static void *cleanup_thread(void *value)
+{
+    struct cleanup_args *args = value;
+    args->result = retire_children_and_session(args->host, &args->other, 1, 1,
+        args->callback, 1, 1, &args->destroy_lock);
+    return NULL;
+}
+
+static void busy_reader_then_join(void)
+{
+    struct host h;
+    struct fake_request request;
+    reset(&h, &request);
+    h.session = (struct fuse_session *)(uintptr_t)1;
+    mock.pause_actor = 1; mock.join_real = 1; mock.forbidden_cleanup = 1; mock.forbidden_early_retire = 1;
+    pthread_t read_thread, cleanup;
+    CHECK(!pthread_create(&read_thread, NULL, reader, &request));
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    while (!mock.actor_paused) CHECK(!pthread_cond_wait(&mock.changed, &mock.lock));
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    struct cleanup_args args = { .host = &h,
+        .other = { .pid = 43, .pidfd = 78, .command = 12, .result = 13 },
+        .callback = read_thread, .result = 0, .destroy_lock = 0 };
+    CHECK(!pthread_create(&cleanup, NULL, cleanup_thread, &args));
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    while (!mock.join_started) CHECK(!pthread_cond_wait(&mock.changed, &mock.lock));
+    CHECK(mock.exit_calls == 1 && mock.unmount_calls == 1 && mock.reader_retires == 0 &&
+          mock.other_retires == 0 && h.reader.pid == 42 && h.reader.pidfd == 77);
+    CHECK(atomic_load(&h.fatal));
+    mock.actor_continue = 1;
+    CHECK(!pthread_cond_broadcast(&mock.changed));
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    CHECK(!pthread_join(cleanup, NULL));
+    CHECK(args.result == -1 && args.destroy_lock == 1 && mock.joined &&
+          mock.reader_retires == 1 && mock.other_retires == 1 && mock.destroy_calls == 1);
+    CHECK(h.reader.pid == -1 && h.reader.pidfd == -1);
+    unlocked(&h);
+    CHECK(!pthread_mutex_destroy(&h.effect_lock));
+}
+
+static void *paused_retirement(void *value)
+{
+    struct cleanup_args *args = value;
+    args->result = retire_children_and_session(args->host, &args->other, 1, 1,
+        args->callback, 1, 1, &args->destroy_lock);
+    return NULL;
+}
+
+static void detached_reap_and_reuse(void)
+{
+    struct host h;
+    struct fake_request request;
+    reset(&h, &request);
+    h.session = (struct fuse_session *)(uintptr_t)1;
+    mock.pause_retire = 1;
+    struct cleanup_args args = { .host = &h,
+        .other = { .pid = -1, .pidfd = -1, .command = -1, .result = -1 },
+        .callback = (pthread_t)0, .result = -1, .destroy_lock = 0 };
+    pthread_t cleanup;
+    CHECK(!pthread_create(&cleanup, NULL, paused_retirement, &args));
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    while (!mock.retire_paused) CHECK(!pthread_cond_wait(&mock.changed, &mock.lock));
+    CHECK(mock.retired_pid == 42 && mock.retired_pidfd == 77 && mock.retired_command == 10 &&
+          mock.retired_result == 11 && mock.retired_start == 999u && h.reader.pid == -1 &&
+          h.reader.pidfd == -1 && h.reader.command == -1 && h.reader.result == -1 && h.reader.start_time == 0);
+    CHECK(!atomic_load(&h.fatal));
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    /* Reaping is paused, yet another thread can acquire the effect lock. */
+    unlocked(&h);
+    struct fuse_file_info fi = { .fh = 1 };
+    fs_read((fuse_req_t)&request, DATA_INODE, 3, 0, &fi);
+    CHECK(mock.last_error == EACCES && mock.actor_calls == 0);
+    CHECK(!pthread_mutex_lock(&mock.lock));
+    mock.retire_continue = 1;
+    CHECK(!pthread_cond_broadcast(&mock.changed));
+    CHECK(!pthread_mutex_unlock(&mock.lock));
+    CHECK(!pthread_join(cleanup, NULL));
+    CHECK(args.result == 0 && args.destroy_lock == 1 && mock.reader_retires == 1 && mock.joined);
+    /* Model numeric fd 77 being assigned to an unrelated live object. A stale
+       lookup would be counted and fake_process_alive would return true. */
+    mock.reused_fd = 77;
+    fs_read((fuse_req_t)&request, DATA_INODE, 3, 0, &fi);
+    CHECK(mock.last_error == EACCES && mock.actor_calls == 0 && mock.reused_fd_lookups == 0);
+    CHECK(!pthread_mutex_destroy(&h.effect_lock));
+}
+
+static void no_thread_or_lock(void)
+{
+    struct host h;
+    struct fake_request request;
+    reset(&h, &request);
+    CHECK(!pthread_mutex_destroy(&h.effect_lock));
+    mock.forbid_try = 1;
+    struct writ_child other = { .pid = -1, .pidfd = -1, .command = -1, .result = -1 };
+    int destroy_lock = 1;
+    CHECK(!retire_children_and_session(&h, &other, 0, 0, (pthread_t)0, 0, 0, &destroy_lock));
+    CHECK(destroy_lock == 0 && mock.reader_retires == 1 && !atomic_load(&h.fatal));
+}
+
+static void fail_stop_child(int scenario)
+{
+    struct host h;
+    struct fake_request request;
+    reset(&h, &request);
+    h.session = (struct fuse_session *)(uintptr_t)1;
+    mock.forbidden_cleanup = 1;
+    if (scenario == 1) { mock.unlock_error = 1; mock.forbidden_early_retire = 1; }
+    else if (scenario == 0) { mock.try_error = EINVAL; mock.forbidden_early_retire = 1; mock.forbidden_session_calls = 1; }
+    else if (scenario == 3) { mock.try_error = EBUSY; mock.join_error = 1; mock.forbidden_early_retire = 1; }
+    else if (scenario == 4) { mock.forbid_try = 1; mock.forbidden_early_retire = 1; mock.forbidden_session_calls = 1; }
+    else if (scenario == 5) { mock.try_error = EOWNERDEAD; mock.forbidden_early_retire = 1; mock.forbidden_session_calls = 1; }
+    else mock.join_error = 1;
+    struct writ_child other = { .pid = 43, .pidfd = 78, .command = 12, .result = 13 };
+    int destroy_lock = 1;
+    pid_t child = fork();
+    CHECK(child >= 0);
+    if (!child) {
+        (void)retire_children_and_session(&h, &other, scenario == 4 ? 0 : 1, 1,
+                                          (pthread_t)0, 1, 1, &destroy_lock);
+        _Exit(99);
+    }
+    int status;
+    CHECK(waitpid(child, &status, 0) == child);
+    CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 1);
+    CHECK(!pthread_mutex_destroy(&h.effect_lock));
+}
+
 int main(void)
 {
     /* An ordering or unlock regression must fail instead of hanging forever. */
@@ -425,5 +689,14 @@ int main(void)
     error_paths(); puts("PASS malformed and failed operations poison or release the lock");
     protected_metadata(); puts("PASS revoked lookup, getattr, open and directory listing deny");
     positive_metadata(); puts("PASS successful protected metadata replies hold the effect lock");
+    busy_reader_then_join(); puts("PASS busy reader record stays intact until checked join");
+    detached_reap_and_reuse(); puts("PASS detached pidfd retirement is outside the lock and cannot restore actor");
+    no_thread_or_lock(); puts("PASS no-thread cleanup avoids the uninitialized lock");
+    fail_stop_child(0); puts("PASS unexpected trylock failure immediately fail-stops without cleanup");
+    fail_stop_child(1); puts("PASS failed unlock fail-stops without retiring shared resources");
+    fail_stop_child(2); puts("PASS failed join after detachment fail-stops without destroying shared state");
+    fail_stop_child(3); puts("PASS busy-path failed join fail-stops before touching shared reader");
+    fail_stop_child(4); puts("PASS started thread without initialized lock fail-stops without touching it");
+    fail_stop_child(5); puts("PASS ownership-granting unexpected trylock result fail-stops before cleanup");
     return 0;
 }
