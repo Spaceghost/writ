@@ -94,9 +94,12 @@ failure behavior row by row; document the selection and unresolved rows.
 
 The [initial C freeze](../../../verification/freestanding-c-freeze-20261107/README.md)
 records emitted C and hashes for the historical inputs and one current source
-revision, with local artifacts outside the checkout. It does not include
-hosted builds from those exact C files or any freestanding execution. Verify
-the recorded hashes and retain artifacts before relying on the freeze.
+revision, with local artifacts outside the checkout. A separate [hosted C
+record](../../../verification/freestanding-hosted-c-20261107/README.md) builds
+and runs the frozen historical suite; its current-suite build attempts failed
+or timed out under the recorded resource limits. It does not establish any
+freestanding execution. Verify the recorded hashes and retain artifacts before
+relying on the freeze.
 
 Trace one-lane evaluator, scheduler and effect dispatch through memory,
 thread-local storage, waits and IO helper calls for the *whole* selected

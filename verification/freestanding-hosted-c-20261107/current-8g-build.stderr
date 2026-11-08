@@ -1,0 +1,61 @@
+LLVM ERROR: out of memory
+Allocation failed
+PLEASE submit a bug report to https://github.com/llvm/llvm-project/issues/ and include the crash backtrace and dumped files.
+Stack dump:
+0.	Program arguments: /usr/bin/clang-23 -cc1 -triple x86_64-pc-linux-gnu -O2 -emit-obj -dumpdir /home/jadams/tmp/writ-freestanding-hosted-20261107/current/Tests- -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name Tests.c -static-define -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=none -fmath-errno -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu x86-64 -tune-cpu generic -debugger-tuning=gdb -fdebug-compilation-dir=/home/jadams/tmp -fcoverage-compilation-dir=/home/jadams/tmp -resource-dir /usr/lib/clang/23 -internal-isystem /usr/lib/clang/23/include -internal-isystem /usr/local/include -internal-isystem /usr/bin/../lib64/gcc/x86_64-pc-linux-gnu/16/../../../../x86_64-pc-linux-gnu/include -internal-externc-isystem /include -internal-externc-isystem /usr/include -std=c11 -ferror-limit 19 -stack-protector 2 -fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fno-color-diagnostics -vectorize-loops -vectorize-slp -faddrsig -fdwarf2-cfi-asm -o /home/jadams/tmp/writ-codex-20261107/Tests-e72c07.o -x c /home/jadams/tmp/writ-freestanding-freeze-20261107/outputs/current/Tests.c
+1.	<eof> parser at end of file
+2.	Per-file LLVM IR generation
+3.	/home/jadams/tmp/writ-freestanding-freeze-20261107/outputs/current/Tests.c:1249483:3 <Spelling=<scratch space>:51:1>: Generating code for declaration 'WL_FID_AuditTests_denials_first_k10360'
+ #0 0x00007f9d8774cce7 llvm::sys::PrintStackTrace(llvm::raw_ostream&, int) (/usr/lib/libLLVM.so.23.1+0x94cce7)
+ #1 0x00007f9d877498c7 (/usr/lib/libLLVM.so.23.1+0x9498c7)
+ #2 0x00007f9d877499b4 (/usr/lib/libLLVM.so.23.1+0x9499b4)
+ #3 0x00007f9d8663e6f0 (/usr/lib/libc.so.6+0x3e6f0)
+ #4 0x00007f9d8669a11c __pthread_kill_implementation /usr/src/debug/glibc/glibc/nptl/pthread_kill.c:44:76
+ #5 0x00007f9d8663e5d0 raise /usr/src/debug/glibc/glibc/signal/../sysdeps/posix/raise.c:27:6
+ #6 0x00007f9d86625685 abort /usr/src/debug/glibc/glibc/stdlib/abort.c:85:3
+ #7 0x00007f9d87616b5e (/usr/lib/libLLVM.so.23.1+0x816b5e)
+ #8 0x00007f9d8768cb34 llvm::SmallVectorBase<unsigned int>::mallocForGrow(void*, unsigned long, unsigned long, unsigned long&) (/usr/lib/libLLVM.so.23.1+0x88cb34)
+ #9 0x00007f9d87972901 llvm::Value::addMetadata(unsigned int, llvm::MDNode&) (/usr/lib/libLLVM.so.23.1+0xb72901)
+#10 0x00007f9d938dbd05 clang::CodeGen::CodeGenFunction::EmitStoreOfScalar(llvm::Value*, clang::CodeGen::LValue, bool) (/usr/lib/libclang-cpp.so.23.1+0x24dbd05)
+#11 0x00007f9d938b9658 clang::CodeGen::CodeGenFunction::EmitParmDecl(clang::VarDecl const&, clang::CodeGen::CodeGenFunction::ParamValue, unsigned int) (/usr/lib/libclang-cpp.so.23.1+0x24b9658)
+#12 0x00007f9d93813656 clang::CodeGen::CodeGenFunction::EmitFunctionProlog(clang::CodeGen::CGFunctionInfo const&, llvm::Function*, clang::CodeGen::FunctionArgList const&) (/usr/lib/libclang-cpp.so.23.1+0x2413656)
+#13 0x00007f9d93bb23d6 clang::CodeGen::CodeGenFunction::StartFunction(clang::GlobalDecl, clang::QualType, llvm::Function*, clang::CodeGen::CGFunctionInfo const&, clang::CodeGen::FunctionArgList const&, clang::SourceLocation, clang::SourceLocation) (/usr/lib/libclang-cpp.so.23.1+0x27b23d6)
+#14 0x00007f9d93bb85d9 clang::CodeGen::CodeGenFunction::GenerateCode(clang::GlobalDecl, llvm::Function*, clang::CodeGen::CGFunctionInfo const&) (/usr/lib/libclang-cpp.so.23.1+0x27b85d9)
+#15 0x00007f9d93c12267 clang::CodeGen::CodeGenModule::EmitGlobalFunctionDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/usr/lib/libclang-cpp.so.23.1+0x2812267)
+#16 0x00007f9d93c0ba54 clang::CodeGen::CodeGenModule::EmitGlobalDefinition(clang::GlobalDecl, llvm::GlobalValue*) (/usr/lib/libclang-cpp.so.23.1+0x280ba54)
+#17 0x00007f9d93c1900f clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/libclang-cpp.so.23.1+0x281900f)
+#18 0x00007f9d93c1902b clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/libclang-cpp.so.23.1+0x281902b)
+#19 0x00007f9d93c1902b clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/libclang-cpp.so.23.1+0x281902b)
+#20 0x00007f9d93c1902b clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/libclang-cpp.so.23.1+0x281902b)
+#21 0x00007f9d93c1902b clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/libclang-cpp.so.23.1+0x281902b)
+#22 0x00007f9d93c1902b clang::CodeGen::CodeGenModule::EmitDeferred() (/usr/lib/libclang-cpp.so.23.1+0x281902b)
+#23 0x00007f9d93c1ad96 clang::CodeGen::CodeGenModule::Release() (/usr/lib/libclang-cpp.so.23.1+0x281ad96)
+#24 0x00007f9d93caf265 (/usr/lib/libclang-cpp.so.23.1+0x28af265)
+#25 0x00007f9d93b9983f clang::BackendConsumer::HandleTranslationUnit(clang::ASTContext&) (/usr/lib/libclang-cpp.so.23.1+0x279983f)
+#26 0x00007f9d91d5d1d4 clang::ParseAST(clang::Sema&, bool, bool) (/usr/lib/libclang-cpp.so.23.1+0x95d1d4)
+#27 0x00007f9d946a9da3 clang::FrontendAction::Execute() (/usr/lib/libclang-cpp.so.23.1+0x32a9da3)
+#28 0x00007f9d9462c02a clang::CompilerInstance::ExecuteAction(clang::FrontendAction&) (/usr/lib/libclang-cpp.so.23.1+0x322c02a)
+#29 0x00007f9d94775e01 clang::ExecuteCompilerInvocation(clang::CompilerInstance*) (/usr/lib/libclang-cpp.so.23.1+0x3375e01)
+#30 0x0000563c7eab11a9 cc1_main(llvm::ArrayRef<char const*>, char const*, void*) (/usr/bin/clang-23+0x151a9)
+#31 0x0000563c7eaa880a (/usr/bin/clang-23+0xc80a)
+#32 0x0000563c7eaac3bf clang_main(int, char**, llvm::ToolContext const&) (/usr/bin/clang-23+0x103bf)
+#33 0x0000563c7eaa7ff5 main (/usr/bin/clang-23+0xbff5)
+#34 0x00007f9d86627781 __libc_start_call_main /usr/src/debug/glibc/glibc/csu/../sysdeps/nptl/libc_start_call_main.h:83:3
+#35 0x00007f9d866278b9 call_init /usr/src/debug/glibc/glibc/csu/../csu/libc-start.c:127:20
+#36 0x00007f9d866278b9 __libc_start_main /usr/src/debug/glibc/glibc/csu/../csu/libc-start.c:359:5
+#37 0x0000563c7eaa8055 _start (/usr/bin/clang-23+0xc055)
+clang: error: unable to execute command: Aborted
+clang: error: clang frontend command failed with exit code -2 (use -v to see invocation)
+clang version 23.1.1
+Target: x86_64-pc-linux-gnu
+Thread model: posix
+InstalledDir: /usr/bin
+clang: note: diagnostic msg: 
+********************
+
+PLEASE ATTACH THE FOLLOWING CRASH REPRODUCER FILES TO THE BUG REPORT:
+clang: note: diagnostic msg: /home/jadams/tmp/writ-codex-20261107/Tests-b7d3c3.c
+clang: note: diagnostic msg: /home/jadams/tmp/writ-codex-20261107/Tests-b7d3c3.sh
+clang: note: diagnostic msg: 
+
+********************
