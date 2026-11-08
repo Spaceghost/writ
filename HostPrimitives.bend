@@ -182,7 +182,8 @@ import ./Transfer.bend as T
 # assert which transitions deny, that a reason is the right one, or that an
 # accepted step's effects are correct; HostPrimitivesTests covers those.
 #
-# Public entry points: `empty`, `valid`, `open_session`, `use`, `issue`,
+# Public entry points: `empty`, `valid`, `open_session_result`, `open_session`,
+# `SessionOpen.step`, `use`, `issue`,
 # `delegate` (family 1); the types `Role`, `Binding`, `Bindings`;
 # `admit_worker`, `charge`, `diagnostic`, `native_write_offered` (family 2);
 # the types `Backend`, `Profile`, `Configured`, `Profiles`, `TargetReport`,
@@ -373,6 +374,22 @@ type Error is Data:
 type Step is Data:
   Admitted{state: State, effects: +List<Effect>}
   Denied{state: State, reason: Error}
+
+# The ID is the exact value returned by the same HostIdentity transition that
+# installs the session. This in-memory value is descriptive, not an
+# authenticated receipt or a replacement for serialization and native identity.
+type SessionOpen is Data:
+  SessionOpened{state: State, session: Nat}
+  SessionOpenDenied{state: State, reason: Error}
+
+# Compatibility projection: session opening has no native effects. Existing
+# callers of open_session receive exactly the original Step representation.
+def SessionOpen.step(result: SessionOpen) -> Step:
+  match result:
+    case SessionOpened{state, _}:
+      Admitted{state, []}
+    case SessionOpenDenied{state, reason}:
+      Denied{state, reason}
 
 # The read-only result of `use`: the entry and its effective caller (the
 # entry's owner), or one reason.
@@ -1001,35 +1018,35 @@ def with_worker_session(state: State, identity: I.State, +session: Nat, +profile
 
 # Implementation helper: a client session's identity step; a HostIdentity
 # denial is reported as `Identity{reason}`.
-def o_bound(change: I.Change, +state: State) -> Step:
+def o_bound(change: I.Change, +state: State) -> SessionOpen:
   match change:
     case I.Rejected{_, reason}:
-      Denied{state, Identity{reason}}
-    case I.Accepted{identity, _}:
-      Admitted{with_identity(state, identity), []}
+      SessionOpenDenied{state, Identity{reason}}
+    case I.Accepted{identity, issued}:
+      SessionOpened{with_identity(state, identity), issued}
 
 # Implementation helper: a worker session's identity step.
-def o_worker_bound(change: I.Change, +state: State, +profile: Nat) -> Step:
+def o_worker_bound(change: I.Change, +state: State, +profile: Nat) -> SessionOpen:
   match change:
     case I.Rejected{_, reason}:
-      Denied{state, Identity{reason}}
+      SessionOpenDenied{state, Identity{reason}}
     case I.Accepted{identity, +issued}:
-      Admitted{with_worker_session(state, identity, issued, profile), []}
+      SessionOpened{with_worker_session(state, identity, issued, profile), issued}
 
 # Implementation helper: a worker session's profile step. The session is
 # bound non-delegable whatever the evidence reports.
-def o_worker(found: ProfileLookup, +state: State, +profile: Nat, caller: F.Caller, +origin: I.Origin) -> Step:
+def o_worker(found: ProfileLookup, +state: State, +profile: Nat, caller: F.Caller, +origin: I.Origin) -> SessionOpen:
   match found:
     case OneProfile{_}:
       o_worker_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, False{}),
         state, profile)
     case _:
-      Denied{state, UnknownProfile{}}
+      SessionOpenDenied{state, UnknownProfile{}}
 
 # Implementation helper: open_session's role step. A client session is
 # delegable only if the monitor's role allows it and the evidence does not
 # deny it: the evidence's flag can only narrow, never grant.
-def o_role(role: Role, +state: State, caller: F.Caller, +origin: I.Origin, delegable: Bool) -> Step:
+def o_role(role: Role, +state: State, caller: F.Caller, +origin: I.Origin, delegable: Bool) -> SessionOpen:
   match role:
     case ClientRole{allowed}:
       o_bound(I.bind_session(identity(state), I.revision(identity(state)), caller, origin, allowed && delegable),
@@ -1038,30 +1055,30 @@ def o_role(role: Role, +state: State, caller: F.Caller, +origin: I.Origin, deleg
       o_worker(profile_at(profiles(state), profile), state, profile, caller, origin)
 
 # Implementation helper: open_session's fact step.
-def o_fact(fact: Fact, +state: State, role: Role) -> Step:
+def o_fact(fact: Fact, +state: State, role: Role) -> SessionOpen:
   match fact:
     case SessionEvidence{caller, +origin, delegable}:
       o_role(role, state, caller, origin, delegable)
     case _:
-      Denied{state, WrongPhase{}}
+      SessionOpenDenied{state, WrongPhase{}}
 
 # Implementation helper: open_session's family step.
-def o_family(ok: Bool, +state: State, fact: Fact, role: Role) -> Step:
+def o_family(ok: Bool, +state: State, fact: Fact, role: Role) -> SessionOpen:
   match ok:
     case True{}:
       o_fact(fact, state, role)
     case False{}:
-      Denied{state, UnsupportedFamily{}}
+      SessionOpenDenied{state, UnsupportedFamily{}}
 
 # Implementation helper: open_session's gate.
-def o_gate(ok: Bool, +state: State, report: TargetReport, fact: Fact, role: Role) -> Step:
+def o_gate(ok: Bool, +state: State, report: TargetReport, fact: Fact, role: Role) -> SessionOpen:
   match ok:
     case True{}:
       o_family(within(family_session(), report_families(report)), state, fact, role)
     case False{}:
-      Denied{state, StaleRevision{}}
+      SessionOpenDenied{state, StaleRevision{}}
 
-# Public entry point, family 1: bind a native session from the target's
+# Public entry points, family 1: bind a native session from the target's
 # `SessionEvidence` through `HostIdentity.bind_session`, which allocates the
 # session id, in the role the monitor decided (`role`, from its admitted
 # request, never from the target). Requires the target to support
@@ -1069,9 +1086,14 @@ def o_gate(ok: Bool, +state: State, report: TargetReport, fact: Fact, role: Role
 # HostIdentity's own checks. A `ClientRole` session is delegable only when
 # the evidence also says so; a `WorkerRole{profile}` session needs a
 # configured `profile` (else UnknownProfile), is always bound non-delegable,
-# and is recorded in `bindings` under that profile. No effect.
-def open_session(+state: State, expected_revision: Nat, report: TargetReport, fact: Fact, role: Role) -> Step:
+# and is recorded in `bindings` under that profile. No effect. The typed
+# result carries the ID from this transition; it is not a wire receipt or
+# authentication. `open_session` projects the same result to the legacy Step.
+def open_session_result(+state: State, expected_revision: Nat, report: TargetReport, fact: Fact, role: Role) -> SessionOpen:
   o_gate(current(state, expected_revision), state, report, fact, role)
+
+def open_session(+state: State, expected_revision: Nat, report: TargetReport, fact: Fact, role: Role) -> Step:
+  SessionOpen.step(open_session_result(state, expected_revision, report, fact, role))
 
 # Implementation helper: choose a right.
 def pick_right(ok: Bool, chosen: U32, otherwise: U32) -> U32:

@@ -14,6 +14,19 @@ Implementation and test modules:
 | --- | --- | --- |
 | 1.1 (model half) | [LinuxHost.bend](../../hosts/linux/monitor/LinuxHost.bend) (adapter glue; no transition, no law) | [LinuxHostTests.bend](../../hosts/linux/monitor/LinuxHostTests.bend), run by `Tests.bend` as `LinuxHost`; trust inventory [INVENTORY.md](../../hosts/linux/INVENTORY.md) |
 
+The synthetic in-memory open result is additionally covered by
+[LinuxSessionOpenTests.bend](../../hosts/linux/monitor/LinuxSessionOpenTests.bend),
+run by `Tests.bend` as `LinuxSessionOpen`: `PH-open-typed-client`,
+`PH-open-typed-evidence`, `PH-open-typed-role`, `PH-open-typed-worker`,
+`PH-open-typed-stale`, `PH-open-typed-family`, `PH-open-typed-fact`,
+`PH-open-typed-profile`, and `PH-open-typed-origin` check role narrowing and
+unchanged denials. `LH-open-typed-first`, `LH-open-typed-next`, and
+`LH-open-typed-crowded` check the exact returned worker session and binding;
+`LH-open-wire-admitted`, `LH-open-wire-denied`, and `LH-open-wire-untranslated`
+check the unchanged diagnostic wire bytes with a truncated table, and
+`LH-open-other-routes` covers accepted non-Launch operations. These are
+model checks, not correlation, native authentication or host qualification.
+
 Test names below are the exact `Test.check` names. Fixtures are SYNTHETIC
 broker facts (subject 7, launch credential uid 1000, pid 4242, start 917).
 

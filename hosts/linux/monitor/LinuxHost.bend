@@ -121,7 +121,7 @@ import ../../../Transfer.bend as T
 #
 # Dispatch. `dispatch` applies at most one shared transition per framed input:
 #   Launch{fact}            -> `session_evidence_of`, `report_of`, then
-#                              `P.open_session` with `worker_role()`
+#                              `P.open_session_result` with `worker_role()`
 #   Barrier{s, fact, bytes} -> the launch check, `session_check`, `report_of`,
 #                              `inventory_of`,
 #                              `W.decode_bytes`; a Use's reference goes to
@@ -137,7 +137,10 @@ import ../../../Transfer.bend as T
 #
 # Effects. `Outcome.effects` is the only effect list the broker executes. It
 # is `P.Step.effects` of the step a shared transition returned, and empty for
-# every other outcome. `P.Effect` is closed and has no publish variant, and no
+# every other outcome, including a successful session open. The distinct
+# `Opened` result exposes the exact ID returned by that same transition in
+# memory only. `LINUXMON1` retains its old diagnostic format and is not a
+# correlated session receipt. `P.Effect` is closed and has no publish variant, and no
 # `Outcome` constructor holds a `H.PublishEffect`, so the types forbid this
 # module handing the broker a publication effect. Bend constructors are
 # public, so the types cannot stop Bend code from writing an `Admitted` or
@@ -401,10 +404,14 @@ type Input is Data:
   FromBroker{frame: BrokerFrame}
   FromWorker{session: Nat, bytes: +List<U32>}
 
-# What one input did. `Stepped` holds the step a shared transition returned;
+# What one input did. `Opened` carries the exact session issued by the shared
+# transition for a successful Launch. It is an in-memory descriptive value,
+# not a correlated wire receipt or evidence of native caller authentication.
+# `Stepped` holds any other step a shared transition returned;
 # `Checked` a read-only `P.use` result with the unchanged state; the other
 # three ran no transition and hold the supplied state.
 type Outcome is Data:
+  Opened{state: P.State, session: Nat}
   Stepped{step: P.Step}
   Checked{state: P.State, result: P.UseResult}
   Untranslated{state: P.State, reason: Rejection}
@@ -414,6 +421,8 @@ type Outcome is Data:
 # The state the monitor retains before the broker performs any effect.
 def Outcome.state(outcome: Outcome) -> P.State:
   match outcome:
+    case Opened{state, _}:
+      state
     case Stepped{step}:
       P.Step.state(step)
     case Checked{state, _}:
@@ -439,10 +448,17 @@ def current_incarnation(+state: P.State) -> Nat:
   I.incarnation(P.identity(state))
 
 # Implementation helper: Launch after its evidence translated.
+def launch_result(+result: P.SessionOpen) -> Outcome:
+  match result:
+    case P.SessionOpened{state, session}:
+      Opened{state, session}
+    case P.SessionOpenDenied{_, _}:
+      Stepped{P.SessionOpen.step(result)}
+
 def launch_report(report: ReportResult, +state: P.State, evidence: P.Fact) -> Outcome:
   match report:
     case Report{target}:
-      Stepped{P.open_session(state, P.revision(state), target, evidence, worker_role())}
+      launch_result(P.open_session_result(state, P.revision(state), target, evidence, worker_role()))
     case NoReport{reason}:
       Untranslated{state, reason}
 
@@ -1067,6 +1083,7 @@ def use_detail(result: P.UseResult) -> String:
 
 def outcome_status(outcome: Outcome) -> String:
   match outcome:
+    case Opened{_, _}: "ADMITTED"
     case Stepped{step}: step_status(step)
     case Checked{_, result}: use_status(result)
     case Untranslated{_, _}: "UNTRANSLATED"
@@ -1075,6 +1092,7 @@ def outcome_status(outcome: Outcome) -> String:
 
 def outcome_detail(outcome: Outcome) -> String:
   match outcome:
+    case Opened{_, _}: "effects=0"
     case Stepped{step}: step_detail(step)
     case Checked{_, result}: use_detail(result)
     case Untranslated{_, reason}: rejection_name(reason)

@@ -403,6 +403,8 @@ def checked_at(+outcome: LH.Outcome, +input: P.State, +slot: Nat, caller: F.Call
 
 def admitted_with(+outcome: LH.Outcome, +revision: Nat, effects: +List<P.Effect>) -> Bool:
   match outcome:
+    case LH.Opened{state, _}:
+      Nat.is_eq(P.revision(state), revision) && PT.effects_equal([], effects)
     case LH.Stepped{P.Admitted{state, got}}:
       Nat.is_eq(P.revision(state), revision) && PT.effects_equal(got, effects)
     case _:

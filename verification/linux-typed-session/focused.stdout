@@ -1,0 +1,17 @@
+PASS: PH-open-typed-client: the client result names the bound delegable caller
+PASS: PH-open-typed-evidence: the evidence narrows client delegation
+PASS: PH-open-typed-role: the role narrows client delegation
+PASS: PH-open-typed-worker: the issued worker is nondelegable and bound to its profile
+PASS: PH-open-typed-stale: stale revision returns no session and preserves state
+PASS: PH-open-typed-family: unsupported family returns no session and preserves state
+PASS: PH-open-typed-fact: wrong fact returns no session and preserves state
+PASS: PH-open-typed-profile: unknown profile returns no session and preserves state
+PASS: PH-open-typed-origin: unknown inherited origin returns no session and preserves state
+PASS: LH-open-typed-first: Launch returns its first exact installed worker session without effects
+PASS: LH-open-typed-next: another Launch returns the next exact installed worker session without effects
+PASS: LH-open-typed-crowded: Launch yields the exact newly bound worker beyond the truncated table
+PASS: LH-open-wire-admitted: crowded admitted reply is byte-for-byte legacy compatible
+PASS: LH-open-wire-denied: crowded denial has exact state, reason and legacy bytes
+PASS: LH-open-wire-untranslated: crowded credential consistency mismatch has exact state and legacy bytes
+PASS: LH-open-other-routes: accepted barrier, usage, emission and delegate remain ordinary admitted steps
+LinuxSessionOpen: 16 checks passed

@@ -20,11 +20,19 @@ made here. Every decision is a shared transition in `HostIdentity.bend`,
 | --- | --- | --- |
 | `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Adds no transition, no `Error`, and no law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
+| `hosts/linux/monitor/LinuxSessionOpenTests.bend` | Synthetic typed-open, denial, routing and legacy wire compatibility checks | `Tests.bend` as `LinuxSessionOpen` |
 
 No C, JavaScript, or other native file is in `hosts/linux/`. This tree does
 not include the separate branch’s unfinished protected-worker broker or
 launcher. The existing `contrib/native-hosts/linux/` sources implement the
 distinct public WritFS canary and have their own native inventory and evidence.
+
+The shared `open_session_result` exposes the session returned by the same
+identity transition. Linux Launch returns that value in memory as `Opened`;
+`LINUXMON1` still renders its prior diagnostic reply, without a session receipt.
+Neither the value nor its publicly constructible representation authenticates a
+caller or supplies correlation, replay protection or native host qualification.
+Existing numeric terminal bounds remain an open concern.
 
 ## Authority
 

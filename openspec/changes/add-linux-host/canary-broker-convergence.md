@@ -20,11 +20,15 @@ or authority veto is inferred here.
 | --- | --- | --- |
 | [Linux public-canary mount](../../../contrib/native-hosts/linux/README.md) | A native FUSE service freezes one designated public file, joins callbacks to its retained reader lifetime, and calls the shared Bend canary through [WRITFS1](../../../contrib/native-hosts/PROTOCOL.md). Its [existing VM evidence](../../../contrib/native-hosts/linux/verification/README.md) records mounted I/O, outsider denial, revocation and failures for that exact profile. | A general broker, external grant issuer, complete protected worker, durable publication, or qualification of a combined implementation. |
 | [Linux monitor model](../../../hosts/linux/INVENTORY.md) | `LinuxHost.bend` translates bounded synthetic launch/session, profile, route and report facts into the shared Bend host model; [named tests](../../../openspec/traceability/linux-host.md) cover its model portion. | Authentic kernel evidence, native worker confinement or Linux host qualification. |
-| [Separate broker WIP at `63eece8`](https://github.com/Spaceghost/writ/tree/63eece827bd3ca92edfcc78cc0d2506917991948) | Off-master source and records for an unfinished launcher, broker and private monitor harness. The unused helper that inferred a session from a diagnostic table was removed in that revision. | A supported typed session-open result, a complete launcher/broker, or a tested production authority path. Its earlier results and source remain historical. |
+| [Separate broker WIP at `63eece8`](https://github.com/Spaceghost/writ/tree/63eece827bd3ca92edfcc78cc0d2506917991948) | Off-master source and records for an unfinished launcher, broker and private monitor harness. The unused helper that inferred a session from a diagnostic table was removed in that revision. | The new in-memory typed result or a consumer of it, a request-correlated transport receipt, a complete launcher/broker, or a tested production authority path. Its earlier results and source remain historical. |
 
 The WIP's [session-response design](https://github.com/Spaceghost/writ/blob/63eece827bd3ca92edfcc78cc0d2506917991948/docs/superpowers/records/2026-11-05-linux-host/session-response-design.md)
 is still proposed: a diagnostic session table is not a session-allocation
-receipt. Its source also has a separate launch-order issue: after an unsuccessful
+receipt. The shared Bend transition now exposes its exact issued session in a
+typed in-memory result, with Linux Launch projecting it into a distinct model
+outcome. `LINUXMON1` remains unchanged and does not carry that result; request
+correlation, frame bounds, authenticated native identity and a broker consumer
+remain open. The returned value and its public constructors are not credentials. The WIP source also has a separate launch-order issue: after an unsuccessful
 start-time observation, `launch_worker` writes the child's release byte before
 returning failure for the zero value. Whether the child proceeds and how it is
 retired have **not** been tested. The post-clone failure leaves a recorded
@@ -166,7 +170,7 @@ The steps below are proposed work, not completed acceptance. Keep every
    claimed profile. Keep host qualification and GPU execution unclaimed until
    independently demonstrated; CPU fallback is not a GPU test.
 
-Open design work includes the authoritative typed session result and clock,
+Open design work includes request-correlated session transport and clock,
 monitor state ownership across the two existing protocols, exact permitted
 FUSE operation/descriptor semantics, the control-to-kernel map (including
 Landlock and `no_new_privs`), bounded state and event retention, and native
