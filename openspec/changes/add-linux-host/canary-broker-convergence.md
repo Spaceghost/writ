@@ -47,6 +47,9 @@ transfers those claims to a new composition. Keep the existing source revisions,
 logs, failed/incomplete observations and profile names; do not rewrite old
 results as a pass for the new binary.
 
+The [live-owner ordering review](live-owner-ordering.md) traces the existing
+state and authority gap and records the proposed sequencing as unimplemented.
+
 ## Proposed combined boundary
 
 The target is one supervisor/broker owning the selected worker's lifetime,

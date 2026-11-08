@@ -48,3 +48,10 @@ gaps are recorded in [task-2-synthetic-report.md](../../docs/superpowers/records
 
 The [model-only integration record](../../docs/superpowers/records/2026-11-05-linux-host/model-only-integration.md)
 separates this tree from the unfinished native sources on `lane/linux-host`.
+
+The proposed [single-owner and lifecycle review](../changes/add-linux-host/live-owner-ordering.md)
+maps the existing Mount, session and capability calls to NM003/NM005, LH-002,
+LH-003, LH-006–LH-008 and PH-002, PH-006, PH-009–PH-010. The joint live
+authority gate, authenticated actor/session bridge, effect ordering and their
+combined scenario tests are **reviewed-only gaps**, not host implementation or
+acceptance evidence.
