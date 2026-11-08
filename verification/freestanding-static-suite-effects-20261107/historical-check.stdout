@@ -1,0 +1,5 @@
+binary: /home/jadams/tmp/writ-freestanding-hosted-20261107/historical/Tests
+undefined symbols: not applicable (static link)
+effect rows: IO.print
+result: PASS (effect rows within the monitor profile; static link, so
+  the host-symbol surface was not checked)

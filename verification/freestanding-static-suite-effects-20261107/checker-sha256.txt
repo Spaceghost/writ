@@ -1,0 +1,3 @@
+a31490da084eb5d4d3c985dfca51bf1e52c136360af04bc520193ed64409dc96  checker/check-binary.sh
+bb8cc5e5633ecadbf3e8f4d58cf883c08566dd78890b3407eedf89ed343e90ed  checker/monitor-effects.txt
+7b559fe5fa781c931016c8160523cae94b19229f9798fc4af4ee8f547dfdac05  checker/monitor-symbols.txt

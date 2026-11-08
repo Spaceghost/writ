@@ -179,6 +179,12 @@ input objects and host-source inventory against the monitor allowlist; ensure
 `io_eff_rows` remains inspectable and test an alien request. Do not infer an
 unavailable effect is absent merely from a successful compile.
 
+The [hosted static-suite checks](../../../verification/freestanding-static-suite-effects-20261107/README.md)
+reported `IO.print` for the historical `-O2` and exploratory current `-O0`
+binaries. Those checks skipped the static host-symbol comparison and do not
+check a freestanding image; the current `-O0` calling convention also differs
+from the optimized build. The image and host dependency gates remain open.
+
 ### 6. Package and review evidence — tasks 3.1, 3.2
 
 Store a per-run manifest under `verification/` containing the source and
