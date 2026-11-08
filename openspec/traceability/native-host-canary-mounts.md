@@ -39,6 +39,11 @@ capability and Win32k enabled, passes seven configured diagnostic probes both
 with and without WFP; that result does not replace the byte worker's missing
 qualification.
 
+The separate [Windows 10 VM Node record](../../verification/windev-model-bridge-20261107/README.md)
+adds execution of the 70 model and nine JavaScript bridge checks, plus the
+2,809-check library suite. It does not add native mounting, native C transport,
+LPAC, or host-confinement evidence.
+
 The native canary contribution does not complete `add-portable-host-contract`,
 `add-windows-host`, `add-linux-host`, `add-genode-host`,
 `add-genode-capability-adoption`, the machine-code runtime proposals, or the

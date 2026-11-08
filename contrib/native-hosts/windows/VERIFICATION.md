@@ -13,6 +13,14 @@ contract have separate results.
 
 This record addresses the bounded [native-host canary contract](../../../openspec/specs/native-host-canary-mounts/spec.md), especially NM004 through NM008, and the [private transport protocol](../PROTOCOL.md). It does not complete the broader [Windows host proposal](../../../openspec/changes/add-windows-host/specs/windows-host/spec.md).
 
+## Separate Windows 10 VM model run
+
+The [Windows 10 VM record](../../../verification/windev-model-bridge-20261107/README.md)
+contains 70 model and nine JavaScript bridge passes at source `9131a2a`, plus
+2,809 library-suite passes at source `810e8ee`, all through Windows Node. It
+did not run the native mount, C transport or LPAC tests and does not change
+the failed native workflow or establish host qualification.
+
 ## Later master run
 
 [Run 42311207831](https://github.com/Spaceghost/writ/actions/runs/42311207831)

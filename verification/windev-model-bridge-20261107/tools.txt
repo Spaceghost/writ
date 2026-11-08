@@ -1,0 +1,15 @@
+--- Windows ---
+
+Microsoft Windows [Version 10.0.19045.6093]
+--- Node ---
+INFO: Could not find files for the given pattern(s).
+'node.exe' is not recognized as an internal or external command,
+operable program or batch file.
+--- CMake ---
+INFO: Could not find files for the given pattern(s).
+'cmake.exe' is not recognized as an internal or external command,
+operable program or batch file.
+--- Visual Studio ---
+--- WinFsp ---
+WinFsp runtime absent at default location
+--- end inventory ---

@@ -1,0 +1,18 @@
+Writ Windows read-only prerequisite inventory
+Source revision: 9131a2a77c89905e6e69e1f793d369a2128ea165
+
+Microsoft Windows [Version 10.0.19045.6093]
+--- elevation ---
+Elevated administrator: False
+--- Node ---
+INFO: Could not find files for the given pattern(s).
+'node.exe' is not recognized as an internal or external command,
+operable program or batch file.
+--- CMake ---
+INFO: Could not find files for the given pattern(s).
+'cmake.exe' is not recognized as an internal or external command,
+operable program or batch file.
+--- Visual Studio installation ---
+--- WinFsp runtime ---
+WinFsp runtime not found at default location
+--- end inventory ---
