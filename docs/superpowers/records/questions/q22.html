@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Where should the first Linux bridge get its authority?</title>
+<meta name="writ-topic" content="linux-authenticated-bridge">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}a{color:var(--accent)}code{background:var(--soft);padding:.05em .25em;border-radius:4px}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>Where should the first Linux bridge get its authority?</h1>
+<p>Josh, we can continue building the authenticated session and live-authority bridge. For its first real Linux profile, should we design around a locally operated authority, or is there an existing identity or authority service you want it to use?</p>
+<h2>Why this matters</h2>
+<p>The current Linux canary runs a real native process but uses synthetic authority. The Bend issuance model can rebuild current grants, revocations and registry projections; no Linux host currently authenticates that model's submissions or supplies its current state and trusted time. A Linux UID, PID or pidfd can help identify a local process but does not by itself establish the original person's identity or permission to disclose data.</p>
+<p>A first local profile could have a trusted local operator or supervisor authenticate the reader, administer the issuer state and provide a monotone clock. Source and destination authority and their separate obligations would still be checked in Bend. The design would need to specify bootstrapping, ownership, revocation, restart and recovery, and protect the channel carrying those facts. This is a proposed development profile, not an existing implementation or production qualification.</p>
+<p>An existing service could instead be the trust root, but we need to know which service and how it represents the reader and the two sides' authority before designing that binding. We can continue independent model and native cleanup work while you decide.</p>
+<form method="post" action="/questions/q22/answer">
+<fieldset><legend>What should we design first?</legend>
+<label><input type="radio" name="direction" value="local-profile" required>Design a local operator/supervisor profile first. <strong>Recommended.</strong></label>
+<label><input type="radio" name="direction" value="existing-service">Use an existing identity or authority service; I will name it in the notes.</label>
+<label><input type="radio" name="direction" value="other">Use another direction; see the notes.</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form><p class="note">This chooses a design direction; it does not approve a deployment, establish trust in a UID or PID, or qualify a host.</p>
+</body></html>
