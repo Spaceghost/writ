@@ -38,6 +38,14 @@ limit host capacity; no unlimited capacity is claimed.
 `LinuxHost.State` retain framed facts only: the native broker still has to obtain and
 bind authenticated process lifetime and these checks are not a live-registry gate.
 
+The trusted in-process `LinuxHost.revoke` routes the existing shared
+`HostPublication.revoke` transition while retaining Linux credential records.
+The synthetic `LH-revoke` checks cover input and root retirement, descendant
+cascade, an unrelated live root, exact `StopEffects`, no-worker effects,
+unchanged denial precedence and a later framed Barrier denial. These model
+results do not authenticate a revocation caller or connect issuer revocation
+to a slot, a native stop operation, the FUSE canary, or live authority.
+
 Test names below are the exact `Test.check` names. Fixtures are SYNTHETIC
 broker facts (subject 7, launch credential uid 1000, pid 4242, start 917).
 

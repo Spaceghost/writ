@@ -4,7 +4,6 @@ import ./LinuxHostTests.bend as LT
 import ../../../HostConformanceVectors.bend as V
 import ../../../HostPrimitives.bend as P
 import ../../../HostPrimitivesTests.bend as PT
-import ../../../HostPublication.bend as H
 import ../../../HostIdentity.bend as I
 import ../../../HostWire.bend as W
 import ../../../Test.bend as Test
@@ -105,8 +104,7 @@ def restart_denied() -> Bool:
 
 def revoked_state() -> LH.State:
   +s = LT.delegated()
-  +p = LH.portable(s)
-  LT.apply_step(s, H.revoke(p, P.revision(p), V.slot_of(LT.L(), V.Input{})))
+  LH.Outcome.state(LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{})))
 
 def revoked() -> Bool:
   +s = revoked_state()
@@ -136,6 +134,91 @@ def restart_stops() -> Bool:
   +result = LH.restart(s, P.revision(LH.portable(s)), LT.linux_successor())
   PT.effects_equal(LH.Outcome.effects(result), [P.StopEffects{LT.worker()}])
     && LT.credentials_equal(LH.credentials(LH.Outcome.state(result)), LH.NoCredentials{})
+
+# These tests use synthetic launches and exercise the actual monitor action;
+# they do not authenticate a principal or perform a native StopEffects.
+def phase_revoked(phase: P.Phase) -> Bool:
+  match phase:
+    case P.Revoked{}: True{}
+    case _: False{}
+
+def revoked_worker(found: P.WorkerLookup) -> Bool:
+  match found:
+    case P.OneWorker{worker}:
+      phase_revoked(P.worker_phase(worker))
+    case _: False{}
+
+def has_entry(found: I.EntryLookup) -> Bool:
+  match found:
+    case I.OneEntry{_}: True{}
+    case _: False{}
+
+def entry_live(+state: LH.State, slot: Nat) -> Bool:
+  has_entry(I.live_at(I.entries(P.identity(LH.portable(state))), slot))
+
+def stop_and_preserve(+before: LH.State, +result: LH.Outcome) -> Bool:
+  +after = LH.Outcome.state(result)
+  LT.admitted_with(result, 1n+P.revision(LH.portable(before)), [P.StopEffects{LT.worker()}])
+    && PT.effects_equal(LH.Outcome.effects(result), [P.StopEffects{LT.worker()}])
+    && LT.credentials_equal(LH.credentials(after), LH.credentials(before))
+    && revoked_worker(P.worker_at(P.workers(LH.portable(after)), LT.worker()))
+
+def revoke_input() -> Bool:
+  +s = LT.admitted()
+  +result = LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{}))
+  +after = LH.Outcome.state(result)
+  stop_and_preserve(s, result)
+    && Bool.not(entry_live(after, V.slot_of(LT.L(), V.Input{})))
+    && entry_live(after, V.slot_of(LT.L(), V.Root{}))
+    && LT.identity_denied(LT.barrier_on(after, LT.full_fact()), after, I.Retired{})
+
+def unrelated_root(+state: LH.State) -> LH.State:
+  +p = LH.portable(state)
+  LT.apply_step(state, P.issue(p, P.revision(p), V.session_client(), V.fixture_frontend_state(), V.root_handle(),
+    V.plan(), V.root_rights(), V.root_expires()))
+
+def revoke_root() -> Bool:
+  +before = LT.admitted()
+  +new_slot = I.next_slot(P.identity(LH.portable(before)))
+  +s = unrelated_root(before)
+  +result = LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Root{}))
+  +after = LH.Outcome.state(result)
+  entry_live(s, new_slot) && stop_and_preserve(s, result)
+    && Bool.not(entry_live(after, V.slot_of(LT.L(), V.Root{})))
+    && Bool.not(entry_live(after, V.slot_of(LT.L(), V.Input{}))) && entry_live(after, new_slot)
+    && LT.identity_denied(LT.barrier_on(after, LT.full_fact()), after, I.Retired{})
+
+def revoke_without_worker() -> Bool:
+  +s = LT.delegated()
+  +result = LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{}))
+  LT.admitted_with(result, 1n+P.revision(LH.portable(s)), [])
+    && PT.effects_equal(LH.Outcome.effects(result), [])
+    && LT.credentials_equal(LH.credentials(LH.Outcome.state(result)), LH.credentials(s))
+
+def revoke_denial_order() -> Bool:
+  +s = LT.admitted()
+  +rev = P.revision(LH.portable(s))
+  LT.denied_as(LH.revoke(s, 0n, 0n), s, P.StaleRevision{})
+    && LT.identity_denied(LH.revoke(s, rev, 0n), s, I.Forged{})
+
+def revoke_twice() -> Bool:
+  +s = LT.admitted()
+  +after = LH.Outcome.state(LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{})))
+  LT.identity_denied(LH.revoke(after, P.revision(LH.portable(after)), V.slot_of(LT.L(), V.Input{})),
+    after, I.Retired{})
+
+def served_retired(+served: LH.Served, +state: LH.State) -> Bool:
+  match served:
+    case LH.Served{outcome}:
+      LT.identity_denied(outcome, state, I.Retired{}) && LT.state_equal(LH.next(served), state)
+        && PT.effects_equal(LH.served_effects(served), [])
+    case _: False{}
+
+def revoke_then_serve() -> Bool:
+  +s = LT.admitted()
+  +after = LH.Outcome.state(LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{})))
+  served_retired(LH.serve(after, LT.synthetic_barrier_bytes(V.session_worker(), LT.subject_a(), LT.launch_token(),
+    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LT.now()), after)
 
 def changed_frame() -> Bool:
   LT.synthetic_denied(LT.synthetic_barrier_served(V.session_worker(), LT.subject_a(), LT.launch_token(),
@@ -173,4 +256,10 @@ def main() -> IO(Unit):
     Test.check(changed_frame(), "LH-binding: framed service rejects a replaced lifetime with no effects")
     Test.check(restart_stops(), "LH-binding: successful restart clears credentials and preserves StopEffects")
     Test.check(deep_records(), "LH-binding: a synthetic 4096-record list reaches the earlier session")
-    IO.print("LinuxCredentialBinding: 16 checks passed")
+    Test.check(revoke_input(), "LH-revoke: input retirement stops running worker, retains credentials and denies later Barrier")
+    Test.check(revoke_root(), "LH-revoke: root retirement cascades to worker input while an unrelated root remains live")
+    Test.check(revoke_without_worker(), "LH-revoke: unused input retirement emits no StopEffects")
+    Test.check(revoke_denial_order(), "LH-revoke: stale revision precedes forged slot and denial retains state")
+    Test.check(revoke_twice(), "LH-revoke: repeated retirement denies unchanged with no effects")
+    Test.check(revoke_then_serve(), "LH-revoke: framed Barrier after retirement denies with no effects")
+    IO.print("LinuxCredentialBinding: 22 checks passed")

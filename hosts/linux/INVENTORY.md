@@ -20,10 +20,10 @@ Shared transitions in `HostIdentity.bend`, `HostPrimitives.bend`, and
 
 | File | Role | Run by |
 | --- | --- | --- |
-| `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Retains per-session launch observations and checks them at Barrier; adds no portable `Error` or law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
+| `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Retains per-session launch observations and checks them at Barrier. The trusted in-process `revoke` monitor action retains those observations while routing `HostPublication.revoke`'s result and `StopEffects` unchanged; it adds no portable `Error` or law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
 | `hosts/linux/monitor/LinuxSessionOpenTests.bend` | Synthetic typed-open, denial, routing and legacy wire compatibility checks | `Tests.bend` as `LinuxSessionOpen` |
-| `hosts/linux/monitor/LinuxCredentialBindingTests.bend` | Synthetic binding, restart, denial and long-list controls | `Tests.bend` as `LinuxCredentialBinding` |
+| `hosts/linux/monitor/LinuxCredentialBindingTests.bend` | Synthetic binding, restart, monitor-action revocation, denial and long-list controls | `Tests.bend` as `LinuxCredentialBinding` |
 
 No C, JavaScript, or other native file is in `hosts/linux/`. This tree does
 not include the separate branch’s unfinished protected-worker broker or
@@ -36,6 +36,14 @@ identity transition. Linux Launch returns that value in memory as `Opened`;
 Neither the value nor its publicly constructible representation authenticates a
 caller or supplies correlation, replay protection or native host qualification.
 Existing numeric terminal bounds remain an open concern.
+
+`LinuxHost.revoke` is a trusted in-process monitor action, not a worker or
+broker-frame command. The owning monitor must authenticate and authorize the
+decision separately; a slot number is only a selector. The caller retains the
+returned state before performing its exact `StopEffects`. The action does not
+connect `Issuance.revoke` to an identity slot, establish a native revocation
+channel, stop a Linux process itself, or prove that FUSE or protected delivery
+uses this model. The wire formats and existing legacy canary path are unchanged.
 
 ## Authority
 

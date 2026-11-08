@@ -1,0 +1,14 @@
+Worktree base: 58b1fa5; tests on the modified source described in this record.
+Bend: /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend (version 2.0.39)
+Node: v26.10.0
+Native compiler: clang version 23.1.1; observed generated-C compilation uses -std=c11 -O3.
+TMPDIR=/home/jadams/tmp/writ-linux-monitor-revoke-build and BEND_NO_TELEMETRY=1 for builds.
+
+TMPDIR=/home/jadams/tmp/writ-linux-monitor-revoke-build BEND_NO_TELEMETRY=1 timeout 180 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend hosts/linux/monitor/LinuxCredentialBindingTests.bend -o /home/jadams/tmp/writ-linux-monitor-revoke-build/binding.js: exit 0; js-build.txt is empty stdout/stderr.
+timeout 60 node /home/jadams/tmp/writ-linux-monitor-revoke-build/binding.js: exit 0; output focused-node.txt.
+Generated JS SHA-256: 8ec78823962bd171880872a53f9912effdb9f4ac8fb360cffab6ba49defc98c6.
+
+TMPDIR=/home/jadams/tmp/writ-linux-monitor-revoke-build BEND_NO_TELEMETRY=1 timeout 300 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend hosts/linux/monitor/LinuxCredentialBindingTests.bend -o /home/jadams/tmp/writ-linux-monitor-revoke-build/binding-native: exit 0; native-build.txt is empty stdout/stderr.
+timeout 120 /home/jadams/tmp/writ-linux-monitor-revoke-build/binding-native +RTS --threads 1 --gpu off: exit 0; output focused-native.txt.
+Generated native executable SHA-256: ef8e9d4af764e9ceaeeadb1aab32cf21d8efa036b672c4e522f809ca0157e9be.
+cmp focused-node.txt focused-native.txt: exit 0.

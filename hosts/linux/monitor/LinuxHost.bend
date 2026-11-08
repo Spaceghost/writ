@@ -167,7 +167,7 @@ import ../../../Transfer.bend as T
 # `State`, `Credential`, `CredentialRecords`, `Endpoint`, `LinuxRoute`, `LinuxFact`, `Rejection`,
 # `EvidenceResult`, `ReportResult`, `BrokerFrame`, `Input`, `Outcome`; the
 # translators `launch_check`, `session_check`, `credential_check`, `session_evidence_of`, `report_of`,
-# `inventory_of`; `portable`, `credentials`, `without_credentials`, `restart`,
+# `inventory_of`; `portable`, `credentials`, `without_credentials`, `restart`, `revoke`,
 # `dispatch`, `serve`, `next`, `Outcome.state`, `Outcome.effects`, and
 # `Rejection.equal`. Every other def is an implementation helper.
 
@@ -512,6 +512,14 @@ def restart_result(+step: P.Step, state: State) -> Outcome:
 
 def restart(+state: State, +expected_revision: Nat, successor: Nat) -> Outcome:
   restart_result(H.restart(portable(state), expected_revision, successor), state)
+
+# Trusted in-process monitor action: authorization to retire this slot has
+# already been established by the owning monitor, never by worker bytes or a
+# slot alone. Retain the returned state before executing its StopEffects.
+# This neither authenticates the action nor connects Issuance revocation or
+# any native transport; the shared transition supplies all checks and effects.
+def revoke(+state: State, +expected_revision: Nat, +slot: Nat) -> Outcome:
+  stepped(state, H.revoke(portable(state), expected_revision, slot))
 
 def current_incarnation(state: State) -> Nat:
   I.incarnation(P.identity(portable(state)))

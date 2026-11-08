@@ -1,5 +1,9 @@
 # Verification record
 
+The [Linux monitor revocation record](verification/linux-monitor-revoke/README.md)
+covers the trusted in-memory adapter action and synthetic StopEffects; it does
+not establish authenticated revocation or native worker termination.
+
 The [Linux child retirement error record](verification/linux-child-retirement-errors/README.md)
 covers mocked errors in the production worker teardown and cleanup propagation;
 it is not mounted, native-identity, recovery, or protected-host evidence.
