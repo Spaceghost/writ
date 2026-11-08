@@ -21,6 +21,7 @@ import ./PlannerPlanMatchTests.bend as PlannerPlanMatch
 import ./PlannerFrontendCompositionTests.bend as PlannerFrontendComposition
 import ./LocalityConjunctionTests.bend as LocalityConjunction
 import ./StageGraphTests.bend as StageGraph
+import ./StagePortsTests.bend as StagePorts
 import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostHandoffTests.bend as HostHandoff
@@ -58,6 +59,7 @@ def main() -> IO(Unit):
     PlannerFrontendComposition.main()
     LocalityConjunction.main()
     StageGraph.main()
+    StagePorts.main()
     HostIdentity.main()
     HostPrimitives.main()
     HostHandoff.main()

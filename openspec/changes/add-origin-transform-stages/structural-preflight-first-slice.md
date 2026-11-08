@@ -12,8 +12,9 @@ implement staged execution or complete OT-001.
 
 This synthetic subset supports part of [OT-001](specs/origin-transform-stages/spec.md),
 not its complete admission requirement. In particular it does not validate
-stage kinds, typed input edges, required dependencies, terminal outputs or
-hooks. Task 1.1 and all other [tasks](tasks.md) remain unchecked. The separate
+stage kinds, complete typed input edges, required dependencies, terminal outputs or
+hooks. A separately bounded [synthetic typed-edge profile](typed-edge-description.md)
+now describes one narrow exact-schema subset without implementing admission. Task 1.1 and all other [tasks](tasks.md) remain unchecked. The separate
 constraint [`Core.Graph`](../../../Core.bend) has different edge meanings and
 its [baseline](../../specs/constraint-solving/spec.md) deliberately permits
 cycles; neither its solver nor a stable producer is a stage-DAG admission

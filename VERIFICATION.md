@@ -1,5 +1,10 @@
 # Verification record
 
+The [synthetic typed-edge record](verification/typed-stage-ports/README.md)
+covers 52 focused observations and the 2,896-check suite on Bend, generated
+Node and native CPU, with existing-law Lean verdict and strict OpenSpec. The
+profile does not authenticate or admit recipes; stage tasks remain open.
+
 The [POSIX mount-frame record](verification/posix-mount-frame/README.md)
 covers one synthetic bounded decoder: 35 focused checks and a 2,844-check
 suite on Bend, generated Node and native CPU. Ordinary proofs and a Lean-backed

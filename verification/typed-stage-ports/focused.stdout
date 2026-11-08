@@ -1,0 +1,52 @@
+PASS: typed golden binding projection and DAG
+PASS: typed exact description matches itself
+PASS: typed reversed destination ports refused
+PASS: typed exact comparison catches reorder
+PASS: typed repeated stage pair binds distinct ports
+PASS: typed duplicate binding refused
+PASS: typed missing first port refused
+PASS: typed missing last port refused
+PASS: typed unknown source refused
+PASS: typed unknown destination refused
+PASS: typed extra unknown port refused
+PASS: typed late schema mismatch refused
+PASS: typed output substitution refused
+PASS: typed input schema substitution refused
+PASS: typed duplicate stage refused
+PASS: typed duplicate declared port refused
+PASS: typed complete original cycle detected
+PASS: typed dropped cycle closure cannot match original
+PASS: typed projected edge reorder differs
+PASS: typed projected edge substitution differs
+PASS: typed projected extra edge differs
+PASS: typed projected missing stage differs
+PASS: typed full width opaque IDs compare
+PASS: typed eight stage cap accepted
+PASS: typed nine stages refused
+PASS: typed huge stage tail refused
+PASS: typed nine edges refused
+PASS: typed huge edge tail refused
+PASS: typed five ports refused
+PASS: typed huge nested port tail refused
+PASS: typed direct port equality bounded
+PASS: typed direct stage equality bounded
+PASS: typed direct edge equality bounded
+PASS: typed direct stage lookup bounded
+PASS: typed direct port lookup bounded
+PASS: typed direct binding lookup bounded
+PASS: typed direct stage projection comparison bounded
+PASS: typed direct edge projection comparison bounded
+PASS: typed huge candidate stage projection refused
+PASS: typed huge candidate edge projection refused
+PASS: typed eight edges four ports and interleaved destinations accepted
+PASS: typed exact snapshot comparison detects interleaved order
+PASS: typed other destination interleaving is descriptive valid
+PASS: typed direct nested stage equality bounded
+PASS: typed direct port validation bounded
+PASS: typed direct stage validation bounded
+PASS: typed direct edge validation bounded
+PASS: typed matching schema substitution differs from reference
+PASS: typed matching port substitution differs from reference
+PASS: typed matching stage substitution differs from reference
+PASS: typed independent stage reorder differs from reference
+PASS: typed exact comparison is not a validity gate
