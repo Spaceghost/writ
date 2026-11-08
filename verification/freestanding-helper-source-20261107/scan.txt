@@ -1,0 +1,101 @@
+Frozen generated C hash check:
+historical/Commit.c: OK
+historical/Flow.c: OK
+historical/Parallel.c: OK
+historical/Tests.c: OK
+historical/Transfer.c: OK
+current/Commit.c: OK
+current/Flow.c: OK
+current/Hello.c: OK
+current/Parallel.c: OK
+current/PlannerProposal.c: OK
+current/StageGraph.c: OK
+current/Tests.c: OK
+current/Transfer.c: OK
+
+historical/Commit.c
+63067:static void io_eff(u32 cid, Effect run) {
+63130:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+63327:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+63678:  io_eff(CID_IO_print, io_print_run);
+
+historical/Flow.c
+8171:static void io_eff(u32 cid, Effect run) {
+8234:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+8431:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+8782:  io_eff(CID_IO_print, io_print_run);
+
+historical/Parallel.c
+21356:static void io_eff(u32 cid, Effect run) {
+21419:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+21616:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+21967:  io_eff(CID_IO_print, io_print_run);
+
+historical/Tests.c
+267193:static void io_eff(u32 cid, Effect run) {
+267256:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+267453:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+267804:  io_eff(CID_IO_print, io_print_run);
+
+historical/Transfer.c
+13423:static void io_eff(u32 cid, Effect run) {
+13486:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+13683:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+14034:  io_eff(CID_IO_print, io_print_run);
+
+current/Commit.c
+63182:static void io_eff(u32 cid, Effect run) {
+63245:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+63442:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+63793:  io_eff(CID_IO_print, io_print_run);
+
+current/Flow.c
+8171:static void io_eff(u32 cid, Effect run) {
+8234:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+8431:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+8782:  io_eff(CID_IO_print, io_print_run);
+
+current/Hello.c
+2378:static void io_eff(u32 cid, Effect run) {
+2441:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+2638:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+2989:  io_eff(CID_IO_print, io_print_run);
+
+current/Parallel.c
+21356:static void io_eff(u32 cid, Effect run) {
+21419:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+21616:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+21967:  io_eff(CID_IO_print, io_print_run);
+
+current/PlannerProposal.c
+11016:static void io_eff(u32 cid, Effect run) {
+11079:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+11276:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+11627:  io_eff(CID_IO_print, io_print_run);
+
+current/StageGraph.c
+5570:static void io_eff(u32 cid, Effect run) {
+5633:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+5830:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+6181:  io_eff(CID_IO_print, io_print_run);
+
+current/Tests.c
+2290203:static void io_eff(u32 cid, Effect run) {
+2290266:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+2290463:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+2290814:  io_eff(CID_IO_print, io_print_run);
+
+current/Transfer.c
+13423:static void io_eff(u32 cid, Effect run) {
+13486:static Term io_wait_on(IoWork* w, int fd, short evts, u64 time, IoPack more) {
+13683:static Term io_work(IoWork* w, IoCall call, IoPack pack) {
+14034:  io_eff(CID_IO_print, io_print_run);
+
+Pinned Bend effect implementations referring to io_work:
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/file_open.c:44:  return io_work(w, file_open_call, file_open_pack);
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/file_read.c:14:  return io_work(w, call, pack);
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/file_size.c:24:  return io_work(w, file_size_call, file_size_pack);
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/file_write.c:29:  return io_work(w, file_write_call, file_write_pack);
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/file_write.c:46:    : io_work(w, file_write_call, file_write_pack);
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/process_run.c:317:    : io_work(w, process_call, process_pack);
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bend2/effs/random_u32.c:24:  return io_work(w, io_random_u32_call, io_random_u32_pack);

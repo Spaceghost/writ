@@ -112,6 +112,12 @@ instead of claiming FR-001. Keep native code within the approved
 explicit source and trust inventory; no native policy engine or caller-supplied
 authority facts.
 
+A [source-only review](../../../verification/freestanding-helper-source-20261107/README.md)
+of the frozen inputs narrows the helper question for those exact generated
+files. It does not establish that synchronization, the event loop or a future
+program's helpers are unnecessary; the host-layer and execution gates remain
+open.
+
 ### 3. Build and reject targets — tasks 1.2, 1.4
 
 After recording the reference outcome, implement a separately identified
