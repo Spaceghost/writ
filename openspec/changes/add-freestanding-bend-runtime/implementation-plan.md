@@ -92,6 +92,12 @@ license inventories for any candidate nelibc revision and for a minimal host
 alternative. Compare the runtime symbols, ABI, dependencies, ownership and
 failure behavior row by row; document the selection and unresolved rows.
 
+The [initial C freeze](../../../verification/freestanding-c-freeze-20261107/README.md)
+records emitted C and hashes for the historical inputs and one current source
+revision, with local artifacts outside the checkout. It does not include
+hosted builds from those exact C files or any freestanding execution. Verify
+the recorded hashes and retain artifacts before relying on the freeze.
+
 Trace one-lane evaluator, scheduler and effect dispatch through memory,
 thread-local storage, waits and IO helper calls for the *whole* selected
 corpus. Exercise or reject paths that would require a worker: the old hosted
