@@ -306,6 +306,7 @@ def reason_name(error: P.Error) -> String:
     case P.LeaseExceeded{}: "LeaseExceeded"
     case P.AuthorityUnavailable{}: "AuthorityUnavailable"
     case P.CapacityExhausted{}: "CapacityExhausted"
+    case P.InvalidAllocatorState{}: "InvalidAllocatorState"
 
 def slot_label(+adapter: V.Adapter, +slot: Nat) -> String:
   V.logical_label(V.logical_of(adapter, slot))
@@ -1218,5 +1219,6 @@ def main() -> IO(Unit):
     adapter_checks()
     Test.check(String.eq(identity_name(I.InvalidAllocatorState{}), "InvalidAllocatorState")
       && String.eq(reason_name(P.Identity{I.CapacityExhausted{}}), "Identity.CapacityExhausted")
-      && String.eq(reason_name(P.CapacityExhausted{}), "CapacityExhausted"), "PH-mint conformance allocator errors render")
+      && String.eq(reason_name(P.CapacityExhausted{}), "CapacityExhausted")
+      && String.eq(reason_name(P.InvalidAllocatorState{}), "InvalidAllocatorState"), "PH-worker conformance allocator errors render")
     IO.print("HostConformance: 44 checks passed, 37 vectors emitted")

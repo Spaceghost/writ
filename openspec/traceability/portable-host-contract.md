@@ -362,8 +362,8 @@ Synthetic `HostMintCapacityTests.bend` named cases:
 - `PH-mint typed and legacy primitive terminal and zero denials agree`
 - `PH-mint stale host binding session and authority precede capacity`
 
-`LH mint allocator errors render` and `PH-mint conformance allocator errors
-render` check the new diagnostic reason names. These tests do not authenticate
+`LH mint and worker allocator errors render` and `PH-worker conformance allocator
+errors render` check the new diagnostic reason names. These tests do not authenticate
 records or establish host acceptance.
 
 ## Exact issue result
@@ -412,6 +412,26 @@ Named synthetic checks in `HostAdmissionCurrentTests.bend`:
 - `HH-admit direct entry recomputes trusted binding before admission`
 - `PH-admit stale authority skips terminal worker and revision arithmetic`
 - `scenario admission after issuer revoke: exact issued slot and retained descriptor deny fresh or mixed projections, cached projections remain stale` (`RendezvousTests.bend`).
+
+`HostPrimitives.admit_worker` now refuses worker id zero with
+`InvalidAllocatorState`, then refuses a maximum primitive revision or worker
+counter with `CapacityExhausted`, only after the existing request, confinement
+and current-authority checks. Its preflight and `valid` remain unchanged. A
+joint Barrier that would otherwise commit requires sticky containment on these
+allocator failures; earlier request and fact denials still precede containment.
+This repairs invalid worker-zero delivery and terminal-counter aborts without
+weakening the unchanged-state/no-effect or authority laws. A model Nat worker
+id above U32 is not a wire identifier or native-host qualification.
+
+Synthetic `HostWorkerCapacityTests.bend` evidence:
+
+- `PH-worker zero allocator denies unchanged before capacity`
+- `PH-worker terminal worker and revision counters deny unchanged`
+- `PH-worker max-minus-one admits valid model worker beyond U32`
+- `PH-worker earlier admission and authority denials retain precedence`
+- `LH-worker standalone zero denies with no effects`
+- `LH-worker joint zero contains without delivery and stays failed`
+- `LH-worker joint earlier denial precedes zero containment`
 
 The prior PH-005-8 vector intentionally uses a separately matched synthetic
 plan-E descriptor at admission and a plan-D publication session; its explicit

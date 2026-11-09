@@ -1282,7 +1282,7 @@ def joint_commit_room(state: State) -> Bool:
   match state:
     case State{_, _, _, JA.NoJoint{}}: True{}
     case State{+p, _, _, _}:
-      JA.counter_room(P.revision(p)) && JA.counter_room(P.next_worker(p))
+      Nat.is_gt(P.next_worker(p), 0n) && JA.counter_room(P.revision(p)) && JA.counter_room(P.next_worker(p))
 
 # Detect only a request that would otherwise reach the shared commit; old
 # request failures retain their original order even at terminal capacity.
@@ -2002,6 +2002,7 @@ def error_name(error: P.Error) -> String:
     case P.LeaseExceeded{}: "LeaseExceeded"
     case P.AuthorityUnavailable{}: "AuthorityUnavailable"
     case P.CapacityExhausted{}: "CapacityExhausted"
+    case P.InvalidAllocatorState{}: "InvalidAllocatorState"
 
 def rejection_name(reason: Rejection) -> String:
   match reason:

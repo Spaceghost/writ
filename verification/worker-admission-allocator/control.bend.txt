@@ -1,0 +1,33 @@
+import Base
+import /home/jadams/tmp/writ-worker-admission-allocator/HostPrimitives.bend as P
+import /home/jadams/tmp/writ-worker-admission-allocator/HostPrimitivesTests.bend as PT
+import /home/jadams/tmp/writ-worker-admission-allocator/Test.bend as Test
+
+def counters(state: P.State, revision: Nat, next: Nat) -> P.State:
+  match state:
+    case P.State{_, identity, profiles, bindings, workers, _, seals, publications}:
+      P.State{revision, identity, profiles, bindings, workers, next, seals, publications}
+
+def attempt(+state: P.State) -> Bool:
+  Maybe.is_some(&2, P.Error, P.Step.reason(PT.admit_on(state, PT.full_report(), PT.mediated_inventory())))
+
+def chosen(+mode: String, +max: Nat) -> Bool:
+  f = Bool.pick(Unit -> Bool, String.eq(mode, "worker"),
+    x => attempt(counters(PT.base(), P.revision(PT.base()), max)),
+    x => attempt(counters(PT.base(), max, P.next_worker(PT.base()))))
+  f(Unit{})
+
+def parsed(mode: String, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case Some{max}: chosen(mode, max)
+    case None{}: False{}
+
+def run(args: List<String>) -> IO(Unit):
+  match args:
+    case [_, mode]: Test.check(parsed(mode, Nat.read("281474976710655")), "terminal worker admission denies")
+    case _: IO.die(Unit, 2, "expected worker or revision")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    args : List<String> <- IO.args()
+    run(args)

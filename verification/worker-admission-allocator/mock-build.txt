@@ -1,0 +1,4 @@
+make: Entering directory '/home/jadams/tmp/writ-worker-admission-allocator/contrib/native-hosts/linux'
+cc -D_FILE_OFFSET_BITS=64 -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow -I/usr/include/fuse3 handoff-order-test.c policy_pipe.c worker.c -lfuse3 -lpthread -o "/home/jadams/tmp/writ-worker-admission-build/mocks/handoff-order-test"
+cc -D_FILE_OFFSET_BITS=64 -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow -ffunction-sections -Wl,--gc-sections retire-error-test.c -o "/home/jadams/tmp/writ-worker-admission-build/mocks/retire-error-test"
+make: Leaving directory '/home/jadams/tmp/writ-worker-admission-allocator/contrib/native-hosts/linux'

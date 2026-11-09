@@ -439,6 +439,9 @@ Subsequent [mint-capacity checks](verification/host-mint-capacity/README.md) cov
 allocator zero, terminal counters, denial ordering and exact typed/legacy parity.
 They are not part of the historical counts above.
 
+The later [worker allocator checks](verification/worker-admission-allocator/README.md)
+cover zero, terminal counters, prior denial ordering and joint containment.
+
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
 propagation/fold/sweep helpers. Its cases include all 256 subsets of eight fixed

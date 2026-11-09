@@ -122,6 +122,18 @@ Protected inputs SHALL be delivered only after the host establishes every requir
 - **WHEN** its current trusted snapshot no longer authorizes that exact descriptor and paired plan
 - **THEN** delivery is denied before any protected input effect.
 
+#### Scenario: Worker allocation cannot advance
+
+- **GIVEN** a structurally valid primitive state whose next worker id is zero, or whose worker id counter or primitive revision has reached maximum Nat
+- **WHEN** an execution request passes the existing identity, confinement, operation and current-authority checks
+- **THEN** admission denies with the supplied portable state unchanged and no input-delivery effect
+- **AND** earlier failures retain their existing denial precedence.
+
+A joint owner that would otherwise admit requires sticky containment for these
+allocator failures. This replaces invalid worker-zero delivery and terminal
+counter aborts with fail-closed behavior; the authority and denial laws remain.
+It does not establish native containment or recovery.
+
 #### Scenario: A required kernel feature is missing
 
 - **GIVEN** a profile requires an unavailable native isolation control

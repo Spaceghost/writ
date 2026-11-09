@@ -1,0 +1,1 @@
+PASS: terminal worker admission denies

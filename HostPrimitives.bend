@@ -378,6 +378,7 @@ type Error is Data:
   LeaseExceeded{}
   AuthorityUnavailable{}
   CapacityExhausted{}
+  InvalidAllocatorState{}
 
 # The output of every mutating transition. Only `Admitted` carries effects.
 type Step is Data:
@@ -553,6 +554,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case LeaseExceeded{} LeaseExceeded{}: True{}
     case AuthorityUnavailable{} AuthorityUnavailable{}: True{}
     case CapacityExhausted{} CapacityExhausted{}: True{}
+    case InvalidAllocatorState{} InvalidAllocatorState{}: True{}
     case _ _: False{}
 
 # Public accessor: the resulting state; on denial, the supplied state.
@@ -1539,6 +1541,8 @@ def admission_current_reason(found: Maybe<&2, Error>) -> Error:
 # Public family-2 entry. Existing admission preflight denials retain order;
 # the actual Use must authorize execute and its descriptor must still be live
 # in one trusted snapshot at the same owner-sampled time before DeliverInputs.
+# After those checks, worker id zero is invalid and both worker id and revision
+# require Nat successor capacity; neither denial evaluates the committing branch.
 # Supplied snapshots and native facts remain trusted-owner inputs: this does
 # not authenticate them, rebuild them from Issuance, or cover other consumers.
 def admit_worker(+state: State, expected_revision: Nat, +report: TargetReport, +inventory: Fact,
@@ -1546,9 +1550,13 @@ def admit_worker(+state: State, expected_revision: Nat, +report: TargetReport, +
   ({+checked => Bool.pick(Unit -> Step, admission_ready(checked),
     x => ({+failed => Bool.pick(Unit -> Step, Maybe.is_some(&2, Error, failed),
       y => Denied{state, admission_current_reason(failed)},
-      y => Admitted{commit_worker(state, Worker{next_worker(state), session, admission_input(checked),
-        configured_profile(admission_configured(checked)), Running{}, configured_quota(admission_configured(checked)),
-        no_usage()}), [DeliverInputs{next_worker(state), admission_input(checked)}]})(Unit{}) : Maybe<&2, Error> -> Step})(admission_current(I.resolve(identity(state), I.revision(identity(state)), session, admission_input(checked), now),
+      y => Bool.pick(Unit -> Step, Nat.is_eq(next_worker(state), 0n),
+        z => Denied{state, InvalidAllocatorState{}},
+        z => Bool.pick(Unit -> Step, I.successor_fits(revision(state)) && I.successor_fits(next_worker(state)),
+          w => Admitted{commit_worker(state, Worker{next_worker(state), session, admission_input(checked),
+            configured_profile(admission_configured(checked)), Running{}, configured_quota(admission_configured(checked)),
+            no_usage()}), [DeliverInputs{next_worker(state), admission_input(checked)}]},
+          w => Denied{state, CapacityExhausted{}})(Unit{}))(Unit{}))(Unit{}) : Maybe<&2, Error> -> Step})(admission_current(I.resolve(identity(state), I.revision(identity(state)), session, admission_input(checked), now),
         request, authority, now)),
     x => Denied{state, admission_reason(checked)})(Unit{}) : AdmissionCheck -> Step})(a_gate(current(state, expected_revision), state, report, inventory, session, W.Message.ref(request), now))
 

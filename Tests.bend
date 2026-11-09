@@ -28,6 +28,7 @@ import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostIssueCurrentTests.bend as HostIssueCurrent
 import ./HostIssueResultTests.bend as HostIssueResult
 import ./HostMintCapacityTests.bend as HostMintCapacity
+import ./HostWorkerCapacityTests.bend as HostWorkerCapacity
 import ./HostAdmissionCurrentTests.bend as HostAdmissionCurrent
 import ./HostHandoffTests.bend as HostHandoff
 import ./HostConformanceTests.bend as HostConformance
@@ -62,6 +63,7 @@ def host_tests() -> IO(Unit):
     HostIssueCurrent.main()
     HostIssueResult.main()
     HostMintCapacity.main()
+    HostWorkerCapacity.main()
     HostHandoff.main()
     HostConformance.main()
     HostAdmissionCurrent.main()

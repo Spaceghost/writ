@@ -1,0 +1,2 @@
+PASS: existing direct admission emits worker zero and invalid state
+PASS: existing joint barrier emits worker zero and invalid state

@@ -927,5 +927,6 @@ def main() -> IO(Unit):
     replay_compare_checks()
     Test.check(String.eq(LH.identity_error_name(I.InvalidAllocatorState{}), "InvalidAllocatorState")
       && String.eq(LH.error_name(P.Identity{I.CapacityExhausted{}}), "Identity:CapacityExhausted")
-      && String.eq(LH.error_name(P.CapacityExhausted{}), "CapacityExhausted"), "LH mint allocator errors render")
+      && String.eq(LH.error_name(P.CapacityExhausted{}), "CapacityExhausted")
+      && String.eq(LH.error_name(P.InvalidAllocatorState{}), "InvalidAllocatorState"), "LH mint and worker allocator errors render")
     IO.print("LinuxHost: 119 checks passed")

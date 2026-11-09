@@ -1,0 +1,11 @@
+SOME PROOFS FAIL
+Error:
+- expected : max
+- observed : max (consumed more than once)
+Context:
+- mode : String
+Location: chosen
+13 |
+14>| def chosen(+mode: String, max: Nat) -> Bool:
+   |                           ^^^
+15 |   f = Bool.pick(Unit -> Bool, String.eq(mode, "worker"),
