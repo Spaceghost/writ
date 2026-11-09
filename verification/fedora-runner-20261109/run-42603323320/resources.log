@@ -1,0 +1,16 @@
+memory.max:
+25769803776
+memory.current:
+845381632
+memory.peak:
+17963540480
+memory.events:
+low 0
+high 0
+max 0
+oom 0
+oom_kill 0
+oom_group_kill 0
+sock_throttled 0
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/loop0      300G   85G  215G  29% /

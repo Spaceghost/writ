@@ -79,6 +79,32 @@ completed in 6.75 seconds. Incus's instance list no longer contained
 `writ-fedora-incus`, and the service restarted successfully. The pre-existing
 `bak-writ` registration was preserved.
 
+## Successful 24 GiB run
+
+[Run 42603323320](https://github.com/Spaceghost/writ/actions/runs/42603323320)
+passed on `1dbb5e1f6fbf8ed82c99775022ea066365009acb`, using runner ID 27.
+The [test summary](run-42603323320/test-summary.txt) records output hashes,
+3,063 `PASS` lines on both JavaScript and native CPU backends, 70 mount-model
+checks, nine bridge probes and 11 native transport checks. JavaScript and native
+library output hashes match. Ordinary [proof checks](run-42603323320/proof.log)
+passed, and [OpenSpec](run-42603323320/openspec.log) reported 45 passed, 0 failed.
+
+The [resource counters](run-42603323320/resources.log) record a 25,769,803,776-byte
+(24 GiB) memory cap, a 17,963,540,480-byte (16.73 GiB) peak, and zero `oom` or
+`oom_kill` events. The [environment](run-42603323320/environment.log) and
+[native build](run-42603323320/native-build.log) record the actual tools used.
+The full log artifact is
+[`writ-fedora-1`, ID 13667967375](https://github.com/Spaceghost/writ/actions/runs/42603323320/artifacts/13667967375),
+retained on GitHub for 14 days; selected logs and output hashes are retained here.
+
+After success, runner ID 27 deregistered and its guest was deleted. The
+supervisor created replacement runner ID 28 in a new guest: the UUID changed
+from `a87e544f-96a7-4207-9bb5-bcec8de7cac6` to
+`14c52cb1-06e2-4dfd-9fde-046adff51bed`. The base remained stopped. This is actual
+guest retirement evidence, separate from test success.
+The replacement's prior job workspace was absent, and GitHub reported runner
+ID 28 online and idle at 11:05 UTC. The controller service was enabled and active.
+
 ## Limits
 
 The stopped base and single active clone each have their own 30 GiB quota;

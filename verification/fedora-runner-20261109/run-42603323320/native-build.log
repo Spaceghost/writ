@@ -1,0 +1,5 @@
+make: Entering directory '/opt/actions-runner/_work/writ/writ/contrib/native-hosts/linux'
+gcc -D_FILE_OFFSET_BITS=64 -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow -I/usr/include/fuse3 writfs.c policy_pipe.c worker.c -lfuse3 -lpthread -o "/opt/actions-runner/_work/_temp/writ-fedora-build/writfs-linux"
+gcc -D_FILE_OFFSET_BITS=64 -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow transport_probe.c policy_pipe.c -pthread -o "/opt/actions-runner/_work/_temp/writ-fedora-build/transport-probe"
+gcc -D_FILE_OFFSET_BITS=64 -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow crash_probe.c -o "/opt/actions-runner/_work/_temp/writ-fedora-build/crash-probe"
+make: Leaving directory '/opt/actions-runner/_work/writ/writ/contrib/native-hosts/linux'
