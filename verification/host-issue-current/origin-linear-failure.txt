@@ -1,0 +1,9 @@
+SOME PROOFS FAIL
+Error:
+- expected : id
+- observed : id (consumed more than once)
+Location: with_origin_sessions
+72 |     case I.NoSessions{}: I.NoSessions{}
+73>|     case I.Sessions{I.Session{id, incarnation, caller, previous, delegable}, rest}:
+   |                               ^^
+74 |       I.Sessions{I.Session{id, incarnation, caller,

@@ -1,0 +1,24 @@
+SOME PROOFS FAIL
+Error:
+- expected : Step
+- observed : @_:I.Change -> Step
+Context:
+- state             : State
+- expected_revision : Nat
+- session           : Nat
+- frontend          : F.State
+- frontend_revision : Nat
+- registry          : F.Registry
+- context           : T.Context
+- handle            : Nat
+- plan              : T.Plan
+- rights            : U32
+- expires           : Nat
+- x                 : Unit
+- failed            : Maybe<&2, Error>
+- y                 : Unit
+Location: issue
+1271 |       y => Denied{state, issue_binding_reason(failed)},
+1272>|       y => ({+change => Bool.pick(Unit -> Step, I.Change.accepted(change),
+     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1273 |         z => Bool.pick(Unit -> Step, issue_live_session(I.session_at(I.sessions(identity(state)), session),

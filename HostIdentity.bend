@@ -133,7 +133,7 @@ import ./Transfer.bend as T
 # right one, or that an accepted change is valid; HostIdentityTests covers
 # those.
 #
-# Public entry points: `empty`, `valid`, `bind_session`, `mint`, `resolve`,
+# Public entry points: `empty`, `valid`, `bind_session`, `mint_preflight`, `mint`, `resolve`,
 # `delegate`, `retire`, `restart`; the types `Origin`, `Session`, `Entry`,
 # `Sessions`, `Entries`, `State`, `Error`, `Change`, `Resolution`; the named
 # constants `first_generation`, `first_slot`, `root_parent`, and `no_id`; and the accessors and `Error.equal` marked
@@ -827,48 +827,51 @@ def commit_entry(+state: State, entry: Entry) -> State:
     case State{revision, host, incarnation, next_slot, sessions, entries}:
       State{1n+revision, host, incarnation, 1n+next_slot, sessions, Entries{entry, entries}}
 
-# Implementation helper: mint's origin step.
-def m_origin(origin: Origin, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
-    expires: Nat, owner: F.Caller) -> Change:
+# Read-only mint preflight. These helpers cannot commit an identity entry.
+def mint_origin_error(origin: Origin) -> Maybe<&2, Error>:
   match origin:
-    case Authenticated{}:
-      Accepted{commit_entry(state, Entry{next_slot(state), first_generation(), session, owner, handle,
-        plan, rights, expires, root_parent(), True{}}), next_slot(state)}
-    case Inherited{_}:
-      Rejected{state, InheritedEndpoint{}}
-    case Transferred{_}:
-      Rejected{state, TransferredEndpoint{}}
+    case Authenticated{}: None{}
+    case Inherited{_}: Some{InheritedEndpoint{}}
+    case Transferred{_}: Some{TransferredEndpoint{}}
 
-# Implementation helper: mint's session lookup.
-def m_session(found: SessionLookup, +state: State, +session: Nat, handle: Nat, plan: T.Plan,
-    rights: U32, expires: Nat) -> Change:
+def mint_session_error(found: SessionLookup) -> Maybe<&2, Error>:
   match found:
-    case NoSession{}:
-      Rejected{state, UnknownSession{}}
-    case ManySessions{}:
-      # Unreachable from a valid state; kept for totality.
-      Rejected{state, Ambiguous{}}
-    case OneSession{+bound}:
-      m_origin(session_origin(bound), state, session, handle, plan, rights, expires,
-        session_caller(bound))
+    case NoSession{}: Some{UnknownSession{}}
+    case ManySessions{}: Some{Ambiguous{}}
+    case OneSession{session}: mint_origin_error(session_origin(session))
 
-# Implementation helper: mint's gate.
-def m_gate(ok: Bool, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
-    expires: Nat) -> Change:
-  match ok:
-    case True{}:
-      m_session(session_at(sessions(state), session), state, session, handle, plan, rights, expires)
-    case False{}:
-      Rejected{state, StaleRevision{}}
+# The one denial engine used by both mint and its monitor wrapper. It performs
+# no slot arithmetic and accepts no caller-supplied preflight outcome.
+def mint_preflight(+state: State, expected_revision: Nat, session: Nat) -> Maybe<&2, Error>:
+  f = Bool.pick(Unit -> Maybe<&2, Error>, current(state, expected_revision),
+    x => mint_session_error(session_at(sessions(state), session)), x => Some{StaleRevision{}})
+  f(Unit{})
 
-# Public entry point: a root entry, held by `session`, for Frontend handle
-# `handle` that the monitor has already opened after complete admission of
-# `plan`. The owner is the session's authenticated caller (subject and
-# token), never a parameter. Only an Authenticated session may hold a root entry. Issues the
-# new slot.
-def mint(+state: State, expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan,
+# Only called after this same state has passed mint_preflight. The fallback
+# cannot name an admitted owner and is not a source of authentication.
+def mint_owner(found: SessionLookup) -> F.Caller:
+  match found:
+    case OneSession{session}: session_caller(session)
+    case _: F.Caller{0n, T.CodeId{0, 0, 0, 0, 0, 0, 0, 0}}
+
+def mint_reason(found: Maybe<&2, Error>) -> Error:
+  match found:
+    case Some{reason}: reason
+    case None{}: StaleRevision{}
+
+# Public entry point: bind the root to the authenticated session's caller.
+# Existing revision, session and origin denials precede the slot allocation.
+# The shared preflight is recomputed here; no caller may supply its result.
+# A successful mint at exhausted Nat slot or revision capacity can still abort;
+# this model does not yet provide a capacity denial or host recovery protocol.
+def mint(+state: State, +expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan,
     rights: U32, expires: Nat) -> Change:
-  m_gate(current(state, expected_revision), state, session, handle, plan, rights, expires)
+  f = Bool.pick(Unit -> Change, Maybe.is_some(&2, Error, mint_preflight(state, expected_revision, session)),
+    x => Rejected{state, mint_reason(mint_preflight(state, expected_revision, session))},
+    x => Accepted{commit_entry(state, Entry{next_slot(state), first_generation(), session,
+      mint_owner(session_at(sessions(state), session)), handle, plan, rights, expires, root_parent(), True{}}),
+      next_slot(state)})
+  f(Unit{})
 
 # --- delegate (public) ---------------------------------------------------------
 

@@ -1,5 +1,9 @@
 # Verification record
 
+The [host issue current-scope record](verification/host-issue-current/README.md)
+covers the shared root issue gate, synthetic issuer revocation and mint preflight;
+it does not establish native identity, snapshot freshness or a live bridge.
+
 The [Linux monitor clock record](verification/linux-monitor-clock/README.md)
 covers synthetic time samples, poison, cleanup and deferred decision branches.
 It does not establish a native clock, a joint FUSE/issuer owner or recovery.

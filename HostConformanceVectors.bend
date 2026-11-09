@@ -518,6 +518,12 @@ def fixture_frontend() -> Nat:
 def fixture_frontend_state() -> F.State:
   FF.descriptor(subject(), root_rights())
 
+def fixture_registry() -> F.Registry:
+  FF.registry(subject(), root_rights())
+
+def fixture_transfer() -> T.Context:
+  TF.context()
+
 def invocation() -> Nat:
   T.Plan.invocation(plan())
 

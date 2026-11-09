@@ -1,0 +1,17 @@
+PASS: PH-issue current descriptor and paired transfer permit one root
+PASS: PH-issue mounted handle remains valid
+PASS: PH-issue execute-only and zero attenuated rights remain valid
+PASS: PH-issue stale frontend revision denies unchanged
+PASS: PH-issue closed handle denies unchanged
+PASS: PH-issue missing registry grant denies unchanged
+PASS: PH-issue expired registry or handle denies unchanged
+PASS: PH-issue changed authority epoch denies unchanged
+PASS: PH-issue narrowed or changed registry scope denies unchanged
+PASS: PH-issue duplicate or malformed registry denies unchanged
+PASS: PH-issue missing paired source or destination grant denies unchanged
+PASS: PH-issue host binding and identity denial precedence remains intact
+PASS: PH-issue binding and endpoint errors beat invalid live snapshot
+PASS: PH-issue shared mint preflight matches identity mint decisions
+PASS: PH-issue stale authority denies before slot or revision overflow
+PASS: PH-issue binding denial does not evaluate overflow-prone mint
+HostIssueCurrent: 16 checks passed

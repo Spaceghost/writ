@@ -24,6 +24,7 @@ import ./StageGraphTests.bend as StageGraph
 import ./StagePortsTests.bend as StagePorts
 import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
+import ./HostIssueCurrentTests.bend as HostIssueCurrent
 import ./HostHandoffTests.bend as HostHandoff
 import ./HostConformanceTests.bend as HostConformance
 import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
@@ -73,6 +74,7 @@ def main() -> IO(Unit):
     StagePorts.main()
     HostIdentity.main()
     HostPrimitives.main()
+    HostIssueCurrent.main()
     HostHandoff.main()
     HostConformance.main()
     linux_tests()

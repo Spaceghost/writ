@@ -175,7 +175,7 @@ def revoke_input() -> Bool:
 
 def unrelated_root(+state: LH.State) -> LH.State:
   +p = LH.portable(state)
-  LT.apply_step(state, P.issue(p, P.revision(p), V.session_client(), V.fixture_frontend_state(), V.root_handle(),
+  LT.apply_step(state, P.issue(p, P.revision(p), V.session_client(), V.fixture_frontend_state(), V.fixture_frontend(), V.fixture_registry(), V.fixture_transfer(), V.root_handle(),
     V.plan(), V.root_rights(), V.root_expires()))
 
 def revoke_root() -> Bool:

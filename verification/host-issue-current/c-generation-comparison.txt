@@ -1,0 +1,7 @@
+bend Tests.bend -o verified.c on the pre-header-comment tested source: exit 0.
+bend Tests.bend -o final-comment-source.c on the delivered source: exit 0.
+cmp verified.c final-comment-source.c: exit 0, byte-identical.
+Both SHA-256: 2ca3d05109723bebcd5fbbd6c99d10b19bd3d9f3ded86ebffb4bb697f5ea7ac7.
+Both generated outside the source tree with pinned Bend 2.0.39, TMPDIR under
+/home/jadams/tmp, telemetry disabled, nice 15, 16 GiB virtual memory limit,
+600-second CPU and wall limits. Compiled C was generated before the header edit.

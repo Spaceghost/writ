@@ -290,7 +290,7 @@ def with_client() -> LH.State:
 # The client's root on the vectors' Frontend handle and plan.
 def rooted_in(+s: LH.State) -> LH.State:
   +p = LH.portable(s)
-  apply_step(s, P.issue(p, P.revision(p), V.session_client(), V.fixture_frontend_state(), V.root_handle(), V.plan(),
+  apply_step(s, P.issue(p, P.revision(p), V.session_client(), V.fixture_frontend_state(), V.fixture_frontend(), V.fixture_registry(), V.fixture_transfer(), V.root_handle(), V.plan(),
     V.root_rights(), V.root_expires()))
 
 def rooted() -> LH.State:

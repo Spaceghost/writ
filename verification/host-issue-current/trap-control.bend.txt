@@ -1,0 +1,18 @@
+import Base
+import ./writ-issue-current/HostIssueCurrentTests.bend as HT
+import ./writ-issue-current/HostPrimitives.bend as P
+import ./writ-issue-current/HostPrimitivesTests.bend as PT
+import ./writ-issue-current/Frontend.bend as F
+import ./writ-issue-current/TransferTests.bend as TF
+
+def run(maximum: Maybe<&2, Nat>) -> IO(Unit):
+  match maximum:
+    case None{}: IO.print("INVALID TRAP FIXTURE")
+    case Some{max}:
+      +host = HT.max_slot_state(HT.state(), max)
+      result = HT.issue_on(host, HT.frontend(), F.revision(HT.frontend()), HT.registry(), TF.context(),
+        PT.pub_handle(), TF.plan(), 7)
+      IO.print(Nat.show(P.revision(P.Step.state(result))))
+
+def main() -> IO(Unit):
+  run(Nat.read("281474976710655"))

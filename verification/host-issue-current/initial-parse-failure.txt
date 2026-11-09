@@ -1,0 +1,8 @@
+SOME PROOFS FAIL
+Error:
+- message  : a parameter or field scrutinee (a match cannot scrutinize a computed value: give it its own def)
+Location:
+1260 |         case I.Accepted{_, _}:
+1261>|           match issue_live_session(I.session_at(I.sessions(identity(state)), session), frontend,
+     |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+1262 |               frontend_revision, registry, context, handle):

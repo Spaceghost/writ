@@ -1,0 +1,52 @@
+Worktree base: 56a6efb. Bend 2.0.39:
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+TMPDIR=/home/jadams/tmp/writ-issue-current-checks, BEND_NO_TELEMETRY=1.
+Full Bend and generated backends: ulimit -c 0, -v 16777216 KiB, -t 600 s;
+timeout 600, nice -n 15. Focused generated backends: -v 10737418 KiB,
+-t 300 s, timeout 300, nice -n 15. Node v26.10.0, clang 23.1.1.
+
+bend Tests.bend: exit 0, tests-bend.txt, 2915 PASS lines.
+bend Tests.bend -o verified.js; node verified.js: exit 0, tests-node.txt;
+cmp tests-bend.txt tests-node.txt: exit 0.
+bend HostIdentityTests.bend on base 56a6efb and candidate: exit 0,
+identity-base.txt and identity-current.txt; cmp: exit 0.
+bend HostIssueCurrentTests.bend: exit 0, focused-bend.txt; generated Node and
+static clang -O0 native +RTS --threads 1 --gpu off: exit 0, focused-node.txt
+and focused-native.txt; both compare byte-for-byte to focused-bend.txt.
+bend PROOF.bend: exit 0, proof.txt.
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt
+LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict: exit 0, verdict.txt.
+Kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+BENDTT=/bin/false bend PROOF.bend --verdict: exit 1 as expected, negative.txt.
+openspec validate --all --strict --no-interactive: exit 0, openspec.txt.
+
+Matching maximum-slot control: bend /home/jadams/tmp/writ-issue-trap-control.bend,
+generated Node, and static clang -O0 native +RTS --threads 1 --gpu off each
+exit 1 as expected, trap-bend.txt, trap-node.txt, trap-native.txt. The focused
+suite checks the corresponding stale-authority and binding denials do not trap.
+The earlier stale-max-before-preflight control exited 1, preserved alongside its
+source. Full native generation from an outdated pre-change candidate was
+intentionally terminated before the shared-preflight edit; it is not evidence.
+
+Native host mock checks: timeout 120 nice -n 15 make -C contrib/native-hosts/linux
+OUT=/home/jadams/tmp/writ-issue-current-checks/linux-native, targeting
+handoff-order-test and retire-error-test; both run with timeout 60, nice -n 15,
+and exit 0. linux-mock-build.txt, handoff-mock.txt and retire-mock.txt record
+outputs. No mount, native identity probe or VM was used.
+
+Early compilation failures while developing the lambdas and test fixtures are
+preserved as *failure.txt, with two exact raw outputs in base64 where their
+original whitespace would violate the source-tree whitespace check. They were
+resolved before the recorded successful checks. The later comment-only change is detailed in comment-comparison.txt.
+
+After the public-entry comment edit, Bend and generated Node full suites were
+rerun on the delivered source, exit 0, both byte-identical to earlier output.
+The pinned --verdict rerun aborted with SIGABRT under a 4 GiB virtual-memory
+cap (verdict-4g-failure.txt); rerunning with a 16 GiB cap exited 0 (verdict.txt).
+
+Full native CPU: bend Tests.bend -o verified.c; clang -std=c11 -O0 -static
+verified.c -o verified-native -lpthread -lm; verified-native +RTS --threads 1
+--gpu off: all exit 0; native-cgen.txt and native-build.txt are empty and
+output is tests-native.txt. cmp tests-bend.txt tests-native.txt: exit 0.
+Native executable SHA-256: 6e1fc5c54ff7bf47574b0d4c98bdc1f022ae548506aa074fc2b5b1107204a52b.
+Pre-comment generated JS SHA-256: 5cd853b536210a343fe46ead2b93181fc9a3f3ad32c32bfbaa01fda95ae451f0.

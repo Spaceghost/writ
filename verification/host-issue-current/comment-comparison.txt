@@ -1,0 +1,6 @@
+Tested HostIdentity.bend SHA-256: 7b057b62ab1d68f98c5322ce159e1b121837313ed971291bfd636cbafb574b03
+Delivered HostIdentity.bend SHA-256: 30cd7aff3f84911fd0551e1a39fa90c45c2a337095d9c3a26a55edcdefa73bbf
+Tested non-comment source SHA-256: e9aaa96879b4ac241fa4887a21da486031e49111571ba063818f4daed07c4c6c
+Delivered non-comment source SHA-256: e9aaa96879b4ac241fa4887a21da486031e49111571ba063818f4daed07c4c6c
+All non-comment bytes identical: True
+Tested source retained as HostIdentity-tested.bend.txt in this record.

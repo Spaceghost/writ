@@ -74,7 +74,14 @@ Resource resolution SHALL require the current host incarnation, resource generat
 
 ### Requirement: PH-005 Delegation cannot widen Writ scope
 
-Delegation SHALL preserve the exact plan and origin obligations, only narrow rights or lifetime, and require new authorization for a changed effective subject.
+Delegation SHALL preserve the exact plan and origin obligations, only narrow rights or lifetime, and require new authorization for a changed effective subject. Root issuance SHALL check the monitor-supplied current Frontend revision and full live capability scope and require paired transfer admission before committing the entry.
+
+#### Scenario: A formerly live handle loses its registry grant
+
+- **GIVEN** a monitor retained a Frontend handle and the current registry no longer contains its grant
+- **WHEN** the monitor issues a root from that handle using its current authority snapshot
+- **THEN** issuance denies with its supplied host state unchanged and no effects
+- **AND** later use and publication still require their own current checks.
 
 #### Scenario: A transferred endpoint requests another bucket
 

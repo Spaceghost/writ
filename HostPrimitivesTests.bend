@@ -1235,11 +1235,11 @@ def read_rights() -> U32:
 def pub_root_expires() -> Nat:
   180n
 
-def issue_in(+state: P.State, +session: Nat, frontend: F.State, +rights: U32, +expires: Nat) -> P.Step:
-  P.issue(state, P.revision(state), session, frontend, pub_handle(), TF.plan(), rights, expires)
+def issue_in(+state: P.State, +session: Nat, +frontend: F.State, +rights: U32, +expires: Nat) -> P.Step:
+  P.issue(state, P.revision(state), session, frontend, F.revision(frontend), FF.registry(pub_subject(), root_rights()), TF.context(), pub_handle(), TF.plan(), rights, expires)
 
 def issue_for(+state: P.State, +session: Nat, +handle: Nat, +plan: T.Plan) -> P.Step:
-  P.issue(state, P.revision(state), session, pub_frontend(), handle, plan, root_rights(), pub_root_expires())
+  P.issue(state, P.revision(state), session, pub_frontend(), F.revision(pub_frontend()), FF.registry(pub_subject(), root_rights()), TF.context(), handle, plan, root_rights(), pub_root_expires())
 
 def issue_on(+state: P.State, +session: Nat) -> P.Step:
   issue_for(state, session, pub_handle(), TF.plan())
@@ -1777,7 +1777,7 @@ def publication_gate_checks() -> IO(Unit):
       "PH-010 reclaim at a stale revision denied StaleRevision")
     Test.check(denied(H.complete(admitted(), 1n+P.revision(admitted()), completion(session_worker(), input_ref()), now()),
       admitted(), P.StaleRevision{}), "PH-010 complete at a stale revision denied StaleRevision")
-    Test.check(denied(P.issue(pub_opened(), 1n+P.revision(pub_opened()), session_client(), pub_frontend(), pub_handle(), TF.plan(), root_rights(),
+    Test.check(denied(P.issue(pub_opened(), 1n+P.revision(pub_opened()), session_client(), pub_frontend(), F.revision(pub_frontend()), FF.registry(pub_subject(), root_rights()), TF.context(), pub_handle(), TF.plan(), root_rights(),
       pub_root_expires()), pub_opened(), P.StaleRevision{}), "PH-001 issue at a stale revision denied StaleRevision")
     Test.check(denied(P.delegate(pub_issued(), 1n+P.revision(pub_issued()), session_client(), root_ref(), session_worker(),
       input_rights(), input_lifetime(), pub_now()), pub_issued(), P.StaleRevision{}),

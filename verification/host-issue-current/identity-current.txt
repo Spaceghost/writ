@@ -1,0 +1,93 @@
+PASS: PH-002 bind_session records the authenticated caller under a monitor-allocated id
+PASS: PH-003 mint records a root entry owned by the session's authenticated caller
+PASS: PH-003 resolve returns the holder's entry and its authenticated caller
+PASS: PH-005 delegate records a child with the same plan, narrower rights, and a shorter lifetime
+PASS: PH-005 the delegated child resolves for its holder with the narrowed rights
+PASS: PH-005 a child expiring exactly at the parent's expiry is accepted
+PASS: PH-004 retire advances the generation and clears live
+PASS: PH-004 restart starts a greater incarnation with an empty table
+PASS: PH-003 slot 0 denied Forged
+PASS: PH-003 a slot equal to next_slot denied Forged
+PASS: PH-003 another session presenting A's slot and generation denied NotHolder
+PASS: PH-003 another session of the same subject and token presenting the root's reference denied NotHolder
+PASS: PH-003 a same-subject session with another token presenting the root's reference denied NotHolder
+PASS: PH-003 an unbound presenting session denied UnknownSession
+PASS: PH-003 a reference naming another host denied ForeignHost
+PASS: PH-004 a live slot presented with another generation denied StaleGeneration
+PASS: PH-004 after retire the old reference denied Retired
+PASS: PH-004 after retire the bumped generation at the old slot denied Retired
+PASS: PH-004 the handle minted again resolves at its new slot and the old reference stays denied
+PASS: PH-004 after restart a prior-incarnation reference to the reused slot denied StaleIncarnation
+PASS: PH-004 after restart the new incarnation's reference to the reused slot resolves
+PASS: PH-004 a reference naming a later incarnation denied StaleIncarnation
+PASS: PH-004 restart to the current incarnation denied StaleIncarnation
+PASS: PH-004 restart to an earlier incarnation denied StaleIncarnation
+PASS: PH-004 two live entries for one slot denied Ambiguous and the state is not valid
+PASS: PH-004 two sessions under one id denied Ambiguous and the state is not valid
+PASS: PH-002 a transferred endpoint without a delegation edge denied TransferredEndpoint
+PASS: PH-002 a transferred endpoint with a delegation edge to it resolves
+PASS: PH-002 an endpoint transferred from another session denied NotHolder
+PASS: PH-002 an inherited endpoint without a delegation edge denied InheritedEndpoint
+PASS: PH-002 an inherited endpoint with a delegation edge to it resolves
+PASS: PH-002 an inherited session holding a root entry outside any edge denied InheritedEndpoint
+PASS: PH-002 an inherited endpoint presenting another session's reference denied NotHolder
+PASS: PH-002 an inherited endpoint presenting an entry delegated to its parent session denied InheritedEndpoint
+PASS: PH-002 a transferred endpoint's delegated entry at its expiry denied Expired
+PASS: PH-002 mint to a transferred session denied TransferredEndpoint
+PASS: PH-002 mint to an inherited session denied InheritedEndpoint
+PASS: PH-002 a Use claiming subject B on A's session resolves to caller A
+PASS: PH-002 Uses differing only in claimed subject resolve identically
+PASS: PH-005 delegation to another subject's session denied SubjectChanged
+PASS: PH-005 delegation with wider rights denied WidenedRights
+PASS: PH-005 delegation outliving the parent denied WidenedLifetime
+PASS: PH-005 delegation from a non-delegable worker session denied NotDelegable
+PASS: PH-005 delegation from a retired parent denied Retired
+PASS: PH-005 delegation from a stale-generation parent denied StaleGeneration
+PASS: PH-005 delegation to an unbound session denied UnknownSession
+PASS: PH-005 delegation to a same-subject session with another token records that session as holder and keeps the owner's caller
+PASS: PH-005 the child delegated to a session with another token resolves there with the owner's caller
+PASS: PH-005 the child delegated to one session is denied NotHolder from the parent's holder and from another same-subject session
+PASS: PH-005 after a narrower proxy the parent still resolves with full rights and stays live
+PASS: PH-004 retiring the parent retires the child
+PASS: PH-004 retiring the parent retires the grandchild
+PASS: PH-004 retiring a subtree leaves unrelated entries live
+PASS: PH-004 retiring the child leaves the parent live
+PASS: PH-004 retiring the child retires the grandchild
+PASS: PH-004 retiring an already retired slot denied Retired
+PASS: PH-004 retiring the parent after the child leaves the retired child's generation unchanged
+PASS: PH-004 retiring slot 0 denied Forged
+PASS: PH-004 retiring a slot equal to next_slot denied Forged
+PASS: PH-003 a use at the expiry denied Expired
+PASS: PH-003 a use just before the expiry resolves
+PASS: PH-002 bind_session at a stale revision denied StaleRevision
+PASS: PH-003 mint at a stale revision denied StaleRevision
+PASS: PH-003 resolve at a stale revision denied StaleRevision
+PASS: PH-005 delegate at a stale revision denied StaleRevision
+PASS: PH-004 retire at a stale revision denied StaleRevision
+PASS: PH-004 restart at a stale revision denied StaleRevision
+PASS: PH-002 bind_session inheriting from an unbound session denied UnknownSession
+PASS: PH-002 bind_session transferred from an unbound session denied UnknownSession
+PASS: PH-003 mint to an unbound session denied UnknownSession
+PASS: PH-004 a transition on a state that is not valid denied StaleRevision
+PASS: PH-004 valid rejects an entry at a slot not below next_slot
+PASS: PH-004 valid rejects an entry at slot 0
+PASS: PH-003 valid rejects an entry held by an unbound session
+PASS: PH-005 valid rejects a parent link that does not name a lower slot
+PASS: PH-004 valid rejects a session from another incarnation
+PASS: PH-002 valid rejects session id 0
+PASS: PH-004 valid rejects two sessions under one id that holds no entry
+PASS: PH-005 states built by delegation and retirement satisfy valid
+PASS: PH-002 valid rejects an entry whose owner's subject is not its holder's
+PASS: PH-002 valid rejects a root entry whose owner is not exactly its holder's caller
+PASS: PH-005 valid rejects a child whose parent slot holds no entry
+PASS: PH-005 valid rejects a child with rights outside its parent's
+PASS: PH-005 valid rejects a child expiring after its parent
+PASS: PH-005 valid rejects a child with another plan than its parent
+PASS: PH-005 valid rejects a child with another handle than its parent
+PASS: PH-005 valid rejects a child with another owner than its parent
+PASS: PH-004 valid rejects a live child of a retired parent
+PASS: PH-004 order: the host precedes the incarnation
+PASS: PH-004 order: the incarnation precedes forgery
+PASS: PH-004 order: the generation precedes the holder
+PASS: PH-002 order: the origin precedes expiry
+HostIdentity: 92 checks passed

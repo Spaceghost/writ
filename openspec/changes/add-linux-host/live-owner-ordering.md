@@ -22,7 +22,7 @@ new authority is implied by this document.
 | [Mount.dispatch](../../../writfs/Mount.bend) | Owns canary phase, fixed input and digest, one actor, bounded handles, protocol sequence and `MountAuthority.Grant`. ADMIT invokes the fixed Copy commit; read/open consult phase, actor and grant. | It knows no Linux worker session, current Linux process, or common owner with the Linux monitor. The native [policy runner](../../../contrib/native-hosts/runtime/node-policy.mjs) calls it directly today. |
 | [MountAuthority.descriptor](../../../writfs/MountAuthority.bend) | Passes a Frontend state and reference into the same `DataOS.commit_from_capability` invocation, then retains only the accepted session, ledger and write intent in `Grant`. | The Frontend values are validated **inputs**, not returned current authority. They are discarded by this caller; it does not retain a live Frontend state or registry. |
 | [LinuxHost.dispatch](../../../hosts/linux/monitor/LinuxHost.bend) | On synthetic Launch, `P.open_session_result` produces the same-transition ID and state in `Opened`; the adapter retains the framed launch credential against that session and incarnation. A Barrier checks the retained record before `P.admit_worker`. `LINUXMON1` remains diagnostic. | No current native broker, request-correlated session receipt, single canary owner, or link from that ID to actor 1 is implemented. |
-| [HostPrimitives.issue/admit_worker](../../../HostPrimitives.bend) | `issue` binds a root to the supplied monitor Frontend handle's plan, owner, rights and lease. `admit_worker` resolves an input reference on the worker session and checks profile, controls and inventory before `DeliverInputs`. | `issue` does **not** check the supplied handle's closure, current registry, epoch or a later Frontend state. `admit_worker` does not itself revalidate the canary's phase and live capability. Neither is a complete joint release gate. |
+| [HostPrimitives.issue/admit_worker](../../../HostPrimitives.bend) | `issue` binds a root to the supplied monitor Frontend handle's plan, owner, rights and lease, then checks its supplied revision, live registry and paired transfer context. `admit_worker` resolves an input reference on the worker session and checks profile, controls and inventory before `DeliverInputs`. | `issue` trusts those supplied snapshots and does **not** obtain or authenticate their freshness or revalidate a later Frontend state. `admit_worker` does not itself revalidate the canary's phase and live capability. Neither is a complete joint release gate. |
 
 The fixed canary uses `Reference.caller(1)` and its deterministic
 `internal_token(1)` to open an in-process descriptor; its source explicitly
@@ -39,8 +39,9 @@ In particular, keeping the earlier Frontend/ref as a snapshot and later
 passing it to `P.issue` is insufficient: [Mount.revoke](../../../writfs/Mount.bend)
 sets the canary phase and retains the commit record; it does not close a
 retained Frontend handle. The snapshot could therefore still appear to satisfy
-`P.issue` after revocation. `P.issue` is defense in depth on the supplied
-monitor-owned Frontend state, not live authorization; `HostIdentity.mint`
+`P.issue` after revocation. Even when the supplied registry and context are self-consistent, they may also be
+stale. `P.issue` checks those supplied monitor-owned inputs but cannot establish
+their freshness or authenticate their provenance; `HostIdentity.mint`
 and `P.admit_worker` do not repair a stale canary phase or registry or bind
 the supplied Frontend to a later publication state. A subsequent
 `P.admit_worker` can return `DeliverInputs` without learning that the canary

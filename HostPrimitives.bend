@@ -369,6 +369,7 @@ type Error is Data:
   PlanMismatch{}
   OwnerMismatch{}
   LeaseExceeded{}
+  AuthorityUnavailable{}
 
 # The output of every mutating transition. Only `Admitted` carries effects.
 type Step is Data:
@@ -530,6 +531,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case PlanMismatch{} PlanMismatch{}: True{}
     case OwnerMismatch{} OwnerMismatch{}: True{}
     case LeaseExceeded{} LeaseExceeded{}: True{}
+    case AuthorityUnavailable{} AuthorityUnavailable{}: True{}
     case _ _: False{}
 
 # Public accessor: the resulting state; on denial, the supplied state.
@@ -1229,53 +1231,55 @@ def unbound(found: Maybe<&2, F.Handle>, owner: I.SessionLookup, +plan: T.Plan, +
     case None{}:
       Some{PlanMismatch{}}
 
-# Implementation helper: issue's binding step. An entry is issued only with
-# the plan, owner, rights, and lease its Frontend handle carries.
-def m_bind(failed: Maybe<&2, Error>, +state: State, +session: Nat, handle: Nat, plan: T.Plan, rights: U32,
-    expires: Nat) -> Step:
+# Read-only check of the bound caller's whole current Frontend scope and
+# paired transfer plan. It does not authenticate or refresh the supplied
+# monitor-owned registry, context or Frontend state.
+def issue_live_handle(found: Maybe<&2, F.Handle>, context: T.Context) -> Bool:
+  match found:
+    case None{}: False{}
+    case Some{handle}: T.accepted(T.admit(F.handle_plan(handle), context))
+
+def issue_live_session(found: I.SessionLookup, frontend: F.State, frontend_revision: Nat,
+    registry: F.Registry, +context: T.Context, handle: Nat) -> Bool:
+  match found:
+    case I.OneSession{session}:
+      issue_live_handle(F.authorized(frontend, registry, frontend_revision,
+        F.Ref{I.session_caller(session), handle}, F.live(context)), context)
+    case _: False{}
+
+# Read-only extraction used only after a failed binding was observed.
+def issue_binding_reason(failed: Maybe<&2, Error>) -> Error:
   match failed:
-    case None{}:
-      changed(I.mint(identity(state), I.revision(identity(state)), session, handle, plan, rights, expires),
-        state)
-    case Some{reason}:
-      Denied{state, reason}
+    case Some{reason}: reason
+    case None{}: PlanMismatch{}
 
-# Implementation helper: issue's gate.
-def m_gate(ok: Bool, +state: State, +session: Nat, frontend: F.State, +handle: Nat, +plan: T.Plan, +rights: U32,
-    +expires: Nat) -> Step:
-  match ok:
-    case True{}:
-      m_bind(unbound(F.find_handle(F.handles(frontend), handle), I.session_at(I.sessions(identity(state)), session),
-        plan, rights, expires), state, session, handle, plan, rights, expires)
-    case False{}:
-      Denied{state, StaleRevision{}}
-
-# Public entry point, family 1, a monitor action: issue a root reference on
-# `session` for Frontend handle `handle`, which the monitor has already
-# opened after complete admission of `plan`, through `HostIdentity.mint`
-# (the owner is the session's bound caller; only an Authenticated session
-# holds a root). The new entry is bound to the handle field by field: the
-# handle must exist in `frontend` and carry exactly `plan` (compared whole
-# with `T.Plan.equal`; PlanMismatch), its owner (subject and token) must be
-# the session's bound caller (OwnerMismatch), `rights` must be within the
-# handle's rights (RightsNotHeld), and `expires` must not be later than the
-# handle's expiry (LeaseExceeded). So the entry's plan, owner, rights, and
-# lifetime, which every delegated child copies or narrows, are within the
-# handle's. The issue check trusts the monitor's Frontend state;
-# publication re-binds independently. `frontend` must be the monitor's own
-# Frontend state (the record `DataOS.commit_from_capability` later
-# re-resolves the handle in), but it carries no expected revision and is not
-# tied to the state publication later uses, so this check is defense in
-# depth, a host obligation on the monitor that passes it.
-# `HostPublication.publish` step 4 compares the entry's plan with the
-# negotiated session's, and DataOS re-resolves the handle through
-# `Frontend.checked_plan` for the entry's owner (owner, token, live scope,
-# and the request's rights). The handle's authority epoch and closed flag are
-# not checked here; publication checks the live scope. Order: gate; binding (plan, owner, rights, lease); then
-# HostIdentity's own checks (`Identity{reason}`). No effect.
-def issue(+state: State, expected_revision: Nat, +session: Nat, frontend: F.State, handle: Nat, plan: T.Plan,
-    rights: U32, expires: Nat) -> Step:
-  m_gate(current(state, expected_revision), state, session, frontend, handle, plan, rights, expires)
+# Public entry point, family 1: issue one root through HostIdentity.mint.
+# The trusted monitor supplies its current Frontend state and revision, live
+# registry and paired Transfer context from one serialized authority snapshot.
+# Existing host revision, plan, owner, rights, lease and identity denials take
+# precedence. Only then is the whole handle scope checked against that trusted
+# snapshot, and its plan admitted by Transfer. Failure returns the original
+# state and no effect. Mounted and zero/execute-only attenuated rights remain
+# valid; no operation is invented. The owner must also revalidate later uses.
+# The supplied records are trusted inputs, not authenticated issuer state or
+# proof that a snapshot is current. A healthy mint at exhausted Nat slot or
+# revision capacity can still abort; stale authority is checked before mint.
+def issue(+state: State, expected_revision: Nat, +session: Nat, +frontend: F.State,
+    frontend_revision: Nat, +registry: F.Registry, +context: T.Context, +handle: Nat, +plan: T.Plan,
+    +rights: U32, +expires: Nat) -> Step:
+  f = Bool.pick(Unit -> Step, current(state, expected_revision),
+    x => ({+failed => Bool.pick(Unit -> Step, Maybe.is_some(&2, Error, failed),
+      y => Denied{state, issue_binding_reason(failed)},
+      y => ({+identity_error => Bool.pick(Unit -> Step, Maybe.is_some(&2, I.Error, identity_error),
+        z => Denied{state, Identity{I.mint_reason(identity_error)}},
+        z => Bool.pick(Unit -> Step, issue_live_session(I.session_at(I.sessions(identity(state)), session),
+          frontend, frontend_revision, registry, context, handle),
+          w => changed(I.mint(identity(state), I.revision(identity(state)), session, handle, plan, rights, expires), state),
+          w => Denied{state, AuthorityUnavailable{}})(Unit{}))(Unit{}) : Maybe<&2, I.Error> -> Step})(I.mint_preflight(identity(state), I.revision(identity(state)), session)))(Unit{})
+        : Maybe<&2, Error> -> Step})(unbound(F.find_handle(F.handles(frontend), handle),
+          I.session_at(I.sessions(identity(state)), session), plan, rights, expires)),
+    x => Denied{state, StaleRevision{}})
+  f(Unit{})
 
 # Implementation helper: delegate's gate.
 def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rights: U32, +lifetime: Nat,

@@ -1,0 +1,22 @@
+SOME PROOFS FAIL
+Error:
+- expected : Step
+- observed : non-inferrable term
+Context:
+- state             : State
+- expected_revision : Nat
+- session           : Nat
+- frontend          : F.State
+- frontend_revision : Nat
+- registry          : F.Registry
+- context           : T.Context
+- handle            : Nat
+- plan              : T.Plan
+- rights            : U32
+- expires           : Nat
+- x                 : Unit
+Location: issue
+1269 |   f = Bool.pick(Unit -> Step, current(state, expected_revision),
+1270>|     x => (failed => Bool.pick(Unit -> Step, Maybe.is_some(&2, Error, failed),
+     |           ^^^^^^
+1271 |       y => Denied{state, issue_binding_reason(failed)},

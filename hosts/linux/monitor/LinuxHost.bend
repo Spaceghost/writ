@@ -1222,6 +1222,7 @@ def error_name(error: P.Error) -> String:
     case P.PlanMismatch{}: "PlanMismatch"
     case P.OwnerMismatch{}: "OwnerMismatch"
     case P.LeaseExceeded{}: "LeaseExceeded"
+    case P.AuthorityUnavailable{}: "AuthorityUnavailable"
 
 def rejection_name(reason: Rejection) -> String:
   match reason:

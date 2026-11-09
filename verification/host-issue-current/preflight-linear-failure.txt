@@ -1,0 +1,11 @@
+SOME PROOFS FAIL
+Error:
+- expected : expected_revision
+- observed : expected_revision (consumed more than once)
+Context:
+- state : State
+Location: mint
+864 | # The shared preflight is recomputed here; no caller may supply its result.
+865>| def mint(+state: State, expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan,
+    |                         ^^^^^^^^^^^^^^^^^
+866 |     rights: U32, expires: Nat) -> Change:

@@ -90,7 +90,7 @@ def open_on(+state: P.State, +adapter: V.Adapter, fact: P.Fact, role: P.Role) ->
   P.Step.state(P.open_session(state, P.revision(state), V.adapter_report(adapter), fact, role))
 
 def issue_on(+state: P.State, handle: Nat, rights: U32) -> P.State:
-  P.Step.state(P.issue(state, P.revision(state), V.session_client(), V.fixture_frontend_state(), handle, V.plan(), rights,
+  P.Step.state(P.issue(state, P.revision(state), V.session_client(), V.fixture_frontend_state(), V.fixture_frontend(), V.fixture_registry(), V.fixture_transfer(), handle, V.plan(), rights,
     V.root_expires()))
 
 # Adapter A's allocation order: an unrelated entry first.
@@ -302,6 +302,7 @@ def reason_name(error: P.Error) -> String:
     case P.PlanMismatch{}: "PlanMismatch"
     case P.OwnerMismatch{}: "OwnerMismatch"
     case P.LeaseExceeded{}: "LeaseExceeded"
+    case P.AuthorityUnavailable{}: "AuthorityUnavailable"
 
 def slot_label(+adapter: V.Adapter, +slot: Nat) -> String:
   V.logical_label(V.logical_of(adapter, slot))
@@ -680,7 +681,7 @@ def ph005_6_line(+a: V.Adapter) -> String:
 # which carries plan D.
 def mismatched_issue(+a: V.Adapter) -> P.Step:
   +sessions = with_sessions(a)
-  P.issue(sessions, P.revision(sessions), V.session_client(), V.fixture_frontend_state(), V.root_handle(),
+  P.issue(sessions, P.revision(sessions), V.session_client(), V.fixture_frontend_state(), V.fixture_frontend(), V.fixture_registry(), V.fixture_transfer(), V.root_handle(),
     V.destination_plan(), V.root_rights(), V.root_expires())
 
 def ph005_7_ok(+a: V.Adapter) -> Bool:
@@ -692,7 +693,7 @@ def ph005_7_line(+a: V.Adapter) -> String:
 # The client's root issued on Frontend handle `handle` for plan `plan`.
 def issue_root(+a: V.Adapter, +handle: Nat, +plan: T.Plan) -> P.Step:
   +sessions = prefaced(with_sessions(a), V.adapter_prefaced(a))
-  P.issue(sessions, P.revision(sessions), V.session_client(), V.fixture_frontend_state(), handle, plan,
+  P.issue(sessions, P.revision(sessions), V.session_client(), V.fixture_frontend_state(), V.fixture_frontend(), V.fixture_registry(), V.fixture_transfer(), handle, plan,
     V.root_rights(), V.root_expires())
 
 def issue_input(+a: V.Adapter) -> P.Step:
@@ -716,9 +717,9 @@ def ph005_11_line(+a: V.Adapter) -> String:
 
 # The client's root issued on handle 2 for plan D on session `session`, with
 # Frontend state `frontend`, `rights`, and expiry `expires`.
-def issue_bound(+a: V.Adapter, +session: Nat, frontend: F.State, +rights: U32, +expires: Nat) -> P.Step:
+def issue_bound(+a: V.Adapter, +session: Nat, +frontend: F.State, +rights: U32, +expires: Nat) -> P.Step:
   +sessions = prefaced(with_sessions(a), V.adapter_prefaced(a))
-  P.issue(sessions, P.revision(sessions), session, frontend, V.root_handle(), V.plan(), rights, expires)
+  P.issue(sessions, P.revision(sessions), session, frontend, F.revision(frontend), V.fixture_registry(), V.fixture_transfer(), V.root_handle(), V.plan(), rights, expires)
 
 def before_issue(+a: V.Adapter) -> P.State:
   prefaced(with_sessions(a), V.adapter_prefaced(a))

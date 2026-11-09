@@ -1,0 +1,14 @@
+SOME PROOFS FAIL
+Error:
+- expected : context
+- observed : context (consumed more than once)
+Context:
+- session           : I.Session
+- frontend          : F.State
+- frontend_revision : Nat
+- registry          : F.Registry
+Location: issue_live_session
+1242 | def issue_live_session(found: I.SessionLookup, frontend: F.State, frontend_revision: Nat,
+1243>|     registry: F.Registry, context: T.Context, handle: Nat) -> Bool:
+     |                           ^^^^^^^
+1244 |   match found:
