@@ -1,0 +1,65 @@
+import Base
+import ./writ-issue-result/HostIdentity.bend as I
+import ./writ-issue-result/HostPrimitives.bend as P
+import ./writ-issue-result/HostPrimitivesTests.bend as PT
+import ./writ-issue-result/HostWire.bend as W
+import ./writ-issue-result/HostConformanceVectors.bend as V
+import ./writ-issue-result/hosts/linux/monitor/LinuxHost.bend as LH
+import ./writ-issue-result/hosts/linux/monitor/LinuxHostTests.bend as LT
+import ./writ-issue-result/Test.bend as Test
+
+def zero_one(entry: I.Entry, +wanted: Nat) -> I.Entry:
+  match entry:
+    case I.Entry{+slot, generation, holder, owner, handle, plan, rights, expires, parent, live}:
+      I.Entry{slot, generation, holder, owner, handle, plan,
+        Bool.pick(U32, Nat.is_eq(slot, wanted), 0, rights), expires, parent, live}
+
+def zero_entries(entries: I.Entries, +wanted: Nat) -> I.Entries:
+  match entries:
+    case I.NoEntries{}: I.NoEntries{}
+    case I.Entries{entry, rest}: I.Entries{zero_one(entry, wanted), zero_entries(rest, wanted)}
+
+def zero_host(host: P.State, wanted: Nat) -> P.State:
+  match host:
+    case P.State{r, I.State{ir, hid, incarnation, next, sessions, entries}, profiles, bindings, workers,
+        next_worker, seals, publications}:
+      P.State{r, I.State{ir, hid, incarnation, next, sessions, zero_entries(entries, wanted)},
+        profiles, bindings, workers, next_worker, seals, publications}
+
+def zero_linux(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, credentials, clock}:
+      LH.State{zero_host(p, V.slot_of(LT.L(), V.Input{})), credentials, clock}
+
+def delivered(step: P.Step) -> Bool:
+  match step:
+    case P.Admitted{_, [P.DeliverInputs{_, _}]}: True{}
+    case _: False{}
+
+def direct_zero() -> Bool:
+  +host = zero_host(PT.base(), PT.input_slot())
+  P.valid(host) && PT.refused(P.use(host, P.revision(host), PT.session_worker(), PT.input_use(), PT.now()), P.RightsNotHeld{})
+    && delivered(P.admit_worker(host, P.revision(host), PT.full_report(), PT.mediated_inventory(),
+      PT.session_worker(), PT.input_ref(), PT.now()))
+
+def outcome_delivers(effects: +List<P.Effect>) -> Bool:
+  match effects:
+    case [P.DeliverInputs{_, _}]: True{}
+    case _: False{}
+
+def linux_case(+state: LH.State, +operation: U32, +rights: U32, reason: P.Error) -> Bool:
+  +message = {W.Use{LT.input_ref(), operation, rights, W.ClaimedSubject{0}} : W.Message}
+  +host = LH.portable(state)
+  +outcome = LT.frame(state, LH.Barrier{V.session_worker(), LT.full_fact(), W.encode_bytes(message)})
+  W.message_in_bounds(message)
+    && PT.refused(P.use(host, P.revision(host), V.session_worker(), message, LT.now()), reason)
+    && outcome_delivers(LH.Outcome.effects(outcome))
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(direct_zero(), "SYNTHETIC GAP: zero-right worker input denied by P.use but P.admit_worker delivers")
+    Test.check(linux_case(LT.delegated(), W.operation_read(), 4, P.OperationNotPermitted{}),
+      "SYNTHETIC GAP: valid Use read with execute-only requested rights denied by P.use but Barrier delivers")
+    Test.check(linux_case(zero_linux(LT.delegated()), W.operation_execute(), 4, P.RightsNotHeld{}),
+      "SYNTHETIC GAP: zero-right entry denied by P.use but Barrier delivers")
+    IO.print("Three synthetic model gaps reproduced; no native host exercised")

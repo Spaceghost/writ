@@ -120,7 +120,7 @@ def use_on(+state: P.State, +session: Nat, +bytes: +List<U32>) -> P.UseResult:
 
 def admit_on(+state: P.State, +adapter: V.Adapter, +session: Nat, +bytes: +List<U32>) -> P.Step:
   P.admit_worker(state, P.revision(state), V.adapter_report(adapter), V.adapter_inventory(adapter), session,
-    W.Message.ref(decode(bytes)), V.now())
+    decode(bytes), V.now(), V.fixture_authority(V.now()))
 
 def seal_on(+state: P.State) -> P.Step:
   H.seal(state, P.revision(state), V.clean_fact(), V.now())
@@ -756,11 +756,12 @@ def ph005_14_line(+a: V.Adapter) -> String:
   plain_line("PH-005-14", "issue", issue_outliving(a))
 
 # HAND-BUILT (marked): the identity table of `with_sessions` and the
-# adapter's preface after `HostIdentity.mint` issued the client's root for destination E's plan on
-# handle 2 (plan D) directly, bypassing `issue`'s plan binding, as a monitor
-# without that check would have. It is `valid`; the point is the publication
-# check, which must refuse it on its own. Every later step is a real
-# transition (decoded Delegate, admission, seal).
+# adapter's preface after `HostIdentity.mint` issued the client's root for
+# destination E's plan directly, bypassing `issue`'s binding to the ordinary
+# plan-D handle. Admission uses a separate synthetic plan-E descriptor and
+# registry so it remains valid; publication uses the original plan-D session
+# and must independently reject the identity entry's different plan. Every
+# later step is a real transition (decoded Delegate, admission, seal).
 def bypassed_root(+a: V.Adapter) -> P.State:
   +sessions = prefaced(with_sessions(a), V.adapter_prefaced(a))
   +table = P.identity(sessions)
@@ -769,15 +770,27 @@ def bypassed_root(+a: V.Adapter) -> P.State:
 
 def bypassed_sealed(+a: V.Adapter) -> P.State:
   +delegated = P.Step.state(delegate_on(bypassed_root(a), V.session_client(), input_delegation(a)))
-  sealed_from(P.Step.state(admit_on(delegated, a, V.session_worker(), use_of(a, V.Input{}, V.claim_none()))))
+  sealed_from(P.Step.state(P.admit_worker(delegated, P.revision(delegated), V.adapter_report(a),
+    V.adapter_inventory(a), V.session_worker(), decode(use_of(a, V.Input{}, V.claim_none())),
+    V.now(), V.destination_authority())))
 
 def bypassed_publish(+a: V.Adapter) -> H.PublishResult:
   publish_on(bypassed_sealed(a))
 
-# The hand-built table is `valid`, and the bypassed chain really reached a
-# sealed Running worker.
+def resolved_plan(result: I.Resolution, wanted: T.Plan) -> Bool:
+  match result:
+    case I.Resolved{entry, _}: T.Plan.equal(I.entry_plan(entry), wanted)
+    case _: False{}
+
+# The hand-built table is valid, admitted entry is E, publication session is
+# D, and those plans differ; the bypassed chain reaches a sealed worker.
 def bypass_reached(+a: V.Adapter) -> Bool:
-  P.valid(bypassed_root(a)) && PT.phase_of(P.workers(bypassed_sealed(a)), V.worker_id(), P.Running{})
+  +host = bypassed_sealed(a)
+  P.valid(bypassed_root(a)) && resolved_plan(I.resolve(P.identity(host), I.revision(P.identity(host)), V.session_worker(),
+      V.ref_to(a, V.Input{}), V.now()), V.destination_plan())
+    && T.Plan.equal(N.Session.plan(V.fixture_session()), V.plan())
+    && Bool.not(T.Plan.equal(V.destination_plan(), V.plan()))
+    && PT.phase_of(P.workers(host), V.worker_id(), P.Running{})
     && Bool.not(PT.seals_equal(P.seals(bypassed_sealed(a)), P.NoSeals{}))
 
 def ph005_8_ok(+a: V.Adapter) -> Bool:

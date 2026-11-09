@@ -1,0 +1,10 @@
+PASS: PH-admit execute-only delegated entry delivers with original owner snapshot
+PASS: PH-admit read and zero-right inputs cannot authorize execution
+PASS: PH-admit stale closed mounted mismatched and incomplete authority denies
+PASS: PH-admit eleven original denials precede new authority gate
+PASS: LH-admit Barrier forwards request and rejects original synthetic gaps
+PASS: HH-admit rejected shared gate consumes attempt without effects
+PASS: LH-admit direct barrier helpers recompute provenance before report and decode
+PASS: HH-admit direct entry recomputes trusted binding before admission
+PASS: PH-admit stale authority skips terminal worker and revision arithmetic
+HostAdmissionCurrent: 9 checks passed

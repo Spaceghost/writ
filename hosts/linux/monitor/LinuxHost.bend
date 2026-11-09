@@ -115,10 +115,10 @@ import ../../../Transfer.bend as T
 # Imported primitive states have no launch records and fail closed at Barrier.
 # Accepted restart clears the records; denied restart retains them. The endpoint is
 # fixed at Launch (`open_session` records the origin) and ignored at the
-# Barrier. The request snapshot is the only request admission reads: only
-# its reference is used and it must resolve on the barrier's session, so a
-# snapshot that diverges from the worker's own frame admits at most an entry
-# that session already holds. A `Checked`/`Granted` result authorizes no
+# Barrier. The request snapshot is the only request admission reads; its
+# reference must resolve on the barrier's session and its actual operation and
+# rights must authorize execution. A divergent snapshot cannot grant rights
+# beyond that resolved entry; the trusted broker must still copy it faithfully. A `Checked`/`Granted` result authorizes no
 # broker action in section 1; Task 4's resource lookup must act on the
 # monitor's resolution, never on worker bytes. The adapter implements no
 # replay rule: a repeated Launch opens another session, so the broker issues
@@ -129,12 +129,17 @@ import ../../../Transfer.bend as T
 #                              `P.open_session_result` with `worker_role()`
 #   Barrier{s, fact, bytes} -> the launch check, `session_check`, the retained
 #                              credential check, `report_of`, `inventory_of`,
-#                              `W.decode_bytes`; a Use's reference goes to
-#                              `P.admit_worker` on session `s`
+#                              `W.decode_bytes`; the original Use goes to
+#                              `P.admit_worker` on session `s`, with the
+#                              separately supplied trusted authority snapshot
 #   Usage{worker, amount}   -> `P.charge`
 #   Emission{worker, public}-> `P.diagnostic`
 #   FromWorker{s, bytes}    -> `W.decode_bytes`; Use -> `P.use` (read-only),
 #                              Delegate -> `P.delegate` from session `s`
+# The authority snapshot is an owner-side argument to dispatch/serve, never
+# worker bytes. Its registry and Transfer projections need one trusted issuer,
+# subject and sampled time; these subjectless grant lists cannot prove that.
+# Checked/Granted from worker P.use is read-only and authorizes no release.
 # A rejected fact (`Untranslated`), undecodable bytes (`Undecoded`), or a frame
 # with no route in this task (`Unrouted`: a barrier request that is not a Use,
 # and a worker Complete or Release, whose HostPublication transitions are
@@ -607,46 +612,54 @@ def barrier_checks(+fact: LinuxFact, +state: State, +session: Nat) -> Maybe<&2, 
     first_of(session_check(fact, P.identity(portable(state)), session),
       credential_check(fact, credentials(state), current_incarnation(state), session)))
 
-# Implementation helper, the success branch of the preexisting barrier gate.
-# Trusted in-process callers must not supply a forged check result.
-def barrier_with(found: Maybe<&2, Rejection>, message: W.Message, report: P.TargetReport,
-    inventory: P.Fact, +state: State, +session: Nat, +now: Nat) -> Outcome:
+def barrier_reason(found: Maybe<&2, Rejection>) -> Rejection:
   match found:
-    case Some{reason}: Untranslated{state, reason}
-    case None{}:
-      match message:
-        case W.Use{ref, _, _, _}:
-          +p = portable(state)
-          f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
-            x => stepped(state, P.admit_worker(p, P.revision(p), report, inventory, session, ref, now), now),
-            x => clock_fault(state))
-          f(Unit{})
-        case _: Unrouted{state}
+    case Some{reason}: reason
+    case None{}: LaunchMismatch{}
 
-# Recheck provenance even when this helper is called directly.
-def barrier_use(message: W.Message, report: P.TargetReport, inventory: P.Fact, +state: State,
-    +session: Nat, +fact: LinuxFact, +now: Nat) -> Outcome:
-  barrier_with(barrier_checks(fact, state, session), message, report, inventory, state, session, now)
+def barrier_is_use(message: W.Message) -> Bool:
+  match message:
+    case W.Use{_, _, _, _}: True{}
+    case _: False{}
+
+# Recompute provenance here even for direct trusted-helper callers. No
+# caller-supplied preflight result can reach the shared admission entry.
+def barrier_with(+message: W.Message, report: P.TargetReport, inventory: P.Fact, +state: State,
+    +session: Nat, +fact: LinuxFact, +now: Nat, authority: P.AdmissionAuthority) -> Outcome:
+  ({+found => Bool.pick(Unit -> Outcome, Maybe.is_some(&2, Rejection, found),
+    x => Untranslated{state, barrier_reason(found)},
+    x => Bool.pick(Unit -> Outcome, barrier_is_use(message),
+      y => Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        z => stepped(state, P.admit_worker(portable(state), P.revision(portable(state)), report, inventory,
+          session, message, now, authority), now), z => clock_fault(state))(Unit{}),
+      y => Unrouted{state})(Unit{}))(Unit{}) : Maybe<&2, Rejection> -> Outcome})(barrier_checks(fact, state, session))
+
+def barrier_use(message: W.Message, report: P.TargetReport, inventory: P.Fact, state: State,
+    session: Nat, fact: LinuxFact, now: Nat, authority: P.AdmissionAuthority) -> Outcome:
+  barrier_with(message, report, inventory, state, session, fact, now, authority)
 
 def barrier_request(decoded: W.DecodeResult, report: P.TargetReport, inventory: P.Fact, +state: State,
-    +session: Nat, fact: LinuxFact, +now: Nat) -> Outcome:
+    +session: Nat, fact: LinuxFact, +now: Nat, authority: P.AdmissionAuthority) -> Outcome:
   match decoded:
-    case W.Decoded{message}: barrier_use(message, report, inventory, state, session, fact, now)
+    case W.Decoded{message}: barrier_use(message, report, inventory, state, session, fact, now, authority)
     case W.Malformed{reason}: Undecoded{state, reason}
 
 def barrier_report(report: ReportResult, inventory: P.Fact, +state: State, +session: Nat,
-    fact: LinuxFact, decoded: W.DecodeResult, +now: Nat) -> Outcome:
+    fact: LinuxFact, decoded: W.DecodeResult, +now: Nat, authority: P.AdmissionAuthority) -> Outcome:
   match report:
-    case Report{target}: barrier_request(decoded, target, inventory, state, session, fact, now)
+    case Report{target}: barrier_request(decoded, target, inventory, state, session, fact, now, authority)
     case NoReport{reason}: Untranslated{state, reason}
 
-def barrier_preflight(found: Maybe<&2, Rejection>, report: ReportResult, inventory: P.Fact, +state: State,
-    +session: Nat, fact: LinuxFact, decoded: W.DecodeResult, +now: Nat) -> Outcome:
-  match found:
-    case None{}: barrier_report(report, inventory, state, session, fact, decoded, now)
-    case Some{reason}: Untranslated{state, reason}
+# Preserve provenance denial before report or request decoding; rechecked at
+# the final shared admission call as well.
+def barrier_preflight(report: ReportResult, inventory: P.Fact, +state: State,
+    +session: Nat, +fact: LinuxFact, decoded: W.DecodeResult, +now: Nat, authority: P.AdmissionAuthority) -> Outcome:
+  ({+found => Bool.pick(Unit -> Outcome, Maybe.is_some(&2, Rejection, found),
+    x => Untranslated{state, barrier_reason(found)},
+    x => barrier_report(report, inventory, state, session, fact, decoded, now, authority))(Unit{})
+    : Maybe<&2, Rejection> -> Outcome})(barrier_checks(fact, state, session))
 
-def on_broker(+state: State, frame: BrokerFrame, +now: Nat) -> Outcome:
+def on_broker(+state: State, frame: BrokerFrame, +now: Nat, authority: P.AdmissionAuthority) -> Outcome:
   match frame:
     case Launch{+fact}:
       match fact:
@@ -657,8 +670,8 @@ def on_broker(+state: State, frame: BrokerFrame, +now: Nat) -> Outcome:
           f(Unit{})
     case Barrier{+session, +fact, request}:
       f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
-        x => barrier_preflight(barrier_checks(fact, state, session), report_of(fact), inventory_of(fact), state,
-          session, fact, W.decode_bytes(request), now), x => clock_fault(state))
+        x => barrier_preflight(report_of(fact), inventory_of(fact), state,
+          session, fact, W.decode_bytes(request), now, authority), x => clock_fault(state))
       f(Unit{})
     case Usage{worker, amount}:
       +p = portable(state)
@@ -699,11 +712,11 @@ def on_worker(+state: State, +session: Nat, decoded: W.DecodeResult, +now: Nat) 
 # Trusted implementation helper, not a broker/native entry. Equality with a
 # retained high-water mark does not prove this is a fresh physical sample;
 # the private owner must call `dispatch` or `serve` with an actual new sample.
-def route_sampled(+state: State, input: Input, +now: Nat) -> Outcome:
+def route_sampled(+state: State, input: Input, +now: Nat, authority: P.AdmissionAuthority) -> Outcome:
   match input:
     case FromBroker{frame}:
       f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
-        x => on_broker(state, frame, now), x => clock_fault(state))
+        x => on_broker(state, frame, now, authority), x => clock_fault(state))
       f(Unit{})
     case FromWorker{+session, bytes}:
       f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
@@ -712,13 +725,13 @@ def route_sampled(+state: State, input: Input, +now: Nat) -> Outcome:
 
 # The sample is supplied by the trusted owner, not by `Input`. A malformed or
 # denied request still retains the sampled clock independently of policy.
-def dispatch(state: State, input: Input, sample: ClockSample) -> Outcome:
+def dispatch(state: State, input: Input, sample: ClockSample, authority: P.AdmissionAuthority) -> Outcome:
   match state sample:
     case State{p, records, old} Sample{+now}:
       +updated = clock_update(old, Sample{now})
       +next = {State{p, records, updated} : State}
       f = Bool.pick(Unit -> Outcome, clock_current(updated, now),
-        x => route_sampled(next, input, now), x => clock_fault(next))
+        x => route_sampled(next, input, now, authority), x => clock_fault(next))
       f(Unit{})
     case State{p, records, old} _:
       ClockFault{State{p, records, clock_poison(old)}}
@@ -1134,23 +1147,23 @@ def decode_bounded(within: Bool, +bytes: +List<U32>) -> FrameResult:
 def decode_frame(+bytes: +List<U32>) -> FrameResult:
   decode_bounded(frame_within(max_frame_bytes(), bytes), bytes)
 
-def served_of(result: FrameResult, +state: State, +now: Nat) -> Served:
+def served_of(result: FrameResult, +state: State, +now: Nat, authority: P.AdmissionAuthority) -> Served:
   match result:
     case Framed{input}:
-      Served{route_sampled(state, input, now)}
+      Served{route_sampled(state, input, now, authority)}
     case Unframed{reason}:
       f = Bool.pick(Unit -> Served, clock_current(clock(state), now),
         x => NotFramed{state, reason}, x => Served{clock_fault(state)})
       f(Unit{})
 
 # Sample before decoding; malformed input cannot suppress a clock observation.
-def serve(state: State, bytes: +List<U32>, sample: ClockSample) -> Served:
+def serve(state: State, bytes: +List<U32>, sample: ClockSample, authority: P.AdmissionAuthority) -> Served:
   match state sample:
     case State{p, records, old} Sample{+now}:
       +updated = clock_update(old, Sample{now})
       +next = {State{p, records, updated} : State}
       f = Bool.pick(Unit -> Served, clock_current(updated, now),
-        x => served_of(decode_frame(bytes), next, now), x => Served{clock_fault(next)})
+        x => served_of(decode_frame(bytes), next, now, authority), x => Served{clock_fault(next)})
       f(Unit{})
     case State{p, records, old} _:
       Served{ClockFault{State{p, records, clock_poison(old)}}}

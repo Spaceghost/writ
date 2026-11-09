@@ -1,0 +1,81 @@
+PASS: PH-012 the two adapters differ in host, incarnation, slot allocation, and target report
+PASS: PH-012 every vector's raw bytes decode through HostWire.decode_bytes on both adapters
+PASS: PH-005 the destination-E and changed-input sessions are Running at the baseline revisions with another plan
+PASS: PH-009-1 the baseline delegated input publishes once through DataOS.commit_from_capability on both adapters
+VECTOR PH-009-1 publish accepted invocation=99;input=input
+PASS: PH-005-1 the delegated input used on a session negotiated for destination E is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-1 publish denied PlanMismatch
+PASS: PH-005-2 a session negotiated for a changed input object is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-2 publish denied PlanMismatch
+PASS: PH-005-3 a decoded Delegate narrows the root to the proxy session
+VECTOR PH-005-3 delegate accepted slot=proxy
+PASS: PH-005-4 the proxy delegates a narrower entry to the worker and the delegation copies the parent's plan unchanged
+VECTOR PH-005-4 delegate accepted slot=narrow
+PASS: PH-005-5 the narrower delegated use of the same plan publishes the same full intent as the baseline
+VECTOR PH-005-5 publish accepted invocation=99;input=narrow
+PASS: PH-005-6 after the narrower proxy the broader root still resolves live with all its rights
+VECTOR PH-005-6 use accepted slot=root
+PASS: PH-005-7 a root issued for destination E's plan on a plan-D Frontend handle is denied PlanMismatch with the state unchanged
+VECTOR PH-005-7 issue denied PlanMismatch
+PASS: PH-005-8 a sealed worker on an entry minted for plan E publishing plan D is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-8 publish denied PlanMismatch
+PASS: PH-005-9 a delegated child cannot publish a plan other than its parent's: denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-9 publish denied PlanMismatch
+PASS: PH-005-10 a root issued for a plan with a changed input object on handle 2 is denied PlanMismatch with the state unchanged
+VECTOR PH-005-10 issue denied PlanMismatch
+PASS: PH-005-11 a root issued on a Frontend handle the monitor's Frontend state does not hold is denied PlanMismatch with the state unchanged
+VECTOR PH-005-11 issue denied PlanMismatch
+PASS: PH-005-12 a root issued on a session whose caller does not own the Frontend handle is denied OwnerMismatch with the state unchanged
+VECTOR PH-005-12 issue denied OwnerMismatch
+PASS: PH-005-13 a root issued with rights wider than the Frontend handle's is denied RightsNotHeld with the state unchanged
+VECTOR PH-005-13 issue denied RightsNotHeld
+PASS: PH-005-14 a root expiring after the Frontend handle is denied LeaseExceeded with the state unchanged
+VECTOR PH-005-14 issue denied LeaseExceeded
+PASS: PH-009 the accepted intent retains the source labels and origins (BackplaneTests.retained) on both adapters
+PASS: PH-005 the delegated path's intent label and full origin records equal the root path's
+PASS: PH-005 delegation copies the parent's plan unchanged
+PASS: PH-002-1 a Use claiming subject B on the worker session resolves to the owner's caller
+VECTOR PH-002-1 use accepted slot=input
+PASS: PH-002-2 the same Use with no claim resolves to the same entry and caller
+VECTOR PH-002-2 use accepted slot=input
+PASS: PH-002-3 admission on the claiming Use publishes the same full intent as with no claim
+VECTOR PH-002-3 publish accepted invocation=99;input=input
+PASS: PH-002-4 a transferred endpoint with no delegation edge is denied TransferredEndpoint with the state unchanged
+VECTOR PH-002-4 admit_worker denied Identity.TransferredEndpoint
+PASS: PH-002-5 an inherited endpoint is denied InheritedEndpoint with the state unchanged
+VECTOR PH-002-5 admit_worker denied Identity.InheritedEndpoint
+PASS: PH-003-1 a slot guessed from another session is denied NotHolder with the state unchanged
+VECTOR PH-003-1 admit_worker denied Identity.NotHolder
+PASS: PH-003-2 a reference naming the other adapter's host is denied ForeignHost with the state unchanged
+VECTOR PH-003-2 admit_worker denied Identity.ForeignHost
+PASS: PH-003-3 a proxy session with the client's subject and token presenting the client's root is denied NotHolder with the state unchanged
+VECTOR PH-003-3 admit_worker denied Identity.NotHolder
+PASS: PH-010-1 revoking the resolved input before authorization stops its worker
+VECTOR PH-010-1 revoke accepted slot=input;stopped=input
+PASS: PH-009-2 a publication after the revocation is denied Identity Retired with the state, session, and ledger unchanged
+VECTOR PH-009-2 publish denied Identity.Retired
+PASS: PH-010-2 revoking the root after publication stops the worker and keeps the publication record
+VECTOR PH-010-2 revoke accepted slot=root;stopped=input
+PASS: PH-010-3 after revocation reconcile returns the same invocation and digest
+VECTOR PH-010-3 reconcile accepted invocation=99
+PASS: PH-010-4 the revoked worker is quiesced at the retired generation
+VECTOR PH-010-4 quiesce accepted slot=input
+PASS: PH-010-5 the quiesced worker is reclaimed
+VECTOR PH-010-5 reclaim accepted slot=input
+PASS: PH-010-6 a stale completion after teardown is denied Identity Retired with the state unchanged
+VECTOR PH-010-6 complete denied Identity.Retired
+PASS: PH-009-3 a second publication is denied Replay with the state, session, and ledger unchanged
+VECTOR PH-009-3 publish denied Replay
+PASS: PH-004-1 restart moves to the next incarnation and stops the running worker
+VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
+PASS: PH-004-2 after restart the reissued root has the old slot and generation in the next incarnation
+VECTOR PH-004-2 use accepted slot=root
+PASS: PH-004-3 the prior-incarnation reference to that slot is denied StaleIncarnation with the state unchanged
+VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
+PASS: PH-009-4 reconcile with a substituted digest is denied Substitution with the state unchanged
+VECTOR PH-009-4 reconcile denied Substitution
+PASS: PH-009-5 recovery from a log naming another destination than the recorded publication is denied Substitution with the state unchanged
+VECTOR PH-009-5 reconcile denied Substitution
+PASS: PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector
+VECTOR PH-012-1 compare accepted vectors=36
+HostConformance: 43 checks passed, 37 vectors emitted

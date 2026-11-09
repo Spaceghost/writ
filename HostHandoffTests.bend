@@ -103,8 +103,8 @@ def moved(step: H.Step, phase: H.Phase, revision: Nat) -> Bool:
     case _: False{}
 
 def attempt(state: H.State, expected: Nat, fact: H.Evidence, core: P.State,
-  core_revision: Nat, inventory: P.Fact, now: Nat) -> H.Step:
-  H.admit(state, expected, fact, core, core_revision, PT.full_report(), inventory, now)
+  core_revision: Nat, inventory: P.Fact, +now: Nat) -> H.Step:
+  H.admit(state, expected, fact, core, core_revision, PT.full_report(), inventory, now, PT.base_authority(now))
 
 def success(step: H.Step) -> Bool:
   match step:
@@ -169,7 +169,7 @@ def main() -> IO(Unit):
       "HH-006 copied old handoff revision denied against current state")
     Test.check(denied(H.admit(H.step_state(attempt(ready(), 2n, evidence(2n), PT.base(), 0n,
       PT.mediated_inventory(), PT.now())), 3n, evidence(3n), PT.admitted(), P.revision(PT.admitted()),
-      PT.full_report(), PT.mediated_inventory(), PT.now()),
+      PT.full_report(), PT.mediated_inventory(), PT.now(), PT.base_authority(PT.now())),
       H.step_state(attempt(ready(), 2n, evidence(2n), PT.base(), 0n, PT.mediated_inventory(), PT.now())), H.WrongPhase{}),
       "HH-006 duplicate admission with current monitor state denied")
     Test.check(core_denied(attempt(ready(), 2n, evidence(2n), PT.admitted(), P.revision(PT.admitted()),
@@ -193,7 +193,7 @@ def main() -> IO(Unit):
       H.step_state(H.retire(observed(), 1n)), H.WrongPhase{}),
       "HH-007 trusted adapter retires connection after stale protocol failure")
     Test.check(core_denied(H.admit(ready(), 2n, evidence(2n), PT.base(), 0n,
-      PT.missing_report(P.control_no_ambient_network()), PT.mediated_inventory(), PT.now()),
+      PT.missing_report(P.control_no_ambient_network()), PT.mediated_inventory(), PT.now(), PT.base_authority(PT.now())),
       3n, PT.base(), P.MissingControl{}), "HH-004 existing gate rejects missing control")
     Test.check(denied(H.observe(H.step_state(H.observe(observed(), 1n, evidence(1n), True{})), 2n,
       evidence(2n), True{}), H.step_state(H.observe(observed(), 1n, evidence(1n), True{})), H.WrongPhase{}),

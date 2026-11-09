@@ -524,6 +524,10 @@ def fixture_registry() -> F.Registry:
 def fixture_transfer() -> T.Context:
   TF.context()
 
+# Trusted synthetic snapshot for admission at the supplied test time.
+def fixture_authority(now: Nat) -> P.AdmissionAuthority:
+  P.AdmissionAuthority{fixture_frontend_state(), fixture_frontend(), fixture_registry(), TF.with_now(TF.context(), now)}
+
 def invocation() -> Nat:
   T.Plan.invocation(plan())
 
@@ -569,6 +573,16 @@ def destination_transfer() -> T.Context:
     T.WriteCons{T.WriteGrant{other_destination(), T.WriteDomain{6n}, s}, T.WriteEnd{}},
     T.PayCons{T.PaymentWitness{1n, TF.source_object(), invocation(), TF.code(), T.Summarize{}, other_destination(),
       42n, 200n}, T.PayEnd{}}}
+
+# Synthetic plan-E authority only for the independent publication mismatch
+# vector. Admission now revalidates this current descriptor before delivery.
+def destination_authority() -> P.AdmissionAuthority:
+  +plan = destination_plan()
+  +front = {F.State{2n, 3n, F.Handles{F.Handle{root_handle(), F.Descriptor{}, subject(), FF.token(),
+    plan, root_rights(), 3n, root_expires(), False{}}, F.NoHandles{}}} : F.State}
+  +reg = {F.Registered{F.Capability{FF.token(), subject(), plan, root_rights(), 3n, root_expires()},
+    F.EmptyRegistry{}} : F.Registry}
+  P.AdmissionAuthority{front, F.revision(front), reg, destination_transfer()}
 
 def other_origin() -> T.OriginRule:
   T.OriginRule{other_source(), T.Bits64{1, 0}, T.Bits64{2, 0}, 7, T.CCons{TF.code(), T.CEnd{}}, T.Charge{42n, 4}}

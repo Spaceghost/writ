@@ -1,5 +1,9 @@
 # Verification record
 
+The [host admission current-scope record](verification/host-admit-current/README.md)
+covers execute/right and descriptor checks at synthetic input delivery; it does
+not establish trusted native authority or a live FUSE/issuer bridge.
+
 The [host issue result record](verification/host-issue-result/README.md) covers
 the exact same-transition model slot and legacy Step projection; it does not
 authenticate a native session or establish a live authority bridge.

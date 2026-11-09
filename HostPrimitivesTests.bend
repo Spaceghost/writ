@@ -423,8 +423,23 @@ def base_under(+profile: Nat) -> P.State:
 def base() -> P.State:
   base_under(accel_id())
 
+# Synthetic complete snapshot for the legacy host-identity fixture's handle
+# 61; these records do not authenticate an issuer or native worker.
+def base_frontend() -> F.State:
+  F.State{0n, 62n, F.Handles{F.Handle{handle_client(), F.Descriptor{}, subject_client(), TF.code(),
+    TF.plan(), root_rights(), 3n, root_expires(), False{}}, F.NoHandles{}}}
+
+def base_registry() -> F.Registry:
+  F.Registered{F.Capability{TF.code(), subject_client(), TF.plan(), root_rights(), 3n, root_expires()}, F.EmptyRegistry{}}
+
+def base_authority(now: Nat) -> P.AdmissionAuthority:
+  P.AdmissionAuthority{base_frontend(), F.revision(base_frontend()), base_registry(), TF.with_now(TF.context(), now)}
+
+def execute_request(ref: W.Ref) -> W.Message:
+  W.Use{ref, W.operation_execute(), input_rights(), W.ClaimedSubject{0}}
+
 def admit_on(+state: P.State, +report: P.TargetReport, +inventory: P.Fact) -> P.Step:
-  P.admit_worker(state, P.revision(state), report, inventory, session_worker(), input_ref(), now())
+  P.admit_worker(state, P.revision(state), report, inventory, session_worker(), execute_request(input_ref()), now(), base_authority(now()))
 
 # An admission on the worker session bound under `profile`.
 def admit(+profile: Nat, +report: P.TargetReport, +inventory: P.Fact) -> P.Step:
@@ -877,13 +892,13 @@ def accelerator_checks() -> IO(Unit):
 def identity_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), full_report(),
-      mediated_inventory(), session_worker(), root_ref(), now()), base(), I.NotHolder{}),
+      mediated_inventory(), session_worker(), execute_request(root_ref()), now(), base_authority(now())), base(), I.NotHolder{}),
       "PH-006 an admission presenting an input reference the worker session does not hold denied Identity NotHolder")
     Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), full_report(),
-      mediated_inventory(), session_client(), input_ref(), now()), base(), I.NotHolder{}),
+      mediated_inventory(), session_client(), execute_request(input_ref()), now(), base_authority(now())), base(), I.NotHolder{}),
       "PH-006 an admission presenting the worker's input reference on the client session denied Identity NotHolder")
     Test.check(denied(P.admit_worker(base(), P.revision(base()), full_report(),
-      mediated_inventory(), session_client(), root_ref(), now()), base(), P.DelegableSession{}),
+      mediated_inventory(), session_client(), execute_request(root_ref()), now(), base_authority(now())), base(), P.DelegableSession{}),
       "PH-007 an admission on a delegable session denied DelegableSession with no effect")
     Test.check(identity_rejected(I.delegate(P.identity(admitted()), I.revision(P.identity(admitted())), session_worker(),
       input_ref(), session_client(), input_rights(), input_lifetime(), now()), I.NotDelegable{}),
@@ -1021,7 +1036,7 @@ def revision_checks() -> IO(Unit):
     Test.check(refused(P.use(base(), 1n+P.revision(base()), session_client(), claiming_use(), now()), P.StaleRevision{}),
       "PH-001 use at a stale revision denied StaleRevision")
     Test.check(denied(P.admit_worker(base(), 1n+P.revision(base()), full_report(),
-      mediated_inventory(), session_worker(), input_ref(), now()), base(), P.StaleRevision{}),
+      mediated_inventory(), session_worker(), execute_request(input_ref()), now(), base_authority(now())), base(), P.StaleRevision{}),
       "PH-006 admit_worker at a stale revision denied StaleRevision")
     Test.check(denied(P.charge(admitted(), 1n+P.revision(admitted()), P.ResourceRequest{worker_id(), first_charge()}, now()), admitted(), P.StaleRevision{}),
       "PH-007 charge at a stale revision denied StaleRevision")
@@ -1070,20 +1085,20 @@ def gate_checks() -> IO(Unit):
 def order_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(denied_identity(P.admit_worker(unbound(), P.revision(unbound()), full_report(),
-      mediated_inventory(), session_worker(), root_ref(), now()), unbound(), I.NotHolder{}),
+      mediated_inventory(), session_worker(), execute_request(root_ref()), now(), base_authority(now())), unbound(), I.NotHolder{}),
       "PH-001 order: the input reference precedes the bound profile")
     Test.check(denied_identity(P.admit_worker(base_under(no_worker_id()), P.revision(base_under(no_worker_id())), full_report(),
-      mediated_inventory(), session_worker(), root_ref(), now()), base_under(no_worker_id()), I.NotHolder{}),
+      mediated_inventory(), session_worker(), execute_request(root_ref()), now(), base_authority(now())), base_under(no_worker_id()), I.NotHolder{}),
       "PH-006 order: the input reference precedes the protected-profile check")
     Test.check(denied(admit_on(occupied_unprotected(), full_report(), mediated_inventory()), occupied_unprotected(), P.MissingControl{}),
       "PH-006 order: the protected-profile check precedes the occupied slot")
     Test.check(denied(P.admit_worker(root_occupied(), P.revision(root_occupied()), full_report(),
-      mediated_inventory(), session_client(), root_ref(), now()), root_occupied(), P.DelegableSession{}),
+      mediated_inventory(), session_client(), execute_request(root_ref()), now(), base_authority(now())), root_occupied(), P.DelegableSession{}),
       "PH-007 order: the delegable session precedes the occupied slot")
     Test.check(denied(admit_on(admitted(), full_report(), P.NativeWriteOffered{worker_id()}), admitted(), P.SlotOccupied{}),
       "PH-006 order: the occupied slot precedes the inventory fact")
     Test.check(denied_identity(P.admit_worker(base(), P.revision(base()), full_report(),
-      P.NativeWriteOffered{worker_id()}, session_worker(), root_ref(), now()), base(), I.NotHolder{}),
+      P.NativeWriteOffered{worker_id()}, session_worker(), execute_request(root_ref()), now(), base_authority(now())), base(), I.NotHolder{}),
       "PH-006 order: the input reference precedes the inventory fact")
     Test.check(denied(admit(accel_id(), no_publication_report(), P.NativeWriteOffered{worker_id()}), base_under(accel_id()), P.WrongPhase{}),
       "PH-006 order: the inventory fact precedes the families")
@@ -1206,6 +1221,11 @@ def pub_opened() -> P.State:
 def pub_frontend() -> F.State:
   FF.descriptor(pub_subject(), root_rights())
 
+def pub_authority(now: Nat) -> P.AdmissionAuthority:
+  P.AdmissionAuthority{pub_frontend(), F.revision(pub_frontend()), FF.registry(pub_subject(), root_rights()),
+    TF.with_now(TF.context(), now)}
+
+
 # A plan naming another destination (object 21) than the handle's plan.
 def other_plan() -> T.Plan:
   TF.plan_destination(TF.plan(), T.ObjectVersion{21n, 8n})
@@ -1255,7 +1275,7 @@ def pub_delegated() -> P.State:
 
 def pub_admitted() -> P.State:
   P.Step.state(P.admit_worker(pub_delegated(), P.revision(pub_delegated()), full_report(), mediated_inventory(),
-    session_worker(), input_ref(), pub_now()))
+    session_worker(), execute_request(input_ref()), pub_now(), pub_authority(pub_now())))
 
 def fact_of(+worker: Nat, +object: Nat, +version: Nat, +digest: T.CodeId, +cpu: Nat, +mappings: Nat,
     +devices: Nat) -> H.ArtifactFact:

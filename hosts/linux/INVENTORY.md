@@ -24,6 +24,7 @@ Shared transitions in `HostIdentity.bend`, `HostPrimitives.bend`, and
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
 | `hosts/linux/monitor/LinuxSessionOpenTests.bend` | Synthetic typed-open, denial, routing and legacy wire compatibility checks | `Tests.bend` as `LinuxSessionOpen` |
 | `hosts/linux/monitor/LinuxCredentialBindingTests.bend` | Synthetic binding, restart, monitor-action revocation, denial and long-list controls | `Tests.bend` as `LinuxCredentialBinding` |
+| `HostAdmissionCurrentTests.bend` | Shared synthetic admission and Linux/HostHandoff direct-guard checks | `Tests.bend` as `HostAdmissionCurrent` |
 | `hosts/linux/monitor/LinuxClockTests.bend` | Synthetic trusted-sample watermark, poison, cleanup and guarded-branch checks | `Tests.bend` as `LinuxClock` |
 
 No C, JavaScript, or other native file is in `hosts/linux/`. This tree does
@@ -63,6 +64,20 @@ being restored. This is an in-memory consistency check, not the local authority
 owner, issuer/FUSE gate, native clock, durability or host qualification. The
 off-master WIP broker harness passed a request sequence as its old bare `now`;
 it is incompatible with this typed input and must not be treated as a clock.
+
+The monitor admission API now takes an additional trusted owner-side
+`AdmissionAuthority` snapshot; it is not encoded in worker or broker frames.
+Barrier passes the original decoded Use, and the shared gate requires execute
+right 4, a current matching descriptor and paired Transfer context at the
+sampled time. It retains the original admission denial order and no-effects
+failure behavior. Those public records and subjectless read/write grants do not
+prove one current issuer or subject; a real owner must establish and serialize
+that provenance. LinuxHost's read-only Checked/Granted result still does not
+perform this live admission check and must never be treated as a release permit.
+No current native consumer, host clock, FUSE gate or full bridge is established.
+The additional registry, Frontend and Transfer traversals have no new explicit
+size cap; real owners must bound snapshot processing without silently dropping
+records, and no unlimited-resource claim is made.
 
 ## Authority
 

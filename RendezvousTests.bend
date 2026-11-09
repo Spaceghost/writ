@@ -3605,7 +3605,8 @@ def sc_input() -> W.Ref:
 
 def sc_admit(+w: Sc) -> HP.Step:
   +issued = HP.Step.state(sc_issue(w))
-  HP.admit_worker(issued, HP.revision(issued), HPT.full_report(), HPT.mediated_inventory(), worker_a(), sc_input(), 110n)
+  HP.admit_worker(issued, HP.revision(issued), HPT.full_report(), HPT.mediated_inventory(), worker_a(), HPT.execute_request(sc_input()), 110n,
+    HP.AdmissionAuthority{sc_descriptor(sc_registry(w)), 2n, sc_registry(w), sc_provider_transfer(sc_issuer(w))})
 
 # The admission delivered exactly the input `input` to one worker.
 def sc_delivers(+step: HP.Step, input: W.Ref) -> Bool:
@@ -3757,12 +3758,47 @@ def sc_issue_after_revoke(+w: Sc) -> Bool:
     && HPT.denied(sc_issue_projection(front, fresh_registry, cached_context), host(), HP.AuthorityUnavailable{})
     && sc_accepted(sc_issue_projection(front, cached_registry, cached_context))
 
+# Use the very same pre-revocation descriptor and exact slot returned by the
+# accepted issue transition. These issuer projections are synthetic facts.
+def sc_admit_projection(+issued: HP.State, +front: F.State, registry: F.Registry, context: T.Context,
+    slot: Nat) -> HP.Step:
+  +ref = {W.Ref{U32.from_nat(host_id()), U32.from_nat(host_incarnation()), U32.from_nat(slot),
+    U32.from_nat(HI.first_generation())} : W.Ref}
+  HP.admit_worker(issued, HP.revision(issued), HPT.full_report(), HPT.mediated_inventory(), worker_a(),
+    HPT.execute_request(ref), 110n, HP.AdmissionAuthority{front, F.revision(front), registry, context})
+
+def sc_admit_revoked_result(result: HP.IssueResult, +front: F.State, +cached_registry: F.Registry,
+    +cached_context: T.Context, +fresh_registry: F.Registry, +fresh_context: T.Context) -> Bool:
+  match result:
+    case HP.IssueDenied{_, _}: False{}
+    case HP.Issued{+issued, +slot}:
+      +cached = sc_admit_projection(issued, front, cached_registry, cached_context, slot)
+      Nat.is_eq(slot, 1n)
+        && HPT.denied(sc_admit_projection(issued, front, fresh_registry, fresh_context, slot), issued, HP.AuthorityUnavailable{})
+        && HPT.denied(sc_admit_projection(issued, front, cached_registry, fresh_context, slot), issued, HP.AuthorityUnavailable{})
+        && HPT.denied(sc_admit_projection(issued, front, fresh_registry, cached_context, slot), issued, HP.AuthorityUnavailable{})
+        && sc_delivers(cached, sc_input()) && Nat.is_eq(HP.revision(HP.Step.state(cached)), 1n+HP.revision(issued))
+
+def sc_admit_after_revoke(+w: Sc) -> Bool:
+  +issuer = sc_issuer(w)
+  +cached_registry = sc_registry(w)
+  +cached_context = sc_provider_transfer(issuer)
+  +front = sc_descriptor(cached_registry)
+  +revoked = I.revoke(issuer, I.revision(issuer), IT.source_authority(), 5n)
+  +fresh_issuer = I.Change.state(revoked)
+  +fresh_registry = R.provider_registry(sc_dispatched(w), sc_snap(fresh_issuer, 110n))
+  +fresh_context = sc_provider_transfer(fresh_issuer)
+  I.Change.accepted(revoked) && sc_admit_revoked_result(
+    HP.issue_result(host(), HP.revision(host()), worker_a(), front, F.revision(front), cached_registry,
+      cached_context, 2n, sc_plan(), 4, 120n), front, cached_registry, cached_context, fresh_registry, fresh_context)
+
 def scenario_revocation() -> IO(Unit):
   do IO<Unit>:
     Test.check(scenario_revocation_0(sc_world()), "scenario revocation before selection: once 104 withdraws its approval of A for object 11, A's cheaper offer is ineligible MissingApproval, B is selected as selection 5, and dispatching A's offer to A's worker session 6 is denied NotSelected")
     Test.check(scenario_revocation_1(sc_world()), "scenario revocation between selection and dispatch: after A's session reaches Reserved and Running, 101 revokes approval 5 behind grant 8; dispatch is denied Revoked, the rebuilt projection carries no approvals so N.start is rejected on it, and provider_registry is empty")
     Test.check(scenario_revocation_2(sc_world()), "scenario revocation between dispatch and commit: once 101 revokes approval 5 after selection 5 is dispatched, Backplane.commit on the rebuilt projection rejects and spends no reservation, provider_registry is empty, and HostPrimitives.issue finds no handle to bind the worker's input to")
     Test.check(sc_issue_after_revoke(sc_world()), "scenario issue after issuer revoke: retained descriptor denies with fresh or mixed projections, cached projections remain stale")
+    Test.check(sc_admit_after_revoke(sc_world()), "scenario admission after issuer revoke: exact issued slot and retained descriptor deny fresh or mixed projections, cached projections remain stale")
 
 # --- Scenarios: replay ---------------------------------------------------------
 

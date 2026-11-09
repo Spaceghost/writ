@@ -1,0 +1,17 @@
+import Base
+import ./writ-admit-current/HostAdmissionCurrentTests.bend as A
+import ./writ-admit-current/HostPrimitives.bend as P
+import ./writ-admit-current/HostPrimitivesTests.bend as PT
+import ./writ-admit-current/HostWire.bend as W
+
+def run(maximum: Maybe<&2, Nat>) -> IO(Unit):
+  match maximum:
+    case None{}: IO.print("INVALID TRAP FIXTURE")
+    case Some{max}:
+      +host = A.terminal_worker(PT.base(), max)
+      result = P.admit_worker(host, P.revision(host), PT.full_report(), PT.mediated_inventory(),
+        PT.session_worker(), A.request(W.operation_execute(), 4), PT.now(), A.authority())
+      IO.print(Nat.show(P.revision(P.Step.state(result))))
+
+def main() -> IO(Unit):
+  run(Nat.read("281474976710655"))

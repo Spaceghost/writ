@@ -1,0 +1,1 @@
+Full Bend-to-C generation exceeded the 600 second wall timeout and exited 124 with no diagnostic output; 16 GiB address-space and 600 CPU-second limits, nice 15. No C file was emitted. Retried with an 1800 second wall timeout and the same CPU and memory limits.

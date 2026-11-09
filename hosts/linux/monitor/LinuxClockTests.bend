@@ -31,8 +31,13 @@ def fault(+result: LH.Outcome, +before: LH.State, high: Nat) -> Bool:
         && PT.effects_equal(LH.Outcome.effects(result), [])
     case _: False{}
 
-def use(+state: LH.State, sample: LH.ClockSample) -> LH.Outcome:
-  LH.dispatch(state, LH.FromWorker{V.session_worker(), LT.input_use(V.claim_none())}, sample)
+def sample_authority(sample: LH.ClockSample) -> P.AdmissionAuthority:
+  match sample:
+    case LH.Sample{now}: V.fixture_authority(now)
+    case _: V.fixture_authority(100n)
+
+def use(+state: LH.State, +sample: LH.ClockSample) -> LH.Outcome:
+  LH.dispatch(state, LH.FromWorker{V.session_worker(), LT.input_use(V.claim_none())}, sample, sample_authority(sample))
 
 def expired_150(+result: LH.Outcome, +before: LH.State) -> Bool:
   match result:
@@ -56,13 +61,13 @@ def malformed_150(+served: LH.Served, +before: LH.State) -> Bool:
 
 def malformed_then_regression() -> Bool:
   +before = LT.delegated()
-  +bad = LH.serve(before, LT.short_bytes(), LH.Sample{150n})
+  +bad = LH.serve(before, LT.short_bytes(), LH.Sample{150n}, V.fixture_authority(150n))
   +after = LH.next(bad)
   malformed_150(bad, before) && fault(use(after, LH.Sample{149n}), after, 150n)
 
 def fresh_malformed_then_regression() -> Bool:
   +before = LH.initial()
-  +bad = LH.serve(before, LT.short_bytes(), LH.Sample{150n})
+  +bad = LH.serve(before, LT.short_bytes(), LH.Sample{150n}, V.fixture_authority(150n))
   +after = LH.next(bad)
   malformed_150(bad, before) && fault(use(after, LH.Sample{149n}), after, 150n)
 
@@ -86,9 +91,9 @@ def equal_and_increasing() -> Bool:
 
 def healthy_barriers() -> Bool:
   +s = LT.delegated()
-  +direct = LH.dispatch(s, LH.FromBroker{LT.barrier_of(LT.full_fact(), LT.input_use(V.claim_none()))}, LH.Sample{149n})
+  +direct = LH.dispatch(s, LH.FromBroker{LT.barrier_of(LT.full_fact(), LT.input_use(V.claim_none()))}, LH.Sample{149n}, V.fixture_authority(149n))
   +served = LH.serve(s, LT.synthetic_barrier_bytes(V.session_worker(), LT.subject_a(), LT.launch_token(),
-    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LH.Sample{149n})
+    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LH.Sample{149n}, V.fixture_authority(149n))
   PT.effects_equal(LH.Outcome.effects(direct), [P.DeliverInputs{LT.worker(), LT.input_ref()}])
     && PT.effects_equal(LH.served_effects(served), [P.DeliverInputs{LT.worker(), LT.input_ref()}])
     && high_is(LH.clock(LH.Outcome.state(direct)), 149n) && high_is(LH.clock(LH.next(served)), 149n)
@@ -119,8 +124,8 @@ def fresh_unavailable_stays_poisoned() -> Bool:
 def barrier_direct(decoded: W.DecodeResult, +state: LH.State, +now: Nat, +high: Nat) -> Bool:
   match decoded:
     case W.Decoded{+message}:
-      fault(LH.barrier_with(None{}, message, LT.linux_report(), LH.inventory_of(LT.full_fact()), state,
-        V.session_worker(), now), state, high)
+      fault(LH.barrier_with(message, LT.linux_report(), LH.inventory_of(LT.full_fact()), state,
+        V.session_worker(), LT.full_fact(), now, V.fixture_authority(now)), state, high)
         && fault(LH.worker_message(message, state, V.session_worker(), now), state, high)
     case _: False{}
 
@@ -128,8 +133,8 @@ def direct_helpers_reject() -> Bool:
   +before = LT.delegated()
   +s = LH.Outcome.state(use(before, LH.Sample{150n}))
   barrier_direct(W.decode_bytes(LT.input_use(V.claim_none())), s, 149n, 150n)
-    && fault(LH.on_broker(s, LT.barrier_of(LT.full_fact(), LT.input_use(V.claim_none())), 149n), s, 150n)
-    && fault(LH.route_sampled(s, LH.FromWorker{V.session_worker(), LT.input_use(V.claim_none())}, 149n), s, 150n)
+    && fault(LH.on_broker(s, LT.barrier_of(LT.full_fact(), LT.input_use(V.claim_none())), 149n, V.fixture_authority(149n)), s, 150n)
+    && fault(LH.route_sampled(s, LH.FromWorker{V.session_worker(), LT.input_use(V.claim_none())}, 149n, V.fixture_authority(149n)), s, 150n)
 
 def direct_delegate(decoded: W.DecodeResult, +state: LH.State) -> Bool:
   match decoded:
@@ -141,17 +146,17 @@ def poisoned_helpers_reject() -> Bool:
   +before = LT.delegated()
   +s = LH.Outcome.state(use(before, LH.UnavailableClock{}))
   barrier_direct(W.decode_bytes(LT.input_use(V.claim_none())), s, 100n, 100n)
-    && fault(LH.on_broker(s, LT.barrier_of(LT.full_fact(), LT.input_use(V.claim_none())), 100n), s, 100n)
-    && fault(LH.route_sampled(s, LH.FromWorker{V.session_worker(), LT.input_use(V.claim_none())}, 100n), s, 100n)
-    && fault(LH.on_broker(s, LH.Launch{LT.full_fact()}, 100n), s, 100n)
-    && fault(LH.on_broker(s, LH.Usage{LT.worker(), 1n}, 100n), s, 100n)
-    && fault(LH.on_broker(s, LH.Emission{LT.worker(), True{}}, 100n), s, 100n)
+    && fault(LH.on_broker(s, LT.barrier_of(LT.full_fact(), LT.input_use(V.claim_none())), 100n, V.fixture_authority(100n)), s, 100n)
+    && fault(LH.route_sampled(s, LH.FromWorker{V.session_worker(), LT.input_use(V.claim_none())}, 100n, V.fixture_authority(100n)), s, 100n)
+    && fault(LH.on_broker(s, LH.Launch{LT.full_fact()}, 100n, V.fixture_authority(100n)), s, 100n)
+    && fault(LH.on_broker(s, LH.Usage{LT.worker(), 1n}, 100n, V.fixture_authority(100n)), s, 100n)
+    && fault(LH.on_broker(s, LH.Emission{LT.worker(), True{}}, 100n, V.fixture_authority(100n)), s, 100n)
     && direct_delegate(W.decode_bytes(LT.worker_delegation()), s)
 
 def actual_step_rejected(+state: LH.State) -> Bool:
   +p = LH.portable(state)
   +step = P.admit_worker(p, P.revision(p), LT.linux_report(), LH.inventory_of(LT.full_fact()),
-    V.session_worker(), LT.input_ref(), 149n)
+    V.session_worker(), PT.execute_request(LT.input_ref()), 149n, V.fixture_authority(149n))
   PT.effects_equal(P.Step.effects(step), [P.DeliverInputs{LT.worker(), LT.input_ref()}])
     && fault(LH.stepped(state, step, 149n), state, 150n)
 

@@ -1,0 +1,20 @@
+PASS: PH-012 the two adapters differ in host, incarnation, slot allocation, and target report
+PASS: PH-012 every vector's raw bytes decode through HostWire.decode_bytes on both adapters
+PASS: PH-005 the destination-E and changed-input sessions are Running at the baseline revisions with another plan
+PASS: PH-009-1 the baseline delegated input publishes once through DataOS.commit_from_capability on both adapters
+VECTOR PH-009-1 publish accepted invocation=99;input=input
+PASS: PH-005-1 the delegated input used on a session negotiated for destination E is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-1 publish denied PlanMismatch
+PASS: PH-005-2 a session negotiated for a changed input object is denied PlanMismatch with the state, session, and ledger unchanged
+VECTOR PH-005-2 publish denied PlanMismatch
+PASS: PH-005-3 a decoded Delegate narrows the root to the proxy session
+VECTOR PH-005-3 delegate accepted slot=proxy
+PASS: PH-005-4 the proxy delegates a narrower entry to the worker and the delegation copies the parent's plan unchanged
+VECTOR PH-005-4 delegate accepted slot=narrow
+PASS: PH-005-5 the narrower delegated use of the same plan publishes the same full intent as the baseline
+VECTOR PH-005-5 publish accepted invocation=99;input=narrow
+PASS: PH-005-6 after the narrower proxy the broader root still resolves live with all its rights
+VECTOR PH-005-6 use accepted slot=root
+PASS: PH-005-7 a root issued for destination E's plan on a plan-D Frontend handle is denied PlanMismatch with the state unchanged
+VECTOR PH-005-7 issue denied PlanMismatch
+FAIL: PH-005-8 a sealed worker on an entry minted for plan E publishing plan D is denied PlanMismatch with the state, session, and ledger unchanged

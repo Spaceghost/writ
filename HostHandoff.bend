@@ -125,48 +125,56 @@ def handoff(+state: State, expected: Nat, evidence: Evidence) -> Step:
   State{revision, _, _} = state
   handoff_revision(Nat.is_eq(revision, expected), state, evidence)
 
-# The public admit path calls this exported implementation helper, which calls
-# HostPrimitives. Attempt wraps the exact returned core Step and constructs no
-# additional effects. Public Data and helpers remain forgeable and are not host
-# authority APIs. Cleanup after a consumed attempt remains a host obligation.
-def admission_checked(ok: Bool, +state: State, +core: P.State, expected_core: Nat,
-  report: P.TargetReport, inventory: P.Fact, +now: Nat) -> Step:
-  match ok state:
-    case False{} State{revision, HandoffClosed{}, binding}:
+# These helpers carry no effects. Only admit can call the shared admission
+# entry, and it recomputes the revision, binding and retirement checks itself.
+def admission_ready(phase: Phase) -> Bool:
+  match phase:
+    case HandoffClosed{}: True{}
+    case _: False{}
+
+def admission_failure(state: State) -> Step:
+  match state:
+    case State{revision, HandoffClosed{}, binding}:
       abort(State{revision, HandoffClosed{}, binding}, UntrustedFacts{})
-    case True{} State{revision, HandoffClosed{}, binding}:
-      Binding{_, _, session, _, input} = binding
-      Attempt{State{1n+revision, Attempted{}, binding},
-        P.admit_worker(core, expected_core, report, inventory, session, input, now)}
-    case _ State{revision, Created{}, binding}:
+    case State{revision, Created{}, binding}:
       abort(State{revision, Created{}, binding}, WrongPhase{})
-    case _ State{revision, Observed{}, binding}:
+    case State{revision, Observed{}, binding}:
       abort(State{revision, Observed{}, binding}, WrongPhase{})
-    case _ state: Denied{state, WrongPhase{}}
+    case state: Denied{state, WrongPhase{}}
 
-def admission_revision(ok: Bool, +state: State, +evidence: Evidence, +core: P.State,
-  expected_core: Nat, report: P.TargetReport, inventory: P.Fact, +now: Nat) -> Step:
-  match ok state:
-    case False{} state: Denied{state, StaleRevision{}}
-    case True{} State{+revision, phase, binding}:
-      Binding{_, incarnation, _, _, _} = binding
-      admission_checked(same_binding(binding, evidence, revision) && retired(evidence) &&
-        Nat.is_eq(incarnation, I.incarnation(P.identity(core))),
-        State{revision, phase, binding}, core, expected_core, report, inventory, now)
+def binding_session(binding: Binding) -> Nat:
+  match binding:
+    case Binding{_, _, session, _, _}: session
 
-# `core` must be the monitor's current authoritative state, not a worker or
-# stale copy. The local State must also be current monitor-owned state. The
-# monitor must atomically check/install both revisions and order effect execution
-# against revocation and restart; copied old records cannot prove freshness.
-# `expected_core` is checked by HostPrimitives; the monitor must inspect the
-# actual returned core Step and execute only effects it authorizes.
-# A stale local revision preserves the current State; a native stream adapter
-# must fail-stop its own connection on protocol failure without reusing it.
-def admit(+state: State, expected: Nat, evidence: Evidence, +core: P.State,
-  expected_core: Nat, report: P.TargetReport, inventory: P.Fact, +now: Nat) -> Step:
-  State{revision, _, _} = state
-  admission_revision(Nat.is_eq(revision, expected), state, evidence, core,
-    expected_core, report, inventory, now)
+def binding_incarnation(binding: Binding) -> Nat:
+  match binding:
+    case Binding{_, incarnation, _, _, _}: incarnation
+
+# This adapter's admitted operation is worker execution, with portable
+# execute right 4. The binding supplies the reference, never a caller claim.
+def execution_request(binding: Binding) -> W.Message:
+  match binding:
+    case Binding{_, _, _, _, input}: W.Use{input, W.operation_execute(), P.right_execute(), W.ClaimedSubject{0}}
+
+# The current core state, native facts and authority snapshot are supplied by
+# the trusted owner. The owner must atomically check and retain local and core
+# revisions, inspect and execute only returned authorized effects, and order
+# effect handoff against revocation and restart. This model does not establish
+# native identity, snapshot freshness or atomic host enforcement.
+def admit(+state: State, expected: Nat, +evidence: Evidence, +core: P.State,
+  expected_core: Nat, report: P.TargetReport, inventory: P.Fact, +now: Nat,
+  authority: P.AdmissionAuthority) -> Step:
+  match state:
+    case State{+revision, +phase, +binding}:
+      f = Bool.pick(Unit -> Step, Nat.is_eq(revision, expected),
+        x => Bool.pick(Unit -> Step, admission_ready(phase) && same_binding(binding, evidence, revision)
+          && retired(evidence) && Nat.is_eq(binding_incarnation(binding), I.incarnation(P.identity(core))),
+          y => Attempt{State{1n+revision, Attempted{}, binding},
+            P.admit_worker(core, expected_core, report, inventory, binding_session(binding),
+              execution_request(binding), now, authority)},
+          y => admission_failure(State{revision, phase, binding}))(Unit{}),
+        x => Denied{State{revision, phase, binding}, StaleRevision{}})
+      f(Unit{})
 
 # Retiring an unadmitted synthetic launch changes only local lifecycle state;
 # this does not stop an admitted worker or perform native cleanup. Attempted

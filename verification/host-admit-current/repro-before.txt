@@ -1,0 +1,4 @@
+PASS: SYNTHETIC GAP: zero-right worker input denied by P.use but P.admit_worker delivers
+PASS: SYNTHETIC GAP: valid Use read with execute-only requested rights denied by P.use but Barrier delivers
+PASS: SYNTHETIC GAP: zero-right entry denied by P.use but Barrier delivers
+Three synthetic model gaps reproduced; no native host exercised

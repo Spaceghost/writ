@@ -273,10 +273,10 @@ def now() -> Nat:
   V.now()
 
 def frame(+state: LH.State, f: LH.BrokerFrame) -> LH.Outcome:
-  LH.dispatch(state, LH.FromBroker{f}, LH.Sample{now()})
+  LH.dispatch(state, LH.FromBroker{f}, LH.Sample{now()}, V.fixture_authority(now()))
 
 def worker_frame(+state: LH.State, +session: Nat, bytes: +List<U32>) -> LH.Outcome:
-  LH.dispatch(state, LH.FromWorker{session, bytes}, LH.Sample{now()})
+  LH.dispatch(state, LH.FromWorker{session, bytes}, LH.Sample{now()}, V.fixture_authority(now()))
 
 def after(+outcome: LH.Outcome) -> LH.State:
   LH.Outcome.state(outcome)
@@ -765,11 +765,11 @@ def synthetic_barrier_bytes(session: Nat, subject: Nat, token: T.CodeId, incarna
     U32.from_nat(List.length(&2, U32, request)) <> request))
 
 def synthetic_launch_served(launch: LH.Credential, peer: LH.Credential, incarnation: Nat) -> LH.Served:
-  LH.serve(rooted(), synthetic_launch_bytes(launch, peer, incarnation), LH.Sample{now()})
+  LH.serve(rooted(), synthetic_launch_bytes(launch, peer, incarnation), LH.Sample{now()}, V.fixture_authority(now()))
 
 def synthetic_barrier_served(session: Nat, subject: Nat, token: T.CodeId, incarnation: Nat,
     launch: LH.Credential, peer: LH.Credential) -> LH.Served:
-  LH.serve(delegated(), synthetic_barrier_bytes(session, subject, token, incarnation, launch, peer), LH.Sample{now()})
+  LH.serve(delegated(), synthetic_barrier_bytes(session, subject, token, incarnation, launch, peer), LH.Sample{now()}, V.fixture_authority(now()))
 
 def synthetic_denied(+served: LH.Served, +expected: LH.State, reason: LH.Rejection) -> Bool:
   match served:
@@ -871,7 +871,7 @@ def synthetic_frame_limit_checks() -> IO(Unit):
       "synthetic LINUXB rejects a frame one byte above the limit")
     Test.check(synthetic_unframed(LH.decode_frame(synthetic_zero_bytes(10000n, [])), LH.FrameTooLong{}),
       "synthetic LINUXB rejects a very oversized frame before packing")
-    Test.check(synthetic_served_unframed(LH.serve(rooted(), synthetic_zero_bytes(10000n, []), LH.Sample{now()}), rooted(),
+    Test.check(synthetic_served_unframed(LH.serve(rooted(), synthetic_zero_bytes(10000n, []), LH.Sample{now()}, V.fixture_authority(now())), rooted(),
       LH.FrameTooLong{}), "synthetic LINUXB over-limit service leaves policy state unchanged")
     Test.check(synthetic_unframed(LH.decode_frame(256 <> synthetic_zero_bytes(512n, [])), LH.FrameTooLong{}),
       "synthetic LINUXB oversized frame takes precedence over out-of-range byte")

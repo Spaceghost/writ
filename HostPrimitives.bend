@@ -133,6 +133,10 @@ import ./Transfer.bend as T
 #                    (checked whether or not the profile
 #                    lists that control)
 #  11. routes        any inventory route is not mediated    -> UnmediatedRoute
+#  12. rights        requested rights exceed the entry      -> RightsNotHeld
+#  13. operation     request is not an authorized execute   -> OperationNotPermitted
+#  14. authority     owner-bound descriptor, exact scope, paired Transfer,
+#                    trusted time or revision is not current -> AuthorityUnavailable
 #   then commit: the worker is recorded `Running` and the only effect is
 #   `DeliverInputs`, naming the input by its full reference (host,
 #   incarnation, slot, generation), so plaintext delivery is the last step of
@@ -141,9 +145,11 @@ import ./Transfer.bend as T
 #   worker and the delivery. Plan ruling: there is no downgrade. An
 #   accelerator profile without isolation is denied; CPU work is a separate
 #   worker session bound under a profile whose backend is `Cpu`, and the worker
-#   records that profile (PH-014). Inputs are delivered to a confined worker
-#   without a Transfer/Frontend plan recheck; the plan is rechecked at
-#   publication (`HostPublication.publish`, through `DataOS.commit_from_capability`).
+#   records that profile (PH-014). The authority snapshot is supplied by the
+#   trusted owner; Transfer read/write lists contain no subject and this model
+#   cannot establish that they and the registry came from the same current
+#   issuer or prevent a stale snapshot. Original-graph and publication checks
+#   remain independent, and previously delivered bytes cannot be recalled.
 #
 # Use order (`use`, read-only): gate -> the message is a wire `Use` (else
 # WrongPhase) -> `HostIdentity.resolve` (Identity{reason}) -> the requested
@@ -188,6 +194,7 @@ import ./Transfer.bend as T
 # `admit_worker`, `charge`, `diagnostic`, `native_write_offered` (family 2);
 # the types `Backend`, `Profile`, `Configured`, `Profiles`, `TargetReport`,
 # `RouteFact`, `Fact`, `Effect`, `Step`, `IssueResult`, `UseResult`, `Error`, `Phase`,
+# `AdmissionAuthority`,
 # `Worker`, `Workers`, `State`, `Sealed`, `Seals`, `Publication`,
 # `Publications`; the named family, control, and right bits
 # (with `no_controls` and `no_right`),
@@ -1377,147 +1384,169 @@ def commit_worker(state: State, worker: Worker) -> State:
       State{1n+revision, identity, profiles, bindings, Workers{worker, workers}, 1n+next_worker, seals,
         publications}
 
-# Implementation helper, step 11 and commit: plaintext is delivered only here,
-# after every other admission check.
-def a_routes(ok: Bool, +state: State, +configured: Configured, +session: Nat, +input: W.Ref) -> Step:
-  match ok:
-    case True{}:
-      Admitted{commit_worker(state, Worker{next_worker(state), session, input, configured_profile(configured),
-        Running{}, configured_quota(configured), no_usage()}), [DeliverInputs{next_worker(state), input}]}
-    case False{}:
-      Denied{state, UnmediatedRoute{}}
+# Admission preflight is descriptive only: no constructor carries effects.
+# The single public entry recomputes it from the original state and facts.
+# Trusted owner-side snapshot; never decoded from a worker frame.
+type AdmissionAuthority is Data:
+  AdmissionAuthority{frontend: F.State, revision: Nat, registry: F.Registry, context: T.Context}
 
-# Implementation helper, step 10.
-def a_accelerator(ok: Bool, +state: State, +configured: Configured, routes: +List<RouteFact>,
-    +session: Nat, +input: W.Ref) -> Step:
-  match ok:
-    case True{}:
-      a_routes(routes_mediated(routes), state, configured, session, input)
-    case False{}:
-      Denied{state, UnisolatedAccelerator{}}
+type AdmissionCheck is Data:
+  AdmissionReady{configured: Configured, input: W.Ref}
+  AdmissionRefused{reason: Error}
 
-# Implementation helper, step 9.
-def a_controls(ok: Bool, +state: State, +configured: Configured, +report: TargetReport,
-    routes: +List<RouteFact>, +session: Nat, +input: W.Ref) -> Step:
+def a_routes(ok: Bool, configured: Configured, input: W.Ref) -> AdmissionCheck:
   match ok:
-    case True{}:
-      a_accelerator(backend_isolated(profile_backend(configured_profile(configured)), report), state,
-        configured, routes, session, input)
-    case False{}:
-      Denied{state, MissingControl{}}
+    case True{}: AdmissionReady{configured, input}
+    case False{}: AdmissionRefused{UnmediatedRoute{}}
 
-# Implementation helper, step 8.
-def a_families(ok: Bool, +state: State, +configured: Configured, +report: TargetReport,
-    routes: +List<RouteFact>, +session: Nat, +input: W.Ref) -> Step:
+def a_accelerator(ok: Bool, configured: Configured, routes: +List<RouteFact>, input: W.Ref) -> AdmissionCheck:
   match ok:
-    case True{}:
-      a_controls(within(profile_controls(configured_profile(configured)), report_controls(report)), state,
-        configured, report, routes, session, input)
-    case False{}:
-      Denied{state, UnsupportedFamily{}}
+    case True{}: a_routes(routes_mediated(routes), configured, input)
+    case False{}: AdmissionRefused{UnisolatedAccelerator{}}
 
-# Implementation helper, step 7.
-def a_inventory(inventory: Fact, +state: State, +configured: Configured, +report: TargetReport,
-    +session: Nat, +input: W.Ref) -> Step:
+def a_controls(ok: Bool, +configured: Configured, +report: TargetReport,
+    routes: +List<RouteFact>, input: W.Ref) -> AdmissionCheck:
+  match ok:
+    case True{}: a_accelerator(backend_isolated(profile_backend(configured_profile(configured)), report), configured, routes, input)
+    case False{}: AdmissionRefused{MissingControl{}}
+
+def a_families(ok: Bool, +configured: Configured, +report: TargetReport,
+    routes: +List<RouteFact>, input: W.Ref) -> AdmissionCheck:
+  match ok:
+    case True{}: a_controls(within(profile_controls(configured_profile(configured)), report_controls(report)),
+      configured, report, routes, input)
+    case False{}: AdmissionRefused{UnsupportedFamily{}}
+
+def a_inventory(inventory: Fact, +configured: Configured, +report: TargetReport, input: W.Ref) -> AdmissionCheck:
   match inventory:
-    case Inventory{routes}:
-      a_families(within(profile_families(configured_profile(configured)), report_families(report)), state,
-        configured, report, routes, session, input)
-    case _:
-      Denied{state, WrongPhase{}}
+    case Inventory{routes}: a_families(within(profile_families(configured_profile(configured)), report_families(report)),
+      configured, report, routes, input)
+    case _: AdmissionRefused{WrongPhase{}}
 
-# Implementation helper, step 6: one worker per input entry.
-def a_slot(ok: Bool, +state: State, +configured: Configured, report: TargetReport, inventory: Fact,
-    +session: Nat, +input: W.Ref) -> Step:
+def a_slot(ok: Bool, configured: Configured, report: TargetReport, inventory: Fact, input: W.Ref) -> AdmissionCheck:
   match ok:
-    case True{}:
-      a_inventory(inventory, state, configured, report, session, input)
-    case False{}:
-      Denied{state, SlotOccupied{}}
+    case True{}: a_inventory(inventory, configured, report, input)
+    case False{}: AdmissionRefused{SlotOccupied{}}
 
-# Implementation helper, step 5.
-def a_protected(ok: Bool, +state: State, +configured: Configured, report: TargetReport, inventory: Fact,
-    +session: Nat, +input: W.Ref) -> Step:
+def a_protected(ok: Bool, +state: State, configured: Configured, report: TargetReport, inventory: Fact, +input: W.Ref) -> AdmissionCheck:
   match ok:
-    case True{}:
-      a_slot(Bool.not(occupied(workers(state), input)), state, configured, report, inventory, session, input)
-    case False{}:
-      Denied{state, MissingControl{}}
+    case True{}: a_slot(Bool.not(occupied(workers(state), input)), configured, report, inventory, input)
+    case False{}: AdmissionRefused{MissingControl{}}
 
-# Implementation helper, step 4, the configured profile. A bound profile id
-# that is not configured once is unreachable from a valid state.
-def a_profile(found: ProfileLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
-    +input: W.Ref) -> Step:
+def a_profile(found: ProfileLookup, +state: State, report: TargetReport, inventory: Fact, input: W.Ref) -> AdmissionCheck:
   match found:
-    case OneProfile{+configured}:
-      a_protected(protects(configured_profile(configured)), state, configured, report, inventory, session,
-        input)
-    case _:
-      Denied{state, UnknownProfile{}}
+    case OneProfile{+configured}: a_protected(protects(configured_profile(configured)), state, configured, report, inventory, input)
+    case _: AdmissionRefused{UnknownProfile{}}
 
-# Implementation helper, step 4: the profile the session was bound under at
-# `open_session`. A session with no worker binding has no profile to admit
-# under (more than one binding is unreachable from a valid state).
-def a_bound(found: BindingLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
-    +input: W.Ref) -> Step:
+def a_bound(found: BindingLookup, +state: State, report: TargetReport, inventory: Fact, input: W.Ref) -> AdmissionCheck:
   match found:
-    case OneBinding{+profile}:
-      a_profile(profile_at(profiles(state), profile), state, report, inventory, session, input)
-    case _:
-      Denied{state, UnknownProfile{}}
+    case OneBinding{profile}: a_profile(profile_at(profiles(state), profile), state, report, inventory, input)
+    case _: AdmissionRefused{UnknownProfile{}}
 
-# Implementation helper, step 3, the decision: the stored delegability.
-def a_delegable(delegable: Bool, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
-    +input: W.Ref) -> Step:
+def a_delegable(delegable: Bool, +state: State, report: TargetReport, inventory: Fact, +session: Nat, input: W.Ref) -> AdmissionCheck:
   match delegable:
-    case False{}:
-      a_bound(binding_at(bindings(state), session), state, report, inventory, session, input)
-    case True{}:
-      Denied{state, DelegableSession{}}
+    case False{}: a_bound(binding_at(bindings(state), session), state, report, inventory, input)
+    case True{}: AdmissionRefused{DelegableSession{}}
 
-# Implementation helper, step 3: the presenting session must be one the
-# monitor recorded non-delegable, so the worker cannot re-delegate its inputs.
-def a_session(found: I.SessionLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat,
-    +input: W.Ref) -> Step:
+def a_session(found: I.SessionLookup, +state: State, report: TargetReport, inventory: Fact, +session: Nat, input: W.Ref) -> AdmissionCheck:
   match found:
-    case I.OneSession{bound}:
-      a_delegable(I.session_delegable(bound), state, report, inventory, session, input)
-    case _:
-      # Unreachable after step 2 resolved on this session; kept for totality.
-      Denied{state, Identity{I.UnknownSession{}}}
+    case I.OneSession{bound}: a_delegable(I.session_delegable(bound), state, report, inventory, session, input)
+    case _: AdmissionRefused{Identity{I.UnknownSession{}}}
 
-# Implementation helper, step 2: the input reference must resolve on the
-# presenting session; the stored reference is rebuilt from the entry.
-def a_identity(resolution: I.Resolution, +state: State, report: TargetReport, inventory: Fact,
-    +session: Nat) -> Step:
+def a_identity(resolution: I.Resolution, +state: State, report: TargetReport, inventory: Fact, +session: Nat) -> AdmissionCheck:
   match resolution:
-    case I.Unresolved{reason}:
-      Denied{state, Identity{reason}}
-    case I.Resolved{+entry, _}:
-      a_session(I.session_at(I.sessions(identity(state)), session), state, report, inventory, session,
-        entry_ref(identity(state), entry))
+    case I.Unresolved{reason}: AdmissionRefused{Identity{reason}}
+    case I.Resolved{entry, _}: a_session(I.session_at(I.sessions(identity(state)), session), state, report,
+      inventory, session, entry_ref(identity(state), entry))
 
-# Implementation helper, step 1.
-def a_gate(ok: Bool, +state: State, report: TargetReport, inventory: Fact, +session: Nat, +ref: W.Ref,
-    +now: Nat) -> Step:
+def a_gate(ok: Bool, +state: State, report: TargetReport, inventory: Fact, +session: Nat, ref: W.Ref,
+    now: Nat) -> AdmissionCheck:
   match ok:
-    case True{}:
-      a_identity(I.resolve(identity(state), I.revision(identity(state)), session, ref, now), state, report,
-        inventory, session)
-    case False{}:
-      Denied{state, StaleRevision{}}
+    case True{}: a_identity(I.resolve(identity(state), I.revision(identity(state)), session, ref, now),
+      state, report, inventory, session)
+    case False{}: AdmissionRefused{StaleRevision{}}
 
-# Public entry point, family 2: admit a protected worker domain on worker
-# session `session`, under the configured profile that session was bound
-# under at `open_session` (the request names no profile; the profile and its
-# quota limit come from the monitor's tables). `report` and `inventory` are
-# the target's facts; `ref` is the worker's input reference, resolved on
-# `session` at monitor time `now`. Checks in the documented admission order;
-# on acceptance records the worker `Running` and returns exactly
-# `[DeliverInputs{worker, input}]`.
-def admit_worker(+state: State, expected_revision: Nat, report: TargetReport, inventory: Fact,
-    +session: Nat, +ref: W.Ref, +now: Nat) -> Step:
-  a_gate(current(state, expected_revision), state, report, inventory, session, ref, now)
+def admission_ready(check: AdmissionCheck) -> Bool:
+  match check:
+    case AdmissionReady{_, _}: True{}
+    case AdmissionRefused{_}: False{}
+
+def admission_reason(check: AdmissionCheck) -> Error:
+  match check:
+    case AdmissionRefused{reason}: reason
+    case AdmissionReady{_, _}: WrongPhase{}
+
+# Fallbacks are unreachable in the guarded Ready branch and carry no effects.
+def admission_configured(check: AdmissionCheck) -> Configured:
+  match check:
+    case AdmissionReady{configured, _}: configured
+    case AdmissionRefused{_}: Configured{Profile{0n, 0, 0, Cpu{}}, 0n}
+
+def admission_input(check: AdmissionCheck) -> W.Ref:
+  match check:
+    case AdmissionReady{_, input}: input
+    case AdmissionRefused{_}: W.Ref{0, 0, 0, 0}
+
+# Recheck the resolved entry against the current owner-provided Frontend
+# snapshot. Registry and transfer lists are not authenticated by this model.
+def admission_scope(found: Maybe<&2, F.Handle>, +entry: I.Entry, +context: T.Context) -> Bool:
+  match found:
+    case None{}: False{}
+    case Some{+handle}:
+      F.is_descriptor(handle) && T.Plan.equal(I.entry_plan(entry), F.handle_plan(handle))
+        && within(I.entry_rights(entry), F.handle_rights(handle))
+        && Nat.is_le(I.entry_expires(entry), handle_expires(handle))
+        && T.accepted(T.admit(I.entry_plan(entry), context))
+
+def admission_live(+entry: I.Entry, authority: AdmissionAuthority, +now: Nat) -> Bool:
+  match authority:
+    case AdmissionAuthority{frontend, frontend_revision, registry, +context}:
+      f = Bool.pick(Unit -> Bool, Nat.is_eq(T.Context.now(context), now),
+        x => admission_scope(F.authorized(frontend, registry, frontend_revision,
+          F.Ref{I.entry_owner(entry), I.entry_handle(entry)}, F.live(context)), entry, context),
+        x => False{})
+      f(Unit{})
+
+# The requested operation is untrusted; a read or write cannot stand in for
+# protected execution. The request's rights must be held by the resolved entry.
+def admission_request(+entry: I.Entry, request: W.Message, authority: AdmissionAuthority, now: Nat) -> Maybe<&2, Error>:
+  match request:
+    case W.Use{_, +operation, +rights, _}:
+      f = Bool.pick(Unit -> Maybe<&2, Error>, within(rights, I.entry_rights(entry)),
+        x => Bool.pick(Unit -> Maybe<&2, Error>, operation_permitted(operation, rights) && U32.is_eq(operation, W.operation_execute()),
+          y => Bool.pick(Maybe<&2, Error>, admission_live(entry, authority, now),
+            None{}, Some{AuthorityUnavailable{}}),
+          y => Some{OperationNotPermitted{}})(Unit{}),
+        x => Some{RightsNotHeld{}})
+      f(Unit{})
+    case _: Some{WrongPhase{}}
+
+def admission_current(resolution: I.Resolution, request: W.Message, authority: AdmissionAuthority,
+    now: Nat) -> Maybe<&2, Error>:
+  match resolution:
+    case I.Unresolved{reason}: Some{Identity{reason}}
+    case I.Resolved{entry, _}: admission_request(entry, request, authority, now)
+
+def admission_current_reason(found: Maybe<&2, Error>) -> Error:
+  match found:
+    case Some{reason}: reason
+    case None{}: AuthorityUnavailable{}
+
+# Public family-2 entry. Existing admission preflight denials retain order;
+# the actual Use must authorize execute and its descriptor must still be live
+# in one trusted snapshot at the same owner-sampled time before DeliverInputs.
+# Supplied snapshots and native facts remain trusted-owner inputs: this does
+# not authenticate them, rebuild them from Issuance, or cover other consumers.
+def admit_worker(+state: State, expected_revision: Nat, +report: TargetReport, +inventory: Fact,
+    +session: Nat, +request: W.Message, +now: Nat, authority: AdmissionAuthority) -> Step:
+  ({+checked => Bool.pick(Unit -> Step, admission_ready(checked),
+    x => ({+failed => Bool.pick(Unit -> Step, Maybe.is_some(&2, Error, failed),
+      y => Denied{state, admission_current_reason(failed)},
+      y => Admitted{commit_worker(state, Worker{next_worker(state), session, admission_input(checked),
+        configured_profile(admission_configured(checked)), Running{}, configured_quota(admission_configured(checked)),
+        no_usage()}), [DeliverInputs{next_worker(state), admission_input(checked)}]})(Unit{}) : Maybe<&2, Error> -> Step})(admission_current(I.resolve(identity(state), I.revision(identity(state)), session, admission_input(checked), now),
+        request, authority, now)),
+    x => Denied{state, admission_reason(checked)})(Unit{}) : AdmissionCheck -> Step})(a_gate(current(state, expected_revision), state, report, inventory, session, W.Message.ref(request), now))
 
 # Implementation helper: one worker's use after a charge.
 def charged_one(ok: Bool, worker: Worker, amount: Nat) -> Worker:

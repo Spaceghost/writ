@@ -364,3 +364,35 @@ Named synthetic checks in `HostIssueResultTests.bend`:
 No new authority decision or release route follows from this result. The
 caller still owes current issuer/Frontend provenance, later use checks,
 revocation ordering and native host qualification.
+
+## Current authority before worker input delivery
+
+The prior eleven admission denials retain their order. The shared Bend effect
+site now additionally checks the actual execute request/right 4 and the
+resolved entry's owner-bound current descriptor, exact plan and narrowed scope,
+same context/monitor time and paired Transfer admission. This deliberately
+narrows delivery and implements the PH-006/CF-003 rationale; it does not
+change denial-state/no-effect laws, replace original-graph and commit checks,
+or authenticate the supplied owner snapshots. `T.ReadGrant` and `T.WriteGrant`
+carry no subject, so a trusted owner must construct all projections from the
+same current issuer, subject and time. These tests do not qualify a native host.
+
+Named synthetic checks in `HostAdmissionCurrentTests.bend`:
+
+- `PH-admit execute-only delegated entry delivers with original owner snapshot`
+- `PH-admit read and zero-right inputs cannot authorize execution`
+- `PH-admit stale closed mounted mismatched and incomplete authority denies`
+- `PH-admit eleven original denials precede new authority gate`
+- `LH-admit Barrier forwards request and rejects original synthetic gaps`
+- `HH-admit rejected shared gate consumes attempt without effects`
+- `LH-admit direct barrier helpers recompute provenance before report and decode`
+- `HH-admit direct entry recomputes trusted binding before admission`
+- `PH-admit stale authority skips terminal worker and revision arithmetic`
+- `scenario admission after issuer revoke: exact issued slot and retained descriptor deny fresh or mixed projections, cached projections remain stale` (`RendezvousTests.bend`).
+
+The prior PH-005-8 vector intentionally uses a separately matched synthetic
+plan-E descriptor at admission and a plan-D publication session; its explicit
+entry/session plan assertions preserve that independent publication check.
+`HostHandoff` retains Attempted after a shared denial; local retire then denies
+WrongPhase and real cleanup remains an owner obligation. The new traversals
+have no explicit capacity bound; no unlimited native-host guarantee is made.

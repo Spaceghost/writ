@@ -97,7 +97,19 @@ Delegation SHALL preserve the exact plan and origin obligations, only narrow rig
 
 ### Requirement: PH-006 Required confinement precedes plaintext
 
-Protected inputs SHALL be delivered only after the host establishes every required confinement control for the declared execution profile.
+Protected inputs SHALL be delivered only after the host establishes every required confinement control for the declared execution profile. The execution request SHALL require portable execute right 4 on its resolved entry and a current owner-bound descriptor and paired transfer snapshot at the same trusted time.
+
+#### Scenario: A read request is used to request execution
+
+- **GIVEN** a worker presents a well-formed read request or an entry without execute right 4
+- **WHEN** the monitor considers delivering protected execution inputs
+- **THEN** it denies delivery without changing the portable state or emitting effects.
+
+#### Scenario: A descriptor becomes stale before delivery
+
+- **GIVEN** an execute-capable worker entry and an earlier descriptor
+- **WHEN** its current trusted snapshot no longer authorizes that exact descriptor and paired plan
+- **THEN** delivery is denied before any protected input effect.
 
 #### Scenario: A required kernel feature is missing
 

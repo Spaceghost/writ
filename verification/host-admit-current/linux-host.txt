@@ -1,0 +1,156 @@
+PASS: LH-001 linux_host and linux_incarnation are nonzero, differ from adapters A and B, and the profile is named linux-worker-v1 with a nonzero quota
+PASS: LH-001 initial() is a valid empty state on the Linux host and incarnation whose only configured profile is linux-worker-v1: every family, every control but accelerator isolation, Cpu, quota_limit
+PASS: LH-001 a worker session under any profile id but linux-worker-v1 is denied UnknownProfile with the policy state unchanged and no effect
+PASS: LH-005 a barrier report without control_address_isolation is denied MissingControl with the policy state unchanged and no effect
+PASS: LH-005 a barrier report without control_no_ambient_network is denied MissingControl with the policy state unchanged and no effect
+PASS: LH-005 a barrier report without control_output_mediation is denied MissingControl with the policy state unchanged and no effect
+PASS: LH-005 a barrier report without control_quota is denied MissingControl with the policy state unchanged and no effect
+PASS: LH-005 a barrier report without control_no_inherited_routes is denied MissingControl with the policy state unchanged and no effect
+PASS: LH-001 a barrier report omitting any one of the five families is denied UnsupportedFamily with the policy state unchanged and no effect
+PASS: LH-001 a Launch whose report omits family_session is denied UnsupportedFamily by open_session with the policy state unchanged and no effect
+PASS: LH-001 LH-003 a barrier report with every required control admits once and its only effect, in the step and in Outcome.effects, is one DeliverInputs naming the worker's input
+PASS: LH-003 the state retained before DeliverInputs records the worker Running on the worker session with the delivered input reference
+PASS: LH-001 under a hypothetical accelerator profile the Linux report is denied UnisolatedAccelerator by the shared path with the policy state unchanged and no effect
+PASS: LH-004 a barrier inventory with an unmediated inherited descriptor is denied UnmediatedRoute with the policy state unchanged and no effect
+PASS: LH-002 session_evidence_of gives the launch record's subject and token, Authenticated, non-delegable
+PASS: LH-007 session_evidence_of reports an inherited or transferred endpoint as Inherited or Transferred from that session
+PASS: LH-002 session_evidence_of rejects a launch record from another monitor incarnation StaleLaunch
+PASS: LH-002 session_evidence_of rejects a parent-created socketpair peer PeerMismatch
+PASS: LH-002 session_evidence_of rejects a reused pid with another start time PeerMismatch
+PASS: LH-002 session_evidence_of rejects a peer under another uid PeerMismatch
+PASS: LH-002 session_evidence_of rejects an endpoint held by another pid PeerMismatch
+PASS: LH-002 session_evidence_of rejects a peer under another gid PeerMismatch
+PASS: LH-001 report_of copies the binding's families and established controls exactly
+PASS: LH-001 report_of rejects a family bit outside all_families UnknownFamily
+PASS: LH-001 report_of rejects an accelerator isolation bit the Linux broker cannot credit UncreditedControl
+PASS: LH-001 report_of rejects an unnamed control bit UncreditedControl
+PASS: LH-004 inventory_of gives one route per descriptor in order with its kind and mediation and no descriptor number
+PASS: synthetic LINUXB launch with matching peer opens the expected worker session
+PASS: synthetic LINUXB barrier with matching peer admits the expected input effect
+PASS: synthetic LINUXB launch rejects parent socketpair peer
+PASS: synthetic LINUXB launch rejects peer uid mismatch
+PASS: synthetic LINUXB launch rejects peer gid mismatch
+PASS: synthetic LINUXB launch rejects peer pid mismatch
+PASS: synthetic LINUXB launch rejects peer start-time low-word mismatch
+PASS: synthetic LINUXB launch preserves a matching nonzero start-time high word
+PASS: synthetic LINUXB launch rejects peer start-time high-word mismatch
+PASS: synthetic LINUXB barrier rejects parent socketpair peer
+PASS: synthetic LINUXB barrier rejects peer uid mismatch
+PASS: synthetic LINUXB barrier rejects peer gid mismatch
+PASS: synthetic LINUXB barrier rejects peer pid mismatch
+PASS: synthetic LINUXB barrier rejects peer start-time mismatch
+PASS: synthetic LINUXB launch rejects an old monitor incarnation
+PASS: synthetic LINUXB barrier rejects an old monitor incarnation
+PASS: synthetic LINUXB barrier rejects a foreign launch subject
+PASS: synthetic LINUXB barrier rejects a foreign launch token
+PASS: synthetic LINUXB barrier rejects a different existing session
+PASS: synthetic LINUXB barrier rejects a missing session
+PASS: synthetic LINUXB exact byte limit reaches frame validation
+PASS: synthetic LINUXB rejects a frame one byte above the limit
+PASS: synthetic LINUXB rejects a very oversized frame before packing
+PASS: synthetic LINUXB over-limit service leaves policy state unchanged
+PASS: synthetic LINUXB oversized frame takes precedence over out-of-range byte
+PASS: synthetic LINUXB in-bound misalignment takes precedence over out-of-range byte
+PASS: synthetic LINUXB aligned in-bound out-of-range byte is refused
+PASS: LH-002 a broker Launch opens one non-delegable worker session with the launch caller bound to linux-worker-v1 and no effect
+PASS: LH-002 a Launch from a socketpair parent is refused PeerMismatch before any transition with the policy state unchanged and no effect
+PASS: LH-002 a Launch with another incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect
+PASS: LH-001 a Launch reporting an unknown family bit is refused UnknownFamily with the policy state unchanged and no effect
+PASS: LH-001 a Launch crediting accelerator isolation is refused UncreditedControl with the policy state unchanged and no effect
+PASS: LH-002 a Barrier with another incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect
+PASS: LH-002 a Barrier from a reused pid is refused PeerMismatch with the policy state unchanged and no effect
+PASS: LH-001 a Barrier crediting an unnamed control is refused UncreditedControl with the policy state unchanged and no effect
+PASS: LH-006 a Barrier whose request snapshot is not a whole frame is Undecoded with the policy state unchanged and no effect
+PASS: LH-006 a Barrier whose request is not a Use admits nothing: Unrouted with the policy state unchanged and no effect
+PASS: LH-002 a Barrier request claiming subject B admits exactly as the unclaimed request
+PASS: LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the policy state unchanged and no effect
+PASS: LH-002 a Barrier whose fact names the session's subject with another token is refused SessionMismatch with the policy state unchanged and no effect
+PASS: LH-002 a Barrier attributing the worker's fact to the client session is refused SessionMismatch with the policy state unchanged and no effect
+PASS: LH-002 a Barrier naming a session the identity table does not hold is refused SessionMismatch with the policy state unchanged and no effect
+PASS: LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect
+PASS: LH-002 after a restart a Launch carrying the successor incarnation's launch record opens a worker session with the launch caller and no effect
+PASS: LH-002 LH-008 after a restart a Barrier carrying the previous incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect
+PASS: LH-002 a worker Use claiming subject B on A's session resolves to A's entry, reference, and owner, as with no claim, read-only with no effect
+PASS: LH-007 a worker Delegate from the worker session is denied NotDelegable with the policy state unchanged and no effect
+PASS: LH-006 worker bytes that are not a whole frame are Undecoded with the policy state unchanged and no effect
+PASS: LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the policy state unchanged and no effect
+PASS: PH-007 a broker Usage within quota_limit is charged once with no effect
+PASS: PH-007 a broker Usage past quota_limit is denied QuotaExhausted with the policy state unchanged and no effect
+PASS: LH-009 a public worker emission is denied DiagnosticSink with the policy state unchanged; a confined one is admitted with no effect
+PASS: LH-010 the Linux adapter fixture is the Linux host and incarnation with report_of and inventory_of of the broker fact
+PASS: LH-010 PH-009-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-6 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-7 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-8 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-9 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-10 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-11 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-12 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-13 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-005-14 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-002-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-003-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-003-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-003-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-010-6 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-004-1 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-004-2 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-004-3 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-4 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 PH-009-5 replays on the Linux adapter with adapter A's and B's outcome and line
+PASS: LH-010 the Linux adapter's 36 decision lines equal V.expected_lines() and adapters A's and B's
+PASS: LH-010 PH-012-1 the Linux adapter compared with adapters A and B renders the expected compare line
+LINUX VECTOR PH-009-1 publish accepted invocation=99;input=input
+LINUX VECTOR PH-005-1 publish denied PlanMismatch
+LINUX VECTOR PH-005-2 publish denied PlanMismatch
+LINUX VECTOR PH-005-3 delegate accepted slot=proxy
+LINUX VECTOR PH-005-4 delegate accepted slot=narrow
+LINUX VECTOR PH-005-5 publish accepted invocation=99;input=narrow
+LINUX VECTOR PH-005-6 use accepted slot=root
+LINUX VECTOR PH-005-7 issue denied PlanMismatch
+LINUX VECTOR PH-005-8 publish denied PlanMismatch
+LINUX VECTOR PH-005-9 publish denied PlanMismatch
+LINUX VECTOR PH-005-10 issue denied PlanMismatch
+LINUX VECTOR PH-005-11 issue denied PlanMismatch
+LINUX VECTOR PH-005-12 issue denied OwnerMismatch
+LINUX VECTOR PH-005-13 issue denied RightsNotHeld
+LINUX VECTOR PH-005-14 issue denied LeaseExceeded
+LINUX VECTOR PH-002-1 use accepted slot=input
+LINUX VECTOR PH-002-2 use accepted slot=input
+LINUX VECTOR PH-002-3 publish accepted invocation=99;input=input
+LINUX VECTOR PH-002-4 admit_worker denied Identity.TransferredEndpoint
+LINUX VECTOR PH-002-5 admit_worker denied Identity.InheritedEndpoint
+LINUX VECTOR PH-003-1 admit_worker denied Identity.NotHolder
+LINUX VECTOR PH-003-2 admit_worker denied Identity.ForeignHost
+LINUX VECTOR PH-003-3 admit_worker denied Identity.NotHolder
+LINUX VECTOR PH-010-1 revoke accepted slot=input;stopped=input
+LINUX VECTOR PH-009-2 publish denied Identity.Retired
+LINUX VECTOR PH-010-2 revoke accepted slot=root;stopped=input
+LINUX VECTOR PH-010-3 reconcile accepted invocation=99
+LINUX VECTOR PH-010-4 quiesce accepted slot=input
+LINUX VECTOR PH-010-5 reclaim accepted slot=input
+LINUX VECTOR PH-010-6 complete denied Identity.Retired
+LINUX VECTOR PH-009-3 publish denied Replay
+LINUX VECTOR PH-004-1 restart accepted incarnation=next;stopped=input
+LINUX VECTOR PH-004-2 use accepted slot=root
+LINUX VECTOR PH-004-3 admit_worker denied Identity.StaleIncarnation
+LINUX VECTOR PH-009-4 reconcile denied Substitution
+LINUX VECTOR PH-009-5 reconcile denied Substitution
+LINUX VECTOR PH-012-1 compare accepted vectors=36
+LinuxHost: 118 checks passed

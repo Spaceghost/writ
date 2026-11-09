@@ -26,6 +26,7 @@ import ./HostIdentityTests.bend as HostIdentity
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostIssueCurrentTests.bend as HostIssueCurrent
 import ./HostIssueResultTests.bend as HostIssueResult
+import ./HostAdmissionCurrentTests.bend as HostAdmissionCurrent
 import ./HostHandoffTests.bend as HostHandoff
 import ./HostConformanceTests.bend as HostConformance
 import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
@@ -47,6 +48,17 @@ def linux_tests() -> IO(Unit):
     LinuxSessionOpen.main()
     LinuxCredentialBinding.main()
     LinuxClock.main()
+
+# Keep host corpus ordering while bounding generated continuation arity.
+def host_tests() -> IO(Unit):
+  do IO<Unit>:
+    HostIdentity.main()
+    HostPrimitives.main()
+    HostIssueCurrent.main()
+    HostIssueResult.main()
+    HostHandoff.main()
+    HostConformance.main()
+    HostAdmissionCurrent.main()
 
 def main() -> IO(Unit):
   do IO<Unit>:
@@ -73,12 +85,7 @@ def main() -> IO(Unit):
     LocalityConjunction.main()
     StageGraph.main()
     StagePorts.main()
-    HostIdentity.main()
-    HostPrimitives.main()
-    HostIssueCurrent.main()
-    HostIssueResult.main()
-    HostHandoff.main()
-    HostConformance.main()
+    host_tests()
     linux_tests()
     Facade.main()
     LocalSupervisor.main()

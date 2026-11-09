@@ -63,7 +63,7 @@ def direct_use(decoded: W.DecodeResult) -> Bool:
     case W.Decoded{message}:
       +s = LT.delegated()
       LT.untranslated(LH.barrier_use(message, LT.linux_report(), LH.inventory_of(changed()), s,
-        V.session_worker(), changed(), LT.now()), s, LH.LaunchMismatch{})
+        V.session_worker(), changed(), LT.now(), V.fixture_authority(LT.now())), s, LH.LaunchMismatch{})
     case _: False{}
 
 def direct_checked() -> Bool:
@@ -219,7 +219,7 @@ def revoke_then_serve() -> Bool:
   +s = LT.admitted()
   +after = LH.Outcome.state(LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{})))
   served_retired(LH.serve(after, LT.synthetic_barrier_bytes(V.session_worker(), LT.subject_a(), LT.launch_token(),
-    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LH.Sample{LT.now()}), after)
+    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LH.Sample{LT.now()}, V.fixture_authority(LT.now())), after)
 
 def changed_frame() -> Bool:
   LT.synthetic_denied(LT.synthetic_barrier_served(V.session_worker(), LT.subject_a(), LT.launch_token(),

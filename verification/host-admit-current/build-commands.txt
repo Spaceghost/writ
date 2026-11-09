@@ -1,0 +1,45 @@
+Worktree base: b82ca01. Pinned Bend 2.0.39:
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+TMPDIR=/home/jadams/tmp/writ-admit-current-checks was exported for Bend,
+clang and subprocesses; BEND_NO_TELEMETRY=1. Full suite/compilation used
+ulimit -c 0, -v 16777216 KiB, -t 600 s, nice -n 15. The first full C
+generation used timeout 600 and exited 124 without diagnostics; the retry used
+timeout 1800 with the same CPU/memory limits. Focused
+backends and trap used -v 10737418 KiB, -t 300 s, timeout 300, nice -n 15.
+Node v26.10.0; clang 23.1.1.
+
+bend Tests.bend: exit 0, tests-bend.txt, 2931 PASS: lines and 53 other PASS lines.
+bend Tests.bend -o verified.js; node verified.js: both exit 0, tests-node.txt;
+cmp tests-bend.txt tests-node.txt: exit 0.
+bend HostAdmissionCurrentTests.bend, generated Node, and clang -O0 native
++RTS --threads 1 --gpu off: exit 0; focused-bend.txt, focused-node.txt and
+focused-native.txt compare byte-for-byte.
+bend PROOF.bend: exit 0, proof.txt.
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt
+LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict: exit 0, verdict.txt.
+Kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+BENDTT=/bin/false bend PROOF.bend --verdict: exit 1 as expected, negative.txt.
+openspec validate --all --strict --no-interactive: exit 0, openspec.txt.
+
+The healthy maximum-worker trap source was run with Bend, generated Node and
+static clang -O0 native +RTS --threads 1 --gpu off; all exit 1 with Nat overflow.
+The focused tests check that stale authority denies before the same terminal
+worker, host-revision and identity-revision cases. The original synthetic gap
+reproducer ran on base b82ca01 and its output is retained.
+
+Native host mocks: timeout 120 nice -n 15 make -C contrib/native-hosts/linux
+OUT=/home/jadams/tmp/writ-admit-current-checks/linux-native, targeting
+handoff-order-test and retire-error-test; each run with timeout 60, nice -n 15,
+exit 0. Outputs and build log are retained. No mount, native identity probe or
+VM was used. The first full JS/C generation was deliberately stopped with exit
+143 after a required source comment correction, then restarted on exact final
+source. Initial fixture/compilation failures are retained, including two prior
+conformance failures; they were fixed without removing the publication test.
+
+Full native CPU retry: bend Tests.bend -o verified.c; clang -std=c11 -O0
+-static verified.c -o verified-native -lpthread -lm; verified-native +RTS
+--threads 1 --gpu off: all exit 0. The successful generator and compiler logs
+are native-cgen.txt and native-build.txt. Generated C SHA-256
+ccd9430c0fde53a53197620826b7b3c782b935b1f8ab37b4209f885a9978f057; native
+executable SHA-256 80e37a20d6e99a6453dac15262c0aa1e72c8d4118fb7520b03e29d675e2986ae.
+cmp tests-bend.txt tests-native.txt: exit 0.
