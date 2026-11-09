@@ -181,3 +181,30 @@ The exact named checks are:
 - `denied cleanup still contains expired reader state`
 - `nested owner remains contained and retained`
 - `nested transition attempts cannot be accepted`
+
+
+## Trusted session-loss trigger (LH-013, LH-015, LH-017)
+
+`LinuxHost.session_lost` is a trusted in-process signal, not a broker or worker
+frame and not native death detection. It forwards any joint loss or ambiguous
+lifetime to the existing containment outcome. Valid singleton owners retain
+policy, credentials, clock, issuer and historical stops in sticky `JointFailed`;
+no effect is emitted by the signal. Malformed nested owners remain unnormalized
+and fail closed under existing guards. Standalone returns `Unrouted` with its
+state unchanged. Checked drain and restart still produce only their actual
+StopEffects. The supervisor must observe loss, serialize the signal against
+effect handoff, and physically contain workers; already delivered bytes cannot
+be recalled. No native authentication, host lifetime monitoring, or reader
+transaction binding is established by this model signal.
+
+Named synthetic cases in [LinuxSessionLossTests.bend](../../hosts/linux/monitor/LinuxSessionLossTests.bend):
+
+- `LH-session-loss running worker retains state and requires containment`
+- `LH-session-loss valid framed delivery and direct helpers stop after loss`
+- `LH-session-loss drain emits exact stop once and preserves history`
+- `LH-session-loss restart emits actual stop and stays contained`
+- `LH-session-loss retains exact revoked issuer through drain`
+- `LH-session-loss preserves poisoned clock and cleanup`
+- `LH-session-loss standalone state is unrouted and unchanged`
+- `LH-session-loss malformed owner stays unnormalized and contained`
+- `LH-session-loss terminal cleanup remains incomplete`

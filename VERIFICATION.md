@@ -1125,3 +1125,7 @@ The [Mount commit-lineage record](verification/mount-commit-lineage/README.md)
 checks retention of the historical Frontend state/reference paired with the
 same accepted canary commit. Those records do not establish live authority,
 authenticated native identity, or a combined LinuxHost/Mount release path.
+
+The [session-loss signal record](verification/linux-session-loss/README.md)
+checks synthetic sticky containment and unchanged cleanup effects. It does not
+detect a real session loss or establish a native host.

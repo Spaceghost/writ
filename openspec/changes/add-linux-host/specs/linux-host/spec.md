@@ -271,6 +271,17 @@ Restart SHALL invalidate old process and session attribution, and SHALL NOT rest
 
 If clock continuity, authenticated authority, quiescence, persistence or prior outcome cannot be established, the instance SHALL remain incomplete and deny new protected effects while permitting safe cleanup.
 
+#### Scenario: A session lifetime becomes uncertain
+
+- **GIVEN** the joint owner may have admitted protected processing
+- **WHEN** its trusted supervisor reports that a session ended or its lifetime is ambiguous
+- **THEN** the owner requires whole-instance containment and admits no new protected effect
+- **AND** it retains policy state, issuer, credentials, clock and stop history while recording containment for checked cleanup.
+
+This control models a supervisor signal. Detecting session loss, serializing it
+with effect handoff and physically containing workers remain host obligations;
+previously delivered bytes cannot be recalled.
+
 #### Scenario: Monotone clock origin resets on reboot
 
 - **GIVEN** an earlier incarnation observed a grant's expiration

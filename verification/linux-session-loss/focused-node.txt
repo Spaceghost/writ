@@ -1,0 +1,10 @@
+PASS: LH-session-loss running worker retains state and requires containment
+PASS: LH-session-loss valid framed delivery and direct helpers stop after loss
+PASS: LH-session-loss drain emits exact stop once and preserves history
+PASS: LH-session-loss restart emits actual stop and stays contained
+PASS: LH-session-loss retains exact revoked issuer through drain
+PASS: LH-session-loss preserves poisoned clock and cleanup
+PASS: LH-session-loss standalone state is unrouted and unchanged
+PASS: LH-session-loss malformed owner stays unnormalized and contained
+PASS: LH-session-loss terminal cleanup remains incomplete
+LinuxSessionLoss: 9 checks passed

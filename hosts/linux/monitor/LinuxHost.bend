@@ -185,7 +185,7 @@ import ./LinuxJointAuthority.bend as JA
 # `EvidenceResult`, `ReportResult`, `BrokerFrame`, `Input`, `Outcome`; the
 # translators `launch_check`, `session_check`, `credential_check`, `session_evidence_of`, `report_of`,
 # `inventory_of`; `portable`, `credentials`, `clock`, `joint`, `without_credentials`,
-# `joint_initial`, `joint_dispatch`, `joint_issue`, `joint_revoke`, `joint_drain`,
+# `joint_initial`, `joint_dispatch`, `joint_issue`, `joint_revoke`, `joint_drain`, `session_lost`,
 # `restart`, `revoke`, `dispatch`, `serve`, `next`, `Outcome.state`, `Outcome.effects`, and
 # `Rejection.equal`. Every other def is an implementation helper.
 
@@ -644,6 +644,19 @@ def joint_sample_current(state: State, +now: Nat) -> Bool:
 
 def joint_containment(state: State) -> Outcome:
   ContainmentRequired{contain_state(state)}
+
+# Trusted supervisor signal for a lost or ambiguous session lifetime. A joint
+# owner must be contained even when the affected session cannot be identified.
+# It retains the existing state and stop history and emits no effects itself;
+# only the existing drain or restart yields actual StopEffects. No worker or
+# broker frame carries this signal. The host must detect the event, serialize
+# it with effect handoff and physically contain the instance. Standalone mode
+# reports that no joint action was processed. Malformed joint records remain
+# unnormalized and fail closed under the existing joint guards.
+def session_lost(state: State) -> Outcome:
+  match state:
+    case State{_, _, _, JA.NoJoint{}}: Unrouted{state}
+    case _: joint_containment(state)
 
 # Control denials must not hide an already stale or poisoned retained owner.
 def retained_clock_current(+state: State) -> Bool:
