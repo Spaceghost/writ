@@ -1,0 +1,12 @@
+import Base
+import ./HostIdentity.bend as I
+import ./Test.bend as Test
+
+def check(parsed: Maybe<&2, Nat>) -> Bool:
+  match parsed:
+    case Some{max}: Bool.not(I.under(max, I.NoEntries{}, 0n, 1n))
+    case None{}: False{}
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(check(Nat.read("281474976710655")), "fixed-point control")

@@ -1,0 +1,7 @@
+import Base
+import ./HostIdentity.bend as I
+import ./Test.bend as Test
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(Bool.not(I.under(10000000n, I.NoEntries{}, 0n, 1n)), "fixed-point control")

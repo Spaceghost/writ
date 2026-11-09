@@ -1,0 +1,23 @@
+Base 49c09f2; Bend 2.0.39 (SHA-256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd), Node v26.10.0, clang 23.1.1, OpenSpec 1.16.0.
+Scratch and generated artifacts were under /home/jadams/tmp/writ-host-identity-build; TMPDIR pointed there and BEND_NO_TELEMETRY=1. Processes ran at nice 15. Core dumps were disabled during native crash controls.
+
+Full suite: timeout 300 bend Tests.bend (exit 0; tests-bend.txt).
+Proof: timeout 300 bend PROOF.bend (exit 0; proof.txt).
+Verdict: BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt timeout 300 bend PROOF.bend --verdict (exit 0; verdict.txt).
+OpenSpec: openspec validate --all --strict --no-interactive (exit 0; openspec.txt).
+
+Full C generation: ulimit -v 16777216; timeout 600 bend Tests.bend -o /home/jadams/tmp/writ-host-identity-build/tests.c (exit 0; native-generate.txt is empty). C SHA-256 2e29197d8137bd1337be376137514c4b2cba7a88a2e1fd3ab38c18fdfc301e82.
+
+
+Full native build: ulimit -v 16777216; TMPDIR=/home/jadams/tmp/writ-host-identity-build timeout 600 nice -n 15 clang -std=c11 -O0 -static /home/jadams/tmp/writ-host-identity-build/tests.c -o /home/jadams/tmp/writ-host-identity-build/tests-native -lpthread -lm (exit 0; native-build.txt is empty). Executable SHA-256 3f2d93e08a8ae3c58a20c840e543b6cfa3e441094b2264c1b271e8f653263c93.
+Full native run: ulimit -c 0; ulimit -v 20971520; timeout 600 nice -n 15 /home/jadams/tmp/writ-host-identity-build/tests-native +RTS --threads 1 --gpu off (exit 0; native-suite.txt). cmp tests-bend.txt native-suite.txt exited 0.
+
+Control: copy control.bend.txt to each worktree as AncestryControl.bend. The candidate uses this tree; the base uses unchanged HostIdentity.bend at 49c09f2; the eager mutant applies eager-mutant.patch.txt to the candidate helper in a separate worktree. For the maximum-Nat fixture:
+- timeout 30 bend AncestryControl.bend: candidate exit 0, eager mutant exit 1.
+- timeout 180 bend AncestryControl.bend -o max.js; timeout 60 node max.js: candidate generation/run exits 0/0. Generated JS SHA-256 977228292471905130f1c84765f965899fec9b9f30498e050cbc242254fa584d.
+- timeout 180 bend AncestryControl.bend -o max-eager.js; timeout 30 node max-eager.js: eager generation/run exits 0/1. Generated JS SHA-256 ff6bff7be2e59a10210a952fd4268820860413f8dea118f4d983b5b1da2aa427.
+- timeout 180 bend AncestryControl.bend -o max-native; timeout 60 max-native +RTS --threads 1 --gpu off: candidate generation/run exits 0/0. Executable SHA-256 f293308e123874a8a1c4c90e6c0d052a1a8fcfd62e0f7c249c13f7433980c354.
+- timeout 180 bend AncestryControl.bend -o max-base-native; timeout 30 max-base-native +RTS --threads 1 --gpu off: base generation/run exits 0/139. Executable SHA-256 530dca156b753b92cb9a6ceb583c59a1bb8f4e7b6b5fdf71bfeb77dcc59187db.
+- timeout 180 bend AncestryControl.bend -o max-eager-native; timeout 30 max-eager-native +RTS --threads 1 --gpu off: eager generation/run exits 0/139. Executable SHA-256 f951672e54b093341447242e8f2c4a7eb8908d49760a4ed6e980d1f52e53aeb0.
+The final control native runs used ulimit -v 20971520 and ulimit -c 0. For the initial 10-million test, candidate Bend/Node/native exited 0; base Bend exited 1 and native 0; eager Bend/Node exited 1 and native 0. Initial native candidate and mutant runs under 8 GiB exited 1 at reservation, before the 20 GiB runs. Empty build files are stdout/stderr from successful named control generation; binaries and generated C/JS are not part of this source tree.
+The failed literal diagnostic has trailing whitespace normalized for the source diff.

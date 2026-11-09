@@ -1,0 +1,8 @@
+--- a/HostIdentity.bend
++++ b/HostIdentity.bend
+@@ -991,3 +991,2 @@
+-          next = Bool.pick(Unit -> Bool, Nat.is_eq(parent, slot),
+-            y => False{}, y => under(rest, entries, parent, target))
+-          next(Unit{})))
++          Bool.pick(Bool, Nat.is_eq(parent, slot),
++            False{}, under(rest, entries, parent, target))))

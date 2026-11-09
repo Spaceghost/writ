@@ -23,6 +23,7 @@ import ./LocalityConjunctionTests.bend as LocalityConjunction
 import ./StageGraphTests.bend as StageGraph
 import ./StagePortsTests.bend as StagePorts
 import ./HostIdentityTests.bend as HostIdentity
+import ./HostIdentityAncestryTests.bend as HostIdentityAncestry
 import ./HostPrimitivesTests.bend as HostPrimitives
 import ./HostIssueCurrentTests.bend as HostIssueCurrent
 import ./HostIssueResultTests.bend as HostIssueResult
@@ -53,6 +54,7 @@ def linux_tests() -> IO(Unit):
 def host_tests() -> IO(Unit):
   do IO<Unit>:
     HostIdentity.main()
+    HostIdentityAncestry.main()
     HostPrimitives.main()
     HostIssueCurrent.main()
     HostIssueResult.main()

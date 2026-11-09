@@ -1,0 +1,9 @@
+SOME PROOFS FAIL
+Error:
+- expected : a nat literal up to 4294967295n (got 281474976710655n)
+- observed : ','
+Location:
+6 |   do IO<Unit>:
+7>|     Test.check(Bool.not(I.under(281474976710655n, I.NoEntries{}, 0n, 1n)), "fixed-point control")
+  |                                                 ^
+8 |

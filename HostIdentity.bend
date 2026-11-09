@@ -976,13 +976,22 @@ def delegate(+state: State, expected_revision: Nat, +session: Nat, +ref: W.Ref, 
 # Implementation helper: whether walking parent links from `slot` reaches
 # `target` within `fuel` steps. `valid` makes every parent lower than its
 # child, so fuel `next_slot` covers the longest chain; a root's parent 0 is
-# never a target.
+# never a target in retirement. A fixed point cannot reach a different target,
+# even for malformed entries where slot 0 has an explicit parent. Branches
+# are deferred so a huge remaining fuel is not traversed after a match or
+# fixed point. Nontrivial cycles on malformed input still use the supplied fuel.
 def under(fuel: Nat, +entries: Entries, +slot: Nat, +target: Nat) -> Bool:
   match fuel:
     case 0n:
       Nat.is_eq(slot, target)
     case 1n+rest:
-      Nat.is_eq(slot, target) || under(rest, entries, parent_of(entries, slot), target)
+      finish = Bool.pick(Unit -> Bool, Nat.is_eq(slot, target),
+        x => True{}, x => (
+          +parent = parent_of(entries, slot)
+          next = Bool.pick(Unit -> Bool, Nat.is_eq(parent, slot),
+            y => False{}, y => under(rest, entries, parent, target))
+          next(Unit{})))
+      finish(Unit{})
 
 # Implementation helper: a retired entry keeps its slot, advances its
 # generation, and is no longer live.
