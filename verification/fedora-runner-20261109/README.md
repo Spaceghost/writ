@@ -43,8 +43,25 @@ Initial listener startup failed because a root-run version probe created
 `/opt/actions-runner/_diag` as root. The supervisor retired the failed guest.
 The base diagnostic directory was assigned to `runner`, the version check was
 repeated as UID 1000, and the installer now checks the listener as that identity.
-No privilege relaxation was used. GitHub job execution and guest retirement are pending
-at this provisioning record; append their exact run evidence after execution.
+No privilege relaxation was used.
+
+## First GitHub execution
+
+[Run 42601884892](https://github.com/Spaceghost/writ/actions/runs/42601884892)
+on `5169f180ee8fe673767b3e8c72002a10575dd920` used runner ID 24. The library
+suite passed with 3,063 `PASS` lines and `ALL LIBRARY TESTS PASSED`; ordinary
+proofs passed; OpenSpec reported 45 passed and 0 failed. Clang 22.1.8 was killed
+during native compilation under the initial 8 GiB memory limit, so native CPU
+execution and transport were not credited. The job failed and retained its logs.
+The runner deregistered and the supervisor retired the guest.
+
+Incus reported about 66 GiB total host memory and about 28 GiB used before the
+retry. The stopped base was increased to 16 GiB RAM, retaining the 30 GiB root
+quota and 4 CPUs. The [final base config](final-base-config.yaml) records this
+change. The initial resource sample above remains evidence for the original
+8 GiB setup. The workflow now captures native compiler output and cgroup memory
+counters. A killed compiler suggests memory pressure; the first run did not
+retain cgroup OOM counters, so no exact OOM attribution is claimed.
 
 ## Limits
 

@@ -59,7 +59,8 @@ jobs:
         run: |
           set -euo pipefail
           bend Tests.bend 2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/tests.log"
-          bend Tests.bend -o "$RUNNER_TEMP/writ-fedora-build/tests-native"
+          bend Tests.bend -o "$RUNNER_TEMP/writ-fedora-build/tests-native" \
+            2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/native-compile.log"
           "$RUNNER_TEMP/writ-fedora-build/tests-native" +RTS --threads 4 --gpu off \
             2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/tests-native.log"
 
@@ -91,6 +92,23 @@ jobs:
           test "$(openspec --version)" = '1.16.0'
           openspec validate --all --strict --no-interactive \
             2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/openspec.log"
+
+      - name: Record resource counters
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writ-fedora-logs"
+          {
+            for counter in memory.max memory.current memory.peak memory.events; do
+              printf '%s:\n' "$counter"
+              if test -r "/sys/fs/cgroup/$counter"; then
+                cat "/sys/fs/cgroup/$counter"
+              else
+                printf 'unavailable\n'
+              fi
+            done
+            df -h /
+          } | tee "$RUNNER_TEMP/writ-fedora-logs/resources.log"
 
       - name: Retain Fedora evidence
         if: always()

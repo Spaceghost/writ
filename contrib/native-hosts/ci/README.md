@@ -16,7 +16,7 @@ jobs cannot change the active supervisor.
 ```sh
 incus init images:4521dcdd45318582537b88c40ec4558f49ce111cb58c5cb29ae02fb089b89980 \
   fedora:writ-runner-base --storage ci -d root,size=30GiB \
-  -c limits.cpu=4 -c limits.memory=8GiB \
+  -c limits.cpu=4 -c limits.memory=16GiB \
   -c security.privileged=false -c security.nesting=false
 incus start fedora:writ-runner-base
 incus exec fedora:writ-runner-base -- bash < contrib/native-hosts/ci/install-guest.sh
@@ -43,7 +43,7 @@ GitHub retires its pinned runner version.
 | `incus-runner.sh` | Controller-only lifecycle: serial clone, start, one-use registration via stdin, execution, runner deregistration and guest deletion; no Writ decisions |
 | `writ-incus-runner.service` | User service on the controller; restarts after failure and serializes supervisors with a lock |
 | `.github/workflows/writ-fedora.yml` | Read-only repository token; master pushes and master dispatches only; CPU/model/transport/proof checks and retained logs |
-| `fedora:writ-runner-base` | Stopped, unprivileged Fedora template on the existing Btrfs `ci` pool; root quota 30 GiB, 4 CPUs, 8 GiB RAM |
+| `fedora:writ-runner-base` | Stopped, unprivileged Fedora template on the existing Btrfs `ci` pool; root quota 30 GiB, 4 CPUs, 16 GiB RAM |
 | `fedora:writ-runner-job` | At most one disposable clone with the same quota and limits; no host directories, Incus socket, GPU, privileged flag, nesting or controller credentials attached |
 
 The template and active clone each have a 30 GiB root limit; this is not a
