@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>May we test the local channel with our own disposable processes?</title>
+<meta name="writ-topic" content="linux-authenticated-bridge">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}a{color:var(--accent)}code{background:var(--soft);padding:.05em .25em;border-radius:4px}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>May we test the local channel with our own disposable processes?</h1>
+<p>Josh, the local-supervisor design now needs evidence about how Linux identifies a sender when a channel is passed to another process. In question 19 you chose synthetic identity cases first. May we prepare and run the smaller owned-process test below when its code is ready, or should we stay with synthetic checks?</p>
+<h2>What the test would do</h2>
+<p>A short unprivileged test would create its own private Unix socket pair and spawn its own disposable child processes. It would compare the kernel-provided sender lifetime information for a message sent by the intended child with one sent after the channel is passed to a second child. It would also exercise missing or unsupported kernel features and cleanup. A fixed timeout would stop the test, and it would close its own descriptors and reap its own children.</p>
+<p>The test would not inspect unrelated processes, scan the host, request elevated privileges, alter namespaces or security settings, mount a filesystem, start a VM, or run the earlier withheld Linux broker or identity probe. Scratch would live under <code>~/tmp</code>. Its exact source and expected observations would be reviewed before execution, and failures would be preserved.</p>
+<h2>What this would and would not establish</h2>
+<p>This is one narrow kernel-behavior test, not a working authenticated bridge or host qualification. Linux can permit privileged senders to supply different credentials, and a matching process lifetime alone does not prove a human, an executable, a role, or permission to disclose data. Protected role provisioning, confinement, a live issuer and clock, and the single effect path remain necessary.</p>
+<p>The earlier board record says an automatic safety classifier stopped two attempts to write the previous native identity probe; it does not record the reason. Your answer can choose whether we attempt this narrower test, but it cannot override an automatic review rejection or authorize retrying the withheld probe.</p>
+<form method="post" action="/questions/q23/answer">
+<fieldset><legend>How should we proceed?</legend>
+<label><input type="radio" name="direction" value="owned-process-test" required>Prepare and run the bounded owned-process test described above, subject to automatic review.</label>
+<label><input type="radio" name="direction" value="synthetic-only">Continue with synthetic and mock-only checks; do not run native identity tests.</label>
+<label><input type="radio" name="direction" value="other">Use another approach; see my notes.</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form><p class="note">An affirmative answer covers only this described owned-process test and its preparation; it does not approve a privileged probe, deployment or host qualification.</p>
+</body></html>
