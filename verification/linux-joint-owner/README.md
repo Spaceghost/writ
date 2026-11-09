@@ -1,20 +1,20 @@
 # WIP: synthetic Rendezvous owner (not qualified for merge)
 
-**Incomplete and unmerged.** The current boxed candidate passes 42 focused
-checks on Bend and generated Node, but its native focused C generation fails
-with `arity over 247`. The full-tree native generator separately aborted under
-an 8 GiB virtual-memory limit; that abort is not an arity verdict and no full
-native result exists. Its delivery, containment and authority behavior remains
+**Historical WIP at commit 503c3b8.** That boxed candidate passed 42 focused
+checks on Bend and generated Node, but its native focused C generation failed
+with `arity over 247`. Its full-tree native generator separately aborted under
+an 8 GiB virtual-memory limit; that abort is not an arity verdict and produced no full
+native result. Its delivery, containment and authority behavior remained
 unqualified. The user-facing host is not changed by this WIP branch.
 
 The exact failing [actual issue probe](actual-issue-probe.bend.txt) and
-[output](actual-issue-native-failure.txt) use this branch's source. A separate
+[output](actual-issue-native-failure.txt) use the source at that commit. A separate
 self-guarding single-stage issue experiment also fails: see its
 [patch](issue-attempt.patch.base64), [probe](issue-attempt-probe.bend.txt), and
 [output](issue-attempt-native-failure.txt). That experimental patch is evidence,
 not part of the candidate. The independently reviewed self-guarding dispatch
 attempt generated C in isolation; no inference about the full issue path follows.
-The [boxed focused Bend](boxed-focused-bend.txt) and
+The historical [boxed focused Bend](boxed-focused-bend.txt) and
 [Node](boxed-focused-node.txt) outputs match. The [focused native failure](boxed-focused-native-failure.txt)
 and [full generator abort](boxed-full-native-abort.txt) are preserved.
 
@@ -71,10 +71,12 @@ overflow. The earlier [exploratory full run](preliminary-full-bend.log) overlaps
 source edits and is explicitly [not final evidence](preliminary-full-status.txt).
 
 The [pre-box Bend input hashes](pre-box-bend-input-sha256.txt) identify the earlier source,
-not the current candidate. The repository source manifest identifies this WIP
-commit; [commands and limits](commands.txt) distinguish the experimental runs. No GPU, VM,
+not the current candidate. The repository source manifest identifies the currently delivered
+tree; [commands and limits](commands.txt) distinguish the experimental runs. No GPU, VM,
 identity probe, FUSE mount, protected-host acceptance or recovery claim is made.
 
 The readable Bun abort logs have trailing whitespace normalized; the exact
 original bytes are preserved in the adjacent `.base64` files. The experimental
 unified diff is base64-encoded so its required blank context lines remain exact.
+
+A later [staged continuation refactor](../linux-joint-owner-staged/README.md) records new checks; this historical record remains unchanged as evidence of the earlier failures.

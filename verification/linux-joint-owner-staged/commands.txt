@@ -1,0 +1,62 @@
+Model source base: WIP commit 503c3b8 plus the staged source changes in this tree.
+Pinned compiler: /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend.
+TMPDIR=/home/jadams/tmp/writ-joint-checks and BEND_NO_TELEMETRY=1 throughout;
+all generated C, JS, executables, compiler intermediates, and the experimental
+mutants were outside the checkout. Processes used nice -n 15; core dumps disabled.
+
+Full input commands: bend Tests.bend; bend Tests.bend -o staged-final-full.js;
+node staged-final-full.js; bend Tests.bend -o staged-final-full.c;
+clang -std=c11 -O0 -static staged-final-full.c -o staged-final-full -lpthread -lm;
+staged-final-full +RTS --threads 1 --gpu off. All exit 0; full outputs match.
+Full generation/compilation had 16 GiB virtual-memory, 1800 s CPU, 3600 s wall
+limits. Full Bend/Node execution had 16 GiB, 900 s CPU, 2400 s wall limits;
+native execution had 16 GiB, 900 s CPU, 1800 s wall limits. Source hashes:
+full generated C d24a25e85dafe6959071d1bd9964e2b18147b1e97c0ec5a40d2beb1d136be786;
+native executable 1fe6c2ec25ec0a3db765f0619964619864f9eff35c3e13e86d7d59989dd36df6;
+generated JS 90082e8b811fb18c3be2486d1607576697d8e17dd0f630388b5b42dc6019e6f5.
+Focused Bend, JS/Node and C/native follow the same commands on
+hosts/linux/monitor/LinuxJointOwnerTests.bend, with 12 GiB for generation and
+compilation, 16 GiB for native execution, and 600 s CPU / 1200 s wall limits.
+Their outputs match. Focused C SHA-256
+8666be003d4ef5e3eee8fdc6e98b532a6dca176d325f8a83c6bca69f680dc2a3;
+executable 187e0cdaaf43d1bb96a2929eed7ad5fcf215564014f19aecd81a4dff63236d1c;
+JS 6bae12791429789749810c23d672c0a6f6254584f42252ff493d3e6438104325.
+clang 23.1.1; Node v26.10.0.
+
+bend PROOF.bend exits 0. With BENDTT set to
+/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt and
+LEAN_STACK_SIZE_KB=4194304, bend PROOF.bend --verdict exits 0. Kernel SHA-256
+e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+With BENDTT=/bin/false the verdict control exits 1 as expected.
+openspec validate --all --strict --no-interactive exits 0: 45 passed.
+
+The frontend capacity probes (staged-frontend-{safe,mutant}.bend) use the
+same synthetic fixture and maximum frontend revision. The mutant patch is
+staged-frontend-guard-mutant.patch.base64; it removes only the two-allocation
+room check. Safe Bend/Node/native exit 0; mutant Bend/Node/native exit 1 with
+Nat overflow. Initial standalone Bool-form safe and mutant probes exhausted
+12 GiB virtual-memory and aborted (exit 134); their original logs are base64
+encoded. The recorded IO-form probes corrected that harness limitation.
+
+The open-refusal probes (staged-open-{refused,accepted}.bend) apply
+staged-open-trap.patch.base64, replacing only the P.issue_result expression in
+checked_issue with a P.Issued whose slot calculation intentionally overflows.
+The refused-open control exits 0 and the accepted-open control exits 1 with
+Nat overflow on Bend, Node and native. The initial trap used a Nat literal
+outside Bend's literal range; the two syntax-error logs are preserved. These
+patches apply only to separate disposable worktrees, not the checked source;
+the probe imports contain original absolute scratch paths and must be adjusted
+when recreating. Base64-decode patches before applying.
+
+Minimal native issue and drain probes, exploratory arity diagnostics and the
+pre-grouping focused-generation failure preceded the exact-source checks;
+their outputs are retained without using the instrumented compiler as final
+evidence. Diagnostic-only compiler use did not change the pinned toolchain.
+
+For the two nonprivileged mocks, first invocation used bare make target names,
+triggering implicit rules; handoff build failed to locate fuse_lowlevel.h and
+an untracked retire-error-test binary was produced inside this isolated
+checkout. That binary was removed. Retrying with the explicit targets
+/home/jadams/tmp/writ-joint-checks/staged-mocks/{handoff-order-test,retire-error-test}
+and OUT pointing at that directory built both and ran each under timeout 60,
+with exit 0. The first failure and retry are preserved separately.

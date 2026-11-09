@@ -1108,3 +1108,8 @@ The [automatic CI for bfb8052](verification/master-ci-bfb8052/README.md)
 records Windows Node, Btrfs/ZFS, Linux and Genode public-fixture results and
 the strict Windows native failure. Linux protected setup was refused before
 input; neither that refusal nor the other fixture results qualify a host.
+
+The [synthetic Linux joint-owner model record](verification/linux-joint-owner-staged/README.md)
+covers same-call issuer, selection, issuance and protected-input admission,
+with conservative containment and exact stop-effect draining. It does not
+qualify a native host, authenticate authority, or mediate the separate Mount path.

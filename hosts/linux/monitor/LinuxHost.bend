@@ -770,30 +770,68 @@ def revoke(+state: State, +expected_revision: Nat, +slot: Nat) -> Outcome:
 # Trusted cleanup after the mandatory instance-containment directive. This
 # does not certify native containment. Each successful call returns only its
 # new H.revoke effects; all historical stops stay in the sticky failed state.
-def joint_drain(+state: State) -> JointDrain:
+# Internal result of independently guarded retirement. The tail is required
+# to be empty before its actual Step can be installed by joint_drain.
+type DrainAttempt is Data:
+  NoDrainAttempt{}
+  AlreadyRetired{}
+  DrainAttempt{step: P.Step, rest: DrainAttempt}
+
+def drain_step_ok(attempt: DrainAttempt) -> Bool:
+  match attempt:
+    case DrainAttempt{step, NoDrainAttempt{}}:
+      Bool.not(Maybe.is_some(&2, P.Error, P.Step.reason(step)))
+    case _: False{}
+
+def drain_skipped(attempt: DrainAttempt) -> Bool:
+  match attempt:
+    case AlreadyRetired{}: True{}
+    case _: False{}
+
+def drain_portable(attempt: DrainAttempt, fallback: P.State) -> P.State:
+  match attempt:
+    case DrainAttempt{step, NoDrainAttempt{}}: P.Step.state(step)
+    case _: fallback
+
+def drain_effects(attempt: DrainAttempt) -> +List<P.Effect>:
+  match attempt:
+    case DrainAttempt{step, NoDrainAttempt{}}: P.Step.effects(step)
+    case _: []
+
+# Derive the entire preflight and, on a live and safe root, the exact H.revoke
+# transition from the retained state. No supplied Step or success flag is used.
+def checked_drain(+state: State) -> DrainAttempt:
   match state:
-    case State{+p, +records, +time, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
-        +negotiation, +context, JA.NoLineage{}, JA.JointFailed{+prior}, JA.NoJoint{}}}:
-      JointDrainComplete{state}
-    case State{+p, +records, +time, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
-        +negotiation, +context, JA.Lineage{+incarnation, _, +grant, +root, +rest}, JA.JointFailed{+prior}, JA.NoJoint{}}}:
+    case State{+p, _, _, JA.Joint{+issuer, _, _, _, _, _,
+        JA.Lineage{+incarnation, _, +grant, +root, _}, JA.JointFailed{_}, JA.NoJoint{}}}:
       +found = {I.entry_lookup(I.entries(P.identity(p)), root) : Maybe<&2, I.Entry>}
-      f = Bool.pick(Unit -> JointDrain,
+      f = Bool.pick(Unit -> DrainAttempt,
         Nat.is_eq(incarnation, I.incarnation(P.identity(p))) && I.valid(P.identity(p)) && root_valid(found)
           && root_grant_bound(found, Iss.find_grant(Iss.grants(issuer), grant)),
-        x => Bool.pick(Unit -> JointDrain, root_live(found),
-          y => Bool.pick(Unit -> JointDrain, retire_room(p, root),
-            z => ({+step => Bool.pick(Unit -> JointDrain,
-              Bool.not(Maybe.is_some(&2, P.Error, P.Step.reason(step))),
-              w => JointDrainStep{State{P.Step.state(step), records, time,
-                JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context, rest,
-                  JA.JointFailed{List.append(&2, P.Effect, prior, P.Step.effects(step))}, JA.NoJoint{}}}, P.Step.effects(step)},
-              w => JointDrainIncomplete{state})(Unit{}) : P.Step -> JointDrain})(H.revoke(p, P.revision(p), root)),
-            z => JointDrainIncomplete{state})(Unit{}),
-          y => JointDrainStep{State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,
-            negotiation, context, rest, JA.JointFailed{prior}, JA.NoJoint{}}}, []})(Unit{}),
-        x => JointDrainIncomplete{state})
+        x => Bool.pick(Unit -> DrainAttempt, root_live(found),
+          y => Bool.pick(Unit -> DrainAttempt, retire_room(p, root),
+            z => DrainAttempt{H.revoke(p, P.revision(p), root), NoDrainAttempt{}},
+            z => NoDrainAttempt{})(Unit{}),
+          y => AlreadyRetired{})(Unit{}),
+        x => NoDrainAttempt{})
       f(Unit{})
+    case _: NoDrainAttempt{}
+
+def joint_drain(+state: State) -> JointDrain:
+  match state:
+    case State{_, _, _, JA.Joint{_, _, _, _, _, _, JA.NoLineage{}, JA.JointFailed{_}, JA.NoJoint{}}}:
+      JointDrainComplete{state}
+    case State{+p, +records, +time, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
+        +negotiation, +context, JA.Lineage{_, _, _, _, +rest}, JA.JointFailed{+prior}, JA.NoJoint{}}}:
+      +attempt = {checked_drain(state) : DrainAttempt}
+      Bool.pick(JointDrain, drain_step_ok(attempt),
+        JointDrainStep{State{drain_portable(attempt, p), records, time,
+          JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context, rest,
+            JA.JointFailed{List.append(&2, P.Effect, prior, drain_effects(attempt))}, JA.NoJoint{}}}, drain_effects(attempt)},
+        Bool.pick(JointDrain, drain_skipped(attempt),
+          JointDrainStep{State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,
+            negotiation, context, rest, JA.JointFailed{prior}, JA.NoJoint{}}}, []},
+          JointDrainIncomplete{state}))
     case _: JointDrainIncomplete{state}
 
 def has_credential(found: CredentialLookup) -> Bool:
@@ -906,43 +944,149 @@ def joint_issue_room(+p: P.State, frontend: F.State) -> Bool:
 # Frontend mount/open and host issue are pure in-memory transitions here; no
 # authority or record is accepted from worker bytes. A denial preserves the
 # original composite state, and the recorded slot is the same call's result.
+type IssueAttempt is Data:
+  NoIssueAttempt{}
+  RefusedIssue{}
+  InvalidIssue{}
+  IssueAttempt{frontend: F.State, issued: P.IssueResult, rest: IssueAttempt}
+
+def issue_attempt_shape(attempt: IssueAttempt) -> Bool:
+  match attempt:
+    case NoIssueAttempt{}: True{}
+    case RefusedIssue{}: True{}
+    case IssueAttempt{_, P.Issued{_, _}, NoIssueAttempt{}}: True{}
+    case _: False{}
+
+def issue_attempt_ready(attempt: IssueAttempt) -> Bool:
+  match attempt:
+    case IssueAttempt{_, P.Issued{_, _}, NoIssueAttempt{}}: True{}
+    case _: False{}
+
+def issue_attempt_processed(attempt: IssueAttempt) -> Bool:
+  match attempt:
+    case RefusedIssue{}: True{}
+    case IssueAttempt{_, P.Issued{_, _}, NoIssueAttempt{}}: True{}
+    case _: False{}
+
+def issue_attempt_frontend(attempt: IssueAttempt, fallback: F.State) -> F.State:
+  match attempt:
+    case IssueAttempt{frontend, P.Issued{_, _}, NoIssueAttempt{}}: frontend
+    case _: fallback
+
+def issue_attempt_portable(attempt: IssueAttempt, fallback: P.State) -> P.State:
+  match attempt:
+    case IssueAttempt{_, P.Issued{state, _}, NoIssueAttempt{}}: state
+    case _: fallback
+
+def issue_attempt_slot(attempt: IssueAttempt) -> Nat:
+  match attempt:
+    case IssueAttempt{_, P.Issued{_, slot}, NoIssueAttempt{}}: slot
+    case _: 0n
+
+# Each successful open record contains only the exact result of this call.
+# The recursive tail boxes the record and must be empty for use.
+type OpenAttempt is Data:
+  NoOpenAttempt{}
+  RefusedOpen{}
+  InvalidOpen{}
+  OpenAttempt{frontend: F.State, handle: Nat, rest: OpenAttempt}
+
+def open_shape(attempt: OpenAttempt) -> Bool:
+  match attempt:
+    case NoOpenAttempt{}: True{}
+    case RefusedOpen{}: True{}
+    case OpenAttempt{_, _, NoOpenAttempt{}}: True{}
+    case _: False{}
+
+def open_ready(attempt: OpenAttempt) -> Bool:
+  match attempt:
+    case OpenAttempt{_, _, NoOpenAttempt{}}: True{}
+    case _: False{}
+
+def open_processed(attempt: OpenAttempt) -> Bool:
+  match attempt:
+    case RefusedOpen{}: True{}
+    case OpenAttempt{_, _, NoOpenAttempt{}}: True{}
+    case _: False{}
+
+def open_frontend(attempt: OpenAttempt, fallback: F.State) -> F.State:
+  match attempt:
+    case OpenAttempt{frontend, _, NoOpenAttempt{}}: frontend
+    case _: fallback
+
+def open_handle(attempt: OpenAttempt) -> Nat:
+  match attempt:
+    case OpenAttempt{_, handle, NoOpenAttempt{}}: handle
+    case _: 0n
+
+# The outer authority and capacity guard is recomputed, and both Frontend
+# changes are generated inside deferred success branches from the same owner.
+def checked_open(+state: State, +session: Nat, +rights: U32, +now: Nat) -> OpenAttempt:
+  match state:
+    case State{+p, +records, _, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
+        +negotiation, +context, _, _, JA.NoJoint{}}}:
+      f = Bool.pick(Unit -> OpenAttempt,
+        owner_allows(state, now) && Iss.valid(issuer) && R.valid(rendezvous)
+          && JA.policies_current(issuer, transfer, context) && R.selection_current(rendezvous, JA.joint_snapshot(issuer, rendezvous, transfer, now))
+          && R.selection_dispatched_to(R.selection(rendezvous), rendezvous, I.incarnation(P.identity(p)), session)
+          && has_credential(credential_lookup(records, I.incarnation(P.identity(p)), session))
+          && joint_issue_room(p, frontend),
+        x => ({+registry => ({+transfer_now => ({+caller => ({+mounted => Bool.pick(Unit -> OpenAttempt,
+          F.accepted(mounted) && Maybe.is_some(&2, Nat, F.issued(mounted)),
+          y => ({+opened => Bool.pick(Unit -> OpenAttempt,
+            F.accepted(opened) && Maybe.is_some(&2, Nat, F.issued(opened)),
+            z => OpenAttempt{F.state(opened), P.issue_slot(F.issued(opened)), NoOpenAttempt{}},
+            z => RefusedOpen{})(Unit{}) : F.Change -> OpenAttempt})(F.open(F.state(mounted), registry,
+              F.revision(F.state(mounted)), F.Ref{caller, P.issue_slot(F.issued(mounted))}, rights,
+              F.live(transfer_now))),
+          y => RefusedOpen{})(Unit{}) : F.Change -> OpenAttempt})(F.mount(frontend, registry,
+            F.revision(frontend), caller, rights, F.live(transfer_now)))
+            : F.Caller -> OpenAttempt})(caller_for_issue(I.session_at(I.sessions(P.identity(p)), session)))
+            : T.Context -> OpenAttempt})(JA.selected_transfer(issuer, rendezvous, transfer, now))
+            : F.Registry -> OpenAttempt})(R.provider_registry(rendezvous, JA.joint_snapshot(issuer, rendezvous, transfer, now))),
+        x => NoOpenAttempt{})
+      f(Unit{})
+    case _: NoOpenAttempt{}
+
+# This stage obtains the open itself; callers cannot provide one. The
+# selected transition is unevaluated until the exact singleton is checked.
+def checked_issue(+state: State, +session: Nat, +rights: U32, +expires: Nat, +now: Nat) -> IssueAttempt:
+  match state:
+    case State{+p, _, _, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
+        _, _, _, _, JA.NoJoint{}}}:
+      +opened = {checked_open(state, session, rights, now) : OpenAttempt}
+      f = Bool.pick(Unit -> IssueAttempt, open_shape(opened),
+        x => Bool.pick(Unit -> IssueAttempt, open_ready(opened),
+          y => ({+registry => ({+transfer_now => ({+issued => Bool.pick(Unit -> IssueAttempt,
+            Maybe.is_some(&2, Nat, joint_issue_slot(issued)),
+            z => IssueAttempt{open_frontend(opened, frontend), issued, NoIssueAttempt{}},
+            z => RefusedIssue{})(Unit{}) : P.IssueResult -> IssueAttempt})(
+              P.issue_result(p, P.revision(p), session, open_frontend(opened, frontend),
+                F.revision(open_frontend(opened, frontend)), registry, transfer_now, open_handle(opened),
+                N.Request.plan(R.request(rendezvous)), rights, expires))
+                : T.Context -> IssueAttempt})(JA.selected_transfer(issuer, rendezvous, transfer, now))
+                : F.Registry -> IssueAttempt})(R.provider_registry(rendezvous, JA.joint_snapshot(issuer, rendezvous, transfer, now))),
+          y => Bool.pick(IssueAttempt, open_processed(opened), RefusedIssue{}, NoIssueAttempt{}))(Unit{}),
+        x => InvalidIssue{})
+      f(Unit{})
+    case _: NoIssueAttempt{}
+
 def joint_issue(+state: State, +session: Nat, +rights: U32, +expires: Nat, +now: Nat) -> JointAction:
   match state:
     case State{_, _, _, JA.Joint{_, _, _, _, _, _, _, JA.JointFailed{_}, JA.NoJoint{}}}: JointContain{state, False{}}
     case State{+p, +records, +time, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
         +negotiation, +context, +lineage, +phase, JA.NoJoint{}}}:
-      +snapshot = {JA.joint_snapshot(issuer, rendezvous, transfer, now) : R.Snapshot}
-      +registry = {R.provider_registry(rendezvous, snapshot) : F.Registry}
-      +transfer_now = {JA.selected_transfer(issuer, rendezvous, transfer, now) : T.Context}
-      +caller = {caller_for_issue(I.session_at(I.sessions(P.identity(p)), session)) : F.Caller}
-      f = Bool.pick(Unit -> JointAction,
-        owner_allows(state, now) && Iss.valid(issuer) && R.valid(rendezvous)
-          && JA.policies_current(issuer, transfer, context) && R.selection_current(rendezvous, snapshot)
-          && R.selection_dispatched_to(R.selection(rendezvous), rendezvous, I.incarnation(P.identity(p)), session)
-          && has_credential(credential_lookup(records, I.incarnation(P.identity(p)), session))
-          && joint_issue_room(p, frontend),
-        x => ({+mounted => Bool.pick(Unit -> JointAction,
-          F.accepted(mounted) && Maybe.is_some(&2, Nat, F.issued(mounted)),
-          y => ({+opened => Bool.pick(Unit -> JointAction,
-            F.accepted(opened) && Maybe.is_some(&2, Nat, F.issued(opened)),
-            z => ({+issued => Bool.pick(Unit -> JointAction,
-              Maybe.is_some(&2, Nat, joint_issue_slot(issued)),
-              w => JointIssued{State{P.Step.state(P.IssueResult.step(issued)), records, time,
-                JA.Joint{issuer, rendezvous, F.state(opened), transfer, negotiation, context,
-                  JA.Lineage{I.incarnation(P.identity(p)), R.selection_id(R.selection(rendezvous)),
-                    selected_grant_id(R.selection(rendezvous)), P.issue_slot(joint_issue_slot(issued)), lineage},
-                  phase, JA.NoJoint{}}}, P.issue_slot(joint_issue_slot(issued))},
-              w => JointRefused{state})(Unit{})
-              : P.IssueResult -> JointAction})(P.issue_result(p, P.revision(p), session, F.state(opened),
-                F.revision(F.state(opened)), registry, transfer_now, P.issue_slot(F.issued(opened)),
-                N.Request.plan(R.request(rendezvous)), rights, expires)),
-            z => JointRefused{state})(Unit{}) : F.Change -> JointAction})(F.open(F.state(mounted), registry,
-              F.revision(F.state(mounted)), F.Ref{caller, P.issue_slot(F.issued(mounted))}, rights,
-              F.live(transfer_now))),
-          y => JointRefused{state})(Unit{}) : F.Change -> JointAction})(F.mount(frontend, registry,
-            F.revision(frontend), caller, rights, F.live(transfer_now))),
-        x => joint_control_refusal(state, now, joint_issue_room(p, frontend)))
-      f(Unit{})
+      +attempt = {checked_issue(state, session, rights, expires, now) : IssueAttempt}
+      Bool.pick(JointAction, issue_attempt_shape(attempt),
+        Bool.pick(JointAction, issue_attempt_ready(attempt),
+          JointIssued{State{issue_attempt_portable(attempt, p), records, time,
+            JA.Joint{issuer, rendezvous, issue_attempt_frontend(attempt, frontend), transfer, negotiation, context,
+              JA.Lineage{I.incarnation(P.identity(p)), R.selection_id(R.selection(rendezvous)),
+                selected_grant_id(R.selection(rendezvous)), issue_attempt_slot(attempt), lineage},
+              phase, JA.NoJoint{}}}, issue_attempt_slot(attempt)},
+          Bool.pick(JointAction, issue_attempt_processed(attempt), JointRefused{state},
+            joint_control_refusal(state, now, joint_issue_room(p, frontend)))),
+        JointContain{contain_state(state), False{}})
     case State{_, _, _, JA.NoJoint{}}: JointRefused{state}
     case _: JointContain{state, False{}}
 

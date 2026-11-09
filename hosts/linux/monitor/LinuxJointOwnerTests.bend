@@ -184,29 +184,48 @@ def served_containment_only(served: LH.Served) -> Bool:
     case LH.Served{LH.ContainmentRequired{_}}: True{}
     case _: False{}
 
-def direct_helpers_for(+state: LH.State, +now: Nat) -> Bool:
+def guard_use() -> W.Message:
+  W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}}
+
+def guard_bad() -> LH.LinuxFact:
+  LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
+    LH.Credential{1000n,1000n,5555n,917n}, LH.Launched{}, P.all_families(), LH.required_controls(), []}
+
+def direct_broker_guards(+state: LH.State, +now: Nat) -> Bool:
   +authority = {V.fixture_authority(110n) : P.AdmissionAuthority}
-  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
-  +delegate = {W.Delegate{W.Ref{60, 1, 1, 1}, 4, 1, 1} : W.Message}
-  +bad = {LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
-    LH.Credential{1000n,1000n,5555n,917n}, LH.Launched{}, P.all_families(), LH.required_controls(), []} : LH.LinuxFact}
   is_contained(LH.on_broker(state, LH.Launch{fact()}, now, authority))
     && is_contained(LH.on_broker(state, LH.Usage{1n, 1n}, now, authority))
     && is_contained(LH.on_broker(state, LH.Emission{1n, False{}}, now, authority))
-    && is_contained(LH.worker_message(use, state, 1n, now))
-    && is_contained(LH.worker_message(delegate, state, 1n, now))
-    && is_contained(LH.on_worker(state, 1n, W.Decoded{use}, now))
-    && is_contained(LH.route_sampled(state, LH.FromWorker{1n, [1]}, now, authority))
+
+def direct_worker_guards(+state: LH.State, +now: Nat) -> Bool:
+  is_contained(LH.worker_message(guard_use(), state, 1n, now))
+    && is_contained(LH.worker_message(W.Delegate{W.Ref{60, 1, 1, 1}, 4, 1, 1}, state, 1n, now))
+    && is_contained(LH.on_worker(state, 1n, W.Decoded{guard_use()}, now))
+
+def direct_routing_guards(+state: LH.State, +now: Nat) -> Bool:
+  +authority = {V.fixture_authority(110n) : P.AdmissionAuthority}
+  is_contained(LH.route_sampled(state, LH.FromWorker{1n, [1]}, now, authority))
     && served_containment_only(LH.served_of(LH.Unframed{LH.FrameLength{}}, state, now, authority))
-    && is_contained(LH.barrier_with(use, LT.linux_report(), LH.inventory_of(fact()), state, 1n, fact(), now, authority))
-    && is_contained(LH.barrier_with(use, LT.linux_report(), LH.inventory_of(bad), state, 1n, bad, now, authority))
+
+def direct_barrier_guards_1(+state: LH.State, +now: Nat) -> Bool:
+  +authority = {V.fixture_authority(110n) : P.AdmissionAuthority}
+  is_contained(LH.barrier_with(guard_use(), LT.linux_report(), LH.inventory_of(fact()), state, 1n, fact(), now, authority))
+    && is_contained(LH.barrier_with(guard_use(), LT.linux_report(), LH.inventory_of(guard_bad()), state, 1n, guard_bad(), now, authority))
     && is_contained(LH.barrier_request(W.Malformed{W.BadLength{}}, LT.linux_report(), LH.inventory_of(fact()),
       state, 1n, fact(), now, authority))
-    && is_contained(LH.barrier_report(LH.NoReport{LH.UnknownFamily{}}, LH.inventory_of(fact()), state,
-      1n, fact(), W.Decoded{use}, now, authority))
+
+def direct_barrier_guards_2(+state: LH.State, +now: Nat) -> Bool:
+  +authority = {V.fixture_authority(110n) : P.AdmissionAuthority}
+  is_contained(LH.barrier_report(LH.NoReport{LH.UnknownFamily{}}, LH.inventory_of(fact()), state,
+      1n, fact(), W.Decoded{guard_use()}, now, authority))
     && is_contained(LH.barrier_preflight(LH.Report{LT.linux_report()}, LH.inventory_of(fact()), state,
-      1n, bad, W.Decoded{use}, now, authority))
+      1n, guard_bad(), W.Decoded{guard_use()}, now, authority))
     && is_contained(LH.stepped(state, P.Admitted{LH.portable(state), []}, now))
+
+def direct_helpers_for(+state: LH.State, +now: Nat) -> Bool:
+  direct_broker_guards(state, now) && direct_worker_guards(state, now)
+    && direct_routing_guards(state, now) && direct_barrier_guards_1(state, now)
+    && direct_barrier_guards_2(state, now)
 
 def direct_helpers_contain(+w: RT.Sc) -> Bool:
   +state = {LH.JointAction.state(LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)) : LH.State}
@@ -455,15 +474,22 @@ def authority_denied(outcome: LH.Outcome) -> Bool:
     case LH.Stepped{_, _, _, P.Denied{_, P.AuthorityUnavailable{}}}: True{}
     case _: False{}
 
+def reselect_denials(+issued: LH.State) -> Bool:
+  +reselected = {replaced_selection(issued) : LH.State}
+  r_still_current(LH.joint(reselected)) && Bool.not(LH.joint_barrier_ok(reselected, 1n, guard_use(), 110n))
+    && is_contained(delivery_of(reselected))
+
+def lineage_denials(+issued: LH.State) -> Bool:
+  authority_denied(delivery_of(duplicate_lineage(issued)))
+    && authority_denied(delivery_of(mismatched_lineage(issued)))
+
+def dispatch_denials(+issued: LH.State) -> Bool:
+  authority_denied(delivery_of(bad_dispatch(issued, 1n, 2n)))
+    && authority_denied(delivery_of(bad_dispatch(issued, 2n, 1n)))
+
 def antirevival(+w: RT.Sc) -> Bool:
   +issued = {issued_once(w) : LH.State}
-  +reselected = {replaced_selection(issued) : LH.State}
-  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
-  r_still_current(LH.joint(reselected)) && Bool.not(LH.joint_barrier_ok(reselected, 1n, use, 110n))
-    && is_contained(delivery_of(reselected)) && authority_denied(delivery_of(duplicate_lineage(issued)))
-    && authority_denied(delivery_of(mismatched_lineage(issued)))
-    && authority_denied(delivery_of(bad_dispatch(issued, 1n, 2n)))
-    && authority_denied(delivery_of(bad_dispatch(issued, 2n, 1n)))
+  reselect_denials(issued) && lineage_denials(issued) && dispatch_denials(issued)
 
 def child_at_limit(entries: I.Entries, maximum: Nat) -> I.Entries:
   match entries:
@@ -824,14 +850,16 @@ def opened(outcome: LH.Outcome) -> Bool:
     case LH.Opened{_, 1n}: True{}
     case _: False{}
 
-def direct_launch_guards(+w: RT.Sc) -> Bool:
-  +state = {sampled_initial(w) : LH.State}
+def direct_launch_translated(+state: LH.State) -> Bool:
   +credential = {LH.Credential{1000n,1000n,4242n,917n} : LH.Credential}
   +evidence = {P.SessionEvidence{F.Caller{201n, RT.token_a()}, I.Authenticated{}, False{}} : P.Fact}
   is_contained(LH.launch_result(state, LT.linux_report(), evidence, credential, 110n))
     && is_contained(LH.launch_report(LH.Report{LT.linux_report()}, state, evidence, credential, 110n))
     && is_contained(LH.launch_with(LH.Evidence{evidence}, LH.Report{LT.linux_report()}, state, credential, 110n))
-    && peer_denial(LH.launch_fact(state, spoofed_fact(), 110n))
+
+def direct_launch_guards(+w: RT.Sc) -> Bool:
+  +state = {sampled_initial(w) : LH.State}
+  direct_launch_translated(state) && peer_denial(LH.launch_fact(state, spoofed_fact(), 110n))
     && opened(LH.launch_fact(state, fact(), 110n))
 
 def diagnostics_redacted(+w: RT.Sc) -> Bool:
@@ -886,21 +914,39 @@ def nested_drain(drain: LH.JointDrain) -> Bool:
     case LH.JointDrainIncomplete{state}: nested_retained(state)
     case _: False{}
 
-def malformed_owner_contained(+w: RT.Sc) -> Bool:
-  +state = {nested_owner_state(LH.Outcome.state(delivered(w))) : LH.State}
+def malformed_input_guards(+state: LH.State) -> Bool:
   +outcome = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{110n}, V.fixture_authority(110n)) : LH.Outcome}
   +served = {LH.serve(state, [1], LH.Sample{110n}, V.fixture_authority(110n)) : LH.Served}
+  is_contained(outcome) && nested_retained(LH.Outcome.state(outcome))
+    && served_containment_only(served) && nested_retained(LH.next(served))
+
+def malformed_control_guards(+state: LH.State) -> Bool:
   +restart = {LH.restart(state, P.revision(LH.portable(state)), 2n) : LH.Outcome}
   +control = {LH.joint_revoke(state, IT.source_authority(), 5n) : LH.JointAction}
+  is_contained(restart) && nested_retained(LH.Outcome.state(restart))
+    && action_contained(control) && nested_retained(LH.JointAction.state(control))
+
+def malformed_setup_guards(+state: LH.State) -> Bool:
   +dispatch = {LH.joint_dispatch(state, 1n, 110n) : LH.JointAction}
   +issue = {LH.joint_issue(state, 1n, 4, 120n, 110n) : LH.JointAction}
-  nested_retained(state) && is_contained(outcome) && nested_retained(LH.Outcome.state(outcome))
-    && served_containment_only(served) && nested_retained(LH.next(served))
-    && is_contained(restart) && nested_retained(LH.Outcome.state(restart))
-    && action_contained(control) && nested_retained(LH.JointAction.state(control))
-    && action_contained(dispatch) && nested_retained(LH.JointAction.state(dispatch))
+  action_contained(dispatch) && nested_retained(LH.JointAction.state(dispatch))
     && action_contained(issue) && nested_retained(LH.JointAction.state(issue))
-    && nested_drain(LH.joint_drain(state)) && direct_helpers_for(state, 110n)
+
+def malformed_owner_contained(+w: RT.Sc) -> Bool:
+  +state = {nested_owner_state(LH.Outcome.state(delivered(w))) : LH.State}
+  nested_retained(state) && malformed_input_guards(state) && malformed_control_guards(state)
+    && malformed_setup_guards(state) && nested_drain(LH.joint_drain(state)) && direct_helpers_for(state, 110n)
+
+def malformed_attempts(+w: RT.Sc) -> Bool:
+  +portable = {LH.portable(launched(w)) : P.State}
+  +bad_open = {LH.OpenAttempt{F.empty(), 1n, LH.OpenAttempt{F.empty(), 2n, LH.NoOpenAttempt{}}} : LH.OpenAttempt}
+  +bad_issue = {LH.IssueAttempt{F.empty(), P.Issued{portable, 1n},
+    LH.IssueAttempt{F.empty(), P.Issued{portable, 2n}, LH.NoIssueAttempt{}}} : LH.IssueAttempt}
+  +bad_drain = {LH.DrainAttempt{P.Admitted{portable, []},
+    LH.DrainAttempt{P.Admitted{portable, []}, LH.NoDrainAttempt{}}} : LH.DrainAttempt}
+  Bool.not(LH.open_shape(bad_open)) && Bool.not(LH.open_ready(bad_open))
+    && Bool.not(LH.issue_attempt_shape(bad_issue)) && Bool.not(LH.issue_attempt_ready(bad_issue))
+    && Bool.not(LH.drain_step_ok(bad_drain)) && Bool.not(LH.drain_skipped(bad_drain))
 
 def joint_checks_1() -> IO(Unit):
   do IO<Unit>:
@@ -959,6 +1005,7 @@ def joint_checks_5() -> IO(Unit):
   do IO<Unit>:
     Test.check(expired_cleanup_denials(RT.sc_world()), "denied cleanup still contains expired reader state")
     Test.check(malformed_owner_contained(RT.sc_world()), "nested owner remains contained and retained")
+    Test.check(malformed_attempts(RT.sc_world()), "nested transition attempts cannot be accepted")
 
 def main() -> IO(Unit):
   do IO<Unit>:

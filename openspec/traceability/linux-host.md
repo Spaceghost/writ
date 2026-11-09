@@ -179,3 +179,4 @@ The exact named checks are:
 - `direct helpers contain expired reader authority`
 - `denied cleanup still contains expired reader state`
 - `nested owner remains contained and retained`
+- `nested transition attempts cannot be accepted`

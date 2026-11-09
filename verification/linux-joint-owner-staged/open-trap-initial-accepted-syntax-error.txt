@@ -1,0 +1,9 @@
+SOME PROOFS FAIL
+Error:
+- expected : a nat literal up to 4294967295n (got 281474976710655n)
+- observed : ','
+Location:
+1063 |             z => RefusedIssue{})(Unit{}) : P.IssueResult -> IssueAttempt})(
+1064>|               P.Issued{p, Nat.add(281474976710655n, 1n)})
+     |                                                   ^
+1065 |                 : T.Context -> IssueAttempt})(JA.selected_transfer(issuer, rendezvous, transfer, now))

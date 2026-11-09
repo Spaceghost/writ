@@ -1,0 +1,10 @@
+make: Entering directory '/home/jadams/tmp/writ-joint-owner-staged/contrib/native-hosts/linux'
+cc -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow -D_FILE_OFFSET_BITS=64   handoff-order-test.c   -o handoff-order-test
+cc -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow -D_FILE_OFFSET_BITS=64   retire-error-test.c   -o retire-error-test
+handoff-order-test.c:6:10: fatal error: fuse_lowlevel.h: No such file or directory
+    6 | #include <fuse_lowlevel.h>
+      |          ^~~~~~~~~~~~~~~~~
+compilation terminated.
+make: *** [<builtin>: handoff-order-test] Error 1
+make: *** Waiting for unfinished jobs....
+make: Leaving directory '/home/jadams/tmp/writ-joint-owner-staged/contrib/native-hosts/linux'
