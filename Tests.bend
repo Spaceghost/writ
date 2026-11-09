@@ -30,6 +30,7 @@ import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
 import ./hosts/linux/monitor/LinuxSessionOpenTests.bend as LinuxSessionOpen
 import ./hosts/linux/monitor/LinuxCredentialBindingTests.bend as LinuxCredentialBinding
 import ./FacadeTests.bend as Facade
+import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
 import ./IssuanceBoundaryTests.bend as IssuanceBoundary
 import ./AuditTests.bend as Audit
@@ -70,6 +71,7 @@ def main() -> IO(Unit):
     LinuxSessionOpen.main()
     LinuxCredentialBinding.main()
     Facade.main()
+    LocalSupervisor.main()
     Issuance.main()
     IssuanceBoundary.main()
     Audit.main()

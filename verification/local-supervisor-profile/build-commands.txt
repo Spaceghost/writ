@@ -1,0 +1,27 @@
+Combined-tree base: 73d4481. Input source hashes: bend-input-sha256.txt.
+Bend: /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend (2.0.39)
+Node: v26.10.0. Clang: 23.1.1.
+Scratch and TMPDIR: /home/jadams/tmp/writ-local-supervisor-checks.
+BEND_NO_TELEMETRY=1; ulimit -c 0; ulimit -v 16777216; ulimit -t 600;
+timeout 600 and nice -n 15 for Bend, Node, clang and native execution.
+
+bend Tests.bend: exit 0; tests-bend.txt.
+bend Tests.bend -o combined-tests.js; node combined-tests.js: both exit 0;
+tests-node.txt. cmp tests-bend.txt tests-node.txt: exit 0.
+bend PROOF.bend: exit 0; proof.txt.
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt
+LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict: exit 0; verdict.txt.
+Kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+BENDTT=/bin/false bend PROOF.bend --verdict: exit 1 as expected; negative.txt.
+openspec validate --all --strict --no-interactive: exit 0; openspec.txt.
+Initial OpenSpec attempts failed with overlong requirements and then missing
+scenarios; both outputs are retained. A pre-merge native C generation was
+terminated after rebasing so it would not be confused with the final tree.
+bend Tests.bend -o combined-tests.c: exit 0; cgen.txt.
+clang -std=c11 -O0 -static combined-tests.c -o combined-tests-native -lpthread -lm:
+exit 0; native-build.txt. Native executable invoked with
++RTS --threads 1 --gpu off: exit 0; tests-native.txt.
+cmp tests-bend.txt tests-native.txt: exit 0.
+Generated JS SHA-256: 642454aa1f7357b49e2e145e410e521f04072ce68388de398e48ef3747e711ca.
+Generated C SHA-256: 8e2d40b97808399ac032f755cf27c5e2ade57fd151bde3ac6915d37125e66b32.
+Native executable SHA-256: 65505b7df009cebce9bc52b42090ec61896cf6f531fea378d9771ec22dd30700.

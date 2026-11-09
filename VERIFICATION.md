@@ -1,5 +1,9 @@
 # Verification record
 
+The [local supervisor profile record](verification/local-supervisor-profile/README.md)
+covers proposed bootstrap requirements and a synthetic Copy revocation trace;
+it does not establish an authenticated native authority bridge.
+
 The [Linux monitor revocation record](verification/linux-monitor-revoke/README.md)
 covers the trusted in-memory adapter action and synthetic StopEffects; it does
 not establish authenticated revocation or native worker termination.

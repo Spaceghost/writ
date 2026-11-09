@@ -74,3 +74,31 @@ LH-003, LH-006–LH-008 and PH-002, PH-006, PH-009–PH-010. The joint live
 authority gate, authenticated actor/session bridge, effect ordering and their
 combined scenario tests are **reviewed-only gaps**, not host implementation or
 acceptance evidence.
+
+## Proposed local supervisor profile (LH-011–LH-017)
+
+Josh selected the local operator/supervisor direction in q22. These requirements
+are proposed host contracts, not an implemented authority source, authenticated
+principal, monotone clock, joint dispatcher, durable recovery or host acceptance.
+The [local profile design](../changes/add-linux-host/local-supervisor-profile.md)
+records the trust boundary and the currently missing mechanisms.
+
+[LocalSupervisorTests.bend](../../LocalSupervisorTests.bend) executes two
+synthetic post-commit traces through the existing DataOS, Issuance and Frontend
+entries: `local Copy model source revoke after commit: fresh use denies, cached use
+stays stale, retry preserves session and ledger` and `local Copy model destination
+revoke after commit: fresh use denies, cached use stays stale, retry preserves
+session and ledger`. They construct synthetic separate issuing authorities for
+the exact canary Copy plan and pass the exact issuer-projected Frontend change
+and context to the existing `MountAuthority.descriptor` and DataOS commit.
+The same descriptor is checked after revocation; all fresh projections deny,
+while both exact projections used at commit still resolve. The original intent's
+provenance is inspected. A retry using the returned committed session and
+ledger is rejected with those two states unchanged; it returns no new intent.
+The fixture's policy is Free and the specific trace does not demonstrate a
+nonzero-charge replay. The tests do not invoke `Mount.dispatch` or authenticate a native host. These
+are model evidence
+for the stale-projection hazard, not an authenticated local supervisor or a
+combined Mount/Linux release gate. Time sampling, trusted attribution,
+serialization against effects, replay-resistant recovery and native adversarial
+scenarios remain reviewed-only gaps for LH-011–LH-017.

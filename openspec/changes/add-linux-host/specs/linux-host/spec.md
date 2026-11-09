@@ -164,3 +164,110 @@ A Linux enforcement claim SHALL require shared decision-vector conformance and n
 - **WHEN** a job requires direct GPU execution
 - **THEN** the job is denied until a compatible device profile is qualified
 - **AND** CPU fallback is not reported as physical GPU execution.
+
+### Requirement: LH-011 Local supervisor authority is explicitly provisioned
+
+The proposed profile SHALL establish an operator-controlled supervisor boundary before protected work. Authenticated administrator actions SHALL install the authority directory, exact placements, and separate source-read and destination-write approval roles. The supervisor SHALL bind each worker lifetime and session to its intended local service principal. A UID, PID, pidfd, socket or public Bend record alone SHALL NOT establish that principal, grant authority or authenticate a human.
+
+#### Scenario: Local process identity is not source approval
+
+- **GIVEN** a worker has the configured UID and a retained process lifetime
+- **AND** the source-read authority has not issued an applicable approval
+- **WHEN** the supervisor considers issuing the worker a scoped grant
+- **THEN** the issuer denies the grant
+- **AND** neither operator control nor destination-write approval substitutes for source-read approval.
+
+#### Scenario: A worker supplies authority-shaped state
+
+- **GIVEN** a worker can send an ordinary request to its broker session
+- **WHEN** it sends a claimed subject, registry, authority directory, timestamp or serialized monitor state
+- **THEN** those bytes cannot replace the supervisor-owned identity, clock or issuer state.
+
+### Requirement: LH-012 Trusted time advances independently of denied policy state
+
+The supervisor SHALL retain a trusted monotone clock high-water mark separately from policy state, sampling before every untrusted request, including malformed and denied requests. An unavailable, ambiguous, overflowing or regressing sample SHALL poison protected effects. Revocation, retirement, quiescence and STOP SHALL remain available as fail-closed cleanup; handed-off bytes cannot be recalled.
+
+#### Scenario: A request is denied after a later trusted sample
+
+- **GIVEN** the clock owner has retained time 110
+- **WHEN** a request is denied after sampling time 150
+- **THEN** the clock watermark retains 150 while policy state stays unchanged.
+
+### Requirement: LH-015 Clock poison blocks protected effects
+
+Clock poison SHALL block new grants, metadata and byte observations, worker-input delivery, publication and effect handoff.
+
+#### Scenario: Clock poison blocks use but allows cleanup
+
+- **GIVEN** the clock owner observes a regression
+- **WHEN** an actor requests a protected effect or safe cleanup
+- **THEN** the owner denies the protected effect and permits safe cleanup.
+
+#### Scenario: An expired request is followed by a lower sample
+
+- **GIVEN** a descriptor expires at time 150 and a request is denied at trusted time 150
+- **WHEN** the next clock sample is 149
+- **THEN** the clock owner refuses further protected use rather than reviving the descriptor
+- **AND** the earlier denial leaves Issuance, Frontend, session and ledger policy state unchanged while the separate clock watermark retains 150.
+
+#### Scenario: A malformed request observes a later time
+
+- **GIVEN** the owner has retained time 110
+- **WHEN** it observes time 150 before rejecting a malformed untrusted request
+- **THEN** it retains the 150 watermark without treating the malformed bytes as an authority transition
+- **AND** a later lower sample cannot restore expired authority.
+
+### Requirement: LH-013 Current local authority and effects share one owner
+
+For each admitted use the supervisor SHALL serialize current issuer, authenticated subject, trusted time and epoch with Frontend, Linux session and canary state. It SHALL rebuild the issuer read grants, write grants and registry for that subject and time, and re-resolve the exact descriptor and paired plan.
+
+#### Scenario: A later use follows issuer revocation
+
+- **GIVEN** a descriptor was opened with a previously current issuer snapshot
+- **WHEN** an authority revokes its required approval
+- **THEN** the owner rebuilds the projections from current issuer state before the next use.
+
+### Requirement: LH-016 Effects follow the current joint check
+
+Before observation, delivery or publication, the owner SHALL enforce independent original-graph verification and original policy, operation, sink, budget and confinement obligations. It SHALL retain accepted state before effect handoff and order handoff against revocation. The existing public-canary Copy SHALL commit at most once; its session, ledger, intent and provenance SHALL survive later failure without a second charge or alternate release route.
+
+#### Scenario: Cached grant projections survive a revocation
+
+- **GIVEN** a descriptor and a Copy committed while source and destination approvals were current
+- **WHEN** an authority revokes either approval before a later use
+- **THEN** the supervisor rebuilds all projections from the current issuer state and denies that use
+- **AND** it retains the original committed evidence without replaying the Copy.
+
+#### Scenario: The former canary path remains reachable
+
+- **GIVEN** the combined profile has a joint owner and the prior standalone canary dispatcher is still reachable by a worker
+- **WHEN** that dispatcher could return an observation without the joint owner's current checks
+- **THEN** the combined profile is not admitted or qualified.
+
+### Requirement: LH-014 Local restart does not revive authority or replay effects
+
+Restart SHALL invalidate old process and session attribution, and SHALL NOT restore an earlier clock watermark, issuer state, committed ledger, receipt or invocation as current. The profile SHALL reconcile uncertain commits and retain replay state under applicable authority and durability contracts before admitting further protected effects.
+
+#### Scenario: Restart invalidates earlier attribution
+
+- **GIVEN** a prior session and an uncertain committed operation
+- **WHEN** the supervisor restarts
+- **THEN** it invalidates the old session and reconciles the prior outcome before admitting further protected effects.
+
+### Requirement: LH-017 Incomplete recovery denies protected effects
+
+If clock continuity, authenticated authority, quiescence, persistence or prior outcome cannot be established, the instance SHALL remain incomplete and deny new protected effects while permitting safe cleanup.
+
+#### Scenario: Monotone clock origin resets on reboot
+
+- **GIVEN** an earlier incarnation observed a grant's expiration
+- **WHEN** a reboot creates a lower monotone-clock origin and no rollback-resistant continuity is available
+- **THEN** the supervisor does not reuse the earlier grant or stale state
+- **AND** it reports the instance incomplete until the required authorization and replay-safe reconciliation of any prior committed evidence are established.
+
+#### Scenario: A committed Copy precedes a setup failure
+
+- **GIVEN** the single Copy has committed and subsequent session setup fails
+- **WHEN** the supervisor handles the failure or restarts
+- **THEN** it preserves the committed session, ledger and intent
+- **AND** it neither replays the Copy nor substitutes a new settlement decision.
