@@ -1120,3 +1120,8 @@ The [synthetic Linux joint-owner model record](verification/linux-joint-owner-st
 covers same-call issuer, selection, issuance and protected-input admission,
 with conservative containment and exact stop-effect draining. It does not
 qualify a native host, authenticate authority, or mediate the separate Mount path.
+
+The [Mount commit-lineage record](verification/mount-commit-lineage/README.md)
+checks retention of the historical Frontend state/reference paired with the
+same accepted canary commit. Those records do not establish live authority,
+authenticated native identity, or a combined LinuxHost/Mount release path.

@@ -1,0 +1,62 @@
+Base: worker-admission allocator commit 12c08ed, with this tree's Mount changes.
+Bend 2.0.39: /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend.
+All scratch outputs and compiler intermediates used
+TMPDIR=/home/jadams/tmp/writ-mount-lineage-checks; BEND_NO_TELEMETRY=1;
+core dumps disabled; processes ran at nice -n 15. `bend guide` and
+`bend guide shaders` were read before the implementation.
+
+Full combined tree: `bend Tests.bend`, `bend Tests.bend -o combined-full.js`,
+`/usr/bin/node combined-full.js`, and `bend Tests.bend -o combined-full.c` all
+exit 0. Full inputs and execution used 16 GiB virtual memory, 900 s CPU and
+2400 s wall limits except C generation, which used 1800 s CPU and 3600 s wall.
+The full native executable is built from that exact generated C with
+`clang -std=c11 -O0 -static combined-full.c -o combined-full -lpthread -lm`
+under 16 GiB / 1800 s CPU / 3600 s wall, and run with
+`combined-full +RTS --threads 1 --gpu off`.
+The full Bend/Node outputs match: 2,993 named PASS lines and 53 other PASS lines.
+
+Focused: `bend writfs/MountTests.bend` and `bend LocalSupervisorTests.bend`,
+their generated Node equivalents, and exact-source comparisons exit 0. The
+Mount suite keeps 69 exported vectors (70 PASS lines including the corpus-count
+check) and the LocalSupervisor suite has three checks. The generated Mount C
+is compiled at -O0 and its CPU output matches Bend/Node. Focused generation
+and compilation use at most 12 GiB and 600 s CPU / 1200 s wall (Mount clang
+8 GiB); execution uses 16 GiB and 600 s CPU / 1200 s wall. Node v26.10.0 is
+called directly at /usr/bin/node; clang is 23.1.1.
+
+The generated Mount module (`bend writfs/Mount.bend -o mount-combined.mjs`)
+passes `node contrib/native-hosts/runtime/check-bridge.mjs mount-combined.mjs`,
+nine bounded nonprivileged subprocess/transport checks. There is no FUSE mount,
+identity probe or VM in this check.
+
+`bend PROOF.bend` exits 0. With
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt and
+LEAN_STACK_SIZE_KB=4194304, `bend PROOF.bend --verdict` exits 0; kernel SHA-256
+e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+BENDTT=/bin/false produces exit 1 without a verdict as expected. `openspec
+validate --all --strict --no-interactive` exits 0 with 45 passed after the
+last documentation corrections.
+
+The Linux native mock build targets use OUT under the scratch directory and
+explicit absolute Makefile targets for handoff-order-test and retire-error-test;
+each executable runs with a 60 s timeout and exits 0. These mock production
+boundary calls; they do not claim actual mounted host acceptance.
+
+Before the test-only helper split, Mount native C generation on the premerge
+source exited 1 with `arity over 247`. A diagnostic-only extracted copy of the
+pinned compiler identified the folded test continuation at 273 words. No
+modified compiler was used as final evidence. The source was rebased onto
+12c08ed and the assertion grouping fixed before the frozen input hashes and
+combined-tree runs. Earlier Bend failures for definition order and unchanged
+hardcoded case count are retained. A preliminary Node run used the asdf shim,
+which recursively invoked itself; it was terminated (exit 143), and its empty
+output is not a test. Subsequent runs invoked /usr/bin/node directly.
+
+SHA-256: combined-full.c dcfe20cf16eec12a4c63992602051e7782d3e3e38b1cd384f8132178a9e9fbca;
+combined-full executable 3a60b625c837215457d0c530b8e64b84b86a39974962846489c9209d89271d5f;
+combined-full.js d7a34fa467f0abacd92f82654807f39d160ec19a20a4cf5c8bf42635a67ae5ef;
+mount-combined.c fc931ffb8a02946b4053d1107a5f204937e39eced805361253feadfc4373a90f;
+mount-combined executable a78333784de15c5d461624a46210feb70e9de8e4817c578d747c13745ea965ea;
+mount-combined.mjs deaf27e71f74d4ae96ba3a3c28fa84035fb4ac29cea0249cae6758e5d3ceb9ad.
+Both native executions exit 0. Full native output matches full Bend/Node;
+Mount native output matches focused Mount Bend/Node byte-for-byte.

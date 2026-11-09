@@ -186,8 +186,9 @@ old standalone `Mount.dispatch` remains reachable around the joint checks, the
 combined profile is not admitted.
 
 The current [`MountAuthority.descriptor`](../../../writfs/MountAuthority.bend)
-uses the full DataOS commit but discards its Frontend input and does not own a
-live registry or worker session. [`LinuxHost`](../../../hosts/linux/monitor/LinuxHost.bend)
+uses the full DataOS commit and retains its exact historical Frontend input and
+reference, but does not own a live registry or worker session. Those historical
+values do not establish current authority. [`LinuxHost`](../../../hosts/linux/monitor/LinuxHost.bend)
 retains synthetic launch credentials and an exact in-memory session result; its
 diagnostic response is not a request-correlated native receipt.
 [`HostPrimitives.issue`](../../../HostPrimitives.bend) is not a substitute for

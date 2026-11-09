@@ -3,6 +3,10 @@ import ../Test.bend as Test
 import ../Transfer.bend as Transfer
 import ../Negotiation.bend as Negotiation
 import ../Backplane.bend as Backplane
+import ../Frontend.bend as Frontend
+import ../HostBindingTests.bend as HB
+import ../AuditTests.bend as AT
+import ../HostConformanceTests.bend as HC
 import ../lib/Sha256.bend as Sha256
 import ../contrib/rclone/bend/Authority.bend as Reference
 import ./MountAuthority.bend as Authority
@@ -57,12 +61,12 @@ def receipt_ok(grant: Authority.Grant) -> Bool:
   match grant:
     case Authority.NoGrant{}:
       False{}
-    case Authority.Granted{session, _, Backplane.WriteIntent{plan,
+    case Authority.Granted{Backplane.Committed{session, _, Backplane.WriteIntent{plan,
       Transfer.OutputPolicy{_, Transfer.Bits64{1, 0}, Transfer.Bits64{2, 0}, +kinds,
         Transfer.RCons{Transfer.OriginRule{origin, Transfer.Bits64{1, 0},
           Transfer.Bits64{2, 0}, origin_kinds,
           Transfer.CCons{code, Transfer.CEnd{}}, Transfer.Free{}}, Transfer.REnd{}}},
-      _, Backplane.Storage{}, actual}}:
+      _, Backplane.Storage{}, actual}}, _, _}:
       Negotiation.Session.is(session, Negotiation.Committed{}) &&
         Transfer.Plan.equal(plan, Authority.plan()) &&
         Transfer.ObjectVersion.equal(origin, Authority.source()) &&
@@ -72,9 +76,35 @@ def receipt_ok(grant: Authority.Grant) -> Bool:
     case _:
       False{}
 
+def ref_equal(a: Frontend.Ref, b: Frontend.Ref) -> Bool:
+  match a b:
+    case Frontend.Ref{Frontend.Caller{asub, atoken}, aid} Frontend.Ref{Frontend.Caller{bsub, btoken}, bid}:
+      Nat.is_eq(asub, bsub) && Transfer.CodeId.equal(atoken, btoken) && Nat.is_eq(aid, bid)
+
 def retained(+before: Authority.Grant, +after: Authority.Grant) -> Bool:
-  receipt_ok(after) && Nat.is_eq(Authority.committed_revision(before), Authority.committed_revision(after)) &&
-    Nat.is_eq(Authority.ledger_revision(before), Authority.ledger_revision(after))
+  match before after:
+    case Authority.Granted{acommit, afront, aref} Authority.Granted{bcommit, bfront, bref}:
+      receipt_ok(after) && AT.result_equal(acommit, bcommit) && HC.commit_intent_equal(acommit, bcommit)
+        && HB.frontend_equal(afront, bfront) && ref_equal(aref, bref)
+        && Nat.is_eq(Authority.committed_revision(before), Authority.committed_revision(after))
+        && Nat.is_eq(Authority.ledger_revision(before), Authority.ledger_revision(after))
+    case _ _: False{}
+
+def unchanged_prepared(state: Mount.State) -> Bool:
+  match state:
+    case Mount.State{1, 1, Mount.Input{3, digest}, Authority.NoGrant{}, Mount.NoHandles{}, 0, 1}:
+      Backplane.ArtifactId.equal(digest, artifact())
+    case _: False{}
+
+def forged_rejected(+state: Mount.State, grant: Authority.Grant) -> Bool:
+  match grant:
+    case Authority.Granted{Backplane.Committed{session, ledger, _}, frontend, ref}:
+      +forged = {Authority.Granted{Backplane.Rejected{session, ledger}, frontend, ref} : Authority.Grant}
+      +step = {Mount.admit_grant(state, forged) : Mount.Step}
+      Bool.not(Authority.allowed(forged)) && Bool.not(Authority.artifact_matches(forged, artifact()))
+        && Nat.is_eq(Authority.committed_revision(forged), 0n) && Nat.is_eq(Authority.ledger_revision(forged), 0n)
+        && result(step, "DENY", 0, "AUTHORITY") && unchanged_prepared(Mount.next(step))
+    case _: False{}
 
 # Construct the same boundary bytes with logarithmic concatenations. Repeated
 # prepends are quadratic in runtimes that flatten strings, including QuickJS.
@@ -188,10 +218,19 @@ def check_complete_commit_and_origin_policy_retained() -> Case:
   Case{"complete commit and origin policy retained", receipt_ok(Mount.grant(admitted()))}
 
 def check_duplicate_admission_denied() -> Case:
-  Case{"duplicate admission denied", denied(admitted(), admit_frame())}
+  +state = {admitted() : Mount.State}
+  +step = {Mount.dispatch(state, admit_frame()) : Mount.Step}
+  Case{"duplicate admission denied and commit evidence retained", is_status(step, "DENY")
+    && retained(Mount.grant(state), Mount.grant(Mount.next(step)))}
+
+def public_destination_refused() -> Bool:
+  Bool.not(Authority.allowed(Authority.authorize(artifact(), True{}, False{})))
+
+def forged_commit_refused() -> Bool:
+  forged_rejected(prepared(), Mount.grant(admitted()))
 
 def check_public_destination_refused_by_full_gate() -> Case:
-  Case{"public destination refused by full gate", Bool.not(Authority.allowed(Authority.authorize(artifact(), True{}, False{})))}
+  Case{"public destination and forged rejected commit refused", public_destination_refused() && forged_commit_refused()}
 
 def check_revoked_registry_refused_at_commit() -> Case:
   Case{"revoked registry refused at commit", Bool.not(Authority.allowed(Authority.authorize(artifact(), False{}, True{})))}
@@ -307,8 +346,10 @@ def check_fresh_instance_rejects_old_handle() -> Case:
   Case{"fresh instance rejects old handle", denied(admitted(), "WRITFS1\tREAD\t1\t1\t0\t3\t-")}
 
 def check_stop_is_terminal() -> Case:
-  Case{"STOP is terminal", denied(Mount.next(Mount.dispatch(opened(),
-     "WRITFS1\tSTOP\t0\t0\t0\t0\t-")), init_frame("616263"))}
+  +state = {opened() : Mount.State}
+  +stopped = {Mount.next(Mount.dispatch(state, "WRITFS1\tSTOP\t0\t0\t0\t0\t-")) : Mount.State}
+  Case{"STOP is terminal and retains commit/frontend evidence", denied(stopped, init_frame("616263"))
+    && retained(Mount.grant(state), Mount.grant(stopped))}
 
 def check_denials_advance_audit_sequence() -> Case:
   Case{"denials advance audit sequence", U32.is_eq(Mount.sequence(Mount.next(Mount.dispatch(admitted(),

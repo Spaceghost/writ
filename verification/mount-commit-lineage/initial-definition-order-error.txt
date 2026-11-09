@@ -1,0 +1,18 @@
+SOME PROOFS FAIL
+Error:
+- expected : a filled definition (an unfilled law is a dead claim: live code cannot use it)
+- observed : unchanged_prepared
+Context:
+- state    : Mount.State
+- session  : Negotiation.Session
+- ledger   : ../Ledger.State
+- _        : Backplane.WriteIntent
+- frontend : Frontend.State
+- ref      : Frontend.Ref
+- forged   : Authority.Grant
+- step     : Mount.Step
+Location: forged_rejected
+97 |         && Nat.is_eq(Authority.committed_revision(forged), 0n) && Nat.is_eq(Authority.ledger_revision(forged), 0n)
+98>|         && result(step, "DENY", 0, "AUTHORITY") && unchanged_prepared(Mount.next(step))
+   |                                                    ^^^^^^^^^^^^^^^^^^
+99 |     case _: False{}

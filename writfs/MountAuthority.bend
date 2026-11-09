@@ -12,10 +12,12 @@ import ../contrib/rclone/bend/Authority.bend as Reference
 # Fixed local standing profile for public native-host canaries. The trusted
 # supervisor, not a mounted client, assigns the single reader domain. These
 # records do not authenticate a host, issue external grants or qualify its
-# confinement. Retain the full commit result even when later native setup fails.
+# confinement. Retain the full commit result and the exact historical Frontend
+# state and reference used by that commit, even if later native setup fails.
+# The retained Frontend is not a current registry or authenticated issuer.
 type Grant is Data:
   NoGrant{}
-  Granted{session: Negotiation.Session, ledger: Ledger.State, intent: Backplane.WriteIntent}
+  Granted{commit: Backplane.CommitResult, frontend: Frontend.State, ref: Frontend.Ref}
 
 def source() -> Transfer.ObjectVersion:
   Transfer.ObjectVersion{1n, 1n}
@@ -26,12 +28,12 @@ def destination() -> Transfer.ObjectVersion:
 def plan() -> Transfer.Plan:
   Reference.plan(source(), destination(), 1)
 
-def result(result: Backplane.CommitResult) -> Grant:
+def committed(result: Backplane.CommitResult) -> Bool:
   match result:
     case Backplane.Rejected{_, _}:
-      NoGrant{}
-    case Backplane.Committed{session, ledger, intent}:
-      Granted{session, ledger, intent}
+      False{}
+    case Backplane.Committed{_, _, _}:
+      True{}
 
 def descriptor(change: Frontend.Change, +session: Negotiation.Session,
   +ledger: Ledger.State, candidate: Core.Candidate, context: Backplane.Context,
@@ -40,9 +42,12 @@ def descriptor(change: Frontend.Change, +session: Negotiation.Session,
     case Frontend.Rejected{_}:
       NoGrant{}
     case Frontend.Changed{+frontend, id}:
-      result(DataOS.commit_from_capability(session, Negotiation.Session.revision(session),
-        Ledger.revision(ledger), ledger, candidate, Frontend.Ref{Reference.caller(1), id},
-        Frontend.revision(frontend), DataOS.Context{context, frontend, registry}))
+      +ref = {Frontend.Ref{Reference.caller(1), id} : Frontend.Ref}
+      ({+result => Bool.pick(Unit -> Grant, committed(result),
+        x => Granted{result, frontend, ref}, x => NoGrant{})(Unit{}) : Backplane.CommitResult -> Grant})(
+          DataOS.commit_from_capability(session, Negotiation.Session.revision(session),
+            Ledger.revision(ledger), ledger, candidate, ref,
+            Frontend.revision(frontend), DataOS.Context{context, frontend, registry}))
 
 def finish(solved: Core.SolveResult, principals: Maybe<&2, Dlm.Snapshot>,
   request: Negotiation.Request, graph: Core.Graph, +public: Bool,
@@ -85,26 +90,34 @@ def allowed(grant: Grant) -> Bool:
   match grant:
     case NoGrant{}:
       False{}
-    case Granted{_, _, _}:
+    case Granted{Backplane.Committed{_, _, _}, _, _}:
       True{}
+    case _:
+      False{}
 
 def artifact_matches(grant: Grant, artifact: Backplane.ArtifactId) -> Bool:
   match grant:
     case NoGrant{}:
       False{}
-    case Granted{_, _, intent}:
+    case Granted{Backplane.Committed{_, _, intent}, _, _}:
       Backplane.ArtifactId.equal(Backplane.WriteIntent.artifact(intent), artifact)
+    case _:
+      False{}
 
 def committed_revision(grant: Grant) -> Nat:
   match grant:
     case NoGrant{}:
       0n
-    case Granted{session, _, _}:
+    case Granted{Backplane.Committed{session, _, _}, _, _}:
       Negotiation.Session.revision(session)
+    case _:
+      0n
 
 def ledger_revision(grant: Grant) -> Nat:
   match grant:
     case NoGrant{}:
       0n
-    case Granted{_, ledger, _}:
+    case Granted{Backplane.Committed{_, ledger, _}, _, _}:
       Ledger.revision(ledger)
+    case _:
+      0n

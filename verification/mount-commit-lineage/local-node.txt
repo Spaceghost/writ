@@ -1,0 +1,4 @@
+PASS: local Copy model source revoke after commit: fresh use denies, cached use stays stale, retry preserves session and ledger
+PASS: local Copy model destination revoke after commit: fresh use denies, cached use stays stale, retry preserves session and ledger
+PASS: local Copy commit retains exact nonfirst frontend descriptor and denies rejected inputs
+LocalSupervisor: 3 checks passed

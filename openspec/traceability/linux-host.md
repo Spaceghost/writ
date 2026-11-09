@@ -104,15 +104,16 @@ principal, monotone clock, joint dispatcher, durable recovery or host acceptance
 The [local profile design](../changes/add-linux-host/local-supervisor-profile.md)
 records the trust boundary and the currently missing mechanisms.
 
-[LocalSupervisorTests.bend](../../LocalSupervisorTests.bend) executes two
+[LocalSupervisorTests.bend](../../LocalSupervisorTests.bend) executes three
 synthetic post-commit traces through the existing DataOS, Issuance and Frontend
 entries: `local Copy model source revoke after commit: fresh use denies, cached use
 stays stale, retry preserves session and ledger` and `local Copy model destination
 revoke after commit: fresh use denies, cached use stays stale, retry preserves
-session and ledger`. They construct synthetic separate issuing authorities for
+session and ledger`, plus `local Copy commit retains exact nonfirst frontend descriptor and denies rejected inputs`. They construct synthetic separate issuing authorities for
 the exact canary Copy plan and pass the exact issuer-projected Frontend change
 and context to the existing `MountAuthority.descriptor` and DataOS commit.
-The same descriptor is checked after revocation; all fresh projections deny,
+The returned historical Frontend and reference are compared with the exact
+inputs of the same commit, including a nonfirst descriptor. The same descriptor is checked after revocation; all fresh projections deny,
 while both exact projections used at commit still resolve. The original intent's
 provenance is inspected. A retry using the returned committed session and
 ledger is rejected with those two states unchanged; it returns no new intent.

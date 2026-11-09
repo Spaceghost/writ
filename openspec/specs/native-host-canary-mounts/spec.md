@@ -48,7 +48,7 @@ The initial profile SHALL accept only explicitly designated public fixtures of a
 
 ### Requirement: NM003 Full commit before observation
 
-Admission SHALL use DataOS.commit_from_capability for the exact immutable Copy into the registered reader domain. The monitor SHALL retain the committed session, ledger, write intent and origin policy, including when later native setup fails. Metadata lookup or open SHALL NOT bypass this gate.
+Admission SHALL use DataOS.commit_from_capability for the exact immutable Copy into the registered reader domain. The monitor SHALL retain the committed session, ledger, write intent, origin policy, and the exact Frontend state and reference supplied to that same accepted commit, including when later native setup fails. The retained Frontend is historical evidence, not a current registry or proof of native authentication. Metadata lookup or open SHALL NOT bypass this gate.
 
 #### Scenario: Reader admission succeeds
 
