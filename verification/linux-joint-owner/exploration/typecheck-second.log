@@ -1,0 +1,20 @@
+SOME PROOFS FAIL
+Error:
+- expected : phase
+- observed : phase (consumed more than once)
+Context:
+- p           : P.State
+- records     : LH.CredentialRecords
+- time        : LH.Clock
+- issuer      : Iss.State
+- rendezvous  : R.State
+- frontend    : F.State
+- transfer    : T.Context
+- negotiation : N.Session
+- context     : N.Context
+- lineage     : JA.Lineage
+Location: nested_owner_state
+869 |     case LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,
+870>|         negotiation, context, lineage, phase, JA.NoJoint{}}}:
+    |                                        ^^^^^
+871 |       LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,

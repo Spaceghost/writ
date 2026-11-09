@@ -1,0 +1,56 @@
+Pre-box tree based on 42b086d, incorporating shared HostIdentity fixed-point walk.
+The checks in the following original section predate the boxed candidate; they
+do not establish exact-current-source full validation.
+Pinned compiler: /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+TMPDIR=/home/jadams/tmp/writ-joint-checks and BEND_NO_TELEMETRY=1 were exported
+for every Bend, generated-code compiler and mock subprocess. No temporary
+build file was intentionally placed in /tmp. Full runs used ulimit -c 0,
+-v 16777216 KiB, -t 600 s, timeout 1800 for generation/compilation, timeout
+900 for execution, and nice -n 15. Focused/trap runs used -v 10737418 KiB,
+-t 300 s and timeout 900 for generation, 300 for execution, nice -n 15.
+Node v26.10.0, clang 23.1.1.
+
+bend Tests.bend: exit 0, tests-bend.txt, 2975 PASS: and 53 other PASS lines.
+bend Tests.bend -o final.js; node final.js: both exit 0, tests-node.txt.
+cmp tests-bend.txt tests-node.txt: exit 0.
+Generated full JS SHA-256 5caccf646df11ef8aad85f4d112c42433794a17e66fe19e8c12f1dd99f8dbf69.
+bend hosts/linux/monitor/LinuxJointOwnerTests.bend and generated Node: exit 0,
+41 PASS: checks, focused-bend.txt and focused-node.txt match byte-for-byte.
+Generated focused JS SHA-256 196568c66f78c751aec501daa882b0f344ecbd6a15164f00af6568444496f3b2.
+
+bend PROOF.bend: exit 0, proof.txt.
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt
+LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict: exit 0, verdict.txt.
+Kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+BENDTT=/bin/false bend PROOF.bend --verdict: exit 1 as expected, negative.txt.
+openspec validate --all --strict --no-interactive: exit 0, openspec.txt (45/45).
+
+The healthy-revoke-trap.bend.txt control forces the actual shared H.revoke at
+maximum host revision, observing only its returned revision. Bend and Node
+exit 1 with Nat overflow, healthy-trap-bend.txt and healthy-trap-node.txt.
+The first version returned the entire Step; bounded Bend aborted on memory
+exhaustion (exit 134) rather than reaching an arithmetic result. Its source,
+full log and status are preserved separately. The preliminary full Bend run
+finished while code was being edited; it is retained but not a verified input.
+
+Native host mocks: timeout 180 nice -n 15 make -C contrib/native-hosts/linux
+OUT=/home/jadams/tmp/writ-joint-checks/linux-native, targeting
+handoff-order-test and retire-error-test; each ran with timeout 60, nice -n 15,
+and exited 0. Outputs/build log are retained. No mount, identity probe or VM
+was used.
+
+Current boxed candidate: focused Bend and generated Node each exit 0 with 42
+PASS lines, byte-identical (boxed-focused-bend.txt and boxed-focused-node.txt).
+Focused native generation exits 1: boxed-focused-native-failure.txt.
+Full native generation: timeout 2400, nice 15, ulimit -v 8388608 KiB,
+-t 1200, -c 0, pinned bend Tests.bend -o under ~/tmp; exit 134 after Bun
+abort, boxed-full-native-abort.txt. This is not an arity verdict.
+Actual dispatch probe generates C (exit 0); actual issue probe exits 1 with
+arity over 247 (actual-issue-native-failure.txt). A single self-guarding
+issue-attempt experiment, in a separate scratch worktree, likewise exits 1
+with arity over 247 (issue-attempt-native-failure.txt). Its exact source
+change is issue-attempt.patch.base64; its probe retains the original absolute scratch
+import. Recreate in an isolated worktree at this commit by decoding `issue-attempt.patch.base64` with `base64 -d` and applying the resulting patch,
+then adjust only the probe import to that worktree and run the pinned Bend
+compiler with TMPDIR under ~/tmp, -o a ~/tmp C path, nice 15, 8 GiB virtual
+memory, 300 s CPU and 900 s wall limit. No C artifact was produced for failures.

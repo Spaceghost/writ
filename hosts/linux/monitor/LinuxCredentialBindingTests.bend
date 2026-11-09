@@ -37,13 +37,13 @@ def changed_pid() -> Bool:
 def missing() -> Bool:
   +s = LT.delegated()
   # Synthetic state isolates credential provenance from the clock-import gate.
-  +without = {LH.State{LH.portable(s), LH.NoCredentials{}, LH.clock(s)} : LH.State}
+  +without = {LH.State{LH.portable(s), LH.NoCredentials{}, LH.clock(s), LH.joint(s)} : LH.State}
   denied(without, LT.full_fact(), LH.LaunchMismatch{})
 
 def duplicate() -> Bool:
   +s = LT.delegated()
   +with_duplicate = {LH.State{LH.portable(s), LH.CredentialRecord{LH.linux_incarnation(), V.session_worker(),
-    LT.launch_credential(), LH.credentials(s)}, LH.clock(s)} : LH.State}
+    LT.launch_credential(), LH.credentials(s)}, LH.clock(s), LH.joint(s)} : LH.State}
   denied(with_duplicate, LT.full_fact(), LH.LaunchMismatch{})
 
 def third_opened() -> LH.State:
@@ -126,7 +126,7 @@ def many_records(+fuel: Nat, records: LH.CredentialRecords) -> LH.CredentialReco
 
 def deep_records() -> Bool:
   +s = LT.delegated()
-  +deep = {LH.State{LH.portable(s), many_records(4096n, LH.credentials(s)), LH.clock(s)} : LH.State}
+  +deep = {LH.State{LH.portable(s), many_records(4096n, LH.credentials(s)), LH.clock(s), LH.joint(s)} : LH.State}
   PT.effects_equal(LH.Outcome.effects(LT.barrier_on(deep, LT.full_fact())),
     [P.DeliverInputs{LT.worker(), LT.input_ref()}])
 

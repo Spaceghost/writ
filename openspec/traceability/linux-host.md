@@ -123,3 +123,59 @@ for the stale-projection hazard, not an authenticated local supervisor or a
 combined Mount/Linux release gate. Time sampling, trusted attribution,
 serialization against effects, replay-resistant recovery and native adversarial
 scenarios remain reviewed-only gaps for LH-011–LH-017.
+
+## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
+
+[LinuxJointOwnerTests.bend](../../hosts/linux/monitor/LinuxJointOwnerTests.bend)
+exercises the in-memory selected-provider issue and input-delivery path. These
+checks do not qualify a native supervisor, authenticated source, live clock,
+continuous expiry, selected-profile exclusivity, FUSE path, committed Copy,
+ledger, evidence/sample expiration, budget or original-graph verification. The
+provider's selected grant is exact; the reader projection is subject-wide and
+can be satisfied by a different current same-scope grant. A line-only LINUXMON1
+client cannot execute or correlate typed stop effects.
+
+The exact named checks are:
+
+- `synthetic owner calls actual Rendezvous dispatch`
+- `synthetic owner issues actual slot`
+- `synthetic owner delivers through retained selection`
+- `accepted issuer revoke contains and drains exact stop`
+- `expiry contains before malformed request`
+- `regressed clock contains before malformed request`
+- `unavailable clock contains before malformed request`
+- `joint bootstrap rejects imported dispatch`
+- `joint issue retains same-transition selection grant and slot`
+- `joint issue requires exact dispatched credential session`
+- `denied issuer revoke preserves active owner and host`
+- `repeat denied revoke remains contained`
+- `unrelated accepted revoke also contains and stops`
+- `direct helpers surface sticky containment`
+- `restart returns stop and cannot reopen joint mode`
+- `joint direct revoke contains unchanged; standalone still stops`
+- `joint revoke drains two exact roots and retains stop history`
+- `joint capacity gates avoid terminal transitions`
+- `partial drain preserves earlier exact stop on terminal failure`
+- `terminal descendant generation prevents unsafe drain`
+- `selection lineage and exact dispatch prevent reauthorization`
+- `terminal live descendant leaves subtree and issuer retained`
+- `two frontend allocation boundaries refuse or succeed precisely`
+- `partial drain retains earlier stop when identity revision is terminal`
+- `terminal issuer revoke is unapplied and requires containment`
+- `joint mode ignores generic snapshot for acceptance and denial`
+- `joint direct helper recomputes broker facts`
+- `accepted issuer revocation survives actual root drain`
+- `joint ancestry rejects zero and unrelated root at high fuel`
+- `framed expiry reports not processed and retains sample`
+- `failed owner still retains later clock samples`
+- `reader-only grant expiry contains with provider selection current`
+- `reader-only approval revoke retains provider selection and stops`
+- `running Negotiation deadline requires containment`
+- `missing reader projection contains with provider still current`
+- `different current reader grant may satisfy subject projection`
+- `direct dispatch issue and effect helper recheck reader authority`
+- `joint launch recomputes raw broker fact checks`
+- `joint replies redact active and failed metadata`
+- `direct helpers contain expired reader authority`
+- `denied cleanup still contains expired reader state`
+- `nested owner remains contained and retained`

@@ -1,5 +1,6 @@
 import Base
 import ./LinuxHost.bend as LH
+import ./LinuxJointAuthority.bend as JA
 import ../../../HostConformanceVectors.bend as V
 import ../../../HostConformanceTests.bend as CT
 import ../../../HostPrimitivesTests.bend as PT
@@ -254,7 +255,7 @@ def L() -> V.Adapter:
 
 # Fixture helpers retain the Linux-owned provenance alongside shared transitions.
 def apply_step(+state: LH.State, step: P.Step) -> LH.State:
-  LH.State{P.Step.state(step), LH.credentials(state), LH.clock(state)}
+  LH.State{P.Step.state(step), LH.credentials(state), LH.clock(state), LH.joint(state)}
 
 def credentials_equal(a: LH.CredentialRecords, b: LH.CredentialRecords) -> Bool:
   match a b:
@@ -354,7 +355,7 @@ def no_effect(+outcome: LH.Outcome) -> Bool:
 
 def step_denied(outcome: LH.Outcome, +input: LH.State, reason: P.Error) -> Bool:
   match outcome:
-    case LH.Stepped{_, _, step}:
+    case LH.Stepped{_, _, _, step}:
       PT.denied(step, LH.portable(input), reason)
     case _:
       False{}
@@ -366,7 +367,7 @@ def denied_as(+outcome: LH.Outcome, +input: LH.State, reason: P.Error) -> Bool:
 
 def step_identity_denied(outcome: LH.Outcome, +input: LH.State, reason: I.Error) -> Bool:
   match outcome:
-    case LH.Stepped{_, _, step}:
+    case LH.Stepped{_, _, _, step}:
       PT.denied_identity(step, LH.portable(input), reason)
     case _:
       False{}
@@ -423,7 +424,7 @@ def admitted_with(+outcome: LH.Outcome, +revision: Nat, effects: +List<P.Effect>
   match outcome:
     case LH.Opened{state, _}:
       Nat.is_eq(P.revision(LH.portable(state)), revision) && PT.effects_equal([], effects)
-    case LH.Stepped{_, _, P.Admitted{state, got}}:
+    case LH.Stepped{_, _, _, P.Admitted{state, got}}:
       Nat.is_eq(P.revision(state), revision) && PT.effects_equal(got, effects)
     case _:
       False{}
@@ -521,7 +522,7 @@ def accelerator_delegated() -> LH.State:
   +s = P.empty(I.empty(LH.linux_host(), LH.linux_incarnation()), accelerator_profiles())
   +client = P.Step.state(P.open_session(s, P.revision(s), linux_report(), V.client_evidence(), V.client_role()))
   # Synthetic clock state isolates the accelerator decision, not host recovery.
-  delegated_in(after(frame(rooted_in(LH.State{client, LH.NoCredentials{}, LH.LiveClock{now()}}), LH.Launch{full_fact()})))
+  delegated_in(after(frame(rooted_in(LH.State{client, LH.NoCredentials{}, LH.LiveClock{now()}, JA.NoJoint{}}), LH.Launch{full_fact()})))
 
 def accelerator_refused() -> Bool:
   denied_as(barrier_on(accelerator_delegated(), full_fact()), accelerator_delegated(), P.UnisolatedAccelerator{})

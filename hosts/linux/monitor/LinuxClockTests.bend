@@ -188,9 +188,9 @@ def failed_cleanup_after_poison() -> Bool:
 # calling admit_worker would overflow. A stale clock must avoid evaluating it.
 def max_revision(+state: LH.State, max: Nat) -> LH.State:
   match state:
-    case LH.State{P.State{_, identity, profiles, bindings, workers, next_worker, seals, publications}, records, _}:
+    case LH.State{P.State{_, identity, profiles, bindings, workers, next_worker, seals, publications}, records, _, owner}:
       LH.State{P.State{max, identity, profiles, bindings, workers, next_worker, seals, publications}, records,
-        LH.LiveClock{150n}}
+        LH.LiveClock{150n}, owner}
 
 def max_value(parsed: Maybe<&2, Nat>) -> Bool:
   match parsed:

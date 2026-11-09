@@ -57,8 +57,8 @@ def change_rights(host: P.State, wanted: Nat, rights: U32) -> P.State:
 
 def linux_rights(state: LH.State, rights: U32) -> LH.State:
   match state:
-    case LH.State{p, credentials, clock}:
-      LH.State{change_rights(p, V.slot_of(LT.L(), V.Input{}), rights), credentials, clock}
+    case LH.State{p, credentials, clock, owner}:
+      LH.State{change_rights(p, V.slot_of(LT.L(), V.Input{}), rights), credentials, clock, owner}
 
 def closed() -> F.State:
   F.state(F.close(PT.base_frontend(), F.revision(PT.base_frontend()), F.Ref{PT.caller_client(), PT.handle_client()}))

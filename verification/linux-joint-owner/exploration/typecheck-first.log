@@ -1,0 +1,8 @@
+SOME PROOFS FAIL
+Error:
+- message  : a parameter or field scrutinee (a match cannot scrutinize a computed value: give it its own def)
+Location:
+876 | def nested_retained(state: LH.State) -> Bool:
+877>|   match LH.joint(state):
+    |         ^^^^^^^^^^^^^^^
+878 |     case JA.Joint{_, _, _, _, _, _, _, _, JA.Joint{_, _, _, _, _, _, _, _, JA.NoJoint{}}}: True{}

@@ -1,0 +1,1 @@
+Bounded Bend whole-Step healthy-revoke control exited 134 after memory exhaustion; no intended arithmetic result. RSS peak 5.22 GiB, address-space cap 8 GiB, nice 15, timeout 300 s. See trap-bend-full-step.log.

@@ -9,18 +9,22 @@ execution is unavailable for this profile (LH-001). Existing native
 WritFS public-canary evidence covers a separate, bounded contribution; it
 does not qualify this adapter.
 
-This file lists Linux host binding code. None of it is Writ policy: no
-authority, grant, label, budget, accounting, replay, or release decision is
-made here. The adapter also retains broker-framed launch credentials and rejects
-a Barrier whose session, incarnation or retained credential does not match.
-Shared transitions in `HostIdentity.bend`, `HostPrimitives.bend`, and
-`HostPublication.bend` still decide authority and effects.
+This file lists Linux host model and binding code. The Bend monitor composes
+shared policy transitions and adds host-specific checks; it is not a second
+native policy engine. It retains broker-framed launch credentials and rejects a
+Barrier whose session, incarnation or retained credential does not match.
+The synthetic Rendezvous variant also enforces current selection, retained
+lineage and fail-stop requirements before the shared delivery decision. The
+native binding may report facts and perform admitted effects, not create
+grants, accounting rules or an alternate release decision.
 
 ## Files
 
 | File | Role | Run by |
 | --- | --- | --- |
-| `hosts/linux/monitor/LinuxHost.bend` | Adapter glue: the Linux host id and incarnation, the profile table (`linux-worker-v1`), the translators from broker-framed native facts (`LinuxFact`) to `SessionEvidence`, `TargetReport`, and `Inventory`, and the two-channel `dispatch` that applies at most one shared transition per framed input. Retains per-session launch observations and checks them at Barrier. The trusted in-process `revoke` monitor action retains those observations while routing `HostPublication.revoke`'s result and `StopEffects` unchanged; it adds no portable `Error` or law. | imported by the test module; the native broker (Tasks 2 to 4) will run it as the generated Bend monitor |
+| `hosts/linux/monitor/LinuxHost.bend` | Linux monitor, fact translators, launch credential retention and shared-transition dispatch. Its separate synthetic Rendezvous owner retains issuer/selection/Frontend lineage, applies current checks and returns sticky containment plus exact shared drain effects. | imported by model tests; no native consumer of the joint variant exists |
+| `hosts/linux/monitor/LinuxJointAuthority.bend` | Synthetic retained Rendezvous-owner records and pure projection, lineage and capacity checks; no effect transition | imported by the monitor and joint-owner tests |
+| `hosts/linux/monitor/LinuxJointOwnerTests.bend` | Synthetic selected-worker issue, delivery, reader currency, containment and actual stop-drain controls | `Tests.bend` as `LinuxJointOwner` |
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
 | `hosts/linux/monitor/LinuxSessionOpenTests.bend` | Synthetic typed-open, denial, routing and legacy wire compatibility checks | `Tests.bend` as `LinuxSessionOpen` |
 | `hosts/linux/monitor/LinuxCredentialBindingTests.bend` | Synthetic binding, restart, monitor-action revocation, denial and long-list controls | `Tests.bend` as `LinuxCredentialBinding` |
@@ -60,13 +64,15 @@ detect a stale, frozen, replayed or slow but nonregressing clock.
 The owner must actually sample a trusted clock, protect the sample channel,
 retain state before effects and preserve continuity across restart. Public Bend
 records and helpers cannot authenticate those facts or prevent an old state
-being restored. This is an in-memory consistency check, not the local authority
-owner, issuer/FUSE gate, native clock, durability or host qualification. The
+being restored. This is an in-memory consistency check, not a complete native local authority
+owner, FUSE gate, native clock, durability or host qualification. The
 off-master WIP broker harness passed a request sequence as its old bare `now`;
 it is incompatible with this typed input and must not be treated as a clock.
 
-The monitor admission API now takes an additional trusted owner-side
+The standalone monitor admission API takes a trusted owner-side
 `AdmissionAuthority` snapshot; it is not encoded in worker or broker frames.
+The synthetic Rendezvous variant ignores that input and rebuilds projections
+from its retained issuer and selection.
 Barrier passes the original decoded Use, and the shared gate requires execute
 right 4, a current matching descriptor and paired Transfer context at the
 sampled time. It retains the original admission denial order and no-effects
@@ -78,6 +84,17 @@ No current native consumer, host clock, FUSE gate or full bridge is established.
 The additional registry, Frontend and Transfer traversals have no new explicit
 size cap; real owners must bound snapshot processing without silently dropping
 records, and no unlimited-resource claim is made.
+
+The synthetic Rendezvous variant retains issuer, selection, Frontend and
+lineage rather than using the standalone snapshot argument. It issues the exact
+selected worker slot and rebuilds provider and reader projections before
+sampled use. Accepted issuer revocation, failed time or invalid current state
+requires sticky whole-instance containment; trusted drain returns actual
+shared stop effects, one root at a time. This is an in-memory model, not native
+authentication, continuous expiry enforcement, a committed Copy, or the
+separate FUSE gate. The line-only diagnostic cannot carry stop identities.
+The trusted profile choice must also exclude standalone and Mount bypasses in
+a real deployment; there is no such enforcement in this tree.
 
 ## Authority
 
@@ -108,7 +125,7 @@ credential.
 | Established controls | kernel state the broker installed and probed | `LinuxFact.controls` | `TargetReport.established_controls`, compared with the bound profile | as families; bits the broker cannot credit are refused (UncreditedControl) |
 | Descriptor inventory (number, kind, mediated) | the worker's fd table after the allowlist | `LinuxFact.routes` | `Inventory` of `RouteFact{kind, mediated}`; numbers dropped | an unmediated route can only deny |
 | Barrier session | the broker's attribution of the barrier to a session | `Barrier.session` | the session `admit_worker` resolves on; checked against the fact's caller (SessionMismatch) and the same session's unique retained credential (LaunchMismatch) | the entry, profile, and delegability are the identity table's |
-| Request snapshot | worker bytes, copied once, bounded | `Barrier.request` | `W.decode_bytes`; only a Use's reference reaches `admit_worker` | a description that must resolve on the session; claim, operation, rights discarded |
+| Request snapshot | worker bytes, copied once, bounded | `Barrier.request` | `W.decode_bytes`; the Use reference, operation and rights reach `admit_worker` | a description checked against the retained entry; the claimed subject is ignored |
 | Resource request | broker's observation of the worker | `Usage{worker, amount}` | `P.charge` | bounded by the configured quota; changes only `quota_used` |
 | Output attempt | broker's observation of the worker | `Emission{worker, public}` | `P.diagnostic` | a public emission is denied |
 | Worker transport session | the worker connection the broker accepted | `FromWorker.session` | the session `use`/`delegate` resolve on | attribution only; the worker's bytes are untrusted |

@@ -24,6 +24,17 @@ new authority is implied by this document.
 | [LinuxHost.dispatch](../../../hosts/linux/monitor/LinuxHost.bend) | On synthetic Launch, `P.open_session_result` produces the same-transition ID and state in `Opened`; the adapter retains the framed launch credential against that session and incarnation. A Barrier checks the retained record before `P.admit_worker`. `LINUXMON1` remains diagnostic. | No current native broker, request-correlated session receipt, single canary owner, or link from that ID to actor 1 is implemented. |
 | [HostPrimitives.issue/admit_worker](../../../HostPrimitives.bend) | `issue_result` validates the supplied Frontend handle's plan, owner, rights and lease and checks its supplied revision, live registry and paired transfer context before minting the root; its successful result carries the exact slot from that mint. `issue` projects that result to the legacy Step. `admit_worker` resolves an input on the worker session, preserves the existing confinement checks, then rechecks the actual execute request and owner-bound descriptor in the supplied current snapshot before `DeliverInputs`. | `issue_result` trusts those supplied snapshots and does **not** obtain or authenticate their freshness or revalidate a later Frontend state. Its Nat slot is not a native receipt or proof of U32 wire representability. `admit_worker` cannot prove snapshot freshness or revalidate the separate canary's phase. Neither is a complete joint release gate. |
 
+The Linux monitor also has a synthetic, sticky Rendezvous-owner variant. It
+retains the issuer, selected dispatch, Frontend and exact issued-root lineage,
+and recomputes provider and subject-wide reader projections on sampled input.
+Accepted issuer revocation or stale authority requires whole-instance
+containment, followed by actual shared root retirement. This is a model slice,
+not a native feed or the canary owner: `Mount.dispatch` remains separate, and
+the real host must hide any path that bypasses the selected owner. It does not
+replay or perform the canary Copy, revalidate its committed ledger or original
+graph, authenticate a caller, prove a trusted clock, or stop workers during
+silence without a timer.
+
 The fixed canary uses `Reference.caller(1)` and its deterministic
 `internal_token(1)` to open an in-process descriptor; its source explicitly
 says this token does not replace a host bearer token

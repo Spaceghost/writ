@@ -1,0 +1,20 @@
+import Base
+import /home/jadams/tmp/writ-linux-joint-owner/HostPrimitives.bend as P
+import /home/jadams/tmp/writ-linux-joint-owner/HostPrimitivesTests.bend as PT
+import /home/jadams/tmp/writ-linux-joint-owner/HostPublication.bend as H
+
+def host_at_limit(state: P.State, maximum: Nat) -> P.State:
+  match state:
+    case P.State{_, identity, profiles, bindings, workers, next, seals, publications}:
+      P.State{maximum, identity, profiles, bindings, workers, next, seals, publications}
+
+def crash(found: Maybe<&2, Nat>) -> IO(Unit):
+  match found:
+    case None{}: IO.print("INVALID TRAP FIXTURE")
+    case Some{maximum}:
+      +state = {host_at_limit(PT.base(), maximum) : P.State}
+      +result = {H.revoke(state, P.revision(state), PT.input_slot()) : P.Step}
+      IO.print(Nat.show(P.revision(P.Step.state(result))))
+
+def main() -> IO(Unit):
+  crash(Nat.read("281474976710655"))

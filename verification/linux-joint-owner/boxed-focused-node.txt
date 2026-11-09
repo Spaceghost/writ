@@ -1,0 +1,42 @@
+PASS: synthetic owner calls actual Rendezvous dispatch
+PASS: synthetic owner issues actual slot
+PASS: synthetic owner delivers through retained selection
+PASS: accepted issuer revoke contains and drains exact stop
+PASS: expiry contains before malformed request
+PASS: regressed clock contains before malformed request
+PASS: unavailable clock contains before malformed request
+PASS: joint bootstrap rejects imported dispatch
+PASS: joint issue retains same-transition selection grant and slot
+PASS: joint issue requires exact dispatched credential session
+PASS: denied issuer revoke preserves active owner and host
+PASS: repeat denied revoke remains contained
+PASS: unrelated accepted revoke also contains and stops
+PASS: direct helpers surface sticky containment
+PASS: restart returns stop and cannot reopen joint mode
+PASS: joint direct revoke contains unchanged; standalone still stops
+PASS: joint revoke drains two exact roots and retains stop history
+PASS: joint capacity gates avoid terminal transitions
+PASS: partial drain preserves earlier exact stop on terminal failure
+PASS: terminal descendant generation prevents unsafe drain
+PASS: selection lineage and exact dispatch prevent reauthorization
+PASS: terminal live descendant leaves subtree and issuer retained
+PASS: two frontend allocation boundaries refuse or succeed precisely
+PASS: partial drain retains earlier stop when identity revision is terminal
+PASS: terminal issuer revoke is unapplied and requires containment
+PASS: joint mode ignores generic snapshot for acceptance and denial
+PASS: joint direct helper recomputes broker facts
+PASS: accepted issuer revocation survives actual root drain
+PASS: joint ancestry rejects zero and unrelated root at high fuel
+PASS: framed expiry reports not processed and retains sample
+PASS: failed owner still retains later clock samples
+PASS: reader-only grant expiry contains with provider selection current
+PASS: reader-only approval revoke retains provider selection and stops
+PASS: running Negotiation deadline requires containment
+PASS: missing reader projection contains with provider still current
+PASS: different current reader grant may satisfy subject projection
+PASS: direct dispatch issue and effect helper recheck reader authority
+PASS: joint launch recomputes raw broker fact checks
+PASS: joint replies redact active and failed metadata
+PASS: direct helpers contain expired reader authority
+PASS: denied cleanup still contains expired reader state
+PASS: nested owner remains contained and retained

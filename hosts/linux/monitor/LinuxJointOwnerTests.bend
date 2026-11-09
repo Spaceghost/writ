@@ -1,0 +1,969 @@
+import Base
+import ./LinuxHost.bend as LH
+import ./LinuxJointAuthority.bend as JA
+import ./LinuxHostTests.bend as LT
+import ../../../HostConformanceVectors.bend as V
+import ../../../HostPrimitives.bend as P
+import ../../../HostWire.bend as W
+import ../../../RendezvousTests.bend as RT
+import ../../../Rendezvous.bend as R
+import ../../../IssuanceTests.bend as IT
+import ../../../Issuance.bend as Iss
+import ../../../HostIdentity.bend as I
+import ../../../Frontend.bend as F
+import ../../../Transfer.bend as T
+import ../../../Negotiation.bend as N
+import ../../../HostPrimitivesTests.bend as PT
+import ../../../Test.bend as Test
+
+# Synthetic issuer, selection and native facts only; this is not a host.
+def fact() -> LH.LinuxFact:
+  LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
+    LH.Credential{1000n,1000n,4242n,917n}, LH.Launched{}, P.all_families(), LH.required_controls(), []}
+
+def launched(+w: RT.Sc) -> LH.State:
+  +issuer = RT.sc_issuer(w)
+  +initial = LH.joint_initial(issuer, RT.sc_evidenced(w), RT.sc_policies(), RT.sc_running(w), RT.sc_raw(issuer, 110n))
+  LH.Outcome.state(LH.dispatch(initial, LH.FromBroker{LH.Launch{fact()}}, LH.Sample{110n}, V.fixture_authority(110n)))
+
+def did_dispatch(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointChanged{_}: True{}
+    case _: False{}
+
+def did_issue(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointIssued{_, slot}: Nat.is_eq(slot, 1n)
+    case _: False{}
+
+def check_dispatch(+w: RT.Sc) -> Bool:
+  did_dispatch(LH.joint_dispatch(launched(w), 1n, 110n))
+
+def check_issue(+w: RT.Sc) -> Bool:
+  did_issue(LH.joint_issue(LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)), 1n, 4, 120n, 110n))
+
+def deliver_result(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.Stepped{_, _, _, P.Admitted{_, P.DeliverInputs{_, _} <> []}}: True{}
+    case _: False{}
+
+def delivered(+w: RT.Sc) -> LH.Outcome:
+  +launched = launched(w)
+  +dispatched = LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n))
+  +issued = LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n))
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  LH.dispatch(issued, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
+    LH.Sample{110n}, V.fixture_authority(110n))
+
+def check_delivery(+w: RT.Sc) -> Bool:
+  deliver_result(delivered(w))
+
+def revoke_is_applied(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointContain{_, True{}}: True{}
+    case _: False{}
+
+def complete_once(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainComplete{_}: True{}
+    case _: False{}
+
+def drain_complete(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainComplete{state}: complete_once(LH.joint_drain(state))
+    case _: False{}
+
+def drain_correct(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainStep{state, P.StopEffects{worker} <> []}:
+      Nat.is_eq(worker, 1n) && drain_complete(LH.joint_drain(state))
+    case _: False{}
+
+def check_revoke(+w: RT.Sc) -> Bool:
+  +change = LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)
+  revoke_is_applied(change) && drain_correct(LH.joint_drain(LH.JointAction.state(change)))
+
+def is_contained(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.ContainmentRequired{_}: True{}
+    case _: False{}
+
+def check_expiry(+w: RT.Sc) -> Bool:
+  +state = LH.Outcome.state(delivered(w))
+  +result = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{125n}, V.fixture_authority(110n)) : LH.Outcome}
+  is_contained(result) && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
+
+def check_clock(+w: RT.Sc) -> Bool:
+  +state = LH.Outcome.state(delivered(w))
+  +result = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{109n}, V.fixture_authority(110n)) : LH.Outcome}
+  is_contained(result) && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
+
+def check_unavailable(+w: RT.Sc) -> Bool:
+  +state = LH.Outcome.state(delivered(w))
+  +result = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.UnavailableClock{}, V.fixture_authority(110n)) : LH.Outcome}
+  is_contained(result) && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
+
+def is_failed(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{_, _, _, _, _, _, _, JA.JointFailed{_}, JA.NoJoint{}}: True{}
+    case _: False{}
+
+def boot_rejects_dispatched(+w: RT.Sc) -> Bool:
+  +issuer = RT.sc_issuer(w)
+  is_failed(LH.joint(LH.joint_initial(issuer, RT.sc_dispatched(w), RT.sc_policies(), RT.sc_running(w),
+    RT.sc_raw(issuer, 110n))))
+
+def exact_joint(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{_, _, frontend, _, _, _, JA.Lineage{inc, selection, grant, slot, JA.NoLineage{}}, _, JA.NoJoint{}}:
+      Nat.is_eq(inc, 1n) && Nat.is_eq(selection, 5n) && Nat.is_eq(grant, 8n)
+        && Nat.is_eq(slot, 1n) && Nat.is_eq(F.revision(frontend), 2n)
+    case _: False{}
+
+def exact_lineage(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointIssued{state, slot}:
+      Nat.is_eq(slot, 1n) && exact_joint(LH.joint(state))
+    case _: False{}
+
+
+def exact_issue(+w: RT.Sc) -> Bool:
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)) : LH.State}
+  exact_lineage(LH.joint_issue(dispatched, 1n, 4, 120n, 110n))
+
+def refused(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointRefused{_}: True{}
+    case _: False{}
+
+def wrong_session_issue(+w: RT.Sc) -> Bool:
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)) : LH.State}
+  refused(LH.joint_issue(dispatched, 2n, 4, 120n, 110n))
+
+
+def issuer_revision(owner: JA.Joint) -> Nat:
+  match owner:
+    case JA.Joint{issuer, _, _, _, _, _, _, _, JA.NoJoint{}}: Iss.revision(issuer)
+    case _: 0n
+
+def no_revoke_denial_effect(+w: RT.Sc) -> Bool:
+  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+  +denied = {LH.joint_revoke(before, IT.write_authority(), 5n) : LH.JointAction}
+  refused(denied) && PT.state_equal(LH.portable(LH.JointAction.state(denied)), LH.portable(before))
+    && Nat.is_eq(issuer_revision(LH.joint(LH.JointAction.state(denied))), issuer_revision(LH.joint(before)))
+
+
+def repeated_is_contained(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointContain{_, False{}}: True{}
+    case _: False{}
+
+def repeat_revocation_contains(+w: RT.Sc) -> Bool:
+  +first = {LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n) : LH.JointAction}
+  repeated_is_contained(LH.joint_revoke(LH.JointAction.state(first), IT.source_authority(), 5n))
+
+
+def unrelated_revoke_contains(+w: RT.Sc) -> Bool:
+  +change = {LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 9n) : LH.JointAction}
+  revoke_is_applied(change) && drain_correct(LH.joint_drain(LH.JointAction.state(change)))
+
+def clock_still_live(clock: LH.Clock) -> Bool:
+  match clock:
+    case LH.LiveClock{now}: Nat.is_eq(now, 110n)
+    case _: False{}
+
+def served_is_contained(+served: LH.Served) -> Bool:
+  match served:
+    case LH.Served{LH.ContainmentRequired{+state}}:
+      clock_still_live(LH.clock(state)) && String.eq(LH.served_status(served), "FAILSTOP")
+    case _: False{}
+
+
+def served_containment_only(served: LH.Served) -> Bool:
+  match served:
+    case LH.Served{LH.ContainmentRequired{_}}: True{}
+    case _: False{}
+
+def direct_helpers_for(+state: LH.State, +now: Nat) -> Bool:
+  +authority = {V.fixture_authority(110n) : P.AdmissionAuthority}
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  +delegate = {W.Delegate{W.Ref{60, 1, 1, 1}, 4, 1, 1} : W.Message}
+  +bad = {LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
+    LH.Credential{1000n,1000n,5555n,917n}, LH.Launched{}, P.all_families(), LH.required_controls(), []} : LH.LinuxFact}
+  is_contained(LH.on_broker(state, LH.Launch{fact()}, now, authority))
+    && is_contained(LH.on_broker(state, LH.Usage{1n, 1n}, now, authority))
+    && is_contained(LH.on_broker(state, LH.Emission{1n, False{}}, now, authority))
+    && is_contained(LH.worker_message(use, state, 1n, now))
+    && is_contained(LH.worker_message(delegate, state, 1n, now))
+    && is_contained(LH.on_worker(state, 1n, W.Decoded{use}, now))
+    && is_contained(LH.route_sampled(state, LH.FromWorker{1n, [1]}, now, authority))
+    && served_containment_only(LH.served_of(LH.Unframed{LH.FrameLength{}}, state, now, authority))
+    && is_contained(LH.barrier_with(use, LT.linux_report(), LH.inventory_of(fact()), state, 1n, fact(), now, authority))
+    && is_contained(LH.barrier_with(use, LT.linux_report(), LH.inventory_of(bad), state, 1n, bad, now, authority))
+    && is_contained(LH.barrier_request(W.Malformed{W.BadLength{}}, LT.linux_report(), LH.inventory_of(fact()),
+      state, 1n, fact(), now, authority))
+    && is_contained(LH.barrier_report(LH.NoReport{LH.UnknownFamily{}}, LH.inventory_of(fact()), state,
+      1n, fact(), W.Decoded{use}, now, authority))
+    && is_contained(LH.barrier_preflight(LH.Report{LT.linux_report()}, LH.inventory_of(fact()), state,
+      1n, bad, W.Decoded{use}, now, authority))
+    && is_contained(LH.stepped(state, P.Admitted{LH.portable(state), []}, now))
+
+def direct_helpers_contain(+w: RT.Sc) -> Bool:
+  +state = {LH.JointAction.state(LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)) : LH.State}
+  direct_helpers_for(state, 110n)
+    && served_is_contained(LH.served_of(LH.Unframed{LH.FrameLength{}}, state, 110n, V.fixture_authority(110n)))
+
+def restart_result(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.RestartContained{+state, P.StopEffects{worker} <> []}:
+      Nat.is_eq(worker, 1n) && is_failed(LH.joint(state))
+        && is_contained(LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{111n}, V.fixture_authority(110n)))
+    case _: False{}
+
+def restart_contains(+w: RT.Sc) -> Bool:
+  +state = {LH.Outcome.state(delivered(w)) : LH.State}
+  restart_result(LH.restart(state, P.revision(LH.portable(state)), 2n))
+
+def standalone_stop(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.Stepped{_, _, _, P.Admitted{_, P.StopEffects{worker} <> []}}: Nat.is_eq(worker, LT.worker())
+    case _: False{}
+
+def direct_revoke_preserves(+w: RT.Sc) -> Bool:
+  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+  +result = {LH.revoke(before, P.revision(LH.portable(before)), 1n) : LH.Outcome}
+  +after = {LH.Outcome.state(result) : LH.State}
+  is_contained(result) && LT.no_effect(result) && PT.state_equal(LH.portable(before), LH.portable(after))
+    && LT.credentials_equal(LH.credentials(before), LH.credentials(after)) && clock_still_live(LH.clock(after))
+    && Nat.is_eq(issuer_revision(LH.joint(before)), issuer_revision(LH.joint(after)))
+    && drain_correct(LH.joint_drain(after))
+    && standalone_stop(LH.revoke(LT.admitted(), P.revision(LH.portable(LT.admitted())), V.slot_of(LT.L(), V.Input{})))
+
+def issue_twice(+w: RT.Sc) -> LH.State:
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)) : LH.State}
+  +first = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+  LH.JointAction.state(LH.joint_issue(first, 1n, 4, 120n, 110n))
+
+def deliver_slot(+state: LH.State, slot: U32) -> LH.State:
+  +use = {W.Use{W.Ref{60, 1, slot, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  LH.Outcome.state(LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
+    LH.Sample{110n}, V.fixture_authority(110n)))
+
+def historical_two(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{_, _, _, _, _, _, JA.NoLineage{},
+        JA.JointFailed{P.StopEffects{2n} <> P.StopEffects{1n} <> []}, JA.NoJoint{}}: True{}
+    case _: False{}
+
+def second_drain(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainStep{+state, P.StopEffects{1n} <> []}:
+      historical_two(LH.joint(state)) && drain_complete(LH.joint_drain(state))
+    case _: False{}
+
+def first_drain(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainStep{state, P.StopEffects{2n} <> []}: second_drain(LH.joint_drain(state))
+    case _: False{}
+
+def multiple_roots(+w: RT.Sc) -> Bool:
+  +both = {deliver_slot(deliver_slot(issue_twice(w), 1), 2) : LH.State}
+  +revoked = {LH.joint_revoke(both, IT.source_authority(), 5n) : LH.JointAction}
+  revoke_is_applied(revoked) && first_drain(LH.joint_drain(LH.JointAction.state(revoked)))
+
+# Deliberately malformed/terminal synthetic states exercise the owner's
+# fail-closed capacity paths; these constructors are not authenticated input.
+def host_revision(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{P.State{_, identity, profiles, bindings, workers, next, seals, publications}, records, time, owner}:
+      LH.State{P.State{maximum, identity, profiles, bindings, workers, next, seals, publications}, records, time, owner}
+
+def identity_revision(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{P.State{revision, I.State{_, host, inc, next, sessions, entries}, profiles, bindings,
+        workers, next_worker, seals, publications}, records, time, owner}:
+      LH.State{P.State{revision, I.State{maximum, host, inc, next, sessions, entries}, profiles, bindings,
+        workers, next_worker, seals, publications}, records, time, owner}
+
+def worker_counter(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{P.State{revision, identity, profiles, bindings, workers, _, seals, publications}, records, time, owner}:
+      LH.State{P.State{revision, identity, profiles, bindings, workers, maximum, seals, publications}, records, time, owner}
+
+def identity_next(state: LH.State, next_slot: Nat) -> LH.State:
+  match state:
+    case LH.State{P.State{revision, I.State{ir, host, inc, _, sessions, entries}, profiles, bindings,
+        workers, next_worker, seals, publications}, records, time, owner}:
+      LH.State{P.State{revision, I.State{ir, host, inc, next_slot, sessions, entries}, profiles, bindings,
+        workers, next_worker, seals, publications}, records, time, owner}
+
+def issuer_revision_set(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{Iss.State{_, next, live, directory, placements, approvals, grants, seen},
+        rendezvous, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{Iss.State{maximum, next, live, directory, placements, approvals, grants, seen},
+        rendezvous, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def rendezvous_revision_set(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, R.State{_, next, request, constraint, offers, approvals,
+        selection, retired, evidence, dispatched, seen}, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, R.State{maximum, next, request, constraint, offers, approvals,
+        selection, retired, evidence, dispatched, seen}, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def frontend_revision_set(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, rendezvous, F.State{_, next, handles}, transfer,
+        negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, rendezvous, F.State{maximum, next, handles}, transfer,
+        negotiation, context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def action_contained(action: LH.JointAction) -> Bool:
+  match action:
+    case LH.JointContain{_, False{}}: True{}
+    case _: False{}
+
+def dispatch_ready(+w: RT.Sc) -> LH.State:
+  LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n))
+
+def issued_once(+w: RT.Sc) -> LH.State:
+  LH.JointAction.state(LH.joint_issue(dispatch_ready(w), 1n, 4, 120n, 110n))
+
+def delivery_of(+state: LH.State) -> LH.Outcome:
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}}, LH.Sample{110n},
+    V.fixture_authority(110n))
+
+def terminal_cases_at(+w: RT.Sc, +maximum: Nat) -> Bool:
+  +ready = {dispatch_ready(w) : LH.State}
+  action_contained(LH.joint_issue(host_revision(ready, maximum), 1n, 4, 120n, 110n))
+    && action_contained(LH.joint_issue(identity_revision(ready, maximum), 1n, 4, 120n, 110n))
+    && action_contained(LH.joint_issue(frontend_revision_set(ready, maximum), 1n, 4, 120n, 110n))
+    && action_contained(LH.joint_issue(identity_next(ready, Nat.add(4294967295n, 1n)), 1n, 4, 120n, 110n))
+    && action_contained(LH.joint_dispatch(rendezvous_revision_set(launched(w), maximum), 1n, 110n))
+    && action_contained(LH.joint_revoke(issuer_revision_set(issued_once(w), maximum), IT.source_authority(), 5n))
+    && is_contained(delivery_of(worker_counter(issued_once(w), maximum)))
+
+def terminal_cases(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}: terminal_cases_at(w, maximum)
+
+def first_history(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{_, _, _, _, _, _, _, JA.JointFailed{P.StopEffects{2n} <> []}, JA.NoJoint{}}: True{}
+    case _: False{}
+
+def incomplete_with_prior(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainIncomplete{+state}: first_history(LH.joint(state))
+    case _: False{}
+
+def partial_at(drain: LH.JointDrain, maximum: Nat) -> Bool:
+  match drain:
+    case LH.JointDrainStep{state, P.StopEffects{2n} <> []}:
+      incomplete_with_prior(LH.joint_drain(host_revision(state, maximum)))
+    case _: False{}
+
+def partial_case(+w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}:
+      +both = {deliver_slot(deliver_slot(issue_twice(w), 1), 2) : LH.State}
+      +revoked = {LH.joint_revoke(both, IT.source_authority(), 5n) : LH.JointAction}
+      partial_at(LH.joint_drain(LH.JointAction.state(revoked)), maximum)
+
+def max_generation(entries: I.Entries, maximum: Nat) -> I.Entries:
+  match entries:
+    case I.NoEntries{}: I.NoEntries{}
+    case I.Entries{I.Entry{slot, _, holder, owner, handle, plan, rights, expires, parent, live}, rest}:
+      I.Entries{I.Entry{slot, maximum, holder, owner, handle, plan, rights, expires, parent, live}, rest}
+
+def root_generation_set(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{P.State{revision, I.State{ir, host, inc, next, sessions, entries}, profiles, bindings,
+        workers, next_worker, seals, publications}, records, time, owner}:
+      LH.State{P.State{revision, I.State{ir, host, inc, next, sessions, max_generation(entries, maximum)}, profiles,
+        bindings, workers, next_worker, seals, publications}, records, time, owner}
+
+def drain_incomplete(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainIncomplete{+state}: is_failed(LH.joint(state))
+    case _: False{}
+
+def generation_case_at(+w: RT.Sc, maximum: Nat) -> Bool:
+  +issued = {root_generation_set(issued_once(w), maximum) : LH.State}
+  +revoked = {LH.joint_revoke(issued, IT.source_authority(), 5n) : LH.JointAction}
+  revoke_is_applied(revoked) && drain_incomplete(LH.joint_drain(LH.JointAction.state(revoked)))
+
+
+def generation_case(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}: generation_case_at(w, maximum)
+
+def duplicate_lineage(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context,
+        JA.Lineage{+inc, +selection, +grant, +slot, rest}, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context,
+        JA.Lineage{inc, selection, grant, slot, JA.Lineage{inc, selection, grant, slot, rest}}, phase, JA.NoJoint{}}}
+    case _: state
+
+def mismatched_lineage(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context,
+        JA.Lineage{inc, selection, _, slot, rest}, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context,
+        JA.Lineage{inc, selection, 9n, slot, rest}, phase, JA.NoJoint{}}}
+    case _: state
+
+def bad_dispatch(state: LH.State, incarnation: Nat, session: Nat) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, R.State{revision, next, request, constraint, offers,
+        approvals, selection, retired, evidence, R.Dispatches{R.Dispatch{id, _, _}, rest}, seen},
+        frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, R.State{revision, next, request, constraint, offers,
+        approvals, selection, retired, evidence, R.Dispatches{R.Dispatch{id, incarnation, session}, rest}, seen},
+        frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def replaced_selection(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, R.State{revision, _, request, constraint, offers, approvals,
+        R.Selection{_, offer, chosen, stamp, selected_at, ranking}, retired, evidence,
+        R.Dispatches{R.Dispatch{_, incarnation, worker}, rest}, seen}, frontend, transfer, negotiation, context,
+        lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, R.State{revision, 7n, request, constraint, offers, approvals,
+        R.Selection{6n, offer, chosen, stamp, selected_at, ranking}, retired, evidence,
+        R.Dispatches{R.Dispatch{6n, incarnation, worker}, rest}, seen}, frontend, transfer, negotiation, context,
+        lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def r_still_current(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{+issuer, +rendezvous, _, transfer, _, _, _, _, JA.NoJoint{}}:
+      R.valid(rendezvous) && R.selection_current(rendezvous, JA.joint_snapshot(issuer, rendezvous, transfer, 110n))
+        && R.selection_dispatched_to(R.selection(rendezvous), rendezvous, 1n, 1n)
+    case _: False{}
+
+def authority_denied(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.Stepped{_, _, _, P.Denied{_, P.AuthorityUnavailable{}}}: True{}
+    case _: False{}
+
+def antirevival(+w: RT.Sc) -> Bool:
+  +issued = {issued_once(w) : LH.State}
+  +reselected = {replaced_selection(issued) : LH.State}
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  r_still_current(LH.joint(reselected)) && Bool.not(LH.joint_barrier_ok(reselected, 1n, use, 110n))
+    && is_contained(delivery_of(reselected)) && authority_denied(delivery_of(duplicate_lineage(issued)))
+    && authority_denied(delivery_of(mismatched_lineage(issued)))
+    && authority_denied(delivery_of(bad_dispatch(issued, 1n, 2n)))
+    && authority_denied(delivery_of(bad_dispatch(issued, 2n, 1n)))
+
+def child_at_limit(entries: I.Entries, maximum: Nat) -> I.Entries:
+  match entries:
+    case I.NoEntries{}: I.NoEntries{}
+    case I.Entries{+root, rest}:
+      match root:
+        case I.Entry{_, _, holder, owner, handle, plan, rights, expires, _, _}:
+          I.Entries{I.Entry{2n, maximum, holder, owner, handle, plan, rights, expires, 1n, True{}},
+            I.Entries{root, rest}}
+
+def child_generation_state(state: LH.State, maximum: Nat) -> LH.State:
+  match state:
+    case LH.State{P.State{revision, I.State{ir, host, inc, _, sessions, entries}, profiles, bindings,
+        workers, next_worker, seals, publications}, records, time, owner}:
+      LH.State{P.State{revision, I.State{ir, host, inc, 3n, sessions, child_at_limit(entries, maximum)}, profiles,
+        bindings, workers, next_worker, seals, publications}, records, time, owner}
+
+def drain_incomplete_unchanged(drain: LH.JointDrain, before: LH.State) -> Bool:
+  match drain:
+    case LH.JointDrainIncomplete{+state}:
+      is_failed(LH.joint(state)) && PT.state_equal(LH.portable(state), LH.portable(before))
+    case _: False{}
+
+def descendant_case_at(+w: RT.Sc, maximum: Nat) -> Bool:
+  +before = {child_generation_state(issued_once(w), maximum) : LH.State}
+  +revoked = {LH.joint_revoke(before, IT.source_authority(), 5n) : LH.JointAction}
+  I.valid(P.identity(LH.portable(before))) && revoke_is_applied(revoked)
+    && drain_incomplete_unchanged(LH.joint_drain(LH.JointAction.state(revoked)), LH.JointAction.state(revoked))
+
+
+def descendant_case(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}: descendant_case_at(w, maximum)
+
+def frontend_next_set(state: LH.State, value: Nat) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, rendezvous, F.State{revision, _, handles}, transfer,
+        negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, rendezvous, F.State{revision, value, handles}, transfer,
+        negotiation, context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def frontend_boundaries_at(+w: RT.Sc, +maximum: Nat) -> Bool:
+  +ready = {dispatch_ready(w) : LH.State}
+  +one_left = {Nat.sub(maximum, 1n) : Nat}
+  +two_left = {Nat.sub(maximum, 2n) : Nat}
+  action_contained(LH.joint_issue(frontend_revision_set(ready, one_left), 1n, 4, 120n, 110n))
+    && action_contained(LH.joint_issue(frontend_next_set(ready, one_left), 1n, 4, 120n, 110n))
+    && did_issue(LH.joint_issue(frontend_revision_set(ready, two_left), 1n, 4, 120n, 110n))
+    && did_issue(LH.joint_issue(frontend_next_set(ready, two_left), 1n, 4, 120n, 110n))
+
+def frontend_boundaries(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}: frontend_boundaries_at(w, maximum)
+
+def partial_identity_at(drain: LH.JointDrain, maximum: Nat) -> Bool:
+  match drain:
+    case LH.JointDrainStep{state, P.StopEffects{2n} <> []}:
+      incomplete_with_prior(LH.joint_drain(identity_revision(state, maximum)))
+    case _: False{}
+
+def partial_identity_case(+w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}:
+      +both = {deliver_slot(deliver_slot(issue_twice(w), 1), 2) : LH.State}
+      +revoked = {LH.joint_revoke(both, IT.source_authority(), 5n) : LH.JointAction}
+      partial_identity_at(LH.joint_drain(LH.JointAction.state(revoked)), maximum)
+
+def unrevoked_approval(found: Maybe<&2, Iss.Stored>) -> Bool:
+  match found:
+    case Some{Iss.Stored{_, _, _, False{}}}: True{}
+    case _: False{}
+
+def terminal_issuer_owner(owner: JA.Joint, maximum: Nat) -> Bool:
+  match owner:
+    case JA.Joint{+issuer, _, _, _, _, _, _, JA.JointFailed{[]}, JA.NoJoint{}}:
+      Nat.is_eq(Iss.revision(issuer), maximum) && unrevoked_approval(Iss.find_stored(Iss.approvals(issuer), 5n))
+    case _: False{}
+
+def terminal_issuer_result(action: LH.JointAction, maximum: Nat) -> Bool:
+  match action:
+    case LH.JointContain{state, False{}}: terminal_issuer_owner(LH.joint(state), maximum)
+    case _: False{}
+
+def terminal_issuer_case_at(+w: RT.Sc, +maximum: Nat) -> Bool:
+  terminal_issuer_result(LH.joint_revoke(issuer_revision_set(issued_once(w), maximum), IT.source_authority(), 5n), maximum)
+
+def terminal_issuer_case(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+  match value:
+    case None{}: False{}
+    case Some{maximum}: terminal_issuer_case_at(w, maximum)
+
+def empty_authority() -> P.AdmissionAuthority:
+  P.AdmissionAuthority{F.empty(), 0n, F.EmptyRegistry{}, V.fixture_transfer()}
+
+def empty_fallback_delivery(+w: RT.Sc) -> Bool:
+  +state = {issued_once(w) : LH.State}
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  deliver_result(LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
+    LH.Sample{110n}, empty_authority()))
+
+def empty_fallback_no_bypass(+w: RT.Sc) -> Bool:
+  +state = {duplicate_lineage(issued_once(w)) : LH.State}
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  authority_denied(LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
+    LH.Sample{110n}, empty_authority()))
+
+def no_controls_fact() -> LH.LinuxFact:
+  LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
+    LH.Credential{1000n,1000n,4242n,917n}, LH.Launched{}, P.all_families(), 0, []}
+
+def leaky_fact() -> LH.LinuxFact:
+  LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
+    LH.Credential{1000n,1000n,4242n,917n}, LH.Launched{}, P.all_families(), LH.required_controls(),
+    [LH.LinuxRoute{9n, 1, False{}}]}
+
+def spoofed_fact() -> LH.LinuxFact:
+  LH.LinuxFact{201n, RT.token_a(), 1n, LH.Credential{1000n,1000n,4242n,917n},
+    LH.Credential{1000n,1000n,5555n,917n}, LH.Launched{}, P.all_families(), LH.required_controls(), []}
+
+def denied_reason(outcome: LH.Outcome, reason: P.Error) -> Bool:
+  match outcome:
+    case LH.Stepped{_, _, _, P.Denied{_, actual}}: P.Error.equal(actual, reason)
+    case _: False{}
+
+def direct_step_denied(step: P.Step) -> Bool:
+  match step:
+    case P.Denied{_, P.AuthorityUnavailable{}}: True{}
+    case _: False{}
+
+def actual_fact_guards(+w: RT.Sc) -> Bool:
+  +state = {issued_once(w) : LH.State}
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  +good_report = {LT.linux_report() : P.TargetReport}
+  +good_inventory = {LH.inventory_of(fact()) : P.Fact}
+  +fallback = {V.fixture_authority(110n) : P.AdmissionAuthority}
+  denied_reason(LH.barrier_with(use, good_report, good_inventory, state, 1n, no_controls_fact(), 110n, fallback),
+      P.MissingControl{})
+    && denied_reason(LH.barrier_with(use, good_report, good_inventory, state, 1n, leaky_fact(), 110n, fallback),
+      P.UnmediatedRoute{})
+    && direct_step_denied(LH.joint_barrier_step(state, 1n, use, spoofed_fact(), 110n,
+      good_report, good_inventory, fallback))
+
+def revoked_approval(found: Maybe<&2, Iss.Stored>) -> Bool:
+  match found:
+    case Some{Iss.Stored{_, _, _, True{}}}: True{}
+    case _: False{}
+
+def issuer_has_revocation(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{issuer, _, _, _, _, _, _, JA.JointFailed{_}, JA.NoJoint{}}:
+      revoked_approval(Iss.find_stored(Iss.approvals(issuer), 5n))
+    case _: False{}
+
+def drain_keeps_issuer(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainStep{state, P.StopEffects{1n} <> []}: issuer_has_revocation(LH.joint(state))
+    case _: False{}
+
+def issuer_retained(+w: RT.Sc) -> Bool:
+  +revoked = {LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n) : LH.JointAction}
+  issuer_has_revocation(LH.joint(LH.JointAction.state(revoked)))
+    && drain_keeps_issuer(LH.joint_drain(LH.JointAction.state(revoked)))
+
+
+def ancestry_checks(+w: RT.Sc) -> Bool:
+  +identity = {P.identity(LH.portable(child_generation_state(issued_once(w), 1n))) : I.State}
+  +entries = {I.entries(identity) : I.Entries}
+  I.valid(identity) && JA.reaches_root(5n, entries, 2n, 1n)
+    && Bool.not(JA.reaches_root(5n, entries, 1n, 2n)) && JA.reaches_root(5n, entries, 1n, 1n)
+    && Bool.not(JA.reaches_root(5n, entries, 0n, 0n))
+    && Bool.not(JA.reaches_root(1000000n, entries, 1n, 2n))
+
+def clock_at_125(clock: LH.Clock) -> Bool:
+  match clock:
+    case LH.LiveClock{now}: Nat.is_eq(now, 125n)
+    case _: False{}
+
+def served_expiry(+w: RT.Sc) -> Bool:
+  +state = {LH.Outcome.state(delivered(w)) : LH.State}
+  +served = {LH.serve(state, [1], LH.Sample{125n}, V.fixture_authority(110n)) : LH.Served}
+  String.eq(LH.served_status(served), "FAILSTOP") && String.eq(LH.served_detail(served), "not-processed")
+    && PT.effects_equal(LH.served_effects(served), []) && clock_at_125(LH.clock(LH.next(served)))
+    && drain_correct(LH.joint_drain(LH.next(served)))
+
+
+def clock_at_111(clock: LH.Clock) -> Bool:
+  match clock:
+    case LH.LiveClock{now}: Nat.is_eq(now, 111n)
+    case _: False{}
+
+def failed_samples_advance(+w: RT.Sc) -> Bool:
+  +failed = {LH.JointAction.state(LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)) : LH.State}
+  +outcome = {LH.dispatch(failed, LH.FromWorker{1n, [1]}, LH.Sample{111n}, V.fixture_authority(110n)) : LH.Outcome}
+  is_contained(outcome) && clock_at_111(LH.clock(LH.Outcome.state(outcome)))
+
+
+# Synthetic state variation: shorten only reader grant 4. Provider grant 8,
+# selection and approvals remain as in the original accepted fixture.
+def shorten_reader_grants(grants: Iss.Grants) -> Iss.Grants:
+  match grants:
+    case Iss.NoGrants{}: Iss.NoGrants{}
+    case Iss.Grants{Iss.Grant{+id, token, scope, rights, until, sources, write, parent}, rest}:
+      Iss.Grants{Iss.Grant{id, token, scope, rights, Bool.pick(Nat, Nat.is_eq(id, 4n), 115n, until),
+        sources, write, parent}, shorten_reader_grants(rest)}
+
+def shortened_issuer(issuer: Iss.State) -> Iss.State:
+  match issuer:
+    case Iss.State{revision, next, live, directory, placements, approvals, grants, seen}:
+      Iss.State{revision, next, live, directory, placements, approvals, shorten_reader_grants(grants), seen}
+
+def launched_with(+w: RT.Sc, +issuer: Iss.State) -> LH.State:
+  +initial = {LH.joint_initial(issuer, RT.sc_evidenced(w), RT.sc_policies(), RT.sc_running(w),
+    RT.sc_raw(issuer, 110n)) : LH.State}
+  LH.Outcome.state(LH.dispatch(initial, LH.FromBroker{LH.Launch{fact()}}, LH.Sample{110n}, V.fixture_authority(110n)))
+
+def delivered_short_reader(+w: RT.Sc) -> LH.State:
+  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
+  +state = {launched_with(w, issuer) : LH.State}
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(state, 1n, 110n)) : LH.State}
+  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+  deliver_slot(issued, 1)
+
+def provider_current_reader_not(owner: JA.Joint, +now: Nat) -> Bool:
+  match owner:
+    case JA.Joint{+issuer, +rendezvous, _, +transfer, +negotiation, +context, _, _, JA.NoJoint{}}:
+      Iss.valid(issuer) && R.valid(rendezvous)
+        && R.selection_current(rendezvous, JA.joint_snapshot(issuer, rendezvous, transfer, now))
+        && Bool.not(JA.reader_current(issuer, rendezvous, negotiation, context,
+          JA.joint_snapshot(issuer, rendezvous, transfer, now), now))
+    case _: False{}
+
+def reader_expiry(+w: RT.Sc) -> Bool:
+  +before = {delivered_short_reader(w) : LH.State}
+  +result = {LH.dispatch(before, LH.FromWorker{1n, [1]}, LH.Sample{115n}, V.fixture_authority(110n)) : LH.Outcome}
+  provider_current_reader_not(LH.joint(before), 115n) && is_contained(result)
+    && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
+
+def reader_revoke(+w: RT.Sc) -> Bool:
+  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+  +result = {LH.joint_revoke(before, IT.source_authority(), 1n) : LH.JointAction}
+  revoke_is_applied(result) && provider_current_reader_not(LH.joint(LH.JointAction.state(result)), 110n)
+    && drain_correct(LH.joint_drain(LH.JointAction.state(result)))
+
+def earlier_deadline(request: N.Request) -> N.Request:
+  match request:
+    case N.Request{plan, reader, quote, units, _}: N.Request{plan, reader, quote, units, 115n}
+
+def deadline_session(session: N.Session) -> N.Session:
+  match session:
+    case N.Session{revision, request, stage, pinned, challenge, receipt}:
+      N.Session{revision, earlier_deadline(request), stage, pinned, challenge, receipt}
+
+def deadline_selection(selection: R.Selection) -> R.Selection:
+  match selection:
+    case R.NoSelection{}: R.NoSelection{}
+    case R.Selection{id, offer, request, stamp, selected, ranking}:
+      R.Selection{id, offer, earlier_deadline(request), stamp, selected, ranking}
+
+def deadline_rendezvous(rendezvous: R.State) -> R.State:
+  match rendezvous:
+    case R.State{revision, next, request, constraint, offers, approvals, selection, retired, evidence, dispatched, seen}:
+      R.State{revision, next, earlier_deadline(request), constraint, offers, approvals,
+        deadline_selection(selection), retired, evidence, dispatched, seen}
+
+def deadline_state(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, deadline_rendezvous(rendezvous), frontend, transfer,
+        deadline_session(negotiation), context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def deadline_case(+w: RT.Sc) -> Bool:
+  +before = {deadline_state(LH.Outcome.state(delivered(w))) : LH.State}
+  +result = {LH.dispatch(before, LH.FromWorker{1n, [1]}, LH.Sample{115n}, V.fixture_authority(110n)) : LH.Outcome}
+  provider_current_reader_not(LH.joint(before), 115n) && is_contained(result)
+    && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
+
+def replace_issuer(state: LH.State, issuer: Iss.State) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{_, rendezvous, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}
+    case _: state
+
+def missing_reader_projection(+w: RT.Sc) -> Bool:
+  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+  +current = {RT.sc_issuer(w) : Iss.State}
+  +revoked = {Iss.Change.state(Iss.revoke(current, Iss.revision(current), IT.source_authority(), 1n)) : Iss.State}
+  +missing = {replace_issuer(before, revoked) : LH.State}
+  +result = {LH.dispatch(missing, LH.FromWorker{1n, [1]}, LH.Sample{110n}, V.fixture_authority(110n)) : LH.Outcome}
+  provider_current_reader_not(LH.joint(missing), 110n) && is_contained(result)
+    && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
+
+def old_reader_expired(found: Maybe<&2, Iss.Grant>, +issuer: Iss.State) -> Bool:
+  match found:
+    case Some{grant}: Bool.not(Iss.current(issuer, grant, 115n))
+    case _: False{}
+
+def reader_still_current(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{+issuer, +rendezvous, _, +transfer, +negotiation, +context, _, _, JA.NoJoint{}}:
+      old_reader_expired(Iss.find_grant(Iss.grants(issuer), 4n), issuer)
+        && R.selection_current(rendezvous, JA.joint_snapshot(issuer, rendezvous, transfer, 115n))
+        && JA.reader_current(issuer, rendezvous, negotiation, context,
+          JA.joint_snapshot(issuer, rendezvous, transfer, 115n), 115n)
+    case _: False{}
+
+def undecoded(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.Undecoded{_, _}: True{}
+    case _: False{}
+
+def alternate_reader_authority(+w: RT.Sc) -> Bool:
+  +short = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
+  +issuer = {RT.sc_grant(short, IT.subject_principal(), 100n, 200n, T.CodeId{3, 1, 4, 1, 5, 9, 2, 6}) : Iss.State}
+  +state = {launched_with(w, issuer) : LH.State}
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(state, 1n, 110n)) : LH.State}
+  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+  +running = {deliver_slot(issued, 1) : LH.State}
+  reader_still_current(LH.joint(running))
+    && undecoded(LH.dispatch(running, LH.FromWorker{1n, [1]}, LH.Sample{115n}, V.fixture_authority(110n)))
+
+def with_clock(state: LH.State, now: Nat) -> LH.State:
+  match state:
+    case LH.State{p, records, _, owner}: LH.State{p, records, LH.LiveClock{now}, owner}
+
+def reader_direct_guards(+w: RT.Sc) -> Bool:
+  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
+  +launched = {launched_with(w, issuer) : LH.State}
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n)) : LH.State}
+  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+  +stale_launch = {with_clock(launched, 115n) : LH.State}
+  +stale_dispatch = {with_clock(dispatched, 115n) : LH.State}
+  +stale_issue = {with_clock(issued, 115n) : LH.State}
+  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
+  provider_current_reader_not(LH.joint(stale_issue), 115n)
+    && action_contained(LH.joint_dispatch(stale_launch, 1n, 115n))
+    && action_contained(LH.joint_issue(stale_dispatch, 1n, 4, 120n, 115n))
+    && direct_step_denied(LH.joint_barrier_step(stale_issue, 1n, use, fact(), 115n,
+      LT.linux_report(), LH.inventory_of(fact()), V.fixture_authority(110n)))
+
+def sampled_initial(+w: RT.Sc) -> LH.State:
+  +issuer = {RT.sc_issuer(w) : Iss.State}
+  +initial = {LH.joint_initial(issuer, RT.sc_evidenced(w), RT.sc_policies(), RT.sc_running(w),
+    RT.sc_raw(issuer, 110n)) : LH.State}
+  LH.Outcome.state(LH.dispatch(initial, LH.FromWorker{1n, [1]}, LH.Sample{110n}, V.fixture_authority(110n)))
+
+def peer_denial(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.Untranslated{_, LH.PeerMismatch{}}: True{}
+    case _: False{}
+
+def opened(outcome: LH.Outcome) -> Bool:
+  match outcome:
+    case LH.Opened{_, 1n}: True{}
+    case _: False{}
+
+def direct_launch_guards(+w: RT.Sc) -> Bool:
+  +state = {sampled_initial(w) : LH.State}
+  +credential = {LH.Credential{1000n,1000n,4242n,917n} : LH.Credential}
+  +evidence = {P.SessionEvidence{F.Caller{201n, RT.token_a()}, I.Authenticated{}, False{}} : P.Fact}
+  is_contained(LH.launch_result(state, LT.linux_report(), evidence, credential, 110n))
+    && is_contained(LH.launch_report(LH.Report{LT.linux_report()}, state, evidence, credential, 110n))
+    && is_contained(LH.launch_with(LH.Evidence{evidence}, LH.Report{LT.linux_report()}, state, credential, 110n))
+    && peer_denial(LH.launch_fact(state, spoofed_fact(), 110n))
+    && opened(LH.launch_fact(state, fact(), 110n))
+
+def diagnostics_redacted(+w: RT.Sc) -> Bool:
+  +active = {delivered(w) : LH.Outcome}
+  +state = {LH.Outcome.state(active) : LH.State}
+  +malformed = {LH.serve(state, [1], LH.Sample{110n}, V.fixture_authority(110n)) : LH.Served}
+  +failed = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.UnavailableClock{}, V.fixture_authority(110n)) : LH.Outcome}
+  String.eq(LH.reply(LH.Served{active}), "LINUXMON1\tJOINT\tredacted\tredacted\n")
+    && String.eq(LH.reply(malformed), "LINUXMON1\tJOINT\tredacted\tredacted\n")
+    && String.eq(LH.reply(LH.Served{failed}), "LINUXMON1\tFAILSTOP\tnot-processed\tredacted\n")
+
+def expired_direct_helpers(+w: RT.Sc) -> Bool:
+  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
+  +launched = {launched_with(w, issuer) : LH.State}
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n)) : LH.State}
+  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+  +stale = {with_clock(issued, 115n) : LH.State}
+  provider_current_reader_not(LH.joint(stale), 115n) && direct_helpers_for(stale, 115n)
+
+def expired_cleanup_denials(+w: RT.Sc) -> Bool:
+  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
+  +launched = {launched_with(w, issuer) : LH.State}
+  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n)) : LH.State}
+  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+  +stale = {with_clock(issued, 115n) : LH.State}
+  +denied = {LH.joint_revoke(stale, IT.write_authority(), 5n) : LH.JointAction}
+  +restart = {LH.restart(stale, P.revision(LH.portable(stale)), 1n) : LH.Outcome}
+  action_contained(denied) && is_failed(LH.joint(LH.JointAction.state(denied)))
+    && is_contained(restart) && is_failed(LH.joint(LH.Outcome.state(restart))) && LT.no_effect(restart)
+
+# The recursive owner is a singleton box. A second owner is malformed, must
+# never select standalone mode, and must remain retained for fail-stop.
+def nested_owner_state(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, records, time, JA.Joint{+issuer, +rendezvous, +frontend, +transfer,
+        +negotiation, +context, +lineage, +phase, JA.NoJoint{}}}:
+      LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer,
+        negotiation, context, lineage, phase, JA.Joint{issuer, rendezvous, frontend,
+          transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}}
+    case _: state
+
+def nested_owner(owner: JA.Joint) -> Bool:
+  match owner:
+    case JA.Joint{_, _, _, _, _, _, _, _, JA.Joint{_, _, _, _, _, _, _, _, JA.NoJoint{}}}: True{}
+    case _: False{}
+
+def nested_retained(state: LH.State) -> Bool:
+  nested_owner(LH.joint(state))
+
+def nested_drain(drain: LH.JointDrain) -> Bool:
+  match drain:
+    case LH.JointDrainIncomplete{state}: nested_retained(state)
+    case _: False{}
+
+def malformed_owner_contained(+w: RT.Sc) -> Bool:
+  +state = {nested_owner_state(LH.Outcome.state(delivered(w))) : LH.State}
+  +outcome = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{110n}, V.fixture_authority(110n)) : LH.Outcome}
+  +served = {LH.serve(state, [1], LH.Sample{110n}, V.fixture_authority(110n)) : LH.Served}
+  +restart = {LH.restart(state, P.revision(LH.portable(state)), 2n) : LH.Outcome}
+  +control = {LH.joint_revoke(state, IT.source_authority(), 5n) : LH.JointAction}
+  +dispatch = {LH.joint_dispatch(state, 1n, 110n) : LH.JointAction}
+  +issue = {LH.joint_issue(state, 1n, 4, 120n, 110n) : LH.JointAction}
+  nested_retained(state) && is_contained(outcome) && nested_retained(LH.Outcome.state(outcome))
+    && served_containment_only(served) && nested_retained(LH.next(served))
+    && is_contained(restart) && nested_retained(LH.Outcome.state(restart))
+    && action_contained(control) && nested_retained(LH.JointAction.state(control))
+    && action_contained(dispatch) && nested_retained(LH.JointAction.state(dispatch))
+    && action_contained(issue) && nested_retained(LH.JointAction.state(issue))
+    && nested_drain(LH.joint_drain(state)) && direct_helpers_for(state, 110n)
+
+def joint_checks_1() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(check_dispatch(RT.sc_world()), "synthetic owner calls actual Rendezvous dispatch")
+    Test.check(check_issue(RT.sc_world()), "synthetic owner issues actual slot")
+    Test.check(check_delivery(RT.sc_world()), "synthetic owner delivers through retained selection")
+    Test.check(check_revoke(RT.sc_world()), "accepted issuer revoke contains and drains exact stop")
+    Test.check(check_expiry(RT.sc_world()), "expiry contains before malformed request")
+    Test.check(check_clock(RT.sc_world()), "regressed clock contains before malformed request")
+    Test.check(check_unavailable(RT.sc_world()), "unavailable clock contains before malformed request")
+    Test.check(boot_rejects_dispatched(RT.sc_world()), "joint bootstrap rejects imported dispatch")
+    Test.check(exact_issue(RT.sc_world()), "joint issue retains same-transition selection grant and slot")
+    Test.check(wrong_session_issue(RT.sc_world()), "joint issue requires exact dispatched credential session")
+
+def joint_checks_2() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(no_revoke_denial_effect(RT.sc_world()), "denied issuer revoke preserves active owner and host")
+    Test.check(repeat_revocation_contains(RT.sc_world()), "repeat denied revoke remains contained")
+    Test.check(unrelated_revoke_contains(RT.sc_world()), "unrelated accepted revoke also contains and stops")
+    Test.check(direct_helpers_contain(RT.sc_world()), "direct helpers surface sticky containment")
+    Test.check(restart_contains(RT.sc_world()), "restart returns stop and cannot reopen joint mode")
+    Test.check(direct_revoke_preserves(RT.sc_world()), "joint direct revoke contains unchanged; standalone still stops")
+    Test.check(multiple_roots(RT.sc_world()), "joint revoke drains two exact roots and retains stop history")
+    Test.check(terminal_cases(RT.sc_world(), Nat.read("281474976710655")), "joint capacity gates avoid terminal transitions")
+    Test.check(partial_case(RT.sc_world(), Nat.read("281474976710655")), "partial drain preserves earlier exact stop on terminal failure")
+    Test.check(generation_case(RT.sc_world(), Nat.read("281474976710655")), "terminal descendant generation prevents unsafe drain")
+
+def joint_checks_3() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(antirevival(RT.sc_world()), "selection lineage and exact dispatch prevent reauthorization")
+    Test.check(descendant_case(RT.sc_world(), Nat.read("281474976710655")), "terminal live descendant leaves subtree and issuer retained")
+    Test.check(frontend_boundaries(RT.sc_world(), Nat.read("281474976710655")), "two frontend allocation boundaries refuse or succeed precisely")
+    Test.check(partial_identity_case(RT.sc_world(), Nat.read("281474976710655")), "partial drain retains earlier stop when identity revision is terminal")
+    Test.check(terminal_issuer_case(RT.sc_world(), Nat.read("281474976710655")), "terminal issuer revoke is unapplied and requires containment")
+    Test.check(empty_fallback_delivery(RT.sc_world()) && empty_fallback_no_bypass(RT.sc_world()),
+      "joint mode ignores generic snapshot for acceptance and denial")
+    Test.check(actual_fact_guards(RT.sc_world()), "joint direct helper recomputes broker facts")
+    Test.check(issuer_retained(RT.sc_world()), "accepted issuer revocation survives actual root drain")
+    Test.check(ancestry_checks(RT.sc_world()), "joint ancestry rejects zero and unrelated root at high fuel")
+    Test.check(served_expiry(RT.sc_world()), "framed expiry reports not processed and retains sample")
+
+def joint_checks_4() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(failed_samples_advance(RT.sc_world()), "failed owner still retains later clock samples")
+    Test.check(reader_expiry(RT.sc_world()), "reader-only grant expiry contains with provider selection current")
+    Test.check(reader_revoke(RT.sc_world()), "reader-only approval revoke retains provider selection and stops")
+    Test.check(deadline_case(RT.sc_world()), "running Negotiation deadline requires containment")
+    Test.check(missing_reader_projection(RT.sc_world()), "missing reader projection contains with provider still current")
+    Test.check(alternate_reader_authority(RT.sc_world()), "different current reader grant may satisfy subject projection")
+    Test.check(reader_direct_guards(RT.sc_world()), "direct dispatch issue and effect helper recheck reader authority")
+    Test.check(direct_launch_guards(RT.sc_world()), "joint launch recomputes raw broker fact checks")
+    Test.check(diagnostics_redacted(RT.sc_world()), "joint replies redact active and failed metadata")
+    Test.check(expired_direct_helpers(RT.sc_world()), "direct helpers contain expired reader authority")
+
+def joint_checks_5() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(expired_cleanup_denials(RT.sc_world()), "denied cleanup still contains expired reader state")
+    Test.check(malformed_owner_contained(RT.sc_world()), "nested owner remains contained and retained")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    joint_checks_1()
+    joint_checks_2()
+    joint_checks_3()
+    joint_checks_4()
+    joint_checks_5()

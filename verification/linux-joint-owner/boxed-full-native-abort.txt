@@ -1,0 +1,21 @@
+ASSERTION FAILED: MemoryExhaustion: Crash intentionally because memory is exhausted.
+failureMode != AllocationFailureMode::Assert
+vendor/WebKit/Source/JavaScriptCore/heap/LocalAllocator.cpp(164) : void *JSC::LocalAllocator::allocateSlowCase(JSC::Heap &, size_t, GCDeferralContext *, AllocationFailureMode)
+============================================================
+Bun v1.4.0 (34cbb9a40) Linux x64
+Linux Kernel v7.2.9 | glibc v2.44
+CPU: sse42 popcnt avx avx2
+Args: "/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend" "Tests.bend" "-o" "/home/jadams/tmp/writ-joint-checks/boxed-full.c"
+Features: jsc standalone_executable
+Builtins: "bun:main" "node:child_process" "node:crypto" "node:fs" "node:os" "node:path" "node:url" "node:worker_threads"
+
+Elapsed: 100304ms | User: 127680ms | Sys: 5966ms
+RSS: 5.19 GB | Peak: 5.19 GB | Commit: 7.35 GB | Faults: 1 | Machine: 0.13 TB
+
+panic(main thread): abort() called
+oh no: Bun has crashed. This indicates a bug in Bun, not your code.
+
+To send a redacted crash report to Bun's team,
+please file a GitHub issue using the link below:
+
+ https://bun.report/1.4.0/l_134cbb9aEggggC2xwmB+8yPoorJk309zEux+nxBq02pyB8s29nE_____________Aa

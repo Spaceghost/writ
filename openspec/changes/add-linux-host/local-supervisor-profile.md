@@ -195,6 +195,52 @@ current Frontend/registry checks. Neither worker input nor a caller-controlled
 boolean can supply the missing current authority. The operator selection does
 not change these facts.
 
+## Synthetic Rendezvous owner slice
+
+The Linux monitor model has a stricter, separately initialized Rendezvous
+variant for testing one selected worker. A trusted in-process bootstrap gives
+it an Issuance state, an undispatched Rendezvous selection, a Running
+Negotiation session and fixed non-grant policy facts. It starts with an empty
+host and Frontend; it rejects an imported dispatch. The owner opens a synthetic
+session, performs the real Rendezvous dispatch against that session, and uses
+`Rendezvous.provider_registry` to open and issue an input. It retains the
+selection ID, selected grant ID and exact slot returned by `P.issue_result`.
+A Barrier checks the actual session/incarnation, unique root lineage, current
+selection and descriptor before the existing shared `P.admit_worker` effect.
+The separate standalone model variant retains its old trusted snapshot input;
+the R variant does not use that input. Worker frames cannot switch variants.
+A trusted real host would still have to choose the correct profile and prevent
+access to the standalone and native Mount paths; the model cannot infer from a
+plan whether a deployment requires Rendezvous.
+
+At every sampled request the variant rechecks the selected provider and the
+retained Running Negotiation session. It rebuilds the reader's Transfer grants
+for the reader subject from the retained issuer and sampled time, and separately
+projects the selected provider's exact grant. The reader projection is
+subject-wide: a different current, same-scope reader grant may satisfy it; the
+model does not retain the original reader grant ID. `N.ready` and the reader
+Transfer check do not revalidate trial evidence/sample expiration, a budget or
+committed ledger. This slice does not perform original-graph verification or
+commit a Copy.
+Its issuer and non-grant policy records are frozen synthetic inputs; there is no
+authenticated channel or live update feed. A deployment must serialize every
+relevant authority/policy change or treat the owner as incomplete.
+
+Every accepted issuer revoke, including an unrelated one, immediately returns
+a sticky whole-instance containment directive after retaining the updated
+issuer. Clock fault, expiry, unknown current state or a direct R-mode revoke
+also require containment. A trusted drain can then retire recorded roots using
+`HostPublication.revoke`, returning only each call's actual new `StopEffects`
+and retaining the history. Failed or incomplete drain does not reopen the
+instance. The host must synchronously contain the entire instance and correlate
+its worker lifetimes; no current adapter implements or proves that obligation.
+Joint-mode `LINUXMON1` replies redact ordinary details and all session tables;
+FAILSTOP remains visible. The line does not carry stop identities, so a
+line-only consumer cannot operate this variant. Sampled checks also cannot
+stop a worker at its deadline during silence: a trusted timer or equivalent is
+required for a real profile. The traversal and teardown paths have no
+unlimited-resource or bounded-progress claim.
+
 ## Clock, denial and recovery
 
 The owner samples a trusted monotone clock before handling untrusted requests,
@@ -209,9 +255,11 @@ for safe cleanup. Poisoning cannot recall an effect already handed to the host.
 
 The Linux monitor model now retains a separate sampled watermark at its own
 `dispatch` and `serve` entry points and rejects poisoned protected actions.
-This is synthetic model behavior, not the combined owner: it does not sample a
-host clock or gate Issuance or the existing FUSE canary. It accepts equal samples
-and cannot detect a stale or frozen clock that does not regress.
+Both monitor variants are synthetic model behavior: neither samples a host
+clock or gates the existing FUSE canary. The Rendezvous variant retains its
+issuer and checks it at sampled uses; it does not establish an authenticated
+live feed. Equal samples cannot detect a stale or frozen clock that does not
+regress.
 
 The existing Linux `CLOCK_MONOTONIC` use is for private-pipe deadlines; it is
 not an Issuance time source. A monotone clock may restart at a lower origin on

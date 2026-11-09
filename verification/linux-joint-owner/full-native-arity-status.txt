@@ -1,0 +1,1 @@
+Full Tests.bend C generation exited 1 with arity over 247 on the pre-fix tree; no C was emitted. Subsequent validation must use the repaired exact tree.

@@ -227,6 +227,19 @@ For each admitted use the supervisor SHALL serialize current issuer, authenticat
 - **WHEN** an authority revokes its required approval
 - **THEN** the owner rebuilds the projections from current issuer state before the next use.
 
+#### Scenario: An accepted issuer revoke requires containment
+
+- **GIVEN** a synthetic Rendezvous owner has issued an input and admitted a worker
+- **WHEN** its issuer accepts an approval revocation
+- **THEN** it retains that issuer change and requires whole-instance containment before further protected processing
+- **AND** trusted cleanup returns only actual shared stop effects while retaining their history.
+
+#### Scenario: A reader authorization expires independently
+
+- **GIVEN** the selected provider remains current but the reader has no current matching Transfer grant
+- **WHEN** the owner samples time before the next request
+- **THEN** it requires containment without processing that request.
+
 ### Requirement: LH-016 Effects follow the current joint check
 
 Before observation, delivery or publication, the owner SHALL enforce independent original-graph verification and original policy, operation, sink, budget and confinement obligations. It SHALL retain accepted state before effect handoff and order handoff against revocation. The existing public-canary Copy SHALL commit at most once; its session, ledger, intent and provenance SHALL survive later failure without a second charge or alternate release route.
