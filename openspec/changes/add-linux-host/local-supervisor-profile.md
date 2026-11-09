@@ -87,6 +87,82 @@ any current endpoint, trusted configuration store or authenticated channel
 already exists. The channel mechanism, exclusivity and recovery design are
 separate implementation and host-qualification work.
 
+## Candidate administrative transport: source constraints
+
+Consider a separate local `AF_UNIX` `SOCK_SEQPACKET` channel for each explicitly
+provisioned authority role, with `SO_PASSPIDFD` enabled on the receiver before
+it accepts messages. This is a candidate to evaluate, not a selected or
+implemented authentication method. The operator's protected bootstrap must
+first bind each role to a trusted program and exact process lifetime; a public
+path, inherited socket, UID, PID or received pidfd alone cannot create that
+binding. Source- and destination-role submissions and revocations must attach
+`Issuance.from` from the supervisor's retained mapping, never from a message.
+Registration instead derives the subject from its authenticated worker session.
+All of these actions still need the sole serialized state owner and the existing
+Bend issuance transitions.
+
+In upstream Linux v6.5, `SO_PASSPIDFD` and `SCM_PIDFD` were introduced by
+[commit 5e2ff670](https://github.com/torvalds/linux/commit/5e2ff6704a275be009be8979af17c52361b79b89).
+In that version the [UNIX send path](https://github.com/torvalds/linux/blob/v6.5/net/unix/af_unix.c)
+captures a process reference when it queues a message, and the
+[receive path](https://github.com/torvalds/linux/blob/v6.5/include/net/scm.h)
+constructs the returned pidfd from that stored reference. A transferred socket
+used by a different ordinary process is therefore distinguishable from the
+original process at the message boundary, assuming the receiver checks the
+pidfd against an independently retained, matching lifetime. A connection-time
+`SO_PEERCRED` snapshot or an endpoint's possession alone does not establish
+which process sent a later message. Queued data may outlive its sender: the
+owner must specify how exit, revocation and effect admission are ordered; a
+pidfd by itself does not serialize those events.
+
+**This is not an unforgeable sender identity.** In the v6.5
+[SCM credential handling](https://github.com/torvalds/linux/blob/v6.5/net/core/scm.c),
+a sender with `CAP_SYS_ADMIN` in the user namespace owning its active PID
+namespace can supply a different visible PID; the kernel replaces the same
+stored PID reference from which it then creates `SCM_PIDFD`. UID/GID values
+may also be supplied from the sender's real, effective or saved IDs, or more
+broadly with the applicable `CAP_SETUID`/`CAP_SETGID` in its user namespace.
+A candidate deployment must establish that unauthorized senders cannot obtain
+those relevant capabilities, control the role process, or proxy its actions;
+namespace creation, visibility, mappings, ptrace and other process-control
+channels must be included in that argument. The kernel does not establish a
+human's identity, the integrity of the configured role program, or what that
+program approved. A process can execute a different image without changing its
+process lifetime; close-on-exec handling and executable/control confinement
+therefore require separate design and evidence.
+
+The received descriptor number is not the retained descriptor number or a
+portable identity. Linux 6.5 support for `SCM_PIDFD` alone does not justify
+comparing `fstat` inode values: older anonymous-inode pidfds shared an inode.
+Upstream [v6.9 pidfs](https://github.com/torvalds/linux/blob/v6.9/fs/pidfs.c)
+changes the representation, and the [v6.18 pidfs implementation](https://github.com/torvalds/linux/blob/v6.18/fs/pidfs.c)
+explains 64-bit inode comparison and its 32-bit generation issue; v6.9 uses a
+different 32-bit allocation strategy.
+A possible restricted 64-bit profile would retain both pidfds, verify their
+actual pidfs provenance, compare the appropriate device/inode identity, and
+fail closed if the required semantics cannot be established. The exact kernel,
+architecture, backport behavior, lifetime and namespace semantics need review
+and native acceptance; version numbers alone do not qualify a host. The
+[pidfd API](https://man7.org/linux/man-pages/man2/pidfd_open.2.html) describes
+exit polling and the precautions required when opening a child pidfd after
+creation. A `clone`-created pidfd or a carefully protected child-reaping
+protocol can prevent the initial numeric-PID reuse window, subject to its own
+validation. Polling is not an atomic authorization-and-handoff operation.
+
+A prospective receiver must use one bounded record per request, reject missing,
+duplicate, malformed or negative pidfd control data, payload or ancillary
+truncation (`MSG_TRUNC`/`MSG_CTRUNC`), unexpected control messages and all
+identity, system-call or resource errors. It must close every installed
+received descriptor on every path, including unexpected `SCM_RIGHTS`, and set
+close-on-exec where applicable. `SCM_PIDFD` creation can itself fail; a control
+message's presence is not sufficient. Authorization must not advance on an
+incomplete receive, and cleanup and revocation remain available. Protected
+configuration, trustworthy startup, namespace/capability isolation, message
+provenance under descriptor transfer, exec and process control, FD lifetime,
+clock, serialization and restart all remain unimplemented and require
+adversarial testing for the exact combined profile. No such test or native
+identity probe was run for this design note.
+
 ## One state owner and one effect path
 
 The combined profile needs one serialized owner of the issuer, current

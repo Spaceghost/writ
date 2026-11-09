@@ -1,5 +1,10 @@
 # Verification record
 
+The [candidate local administrative channel analysis](openspec/changes/add-linux-host/local-supervisor-profile.md)
+records source-level constraints on SCM_PIDFD and pidfs; its [strict OpenSpec
+validation](verification/local-supervisor-profile/channel-openspec.txt) passed.
+It is not an implemented or qualified authentication channel.
+
 The [local supervisor profile record](verification/local-supervisor-profile/README.md)
 covers proposed bootstrap requirements and a synthetic Copy revocation trace;
 it does not establish an authenticated native authority bridge.
