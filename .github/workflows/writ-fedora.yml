@@ -1,0 +1,102 @@
+name: Writ Fedora CPU and transport
+
+# Repository-controlled master only. Never route pull requests or arbitrary
+# dispatch refs onto the self-hosted machine.
+on:
+  push:
+    branches: [master]
+    paths:
+      - '**.bend'
+      - 'contrib/native-hosts/runtime/**'
+      - 'contrib/native-hosts/linux/**'
+      - 'contrib/native-hosts/ci/**'
+      - 'openspec/**'
+      - '.github/workflows/writ-fedora.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: writ-fedora-master
+  cancel-in-progress: false
+
+jobs:
+  fedora:
+    if: github.repository == 'Spaceghost/writ' && github.ref == 'refs/heads/master'
+    runs-on: [self-hosted, Linux, X64, writ-fedora, fedora-44]
+    timeout-minutes: 30
+    env:
+      BEND_NO_TELEMETRY: '1'
+      OPENSPEC_TELEMETRY: '0'
+      CC: clang
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Record Fedora environment and scope
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/writ-fedora-logs" "$RUNNER_TEMP/writ-fedora-build"
+          {
+            printf 'Commit: %s\n' "$GITHUB_SHA"
+            cat /etc/os-release
+            uname -a
+            test "$(bend version)" = 'bend 2.0.39'
+            bend version
+            clang --version
+            node --version
+            openspec --version
+            df -h /
+            printf 'CPU only; ordinary proofs; no Lean verdict or native mount qualification.\n'
+          } | tee "$RUNNER_TEMP/writ-fedora-logs/environment.log"
+
+      - name: Run Bend tests and native CPU backend
+        run: |
+          set -euo pipefail
+          bend Tests.bend 2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/tests.log"
+          bend Tests.bend -o "$RUNNER_TEMP/writ-fedora-build/tests-native"
+          "$RUNNER_TEMP/writ-fedora-build/tests-native" +RTS --threads 4 --gpu off \
+            2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/tests-native.log"
+
+      - name: Run shared mount tests and native transport
+        run: |
+          set -euo pipefail
+          build="$RUNNER_TEMP/writ-fedora-build"
+          logs="$RUNNER_TEMP/writ-fedora-logs"
+          bend writfs/MountTests.bend 2>&1 | tee "$logs/mount-tests.log"
+          bend writfs/Mount.bend -o "$build/mount.mjs"
+          node contrib/native-hosts/runtime/check-bridge.mjs "$build/mount.mjs" \
+            2>&1 | tee "$logs/bridge.log"
+          make -C contrib/native-hosts/linux CC=gcc OUT="$build" \
+            2>&1 | tee "$logs/native-build.log"
+          "$build/transport-probe" "$(command -v node)" \
+            "$GITHUB_WORKSPACE/contrib/native-hosts/runtime/node-policy.mjs" \
+            "$build/mount.mjs" 2>&1 | tee "$logs/transport.log"
+
+      - name: Check ordinary proofs
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          bend PROOF.bend 2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/proof.log"
+
+      - name: Validate specification structure
+        if: ${{ !cancelled() }}
+        run: |
+          set -euo pipefail
+          test "$(openspec --version)" = '1.16.0'
+          openspec validate --all --strict --no-interactive \
+            2>&1 | tee "$RUNNER_TEMP/writ-fedora-logs/openspec.log"
+
+      - name: Retain Fedora evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writ-fedora-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-fedora-logs/
+          if-no-files-found: error
+          retention-days: 14

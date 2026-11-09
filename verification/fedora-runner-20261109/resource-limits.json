@@ -1,0 +1,10 @@
+{
+  "disk": {
+    "root": {
+      "total": 32212254720,
+      "usage": 576446464
+    }
+  },
+  "memory_limit": 8589934592,
+  "allocated_cpus": 4
+}

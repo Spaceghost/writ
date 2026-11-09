@@ -1038,6 +1038,12 @@ recorded source revision and input inventory, when available, to identify what
 was tested. Native binaries, upstream toolchains, generated C/JavaScript, and
 unrelated prototypes are excluded from the repository.
 
+The [Fedora Incus runner record](verification/fedora-runner-20261109/README.md)
+separates the enforced per-guest storage/resource limits from the disposable
+CPU, ordinary-proof, specification and native pipe-transport CI results.
+This lane does not replace native mount/confinement evidence or a GPU or Lean
+kernel verification run.
+
 The evidence-only follow-up Windows CI [run 42311706534](verification/windows-native-rerun-42311706534/README.md)
 repeated the strict LPAC failure on source `1fcd29a`; its byte-worker probes
 remain incomplete and receive no confinement credit. The separate diagnostic

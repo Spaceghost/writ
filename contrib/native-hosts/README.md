@@ -23,6 +23,11 @@ with each target. The [verification record](VERIFICATION.md) distinguishes
 policy execution, mounted access and confinement. WSL and Genode-on-Linux are
 not substitutes for these native runs.
 
+The [disposable Fedora CI runner](ci/README.md) packages CPU, ordinary-proof,
+specification and native pipe-transport checks in a quota-limited Incus guest.
+Its scripts are CI lifecycle and packaging glue, outside the library source
+set; a passing container job does not qualify a native host.
+
 **Windows confinement remains unqualified.** The zero-capability,
 Win32k-disabled LPAC reader completes mounted reads, caller denials and
 revocation. Its direct network, clipboard and COM probes cannot initialize,

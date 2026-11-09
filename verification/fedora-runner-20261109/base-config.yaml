@@ -1,0 +1,39 @@
+architecture: x86_64
+config:
+  image.architecture: amd64
+  image.description: Fedora 44 amd64 (20261108_20:33)
+  image.os: Fedora
+  image.release: "44"
+  image.serial: '20261108_20:33'
+  image.type: squashfs
+  image.variant: default
+  limits.cpu: "4"
+  limits.memory: 8GiB
+  security.nesting: "false"
+  security.privileged: "false"
+  volatile.base_image: 4521dcdd45318582537b88c40ec4558f49ce111cb58c5cb29ae02fb089b89980
+  volatile.cloud-init.instance-id: c147acb4-e586-49f6-b3a7-8296172695c8
+  volatile.eth0.host_name: veth41879dc2
+  volatile.eth0.hwaddr: 10:66:6a:ee:11:65
+  volatile.idmap.base: "0"
+  volatile.idmap.current: '[{"Isuid":true,"Isgid":false,"Hostid":1000000,"Nsid":0,"Maprange":1000000000},{"Isuid":false,"Isgid":true,"Hostid":1000000,"Nsid":0,"Maprange":1000000000}]'
+  volatile.idmap.next: '[{"Isuid":true,"Isgid":false,"Hostid":1000000,"Nsid":0,"Maprange":1000000000},{"Isuid":false,"Isgid":true,"Hostid":1000000,"Nsid":0,"Maprange":1000000000}]'
+  volatile.last_state.idmap: '[]'
+  volatile.last_state.power: RUNNING
+  volatile.uuid: 9e58c9d9-2b84-4a15-bd90-d82ac7e5a39c
+  volatile.uuid.generation: 9e58c9d9-2b84-4a15-bd90-d82ac7e5a39c
+devices:
+  eth0:
+    name: eth0
+    network: incusbr0
+    type: nic
+  root:
+    path: /
+    pool: ci
+    size: 30GiB
+    type: disk
+ephemeral: false
+profiles:
+  - default
+stateful: false
+description: ""

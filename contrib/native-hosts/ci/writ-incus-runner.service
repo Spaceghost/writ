@@ -1,0 +1,20 @@
+[Unit]
+Description=Writ Fedora Incus disposable GitHub Actions runner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Install the reviewed supervisor outside the source checkout.
+ExecStart=%h/.local/bin/writ-incus-runner
+Restart=on-failure
+RestartSec=30
+SuccessExitStatus=130 143
+TimeoutStopSec=90
+KillMode=mixed
+Nice=10
+UMask=0077
+Environment=PATH=/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
