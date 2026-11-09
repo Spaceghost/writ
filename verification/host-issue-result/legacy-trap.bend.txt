@@ -1,0 +1,18 @@
+import Base
+import ./writ-issue-result/HostIssueCurrentTests.bend as C
+import ./writ-issue-result/HostPrimitives.bend as P
+import ./writ-issue-result/HostPrimitivesTests.bend as PT
+import ./writ-issue-result/Frontend.bend as F
+import ./writ-issue-result/TransferTests.bend as TF
+
+def run(maximum: Maybe<&2, Nat>) -> IO(Unit):
+  match maximum:
+    case None{}: IO.print("INVALID FIXTURE")
+    case Some{max}:
+      +host = C.max_slot_state(C.state(), max)
+      result = P.issue(host, P.revision(host), PT.session_client(), C.frontend(), F.revision(C.frontend()),
+        C.registry(), TF.context(), PT.pub_handle(), TF.plan(), 7, PT.pub_root_expires())
+      IO.print(Nat.show(P.revision(P.Step.state(result))))
+
+def main() -> IO(Unit):
+  run(Nat.read("281474976710655"))

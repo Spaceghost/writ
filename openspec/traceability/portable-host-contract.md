@@ -342,3 +342,25 @@ and origin order used by the existing `HostIdentityTests.bend` corpus. The
 preflight comparison check shares that implementation and is not an independent
 legacy oracle. Stale authority denies before terminal Nat slot or revision
 allocation; healthy mint at exhausted Nat capacity can still abort.
+
+## Exact issue result
+
+`HostPrimitives.issue_result` carries the exact model slot from the same
+accepted `HostIdentity.mint` change and its resulting state. `issue` projects
+that same single gate to the existing Step; neither successful form emits
+effects. The slot is an in-memory Nat, not authentication, a correlated wire
+receipt or proof that it fits HostWire's U32 field. A native consumer must
+establish representability and authenticated session/effect ordering.
+
+Named synthetic checks in `HostIssueResultTests.bend`:
+
+- `PH-issue-result exact nonfirst slot and state match direct mint`
+- `PH-issue-result returned bounded slot resolves and delegates`
+- `PH-issue-result prior denials match legacy projection`
+- `PH-issue-result current authority denials match legacy projection`
+- `PH-issue-result inherited and transferred denials match legacy`
+- `PH-issue-result stale authority skips terminal mint`
+
+No new authority decision or release route follows from this result. The
+caller still owes current issuer/Frontend provenance, later use checks,
+revocation ordering and native host qualification.

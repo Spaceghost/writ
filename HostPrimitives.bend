@@ -182,12 +182,12 @@ import ./Transfer.bend as T
 # assert which transitions deny, that a reason is the right one, or that an
 # accepted step's effects are correct; HostPrimitivesTests covers those.
 #
-# Public entry points: `empty`, `valid`, `open_session_result`, `open_session`,
-# `SessionOpen.step`, `use`, `issue`,
+# Public entry points: `empty`, `valid`, `open_session_result`, `open_session`, `issue_result`,
+# `SessionOpen.step`, `IssueResult.step`, `use`, `issue`,
 # `delegate` (family 1); the types `Role`, `Binding`, `Bindings`;
 # `admit_worker`, `charge`, `diagnostic`, `native_write_offered` (family 2);
 # the types `Backend`, `Profile`, `Configured`, `Profiles`, `TargetReport`,
-# `RouteFact`, `Fact`, `Effect`, `Step`, `UseResult`, `Error`, `Phase`,
+# `RouteFact`, `Fact`, `Effect`, `Step`, `IssueResult`, `UseResult`, `Error`, `Phase`,
 # `Worker`, `Workers`, `State`, `Sealed`, `Seals`, `Publication`,
 # `Publications`; the named family, control, and right bits
 # (with `no_controls` and `no_right`),
@@ -391,6 +391,18 @@ def SessionOpen.step(result: SessionOpen) -> Step:
       Admitted{state, []}
     case SessionOpenDenied{state, reason}:
       Denied{state, reason}
+
+# The exact identity slot from the same successful mint. It is an in-memory
+# model value, not a native receipt or proof of wire representability.
+type IssueResult is Data:
+  Issued{state: State, slot: Nat}
+  IssueDenied{state: State, reason: Error}
+
+# Compatibility projection: root issuance never emits native effects.
+def IssueResult.step(result: IssueResult) -> Step:
+  match result:
+    case Issued{state, _}: Admitted{state, []}
+    case IssueDenied{state, reason}: Denied{state, reason}
 
 # The read-only result of `use`: the entry and its effective caller (the
 # entry's owner), or one reason.
@@ -1166,7 +1178,7 @@ def use(+state: State, expected_revision: Nat, +session: Nat, message: W.Message
   u_gate(current(state, expected_revision), state, session, message, now)
 
 # Implementation helper: an identity-table change that issues no session
-# (`issue`, `delegate`): a HostIdentity denial is `Identity{reason}`; an
+# (`delegate`): a HostIdentity denial is `Identity{reason}`; an
 # accepted change commits the table, advances the revision once, and emits
 # nothing.
 def changed(change: I.Change, +state: State) -> Step:
@@ -1253,7 +1265,16 @@ def issue_binding_reason(failed: Maybe<&2, Error>) -> Error:
     case Some{reason}: reason
     case None{}: PlanMismatch{}
 
-# Public entry point, family 1: issue one root through HostIdentity.mint.
+# Read-only projection used only after the same change reports an issued slot.
+# The None fallback is never returned in Issued: that branch requires Some.
+def issue_slot(found: Maybe<&2, Nat>) -> Nat:
+  match found:
+    case Some{slot}: slot
+    case None{}: 0n
+
+# Public entry points, family 1: issue one root through HostIdentity.mint.
+# issue_result exposes its exact same-transition model slot; issue projects it.
+# The model Nat is not a wire receipt and may not fit HostWire's U32 field.
 # The trusted monitor supplies its current Frontend state and revision, live
 # registry and paired Transfer context from one serialized authority snapshot.
 # Existing host revision, plan, owner, rights, lease and identity denials take
@@ -1264,22 +1285,35 @@ def issue_binding_reason(failed: Maybe<&2, Error>) -> Error:
 # The supplied records are trusted inputs, not authenticated issuer state or
 # proof that a snapshot is current. A healthy mint at exhausted Nat slot or
 # revision capacity can still abort; stale authority is checked before mint.
-def issue(+state: State, expected_revision: Nat, +session: Nat, +frontend: F.State,
+def issue_result(+state: State, expected_revision: Nat, +session: Nat, +frontend: F.State,
     frontend_revision: Nat, +registry: F.Registry, +context: T.Context, +handle: Nat, +plan: T.Plan,
-    +rights: U32, +expires: Nat) -> Step:
-  f = Bool.pick(Unit -> Step, current(state, expected_revision),
-    x => ({+failed => Bool.pick(Unit -> Step, Maybe.is_some(&2, Error, failed),
-      y => Denied{state, issue_binding_reason(failed)},
-      y => ({+identity_error => Bool.pick(Unit -> Step, Maybe.is_some(&2, I.Error, identity_error),
-        z => Denied{state, Identity{I.mint_reason(identity_error)}},
-        z => Bool.pick(Unit -> Step, issue_live_session(I.session_at(I.sessions(identity(state)), session),
+    +rights: U32, +expires: Nat) -> IssueResult:
+  f = Bool.pick(Unit -> IssueResult, current(state, expected_revision),
+    x => ({+failed => Bool.pick(Unit -> IssueResult, Maybe.is_some(&2, Error, failed),
+      y => IssueDenied{state, issue_binding_reason(failed)},
+      y => ({+identity_error => Bool.pick(Unit -> IssueResult, Maybe.is_some(&2, I.Error, identity_error),
+        z => IssueDenied{state, Identity{I.mint_reason(identity_error)}},
+        z => Bool.pick(Unit -> IssueResult, issue_live_session(I.session_at(I.sessions(identity(state)), session),
           frontend, frontend_revision, registry, context, handle),
-          w => changed(I.mint(identity(state), I.revision(identity(state)), session, handle, plan, rights, expires), state),
-          w => Denied{state, AuthorityUnavailable{}})(Unit{}))(Unit{}) : Maybe<&2, I.Error> -> Step})(I.mint_preflight(identity(state), I.revision(identity(state)), session)))(Unit{})
-        : Maybe<&2, Error> -> Step})(unbound(F.find_handle(F.handles(frontend), handle),
+          w => ({+minted => Bool.pick(Unit -> IssueResult, I.Change.accepted(minted),
+            v => Bool.pick(Unit -> IssueResult, Maybe.is_some(&2, Nat, I.Change.issued(minted)),
+              u => Issued{with_identity(state, I.Change.state(minted)), issue_slot(I.Change.issued(minted))},
+              u => IssueDenied{state, AuthorityUnavailable{}})(Unit{}),
+            v => IssueDenied{state, Identity{I.mint_reason(I.Change.reason(minted))}})(Unit{})
+            : I.Change -> IssueResult})(I.mint(identity(state), I.revision(identity(state)), session, handle,
+              plan, rights, expires)),
+          w => IssueDenied{state, AuthorityUnavailable{}})(Unit{}))(Unit{}) : Maybe<&2, I.Error> -> IssueResult})(I.mint_preflight(identity(state), I.revision(identity(state)), session)))(Unit{})
+        : Maybe<&2, Error> -> IssueResult})(unbound(F.find_handle(F.handles(frontend), handle),
           I.session_at(I.sessions(identity(state)), session), plan, rights, expires)),
-    x => Denied{state, StaleRevision{}})
+    x => IssueDenied{state, StaleRevision{}})
   f(Unit{})
+
+# Legacy callers project the same one-gate result; this does not remint.
+def issue(state: State, expected_revision: Nat, session: Nat, frontend: F.State,
+    frontend_revision: Nat, registry: F.Registry, context: T.Context, handle: Nat, plan: T.Plan,
+    rights: U32, expires: Nat) -> Step:
+  IssueResult.step(issue_result(state, expected_revision, session, frontend, frontend_revision, registry,
+    context, handle, plan, rights, expires))
 
 # Implementation helper: delegate's gate.
 def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rights: U32, +lifetime: Nat,

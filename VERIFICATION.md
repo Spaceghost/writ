@@ -1,5 +1,9 @@
 # Verification record
 
+The [host issue result record](verification/host-issue-result/README.md) covers
+the exact same-transition model slot and legacy Step projection; it does not
+authenticate a native session or establish a live authority bridge.
+
 The [host issue current-scope record](verification/host-issue-current/README.md)
 covers the shared root issue gate, synthetic issuer revocation and mint preflight;
 it does not establish native identity, snapshot freshness or a live bridge.

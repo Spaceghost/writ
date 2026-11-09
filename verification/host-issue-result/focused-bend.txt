@@ -1,0 +1,7 @@
+PASS: PH-issue-result exact nonfirst slot and state match direct mint
+PASS: PH-issue-result returned bounded slot resolves and delegates
+PASS: PH-issue-result prior denials match legacy projection
+PASS: PH-issue-result current authority denials match legacy projection
+PASS: PH-issue-result inherited and transferred denials match legacy
+PASS: PH-issue-result stale authority skips terminal mint
+HostIssueResult: 6 checks passed

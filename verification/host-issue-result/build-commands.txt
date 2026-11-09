@@ -1,0 +1,53 @@
+Worktree base: 2ecfddc. Bend 2.0.39:
+/home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend
+Bend generation used TMPDIR=/home/jadams/tmp/writ-issue-result-checks and
+BEND_NO_TELEMETRY=1. The focused and native-mock compiler invocations did not
+inherit TMPDIR and used clang's default temporary directory; they completed and
+their temporary objects were removed by the compiler. The final full native
+compile explicitly exports TMPDIR under ~/tmp.
+Full Bend and generated backends: ulimit -c 0, -v 16777216 KiB, -t 600 s;
+timeout 600, nice -n 15. Focused/generated trap backends: -v 10737418 KiB,
+-t 300 s, timeout 300, nice -n 15. Node v26.10.0; clang 23.1.1.
+
+bend Tests.bend: exit 0, tests-bend.txt, 2921 PASS lines.
+bend Tests.bend -o tests.js; node tests.js: both exit 0, tests-node.txt;
+cmp tests-bend.txt tests-node.txt: exit 0.
+bend HostIssueResultTests.bend: exit 0, focused-bend.txt; generated Node and
+static clang -O0 native +RTS --threads 1 --gpu off: exit 0, focused-node.txt
+and focused-native.txt; both compare byte-for-byte to focused-bend.txt.
+bend PROOF.bend: exit 0, proof.txt.
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt
+LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict: exit 0, verdict.txt.
+Kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+BENDTT=/bin/false bend PROOF.bend --verdict: exit 1 as expected, negative.txt.
+openspec validate --all --strict --no-interactive: exit 0, openspec.txt.
+
+Both healthy terminal-slot trap programs were run on Bend, generated Node and
+static clang -O0 native +RTS --threads 1 --gpu off; each program/backend exits
+1 with the expected Nat overflow. Outputs and exact trap sources are retained.
+The focused suite verifies both typed and legacy stale-authority denials at
+maximum slot, identity revision and host revision without overflow.
+
+Native host mocks: timeout 120 nice -n 15 make -C contrib/native-hosts/linux
+OUT=/home/jadams/tmp/writ-issue-result-checks/linux-native, targeting
+handoff-order-test and retire-error-test; each run with timeout 60, nice -n 15,
+exit 0. Outputs and build log are retained. No mount, native identity probe or
+VM was used.
+
+Early test fixture parse/linear-type failures are preserved as tests-first.b64
+and tests-second.b64 with their original whitespace. They were corrected before
+all recorded successful runs.
+
+The first full clang attempt was deliberately terminated (exit 143) after it
+was found using `/tmp/tests-818fdf-d24c9f8b.o.tmp`. That object was removed;
+the compilation was restarted with TMPDIR exported to the scratch directory.
+
+Full native CPU: bend Tests.bend -o tests.c; with TMPDIR exported under
+/home/jadams/tmp, clang -std=c11 -O0 -static tests.c -o tests-native -lpthread
+-lm; tests-native +RTS --threads 1 --gpu off: all exit 0. Generated C SHA-256:
+de675a741011d7b69cba722d736630ac2dc819faf253c02d5482be85d3b7bfde.
+Native executable SHA-256:
+e91adcc5239a814ce04b5eb12af7d3bffb177d0da4f3b8d8204765b77153388b.
+Node JS SHA-256: 3ef4e42a3673b3edf1c1e118239073507b273fa8949370addff1ab55ca4f993f.
+cmp tests-bend.txt tests-native.txt: exit 0. native-cgen.txt and
+native-build.txt are the empty successful build logs.
