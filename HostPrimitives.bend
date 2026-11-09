@@ -1199,13 +1199,17 @@ def use(+state: State, expected_revision: Nat, +session: Nat, message: W.Message
 # Implementation helper: an identity-table change that issues no session
 # (`delegate`): a HostIdentity denial is `Identity{reason}`; an
 # accepted change commits the table, advances the revision once, and emits
-# nothing.
+# nothing. The trusted caller must supply the actual same-call I.Change; a
+# caller-constructed result is not authenticated by this helper.
 def changed(change: I.Change, +state: State) -> Step:
   match change:
     case I.Rejected{_, reason}:
       Denied{state, Identity{reason}}
     case I.Accepted{identity, _}:
-      Admitted{with_identity(state, identity), []}
+      f = Bool.pick(Unit -> Step, I.successor_fits(revision(state)),
+        x => Admitted{with_identity(state, identity), []},
+        x => Denied{state, CapacityExhausted{}})
+      f(Unit{})
 
 # Implementation helper: whether Frontend handle `handle` is owned by
 # `caller` (the same subject and the same token).

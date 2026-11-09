@@ -1139,3 +1139,7 @@ detect a real session loss or establish a native host.
 The [session allocation capacity record](verification/session-allocation-capacity/README.md)
 checks synthetic session allocation bounds and denial ordering. It does not
 authenticate a native caller or qualify host recovery.
+
+The [delegation capacity record](verification/delegation-capacity/README.md)
+checks synthetic lifetime arithmetic and allocator boundaries. It does not
+establish native attribution, wire representation or host recovery.

@@ -1,0 +1,63 @@
+import Base
+import /home/jadams/tmp/writ-delegation-capacity/HostIdentity.bend as I
+import /home/jadams/tmp/writ-delegation-capacity/HostIdentityTests.bend as IT
+import /home/jadams/tmp/writ-delegation-capacity/HostWire.bend as W
+import /home/jadams/tmp/writ-delegation-capacity/HostPrimitives.bend as P
+import /home/jadams/tmp/writ-delegation-capacity/HostPrimitivesTests.bend as PT
+import /home/jadams/tmp/writ-delegation-capacity/Test.bend as Test
+
+# Synthetic model fixtures; no native identity or platform is observed.
+def identity_counters(state: I.State, revision: Nat, slot: Nat) -> I.State:
+  match state:
+    case I.State{_, host, incarnation, _, sessions, entries}: I.State{revision, host, incarnation, slot, sessions, entries}
+
+def host_revision(state: P.State, revision: Nat) -> P.State:
+  match state:
+    case P.State{_, identity, profiles, bindings, workers, next, seals, publications}:
+      P.State{revision, identity, profiles, bindings, workers, next, seals, publications}
+
+def delegate(+state: I.State, ref: W.Ref, target: Nat, rights: U32, lifetime: Nat) -> I.Change:
+  I.delegate(state, I.revision(state), IT.session_a(), ref, target, rights, lifetime, IT.now())
+
+def identity_fixture(+state: I.State, ref: W.Ref, target: Nat, rights: U32, lifetime: Nat) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(I.valid(state), "identity fixture valid")
+    Test.check(Bool.not(I.Change.accepted(delegate(state, ref, target, rights, lifetime))), "delegation must deny")
+
+def primitive_fixture(+state: P.State) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(P.valid(state), "primitive fixture valid")
+    Test.check(Maybe.is_some(&2, P.Error, P.Step.reason(P.delegate(state, P.revision(state), PT.session_client(),
+      PT.root_ref(), PT.session_worker(), PT.input_rights(), PT.input_lifetime(), PT.pub_now()))), "delegation must deny")
+
+def mode(+name: String, +max: Nat) -> IO(Unit):
+  +base = IT.base()
+  f = Bool.pick(Unit -> IO(Unit), String.eq(name, "expiry"),
+    x => identity_fixture(base, IT.root_ref(), IT.session_peer(), IT.narrow_rights(), max),
+    x => Bool.pick(Unit -> IO(Unit), String.eq(name, "parent"),
+      y => identity_fixture(base, IT.bumped_root_ref(), IT.session_peer(), IT.narrow_rights(), max),
+      y => Bool.pick(Unit -> IO(Unit), String.eq(name, "target"),
+        z => identity_fixture(base, IT.root_ref(), IT.session_b(), IT.narrow_rights(), max),
+        z => Bool.pick(Unit -> IO(Unit), String.eq(name, "rights"),
+          w => identity_fixture(base, IT.root_ref(), IT.session_peer(), IT.wide_rights(), max),
+          w => Bool.pick(Unit -> IO(Unit), String.eq(name, "identity-revision"),
+            q => identity_fixture(identity_counters(base, max, I.next_slot(base)), IT.root_ref(), IT.session_peer(), IT.narrow_rights(), IT.lifetime()),
+            q => Bool.pick(Unit -> IO(Unit), String.eq(name, "identity-slot"),
+              r => identity_fixture(identity_counters(base, I.revision(base), max), IT.root_ref(), IT.session_peer(), IT.narrow_rights(), IT.lifetime()),
+              r => primitive_fixture(host_revision(PT.pub_issued(), max)))(Unit{}))(Unit{}))(Unit{}))(Unit{}))(Unit{}))
+  f(Unit{})
+
+def parsed(name: String, value: Maybe<&2, Nat>) -> IO(Unit):
+  match value:
+    case Some{max}: mode(name, max)
+    case None{}: IO.die(Unit, 2, "bad max")
+
+def run(args: List<String>) -> IO(Unit):
+  match args:
+    case [_, name]: parsed(name, Nat.read("281474976710655"))
+    case _: IO.die(Unit, 2, "expected mode")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    args : List<String> <- IO.args()
+    run(args)

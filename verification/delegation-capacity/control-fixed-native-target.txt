@@ -1,0 +1,2 @@
+PASS: identity fixture valid
+PASS: delegation must deny

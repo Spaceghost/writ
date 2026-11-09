@@ -111,6 +111,17 @@ It does not establish a native recovery protocol or a wire-representable slot.
 - **WHEN** its holder requests destination E
 - **THEN** the operation is denied unless the complete new scope receives required authorization.
 
+#### Scenario: A delegation reaches arithmetic limits
+
+- **GIVEN** a current parent capability and a requested child lifetime or allocation at a Nat boundary
+- **WHEN** the monitor checks the existing identity, delegation, target, subject, rights and lifetime rules
+- **THEN** a lifetime beyond the parent's remaining duration is denied before addition
+- **AND** an otherwise valid request with exhausted identity or primitive counters is denied with the supplied state unchanged and no effects.
+
+This replaces overflow aborts with ordered fail-closed denials. It preserves the
+parent's scope and the existing attenuation and denial laws; it does not make a
+model Nat slot wire-representable or qualify native recovery.
+
 #### Scenario: A narrower proxy leaves an old handle alive
 
 - **GIVEN** a new proxy exposes fewer operations

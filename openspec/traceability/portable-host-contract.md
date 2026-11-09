@@ -388,6 +388,34 @@ No new authority decision or release route follows from this result. The
 caller still owes current issuer/Frontend provenance, later use checks,
 revocation ordering and native host qualification.
 
+## Delegation arithmetic and capacity
+
+The sole `HostIdentity.delegate` computes a read-only same-call preflight:
+revision, actual parent resolution, delegability, target, subject and rights
+retain their documented order. Since a resolved parent has `now < expires`,
+checking `lifetime <= expires - now` is equivalent to the prior lifetime
+attenuation without first overflowing `now + lifetime`. A failure returns
+`WidenedLifetime`; only the accepted branch forms the sum. Identity revision
+and next slot capacity are checked after lifetime; the primitive revision is
+checked only after the actual same-call identity acceptance. Denials keep the
+original state and have no effects. The pure refused-check fallback is an
+invalid zero entry and cannot enter the deferred commit. Linux joint mode
+retains its existing conservative preflight/containment behavior. This narrows
+terminal behavior from abort to denial while preserving the security laws; it
+does not authenticate inputs or establish wire limits.
+
+Named synthetic `HostDelegationCapacityTests.bend` cases:
+
+- `PH-delegate overflow lifetime preserves earlier denials`
+- `PH-delegate terminal identity counters deny after lifetime`
+- `PH-delegate zero exact and maximum-minus-one allocation preserve parent`
+- `PH-delegate exact maximum expiry is representable`
+- `PH-delegate read-only check accessors preserve ready and invalid fallback`
+- `PH-delegate primitive revision denies after identity and rights`
+- `PH-delegate actual preflight result stays read-only and agrees`
+- `LH-delegate standalone terminal capacity denies without effects`
+- `LH-delegate joint terminal capacity requires containment`
+
 ## Session allocation capacity
 
 `HostIdentity.bind_session` preserves the existing revision and origin order,

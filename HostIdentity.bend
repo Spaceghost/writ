@@ -895,94 +895,93 @@ def child_of(+slot: Nat, parent: Entry, target: Nat, rights: U32, expires: Nat) 
     case Entry{parent_slot, _, _, owner, handle, plan, _, _, _, _}:
       Entry{slot, first_generation(), target, owner, handle, plan, rights, expires, parent_slot, True{}}
 
-# Implementation helper: delegate's lifetime step.
-def d_lifetime(ok: Bool, +state: State, entry: Entry, target: Nat, rights: U32, expires: Nat) -> Change:
-  match ok:
-    case True{}:
-      Accepted{commit_entry(state, child_of(next_slot(state), entry, target, rights, expires)), next_slot(state)}
-    case False{}:
-      Rejected{state, WidenedLifetime{}}
+# Read-only description of checks from this same delegation attempt. No
+# constructor or accessor commits a state change or authenticates its input.
+type DelegateCheck is Data:
+  DelegateReady{parent: Entry}
+  DelegateRefused{reason: Error}
 
-# Implementation helper: delegate's rights step.
-def d_rights(ok: Bool, +state: State, +entry: Entry, target: Nat, rights: U32, +expires: Nat) -> Change:
-  match ok:
-    case True{}:
-      d_lifetime(Nat.is_le(expires, entry_expires(entry)), state, entry, target, rights, expires)
-    case False{}:
-      Rejected{state, WidenedRights{}}
+def delegate_ready(check: DelegateCheck) -> Bool:
+  match check:
+    case DelegateReady{_}: True{}
+    case _: False{}
 
-# Implementation helper: delegate's subject step.
-def d_subject(ok: Bool, +state: State, +entry: Entry, target: Nat, +rights: U32, expires: Nat) -> Change:
-  match ok:
-    case True{}:
-      d_rights(T.word_subset(rights, entry_rights(entry)), state, entry, target, rights, expires)
-    case False{}:
-      Rejected{state, SubjectChanged{}}
+def delegate_reason(check: DelegateCheck) -> Error:
+  match check:
+    case DelegateRefused{reason}: reason
+    case _: StaleRevision{}
 
-# Implementation helper: delegate's target lookup.
-def d_target(found: SessionLookup, +state: State, +entry: Entry, target: Nat, rights: U32,
-    expires: Nat) -> Change:
+# Only the Ready branch of delegate reads this value. The denied fallback is
+# an invalid zero entry, never installed or treated as an authority record.
+def delegate_parent(check: DelegateCheck) -> Entry:
+  match check:
+    case DelegateReady{parent}: parent
+    case DelegateRefused{_}:
+      Entry{0n, 0n, 0n, F.Caller{0n, T.CodeId{0, 0, 0, 0, 0, 0, 0, 0}}, 0n,
+        T.Plan{T.Stamp{0n, 0n, 0n}, 0n, T.OEnd{}, T.ObjectVersion{0n, 0n},
+          T.CodeId{0, 0, 0, 0, 0, 0, 0, 0}, T.Copy{}, 0}, 0, 0n, 0n, False{}}
+
+# On an actual resolved parent, now < parent expiry. Comparing against the
+# remaining duration avoids overflowing now+lifetime before earlier denials.
+def delegate_lifetime(+state: State, +entry: Entry, lifetime: Nat, now: Nat) -> DelegateCheck:
+  f = Bool.pick(Unit -> DelegateCheck, Nat.is_le(lifetime, Nat.sub(entry_expires(entry), now)),
+    x => Bool.pick(DelegateCheck, successor_fits(revision(state)) && successor_fits(next_slot(state)),
+      DelegateReady{entry}, DelegateRefused{CapacityExhausted{}}),
+    x => DelegateRefused{WidenedLifetime{}})
+  f(Unit{})
+
+def delegate_rights(+state: State, +entry: Entry, +rights: U32, lifetime: Nat, now: Nat) -> DelegateCheck:
+  f = Bool.pick(Unit -> DelegateCheck, T.word_subset(rights, entry_rights(entry)),
+    x => delegate_lifetime(state, entry, lifetime, now), x => DelegateRefused{WidenedRights{}})
+  f(Unit{})
+
+def delegate_target(found: SessionLookup, +state: State, +entry: Entry, rights: U32, lifetime: Nat, now: Nat) -> DelegateCheck:
   match found:
-    case NoSession{}:
-      Rejected{state, UnknownSession{}}
-    case ManySessions{}:
-      # Unreachable from a valid state; kept for totality.
-      Rejected{state, Ambiguous{}}
+    case NoSession{}: DelegateRefused{UnknownSession{}}
+    case ManySessions{}: DelegateRefused{Ambiguous{}}
     case OneSession{bound}:
-      d_subject(Nat.is_eq(caller_subject(session_caller(bound)), caller_subject(entry_owner(entry))), state, entry,
-        target, rights, expires)
+      f = Bool.pick(Unit -> DelegateCheck, Nat.is_eq(caller_subject(session_caller(bound)), caller_subject(entry_owner(entry))),
+        x => delegate_rights(state, entry, rights, lifetime, now), x => DelegateRefused{SubjectChanged{}})
+      f(Unit{})
 
-# Implementation helper: whether session `id` is bound once and delegable.
+# Read-only helper: whether session `id` is bound once and delegable.
 def delegable_lookup(found: SessionLookup) -> Bool:
   match found:
-    case OneSession{session}:
-      session_delegable(session)
-    case NoSession{}:
-      # Unreachable after the parent re-resolved; kept for totality.
-      False{}
-    case ManySessions{}:
-      # Unreachable from a valid state; kept for totality.
-      False{}
+    case OneSession{session}: session_delegable(session)
+    case _: False{}
 
-# Implementation helper: delegate's delegable step.
-def d_delegable(ok: Bool, +state: State, +entry: Entry, +target: Nat, rights: U32, expires: Nat) -> Change:
-  match ok:
-    case True{}:
-      d_target(session_at(sessions(state), target), state, entry, target, rights, expires)
-    case False{}:
-      Rejected{state, NotDelegable{}}
-
-# Implementation helper: delegate's parent re-resolution.
-def d_resolved(resolution: Resolution, +state: State, +session: Nat, target: Nat, rights: U32,
-    expires: Nat) -> Change:
+def delegate_resolved(resolution: Resolution, +state: State, +session: Nat, target: Nat, rights: U32,
+    lifetime: Nat, now: Nat) -> DelegateCheck:
   match resolution:
-    case Unresolved{reason}:
-      Rejected{state, reason}
+    case Unresolved{reason}: DelegateRefused{reason}
     case Resolved{entry, _}:
-      d_delegable(delegable_lookup(session_at(sessions(state), session)), state, entry, target,
-        rights, expires)
+      f = Bool.pick(Unit -> DelegateCheck, delegable_lookup(session_at(sessions(state), session)),
+        x => delegate_target(session_at(sessions(state), target), state, entry, rights, lifetime, now),
+        x => DelegateRefused{NotDelegable{}})
+      f(Unit{})
 
-# Implementation helper: delegate's gate.
-def d_gate(ok: Bool, +state: State, +session: Nat, +ref: W.Ref, target: Nat, rights: U32,
-    +lifetime: Nat, +now: Nat) -> Change:
-  match ok:
-    case True{}:
-      d_resolved(resolve(state, revision(state), session, ref, now), state, session, target, rights,
-        Nat.add(now, lifetime))
-    case False{}:
-      Rejected{state, StaleRevision{}}
+# A descriptive preflight only. The public transition computes it itself;
+# neither the worker nor a caller may supply a result to the commit branch.
+def delegate_preflight(+state: State, expected_revision: Nat, +session: Nat, +ref: W.Ref,
+    target: Nat, rights: U32, lifetime: Nat, +now: Nat) -> DelegateCheck:
+  f = Bool.pick(Unit -> DelegateCheck, current(state, expected_revision),
+    x => delegate_resolved(resolve(state, revision(state), session, ref, now), state, session, target, rights, lifetime, now),
+    x => DelegateRefused{StaleRevision{}})
+  f(Unit{})
 
-# Public entry point: session `session` delegates the entry `ref` names to
-# session `target` with `rights` until `now + lifetime`. The parent is
-# re-resolved in the full resolution order; then, in order: the delegating
-# session must be delegable (NotDelegable), the target must be bound
-# (UnknownSession), its caller subject must be the owner's subject
-# (SubjectChanged), rights must be a subset (WidenedRights), and the child's
-# expiry must not exceed the parent's (WidenedLifetime). The parent entry is
-# left unchanged. Issues the child's slot.
-def delegate(+state: State, expected_revision: Nat, +session: Nat, +ref: W.Ref, target: Nat,
-    rights: U32, +lifetime: Nat, +now: Nat) -> Change:
-  d_gate(current(state, expected_revision), state, session, ref, target, rights, lifetime, now)
+# Public entry point: delegation preserves the parent's owner, plan and handle,
+# attenuates rights and lifetime, and issues exactly one child slot. Old
+# revision, resolution, delegability, target, subject, rights and lifetime
+# denials precede capacity. Only the actual same-call Ready branch adds time
+# and commits; the parent remains unchanged.
+def delegate(+state: State, expected_revision: Nat, +session: Nat, +ref: W.Ref, +target: Nat,
+    +rights: U32, +lifetime: Nat, +now: Nat) -> Change:
+  +checked = {delegate_preflight(state, expected_revision, session, ref, target, rights, lifetime, now) : DelegateCheck}
+  f = Bool.pick(Unit -> Change, delegate_ready(checked),
+    x => Accepted{commit_entry(state, child_of(next_slot(state), delegate_parent(checked), target, rights,
+      Nat.add(now, lifetime))), next_slot(state)},
+    x => Rejected{state, delegate_reason(checked)})
+  f(Unit{})
 
 # --- retire (public) -----------------------------------------------------------
 
