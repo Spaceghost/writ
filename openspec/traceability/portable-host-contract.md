@@ -388,6 +388,31 @@ No new authority decision or release route follows from this result. The
 caller still owes current issuer/Frontend provenance, later use checks,
 revocation ordering and native host qualification.
 
+## Session allocation capacity
+
+`HostIdentity.bind_session` preserves the existing revision and origin order,
+then denies `CapacityExhausted` if identity revision or largest session id has
+no Nat successor. `HostPrimitives.open_session_result` preserves its gate,
+family, fact, role/profile and identity denial order; only after an actual
+identity acceptance does it check primitive revision and either return the
+same-call id/state or deny unchanged. Identity capacity precedes primitive
+capacity when both are exhausted. The identity candidate is pure and is not
+installed on denial. The legacy `open_session` projects the same result.
+Maximum-minus-one session allocation may issue the maximum model Nat id;
+this does not claim wire representability. Other transitions retain separate
+capacity gaps and native recovery remains a host obligation.
+
+Named synthetic `HostSessionCapacityTests.bend` cases:
+
+- `PH-session identity session-id and revision maximum deny unchanged`
+- `PH-session stale and unknown-origin errors precede capacity`
+- `PH-session identity maximum-minus-one allocates maximum id`
+- `PH-session both roles deny identity and primitive terminal capacities`
+- `PH-session old gate family fact profile and origin errors retain precedence`
+- `PH-session both roles return exact maximum model id with legacy parity`
+- `LH-session standalone launch denies terminal capacity without credentials`
+- `LH-session joint terminal launch requires containment without effects`
+
 ## Current authority before worker input delivery
 
 The prior eleven admission denials retain their order. The shared Bend effect

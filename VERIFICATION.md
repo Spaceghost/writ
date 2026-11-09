@@ -1129,3 +1129,7 @@ authenticated native identity, or a combined LinuxHost/Mount release path.
 The [session-loss signal record](verification/linux-session-loss/README.md)
 checks synthetic sticky containment and unchanged cleanup effects. It does not
 detect a real session loss or establish a native host.
+
+The [session allocation capacity record](verification/session-allocation-capacity/README.md)
+checks synthetic session allocation bounds and denial ordering. It does not
+authenticate a native caller or qualify host recovery.

@@ -1,0 +1,20 @@
+Base cc105e1; pinned Bend 2.0.39 SHA-256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd, Node v26.10.0, clang 23.1.1, OpenSpec 1.16.0. Generated outputs/binaries stayed under /home/jadams/tmp/writ-session-allocation-build; TMPDIR pointed there and BEND_NO_TELEMETRY=1. Bend and native jobs used nice -n 15.
+
+The original synthetic repro source in base-repro.bend.txt imports the clean 22a8479 worktree /home/jadams/tmp/writ-joint-session-loss; its Bend files are byte-identical to cc105e1 (the latter only adds board question records). Each of the six recorded modes exited 1 with Nat overflow after confirming the fixture structurally valid.
+Full suite: timeout 600 bend Tests.bend (exit 0; tests-bend.txt).
+Ordinary proof: timeout 300 bend PROOF.bend (exit 0; proof.txt).
+Verdict: BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt timeout 300 bend PROOF.bend --verdict (exit 0; verdict.txt); kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+Verdict negative: BENDTT=/bin/false timeout 120 bend PROOF.bend --verdict (exit 1; verdict-negative.txt).
+OpenSpec: openspec validate --all --strict --no-interactive (exit 0; openspec.txt).
+Full C generation: ulimit -v 16777216; timeout 900 bend Tests.bend -o /home/jadams/tmp/writ-session-allocation-build/tests.c (exit 0; native-generate.txt empty). C SHA-256 0b66a920b4978045ab5b50d7d917ab8df3cc89561b2ec9f7cfa2d2d937d782d6. The 176 tracked Bend inputs in bend-input-sha256.txt were captured before generation and verified afterward; no Bend source changed during or after generation.
+
+Control: control.bend.txt imports the fixed worktree; replace /home/jadams/tmp/writ-session-allocation-capacity/ with /home/jadams/tmp/writ-joint-session-loss/ for the base. Modes identity-id, identity-revision, client-id, worker-id, identity-host, portable-revision and worker-portable each run the actual public path.
+- timeout 60 bend control-VERSION.bend MODE: fixed exits 0; base exits 1 (Nat overflow).
+- timeout 300 bend control-VERSION.bend -o control-VERSION.js; timeout 60 node control-VERSION.js MODE: builds exit 0; fixed runs exit 0; base runs exit 1.
+- timeout 360 bend control-VERSION.bend -o control-VERSION-native; timeout 60 control-VERSION-native MODE +RTS --threads 1 --gpu off: builds exit 0; fixed runs exit 0; base runs exit 1. Native runs used ulimit -v 20971520 and ulimit -c 0.
+Fixed JS SHA-256 dd7d0579f714324afff293be998b3b3b4e7704cc60d4d8903476549668a60825; base JS 7dc5c4cae92075676d54f01954e96bc9c7be6e5204ad58cf7cd78540a6aa4b74.
+Fixed native SHA-256 28b1335ee81768d924bceb74e19b9dedd44fcf4899a4da68f806fc835577a376; base native a05e5950857b1b9fe5760c858f67c24e0a86f7c6741b0f59b66db3752d7ea79c.
+
+Native mocks: make -C contrib/native-hosts/linux OUT=/home/jadams/tmp/writ-session-allocation-build/mocks /home/jadams/tmp/writ-session-allocation-build/mocks/handoff-order-test /home/jadams/tmp/writ-session-allocation-build/mocks/retire-error-test (exit 0; mock-build.txt). Each test ran with timeout 60 nice -n 15 and exited 0, producing handoff-mock.txt and retire-mock.txt. No actual mounts or identity probes were run.
+Full native build: ulimit -v 16777216; TMPDIR=/home/jadams/tmp/writ-session-allocation-build timeout 1800 nice -n 15 clang -std=c11 -O0 -static /home/jadams/tmp/writ-session-allocation-build/tests.c -o /home/jadams/tmp/writ-session-allocation-build/tests-native -lpthread -lm (exit 0; native-build.txt empty). Executable SHA-256 65e3781746ee1522064e99e11a438666e1ce68c4af9863a944645df0243b61d3.
+Full native run: ulimit -c 0; ulimit -v 20971520; timeout 600 nice -n 15 /home/jadams/tmp/writ-session-allocation-build/tests-native +RTS --threads 1 --gpu off (exit 0; native-suite.txt). cmp tests-bend.txt native-suite.txt exited 0.

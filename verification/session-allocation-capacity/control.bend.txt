@@ -1,0 +1,76 @@
+import Base
+import /home/jadams/tmp/writ-session-allocation-capacity/HostIdentity.bend as I
+import /home/jadams/tmp/writ-session-allocation-capacity/HostIdentityTests.bend as IT
+import /home/jadams/tmp/writ-session-allocation-capacity/HostPrimitives.bend as P
+import /home/jadams/tmp/writ-session-allocation-capacity/HostPrimitivesTests.bend as PT
+import /home/jadams/tmp/writ-session-allocation-capacity/hosts/linux/monitor/LinuxSessionOpenTests.bend as ST
+import /home/jadams/tmp/writ-session-allocation-capacity/Test.bend as Test
+
+# Pure synthetic fixtures only; no native session is observed or authenticated.
+def session_at_max(+state: I.State, max: Nat) -> I.State:
+  match state:
+    case I.State{revision, host, +incarnation, next, sessions, entries}:
+      I.State{revision, host, incarnation, next,
+        I.Sessions{I.Session{max, incarnation, IT.caller_a(), I.Authenticated{}, False{}}, sessions}, entries}
+
+def identity_revision(state: I.State, max: Nat) -> I.State:
+  match state:
+    case I.State{_, host, incarnation, next, sessions, entries}:
+      I.State{max, host, incarnation, next, sessions, entries}
+
+def host_state(state: P.State, host_revision: Nat, identity: I.State) -> P.State:
+  match state:
+    case P.State{_, _, profiles, bindings, workers, next, seals, publications}:
+      P.State{host_revision, identity, profiles, bindings, workers, next, seals, publications}
+
+def with_current_host(+identity: I.State) -> P.State:
+  host_state(ST.seed(), P.revision(ST.seed()), identity)
+
+def bind(+state: I.State) -> I.Change:
+  I.bind_session(state, I.revision(state), IT.caller_a(), I.Authenticated{}, True{})
+
+def open_client(+state: P.State) -> P.SessionOpen:
+  P.open_session_result(state, P.revision(state), PT.full_report(), PT.client_evidence(), P.ClientRole{True{}})
+
+def open_worker(+state: P.State) -> P.SessionOpen:
+  P.open_session_result(state, P.revision(state), PT.full_report(), PT.worker_evidence(), P.WorkerRole{PT.cpu_id()})
+
+def check_i(+state: I.State) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(I.valid(state), "identity fixture structurally valid")
+    Test.check(Bool.not(I.Change.accepted(bind(state))), "terminal binding must deny")
+
+def open_selected(+state: P.State, worker: Bool) -> P.SessionOpen:
+  f = Bool.pick(Unit -> P.SessionOpen, worker, x => open_worker(state), x => open_client(state))
+  f(Unit{})
+
+def check_p(+state: P.State, worker: Bool) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(P.valid(state), "portable fixture structurally valid")
+    Test.check(Maybe.is_some(&2, P.Error, P.Step.reason(P.SessionOpen.step(open_selected(state, worker)))),
+      "terminal session open must deny")
+
+def run_mode(+mode: String, +max: Nat) -> IO(Unit):
+  +id = {P.identity(ST.seed()) : I.State}
+  f = Bool.pick(Unit -> IO(Unit), String.eq(mode, "identity-id"), x => check_i(session_at_max(id, max)),
+    x => Bool.pick(Unit -> IO(Unit), String.eq(mode, "identity-revision"), y => check_i(identity_revision(id, max)),
+      y => Bool.pick(Unit -> IO(Unit), String.eq(mode, "client-id"), z => check_p(with_current_host(session_at_max(id, max)), False{}),
+        z => Bool.pick(Unit -> IO(Unit), String.eq(mode, "worker-id"), k => check_p(with_current_host(session_at_max(id, max)), True{}),
+          k => Bool.pick(Unit -> IO(Unit), String.eq(mode, "identity-host"), m => check_p(with_current_host(identity_revision(id, max)), False{}),
+            m => check_p(host_state(ST.seed(), max, id), String.eq(mode, "worker-portable")))(Unit{}))(Unit{}))(Unit{}))(Unit{}))
+  f(Unit{})
+
+def parsed(mode: String, value: Maybe<&2, Nat>) -> IO(Unit):
+  match value:
+    case Some{max}: run_mode(mode, max)
+    case None{}: IO.die(Unit, 2, "bad max")
+
+def run(args: List<String>) -> IO(Unit):
+  match args:
+    case [_, mode]: parsed(mode, Nat.read("281474976710655"))
+    case _: IO.die(Unit, 2, "expected fixture mode")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    args : List<String> <- IO.args()
+    run(args)

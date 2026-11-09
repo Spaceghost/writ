@@ -1,0 +1,2 @@
+PASS: portable fixture structurally valid
+PASS: terminal session open must deny

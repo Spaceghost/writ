@@ -1048,7 +1048,10 @@ def o_bound(change: I.Change, +state: State) -> SessionOpen:
     case I.Rejected{_, reason}:
       SessionOpenDenied{state, Identity{reason}}
     case I.Accepted{identity, issued}:
-      SessionOpened{with_identity(state, identity), issued}
+      f = Bool.pick(Unit -> SessionOpen, I.successor_fits(revision(state)),
+        x => SessionOpened{with_identity(state, identity), issued},
+        x => SessionOpenDenied{state, CapacityExhausted{}})
+      f(Unit{})
 
 # Implementation helper: a worker session's identity step.
 def o_worker_bound(change: I.Change, +state: State, +profile: Nat) -> SessionOpen:
@@ -1056,7 +1059,10 @@ def o_worker_bound(change: I.Change, +state: State, +profile: Nat) -> SessionOpe
     case I.Rejected{_, reason}:
       SessionOpenDenied{state, Identity{reason}}
     case I.Accepted{identity, +issued}:
-      SessionOpened{with_worker_session(state, identity, issued, profile), issued}
+      f = Bool.pick(Unit -> SessionOpen, I.successor_fits(revision(state)),
+        x => SessionOpened{with_worker_session(state, identity, issued, profile), issued},
+        x => SessionOpenDenied{state, CapacityExhausted{}})
+      f(Unit{})
 
 # Implementation helper: a worker session's profile step. The session is
 # bound non-delegable whatever the evidence reports.
@@ -1113,7 +1119,9 @@ def o_gate(ok: Bool, +state: State, report: TargetReport, fact: Fact, role: Role
 # configured `profile` (else UnknownProfile), is always bound non-delegable,
 # and is recorded in `bindings` under that profile. No effect. The typed
 # result carries the ID from this transition; it is not a wire receipt or
-# authentication. `open_session` projects the same result to the legacy Step.
+# authentication. Identity denials precede the primitive revision capacity
+# check; an uninstalled identity candidate is pure and emits nothing.
+# `open_session` projects the same result to the legacy Step.
 def open_session_result(+state: State, expected_revision: Nat, report: TargetReport, fact: Fact, role: Role) -> SessionOpen:
   o_gate(current(state, expected_revision), state, report, fact, role)
 

@@ -34,6 +34,17 @@ The adapter SHALL derive the effective requesting subject from trusted session a
 - **WHEN** its message claims to be subject B
 - **THEN** the claim cannot change the authenticated Writ subject.
 
+#### Scenario: Session allocation cannot advance
+
+- **GIVEN** the monitor's identity revision or largest allocated session id has reached maximum Nat, or the primitive revision has reached maximum Nat
+- **WHEN** an otherwise admissible client or worker session opening reaches allocation
+- **THEN** it denies with the original state unchanged, no allocated session and no effect
+- **AND** earlier revision, family, fact, profile and origin denials retain their order.
+
+This replaces terminal counter aborts with explicit capacity denial without
+weakening identity, authority or denial laws. A model session id is not a wire
+receipt or native authentication.
+
 #### Scenario: A delegated endpoint hides its new holder
 
 - **GIVEN** a subject-bound operation requires the invoking actor to be established

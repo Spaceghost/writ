@@ -791,6 +791,16 @@ def origin_known(origin: Origin, +sessions: Sessions) -> Bool:
     case Transferred{from_session}:
       session_exists(sessions, from_session)
 
+# A successful counter increment must remain within the runtime Nat domain.
+# Parsing failure fails closed. This pure helper commits no state.
+def successor_fits_limit(value: Nat, found: Maybe<&2, Nat>) -> Bool:
+  match found:
+    case Some{limit}: Nat.is_lt(value, limit)
+    case None{}: False{}
+
+def successor_fits(value: Nat) -> Bool:
+  successor_fits_limit(value, Nat.read("281474976710655"))
+
 # Implementation helper: append the new session under a fresh id.
 def commit_session(+state: State, +id: Nat, caller: F.Caller, origin: Origin, delegable: Bool) -> State:
   match state:
@@ -798,29 +808,22 @@ def commit_session(+state: State, +id: Nat, caller: F.Caller, origin: Origin, de
       State{1n+revision, host, incarnation, next_slot,
         Sessions{Session{id, incarnation, caller, origin, delegable}, sessions}, entries}
 
-# Implementation helper: bind_session's origin step.
-def b_origin(ok: Bool, +state: State, caller: F.Caller, origin: Origin, delegable: Bool) -> Change:
-  match ok:
-    case True{}:
-      Accepted{commit_session(state, 1n+max_session(sessions(state)), caller, origin, delegable),
-        1n+max_session(sessions(state))}
-    case False{}:
-      Rejected{state, UnknownSession{}}
-
-# Implementation helper: bind_session's gate.
-def b_gate(ok: Bool, +state: State, caller: F.Caller, +origin: Origin, delegable: Bool) -> Change:
-  match ok:
-    case True{}:
-      b_origin(origin_known(origin, sessions(state)), state, caller, origin, delegable)
-    case False{}:
-      Rejected{state, StaleRevision{}}
-
 # Public entry point: bind a native session whose caller the adapter has
-# authenticated. The monitor allocates the id (one above the largest bound
-# id); an Inherited or Transferred origin must name a bound session, else
-# UnknownSession. Issues the session id.
+# authenticated. The monitor allocates the id above the largest bound id.
+# An inherited or transferred origin must name a bound session. Existing
+# revision and origin denials precede capacity: neither identity revision nor
+# largest session id may be incremented beyond Nat. A maximum issued id is
+# valid if its predecessor had room; wire representability is separate.
 def bind_session(+state: State, expected_revision: Nat, caller: F.Caller, +origin: Origin, delegable: Bool) -> Change:
-  b_gate(current(state, expected_revision), state, caller, origin, delegable)
+  f = Bool.pick(Unit -> Change, current(state, expected_revision),
+    x => Bool.pick(Unit -> Change, origin_known(origin, sessions(state)),
+      y => Bool.pick(Unit -> Change, successor_fits(revision(state)) && successor_fits(max_session(sessions(state))),
+        z => Accepted{commit_session(state, 1n+max_session(sessions(state)), caller, origin, delegable),
+          1n+max_session(sessions(state))},
+        z => Rejected{state, CapacityExhausted{}})(Unit{}),
+      y => Rejected{state, UnknownSession{}})(Unit{}),
+    x => Rejected{state, StaleRevision{}})
+  f(Unit{})
 
 # --- mint (public) -------------------------------------------------------------
 
@@ -851,16 +854,6 @@ def mint_preflight(+state: State, expected_revision: Nat, session: Nat) -> Maybe
   f = Bool.pick(Unit -> Maybe<&2, Error>, current(state, expected_revision),
     x => mint_session_error(session_at(sessions(state), session)), x => Some{StaleRevision{}})
   f(Unit{})
-
-# A successful counter increment must remain within the runtime Nat domain.
-# Parsing failure fails closed. This pure helper commits no state.
-def successor_fits_limit(value: Nat, found: Maybe<&2, Nat>) -> Bool:
-  match found:
-    case Some{limit}: Nat.is_lt(value, limit)
-    case None{}: False{}
-
-def successor_fits(value: Nat) -> Bool:
-  successor_fits_limit(value, Nat.read("281474976710655"))
 
 # Only called after this same state has passed mint_preflight. The fallback
 # cannot name an admitted owner and is not a source of authentication.
