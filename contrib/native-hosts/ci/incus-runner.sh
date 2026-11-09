@@ -50,7 +50,11 @@ JSON
       --env BEND_NO_TELEMETRY=1 \
       --env PATH=/opt/bend/bend/bin:/usr/local/bin:/usr/bin:/bin \
       --cwd /opt/actions-runner -- bash -c \
-      'IFS= read -r config; exec ./run.sh --jitconfig "$config"' \
+      'IFS= read -r config; exec ./run.sh --jitconfig "$config"' &
+  runner_process=$!
+  # Bash can dispatch termination traps while waiting on its wait builtin.
+  # A foreground Incus call would delay cleanup until that call returned.
+  wait "$runner_process" \
     || echo "Runner exited unsuccessfully; retiring guest." >&2
   unset jit
   cleanup

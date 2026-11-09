@@ -56,12 +56,28 @@ execution and transport were not credited. The job failed and retained its logs.
 The runner deregistered and the supervisor retired the guest.
 
 Incus reported about 66 GiB total host memory and about 28 GiB used before the
-retry. The stopped base was increased to 16 GiB RAM, retaining the 30 GiB root
-quota and 4 CPUs. The [final base config](final-base-config.yaml) records this
+retry. The stopped base was first increased to 16 GiB RAM, then to the user's
+requested 24 GiB before a fresh retry, retaining the 30 GiB root quota and 4 CPUs.
+The [final base config](final-base-config.yaml) records this
 change. The initial resource sample above remains evidence for the original
 8 GiB setup. The workflow now captures native compiler output and cgroup memory
 counters. A killed compiler suggests memory pressure; the first run did not
 retain cgroup OOM counters, so no exact OOM attribution is claimed.
+
+[Run 42602729965](https://github.com/Spaceghost/writ/actions/runs/42602729965)
+on `09d6906` was canceled during the resource upgrade. It had reached the old
+8 GiB standby guest while service shutdown was waiting for its foreground Incus
+client. The stop timed out, and restart correctly refused the stale guest.
+After confirming the GitHub run was canceled and its registration gone, the
+owned stale guest was deleted. The supervisor now runs Incus in the background
+and uses Bash's interruptible `wait`, allowing the termination trap to retire
+the guest promptly. The canceled run supplies no native acceptance credit.
+
+With the revised supervisor and a fresh 24 GiB guest, a real service-stop check
+completed in 6.75 seconds. Incus's instance list no longer contained
+`writ-runner-job`, GitHub's runner list no longer contained
+`writ-fedora-incus`, and the service restarted successfully. The pre-existing
+`bak-writ` registration was preserved.
 
 ## Limits
 
