@@ -24,6 +24,7 @@ Shared transitions in `HostIdentity.bend`, `HostPrimitives.bend`, and
 | `hosts/linux/monitor/LinuxHostTests.bend` | Model tests on SYNTHETIC broker facts, and the replay of the 37 portable-host conformance vectors through a Linux adapter fixture | `Tests.bend` as `LinuxHost` |
 | `hosts/linux/monitor/LinuxSessionOpenTests.bend` | Synthetic typed-open, denial, routing and legacy wire compatibility checks | `Tests.bend` as `LinuxSessionOpen` |
 | `hosts/linux/monitor/LinuxCredentialBindingTests.bend` | Synthetic binding, restart, monitor-action revocation, denial and long-list controls | `Tests.bend` as `LinuxCredentialBinding` |
+| `hosts/linux/monitor/LinuxClockTests.bend` | Synthetic trusted-sample watermark, poison, cleanup and guarded-branch checks | `Tests.bend` as `LinuxClock` |
 
 No C, JavaScript, or other native file is in `hosts/linux/`. This tree does
 not include the separate branch’s unfinished protected-worker broker or
@@ -32,7 +33,8 @@ distinct public WritFS canary and have their own native inventory and evidence.
 
 The shared `open_session_result` exposes the session returned by the same
 identity transition. Linux Launch returns that value in memory as `Opened`;
-`LINUXMON1` still renders its prior diagnostic reply, without a session receipt.
+`LINUXMON1` retains its prior ordinary diagnostic replies, without a session
+receipt, and adds `CLOCKFAULT` / `CLOCK` when the clock is poisoned.
 Neither the value nor its publicly constructible representation authenticates a
 caller or supplies correlation, replay protection or native host qualification.
 Existing numeric terminal bounds remain an open concern.
@@ -43,7 +45,24 @@ decision separately; a slot number is only a selector. The caller retains the
 returned state before performing its exact `StopEffects`. The action does not
 connect `Issuance.revoke` to an identity slot, establish a native revocation
 channel, stop a Linux process itself, or prove that FUSE or protected delivery
-uses this model. The wire formats and existing legacy canary path are unchanged.
+uses this model. The existing legacy canary path is unchanged.
+
+The model's `dispatch` and `serve` now take a supervisor-supplied `ClockSample`
+instead of a bare natural number. The clock high-water is separate from
+portable policy and credential state; it advances even when the request is
+denied or malformed. A missing, ambiguous, owner-reported overflow or regressing sample
+poisons new protected actions. Trusted `revoke` and `restart` still return the
+shared cleanup steps while preserving poison. `without_credentials` imports
+an unknown clock as poisoned. Equal samples are accepted, so the model cannot
+detect a stale, frozen, replayed or slow but nonregressing clock.
+
+The owner must actually sample a trusted clock, protect the sample channel,
+retain state before effects and preserve continuity across restart. Public Bend
+records and helpers cannot authenticate those facts or prevent an old state
+being restored. This is an in-memory consistency check, not the local authority
+owner, issuer/FUSE gate, native clock, durability or host qualification. The
+off-master WIP broker harness passed a request sequence as its old bare `now`;
+it is incompatible with this typed input and must not be treated as a clock.
 
 ## Authority
 

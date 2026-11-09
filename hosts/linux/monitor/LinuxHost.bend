@@ -138,7 +138,8 @@ import ../../../Transfer.bend as T
 # A rejected fact (`Untranslated`), undecodable bytes (`Undecoded`), or a frame
 # with no route in this task (`Unrouted`: a barrier request that is not a Use,
 # and a worker Complete or Release, whose HostPublication transitions are
-# section 2) runs no transition and returns the supplied state.
+# section 2) runs no policy transition. A trusted clock sample may have
+# advanced the clock component before this decision.
 #
 # Effects. `Outcome.effects` is the only effect list the broker executes. It
 # is `P.Step.effects` of the step a shared transition returned, and empty for
@@ -157,17 +158,21 @@ import ../../../Transfer.bend as T
 # admitted `DeliverInputs` is therefore issued only after the state recording
 # the worker `Running` is retained.
 #
-# Failure behavior: every refusal returns the supplied composite state and no
-# effect; a shared transition's denial is its `P.Denied` step unchanged.
-# Monitor time `now` is the monitor's trusted clock (host obligation (c)).
+# Failure behavior: every refusal preserves the supplied portable policy state
+# and credential records and has no effect; a shared transition's denial is
+# its `P.Denied` step unchanged. The separately retained clock may advance on
+# a denial or malformed input, or become poisoned after a bad sample. This
+# deliberately changes the older composite-state denial guarantee to meet
+# LH-012 without changing the shared policy denial law. Samples come only from
+# the trusted monitor owner, never from a worker or an untrusted frame.
 #
 # Public entry points: `linux_host`, `linux_incarnation`; `linux_worker_v1`,
 # `profile_name`, `required_controls`, `linux_controls`, `quota_limit`,
 # `linux_worker_profile`, `profiles`, `worker_role`, `initial`; the types
-# `State`, `Credential`, `CredentialRecords`, `Endpoint`, `LinuxRoute`, `LinuxFact`, `Rejection`,
+# `State`, `Clock`, `ClockSample`, `Credential`, `CredentialRecords`, `Endpoint`, `LinuxRoute`, `LinuxFact`, `Rejection`,
 # `EvidenceResult`, `ReportResult`, `BrokerFrame`, `Input`, `Outcome`; the
 # translators `launch_check`, `session_check`, `credential_check`, `session_evidence_of`, `report_of`,
-# `inventory_of`; `portable`, `credentials`, `without_credentials`, `restart`, `revoke`,
+# `inventory_of`; `portable`, `credentials`, `clock`, `without_credentials`, `restart`, `revoke`,
 # `dispatch`, `serve`, `next`, `Outcome.state`, `Outcome.effects`, and
 # `Rejection.equal`. Every other def is an implementation helper.
 
@@ -221,7 +226,7 @@ def worker_role() -> P.Role:
 # The Linux monitor's starting state: an empty identity table on this host
 # and incarnation, with the configured profile table.
 def initial() -> State:
-  State{P.empty(I.empty(linux_host(), linux_incarnation()), profiles()), NoCredentials{}}
+  State{P.empty(I.empty(linux_host(), linux_incarnation()), profiles()), NoCredentials{}, FreshClock{}}
 
 # --- Native facts (what the broker frames) ----------------------------------------
 
@@ -237,20 +242,58 @@ type CredentialRecords is Data:
   NoCredentials{}
   CredentialRecord{incarnation: Nat, session: Nat, credential: Credential, rest: CredentialRecords}
 
+# The owner supplies a checked sample before every untrusted request. Failed
+# samples and regression poison the clock permanently for this instance.
+# These public values do not authenticate the source or resist rollback. An
+# equal sample is permitted; a frozen, replayed or slow clock is not detected.
+type Clock is Data:
+  FreshClock{}
+  LiveClock{high: Nat}
+  PoisonedClock{high: Maybe<&2, Nat>}
+
+type ClockSample is Data:
+  Sample{now: Nat}
+  UnavailableClock{}
+  AmbiguousClock{}
+  OverflowClock{}
+
 type State is Data:
-  State{portable: P.State, credentials: CredentialRecords}
+  State{portable: P.State, credentials: CredentialRecords, clock: Clock}
 
 def portable(state: State) -> P.State:
   match state:
-    case State{p, _}: p
+    case State{p, _, _}: p
 
 def credentials(state: State) -> CredentialRecords:
   match state:
-    case State{_, records}: records
+    case State{_, records, _}: records
+
+def clock(state: State) -> Clock:
+  match state:
+    case State{_, _, value}: value
+
+def clock_poison(value: Clock) -> Clock:
+  match value:
+    case FreshClock{}: PoisonedClock{None{}}
+    case LiveClock{high}: PoisonedClock{Some{high}}
+    case PoisonedClock{high}: PoisonedClock{high}
+
+def clock_update(value: Clock, sample: ClockSample) -> Clock:
+  match value sample:
+    case FreshClock{} Sample{now}: LiveClock{now}
+    case LiveClock{+high} Sample{+now}:
+      Bool.pick(Clock, Nat.is_le(high, now), LiveClock{now}, PoisonedClock{Some{high}})
+    case PoisonedClock{high} _: PoisonedClock{high}
+    case _ _: clock_poison(value)
+
+def clock_current(value: Clock, now: Nat) -> Bool:
+  match value:
+    case LiveClock{high}: Nat.is_eq(high, now)
+    case _: False{}
 
 # Importing a primitive state never invents provenance for its sessions.
 def without_credentials(state: P.State) -> State:
-  State{state, NoCredentials{}}
+  State{state, NoCredentials{}, PoisonedClock{None{}}}
 
 # Count all same-incarnation, same-session records; ambiguous state refuses.
 type CredentialLookup is Data:
@@ -477,41 +520,51 @@ type Input is Data:
 # transition for a successful Launch. It is an in-memory descriptive value,
 # not a correlated wire receipt or evidence of native caller authentication.
 # `Stepped` holds any other step a shared transition returned;
-# `Checked` a read-only `P.use` result with the unchanged state; the other
-# three ran no transition and hold the supplied state.
+# `Checked` a read-only `P.use` result; the other three run no policy
+# transition. They retain the state after the independent clock sample.
 type Outcome is Data:
   Opened{state: State, session: Nat}
-  Stepped{credentials: CredentialRecords, step: P.Step}
+  Stepped{credentials: CredentialRecords, clock: Clock, step: P.Step}
   Checked{state: State, result: P.UseResult}
   Untranslated{state: State, reason: Rejection}
   Undecoded{state: State, reason: W.WireError}
   Unrouted{state: State}
+  ClockFault{state: State}
 
 def Outcome.state(outcome: Outcome) -> State:
   match outcome:
     case Opened{state, _}: state
-    case Stepped{records, step}: State{P.Step.state(step), records}
+    case Stepped{records, time, step}: State{P.Step.state(step), records, time}
     case Checked{state, _}: state
     case Untranslated{state, _}: state
     case Undecoded{state, _}: state
     case Unrouted{state}: state
+    case ClockFault{state}: state
 
 def Outcome.effects(outcome: Outcome) -> +List<P.Effect>:
   match outcome:
-    case Stepped{_, step}: P.Step.effects(step)
+    case Stepped{_, _, step}: P.Step.effects(step)
     case _: []
 
-def stepped(+state: State, +step: P.Step) -> Outcome:
-  Stepped{credentials(state), step}
+# Faulting changes only the clock, never policy state or launch credentials.
+def clock_fault(state: State) -> Outcome:
+  match state:
+    case State{p, records, time}: ClockFault{State{p, records, clock_poison(time)}}
 
-# Clear launch bindings only when the shared restart actually commits.
-def restart_result(+step: P.Step, state: State) -> Outcome:
-  match step:
-    case P.Admitted{_, _}: Stepped{NoCredentials{}, step}
-    case P.Denied{_, _}: Stepped{credentials(state), step}
+# The trusted caller of this existing implementation helper must supply the
+# actual same-call shared Step. This helper cannot verify Step provenance;
+# public constructors/Steps are not authenticated and cannot establish effects.
+def stepped(+state: State, +step: P.Step, now: Nat) -> Outcome:
+  f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+    x => Stepped{credentials(state), clock(state), step}, x => clock_fault(state))
+  f(Unit{})
 
+# Clear launch bindings only when the shared restart actually commits. The
+# cleanup result is derived here, never supplied as an arbitrary Step.
 def restart(+state: State, +expected_revision: Nat, successor: Nat) -> Outcome:
-  restart_result(H.restart(portable(state), expected_revision, successor), state)
+  +step = H.restart(portable(state), expected_revision, successor)
+  accepted = Bool.not(Maybe.is_some(&2, P.Error, P.Step.reason(step)))
+  Stepped{Bool.pick(CredentialRecords, accepted, NoCredentials{}, credentials(state)), clock(state), step}
 
 # Trusted in-process monitor action: authorization to retire this slot has
 # already been established by the owning monitor, never by worker bytes or a
@@ -519,28 +572,34 @@ def restart(+state: State, +expected_revision: Nat, successor: Nat) -> Outcome:
 # This neither authenticates the action nor connects Issuance revocation or
 # any native transport; the shared transition supplies all checks and effects.
 def revoke(+state: State, +expected_revision: Nat, +slot: Nat) -> Outcome:
-  stepped(state, H.revoke(portable(state), expected_revision, slot))
+  Stepped{credentials(state), clock(state), H.revoke(portable(state), expected_revision, slot)}
 
 def current_incarnation(state: State) -> Nat:
   I.incarnation(P.identity(portable(state)))
 
-def launch_result(+result: P.SessionOpen, +state: State, credential: Credential) -> Outcome:
+def launch_result(+result: P.SessionOpen, +state: State, credential: Credential, now: Nat) -> Outcome:
   match result:
     case P.SessionOpened{p, session}:
-      Opened{State{p, CredentialRecord{current_incarnation(state), session, credential, credentials(state)}}, session}
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => Opened{State{p, CredentialRecord{current_incarnation(state), session, credential, credentials(state)},
+          clock(state)}, session}, x => clock_fault(state))
+      f(Unit{})
     case P.SessionOpenDenied{_, _}:
-      stepped(state, P.SessionOpen.step(result))
+      stepped(state, P.SessionOpen.step(result), now)
 
-def launch_report(report: ReportResult, +state: State, evidence: P.Fact, credential: Credential) -> Outcome:
+def launch_report(report: ReportResult, +state: State, evidence: P.Fact, credential: Credential, +now: Nat) -> Outcome:
   match report:
     case Report{target}:
       +p = portable(state)
-      launch_result(P.open_session_result(p, P.revision(p), target, evidence, worker_role()), state, credential)
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => launch_result(P.open_session_result(p, P.revision(p), target, evidence, worker_role()), state, credential, now),
+        x => clock_fault(state))
+      f(Unit{})
     case NoReport{reason}: Untranslated{state, reason}
 
-def launch_with(evidence: EvidenceResult, report: ReportResult, +state: State, credential: Credential) -> Outcome:
+def launch_with(evidence: EvidenceResult, report: ReportResult, +state: State, credential: Credential, now: Nat) -> Outcome:
   match evidence:
-    case Evidence{fact}: launch_report(report, state, fact, credential)
+    case Evidence{fact}: launch_report(report, state, fact, credential, now)
     case NoEvidence{reason}: Untranslated{state, reason}
 
 def barrier_checks(+fact: LinuxFact, +state: State, +session: Nat) -> Maybe<&2, Rejection>:
@@ -558,7 +617,10 @@ def barrier_with(found: Maybe<&2, Rejection>, message: W.Message, report: P.Targ
       match message:
         case W.Use{ref, _, _, _}:
           +p = portable(state)
-          stepped(state, P.admit_worker(p, P.revision(p), report, inventory, session, ref, now))
+          f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+            x => stepped(state, P.admit_worker(p, P.revision(p), report, inventory, session, ref, now), now),
+            x => clock_fault(state))
+          f(Unit{})
         case _: Unrouted{state}
 
 # Recheck provenance even when this helper is called directly.
@@ -589,43 +651,84 @@ def on_broker(+state: State, frame: BrokerFrame, +now: Nat) -> Outcome:
     case Launch{+fact}:
       match fact:
         case LinuxFact{_, _, _, credential, _, _, _, _, _}:
-          launch_with(session_evidence_of(fact, current_incarnation(state)), report_of(fact), state, credential)
+          f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+            x => launch_with(session_evidence_of(fact, current_incarnation(state)), report_of(fact), state, credential, now),
+            x => clock_fault(state))
+          f(Unit{})
     case Barrier{+session, +fact, request}:
-      barrier_preflight(barrier_checks(fact, state, session), report_of(fact), inventory_of(fact), state,
-        session, fact, W.decode_bytes(request), now)
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => barrier_preflight(barrier_checks(fact, state, session), report_of(fact), inventory_of(fact), state,
+          session, fact, W.decode_bytes(request), now), x => clock_fault(state))
+      f(Unit{})
     case Usage{worker, amount}:
       +p = portable(state)
-      stepped(state, P.charge(p, P.revision(p), P.ResourceRequest{worker, amount}, now))
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => stepped(state, P.charge(p, P.revision(p), P.ResourceRequest{worker, amount}, now), now),
+        x => clock_fault(state))
+      f(Unit{})
     case Emission{worker, public}:
       +p = portable(state)
-      stepped(state, P.diagnostic(p, P.revision(p), P.Diagnostic{worker, public}, now))
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => stepped(state, P.diagnostic(p, P.revision(p), P.Diagnostic{worker, public}, now), now),
+        x => clock_fault(state))
+      f(Unit{})
 
 def worker_message(+message: W.Message, +state: State, +session: Nat, +now: Nat) -> Outcome:
   match message:
     case W.Use{_, _, _, _}:
       +p = portable(state)
-      Checked{state, P.use(p, P.revision(p), session, message, now)}
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => Checked{state, P.use(p, P.revision(p), session, message, now)}, x => clock_fault(state))
+      f(Unit{})
     case W.Delegate{ref, rights, lifetime, target}:
       +p = portable(state)
-      stepped(state, P.delegate(p, P.revision(p), session, ref, U32.to_nat(target), rights, U32.to_nat(lifetime), now))
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => stepped(state, P.delegate(p, P.revision(p), session, ref, U32.to_nat(target), rights, U32.to_nat(lifetime), now), now),
+        x => clock_fault(state))
+      f(Unit{})
     case _: Unrouted{state}
 
 def on_worker(+state: State, +session: Nat, decoded: W.DecodeResult, +now: Nat) -> Outcome:
   match decoded:
     case W.Decoded{message}: worker_message(message, state, session, now)
-    case W.Malformed{reason}: Undecoded{state, reason}
+    case W.Malformed{reason}:
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => Undecoded{state, reason}, x => clock_fault(state))
+      f(Unit{})
 
-def dispatch(+state: State, input: Input, +now: Nat) -> Outcome:
+# Trusted implementation helper, not a broker/native entry. Equality with a
+# retained high-water mark does not prove this is a fresh physical sample;
+# the private owner must call `dispatch` or `serve` with an actual new sample.
+def route_sampled(+state: State, input: Input, +now: Nat) -> Outcome:
   match input:
-    case FromBroker{frame}: on_broker(state, frame, now)
-    case FromWorker{+session, bytes}: on_worker(state, session, W.decode_bytes(bytes), now)
+    case FromBroker{frame}:
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => on_broker(state, frame, now), x => clock_fault(state))
+      f(Unit{})
+    case FromWorker{+session, bytes}:
+      f = Bool.pick(Unit -> Outcome, clock_current(clock(state), now),
+        x => on_worker(state, session, W.decode_bytes(bytes), now), x => clock_fault(state))
+      f(Unit{})
+
+# The sample is supplied by the trusted owner, not by `Input`. A malformed or
+# denied request still retains the sampled clock independently of policy.
+def dispatch(state: State, input: Input, sample: ClockSample) -> Outcome:
+  match state sample:
+    case State{p, records, old} Sample{+now}:
+      +updated = clock_update(old, Sample{now})
+      +next = {State{p, records, updated} : State}
+      f = Bool.pick(Unit -> Outcome, clock_current(updated, now),
+        x => route_sampled(next, input, now), x => clock_fault(next))
+      f(Unit{})
+    case State{p, records, old} _:
+      ClockFault{State{p, records, clock_poison(old)}}
 
 # --- Broker channel codec and monitor service (task 1.2) --------------------------
 #
-# The byte layout the native broker (contrib/native-hosts/linux/broker.c)
-# writes to the monitor's private request channel, and the one reply line the
+# The proposed broker frame layout for the monitor's private request channel,
+# and the one reply line the
 # monitor returns. The codec is a boundary, not policy: it turns bytes into an
-# `Input` and runs `dispatch`; every decision is still the translators' and
+# `Input` and runs the same checked route as `dispatch`; every decision is still the translators' and
 # the shared transitions'. It does not check family or control bits (that is
 # `report_of`'s UnknownFamily/UncreditedControl) and never reads a worker's
 # request bytes (they reach only `W.decode_bytes` through `dispatch`).
@@ -659,9 +762,9 @@ def dispatch(+state: State, input: Input, +now: Nat) -> Outcome:
 # -> FrameLength; unknown tag -> FrameTag; a body shorter or longer than its
 # tag's layout -> FrameLength; an endpoint kind, mediated or public flag, route
 # count, or request count out of its bound -> FrameRange. An unframed input
-# runs no transition and keeps the supplied state.
+# runs no policy transition and keeps the state after the trusted sample.
 #
-# Service. `serve(state, bytes, now)` decodes and dispatches one frame;
+# Service. `serve(state, bytes, sample)` samples before decoding one frame;
 # `next` is the state the monitor retains before the broker performs
 # `served_effects`; `reply` is one ASCII line
 #   LINUXMON1 <TAB> status <TAB> detail <TAB> table <LF>
@@ -1034,13 +1137,23 @@ def decode_frame(+bytes: +List<U32>) -> FrameResult:
 def served_of(result: FrameResult, +state: State, +now: Nat) -> Served:
   match result:
     case Framed{input}:
-      Served{dispatch(state, input, now)}
+      Served{route_sampled(state, input, now)}
     case Unframed{reason}:
-      NotFramed{state, reason}
+      f = Bool.pick(Unit -> Served, clock_current(clock(state), now),
+        x => NotFramed{state, reason}, x => Served{clock_fault(state)})
+      f(Unit{})
 
-# Public entry point: decode one frame and apply it at monitor time `now`.
-def serve(+state: State, +bytes: +List<U32>, +now: Nat) -> Served:
-  served_of(decode_frame(bytes), state, now)
+# Sample before decoding; malformed input cannot suppress a clock observation.
+def serve(state: State, bytes: +List<U32>, sample: ClockSample) -> Served:
+  match state sample:
+    case State{p, records, old} Sample{+now}:
+      +updated = clock_update(old, Sample{now})
+      +next = {State{p, records, updated} : State}
+      f = Bool.pick(Unit -> Served, clock_current(updated, now),
+        x => served_of(decode_frame(bytes), next, now), x => Served{clock_fault(next)})
+      f(Unit{})
+    case State{p, records, old} _:
+      Served{ClockFault{State{p, records, clock_poison(old)}}}
 
 # Public entry point: the state the monitor retains before any effect.
 def next(served: Served) -> State:
@@ -1159,20 +1272,22 @@ def use_detail(result: P.UseResult) -> String:
 def outcome_status(outcome: Outcome) -> String:
   match outcome:
     case Opened{_, _}: "ADMITTED"
-    case Stepped{_, step}: step_status(step)
+    case Stepped{_, _, step}: step_status(step)
     case Checked{_, result}: use_status(result)
     case Untranslated{_, _}: "UNTRANSLATED"
     case Undecoded{_, _}: "UNDECODED"
     case Unrouted{_}: "UNROUTED"
+    case ClockFault{_}: "CLOCKFAULT"
 
 def outcome_detail(outcome: Outcome) -> String:
   match outcome:
     case Opened{_, _}: "effects=0"
-    case Stepped{_, step}: step_detail(step)
+    case Stepped{_, _, step}: step_detail(step)
     case Checked{_, result}: use_detail(result)
     case Untranslated{_, reason}: rejection_name(reason)
     case Undecoded{_, reason}: wire_error_name(reason)
     case Unrouted{_}: "-"
+    case ClockFault{_}: "CLOCK"
 
 def served_status(served: Served) -> String:
   match served:

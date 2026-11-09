@@ -1,0 +1,28 @@
+import Base
+import ./writ-linux-monitor-clock/hosts/linux/monitor/LinuxClockTests.bend as CT
+import ./writ-linux-monitor-clock/hosts/linux/monitor/LinuxHost.bend as LH
+import ./writ-linux-monitor-clock/hosts/linux/monitor/LinuxHostTests.bend as LT
+import ./writ-linux-monitor-clock/HostConformanceVectors.bend as V
+import ./writ-linux-monitor-clock/HostPrimitives.bend as P
+import ./writ-linux-monitor-clock/HostWire.bend as W
+
+def current_149(state: LH.State) -> LH.State:
+  match state:
+    case LH.State{p, records, _}: LH.State{p, records, LH.LiveClock{149n}}
+
+def run_decoded(decoded: W.DecodeResult, +state: LH.State) -> IO(Unit):
+  match decoded:
+    case W.Decoded{message}:
+      +result = LH.barrier_with(None{}, message, LT.linux_report(), LH.inventory_of(LT.full_fact()), state,
+        V.session_worker(), 149n)
+      IO.print(Nat.show(List.length(&2, P.Effect, LH.Outcome.effects(result))))
+    case _: IO.print("INVALID TRAP FIXTURE")
+
+def run_max(parsed: Maybe<&2, Nat>) -> IO(Unit):
+  match parsed:
+    case Some{max}:
+      run_decoded(W.decode_bytes(LT.input_use(V.claim_none())), current_149(CT.max_revision(LT.delegated(), max)))
+    case None{}: IO.print("INVALID MAX")
+
+def main() -> IO(Unit):
+  run_max(Nat.read("281474976710655"))

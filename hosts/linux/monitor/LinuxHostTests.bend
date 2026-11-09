@@ -254,7 +254,7 @@ def L() -> V.Adapter:
 
 # Fixture helpers retain the Linux-owned provenance alongside shared transitions.
 def apply_step(+state: LH.State, step: P.Step) -> LH.State:
-  LH.State{P.Step.state(step), LH.credentials(state)}
+  LH.State{P.Step.state(step), LH.credentials(state), LH.clock(state)}
 
 def credentials_equal(a: LH.CredentialRecords, b: LH.CredentialRecords) -> Bool:
   match a b:
@@ -263,7 +263,8 @@ def credentials_equal(a: LH.CredentialRecords, b: LH.CredentialRecords) -> Bool:
       Nat.is_eq(ai, bi) && Nat.is_eq(as, bs) && LH.credential_equal(ac, bc) && credentials_equal(ar, br)
     case _ _: False{}
 
-def state_equal(+a: LH.State, +b: LH.State) -> Bool:
+# Policy and credentials only; the independently sampled clock may advance.
+def policy_credentials_equal(+a: LH.State, +b: LH.State) -> Bool:
   PT.state_equal(LH.portable(a), LH.portable(b)) && credentials_equal(LH.credentials(a), LH.credentials(b))
 
 # --- Dispatch fixtures (the Linux monitor from `LH.initial()`) ----------------------
@@ -272,10 +273,10 @@ def now() -> Nat:
   V.now()
 
 def frame(+state: LH.State, f: LH.BrokerFrame) -> LH.Outcome:
-  LH.dispatch(state, LH.FromBroker{f}, now())
+  LH.dispatch(state, LH.FromBroker{f}, LH.Sample{now()})
 
 def worker_frame(+state: LH.State, +session: Nat, bytes: +List<U32>) -> LH.Outcome:
-  LH.dispatch(state, LH.FromWorker{session, bytes}, now())
+  LH.dispatch(state, LH.FromWorker{session, bytes}, LH.Sample{now()})
 
 def after(+outcome: LH.Outcome) -> LH.State:
   LH.Outcome.state(outcome)
@@ -353,30 +354,30 @@ def no_effect(+outcome: LH.Outcome) -> Bool:
 
 def step_denied(outcome: LH.Outcome, +input: LH.State, reason: P.Error) -> Bool:
   match outcome:
-    case LH.Stepped{_, step}:
+    case LH.Stepped{_, _, step}:
       PT.denied(step, LH.portable(input), reason)
     case _:
       False{}
 
-# A shared transition's denial with exactly `reason`, the input state, and
-# no effect.
+# A shared transition's denial with exactly `reason`, unchanged policy and
+# credential records, and no effect; the sampled clock may advance.
 def denied_as(+outcome: LH.Outcome, +input: LH.State, reason: P.Error) -> Bool:
-  no_effect(outcome) && step_denied(outcome, input, reason) && state_equal(LH.Outcome.state(outcome), input)
+  no_effect(outcome) && step_denied(outcome, input, reason) && policy_credentials_equal(LH.Outcome.state(outcome), input)
 
 def step_identity_denied(outcome: LH.Outcome, +input: LH.State, reason: I.Error) -> Bool:
   match outcome:
-    case LH.Stepped{_, step}:
+    case LH.Stepped{_, _, step}:
       PT.denied_identity(step, LH.portable(input), reason)
     case _:
       False{}
 
 def identity_denied(+outcome: LH.Outcome, +input: LH.State, reason: I.Error) -> Bool:
-  no_effect(outcome) && step_identity_denied(outcome, input, reason) && state_equal(LH.Outcome.state(outcome), input)
+  no_effect(outcome) && step_identity_denied(outcome, input, reason) && policy_credentials_equal(LH.Outcome.state(outcome), input)
 
 def untranslated_as(outcome: LH.Outcome, +input: LH.State, reason: LH.Rejection) -> Bool:
   match outcome:
     case LH.Untranslated{state, got}:
-      LH.Rejection.equal(got, reason) && state_equal(state, input)
+      LH.Rejection.equal(got, reason) && policy_credentials_equal(state, input)
     case _:
       False{}
 
@@ -388,7 +389,7 @@ def untranslated(+outcome: LH.Outcome, +input: LH.State, reason: LH.Rejection) -
 def undecoded_as(outcome: LH.Outcome, +input: LH.State, reason: W.WireError) -> Bool:
   match outcome:
     case LH.Undecoded{state, got}:
-      W.WireError.equal(got, reason) && state_equal(state, input)
+      W.WireError.equal(got, reason) && policy_credentials_equal(state, input)
     case _:
       False{}
 
@@ -398,7 +399,7 @@ def undecoded(+outcome: LH.Outcome, +input: LH.State, reason: W.WireError) -> Bo
 def unrouted_as(outcome: LH.Outcome, +input: LH.State) -> Bool:
   match outcome:
     case LH.Unrouted{state}:
-      state_equal(state, input)
+      policy_credentials_equal(state, input)
     case _:
       False{}
 
@@ -408,7 +409,7 @@ def unrouted(+outcome: LH.Outcome, +input: LH.State) -> Bool:
 def checked_as(outcome: LH.Outcome, +input: LH.State, +slot: Nat, caller: F.Caller) -> Bool:
   match outcome:
     case LH.Checked{state, P.Granted{+entry, got}}:
-      state_equal(state, input) && Nat.is_eq(I.entry_slot(entry), slot) && I.caller_equal(got, caller)
+      policy_credentials_equal(state, input) && Nat.is_eq(I.entry_slot(entry), slot) && I.caller_equal(got, caller)
         && W.Ref.equal(P.entry_ref(P.identity(LH.portable(input)), entry), input_ref())
     case _:
       False{}
@@ -422,7 +423,7 @@ def admitted_with(+outcome: LH.Outcome, +revision: Nat, effects: +List<P.Effect>
   match outcome:
     case LH.Opened{state, _}:
       Nat.is_eq(P.revision(LH.portable(state)), revision) && PT.effects_equal([], effects)
-    case LH.Stepped{_, P.Admitted{state, got}}:
+    case LH.Stepped{_, _, P.Admitted{state, got}}:
       Nat.is_eq(P.revision(state), revision) && PT.effects_equal(got, effects)
     case _:
       False{}
@@ -519,7 +520,8 @@ def accelerator_profiles() -> P.Profiles:
 def accelerator_delegated() -> LH.State:
   +s = P.empty(I.empty(LH.linux_host(), LH.linux_incarnation()), accelerator_profiles())
   +client = P.Step.state(P.open_session(s, P.revision(s), linux_report(), V.client_evidence(), V.client_role()))
-  delegated_in(after(frame(rooted_in(LH.without_credentials(client)), LH.Launch{full_fact()})))
+  # Synthetic clock state isolates the accelerator decision, not host recovery.
+  delegated_in(after(frame(rooted_in(LH.State{client, LH.NoCredentials{}, LH.LiveClock{now()}}), LH.Launch{full_fact()})))
 
 def accelerator_refused() -> Bool:
   denied_as(barrier_on(accelerator_delegated(), full_fact()), accelerator_delegated(), P.UnisolatedAccelerator{})
@@ -530,21 +532,21 @@ def profile_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(constants_ok(), "LH-001 linux_host and linux_incarnation are nonzero, differ from adapters A and B, and the profile is named linux-worker-v1 with a nonzero quota")
     Test.check(initial_ok(), "LH-001 initial() is a valid empty state on the Linux host and incarnation whose only configured profile is linux-worker-v1: every family, every control but accelerator isolation, Cpu, quota_limit")
-    Test.check(other_profile_unknown(), "LH-001 a worker session under any profile id but linux-worker-v1 is denied UnknownProfile with the state unchanged and no effect")
-    Test.check(omitting_control(P.control_address_isolation()), "LH-005 a barrier report without control_address_isolation is denied MissingControl with the state unchanged and no effect")
-    Test.check(omitting_control(P.control_no_ambient_network()), "LH-005 a barrier report without control_no_ambient_network is denied MissingControl with the state unchanged and no effect")
-    Test.check(omitting_control(P.control_output_mediation()), "LH-005 a barrier report without control_output_mediation is denied MissingControl with the state unchanged and no effect")
-    Test.check(omitting_control(P.control_quota()), "LH-005 a barrier report without control_quota is denied MissingControl with the state unchanged and no effect")
-    Test.check(omitting_control(P.control_no_inherited_routes()), "LH-005 a barrier report without control_no_inherited_routes is denied MissingControl with the state unchanged and no effect")
+    Test.check(other_profile_unknown(), "LH-001 a worker session under any profile id but linux-worker-v1 is denied UnknownProfile with the policy state unchanged and no effect")
+    Test.check(omitting_control(P.control_address_isolation()), "LH-005 a barrier report without control_address_isolation is denied MissingControl with the policy state unchanged and no effect")
+    Test.check(omitting_control(P.control_no_ambient_network()), "LH-005 a barrier report without control_no_ambient_network is denied MissingControl with the policy state unchanged and no effect")
+    Test.check(omitting_control(P.control_output_mediation()), "LH-005 a barrier report without control_output_mediation is denied MissingControl with the policy state unchanged and no effect")
+    Test.check(omitting_control(P.control_quota()), "LH-005 a barrier report without control_quota is denied MissingControl with the policy state unchanged and no effect")
+    Test.check(omitting_control(P.control_no_inherited_routes()), "LH-005 a barrier report without control_no_inherited_routes is denied MissingControl with the policy state unchanged and no effect")
 
 def admission_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(every_family_required(), "LH-001 a barrier report omitting any one of the five families is denied UnsupportedFamily with the state unchanged and no effect")
-    Test.check(launch_without_session_family(), "LH-001 a Launch whose report omits family_session is denied UnsupportedFamily by open_session with the state unchanged and no effect")
+    Test.check(every_family_required(), "LH-001 a barrier report omitting any one of the five families is denied UnsupportedFamily with the policy state unchanged and no effect")
+    Test.check(launch_without_session_family(), "LH-001 a Launch whose report omits family_session is denied UnsupportedFamily by open_session with the policy state unchanged and no effect")
     Test.check(complete_report_admits(), "LH-001 LH-003 a barrier report with every required control admits once and its only effect, in the step and in Outcome.effects, is one DeliverInputs naming the worker's input")
     Test.check(retained_before_delivery(), "LH-003 the state retained before DeliverInputs records the worker Running on the worker session with the delivered input reference")
-    Test.check(accelerator_refused(), "LH-001 under a hypothetical accelerator profile the Linux report is denied UnisolatedAccelerator by the shared path with the state unchanged and no effect")
-    Test.check(denied_as(barrier_on(delegated(), leaky_fact()), delegated(), P.UnmediatedRoute{}), "LH-004 a barrier inventory with an unmediated inherited descriptor is denied UnmediatedRoute with the state unchanged and no effect")
+    Test.check(accelerator_refused(), "LH-001 under a hypothetical accelerator profile the Linux report is denied UnisolatedAccelerator by the shared path with the policy state unchanged and no effect")
+    Test.check(denied_as(barrier_on(delegated(), leaky_fact()), delegated(), P.UnmediatedRoute{}), "LH-004 a barrier inventory with an unmediated inherited descriptor is denied UnmediatedRoute with the policy state unchanged and no effect")
 
 # --- Translator checks --------------------------------------------------------------
 
@@ -594,43 +596,43 @@ def barrier_session(session: Nat) -> LH.Outcome:
 
 def restart_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(untranslated(frame(restarted(), LH.Launch{full_fact()}), restarted(), LH.StaleLaunch{}), "LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect")
+    Test.check(untranslated(frame(restarted(), LH.Launch{full_fact()}), restarted(), LH.StaleLaunch{}), "LH-002 LH-008 after a restart a Launch carrying the previous incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect")
     Test.check(restart_ok(), "LH-002 after a restart a Launch carrying the successor incarnation's launch record opens a worker session with the launch caller and no effect")
-    Test.check(untranslated(frame(restarted(), barrier_of(full_fact(), input_use(V.claim_none()))), restarted(), LH.StaleLaunch{}), "LH-002 LH-008 after a restart a Barrier carrying the previous incarnation's launch record is refused StaleLaunch with the state unchanged and no effect")
+    Test.check(untranslated(frame(restarted(), barrier_of(full_fact(), input_use(V.claim_none()))), restarted(), LH.StaleLaunch{}), "LH-002 LH-008 after a restart a Barrier carrying the previous incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect")
 
 def session_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(untranslated(barrier_on(delegated(), foreign_fact()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the state unchanged and no effect")
-    Test.check(untranslated(barrier_on(delegated(), other_token_fact()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier whose fact names the session's subject with another token is refused SessionMismatch with the state unchanged and no effect")
-    Test.check(untranslated(barrier_session(V.session_client()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier attributing the worker's fact to the client session is refused SessionMismatch with the state unchanged and no effect")
-    Test.check(untranslated(barrier_session(9n), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier naming a session the identity table does not hold is refused SessionMismatch with the state unchanged and no effect")
+    Test.check(untranslated(barrier_on(delegated(), foreign_fact()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier on the worker session whose fact names another subject, token, and process is refused SessionMismatch with the policy state unchanged and no effect")
+    Test.check(untranslated(barrier_on(delegated(), other_token_fact()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier whose fact names the session's subject with another token is refused SessionMismatch with the policy state unchanged and no effect")
+    Test.check(untranslated(barrier_session(V.session_client()), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier attributing the worker's fact to the client session is refused SessionMismatch with the policy state unchanged and no effect")
+    Test.check(untranslated(barrier_session(9n), delegated(), LH.SessionMismatch{}), "LH-002 a Barrier naming a session the identity table does not hold is refused SessionMismatch with the policy state unchanged and no effect")
 
 def launch_dispatch_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(launch_ok(), "LH-002 a broker Launch opens one non-delegable worker session with the launch caller bound to linux-worker-v1 and no effect")
-    Test.check(untranslated(frame(rooted(), LH.Launch{peer_fact(parent_credential())}), rooted(), LH.PeerMismatch{}), "LH-002 a Launch from a socketpair parent is refused PeerMismatch before any transition with the state unchanged and no effect")
-    Test.check(untranslated(frame(rooted(), LH.Launch{stale_fact()}), rooted(), LH.StaleLaunch{}), "LH-002 a Launch with another incarnation's launch record is refused StaleLaunch with the state unchanged and no effect")
-    Test.check(untranslated(frame(rooted(), LH.Launch{families_fact(with_bit(P.all_families(), unnamed_bit()))}), rooted(), LH.UnknownFamily{}), "LH-001 a Launch reporting an unknown family bit is refused UnknownFamily with the state unchanged and no effect")
-    Test.check(untranslated(frame(rooted(), LH.Launch{controls_fact(with_bit(LH.required_controls(), P.control_accelerator_isolation()))}), rooted(), LH.UncreditedControl{}), "LH-001 a Launch crediting accelerator isolation is refused UncreditedControl with the state unchanged and no effect")
+    Test.check(untranslated(frame(rooted(), LH.Launch{peer_fact(parent_credential())}), rooted(), LH.PeerMismatch{}), "LH-002 a Launch from a socketpair parent is refused PeerMismatch before any transition with the policy state unchanged and no effect")
+    Test.check(untranslated(frame(rooted(), LH.Launch{stale_fact()}), rooted(), LH.StaleLaunch{}), "LH-002 a Launch with another incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect")
+    Test.check(untranslated(frame(rooted(), LH.Launch{families_fact(with_bit(P.all_families(), unnamed_bit()))}), rooted(), LH.UnknownFamily{}), "LH-001 a Launch reporting an unknown family bit is refused UnknownFamily with the policy state unchanged and no effect")
+    Test.check(untranslated(frame(rooted(), LH.Launch{controls_fact(with_bit(LH.required_controls(), P.control_accelerator_isolation()))}), rooted(), LH.UncreditedControl{}), "LH-001 a Launch crediting accelerator isolation is refused UncreditedControl with the policy state unchanged and no effect")
 
 def barrier_dispatch_checks() -> IO(Unit):
   do IO<Unit>:
-    Test.check(untranslated(barrier_on(delegated(), stale_fact()), delegated(), LH.StaleLaunch{}), "LH-002 a Barrier with another incarnation's launch record is refused StaleLaunch with the state unchanged and no effect")
-    Test.check(untranslated(barrier_on(delegated(), peer_fact(reused_pid_credential())), delegated(), LH.PeerMismatch{}), "LH-002 a Barrier from a reused pid is refused PeerMismatch with the state unchanged and no effect")
-    Test.check(untranslated(barrier_on(delegated(), controls_fact(with_bit(LH.required_controls(), unnamed_bit()))), delegated(), LH.UncreditedControl{}), "LH-001 a Barrier crediting an unnamed control is refused UncreditedControl with the state unchanged and no effect")
-    Test.check(undecoded(frame(delegated(), barrier_of(full_fact(), short_bytes())), delegated(), W.BadLength{}), "LH-006 a Barrier whose request snapshot is not a whole frame is Undecoded with the state unchanged and no effect")
-    Test.check(unrouted(frame(delegated(), barrier_of(full_fact(), worker_delegation())), delegated()), "LH-006 a Barrier whose request is not a Use admits nothing: Unrouted with the state unchanged and no effect")
-    Test.check(state_equal(after(frame(delegated(), barrier_of(full_fact(), input_use(V.claim_other())))), admitted()), "LH-002 a Barrier request claiming subject B admits exactly as the unclaimed request")
+    Test.check(untranslated(barrier_on(delegated(), stale_fact()), delegated(), LH.StaleLaunch{}), "LH-002 a Barrier with another incarnation's launch record is refused StaleLaunch with the policy state unchanged and no effect")
+    Test.check(untranslated(barrier_on(delegated(), peer_fact(reused_pid_credential())), delegated(), LH.PeerMismatch{}), "LH-002 a Barrier from a reused pid is refused PeerMismatch with the policy state unchanged and no effect")
+    Test.check(untranslated(barrier_on(delegated(), controls_fact(with_bit(LH.required_controls(), unnamed_bit()))), delegated(), LH.UncreditedControl{}), "LH-001 a Barrier crediting an unnamed control is refused UncreditedControl with the policy state unchanged and no effect")
+    Test.check(undecoded(frame(delegated(), barrier_of(full_fact(), short_bytes())), delegated(), W.BadLength{}), "LH-006 a Barrier whose request snapshot is not a whole frame is Undecoded with the policy state unchanged and no effect")
+    Test.check(unrouted(frame(delegated(), barrier_of(full_fact(), worker_delegation())), delegated()), "LH-006 a Barrier whose request is not a Use admits nothing: Unrouted with the policy state unchanged and no effect")
+    Test.check(policy_credentials_equal(after(frame(delegated(), barrier_of(full_fact(), input_use(V.claim_other())))), admitted()), "LH-002 a Barrier request claiming subject B admits exactly as the unclaimed request")
 
 def worker_dispatch_checks() -> IO(Unit):
   do IO<Unit>:
     Test.check(checked_at(worker_frame(admitted(), V.session_worker(), input_use(V.claim_other())), admitted(), V.slot_of(L(), V.Input{}), V.client_caller()) && checked_at(worker_frame(admitted(), V.session_worker(), input_use(V.claim_none())), admitted(), V.slot_of(L(), V.Input{}), V.client_caller()), "LH-002 a worker Use claiming subject B on A's session resolves to A's entry, reference, and owner, as with no claim, read-only with no effect")
-    Test.check(identity_denied(worker_frame(admitted(), V.session_worker(), worker_delegation()), admitted(), I.NotDelegable{}), "LH-007 a worker Delegate from the worker session is denied NotDelegable with the state unchanged and no effect")
-    Test.check(undecoded(worker_frame(admitted(), V.session_worker(), short_bytes()), admitted(), W.BadLength{}), "LH-006 worker bytes that are not a whole frame are Undecoded with the state unchanged and no effect")
-    Test.check(unrouted(worker_frame(admitted(), V.session_worker(), V.complete_bytes(input_ref())), admitted()) && unrouted(worker_frame(admitted(), V.session_worker(), release_bytes(input_ref())), admitted()), "LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the state unchanged and no effect")
+    Test.check(identity_denied(worker_frame(admitted(), V.session_worker(), worker_delegation()), admitted(), I.NotDelegable{}), "LH-007 a worker Delegate from the worker session is denied NotDelegable with the policy state unchanged and no effect")
+    Test.check(undecoded(worker_frame(admitted(), V.session_worker(), short_bytes()), admitted(), W.BadLength{}), "LH-006 worker bytes that are not a whole frame are Undecoded with the policy state unchanged and no effect")
+    Test.check(unrouted(worker_frame(admitted(), V.session_worker(), V.complete_bytes(input_ref())), admitted()) && unrouted(worker_frame(admitted(), V.session_worker(), release_bytes(input_ref())), admitted()), "LH-006 a worker Complete or Release runs no transition in section 1: Unrouted with the policy state unchanged and no effect")
     Test.check(usage_ok(), "PH-007 a broker Usage within quota_limit is charged once with no effect")
-    Test.check(denied_as(frame(charged(), LH.Usage{worker(), 25n}), charged(), P.QuotaExhausted{}), "PH-007 a broker Usage past quota_limit is denied QuotaExhausted with the state unchanged and no effect")
-    Test.check(denied_as(frame(admitted(), LH.Emission{worker(), True{}}), admitted(), P.DiagnosticSink{}) && admitted_with(frame(admitted(), LH.Emission{worker(), False{}}), 1n+P.revision(LH.portable(admitted())), []), "LH-009 a public worker emission is denied DiagnosticSink with the state unchanged; a confined one is admitted with no effect")
+    Test.check(denied_as(frame(charged(), LH.Usage{worker(), 25n}), charged(), P.QuotaExhausted{}), "PH-007 a broker Usage past quota_limit is denied QuotaExhausted with the policy state unchanged and no effect")
+    Test.check(denied_as(frame(admitted(), LH.Emission{worker(), True{}}), admitted(), P.DiagnosticSink{}) && admitted_with(frame(admitted(), LH.Emission{worker(), False{}}), 1n+P.revision(LH.portable(admitted())), []), "LH-009 a public worker emission is denied DiagnosticSink with the policy state unchanged; a confined one is admitted with no effect")
 
 # --- Conformance replay through the Linux adapter -----------------------------------
 
@@ -763,16 +765,16 @@ def synthetic_barrier_bytes(session: Nat, subject: Nat, token: T.CodeId, incarna
     U32.from_nat(List.length(&2, U32, request)) <> request))
 
 def synthetic_launch_served(launch: LH.Credential, peer: LH.Credential, incarnation: Nat) -> LH.Served:
-  LH.serve(rooted(), synthetic_launch_bytes(launch, peer, incarnation), now())
+  LH.serve(rooted(), synthetic_launch_bytes(launch, peer, incarnation), LH.Sample{now()})
 
 def synthetic_barrier_served(session: Nat, subject: Nat, token: T.CodeId, incarnation: Nat,
     launch: LH.Credential, peer: LH.Credential) -> LH.Served:
-  LH.serve(delegated(), synthetic_barrier_bytes(session, subject, token, incarnation, launch, peer), now())
+  LH.serve(delegated(), synthetic_barrier_bytes(session, subject, token, incarnation, launch, peer), LH.Sample{now()})
 
 def synthetic_denied(+served: LH.Served, +expected: LH.State, reason: LH.Rejection) -> Bool:
   match served:
     case LH.Served{outcome}:
-      untranslated(outcome, expected, reason) && state_equal(LH.next(served), expected)
+      untranslated(outcome, expected, reason) && policy_credentials_equal(LH.next(served), expected)
         && PT.effects_equal(LH.served_effects(served), [])
     case _:
       False{}
@@ -802,7 +804,7 @@ def synthetic_valid_launch() -> Bool:
 def synthetic_valid_barrier() -> Bool:
   +served = synthetic_barrier_served(V.session_worker(), subject_a(), launch_token(), LH.linux_incarnation(),
     launch_credential(), launch_credential())
-  state_equal(LH.next(served), admitted())
+  policy_credentials_equal(LH.next(served), admitted())
     && PT.effects_equal(LH.served_effects(served), [P.DeliverInputs{worker(), input_ref()}])
 
 def synthetic_high_start() -> LH.Credential:
@@ -856,8 +858,8 @@ def synthetic_unframed(result: LH.FrameResult, expected: LH.FrameError) -> Bool:
 def synthetic_served_unframed(+served: LH.Served, +expected: LH.State, reason: LH.FrameError) -> Bool:
   match served:
     case LH.NotFramed{state, got}:
-      LH.FrameError.equal(got, reason) && state_equal(state, expected)
-        && state_equal(LH.next(served), expected) && PT.effects_equal(LH.served_effects(served), [])
+      LH.FrameError.equal(got, reason) && policy_credentials_equal(state, expected)
+        && policy_credentials_equal(LH.next(served), expected) && PT.effects_equal(LH.served_effects(served), [])
     case _:
       False{}
 
@@ -869,8 +871,8 @@ def synthetic_frame_limit_checks() -> IO(Unit):
       "synthetic LINUXB rejects a frame one byte above the limit")
     Test.check(synthetic_unframed(LH.decode_frame(synthetic_zero_bytes(10000n, [])), LH.FrameTooLong{}),
       "synthetic LINUXB rejects a very oversized frame before packing")
-    Test.check(synthetic_served_unframed(LH.serve(rooted(), synthetic_zero_bytes(10000n, []), now()), rooted(),
-      LH.FrameTooLong{}), "synthetic LINUXB over-limit service leaves state unchanged")
+    Test.check(synthetic_served_unframed(LH.serve(rooted(), synthetic_zero_bytes(10000n, []), LH.Sample{now()}), rooted(),
+      LH.FrameTooLong{}), "synthetic LINUXB over-limit service leaves policy state unchanged")
     Test.check(synthetic_unframed(LH.decode_frame(256 <> synthetic_zero_bytes(512n, [])), LH.FrameTooLong{}),
       "synthetic LINUXB oversized frame takes precedence over out-of-range byte")
     Test.check(synthetic_unframed(LH.decode_frame(256 <> synthetic_zero_bytes(510n, [])), LH.FrameMisaligned{}),

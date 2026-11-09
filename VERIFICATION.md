@@ -1,5 +1,9 @@
 # Verification record
 
+The [Linux monitor clock record](verification/linux-monitor-clock/README.md)
+covers synthetic time samples, poison, cleanup and deferred decision branches.
+It does not establish a native clock, a joint FUSE/issuer owner or recovery.
+
 The [candidate local administrative channel analysis](openspec/changes/add-linux-host/local-supervisor-profile.md)
 records source-level constraints on SCM_PIDFD and pidfs; its [strict OpenSpec
 validation](verification/local-supervisor-profile/channel-openspec.txt) passed.

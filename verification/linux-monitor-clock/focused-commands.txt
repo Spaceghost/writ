@@ -1,0 +1,23 @@
+Source base: 6a63ab4; test and monitor sources are in the delivered tree.
+Bend: /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend, version 2.0.39.
+Node v26.10.0; clang 23.1.1, observed generated C compiled -O3.
+TMPDIR=/home/jadams/tmp/writ-linux-monitor-clock-build and BEND_NO_TELEMETRY=1 for Bend commands.
+
+timeout 180 nice -n 15 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend hosts/linux/monitor/LinuxClockTests.bend -o /home/jadams/tmp/writ-linux-monitor-clock-build/clock.js: exit 0 (node-build.txt empty).
+timeout 60 nice -n 15 node /home/jadams/tmp/writ-linux-monitor-clock-build/clock.js: exit 0 (node.txt).
+clock.js SHA-256: 3b075951b6f9bdf32467842b0ea2e96aa85a7cdfaf2c6ba04658b1bc6397374f.
+
+timeout 360 nice -n 15 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend hosts/linux/monitor/LinuxClockTests.bend -o /home/jadams/tmp/writ-linux-monitor-clock-build/clock-native: exit 0 (native-build.txt empty).
+timeout 120 nice -n 15 /home/jadams/tmp/writ-linux-monitor-clock-build/clock-native +RTS --threads 1 --gpu off: exit 0 (native.txt).
+clock-native SHA-256: 76beee413c4726616052e52c38714f30d8bba5b8ae2007391d11c3c999a6f46b.
+cmp node.txt native.txt: exit 0.
+
+The negative-control source trap-control.bend.txt was copied to /home/jadams/tmp/writ-linux-clock-trap.bend.
+timeout 60 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend /home/jadams/tmp/writ-linux-clock-trap.bend: exit 1 (trap-bend.txt).
+timeout 180 nice -n 15 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend /home/jadams/tmp/writ-linux-clock-trap.bend -o /home/jadams/tmp/writ-linux-monitor-clock-build/trap.js: exit 0 (trap-node-build.txt empty).
+timeout 60 nice -n 15 node /home/jadams/tmp/writ-linux-monitor-clock-build/trap.js: exit 1 (trap-node.txt).
+trap.js SHA-256: e21b11cee9ea50f57a5b1ddee99a5c17f784b8fe072dbfbcaa0d6410e5ab4850.
+timeout 360 nice -n 15 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend /home/jadams/tmp/writ-linux-clock-trap.bend -o /home/jadams/tmp/writ-linux-monitor-clock-build/trap-native: exit 0 (trap-native-build.txt empty).
+timeout 120 nice -n 15 /home/jadams/tmp/writ-linux-monitor-clock-build/trap-native +RTS --threads 1 --gpu off: exit 1 (trap-native.txt).
+trap-native SHA-256: 17836d82b4ccdd5bbe9dad090ede11922d403fb63248880c48b53fc95abe1763.
+Generated C, JavaScript and executables are outside the source tree.

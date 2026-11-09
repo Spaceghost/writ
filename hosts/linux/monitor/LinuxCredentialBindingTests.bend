@@ -36,13 +36,14 @@ def changed_pid() -> Bool:
 
 def missing() -> Bool:
   +s = LT.delegated()
-  +without = LH.without_credentials(LH.portable(s))
+  # Synthetic state isolates credential provenance from the clock-import gate.
+  +without = {LH.State{LH.portable(s), LH.NoCredentials{}, LH.clock(s)} : LH.State}
   denied(without, LT.full_fact(), LH.LaunchMismatch{})
 
 def duplicate() -> Bool:
   +s = LT.delegated()
   +with_duplicate = {LH.State{LH.portable(s), LH.CredentialRecord{LH.linux_incarnation(), V.session_worker(),
-    LT.launch_credential(), LH.credentials(s)}} : LH.State}
+    LT.launch_credential(), LH.credentials(s)}, LH.clock(s)} : LH.State}
   denied(with_duplicate, LT.full_fact(), LH.LaunchMismatch{})
 
 def third_opened() -> LH.State:
@@ -54,7 +55,7 @@ def swapped() -> Bool:
 def duplicate_launch_denial() -> Bool:
   +s = LT.rooted()
   LT.denied_as(LT.frame(s, LH.Launch{LT.families_fact(LT.without(P.all_families(), P.family_session()))}),
-    s, P.UnsupportedFamily{}) && LT.state_equal(LH.Outcome.state(LT.frame(s,
+    s, P.UnsupportedFamily{}) && LT.policy_credentials_equal(LH.Outcome.state(LT.frame(s,
       LH.Launch{LT.peer_fact(LT.parent_credential())})), s)
 
 def direct_use(decoded: W.DecodeResult) -> Bool:
@@ -125,7 +126,7 @@ def many_records(+fuel: Nat, records: LH.CredentialRecords) -> LH.CredentialReco
 
 def deep_records() -> Bool:
   +s = LT.delegated()
-  +deep = {LH.State{LH.portable(s), many_records(4096n, LH.credentials(s))} : LH.State}
+  +deep = {LH.State{LH.portable(s), many_records(4096n, LH.credentials(s)), LH.clock(s)} : LH.State}
   PT.effects_equal(LH.Outcome.effects(LT.barrier_on(deep, LT.full_fact())),
     [P.DeliverInputs{LT.worker(), LT.input_ref()}])
 
@@ -210,7 +211,7 @@ def revoke_twice() -> Bool:
 def served_retired(+served: LH.Served, +state: LH.State) -> Bool:
   match served:
     case LH.Served{outcome}:
-      LT.identity_denied(outcome, state, I.Retired{}) && LT.state_equal(LH.next(served), state)
+      LT.identity_denied(outcome, state, I.Retired{}) && LT.policy_credentials_equal(LH.next(served), state)
         && PT.effects_equal(LH.served_effects(served), [])
     case _: False{}
 
@@ -218,7 +219,7 @@ def revoke_then_serve() -> Bool:
   +s = LT.admitted()
   +after = LH.Outcome.state(LH.revoke(s, P.revision(LH.portable(s)), V.slot_of(LT.L(), V.Input{})))
   served_retired(LH.serve(after, LT.synthetic_barrier_bytes(V.session_worker(), LT.subject_a(), LT.launch_token(),
-    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LT.now()), after)
+    LH.linux_incarnation(), LT.launch_credential(), LT.launch_credential()), LH.Sample{LT.now()}), after)
 
 def changed_frame() -> Bool:
   LT.synthetic_denied(LT.synthetic_barrier_served(V.session_worker(), LT.subject_a(), LT.launch_token(),
@@ -243,10 +244,10 @@ def main() -> IO(Unit):
     Test.check(replaced(), "LH-binding: both credential fields replaced with a reused pid are denied")
     Test.check(changed_high(), "LH-binding: full-width start time is retained and compared")
     Test.check(changed_uid() && changed_gid() && changed_pid(), "LH-binding: uid, gid and pid changes are denied")
-    Test.check(missing(), "LH-binding: importing an arbitrary portable state cannot invent session provenance")
+    Test.check(missing(), "LH-binding: missing session provenance denies Barrier with a synthetic live clock")
     Test.check(duplicate(), "LH-binding: duplicate records for one session are ambiguous")
     Test.check(swapped(), "LH-binding: a different same-caller session cannot lend its credential")
-    Test.check(duplicate_launch_denial(), "LH-binding: denied launch leaves both states unchanged")
+    Test.check(duplicate_launch_denial(), "LH-binding: denied launch leaves policy and credential records unchanged")
     Test.check(direct_checked(), "LH-binding: direct barrier_use rechecks provenance")
     Test.check(many(), "LH-binding: more than eight launch records remain available")
     Test.check(recycled(), "LH-binding: accepted restart clears old bindings before an id is reused")

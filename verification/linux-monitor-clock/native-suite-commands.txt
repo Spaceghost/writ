@@ -1,0 +1,15 @@
+Base: 6a63ab4; Bend 2.0.39; clang 23.1.1. Build artifacts remained in /home/jadams/tmp/writ-linux-monitor-clock-build.
+
+Initial candidate (flat Linux tests) `bend Tests.bend -o tests.c` exited 1: native-suite-generate.txt.
+A grouped test driver without changing the session helper also exited 1: native-suite-grouped-generate.txt.
+Untouched base 6a63ab4 with the same compiler generated C successfully, exit 0; base C SHA-256 8e2d40b97808399ac032f755cf27c5e2ade57fd151bde3ac6915d37125e66b32.
+Bisect: other suites plus clock alone generated C; other suites plus the earlier Linux drivers and no clock driver failed, recorded in native-bisect-no-clock.txt. Further synthetic driver combinations isolated LinuxSessionOpenTests; in base C its `other_routes` continuation had arity 236. Extracting its four existing conjuncts in the same order produced full C successfully in an isolated candidate.
+
+Final source:
+TMPDIR=/home/jadams/tmp/writ-linux-monitor-clock-build BEND_NO_TELEMETRY=1 timeout 600 nice -n 15 /home/jadams/.local/share/writ-toolchains/bend-2.0.39/bend/bin/bend Tests.bend -o /home/jadams/tmp/writ-linux-monitor-clock-build/final-tests.c
+Exit 0; native-suite-final-generate.txt empty. Generated C SHA-256 dd68eedecbf02e400625dc18e968e62047de78561dd55603f99b5788a7d1a4ea.
+timeout 600 nice -n 15 clang -std=c11 -O0 -static /home/jadams/tmp/writ-linux-monitor-clock-build/final-tests.c -o /home/jadams/tmp/writ-linux-monitor-clock-build/final-tests-native -lpthread -lm
+Exit 0; native-suite-build.txt empty. The running compiler was capped at 16 GiB address space; native process inherited a 20 GiB address-space limit from its supervising shell.
+timeout 600 nice -n 15 /home/jadams/tmp/writ-linux-monitor-clock-build/final-tests-native +RTS --threads 1 --gpu off
+Exit 0; output native-suite.txt. Executable SHA-256 18fc2cc1e3e1d6f16706f939a0fdcf4aa255129709b9ef462623baa051830493.
+cmp tests-bend.txt native-suite.txt: exit 0.

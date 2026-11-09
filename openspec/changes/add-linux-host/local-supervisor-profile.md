@@ -207,6 +207,12 @@ new grants, metadata or byte observations, input delivery, publication and
 effect handoff. Revocation, retirement, quiescence and STOP remain available
 for safe cleanup. Poisoning cannot recall an effect already handed to the host.
 
+The Linux monitor model now retains a separate sampled watermark at its own
+`dispatch` and `serve` entry points and rejects poisoned protected actions.
+This is synthetic model behavior, not the combined owner: it does not sample a
+host clock or gate Issuance or the existing FUSE canary. It accepts equal samples
+and cannot detect a stale or frozen clock that does not regress.
+
 The existing Linux `CLOCK_MONOTONIC` use is for private-pipe deadlines; it is
 not an Issuance time source. A monotone clock may restart at a lower origin on
 reboot. The profile needs an independently justified continuity and

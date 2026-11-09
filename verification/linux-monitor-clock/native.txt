@@ -1,0 +1,16 @@
+PASS: LH-clock: denied expiry retains sample before later regression
+PASS: LH-clock: malformed frame retains sample before later regression
+PASS: LH-clock: first malformed frame retains its sample before regression
+PASS: LH-clock: unavailable ambiguous and overflow poison without policy change
+PASS: LH-clock: equal and increasing trusted samples permit current use
+PASS: LH-clock: healthy dispatch and framed serve retain exact delivery effect
+PASS: LH-clock: a later valid sample cannot clear poison
+PASS: LH-clock: portable import has no clock provenance and stays poisoned
+PASS: LH-clock: first unavailable sample poisons a fresh instance
+PASS: LH-clock: direct worker broker and barrier helpers reject stale time
+PASS: LH-clock: poisoned direct helpers cannot deliver or grant
+PASS: LH-clock: existing Step packager rejects an actual stale delivery
+PASS: LH-clock: revoke and restart preserve poison and exact stop effects
+PASS: LH-clock: denied cleanup preserves poison credentials and policy
+PASS: LH-clock: stale clock avoids evaluating overflow-prone admission
+LinuxClock: 15 checks passed

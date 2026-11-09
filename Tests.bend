@@ -29,6 +29,7 @@ import ./HostConformanceTests.bend as HostConformance
 import ./hosts/linux/monitor/LinuxHostTests.bend as LinuxHost
 import ./hosts/linux/monitor/LinuxSessionOpenTests.bend as LinuxSessionOpen
 import ./hosts/linux/monitor/LinuxCredentialBindingTests.bend as LinuxCredentialBinding
+import ./hosts/linux/monitor/LinuxClockTests.bend as LinuxClock
 import ./FacadeTests.bend as Facade
 import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
@@ -37,6 +38,13 @@ import ./AuditTests.bend as Audit
 import ./RendezvousTests.bend as Rendezvous
 import ./RendezvousBoundaryTests.bend as RendezvousBoundary
 import ./PropertyTests.bend as Properties
+
+def linux_tests() -> IO(Unit):
+  do IO<Unit>:
+    LinuxHost.main()
+    LinuxSessionOpen.main()
+    LinuxCredentialBinding.main()
+    LinuxClock.main()
 
 def main() -> IO(Unit):
   do IO<Unit>:
@@ -67,9 +75,7 @@ def main() -> IO(Unit):
     HostPrimitives.main()
     HostHandoff.main()
     HostConformance.main()
-    LinuxHost.main()
-    LinuxSessionOpen.main()
-    LinuxCredentialBinding.main()
+    linux_tests()
     Facade.main()
     LocalSupervisor.main()
     Issuance.main()
