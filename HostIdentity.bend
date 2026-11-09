@@ -198,6 +198,8 @@ type Error is Data:
   Expired{}
   UnknownSession{}
   StaleRevision{}
+  InvalidAllocatorState{}
+  CapacityExhausted{}
 
 # A rejection carries the supplied state unchanged; an acceptance carries the
 # next state and one number: bind_session issues the session id, mint and
@@ -268,6 +270,8 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case Expired{} Expired{}: True{}
     case UnknownSession{} UnknownSession{}: True{}
     case StaleRevision{} StaleRevision{}: True{}
+    case InvalidAllocatorState{} InvalidAllocatorState{}: True{}
+    case CapacityExhausted{} CapacityExhausted{}: True{}
     case _ _: False{}
 
 # Public accessor: whether the transition committed.
@@ -841,11 +845,22 @@ def mint_session_error(found: SessionLookup) -> Maybe<&2, Error>:
     case OneSession{session}: mint_origin_error(session_origin(session))
 
 # The one denial engine used by both mint and its monitor wrapper. It performs
-# no slot arithmetic and accepts no caller-supplied preflight outcome.
+# no slot arithmetic and accepts no caller-supplied preflight outcome. It is
+# partial: None does not assert allocator validity or remaining capacity.
 def mint_preflight(+state: State, expected_revision: Nat, session: Nat) -> Maybe<&2, Error>:
   f = Bool.pick(Unit -> Maybe<&2, Error>, current(state, expected_revision),
     x => mint_session_error(session_at(sessions(state), session)), x => Some{StaleRevision{}})
   f(Unit{})
+
+# A successful counter increment must remain within the runtime Nat domain.
+# Parsing failure fails closed. This pure helper commits no state.
+def successor_fits_limit(value: Nat, found: Maybe<&2, Nat>) -> Bool:
+  match found:
+    case Some{limit}: Nat.is_lt(value, limit)
+    case None{}: False{}
+
+def successor_fits(value: Nat) -> Bool:
+  successor_fits_limit(value, Nat.read("281474976710655"))
 
 # Only called after this same state has passed mint_preflight. The fallback
 # cannot name an admitted owner and is not a source of authentication.
@@ -860,17 +875,22 @@ def mint_reason(found: Maybe<&2, Error>) -> Error:
     case None{}: StaleRevision{}
 
 # Public entry point: bind the root to the authenticated session's caller.
-# Existing revision, session and origin denials precede the slot allocation.
-# The shared preflight is recomputed here; no caller may supply its result.
-# A successful mint at exhausted Nat slot or revision capacity can still abort;
-# this model does not yet provide a capacity denial or host recovery protocol.
+# Existing revision, session and origin denials precede allocator checks.
+# Zero is not an allocatable slot, even if an empty table passes `valid`.
+# At the Nat maximum a successor cannot be represented. Both denials return
+# the supplied state before evaluating the increment. The preflight is
+# recomputed here; a caller cannot supply its result.
 def mint(+state: State, +expected_revision: Nat, +session: Nat, handle: Nat, plan: T.Plan,
     rights: U32, expires: Nat) -> Change:
   f = Bool.pick(Unit -> Change, Maybe.is_some(&2, Error, mint_preflight(state, expected_revision, session)),
     x => Rejected{state, mint_reason(mint_preflight(state, expected_revision, session))},
-    x => Accepted{commit_entry(state, Entry{next_slot(state), first_generation(), session,
-      mint_owner(session_at(sessions(state), session)), handle, plan, rights, expires, root_parent(), True{}}),
-      next_slot(state)})
+    x => Bool.pick(Unit -> Change, Nat.is_eq(next_slot(state), 0n),
+      y => Rejected{state, InvalidAllocatorState{}},
+      y => Bool.pick(Unit -> Change, successor_fits(revision(state)) && successor_fits(next_slot(state)),
+        z => Accepted{commit_entry(state, Entry{next_slot(state), first_generation(), session,
+          mint_owner(session_at(sessions(state), session)), handle, plan, rights, expires, root_parent(), True{}}),
+          next_slot(state)},
+        z => Rejected{state, CapacityExhausted{}})(Unit{}))(Unit{}))
   f(Unit{})
 
 # --- delegate (public) ---------------------------------------------------------

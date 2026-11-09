@@ -377,6 +377,7 @@ type Error is Data:
   OwnerMismatch{}
   LeaseExceeded{}
   AuthorityUnavailable{}
+  CapacityExhausted{}
 
 # The output of every mutating transition. Only `Admitted` carries effects.
 type Step is Data:
@@ -551,6 +552,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case OwnerMismatch{} OwnerMismatch{}: True{}
     case LeaseExceeded{} LeaseExceeded{}: True{}
     case AuthorityUnavailable{} AuthorityUnavailable{}: True{}
+    case CapacityExhausted{} CapacityExhausted{}: True{}
     case _ _: False{}
 
 # Public accessor: the resulting state; on denial, the supplied state.
@@ -1290,8 +1292,8 @@ def issue_slot(found: Maybe<&2, Nat>) -> Nat:
 # state and no effect. Mounted and zero/execute-only attenuated rights remain
 # valid; no operation is invented. The owner must also revalidate later uses.
 # The supplied records are trusted inputs, not authenticated issuer state or
-# proof that a snapshot is current. A healthy mint at exhausted Nat slot or
-# revision capacity can still abort; stale authority is checked before mint.
+# proof that a snapshot is current. Capacity is checked after the existing
+# binding, identity and live authority checks; no terminal counter is advanced.
 def issue_result(+state: State, expected_revision: Nat, +session: Nat, +frontend: F.State,
     frontend_revision: Nat, +registry: F.Registry, +context: T.Context, +handle: Nat, +plan: T.Plan,
     +rights: U32, +expires: Nat) -> IssueResult:
@@ -1302,13 +1304,15 @@ def issue_result(+state: State, expected_revision: Nat, +session: Nat, +frontend
         z => IssueDenied{state, Identity{I.mint_reason(identity_error)}},
         z => Bool.pick(Unit -> IssueResult, issue_live_session(I.session_at(I.sessions(identity(state)), session),
           frontend, frontend_revision, registry, context, handle),
-          w => ({+minted => Bool.pick(Unit -> IssueResult, I.Change.accepted(minted),
+          w => Bool.pick(Unit -> IssueResult, I.successor_fits(revision(state)),
+            room => ({+minted => Bool.pick(Unit -> IssueResult, I.Change.accepted(minted),
             v => Bool.pick(Unit -> IssueResult, Maybe.is_some(&2, Nat, I.Change.issued(minted)),
               u => Issued{with_identity(state, I.Change.state(minted)), issue_slot(I.Change.issued(minted))},
               u => IssueDenied{state, AuthorityUnavailable{}})(Unit{}),
             v => IssueDenied{state, Identity{I.mint_reason(I.Change.reason(minted))}})(Unit{})
             : I.Change -> IssueResult})(I.mint(identity(state), I.revision(identity(state)), session, handle,
               plan, rights, expires)),
+            room => IssueDenied{state, CapacityExhausted{}})(Unit{}),
           w => IssueDenied{state, AuthorityUnavailable{}})(Unit{}))(Unit{}) : Maybe<&2, I.Error> -> IssueResult})(I.mint_preflight(identity(state), I.revision(identity(state)), session)))(Unit{})
         : Maybe<&2, Error> -> IssueResult})(unbound(F.find_handle(F.handles(frontend), handle),
           I.session_at(I.sessions(identity(state)), session), plan, rights, expires)),

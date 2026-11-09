@@ -1967,6 +1967,8 @@ def identity_error_name(error: I.Error) -> String:
     case I.Expired{}: "Expired"
     case I.UnknownSession{}: "UnknownSession"
     case I.StaleRevision{}: "StaleRevision"
+    case I.InvalidAllocatorState{}: "InvalidAllocatorState"
+    case I.CapacityExhausted{}: "CapacityExhausted"
 
 def error_name(error: P.Error) -> String:
   match error:
@@ -1999,6 +2001,7 @@ def error_name(error: P.Error) -> String:
     case P.OwnerMismatch{}: "OwnerMismatch"
     case P.LeaseExceeded{}: "LeaseExceeded"
     case P.AuthorityUnavailable{}: "AuthorityUnavailable"
+    case P.CapacityExhausted{}: "CapacityExhausted"
 
 def rejection_name(reason: Rejection) -> String:
   match reason:

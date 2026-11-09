@@ -1,0 +1,50 @@
+import Base
+import ./HostIdentity.bend as I
+import ./HostIdentityTests.bend as IT
+import ./HostPrimitives.bend as P
+import ./HostPrimitivesTests.bend as PT
+import ./HostIssueCurrentTests.bend as C
+import ./Frontend.bend as F
+import ./TransferTests.bend as TF
+import ./Test.bend as Test
+
+def identity_revision(state: I.State, value: Nat) -> I.State:
+  match state:
+    case I.State{_, host, incarnation, slot, sessions, entries}:
+      I.State{value, host, incarnation, slot, sessions, entries}
+
+def changed_denied(change: I.Change) -> Bool:
+  match change:
+    case I.Rejected{_, _}: True{}
+    case _: False{}
+
+def identity_control(+state: I.State) -> Bool:
+  changed_denied(I.mint(state, I.revision(state), IT.session_a(), IT.handle_a(), TF.plan(), IT.root_rights(), IT.root_expires()))
+
+def host_control(+state: P.State) -> Bool:
+  Maybe.is_some(&2, P.Error, P.Step.reason(P.IssueResult.step(P.issue_result(state, P.revision(state),
+    PT.session_client(), C.frontend(), F.revision(C.frontend()), C.registry(), TF.context(),
+    PT.pub_handle(), TF.plan(), PT.root_rights(), PT.pub_root_expires()))))
+
+def mode(+name: String, +max: Nat) -> Bool:
+  f = Bool.pick(Unit -> Bool, String.eq(name, "slot"),
+    x => identity_control(IT.with_entries(IT.bound(), max, I.entries(IT.bound()))),
+    x => Bool.pick(Unit -> Bool, String.eq(name, "identity"),
+      y => identity_control(identity_revision(IT.bound(), max)),
+      y => host_control(C.max_host_revision(C.state(), max)))(Unit{}))
+  f(Unit{})
+
+def parsed(name: String, found: Maybe<&2, Nat>) -> Bool:
+  match found:
+    case Some{max}: mode(name, max)
+    case None{}: False{}
+
+def run(args: List<String>) -> IO(Unit):
+  match args:
+    case [_, name]: Test.check(parsed(name, Nat.read("281474976710655")), "terminal mint returns denial")
+    case _: IO.die(Unit, 2, "expected slot, identity or host")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    args : List<String> <- IO.args()
+    run(args)

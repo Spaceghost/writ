@@ -341,8 +341,30 @@ Named issue checks:
 The shared read-only mint preflight preserves the HostIdentity revision, session
 and origin order used by the existing `HostIdentityTests.bend` corpus. The
 preflight comparison check shares that implementation and is not an independent
-legacy oracle. Stale authority denies before terminal Nat slot or revision
-allocation; healthy mint at exhausted Nat capacity can still abort.
+legacy oracle. It deliberately does not validate allocator shape or capacity.
+`HostIdentity.mint` denies an empty valid table whose next slot is zero with
+`InvalidAllocatorState`, then denies exhausted identity revision or slot with
+`CapacityExhausted`, without incrementing. `HostPrimitives.issue_result` retains
+earlier binding, identity and live-authority denials; only after those checks
+it denies exhausted primitive revision with `CapacityExhausted` before calling
+the guarded mint. If both layers are exhausted, primitive capacity wins. This
+changes healthy terminal mint from a runtime abort to a state-preserving denial;
+the existing rejection and no-effect laws are not weakened. The Nat bound is
+not the U32 wire bound. Other identity and primitive transitions still have
+counter-overflow gaps, and native recovery remains a host obligation.
+
+Synthetic `HostMintCapacityTests.bend` named cases:
+
+- `PH-mint identity terminal counters deny unchanged`
+- `PH-mint valid empty allocator at zero denies unchanged`
+- `PH-mint earlier identity denials precede capacity`
+- `PH-mint counters just below maximum accept and remain valid`
+- `PH-mint typed and legacy primitive terminal and zero denials agree`
+- `PH-mint stale host binding session and authority precede capacity`
+
+`LH mint allocator errors render` and `PH-mint conformance allocator errors
+render` check the new diagnostic reason names. These tests do not authenticate
+records or establish host acceptance.
 
 ## Exact issue result
 

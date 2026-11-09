@@ -271,6 +271,8 @@ def identity_name(error: I.Error) -> String:
     case I.Expired{}: "Expired"
     case I.UnknownSession{}: "UnknownSession"
     case I.StaleRevision{}: "StaleRevision"
+    case I.InvalidAllocatorState{}: "InvalidAllocatorState"
+    case I.CapacityExhausted{}: "CapacityExhausted"
 
 def reason_name(error: P.Error) -> String:
   match error:
@@ -303,6 +305,7 @@ def reason_name(error: P.Error) -> String:
     case P.OwnerMismatch{}: "OwnerMismatch"
     case P.LeaseExceeded{}: "LeaseExceeded"
     case P.AuthorityUnavailable{}: "AuthorityUnavailable"
+    case P.CapacityExhausted{}: "CapacityExhausted"
 
 def slot_label(+adapter: V.Adapter, +slot: Nat) -> String:
   V.logical_label(V.logical_of(adapter, slot))
@@ -1213,4 +1216,7 @@ def main() -> IO(Unit):
     revocation_checks()
     replay_checks()
     adapter_checks()
-    IO.print("HostConformance: 43 checks passed, 37 vectors emitted")
+    Test.check(String.eq(identity_name(I.InvalidAllocatorState{}), "InvalidAllocatorState")
+      && String.eq(reason_name(P.Identity{I.CapacityExhausted{}}), "Identity.CapacityExhausted")
+      && String.eq(reason_name(P.CapacityExhausted{}), "CapacityExhausted"), "PH-mint conformance allocator errors render")
+    IO.print("HostConformance: 44 checks passed, 37 vectors emitted")

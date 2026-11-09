@@ -1,0 +1,1 @@
+PASS: terminal mint returns denial

@@ -1,0 +1,24 @@
+Base dbbc8f9; pinned Bend 2.0.39 SHA-256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd, Node v26.10.0, clang 23.1.1, OpenSpec 1.16.0. Generated outputs/binaries stayed under /home/jadams/tmp/writ-mint-capacity-build; TMPDIR was set there and BEND_NO_TELEMETRY=1. Bend and native jobs used nice -n 15.
+
+Full suite: timeout 600 bend Tests.bend (exit 0; tests-bend.txt).
+Ordinary proof: timeout 300 bend PROOF.bend (exit 0; proof.txt).
+Verdict: BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt timeout 300 bend PROOF.bend --verdict (exit 0; verdict.txt). Kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+Verdict negative: BENDTT=/bin/false timeout 120 bend PROOF.bend --verdict (exit 1; verdict-negative.txt).
+OpenSpec: openspec validate --all --strict --no-interactive (exit 0; openspec.txt).
+Full C generation: ulimit -v 16777216; timeout 900 bend Tests.bend -o /home/jadams/tmp/writ-mint-capacity-build/tests.c (exit 0; native-generate.txt is empty). SHA-256 95a8ca71c8b314d4080785df54e6c1098d7b6308645119e0023930a4fb739f8d.
+
+
+Full native build: ulimit -v 16777216; TMPDIR=/home/jadams/tmp/writ-mint-capacity-build timeout 900 nice -n 15 clang -std=c11 -O0 -static /home/jadams/tmp/writ-mint-capacity-build/tests.c -o /home/jadams/tmp/writ-mint-capacity-build/tests-native -lpthread -lm (exit 0; native-build.txt empty). Executable SHA-256 00f752c203379f6077389a5a501bc0df1861eff4405db229bdd7e6d7a8660140.
+Full native run: ulimit -c 0; ulimit -v 20971520; timeout 600 nice -n 15 /home/jadams/tmp/writ-mint-capacity-build/tests-native +RTS --threads 1 --gpu off (exit 0; native-suite.txt). cmp tests-bend.txt native-suite.txt exited 0.
+
+Control fixture: copy control.bend.txt as MintCapacityControl.bend into both the fixed worktree and a detached unmodified dbbc8f9 worktree. For each mode slot, identity, host:
+- timeout 60 bend MintCapacityControl.bend MODE: fixed exit 0; base exit 1.
+- timeout 300 bend MintCapacityControl.bend -o control-VERSION.js; timeout 60 node control-VERSION.js MODE: build exit 0, fixed run exit 0, base run exit 1.
+- timeout 300 bend MintCapacityControl.bend -o control-VERSION-native; timeout 60 control-VERSION-native MODE +RTS --threads 1 --gpu off: build exit 0, fixed run exit 0, base run exit 1. Native runs used ulimit -v 20971520 and ulimit -c 0. All base failures report Nat overflow.
+Fixed JS SHA-256 f0451afb72abc38d6f9a75febe22f6252211af5a0f60391c675281c73241784d; base JS 80fe933f2bdf8b79d09db864c5a10c821fd45ef0d28c2481b0299b51ebd06143.
+Fixed native SHA-256 4ceabd2562179d7ae0b1db332de4d6d096a8ec5467f9972c8c30d80d1af9d629; base native 246eed9c2046bad5d26e0e2f4397cb587c174792cd7adb5b4e34c99eae6c80ff.
+
+Native mocks: make -C contrib/native-hosts/linux OUT=/home/jadams/tmp/writ-mint-capacity-build/mocks /home/jadams/tmp/writ-mint-capacity-build/mocks/handoff-order-test /home/jadams/tmp/writ-mint-capacity-build/mocks/retire-error-test (exit 0; mock-build.txt). Each test ran with timeout 60 nice -n 15 and exited 0, producing handoff-mock.txt and retire-mock.txt. No actual mounts or identity probes were run.
+
+Provenance correction: during the first full native C generation, three extra assertions were temporarily added to HostMintCapacityTests.bend and then those exact edits were reversed before that generation finished. The earlier run had no contemporaneous input hash snapshot. From the subsequently frozen source, rerunning `timeout 600 bend Tests.bend` exited 0 and its output compared byte-for-byte with tests-bend.txt. The frozen test source SHA-256 is 9d655f87d02db602f11c3e30728f1b34d778f5dcbbed8156cec028d7b79165a9; the complete list of 173 tracked Bend input hashes is bend-input-sha256.txt. The final-source native C is separately regenerated and compared as recorded below.
+Final-source C generation: ulimit -v 16777216; timeout 900 nice -n 15 bend Tests.bend -o /home/jadams/tmp/writ-mint-capacity-build/tests-final.c exited 0 (native-regenerate.txt empty). `cmp tests.c tests-final.c` exited 0; both SHA-256 95a8ca71c8b314d4080785df54e6c1098d7b6308645119e0023930a4fb739f8d. The already tested native executable was built from identical C.

@@ -83,6 +83,17 @@ Delegation SHALL preserve the exact plan and origin obligations, only narrow rig
 - **THEN** issuance denies with its supplied host state unchanged and no effects
 - **AND** later use and publication still require their own current checks.
 
+#### Scenario: An issuer reaches allocator limits
+
+- **GIVEN** a monitor-owned identity table with next slot zero or a maximum Nat identity revision or next slot, or a primitive state with maximum Nat revision
+- **WHEN** a root issue reaches the allocator after its existing revision, session, handle-binding and current authority checks
+- **THEN** issuance denies with the supplied state unchanged and no effects
+- **AND** an earlier failure retains its existing denial rather than being replaced by a capacity reason.
+
+This replaces a possible terminal counter abort or invalid slot-zero allocation
+with an explicit denial; it preserves the existing authority and denial laws.
+It does not establish a native recovery protocol or a wire-representable slot.
+
 #### Scenario: A transferred endpoint requests another bucket
 
 - **GIVEN** a delegated operation names destination D

@@ -435,6 +435,10 @@ dc6ff2b2 adds only a Genode-channel plan; tested implementation inputs are uncha
 | Property/oracle | 324 | Four oracle fixtures and 320 graph cases checked against both producers |
 | **Total per backend** | **1942** | **Both complete runs passed** |
 
+Subsequent [mint-capacity checks](verification/host-mint-capacity/README.md) cover
+allocator zero, terminal counters, denial ordering and exact typed/legacy parity.
+They are not part of the historical counts above.
+
 The graph oracle computes four-node closure with Floyd–Warshall and derives
 expected results directly from original seeds. It does not call the producer's
 propagation/fold/sweep helpers. Its cases include all 256 subsets of eight fixed
