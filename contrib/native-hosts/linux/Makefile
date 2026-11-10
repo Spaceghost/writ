@@ -39,3 +39,8 @@ $(OUT)/handoff-order-test: handoff-order-test.c writfs.c policy_pipe.c policy_pi
 # Includes production worker.c with mocked process and descriptor operations.
 $(OUT)/retire-error-test: retire-error-test.c worker.c worker.h | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -ffunction-sections -Wl,--gc-sections retire-error-test.c -o "$@"
+
+# Owned-process kernel test (board question 23): two disposable clone3
+# children and private socket pairs only; no privilege, mount or host probing.
+$(OUT)/channel-identity-test: channel-identity-test.c | $(OUT)
+	$(CC) $(CPPFLAGS) $(CFLAGS) channel-identity-test.c -o "$@"

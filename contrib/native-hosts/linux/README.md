@@ -137,6 +137,7 @@ actual kernel, library/runtime versions, source hashes and failed outcomes.
 | `worker.c`, `worker.h` | Trusted launch prelude and fixed native escape/read/revocation probes; these do not decide Writ authority |
 | `transport_probe.c` | Real C-to-Bend transport checks, owned policy-process loss and explicitly malformed test peers with no filesystem/data-serving route |
 | `handoff-order-test.c` | Nonprivileged mocked scheduling and failure checks of the real callbacks and supervisor helpers; no native identity or mount claim |
+| `channel-identity-test.c` | Unprivileged owned-process kernel test of `SCM_PIDFD` attribution across endpoint transfer and receive rejections ([record](../../../verification/linux-channel-identity/README.md)); no broker, mount or authority decision |
 | `crash_probe.c`, `Makefile` | Native lifecycle probe and build glue |
 
 Host events record the observed kernel identity, actor match, operation, handle,

@@ -1,0 +1,13 @@
+INFO channel-identity-test: owned processes only, timeout 30s
+PASS original-holder: SCM_PIDFD names the expected retained lifetime
+PASS queued-before-transfer: SCM_PIDFD names the expected retained lifetime
+PASS missing-passpidfd: receiver verdict missing-pidfd (payload AN)
+PASS reaped-sender: SCM_PIDFD names the exited, reaped A lifetime
+PASS after-transfer: SCM_PIDFD names the expected retained lifetime
+PASS unexpected-rights: receiver verdict unexpected-rights (payload B2)
+PASS payload-truncated: receiver verdict payload-truncated (payload BBBBBBBBBBBBBBBB)
+PASS control-truncated: receiver verdict control-truncated (payload B4)
+PASS peer-snapshot: SO_PEERPIDFD names the socketpair creator, not A or B
+PASS descriptor-cleanup: 3 descriptors at start and 3 at end
+RESULT PASS (0 failures)
+exit=0

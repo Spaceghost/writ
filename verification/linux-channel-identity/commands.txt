@@ -1,0 +1,9 @@
+# Build outside the checkout (Makefile refuses an in-tree OUT).
+make -C contrib/native-hosts/linux OUT="$HOME/tmp/writ-channel-identity" "$HOME/tmp/writ-channel-identity/channel-identity-test"
+# Single run (run.txt); exit status appended.
+timeout 60 "$HOME/tmp/writ-channel-identity/channel-identity-test"; echo "exit=$?"
+# 25 repeats (repeat.txt): exit status and RESULT line, counted.
+for i in $(seq 1 25); do timeout 60 ./channel-identity-test > r.txt 2>&1; echo "$? $(tail -1 r.txt)"; done | sort | uniq -c
+# Negative control (mutant-after-transfer.diff, mutant-run.txt): expect A, not B, after transfer.
+sed 's/"B1", &b, &a)/"B1", \&a, \&b)/' contrib/native-hosts/linux/channel-identity-test.c > mutant-after-transfer.c
+cc -std=c11 -O2 -Wall -Wextra -Werror mutant-after-transfer.c -o mutant && timeout 60 ./mutant; echo "exit=$?"

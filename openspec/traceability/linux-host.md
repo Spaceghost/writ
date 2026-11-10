@@ -125,6 +125,12 @@ combined Mount/Linux release gate. Time sampling, trusted attribution,
 serialization against effects, replay-resistant recovery and native adversarial
 scenarios remain reviewed-only gaps for LH-011–LH-017.
 
+The [owned-process channel identity record](../../verification/linux-channel-identity/README.md)
+is native kernel-behaviour evidence for the candidate transport only:
+`channel-identity-test.c` cases `after-transfer`, `queued-before-transfer`,
+`reaped-sender` and the receive rejections. It does not implement or accept any
+LH-011–LH-017 requirement.
+
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 
 [LinuxJointOwnerTests.bend](../../hosts/linux/monitor/LinuxJointOwnerTests.bend)

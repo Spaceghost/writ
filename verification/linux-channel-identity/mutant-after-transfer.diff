@@ -1,0 +1,4 @@
+440c440
+<     expect_sender("after-transfer", receive_record(rx, 256), "B1", &b, &a);
+---
+>     expect_sender("after-transfer", receive_record(rx, 256), "B1", &a, &b);

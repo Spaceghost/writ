@@ -160,8 +160,13 @@ incomplete receive, and cleanup and revocation remain available. Protected
 configuration, trustworthy startup, namespace/capability isolation, message
 provenance under descriptor transfer, exec and process control, FD lifetime,
 clock, serialization and restart all remain unimplemented and require
-adversarial testing for the exact combined profile. No such test or native
-identity probe was run for this design note.
+adversarial testing for the exact combined profile. No such combined test or
+privileged identity probe has run. One bounded, unprivileged
+[owned-process channel test](../../../verification/linux-channel-identity/README.md)
+observed on Linux 7.2.9 that `SCM_PIDFD` names the actual sender after an
+endpoint transfer, names an exited and reaped sender for its queued message,
+and that the receive rejections above fail closed; it does not test a
+capable sender, exec, namespace isolation or any part of the combined profile.
 
 ## One state owner and one effect path
 

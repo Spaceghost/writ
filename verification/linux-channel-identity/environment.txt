@@ -1,0 +1,9 @@
+uname -srmo: Linux 7.2.9-1-MANJARO x86_64 GNU/Linux
+cc: cc (GCC) 16.2.1 20260810
+glibc: ldd (GNU libc) 2.44
+id: uid=1000 (unprivileged; no sudo or capabilities requested)
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+source sha256: cac8cffb4c0e2970622782ef6673316df307fb085681a7d4f0dbaacc437e889d
+binary sha256: 073425dfb0065913ecdab291b857a62a4b1f476129c6fc44f918dfbbcc275880
+captured: 2026-11-10T04:25:45Z

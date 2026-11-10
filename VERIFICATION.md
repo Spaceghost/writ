@@ -1143,3 +1143,9 @@ authenticate a native caller or qualify host recovery.
 The [delegation capacity record](verification/delegation-capacity/README.md)
 checks synthetic lifetime arithmetic and allocator boundaries. It does not
 establish native attribution, wire representation or host recovery.
+
+The [owned-process channel identity record](verification/linux-channel-identity/README.md)
+covers one unprivileged Linux 7.2.9 run of `SCM_PIDFD` attribution across an
+endpoint transfer, a reaped sender and fail-closed receive rejections, with 25
+repeats and a failing negative control. It is not an authenticated bridge,
+capable-sender test or host qualification.
