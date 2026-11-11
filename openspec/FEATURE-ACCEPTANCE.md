@@ -9,6 +9,11 @@ observable behavior to its complete normative contract and unchecked task list.
 
 ## Feature gates
 
+The separate [public Windows sync milestone](changes/add-windows-public-sync/proposal.md)
+has [WPS traceability](traceability/windows-public-sync.md) and a runnable native
+smoke test. Its [evidence record](../verification/windows-public-sync/README.md)
+leaves Windows/Notepad execution pending and gives no protected-feature credit.
+
 | Feature | Required demonstration | Contract | Tasks | Current evidence |
 | --- | --- | --- | --- | --- |
 | WritFS | A scoped mount exposes permitted objects/jobs; scans cause no work or unauthorized disclosure; control replay creates one operation | [WF requirements](changes/add-writfs-namespace/specs/writfs-namespace/spec.md) | [WritFS tasks](changes/add-writfs-namespace/tasks.md) | Design and scenarios only |
