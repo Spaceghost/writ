@@ -103,6 +103,7 @@ function Fresh-Read([string]$Name, [byte[]]$Expected) {
     $names = @(Get-ChildItem -LiteralPath $p.Root)
     Assert ($names.Count -eq 1 -and $names[0].Name -eq 'hello.txt') 'Explorer enumeration name'
     $info = Inspect $p
+    Write-Host "Placeholder metadata before read: $($info | ConvertTo-Json -Compress); expected size=$($Expected.Length)"
     Assert ($info.placeholder -and $info.size -eq $Expected.Length -and $info.onDisk -eq 0) 'logical size without payload allocation'
     Assert (-not [regex]::IsMatch((LogText $p), '(?m)^FETCH')) 'listing fetched zero payload bytes'
     Assert (EqualBytes ([IO.File]::ReadAllBytes((FilePath $p))) $Expected) 'fresh root hydrated exact persisted bytes'
