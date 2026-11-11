@@ -99,6 +99,8 @@ jobs:
           # An already-loaded filter is expected on some runner revisions.
           & fltmc.exe filters | Tee-Object -FilePath "$logs\filters.txt"
           if ($LASTEXITCODE) { throw 'Cannot inspect native filters.' }
+          & fsutil.exe usn queryjournal "$($env:SystemDrive)" | Out-File "$logs\journal.txt"
+          if ($LASTEXITCODE) { throw 'An active NTFS USN journal is required.' }
           ./contrib/native-hosts/windows/cloud-files/release/Test-Package.ps1 -OutputDir "$env:RUNNER_TEMP\writ-release"
       - name: Seal verified release assets and evidence
         run: |

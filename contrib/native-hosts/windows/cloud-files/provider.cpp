@@ -97,6 +97,16 @@ static std::string fingerprint(HANDLE h) {
     check(GetFileInformationByHandleEx(h, FileIdInfo, &id, sizeof(id)), "file identity");
     return hex(reinterpret_cast<unsigned char*>(&id), sizeof(id)) + ":" + std::to_string(file_usn(h));
 }
+static USN journal_current(HANDLE h) {
+    // Metadata updates can remain pending until close. Force the documented
+    // close journal record without releasing the handle that excludes writers.
+    USN usn = 0; DWORD got = 0;
+    check(DeviceIoControl(h, FSCTL_WRITE_USN_CLOSE_RECORD, nullptr, 0,
+        &usn, sizeof(usn), &got, nullptr), "write NTFS close journal record");
+    if (got != sizeof(usn) || usn <= 0 || file_usn(h) != usn)
+        throw Error("current positive journal USN required", ERROR_INVALID_DATA);
+    return usn;
+}
 static fs::path state_path(const Store& store, const fs::path& root) {
     return store.path / L"roots" / path_key(root);
 }
@@ -264,10 +274,9 @@ class Provider {
                 hr(CfConvertToPlaceholder(file, &base, sizeof(base), CF_CONVERT_FLAG_NONE,
                     &usn, nullptr), "convert replacement");
             }
-            // The Cloud Files operation returns its final USN. A journal read
-            // can still describe the pre-update record while this handle is open.
             event("IDENTITY_USN before=" + std::to_string(before_update) + " after=" + std::to_string(usn));
-            if (!usn) throw Error("usable Cloud Files update USN required", ERROR_INVALID_DATA);
+            usn = journal_current(file);
+            event("JOURNALED_USN " + std::to_string(usn));
             monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
             hr(CfSetInSyncState(file, CF_IN_SYNC_STATE_IN_SYNC, CF_SET_IN_SYNC_FLAG_NONE, &usn), "mark in sync with USN");
             last_attempt.clear();
