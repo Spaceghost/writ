@@ -111,6 +111,25 @@ static void owned_registration(const fs::path& root, const Store& store) {
         memcmp(info->SyncRootIdentity, identity.data(), identity.size()))
         throw Error("not this demo's sync root", ERROR_ACCESS_DENIED);
 }
+static void validate_root(const fs::path& root, const Store& store) {
+    PlaceholderVisibility visible;
+    DWORD attributes = GetFileAttributesW(root.c_str());
+    bool owned = false;
+    if (attributes != INVALID_FILE_ATTRIBUTES && (attributes & FILE_ATTRIBUTE_REPARSE_POINT)) {
+        auto file = open(root, FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT);
+        FILE_ATTRIBUTE_TAG_INFO tag{};
+        check(GetFileInformationByHandleEx(file, FileAttributeTagInfo, &tag, sizeof(tag)), "root attributes");
+        auto state = CfGetPlaceholderStateFromAttributeTag(tag.FileAttributes, tag.ReparseTag);
+        if (state == CF_PLACEHOLDER_STATE_INVALID || !(state & CF_PLACEHOLDER_STATE_SYNC_ROOT))
+            throw Error("root is not a Cloud Files sync root", ERROR_REPARSE_TAG_MISMATCH);
+        owned_registration(root, store);
+        owned = true;
+    }
+    // Windows adds a cloud reparse point to our registered root. Only that
+    // exact, identity-checked root is allowed; every ancestor stays forbidden.
+    local_user_path(root, owned);
+}
 
 class Provider {
     Store store;
@@ -236,14 +255,17 @@ class Provider {
             // ReplaceFile, where the old placeholder identity may disappear.
             atomic_file(state / L"base", &replacement, sizeof(replacement));
             base = replacement;
+            USN usn = 0;
             if (attributes.cloud) {
                 hr(CfUpdatePlaceholder(file, nullptr, &base, sizeof(base), nullptr, 0,
-                    CF_UPDATE_FLAG_NONE, nullptr, nullptr), "update identity");
+                    CF_UPDATE_FLAG_NONE, &usn, nullptr), "update identity");
             } else {
                 hr(CfConvertToPlaceholder(file, &base, sizeof(base), CF_CONVERT_FLAG_NONE,
-                    nullptr, nullptr), "convert replacement");
+                    &usn, nullptr), "convert replacement");
             }
-            USN usn = file_usn(file);
+            // The Cloud Files operation returns its final USN. A journal read
+            // can still describe the pre-update record while this handle is open.
+            if (!usn) throw Error("usable Cloud Files update USN required", ERROR_INVALID_DATA);
             monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
             hr(CfSetInSyncState(file, CF_IN_SYNC_STATE_IN_SYNC, CF_SET_IN_SYNC_FLAG_NONE, &usn), "mark in sync with USN");
             last_attempt.clear();
@@ -350,8 +372,8 @@ static void stop(const fs::path& root) {
 static void cleanup_default() {
     auto root = default_path(CSIDL_PROFILE, L"Writ");
     auto path = default_path(CSIDL_LOCAL_APPDATA, L"WritDemo\\store");
-    local_user_path(root); local_user_path(path);
     Store store(path);
+    local_user_path(path); validate_root(root, store);
     auto lock_path = state_path(store, root) / L"provider.lock";
     // Installation alone does not create a registration or backing store.
     if (!fs::exists(lock_path) || !fs::exists(root)) return;
@@ -382,8 +404,9 @@ static void start_default() {
         if (!fs::is_regular_file(dependency)) throw Error("extract the entire portable ZIP or install Writ Setup", ERROR_FILE_NOT_FOUND);
     auto root = default_path(CSIDL_PROFILE, L"Writ");
     auto path = default_path(CSIDL_LOCAL_APPDATA, L"WritDemo\\store");
-    local_user_path(root); local_user_path(path);
-    private_directory(path.parent_path()); seed(Store(path)); private_directory(root);
+    local_user_path(path); validate_root(root, Store(path));
+    private_directory(path.parent_path()); seed(Store(path));
+    if (!fs::exists(root)) private_directory(root);
     std::wcout << L"Writ public preview: " << root << L"\\hello.txt\nKeep this window open while editing.\n";
     Provider provider(root, Store(path), node.c_str(), bridge.c_str(), module.c_str(), false);
     provider.run();
@@ -417,14 +440,15 @@ int wmain(int argc, wchar_t** argv) {
             bool fail = argc == 8 && !wcscmp(argv[7], L"--fail-writeback");
             if (argc == 8 && !fail) throw Error("unknown option", ERROR_INVALID_PARAMETER);
             auto root = canonical(argv[2]), path = canonical(argv[3]);
-            local_user_path(root); local_user_path(path);
+            local_user_path(path); validate_root(root, Store(path));
             if (folded(root) == folded(path) || inside(root, path) || inside(path, root))
                 throw Error("backing store and sync root must be independent", ERROR_INVALID_PARAMETER);
-            private_directory(root);
+            if (!fs::exists(root)) private_directory(root);
             Provider provider(root, Store(path), argv[4], argv[5], argv[6], fail); provider.run(); return 0;
         }
         if (argc == 4 && !wcscmp(argv[1], L"remove")) {
-            auto root = canonical(argv[2]), path = canonical(argv[3]); local_user_path(root); local_user_path(path);
+            auto root = canonical(argv[2]), path = canonical(argv[3]);
+            local_user_path(path); validate_root(root, Store(path));
             remove(root, Store(path)); return 0;
         }
         std::cout << "start (default) | stop [ROOT] | cleanup | version\n"

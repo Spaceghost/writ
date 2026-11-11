@@ -131,7 +131,7 @@ public:
     PlaceholderVisibility(const PlaceholderVisibility&) = delete;
     PlaceholderVisibility& operator=(const PlaceholderVisibility&) = delete;
 };
-inline void local_user_path(const fs::path& p) {
+inline void local_user_path(const fs::path& p, bool owned_sync_root = false) {
     PlaceholderVisibility visible;
     wchar_t profile[MAX_PATH], volume[MAX_PATH], filesystem[MAX_PATH];
     hr(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, SHGFP_TYPE_CURRENT, profile), "profile");
@@ -142,7 +142,8 @@ inline void local_user_path(const fs::path& p) {
         throw Error("local NTFS required", ERROR_NOT_SUPPORTED);
     for (auto part = p; part.has_relative_path(); part = part.parent_path()) {
         DWORD attr = GetFileAttributesW(part.c_str());
-        if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_REPARSE_POINT))
+        if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_REPARSE_POINT) &&
+            !(owned_sync_root && part == p))
             throw Error("reparse point in demo path", ERROR_REPARSE_TAG_MISMATCH);
     }
 }
