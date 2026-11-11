@@ -4,6 +4,74 @@ This record separates the executing native filesystem and passing native corpus
 from the remaining product gates. The public-canary lane is not a protected-data
 qualification.
 
+## Current complete-corpus result on 2026-11-11
+
+[Run 43091571073](https://github.com/Spaceghost/writ/actions/runs/43091571073),
+[job 130769690057](https://github.com/Spaceghost/writ/actions/runs/43091571073/job/130769690057),
+**passed the fresh build and all three native boots** at source
+[`7edf561433c04419e3102fc0878e0f72ef3162a6`](https://github.com/Spaceghost/writ/commit/7edf561433c04419e3102fc0878e0f72ef3162a6),
+tree `dd219b02817178ccf606c15ec1edf9df8704084b`.
+
+| Gate | Native CI result |
+| --- | --- |
+| Host allocator sanitizers | **PASS**, 24 assertions with AddressSanitizer, UndefinedBehaviorSanitizer and leak detection |
+| Native allocator invariants | **PASS**, 24 assertions on Genode libc |
+| Complete generated core corpus | **PASS**, all 3072 reviewed assertions; 520,850 ms |
+| Complete generated mount corpus | **PASS**, all 69 assertions, including the 64 KiB boundary; 73,822 ms |
+| Native filesystem sessions | **PASS**, 56 assertions: reader 44, stranger six, forged-label component six |
+| Native libc/VFS consumer | **PASS**, eight assertions through the mounted service |
+| Interpreter reservation bound | **PASS**, peak 69,195,528 bytes below 134,217,728; zero live and reserved bytes at teardown |
+| Ordinary Bend proofs | **PASS**, `ALL PROOFS CHECK`; no independent Lean kernel verdict was run |
+
+The [run manifest](evidence/ci-7edf561-success.json) records exact source/run,
+environment, configuration and artifact identities, all artifact-member hashes,
+and the normalization applied to retained transcripts. The repository retains
+the [corpus](evidence/corpus-43091571073.log),
+[filesystem](evidence/filesystem-43091571073.log),
+[VFS](evidence/vfs-43091571073.log),
+[sanitizer](evidence/43091571073-allocator.log),
+[ordinary proof](evidence/43091571073-generation-proof.log),
+[environment](evidence/43091571073-environment.log), and
+[source/build hash](evidence/43091571073-source-and-build.sha256) records,
+plus all three supervisor configurations listed in the manifest. The downloaded
+[artifact 13890241294](https://github.com/Spaceghost/writ/actions/runs/43091571073/artifacts/13890241294)
+matches GitHub's published SHA-256:
+`9fa95d2fee7c91b457dfa7bc0569fea0d987c4cbd9cea2333247340e171bda87`.
+
+This is native Genode 26.08 base-hw x86_64 under QEMU 8.2.2 TCG, using the pinned
+25.05 cross-compiler and QuickJS 2026-06-04. Bend-generated JavaScript executes
+inside the native component; this is not a machine-code Bend port. The two guest
+timings total 594,672 ms, close to the previous 600-second boot deadline, while
+the preceding run below timed out before completing even the core corpus.
+The new fixed 1200-second diagnostic bound gives the full suite headroom for
+runner variability. This is no performance improvement or performance guarantee.
+
+The exact-count/summary/exit checks, 69 mount checks, allocator checks,
+production VM/resource limits, other boots, and 40-minute job ceiling are
+unchanged. No protected-host, confinement, durable-publication, GPU or physical
+hardware qualification follows from this public-canary result. The earlier
+results below retain their original sources and limits.
+
+### Preserved 600-second deadline failure
+
+[Run 43084126793](https://github.com/Spaceghost/writ/actions/runs/43084126793)
+at `09ed0bb83e348e437e25e830de5495ace09f39eb` loaded the correct reviewed
+count of **3072**. The native allocator's 24 checks passed, and the guest
+reported **2679 core assertions** before the 600-second diagnostic deadline.
+It did not complete the core or mount corpus, or reach the filesystem and VFS
+boots. The script exited 254. This is a failed native result.
+
+The [failure manifest](evidence/ci-09ed0bb-failure.json) preserves the
+source/run/artifact identities and per-file hashes, with the
+[native transcript](evidence/corpus-43084126793-failure.log),
+[environment](evidence/43084126793-environment.log),
+[sanitizer output](evidence/43084126793-allocator.log), and
+[ordinary proof output](evidence/43084126793-generation-proof.log).
+The downloaded artifact's SHA-256 matches GitHub's published digest:
+`8ad35b50ce85f389840b23c7e46853a0f42803b550a87df5a0098a445cd0bb00`.
+No final source/build manifest or copied supervisor configuration was emitted
+because the first boot did not finish.
+
 ## Final integrated CI result on 2026-11-04
 
 [Run 41776659987](https://github.com/Spaceghost/writ/actions/runs/41776659987),
@@ -90,7 +158,8 @@ The local timed guest reported **5,288 ms** for the 764 core assertions and
 The corpus build plus boot took **120.622 seconds** of host wall time. The raw
 filesystem and libc VFS build-plus-boot runs took **11.862** and **6.817 seconds**.
 These are observations from software emulation on this shared build host, not
-product performance guarantees. The native corpus deadline remains 600 seconds.
+product performance guarantees. That historical run used a 600-second native
+corpus deadline; the current deadline and result are recorded above.
 
 The public fixture is the 33-byte UTF-8/ASCII string
 `Writ native Genode public canary` followed by LF. Bend computed its actual

@@ -78,12 +78,15 @@ to be a general Bend C runtime port.
 | Large-allocation reuse | At most two free reservations per size class; all remain charged to the same 128 MiB limit |
 | QuickJS stack limit | 512 KiB; stack checking remains enabled |
 | Component stack | 768 KiB, leaving the native stack slot's guard and metadata intact |
-| Service/test component RAM quota | 128 MiB in the supplied supervisor configs |
+| Component RAM quota | Service: 128 MiB; complete-corpus diagnostic: 256 MiB in the supplied supervisor configs |
 | Interpreter call budget | 200,000 QuickJS interrupt callbacks per call |
 | Reply | Exact protocol fields and sequence, at most 256 bytes |
 
 The interrupt count is a finite VM work budget, not a wall-clock guarantee.
-The QEMU harness separately imposes native test deadlines. Any interpreter
+The QEMU harness separately allows 1200 seconds for the complete core and mount
+corpora in `writ_policy`, 120 seconds per startup/client-completion wait in
+`writfs`, and 120 seconds for `writfs_vfs`. These are fixed diagnostic deadlines;
+the CI job remains bounded at 40 minutes. Any interpreter
 exception, invalid reply, sequence mismatch, or reentrant policy call makes the
 bridge permanently unhealthy; later requests fail closed.
 
@@ -148,9 +151,9 @@ run; existing extracted input trees are developer build caches.
 
 The required core assertion count is an explicit, reviewed build input. The
 workflow reads the reviewed count from `utils/verification/core-check-count.txt`
-for the current source; the [recorded 2065-check
-guest run](../../../docs/superpowers/records/2026-11-05-linux-host/model-only-integration.md)
-used source `73a8055`. The native probe requires
+for the current source. The [verification record](VERIFICATION.md) identifies
+each observed run's exact source and count; earlier results remain historical.
+The native probe requires
 that exact number of successful assertions, the complete corpus summary, and a
 single successful exit; it does not infer success from whatever output appears.
 
@@ -163,7 +166,7 @@ build hashes, supervisor configurations, and serial logs.
 
 | QEMU boot | Native checks |
 | --- | --- |
-| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the generated core tests (2065 in the recorded `73a8055` guest run); all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
+| `writ_policy` | The same 24 allocator invariant checks run by the host sanitizer probe; the complete generated core suite at the explicit reviewed count; all 69 pure mount checks, including the 64 KiB boundary; zero live and reserved QuickJS bytes after each interpreter teardown |
 | `writfs` | Actual filesystem RPCs and packet streams; exact contents and ranges; directory metadata; EOF; write, traversal, and malformed-name denial; malformed lengths, negative/overflowing shared-memory descriptors, and oversized file offsets; stat-only, closed, and foreign-session handles; 32-handle exhaustion; unadmitted components; forged label suffix; denied direct ROM/admin routes; revocation of retained handles |
 | `writfs_vfs` | A separate native libc consumer mounting the service through VFS; `open`, full/ranged `read`, `lseek`, `fstat`, rejected write-open, rejected unknown object, and `close` |
 

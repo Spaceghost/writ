@@ -1,1 +1,9 @@
 2026-11-11T19:54:12Z	controller	Plan and task brief recorded; baseline timed out during passing core assertions at 600 seconds.
+2026-11-11T19:54:46Z	implementer	Candidate 7edf561 pushed to isolated lane; native run 43091571073 dispatched.
+2026-11-11T19:56:58Z	reviewer	Implementation review found no blocker; baseline artifact digest and retained evidence verified.
+2026-11-11T20:04:49Z	controller	Native CI still running; verification and integration briefs recorded; no completion claim yet.
+2026-11-11T20:09:00Z	implementer	Native run passed all three boots at 7edf561; 3072 core and 69 mount checks complete with zero teardown allocations.
+2026-11-11T20:10:24Z	controller	Successful ZIP digest verified; native records and traceability updated with exact results and runner-timing limits.
+2026-11-11T20:12:26Z	implementer	OpenSpec 45/45, artifact hashes and local links passed; all native inputs match tested candidate.
+2026-11-11T20:14:00Z	reviewer	Final independent evidence review accepted; all ten retained success files and supervisor configs verified.
+2026-11-11T20:14:40Z	controller	Staged whitespace check found terminal blank lines in the three exact archived configs; preserving bytes with a file-scoped blank-at-EOF attribute.

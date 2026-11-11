@@ -1,0 +1,62 @@
+{
+  "repository": "Spaceghost/writ",
+  "commit": "09ed0bb83e348e437e25e830de5495ace09f39eb",
+  "tree": "0ab93544590114facd2b3a5ab1c6b3cf1443ed0b",
+  "workflow": ".github/workflows/writfs-genode-native.yml",
+  "run_id": 43084126793,
+  "run_attempt": 1,
+  "job_id": 130743962569,
+  "run_url": "https://github.com/Spaceghost/writ/actions/runs/43084126793",
+  "job_url": "https://github.com/Spaceghost/writ/actions/runs/43084126793/job/130743962569",
+  "conclusion": "failure",
+  "failure": "The full-corpus diagnostic boot reached its 600-second deadline during core assertions; harness exit status 254.",
+  "native_core_assertions_required": 3072,
+  "native_core_assertions_observed": 2679,
+  "native_core_complete": false,
+  "native_allocator_checks": 24,
+  "native_mount_complete": false,
+  "native_filesystem_and_vfs_boots_executed": false,
+  "artifact": {
+    "id": 13888040049,
+    "name": "writfs-genode-native-1",
+    "url": "https://github.com/Spaceghost/writ/actions/runs/43084126793/artifacts/13888040049",
+    "sha256": "8ad35b50ce85f389840b23c7e46853a0f42803b550a87df5a0098a445cd0bb00",
+    "expires_at": "2026-11-25T19:23:39Z"
+  },
+  "retained_artifact_file_sha256": {
+    "allocator-sanitizers.log": "da2c4f6a19afa1374780a1e494b9d528634d7113042c8ad3b9e8803d7b982f31",
+    "bend-generation-and-proof.log": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+    "complete.log": "b5d22bfb8f10529bff5553a8a37f621f3838c3a04e4512a697b7fefe683f7903",
+    "environment.log": "6f572b817c480d32ef928eae413f4f205cd889d1287839caee12ee190dc3e5f8",
+    "ports.log": "efbdf045540924df5dec3e7855d2f718bd593536514c137ca736b7c94f15efaa",
+    "runner.log": "466cc0a6c69773401bc0a7f072de790352fe469dcedb2cbbad3748393257e029",
+    "writ_policy.log": "6ae0fd40eea34f88a04a94308fe0262c54fcb2c49dfa9726b27056cfada12e05"
+  },
+  "source_and_build_manifest": "Not emitted: the first boot timed out before the final manifest step. No copied supervisor config was emitted either.",
+  "observed_terminal_lines": [
+    "[init -> test_writ_policy] PASS: ER-007 after A's selection is dispatched, B offers quote 20: dispatching B's offer to B's worker is denied NotSelected and select is denied AlreadySelected",
+    "Error: Test execution timed out"
+  ],
+  "retained_repo_files": {
+    "corpus-43084126793-failure.log": {
+      "artifact_member": "writ_policy.log",
+      "sha256": "61dce7c4f1874ac56dcb4b137b2f1b29768e4104c555fc21e0c858cc3134f0a9",
+      "normalization": "From QEMU spawn to terminal result; CR removed, ANSI terminal controls removed, trailing whitespace stripped; LF terminated."
+    },
+    "43084126793-environment.log": {
+      "artifact_member": "environment.log",
+      "sha256": "6f572b817c480d32ef928eae413f4f205cd889d1287839caee12ee190dc3e5f8",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43084126793-allocator.log": {
+      "artifact_member": "allocator-sanitizers.log",
+      "sha256": "da2c4f6a19afa1374780a1e494b9d528634d7113042c8ad3b9e8803d7b982f31",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43084126793-generation-proof.log": {
+      "artifact_member": "bend-generation-and-proof.log",
+      "sha256": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+      "normalization": "None; exact artifact bytes."
+    }
+  }
+}

@@ -1,0 +1,3 @@
+# Retained supervisor configs include Genode's terminal blank line. Preserve
+# the exact artifact bytes; all other whitespace checks remain active.
+43091571073-*.config whitespace=-blank-at-eof

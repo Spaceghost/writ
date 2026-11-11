@@ -1,0 +1,112 @@
+{
+  "repository": "Spaceghost/writ",
+  "commit": "7edf561433c04419e3102fc0878e0f72ef3162a6",
+  "tree": "dd219b02817178ccf606c15ec1edf9df8704084b",
+  "workflow": ".github/workflows/writfs-genode-native.yml",
+  "run_id": 43091571073,
+  "run_attempt": 1,
+  "job_id": 130769690057,
+  "run_url": "https://github.com/Spaceghost/writ/actions/runs/43091571073",
+  "job_url": "https://github.com/Spaceghost/writ/actions/runs/43091571073/job/130769690057",
+  "created_at": "2026-11-11T19:54:46Z",
+  "completed_at": "2026-11-11T20:09:00Z",
+  "conclusion": "success",
+  "artifact": {
+    "id": 13890241294,
+    "name": "writfs-genode-native-1",
+    "url": "https://github.com/Spaceghost/writ/actions/runs/43091571073/artifacts/13890241294",
+    "sha256": "9fa95d2fee7c91b457dfa7bc0569fea0d987c4cbd9cea2333247340e171bda87",
+    "expires_at": "2026-11-25T20:08:56Z"
+  },
+  "native_results": {
+    "allocator_invariants": 24,
+    "core_assertions": 3072,
+    "mount_assertions": 69,
+    "filesystem_assertions": {
+      "reader": 44,
+      "stranger": 6,
+      "forger": 6
+    },
+    "vfs_assertions": 8,
+    "heap_peak": 68015880,
+    "reserved_peak": 69195528,
+    "tracked_limit": 134217728,
+    "teardown_live": 0,
+    "teardown_reserved": 0,
+    "core_ms": 520850,
+    "mount_ms": 73822
+  },
+  "host_allocator_sanitizers": {
+    "assertions": 24,
+    "address": true,
+    "undefined_behavior": true,
+    "leaks": true
+  },
+  "retained_artifact_file_sha256": {
+    "allocator-sanitizers.log": "da2c4f6a19afa1374780a1e494b9d528634d7113042c8ad3b9e8803d7b982f31",
+    "bend-generation-and-proof.log": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+    "complete.log": "1746eba42c2a89ea1266d4c3c30d486a73406d697536837e79099610483cbc7c",
+    "environment.log": "1c0339883b03a29bd3f5de1603aa2cd1ad263b52ed6827716c5ad09d2e651bca",
+    "ports.log": "efbdf045540924df5dec3e7855d2f718bd593536514c137ca736b7c94f15efaa",
+    "runner.log": "8158419debfa7fe1c84a13cb86bb42f2a600fe60db24c6d62070d7602df35267",
+    "source-and-build-sha256.txt": "edcf88440afeb6baf422980d95c480e6c77326e011c912e37ee6602ad9b27707",
+    "writ_policy.config": "876a0b489bc37e4386baec89a4271e3fc029b59d52b220ed79448d807f782000",
+    "writ_policy.log": "ec67b7aac23636648e94c39e4ef3d0d2fef3cf71fc868fe6d24617114da4ccc2",
+    "writfs.config": "1794442d684316410f020833f607ca4372f45ae4d64c5cf8d2a5feb88b7d18f5",
+    "writfs.log": "e81db2ed27ecb36cc80ca079cebc46991c450a8355977bf7782658121a1de6e5",
+    "writfs_vfs.config": "04b27967f59e9093e392178916d5bcab2c993a8f19708d567b3e24b0a518e8fc",
+    "writfs_vfs.log": "4da774ecc788116cc29a5748405ccc02e1b08313a99d362eff17efca99eeb3a8"
+  },
+  "retained_repo_files": {
+    "corpus-43091571073.log": {
+      "artifact_member": "writ_policy.log",
+      "sha256": "c91fd69a3893bae84c88611a3e69af8ce87e86620f448b041908cecde9e749b0",
+      "normalization": "From QEMU spawn to terminal result; CR removed, ANSI terminal controls removed, trailing whitespace stripped; LF terminated."
+    },
+    "filesystem-43091571073.log": {
+      "artifact_member": "writfs.log",
+      "sha256": "0e1e1f3a746c0f62e6da27ff5cbe0348b0b884fd0bcb658989afedf431d2d8c3",
+      "normalization": "From QEMU spawn to terminal result; CR removed, ANSI terminal controls removed, trailing whitespace stripped; LF terminated."
+    },
+    "vfs-43091571073.log": {
+      "artifact_member": "writfs_vfs.log",
+      "sha256": "9386d381a547d26212933c7aa74c047ea61e00f26cef0fa5b24cb5534bbed0c8",
+      "normalization": "From QEMU spawn to terminal result; CR removed, ANSI terminal controls removed, trailing whitespace stripped; LF terminated."
+    },
+    "43091571073-environment.log": {
+      "artifact_member": "environment.log",
+      "sha256": "1c0339883b03a29bd3f5de1603aa2cd1ad263b52ed6827716c5ad09d2e651bca",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43091571073-allocator.log": {
+      "artifact_member": "allocator-sanitizers.log",
+      "sha256": "da2c4f6a19afa1374780a1e494b9d528634d7113042c8ad3b9e8803d7b982f31",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43091571073-generation-proof.log": {
+      "artifact_member": "bend-generation-and-proof.log",
+      "sha256": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43091571073-source-and-build.sha256": {
+      "artifact_member": "source-and-build-sha256.txt",
+      "sha256": "edcf88440afeb6baf422980d95c480e6c77326e011c912e37ee6602ad9b27707",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43091571073-writ_policy.config": {
+      "artifact_member": "writ_policy.config",
+      "sha256": "876a0b489bc37e4386baec89a4271e3fc029b59d52b220ed79448d807f782000",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43091571073-writfs.config": {
+      "artifact_member": "writfs.config",
+      "sha256": "1794442d684316410f020833f607ca4372f45ae4d64c5cf8d2a5feb88b7d18f5",
+      "normalization": "None; exact artifact bytes."
+    },
+    "43091571073-writfs_vfs.config": {
+      "artifact_member": "writfs_vfs.config",
+      "sha256": "04b27967f59e9093e392178916d5bcab2c993a8f19708d567b3e24b0a518e8fc",
+      "normalization": "None; exact artifact bytes."
+    }
+  }
+}

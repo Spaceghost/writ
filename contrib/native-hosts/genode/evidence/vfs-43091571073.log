@@ -1,0 +1,42 @@
+spawn qemu-system-x86_64 -nographic -accel tcg -m 512 -nic none -no-reboot -serial mon:stdio -cdrom var/run/writfs_vfs.iso -machine q35 -cpu Skylake-Client
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.pcid [bit 17]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.x2apic [bit 21]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.01H:ECX.tsc-deadline [bit 24]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.hle [bit 4]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.invpcid [bit 10]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.07H:EBX.rtm [bit 11]
+qemu-system-x86_64: warning: TCG doesn't support requested feature: CPUID.0DH:EAX.xsavec [bit 1]
+cSeaBIOS (version 1.16.3-debian-1.16.3-2)
+Booting from Hard Disk...
+Boot failed: could not read the boot disk
+
+Booting from DVD/CD...
+error: can't find command `loadfont'.
+  Booting `Genode on base-hw'
+
+
+Bender Version 0.9-beta7-51-g28ba2ad-dirty
+Patching BDA with I/O port 0x3f8.
+Bender: Hello World.
+hwp config: eeo=na irq=na hwp=na epp=na epb=na
+Cpu apic_id=0x0 [0:0:0:0:0:0]
+
+
+kernel initialized
+Genode 26.08
+493 MiB RAM and 64536 caps assigned to init
+[init -> writfs] Warning: clock_gettime(): missing real-time clock
+[init -> writfs] WRITFS READY public-canary bytes=33 sha256=4e69733490c465b5561bd477617265a72e614cbabb3ec570fcb1c1b54df32e6a native=genode heap_peak=2093733 reserved_peak=2093733
+[init -> writfs] SESSION actor=1 active=1
+[init -> reader] PASS libc opens Writ through native VFS File_system mount
+[init -> reader] PASS libc reads exact immutable canary
+[init -> reader] PASS libc seek succeeds
+[init -> reader] PASS libc ranged read is exact
+[init -> reader] PASS libc stat reports exact registered size
+[init -> reader] PASS libc write-open is denied
+[init -> reader] PASS libc cannot open unregistered object
+[init -> reader] PASS libc closes the native handle
+[init -> reader] WRITFS VFS NATIVE PASS
+WRIT GENODE LIBC VFS ACCEPTED
+
+Run script execution successful.
