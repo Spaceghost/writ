@@ -1,17 +1,27 @@
 #requires -Version 7.4
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$BuildDir,
-    [string]$Node = (Get-Command node -ErrorAction Stop).Source,
+    [string]$BuildDir,
+    [string]$PackageDir,
+    [string]$Node,
     [string]$Base = (Join-Path $env:LOCALAPPDATA ('WritSmoke-' + [guid]::NewGuid().ToString('N'))),
     [switch]$InteractiveNotepad
 )
 $ErrorActionPreference = 'Stop'
 if (-not $IsWindows) { throw 'Native Windows required: WSL, Wine and model tests do not qualify.' }
 if (Test-Path -LiteralPath $Base) { throw 'Smoke Base must not exist; this test only owns newly created resources.' }
-$exe = [IO.Path]::GetFullPath((Join-Path $BuildDir 'Release\writ-cloud.exe'))
-$module = [IO.Path]::GetFullPath((Join-Path $BuildDir 'public-sync.mjs'))
-$bridge = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\runtime\node-policy.mjs'))
+if ([bool]$BuildDir -eq [bool]$PackageDir) { throw 'Specify exactly one of BuildDir or PackageDir.' }
+if ($PackageDir) {
+    $exe = [IO.Path]::GetFullPath((Join-Path $PackageDir 'writ-cloud.exe'))
+    $module = [IO.Path]::GetFullPath((Join-Path $PackageDir 'public-sync.mjs'))
+    $bridge = [IO.Path]::GetFullPath((Join-Path $PackageDir 'node-policy.mjs'))
+    if (-not $Node) { $Node = [IO.Path]::GetFullPath((Join-Path $PackageDir 'node.exe')) }
+} else {
+    $exe = [IO.Path]::GetFullPath((Join-Path $BuildDir 'Release\writ-cloud.exe'))
+    $module = [IO.Path]::GetFullPath((Join-Path $BuildDir 'public-sync.mjs'))
+    $bridge = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\..\runtime\node-policy.mjs'))
+    if (-not $Node) { $Node = (Get-Command node -ErrorAction Stop).Source }
+}
 foreach ($path in @($exe, $module, $bridge, $Node)) {
     if (-not (Test-Path -LiteralPath $path)) { throw "Missing $path" }
 }

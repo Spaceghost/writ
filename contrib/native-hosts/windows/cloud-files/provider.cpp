@@ -2,6 +2,10 @@
 extern "C" {
 #include "../policy_pipe.h"
 }
+#ifndef WRIT_VERSION
+#define WRIT_VERSION "development"
+#define WRIT_SOURCE_COMMIT "unknown"
+#endif
 
 namespace writ {
 // Windows SDK ntstatus.h: STATUS_CLOUD_FILE_UNSUCCESSFUL.
@@ -331,18 +335,74 @@ static void remove(const fs::path& root, const Store& store) {
     hr(CfUnregisterSyncRoot(root.c_str()), "unregister");
     event("REMOVED registration; hydrated files, backing store and recovery copies retained");
 }
+// Packaging conveniences only: the same Provider and Bend monitor handle I/O.
+static fs::path default_path(int folder, const wchar_t* suffix) {
+    wchar_t path[MAX_PATH];
+    hr(SHGetFolderPathW(nullptr, folder, nullptr, SHGFP_TYPE_CURRENT, path), "user folder");
+    return canonical(fs::path(path) / suffix);
+}
+static void stop(const fs::path& root) {
+    Handle signal(OpenEventW(EVENT_MODIFY_STATE, FALSE, stop_name(root).c_str()));
+    if (!signal.value && GetLastError() == ERROR_FILE_NOT_FOUND) return;
+    check(signal.value != nullptr, "open stop event"); check(SetEvent(signal), "stop");
+}
+static void cleanup_default() {
+    auto root = default_path(CSIDL_PROFILE, L"Writ");
+    auto path = default_path(CSIDL_LOCAL_APPDATA, L"WritDemo\\store");
+    local_user_path(root); local_user_path(path);
+    Store store(path);
+    auto lock_path = state_path(store, root) / L"provider.lock";
+    // Installation alone does not create a registration or backing store.
+    if (!fs::exists(lock_path) || !fs::exists(root)) return;
+    stop(root);
+    const auto deadline = GetTickCount64() + 20000;
+    for (;;) {
+        try {
+            auto lock = open(lock_path, GENERIC_READ | GENERIC_WRITE, 0);
+            break;
+        } catch (const Error& e) {
+            if (e.code != ERROR_SHARING_VIOLATION || GetTickCount64() >= deadline) throw;
+            Sleep(100);
+        }
+    }
+    try { remove(root, store); }
+    catch (const Error& e) {
+        // Repeated uninstall/cleanup is harmless only for an absent registration.
+        if (e.code != static_cast<DWORD>(HRESULT_FROM_WIN32(ERROR_CLOUD_FILE_NOT_UNDER_SYNC_ROOT))) throw;
+    }
+}
+static void start_default() {
+    wchar_t executable[32768];
+    DWORD length = GetModuleFileNameW(nullptr, executable, 32768);
+    check(length && length < 32768, "package directory");
+    auto package = fs::path(executable).parent_path();
+    auto node = package / L"node.exe", bridge = package / L"node-policy.mjs", module = package / L"public-sync.mjs";
+    for (const auto& dependency : {node, bridge, module})
+        if (!fs::is_regular_file(dependency)) throw Error("extract the entire portable ZIP or install Writ Setup", ERROR_FILE_NOT_FOUND);
+    auto root = default_path(CSIDL_PROFILE, L"Writ");
+    auto path = default_path(CSIDL_LOCAL_APPDATA, L"WritDemo\\store");
+    local_user_path(root); local_user_path(path);
+    private_directory(path.parent_path()); seed(Store(path)); private_directory(root);
+    std::wcout << L"Writ public preview: " << root << L"\\hello.txt\nKeep this window open while editing.\n";
+    Provider provider(root, Store(path), node.c_str(), bridge.c_str(), module.c_str(), false);
+    provider.run();
+}
 } // namespace writ
 
 int wmain(int argc, wchar_t** argv) {
     using namespace writ;
     try {
+        if (argc == 1 || (argc == 2 && !wcscmp(argv[1], L"start"))) { start_default(); return 0; }
+        if (argc == 2 && !wcscmp(argv[1], L"version")) {
+            std::cout << "Writ " WRIT_VERSION " (" WRIT_SOURCE_COMMIT ") public Files On-Demand preview\n"; return 0;
+        }
+        if (argc == 2 && !wcscmp(argv[1], L"cleanup")) { cleanup_default(); return 0; }
+        if (argc == 2 && !wcscmp(argv[1], L"stop")) { stop(default_path(CSIDL_PROFILE, L"Writ")); return 0; }
         if (argc == 3 && !wcscmp(argv[1], L"seed")) {
             auto path = canonical(argv[2]); local_user_path(path); seed(Store(path)); return 0;
         }
         if (argc == 3 && !wcscmp(argv[1], L"stop")) {
-            auto root = canonical(argv[2]);
-            Handle stop(OpenEventW(EVENT_MODIFY_STATE, FALSE, stop_name(root).c_str()));
-            check(stop.value != nullptr, "open stop event"); check(SetEvent(stop), "stop"); return 0;
+            stop(canonical(argv[2])); return 0;
         }
         if (argc == 3 && !wcscmp(argv[1], L"inspect")) {
             auto file = open(canonical(argv[2]) / L"hello.txt", FILE_READ_ATTRIBUTES,
@@ -366,8 +426,9 @@ int wmain(int argc, wchar_t** argv) {
             auto root = canonical(argv[2]), path = canonical(argv[3]); local_user_path(root); local_user_path(path);
             remove(root, Store(path)); return 0;
         }
-        std::cerr << "seed STORE | serve ROOT STORE NODE BRIDGE MODULE [--fail-writeback] | inspect ROOT | stop ROOT | remove ROOT STORE\n";
-        return 2;
+        std::cout << "start (default) | stop [ROOT] | cleanup | version\n"
+            "seed STORE | serve ROOT STORE NODE BRIDGE MODULE [--fail-writeback] | inspect ROOT | remove ROOT STORE\n";
+        return argc == 2 && !wcscmp(argv[1], L"--help") ? 0 : 2;
     } catch (const Error& e) {
         std::cerr << e.what() << " (" << e.code << ")\n"; return 1;
     } catch (const std::exception& e) {

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Release preparation only; all runtime decisions remain in Bend.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+writ_out=$(realpath -m "${1:?Pass a new output directory outside the checkout}")
+case "$writ_out/" in "$PWD/"*) echo 'Build outside the checkout' >&2; exit 1;; esac
+test ! -e "$writ_out"
+mkdir -p "$writ_out/toolchain" "$writ_out/policy" "$writ_out/logs"
+sha256sum -c --quiet verification/source-sha256.txt
+writ_pins=contrib/native-hosts/windows/cloud-files/release/toolchains.json
+writ_url=$(jq -r .bend.url "$writ_pins")
+writ_hash=$(jq -r .bend.sha256 "$writ_pins")
+curl --proto '=https' --tlsv1.2 --retry 3 -fL "$writ_url" -o "$writ_out/toolchain/bend.tar.gz"
+printf '%s  %s\n' "$writ_hash" "$writ_out/toolchain/bend.tar.gz" | sha256sum -c -
+tar -xzf "$writ_out/toolchain/bend.tar.gz" -C "$writ_out/toolchain"
+writ_bend="$writ_out/toolchain/bend/bin/bend"
+export BEND_NO_TELEMETRY=1
+"$writ_bend" version | tee "$writ_out/logs/bend-version.txt"
+"$writ_bend" writfs/PublicSync.bend -o "$writ_out/policy/public-sync.mjs"
+"$writ_bend" writfs/PublicSync.bend -o "$writ_out/public-sync-repeat.mjs"
+cmp "$writ_out/policy/public-sync.mjs" "$writ_out/public-sync-repeat.mjs"
+"$writ_bend" writfs/PublicSyncTests.bend -o "$writ_out/policy/public-sync-tests.js"
+"$writ_bend" writfs/PublicSyncTests.bend > "$writ_out/logs/public-sync-tests.txt"
+"$writ_bend" Tests.bend > "$writ_out/logs/core-tests.txt"
+"$writ_bend" PROOF.bend > "$writ_out/logs/proof.txt"
+git rev-parse HEAD > "$writ_out/policy/commit.txt"
+cp "$writ_out/logs/bend-version.txt" "$writ_out/policy/"
+(
+  cd "$writ_out/policy"
+  sha256sum public-sync.mjs public-sync-tests.js commit.txt bend-version.txt > SHA256SUMS
+)
+tail -n 1 "$writ_out/logs/public-sync-tests.txt" "$writ_out/logs/core-tests.txt" "$writ_out/logs/proof.txt"

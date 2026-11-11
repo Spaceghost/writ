@@ -1,0 +1,172 @@
+name: Writ Windows release
+
+on:
+  push:
+    branches: [master, 'windows/**']
+    tags: ['windows-v*']
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/native-hosts/**'
+      - 'contrib/rclone/bend/**'
+      - 'verification/source-sha256.txt'
+      - '.github/workflows/writ-windows-release.yml'
+  pull_request:
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/native-hosts/**'
+      - 'contrib/rclone/bend/**'
+      - 'verification/source-sha256.txt'
+      - '.github/workflows/writ-windows-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  policy:
+    name: Verify source and generate Bend policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.policy.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate from checksum-pinned Bend and run model/proof checks
+        shell: bash
+        run: bash contrib/native-hosts/windows/cloud-files/release/Generate.sh "$RUNNER_TEMP/writ-release"
+      - name: Retain exact generated policy
+        id: policy
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-policy-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/policy
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain policy verification logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-policy-logs-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  windows:
+    name: Build twice, exercise Cloud Files, install and uninstall
+    needs: policy
+    runs-on: windows-2025
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.packages.outputs.artifact-id }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.policy.outputs.artifact-id }}
+          path: ${{ runner.temp }}/writ-policy
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Build native executable and complete offline packages twice
+        run: |
+          ./contrib/native-hosts/windows/cloud-files/release/Package.ps1 `
+            -PolicyDir "$env:RUNNER_TEMP\writ-policy" -OutputDir "$env:RUNNER_TEMP\writ-release"
+      - name: Enable Cloud Files in disposable CI host and test exact packages
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = "$env:RUNNER_TEMP\writ-release\logs"
+          Get-CimInstance Win32_OperatingSystem | Format-List Caption,Version,OSArchitecture | Out-File "$logs\os.txt"
+          # Runner preparation only. The installer never changes drivers/services.
+          & sc.exe config CldFlt start= auto
+          if ($LASTEXITCODE) { throw 'Cloud Files filter is unavailable.' }
+          & fltmc.exe load cldflt
+          # An already-loaded filter is expected on some runner revisions.
+          & fltmc.exe filters | Tee-Object -FilePath "$logs\filters.txt"
+          if ($LASTEXITCODE) { throw 'Cannot inspect native filters.' }
+          ./contrib/native-hosts/windows/cloud-files/release/Test-Package.ps1 -OutputDir "$env:RUNNER_TEMP\writ-release"
+      - name: Seal verified release assets and evidence
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = "$env:RUNNER_TEMP\writ-release"
+          $version = (Get-Content contrib/native-hosts/windows/cloud-files/release/VERSION -Raw).Trim()
+          Copy-Item "$env:LOCALAPPDATA\WritReleaseSmoke\*.txt" "$out\logs"
+          Compress-Archive -Path "$out\logs\*" -DestinationPath "$out\dist\Writ-$version-windows-verification.zip"
+          Get-ChildItem "$out\dist" -File | Sort-Object Name | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
+          } | Set-Content "$out\dist\SHA256SUMS" -Encoding ascii
+      - name: Retain tested release assets
+        id: packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-assets-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/dist
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain native logs, including failed runs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-native-logs-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/writ-release/logs
+            ~/AppData/Local/WritReleaseSmoke/*.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish:
+    name: Publish verified Windows prerelease
+    if: startsWith(github.ref, 'refs/tags/windows-v')
+    needs: [policy, windows]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.windows.outputs.artifact-id }}
+          path: ${{ runner.temp }}/writ-assets
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Verify version and publish complete assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(cat contrib/native-hosts/windows/cloud-files/release/VERSION)
+          test "$RELEASE_TAG" = "windows-v$version"
+          cd "$RUNNER_TEMP/writ-assets"
+          sha256sum -c SHA256SUMS
+          cat > "$RUNNER_TEMP/release-notes.txt" <<'NOTES'
+          Download the **setup.exe** for a per-user installation, or extract the entire **portable.zip** and run **writ-cloud.exe**. The Node runtime is included; no source checkout, compiler, or separate Node installation is needed.
+
+          This is the public single-file Files On-Demand preview backed by a local store. It is unsigned. Automated native Windows checks cover metadata-only listing, hydration, ordinary and replacement saves, restart/readback, failed-write recovery, stale-base conflicts, installation and uninstallation. Interactive Notepad/Explorer and protected-data qualification remain separate acceptance gates.
+
+          The workflow compares two clean native builds and two copies of both packages byte-for-byte. BUILD-INFO.json records the exact source revision and toolchain environment; SHA256SUMS covers these release assets; the verification ZIP contains native test evidence. Hosted runner/compiler servicing updates can affect bytes across different environments.
+          NOTES
+          printf '\nSource: `%s`\nBuild: https://github.com/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$RUNNER_TEMP/release-notes.txt"
+          # Existing releases are never replaced. A failed upload leaves a draft.
+          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease \
+            --title "Writ $version for Windows" --notes-file "$RUNNER_TEMP/release-notes.txt" \
+            ./*
+          gh release edit "$RELEASE_TAG" --draft=false
