@@ -84,9 +84,15 @@ static USN file_usn(HANDLE h) {
     // Request the documented V2 record, and never reinterpret an unknown layout.
     READ_FILE_USN_DATA request{2, 2};
     alignas(USN_RECORD_V2) unsigned char buffer[4096]{};
+    Handle done(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+    check(done.value != nullptr, "USN event");
+    OVERLAPPED operation{}; operation.hEvent = done;
     DWORD got = 0;
-    check(DeviceIoControl(h, FSCTL_READ_FILE_USN_DATA, &request, sizeof(request),
-        buffer, sizeof(buffer), &got, nullptr), "read NTFS USN");
+    if (!DeviceIoControl(h, FSCTL_READ_FILE_USN_DATA, &request, sizeof(request),
+        buffer, sizeof(buffer), &got, &operation)) {
+        if (GetLastError() != ERROR_IO_PENDING) check(false, "read NTFS USN");
+        check(GetOverlappedResult(h, &operation, &got, TRUE), "complete USN read");
+    }
     auto record = reinterpret_cast<USN_RECORD_V2*>(buffer);
     if (got < offsetof(USN_RECORD_V2, FileName) || record->MajorVersion != 2 || record->Usn <= 0)
         throw Error("usable NTFS USN required", ERROR_INVALID_DATA);
@@ -96,16 +102,6 @@ static std::string fingerprint(HANDLE h) {
     FILE_ID_INFO id{};
     check(GetFileInformationByHandleEx(h, FileIdInfo, &id, sizeof(id)), "file identity");
     return hex(reinterpret_cast<unsigned char*>(&id), sizeof(id)) + ":" + std::to_string(file_usn(h));
-}
-static USN journal_current(HANDLE h) {
-    // Metadata updates can remain pending until close. Force the documented
-    // close journal record without releasing the handle that excludes writers.
-    USN usn = 0; DWORD got = 0;
-    check(DeviceIoControl(h, FSCTL_WRITE_USN_CLOSE_RECORD, nullptr, 0,
-        &usn, sizeof(usn), &got, nullptr), "write NTFS close journal record");
-    if (got != sizeof(usn) || usn <= 0 || file_usn(h) != usn)
-        throw Error("current positive journal USN required", ERROR_INVALID_DATA);
-    return usn;
 }
 static fs::path state_path(const Store& store, const fs::path& root) {
     return store.path / L"roots" / path_key(root);
@@ -231,11 +227,11 @@ class Provider {
         if (attributes.cloud && attributes.on_disk < attributes.size)
             throw Error("partial dirty placeholder retained; open to finish hydration", ERROR_CLOUD_FILE_NOT_IN_SYNC);
 
-        // This excludes existing writers and replacement/deletion until the
-        // entire snapshot/commit/readback/mark operation has finished. Sharing
-        // violations defer the attempt; they are not successful saves.
-        auto file = open(path, GENERIC_READ | WRITE_DAC, FILE_SHARE_READ,
-            OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT);
+        // A referenced exclusive Cloud Files oplock excludes existing writers
+        // and holds new conflicting opens until this bounded commit completes.
+        // Its asynchronous Win32 handle stays valid even while a break waits.
+        ProtectedFile guard(path);
+        HANDLE file = guard.native();
         // ReplaceFile can change the object between the metadata scan and open.
         // Conversion and completeness checks must describe this retained handle.
         attributes = inspect(file);
@@ -244,7 +240,7 @@ class Provider {
             throw Error("partial dirty replacement retained", ERROR_CLOUD_FILE_NOT_IN_SYNC);
         auto before = fingerprint(file);
         if (before == last_attempt) return;
-        auto bytes = read_bytes(file);
+        auto bytes = guard.read();
         bool attempted = false;
         try {
             auto store_lock = store.lock();
@@ -266,20 +262,20 @@ class Provider {
             // ReplaceFile, where the old placeholder identity may disappear.
             atomic_file(state / L"base", &replacement, sizeof(replacement));
             base = replacement;
-            // Convert replacement files without marking them. The final update
-            // performs identity publication and in-sync marking together, only
-            // after Bend accepts the exact persisted bytes and under a positive
-            // USN condition on this retained, writer-excluding handle.
+            // Convert replacement files without marking them. In-sync marking
+            // is admitted only after exact readback, with the exclusive oplock
+            // reference retained from snapshot through completion. Windows'
+            // optional conditional-USN marking rejects dirty files on the
+            // tested platform; it is not used as the concurrency primitive.
             if (!attributes.cloud) {
                 hr(CfConvertToPlaceholder(file, &base, sizeof(base), CF_CONVERT_FLAG_NONE,
                     nullptr, nullptr), "convert replacement");
             }
-            USN usn = journal_current(file);
-            monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
+            USN usn = file_usn(file);
+            monitor.require("MATCH", base.version, 0, hex(guard.read()));
             if (file_usn(file) != usn) throw Error("local metadata changed during readback", ERROR_CLOUD_FILE_NOT_IN_SYNC);
-            event("MATCHED_USN " + std::to_string(usn));
             hr(CfUpdatePlaceholder(file, nullptr, &base, sizeof(base), nullptr, 0,
-                CF_UPDATE_FLAG_MARK_IN_SYNC, &usn, nullptr), "update and mark in sync with USN");
+                CF_UPDATE_FLAG_MARK_IN_SYNC, nullptr, nullptr), "update and mark under exclusive oplock");
             last_attempt.clear();
             event("COMMIT version=" + std::to_string(base.version) + " sha256=" + hash(base));
         } catch (const Error& e) {
@@ -334,7 +330,8 @@ public:
         while (WaitForSingleObject(stopped, 500) == WAIT_TIMEOUT) {
             try { reconcile(); last_error = 0; }
             catch (const Error& e) {
-                if (e.code != ERROR_SHARING_VIOLATION && e.code != ERROR_FILE_NOT_FOUND && e.code != last_error)
+                if (e.code != ERROR_SHARING_VIOLATION && e.code != HRESULT_FROM_WIN32(ERROR_SHARING_VIOLATION) &&
+                    e.code != ERROR_FILE_NOT_FOUND && e.code != last_error)
                     event(std::string("DEFERRED ") + e.what() + " code=" + std::to_string(e.code));
                 if (std::string(e.what()) == "Bend transport stopped") throw;
                 last_error = e.code;
@@ -446,6 +443,17 @@ int wmain(int argc, wchar_t** argv) {
             auto p = inspect(file);
             std::cout << "{\"placeholder\":" << (p.cloud ? "true" : "false") << ",\"inSync\":" <<
                 (p.in_sync ? "true" : "false") << ",\"size\":" << p.size << ",\"onDisk\":" << p.on_disk << "}" << std::endl;
+            return 0;
+        }
+        if (argc == 4 && !wcscmp(argv[1], L"probe-lock")) {
+            // Native test control only: no payload or policy mutation. The
+            // external probe starts conflicting opens, then signals release.
+            Handle release(OpenEventW(SYNCHRONIZE, FALSE, argv[3]));
+            check(release.value != nullptr, "probe release event");
+            ProtectedFile guard(canonical(argv[2]) / L"hello.txt");
+            event("LOCK_PROBE_READY");
+            if (WaitForSingleObject(release, 30000) != WAIT_OBJECT_0)
+                throw Error("lock probe release timeout", ERROR_TIMEOUT);
             return 0;
         }
         if ((argc == 7 || argc == 8) && !wcscmp(argv[1], L"serve")) {

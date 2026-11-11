@@ -106,7 +106,7 @@ def persisted(matches: Bool, +state: State) -> Step:
       answer(State{sequence, 3, pending, pending}, "OK", version(pending), "PERSISTED")
 
 # Only an exact readback after persistence admits the native in-sync effect.
-# The binding must additionally retain the file identity and fence with its USN.
+# The binding must additionally retain the file identity under an exclusive oplock.
 def matched(observed: Maybe<&2, Entry>, +state: State) -> Step:
   match observed:
     case None{}: deny(state, "BYTES")

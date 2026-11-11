@@ -43,9 +43,14 @@ immutable records are reused only if their metadata and bytes match exactly.
 Native code polls metadata for one known name every 500 ms. This detects ordinary
 and replacement writes, including edits while the provider was stopped. Clean
 dehydrated placeholders are never read by this scan. Dirty partial files are
-deferred rather than reading sparse holes as a complete edit. A writeback handle
-excludes writers and rename until snapshot, publication, reread and marking finish.
-The final CfSetInSyncState also checks the nonzero USN from that handle. Payload
+deferred rather than reading sparse holes as a complete edit. An exclusive
+Cloud Files oplock reference is retained until snapshot, publication, reread and
+marking finish. Conflicting opens wait for release, including a pending oplock
+break; the asynchronous native handle stays valid during the bounded operation.
+Bend MATCH accepts the exact reread, and a positive NTFS USN must remain unchanged
+across that reread. The final CfUpdatePlaceholder installs identity and marks in
+sync while the same reference is still held. Replacement files are converted
+without marking first. Payload
 hydration reads an immutable version and passes its actual bytes through Bend READ
 before transferring them to Cloud Files.
 
@@ -66,3 +71,19 @@ See [traceability](../../traceability/windows-public-sync.md) and the
 Bend checks and Linux CPU execution do not establish a Windows run. MSVC build,
 Cloud Files execution, native USN behavior and actual Notepad acceptance remain
 pending until `Smoke.ps1 -InteractiveNotepad` records them on Windows.
+
+## Native concurrency revision
+
+Native runs rejected both CfSetInSyncState and CfUpdatePlaceholder MARK_IN_SYNC
+with a matching positive NTFS USN (ERROR_CLOUD_FILE_NOT_IN_SYNC). This preserves
+the failed evidence rather than treating that API as a demonstrated fence.
+The exclusion invariant now uses the documented exclusive Cloud Files oplock
+and a retained reference, preventing competing payload writes/replacements from
+proceeding throughout the complete local transaction. This replaces the earlier
+conditional-USN mechanism; it does not retry an unguarded mark after failure.
+The optional marking USN is unused. Journal observations still detect metadata
+changes across readback and suppress duplicate failed attempts. Smoke probes
+must show both a writer and rename waiting, then proceeding after release.
+
+References: [exclusive opens](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfopenfilewithoplock)
+and [reference lifetime](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfreferenceprotectedhandle).

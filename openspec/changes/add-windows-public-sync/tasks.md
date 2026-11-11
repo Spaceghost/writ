@@ -12,4 +12,4 @@
 - [ ] 2.2 Observe Explorer listing with zero payload fetch/allocation and exact hydration.
 - [ ] 2.3 Run Smoke.ps1: ordinary save, abrupt provider termination, new root, File.Replace, failed writeback/recovery/retry and stale-base conflict.
 - [ ] 2.4 Run Smoke.ps1 -InteractiveNotepad and observe the actual Notepad save and fresh-root bytes.
-- [ ] 2.5 Record native cleanup and USN-fenced in-sync outcomes. Preserve any failed or incomplete result.
+- [ ] 2.5 Record native cleanup and oplock-fenced in-sync and competing writer/rename outcomes. Preserve any failed or incomplete result.

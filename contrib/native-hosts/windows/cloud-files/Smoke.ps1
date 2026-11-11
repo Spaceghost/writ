@@ -116,6 +116,57 @@ function Has-Recovery([byte[]]$Expected) {
     }
     return $false
 }
+function Check-WritebackLock($P) {
+    $tag = 'Local\WritLockProbe-' + [guid]::NewGuid().ToString('N')
+    $release = [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, "$tag-release")
+    $ready = @()
+    $jobs = @()
+    $probe = $null
+    try {
+        $log = Join-Path $Base 'lock-probe.out.txt'
+        $err = Join-Path $Base 'lock-probe.err.txt'
+        $probe = Start-Process -FilePath $exe -ArgumentList "probe-lock `"$($P.Root)`" `"$tag-release`"" `
+            -PassThru -WindowStyle Hidden -RedirectStandardOutput $log -RedirectStandardError $err
+        $observed = [pscustomobject]@{ Process = $probe; Log = $log; Error = $err }
+        Wait-Until { (Read-Log $log).Contains('LOCK_PROBE_READY') } 'exclusive oplock acquired' $observed
+        foreach ($mode in 'writer', 'rename') {
+            $signal = "$tag-$mode"
+            $ready += [Threading.EventWaitHandle]::new($false, [Threading.EventResetMode]::ManualReset, $signal)
+            $jobs += Start-Job -ArgumentList (FilePath $P), $signal, $mode -ScriptBlock {
+                param($Path, $Signal, $Mode)
+                $ErrorActionPreference = 'Stop'
+                $started = [Threading.EventWaitHandle]::OpenExisting($Signal)
+                try {
+                    $started.Set() | Out-Null
+                    if ($Mode -eq 'writer') {
+                        $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Write,
+                            ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+                        $stream.Dispose()
+                    } else {
+                        [IO.File]::Move($Path, "$Path.probe")
+                        [IO.File]::Move("$Path.probe", $Path)
+                    }
+                    'OPEN_COMPLETED'
+                } finally { $started.Dispose() }
+            }
+        }
+        foreach ($signal in $ready) { Assert ($signal.WaitOne(15000)) 'competing operation started' }
+        Start-Sleep -Milliseconds 300
+        foreach ($job in $jobs) { Assert ($job.State -eq 'Running') 'competing write/rename waits for oplock release' }
+        $release.Set() | Out-Null
+        Assert ($probe.WaitForExit(10000) -and $probe.ExitCode -eq 0) 'oplock probe released cleanly'
+        foreach ($job in $jobs) {
+            $job | Wait-Job -Timeout 10 | Out-Null
+            Assert ($job.State -eq 'Completed' -and ($job | Receive-Job) -ceq 'OPEN_COMPLETED') 'competing operation proceeds after release'
+        }
+    } finally {
+        $release.Set() | Out-Null
+        if ($probe -and -not $probe.HasExited) { $probe.WaitForExit(10000) | Out-Null }
+        foreach ($job in $jobs) { $job | Stop-Job; $job | Remove-Job }
+        foreach ($signal in $ready) { $signal.Dispose() }
+        $release.Dispose()
+    }
+}
 
 $passed = $false
 try {
@@ -125,6 +176,10 @@ try {
     & $exe seed $store
     Assert ($LASTEXITCODE -eq 0) 'seed independent local backing store'
     $seed = [Text.Encoding]::UTF8.GetBytes("Hello from Writ!`r`nThis is public fixture data. Edit and save me in Notepad.`r`n")
+    $lockProbe = Fresh-Read 'Writ-lock-probe' $seed
+    Crash-Provider $lockProbe
+    Check-WritebackLock $lockProbe
+    Assert (EqualBytes ([IO.File]::ReadAllBytes((FilePath $lockProbe))) $seed) 'lock probe preserves payload bytes'
     $first = Fresh-Read 'Writ' $seed
     if ($InteractiveNotepad) {
         $marker = 'Notepad saved ' + [guid]::NewGuid().ToString('N')

@@ -13,7 +13,7 @@ registration or writable backing store.
 - Add a small Bend entry/list/read/conditional-replacement lifecycle using existing
   object-version, artifact, hashing and framing components.
 - Retain failed and conflicting edits and admit in-sync marking only after exact
-  persistence and local readback, fenced by the native file USN.
+  persistence and local readback, fenced by a retained exclusive native oplock.
 - Ship PowerShell acceptance tests, launch/removal commands and explicit evidence.
 
 ## Impact

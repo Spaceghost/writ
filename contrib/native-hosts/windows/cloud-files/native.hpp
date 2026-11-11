@@ -52,6 +52,44 @@ inline Handle open(const fs::path& path, DWORD access, DWORD share, DWORD create
     check(h.value != INVALID_HANDLE_VALUE, "CreateFile");
     return h;
 }
+class ProtectedFile {
+    HANDLE protected_handle = INVALID_HANDLE_VALUE;
+public:
+    explicit ProtectedFile(const fs::path& path) {
+        hr(CfOpenFileWithOplock(path.c_str(), CF_OPEN_FILE_FLAG_EXCLUSIVE | CF_OPEN_FILE_FLAG_WRITE_ACCESS,
+            &protected_handle), "exclusive writeback oplock");
+        if (!CfReferenceProtectedHandle(protected_handle)) {
+            CfCloseHandle(protected_handle);
+            throw Error("writeback oplock already breaking", ERROR_SHARING_VIOLATION);
+        }
+    }
+    ~ProtectedFile() {
+        // Keep the reference for the bounded local commit: pending conflicting
+        // opens cannot proceed until the break is acknowledged at this release.
+        CfReleaseProtectedHandle(protected_handle);
+        CfCloseHandle(protected_handle);
+    }
+    ProtectedFile(const ProtectedFile&) = delete;
+    ProtectedFile& operator=(const ProtectedFile&) = delete;
+    HANDLE native() const { return CfGetWin32HandleFromProtectedHandle(protected_handle); }
+    Bytes read() const {
+        LARGE_INTEGER size{};
+        check(GetFileSizeEx(native(), &size), "oplock file size");
+        if (size.QuadPart < 0 || size.QuadPart > max_bytes) throw Error("64 KiB limit", ERROR_FILE_TOO_LARGE);
+        Bytes bytes(static_cast<size_t>(size.QuadPart));
+        if (bytes.empty()) return bytes;
+        Handle done(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        check(done.value != nullptr, "read event");
+        OVERLAPPED operation{}; operation.hEvent = done;
+        DWORD got = 0;
+        if (!ReadFile(native(), bytes.data(), static_cast<DWORD>(bytes.size()), &got, &operation)) {
+            if (GetLastError() != ERROR_IO_PENDING) check(false, "oplock read");
+            check(GetOverlappedResult(native(), &operation, &got, TRUE), "complete oplock read");
+        }
+        if (got != bytes.size()) throw Error("short oplock read", ERROR_INVALID_DATA);
+        return bytes;
+    }
+};
 inline void read_exact(HANDLE h, void* out, DWORD size) {
     DWORD got = 0;
     check(ReadFile(h, out, size, &got, nullptr), "ReadFile");

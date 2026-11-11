@@ -68,7 +68,7 @@ notepad.exe "$env:USERPROFILE\Writ\hello.txt"
 Save in Notepad. Wait for `COMMIT version=... sha256=...` in the
 provider terminal. A successful editor save means NTFS accepted the local
 edit; the `COMMIT` line additionally means the backing version was persisted,
-the local bytes matched, and the USN-fenced in-sync operation succeeded.
+the local bytes matched, and the oplock-fenced in-sync operation succeeded.
 
 After that confirmation, close the Notepad window before testing removal.
 
@@ -132,7 +132,7 @@ a fresh root and both local and recovery copies remain available.
 | Source | Responsibility and retained resources |
 | --- | --- |
 | `writfs/PublicSync.bend` | Authoritative public entry/list/read, expected-base replacement, candidate SHA-256, persistence acknowledgement and exact-edit in-sync decisions; reuses `Transfer.ObjectVersion`, `Backplane.ArtifactId`, SHA-256, and the existing bounded frame parser |
-| `provider.cpp` | Cloud Files registration and callbacks, one-name metadata polling, file identity/USN observations, share modes excluding writers and rename, admitted I/O effects, native lifetime and cleanup |
+| `provider.cpp` | Cloud Files registration and callbacks, one-name metadata polling, file identity/USN observations, exclusive oplock reference excluding writers and rename, admitted I/O effects, native lifetime and cleanup |
 | `native.hpp` | Win32 handle ownership, NTFS/path checks, user/SYSTEM directory ACLs, BCrypt observations, bounded disk framing, exclusive store lock, flushed immutable versions and atomic head replacement |
 | `public_process.c` | Per-user process security binding for this public executable only; does not change `isolation.c` or the protected executable |
 | Existing `policy_pipe.c` and `runtime/node-policy.mjs` | Private bounded request/reply invocation of generated Bend; child job teardown, canonical framing and terminal transport failure |
@@ -153,10 +153,14 @@ write-through head rename and readback. Per-root state survives temporary-file
 replacement independently of placeholder metadata. Startup and listing read
 metadata only; the hydration callback reads the exact immutable version.
 
-Writeback uses an exclusive-writer/delete share mode while taking a snapshot,
-retaining a recovery copy, persisting the approved replacement and rereading the
-local file. Bend checks that reread, then `CfSetInSyncState` receives the nonzero
-USN from that same file handle. The adapter never marks a failed or stale commit
+Writeback retains an exclusive Cloud Files oplock reference while taking a
+snapshot, retaining a recovery copy, persisting the approved replacement and
+rereading the local file. Bend checks that reread; a positive file USN must stay
+unchanged across it. `CfUpdatePlaceholder` then installs identity and marks in
+sync before the reference is released. Competing writes and renames wait for
+release; Smoke.ps1 tests both. The optional conditional-USN marking API rejected
+matching USNs on the native runner and is not used as the concurrency fence.
+The adapter never marks a failed or stale commit
 in sync. Normal replacements are converted back to placeholders after persistence.
 Metadata polling every 500 ms covers ordinary writes, replacement and offline
 edits without treating close notification as a complete change journal.
@@ -172,8 +176,10 @@ rollback defense, power-loss qualification, or production host qualification.
 - [Register a Cloud Files sync root](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfregistersyncroot)
 - [Hydration transfer operations](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/ns-cfapi-cf_operation_parameters)
 - [Convert a replacement to a placeholder](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfconverttoplaceholder)
-- [USN-conditional in-sync marking](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfsetinsyncstate)
+- [Identity update and in-sync marking](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfupdateplaceholder)
 - [Unregistration behavior](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfunregistersyncroot)
 
 The [contract and traceability](../../../../openspec/traceability/windows-public-sync.md)
 keep model evidence distinct from the pending native Windows acceptance run.
+
+- [Exclusive oplock and handle lifetime](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfopenfilewithoplock)
