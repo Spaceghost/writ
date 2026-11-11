@@ -234,7 +234,7 @@ class Provider {
         // This excludes existing writers and replacement/deletion until the
         // entire snapshot/commit/readback/mark operation has finished. Sharing
         // violations defer the attempt; they are not successful saves.
-        auto file = open(path, GENERIC_READ | GENERIC_WRITE | WRITE_DAC, FILE_SHARE_READ,
+        auto file = open(path, GENERIC_READ | WRITE_DAC, FILE_SHARE_READ,
             OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT);
         // ReplaceFile can change the object between the metadata scan and open.
         // Conversion and completeness checks must describe this retained handle.
@@ -266,20 +266,20 @@ class Provider {
             // ReplaceFile, where the old placeholder identity may disappear.
             atomic_file(state / L"base", &replacement, sizeof(replacement));
             base = replacement;
-            USN usn = file_usn(file);
-            const USN before_update = usn;
-            if (attributes.cloud) {
-                hr(CfUpdatePlaceholder(file, nullptr, &base, sizeof(base), nullptr, 0,
-                    CF_UPDATE_FLAG_NONE, &usn, nullptr), "update identity");
-            } else {
+            // Convert replacement files without marking them. The final update
+            // performs identity publication and in-sync marking together, only
+            // after Bend accepts the exact persisted bytes and under a positive
+            // USN condition on this retained, writer-excluding handle.
+            if (!attributes.cloud) {
                 hr(CfConvertToPlaceholder(file, &base, sizeof(base), CF_CONVERT_FLAG_NONE,
-                    &usn, nullptr), "convert replacement");
+                    nullptr, nullptr), "convert replacement");
             }
-            event("IDENTITY_USN before=" + std::to_string(before_update) + " after=" + std::to_string(usn));
+            USN usn = journal_current(file);
             monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
-            usn = journal_current(file);
-            event("JOURNALED_USN " + std::to_string(usn));
-            hr(CfSetInSyncState(file, CF_IN_SYNC_STATE_IN_SYNC, CF_SET_IN_SYNC_FLAG_NONE, &usn), "mark in sync with USN");
+            if (file_usn(file) != usn) throw Error("local metadata changed during readback", ERROR_CLOUD_FILE_NOT_IN_SYNC);
+            event("MATCHED_USN " + std::to_string(usn));
+            hr(CfUpdatePlaceholder(file, nullptr, &base, sizeof(base), nullptr, 0,
+                CF_UPDATE_FLAG_MARK_IN_SYNC, &usn, nullptr), "update and mark in sync with USN");
             last_attempt.clear();
             event("COMMIT version=" + std::to_string(base.version) + " sha256=" + hash(base));
         } catch (const Error& e) {
