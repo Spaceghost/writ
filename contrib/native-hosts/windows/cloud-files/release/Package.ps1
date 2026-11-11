@@ -19,6 +19,12 @@ if ($version -notmatch '^\d+\.\d+\.\d+-preview\.\d+$') { throw 'Only explicitly 
 if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Invalid source revision.' }
 $pins = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'toolchains.json') -Raw | ConvertFrom-Json
 function Hash([string]$Path) { (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant() }
+foreach ($line in Get-Content -LiteralPath (Join-Path $repo 'verification\source-sha256.txt')) {
+    $parts = $line -split '  ', 2
+    if ($parts.Count -ne 2 -or (Hash (Join-Path $repo $parts[1])) -cne $parts[0]) {
+        throw "Source manifest mismatch: $line. Check out with core.autocrlf=false."
+    }
+}
 function Download($Pin, [string]$Path) {
     Invoke-WebRequest -Uri $Pin.url -OutFile $Path
     if ((Hash $Path) -cne $Pin.sha256) { throw "Dependency checksum mismatch: $($Pin.url)" }

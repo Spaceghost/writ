@@ -15,6 +15,6 @@
     "sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
   },
   "cmakeGenerator": "Visual Studio 18 2026",
-  "msvcToolset": "v143,version=14.44",
+  "msvcToolset": "v143,version=14.44.35207",
   "windowsSdk": "10.0.26100.0"
 }

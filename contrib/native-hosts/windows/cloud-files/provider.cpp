@@ -216,7 +216,7 @@ class Provider {
         auto bytes = read_bytes(file);
         bool attempted = false;
         try {
-            auto lock = store.lock();
+            auto store_lock = store.lock();
             recovery_copy(bytes);
             auto observed = store.head();
             auto proposal = monitor.call("PREPARE", base.version, observed.version, hex(bytes));
@@ -339,7 +339,7 @@ static void remove(const fs::path& root, const Store& store) {
 static fs::path default_path(int folder, const wchar_t* suffix) {
     wchar_t path[MAX_PATH];
     hr(SHGetFolderPathW(nullptr, folder, nullptr, SHGFP_TYPE_CURRENT, path), "user folder");
-    return canonical(fs::path(path) / suffix);
+    return writ::canonical(fs::path(path) / suffix);
 }
 static void stop(const fs::path& root) {
     Handle signal(OpenEventW(EVENT_MODIFY_STATE, FALSE, stop_name(root).c_str()));
