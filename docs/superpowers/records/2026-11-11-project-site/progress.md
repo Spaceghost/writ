@@ -4,13 +4,14 @@ Branch: lane/project-site
 
 Base: be405885c80c283c614757774d4bd76e299f846f.
 
-Conflict scan: active remote lanes concern host bindings, Linux, negotiation,
-planner and durable publication. This lane owns `utils/site/`,
-`utils/verification/`, the new hosted PR workflow, and the count consumers in
-Nix/Genode. Bend implementation and its tests are unchanged.
+Conflict scan: this lane owns utils/site/, utils/verification/, the hosted PR
+workflow, Nix/Genode count consumers and contributor docs. No authored Bend
+source changed and no broader OpenSpec task was checked.
 
-Task 1: started; baseline bundled-JavaScript suite running. The canonical
-reviewed count remains 3072 from be40588.
-Task 2: content research complete; implementation pending.
-Task 3: independent review and final records pending.
-Task 4: publication pending.
+Task 1: implemented in dadd637; independent review found no blocking issues.
+Task 2: implemented in 17feb1b; four Worker tests and Chromium QA passed.
+Task 3: final independent review found no blocking issues. 3072 bundled-JS
+checks and ordinary proofs passed; strict OpenSpec 45/45. Raw evidence retained.
+Native/Nix/Lean/GPU qualification not repeated. Manifest regenerated at final
+integration, excluding itself.
+Task 4: ready for branch/PR publication and the scoped Cloudflare deployment.
