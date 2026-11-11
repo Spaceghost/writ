@@ -29,7 +29,7 @@ static struct {
     unsigned int datagram, send, close;
 } calls;
 static int last_error;
-static const unsigned short ports[4] = { 41001, 41002, 41003, 41004 };
+static const unsigned short receiver_ports[4] = { 41001, 41002, 41003, 41004 };
 static unsigned int live_sockets;
 
 static int WSAAPI test_startup(WORD version, LPWSADATA data)
@@ -75,12 +75,12 @@ static void destination(SOCKET socket_handle, const struct sockaddr *address, in
     if (i % 2) {
         const SOCKADDR_IN6 *v6 = (const SOCKADDR_IN6 *)address;
         check(size == (int)sizeof(*v6) && v6->sin6_family == AF_INET6 &&
-            ntohs(v6->sin6_port) == ports[i] &&
+            ntohs(v6->sin6_port) == receiver_ports[i] &&
             !memcmp(&v6->sin6_addr, &in6addr_loopback, sizeof(v6->sin6_addr)), "fixed IPv6 loopback destination");
     } else {
         const SOCKADDR_IN *v4 = (const SOCKADDR_IN *)address;
         check(size == (int)sizeof(*v4) && v4->sin_family == AF_INET &&
-            ntohs(v4->sin_port) == ports[i] && ntohl(v4->sin_addr.s_addr) == INADDR_LOOPBACK,
+            ntohs(v4->sin_port) == receiver_ports[i] && ntohl(v4->sin_addr.s_addr) == INADDR_LOOPBACK,
             "fixed IPv4 loopback destination");
     }
 }
@@ -140,6 +140,17 @@ static int WSAAPI test_sendto(SOCKET socket_handle, const char *bytes, int size,
 #define send test_send
 #define sendto test_sendto
 #include "network_probe.c"
+#undef WSAStartup
+#undef WSACleanup
+#undef WSAGetLastError
+#undef socket
+#undef closesocket
+#undef ioctlsocket
+#undef connect
+#undef select
+#undef getsockopt
+#undef send
+#undef sendto
 
 static void reset(void)
 {
@@ -158,7 +169,7 @@ static WRIT_PROBE_REPORT run(const char *name, unsigned int passed,
     /* Stale network bits must be replaced without changing unrelated checks. */
     report.passed = WRIT_PROBE_READ | WRIT_PROBE_NETWORK_MASK;
     report.failed = WRIT_PROBE_CHILD | WRIT_PROBE_NETWORK_MASK;
-    writ_network_checks(&report, ports);
+    writ_network_checks(&report, receiver_ports);
     check(report.passed == (WRIT_PROBE_READ | passed), "only observed denials pass");
     check(report.failed == (WRIT_PROBE_CHILD | (WRIT_PROBE_NETWORK_MASK & ~passed)), "incomplete or open routes fail");
     check(report.network_startup_error == (unsigned int)fault.startup_error, "startup owns its error once");

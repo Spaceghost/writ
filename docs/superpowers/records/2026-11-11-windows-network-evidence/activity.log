@@ -1,1 +1,2 @@
 2026-11-11T22:04:43Z	controller	Isolated lane prepared; source/API review identified missing stages and readiness/query errors sharing denial classification.
+2026-11-11T22:16:54Z	implementer	First CI run 43110242244 exposed test-only macro leakage and a shadowed fixture variable; scoped macros and renamed fixture ports. Production probe unchanged.
