@@ -88,7 +88,7 @@ static USN file_usn(HANDLE h) {
     check(DeviceIoControl(h, FSCTL_READ_FILE_USN_DATA, &request, sizeof(request),
         buffer, sizeof(buffer), &got, nullptr), "read NTFS USN");
     auto record = reinterpret_cast<USN_RECORD_V2*>(buffer);
-    if (got < offsetof(USN_RECORD_V2, FileName) || record->MajorVersion != 2 || !record->Usn)
+    if (got < offsetof(USN_RECORD_V2, FileName) || record->MajorVersion != 2 || record->Usn <= 0)
         throw Error("usable NTFS USN required", ERROR_INVALID_DATA);
     return record->Usn;
 }
@@ -275,9 +275,9 @@ class Provider {
                     &usn, nullptr), "convert replacement");
             }
             event("IDENTITY_USN before=" + std::to_string(before_update) + " after=" + std::to_string(usn));
+            monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
             usn = journal_current(file);
             event("JOURNALED_USN " + std::to_string(usn));
-            monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
             hr(CfSetInSyncState(file, CF_IN_SYNC_STATE_IN_SYNC, CF_SET_IN_SYNC_FLAG_NONE, &usn), "mark in sync with USN");
             last_attempt.clear();
             event("COMMIT version=" + std::to_string(base.version) + " sha256=" + hash(base));
