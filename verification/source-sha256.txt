@@ -786,9 +786,9 @@ b0d6eee79acb21e8cf2eb570824f8dc41807dccd602adcefb29efcb4408f6941  docs/superpowe
 34cd4b2b763ac5fdeb63102b7d7375eb1647ba3b4c52b7b61e9566138d3f6f25  docs/superpowers/records/2026-11-07-issuance-revision-exhaustion/two-step-bend.stdout
 b0d6eee79acb21e8cf2eb570824f8dc41807dccd602adcefb29efcb4408f6941  docs/superpowers/records/2026-11-07-issuance-revision-exhaustion/two-step-node.stderr
 34cd4b2b763ac5fdeb63102b7d7375eb1647ba3b4c52b7b61e9566138d3f6f25  docs/superpowers/records/2026-11-07-issuance-revision-exhaustion/two-step-node.stdout
-54b26aca8167dfcf872b993388c490cadf414c3478706a81e5f9e7b8ec3b4bdd  docs/superpowers/records/2026-11-11-project-site/activity.log
+059b5de2f0d4e2e83d8161dd09fa2596dba6995cf63ec1df014fec58202964a0  docs/superpowers/records/2026-11-11-project-site/activity.log
 d27aa34e9a65f019418964a1f3cbc9f2bf9b22670fa54afd903d0838b0ff9f56  docs/superpowers/records/2026-11-11-project-site/final-review.md
-b188f4f64bc81d7b0f4b764f2cd8c9751367a0dd02e66a2af7c13eb0b9a0e2d8  docs/superpowers/records/2026-11-11-project-site/progress.md
+7b94e266b43f5169410aca96abb6ff8fc30e0407da47efb3f1b9ebd222bda769  docs/superpowers/records/2026-11-11-project-site/progress.md
 2c4301ef27fec69d5c3086fc19d0099ba6367083e63dbc8192993b277daed101  docs/superpowers/records/2026-11-11-project-site/task-1-brief.md
 7c4f5f1cc5717322c52847a34339f4952b0c4ccf8af7cc5c7ba78e783ae6c7c4  docs/superpowers/records/2026-11-11-project-site/task-1-report.md
 17d90d66c2b5405ee51e3260fc13acf2473484f937eb26639c5451429b49f66a  docs/superpowers/records/2026-11-11-project-site/task-1-review.md
@@ -796,6 +796,7 @@ b188f4f64bc81d7b0f4b764f2cd8c9751367a0dd02e66a2af7c13eb0b9a0e2d8  docs/superpowe
 1ca88c74925029a38ac9eb0a8c5cd03aba4b2382fc3f362c6d43aebafadd813a  docs/superpowers/records/2026-11-11-project-site/task-2-report.md
 33604db7388f39738b7d7abaa622881e47f529492e4468a6545ade8c4624ef60  docs/superpowers/records/2026-11-11-project-site/task-3-brief.md
 084dfc706ebd237017965553d4515f49092d70a8ba503178fe8facf83c7d342a  docs/superpowers/records/2026-11-11-project-site/task-4-brief.md
+7e1f9be1f845da3af3128da1a6188eb8c196312e1b00150e9e92eaad63deb38a  docs/superpowers/records/2026-11-11-project-site/task-4-report.md
 f602e65c2feba10dce98f0e0874a04d0fb28ec50dc80e4c04f9e32f436dc8faf  docs/superpowers/records/questions/q1.answers.jsonl
 d7bf34b65aca775d59f0cfd5ebb76f55e4edad101103a194a18cac2a07733e68  docs/superpowers/records/questions/q1.html
 98cd65a0079843592b2a65911270d9add2ebca47c67c33015ad38f3ae424194e  docs/superpowers/records/questions/q10.answers.jsonl
@@ -6324,9 +6325,11 @@ be8ec9bce3ee2c4ac5ede7832050d71df3f7b6fbfcb2fc6420a1d0da0d41d095  verification/p
 f800c38b8c1d42893cfb373a005fe2bb29b86cd984afd1c9bedc2acef3e5f699  verification/posix-mount-frame/tested-inputs.sha256
 7690a2fd4629d6d70b569edeb89e2166c8167bae8f99b524a87373f35d7eaa15  verification/posix-mount-frame/verdict-negative.stderr
 61b73cda11b6b665b9f99f2defd3d3b57f985c865225e942a5bdaa594a503e47  verification/posix-mount-frame/verdict.stdout
-30024627ee1653d1ed93f3e9283c55123ac614fa36009ae7f8f06a1e5056de90  verification/project-site-20261111/README.md
+373a130a473565ee307700293f7b6cc14935e80de59aa6c545c8a552c3bdf78b  verification/project-site-20261111/README.md
 ea735c0a83611563d2d71dd6a5759835762fa30507cba72d34741158d3e3435c  verification/project-site-20261111/asset-manifest.json
 d5ec8338847e0ab4778536748a1e67ddf81f46023ff780f3d2ee0a6fc20b419f  verification/project-site-20261111/browser-check.json
+b3d814062e32b9993da285853ccb5e0b87dac7aa242845bf9ac8c31cd80f0179  verification/project-site-20261111/deployment.json
+633fabacb0fe15a4e11eb7c4e0be14eb139a408b3005ae4386dac0d9923a3732  verification/project-site-20261111/live-check.json
 6c162782f00f0e3fdddea097d500a17fc85056304e5477e504924014306c2c10  verification/project-site-20261111/openspec.log
 931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1  verification/project-site-20261111/proofs.log
 10a55aaf2af15d6cf4c95f305d5bd013857be950639758311021ac8d6ec649ee  verification/project-site-20261111/tests-js.log

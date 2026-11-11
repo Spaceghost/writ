@@ -3,3 +3,4 @@
 2026-11-11T18:05:56+00:00	reviewer	Task 1: no blocking findings; ordinary proofs passed; OpenSpec 45/45 passed.
 2026-11-11T18:09:08+00:00	implementer	Task 2: four viewport widths and interaction checks passed; raw evidence recorded.
 2026-11-11T18:09:48+00:00	controller	Independent final review accepted; preparing source manifest and publication.
+2026-11-11T18:14:37+00:00	controller	Site live and checked; hosted CI green; branch pushed, PR creation denied by GitHub permissions.

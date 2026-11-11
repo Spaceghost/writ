@@ -26,3 +26,7 @@ historical records remain unchanged.
 The output verifier checks text structure and the producer exit separately;
 it does not authenticate execution or prove completeness of test coverage.
 Deployment and hosted-CI results are recorded separately when observed.
+
+Publication: live-check.json and deployment.json retain observed HTTP checks,
+package hashes, route/deployment identity and the passing hosted CI run. The
+independent review and PR permission limitation are in the matching task records.

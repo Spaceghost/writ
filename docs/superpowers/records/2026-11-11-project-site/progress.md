@@ -14,4 +14,6 @@ Task 3: final independent review found no blocking issues. 3072 bundled-JS
 checks and ordinary proofs passed; strict OpenSpec 45/45. Raw evidence retained.
 Native/Nix/Lean/GPU qualification not repeated. Manifest regenerated at final
 integration, excluding itself.
-Task 4: ready for branch/PR publication and the scoped Cloudflare deployment.
+Task 4: website published and verified; hosted CI passed on bace016. Branch is
+pushed. PR creation remains blocked by GitHub permissions (connector and CLI);
+master is unchanged. See task-4-report.md and the comparison link.

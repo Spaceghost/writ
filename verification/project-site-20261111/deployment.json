@@ -1,0 +1,27 @@
+{
+  "url": "https://spacegho.st/writ/",
+  "source_commit": "bace0165d289f987a8f2bef81185de7bfeca63ac",
+  "worker": "writ-site",
+  "deployment_id": "12c02d3e755c4affa110ee4925aaf456",
+  "worker_tag": "d5a4308c9eb94dc7ab9b29b02af2de11",
+  "bundle_sha256": "54cfe8bc116c9d28d6cf98dd6d055e84be3d196c10cf878e6d45f80d6aed10ec",
+  "routes": [
+    {
+      "id": "965ebce9883a4793839177a3c8af62c3",
+      "pattern": "spacegho.st/writ"
+    },
+    {
+      "id": "159d10c63e9441038432532effa04916",
+      "pattern": "spacegho.st/writ/*"
+    }
+  ],
+  "other_routes": "67 existing routes left unchanged",
+  "hosted_ci": {
+    "id": 43075114424,
+    "url": "https://github.com/Spaceghost/writ/actions/runs/43075114424",
+    "head_sha": "bace0165d289f987a8f2bef81185de7bfeca63ac",
+    "conclusion": "success"
+  },
+  "pull_request": "Not created: GitHub connector returned 403 Resource not accessible by integration; configured Spaceghost CLI identity also lacked CreatePullRequest permission.",
+  "review_url": "https://github.com/Spaceghost/writ/compare/master...lane%2Fproject-site"
+}
