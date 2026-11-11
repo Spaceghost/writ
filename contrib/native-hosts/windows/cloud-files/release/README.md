@@ -64,8 +64,9 @@ On Linux x64 with Git, jq, curl and tar, from a clean tagged checkout:
 bash contrib/native-hosts/windows/cloud-files/release/Generate.sh "$HOME/writ-release-generation"
 ```
 
-Copy `policy` to Windows. With PowerShell 7.4+, CMake, Visual Studio 2022 C++ tools
-(MSVC 14.44) and Windows SDK 10.0.26100.0, in the same checkout:
+Copy `policy` to Windows. With PowerShell 7.4+, CMake 4.2+, Visual Studio 2026
+including its MSVC 14.44 compatibility tools, and Windows SDK 10.0.26100.0,
+in the same checkout:
 
 ```powershell
 ./contrib/native-hosts/windows/cloud-files/release/Package.ps1 -PolicyDir C:\path\policy -OutputDir "$env:LOCALAPPDATA\WritReleaseBuild"

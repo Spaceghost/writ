@@ -64,7 +64,7 @@ jobs:
   windows:
     name: Build twice, exercise Cloud Files, install and uninstall
     needs: policy
-    runs-on: windows-2025
+    runs-on: windows-2025-vs2026
     timeout-minutes: 30
     outputs:
       artifact-id: ${{ steps.packages.outputs.artifact-id }}
@@ -116,14 +116,19 @@ jobs:
           path: ${{ runner.temp }}/writ-release/dist
           if-no-files-found: error
           retention-days: 30
+      - name: Collect native logs from both runner drives
+        if: always()
+        run: |
+          $logs = "$env:RUNNER_TEMP\writ-release\logs"
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          $smoke = "$env:LOCALAPPDATA\WritReleaseSmoke"
+          if (Test-Path -LiteralPath $smoke) { Copy-Item "$smoke\*.txt" $logs }
       - name: Retain native logs, including failed runs
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: windows-release-native-logs-${{ github.run_attempt }}
-          path: |
-            ${{ runner.temp }}/writ-release/logs
-            ~/AppData/Local/WritReleaseSmoke/*.txt
+          path: ${{ runner.temp }}/writ-release/logs
           if-no-files-found: warn
           retention-days: 30
 
