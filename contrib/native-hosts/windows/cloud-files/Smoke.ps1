@@ -40,15 +40,23 @@ function EqualBytes([byte[]]$A, [byte[]]$B) {
     [Convert]::ToBase64String($A) -ceq [Convert]::ToBase64String($B)
 }
 function FilePath($P) { Join-Path $P.Root 'hello.txt' }
-function LogText($P) {
-    if (Test-Path -LiteralPath $P.Log) { return [IO.File]::ReadAllText($P.Log) }
+function Read-Log([string]$Path) {
+    if (Test-Path -LiteralPath $Path) {
+        # The provider keeps stdout open for writing. A reader must explicitly
+        # share that access; File.ReadAllText's read-only sharing rejects it.
+        $stream = [IO.File]::Open($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read,
+            ([IO.FileShare]::ReadWrite -bor [IO.FileShare]::Delete))
+        $reader = [IO.StreamReader]::new($stream)
+        try { return $reader.ReadToEnd() } finally { $reader.Dispose() }
+    }
     return ''
 }
+function LogText($P) { Read-Log $P.Log }
 function Wait-Until([scriptblock]$Check, [string]$Name, $P) {
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     do {
         if ($P -and $P.Process.HasExited) {
-            throw "Provider exited ($($P.Process.ExitCode)): $(LogText $P) $([IO.File]::ReadAllText($P.Error))"
+            throw "Provider exited ($($P.Process.ExitCode)): $(LogText $P) $(Read-Log $P.Error)"
         }
         if (& $Check) { Write-Host "PASS: $Name"; return }
         Start-Sleep -Milliseconds 200
