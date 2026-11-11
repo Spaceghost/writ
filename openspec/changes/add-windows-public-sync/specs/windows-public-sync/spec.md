@@ -14,7 +14,7 @@ The public fixture provider SHALL register a per-user local NTFS sync root and e
 
 ### Requirement: WPS002 Conditional durable replacement
 
-The Bend monitor SHALL admit a replacement only against its retained expected base and the current backing version observed under an exclusive native store lock. Persistence SHALL flush the exact replacement and publish a durable head before acknowledgement. Windows in-sync marking SHALL require that acknowledgement, an exact local reread and an exclusive Cloud Files oplock reference retained on the same file identity throughout snapshot, persistence, readback and marking. The adapter SHALL reject a changed positive NTFS USN across readback; competing writes and replacements SHALL wait for release of the oplock reference.
+Bend SHALL admit replacement only against its retained base and the current head observed under an exclusive store lock. Persistence SHALL flush exact bytes and a durable head before acknowledgement. In-sync marking SHALL require acknowledgement and exact readback with unchanged positive USN. An exclusive Cloud Files oplock reference SHALL retain the same file identity and block competing writes/replacements throughout snapshot, persistence, readback and marking.
 
 #### Scenario: Ordinary save survives provider termination
 

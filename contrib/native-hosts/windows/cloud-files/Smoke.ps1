@@ -204,7 +204,8 @@ try {
     $replacement = [Text.Encoding]::UTF8.GetBytes("ReplaceFile save $([guid]::NewGuid())`r`n")
     $temp = Join-Path $second.Root 'editor.tmp'
     [IO.File]::WriteAllBytes($temp, $replacement)
-    [IO.File]::Replace($temp, (FilePath $second), $null)
+    # PowerShell converts $null to an empty string for this .NET string argument.
+    [IO.File]::Replace($temp, (FilePath $second), [System.Management.Automation.Language.NullString]::Value)
     Wait-Commit $second
     Assert (Inspect $second).placeholder 'replacement converted back to a placeholder'
     Crash-Provider $second
