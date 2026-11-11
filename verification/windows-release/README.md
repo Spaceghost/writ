@@ -38,6 +38,8 @@ publication. Captured evidence:
 - [Branch asset hashes](branch-assets.sha256), independently rechecked after
   download, together with every portable payload hash. These identify this
   branch build; a later tagged source has its own BUILD-INFO and SHA256SUMS.
+  Repository text copies normalize line endings and trailing whitespace; asset
+  hashes cover original bytes.
 
 The release workflow rebuilds and reruns these gates for a version tag before
 publishing. Cross-image byte identity, interactive desktop use, protected data,
