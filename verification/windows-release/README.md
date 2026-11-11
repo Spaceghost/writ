@@ -73,10 +73,26 @@ failed guard. The [design rationale](../../openspec/changes/add-windows-public-s
 links the documented oplock/reference behavior. Both the full Cloud Files smoke
 and install/uninstall checks pass in the successful run above.
 
+## Published release and anonymous download verification
+
+[windows-v0.1.0-preview.1](https://github.com/Spaceghost/writ/releases/tag/windows-v0.1.0-preview.1)
+was published at 2026-11-11 19:14:18 UTC by
+[tag run 43084871683](https://github.com/Spaceghost/writ/actions/runs/43084871683),
+after all generation, native, package, and publication jobs passed. Its source
+is `02d52be08d6a9898780fc27b48e6e74b1613ab07`.
+
+All five assets were downloaded with curl without credentials or configuration.
+Their sizes and GitHub SHA-256 digests, the release SHA256SUMS, every portable
+payload checksum, and the exact source revision were verified. The downloaded
+verification archive contains both passing Cloud Files and package summaries.
+[Download URLs and observed hashes](release-downloads.json) identify those exact
+published bytes. The public release includes the installer, complete portable
+ZIP, BUILD-INFO, SHA256SUMS, and native verification archive.
+
 ## Acceptance scope
 
-Automated native save/recovery/conflict/locking and install/uninstall checks
-pass. Public release publication is the remaining delivery step. Actual
+Automated native save/recovery/conflict/locking, install/uninstall, repeated
+build/package equality, and public download delivery pass. Actual
 Notepad/Explorer UI, separate standard-account desktop use, power-loss and
 protected-data qualification remain outside unattended CI evidence. No Lean
 kernel or GPU claim is made.
