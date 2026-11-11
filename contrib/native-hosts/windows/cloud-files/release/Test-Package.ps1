@@ -40,7 +40,10 @@ try {
     $deadline = [DateTime]::UtcNow.AddSeconds(45)
     do {
         if ($provider.HasExited) { throw 'Installed provider exited; inspect installed-provider logs.' }
-        $ready = ([string](Get-Content -LiteralPath (Join-Path $logs 'installed-provider.txt') -Raw)).Contains('READY ')
+        # Empty startup logs can produce AutomationNull before the first write.
+        # A typed local normalizes that value before invoking string methods.
+        [string]$startup = Get-Content -LiteralPath (Join-Path $logs 'installed-provider.txt') -Raw
+        $ready = $startup.Contains('READY ')
         if (-not $ready) { Start-Sleep -Milliseconds 200 }
     } while (-not $ready -and [DateTime]::UtcNow -lt $deadline)
     Assert $ready 'Start menu command creates default Writ root'
