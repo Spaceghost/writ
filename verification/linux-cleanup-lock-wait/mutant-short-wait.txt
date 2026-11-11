@@ -1,0 +1,2 @@
+FAIL mutant-short-wait.c:710: result == 0 && destroy_lock == 1 && !atomic_load(&h.fatal)
+exit=1

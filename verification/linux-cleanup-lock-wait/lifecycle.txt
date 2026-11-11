@@ -1,0 +1,20 @@
+PASS paused READ reply attempt precedes REVOKE
+PASS paused READ reply attempt precedes intentional policy termination
+PASS REVOKE first denies later READ and permits CLOSE cleanup
+PASS canceled OPEN closes its admitted handle while locked
+PASS malformed and failed operations poison or release the lock
+PASS revoked lookup, getattr, open and directory listing deny
+PASS successful protected metadata replies hold the effect lock
+PASS busy reader record stays intact until checked join
+PASS detached pidfd retirement is outside the lock and cannot restore actor
+PASS brief callback lock hold is awaited and cleanup completes
+PASS no-thread cleanup avoids the uninitialized lock
+PASS retirement failures preserve the first error and continue cleanup
+PASS unexpected cleanup lock failure immediately fail-stops without cleanup
+PASS failed unlock fail-stops without retiring shared resources
+PASS failed join after detachment fail-stops without destroying shared state
+PASS busy-path failed join fail-stops before touching shared reader
+PASS started thread without initialized lock fail-stops without touching it
+PASS cleanup on a thread already holding the lock fail-stops (EDEADLK)
+PASS ownership-granting unexpected cleanup lock result fail-stops before cleanup
+lifecycle exit=0

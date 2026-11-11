@@ -174,15 +174,23 @@ revocation, POSIX mutex fairness gives no bounded progress guarantee, and the
 change does not qualify teardown, crash recovery or spontaneous interpreter
 death.
 
-During cleanup, if the FUSE thread exists and the effect mutex is immediately
-available, the supervisor detaches the entire reader record under that mutex,
+During cleanup, if the FUSE thread exists, the supervisor waits at most two
+seconds (`CLOCK_MONOTONIC`) to acquire the effect mutex. The kernel delivers
+FUSE RELEASE/FLUSH after the reader's last `close()` has returned, so an
+ordinary callback can still hold the mutex when cleanup begins. Once acquired,
+the supervisor detaches the entire reader record under that mutex,
 invalidates the shared record, then retires the detached copy without the lock.
-If the mutex is busy, cleanup marks the instance fatal and incomplete, requests
-FUSE exit/unmount, checks join and retires the original record only afterward.
-An in-flight callback that already passed the fatal check may still obtain a
-later allowed policy decision and reply while shutdown proceeds; no completed
-REVOKE is implied by this cleanup path. Unexpected trylock or unlock errors,
-and failed join, immediately fail-stop without claiming resource cleanup.
+If the mutex is still held at the deadline, cleanup marks the instance fatal
+and incomplete, requests FUSE exit/unmount, checks join and retires the
+original record only afterward. An in-flight callback that already passed the
+fatal check may still obtain a later allowed policy decision and reply while
+shutdown proceeds; no completed REVOKE is implied by this cleanup path.
+Before waiting, cleanup sets a `closing` flag so no new callback maps to the
+reader. The mutex is error-checking, so cleanup on a thread that already holds
+it fails with `EDEADLK`. Unexpected lock or unlock errors, and failed join,
+immediately fail-stop without claiming resource cleanup. The bounded wait uses
+`pthread_mutex_clocklock` (glibc 2.30 or newer). See the
+[cleanup lock wait record](../../../verification/linux-cleanup-lock-wait/README.md).
 
 Join success establishes only that the loop thread no longer uses the host; it
 does not establish that the loop succeeded. The dedicated supervisor sets

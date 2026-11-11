@@ -1,0 +1,2 @@
+FAIL mutant-no-closing.c:709: mock.lock_contended == 1 && mock.reader_actor_while_waiting == 0
+exit=1

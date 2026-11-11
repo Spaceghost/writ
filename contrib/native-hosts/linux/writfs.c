@@ -20,6 +20,7 @@
 #include <sys/statvfs.h>
 #include <sys/syscall.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <unistd.h>
 
 #define DATA_INODE 2u
@@ -44,6 +45,8 @@ struct host {
     uint32_t length;
     uint32_t last_handle;
     atomic_int fatal, initialized;
+    /* Set once cleanup begins: no callback may newly map to the reader. */
+    atomic_int closing;
     struct native_handle handles[HANDLE_LIMIT];
     struct native_event events[EVENT_LIMIT];
     atomic_size_t event_count;
@@ -90,6 +93,7 @@ static int terminate_policy(struct host *h)
 
 static uint32_t actor(struct host *h, const struct fuse_ctx *c)
 {
+    if (atomic_load(&h->closing)) return 0u;
     return c && c->pid == h->reader.pid && c->uid == h->uid && c->gid == h->gid &&
         writ_process_alive(&h->reader) ? 1u : 0u;
 }
@@ -420,10 +424,32 @@ static void stop_session_or_exit(struct host *h, int mounted, int threaded,
     h->session = NULL;
 }
 
+/* Cleanup waits at most this long for an in-flight callback to leave the
+   effect lock. The kernel delivers FUSE RELEASE/FLUSH after the reader's
+   last close() has already returned, so a callback can legitimately hold the
+   lock when ordinary cleanup begins (1 ms in CI run 43059416003). Waiting to
+   acquire holds nothing; a longer hold is treated as real contention. */
+#ifndef WRIT_CLEANUP_LOCK_WAIT_MS
+#define WRIT_CLEANUP_LOCK_WAIT_MS 2000
+#endif
+
+/* Returns 0 with the lock held, ETIMEDOUT if a callback still holds it at
+   the monotonic deadline, or another error that cleanup treats as unexpected. */
+static int cleanup_lock(struct host *h)
+{
+    struct timespec deadline;
+    if (clock_gettime(CLOCK_MONOTONIC, &deadline)) return errno ? errno : EINVAL;
+    deadline.tv_sec += WRIT_CLEANUP_LOCK_WAIT_MS / 1000;
+    deadline.tv_nsec += (long)(WRIT_CLEANUP_LOCK_WAIT_MS % 1000) * 1000000L;
+    if (deadline.tv_nsec >= 1000000000L) { deadline.tv_sec += 1; deadline.tv_nsec -= 1000000000L; }
+    return pthread_mutex_clocklock(&h->effect_lock, CLOCK_MONOTONIC, &deadline);
+}
+
 /* Transfer the exact reader lifetime under the same lock used by actor().
-   Never hold it while signaling, reaping, unmounting or joining. EBUSY leaves
-   the reader intact until join; unexpected errors fail-stop with ownership
-   and cleanup uncertain. */
+   Never hold it while signaling, reaping, unmounting or joining. A bounded
+   wait lets a brief callback finish; ETIMEDOUT marks the instance fatal and
+   incomplete and leaves the reader intact until join (reported as EBUSY);
+   unexpected errors fail-stop with ownership and cleanup uncertain. */
 static int retire_children_and_session(struct host *h, struct writ_child *other,
     int lock_initialized, int threaded, pthread_t thread, int mounted,
     int signal_handlers, int *destroy_lock)
@@ -433,8 +459,11 @@ static int retire_children_and_session(struct host *h, struct writ_child *other,
     if (!threaded) {
         failure = writ_retire_child(&h->reader);
     } else {
-        error = lock_initialized ? pthread_mutex_trylock(&h->effect_lock) : EINVAL;
-        if (error == EBUSY) {
+        /* Stop mapping new callbacks to the reader before waiting, so the
+           wait cannot extend reader service. RELEASE does not use actor(). */
+        atomic_store(&h->closing, 1);
+        error = lock_initialized ? cleanup_lock(h) : EINVAL;
+        if (error == ETIMEDOUT) {
             atomic_store(&h->fatal, 1);
             defer_reader = 1;
             failure = EBUSY;
@@ -732,6 +761,7 @@ int main(int argc, char **argv)
     struct host h;
     memset(&h, 0, sizeof h);
     atomic_init(&h.fatal, 0);
+    atomic_init(&h.closing, 0);
     atomic_init(&h.initialized, 0);
     atomic_init(&h.event_count, 0);
     h.uid = uid; h.gid = gid; h.sealed = -1;
@@ -781,7 +811,19 @@ int main(int argc, char **argv)
         goto cleanup;
     }
     policy_started = 1;
-    if (pthread_mutex_init(&h.effect_lock, NULL)) goto cleanup;
+    {
+        /* Error-checking: a cleanup attempted while this thread already holds
+           the lock returns EDEADLK and fail-stops, rather than waiting out the
+           deadline and taking the busy path. */
+        pthread_mutexattr_t attr;
+        if (pthread_mutexattr_init(&attr)) goto cleanup;
+        int failed = pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_ERRORCHECK) ||
+                     pthread_mutex_init(&h.effect_lock, &attr);
+        if (pthread_mutexattr_destroy(&attr) || failed) {
+            if (!failed) (void)pthread_mutex_destroy(&h.effect_lock);
+            goto cleanup;
+        }
+    }
     effect_lock_initialized = 1;
     if (fuse_set_signal_handlers(h.session)) goto cleanup;
     signal_handlers = 1;

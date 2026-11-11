@@ -1,0 +1,111 @@
+diff --git a/contrib/native-hosts/linux/writfs.c b/contrib/native-hosts/linux/writfs.c
+index 099aff5..d446439 100644
+--- a/contrib/native-hosts/linux/writfs.c
++++ b/contrib/native-hosts/linux/writfs.c
+@@ -20,6 +20,7 @@
+ #include <sys/statvfs.h>
+ #include <sys/syscall.h>
+ #include <sys/wait.h>
++#include <time.h>
+ #include <unistd.h>
+
+ #define DATA_INODE 2u
+@@ -38,6 +39,7 @@ struct host {
+     struct writ_policy policy;
+     /* Lock order is effect_lock, then policy.lock. It spans reply handoff. */
+     pthread_mutex_t effect_lock;
++    const char *_Atomic diag_op; /* DIAGNOSTIC ONLY: lane/linux-cleanup-busy-diag */
+     struct writ_child reader;
+     uid_t uid; gid_t gid;
+     int sealed;
+@@ -323,7 +325,9 @@ static void fs_lookup(fuse_req_t req, fuse_ino_t parent, const char *name)
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "fs_lookup_under_lock");
+     fs_lookup_under_lock(req, parent, name);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -331,7 +335,9 @@ static void fs_getattr(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "fs_getattr_under_lock");
+     fs_getattr_under_lock(req, inode, fi);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -339,7 +345,9 @@ static void open_inode(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "open_inode_under_lock");
+     open_inode_under_lock(req, inode, fi, directory);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -353,7 +361,9 @@ static void fs_read(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offset,
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "fs_read_under_lock");
+     fs_read_under_lock(req, inode, size, offset, fi);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -362,7 +372,9 @@ static void fs_readdir(fuse_req_t req, fuse_ino_t inode, size_t size, off_t offs
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "fs_readdir_under_lock");
+     fs_readdir_under_lock(req, inode, size, offset, fi);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -370,7 +382,9 @@ static void fs_release(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "fs_release_under_lock");
+     fs_release_under_lock(req, inode, fi);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -378,7 +392,9 @@ static void fs_flush(fuse_req_t req, fuse_ino_t inode, struct fuse_file_info *fi
+ {
+     struct host *h = fuse_req_userdata(req);
+     if (effect_enter(h)) { fuse_reply_err(req, EIO); return; }
++    atomic_store(&h->diag_op, "fs_flush_under_lock");
+     fs_flush_under_lock(req, inode, fi);
++    atomic_store(&h->diag_op, NULL);
+     (void)effect_leave(h);
+ }
+
+@@ -435,6 +451,20 @@ static int retire_children_and_session(struct host *h, struct writ_child *other,
+     } else {
+         error = lock_initialized ? pthread_mutex_trylock(&h->effect_lock) : EINVAL;
+         if (error == EBUSY) {
++            {   /* DIAGNOSTIC ONLY: who holds the lock, and for how long. */
++                const char *op = atomic_load(&h->diag_op);
++                struct timespec t0, t1; clock_gettime(CLOCK_MONOTONIC, &t0);
++                int again = EBUSY; long ms = 0;
++                while (again == EBUSY && ms < 5000) {
++                    struct timespec nap = { 0, 1000000 }; nanosleep(&nap, NULL);
++                    again = pthread_mutex_trylock(&h->effect_lock);
++                    clock_gettime(CLOCK_MONOTONIC, &t1);
++                    ms = (t1.tv_sec - t0.tv_sec) * 1000 + (t1.tv_nsec - t0.tv_nsec) / 1000000;
++                }
++                fprintf(stderr, "DIAG cleanup trylock EBUSY: in-flight op=%s; lock %s after %ld ms\n",
++                        op ? op : "(unrecorded)", again ? "still held" : "acquired", ms);
++                if (!again) pthread_mutex_unlock(&h->effect_lock);
++            }
+             atomic_store(&h->fatal, 1);
+             defer_reader = 1;
+             failure = EBUSY;

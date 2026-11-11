@@ -68,6 +68,10 @@ addresses the previously identified shared reader PID/pidfd mutation at the
 source and mocked-scheduling level. Its fail-stop and busy paths remain
 unqualified as native teardown; blocked FUSE replies, unmount, join and
 retirement, as well as mutex fairness, leave progress and cleanup unproven.
+The [cleanup lock wait record](../../verification/linux-cleanup-lock-wait/README.md)
+replaces the immediate busy check with a bounded two-second wait after a CI
+diagnostic showed a FUSE RELEASE callback holding the lock for 1 ms at every
+ordinary teardown; contention past the deadline keeps the busy path.
 The [child retirement error record](../../verification/linux-child-retirement-errors/README.md)
 adds synthetic signal, ownership, wait and close fault injection against the
 production helper and checks failure propagation through cleanup. It does not

@@ -1,0 +1,4 @@
+65c65
+< #define WRIT_CLEANUP_LOCK_WAIT_MS 200
+---
+> #define WRIT_CLEANUP_LOCK_WAIT_MS 1

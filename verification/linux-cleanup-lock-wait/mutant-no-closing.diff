@@ -1,0 +1,4 @@
+464c464
+<         atomic_store(&h->closing, 1);
+---
+>         /* mutant: closing not set */
