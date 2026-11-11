@@ -19,8 +19,9 @@ protected-data host. A custom kernel remains future work.
 The separate public writable desktop preview now has both
 [Windows Cloud Files](../contrib/native-hosts/windows/cloud-files/README.md) and
 [Linux FUSE](../contrib/native-hosts/linux/public-sync/README.md) bindings over
-one Bend save monitor. Linux native parity passes locally; combined package and
-release gates are recorded separately. These public-save results do not change
+one Bend save monitor. Native parity and installation pass on Ubuntu and Fedora,
+and the combined release requires Windows regression checks too. These
+public-save results do not change
 the protected-reader confinement qualifications below.
 
 ## Platform roles

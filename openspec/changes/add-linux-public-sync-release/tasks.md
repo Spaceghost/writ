@@ -8,7 +8,7 @@
 ## 2. Acceptance
 
 - [x] 2.1 Pass local native FUSE parity and cleanup probes.
-- [ ] 2.2 Pass policy/library/proof, source-manifest and strict OpenSpec checks.
-- [ ] 2.3 Pass repeated packages and native install/uninstall on both platforms.
-- [ ] 2.4 Publish and anonymously verify the combined release assets.
+- [x] 2.2 Pass policy/library/proof, source-manifest and strict OpenSpec checks.
+- [x] 2.3 Pass repeated packages and native install/uninstall on both platforms.
+- [x] 2.4 Publish and anonymously verify the combined release assets.
 - [ ] 2.5 Qualify actual desktop editors/file managers and additional distros.

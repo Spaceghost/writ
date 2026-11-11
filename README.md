@@ -13,8 +13,10 @@ producing a scoped write intent.
 
 ## Try it
 
-Windows public preview installers and portable packages are published on
-[GitHub Releases](https://github.com/Spaceghost/writ/releases). See the
+Linux and Windows public preview installers and portable packages are published
+on [GitHub Releases](https://github.com/Spaceghost/writ/releases). Both use the
+same Bend save monitor and must pass native tests before a desktop release.
+See [Linux packaging](contrib/native-hosts/linux/public-sync/README.md) and the
 [Windows release pathway](contrib/native-hosts/windows/cloud-files/release/README.md)
 for reproducible builds, checksums and the native test gates.
 

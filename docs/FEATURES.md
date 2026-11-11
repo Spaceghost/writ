@@ -7,7 +7,8 @@ private matcher, or a new release path in the current Bend library.
 For the bounded public desktop save milestone, see the
 [Windows Cloud Files preview](../contrib/native-hosts/windows/cloud-files/README.md)
 and [Linux FUSE preview](../contrib/native-hosts/linux/public-sync/README.md).
-They use the same Bend save monitor. Linux local native parity passes; combined
+They use the same Bend save monitor. Native save/recovery and installation pass
+on both platforms, including Ubuntu-built Linux packages on Fedora. Combined
 reproducible packages and public downloads are tracked in the
 [Linux release record](../verification/linux-release/README.md).
 
