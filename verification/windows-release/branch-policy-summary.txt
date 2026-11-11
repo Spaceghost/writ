@@ -1,0 +1,9 @@
+public-sync-tests.txt
+PASS: version exhaustion never wraps
+ALL PUBLIC SYNC TESTS PASSED
+core-tests.txt
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED
+proof.txt
+ALL PROOFS CHECK
+Use --verdict for mathematical validity.

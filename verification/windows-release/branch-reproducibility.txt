@@ -1,0 +1,2 @@
+MATCH 039611246953a26f81ea8f783cf2c2abe898e15fabbb009e6665ee80003c5a58 Writ-0.1.0-preview.1-windows-x64-portable.zip
+MATCH f6670a501a0fdd4ff062b77ff2285768205b2bcab19500c7ed8a1013b40a1de9 Writ-0.1.0-preview.1-windows-x64-setup.exe

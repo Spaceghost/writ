@@ -7,7 +7,7 @@
 
 ## 2. Acceptance
 
-- [ ] 2.1 Pass local syntax, source-manifest and strict OpenSpec checks.
-- [ ] 2.2 Run the release workflow on native Windows and preserve evidence.
+- [x] 2.1 Pass local syntax, source-manifest and strict OpenSpec checks.
+- [x] 2.2 Run the release workflow on native Windows and preserve evidence.
 - [ ] 2.3 Publish a prerelease and verify anonymously downloadable assets.
 - [ ] 2.4 Exercise interactive Notepad/Explorer and a standard-user desktop.

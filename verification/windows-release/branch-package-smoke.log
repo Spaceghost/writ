@@ -1,0 +1,170 @@
+**********************
+PowerShell transcript start
+Start time: 20261111190341
+Username: runnervmm7ud1\runneradmin
+RunAs User: runnervmm7ud1\runneradmin
+Configuration Name: 
+Machine: runnervmm7ud1 (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -command . 'D:\a\_temp\aa1b4169-8d2c-4b5b-85ae-3d83ef25a0de.ps1'
+Process ID: 6856
+PSVersion: 7.6.9
+PSEdition: Core
+GitCommitId: 7.6.9
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+PASS: payload hash: BUILD-INFO.json
+PASS: payload hash: NODE-LICENSE.txt
+PASS: payload hash: node-policy.mjs
+PASS: payload hash: node.exe
+PASS: payload hash: public-sync.mjs
+PASS: payload hash: README.txt
+PASS: payload hash: Smoke.ps1
+PASS: payload hash: writ-cloud.exe
+OS: Microsoft Windows NT 10.0.26100.0
+PowerShell: 7.6.9; Node: v22.23.4
+Module SHA256: AE0BBE4A815E93D08FF45996AB41D61FDDA624DE267CB6476337EFFE848A0E09
+
+PASS: seed independent local backing store
+PASS: provider ready: Writ-lock-probe
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":77,"onDisk":0}; expected size=77
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: provider terminated
+PASS: exclusive oplock acquired
+PASS: competing operation started
+PASS: competing operation started
+PASS: competing write/rename waits for oplock release
+PASS: competing write/rename waits for oplock release
+PASS: oplock probe released cleanly
+PASS: competing operation proceeds after release
+PASS: competing operation proceeds after release
+PASS: lock probe preserves payload bytes
+PASS: provider ready: Writ
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":77,"onDisk":0}; expected size=77
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+NOTEPAD_SKIPPED: run with -InteractiveNotepad for the actual application gate.
+PASS: backing store committed and local edit marked in sync
+PASS: native in-sync flag
+PASS: provider terminated
+PASS: provider ready: Writ-fresh
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":52,"onDisk":0}; expected size=52
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: backing store committed and local edit marked in sync
+PASS: native in-sync flag
+PASS: replacement converted back to a placeholder
+PASS: provider terminated
+PASS: provider ready: Writ-replaced
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":55,"onDisk":0}; expected size=55
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: provider terminated
+PASS: provider ready: Writ-replaced
+PASS: failed writeback observed
+PASS: failed writeback retains local edit
+PASS: failed edit has an independent flushed recovery copy
+PASS: failed edit never marked in sync
+PASS: provider terminated
+PASS: provider ready: Writ-failure-check
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":55,"onDisk":0}; expected size=55
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: provider terminated
+PASS: provider ready: Writ-replaced
+PASS: backing store committed and local edit marked in sync
+PASS: native in-sync flag
+PASS: provider terminated
+PASS: provider ready: Writ-recovered
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":63,"onDisk":0}; expected size=63
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: provider terminated
+PASS: provider ready: Writ-writer-A
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":63,"onDisk":0}; expected size=63
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: provider ready: Writ-writer-B
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":63,"onDisk":0}; expected size=63
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: backing store committed and local edit marked in sync
+PASS: native in-sync flag
+PASS: stale base refused
+PASS: conflicting local edit retained
+PASS: conflicting edit recovery copy
+PASS: conflict remains out of sync
+PASS: provider terminated
+PASS: provider terminated
+PASS: provider ready: Writ-conflict-check
+PASS: Explorer enumeration name
+Placeholder metadata before read: {"placeholder":true,"inSync":true,"size":51,"onDisk":0}; expected size=51
+PASS: logical size without payload allocation
+PASS: listing fetched zero payload bytes
+PASS: fresh root hydrated exact persisted bytes
+PASS: hydration callback observed
+PASS: provider terminated
+
+
+
+
+
+
+
+
+
+Evidence, backing store, local edits and recovery copies retained at C:\Users\runneradmin\AppData\Local\WritReleaseSmoke
+ALL CLOUD FILES SMOKE CHECKS PASSED (Notepad=False)
+PASS: installer succeeds
+PASS: payload hash: BUILD-INFO.json
+PASS: payload hash: NODE-LICENSE.txt
+PASS: payload hash: node-policy.mjs
+PASS: payload hash: node.exe
+PASS: payload hash: public-sync.mjs
+PASS: payload hash: README.txt
+PASS: payload hash: Smoke.ps1
+PASS: payload hash: writ-cloud.exe
+
+PASS: installed executable starts
+PASS: Start menu command creates default Writ root
+PASS: installed provider hydrates
+PASS: uninstaller succeeds while provider is running
+PASS: uninstaller stops provider
+PASS: application removed
+PASS: uninstall preserves hydrated user file
+PASS: uninstall preserves backing store
+PASS: uninstall unregisters placeholder
+ALL WINDOWS PACKAGE CHECKS PASSED
+**********************
+PowerShell transcript end
+End time: 20261111190354
+**********************
