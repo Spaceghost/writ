@@ -21,7 +21,10 @@ config
 }
 
 build_boot_image [build_artifacts]
-run_genode_until {WRIT POLICY NATIVE (PASS|FAIL)} 600
+# The complete 3072-check corpus was still progressing at 600 seconds under
+# QEMU TCG (CI run 43084126793). Allow both complete corpora to finish within
+# a fixed diagnostic deadline; production VM/resource limits are unchanged.
+run_genode_until {WRIT POLICY NATIVE (PASS|FAIL)} 1200
 if {![regexp {PASS native allocator checks: 24} $output] ||
     ![regexp "PASS native Genode core corpus: $expected_core" $output] ||
     ![regexp {PASS native Genode mount corpus: 69} $output] ||
