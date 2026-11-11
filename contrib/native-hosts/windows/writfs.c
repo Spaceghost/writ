@@ -20,6 +20,7 @@ typedef NTSTATUS *PNTSTATUS;
 #include "policy_pipe.h"
 #include "worker.h"
 #include "probe.h"
+#include "network_probe.h"
 #include "isolation.h"
 #include <aclapi.h>
 
@@ -635,8 +636,12 @@ static BOOL read_report(HANDLE input, HANDLE ready, HANDLE process, DWORD phase,
     printf("PROBE phase=%lu passed=%08x failed=%08x", phase, report->passed, report->failed);
     for (unsigned int i = 0; i < ARRAYSIZE(report->errors); ++i)
         printf(" e%u=%lu", i, (DWORD)report->errors[i]);
-    printf(" clipboard_stage=%u com_stage=%u\n", report->clipboard_stage, report->com_stage); fflush(stdout);
-    if ((report->passed | report->failed) != expected || (report->passed & report->failed)) return FALSE;
+    printf(" clipboard_stage=%u com_stage=%u wsa_startup=%u tcp4_stage=%u tcp6_stage=%u udp4_stage=%u udp6_stage=%u\n",
+        report->clipboard_stage, report->com_stage, report->network_startup_error,
+        report->network_stage[0], report->network_stage[1], report->network_stage[2], report->network_stage[3]);
+    fflush(stdout);
+    if ((report->passed | report->failed) != expected || (report->passed & report->failed) ||
+        !writ_network_report_valid(report, expected)) return FALSE;
     if (complete) *complete = TRUE;
     return report->passed == expected && report->failed == 0;
 }

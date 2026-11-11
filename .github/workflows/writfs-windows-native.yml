@@ -19,6 +19,45 @@ permissions:
   contents: read
 
 jobs:
+  network-evidence:
+    name: Windows network evidence controls
+    runs-on: windows-2025
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build and exercise the fixed native network probe
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = Join-Path $env:RUNNER_TEMP 'windows-network-logs'
+          $build = Join-Path $env:RUNNER_TEMP 'windows-network-build'
+          New-Item -ItemType Directory -Force $logs | Out-Null
+          @("Commit: $env:GITHUB_SHA", "Runner: $env:ImageOS $env:ImageVersion", "OS: $([Environment]::OSVersion.VersionString)") |
+            Set-Content (Join-Path $logs 'environment.txt')
+          & cmake -S contrib/native-hosts/windows/network-probe -B $build -A x64 2>&1 |
+            Tee-Object -FilePath (Join-Path $logs 'configure.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Network probe test configuration failed.' }
+          & cmake --build $build --config Release --parallel 2 2>&1 |
+            Tee-Object -FilePath (Join-Path $logs 'build.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Network probe test build failed.' }
+          & ctest --test-dir $build -C Release --verbose 2>&1 |
+            Tee-Object -FilePath (Join-Path $logs 'tests.txt')
+          if ($LASTEXITCODE -ne 0) { throw 'Network evidence controls failed.' }
+          Get-FileHash (Join-Path $build 'Release\writfs-network-test.exe'),(Join-Path $build 'Release\writfs-network-loopback.exe') -Algorithm SHA256 |
+            Format-List | Out-File (Join-Path $logs 'binaries.txt')
+      - name: Retain network evidence controls
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-network-evidence-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/windows-network-logs/
+          if-no-files-found: error
+          retention-days: 14
+
   policy:
     name: Compile shared Bend mount policy
     runs-on: ubuntu-24.04

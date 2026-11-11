@@ -12,6 +12,7 @@
 #include "probe.h"
 #include "isolation.h"
 #include "channels.h"
+#include "network_probe.h"
 
 static void record(WRIT_PROBE_REPORT *report, unsigned int bit, BOOL success, DWORD error)
 {
@@ -50,67 +51,6 @@ done:
     if (hash) BCryptDestroyHash(hash);
     if (algorithm) BCryptCloseAlgorithmProvider(algorithm, 0);
     return ok;
-}
-
-static BOOL network_denied(int family, int type, unsigned short port, DWORD *error)
-{
-    SOCKET socket_handle = socket(family, type, type == SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP);
-    if (socket_handle == INVALID_SOCKET) { *error = WSAGetLastError(); return *error == WSAEACCES; }
-    SOCKADDR_STORAGE destination;
-    int length;
-    ZeroMemory(&destination, sizeof(destination));
-    if (family == AF_INET) {
-        SOCKADDR_IN *address = (SOCKADDR_IN *)&destination;
-        address->sin_family = AF_INET; address->sin_port = htons(port);
-        address->sin_addr.s_addr = htonl(INADDR_LOOPBACK); length = sizeof(*address);
-    } else {
-        SOCKADDR_IN6 *address = (SOCKADDR_IN6 *)&destination;
-        address->sin6_family = AF_INET6; address->sin6_port = htons(port);
-        address->sin6_addr = in6addr_loopback; length = sizeof(*address);
-    }
-    static const char canary[] = "writ-public-egress-canary";
-    int result;
-    u_long nonblocking = 1;
-    if (ioctlsocket(socket_handle, FIONBIO, &nonblocking) == SOCKET_ERROR) {
-        *error = WSAGetLastError(); closesocket(socket_handle); return FALSE;
-    }
-    if (type == SOCK_DGRAM) {
-        result = sendto(socket_handle, canary, sizeof(canary), 0, (SOCKADDR *)&destination, length);
-        *error = result == SOCKET_ERROR ? WSAGetLastError() : 0;
-    } else {
-        result = connect(socket_handle, (SOCKADDR *)&destination, length);
-        *error = result == SOCKET_ERROR ? WSAGetLastError() : 0;
-        if (*error == WSAEWOULDBLOCK || *error == WSAEINPROGRESS) {
-            fd_set writable, exceptional;
-            TIMEVAL timeout = { 2, 0 };
-            FD_ZERO(&writable); FD_ZERO(&exceptional);
-            FD_SET(socket_handle, &writable); FD_SET(socket_handle, &exceptional);
-            result = select(0, NULL, &writable, &exceptional, &timeout);
-            if (result > 0) {
-                int value = 0, size = sizeof(value);
-                if (!getsockopt(socket_handle, SOL_SOCKET, SO_ERROR, (char *)&value, &size)) *error = (DWORD)value;
-                else *error = WSAGetLastError();
-            } else *error = result == 0 ? WSAETIMEDOUT : WSAGetLastError();
-        }
-        if (!*error) send(socket_handle, canary, sizeof(canary), 0);
-    }
-    closesocket(socket_handle);
-    return *error == WSAEACCES;
-}
-
-static void network_checks(WRIT_PROBE_REPORT *report, unsigned short *ports)
-{
-    WSADATA data;
-    int initialized = WSAStartup(MAKEWORD(2,2), &data);
-    const int families[4] = { AF_INET, AF_INET6, AF_INET, AF_INET6 };
-    const int types[4] = { SOCK_STREAM, SOCK_STREAM, SOCK_DGRAM, SOCK_DGRAM };
-    const unsigned int bits[4] = { WRIT_PROBE_TCP4, WRIT_PROBE_TCP6, WRIT_PROBE_UDP4, WRIT_PROBE_UDP6 };
-    for (unsigned int i = 0; i < 4; ++i) {
-        DWORD error = (DWORD)initialized;
-        BOOL denied = initialized == 0 && network_denied(families[i], types[i], ports[i], &error);
-        record(report, bits[i], denied, error);
-    }
-    if (!initialized) WSACleanup();
 }
 
 static void child_check(WRIT_PROBE_REPORT *report, BOOL positive)
@@ -166,7 +106,7 @@ static int diagnostic_channels(HANDLE output, unsigned short ports[4])
        object. It only exercises the fixed no-data diagnostic API surface. */
     WRIT_PROBE_REPORT report = {0};
     report.magic = WRIT_PROBE_MAGIC; report.phase = 5;
-    network_checks(&report, ports);
+    writ_network_checks(&report, ports);
     child_check(&report, FALSE);
     WRIT_CHANNEL_RESULT clipboard = writ_clipboard_attempt();
     WRIT_CHANNEL_RESULT com = writ_com_attempt();
@@ -310,11 +250,11 @@ int wmain(int argc, wchar_t **argv)
     error = forbidden == INVALID_HANDLE_VALUE ? GetLastError() : 0;
     if (forbidden != INVALID_HANDLE_VALUE) CloseHandle(forbidden);
     record(&report, WRIT_PROBE_NEW_FILE, forbidden == INVALID_HANDLE_VALUE, error);
-    if (lpac) { network_checks(&report, ports); confinement_checks(&report, public_path, broker_pid); }
+    if (lpac) { writ_network_checks(&report, ports); confinement_checks(&report, public_path, broker_pid); }
     if (!report_to_broker(report_pipe, ready, proceed, &report, TRUE)) return 84;
 
     ZeroMemory(&report, sizeof(report)); report.magic = WRIT_PROBE_MAGIC; report.phase = 2;
-    if (lpac) network_checks(&report, ports);
+    if (lpac) writ_network_checks(&report, ports);
     if (!report_to_broker(report_pipe, ready, proceed, &report, TRUE)) return 85;
 
     ZeroMemory(&report, sizeof(report)); report.magic = WRIT_PROBE_MAGIC; report.phase = 3;

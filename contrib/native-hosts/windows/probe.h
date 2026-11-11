@@ -1,6 +1,7 @@
 #ifndef WRIT_WINDOWS_PROBE_H
 #define WRIT_WINDOWS_PROBE_H
-#define WRIT_PROBE_MAGIC 0x57525031u
+/* Version 2 adds explicit network initialization and operation-stage evidence. */
+#define WRIT_PROBE_MAGIC 0x57525032u
 
 enum {
     WRIT_PROBE_READ = 1u << 0,
@@ -24,10 +25,24 @@ enum {
     WRIT_PROBE_REVOKED_READ = 1u << 18
 };
 
+enum {
+    WRIT_NETWORK_NOT_RUN = 0,
+    WRIT_NETWORK_STARTUP = 1,
+    WRIT_NETWORK_SOCKET = 2,
+    WRIT_NETWORK_NONBLOCKING = 3,
+    WRIT_NETWORK_SENDTO = 4,
+    WRIT_NETWORK_CONNECT = 5,
+    WRIT_NETWORK_SELECT = 6,
+    WRIT_NETWORK_STATUS_QUERY = 7,
+    WRIT_NETWORK_CONNECT_RESULT = 8
+};
+
 typedef struct {
     unsigned int magic, phase, passed, failed;
     unsigned int errors[19];
     unsigned int clipboard_stage, com_stage;
+    unsigned int network_startup_error;
+    unsigned int network_stage[4]; /* TCP4, TCP6, UDP4, UDP6; startup is shared. */
 } WRIT_PROBE_REPORT;
 
 #define WRIT_PROBE_MOUNT_MASK ((1u << 7) - 1)

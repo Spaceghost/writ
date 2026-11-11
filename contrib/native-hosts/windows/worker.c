@@ -2,6 +2,7 @@
 #include "worker.h"
 #include "isolation.h"
 #include "probe.h"
+#include "network_probe.h"
 #include <bcrypt.h>
 #include <fwpmu.h>
 #include <rpc.h>
@@ -628,11 +629,13 @@ BOOL writ_worker_diagnostic(const WRIT_WORKER *worker, const unsigned short port
     if (!GetExitCodeProcess(process.hProcess, &exit_code) ||
         !PeekNamedPipe(input, NULL, 0, NULL, &available, NULL) || available != sizeof(report) ||
         !ReadFile(input, &report, sizeof(report), &got, NULL) || got != sizeof(report)) goto failed;
-    printf("DIAGNOSTIC_RESULT phase=%lu passed=%08x failed=%08x tcp4=%u tcp6=%u udp4=%u udp6=%u child=%u clipboard_stage=%u clipboard=%08x com_stage=%u com=%08x\n",
+    printf("DIAGNOSTIC_RESULT phase=%lu passed=%08x failed=%08x tcp4=%u tcp6=%u udp4=%u udp6=%u child=%u clipboard_stage=%u clipboard=%08x com_stage=%u com=%08x wsa_startup=%u tcp4_stage=%u tcp6_stage=%u udp4_stage=%u udp6_stage=%u\n",
         phase, report.passed, report.failed, report.errors[7], report.errors[8], report.errors[9], report.errors[10],
-        report.errors[12], report.clipboard_stage, report.errors[15], report.com_stage, report.errors[16]);
+        report.errors[12], report.clipboard_stage, report.errors[15], report.com_stage, report.errors[16],
+        report.network_startup_error, report.network_stage[0], report.network_stage[1], report.network_stage[2], report.network_stage[3]);
     if (report.magic != WRIT_PROBE_MAGIC || report.phase != 5 || exit_code || report.failed ||
-        report.passed != WRIT_PROBE_DIAGNOSTIC_MASK) { error = ERROR_INVALID_DATA; goto done; }
+        report.passed != WRIT_PROBE_DIAGNOSTIC_MASK ||
+        !writ_network_report_valid(&report, WRIT_PROBE_DIAGNOSTIC_MASK)) { error = ERROR_INVALID_DATA; goto done; }
     ok = TRUE;
     goto done;
 failed:
