@@ -234,7 +234,8 @@ class Provider {
         // This excludes existing writers and replacement/deletion until the
         // entire snapshot/commit/readback/mark operation has finished. Sharing
         // violations defer the attempt; they are not successful saves.
-        auto file = open(path, GENERIC_READ | WRITE_DAC, FILE_SHARE_READ, OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT);
+        auto file = open(path, GENERIC_READ | GENERIC_WRITE | WRITE_DAC, FILE_SHARE_READ,
+            OPEN_EXISTING, FILE_FLAG_OPEN_REPARSE_POINT);
         // ReplaceFile can change the object between the metadata scan and open.
         // Conversion and completeness checks must describe this retained handle.
         attributes = inspect(file);
