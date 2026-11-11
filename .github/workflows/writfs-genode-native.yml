@@ -11,6 +11,7 @@ on:
       - 'contrib/rclone/bend/**'
       - 'contrib/native-hosts/genode/**'
       - 'contrib/native-hosts/runtime/genode/**'
+      - 'utils/verification/**'
       - '.github/workflows/writfs-genode-native.yml'
   workflow_dispatch:
 
@@ -23,7 +24,6 @@ jobs:
     timeout-minutes: 40
     env:
       BEND_NO_TELEMETRY: '1'
-      WRIT_CORE_EXPECTED: '3072'
     defaults:
       run:
         shell: bash
@@ -44,6 +44,12 @@ jobs:
               flex bison patch expect tcl xorriso qemu-system-x86 \
               curl xz-utils unzip rsync
           } 2>&1 | tee "$RUNNER_TEMP/writfs-genode/logs/runner.log"
+
+      - name: Load the reviewed core assertion count
+        run: |
+          set -euo pipefail
+          writ_count="$(python3 utils/verification/check_core.py --print-count)"
+          printf 'WRIT_CORE_EXPECTED=%s\n' "$writ_count" >> "$GITHUB_ENV"
 
       - name: Install the verified Bend compiler
         run: |
