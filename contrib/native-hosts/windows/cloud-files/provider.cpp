@@ -255,7 +255,8 @@ class Provider {
             // ReplaceFile, where the old placeholder identity may disappear.
             atomic_file(state / L"base", &replacement, sizeof(replacement));
             base = replacement;
-            USN usn = 0;
+            USN usn = file_usn(file);
+            const USN before_update = usn;
             if (attributes.cloud) {
                 hr(CfUpdatePlaceholder(file, nullptr, &base, sizeof(base), nullptr, 0,
                     CF_UPDATE_FLAG_NONE, &usn, nullptr), "update identity");
@@ -265,6 +266,7 @@ class Provider {
             }
             // The Cloud Files operation returns its final USN. A journal read
             // can still describe the pre-update record while this handle is open.
+            event("IDENTITY_USN before=" + std::to_string(before_update) + " after=" + std::to_string(usn));
             if (!usn) throw Error("usable Cloud Files update USN required", ERROR_INVALID_DATA);
             monitor.require("MATCH", base.version, 0, hex(read_bytes(file)));
             hr(CfSetInSyncState(file, CF_IN_SYNC_STATE_IN_SYNC, CF_SET_IN_SYNC_FLAG_NONE, &usn), "mark in sync with USN");
