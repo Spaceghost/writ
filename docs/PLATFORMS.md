@@ -16,6 +16,13 @@ are recorded in the [native execution evidence](../contrib/native-hosts/VERIFICA
 they do not qualify arbitrary applications, durable publication or a complete
 protected-data host. A custom kernel remains future work.
 
+The separate public writable desktop preview now has both
+[Windows Cloud Files](../contrib/native-hosts/windows/cloud-files/README.md) and
+[Linux FUSE](../contrib/native-hosts/linux/public-sync/README.md) bindings over
+one Bend save monitor. Linux native parity passes locally; combined package and
+release gates are recorded separately. These public-save results do not change
+the protected-reader confinement qualifications below.
+
 ## Platform roles
 
 | Target | Role | Native boundary to use | Current Writ evidence |

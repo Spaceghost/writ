@@ -1,0 +1,21 @@
+{
+  "node": {
+    "version": "22.23.4",
+    "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-linux-x64.tar.xz",
+    "sha256": "1805bcd35e6815559bd2eb97db438d3fdb0eb3a5e6a977b7c1badca76337e9ce"
+  },
+  "fuse": {
+    "version": "3.18.2",
+    "url": "https://github.com/libfuse/libfuse/releases/download/fuse-3.18.2/fuse-3.18.2.tar.gz",
+    "sha256": "f01de85717e20adf5f98aff324acd85dd73d61a5ca3834d573dcf0bd6e54a298"
+  },
+  "meson": {
+    "version": "1.9.2",
+    "sha256": "1a284dc1912929098a6462401af58dc49ae3f324e94814a38a8f1020cee07cba"
+  },
+  "ninja": {
+    "version": "1.13.0",
+    "sha256": "fb46acf6b93b8dd0322adc3a4945452a4e774b75b91293bafcc7b7f8e6517dfa"
+  },
+  "compiler": "GCC 11 on Ubuntu 22.04; exact package versions recorded in BUILD-INFO.json"
+}

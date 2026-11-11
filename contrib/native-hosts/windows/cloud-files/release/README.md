@@ -1,7 +1,10 @@
 # Windows release pathway
 
-The [Writ Windows release workflow](../../../../../.github/workflows/writ-windows-release.yml)
-builds the public Files On-Demand preview. Download published installers and
+The [Writ desktop release workflow](../../../../../.github/workflows/writ-windows-release.yml)
+builds both Linux and Windows public Files On-Demand previews. The shared VERSION
+file governs both platforms; tagged publication requires both native jobs. See
+[Linux packaging](../../../linux/public-sync/README.md) for its build instructions.
+Download published installers and
 portable executables from [GitHub Releases](https://github.com/Spaceghost/writ/releases).
 The ZIP includes `writ-cloud.exe`, Node, the Bend-generated policy, existing bridge,
 smoke script and dependency notices. Setup installs the same payload for the
@@ -13,13 +16,13 @@ root and retains hydrated files, backing state and recovery copies.
 1. Update [VERSION](VERSION) to a new `MAJOR.MINOR.PATCH-preview.N`. Update any
    dependency pins deliberately in [toolchains.json](toolchains.json), refresh
    `verification/source-sha256.txt` for the tracked tree and commit it.
-2. Push the branch or open a PR. The workflow runs on `master`, `windows/**`
+2. Push the branch or open a PR. The workflow runs on `master`, `windows/**`, `linux/**`
    branches and relevant pull requests; `workflow_dispatch` can rebuild a ref.
-3. After Windows passes for the intended commit, create and push a new tag:
+3. After both Linux and Windows pass for the intended commit, create and push a new tag:
 
    ```sh
-   git tag -a windows-v0.1.0-preview.1 <tested-commit> -m 'Writ Windows public preview 0.1.0-preview.1'
-   git push origin windows-v0.1.0-preview.1
+   git tag -a desktop-v0.1.0-preview.2 <tested-commit> -m 'Writ desktop public preview 0.1.0-preview.2'
+   git push origin desktop-v0.1.0-preview.2
    ```
 
 4. The tag workflow rebuilds and retests, checks the tag against VERSION, creates

@@ -4,11 +4,12 @@
 unchecked implementation tasks. They do not describe a mounted WritFS, a deployed
 private matcher, or a new release path in the current Bend library.
 
-For the bounded public Windows save milestone, see the separate
-[Files On-Demand demo](../contrib/native-hosts/windows/cloud-files/README.md).
-Its Bend checks and automated native Windows save/recovery smoke pass.
-Interactive Notepad/Explorer and standard-user desktop acceptance remain pending.
-It does not complete the protected feature contracts below.
+For the bounded public desktop save milestone, see the
+[Windows Cloud Files preview](../contrib/native-hosts/windows/cloud-files/README.md)
+and [Linux FUSE preview](../contrib/native-hosts/linux/public-sync/README.md).
+They use the same Bend save monitor. Linux local native parity passes; combined
+reproducible packages and public downloads are tracked in the
+[Linux release record](../verification/linux-release/README.md).
 
 ## A summary without downloading the records
 
