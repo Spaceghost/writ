@@ -1,0 +1,14 @@
+{
+  "script_name": "writ-site",
+  "metadata": {
+    "main_module": "site-worker.mjs",
+    "compatibility_date": "2026-11-11",
+    "bindings": [],
+    "observability": {
+      "enabled": true,
+      "head_sampling_rate": 0.1,
+      "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+    }
+  },
+  "routes": ["spacegho.st/writ", "spacegho.st/writ/*"]
+}

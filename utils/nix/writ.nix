@@ -7,7 +7,8 @@
 #
 # The test assertions pin the current integrated suite (VERIFICATION.md): the
 # library driver prints both "PASS:" and "PASS " lines; together they number
-# 3072, and the final line is "ALL LIBRARY TESTS PASSED".
+# the reviewed count in utils/verification/core-check-count.txt, and the final
+# line is "ALL LIBRARY TESTS PASSED".
 { pkgs, bend, openspec, clang }:
 
 let
@@ -51,19 +52,11 @@ let
     export CC=${clang}/bin/clang
   '';
 
-  # Fails unless the captured test output ends with the success line and has
-  # exactly 3072 lines beginning with PASS ("PASS:" and "PASS " forms together).
+  # The same development-only output gate and reviewed count used by PR CI.
+  # Source paths are explicit because Nix stores the two files separately.
   assertTests = log: ''
-    last=$(tail -n 1 ${log})
-    passes=$(grep -c '^PASS' ${log} || true)
-    echo "final line: $last"
-    echo "PASS lines: $passes"
-    if [ "$last" != "ALL LIBRARY TESTS PASSED" ]; then
-      echo "expected final line ALL LIBRARY TESTS PASSED" >&2; exit 1
-    fi
-    if [ "$passes" != 3072 ]; then
-      echo "expected 3072 PASS lines, found $passes" >&2; exit 1
-    fi
+    ${pkgs.python3}/bin/python3 ${../verification/check_core.py} \
+      --count-file ${../verification/core-check-count.txt} ${log}
   '';
 
   # Compiles named Bend entry points to native binaries under $out/bin.

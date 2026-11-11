@@ -1,0 +1,94 @@
+name: Writ core checks
+
+# Untrusted PR code runs only on disposable GitHub-hosted runners, without
+# secrets, deployment permissions, or access to the self-hosted native lanes.
+on:
+  pull_request:
+  push:
+    branches: [master, lane/project-site]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: writ-core-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      BEND_NO_TELEMETRY: '1'
+      OPENSPEC_TELEMETRY: '0'
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24.22.1'
+
+      - name: Install verified Bend 2.0.39
+        run: |
+          set -euo pipefail
+          writ_bend="$RUNNER_TEMP/writ-core-toolchain"
+          mkdir -p "$writ_bend" "$RUNNER_TEMP/writ-core-logs"
+          curl --proto '=https' --tlsv1.2 --retry 3 -fL \
+            https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz \
+            -o "$writ_bend/release.tar.gz"
+          printf '%s  %s\n' \
+            6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab \
+            "$writ_bend/release.tar.gz" | sha256sum -c -
+          tar -xzf "$writ_bend/release.tar.gz" -C "$writ_bend"
+          test "$("$writ_bend/bend/bin/bend" version)" = 'bend 2.0.39'
+          printf '%s\n' "$writ_bend/bend/bin" >> "$GITHUB_PATH"
+          {
+            printf 'Source: %s\n' "$GITHUB_SHA"
+            "$writ_bend/bend/bin/bend" version
+            node --version
+            python3 --version
+            printf 'Bundled JavaScript and ordinary proofs; no host/GPU/Lean qualification.\n'
+          } > "$RUNNER_TEMP/writ-core-logs/environment.log"
+
+      - name: Check verifier failure paths
+        run: python3 -m unittest discover -s utils/verification -p 'test_*.py'
+
+      - name: Check and package project website
+        run: |
+          set -euo pipefail
+          node --test utils/site/worker.test.mjs
+          node utils/site/build.mjs "$RUNNER_TEMP/writ-site-build"
+
+      - name: Run complete core and check reviewed count
+        run: |
+          set -euo pipefail
+          bend Tests.bend 2>&1 | tee "$RUNNER_TEMP/writ-core-logs/core.log"
+          python3 utils/verification/check_core.py "$RUNNER_TEMP/writ-core-logs/core.log"
+
+      - name: Check ordinary proofs
+        run: |
+          set -euo pipefail
+          bend PROOF.bend 2>&1 | tee "$RUNNER_TEMP/writ-core-logs/proof.log"
+          grep -Fxq 'ALL PROOFS CHECK' "$RUNNER_TEMP/writ-core-logs/proof.log"
+
+      - name: Validate OpenSpec 1.16.0
+        run: |
+          set -euo pipefail
+          npm exec --yes --package=@fission-ai/openspec@1.16.0 -- \
+            openspec validate --all --strict --no-interactive \
+            2>&1 | tee "$RUNNER_TEMP/writ-core-logs/openspec.log"
+
+      - name: Retain verification output
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: writ-core-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-core-logs/
+          if-no-files-found: warn
+          retention-days: 14

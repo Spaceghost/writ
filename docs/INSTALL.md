@@ -74,8 +74,9 @@ flake's clang; `packages.examples-native` holds `example`, `flow`, `transfer`,
 and `gpu-example` built from `Example.bend`, `examples/Flow.bend`,
 `examples/Transfer.bend`, and `GpuExample.bend`. `nix flake check` runs the
 library suite on Bend's bundled JavaScript runner (`tests-js`) and as the native
-binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring 3072 lines
-beginning with `PASS` and the final line `ALL LIBRARY TESTS PASSED`; it runs
+binary with `+RTS --threads 4 --gpu off` (`tests-native`), requiring the reviewed
+count in [`core-check-count.txt`](../utils/verification/core-check-count.txt),
+no failure records, and the final line `ALL LIBRARY TESTS PASSED`; it runs
 `bend PROOF.bend` and requires `ALL PROOFS CHECK` (`proofs`, without
 `--verdict`); and it runs `openspec validate --all --strict --no-interactive`
 over `openspec/` (`openspec`). The [2,102-check Nix JavaScript result](../verification/handoff-model-817ab1f-nix-js.log) covers the hardened `817ab1f` model inputs. The earlier 2,065-check Nix JavaScript and native CPU checks passed for source `73a8055` with the same output as each other.
@@ -159,8 +160,11 @@ CC=clang-19 bend Tests.bend -o ../writ-build/tests
 bend PROOF.bend
 ```
 
-Each complete test run should report **3072 passing checks** and
-`ALL LIBRARY TESTS PASSED`. `PROOF.bend` checks thirty-seven declared laws about guards,
+Each complete test run should report the reviewed number of passing checks in
+[`core-check-count.txt`](../utils/verification/core-check-count.txt) and
+`ALL LIBRARY TESTS PASSED`. The [output checker](../utils/verification/README.md)
+rejects incomplete runs and count drift; Nix and the Genode workflow use the same
+reviewed count. `PROOF.bend` checks thirty-seven declared laws about guards,
 preservation of denied state, grant issuance, host-contract denials, policy-aware audit, executor rendezvous, and the empty-source planner comparison; it does
 not prove the whole system secure.
 An independent kernel check is a distinct command, `bend PROOF.bend --verdict`.

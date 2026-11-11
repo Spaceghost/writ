@@ -2,6 +2,9 @@
 
 **Data carries its terms.**
 
+[Project website](https://spacegho.st/writ/) ·
+[Contribution guide](CONTRIBUTING.md)
+
 Writ is a Bend 2 library for information-flow control, capability-bound operations,
 and multiparty transformation approval. Data keeps its origin restrictions through
 copies, summaries, and transformations. Every admitted read is paired with an

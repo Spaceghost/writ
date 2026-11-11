@@ -98,3 +98,8 @@ development tooling, not Writ implementation. The core never depends on
 them, they make no authority or verification claim, and the contribution
 rules above still apply to anything they touch. Keep them out of the
 library's source set and the test suite.
+
+`utils/verification/` checks captured test output and owns the reviewed core
+assertion count consumed by Nix and CI. `utils/site/` presents the project on the
+web. Both are development/presentation tooling, never Writ policy or host
+qualification. Keep generated website packages outside the checkout.

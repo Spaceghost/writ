@@ -1,0 +1,46 @@
+[
+  {
+    "url": "https://spacegho.st/writ/",
+    "status": 200,
+    "packaged_sha256": "3dca098af8a17d6355dc02472f000de0ab35e9441a9f21ebf1ed81c09aa09f60",
+    "observation": "application HTML matches; existing Cloudflare JavaScript detection inserts a challenge script"
+  },
+  {
+    "url": "https://spacegho.st/writ/style.css",
+    "status": 200,
+    "packaged_sha256": "9b18a24720ed16440a707bdd3d6d73d8f193f27b4c48c2114fded2b6fc33ee49",
+    "observation": "exact packaged bytes"
+  },
+  {
+    "url": "https://spacegho.st/writ/site.js",
+    "status": 200,
+    "packaged_sha256": "fd3049f663ac8fa6647b1ce68968ab6e703ea6f5248e3e393a1533a1e5d9d9c3",
+    "observation": "exact packaged bytes"
+  },
+  {
+    "url": "https://spacegho.st/writ/mark.svg",
+    "status": 200,
+    "packaged_sha256": "a3beea32d805bad5edfc135e36f5ec5f7097784ac1368a3b6c431830733d2794",
+    "observation": "exact packaged bytes"
+  },
+  {
+    "url": "https://spacegho.st/writ/missing",
+    "method": "GET",
+    "status": 404
+  },
+  {
+    "url": "https://spacegho.st/writ/",
+    "method": "POST",
+    "status": 405
+  },
+  {
+    "url": "https://spacegho.st/writ",
+    "status": 308,
+    "location": "/writ/"
+  },
+  {
+    "url": "https://spacegho.st/writ/",
+    "method": "HEAD",
+    "status": 200
+  }
+]

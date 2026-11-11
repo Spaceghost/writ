@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f5f4ee" />
+    <title>Writ — Data carries its terms.</title>
+    <meta
+      name="description"
+      content="Writ is a Bend 2 security library for information flow, capability-bound operations, and multiparty transformation approval. Explore the model, run the examples, and follow the work toward native hosts."
+    />
+    <link rel="canonical" href="https://spacegho.st/writ/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Writ — Data carries its terms." />
+    <meta
+      property="og:description"
+      content="A policy layer for data in motion. Built in Bend 2, with independent verification and capability-bound commit."
+    />
+    <meta property="og:url" content="https://spacegho.st/writ/" />
+    <link rel="icon" href="/writ/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/writ/style.css" />
+    <script src="/writ/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="page-shell">
+      <header class="header">
+        <a class="wordmark" href="/writ/" aria-label="Writ home"
+          ><img src="/writ/mark.svg" alt="" width="32" height="32" />writ<span
+            class="wordmark-period"
+            >.</span
+          ></a
+        >
+        <nav aria-label="Main navigation">
+          <a href="#how-it-works">The model</a>
+          <a href="#evidence">Evidence</a>
+          <a href="#get-started">Get started</a>
+        </nav>
+        <a class="source-link" href="https://github.com/Spaceghost/writ"
+          >Source <span aria-hidden="true">↗</span></a
+        >
+      </header>
+      <main id="main">
+        <section class="hero" aria-labelledby="hero-title">
+          <div class="hero-copy">
+            <p class="eyebrow">
+              <span class="small-cross" aria-hidden="true">+</span> A policy
+              layer for data in motion
+            </p>
+            <h1 id="hero-title">Data carries<br />its <em>terms.</em></h1>
+            <p class="hero-description">
+              A copy should remember where it came from.<br
+                class="desktop-break"
+              />
+              A transformation should respect what was agreed.
+            </p>
+            <p class="hero-detail">
+              Writ is a Bend 2 library for information-flow control,
+              capability-bound operations, and multiparty approval.
+            </p>
+            <div class="hero-actions">
+              <a class="button primary" href="#get-started"
+                >Run the first example <span aria-hidden="true">↗</span></a
+              ><a
+                class="text-link"
+                href="https://github.com/Spaceghost/writ/blob/master/DESIGN.md"
+                >Read the design <span aria-hidden="true">→</span></a
+              >
+            </div>
+          </div>
+          <figure class="hero-figure" aria-labelledby="figure-caption">
+            <div class="figure-top">
+              <span>01 / THE THROUGHLINE</span
+              ><span class="figure-coordinate" aria-hidden="true">↗</span>
+            </div>
+            <div class="document source-document">
+              <div class="document-top">
+                <span class="file-symbol" aria-hidden="true">≡</span
+                ><span>SOURCE / 001</span
+                ><span class="document-dot" aria-hidden="true"></span>
+              </div>
+              <strong>Incident report</strong>
+              <div class="document-lines" aria-hidden="true">
+                <i></i><i></i><i></i>
+              </div>
+              <span class="term">Internal readers</span
+              ><span class="term">Origin restrictions</span>
+            </div>
+            <div class="connector" aria-hidden="true">
+              <span></span><b>↓</b>
+            </div>
+            <div class="transform">
+              <span class="transform-symbol" aria-hidden="true">⋈</span>
+              <div>
+                <strong>Approved transformation</strong
+                ><span>Propose · verify · recheck</span>
+              </div>
+              <span class="transform-check" aria-hidden="true">✓</span>
+            </div>
+            <div class="connector lower" aria-hidden="true">
+              <span></span><b>↓</b>
+            </div>
+            <div class="document result-document">
+              <div class="document-top">
+                <span class="file-symbol" aria-hidden="true">≡</span
+                ><span>DERIVED / 002</span
+                ><span class="document-dot" aria-hidden="true"></span>
+              </div>
+              <strong>Internal summary</strong>
+              <div class="document-lines" aria-hidden="true">
+                <i></i><i></i>
+              </div>
+              <span class="term">Internal readers</span
+              ><span class="term">Origin restrictions</span
+              ><span class="inherited-label"
+                >Terms inherited <span aria-hidden="true">↳</span></span
+              >
+            </div>
+            <figcaption id="figure-caption">
+              New information. A continuous chain of obligations.
+            </figcaption>
+          </figure>
+        </section>
+        <div class="project-strip">
+          <span><i aria-hidden="true"></i> In active development</span
+          ><span>Authored in Bend 2</span
+          ><span>Independent candidate verification</span
+          ><a href="https://github.com/Spaceghost/writ/blob/master/LIBRARY.md"
+            >Explore the library <span aria-hidden="true">↗</span></a
+          >
+        </div>
+
+        <section
+          class="section model-section"
+          id="how-it-works"
+          aria-labelledby="model-title"
+        >
+          <div class="section-heading">
+            <p class="eyebrow">01 / The model</p>
+            <h2 id="model-title">
+              Permission has to<br />survive the journey.
+            </h2>
+            <p>
+              Writ follows the relationship between an input, a proposed
+              computation, and its destination. The final write must still
+              satisfy the terms of its origins.
+            </p>
+          </div>
+          <div class="principles">
+            <article>
+              <span class="principle-number">01</span>
+              <div>
+                <h3>Carry the origins forward.</h3>
+                <p>
+                  Copies, summaries, and transformations retain the source’s
+                  confidentiality, integrity, operation, and payment
+                  obligations.
+                </p>
+                <a
+                  class="small-link"
+                  href="https://github.com/Spaceghost/writ/blob/master/openspec/specs/provenance-preservation/spec.md"
+                  >Provenance contract <span aria-hidden="true">↗</span></a
+                >
+              </div>
+            </article>
+            <article>
+              <span class="principle-number">02</span>
+              <div>
+                <h3>Check the proposal independently.</h3>
+                <p>
+                  A solver proposes an assignment. The Bend verifier checks the
+                  original constraints, independently of the solver’s working
+                  graph.
+                </p>
+                <a
+                  class="small-link"
+                  href="https://github.com/Spaceghost/writ/blob/master/openspec/specs/candidate-verification/spec.md"
+                  >Verification contract <span aria-hidden="true">↗</span></a
+                >
+              </div>
+            </article>
+            <article>
+              <span class="principle-number">03</span>
+              <div>
+                <h3>Recheck before release.</h3>
+                <p>
+                  Paired read and write grants must agree. At commit, Writ
+                  resolves the live capability and checks current authority
+                  before returning a scoped write intent.
+                </p>
+                <a
+                  class="small-link"
+                  href="https://github.com/Spaceghost/writ/blob/master/openspec/specs/commit-backplane/spec.md"
+                  >Commit contract <span aria-hidden="true">↗</span></a
+                >
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="story" aria-labelledby="story-title">
+          <div class="story-intro">
+            <p class="eyebrow">A concrete example</p>
+            <h2 id="story-title">One report.<br />Three different outcomes.</h2>
+            <p>
+              A restricted incident report becomes an internal summary. Change
+              the destination or remove authority, and the same information has
+              a different outcome.
+            </p>
+            <p class="illustration-note">
+              Illustration of the repository’s synthetic examples. The browser
+              does not run Writ’s verifier.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Spaceghost/writ/blob/master/examples/README.md"
+              >Read the executable examples
+              <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="story-demo">
+            <div
+              class="scenario-controls"
+            role="group"
+              aria-label="Illustrated scenarios"
+              hidden
+            >
+              <button
+                type="button"
+                data-scenario="internal"
+                aria-pressed="true"
+              >
+                Internal summary</button
+              ><button
+                type="button"
+                data-scenario="public"
+                aria-pressed="false"
+              >
+                Public destination</button
+              ><button
+                type="button"
+                data-scenario="revoked"
+                aria-pressed="false"
+              >
+                Revoked capability
+              </button>
+            </div>
+            <div class="scenario-content" aria-live="polite" aria-atomic="true">
+              <div class="scenario-topline">
+                <span>REPORT → SUMMARY</span
+                ><span id="scenario-code">FLOW / 01</span>
+              </div>
+              <div class="scenario-route">
+                <div>
+                  <span class="route-label">Origin</span
+                  ><strong>Restricted report</strong
+                  ><small>Internal readers</small>
+                </div>
+                <span class="route-arrow" aria-hidden="true">→</span>
+                <div>
+                  <span class="route-label">Destination</span
+                  ><strong id="scenario-destination">Internal workspace</strong
+                  ><small id="scenario-terms">Matching destination terms</small>
+                </div>
+              </div>
+              <div
+                class="scenario-outcome"
+                id="scenario-outcome"
+                data-outcome="allowed"
+              >
+                <span class="outcome-icon" id="outcome-icon" aria-hidden="true"
+                  >✓</span
+                >
+                <div>
+                  <h3 id="scenario-result">The internal write is allowed.</h3>
+                  <p id="scenario-description">
+                    The verified summary retains the report’s restrictions and
+                    meets the internal destination’s requirements.
+                  </p>
+                </div>
+              </div>
+              <div class="scenario-command">
+                <span>REPRODUCE</span
+                ><code id="scenario-command">bend examples/Flow.bend</code>
+              </div>
+            </div>
+            <noscript
+              ><p class="no-script-note">
+                The Flow example also denies a public destination. The Commit
+                example denies a revoked capability and preserves the held
+                ledger and running session. Run the linked examples to see all
+                outcomes.
+              </p></noscript
+            >
+          </div>
+        </section>
+
+        <section
+          class="section evidence-section"
+          id="evidence"
+          aria-labelledby="evidence-title"
+        >
+          <div class="section-heading evidence-heading">
+            <div>
+              <p class="eyebrow">02 / Evidence &amp; direction</p>
+              <h2 id="evidence-title">
+                Ambitious by design.<br />Specific about the evidence.
+              </h2>
+            </div>
+            <p>
+              Writ is an executable security library and protocol model. Turning
+              it into a complete protected-data environment requires further
+              native integration and qualification.
+            </p>
+          </div>
+          <div class="evidence-summary">
+            <div>
+              <span class="evidence-label">THE CORE</span>
+              <h3>Runnable models.<br />Inspectable results.</h3>
+              <p>
+                The library includes tests, worked examples, and selected formal
+                laws. Recorded CPU, GPU, and independent kernel results each
+                have their own source and scope.
+              </p>
+              <a
+                class="text-link"
+                href="https://github.com/Spaceghost/writ/blob/master/VERIFICATION.md"
+                >Read the verification record
+                <span aria-hidden="true">↗</span></a
+              >
+            </div>
+            <div class="evidence-note">
+              <span class="evidence-label">THE BOUNDARY</span>
+              <p>
+                A returned write intent still needs an enforcing host to perform
+                the effect and persist state. A passing model test does not
+                establish worker confinement or crash-safe publication.
+              </p>
+              <a
+                class="small-link"
+                href="https://github.com/Spaceghost/writ/blob/master/openspec/specs/authority-boundary/spec.md"
+                >The host’s obligations <span aria-hidden="true">↗</span></a
+              >
+            </div>
+          </div>
+          <div
+            class="platforms"
+            role="region"
+            aria-label="Platform roles and recorded evidence"
+          >
+            <div class="platform-row">
+              <div class="platform-name">
+                <h3>Windows</h3>
+                <span>First product target</span>
+              </div>
+              <p>
+                Mounted reads, caller denial, and revocation pass. The strict
+                confinement gate remains failed: direct byte-worker channel
+                probes are incomplete.
+              </p>
+              <a
+                href="https://github.com/Spaceghost/writ/blob/master/contrib/native-hosts/windows/VERIFICATION.md"
+                aria-label="Read Windows evidence"
+                >Evidence <span aria-hidden="true">↗</span></a
+              >
+            </div>
+            <div class="platform-row">
+              <div class="platform-name">
+                <h3>Genode</h3>
+                <span>Capability reference</span>
+              </div>
+              <p>
+                Native public-canary filesystem and VFS results are recorded on
+                base-hw under QEMU. Broader protected-host qualification remains
+                open.
+              </p>
+              <a
+                href="https://github.com/Spaceghost/writ/blob/master/contrib/native-hosts/genode/VERIFICATION.md"
+                aria-label="Read Genode evidence"
+                >Evidence <span aria-hidden="true">↗</span></a
+              >
+            </div>
+            <div class="platform-row">
+              <div class="platform-name">
+                <h3>Linux</h3>
+                <span>Native host target</span>
+              </div>
+              <p>
+                Real FUSE reads, actor denials, revocation, and cleanup have
+                recorded canary evidence. Complete protected-host qualification
+                remains open.
+              </p>
+              <a
+                href="https://github.com/Spaceghost/writ/blob/master/contrib/native-hosts/linux/verification/README.md"
+                aria-label="Read Linux evidence"
+                >Evidence <span aria-hidden="true">↗</span></a
+              >
+            </div>
+          </div>
+          <div class="next-work">
+            <span class="eyebrow">The next integration work</span>
+            <p>
+              Authenticated issuance. Confined transformations. Durable
+              publication. Policy-aware audit.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Spaceghost/writ/blob/master/openspec/ROADMAP.md"
+              >Follow the roadmap <span aria-hidden="true">→</span></a
+            >
+          </div>
+        </section>
+
+        <section class="storage-section" aria-labelledby="storage-title">
+          <div class="storage-symbol" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div>
+            <p class="eyebrow">A native storage foundation</p>
+            <h2 id="storage-title">Meet WritFS.</h2>
+            <p>
+              Private Btrfs snapshots. ZFS filesystem and block-volume clones.
+              Bend authorizes the operation; the native filesystem performs it,
+              preserving the output policy in a verified private-stage receipt.
+            </p>
+            <p class="muted">
+              Whole-dataset presentation, device export, durable publication,
+              and complete worker confinement remain separate work.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Spaceghost/writ/blob/master/writfs/README.md"
+              >Explore the storage backend <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </section>
+
+        <section
+          class="section start-section"
+          id="get-started"
+          aria-labelledby="start-title"
+        >
+          <div class="section-heading">
+            <p class="eyebrow">03 / Start with something real</p>
+            <h2 id="start-title">Read it.<br />Run it. Question it.</h2>
+            <p>
+              Install the pinned <strong>Bend 2.0.39</strong> compiler, then run
+              the first example. Each expected outcome is an assertion; an
+              unexpected result exits unsuccessfully.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Spaceghost/writ/blob/master/docs/INSTALL.md"
+              >Compiler installation guide <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <div class="terminal">
+            <div class="terminal-header">
+              <span>YOUR TERMINAL</span
+              ><button id="copy-command" type="button" hidden>
+                Copy commands <span aria-hidden="true">⧉</span>
+              </button>
+            </div>
+            <pre><code id="quickstart">git clone https://github.com/Spaceghost/writ.git
+cd writ
+bend version
+bend examples/Flow.bend</code></pre>
+            <div class="terminal-divider">EXPECTED EXAMPLE OUTPUT</div>
+            <pre
+              class="terminal-output"
+            ><code>PASS constraint candidate verified: True
+PASS internal summary write allowed: True
+PASS public summary write denied for confidentiality: True
+PASS stripped-label candidate rejected: True</code></pre>
+            <p class="terminal-footnote">
+              Synthetic authority records, explicit permitted and denied
+              outcomes.
+            </p>
+            <p class="copy-status" id="copy-status" role="status"></p>
+          </div>
+        </section>
+
+        <section
+          class="contribute"
+          id="contribute"
+          aria-labelledby="contribute-title"
+        >
+          <div>
+            <p class="eyebrow">Build with us</p>
+            <h2 id="contribute-title">
+              Small, reviewable steps.<br />A stronger whole.
+            </h2>
+            <p>
+              There is meaningful work ahead in host integration, recovery,
+              verification, and developer experience. Start with a bounded slice
+              and make the evidence easy to review.
+            </p>
+          </div>
+          <div class="contribution-links">
+            <a
+              href="https://github.com/Spaceghost/writ/blob/master/openspec/README.md"
+              ><span
+                ><strong>Understand the contracts</strong
+                ><small
+                  >Baseline specs, proposed changes, traceability</small
+                ></span
+              ><span aria-hidden="true">↗</span></a
+            ><a href="https://github.com/Spaceghost/writ/blob/master/AGENTS.md"
+              ><span
+                ><strong>Follow the project’s conventions</strong
+                ><small
+                  >Bend implementation, scoped lanes, truthful evidence</small
+                ></span
+              ><span aria-hidden="true">↗</span></a
+            ><a href="https://github.com/Spaceghost/writ"
+              ><span
+                ><strong>Contribute on GitHub</strong
+                ><small
+                  >Read the code and bring a reviewable change</small
+                ></span
+              ><span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </section>
+      </main>
+      <footer class="footer">
+        <a class="wordmark" href="/writ/"
+          >writ<span class="wordmark-period">.</span></a
+        >
+        <p>
+          Data carries its terms.<span
+            >Developed in the open by Spaceghost and contributors.</span
+          >
+        </p>
+        <div>
+          <a href="https://github.com/Spaceghost/writ">GitHub ↗</a
+          ><a
+            href="https://github.com/Spaceghost/writ/blob/master/docs/GETTING-STARTED.md"
+            >Documentation ↗</a
+          >
+        </div>
+        <small
+          >Project overview · November 2026<br />See linked records for source
+          and scope.</small
+        >
+      </footer>
+    </div>
+  </body>
+</html>
