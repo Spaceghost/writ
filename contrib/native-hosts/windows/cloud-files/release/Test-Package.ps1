@@ -41,9 +41,8 @@ try {
     do {
         if ($provider.HasExited) { throw 'Installed provider exited; inspect installed-provider logs.' }
         # Empty startup logs can produce AutomationNull before the first write.
-        # A typed local normalizes that value before invoking string methods.
-        [string]$startup = Get-Content -LiteralPath (Join-Path $logs 'installed-provider.txt') -Raw
-        $ready = $startup.Contains('READY ')
+        # The match operator safely accepts an empty pipeline on all PS versions.
+        $ready = [bool]((Get-Content -LiteralPath (Join-Path $logs 'installed-provider.txt') -Raw) -match '(?m)^READY ')
         if (-not $ready) { Start-Sleep -Milliseconds 200 }
     } while (-not $ready -and [DateTime]::UtcNow -lt $deadline)
     Assert $ready 'Start menu command creates default Writ root'
@@ -59,6 +58,9 @@ try {
     $info = & (Join-Path $extract 'writ-cloud.exe') inspect $defaultRoot | ConvertFrom-Json
     Assert ($LASTEXITCODE -eq 0 -and -not $info.placeholder) 'uninstall unregisters placeholder'
     Write-Host 'ALL WINDOWS PACKAGE CHECKS PASSED'
+} catch {
+    Write-Host $_.ScriptStackTrace
+    throw
 } finally {
     if ($provider -and -not $provider.HasExited) {
         & (Join-Path $extract 'writ-cloud.exe') stop

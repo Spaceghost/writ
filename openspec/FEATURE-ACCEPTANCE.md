@@ -11,8 +11,9 @@ observable behavior to its complete normative contract and unchecked task list.
 
 The separate [public Windows sync milestone](changes/add-windows-public-sync/proposal.md)
 has [WPS traceability](traceability/windows-public-sync.md) and a runnable native
-smoke test. Its [evidence record](../verification/windows-public-sync/README.md)
-leaves Windows/Notepad execution pending and gives no protected-feature credit.
+smoke test. Its [native evidence record](../verification/windows-release/README.md)
+covers automated save/recovery/conflict and locking checks. Interactive
+Notepad/Explorer remains pending, and no protected-feature credit is given.
 
 | Feature | Required demonstration | Contract | Tasks | Current evidence |
 | --- | --- | --- | --- | --- |

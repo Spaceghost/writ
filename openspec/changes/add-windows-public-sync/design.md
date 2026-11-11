@@ -67,10 +67,11 @@ not overwrite a newer backing version. A fresh root reads the committed head.
 ## Validation
 
 See [traceability](../../traceability/windows-public-sync.md) and the
-[verification record](../../../verification/windows-public-sync/README.md).
-Bend checks and Linux CPU execution do not establish a Windows run. MSVC build,
-Cloud Files execution, native USN behavior and actual Notepad acceptance remain
-pending until `Smoke.ps1 -InteractiveNotepad` records them on Windows.
+[native verification record](../../../verification/windows-release/README.md).
+Native MSVC build and automated Cloud Files save/recovery/conflict and oplock
+checks pass. The record preserves the failed conditional-USN attempts. Actual
+Notepad/Explorer and a standard-user desktop remain pending; run
+`Smoke.ps1 -InteractiveNotepad` for the editor gate.
 
 ## Native concurrency revision
 

@@ -3,9 +3,16 @@
 Open `%USERPROFILE%\Writ\hello.txt` in Notepad, edit, and save. After a
 `COMMIT` line, stop the provider and start it on an empty `Writ-fresh` directory
 using the same backing store. Reading that new placeholder must return the
-saved bytes. This contribution implements the provider and ships that test;
-**native Windows execution, including the actual Notepad gate, is still pending**.
-See the [observed results](../../../../verification/windows-public-sync/README.md).
+saved bytes. Native Windows CI passes metadata-only listing, hydration, saves,
+replacement, restart, failed-write recovery and stale-base conflicts. Actual
+Notepad/Explorer UI and a separate standard-user desktop remain untested.
+See the [native evidence](../../../../verification/windows-release/README.md).
+
+Download the installer or complete portable ZIP from
+[GitHub Releases](https://github.com/Spaceghost/writ/releases). Run the installed
+Start Writ shortcut, or extract the ZIP and run `writ-cloud.exe`; Node and the
+Bend-generated policy are included. The [release pathway](release/README.md)
+describes version tags, pinned inputs, repeated builds and package verification.
 
 The fixture is public. It is a separate executable from the protected-read
 WinFsp host and does not admit protected data to an ordinary desktop editor.
@@ -111,8 +118,8 @@ its transcript, provider output/errors, backing store and recovery files. It
 checks metadata-only enumeration and zero on-disk payload, exact hydration,
 ordinary save, abrupt provider termination, fresh-root readback, `File.Replace`,
 injected failed writeback, recovery and retry after restart, and two roots
-conflicting on the expected version. It also checks native in-sync flags and
-unregisters its roots in cleanup. A failure exits nonzero and retains evidence.
+conflicting on the expected version. It also checks competing writes/renames waiting for an exclusive oplock, native
+in-sync flags, and unregisters its roots in cleanup. A failure exits nonzero and retains evidence.
 The interactive run opens real Notepad and requires a unique saved marker and
 COMMIT while its window remains open, then asks to close that window before
 termination/removal; the unattended run explicitly reports `NOTEPAD_SKIPPED`.
@@ -160,8 +167,7 @@ unchanged across it. `CfUpdatePlaceholder` then installs identity and marks in
 sync before the reference is released. Competing writes and renames wait for
 release; Smoke.ps1 tests both. The optional conditional-USN marking API rejected
 matching USNs on the native runner and is not used as the concurrency fence.
-The adapter never marks a failed or stale commit
-in sync. Normal replacements are converted back to placeholders after persistence.
+The adapter never marks a failed or stale commit in sync. Normal replacements are converted back to placeholders after persistence.
 Metadata polling every 500 ms covers ordinary writes, replacement and offline
 edits without treating close notification as a complete change journal.
 
@@ -173,6 +179,7 @@ rollback defense, power-loss qualification, or production host qualification.
 
 ## Primary API references
 
+- [Exclusive oplock and handle lifetime](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfopenfilewithoplock)
 - [Register a Cloud Files sync root](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfregistersyncroot)
 - [Hydration transfer operations](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/ns-cfapi-cf_operation_parameters)
 - [Convert a replacement to a placeholder](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfconverttoplaceholder)
@@ -180,6 +187,5 @@ rollback defense, power-loss qualification, or production host qualification.
 - [Unregistration behavior](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfunregistersyncroot)
 
 The [contract and traceability](../../../../openspec/traceability/windows-public-sync.md)
-keep model evidence distinct from the pending native Windows acceptance run.
-
-- [Exclusive oplock and handle lifetime](https://learn.microsoft.com/en-us/windows/win32/api/cfapi/nf-cfapi-cfopenfilewithoplock)
+keep model and automated native evidence distinct from pending interactive
+Notepad/Explorer and protected-host acceptance.

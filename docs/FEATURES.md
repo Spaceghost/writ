@@ -6,9 +6,9 @@ private matcher, or a new release path in the current Bend library.
 
 For the bounded public Windows save milestone, see the separate
 [Files On-Demand demo](../contrib/native-hosts/windows/cloud-files/README.md).
-Its Bend checks and runnable Windows smoke are delivered; actual Windows and
-Notepad acceptance remain pending. It does not complete the protected feature
-contracts below.
+Its Bend checks and automated native Windows save/recovery smoke pass.
+Interactive Notepad/Explorer and standard-user desktop acceptance remain pending.
+It does not complete the protected feature contracts below.
 
 ## A summary without downloading the records
 
