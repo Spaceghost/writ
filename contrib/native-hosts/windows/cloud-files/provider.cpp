@@ -55,6 +55,7 @@ struct Placeholder {
     Meta identity{};
 };
 static Placeholder inspect(HANDLE h) {
+    PlaceholderVisibility visible;
     FILE_ATTRIBUTE_TAG_INFO attr{};
     FILE_STANDARD_INFO standard{};
     check(GetFileInformationByHandleEx(h, FileAttributeTagInfo, &attr, sizeof(attr)), "attributes");

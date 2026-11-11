@@ -112,7 +112,27 @@ inline bool inside(const fs::path& child, const fs::path& parent) {
     auto a = folded(child), b = folded(parent) + L"\\";
     return a.compare(0, b.size(), b) == 0;
 }
+class PlaceholderVisibility {
+    using SetMode = CHAR (NTAPI*)(CHAR);
+    SetMode set_mode;
+    CHAR previous;
+public:
+    PlaceholderVisibility() {
+        // Windows disguises cloud reparse points from ordinary processes.
+        // Metadata checks, including the separate inspect CLI, must opt in.
+        // This is the documented ntifs ABI, exported by the already-loaded NTDLL.
+        set_mode = reinterpret_cast<SetMode>(GetProcAddress(GetModuleHandleW(L"ntdll.dll"),
+            "RtlSetThreadPlaceholderCompatibilityMode"));
+        if (!set_mode) throw Error("placeholder visibility API required", ERROR_NOT_SUPPORTED);
+        previous = set_mode(2); // PHCM_EXPOSE_PLACEHOLDERS
+        if (previous < 0) throw Error("expose placeholder metadata", ERROR_NOT_SUPPORTED);
+    }
+    ~PlaceholderVisibility() { set_mode(previous); }
+    PlaceholderVisibility(const PlaceholderVisibility&) = delete;
+    PlaceholderVisibility& operator=(const PlaceholderVisibility&) = delete;
+};
 inline void local_user_path(const fs::path& p) {
+    PlaceholderVisibility visible;
     wchar_t profile[MAX_PATH], volume[MAX_PATH], filesystem[MAX_PATH];
     hr(SHGetFolderPathW(nullptr, CSIDL_PROFILE, nullptr, SHGFP_TYPE_CURRENT, profile), "profile");
     if (!inside(p, canonical(profile))) throw Error("demo paths must be beneath this user's profile", ERROR_ACCESS_DENIED);
