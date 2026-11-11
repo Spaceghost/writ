@@ -1,0 +1,29 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/network-probe/CMakeLists.txt
+  network_probe_loopback.c
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/network-probe/CMakeLists.txt
+  network_probe_test.c
+  network_probe.c
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe.c(83,74): error C2220: the following warning is treated as an error [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/network_probe_test.c')
+
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe.c(83,74): warning C4459: declaration of 'ports' hides global declaration [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+  (compiling source file '../../writ/writ/contrib/native-hosts/windows/network_probe_test.c')
+      D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(32,29):
+      see declaration of 'ports'
+
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(175,22): error C2039: 'test_connect': is not a member of '<unnamed-tag>' [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+      D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(27,15):
+      see declaration of '<unnamed-tag>'
+
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(175,90): error C2039: 'test_send': is not a member of '<unnamed-tag>' [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+      D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(27,15):
+      see declaration of '<unnamed-tag>'
+
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(176,13): warning C4047: 'function': 'int' differs in levels of indirection from 'char [47]' [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(176,13): warning C4024: 'check': different types for formal and actual parameter 1 [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+D:\a\writ\writ\contrib\native-hosts\windows\network_probe_test.c(175,9): error C2198: 'void check(int,const char *)': too few arguments for call [D:\a\_temp\windows-network-build\writfs-network-test.vcxproj]
+  Generating Code...
+  writfs-network-loopback.vcxproj -> D:\a\_temp\windows-network-build\Release\writfs-network-loopback.exe

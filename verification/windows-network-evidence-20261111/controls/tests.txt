@@ -1,0 +1,48 @@
+UpdateCTestConfiguration  from :D:/a/_temp/windows-network-build/DartConfiguration.tcl
+Test project D:/a/_temp/windows-network-build
+Constructing a list of tests
+Done constructing a list of tests
+Updating test list for fixtures
+Added 0 tests to meet fixture requirements
+Checking test dependency graph...
+Checking test dependency graph end
+test 1
+    Start 1: network-api-failure-evidence
+
+1: Test command: D:\a\_temp\windows-network-build\Release\writfs-network-test.exe
+1: Working Directory: D:/a/_temp/windows-network-build
+1: Test timeout computed to be: 30
+1: PASS network evidence: startup failure is not four observed socket errors
+1: PASS network evidence: startup access error earns no denial credit
+1: PASS network evidence: socket access denial is explicit
+1: PASS network evidence: unsupported family is incomplete
+1: PASS network evidence: nonblocking setup access error is incomplete
+1: PASS network evidence: select access error is not a connection denial
+1: PASS network evidence: timeout is incomplete
+1: PASS network evidence: SO_ERROR query access error is not a connection denial
+1: PASS network evidence: short SO_ERROR result is incomplete
+1: PASS network evidence: successful SO_ERROR query can report connection denial
+1: PASS network evidence: connection refusal is not access denial
+1: PASS network evidence: direct TCP and UDP access denials
+1: PASS network evidence: each endpoint retains its own outcome
+1: PASS network evidence: successful direct connections never pass denial checks
+1: PASS network evidence: send error after connected TCP earns no denial credit
+1: PASS network evidence: unreachable UDP is incomplete
+1: PASS network evidence assertions: 739 (synthetic API faults; no LPAC qualification)
+1/2 Test #1: network-api-failure-evidence .........   Passed    0.01 sec
+test 2
+    Start 2: network-loopback-positive-controls
+
+2: Test command: D:\a\_temp\windows-network-build\Release\writfs-network-loopback.exe
+2: Working Directory: D:/a/_temp/windows-network-build
+2: Test timeout computed to be: 30
+2: PASS loopback TCP4: exact public canary received; stage=8 error=0 denial_credit=0
+2: PASS loopback TCP6: exact public canary received; stage=8 error=0 denial_credit=0
+2: PASS loopback UDP4: exact public canary received; stage=4 error=0 denial_credit=0
+2: PASS loopback UDP6: exact public canary received; stage=4 error=0 denial_credit=0
+2: PASS network loopback controls: 4 (ordinary Windows process; no LPAC qualification)
+2/2 Test #2: network-loopback-positive-controls ...   Passed    0.04 sec
+
+100% tests passed out of 2
+
+Total Test time (real) =   0.09 sec

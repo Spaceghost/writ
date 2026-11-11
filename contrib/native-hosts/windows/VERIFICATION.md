@@ -13,6 +13,28 @@ contract have separate results.
 
 This record addresses the bounded [native-host canary contract](../../../openspec/specs/native-host-canary-mounts/spec.md), especially NM004 through NM008, and the [private transport protocol](../PROTOCOL.md). It does not complete the broader [Windows host proposal](../../../openspec/changes/add-windows-host/specs/windows-host/spec.md).
 
+## Network evidence classification on 2026-11-11
+
+[Run 43110533402](https://github.com/Spaceghost/writ/actions/runs/43110533402)
+at `7fc09672a8d20abebbcbdc29c42cfde091321e49` **remains an overall failure**
+because its strict LPAC fixture is incomplete. The new standalone network
+controls pass 739 synthetic assertions and four real ordinary-process loopback
+deliveries under MSVC `/W4 /WX`. The ordinary mounted fixture and all 22 native
+transport assertions pass. The [complete record](../../../verification/windows-network-evidence-20261111/README.md)
+retains exact source/run/artifact identities, failures, logs and limits.
+
+The strict byte worker now reports Winsock startup 10107 once, endpoint stage 1
+(unattempted), zero endpoint operation errors and failed network bits in both
+phases. Clipboard/COM still stop at library initialization. The separate
+no-data diagnostic reaches socket creation (stage 2) and observes access denied
+10013; it retains its distinct process/profile and receives no byte-worker credit.
+
+This change also prevents failed readiness/status-query APIs from earning
+connection-denial credit merely because their numeric error is `WSAEACCES`.
+The receiver validates stage/error/mask consistency in the version-2 fixed
+report. No worker capability, mitigation, WFP, admission or policy changed.
+The initial synthetic-test compilation failure is retained in the new record.
+
 ## Separate disposable Server 2025 VM native run
 
 The [VirtualBox public-canary record](../../../verification/windows-server2025-vbox-20261107/README.md)

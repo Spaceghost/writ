@@ -22,6 +22,17 @@ broader product gaps. Earlier failed native runs remain in the platform records.
 
 ## Evidence interpretation
 
+The [Windows network evidence record](../../verification/windows-network-evidence-20261111/README.md)
+at `7fc0967` strengthens NM008 classification: initialization, nonblocking
+setup, readiness inspection and status-query failures cannot count as observed
+network denial. The version-2 report separates startup from endpoint results
+and rejects inconsistent stage/error/mask claims. MSVC controls pass 739
+synthetic assertions and four real ordinary-process loopback deliveries;
+ordinary mount/revocation and 22 native transport assertions pass. The full
+workflow remains **failed** because the actual strict worker still cannot
+initialize Winsock/clipboard/COM. Its separate diagnostic does not qualify it.
+No broader host task is completed by the stronger evidence checks.
+
 Native Genode run 43091571073 on 2026-11-11 executes the complete **3072-check**
 reviewed suite, all 69 mount vectors and both filesystem boots at `7edf561`.
 Its [manifest](../../contrib/native-hosts/genode/evidence/ci-7edf561-success.json)

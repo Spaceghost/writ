@@ -1,0 +1,244 @@
+{
+  "repository": "Spaceghost/writ",
+  "commit": "7fc09672a8d20abebbcbdc29c42cfde091321e49",
+  "tree": "35f14bed31a6cb8290051d3f415871ebe1a8add9",
+  "run_id": 43110533402,
+  "run_url": "https://github.com/Spaceghost/writ/actions/runs/43110533402",
+  "run_attempt": 1,
+  "conclusion": "failure",
+  "jobs": [
+    {
+      "id": 130825050902,
+      "name": "Windows network evidence controls",
+      "conclusion": "success",
+      "url": "https://github.com/Spaceghost/writ/actions/runs/43110533402/job/130825050902",
+      "completed_at": "2026-11-11T22:18:18Z",
+      "failed_steps": []
+    },
+    {
+      "id": 130825051235,
+      "name": "Compile shared Bend mount policy",
+      "conclusion": "success",
+      "url": "https://github.com/Spaceghost/writ/actions/runs/43110533402/job/130825051235",
+      "completed_at": "2026-11-11T22:17:56Z",
+      "failed_steps": []
+    },
+    {
+      "id": 130825175459,
+      "name": "WinFsp mount and LPAC public-canary probes",
+      "conclusion": "failure",
+      "url": "https://github.com/Spaceghost/writ/actions/runs/43110533402/job/130825175459",
+      "completed_at": "2026-11-11T22:19:49Z",
+      "failed_steps": [
+        "Exercise LPAC, WFP, egress probes and revocation"
+      ]
+    }
+  ],
+  "artifacts": {
+    "controls": {
+      "id": 13897050041,
+      "name": "windows-network-evidence-1",
+      "sha256": "9e5ebdecd0318874d3bbfd6e1868475c98aa4d2785f5ea5e5488a84a99a372c1",
+      "expires_at": "2026-11-25T22:18:15Z",
+      "url": "https://github.com/Spaceghost/writ/actions/runs/43110533402/artifacts/13897050041",
+      "member_sha256": {
+        "build.txt": "3c2098ef36020a3cd969fdec321f14d02da1f0be12f7ecbece1e36088ca67330",
+        "binaries.txt": "a65f79e56813a962374e6bfa61f03b0c439058f6eda8b7ce3cdd9a4cd79c6034",
+        "environment.txt": "cd0cb541106aaa717c2aac7735a3017d0136e67bec5fc76ff56e216b0de3bac4",
+        "configure.txt": "c9b49200eb72bdacf1e3568769cdddeca4e95f0ed3c5b44a4086f03e162b4e98",
+        "tests.txt": "662f38cffa66c07506fb58cba61a50081ee44ae72e6d7fbc0fcb291a415fdac7"
+      }
+    },
+    "native": {
+      "id": 13895947338,
+      "name": "windows-native-evidence-1",
+      "omitted_repo_members": {"winfsp-install.txt": "Full 435,448-byte MSI install log retained only in the verified ZIP; its raw member hash is recorded below. Driver signature/version and execution logs are retained in the repository."},
+      "sha256": "d1b4a04b909ddfa0bf62e4ab10d341a0c0e056fafd4f530947e313f51da8a8c5",
+      "expires_at": "2026-11-25T22:19:44Z",
+      "url": "https://github.com/Spaceghost/writ/actions/runs/43110533402/artifacts/13895947338",
+      "member_sha256": {
+        "build.txt": "13d07e65f51e10705225ffe8d5684d09e6fc5e4d13beeac84f5c163c7d35eade",
+        "environment.txt": "a2c15dd2b34c57fb53d32fa0bfbaad32458c359bb39bb7134514f9e3862ad972",
+        "configure.txt": "2c74fa0ddf9b819a984deebd7e66f9959fb7c715effe90ce05803303ed9fa19c",
+        "lpac.txt": "b2f13d21bce57bd798f03a755488521d8dde67d79c35f870a56a53854f964ef2",
+        "mount-model.txt": "949d7cdad5de2f974232912abe64332feda0e813ce03a6078a59941ca8435602",
+        "mount.txt": "9be88ddfc98d43289efa356d9c108a3b602241898b5bc6c00849352e69f37c88",
+        "native-source-artifacts.txt": "5bf993a07b11456ed56c8107a1c452f5529f9dfedf62e826682e8abd34c8649c",
+        "native-transport.txt": "c8537a9cfefab6fdb068b262734fe846db0e21c257ba51b0b3e7c1ee8b1a262a",
+        "transport.txt": "edd9f85127b1f1f9338550419cf6595dc1a8ac999ecc46841548eab737c915e0",
+        "winfsp-install.txt": "d856c4dd861d8bfd7b9d6f885f3248e153cc1fafb58256f016abf45a454823f8",
+        "winfsp-signature.txt": "97fe8fbc9d23dc588e79e83a10d70ff00480b9183ca649c1bee8f362bb885123",
+        "winfsp-version.txt": "72d867427473a5d4011d5ebe857a27eda3168dce1932d3941d96a53af4415b1c"
+      }
+    },
+    "first-controls": {
+      "id": 13894954519,
+      "name": "windows-network-evidence-1",
+      "sha256": "e55358302ff68744b8890837eb6464366ec268fd43a372231e4f12c11bcee7e2",
+      "expires_at": "2026-11-25T22:16:16Z",
+      "url": "https://github.com/Spaceghost/writ/actions/runs/43110242244/artifacts/13894954519",
+      "member_sha256": {
+        "build.txt": "64db3c48572f36391a46214c2f146be2be8d5eb58d540961d7adafb323b853e8",
+        "configure.txt": "bbb5525214264f05fac06596956918e36747544baefe9a43fbf612f581170122",
+        "environment.txt": "54114052dbe6713393e4a2b166dba449b922d4c0e671db1313c05f1640ca374c"
+      }
+    }
+  },
+  "retained_files": {
+    "controls/build.txt": {
+      "artifact": "controls",
+      "member": "build.txt",
+      "sha256": "b912dde2cc968b18ada64601d0bc354bc49bfc8ba5300ccda1a37345ba5a4d71",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "controls/binaries.txt": {
+      "artifact": "controls",
+      "member": "binaries.txt",
+      "sha256": "92eadb960dcad0188a21137c4e7c5aad6d1a2d829ab77ae37561badfcc0951a2",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "controls/environment.txt": {
+      "artifact": "controls",
+      "member": "environment.txt",
+      "sha256": "cfbbb3fbba4c4c996dbf41b13fcc4a9161535e6dc949d41bcf5e9b519d99160a",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "controls/configure.txt": {
+      "artifact": "controls",
+      "member": "configure.txt",
+      "sha256": "f439c48a83f6365bffb0e123378b6a91694a51756da5c65bc8bfbff28c4e6122",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "controls/tests.txt": {
+      "artifact": "controls",
+      "member": "tests.txt",
+      "sha256": "b37ce3c9066b028878621b3fb89a1d0dd847a159a2691a23c61eeeb7b81b6a88",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/build.txt": {
+      "artifact": "native",
+      "member": "build.txt",
+      "sha256": "a8a6bf8ee4400ddc75aa753ac39f97919ab7608a9e037b5f7f31bbedaabb4d38",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/environment.txt": {
+      "artifact": "native",
+      "member": "environment.txt",
+      "sha256": "1cdc0ba1228f09f6a0baa660adae52107938cf5d8792aaf3a8f0209c7eed396b",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/configure.txt": {
+      "artifact": "native",
+      "member": "configure.txt",
+      "sha256": "a8362e1786b654d03f9ac3b0d71b4fdcf9bda4b123f8523172cbbb55c5302152",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/lpac.txt": {
+      "artifact": "native",
+      "member": "lpac.txt",
+      "sha256": "c9adc960a4d3343907494e5936e961ec67a7e47db56e17a0a66ae4bfb6d3b84c",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/mount-model.txt": {
+      "artifact": "native",
+      "member": "mount-model.txt",
+      "sha256": "d7da750c14e054970beeec563839277b6931149b1c6e4c8eb190c75f3fbc9145",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/mount.txt": {
+      "artifact": "native",
+      "member": "mount.txt",
+      "sha256": "3048cccaa9cdac4e97a39153f5bb68c078a9f80bb90fd30febe7e64e0d6ae02f",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/native-source-artifacts.txt": {
+      "artifact": "native",
+      "member": "native-source-artifacts.txt",
+      "sha256": "7752b7736b796d50543292a8579091000e5836781270dc1fb7b03079a85537c0",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/native-transport.txt": {
+      "artifact": "native",
+      "member": "native-transport.txt",
+      "sha256": "7bad04c479b299f78f7f6a45f5d71fb8e9dfc2277f531c7cd7baa0268c9b1619",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/transport.txt": {
+      "artifact": "native",
+      "member": "transport.txt",
+      "sha256": "387381d94a1c43567aefa8887f646fd24baae94e316c3a969d016b541106cefb",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/winfsp-signature.txt": {
+      "artifact": "native",
+      "member": "winfsp-signature.txt",
+      "sha256": "44c1625eccf967b85b8b4ffcd61aa3f6a1808541e47cbd2b054740a459a76058",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "native/winfsp-version.txt": {
+      "artifact": "native",
+      "member": "winfsp-version.txt",
+      "sha256": "f413f1d41aa404067fdc3aed5ae1828cb1cdbf824134ab0891ca981553624445",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "first-controls/build.txt": {
+      "artifact": "first-controls",
+      "member": "build.txt",
+      "sha256": "2f04aaf017c09e02fa62f09d6f803d33531f8635b8a08de6270d3ed699de6946",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "first-controls/configure.txt": {
+      "artifact": "first-controls",
+      "member": "configure.txt",
+      "sha256": "bb9611ce9ce5e4d3a1b16d06c4fcc376b8670d9772312be1aebf31706d673acc",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "first-controls/environment.txt": {
+      "artifact": "first-controls",
+      "member": "environment.txt",
+      "sha256": "2d44e0fef659dad92fe1b68dbaff9dbcf40cc92759367bc208e7159d21f88d32",
+      "normalization": "UTF-8 BOM removed if present; CR and ANSI CSI controls removed; trailing whitespace stripped; LF terminated."
+    },
+    "local/bend-tests.log": {
+      "capture": "local Bend 2.0.39, unchanged authored Bend at the candidate revision",
+      "sha256": "10a55aaf2af15d6cf4c95f305d5bd013857be950639758311021ac8d6ec649ee",
+      "normalization": "None; exact local capture."
+    },
+    "local/bend-proof.log": {
+      "capture": "local Bend 2.0.39, unchanged authored Bend at the candidate revision",
+      "sha256": "931f1e664a679af1355a9ca547ac1daef9f7b14137bc7cc21b110b0cc504b5b1",
+      "normalization": "None; exact local capture."
+    }
+  },
+  "results": {
+    "synthetic_assertions": 739,
+    "ordinary_loopback_controls": 4,
+    "native_transport_assertions": 22,
+    "ordinary_mount_and_revocation": "passed",
+    "strict_lpac": "failed; byte-worker Winsock startup 10107 in both network phases, clipboard/COM initialization incomplete",
+    "strict_network_endpoint_operations": "unattempted; startup stage 1, endpoint operation errors 0, failed bits retained",
+    "separate_no_data_diagnostic": "passed; Winsock startup 0, socket stage 2 and WSAEACCES 10013; different process/profile, no replacement credit"
+  },
+  "scope": "public-canary probes and evidence classification; no full host/confinement qualification, no policy/profile/admission change",
+  "first_attempt": {
+    "commit": "902af2732f0189693dd1cfd4558a713757b76d0d",
+    "run_id": 43110242244,
+    "url": "https://github.com/Spaceghost/writ/actions/runs/43110242244",
+    "controls_job_id": 130824019021,
+    "failure": "Test-only macro substitutions escaped the included implementation; fixture port name also shadowed a parameter under /WX.",
+    "correction": "Undefine test macros immediately after the included production implementation; rename the fixture-only ports. Production source unchanged."
+  },
+  "source_inventory": {
+    "file": "source.sha256",
+    "sha256": "b7ad9bf63826f921d0226dbf873dbcc7836d386ace4262f22e05904770208d7b",
+    "paths": 204,
+    "scope": "All tracked Bend files plus native Windows C/headers/build definitions, native workflow, Node harness and reviewed core count at the tested commit."
+  },
+  "genode_master_followup": {
+    "run_id": 43094969910,
+    "source": "0bc0c258d9e95e92eee0b38c16b3351ae9fc0013",
+    "attempt_1": "native execution passed; artifact service failed after five create attempts",
+    "attempt_2": "success",
+    "url": "https://github.com/Spaceghost/writ/actions/runs/43094969910/attempts/2"
+  }
+}

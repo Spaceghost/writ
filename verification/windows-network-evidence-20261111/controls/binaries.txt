@@ -1,0 +1,8 @@
+
+Algorithm : SHA256
+Hash      : F478083C677E7399C542D285E13D4812274EC6F8DB870B5FFBD22FF86DD899BF
+Path      : D:\a\_temp\windows-network-build\Release\writfs-network-test.exe
+
+Algorithm : SHA256
+Hash      : EB3127E44943A112EC6DCE6E4FC50FFBA44514FA1EB390EA91F93217A98DE951
+Path      : D:\a\_temp\windows-network-build\Release\writfs-network-loopback.exe

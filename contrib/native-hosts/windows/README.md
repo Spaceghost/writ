@@ -62,6 +62,8 @@ a native machine-code Bend runtime.
 | `worker.c` | Held executable identity, reduced primary/LPAC token launch, actual-token checks, lifetime binding, job limits, WFP transactions/readback, a separate no-data diagnostic profile and owned-resource cleanup |
 | `isolation.c` | Explicit broker/child process ownership and DACLs; a same-SID, medium-integrity outsider probe with administrator group disabled and privileges removed |
 | `probe.c` | Native canary reads and negative probes that Bend cannot directly express; fixed-size reports to the private supervisor |
+| `network_probe.c`, `network_probe.h` | Fixed loopback socket probes, explicit initialization/operation stages, and receiver-side validation of denial evidence; no configurable API hooks |
+| `network_probe_test.c`, `network_probe_loopback.c`, `network-probe/CMakeLists.txt` | Test-only API fault injection and real ordinary-process IPv4/IPv6 TCP/UDP positive controls; separate MSVC build without WinFsp |
 | `channels.c` | Fixed clipboard-open and local COM activation probes, with stage-specific results and ordinary-process positive controls |
 | `transport_probe.c` | Actual native pipe lifecycle, 64 KiB transfer and hostile-peer checks, including both read and write deadlines |
 | `init_diagnostic.c`, `init_worker.c`, `init_child.c`, `init_report.h` | Experimental no-data supervisor, output-prefixed shared launcher, fixed child and bounded initialization report; no mount, Writ session, policy pipe or byte-input route |
@@ -125,6 +127,52 @@ successful send/receive positive controls. They are loopback evidence, not
 an external-route qualification. Clipboard and COM probes also require positive
 controls; a missing DLL/export, unregistered COM class, unrelated error or
 arbitrary process-launch failure does not count as a restriction.
+
+### Interpret network probe reports
+
+For example, `wsa_startup=10107 tcp4_stage=1 ... e7=0` with the TCP4 failed bit
+means Winsock initialization failed before any TCP4 socket operation. The
+startup result is recorded once; zero endpoint errors at stage 1 do not mean
+successful operations or observed denials. A separate diagnostic reporting
+`wsa_startup=0 tcp4_stage=2 tcp4=10013` reached socket creation and observed
+`WSAEACCES`. Its separate process/profile still does not qualify the byte worker.
+
+The private report is version 2 (`WRIT_PROBE_MAGIC`, 120 bytes). The supervisor
+requires the exact size, version, phase and masks, then checks that each network
+stage/error agrees with the claimed outcome. Rebuild probe and supervisor
+together; mixed report versions fail closed. The four stages correspond, in
+order, to TCP4, TCP6, UDP4 and UDP6:
+
+| Stage | Observation | May support a passed access-denial check? |
+| --- | --- | --- |
+| 0 | No network check in this phase | No |
+| 1 | Shared `WSAStartup` failed; endpoint operation unattempted | No |
+| 2 | `socket` returned its result | Only `WSAEACCES` |
+| 3 | `ioctlsocket` nonblocking setup failed | No |
+| 4 | UDP `sendto` returned its result | Only `WSAEACCES` |
+| 5 | TCP `connect` returned its immediate result | Only `WSAEACCES` |
+| 6 | `select` failed or timed out | No |
+| 7 | `getsockopt(SO_ERROR)` failed or returned an invalid length | No |
+| 8 | Successful, correctly sized `SO_ERROR` query returned the connection result | Only `WSAEACCES` |
+
+Numeric equality with `WSAEACCES` from Winsock initialization, nonblocking setup,
+readiness inspection or a failed status query never earns denial credit. A
+successful TCP connection also never earns it, even if a later fixed-canary
+send fails. The current failed strict
+worker still needs restriction-preserving initialization and complete channel
+evidence; this report change grants no new capability or authority.
+
+The separate network-controls CI job builds with MSVC `/W4 /WX`, exercises
+controlled API failures against the production implementation, and delivers
+the exact public canary to four real ordinary-process loopback receivers. Its
+API replacement macros exist only in the synthetic test translation unit.
+Reproduce without installing WinFsp:
+
+```powershell
+cmake -S contrib/native-hosts/windows/network-probe -B C:\writ-network-build -A x64
+cmake --build C:\writ-network-build --config Release
+ctest --test-dir C:\writ-network-build -C Release --verbose
+```
 
 ## Evidence and remaining product work
 

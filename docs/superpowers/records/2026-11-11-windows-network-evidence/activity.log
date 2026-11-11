@@ -1,2 +1,7 @@
 2026-11-11T22:04:43Z	controller	Isolated lane prepared; source/API review identified missing stages and readiness/query errors sharing denial classification.
 2026-11-11T22:16:54Z	implementer	First CI run 43110242244 exposed test-only macro leakage and a shadowed fixture variable; scoped macros and renamed fixture ports. Production probe unchanged.
+2026-11-11T22:18:18Z	implementer	Windows controls passed 739 assertions and four real loopbacks at 7fc0967.
+2026-11-11T22:19:49Z	implementer	Full native integration completed: ordinary mount/transport pass, strict LPAC remains failed with explicit startup-stage evidence.
+2026-11-11T22:24:04Z	controller	Three artifact digests verified; 21 captures and 204 tested source hashes retained; final review requested.
+2026-11-11T22:26:06Z	implementer	OpenSpec 45/45, capture/source hashes and 51 local link targets passed; native inputs remain identical to 7fc0967.
+2026-11-11T22:29:03Z	reviewer	Final evidence audit found no code blocker; documented intentional omission of bulk MSI install log while retaining its archive hash.

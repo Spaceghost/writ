@@ -1,0 +1,12 @@
+MSBuild version 18.11.1-1.26513.3+940033be3 for .NET Framework
+
+  1>Checking Build System
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/network-probe/CMakeLists.txt
+  network_probe_loopback.c
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/network-probe/CMakeLists.txt
+  network_probe_test.c
+  network_probe.c
+  Generating Code...
+  writfs-network-loopback.vcxproj -> D:\a\_temp\windows-network-build\Release\writfs-network-loopback.exe
+  writfs-network-test.vcxproj -> D:\a\_temp\windows-network-build\Release\writfs-network-test.exe
+  Building Custom Rule D:/a/writ/writ/contrib/native-hosts/windows/network-probe/CMakeLists.txt
