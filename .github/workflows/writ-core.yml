@@ -59,6 +59,12 @@ jobs:
       - name: Check verifier failure paths
         run: python3 -m unittest discover -s utils/verification -p 'test_*.py'
 
+      - name: Check and package project website
+        run: |
+          set -euo pipefail
+          node --test utils/site/worker.test.mjs
+          node utils/site/build.mjs "$RUNNER_TEMP/writ-site-build"
+
       - name: Run complete core and check reviewed count
         run: |
           set -euo pipefail
