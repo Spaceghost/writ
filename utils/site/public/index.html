@@ -141,7 +141,7 @@
           </div>
           <div class="organization-grid">
             <article class="organization-card">
-              <div class="organization-card-top"><span class="eyebrow">01 / Client services</span><span class="implementation">Core model + desktop work</span></div>
+              <div class="organization-card-top"><span class="eyebrow">01 / Client services</span><span class="implementation">Desktop preview</span></div>
               <h3>Archive a client document<br />without losing its restrictions.</h3>
               <p>A project team finishes an engagement and copies the working files to its long-term archive.</p>
               <ol class="work-example"><li><span>Source</span><strong>Client notes · private</strong></li><li><span>Approved archive</span><strong>Copy allowed · original rules retained</strong></li><li><span>Public-only destination</span><strong>Copy refused before payload upload</strong></li></ol>
@@ -149,15 +149,15 @@
               <a class="text-link" href="https://github.com/Spaceghost/writ/blob/master/openspec/specs/provenance-preservation/spec.md">How inherited rules work <span aria-hidden="true">↗</span></a>
             </article>
             <article class="organization-card">
-              <div class="organization-card-top"><span class="eyebrow">02 / Project teams</span><span class="implementation">Desktop work in progress</span></div>
+              <div class="organization-card-top"><span class="eyebrow">02 / Project teams</span><span class="implementation">Desktop preview</span></div>
               <h3>Recover yesterday’s document.<br />Keep today’s restrictions.</h3>
               <p>A team needs an earlier draft, but the document received an additional restriction after that draft was saved.</p>
               <ol class="work-example"><li><span>Earlier version</span><strong>The bytes you want to recover</strong></li><li><span>Current version</span><strong>The restrictions that still apply</strong></li><li><span>Restored version</span><strong>Earlier bytes + retained current rules</strong></li></ol>
               <p class="organization-benefit"><b>Why it helps:</b> Recovering useful work does not quietly undo a later decision about where it may go. Provenance remains available alongside version history.</p>
-              <a class="text-link" href="https://github.com/Spaceghost/writ/blob/master/openspec/specs/provenance-preservation/spec.md">The preservation contract <span aria-hidden="true">↗</span></a>
+              <a class="text-link" href="https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.4/contrib/native-hosts/drive/README.md">Try version history and restore <span aria-hidden="true">↗</span></a>
             </article>
             <article class="organization-card">
-              <div class="organization-card-top"><span class="eyebrow">03 / Storage operations</span><span class="implementation">Desktop work in progress</span></div>
+              <div class="organization-card-top"><span class="eyebrow">03 / Storage operations</span><span class="implementation">Desktop preview</span></div>
               <h3>Use different storage providers.<br />Review one set of file rules.</h3>
               <p>An organization keeps active work in one S3-compatible service and an archive in another. People open only the files they need.</p>
               <ol class="work-example"><li><span>Browse</span><strong>Read metadata without fetching every file</strong></li><li><span>Work</span><strong>Open a local file and save in a normal editor</strong></li><li><span>Copy to archive</span><strong>Check the destination; retain the file’s origins</strong></li></ol>
@@ -165,7 +165,7 @@
               <a class="text-link" href="#desktop-status">See the desktop status <span aria-hidden="true">↓</span></a>
             </article>
             <article class="organization-card">
-              <div class="organization-card-top"><span class="eyebrow">04 / Platform &amp; security teams</span><span class="implementation">Core model + desktop work</span></div>
+              <div class="organization-card-top"><span class="eyebrow">04 / Platform &amp; security teams</span><span class="implementation">Desktop preview</span></div>
               <h3>Explain a blocked handoff<br />before calling it a successful sync.</h3>
               <p>A colleague chooses a destination that is not approved, or access changes before the transfer is committed.</p>
               <ol class="work-example"><li><span>Check</span><strong>Current source, destination and authority</strong></li><li><span>Explain</span><strong>Identify the refused operation and its reason</strong></li><li><span>Confirm</span><strong>Report a completed save only after verification</strong></li></ol>
@@ -174,9 +174,10 @@
             </article>
           </div>
           <div class="desktop-status" id="desktop-status">
-            <div><p class="eyebrow">What you can try</p><h3>A working core. A growing desktop app.</h3></div>
-            <div><p>The examples above show how the core rules can support everyday file work. Policy-aware copies across storage and restores that retain current restrictions are being integrated into the desktop app; they are not yet part of the downloadable release.</p>
-            <p>Today’s Windows preview connects S3-compatible storage, syncs folders and shows activity. Linux currently offers a local, single-file FUSE preview. Ordinary downloaded files remain accessible to desktop applications; neither preview is a complete protected-data environment.</p>
+            <div><p class="eyebrow">What you can try</p><h3>Use these workflows on Windows and Linux.</h3></div>
+            <div><p>The files-and-rules app connects your S3-compatible storage, opens ordinary working files, and checks managed copies against their source restrictions. History restores earlier bytes while retaining current rules. Activity shows refusals, conflicts and verified saves.</p>
+            <p><b>Try a client archive:</b> connect a test bucket approved to receive <b>Private + approved-region files</b>, then choose <b>Try with sample files</b>. Copy the private project notes to an approved destination. Add a public-only destination and try the same copy: Writ refuses before uploading file contents. Edit a local copy, add the region restriction, and restore an earlier version to see that the new rule stays.</p>
+            <p>These are real storage operations using public example content. Destination approvals are set by the local owner. Downloaded files remain accessible to desktop applications; the preview does not provide organization-wide access administration or a complete protected-data environment.</p>
             <a class="text-link" href="#downloads">Choose a desktop preview <span aria-hidden="true">↗</span></a><a class="text-link" href="#get-started">Run the core examples <span aria-hidden="true">↓</span></a></div>
           </div>
           <p class="organization-future"><b>Further ahead:</b> approved analysis near the source, private comparisons, and controlled disclosure are proposed work. They are not available desktop features or compliance guarantees.</p>
@@ -185,41 +186,45 @@
         <section class="download-section" id="downloads" aria-labelledby="download-title">
           <div class="download-heading">
             <div>
-              <p class="eyebrow">On your desktop / Preview.3</p>
+              <p class="eyebrow">On your desktop / Preview.4</p>
               <h2 id="download-title">A folder you can use.<br />Work you can inspect.</h2>
             </div>
-            <p>Try the native applications while the wider policy and host work continues. Each release includes its source revision, checksums and native test evidence.</p>
+            <p>Explore the same files, rules, history and activity controls on Windows and Linux. Each release includes its source revision, checksums and native test evidence.</p>
           </div>
           <div class="download-grid">
             <article class="download-main">
               <span class="evidence-label">WINDOWS 10 / 11 · X64</span>
-              <h3>Tray, desktop, cloud folder.</h3>
-              <p>See activity, pause or resume syncing, and open recovery copies. Connect S3-compatible storage from Settings and sync files and nested folders. Your local files stay available offline.</p>
+              <h3>Files and rules on Windows.</h3>
+              <p>Connect storage, browse files, inspect their origins and choose an approved destination. Keep local copies for ordinary editors and review each transfer in Activity.</p>
               <div class="download-actions">
-                <a class="button primary" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-windows-x64-setup.exe">Download for Windows <span aria-hidden="true">↓</span></a>
-                <a class="text-link" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-windows-x64-portable.zip">Portable ZIP <span aria-hidden="true">↗</span></a>
+                <a class="button primary" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-windows-x64-setup.exe">Download for Windows <span aria-hidden="true">↓</span></a>
+                <a class="text-link" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-windows-x64-portable.zip">Portable ZIP <span aria-hidden="true">↗</span></a>
               </div>
               <ol class="download-steps">
-                <li><strong>Install and open Writ.</strong> Its icon stays in the notification area when you close the window.</li>
-                <li><strong>Connect your storage.</strong> Enter your HTTPS endpoint, bucket, prefix and credentials in Settings. Cloudflare R2 uses region <code>auto</code>.</li>
-                <li><strong>Open your Writ Cloud folder.</strong> Add files and folders. Watch activity and review any conflicts before changing either version.</li>
+                <li><strong>Open Writ files and rules</strong> from the Start menu, or run <code>WritDrive.exe</code> in the portable folder. The controls open in your browser.</li>
+                <li><strong>Connect your storage.</strong> Enter your endpoint, bucket, prefix and credentials in the local connection form.</li>
+                <li><strong>Try with sample files.</strong> Open project notes in your editor, test an allowed and a blocked copy, then inspect history and Activity.</li>
               </ol>
-              <a class="small-link" href="https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.3/contrib/native-hosts/windows/directory-sync/README.md">Setup, supported files and recovery <span aria-hidden="true">↗</span></a>
+              <a class="small-link" href="https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.4/contrib/native-hosts/drive/README.md">Setup, supported files and recovery <span aria-hidden="true">↗</span></a>
             </article>
             <article class="download-other">
               <span class="evidence-label">LINUX · X86-64</span>
-              <h3>The local FUSE preview.</h3>
-              <p>Try metadata-only listing, hydration and saves with the local single-file preview. Linux cloud syncing and the desktop shell are separate future work.</p>
-              <a class="text-link" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-linux-x64-setup.run">Download Linux installer <span aria-hidden="true">↓</span></a>
-              <p class="download-command">Run <code>bash Writ-0.1.0-preview.3-linux-x64-setup.run</code></p>
-              <a class="small-link" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-linux-x64-portable.tar.gz">Portable archive <span aria-hidden="true">↗</span></a>
-              <p>Requires glibc 2.35+, OpenSSL 3, <code>fusermount3</code> and access to <code>/dev/fuse</code>.</p>
-              <a class="small-link" href="https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.3/contrib/native-hosts/linux/public-sync/README.md">Linux installation and scope <span aria-hidden="true">↗</span></a>
+              <h3>The same workflows on Linux.</h3>
+              <p>Connect S3-compatible storage and use the same file browser, policy-aware copies, version restore and Activity. Your working files live in <code>Writ Drive</code>.</p>
+              <div class="download-actions"><a class="button primary" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-linux-x64-setup.run">Download for Linux <span aria-hidden="true">↓</span></a></div>
+              <p class="download-command">Run <code>bash Writ-0.1.0-preview.4-linux-x64-setup.run</code></p>
+              <a class="small-link" href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-linux-x64-portable.tar.gz">Portable archive <span aria-hidden="true">↗</span></a>
+              <ol class="download-steps">
+                <li><strong>Install and launch Writ,</strong> or extract the portable archive and run <code>./writ-linux</code>.</li>
+                <li><strong>Connect storage and try the examples.</strong> The same controls open in your browser; local edits sync back to storage.</li>
+              </ol>
+              <p>Requires glibc 2.35+ and OpenSSL 3. The separate local FUSE canary remains available through <code>./writ-linux start</code>.</p>
+              <a class="small-link" href="https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.4/contrib/native-hosts/linux/public-sync/README.md">Linux installation and scope <span aria-hidden="true">↗</span></a>
             </article>
           </div>
           <div class="download-footnote">
-            <p>Unsigned public previews. Windows requires local NTFS; cloud folders are currently limited to 2,048 tracked paths and 1 GiB per file. S3 protocol tests use a real HTTPS fixture; actual R2 account testing remains open. OneDrive sign-in follows later. Protected-data host qualification is incomplete.</p>
-            <div><a href="https://github.com/Spaceghost/writ/releases/tag/desktop-v0.1.0-preview.3">Release &amp; test evidence ↗</a><a href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/SHA256SUMS">Download checksums ↗</a></div>
+            <p>Unsigned previews. The shared app supports files up to 64 MiB, 512 retained versions and 16 connections. S3 and browser workflows are tested against a real local service on both operating systems; live R2 testing remains open. Remote filesystem placeholders, shell status icons and OneDrive sign-in remain future work. The existing Windows tray app is also included, with its separate folder and storage format. <a href="https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.4/contrib/native-hosts/drive/README.md">Read the preview’s limits and recovery guide.</a></p>
+            <div><a href="https://github.com/Spaceghost/writ/releases/tag/desktop-v0.1.0-preview.4">Release &amp; test evidence ↗</a><a href="https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/SHA256SUMS">Download checksums ↗</a></div>
           </div>
         </section>
 

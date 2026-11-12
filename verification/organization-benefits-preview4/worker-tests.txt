@@ -1,0 +1,12 @@
+✔ canonical redirects stay within /writ and retain query parameters (37.574809ms)
+✔ only published paths are served, with correct media types (4.584973ms)
+✔ HEAD has no body and conditional reads revalidate the exact asset (0.687149ms)
+✔ unsupported methods cannot turn the site into a write endpoint (0.610307ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 115.911659

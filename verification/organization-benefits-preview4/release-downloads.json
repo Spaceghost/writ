@@ -1,0 +1,66 @@
+{
+  "release": "https://github.com/Spaceghost/writ/releases/tag/desktop-v0.1.0-preview.4",
+  "release_id": 442490831,
+  "tag": "desktop-v0.1.0-preview.4",
+  "source_commit": "ffac77853f064f3ca47cfd579e2a486af050b9d5",
+  "prerelease": true,
+  "published_at": "2026-11-12T04:17:31Z",
+  "authentication": "none; fresh urllib requests without Authorization or cookies",
+  "build_info": "both platforms match the exact source revision and manifest",
+  "assets": [
+    {
+      "name": "BUILD-INFO-linux.json",
+      "sha256": "4c73b2544c5f2f856282197522bc4e1a1ce95b8406924b9dfb172b4172aa67f5",
+      "bytes": 2342,
+      "status": 200
+    },
+    {
+      "name": "BUILD-INFO-windows.json",
+      "sha256": "e41b1af741d796038e2493d5fb2377f943948d78e177363366b1e0d74c6392a5",
+      "bytes": 1927,
+      "status": 200
+    },
+    {
+      "name": "SHA256SUMS",
+      "sha256": "6620cc6f6dec3355b54073b4f7bd9673a8db6d96606836d943b492fcef11e003",
+      "bytes": 856,
+      "status": 200
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-linux-verification.tar.gz",
+      "sha256": "9c866fbe2b30e266f7f14463b41963c32937b0fb315f34ead2f5767678cf8a60",
+      "bytes": 857027,
+      "status": 200
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-linux-x64-portable.tar.gz",
+      "sha256": "462e75565b394adb30d6cc529cbbd1ba5234172d4e9ef0160c16181108551bf6",
+      "bytes": 49454768,
+      "status": 200
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-linux-x64-setup.run",
+      "sha256": "72ef3990ee1bc2d082ba21f3fe462d9d759c98c1c4bc6147c46abfcf7740952b",
+      "bytes": 49455310,
+      "status": 200
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-windows-verification.zip",
+      "sha256": "b7b2024d66b90b304cb0c393fda9128f6fec45c192b06ccc5e8b225db00cb663",
+      "bytes": 670096,
+      "status": 200
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-windows-x64-portable.zip",
+      "sha256": "1e9fa92d9026d8a1b143be2ef25082457877c8047740e18de64e589814c809ec",
+      "bytes": 35385446,
+      "status": 200
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-windows-x64-setup.exe",
+      "sha256": "6b7814a399de0da6284926ee3db7adeeb0122e7ea1734e5398da4fa8a48e7d88",
+      "bytes": 23992548,
+      "status": 200
+    }
+  ]
+}

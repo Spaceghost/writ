@@ -1,0 +1,21 @@
+{
+  "cards": 4,
+  "viewports": [
+    1440,
+    768,
+    390,
+    320
+  ],
+  "release": "desktop-v0.1.0-preview.4",
+  "downloadLinks": [
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-windows-x64-setup.exe",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-windows-x64-portable.zip",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-linux-x64-setup.run",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-linux-x64-portable.tar.gz",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/SHA256SUMS"
+  ],
+  "localAnchors": "valid",
+  "javascriptDisabled": "passed",
+  "overflow": false,
+  "errors": []
+}

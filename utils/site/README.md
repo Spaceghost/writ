@@ -35,17 +35,19 @@ These are website checks and are not included in the Bend assertion count.
 
 Claims are grounded in the README, library reference, examples, platform
 documents and linked execution records. The desktop download section targets
-the immutable `desktop-v0.1.0-preview.3` release; publish and verify its assets
-before deploying this page. Windows directory/S3 scope is documented in
-`contrib/native-hosts/windows/directory-sync/README.md`; Linux remains the local
-single-file preview. Compatible HTTPS fixture results do not establish actual
-R2 execution, and OneDrive sign-in remains future work. Avoid numerical
+the immutable `desktop-v0.1.0-preview.4` release; publish and verify its assets
+before deploying this page. The shared Windows/Linux files-and-rules scope is
+documented in `contrib/native-hosts/drive/README.md` at that release tag. Local
+S3 service and browser checks do not establish actual R2 execution. Remote
+Cloud Files/FUSE placeholders, shell status icons and OneDrive sign-in remain
+future work. The older Windows tray app has separate storage and scope. Avoid numerical
 test totals on the page so a new core test cannot silently stale a headline.
 Revisit the status prose when host qualification changes. Keep historical and
 synthetic evidence distinct from production qualification.
 
 The organizational examples connect file operations to concrete team benefits.
 Their status badges and desktop-status paragraph distinguish implemented core
-rules, released desktop features, and integration still in progress. Keep these
+rules, released desktop features, and integration still in progress. The sample
+walkthrough must match the app's actual controls and owner-approval profile. Keep these
 in sync with the download section. Presentation checks for this addition are in
 `verification/organization-benefits-20261112/`.
