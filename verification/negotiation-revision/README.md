@@ -61,3 +61,41 @@ atomicity or claim a host/GPU test. The later reviewed ledger change must be
 reconciled and the combined source tested independently; previous results
 remain attributed to their actual inputs. Strict OpenSpec validation is
 structural only, not native host qualification.
+
+## Combined with master `2ad65eeb` and native CPU result
+
+Both commits were cherry-picked onto master `2ad65eeb`, after the host-binding
+allocation series. `Negotiation.bend` is unchanged since the base. Master's
+reviewed ledger bounds (`a87b38dc`) now apply beneath it, as anticipated
+above. The negotiation gate follows the same convention as the ledger: the
+terminal-revision test sits in the single Boolean readiness conjunction, which
+has one denial outcome, and the provisional successor is saturating. Like
+other modules, Negotiation keeps its own Nat-limit helper instead of importing
+the ledger's. The [command record](master-2ad65eeb/commands.txt) has exact
+invocations.
+
+The first native attempt on the combined tree failed during C generation with
+`Error: an arity over 247` ([log](master-2ad65eeb/pre-split-native-generate.txt)).
+The test `main` kept too many fixtures live in one def, which likely explains
+why the earlier native build left no result. The [split](master-2ad65eeb/arity-split.patch.txt)
+moves the same 30 `Test.check` expressions, byte-identical and in the same
+order, into nine fixture groups. No production source changed. The focused
+[Bend](master-2ad65eeb/focused-bend.log) and [native](master-2ad65eeb/focused-native.log)
+runs match.
+
+On the final tree, the [complete Bend suite](master-2ad65eeb/bend.log) passed
+3,128 checks. No earlier name is missing; only the 26 host-binding and 30
+negotiation names were added, and the reviewed
+[count](../../utils/verification/core-check-count.txt) is now 3128. The
+**full native CPU suite** (`clang -O0 -static`, `+RTS --threads 1 --gpu off`)
+built and ran with exit zero and empty stderr. Its [output](master-2ad65eeb/native.log)
+is byte-identical to Bend. [`PROOF.bend`](master-2ad65eeb/proof.txt) and the
+Lean-built [verdict](master-2ad65eeb/verdict.txt) report `ALL PROOFS CHECK`,
+with the `/bin/false` [negative control](master-2ad65eeb/verdict-negative.txt)
+failing. No law changed, and the verdict does not prove these tests. Strict
+[OpenSpec](master-2ad65eeb/openspec.txt) passed 45 items. The TN-003
+traceability row again names its earlier tests next to the boundary controls.
+On the host QuickJS replica of the Genode prelude, the
+[new lines](master-2ad65eeb/qjs-new-checks.txt) add about 37 ms; before the
+split they took 25 ms, and run-to-run noise is several ms. No GPU, Genode or
+host qualification is claimed.

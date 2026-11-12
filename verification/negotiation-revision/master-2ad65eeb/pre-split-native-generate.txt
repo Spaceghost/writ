@@ -1,0 +1,5 @@
+Error: an arity over 247
+
+real	7m26.722s
+user	5m22.374s
+sys	0m12.861s

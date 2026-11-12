@@ -1,0 +1,42 @@
+Source: commits 49465c72 and a2e79824 cherry-picked from lane/negotiation-revision-overflow
+(c51df44c, 89dd9fe5) onto 7cf31a38 (master 2ad65eeb plus the host-binding series).
+Conflicts were limited to per-file count pins superseded by
+utils/verification/core-check-count.txt, VERIFICATION.md placement and the manifest; the
+manifest was regenerated. Negotiation.bend, Backplane.bend and DataOS.bend were identical on
+base b0ed98b5 and master; master's Ledger.bend revision/refund bounds (a87b38dc) apply beneath it.
+Toolchain as in ../../hostbinding-allocation-boundary/master-2ad65eeb/commands.txt.
+
+First attempt, tree a2e79824 (pre-split NegotiationRevisionTests.bend):
+  bend Tests.bend: exit 0, 3128 PASS; proof, verdict and OpenSpec passed.
+  ulimit -v 16777216; timeout 900 nice -n 15 bend Tests.bend -o tests.c: exit 1 after 7 min 27 s,
+  "Error: an arity over 247" (pre-split-native-generate.txt). The focused file alone failed the same way.
+  Native build and run therefore did not happen. Host QuickJS on the generated JS: output identical
+  to Bend; the 31 new lines summed to 25 ms (pre-split-qjs-new-checks.txt).
+Fix: arity-split.patch.txt splits NegotiationRevisionTests.main into nine fixture groups.
+  The sorted Test.check expressions are byte-identical before and after, and the check-name
+  order is unchanged. No production source changed.
+  Focused: bend NegotiationRevisionTests.bend (30 PASS, focused-bend.log); its C generation,
+  clang -O0 -static build and +RTS --threads 1 --gpu off run produced byte-identical focused-native.log.
+Final tree (split; bend-inputs.sha256, re-verified after code generation):
+  nice bend Tests.bend: exit 0 (bend.log); 3128 PASS. Sorted names identical to the first attempt;
+  versus the 3072-check reference /home/jadams/tmp/writ-channel-identity/tests-bend.txt none missing,
+  only the 26 host-binding and 30 "neg revision" names added.
+  python3 utils/verification/check_core.py bend.log and native.log: Verified 3128 core checks.
+  python3 -m unittest discover -s utils/verification -p 'test_*.py': OK.
+  timeout 300 nice bend PROOF.bend: ALL PROOFS CHECK (proof.txt).
+  BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt (SHA-256 e365eba1...ed18)
+    LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict: exit 0, ALL PROOFS CHECK (verdict.txt).
+  BENDTT=/bin/false bend PROOF.bend --verdict: exit 1 (verdict-negative.txt).
+  openspec validate --all --strict --no-interactive: 45 passed (openspec.txt).
+  C generation: exit 0, 4 min 13 s, empty output.
+  clang -std=c11 -O0 -static tests.c -o tests-native -lpthread -lm: exit 0, 8 min 12 s, no diagnostics;
+    executable SHA-256 94e481cb3df0ba872f48d4d42fcbc3b9ed205bda396b8ec8b4bfff6e58fc5fa1.
+  ulimit -v 16777216; ulimit -c 0; timeout 600 nice -n 15 tests-native +RTS --threads 1 --gpu off:
+    exit 0, 63 s, empty stderr (native.log); cmp with bend.log identical,
+    SHA-256 a10630b51cc60810cecb1b863be5c31023d853b03402b6d9369fcb61f79882d7.
+  Host QuickJS (genode-prof/prelude.js + tests.js, qjs --std --stack-size 524288): exit 0, 50 s wall;
+    output identical to bend.log apart from the prelude's EXIT line. The 31 new lines
+    (qjs-new-checks.txt) sum to 37 ms at 1 ms resolution; the host-binding lines summed to 8 ms
+    in this run and 13 ms in the earlier one, so these figures are noisy. This is a host replica,
+    not a Genode run.
+Generated tests.c/tests.js hashes are in generated.sha256; the files stay outside the checkout.

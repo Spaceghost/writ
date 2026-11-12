@@ -94,49 +94,110 @@ def facade(session: N.Session, expected: Nat) -> B.CommitResult:
   OS.commit_from_capability(session, expected, 1n, NF.held_ledger(), BF.candidate(),
     F.Ref{FF.caller(7n), 2n}, 2n, FF.context())
 
-def main() -> IO(Unit):
+# The checks are split across small defs because a native def may keep at most
+# 247 live words; each group rebuilds only the synthetic fixtures it uses.
+# Names and order are unchanged.
+def limit_checks() -> IO(Unit):
   +top = max_value()
   +near = before_max()
-  +ctx = NF.context(110n)
   +pin_old = revised(NF.proposed(), top)
-  +challenge_old = revised(NF.pinned(), top)
-  +sample_old = revised(NF.challenged(), top)
-  +approve_old = revised(NF.sampled(), top)
-  +reserve_old = revised(NF.approved(), top)
-  +reserved = N.ReservationStep.session(NF.reserved())
-  +start_old = revised(reserved, top)
   +running_old = revised(NF.running(), top)
-  +initial = NF.initial_ledger()
-  +held = NF.held_ledger()
   do IO<Unit>:
     Test.check(Nat.is_eq(N.max_revision(), top) && Nat.is_eq(N.bounded_successor(top), top) && Nat.is_eq(N.bounded_successor(near), top), "neg revision exact supported limit and successor")
     Test.check(session_equal(N.Session.move(pin_old, N.CandidateFixed{}, 999n, 777n, 555n), pin_old), "neg revision terminal direct move preserves session")
     Test.check(session_equal(N.Session.finish(running_old), running_old), "neg revision terminal direct finish preserves session")
+
+def terminal_pin_checks() -> IO(Unit):
+  +top = max_value()
+  +ctx = NF.context(110n)
+  +pin_old = revised(NF.proposed(), top)
+  +challenge_old = revised(NF.pinned(), top)
+  do IO<Unit>:
     Test.check(rejected(N.pin(pin_old, top, TF.code(), NF.context(100n)), pin_old), "neg revision terminal pin matching unchanged")
     Test.check(rejected(N.pin(pin_old, 0n, TF.code(), NF.context(100n)), pin_old), "neg revision terminal pin stale unchanged")
     Test.check(rejected(N.challenge(challenge_old, top, 20n, ctx), challenge_old), "neg revision terminal challenge matching unchanged")
     Test.check(rejected(N.challenge(challenge_old, 1n, 20n, ctx), challenge_old), "neg revision terminal challenge stale unchanged")
+
+def terminal_sample_checks() -> IO(Unit):
+  +top = max_value()
+  +ctx = NF.context(110n)
+  +sample_old = revised(NF.challenged(), top)
+  +approve_old = revised(NF.sampled(), top)
+  do IO<Unit>:
     Test.check(rejected(N.sample(sample_old, top, 30n, ctx), sample_old), "neg revision terminal sample matching unchanged")
     Test.check(rejected(N.sample(sample_old, 2n, 30n, ctx), sample_old), "neg revision terminal sample stale unchanged")
     Test.check(Bool.not(N.sample_permit(sample_old, top, ctx)), "neg revision terminal sample permit denied")
     Test.check(rejected(N.approve(approve_old, top, ctx), approve_old), "neg revision terminal approve matching unchanged")
     Test.check(rejected(N.approve(approve_old, 3n, ctx), approve_old), "neg revision terminal approve stale unchanged")
+
+def terminal_reserve_checks() -> IO(Unit):
+  +top = max_value()
+  +ctx = NF.context(110n)
+  +reserve_old = revised(NF.approved(), top)
+  +start_old = revised(N.ReservationStep.session(NF.reserved()), top)
+  +initial = NF.initial_ledger()
+  +held = NF.held_ledger()
+  do IO<Unit>:
     Test.check(reserve_rejected(N.reserve(reserve_old, top, 0n, 11n, ctx, initial), reserve_old, initial), "neg revision terminal reserve matching preserves both")
     Test.check(reserve_rejected(N.reserve(reserve_old, 4n, 0n, 11n, ctx, initial), reserve_old, initial), "neg revision terminal reserve stale preserves both")
     Test.check(rejected(N.start(start_old, top, ctx, held), start_old), "neg revision terminal start matching unchanged")
     Test.check(rejected(N.start(start_old, 5n, ctx, held), start_old), "neg revision terminal start stale unchanged")
+
+def terminal_commit_checks() -> IO(Unit):
+  +top = max_value()
+  +running_old = revised(NF.running(), top)
+  +held = NF.held_ledger()
+  do IO<Unit>:
     Test.check(commit_rejected(B.commit(running_old, top, 1n, held, BF.candidate(), BF.context()), running_old, held), "neg revision terminal backplane matching preserves both")
     Test.check(commit_rejected(B.commit(running_old, 6n, 1n, held, BF.candidate(), BF.context()), running_old, held), "neg revision terminal backplane stale preserves both")
     Test.check(commit_rejected(facade(running_old, top), running_old, held), "neg revision terminal facade matching preserves both")
     Test.check(commit_rejected(facade(running_old, 6n), running_old, held), "neg revision terminal facade stale preserves both")
+
+def near_stale_checks() -> IO(Unit):
+  +near = before_max()
+  +held = NF.held_ledger()
+  do IO<Unit>:
     Test.check(rejected(N.pin(revised(NF.proposed(), near), 0n, TF.code(), NF.context(100n)), revised(NF.proposed(), near)), "neg revision max minus one stale pin unchanged")
     Test.check(commit_rejected(B.commit(revised(NF.running(), near), 6n, 1n, held, BF.candidate(), BF.context()), revised(NF.running(), near), held), "neg revision max minus one stale backplane preserves both")
+
+def near_advance_checks() -> IO(Unit):
+  +top = max_value()
+  +near = before_max()
+  +ctx = NF.context(110n)
+  do IO<Unit>:
     Test.check(advanced(N.pin(revised(NF.proposed(), near), near, TF.code(), NF.context(100n)), revised(NF.pinned(), top)), "neg revision max minus one pin advances to max")
     Test.check(advanced(N.challenge(revised(NF.pinned(), near), near, 20n, ctx), revised(NF.challenged(), top)), "neg revision max minus one challenge advances to max")
     Test.check(advanced(N.sample(revised(NF.challenged(), near), near, 30n, ctx), revised(NF.sampled(), top)), "neg revision max minus one sample advances to max")
     Test.check(advanced(N.approve(revised(NF.sampled(), near), near, ctx), revised(NF.approved(), top)), "neg revision max minus one approve advances to max")
+
+def near_ledger_checks() -> IO(Unit):
+  +top = max_value()
+  +near = before_max()
+  +ctx = NF.context(110n)
+  +reserved = N.ReservationStep.session(NF.reserved())
+  +initial = NF.initial_ledger()
+  +held = NF.held_ledger()
+  do IO<Unit>:
     Test.check(reserve_advanced(N.reserve(revised(NF.approved(), near), near, 0n, 11n, ctx, initial), revised(reserved, top), held), "neg revision max minus one reserve advances both")
     Test.check(advanced(N.start(revised(reserved, near), near, ctx, held), revised(NF.running(), top)), "neg revision max minus one start advances to max")
+
+def near_commit_checks() -> IO(Unit):
+  +top = max_value()
+  +near = before_max()
+  +held = NF.held_ledger()
+  do IO<Unit>:
     Test.check(commit_advanced(B.commit(revised(NF.running(), near), near, 1n, held, BF.candidate(), BF.context()), revised(B.session(BF.successful_commit()), top), B.ledger(BF.successful_commit())), "neg revision max minus one backplane commits")
     Test.check(commit_advanced(facade(revised(NF.running(), near), near), revised(B.session(BF.successful_commit()), top), B.ledger(BF.successful_commit())), "neg revision max minus one facade commits")
+
+def main() -> IO(Unit):
+  do IO<Unit>:
+    limit_checks()
+    terminal_pin_checks()
+    terminal_sample_checks()
+    terminal_reserve_checks()
+    terminal_commit_checks()
+    near_stale_checks()
+    near_advance_checks()
+    near_ledger_checks()
+    near_commit_checks()
     IO.print("Negotiation revision: 30 checks passed")

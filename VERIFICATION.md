@@ -111,6 +111,7 @@ The [host-binding allocation-boundary record](verification/hostbinding-allocatio
 checks object and alias exhaustion, preserving earlier denials and nonallocating
 resolution, close and revocation. Terminal binding revision, object generation,
 frontend revision and protected-host qualification remain separate gaps.
+On master `2ad65eeb`, Bend and native CPU outputs match; no GPU run is claimed.
 
 The [rendezvous allocation-boundary record](verification/rendezvous-allocation-boundary/README.md)
 checks exhausted approval/selection IDs without blocking existing offers,
@@ -1163,4 +1164,5 @@ capable-sender test or host qualification.
 The [negotiation revision boundary record](verification/negotiation-revision/README.md)
 retains the pre-fix terminal-revision crashes and synthetic fail-closed controls.
 It does not authenticate sessions, implement a host, or by itself fix separate
-ledger arithmetic.
+ledger arithmetic. On master `2ad65eeb`, after a test-only split for the native arity limit,
+Bend and native CPU outputs match; no GPU run is claimed.
