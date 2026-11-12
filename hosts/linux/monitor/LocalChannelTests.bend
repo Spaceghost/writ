@@ -82,9 +82,11 @@ def attributed_source_submits() -> Bool:
   I.Change.accepted(I.submit_source(LS.empty(), 0n, from,
     I.SourceApproval{1n, 1n, I.Principal{101n}, A.source(), T.ReadDomain{1n}, LS.scope(), 7, 4n}, 1n))
 
+# The attribution must itself succeed and name 102, so the rejection below is
+# the issuer's NotAuthority decision, not a fallback principal from a denial.
 def destination_role_rejected() -> Bool:
   +from = {principal_of(C.attribute(roles(), C.FromRole{2n})) : I.Principal}
-  IT.denied(I.submit_source(LS.empty(), 0n, from,
+  principal_is(C.attribute(roles(), C.FromRole{2n}), 102n) && IT.denied(I.submit_source(LS.empty(), 0n, from,
     I.SourceApproval{1n, 1n, from, A.source(), T.ReadDomain{1n}, LS.scope(), 7, 4n}, 1n),
     LS.empty(), I.NotAuthority{})
 
