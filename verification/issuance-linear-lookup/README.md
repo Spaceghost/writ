@@ -23,8 +23,9 @@ answer for the tail. No security law, gate order or denial reason changed, and
   id held by two later records, and a unique id beside another id's duplicate.
 - Mutants: keeping the [first](mutant-first-match-wins.diff) or the
   [last](mutant-last-match-wins.diff) of two matches instead of reporting
-  ambiguity fails the new lookup group run alone
-  ([first](mutant-first-match-wins-lookup.txt),
+  ambiguity fails the new lookup group run alone (a scratch copy of
+  `IssuanceTests.bend` whose `main` calls only `lookup()`, run with `bend`;
+  [first](mutant-first-match-wins-lookup.txt),
   [last](mutant-last-match-wins-lookup.txt)) and the existing check
   "GI-003 an approval id stored twice ... denied MissingApproval" in the full
   Issuance group ([first](mutant-first-match-wins-issuance.txt),
