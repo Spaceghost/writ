@@ -1,6 +1,6 @@
 #requires -Version 7.4
 [CmdletBinding()]
-param([Parameter(Mandatory)][string]$PackageDir, [Parameter(Mandatory)][string]$OutputDir)
+param([Parameter(Mandatory)][string]$PackageDir, [Parameter(Mandatory)][string]$OutputDir, [Parameter(Mandatory)][string]$ProbeExe)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'This fixture provisions trust only on disposable GitHub-hosted Windows runners.' }
@@ -128,6 +128,20 @@ try {
     Client B $false
     Assert (@(Get-ChildItem $outside -Force).Count -eq 0) 'Reparse target untouched'
     Assert ([int](Get-Content (Join-Path $fixture 'verified.txt')) -gt 20) 'Real HTTPS requests independently authenticated with SigV4'
+    & (Join-Path $PSScriptRoot 'DesktopSmoke.ps1') -PackageDir $PackageDir -OutputDir $OutputDir -ProbeExe $ProbeExe
+    Client C
+    Assert ([IO.File]::ReadAllText((Join-Path $base 'C\desktop-created.txt')) -eq 'Saved through cloud desktop') 'A new client retrieves the desktop app save'
+    $manifestKey = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes('/writ-test/writ/manifest.writ'))).ToLowerInvariant()
+    $manifestPath = Join-Path $fixture "objects\$manifestKey"
+    Move-Item $manifestPath ($manifestPath + '.missing')
+    try {
+        Client C $false
+        Assert (Test-Path (Join-Path $base 'C\desktop-created.txt')) 'Missing established manifest cannot remove working files'
+    } finally { Move-Item ($manifestPath + '.missing') $manifestPath }
+    Rename-Item (Join-Path $base 'C') 'C-retained'
+    New-Item -ItemType Directory (Join-Path $base 'C') | Out-Null
+    Client C $false
+    Assert ([IO.File]::ReadAllText((Join-Path $base 'C-retained\desktop-created.txt')) -eq 'Saved through cloud desktop') 'Replacement root identity cannot reuse previous baseline'
     Write-Host 'PASS: native directory and S3 protocol acceptance complete; actual Cloudflare R2 account test is separate.'
 } finally {
     if ($server -and -not $server.HasExited) { $server.Kill($true); $server.WaitForExit() }

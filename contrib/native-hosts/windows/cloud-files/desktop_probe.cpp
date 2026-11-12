@@ -58,7 +58,7 @@ int wmain(int argc, wchar_t** argv) {
         HWND window = reinterpret_cast<HWND>(static_cast<UINT_PTR>(value));
         wchar_t name[128];
         if (!IsWindow(window) || !GetClassNameW(GetAncestor(window, GA_ROOT), name, 128) ||
-            (wcscmp(name, L"WritDesktop.7DDDA5C1") && wcscmp(name, L"WritFlyout.7DDDA5C1")))
+            (wcscmp(name, L"WritDesktop.7DDDA5C1") && wcscmp(name, L"WritFlyout.7DDDA5C1") && wcscmp(name, L"WritConnection.7DDDA5C1")))
             throw std::runtime_error("Only Writ desktop windows may be probed");
         ComPtr<IUIAutomation> automation;
         check(CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation)), "UI Automation");

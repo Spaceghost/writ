@@ -105,7 +105,8 @@ jobs:
       - name: Exercise real HTTPS directory syncing and competing S3 clients
         run: |
           ./contrib/native-hosts/windows/directory-sync/Smoke.ps1 `
-            -PackageDir "$env:RUNNER_TEMP\writ-release\payload" -OutputDir "$env:RUNNER_TEMP\writ-release\logs"
+            -PackageDir "$env:RUNNER_TEMP\writ-release\payload" -OutputDir "$env:RUNNER_TEMP\writ-release\logs" `
+            -ProbeExe "$env:RUNNER_TEMP\writ-release\build-1\Release\writ-desktop-probe.exe"
       - name: Seal verified release assets and evidence
         run: |
           $ErrorActionPreference = 'Stop'
