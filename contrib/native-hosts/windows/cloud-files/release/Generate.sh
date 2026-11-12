@@ -21,12 +21,20 @@ export BEND_NO_TELEMETRY=1
 cmp "$writ_out/policy/public-sync.mjs" "$writ_out/public-sync-repeat.mjs"
 "$writ_bend" writfs/PublicSyncTests.bend -o "$writ_out/policy/public-sync-tests.js"
 "$writ_bend" writfs/PublicSyncTests.bend > "$writ_out/logs/public-sync-tests.txt"
+"$writ_bend" writfs/DirectorySync.bend -o "$writ_out/policy/directory-sync.mjs"
+"$writ_bend" writfs/DirectoryNamespace.bend -o "$writ_out/policy/directory-namespace.mjs"
+"$writ_bend" writfs/DirectorySyncTests.bend -o "$writ_out/policy/directory-sync-tests.js"
+"$writ_bend" writfs/DirectoryNamespaceTests.bend -o "$writ_out/policy/directory-namespace-tests.js"
+"$writ_bend" lib/Sha256StreamTests.bend -o "$writ_out/policy/stream-tests.js"
+"$writ_bend" writfs/DirectorySyncTests.bend > "$writ_out/logs/directory-tests.txt"
+"$writ_bend" writfs/DirectoryNamespaceTests.bend > "$writ_out/logs/namespace-tests.txt"
+"$writ_bend" lib/Sha256StreamTests.bend > "$writ_out/logs/stream-tests.txt"
 "$writ_bend" Tests.bend > "$writ_out/logs/core-tests.txt"
 "$writ_bend" PROOF.bend > "$writ_out/logs/proof.txt"
 git rev-parse HEAD > "$writ_out/policy/commit.txt"
 cp "$writ_out/logs/bend-version.txt" "$writ_out/policy/"
 (
   cd "$writ_out/policy"
-  sha256sum public-sync.mjs public-sync-tests.js commit.txt bend-version.txt > SHA256SUMS
+  sha256sum public-sync.mjs public-sync-tests.js directory-sync.mjs directory-namespace.mjs directory-sync-tests.js directory-namespace-tests.js stream-tests.js commit.txt bend-version.txt > SHA256SUMS
 )
 tail -n 1 "$writ_out/logs/public-sync-tests.txt" "$writ_out/logs/core-tests.txt" "$writ_out/logs/proof.txt"

@@ -31,7 +31,7 @@ function Download($Pin, [string]$Path) {
 }
 foreach ($line in Get-Content -LiteralPath (Join-Path $PolicyDir 'SHA256SUMS')) {
     $parts = $line -split '  ', 2
-    if ($parts.Count -ne 2 -or $parts[1] -notin @('public-sync.mjs', 'public-sync-tests.js', 'commit.txt', 'bend-version.txt')) { throw 'Invalid policy manifest.' }
+    if ($parts.Count -ne 2 -or $parts[1] -notin @('public-sync.mjs', 'public-sync-tests.js', 'directory-sync.mjs', 'directory-namespace.mjs', 'directory-sync-tests.js', 'directory-namespace-tests.js', 'stream-tests.js', 'commit.txt', 'bend-version.txt')) { throw 'Invalid policy manifest.' }
     if ((Hash (Join-Path $PolicyDir $parts[1])) -cne $parts[0]) { throw 'Policy checksum mismatch.' }
 }
 if ((Get-Content -LiteralPath (Join-Path $PolicyDir 'commit.txt')) -cne $commit) { throw 'Policy came from another source commit.' }
@@ -44,12 +44,18 @@ $nodeDir = Join-Path $OutputDir "node\node-v$($pins.node.version)-win-x64"
 Copy-Item -LiteralPath (Join-Path $nodeDir 'node.exe') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $nodeDir 'LICENSE') -Destination (Join-Path $payload 'NODE-LICENSE.txt')
 Copy-Item -LiteralPath (Join-Path $PolicyDir 'public-sync.mjs') -Destination $payload
+Copy-Item -LiteralPath (Join-Path $PolicyDir 'directory-sync.mjs') -Destination $payload
+Copy-Item -LiteralPath (Join-Path $PolicyDir 'directory-namespace.mjs') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\..\..\runtime\node-policy.mjs') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\Smoke.ps1') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\DesktopSmoke.ps1') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.txt') -Destination $payload
 & (Join-Path $payload 'node.exe') (Join-Path $PolicyDir 'public-sync-tests.js') 2>&1 | Tee-Object -FilePath (Join-Path $logs 'windows-model.txt')
 if ($LASTEXITCODE) { throw 'Bend model failed on bundled Windows Node.' }
+foreach ($suite in 'directory-sync-tests', 'directory-namespace-tests', 'stream-tests') {
+    & (Join-Path $payload 'node.exe') (Join-Path $PolicyDir "$suite.js") 2>&1 | Tee-Object -FilePath (Join-Path $logs "windows-$suite.txt")
+    if ($LASTEXITCODE) { throw "Bend $suite failed on bundled Windows Node." }
+}
 foreach ($pass in 1, 2) {
     $build = Join-Path $OutputDir "build-$pass"
     & cmake -S (Join-Path $PSScriptRoot '..') -B $build -G $pins.cmakeGenerator -A x64 -T $pins.msvcToolset `
@@ -59,7 +65,7 @@ foreach ($pass in 1, 2) {
     & cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $logs "build-$pass.txt")
     if ($LASTEXITCODE) { throw "MSVC build $pass failed." }
 }
-foreach ($executable in 'writ-cloud.exe', 'Writ.exe') {
+foreach ($executable in 'writ-cloud.exe', 'Writ.exe', 'writ-sync.exe') {
     $first = Join-Path $OutputDir "build-1\Release\$executable"
     $second = Join-Path $OutputDir "build-2\Release\$executable"
     if ((Hash $first) -cne (Hash $second)) { throw "Two clean builds differ: $executable" }
