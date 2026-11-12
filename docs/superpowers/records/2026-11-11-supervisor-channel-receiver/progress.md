@@ -19,4 +19,10 @@ Ruling: run tasks sequentially, not T1 and T2 in parallel as told to Josh — th
 Ruling: the ledger lives in this committed records dir (project board convention); briefs and review packages stay in the git-ignored .superpowers/sdd workspace — if wrong, the board shows less detail.
 Ruling: core-check-count.txt will conflict with lane/finish-capacity-guards, which also adds checks; resolve at integration by recounting the merged tree — costs one recount.
 
-Task 1: dispatched
+Task 1: dispatched (BASE 8d72b074, implementer sonnet)
+Task 1: implemented 63d0e415 (DONE_WITH_CONCERNS: no red run; PROOF without --verdict); review dispatched (sonnet)
+Task 1: review — spec ✅, quality Approved; 3 Minor findings.
+Ruling: fixed Minor #1 (destination test could pass on a denied attribution) in controller commit 5f0691ea, with a role-2→0 mutant that fails it — this touches a security-relevant test, and the fix was one line — cost if wrong: none.
+Ruling: parked Minor #2 (naming roles() synthetic_roles; the header comment already marks it) and #3 (redundant by brief design).
+Task 1: complete (5f0691ea; Tests.bend 3080, check_core OK)
+Task 2: dispatched
