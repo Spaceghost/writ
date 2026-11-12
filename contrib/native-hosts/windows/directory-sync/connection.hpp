@@ -72,9 +72,13 @@ struct Connection {
     }
 };
 
+template<size_t Count> struct SecretFields {
+    std::array<std::string, Count> values;
+    ~SecretFields() { for (auto& value : values) SecureZeroMemory(value.data(), value.size()); }
+};
 struct Credentials {
     std::string access, secret, token;
-    Credentials(std::string a, std::string s, std::string t) : access(std::move(a)), secret(std::move(s)), token(std::move(t)) {}
+    Credentials(const std::string& a, const std::string& s, const std::string& t) : access(a), secret(s), token(t) {}
     Credentials(const Credentials&) = delete;
     Credentials& operator=(const Credentials&) = delete;
     ~Credentials() {
@@ -99,21 +103,22 @@ struct Credentials {
     static Credentials load(const Connection& connection) {
         PCREDENTIALW credential = nullptr;
         writ::check(CredReadW(connection.credential_target().c_str(), CRED_TYPE_GENERIC, 0, &credential), "Read credentials from Windows Credential Manager");
+        struct Release {
+            PCREDENTIALW value;
+            ~Release() { SecureZeroMemory(value->CredentialBlob, value->CredentialBlobSize); CredFree(value); }
+        } release{credential};
         if (!credential->UserName || credential->CredentialBlobSize > CRED_MAX_CREDENTIAL_BLOB_SIZE) {
-            CredFree(credential); throw writ::Error("Invalid stored credentials", ERROR_INVALID_DATA);
+            throw writ::Error("Invalid stored credentials", ERROR_INVALID_DATA);
         }
         std::string access = utf8(credential->UserName);
-        std::string blob(reinterpret_cast<char*>(credential->CredentialBlob), credential->CredentialBlobSize);
-        SecureZeroMemory(credential->CredentialBlob, credential->CredentialBlobSize); CredFree(credential);
+        SecretFields<3> scratch;
+        auto& blob = scratch.values[0]; auto& secret = scratch.values[1]; auto& token = scratch.values[2];
+        blob.assign(reinterpret_cast<char*>(credential->CredentialBlob), credential->CredentialBlobSize);
         auto newline = blob.find('\n');
         if (newline == std::string::npos) { SecureZeroMemory(blob.data(), blob.size()); throw writ::Error("Invalid stored credentials", ERROR_INVALID_DATA); }
-        std::string secret = blob.substr(0, newline), token = blob.substr(newline + 1);
+        secret = blob.substr(0, newline); token = blob.substr(newline + 1);
         SecureZeroMemory(blob.data(), blob.size());
-        return Credentials(std::move(access), std::move(secret), std::move(token));
+        return Credentials(access, secret, token);
     }
-};
-template<size_t Count> struct SecretFields {
-    std::array<std::string, Count> values;
-    ~SecretFields() { for (auto& value : values) SecureZeroMemory(value.data(), value.size()); }
 };
 } // namespace writ_sync

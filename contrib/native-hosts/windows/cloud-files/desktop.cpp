@@ -312,7 +312,7 @@ class App {
         SetWindowTextW(GetDlgItem(main, 202), remote_mode ? L"CLOUD FOLDER SYNC  /  PUBLIC PREVIEW" : L"FILES ON DEMAND  /  PUBLIC PREVIEW");
         SetWindowTextW(GetDlgItem(main, 203), remote_mode ?
             L"S3-compatible folder sync: up to 2048 paths and 1 GiB per file. Files stay available offline.\nConcurrent edits require attention. Recovery copies are retained; protected-data use is not qualified." :
-            L"Local preview: hello.txt (up to 64 KiB) syncs to a local backing store.\nConnect S3-compatible storage in Settings for multiple-file and folder syncing.");
+            L"Local preview: only hello.txt (up to 64 KiB) syncs to a local backing store.\nConnect S3-compatible storage in Settings for multiple-file and folder syncing.");
         pending.clear(); discard_line = false; ready = stopping = attention = paused = false;
         status = L"Starting Writ"; detail = remote_mode ? L"Connecting to your S3-compatible storage." : L"Connecting to your local Writ folder."; update();
         launch(executable().parent_path() / (remote_mode ? L"writ-sync.exe" : L"writ-cloud.exe"), remote_mode ? L"run" : L"start", provider, &output, job.value);
