@@ -44,3 +44,8 @@ $(OUT)/retire-error-test: retire-error-test.c worker.c worker.h | $(OUT)
 # children and private socket pairs only; no privilege, mount or host probing.
 $(OUT)/channel-identity-test: channel-identity-test.c | $(OUT)
 	$(CC) $(CPPFLAGS) $(CFLAGS) channel-identity-test.c -o "$@"
+
+# Owned-process test of the native supervisor channel receiver (board
+# question 23 scope): clone3 children and private socket pairs only.
+$(OUT)/supervisor-channel-test: supervisor-channel-test.c supervisor_channel.c supervisor_channel.h | $(OUT)
+	$(CC) $(CPPFLAGS) -DWRIT_CHANNEL_TESTING $(CFLAGS) supervisor-channel-test.c supervisor_channel.c -o "$@"
