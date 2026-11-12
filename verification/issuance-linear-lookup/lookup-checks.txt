@@ -1,0 +1,7 @@
+PASS: GI lookup an empty approval list finds nothing
+PASS: GI lookup an absent id finds nothing
+PASS: GI lookup a unique id is found at the first and the last position
+PASS: GI lookup an id held by the first and a later record is ambiguous and finds nothing
+PASS: GI lookup an id held by two later records is ambiguous and finds nothing
+PASS: GI lookup another id's duplicate does not hide a unique id
+Issuance: 236 checks passed

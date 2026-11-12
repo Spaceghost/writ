@@ -1169,6 +1169,14 @@ failing mutants) on one unprivileged Linux 7.2.9 run. The receiver needs
 also passed with `--verdict`. The record establishes no capable-sender, exec,
 isolation, wiring or host qualification result.
 
+The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
+replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
+that returns the same answer for every list. Six direct lookup checks and two
+failing mutants cover absent, unique and ambiguous ids; the suite output
+differs from master only by those checks, the native CPU run is identical, and
+the existing-law proof passed with `--verdict`. On host QuickJS the corpus took
+about a third less time. It changes no authority rule and claims no Genode run.
+
 The [negotiation revision boundary record](verification/negotiation-revision/README.md)
 retains the pre-fix terminal-revision crashes and synthetic fail-closed controls.
 It does not authenticate sessions, implement a host, or by itself fix separate

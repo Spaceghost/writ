@@ -962,28 +962,49 @@ def ids_distinct(ids: Ids) -> Bool:
     case Ids{+head, +tail}:
       Bool.not(ids_contain(tail, head)) && ids_distinct(tail)
 
-# A hit is kept only when no later stored record has the same id: an
+# How many records of a list hold one id: none, exactly one (that record), or
+# more than one. Counting stops at two, which is all `find_stored` needs. An
 # ambiguous id resolves to no approval (MissingApproval), never to whichever
 # record comes first.
-def first_stored(found: Maybe<&2, Stored>, again: Bool, rest: Maybe<&2, Stored>) -> Maybe<&2, Stored>:
-  match found again:
-    case None{} _:
+type Matches is Data:
+  NoMatch{}
+  OneMatch{stored: Stored}
+  Ambiguous{}
+
+# One record folded into the count for the rest of its list.
+def match_with(hit: Bool, +head: Stored, rest: Matches) -> Matches:
+  match hit rest:
+    case False{} _:
       rest
-    case Some{stored} False{}:
-      Some{stored}
-    case Some{_} True{}:
-      None{}
+    case True{} NoMatch{}:
+      OneMatch{head}
+    case True{} OneMatch{_}:
+      Ambiguous{}
+    case True{} Ambiguous{}:
+      Ambiguous{}
 
-def stored_entry(+stored: Stored, +wanted: Nat) -> Maybe<&2, Stored>:
-  Guard.choose(Maybe<&2, Stored>, Nat.is_eq(Stored.id(stored), wanted), Some{stored}, None{})
-
-# The stored record under `wanted`, or None when it is absent or ambiguous.
-def find_stored(approvals: Approvals, +wanted: Nat) -> Maybe<&2, Stored>:
+# One pass over the list. The previous form scanned the whole tail for a
+# duplicate at every record, which the eager backends ran even after the
+# answer was known, so a lookup cost quadratic work in the list length.
+def matches(approvals: Approvals, +wanted: Nat) -> Matches:
   match approvals:
     case NoApprovals{}:
+      NoMatch{}
+    case Approvals{+head, tail}:
+      match_with(Nat.is_eq(Stored.id(head), wanted), head, matches(tail, wanted))
+
+def unique_match(found: Matches) -> Maybe<&2, Stored>:
+  match found:
+    case OneMatch{stored}:
+      Some{stored}
+    case _:
       None{}
-    case Approvals{head, +tail}:
-      first_stored(stored_entry(head, wanted), approval_exists(tail, wanted), find_stored(tail, wanted))
+
+# The stored record under `wanted`, or None when it is absent or ambiguous.
+# Ambiguity is judged over the whole list: an id held by two records, at any
+# positions, finds nothing, so list order never picks which record answers.
+def find_stored(approvals: Approvals, +wanted: Nat) -> Maybe<&2, Stored>:
+  unique_match(matches(approvals, wanted))
 
 # What registration requires of each cited approval. Each requirement is
 # re-derived from the state being committed: the stored record is evidence of

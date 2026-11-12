@@ -1,0 +1,12 @@
+--- a/Issuance.bend
++++ b/Issuance.bend
+@@ -978,8 +978,8 @@
+       rest
+     case True{} NoMatch{}:
+       OneMatch{head}
+-    case True{} OneMatch{_}:
+-      Ambiguous{}
++    case True{} OneMatch{later}:
++      OneMatch{later}
+     case True{} Ambiguous{}:
+       Ambiguous{}

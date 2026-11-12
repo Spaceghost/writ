@@ -1,0 +1,4 @@
+Command: bend Tests.bend -o tests.c; clang -std=c11 -O0 tests.c -lpthread -lm -o tests-native; tests-native +RTS --threads 4 --gpu off
+clang: clang version 23.1.1
+Exit: 0
+cmp against the Bend run: identical (3299 lines, sha256 e7cc85a936217800f9b159b403625792b961feb0d89a179257d11f8e18c24e15)

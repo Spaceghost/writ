@@ -1,0 +1,1 @@
+FAIL: GI-003 an approval id stored twice (a state `valid` rejects) resolves to no approval and is denied MissingApproval

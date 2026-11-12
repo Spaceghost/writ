@@ -1500,6 +1500,43 @@ def scenarios() -> IO(Unit):
       && nothing_projected(deadline_registered(), 100n)
       && TF.denied_as(T.admit(TF.plan(), projected_at(deadline_registered(), 100n)), T.Write{}), "scenario deadline: the same pair registered at 99 until 100 is admitted at 99, and at 100 nothing is projected and T.admit denies Write")
 
+# --- Stored-approval lookup ---------------------------------------------------
+
+# Synthetic stored records: every lookup below reads these lists directly and
+# no issuer accepted them. Only the id and position matter to the lookup.
+def stored(+id: Nat) -> I.Stored:
+  I.Stored{id, I.SourceEntry{good_source()}, 0n, False{}}
+
+def stored_list(ids: List<Nat>) -> I.Approvals:
+  match ids:
+    case []:
+      I.NoApprovals{}
+    case id <> rest:
+      I.Approvals{stored(id), stored_list(rest)}
+
+def found_id(found: Maybe<&2, I.Stored>, +expected: Nat) -> Bool:
+  match found:
+    case None{}:
+      False{}
+    case Some{record}:
+      Nat.is_eq(I.Stored.id(record), expected)
+
+def found_none(found: Maybe<&2, I.Stored>) -> Bool:
+  match found:
+    case None{}:
+      True{}
+    case Some{_}:
+      False{}
+
+def lookup() -> IO(Unit):
+  do IO<Unit>:
+    Test.check(found_none(I.find_stored(I.NoApprovals{}, 1n)), "GI lookup an empty approval list finds nothing")
+    Test.check(found_none(I.find_stored(stored_list([1n, 2n, 3n]), 4n)), "GI lookup an absent id finds nothing")
+    Test.check(found_id(I.find_stored(stored_list([1n, 2n, 3n]), 1n), 1n) && found_id(I.find_stored(stored_list([1n, 2n, 3n]), 3n), 3n), "GI lookup a unique id is found at the first and the last position")
+    Test.check(found_none(I.find_stored(stored_list([2n, 1n, 2n]), 2n)), "GI lookup an id held by the first and a later record is ambiguous and finds nothing")
+    Test.check(found_none(I.find_stored(stored_list([1n, 3n, 2n, 3n]), 3n)), "GI lookup an id held by two later records is ambiguous and finds nothing")
+    Test.check(found_id(I.find_stored(stored_list([3n, 1n, 3n, 2n]), 2n), 2n), "GI lookup another id's duplicate does not hide a unique id")
+
 def main() -> IO(Unit):
   do IO<Unit>:
     submission()
@@ -1508,4 +1545,5 @@ def main() -> IO(Unit):
     attenuation()
     integration()
     scenarios()
-    IO.print("Issuance: 230 checks passed")
+    lookup()
+    IO.print("Issuance: 236 checks passed")
