@@ -17,12 +17,12 @@ def end() -> Mount.Request:
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(ok(entry(N.initial(), 2, "6100", "-")), "namespace root folder admitted")
-    Test.check(ok(entry(folder(), 1, "61002f006200", "6100")), "namespace nested file has directory parent")
+    Test.check(ok(entry(folder(), 1, "6100/6200", "6100")), "namespace nested file has directory parent")
     Test.check(Bool.not(ok(entry(folder(), 1, "6100", "-"))), "namespace rejects duplicate folded key")
-    Test.check(Bool.not(ok(entry(N.initial(), 1, "61002f006200", "6100"))), "namespace rejects missing directory parent")
-    Test.check(Bool.not(ok(entry(N.next(entry(N.initial(), 1, "6100", "-")), 1, "61002f006200", "6100"))), "namespace file cannot contain descendants")
-    Test.check(Bool.not(ok(entry(N.next(entry(N.initial(), 0, "6100", "-")), 1, "61002f006200", "6100"))), "namespace tombstone cannot contain live descendants")
-    Test.check(ok(entry(N.initial(), 0, "61002f006200", "6100")), "namespace deleted descendants survive parent removal")
+    Test.check(Bool.not(ok(entry(N.initial(), 1, "6100/6200", "6100"))), "namespace rejects missing directory parent")
+    Test.check(Bool.not(ok(entry(N.next(entry(N.initial(), 1, "6100", "-")), 1, "6100/6200", "6100"))), "namespace file cannot contain descendants")
+    Test.check(Bool.not(ok(entry(N.next(entry(N.initial(), 0, "6100", "-")), 1, "6100/6200", "6100"))), "namespace tombstone cannot contain live descendants")
+    Test.check(ok(entry(N.initial(), 0, "6100/6200", "6100")), "namespace deleted descendants survive parent removal")
     Test.check(Bool.not(ok(entry(N.initial(), 1, "zz", "-"))), "namespace rejects malformed native identity")
     Test.check(Bool.not(ok(entry(N.initial(), 1, "", "-"))), "namespace rejects empty identity")
     Test.check(Bool.not(ok(entry(N.initial(), 3, "6100", "-"))), "namespace rejects unknown object kind")

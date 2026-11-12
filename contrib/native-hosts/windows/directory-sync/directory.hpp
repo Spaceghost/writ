@@ -116,21 +116,31 @@ inline fs::path relative_path(const std::string& name) {
     std::replace(value.begin(), value.end(), L'/', L'\\'); return fs::path(value);
 }
 inline std::string namespace_key(const fs::path& path) {
-    auto value = path.generic_wstring();
-    if (value.empty()) return "-";
+    if (path.empty()) return "-";
+    std::string key;
+    for (const auto& component : path) {
+    auto value = component.native();
     int length = LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_UPPERCASE, value.data(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr, 0);
     writ::check(length > 0, "Windows namespace folding");
     std::wstring folded(static_cast<size_t>(length), 0);
     writ::check(LCMapStringEx(LOCALE_NAME_INVARIANT, LCMAP_UPPERCASE, value.data(), static_cast<int>(value.size()), folded.data(), length, nullptr, nullptr, 0) == length, "Windows namespace folding");
-    return writ::hex(reinterpret_cast<const unsigned char*>(folded.data()), folded.size() * sizeof(wchar_t));
+    if (!key.empty()) key += '/';
+    key += writ::hex(reinterpret_cast<const unsigned char*>(folded.data()), folded.size() * sizeof(wchar_t));
+    }
+    return key;
 }
-inline void validate_catalog(const fs::path& package, const Catalog& catalog) {
-    Monitor names(package, L"directory-namespace.mjs");
+inline void namespace_record(Monitor& names, const char* command, const std::string& path, const Snapshot& value) {
+    auto relative = relative_path(path);
+    names.require(command, value.kind, value.version, value.size, namespace_key(relative) + ":" + namespace_key(relative.parent_path()) + ":" + value.hash);
+}
+inline void validate_catalog(Monitor& names, const Catalog& catalog) {
     for (const auto& [path, value] : catalog) {
-        auto relative = relative_path(path);
-        names.require("ENTRY", value.kind, value.version, value.size, namespace_key(relative) + ":" + namespace_key(relative.parent_path()) + ":" + value.hash);
+        namespace_record(names, "ENTRY", path, value);
     }
     names.require("END");
+}
+inline void validate_catalog(const fs::path& package, const Catalog& catalog) {
+    Monitor names(package, L"directory-namespace.mjs"); validate_catalog(names, catalog);
 }
 inline Snapshot get(const Catalog& catalog, const std::string& path) {
     auto found = catalog.find(path); return found == catalog.end() ? Snapshot{} : found->second;

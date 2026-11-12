@@ -53,9 +53,12 @@ class Provider {
     }
     std::pair<Catalog, std::string> remote() {
         auto response = s3.request("GET", "manifest.writ");
-        if (response.status == 404) return {{}, ""};
+        if (response.status == 404) {
+            if (!baseline.empty()) throw writ::Error("Established remote manifest is missing; local files retained", ERROR_FILE_NOT_FOUND);
+            return {{}, ""};
+        }
         if (response.status != 200 || response.etag.empty()) throw writ::Error("Cannot read the S3 manifest", response.status);
-        auto catalog = decode(response.body); validate_catalog(package, catalog);
+        auto catalog = decode(response.body);
         return {std::move(catalog), std::move(response.etag)};
     }
     void recovery_capacity() {
@@ -93,11 +96,10 @@ class Provider {
         monitor.snapshot("APPLIED", remote_value); persist(name, remote_value);
         std::cout << "COMMIT Downloaded " << name << std::endl;
     }
-    void reconcile(const std::string& name) {
+    void reconcile(const std::string& name, Catalog& catalog, std::string& etag, Monitor& names) {
         auto target = root / relative_path(name);
-        // Refresh the full manifest per transaction. Its exact ETag is retained
-        // through conditional publication; failures never retry unconditionally.
-        auto [catalog, etag] = remote();
+        // One validated remote snapshot per scan. Exact conditional publication
+        // serializes updates; a competing writer is reconsidered next scan.
         auto remote_value = get(catalog, name);
         Monitor monitor(package); monitor.snapshot("OPEN", get(baseline, name));
         Temporary snapshot(state);
@@ -116,7 +118,7 @@ class Provider {
         if (decision.detail == "ADOPT") { persist(name, remote_value); return; }
         if (decision.detail == "UPLOAD") {
             local.version = decision.value;
-            catalog[name] = local; validate_catalog(package, catalog);
+            namespace_record(names, "CHECK", name, local);
             if (local.kind == 1) {
                 auto upload = s3.request("PUT", "objects/" + local.hash, {}, snapshot.handle, local.size, local.hash, "", true);
                 if (upload.status == 412) {
@@ -127,13 +129,18 @@ class Provider {
                     if (body.status != 200 || body.bytes != local.size) throw writ::Error("Existing S3 object does not match", ERROR_CRC);
                     Monitor check(package); check.snapshot("OPEN", Snapshot{}); check.require("LOCAL", 1, 0, local.size);
                     check.chunks(existing.handle, local.size);
-                    if (check.require("LOCAL_END").detail != local.hash) throw writ::Error("Existing S3 object checksum mismatch", ERROR_CRC);
+                    check.require("LOCAL_END");
+                    if (check.snapshot("REMOTE", local).detail != "ADOPT") throw writ::Error("Existing S3 object checksum mismatch", ERROR_CRC);
                 } else if (upload.status != 200) throw writ::Error("S3 object upload failed", upload.status);
             }
-            auto bytes = encode(catalog);
+            auto candidate = catalog; candidate[name] = local;
+            auto bytes = encode(candidate);
             auto written = s3.request("PUT", "manifest.writ", bytes, INVALID_HANDLE_VALUE, 0, "", etag, etag.empty());
             if (written.status != 200) throw writ::Error("Remote changed or S3 manifest publication failed; local files retained", written.status);
             monitor.snapshot("PUBLISHED", local); persist(name, local);
+            namespace_record(names, "SET", name, local);
+            catalog = std::move(candidate); etag = written.etag;
+            if (etag.empty()) throw writ::Error("S3 did not return the committed manifest ETag", ERROR_INVALID_DATA);
             std::cout << "COMMIT Uploaded " << name << std::endl;
         } else if (decision.detail == "DOWNLOAD") {
             Temporary download(state); monitor.require("READ");
@@ -169,7 +176,8 @@ public:
             try {
                 Parents root_guard(root), state_guard(state), recovery_guard(recovery);
                 Catalog local; scan(root, root, local); validate_catalog(package, local);
-                auto [catalog, etag] = remote(); (void)etag;
+                auto [catalog, etag] = remote();
+                Monitor names(package, L"directory-namespace.mjs"); validate_catalog(names, catalog);
                 std::set<std::string> paths;
                 for (const auto* list : {&local, &catalog, &baseline}) for (const auto& [name, value] : *list) { (void)value; paths.insert(name); }
                 if (paths.size() > maximum_entries) throw writ::Error("2048-path sync limit reached", ERROR_FILE_TOO_LARGE);
@@ -186,7 +194,7 @@ public:
                 });
                 for (const auto& name : ordered) {
                     if (WaitForSingleObject(stopped, 0) == WAIT_OBJECT_0) return errors ? 2 : 0;
-                    try { reconcile(name); }
+                    try { reconcile(name, catalog, etag, names); }
                     catch (const writ::Error& error) {
                         ++errors; std::string message = "ERROR " + name + ": " + error.what() + " (" + std::to_string(error.code) + ")";
                         if (message != last_error) std::cout << message << std::endl;
@@ -210,7 +218,7 @@ int wmain(int argc, wchar_t** argv) {
     try {
         std::wstring command = argc > 1 ? argv[1] : L"run";
         if (command == L"configure-stdin" && argc == 2) {
-            std::array<std::string, 7> fields;
+            SecretFields<7> scratch; auto& fields = scratch.values;
             for (auto& field : fields) {
                 // Bounded character reads; secret values never enter argv/logs.
                 for (;;) { int c = std::cin.get(); if (c == '\n') break;
@@ -219,7 +227,7 @@ int wmain(int argc, wchar_t** argv) {
                 }
             }
             Connection connection{fields[0], fields[1], fields[2], fields[3]}; connection.validate();
-            Credentials credentials(std::move(fields[4]), std::move(fields[5]), std::move(fields[6])); credentials.save(connection); connection.save();
+            Credentials credentials(fields[4], fields[5], fields[6]); credentials.save(connection); connection.save();
             std::cout << "CONFIGURED Credentials saved in Windows Credential Manager" << std::endl; return 0;
         }
         auto root = writ::canonical(argc > 2 ? fs::path(argv[2]) : home_directory() / L"Writ Cloud");

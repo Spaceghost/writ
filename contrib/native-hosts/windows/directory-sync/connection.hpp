@@ -112,4 +112,8 @@ struct Credentials {
         return Credentials(std::move(access), std::move(secret), std::move(token));
     }
 };
+template<size_t Count> struct SecretFields {
+    std::array<std::string, Count> values;
+    ~SecretFields() { for (auto& value : values) SecureZeroMemory(value.data(), value.size()); }
+};
 } // namespace writ_sync

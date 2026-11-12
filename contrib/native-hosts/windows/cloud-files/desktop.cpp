@@ -1,6 +1,7 @@
 // Windows presentation and owned process lifetime only. Save/version/conflict
 // decisions stay in the existing provider's Bend monitor.
 #include "native.hpp"
+#include "../directory-sync/connection_dialog.hpp"
 #include <commctrl.h>
 #include <windowsx.h>
 #include <shellapi.h>
@@ -22,7 +23,7 @@ constexpr wchar_t run_key[] = L"Software\\Microsoft\\Windows\\CurrentVersion\\Ru
 constexpr UINT tray_message = WM_APP + 1, activate_message = WM_APP + 2;
 constexpr UINT open_app = 101, open_folder = 102, pause_resume = 103,
     settings = 104, quit = 105, startup = 106, recovery = 107,
-    diagnostics = 108, releases = 109, tabs_id = 110;
+    diagnostics = 108, releases = 109, tabs_id = 110, connect_storage = 111;
 constexpr GUID tray_guid{0x7ddda5c1, 0x3eb0, 0x4f92, {0xac,0xa4,0x91,0x6b,0x35,0x91,0x20,0x04}};
 
 struct Handle {
@@ -134,7 +135,8 @@ class App {
     HICON icon = nullptr;
     UINT dpi = 96, taskbar_created = 0;
     bool tray_added = false, ready = false, stopping = false, quitting = false,
-        attention = false, paused = false, settings_open = false, discard_line = false;
+        attention = false, paused = false, settings_open = false, discard_line = false,
+        remote_mode = false, configure_requested = false;
     ULONGLONG stop_started = 0, last_stop = 0;
     Handle provider, output, stop_process, job, quit_event;
     std::string pending;
@@ -257,15 +259,18 @@ class App {
         log(line);
         if (line.rfind("READY ", 0) == 0) {
             ready = true; attention = false;
-            if (!stopping) { status = L"Watching hello.txt"; detail = L"Writ is running. Open your folder to try the public preview."; }
-            record(L"Connected to the local backing store");
+            if (!stopping) { status = remote_mode ? L"Checking your cloud folder" : L"Watching hello.txt"; detail = remote_mode ? L"Comparing local files with your S3-compatible storage." : L"Writ is running. Open your folder to try the public preview."; }
+            record(remote_mode ? L"Folder sync started" : L"Connected to the local backing store");
         } else if (line.rfind("COMMIT ", 0) == 0) {
+            if (!remote_mode) attention = false;
+            if (!stopping && !attention) { status = remote_mode ? L"Syncing your cloud folder" : L"Watching hello.txt"; detail = remote_mode ? wide(line.substr(7)) : L"Last save confirmed in the local backing store."; }
+            record(remote_mode ? wide(line.substr(7)) : L"hello.txt — save confirmed · " + wide(line.substr(7, line.find(" sha256=") - 7)));
+        } else if (line.rfind("SYNCED ", 0) == 0) {
             attention = false;
-            if (!stopping) { status = L"Watching hello.txt"; detail = L"Last save confirmed in the local backing store."; }
-            record(L"hello.txt — save confirmed · " + wide(line.substr(7, line.find(" sha256=") - 7)));
+            if (!stopping) { status = L"Files are up to date"; detail = L"Last folder scan completed. Local files remain available offline."; }
         } else if (line.rfind("FETCH bytes=", 0) == 0) record(L"hello.txt — opened from local storage");
         else if (line.rfind("RECOVERY ", 0) == 0) record(L"Recovery copy retained before save");
-        else if (line.rfind("WRITEBACK_FAILED ", 0) == 0 || line.rfind("FETCH_FAILED ", 0) == 0 || line.rfind("DEFERRED ", 0) == 0) {
+        else if (line.rfind("ERROR ", 0) == 0 || line.rfind("WRITEBACK_FAILED ", 0) == 0 || line.rfind("FETCH_FAILED ", 0) == 0 || line.rfind("DEFERRED ", 0) == 0) {
             attention = true;
             if (!stopping) { status = L"Needs attention"; detail = L"An operation could not finish. Review activity; your local edits are retained."; }
             record(wide(line));
@@ -297,10 +302,27 @@ class App {
     }
     void start() {
         if (provider.valid()) return;
+        auto connection = writ_sync::Connection::load(); remote_mode = connection.has_value();
+        root = user_path(CSIDL_PROFILE, remote_mode ? L"Writ Cloud" : L"Writ");
+        if (connection) recovery_path = user_path(CSIDL_LOCAL_APPDATA, L"WritSync") / connection->identity() / L"Recovery";
+        else {
+            auto key = writ::folded(writ::canonical(root));
+            recovery_path = data / L"store" / L"roots" / writ::digest(key.data(), key.size() * sizeof(wchar_t)) / L"recovery";
+        }
+        SetWindowTextW(GetDlgItem(main, 202), remote_mode ? L"CLOUD FOLDER SYNC  /  PUBLIC PREVIEW" : L"FILES ON DEMAND  /  PUBLIC PREVIEW");
+        SetWindowTextW(GetDlgItem(main, 203), remote_mode ?
+            L"S3-compatible folder sync: up to 2048 paths and 1 GiB per file. Files stay available offline.\nConcurrent edits require attention. Recovery copies are retained; protected-data use is not qualified." :
+            L"Local preview: hello.txt (up to 64 KiB) syncs to a local backing store.\nConnect S3-compatible storage in Settings for multiple-file and folder syncing.");
         pending.clear(); discard_line = false; ready = stopping = attention = paused = false;
-        status = L"Starting Writ"; detail = L"Connecting to your local Writ folder."; update();
-        launch(executable().parent_path() / L"writ-cloud.exe", L"start", provider, &output, job.value);
-        record(L"Starting the public Files On-Demand provider");
+        status = L"Starting Writ"; detail = remote_mode ? L"Connecting to your S3-compatible storage." : L"Connecting to your local Writ folder."; update();
+        launch(executable().parent_path() / (remote_mode ? L"writ-sync.exe" : L"writ-cloud.exe"), remote_mode ? L"run" : L"start", provider, &output, job.value);
+        record(remote_mode ? L"Starting S3-compatible folder sync" : L"Starting the public Files On-Demand provider");
+    }
+    void configure() {
+        configure_requested = false;
+        writ_sync::ConnectionDialog dialog(main);
+        if (dialog.run()) { record(L"Storage connection updated"); start(); }
+        else { status = L"Syncing paused"; detail = L"Resume syncing when you are ready."; update(); }
     }
     void request_stop(bool exit) {
         quitting = quitting || exit;
@@ -326,6 +348,7 @@ class App {
             bool requested = stopping; stopping = false; paused = requested && code == 0;
             if (quitting && code == 0) { DestroyWindow(main); return; }
             quitting = false;
+            if (configure_requested && requested) { configure(); return; }
             if (code != 0) {
                 attention = true; status = L"Provider stopped with an error";
                 detail = L"Review activity and diagnostics, then retry Resume syncing. Another provider may already be running.";
@@ -333,7 +356,7 @@ class App {
                 show(false);
             } else {
                 status = paused ? L"Syncing paused" : L"Provider stopped";
-                detail = L"Edits stay on this device until resumed. Unopened files need Writ running.";
+                detail = remote_mode ? L"Files remain available offline. Changes sync after you resume." : L"Edits stay on this device until resumed. Unopened files need Writ running.";
             }
             update();
         }
@@ -346,7 +369,7 @@ class App {
                 record(L"Graceful stop timed out; provider retained"); show(false); update();
             } else if (!stop_process.valid() && now - last_stop >= 1000) {
                 last_stop = now;
-                launch(executable().parent_path() / L"writ-cloud.exe", L"stop", stop_process, nullptr, job.value);
+                launch(executable().parent_path() / (remote_mode ? L"writ-sync.exe" : L"writ-cloud.exe"), L"stop", stop_process, nullptr, job.value);
             }
         }
     }
@@ -368,6 +391,10 @@ class App {
         case recovery: open_path(recovery_path); break;
         case diagnostics: open_path(log_path.parent_path()); break;
         case releases: ShellExecuteW(main, L"open", L"https://github.com/Spaceghost/writ/releases", nullptr, nullptr, SW_SHOWNORMAL); break;
+        case connect_storage:
+            if (provider.valid()) { configure_requested = true; request_stop(false); }
+            else configure();
+            break;
         default: break;
         }
     }
@@ -389,6 +416,7 @@ class App {
         move(GetDlgItem(main, recovery), 48, 392, 200, 36);
         move(GetDlgItem(main, diagnostics), 264, 392, 170, 36);
         move(GetDlgItem(main, releases), 48, 444, 200, 36);
+        move(GetDlgItem(main, connect_storage), 264, 444, 240, 36);
         move(GetDlgItem(main, 211), 48, 494, width - 96, 62);
         move(GetDlgItem(main, 203), 28, height - 76, width - 56, 56);
         ShowWindow(list, settings_open ? SW_HIDE : SW_SHOW);
@@ -463,6 +491,7 @@ class App {
         setting_controls.push_back(control(L"BUTTON", L"Open &recovery copies", WS_TABSTOP, recovery));
         setting_controls.push_back(control(L"BUTTON", L"Open &diagnostics", WS_TABSTOP, diagnostics));
         setting_controls.push_back(control(L"BUTTON", L"Releases and &updates", WS_TABSTOP, releases));
+        setting_controls.push_back(control(L"BUTTON", L"Connect / manage &storage", WS_TABSTOP, connect_storage));
         auto version = L"Writ " + wide(WRIT_VERSION) + L"\nSource " + wide(WRIT_SOURCE_COMMIT);
         setting_controls.push_back(control(L"STATIC", version.c_str(), SS_LEFT, 211));
         control(L"STATIC", L"Public preview: only hello.txt (up to 64 KiB) syncs to a local backing store.\nCloud accounts, folder sync and protected-data use are not available in this preview.", SS_LEFT, 203);
