@@ -93,7 +93,15 @@ jobs:
             | tee "$WRITFS_LINUX_LOGS/bridge.log"
           bend Tests.bend -o "$WRITFS_LINUX_BUILD/core-tests.js"
           node "$WRITFS_LINUX_BUILD/core-tests.js" | tee "$WRITFS_LINUX_LOGS/core-js.log"
-          bend Tests.bend -o "$WRITFS_LINUX_BUILD/core-tests-native"
+          # `bend -o <binary>` compiles with clang -O3, which peaks near 17.6 GiB
+          # on this corpus and exhausts the 16 GB runner (the job was killed
+          # with only "The operation was canceled."). The same generated C at
+          # -O0 peaks near 11.4 GiB. The checks and their expected output are
+          # unchanged; only the optimisation level differs, as in the
+          # recorded native CPU evidence.
+          bend Tests.bend -o "$WRITFS_LINUX_BUILD/core-tests.c"
+          "$CC" -std=c11 -O0 "$WRITFS_LINUX_BUILD/core-tests.c" -lpthread -lm \
+            -o "$WRITFS_LINUX_BUILD/core-tests-native"
           "$WRITFS_LINUX_BUILD/core-tests-native" +RTS --threads 4 --gpu off \
             | tee "$WRITFS_LINUX_LOGS/core-native.log"
           bend PROOF.bend | tee "$WRITFS_LINUX_LOGS/ordinary-proofs.log"
