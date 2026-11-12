@@ -87,3 +87,56 @@ and [run stderr](native.stderr). The native build began before source commit
 The final independent review remains incomplete as noted above. No GPU test,
 Linux identity probe, native confinement, protected-host qualification or
 durable recovery is claimed.
+
+## Combined with master `2ad65eeb`
+
+The three commits above were cherry-picked onto master `2ad65eeb` without
+source conflicts: `HostBinding.bend` is identical on the base and that master.
+Master's later session-allocation and delegation capacity guards live in
+`HostIdentity.bend` and `HostPrimitives.bend` and do not touch these counters.
+They use the same convention: existing authority and revision denials first,
+then a capacity denial that returns the supplied state before any increment.
+The earlier per-file count pins were superseded by the shared
+[reviewed count](../../utils/verification/core-check-count.txt), now **3098**
+after reviewing the 26 added check names. The [command record](master-2ad65eeb/commands.txt)
+gives exact invocations and tool hashes.
+
+The [complete Bend suite](master-2ad65eeb/bend.log) passed 3,098 checks. No
+earlier check name is missing from the 3,072-check master reference, and only
+the 26 boundary names, the GA-008-4 vector and its summary were added.
+[`PROOF.bend`](master-2ad65eeb/proof.txt) and the Lean-built BendTT
+[verdict](master-2ad65eeb/verdict.txt) report `ALL PROOFS CHECK`, with the
+`/bin/false` [negative control](master-2ad65eeb/verdict-negative.txt) failing as
+required; no law changed, and the verdict does not prove the new guards. Strict
+[OpenSpec validation](master-2ad65eeb/openspec.txt) passed 45 items and is
+structural only. The full [native CPU suite](master-2ad65eeb/native.log)
+(`clang -O0 -static`, `+RTS --threads 1 --gpu off`) built and ran with exit
+zero and empty stderr; its output is byte-identical to Bend. No GPU test is
+claimed. On the host QuickJS replica of the Genode prelude, the
+[new lines](master-2ad65eeb/qjs-new-checks.txt) add about 13 ms; that is not a
+Genode run.
+
+## Independent review of the final source
+
+A fresh read-only review of the final `HostBinding.bend` diff and
+`HostBindingBoundaryTests.bend` on the combined tree found no correctness
+defect. The successor bound is the pinned maximum `2^48 - 1`, so the last
+allocatable ID is maximum minus one and the counter may end at the maximum.
+Mint paths test both counters, because `commit_mint` increments both;
+delegation tests only the alias counter, because `commit_delegate` increments
+only that one. Each guard sits after the existing gates, so the documented
+denial orders hold. Each denial returns the supplied state, discarding the
+provisional Frontend state, and the commit branch is never evaluated. `valid`,
+`resolve`, close and revocation are not gated on capacity, and no existing
+check was removed or weakened. The tests compare complete states, including the
+embedded Frontend.
+
+Findings that were not defects: the GA-008 traceability row did not name the
+new checks or GA-008-4, and it has now been updated. The suite tests the
+`to_holder` SubjectMismatch case at exhaustion but not the `from_holder`
+unauthorized one. Attenuation's pre-Frontend gates are covered only through
+the shared `derive_checked` path used by `bind_open`. The unguarded
+`1n+revision` in `commit_mint` and `commit_delegate`, object generation and
+Frontend revision remain the separate gaps stated above. This review replaces
+the interrupted one but is not a mutation run or proof; the earlier
+interruption remains recorded above.
