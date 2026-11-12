@@ -3,6 +3,7 @@
 param([Parameter(Mandatory)][string]$PackageDir, [Parameter(Mandatory)][string]$OutputDir)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if ($env:GITHUB_ACTIONS -ne 'true') { throw 'This fixture provisions trust only on disposable GitHub-hosted Windows runners.' }
 $settings = 'HKCU:\Software\Writ\S3'
 if (Test-Path $settings) { throw 'S3 acceptance requires a disposable account without Writ S3 settings.' }
 $base = Join-Path $env:USERPROFILE ('WritS3Smoke-' + [Guid]::NewGuid().ToString('N'))
@@ -43,7 +44,11 @@ try {
     & $openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=localhost' -addext 'subjectAltName=DNS:localhost' `
         -keyout (Join-Path $fixture 'private.pem') -out (Join-Path $fixture 'certificate.pem') 2>&1 | Out-File (Join-Path $OutputDir 'fixture-tls.txt')
     if ($LASTEXITCODE) { throw 'Cannot create fixture TLS certificate.' }
-    $certificate = Import-Certificate -FilePath (Join-Path $fixture 'certificate.pem') -CertStoreLocation Cert:\CurrentUser\Root
+    # CurrentUser Root imports display a Win32 consent dialog in unattended CI.
+    # The disposable runner's machine store supports unattended provisioning;
+    # the exact generated certificate is removed in finally. TLS stays strict.
+    $certificate = Import-Certificate -FilePath (Join-Path $fixture 'certificate.pem') -CertStoreLocation Cert:\LocalMachine\Root
+    Write-Host 'PASS: disposable fixture certificate trusted without changing application TLS validation'
     $server = Start-Process python -ArgumentList @("`"$(Join-Path $PSScriptRoot 's3_fixture.py')`"", "`"$fixture`"") -PassThru -NoNewWindow `
         -RedirectStandardOutput (Join-Path $OutputDir 'fixture-server.txt') -RedirectStandardError (Join-Path $OutputDir 'fixture-server.err.txt')
     Wait-For { Test-Path (Join-Path $fixture 'ready.json') } 'HTTPS S3 fixture ready'
@@ -126,7 +131,7 @@ try {
     Write-Host 'PASS: native directory and S3 protocol acceptance complete; actual Cloudflare R2 account test is separate.'
 } finally {
     if ($server -and -not $server.HasExited) { $server.Kill($true); $server.WaitForExit() }
-    if ($certificate) { Remove-Item -LiteralPath "Cert:\CurrentUser\Root\$($certificate.Thumbprint)" }
+    if ($certificate) { Remove-Item -LiteralPath "Cert:\LocalMachine\Root\$($certificate.Thumbprint)" }
     if ($credentialTarget) { [void][WritFixtureCredentials]::CredDelete($credentialTarget, 1, 0) }
     if (Test-Path $settings) { Remove-Item -LiteralPath $settings -Recurse }
     Stop-Transcript | Out-Null
