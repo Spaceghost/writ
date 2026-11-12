@@ -34,7 +34,9 @@ enum writ_channel_verdict {
     WRIT_SENDER_ERROR         /* SenderError: kernel error or non-pidfs sender */
 };
 
-/* The table retains pidfs identity, not descriptor numbers. The caller keeps
+/* Matching compares pidfs dev and ino. The dev comparison is reviewed-only:
+   every unprivileged pidfs inode shares one device, so no owned-process test
+   can distinguish it. The table retains pidfs identity, not descriptor numbers. The caller keeps
    its own pidfds open for each role's lifetime so the identity cannot be
    recycled; this module never stores or closes them. */
 struct writ_roles {
@@ -65,14 +67,26 @@ int writ_roles_add(struct writ_roles *roles, uint32_t index, int pidfd);
 /* Sets SO_PASSPIDFD on the receiving end. Call before any record is queued. */
 int writ_channel_enable(int fd);
 
-/* Receives one record without blocking (MSG_DONTWAIT). Returns 0 when one
-   record was consumed, whatever its verdict, or -1 with errno on a syscall
-   failure (EAGAIN when nothing is queued). Every descriptor installed by the
+/* Receives one record. NON-BLOCKING (MSG_DONTWAIT): with nothing queued it
+   returns -1 with errno EAGAIN, so a supervisor polls first.
+   Returns 0 when one record was consumed, whatever its verdict. Returns -1
+   with errno otherwise; `out` is then not a record (its verdict is left at
+   WRIT_SENDER_ERROR so it fails closed if misused). errno EPIPE means end of
+   stream: the peer closed and nothing is queued. That is not a record and
+   yields no verdict; stop reading the channel. writ_channel_enable must be
+   called before any record is queued: an empty record that predates it is
+   indistinguishable from end of stream. Every descriptor installed by the
    kernel is closed before return; no descriptor reaches the caller. */
 int writ_channel_receive(int fd, const struct writ_roles *roles,
                          struct writ_channel_record *out);
 
 #ifdef WRIT_CHANNEL_TESTING
+#include <sys/socket.h>
+/* Test seam: classify a caller-built message (control buffer, controllen and
+   flags as recvmsg would return them; payload already in out->payload).
+   Closes descriptors found in the control bytes. */
+void writ_channel_classify(struct msghdr *msg, size_t got, const struct writ_roles *roles,
+                           struct writ_channel_record *out);
 /* Test seam: as writ_channel_receive with a caller-chosen control buffer size
    (clamped to the internal buffer). Not part of the public interface. */
 int writ_channel_receive_with_control(int fd, const struct writ_roles *roles,

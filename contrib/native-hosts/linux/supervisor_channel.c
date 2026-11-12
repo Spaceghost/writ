@@ -55,6 +55,7 @@ int writ_roles_add(struct writ_roles *roles, uint32_t index, int pidfd)
     dev_t dev;
     ino_t ino;
     if (index == 0) return EINVAL;
+    if (roles->count > WRIT_CHANNEL_ROLES) return EINVAL; /* corrupt table: never index past role[] */
     if (pidfs_identity(pidfd, &dev, &ino)) return EINVAL;
     for (size_t i = 0; i < roles->count; ++i) {
         if (roles->role[i].index == index) return EINVAL;
@@ -68,27 +69,21 @@ int writ_roles_add(struct writ_roles *roles, uint32_t index, int pidfd)
     return 0;
 }
 
-static int receive_impl(int fd, const struct writ_roles *roles,
-                        struct writ_channel_record *out, size_t control_len)
+/* Classifies one received message. `msg` describes what the kernel returned:
+   msg_control/msg_controllen are the returned control bytes and msg_flags the
+   returned flags; `got` is the payload length recvmsg reported and the payload
+   is already in out->payload. Closes every descriptor found in the returned
+   control bytes. This is the only classification path: production and the
+   WRIT_CHANNEL_TESTING seam both use it. */
+static void classify(struct msghdr *msg, size_t got, const struct writ_roles *roles,
+                     struct writ_channel_record *out)
 {
-    union control_buffer control;
-    memset(&control, 0, sizeof control);
-    memset(out, 0, sizeof *out);
-    out->verdict = WRIT_UNKNOWN_SENDER;
-    if (control_len > sizeof control.buf) control_len = sizeof control.buf;
-
-    struct iovec iov = { .iov_base = out->payload, .iov_len = sizeof out->payload };
-    struct msghdr msg = { .msg_iov = &iov, .msg_iovlen = 1,
-                          .msg_control = control_len ? control.buf : NULL,
-                          .msg_controllen = control_len };
-    ssize_t got = recvmsg(fd, &msg, MSG_CMSG_CLOEXEC | MSG_DONTWAIT);
-    if (got < 0) return -1;
-    out->length = (size_t)got < sizeof out->payload ? (size_t)got : sizeof out->payload;
+    out->length = got < sizeof out->payload ? got : sizeof out->payload;
 
     int pidfd = -1;
     int pidfds = 0, rights = 0, other = 0, negative = 0, short_control = 0;
-    const unsigned char *control_end = (const unsigned char *)control.buf + msg.msg_controllen;
-    for (struct cmsghdr *c = CMSG_FIRSTHDR(&msg); c; c = CMSG_NXTHDR(&msg, c)) {
+    const unsigned char *control_end = (const unsigned char *)msg->msg_control + msg->msg_controllen;
+    for (struct cmsghdr *c = CMSG_FIRSTHDR(msg); c; c = CMSG_NXTHDR(msg, c)) {
         if (c->cmsg_level != SOL_SOCKET || c->cmsg_len < CMSG_LEN(0)) { ++other; continue; }
         /* Read only bytes the kernel actually returned: a header claiming
            more than msg_controllen is control truncation, and every
@@ -114,19 +109,22 @@ static int receive_impl(int fd, const struct writ_roles *roles,
     }
 
     enum writ_channel_verdict verdict = WRIT_UNKNOWN_SENDER;
-    if ((msg.msg_flags & MSG_CTRUNC) || short_control) verdict = WRIT_CONTROL_TRUNCATED;
-    else if (msg.msg_flags & MSG_TRUNC) verdict = WRIT_PAYLOAD_TRUNCATED;
+    if ((msg->msg_flags & MSG_CTRUNC) || short_control) verdict = WRIT_CONTROL_TRUNCATED;
+    else if (msg->msg_flags & MSG_TRUNC) verdict = WRIT_PAYLOAD_TRUNCATED;
     else if (rights) verdict = WRIT_UNEXPECTED_RIGHTS;
     else if (other) verdict = WRIT_UNEXPECTED_CONTROL;
     else if (negative) verdict = WRIT_SENDER_ERROR;
     else if (pidfds > 1) verdict = WRIT_DUPLICATE_SENDER;
     else if (pidfds == 0) verdict = WRIT_MISSING_SENDER;
+    else if (roles->count > WRIT_CHANNEL_ROLES) verdict = WRIT_SENDER_ERROR; /* corrupt table fails closed */
     else {
         dev_t dev;
         ino_t ino;
         if (pidfs_identity(pidfd, &dev, &ino)) {
             verdict = WRIT_SENDER_ERROR;
         } else {
+            /* Reviewed-only: every unprivileged pidfs inode shares one st_dev,
+               so no owned-process test can show that dev is compared. */
             for (size_t i = 0; i < roles->count; ++i) {
                 if (roles->role[i].dev == dev && roles->role[i].ino == ino) {
                     verdict = WRIT_FROM_ROLE;
@@ -143,6 +141,28 @@ static int receive_impl(int fd, const struct writ_roles *roles,
         memset(out->payload, 0, sizeof out->payload);
     }
     out->verdict = verdict;
+}
+
+static int receive_impl(int fd, const struct writ_roles *roles,
+                        struct writ_channel_record *out, size_t control_len)
+{
+    union control_buffer control;
+    memset(&control, 0, sizeof control);
+    memset(out, 0, sizeof *out);
+    out->verdict = WRIT_SENDER_ERROR; /* fails closed if the caller ignores -1 */
+    if (control_len > sizeof control.buf) control_len = sizeof control.buf;
+
+    struct iovec iov = { .iov_base = out->payload, .iov_len = sizeof out->payload };
+    struct msghdr msg = { .msg_iov = &iov, .msg_iovlen = 1,
+                          .msg_control = control.buf, .msg_controllen = control_len };
+    ssize_t got = recvmsg(fd, &msg, MSG_CMSG_CLOEXEC | MSG_DONTWAIT);
+    if (got < 0) return -1;
+    /* End of stream is not a record: the peer closed and nothing is queued. */
+    if (got == 0 && msg.msg_controllen == 0 && !(msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
+        errno = EPIPE;
+        return -1;
+    }
+    classify(&msg, (size_t)got, roles, out);
     return 0;
 }
 
@@ -152,6 +172,14 @@ int writ_channel_receive(int fd, const struct writ_roles *roles, struct writ_cha
 }
 
 #ifdef WRIT_CHANNEL_TESTING
+void writ_channel_classify(struct msghdr *msg, size_t got, const struct writ_roles *roles,
+                           struct writ_channel_record *out)
+{
+    out->verdict = WRIT_SENDER_ERROR;
+    out->role = 0;
+    classify(msg, got, roles, out);
+}
+
 int writ_channel_receive_with_control(int fd, const struct writ_roles *roles,
                                       struct writ_channel_record *out, size_t control_len)
 {
