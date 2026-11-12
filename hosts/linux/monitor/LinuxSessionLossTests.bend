@@ -13,7 +13,8 @@ import ../../../HostWire.bend as W
 import ../../../Test.bend as Test
 
 # Synthetic owner state and session-loss signals; no OS process is observed.
-# Checks read the joint-owner scenario stages, built once in `main`;
+# Checks read the joint-owner scenario stages, built once by Tests.bend (or by
+# `main` when run alone) and passed in;
 # `running(s)` is `LH.Outcome.state(JT.stage_delivered(s))`.
 def running(+s: JT.Stages) -> LH.State:
   JT.stage_running(s)
@@ -23,7 +24,7 @@ def stopped_history(owner: JA.Joint) -> Bool:
     case JA.Joint{_, _, _, _, _, _, JA.NoLineage{}, JA.JointFailed{P.StopEffects{1n} <> []}, JA.NoJoint{}}: True{}
     case _: False{}
 
-# `delivered` is the shared `JT.delivered(world)` stage; `before` is its state.
+# `delivered` is the shared `JT.stage_delivered` stage; `before` is its state.
 def lost_active_on(+delivered: LH.Outcome) -> Bool:
   +before = {LH.Outcome.state(delivered) : LH.State}
   +result = {LH.session_lost(before) : LH.Outcome}

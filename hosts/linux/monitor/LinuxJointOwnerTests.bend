@@ -27,16 +27,17 @@ def launched(+w: RT.Sc) -> LH.State:
   LH.Outcome.state(LH.dispatch(initial, LH.FromBroker{LH.Launch{fact()}}, LH.Sample{110n}, V.fixture_authority(110n)))
 
 # Shared synthetic scenario stages. Bend backends do not memoize fixture
-# defs, so each check that called `delivered(w)` or `issued_once(w)` replayed
+# defs, so each check that formerly rebuilt delivery or called `issued_once(w)` replayed
 # launch, dispatch, issue and delivery (each an owner transition that rechecks
 # every issuer grant). `stages` runs each transition once from one world and
 # the checks read the result. Every field is exactly the value of the fixture
 # expression listed below, and all of it is pure, so a check that reads a
 # stage asserts the same thing as one that rebuilt it. These are synthetic
 # records, not authenticated input; the checks still run their own transition
-# under test against the stage. Fields: `launched(world)`; its
+# under test against the stage, except `check_dispatch` and `check_delivery`,
+# whose transition under test is the dispatch or delivery stage itself. Fields: `launched(world)`; its
 # `LH.joint_dispatch(launched, 1n, 110n)` action; `issued_once(world)`;
-# `delivered(world)`; slots 1 and 2 issued and delivered (the former
+# `delivery_of` on that issued state; slots 1 and 2 issued and delivered (the former
 # `issue_twice` scenario); and the short-reader launch from
 # `launched_with(world, shortened_issuer(...))`, dispatched, then issued.
 type Stages is Data:
@@ -68,7 +69,7 @@ def stage_delivered(+s: Stages) -> LH.Outcome:
   match s:
     case Stages{_, _, _, _, delivered, _, _, _, _}: delivered
 
-# LH.Outcome.state(delivered(world))
+# The owner state after the delivered stage.
 def stage_running(+s: Stages) -> LH.State:
   LH.Outcome.state(stage_delivered(s))
 
@@ -108,14 +109,6 @@ def deliver_result(outcome: LH.Outcome) -> Bool:
   match outcome:
     case LH.Stepped{_, _, _, P.Admitted{_, P.DeliverInputs{_, _} <> []}}: True{}
     case _: False{}
-
-def delivered(+w: RT.Sc) -> LH.Outcome:
-  +launched = launched(w)
-  +dispatched = LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n))
-  +issued = LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n))
-  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
-  LH.dispatch(issued, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
-    LH.Sample{110n}, V.fixture_authority(110n))
 
 def check_delivery(+s: Stages) -> Bool:
   deliver_result(stage_delivered(s))

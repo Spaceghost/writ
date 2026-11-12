@@ -1242,9 +1242,10 @@ def adapter_checks_of(+a_lines: List<&2, String>, +b_lines: List<&2, String>) ->
 def adapter_checks() -> IO(Unit):
   adapter_checks_of(lines_for(A()), lines_for(Bd()))
 
-# Public entry point, run by Tests.bend. Checks are grouped per requirement and
-# fixtures are named functions rather than shared locals, so the native
-# backend's arity limit (HostBindingTests.bend, note above `main`) is not hit.
+# Public entry point, run by Tests.bend. Checks are grouped per requirement and each
+# fixture stage is bound once and passed to its group, so no stage is rebuilt
+# and no group's `main` keeps enough locals to reach the native backend's
+# arity limit (HostBindingTests.bend, note above `main`).
 def main() -> IO(Unit):
   do IO<Unit>:
     setup_checks()
