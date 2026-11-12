@@ -26,7 +26,11 @@ cmp "$writ_out/policy/drive.mjs" "$writ_out/drive-repeat.mjs"
 "$writ_bend" writfs/drive/Tests.bend -o "$writ_out/policy/drive-tests.js"
 "$writ_bend" writfs/drive/Tests.bend > "$writ_out/logs/drive-tests.txt"
 "$writ_bend" writfs/drive/Tests.bend -o "$writ_out/drive-tests.c"
-cc -O2 -pthread "$writ_out/drive-tests.c" -lm -o "$writ_out/drive-tests-native"
+# Bend's generated CPU runtime requires statement-level musttail support.
+# The hosted runner's default GCC does not accept that ABI; use Clang.
+writ_native_cc=${WRIT_NATIVE_CC:-clang}
+"$writ_native_cc" --version > "$writ_out/logs/native-model-compiler.txt"
+"$writ_native_cc" -O2 -pthread "$writ_out/drive-tests.c" -lm -o "$writ_out/drive-tests-native"
 "$writ_out/drive-tests-native" > "$writ_out/logs/drive-tests-native.txt"
 cmp "$writ_out/logs/drive-tests.txt" "$writ_out/logs/drive-tests-native.txt"
 "$writ_bend" writfs/PublicSyncTests.bend > "$writ_out/logs/public-sync-tests.txt"

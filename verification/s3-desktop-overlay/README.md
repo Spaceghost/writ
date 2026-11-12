@@ -49,3 +49,10 @@ local S3 testing. No credentials, raw credential-bearing fixture logs or tokens
 are included. Remote Cloud Files/FUSE placeholders for this catalog, shell icons,
 power-loss, arbitrary-editor confinement, authenticated external issuers and
 production protected-host acceptance remain open.
+
+Initial hosted run `43149568264` at `ccab184d` stopped in the newly added native
+model compilation: Ubuntu's default GCC rejected Bend's generated
+`__attribute__((musttail)) return` ABI. No platform package job or publication
+ran. The generator now selects Clang explicitly and records its version;
+generated source and tail-call requirements are unchanged. The local Zig-backed
+native test had already passed. The retry remains required.
