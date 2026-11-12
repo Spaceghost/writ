@@ -42,6 +42,7 @@ import ./hosts/linux/monitor/LinuxCredentialBindingTests.bend as LinuxCredential
 import ./hosts/linux/monitor/LinuxClockTests.bend as LinuxClock
 import ./hosts/linux/monitor/LinuxJointOwnerTests.bend as LinuxJointOwner
 import ./hosts/linux/monitor/LinuxSessionLossTests.bend as LinuxSessionLoss
+import ./hosts/linux/monitor/LocalChannelTests.bend as LocalChannel
 import ./FacadeTests.bend as Facade
 import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
@@ -65,6 +66,7 @@ def linux_tests() -> IO(Unit):
     LinuxCredentialBinding.main()
     LinuxClock.main()
     joint_owner_tests(LinuxJointOwner.owner_stages())
+    LocalChannel.main()
 
 # Keep host corpus ordering while bounding generated continuation arity.
 def host_tests() -> IO(Unit):
