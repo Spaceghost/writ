@@ -68,7 +68,7 @@ try {
     Assert ($bytes.Length -gt 0) 'installed provider hydrates'
     & $exe stop
     Assert ($LASTEXITCODE -eq 0 -and $provider.WaitForExit(10000)) 'CLI provider stops before desktop test'
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installed 'DesktopSmoke.ps1') -PackageDir $installed -OutputDir $logs
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installed 'DesktopSmoke.ps1') -PackageDir $installed -OutputDir $logs -ProbeExe (Join-Path $OutputDir 'build-1\Release\writ-desktop-probe.exe')
     Assert ($LASTEXITCODE -eq 0) 'installed desktop UI and provider checks pass'
     $bytes = [IO.File]::ReadAllBytes($hello)
     $desktop = Start-Process -FilePath (Join-Path $installed 'Writ.exe') -ArgumentList '--background' -PassThru

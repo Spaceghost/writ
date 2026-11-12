@@ -27,5 +27,9 @@ target_compile_definitions(Writ PRIVATE UNICODE _UNICODE NOMINMAX
 target_compile_options(Writ PRIVATE /W4 /WX /sdl /guard:cf /Brepro /EHsc /utf-8)
 target_link_options(Writ PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT /Brepro /INCREMENTAL:NO)
 target_link_libraries(Writ PRIVATE CldApi bcrypt advapi32 shell32 ole32 comctl32 gdi32 user32)
+add_executable(writ-desktop-probe desktop_probe.cpp)
+target_compile_definitions(writ-desktop-probe PRIVATE UNICODE _UNICODE NOMINMAX _WIN32_WINNT=0x0A00)
+target_compile_options(writ-desktop-probe PRIVATE /W4 /WX /sdl /EHsc /utf-8)
+target_link_libraries(writ-desktop-probe PRIVATE ole32 oleaut32 user32 uiautomationcore)
 file(WRITE "${CMAKE_BINARY_DIR}/writ-toolchain.txt"
   "MSVC=${CMAKE_CXX_COMPILER_VERSION}\nCompiler=${CMAKE_CXX_COMPILER}\nToolset=${CMAKE_VS_PLATFORM_TOOLSET_VERSION}\nSDK=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}\nCMake=${CMAKE_VERSION}\n")

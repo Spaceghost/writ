@@ -2,17 +2,14 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)][string]$PackageDir,
-    [Parameter(Mandatory)][string]$OutputDir
+    [Parameter(Mandatory)][string]$OutputDir,
+    [Parameter(Mandatory)][string]$ProbeExe
 )
-# Run with Windows PowerShell: its built-in UI Automation assemblies drive real
-# standard controls. No test-only commands are added to the application.
+# A separate native COM UI Automation client drives real standard controls.
+# No test-only commands are added to the application.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, UIAutomationClientsideProviders, System.Drawing
-# Windows PowerShell's hosted automation client can otherwise expose only
-# generic HWND panes. Register Microsoft's standard Win32 proxy assembly.
-$proxies = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'UIAutomationClientsideProviders' } | Select-Object -First 1
-[Windows.Automation.ClientSettings]::RegisterClientSideProviderAssembly($proxies.GetName())
+Add-Type -AssemblyName System.Drawing
 Add-Type @'
 using System;
 using System.Text;
@@ -63,27 +60,19 @@ function Text([int]$Id) {
     [void][WritWindow]::GetWindowText([WritWindow]::GetDlgItem($script:window, $Id), $buffer, $buffer.Capacity)
     return $buffer.ToString()
 }
-function Element([int]$Id) {
-    $handle = [WritWindow]::GetDlgItem($script:window, $Id)
-    if ($handle -eq [IntPtr]::Zero) { throw "Missing native control $Id" }
-    return [Windows.Automation.AutomationElement]::FromHandle($handle)
+function UI([string]$Operation, [IntPtr]$Handle) {
+    $output = & $ProbeExe $Operation $Handle.ToInt64().ToString()
+    if ($LASTEXITCODE -ne 0) { throw "Native UI Automation $Operation failed ($LASTEXITCODE)" }
+    return $output
 }
 function Invoke-Control([int]$Id) {
-    $pattern = (Element $Id).GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern)
-    $pattern.Invoke()
+    UI 'invoke' ([WritWindow]::GetDlgItem($script:window, $Id))
 }
 function Toggle-Startup {
-    $pattern = (Element 106).GetCurrentPattern([Windows.Automation.TogglePattern]::Pattern)
-    $pattern.Toggle()
+    UI 'toggle' ([WritWindow]::GetDlgItem($script:window, 106))
 }
 function Snapshot([string]$Name) {
-    $element = [Windows.Automation.AutomationElement]::FromHandle($script:window)
-    $elements = $element.FindAll([Windows.Automation.TreeScope]::Subtree, [Windows.Automation.Condition]::TrueCondition)
-    $rows = foreach ($child in $elements) {
-        $item = $child.Current
-        [ordered]@{ name=$item.Name; id=$item.AutomationId; type=$item.ControlType.ProgrammaticName; enabled=$item.IsEnabled; offscreen=$item.IsOffscreen }
-    }
-    @($rows) | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $OutputDir "$Name-ui.json") -Encoding UTF8
+    UI 'dump' $script:window | Set-Content -LiteralPath (Join-Path $OutputDir "$Name-ui.json") -Encoding UTF8
     $rect = New-Object WritWindow+Rect
     if ([WritWindow]::GetWindowRect($script:window, [ref]$rect)) {
         $bitmap = New-Object Drawing.Bitmap ($rect.Right-$rect.Left), ($rect.Bottom-$rect.Top)
@@ -117,8 +106,7 @@ try {
     [void][WritWindow]::PostMessage($script:window, 0x8001, [IntPtr]::Zero, [IntPtr]0x00010401)
     Wait-For { [WritWindow]::FindWindow('WritFlyout.7DDDA5C1', 'Writ activity') -ne [IntPtr]::Zero } 'keyboard callback opens native activity flyout'
     $flyout = [WritWindow]::FindWindow('WritFlyout.7DDDA5C1', 'Writ activity')
-    $flyPause = [Windows.Automation.AutomationElement]::FromHandle([WritWindow]::GetDlgItem($flyout, 103))
-    $flyPause.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
+    UI 'invoke' ([WritWindow]::GetDlgItem($flyout, 103))
     Wait-For { (Text 204) -eq 'Syncing paused' } 'Pause waits for actual provider exit'
     Assert ((Text 205) -match 'Unopened files need Writ running') 'pause explains hydration limitation'
     [IO.File]::WriteAllText($hello, "Edited while paused.`r`n", (New-Object Text.UTF8Encoding $false))
@@ -135,11 +123,7 @@ try {
     [IO.File]::WriteAllText($hello, "Recovered valid edit.`r`n", (New-Object Text.UTF8Encoding $false))
     Wait-For { (Text 205) -eq 'Last save confirmed in the local backing store.' } 'valid edit clears observed error after commit'
     # Select the real native tab through UIA rather than an app test endpoint.
-    $tabs = Element 110
-    $settingsTab = $tabs.FindFirst([Windows.Automation.TreeScope]::Children,
-        (New-Object Windows.Automation.PropertyCondition ([Windows.Automation.AutomationElement]::NameProperty), 'Settings'))
-    Assert ($null -ne $settingsTab) 'settings tab exposed to accessibility'
-    $settingsTab.GetCurrentPattern([Windows.Automation.SelectionItemPattern]::Pattern).Select()
+    UI 'settings' ([WritWindow]::GetDlgItem($script:window, 110))
     Wait-For { [WritWindow]::IsWindowVisible([WritWindow]::GetDlgItem($script:window, 106)) } 'settings panel displayed'
     Toggle-Startup
     Wait-For { $null -ne (Get-ItemProperty -LiteralPath $runKey -Name Writ -ErrorAction SilentlyContinue) } 'sign-in preference saved'
