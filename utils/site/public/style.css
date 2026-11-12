@@ -1578,3 +1578,31 @@ figure {
     transition: none !important;
   }
 }
+
+/* Practical organizational examples extend the existing editorial layout. */
+.organization-section { padding: 80px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 24px; }
+.organization-heading { display: grid; grid-template-columns: 1.05fr 1fr; gap: 60px; align-items: end; margin-bottom: 40px; }
+.organization-heading h2 { font-size: clamp(34px, 3.5vw, 52px); line-height: 1.08; letter-spacing: -1.8px; margin: 16px 0 0; }
+.organization-heading > p { max-width: 480px; line-height: 1.7; margin: 0 0 4px; color: var(--muted); }
+.organization-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid #d7d8ce; border-left: 1px solid #d7d8ce; }
+.organization-card { padding: 30px; border-right: 1px solid #d7d8ce; border-bottom: 1px solid #d7d8ce; }
+.organization-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 26px; }
+.organization-card-top .eyebrow { margin: 0; font-size: 10px; }
+.implementation { font: 9px/1.4 var(--mono, monospace); color: #686d64; border: 1px solid #d7d8ce; padding: 5px 7px; white-space: nowrap; }
+.organization-card h3 { font-size: clamp(22px, 2.2vw, 29px); line-height: 1.18; letter-spacing: -.8px; font-weight: 550; margin: 0 0 18px; }
+.organization-card > p { font-size: 14px; line-height: 1.7; color: #656b60; }
+.work-example { list-style: none; padding: 0; margin: 24px 0; background: #eeefe7; }
+.work-example li { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 12px 15px; border-bottom: 1px solid #dde0d3; }
+.work-example li:last-child { border-bottom: 0; }
+.work-example span { font: 10px/1.5 var(--mono, monospace); color: #74796b; }
+.work-example strong { font-size: 12px; font-weight: 550; line-height: 1.5; }
+.organization-benefit b { color: #323a2d; font-weight: 600; }
+.organization-card .text-link { font-size: 12px; }
+.desktop-status { display: grid; grid-template-columns: .8fr 1.2fr; gap: 60px; padding: 38px 0 24px; scroll-margin-top: 25px; }
+.desktop-status h3 { font-size: 26px; line-height: 1.25; letter-spacing: -.6px; font-weight: 550; }
+.desktop-status p { font-size: 13px; line-height: 1.7; color: #656b60; }
+.desktop-status .text-link { display: inline-block; font-size: 12px; margin-right: 24px; margin-bottom: 10px; }
+.organization-future { border-top: 1px solid #d7d8ce; padding-top: 20px; font-size: 12px; line-height: 1.7; color: #656b60; }
+@media (max-width: 1100px) { .organization-card { padding: 23px; } .organization-card-top { display: block; } .implementation { display: inline-block; margin-top: 10px; } .work-example li { grid-template-columns: 90px 1fr; } }
+@media (max-width: 800px) { .organization-section { padding: 55px 0; } .organization-heading, .desktop-status { grid-template-columns: 1fr; gap: 22px; } .organization-grid { grid-template-columns: 1fr; } .organization-heading h2 { letter-spacing: -1px; } .organization-card h3 { font-size: 27px; } .organization-card-top { display: flex; flex-wrap: wrap; } .implementation { margin-top: 0; } }
+@media (max-width: 520px) { .organization-card { padding: 22px 17px; } .work-example li { grid-template-columns: 1fr; gap: 3px; } .organization-card h3 { font-size: 24px; } .organization-heading h2 { font-size: 34px; } .organization-heading > p { font-size: 14px; } }

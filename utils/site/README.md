@@ -43,3 +43,9 @@ R2 execution, and OneDrive sign-in remains future work. Avoid numerical
 test totals on the page so a new core test cannot silently stale a headline.
 Revisit the status prose when host qualification changes. Keep historical and
 synthetic evidence distinct from production qualification.
+
+The organizational examples connect file operations to concrete team benefits.
+Their status badges and desktop-status paragraph distinguish implemented core
+rules, released desktop features, and integration still in progress. Keep these
+in sync with the download section. Presentation checks for this addition are in
+`verification/organization-benefits-20261112/`.

@@ -1,0 +1,14 @@
+{
+  "viewports": [
+    1440,
+    768,
+    390,
+    320
+  ],
+  "scenarios": 3,
+  "clipboard": "success and denied paths passed",
+  "keyboard": "skip link passed",
+  "reducedMotion": "passed",
+  "noJavaScript": "passed",
+  "consoleErrors": []
+}

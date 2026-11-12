@@ -1,0 +1,15 @@
+{
+  "browser": "158.0.8127.18",
+  "scenarios": 4,
+  "widths": [
+    1440,
+    768,
+    390,
+    320
+  ],
+  "noHorizontalOverflow": true,
+  "anchorsValid": true,
+  "noJavaScriptContent": true,
+  "preview3DownloadsPreserved": true,
+  "errors": []
+}

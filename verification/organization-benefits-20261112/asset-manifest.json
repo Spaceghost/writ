@@ -1,0 +1,22 @@
+{
+  "index.html": {
+    "sha256": "d45fa35991a892bccd0145ccf722de3994f9ba8f4df31619cfc09746a10a09a0",
+    "bytes": 33307,
+    "type": "text/html; charset=utf-8"
+  },
+  "style.css": {
+    "sha256": "e3c1bc023ace1bb7aaf6cc9cdd926ddd0648b66406809a827532833b38518814",
+    "bytes": 32234,
+    "type": "text/css; charset=utf-8"
+  },
+  "site.js": {
+    "sha256": "fd3049f663ac8fa6647b1ce68968ab6e703ea6f5248e3e393a1533a1e5d9d9c3",
+    "bytes": 2638,
+    "type": "text/javascript; charset=utf-8"
+  },
+  "mark.svg": {
+    "sha256": "a3beea32d805bad5edfc135e36f5ec5f7097784ac1368a3b6c431830733d2794",
+    "bytes": 264,
+    "type": "image/svg+xml"
+  }
+}
