@@ -1,0 +1,34 @@
+{
+  "url": "https://spacegho.st/writ/#organizations",
+  "checkedAt": "2026-11-12T03:19:26.647Z",
+  "initialCheck": "Cloudflare removes the HTML ETag while injecting its challenge. Final check compares all authored bytes after removing only that observed injected script.",
+  "checks": [
+    {
+      "name": "index.html",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": true
+    },
+    {
+      "name": "style.css",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": false
+    },
+    {
+      "name": "site.js",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": false
+    },
+    {
+      "name": "mark.svg",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": false
+    }
+  ],
+  "organizationCards": 4,
+  "preview3DownloadsPreserved": true,
+  "browserErrors": []
+}

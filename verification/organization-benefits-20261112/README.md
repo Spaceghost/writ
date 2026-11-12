@@ -30,4 +30,10 @@ These are website checks, not new Bend or host qualification evidence. Existing
 core and platform evidence remains unchanged. Browser scripts and screenshots
 are retained outside the checkout in `/var/home/jack/build/writ-drive/`.
 
-Deployment identity and live checks are recorded separately after publication.
+Published at <https://spacegho.st/writ/#organizations> from source
+`33099bac9fcbc8198c0d2ccb21810b2c1479f2b0`. `deployment.json` records the
+100% active Worker version and unchanged routes; `live-check.json` records
+HTTP, exact authored asset hashes, and browser checks. Cloudflare injects its
+own challenge script and removes the HTML ETag, so HTML comparison removes
+only that observed script. The initial ETag expectation and final check are
+both recorded. Other assets match without normalization.

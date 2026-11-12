@@ -1,0 +1,32 @@
+{
+  "url": "https://spacegho.st/writ/#organizations",
+  "source_commit": "33099bac9fcbc8198c0d2ccb21810b2c1479f2b0",
+  "worker": "writ-site",
+  "worker_tag": "d5a4308c9eb94dc7ab9b29b02af2de11",
+  "bundle_sha256": "4c42c56fe30a1dc0f37302dc3bff902bac0e5c22b961d472a919f33a9e718141",
+  "routes": [
+    "spacegho.st/writ",
+    "spacegho.st/writ/*"
+  ],
+  "route_changes": false,
+  "uploaded_at": "2026-11-12T03:18:06.947Z",
+  "active_deployment": {
+    "id": "43950c8a-1957-4f34-9756-c9de629d184e",
+    "source": "api",
+    "strategy": "percentage",
+    "annotations": {
+      "workers/message": "Writ organization examples; reviewed source 330...",
+      "workers/triggered_by": "upload"
+    },
+    "versions": [
+      {
+        "version_id": "b62e88cd-b37f-4dfa-95d9-e167fe84a4fb",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-11-12T03:18:06.479239Z"
+  },
+  "upload_version_id": "b62e88cdb37f4dfa95d9e167fe84a4fb",
+  "deployment_id": "43950c8a-1957-4f34-9756-c9de629d184e",
+  "version_id": "b62e88cd-b37f-4dfa-95d9-e167fe84a4fb"
+}
