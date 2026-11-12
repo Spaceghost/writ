@@ -55,6 +55,15 @@ passed the complete suite, ordinary proofs, OpenSpec and repository tooling
 checks. `hosted-core.json` retains the exact head, run and artifact digest.
 This evidence follow-up changes documentation and manifests only.
 
+The same implementation's [native Windows run](https://github.com/Spaceghost/writ/actions/runs/43154211143)
+passed policy generation, real mounted reads and private-pipe checks, but
+failed its strict LPAC confinement gate. The byte worker reported Winsock
+startup 10107 and clipboard/COM initialization failures, so those probes
+receive no denial credit. The separate no-data diagnostic passed; it does not
+qualify the byte worker. `windows-confinement.txt` retains the native observation
+excerpt. This reproduces the previously documented platform gap; no gate or
+profile was weakened.
+
 These are synthetic monitor, storage, witness and receiver facts. They do not
 establish authenticated storage, real crash recovery, external receiver
 idempotency, legal admissibility, a cryptographic history chain, or protected

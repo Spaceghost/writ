@@ -16,3 +16,6 @@ Branch: `lane/security-milestone`
 - Bounded shared-model tranche complete; broader native CI runs retain their
   separate results and do not qualify a corporate profile.
 - Native corporate store/witness/confinement qualification remains pending.
+- Native Windows run `43154211143` reproduced the known incomplete byte-worker
+  confinement result (Winsock 10107 and clipboard/COM initialization). Mount
+  and pipe steps passed; the strict gate remains failed. Evidence retained.
