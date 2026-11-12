@@ -1,6 +1,9 @@
 # Durable publication tasks
 
-All implementation and integration work below is pending.
+The shared Bend preparation/confirmation, exact-record recovery and receiver
+models are implemented; see [traceability](../../traceability/durable-publication.md).
+The combined implementation and native integration tasks below remain pending.
+Model execution does not satisfy their storage, crash or confinement evidence.
 
 ## 1. Implement and verify
 

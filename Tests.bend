@@ -48,6 +48,7 @@ import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
 import ./IssuanceBoundaryTests.bend as IssuanceBoundary
 import ./AuditTests.bend as Audit
+import ./DurablePublicationTests.bend as DurablePublication
 import ./RendezvousTests.bend as Rendezvous
 import ./RendezvousBoundaryTests.bend as RendezvousBoundary
 import ./PropertyTests.bend as Properties
@@ -118,6 +119,7 @@ def main() -> IO(Unit):
     Issuance.main()
     IssuanceBoundary.main()
     Audit.main()
+    DurablePublication.main()
     Rendezvous.main()
     RendezvousBoundary.main()
     Properties.main()

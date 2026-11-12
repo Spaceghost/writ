@@ -1,0 +1,589 @@
+PASS: PH-006 an admission with every control established records the worker Running and delivers only its input reference
+PASS: PH-014 a CPU admission without accelerator isolation records backend Cpu
+PASS: PH-006 the lower report meets the lower profile when that profile is the admitted one
+PASS: PH-014 the same accelerator profile is admitted once isolation is established
+PASS: PH-006 an input whose earlier worker was reclaimed admits a new worker
+PASS: PH-006 address isolation missing alone denied MissingControl with no effect
+PASS: PH-006 no ambient network missing alone denied MissingControl with no effect
+PASS: PH-006 output mediation missing alone denied MissingControl with no effect
+PASS: PH-006 quota control missing alone denied MissingControl with no effect
+PASS: PH-006 no inherited routes missing alone denied MissingControl with no effect
+PASS: PH-006 accelerator isolation missing alone denied MissingControl with no effect
+PASS: PH-001 an admission on a non-delegable session with no bound profile denied UnknownProfile
+PASS: PH-001 a later request cannot switch profiles: a session bound under the accelerator profile is denied on a CPU-only report that the CPU profile accepts
+PASS: PH-001 an admission reads the presenting session's own binding when another worker session is bound under another profile
+PASS: PH-006 a profile not listing the worker family denied MissingControl with no effect
+PASS: PH-006 a profile requiring no controls admits nothing
+PASS: PH-006 a report without the publication family denied UnsupportedFamily with the monitor profile unchanged
+PASS: PH-006 a report meeting only a lower profile denied for the admitted profile with the monitor profile unchanged
+PASS: PH-006 a report with every family but only the lower profile's controls denied MissingControl
+PASS: PH-006 one unmediated route among mediated ones denied UnmediatedRoute before any DeliverInputs
+PASS: PH-006 an unmediated first route denied UnmediatedRoute
+PASS: PH-006 an admission given a fact other than an Inventory denied WrongPhase
+PASS: PH-014 an accelerator profile not listing isolation, on a target without it, denied UnisolatedAccelerator and not downgraded
+PASS: PH-006 an admission presenting an input reference the worker session does not hold denied Identity NotHolder
+PASS: PH-006 an admission presenting the worker's input reference on the client session denied Identity NotHolder
+PASS: PH-007 an admission on a delegable session denied DelegableSession with no effect
+PASS: PH-007 after admission a delegation from the worker session denied NotDelegable
+PASS: PH-006 a second admission on an occupied input slot denied SlotOccupied with no DeliverInputs
+PASS: PH-006 an input held by a running worker listed after a reclaimed one denied SlotOccupied
+PASS: PH-006 a worker on another slot does not block admission on the input
+PASS: PH-007 a charge within the quota adds only to quota_used and emits nothing
+PASS: PH-007 a charge reaching exactly the quota limit is accepted
+PASS: PH-007 a charge beyond the quota denied QuotaExhausted with the state unchanged and no effect
+PASS: PH-007 after exhaustion the worker's phase and its input entry's rights are unchanged
+PASS: PH-007 a charge for a worker never admitted denied UnknownWorker
+PASS: PH-007 a charge from a revoked worker denied WrongPhase
+PASS: PH-007 a charge from a prepared worker denied WrongPhase
+PASS: PH-007 a charge given a fact other than a ResourceRequest denied WrongPhase
+PASS: PH-007 a charge after the worker's input was retired denied Identity Retired
+PASS: PH-007 a charge at the input's expiry denied Identity Expired
+PASS: PH-007 a public diagnostic from a running worker denied DiagnosticSink
+PASS: PH-007 a non-public diagnostic is accepted with no effect
+PASS: PH-007 a diagnostic from a worker never admitted denied UnknownWorker
+PASS: PH-007 a diagnostic from a revoked worker denied WrongPhase
+PASS: PH-007 a diagnostic given a fact other than a Diagnostic denied WrongPhase
+PASS: PH-007 a diagnostic after the worker's input was retired denied Identity Retired
+PASS: PH-001 a native write offer for an admitted worker denied FastPathUnavailable
+PASS: PH-001 a native write offer given another fact denied WrongPhase
+PASS: PH-002 open_session binds the evidence's caller through HostIdentity with no effect
+PASS: PH-001 open_session on a target without the session family denied UnsupportedFamily
+PASS: PH-002 open_session with evidence inherited from an unbound session denied Identity UnknownSession
+PASS: PH-001 open_session given a fact other than SessionEvidence denied WrongPhase
+PASS: PH-002 open_session as a worker binds the session non-delegable under its profile even when the target reports it delegable
+PASS: PH-007 a worker session the target reported delegable still cannot delegate
+PASS: PH-002 a client session the evidence reports non-delegable is bound non-delegable
+PASS: PH-002 a client session the monitor's role makes non-delegable is bound non-delegable even when the evidence reports it delegable
+PASS: PH-001 open_session as a worker under a profile id the monitor has not configured denied UnknownProfile
+PASS: PH-002 open_session as a worker with evidence inherited from an unbound session denied Identity UnknownSession
+PASS: PH-002 open_session records the worker session's profile binding used by the fixtures
+PASS: PH-001 Error.equal compares the HostIdentity reason inside Identity
+PASS: PH-002 a Use claiming another subject on the client's session resolves to the client's caller
+PASS: PH-002 the worker's Use of its input resolves to the owner's caller, not the worker session's
+PASS: PH-002 a read and a write within the root's rights are granted
+PASS: PH-002 a Use requesting rights the entry lacks denied RightsNotHeld
+PASS: PH-002 a Use for a write outside its requested rights denied OperationNotPermitted
+PASS: PH-002 a Use for a read outside its requested rights denied OperationNotPermitted
+PASS: PH-002 a Use naming an operation outside the wire's set denied OperationNotPermitted
+PASS: PH-001 use given a Delegate message denied WrongPhase
+PASS: PH-002 a Use of the worker's input on the client session denied Identity NotHolder
+PASS: PH-001 open_session at a stale revision denied StaleRevision
+PASS: PH-001 use at a stale revision denied StaleRevision
+PASS: PH-006 admit_worker at a stale revision denied StaleRevision
+PASS: PH-007 charge at a stale revision denied StaleRevision
+PASS: PH-007 diagnostic at a stale revision denied StaleRevision
+PASS: PH-001 native_write_offered at a stale revision denied StaleRevision
+PASS: PH-001 states built by the transitions satisfy valid
+PASS: PH-001 valid rejects a state whose identity table is not valid
+PASS: PH-001 valid rejects worker id 0
+PASS: PH-001 valid rejects a worker id not below next_worker
+PASS: PH-001 valid rejects two workers under one id
+PASS: PH-006 valid rejects two unreclaimed workers on one input
+PASS: PH-001 valid rejects a profile id configured twice
+PASS: PH-001 valid rejects a profile binding for a session not in the identity table
+PASS: PH-007 valid rejects a profile binding for a delegable session
+PASS: PH-001 valid rejects a session bound to two profiles
+PASS: PH-001 valid rejects a binding to a profile id not configured
+PASS: PH-006 an admission over an identity table that is not valid denied StaleRevision
+PASS: PH-001 open_session on a state that is not valid denied StaleRevision
+PASS: PH-001 use on a state that is not valid denied StaleRevision
+PASS: PH-007 a charge on a state that is not valid denied StaleRevision
+PASS: PH-007 a diagnostic on a state that is not valid denied StaleRevision
+PASS: PH-001 a native write offer on a state that is not valid denied StaleRevision
+PASS: PH-001 order: the input reference precedes the bound profile
+PASS: PH-006 order: the input reference precedes the protected-profile check
+PASS: PH-006 order: the protected-profile check precedes the occupied slot
+PASS: PH-007 order: the delegable session precedes the occupied slot
+PASS: PH-006 order: the occupied slot precedes the inventory fact
+PASS: PH-006 order: the input reference precedes the inventory fact
+PASS: PH-006 order: the inventory fact precedes the families
+PASS: PH-014 order: accelerator isolation precedes the route inventory
+PASS: PH-007 order: the worker's phase precedes its quota
+PASS: PH-007 order: the input's re-resolution precedes the quota
+PASS: PH-007 order: the worker's phase precedes the diagnostic sink
+PASS: PH-007 order: the input's re-resolution precedes the diagnostic sink
+PASS: PH-002 order: the held rights precede the operation
+PASS: PH-001 issue commits HostIdentity.mint's table, advances the revision once, and emits nothing
+PASS: PH-001 issue on an unbound session denied Identity UnknownSession
+PASS: PH-005 issue for a plan other than its Frontend handle's plan denied PlanMismatch
+PASS: PH-005 issue for a handle the monitor's Frontend state does not hold denied PlanMismatch
+PASS: PH-005 order: issue's plan binding precedes HostIdentity's checks
+PASS: PH-005 issue on a session whose caller has another token than the Frontend handle's owner denied OwnerMismatch
+PASS: PH-005 issue on a session whose caller has another subject than the Frontend handle's owner denied OwnerMismatch
+PASS: PH-005 issue with rights wider than the Frontend handle's denied RightsNotHeld
+PASS: PH-005 issue with rights narrower than the Frontend handle's is accepted
+PASS: PH-005 issue expiring after the Frontend handle denied LeaseExceeded
+PASS: PH-005 order: issue's owner binding precedes its rights and lease bindings
+PASS: PH-005 order: issue's rights binding precedes its lease binding
+PASS: PH-005 delegate commits HostIdentity.delegate's table, advances the revision once, and emits nothing
+PASS: PH-007 a delegation from the worker session through the primitive layer denied Identity NotDelegable
+PASS: PH-008 a seal with zero writers records the exact object, version, and digest with no effect
+PASS: PH-008 a seal with one CPU writer denied LiveWriter
+PASS: PH-008 a read-only seal with one writable mapping left denied LiveWriter
+PASS: PH-008 a seal with one device writer denied LiveWriter
+PASS: PH-008 a seal for a worker never admitted denied UnknownWorker
+PASS: PH-008 a seal from a revoked worker denied WrongPhase
+PASS: PH-008 a seal after the worker's input was retired denied Identity Retired
+PASS: PH-008 a second seal for a sealed worker denied WrongPhase and the record is not replaced
+PASS: PH-008 order: the once-only seal precedes the writer counts
+PASS: PH-008 order: the worker's phase precedes the writer counts
+PASS: PH-009 a publication through DataOS.commit_from_capability emits exactly one Publish of the sealed digest and spends the ledger once
+PASS: PH-009 a publication before any seal denied NotSealed
+PASS: PH-009 another worker's sealed record does not seal this worker's publication: denied NotSealed
+PASS: PH-008 a path retargeted to another object denied Retargeted
+PASS: PH-008 a path retargeted to another version denied Retargeted
+PASS: PH-008 a path retargeted to another digest denied Retargeted
+PASS: PH-008 a current fact naming another worker denied Retargeted
+PASS: PH-008 a writable mapping reappearing before publication denied LiveWriter
+PASS: PH-008 order: the retarget check precedes the writer counts
+PASS: PH-009 a publication for a worker not Running denied WrongPhase
+PASS: PH-009 order: the writer counts precede the worker's phase
+PASS: PH-009 a publication at the input's expiry on the DataOS context's clock denied Identity Expired
+PASS: PH-001 a publication whose capability registry was revoked denied CommitRejected with the session and ledger returned
+PASS: PH-001 a publication at a stale frontend revision denied CommitRejected with the session and ledger returned
+PASS: PH-001 a publication to a public label denied CommitRejected with the session and ledger returned
+PASS: PH-009 a committed binding naming another artifact denied ArtifactMismatch with the session and ledger returned
+PASS: PH-009 order: the commit precedes the artifact binding
+PASS: PH-009 revocation of the input before authorization denies the publication Identity Retired
+PASS: PH-009 revocation of the client's root before authorization denies the publication Identity Retired
+PASS: PH-009 order: the current artifact precedes the re-resolution
+PASS: PH-009 a second publication of the same invocation denied Replay with no second spend
+PASS: PH-009 order: the replay check precedes the commit
+PASS: PH-009 order: the re-resolution precedes the replay check
+PASS: PH-009 reconcile of a recorded invocation with its digest emits Reconcile with no commit and no spending
+PASS: PH-009 reconcile with a different digest denied Substitution
+PASS: PH-009 reconcile with a logged destination other than the recorded one denied Substitution
+PASS: PH-009 publish records the invocation, the sealed digest, and the committed intent's destination
+PASS: PH-009 reconcile of an unrecorded invocation denied Unrecorded
+PASS: PH-009 reconcile before any publication denied Unrecorded and authorizes nothing
+PASS: PH-010 after revocation the recorded publication still reconciles to the same outcome
+PASS: PH-010 revocation after publication leaves the record unchanged and emits only StopEffects, no recall
+PASS: PH-009 after a restart the recorded publication still reconciles to the same outcome
+PASS: PH-010 revoke retires the input, moves its worker to Revoked, and emits StopEffects for it
+PASS: PH-010 revoking the client's root revokes the worker on the delegated input
+PASS: PH-010 revoking one input leaves a worker on another entry Running
+PASS: PH-010 a later revocation does not stop an already revoked worker again
+PASS: PH-010 a revocation stops every running worker whose input reference is not live at its host, incarnation, and generation
+PASS: PH-010 a later revocation leaves a quiesced worker Quiesced
+PASS: PH-010 quiescing one worker leaves another worker's phase unchanged
+PASS: PH-010 revoke of a slot never allocated denied Identity Forged
+PASS: PH-010 revoke of an already retired slot denied Identity Retired
+PASS: PH-010 reclaim after revoke but before quiesce denied NotQuiesced
+PASS: PH-010 reclaim of a running worker denied NotQuiesced
+PASS: PH-010 quiesce naming the pre-revocation generation denied Identity StaleGeneration
+PASS: PH-010 order: quiesce of a running worker denied WrongPhase before its generation
+PASS: PH-010 quiesce of a worker never admitted denied UnknownWorker
+PASS: PH-010 quiesce with the retired generation moves the worker to Quiesced with no effect
+PASS: PH-010 the order revoke, quiesce, reclaim is accepted and reclaim emits only Reclaim
+PASS: PH-010 reclaim of a worker never admitted denied UnknownWorker
+PASS: PH-010 a second quiesce denied WrongPhase
+PASS: PH-010 a second reclaim denied NotQuiesced
+PASS: PH-010 restart drops the bindings, moves running workers to Revoked, and emits StopEffects
+PASS: PH-010 restart to an incarnation not greater denied Identity StaleIncarnation
+PASS: PH-010 a worker revoked by restart is quiesced and reclaimed in order
+PASS: PH-010 a completion for the running worker's live input is accepted with no effect
+PASS: PH-010 a completion after revoke with the old generation denied Identity Retired
+PASS: PH-010 a completion after restart with the old incarnation denied Identity StaleIncarnation
+PASS: PH-010 a completion fact carrying a Use message denied WrongPhase
+PASS: PH-010 a completion for a revoked worker whose entry is still live denied WrongPhase
+PASS: PH-010 a completion naming an entry no worker holds denied UnknownWorker
+PASS: PH-010 a completion for an entry held only by a reclaimed worker denied UnknownWorker
+PASS: PH-010 a completion for the worker's input on the client session denied Identity NotHolder
+PASS: PH-008 seal at a stale revision denied StaleRevision
+PASS: PH-009 publish at a stale revision denied StaleRevision
+PASS: PH-009 reconcile at a stale revision denied StaleRevision
+PASS: PH-010 revoke at a stale revision denied StaleRevision
+PASS: PH-010 restart at a stale revision denied StaleRevision
+PASS: PH-010 quiesce at a stale revision denied StaleRevision
+PASS: PH-010 reclaim at a stale revision denied StaleRevision
+PASS: PH-010 complete at a stale revision denied StaleRevision
+PASS: PH-001 issue at a stale revision denied StaleRevision
+PASS: PH-005 the primitive delegate at a stale revision denied StaleRevision
+PASS: PH-001 states built by the family 1 and 3 to 5 transitions satisfy valid
+PASS: PH-008 valid rejects a sealed record naming no worker
+PASS: PH-008 valid rejects a worker sealed twice
+PASS: PH-009 valid rejects an invocation recorded twice
+PASS: PH-008 a seal on a state that is not valid denied StaleRevision
+PASS: PH-009 a publication on a state that is not valid denied StaleRevision
+PASS: PH-009 reconcile on a state that is not valid denied StaleRevision
+PASS: PH-010 revoke on a state that is not valid denied StaleRevision
+PASS: PH-010 restart on a state that is not valid denied StaleRevision
+PASS: PH-010 quiesce on a state that is not valid denied StaleRevision
+PASS: PH-010 reclaim on a state that is not valid denied StaleRevision
+PASS: PH-010 complete on a state that is not valid denied StaleRevision
+PASS: PH-001 issue on a state that is not valid denied StaleRevision
+PASS: PH-005 the primitive delegate on a state that is not valid denied StaleRevision
+PASS: PH-001 Error.equal distinguishes the publication and revocation reasons
+HostPrimitives: 216 checks passed
+PASS: AU-001 error includes protected content: admitted event equals the one with an empty diagnostic and another caller token
+PASS: AU-001 error includes protected content: denied event equals the one with an empty diagnostic and another caller token
+PASS: AU-001 error includes protected content: committed event equals the one with an empty diagnostic
+PASS: AU-001 no payload, error-text, credential or caller-token sentinel occurs in an admission event
+PASS: AU-001 no diagnostic or Ref-token sentinel occurs in a commit event, accepted or rejected
+PASS: AU-001 a Ref carrying an unregistered token is rejected by the facade and recorded as CommitRejected
+PASS: AU-001 the payment receipt number of an admitted transfer is absent from its event
+PASS: AU-001 grant scope domains, quote and expiry are absent from the event
+PASS: AU-001 the capability token words are absent from admission and commit events
+PASS: AU-001 committed operation: the wrapper returns the facade's accepted result
+PASS: AU-001 committed operation: kind CommitAccepted, phase Commit, outcome Committed
+PASS: AU-001 committed operation: invocation is the plan's
+PASS: AU-001 committed operation: exact ordered source versions
+PASS: AU-001 committed operation: exact destination version
+PASS: AU-001 committed operation: graph, policy and authority epochs are the plan's
+PASS: AU-001 committed operation: code and operation kind
+PASS: AU-001 committed operation: the sealed artifact from the committed WriteIntent
+PASS: AU-001 committed operation: authenticated subject 7, monitor event id and format version
+PASS: AU-001 committed operation: the artifact follows the binding, not a constant
+PASS: AU-001 commit scope is the session's negotiated plan
+PASS: AU-001 a changed source version changes the event's sources
+PASS: AU-001 a changed destination version changes the event's destination
+PASS: AU-001 a changed graph epoch changes the event's stamp
+PASS: AU-001 a changed policy epoch changes the event's stamp
+PASS: AU-001 a changed authority epoch changes the event's stamp
+PASS: AU-001 Stale denial is returned unchanged and recorded as AdmissionDenied DeniedFor Stale with no scope
+PASS: AU-001 Source denial is returned unchanged and recorded as AdmissionDenied DeniedFor Source with no scope
+PASS: AU-001 Read denial is returned unchanged and recorded as AdmissionDenied DeniedFor Read with the plan scope
+PASS: AU-001 Write denial is returned unchanged and recorded as AdmissionDenied DeniedFor Write with no scope
+PASS: AU-001 Schema denial is returned unchanged and recorded as AdmissionDenied DeniedFor Schema with no scope
+PASS: AU-001 Operation denial is returned unchanged and recorded as AdmissionDenied DeniedFor Operation with no scope
+PASS: AU-001 Origin denial is returned unchanged and recorded as AdmissionDenied DeniedFor Origin with the plan scope
+PASS: AU-001 Payment denial is returned unchanged and recorded as AdmissionDenied DeniedFor Payment with the plan scope
+PASS: AU-001 Destination denial is returned unchanged and recorded as AdmissionDenied DeniedFor Destination with no scope
+PASS: AU-001 InvalidPolicy denial is returned unchanged and recorded as AdmissionDenied DeniedFor InvalidPolicy with no scope
+PASS: AU-001 a Stale-denied plan's caller-written stamp, invocation, sources, destination and code are absent from its event
+PASS: AU-001 a Source-denied plan's caller-written scope is absent from its event
+PASS: AU-001 a Destination-denied plan's caller-written scope is absent from its event
+PASS: AU-001 an Operation-denied plan's caller-written scope is absent from its event
+PASS: AU-001 a Schema-denied plan's caller-written scope is absent from its event
+PASS: AU-001 a Write-denied plan's caller-written scope is absent from its event
+PASS: AU-001 an early-denied event is the same whatever the plan contains
+PASS: AU-001 once the write grant has bound the plan, a Read denial records the plan's scope
+PASS: AU-001 an admitted decision is returned with its ticket
+PASS: AU-001 an admitted decision is recorded as AdmissionAdmitted with no artifact
+PASS: AU-001 an admitted decision's event carries the plan's scope
+PASS: AU-005 a commit rejected for a revoked capability is returned unchanged, keeps the hold and session, and is recorded as CommitRejected NotCommitted
+PASS: AU-005 a commit rejected for the wrong subject is returned unchanged, keeps the hold and session, and is recorded as CommitRejected NotCommitted
+PASS: AU-001 EventRecord.equal holds for two projections of the same decision
+PASS: AU-001 EventRecord.equal separates event id and subject
+PASS: AU-001 EventRecord.equal separates invocation, sources and destination
+PASS: AU-001 EventRecord.equal separates each of the three epochs
+PASS: AU-001 EventRecord.equal separates code and operation kind
+PASS: AU-001 EventRecord.equal separates two denial reasons
+PASS: AU-001 EventRecord.equal separates the sealed artifact
+PASS: AU-001 Outcome.equal separates the four outcomes
+PASS: AU-001 EventKind.equal and Phase.equal separate their constructors
+PASS: AU-001 artifact_equal separates a missing from a present artifact
+PASS: AU-001 Scope.equal separates the not-read marker from a read scope
+PASS: AU-001 denial_equal separates all ten denial reasons
+PASS: AU-001 format: a projected AdmissionAdmitted event round trips
+PASS: AU-001 format: projected AdmissionDenied events for all ten denial reasons round trip, early ones with ScopeNotRead
+PASS: AU-001 format: projected CommitAccepted events round trip with their artifact
+PASS: AU-001 format: a projected CommitRejected event round trips with no artifact
+PASS: AU-001 format: ScopeNotRead events round trip and no caller-written plan word occurs in their encoding
+PASS: AU-001 format: no diagnostic or caller-token sentinel occurs in an encoded event
+PASS: AU-001 format: distinct-valued AdmissionAdmitted, CommitAccepted and CommitRejected records round trip
+PASS: AU-001 format: distinct-valued AdmissionDenied records round trip for every denial reason
+PASS: AU-001 format: distinct-valued ScopeNotRead records round trip
+PASS: AU-001 format: encode emits the documented layout (header, then tag, length and values per field in allowlist order)
+PASS: AU-001 format: under ScopeNotRead every scope field and the absent artifact are length 0
+PASS: AU-001 format: accepted word lists re-encode to exactly themselves
+PASS: AU-001 format: a decoded record and one differing only in version compare unequal
+PASS: AU-001 format: a decoded record and one differing only in kind compare unequal
+PASS: AU-001 format: a decoded record and one differing only in phase compare unequal
+PASS: AU-001 format: field_allowlist() is exactly tags 1 to 11 in order
+PASS: AU-001 format: field_allowed accepts every allowlisted tag
+PASS: AU-001 format: field_allowed refuses the reserved payload, token and text tags, 0 and 15
+PASS: AU-001 format: the length cap is 3 header words, 2 per field and 60 value words
+PASS: AU-001 format: encode of an invocation of 2^32 is None
+PASS: AU-001 format: an invocation of 2^32 - 1 encodes and round trips
+PASS: AU-001 format: encode of an event id or subject of 2^32 is None
+PASS: AU-001 format: encode of a source object or version of 2^32 is None
+PASS: AU-001 format: encode of a destination object or version of 2^32 is None
+PASS: AU-001 format: encode of any of the three epochs at 2^32 is None
+PASS: AU-001 format: encode of 17 sources (more than max_sources) is None
+PASS: AU-001 format: 16 sources encode and round trip
+PASS: AU-001 format: encode of a record whose version is not the format's is None
+PASS: AU-001 format: encode of a record whose kind contradicts its outcome is None
+PASS: AU-001 format: encode of a record whose phase contradicts its kind is None
+PASS: AU-001 format: encode of an artifact on a rejected commit, or none on an accepted one, is None
+PASS: AU-001 format: encode of a scope on an early denial, or none on a scope-reading outcome, is None
+PASS: AU-001 format: version 0 denied UnknownVersion
+PASS: AU-001 format: version 2 denied UnknownVersion
+PASS: AU-001 format: version 0xFFFFFFFF denied UnknownVersion
+PASS: AU-001 format: kind 0 denied UnknownKind
+PASS: AU-001 format: kind 5 denied UnknownKind
+PASS: AU-001 format: empty input, a version word only, and version and kind only denied BadLength
+PASS: AU-001 format: a body length word one short denied BadLength
+PASS: AU-001 format: a body length word one long denied BadLength
+PASS: AU-001 format: a truncated body denied BadLength
+PASS: AU-001 format: one trailing word denied BadLength
+PASS: AU-001 format: a field tagged as payload (12) is denied NotAllowed and builds no event
+PASS: AU-001 format: a field tagged as a token (13) in place of the code is denied NotAllowed and builds no event
+PASS: AU-001 format: a field tagged as text (14) before the event id is denied NotAllowed and builds no event
+PASS: AU-001 format: field tags 0 and 15 are denied NotAllowed
+PASS: AU-001 format: two fields out of allowlist order denied OutOfOrder
+PASS: AU-001 format: a duplicate field denied OutOfOrder
+PASS: AU-001 format: a missing middle field (the subject) denied OutOfOrder
+PASS: AU-001 format: a missing last field (the outcome) denied BadLength
+PASS: AU-001 format: a word after the last field, counted by the body length, denied BadLength
+PASS: AU-001 format: a field length word naming more words than remain denied BadLength
+PASS: AU-001 format: a field one word short (stamp length 2) denied BadLength
+PASS: AU-001 format: a field one word long (stamp length 4) denied BadLength
+PASS: AU-001 format: event id, subject and phase of other than one word denied BadLength
+PASS: AU-001 format: invocation, destination, code and operation of the wrong width denied BadLength
+PASS: AU-001 format: an odd number of source words denied BadLength
+PASS: AU-001 format: more than max_sources sources denied TooLong (inside the length cap)
+PASS: AU-001 format: exactly max_sources sources decode
+PASS: AU-001 format: more than max_words words denied TooLong
+PASS: AU-001 format: an artifact of seven words denied BadLength
+PASS: AU-001 format: an empty invocation with another scope field present denied BadLength
+PASS: AU-001 format: a present invocation with an empty destination denied BadLength
+PASS: AU-001 format: a DeniedFor outcome without its reason word denied BadLength
+PASS: AU-001 format: a Committed outcome with a second word denied BadLength
+PASS: AU-001 format: phase word 2 denied OutOfRange
+PASS: AU-001 format: operation words 0 and 3 denied OutOfRange
+PASS: AU-001 format: outcome word 7 denied OutOfRange
+PASS: AU-001 format: reason word 10 denied OutOfRange
+PASS: AU-001 format: an Admission phase on a CommitAccepted event denied OutOfRange
+PASS: AU-001 format: a Committed outcome under kind AdmissionAdmitted denied OutOfRange
+PASS: AU-001 format: an artifact on a CommitRejected or AdmissionAdmitted event denied OutOfRange
+PASS: AU-001 format: a scope on a Stale denial, or none on a Read denial, denied OutOfRange
+PASS: AU-001 format: a CommitAccepted event without a scope denied OutOfRange
+PASS: AU-001 format order: the length cap precedes the version
+PASS: AU-001 format order: the version precedes the kind
+PASS: AU-001 format order: the kind precedes the body length
+PASS: AU-001 format order: the field walk precedes field widths
+PASS: AU-001 format order: field widths and values precede coherence
+PASS: AU-001 format: a field tag with no length word denied BadLength
+PASS: AU-001 format: phase word 2 on an admission event denied OutOfRange
+PASS: AU-001 format: outcome word 7 on an admission event denied OutOfRange
+PASS: AU-001 format: an outcome of three words or of none denied BadLength
+PASS: AU-001 format: an outcome contradicting only the kind (a Read denial under AdmissionAdmitted, Committed under CommitRejected) denied OutOfRange
+PASS: AU-001 format: encode of a record whose kind alone contradicts its outcome is None
+PASS: AU-001 format: the encoder has no value for a reserved tag, so it could not emit one even if the allowlist named it
+PASS: AU-001 format: FormatError.equal separates all seven reasons
+PASS: AU-001 format: DecodeResult.equal separates events, reasons, and an event from a rejection
+PASS: AU-002 denial reveals a protected source fact: an Origin denial for Bob's object 11 is recorded DeniedFor Origin with Bob's label as data and as control
+PASS: AU-002 denial reveals a protected source fact: the Origin denial event is not releasable to Alice-only sink 1 and is releasable to sink 3
+PASS: AU-002 denial reveals a protected source fact: a Payment denial carries Bob's label, withheld from sink 1, released to sink 3
+PASS: AU-002 denial reveals a protected source fact: a Schema denial carries Bob's label, withheld from sink 1, released to sink 3
+PASS: AU-002 the Origin denial event is withheld from Bob-only sink 2 (Alice's destination and request) and from Mallory's sink 7
+PASS: AU-002 the destination's owner label is an influence as data and as control
+PASS: AU-002 the record holds the same event the wrapper returns
+PASS: AU-002 an admission event carries the requester's own label (Alice, subject 0) as a control influence
+PASS: AU-002 Mallory's denied request is withheld from the Alice-and-Bob sink 3, which may not learn that Mallory asked, and released to sink 4
+PASS: AU-002 a subject of 2^32 does not wrap onto Alice's id 0: its requester influence is the maximal restriction
+PASS: AU-002 a requester outside the DLM registry (subject 7) makes the event releasable to no fixture sink
+PASS: AU-002 multiple owners contribute evidence: Bob and Alice are separate influences and event_owners gives Bob then Alice
+PASS: AU-002 multiple owners contribute evidence: no owner's influence is merged into another's label
+PASS: AU-002 multiple owners contribute evidence: a sink satisfying Alice but not Bob is withheld, one satisfying both is released
+PASS: AU-002 multiple owners contribute evidence: a second Alice entry in the label table does not remove Bob's influence
+PASS: AU-002 event_owners lists each owner once
+PASS: AU-002 an unlabelled source gives the maximal-restriction influence and the event is releasable to no fixture sink
+PASS: AU-002 two identical label entries for one object give the maximal-restriction influence and no fixture sink
+PASS: AU-002 two label entries naming different owners give the maximal-restriction influence and no fixture sink
+PASS: AU-002 a duplicate label entry behind an unrelated head entry gives the maximal-restriction influence and no fixture sink
+PASS: AU-002 a duplicated entry for the second source gives the maximal restriction at that source's position
+PASS: AU-002 a label entry for another version of the same object does not match: maximal restriction, no fixture sink
+PASS: AU-002 an empty label table gives an event releasable to no fixture sink
+PASS: AU-002 object_influence returns the table entry, or the maximal restriction on a missing or ambiguous entry
+PASS: AU-002 a sink whose DLM label flows but whose clearance lacks the source's secrecy bit is withheld
+PASS: AU-002 a sink whose DLM label flows but which does not tolerate the source's untrusted bit is withheld
+PASS: AU-002 the event's secrecy and untrusted sets are the source policy's
+PASS: AU-002 context secrecy and untrusted sets join every source policy in the context
+PASS: AU-002 context secrecy and untrusted sets include an origin rule's bits outside its source's
+PASS: AU-002 context secrecy and untrusted sets join every origin rule of a source
+PASS: AU-002 an event is withheld when the snapshot epoch is not the expected epoch
+PASS: AU-002 an admitted event and an Origin-denied event for the same plan and label table have equal influences, secrecy and untrusted sets
+PASS: AU-002 a Payment-denied event has the admitted event's policy, which is admission_policy of the request
+PASS: AU-002 the test-side EventPolicy.equal separates a different requester and a different label table
+PASS: AU-002 decision_influences is the sources and destination as data, then the same objects as control
+PASS: AU-002 source_influences gives one data influence per source in manifest order
+PASS: AU-002 a context source policy for another object (13, Mallory's) is a control influence of the Source denial
+PASS: AU-002 the control copies of the plan's objects are on the event
+PASS: AU-002 context_influences is every context source policy's object, then the destination policy's object, as control
+PASS: AU-002 a commit event's policy includes BF.binding()'s joined source and destination labels as a control influence owned by the destination's owner
+PASS: AU-002 the commit binding influence follows the resolved binding's labels
+PASS: AU-002 a committed event is withheld from a sink that satisfies the object and requester labels but not the binding's
+PASS: AU-002 a commit with no resolvable binding carries the maximal-restriction control influence
+PASS: AU-002 a commit event carries the requester, the session plan's objects and the transfer context's secrecy and untrusted sets
+PASS: AU-002 the commit record holds the same event the wrapper returns
+PASS: AU-002 a commit event's influences are the plan's objects as data and control, the transfer context's policy objects, the binding and the requester, in that order
+PASS: AU-002 a rejected commit has the accepted commit's policy (the policy does not read the result)
+PASS: AU-002 an early-denied (ScopeNotRead) event joins only the requester's stream, whatever objects the plan names
+PASS: AU-002 a ScopeRead denial joins every influence owner's stream
+PASS: AU-002 an early-denied event from a subject of 2^32 joins only Top's stream
+PASS: AU-003 owner queries another owner's stream: Alice's query of Bob's stream is refused, identically with zero and with five Bob events
+PASS: AU-003 an Alice-stream query omits Bob-only events and withholds the mixed event through Alice's sink 1
+PASS: AU-003 a reader holding Alice and Bob grants through sink 1 sees no mixed event in either stream: there is no operator widening
+PASS: AU-003 Bob's reader sees Bob's own event through Bob's sink 2 and neither Alice's nor the mixed one
+PASS: AU-008 Mallory's early-denied request naming Alice's objects is releasable to sink 4 yet absent from Alice's stream: the response equals the one for an empty log
+PASS: AU-008 Alice's own early-denied request joins her stream while Mallory's, naming the same objects, does not
+PASS: AU-003 baseline: Alice's reader with her current grant through sink 1 receives her five visible events
+PASS: AU-003 an authorized reader uses an unauthorized sink: the same query through registered sink 2, which her grant does not name, is refused
+PASS: AU-003 the same query through unregistered sink 9 is refused although grant 107 names sink 9
+PASS: AU-003 a sink id registered twice is ambiguous and refused
+PASS: AU-003 query grant is revoked: at revision r the page is released, and revoke_read moves the state to r+1
+PASS: AU-003 a query validated at revision r is refused after the revocation moved the state to r+1 (stale)
+PASS: AU-003 the same query at revision r+1 is refused and first_failed_gate names GrantRevoked
+PASS: AU-003 revoke_read marks only the named grant: Bob's grant 102 still answers
+PASS: AU-003 revoke_read at a stale revision is rejected and keeps the revision
+PASS: AU-003 revoke_read of an unknown or ambiguous grant id is rejected
+PASS: AU-003 revoking an already revoked grant is rejected and advances no revision
+PASS: AU-003 a later revocation of another grant keeps the earlier revocation in force
+PASS: AU-003 a grant is expired at now == valid_until (refused, GrantExpired) and still current one tick before
+PASS: AU-003 a grant for another reader does not answer: Bob's reader asking for Alice's stream through sink 1 is refused
+PASS: AU-003 a grant issued at an earlier epoch is refused (GrantEpoch)
+PASS: AU-003 an epoch advance withdraws a grant of the old epoch (GrantEpoch)
+PASS: AU-003 visibility is judged at the state's epoch: with grants and snapshot at epoch 4 the events show, with the snapshot still at epoch 3 none does
+PASS: AU-003 two grants matching one reader, owner and sink are ambiguous and refused
+PASS: AU-003 grant_current is unrevoked, of the state's epoch and unexpired, re-derived from the state at the call
+PASS: AU-003 a query at an older or a later revision than the state's is refused
+PASS: AU-008 Response has no total field; the page holds exactly the five visible events of eight stored
+PASS: AU-008 Alice's stream holding only a hidden mixed denial gives exactly Page{[], None}, the response for no events at all
+PASS: AU-008 a hidden denial placed first changes nothing in the response
+PASS: AU-008 a hidden denial placed in the middle changes nothing in the response
+PASS: AU-008 a hidden denial placed last changes nothing in the response
+PASS: AU-008 pagination: page 1 of limit 2 holds the first two visible events and a cursor at view offset 2, equal to the run without hidden events
+PASS: AU-008 pagination: page 2 from that cursor holds the next two visible events and a cursor at view offset 4, equal to the run without hidden events
+PASS: AU-008 pagination: the last page holds the fifth visible event and no cursor, equal to the run without hidden events
+PASS: AU-008 a cursor issued to another reader (Bob's) is refused
+PASS: AU-008 a cursor for another owner's stream is refused
+PASS: AU-008 a cursor from an older epoch is refused
+PASS: AU-008 a view never contains event_id: the views of two logs whose events differ only in event_id are equal
+PASS: AU-008 the page follows the visible view's append order; Query has no sort input
+PASS: AU-008 distinct secret denial reasons: unknown version, no grant, wrong sink, revoked, expired, bad cursor, limit 0, limit 17 and an exhausted budget all give Refused{public_denial()}
+PASS: AU-008 an unknown query format version is refused (UnknownVersion)
+PASS: AU-009 a page limit of 0 or of max_page()+1 is refused (LimitOutOfRange)
+PASS: AU-009 limits 1 and max_page() are accepted
+PASS: AU-009 query exceeds its work budget: work 3 over five visible events with limit 5 is refused, with no partial page
+PASS: AU-009 the same query with work 5 succeeds
+PASS: AU-009 hidden events consume no work: with three hidden events added, work 5 still succeeds
+PASS: AU-009 skipping to a cursor charges one unit per visible event skipped: offset 2 and limit 3 need work 5
+PASS: AU-009 a budget that runs out while skipping to the cursor is refused, not answered with an empty page
+PASS: AU-009 seeing that visible events remain after a full page costs no work
+PASS: AU-003 a reader whose sink satisfies both owners sees the mixed denial event with DeniedFor{Origin{}}
+PASS: AU-007 remote telemetry has no grant: from empty(...) every channel to every sink, for either owner and any exporter, is Withheld{} with no effects
+PASS: AU-007 baseline: Alice's exporter with her Events grant for sink 1 is Sent one emission to sink 1 holding her five visible views
+PASS: AU-007 a grant for another sink does not answer: the same Events export to registered sink 2 is withheld
+PASS: AU-007 a grant for another channel does not answer: a Metric grant used for Events is withheld, while the Metric export it names is sent
+PASS: AU-007 a grant for another exporter does not answer: exporters 63 and 61 sending Alice's stream to sink 1 are withheld
+PASS: AU-007 a grant for another owner does not answer: Alice's exporter sending Bob's stream to sink 1 is withheld
+PASS: AU-007 an unregistered sink is withheld although grant 205 names sink 9
+PASS: AU-007 two export grants naming one exporter, owner, sink and channel are ambiguous and withheld
+PASS: AU-007 an export request of format version 0 or 2 is withheld (UnknownVersion)
+PASS: AU-007 export authority is revoked: at revision r the export is Sent, and revoke_export moves the state to r+1
+PASS: AU-007 after revoke_export the export at revision r+1 is withheld and first_failed_gate names GrantRevoked
+PASS: AU-007 after revoke_export the export validated at revision r is withheld (stale)
+PASS: AU-007 an export at an older or a later revision than the state's is withheld
+PASS: AU-007 a revoked exporter is not rerouted: its Events export to sinks 2, 3 and 4 is withheld too
+PASS: AU-007 revoke_export marks only the named grant: Alice's Metric grant 202 still sends
+PASS: AU-007 an expired export grant is withheld at now == valid_until (GrantExpired) and sends one tick before
+PASS: AU-007 an epoch advance withdraws an export grant of the old epoch, and a grant of an earlier epoch is withheld (GrantEpoch)
+PASS: AU-007 an installed grant whose revoked flag is set is withheld (GrantRevoked)
+PASS: AU-007 revoke_export is rejected at a stale revision (keeping it), for an unknown or ambiguous id, and for an already revoked grant
+PASS: AU-007 a later revocation of another export grant keeps the earlier revocation in force
+PASS: AU-007 a re-installed grant beside its revoked record is ambiguous and withheld (NoGrant), at the same epoch and after an epoch advance
+PASS: AU-007 the Events emission for Alice's sink 1 omits the mixed Bob event, and its words equal those for a log without it
+PASS: AU-007 Bob's own event, a commit by subject 7 and Mallory's early denial change no Events word; a log of only hidden events sends an empty batch
+PASS: AU-007 an event releasable to the export sink but outside the grant owner's stream (Mallory's early denial through sink 4) changes no Events, Metric or Alert word
+PASS: AU-007 through the both-owners sink 3 the mixed event is releasable and its view is emitted to sink 3
+PASS: AU-007 the metric over a log with three visible matching events and two hidden ones is 3, equal to the metric over the log without the hidden ones
+PASS: AU-007 the metric counts only visible events of the rule's kind: 1 admission, 0 when every denial is hidden, 0 commits
+PASS: AU-007 metric_count is a count over the visible view, and a count of 2^32 is withheld rather than wrapped
+PASS: AU-007 an alert rule matching AdmissionDenied emits nothing for a hidden denial, and the result equals that for a log without it
+PASS: AU-007 an alert rule matching AdmissionDenied emits one alert for a visible denial, one per visible matching event in append order
+PASS: AU-007 a view encoding has no event id field and is rejected by the event decoder (OutOfOrder), so it never passes as a stored event
+PASS: AU-007 exports never carry event_id: Events of two logs whose events differ only in event_id are equal
+PASS: AU-007 view_encode is Task 2's encoding without the event id, and is None for a wrong version, kind, phase, artifact or scope, a subject or invocation of 2^32, or more than max_sources() sources
+PASS: AU-007 content with a view that does not encode is withheld, never sent truncated, partial or as an empty batch
+PASS: AU-007 no Events, Metric or Alert emission word equals a Task 1 payload, error-text, credential or caller-token sentinel
+PASS: AU-007 no fallback: Transmission has only Sent and Withheld (an exhaustive match without a wildcard), and Withheld carries nothing
+PASS: AU-007 no grant, an unregistered sink, revoked, expired, other-epoch, unknown version and stale revision all give exactly Withheld{} with no effects
+Audit: 285 checks passed
+PASS: DP unavailable witness blocks preparation
+PASS: DP changed witness blocks preparation
+PASS: DP sink without persistent idempotency contract blocks preparation
+PASS: DP sink backend must match checked intent
+PASS: DP revocation before preparation rejects through existing capability gate
+PASS: DP checked artifact must match sealed output
+PASS: DP terminal head refuses preparation without wrapping
+PASS: DP terminal head cannot confirm itself as a successor
+PASS: DP successful preparation emits only conditional Persist
+PASS: DP preparation retains original session ledger and host state
+PASS: DP unknown commit releases nothing and retains pending transaction
+PASS: DP definite non-commit preserves reservation and permits retry
+PASS: DP retry after authenticated absence can prepare again
+PASS: DP concurrent preparation blocked while transaction pending
+PASS: DP unknown outcome blocks fresh authorization
+PASS: DP preparation cannot be retried as delivery
+PASS: DP sink receipt cannot authorize an uncommitted transaction
+PASS: DP exact durable record and witness admit one delivery
+PASS: DP uncertain success reconciles the same record
+PASS: DP uncertain failure reconciles without spending
+PASS: DP durable store acknowledgement alone cannot bypass missing witness
+PASS: DP conflicting witness refuses stored transaction
+PASS: DP changed store epoch cannot confirm transaction
+PASS: DP skipped transaction revision cannot confirm transaction
+PASS: DP CAS conflict requires reconciliation instead of reusing old authority
+PASS: DP confirmation promotes complete committed session and ledger together
+PASS: DP substituted artifact rejected by store, receiver and acknowledgement
+PASS: DP substituted backend rejected
+PASS: DP substituted output schema rejected
+PASS: DP substituted secrecy bits rejected
+PASS: DP substituted integrity bits rejected
+PASS: DP substituted operation restrictions rejected
+PASS: DP stripped origin policy rejected
+PASS: DP rewritten owner label rejected even when semantically equivalent
+PASS: DP substituted invocation rejected
+PASS: DP substituted destination rejected
+PASS: DP substituted code identity rejected
+PASS: DP substituted authority stamp rejected
+PASS: DP substituted payment receipt rejected
+PASS: DP stripped committed invocation replay set rejected
+PASS: DP stripped spent receipt set rejected
+PASS: DP substituted account balance rejected
+PASS: DP stripped audit influences rejected
+PASS: DP substituted audit event rejected
+PASS: DP substituted sink identity rejected
+PASS: DP substituted sink generation rejected
+PASS: DP substituted history parent digest rejected
+PASS: DP substituted recovery host identity rejected
+PASS: DP substituted recovery incarnation rejected
+PASS: DP stripped host publication replay state rejected
+PASS: DP substituted sealed object locator rejected
+PASS: DP substituted sealed object version rejected
+PASS: DP stripped origin code restrictions rejected
+PASS: DP substituted origin payment terms rejected
+PASS: DP recovery retries exact authorized record
+PASS: DP recovery neither reauthorizes nor spends again
+PASS: DP missing recovery witness withholds delivery
+PASS: DP same revision with different history digest withholds delivery
+PASS: DP stale witness withholds delivery
+PASS: DP newer witness blocks rolled-back snapshot
+PASS: DP committed authorization cannot be reused as a new attempt
+PASS: DP duplicate store acknowledgement cannot emit another initial delivery
+PASS: DP receiver installs first exact record
+PASS: DP crash after delivery before acknowledgement retries with no second logical publication
+PASS: DP unregistered receiver cannot accept a record
+PASS: DP receiver rejects non-successor committed head
+PASS: DP acknowledged publication has no further delivery
+PASS: DP duplicate acknowledgement is idempotent
+PASS: DP acknowledgement for another committed head rejected
+PASS: DP acknowledgement without current witness rejected
+PASS: DP cold recovery rejects surviving workers and old capability incarnation
+PASS: DP cold recovery refuses missing witness
+PASS: DP cold recovery refuses conflicting history witness
+PASS: DP cold recovery refuses unknown durable outcome
+PASS: DP cold recovery rejects missing host replay projection
+PASS: DP cold recovery rejects missing ledger replay projection
+PASS: DP audit idempotency key separates repeated event sequences across epochs and hosts
+PASS: DP cold recovery uses only authenticated persisted record and fresh host
+PASS: DP cold recovery retains consumed receipt and denies replayed spending
+PASS: DP cold recovery retains the exact sealed artifact and host publication replay entry
+PASS: DP cold recovery requires a strictly newer incarnation even for an empty host
+PASS: DP cold recovery cannot move authorization to a different host
+PASS: DP pending state with a non-idle predecessor is refused
+PASS: DP receiver log beyond the single-record capacity is refused
+DurablePublication checks complete
+ALL DURABLE SECURITY TESTS PASSED

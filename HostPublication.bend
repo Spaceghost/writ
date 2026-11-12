@@ -40,9 +40,10 @@ import ./DataOS.bend as D
 # writers (LiveWriter). It records the exact object, version, and digest. No
 # effect.
 #
-# Family 4, publication (PH-009, PH-001). `publish` is the only transition
-# that releases output, and it releases only through
-# `DataOS.commit_from_capability`. Its order is fixed, first failure reported:
+# Family 4, preparation (PH-009, PH-001). `prepare` performs the existing
+# checks through DataOS once and returns no effect. The legacy pure-model
+# `publish` adapter maps an accepted preparation to its historical result.
+# Protected bindings use DurablePublication instead. Order, first failure:
 #   1. gate        revision differs, or the state is not valid -> StaleRevision
 #   2. sealed      no sealed record for the worker             -> NotSealed
 #   3. current     the fact does not name the sealed worker,
@@ -65,8 +66,8 @@ import ./DataOS.bend as D
 #                  the committed intent's ArtifactId is not
 #                  the sealed digest                           -> ArtifactMismatch
 #   then it records `Publication{invocation, digest, destination}` (the
-#   committed intent's plan destination) and returns
-#   `Published{state, commit, [Publish{intent}]}`.
+#   committed intent's plan destination) in proposed state. prepare returns
+#   Prepared{proposed_state, commit, ref}; the legacy adapter returns Published.
 # Every refusal returns `Refused{state, session, ledger, reason}` with the
 # supplied primitive state, Negotiation session, and ledger, so a denied or
 # mismatched commit spends nothing: on ArtifactMismatch the committed session
@@ -74,22 +75,16 @@ import ./DataOS.bend as D
 # context's negotiation time, the clock the commit itself reads, so the two
 # checks cannot disagree about expiry.
 #
-# Why the types admit no second publication route. (a) The publication effect
-# `Publish{intent}` belongs to `PublishEffect`, which is not a `P.Effect`, so
-# no `P.Step` can carry it: every other transition of every family returns a
-# `P.Step`, and `P.Effect` has no publish variant. (b) `PublishEffect` appears
-# only in `PublishResult.Published`, and `publish` is the only def returning
-# a `PublishResult`; its one `Published` constructor site is step 7's
-# accepting arm, whose intent is the one `DataOS.commit_from_capability`
-# returned in step 6 (no parameter of `publish` has type `B.WriteIntent` or
-# `B.CommitResult`). (c) `Refused` has no effects field (laws below).
-# (d) `reconcile` emits `P.Reconcile{invocation, digest, destination}`, which
-# carries no intent and whose fields are copied from the monitor's own record.
-# (e) `P.native_write_offered` has no accepting branch. Remaining gap,
-# reviewed-only (section 2, as for every `Effect`): Bend datatypes are public,
-# so a target could construct a `Publish` itself; a target-constructed effect
-# is not authorization, and the binding executes only effects taken from a
-# result this monitor returned.
+# Effect boundary. Preparation carries the checked result and resolved audit
+# ref as prospective data, never as installed authority or a release effect.
+# The compatibility adapter alone creates the historical PublishResult.
+# DurablePublication consumes preparation directly and never calls that adapter
+# or this module's narrow reconcile. Protected native bindings must expose
+# only the durable entry points and exclude both legacy effect types.
+# Public Bend constructors and implementation helpers are not capabilities;
+# a binding must execute only the effects of its monitor-owned entry points.
+# The legacy API remains for existing pure host-model consumers; it supplies
+# no native durability or corporate qualification.
 #
 # Recovery (PH-009, "Crash recovery repeats a publication attempt").
 # `reconcile(state, rev, invocation, digest, destination)` never authorizes:
@@ -179,10 +174,11 @@ import ./DataOS.bend as D
 # -> `P.Step` / `PublishResult` -> the binding executes the effects. This
 # module never imports `hosts/`, `contrib/`, or `examples/`.
 #
-# Public entry points: `seal` (family 3); `publish`, `reconcile` (family 4);
+# Public entry points: `seal` (family 3); `prepare` (effect-free), legacy
+# `publish`, `reconcile` (family 4);
 # `revoke`, `restart`, `quiesce`, `reclaim`, `complete` (family 5); the types
 # `ArtifactFact`, `QuiescedFact`, `CompletionFact`, `PublishEffect`,
-# `PublishResult`; `no_writers`; and the accessors marked "Public". Every other
+# `PublishResult`, `Preparation`; `no_writers`; and the accessors marked "Public". Every other
 # def is an implementation helper (it reuses the HostPrimitives helpers
 # `current`, `reresolve`, `worker_at`, `seal_at`, `publication_at`,
 # `entry_ref`, `same_entry`, and `count_worker`).
@@ -219,6 +215,14 @@ type PublishEffect is Data:
 type PublishResult is Data:
   Published{state: P.State, commit: B.CommitResult, effects: +List<PublishEffect>}
   Refused{state: P.State, session: N.Session, ledger: L.State, reason: P.Error}
+
+# A prospective result, never an installable authorization. There are no
+# publication effects here. A durable binding keeps its original state current
+# until the entire transaction has been confirmed by its protected store.
+# The resolved ref is retained for the audit projection of this exact decision.
+type Preparation is Data:
+  Prepared{proposed_state: P.State, commit: B.CommitResult, ref: F.Ref}
+  Unprepared{state: P.State, session: N.Session, ledger: L.State, reason: P.Error}
 
 # Implementation helper: the commit inputs `publish` threads through its
 # steps, exactly as the monitor supplied them.
@@ -436,8 +440,8 @@ def attempt_invocation(attempt: Attempt) -> Nat:
   T.Plan.invocation(N.Session.plan(attempt_session(attempt)))
 
 # Implementation helper: refuse with the supplied state, session, and ledger.
-def refuse(state: P.State, +attempt: Attempt, reason: P.Error) -> PublishResult:
-  Refused{state, attempt_session(attempt), attempt_ledger(attempt), reason}
+def refuse(state: P.State, +attempt: Attempt, reason: P.Error) -> Preparation:
+  Unprepared{state, attempt_session(attempt), attempt_ledger(attempt), reason}
 
 # Implementation helper: record the released invocation, its digest, and its
 # destination.
@@ -454,13 +458,13 @@ def intent_plan(intent: B.WriteIntent) -> T.Plan:
       plan
 
 # Implementation helper, step 7 and commit: the committed artifact must be
-# the sealed one; only then is the publication recorded and emitted.
+# the sealed one; only then is the prospective publication recorded.
 def p_artifact(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, next: N.Session,
-    updated: L.State, +intent: B.WriteIntent) -> PublishResult:
+    updated: L.State, +intent: B.WriteIntent, ref: F.Ref) -> Preparation:
   match ok:
     case True{}:
-      Published{commit_publication(state, P.Publication{attempt_invocation(attempt), P.sealed_digest(sealed),
-        T.Plan.destination(intent_plan(intent))}), B.Committed{next, updated, intent}, [Publish{intent}]}
+      Prepared{commit_publication(state, P.Publication{attempt_invocation(attempt), P.sealed_digest(sealed),
+        T.Plan.destination(intent_plan(intent))}), B.Committed{next, updated, intent}, ref}
     case False{}:
       refuse(state, attempt, P.ArtifactMismatch{})
 
@@ -470,37 +474,37 @@ def p_artifact(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, 
 # against the entry itself). A mismatch discards the committed session and
 # ledger.
 def p_intent_plan(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, next: N.Session,
-    updated: L.State, +intent: B.WriteIntent) -> PublishResult:
+    updated: L.State, +intent: B.WriteIntent, ref: F.Ref) -> Preparation:
   match ok:
     case True{}:
       p_artifact(B.ArtifactId.equal(B.WriteIntent.artifact(intent), B.ArtifactId{P.sealed_digest(sealed)}),
-        state, sealed, attempt, next, updated, intent)
+        state, sealed, attempt, next, updated, intent, ref)
     case False{}:
       refuse(state, attempt, P.PlanMismatch{})
 
 # Implementation helper, step 6's result. A rejection returns the supplied
 # session and ledger.
 def p_committed(result: B.CommitResult, +state: P.State, +sealed: P.Sealed, +attempt: Attempt,
-    +plan: T.Plan) -> PublishResult:
+    +plan: T.Plan, ref: F.Ref) -> Preparation:
   match result:
     case B.Rejected{_, _}:
       refuse(state, attempt, P.CommitRejected{})
     case B.Committed{next, updated, +intent}:
-      p_intent_plan(T.Plan.equal(intent_plan(intent), plan), state, sealed, attempt, next, updated, intent)
+      p_intent_plan(T.Plan.equal(intent_plan(intent), plan), state, sealed, attempt, next, updated, intent, ref)
 
-# Implementation helper, step 6: the one release route. The Frontend
+# Implementation helper, step 6: the one checked commit invocation. The Frontend
 # reference is the resolved owner and the entry's handle, from monitor state.
-def p_commit(+state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry, caller: F.Caller) -> PublishResult:
+def p_commit(+state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry, +caller: F.Caller) -> Preparation:
   match attempt:
     case Attempt{session, expected_session, expected_ledger, ledger, candidate, context, expected_frontend}:
       p_committed(D.commit_from_capability(session, expected_session, expected_ledger, ledger, candidate,
         F.Ref{caller, I.entry_handle(entry)}, expected_frontend, context), state, sealed, attempt,
-        I.entry_plan(entry))
+        I.entry_plan(entry), F.Ref{caller, I.entry_handle(entry)})
 
 # Implementation helper, step 5 (more than one record for an invocation is
 # unreachable from a valid state, and is a replay too).
 def p_fresh(found: P.PublicationLookup, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry,
-    caller: F.Caller) -> PublishResult:
+    caller: F.Caller) -> Preparation:
   match found:
     case P.NoPublication{}:
       p_commit(state, sealed, attempt, entry, caller)
@@ -511,7 +515,7 @@ def p_fresh(found: P.PublicationLookup, +state: P.State, +sealed: P.Sealed, +att
 # negotiated session's plan (exact plan binding, PH-005): an entry, and every
 # child delegated from it, publishes only the plan it was issued for.
 def p_plan(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry,
-    caller: F.Caller) -> PublishResult:
+    caller: F.Caller) -> Preparation:
   match ok:
     case True{}:
       p_fresh(P.publication_at(P.publications(state), attempt_invocation(attempt)), state, sealed, attempt, entry,
@@ -522,7 +526,7 @@ def p_plan(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +ent
 # Implementation helper, step 4: the worker must still be running (after
 # the re-resolution, so a revoked worker is denied by its identity first).
 def p_phase(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +entry: I.Entry,
-    caller: F.Caller) -> PublishResult:
+    caller: F.Caller) -> Preparation:
   match ok:
     case True{}:
       p_plan(T.Plan.equal(I.entry_plan(entry), N.Session.plan(attempt_session(attempt))), state, sealed, attempt,
@@ -533,7 +537,7 @@ def p_phase(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt, +en
 # Implementation helper, step 4: the worker's input re-resolved on its own
 # session at the DataOS context's time.
 def p_live(resolution: I.Resolution, +state: P.State, +sealed: P.Sealed, +attempt: Attempt,
-    +worker: P.Worker) -> PublishResult:
+    +worker: P.Worker) -> Preparation:
   match resolution:
     case I.Resolved{+entry, caller}:
       p_phase(P.is_running(P.worker_phase(worker)), state, sealed, attempt, entry, caller)
@@ -543,7 +547,7 @@ def p_live(resolution: I.Resolution, +state: P.State, +sealed: P.Sealed, +attemp
 # Implementation helper, step 4: the sealed worker's record (no such worker
 # is unreachable from a valid state: `valid` makes every sealed record name
 # one worker).
-def p_worker(found: P.WorkerLookup, +state: P.State, +sealed: P.Sealed, +attempt: Attempt) -> PublishResult:
+def p_worker(found: P.WorkerLookup, +state: P.State, +sealed: P.Sealed, +attempt: Attempt) -> Preparation:
   match found:
     case P.OneWorker{+worker}:
       p_live(P.reresolve(state, worker, attempt_now(attempt)), state, sealed, attempt, worker)
@@ -551,7 +555,7 @@ def p_worker(found: P.WorkerLookup, +state: P.State, +sealed: P.Sealed, +attempt
       refuse(state, attempt, P.UnknownWorker{})
 
 # Implementation helper, step 3: no writer of any kind.
-def p_writers(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt) -> PublishResult:
+def p_writers(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt) -> Preparation:
   match ok:
     case True{}:
       p_worker(P.worker_at(P.workers(state), P.sealed_worker(sealed)), state, sealed, attempt)
@@ -559,7 +563,7 @@ def p_writers(ok: Bool, +state: P.State, +sealed: P.Sealed, +attempt: Attempt) -
       refuse(state, attempt, P.LiveWriter{})
 
 # Implementation helper, step 3: the current fact names the sealed artifact.
-def p_current(ok: Bool, +state: P.State, +sealed: P.Sealed, +current: ArtifactFact, +attempt: Attempt) -> PublishResult:
+def p_current(ok: Bool, +state: P.State, +sealed: P.Sealed, +current: ArtifactFact, +attempt: Attempt) -> Preparation:
   match ok:
     case True{}:
       p_writers(writers_absent(current), state, sealed, attempt)
@@ -568,7 +572,7 @@ def p_current(ok: Bool, +state: P.State, +sealed: P.Sealed, +current: ArtifactFa
 
 # Implementation helper, step 2 (more than one sealed record for a worker is
 # unreachable from a valid state).
-def p_sealed(found: P.SealLookup, +state: P.State, +current: ArtifactFact, +attempt: Attempt) -> PublishResult:
+def p_sealed(found: P.SealLookup, +state: P.State, +current: ArtifactFact, +attempt: Attempt) -> Preparation:
   match found:
     case P.OneSeal{+sealed}:
       p_current(describes(sealed, current), state, sealed, current, attempt)
@@ -576,7 +580,7 @@ def p_sealed(found: P.SealLookup, +state: P.State, +current: ArtifactFact, +atte
       refuse(state, attempt, P.NotSealed{})
 
 # Implementation helper, step 1.
-def p_gate(ok: Bool, +state: P.State, +worker: Nat, +current: ArtifactFact, +attempt: Attempt) -> PublishResult:
+def p_gate(ok: Bool, +state: P.State, +worker: Nat, +current: ArtifactFact, +attempt: Attempt) -> Preparation:
   match ok:
     case True{}:
       p_sealed(P.seal_at(P.seals(state), worker), state, current, attempt)
@@ -588,12 +592,30 @@ def p_gate(ok: Bool, +state: P.State, +worker: Nat, +current: ArtifactFact, +att
 # `DataOS.commit_from_capability` with the monitor's Negotiation session,
 # ledger, candidate, context, and expected revisions, in the documented
 # order. Only after all seven steps does it record the publication and
-# return exactly one `Publish{intent}`.
-def publish(+state: P.State, expected_revision: Nat, +worker: Nat, +current: ArtifactFact, session: N.Session,
+# return a staged result and resolved audit reference, with no effects.
+def prepare(+state: P.State, expected_revision: Nat, +worker: Nat, +current: ArtifactFact, session: N.Session,
     expected_session: Nat, expected_ledger: Nat, ledger: L.State, candidate: C.Candidate, context: D.Context,
-    expected_frontend: Nat) -> PublishResult:
+    expected_frontend: Nat) -> Preparation:
   p_gate(P.current(state, expected_revision), state, worker, current,
     Attempt{session, expected_session, expected_ledger, ledger, candidate, context, expected_frontend})
+
+# Compatibility adapter for the existing pure host model. This does not
+# provide durable authorization and MUST NOT be bound as a protected native
+# release route. Corporate bindings use DurablePublication.prepare/resolve.
+def legacy_publication(result: Preparation) -> PublishResult:
+  match result:
+    case Prepared{state, B.Committed{session, ledger, +intent}, _}:
+      Published{state, B.Committed{session, ledger, intent}, [Publish{intent}]}
+    case Prepared{state, B.Rejected{session, ledger}, _}:
+      Refused{state, session, ledger, P.CommitRejected{}}
+    case Unprepared{state, session, ledger, reason}:
+      Refused{state, session, ledger, reason}
+
+def publish(state: P.State, expected_revision: Nat, worker: Nat, current: ArtifactFact, session: N.Session,
+    expected_session: Nat, expected_ledger: Nat, ledger: L.State, candidate: C.Candidate, context: D.Context,
+    expected_frontend: Nat) -> PublishResult:
+  legacy_publication(prepare(state, expected_revision, worker, current, session, expected_session,
+    expected_ledger, ledger, candidate, context, expected_frontend))
 
 # Implementation helper: reconcile's comparison step. The effect's fields are
 # the record's own.

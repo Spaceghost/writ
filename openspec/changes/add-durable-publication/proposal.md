@@ -6,7 +6,9 @@ Backplane.commit produces updated pure state and a scoped intent. The host still
 
 ## What Changes
 
-Introduce [durable-publication](specs/durable-publication/spec.md) as a new capability. The requirements are proposed behavior; all implementation tasks remain pending.
+Introduce [durable-publication](specs/durable-publication/spec.md) as a new capability.
+The shared Bend transaction model is implemented; native acceptance remains
+pending. See the [evidence and gaps](../../traceability/durable-publication.md).
 
 ## Capabilities
 

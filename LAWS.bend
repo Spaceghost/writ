@@ -7,6 +7,8 @@ import ./Transfer.bend as Transfer
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
+import ./DurablePublication.bend as DurablePublication
+import ./PublicationRecord.bend as PublicationRecord
 import ./Negotiation.bend as Negotiation
 import ./Core.bend as Core
 import ./Frontend.bend as Frontend
@@ -232,6 +234,53 @@ law publication_refused_emits_nothing:
   for ledger: Ledger.State
   for reason: HostPrimitives.Error
   {HostPublication.PublishResult.effects(HostPublication.Refused{state, session, ledger, reason}) == [] : List<&2, HostPublication.PublishEffect>}
+
+# DP: an unknown store result is never a delivery or a new authorization.
+# These laws quantify the actual resolve entry point, not a fabricated result.
+# They rely on the monitor supplying current state and authenticated facts;
+# they do not prove any native storage, witness or confinement property.
+law durable_unknown_emits_nothing:
+  for current: DurablePublication.Snapshot
+  for record: PublicationRecord.Record
+  for host: HostPrimitives.State
+  for witness: DurablePublication.Witness
+  {DurablePublication.Step.effects(DurablePublication.resolve(
+    DurablePublication.Waiting{DurablePublication.Idle{current}, record, host}, DurablePublication.Unknown{}, witness))
+    == [] : List<&2, DurablePublication.Effect>}
+
+law durable_unknown_preserves_current:
+  for current: DurablePublication.Snapshot
+  for record: PublicationRecord.Record
+  for host: HostPrimitives.State
+  for witness: DurablePublication.Witness
+  {DurablePublication.State.current(DurablePublication.Step.state(DurablePublication.resolve(
+    DurablePublication.Waiting{DurablePublication.Idle{current}, record, host}, DurablePublication.Unknown{}, witness)))
+    == current : DurablePublication.Snapshot}
+
+law durable_uncertain_blocks_preparation:
+  for current: DurablePublication.Snapshot
+  for record: PublicationRecord.Record
+  for host: HostPrimitives.State
+  for witness: DurablePublication.Witness
+  for input: DurablePublication.Input
+  {DurablePublication.Step.effects(DurablePublication.prepare(
+    DurablePublication.Uncertain{DurablePublication.Idle{current}, record, host}, witness, input))
+    == [] : List<&2, DurablePublication.Effect>}
+
+law durable_unconfirmed_cannot_retry:
+  for current: DurablePublication.Snapshot
+  for record: PublicationRecord.Record
+  for host: HostPrimitives.State
+  for witness: DurablePublication.Witness
+  {DurablePublication.Step.effects(DurablePublication.retry(
+    DurablePublication.Waiting{DurablePublication.Idle{current}, record, host}, witness))
+    == [] : List<&2, DurablePublication.Effect>}
+
+law durable_unknown_cannot_restore:
+  for fresh: HostPrimitives.State
+  for witness: DurablePublication.Witness
+  {DurablePublication.restore(fresh, DurablePublication.Unknown{}, witness)
+    == DurablePublication.NoRestore{} : DurablePublication.Restoration}
 
 # AU-001: the admission event `audited_admit` records is the same for every
 # diagnostic and every caller token, for all plans, contexts, labels,

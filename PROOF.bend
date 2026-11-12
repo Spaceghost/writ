@@ -6,6 +6,8 @@ import ./Issuance.bend as Issuance
 import ./HostIdentity.bend as HostIdentity
 import ./HostPrimitives.bend as HostPrimitives
 import ./HostPublication.bend as HostPublication
+import ./DurablePublication.bend as DurablePublication
+import ./PublicationRecord.bend as PublicationRecord
 import ./AuditEvent.bend as AuditEvent
 import ./Dlm.bend as Dlm
 import ./AuditQuery.bend as AuditQuery
@@ -119,6 +121,21 @@ def Laws.publication_refused_preserves_state(state, session, ledger, reason):
   {==}
 
 def Laws.publication_refused_emits_nothing(state, session, ledger, reason):
+  {==}
+
+def Laws.durable_unknown_emits_nothing(current, record, host, witness):
+  {==}
+
+def Laws.durable_unknown_preserves_current(current, record, host, witness):
+  {==}
+
+def Laws.durable_uncertain_blocks_preparation(current, record, host, witness, input):
+  {==}
+
+def Laws.durable_unconfirmed_cannot_retry(current, record, host, witness):
+  {==}
+
+def Laws.durable_unknown_cannot_restore(fresh, witness):
   {==}
 
 # Both sides unfold to `project` over the same plan, the same stuck

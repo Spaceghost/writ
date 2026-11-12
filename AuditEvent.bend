@@ -1025,6 +1025,16 @@ def audited_admit(+plan: T.Plan, +context: T.Context, labels: Labels,
   AuditedAdmission{decision, event,
     Recorded{event, admission_policy(plan, context, labels, caller_subject(caller))}}
 
+# Shared projection for the checked host preparation. This helper performs no
+# authorization and is not a release API. Its caller must supply the result and
+# resolved ref from the single checked invocation, never caller-created data.
+# A durable transaction retains the Recorded value together with that result.
+def record_commit(+session: N.Session, +ref: F.Ref, +result: B.CommitResult,
+    context: OS.Context, labels: Labels, event_id: Nat) -> AuditedCommit:
+  +event = commit_event(session, ref, result, event_id)
+  AuditedCommit{result, event,
+    Recorded{event, commit_policy(session, context, labels, OS.subject(ref))}}
+
 # Public entry point. Calls the DataOS capability commit facade exactly once,
 # with exactly the facade's arguments, and returns its CommitResult unchanged
 # beside the projected event. A rejection therefore keeps the caller's
@@ -1040,9 +1050,7 @@ def audited_commit(+session: N.Session, expected_session: Nat,
     diagnostic: Diagnostic, event_id: Nat) -> AuditedCommit:
   +result = OS.commit_from_capability(session, expected_session, expected_ledger,
     ledger, candidate, ref, expected_frontend, context)
-  +event = commit_event(session, ref, result, event_id)
-  AuditedCommit{result, event,
-    Recorded{event, commit_policy(session, context, labels, OS.subject(ref))}}
+  record_commit(session, ref, result, context, labels, event_id)
 
 # --- Accessors (public entry points) ------------------------------------------
 
