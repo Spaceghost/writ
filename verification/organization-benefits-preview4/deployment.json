@@ -1,0 +1,25 @@
+{
+  "url": "https://spacegho.st/writ/#organizations",
+  "source_commit": "7efc390e95d913ce3014c0d0f0bcb0bce4c62807",
+  "worker": "writ-site",
+  "deployment_id": "40d90dec-d87a-48bb-b153-dce8a0c7be3f",
+  "version_id": "978d9721-46ca-4581-8c7b-65548e52430c",
+  "worker_tag": "d5a4308c9eb94dc7ab9b29b02af2de11",
+  "bundle_sha256": "6ebc3daca81688aad2c8521496f77aebd38488c30b3dd630e446bfe1ba2320ea",
+  "routes": [
+    "spacegho.st/writ",
+    "spacegho.st/writ/*"
+  ],
+  "route_changes": false,
+  "uploaded_at": "2026-11-12T04:19:57.810Z",
+  "upload_response_deployment_id": "978d972146ca45818c7b65548e52430c",
+  "active_versions": [
+    {
+      "version_id": "978d9721-46ca-4581-8c7b-65548e52430c",
+      "percentage": 100
+    }
+  ],
+  "active_deployment_created_at": "2026-11-12T04:19:57.275675Z",
+  "source_annotation": "Writ organizational workflows and preview.4; reviewed source 7efc390e95d913ce3014c0d0f0bcb0bce4c62807",
+  "readback_note": "Deployment-list messages are truncated; the full immutable version annotation matches the source commit."
+}

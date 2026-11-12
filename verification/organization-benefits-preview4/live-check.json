@@ -1,0 +1,45 @@
+{
+  "url": "https://spacegho.st/writ/#organizations",
+  "checkedAt": "2026-11-12T04:20:03.311Z",
+  "checks": [
+    {
+      "name": "index.html",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": true
+    },
+    {
+      "name": "style.css",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": false
+    },
+    {
+      "name": "site.js",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": false
+    },
+    {
+      "name": "mark.svg",
+      "status": 200,
+      "authoredBytesMatch": true,
+      "cloudflareChallengeRemovedForComparison": false
+    }
+  ],
+  "organizationCards": 4,
+  "release": "desktop-v0.1.0-preview.4",
+  "viewports": [
+    1440,
+    390,
+    320
+  ],
+  "downloadLinks": [
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-windows-x64-setup.exe",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-windows-x64-portable.zip",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-linux-x64-setup.run",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/Writ-0.1.0-preview.4-linux-x64-portable.tar.gz",
+    "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.4/SHA256SUMS"
+  ],
+  "browserErrors": []
+}

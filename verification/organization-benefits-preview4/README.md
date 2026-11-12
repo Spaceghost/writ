@@ -38,3 +38,12 @@ and portable archive match the artifacts already exercised on Fedora.
 `release-downloads.json` captures these public downloads. New release-tagged
 setup/recovery guide links also return HTTP 200. Native verification archives
 record twenty S3 and eleven browser/control checks on each operating system.
+
+Published at <https://spacegho.st/writ/#organizations> from presentation source
+`7efc390e95d913ce3014c0d0f0bcb0bce4c62807`. `deployment.json` records the returned
+upload identifier and the confirmed active deployment/version at 100% traffic.
+The full version annotation matches the source; the deployment-list annotation
+is truncated by Cloudflare. Existing Worker settings and routes were preserved.
+`live-check.json` verifies all four authored asset hashes, organizational cards,
+sample instructions, Preview.4 links and responsive browser behavior. Only the
+observed Cloudflare-injected challenge script is removed for HTML comparison.
