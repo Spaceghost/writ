@@ -82,3 +82,19 @@ the library alone also compiles clean without WRIT_CHANNEL_TESTING.
 Mutants (diffs/outputs /home/jadams/tmp/writ-sc-task2/mut2/): no-rights-rejection, first-role-always, leak-received-pidfd, leak-duplicate-pidfd, no-close-rights,
 eof-as-record, unchecked-count, roles-add-no-count-check, no-nonpidfs-check: all exit 1.
 Concern: the cmsg buffer builder in the test is hand-made; classify trusts msg_control/msg_controllen as the kernel would set them.
+
+## Final review fixes
+
+| Finding | Change | Evidence |
+|---|---|---|
+| I-1 | writ_channel_enable sets SO_PASSRIGHTS=0 (83, #ifndef-defined) and fails if it cannot; profile check maps ENOPROTOOPT to ENOTSUP, test exits 77; classify keeps the SCM_RIGHTS reject/close path. rights_rejected now asserts the sender's sendmsg fails with EPERM and the receiver sees no record (EAGAIN); reject_then_accept follows the same pattern; new unexpected_rights_classified covers the close path through the seam. Header and source comments give the FUSE-close-blocks-revocation reason | native-run.txt; mutant drop-passrights fails rights_rejected, reject_then_accept; no-rights-rejection and no-close-rights fail unexpected_rights_classified |
+| M-1 | enable checks SO_DOMAIN==AF_UNIX and SO_TYPE==SOCK_SEQPACKET, else -1/EINVAL; case enable_rejects_stream_socket | mutant no-socket-type-check fails it |
+| M-2 | header sentence: one role per lifetime keeps the lookup unambiguous, not an authority rule; evidence README notes RoleMap and C table are provisioned separately | header, README |
+| M-3 | evidence README example reworded (role process A passes to role process B) | README |
+| M-4 | VERIFICATION.md paragraph rewrapped; verdict is its own sentence; counts updated (29 cases, eleven mutants) | VERIFICATION.md |
+| nit | struct writ_roles comment rewrapped | header |
+
+Result: 29 PASS, RESULT PASS; 20/20 repeats exit 0; gcc and clang strict -Werror clean; library alone compiles clean. Eleven mutants, all exit 1.
+Evidence recaptured in verification/linux-supervisor-channel/ (native-run, native-repeat, mutant-results, mutants/, environment, commands). Scratch: /home/jadams/tmp/writ-sc-final-fix.
+Case names are unchanged, so traceability needed no edit. Bend outputs (bend-focused, suite, proof, verdict) are not recaptured: no .bend file changed.
+Also: local-supervisor-profile.md notes SO_PASSRIGHTS; evidence README lists the 6.16+ kernel requirement and that the test is manual (M-5).

@@ -6,3 +6,8 @@
 2026-11-12T01:27:49Z	controller	Task 2 review: changes requested; fix round 1
 2026-11-12T01:30:35Z	controller	Task 2 fix round 1 3f15722c; re-review dispatched
 2026-11-12T01:31:10Z	controller	Task 2 complete 3f15722c; rebasing on 93f78e0d
+2026-11-12T01:32:52Z	controller	rebased on 93f78e0d (3136); Task 3 dispatched
+2026-11-12T01:40:48Z	controller	Task 3 review; fix round 1; verdict passed
+2026-11-12T01:42:38Z	controller	Task 3 complete 352a8598; final review dispatched
+2026-11-12T01:49:20Z	controller	final review fix first; fix dispatched
+2026-11-12T01:57:44Z	controller	final re-review clean; landing

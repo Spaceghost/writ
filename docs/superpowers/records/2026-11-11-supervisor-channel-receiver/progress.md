@@ -35,3 +35,20 @@ Task 2: fix round 1 3f15722c (27 cases; 9 mutants killed incl. Step 5); scoped r
 Task 2: re-review — all 9 findings Addressed; one nit (header comment line length).
 Ruling: park the nit for the final review's fix pass — cosmetic — cost: none.
 Task 2: complete (3f15722c)
+Rebased on 93f78e0d: count conflict resolved to 3136 (3128 master + 8 Task 1); Tests.bend 3136 verified, no master check lost.
+Task 3: dispatched (BASE f644064e, sonnet)
+Task 3: implemented e0d985be; review spec ✅, quality changes requested (6 minor/medium mapping-precision findings).
+Controller: PROOF --verdict on e0d985be tree exit 0, ALL PROOFS CHECK, kernel e365eba1…
+Ruling: board answer files stay out of the tree (Josh keeps them uncommitted); cite q24.html — cost if wrong: one link.
+Task 3: fix round 1 dispatched (resumed implementer)
+Task 3: fix round 1 352a8598.
+Ruling: fold Task 3 scoped re-review into the final whole-branch review (small docs-only fix; final reviewer told to verify each finding) — cost if wrong: one extra fix round.
+Task 3: complete (352a8598, pending final-review confirmation)
+Final review: dispatched (opus, 93f78e0d..352a8598)
+Final review: Fix first — I-1 (sender SCM_RIGHTS close can block supervisor), M-1..M-5; Task 3 fix round confirmed.
+Ruling: fix I-1 now with SO_PASSRIGHTS=0, fail closed if unavailable (kernel 6.16+ requirement) — a known DoS on the revocation path is cheap to close before landing — cost if wrong: older kernels unsupported (exit 77), already the case for pidfs.
+Ruling: M-5 (native test not in CI) parked, same as channel-identity-test.
+Final fix: dispatched (resumed Task 2 implementer)
+Final fix: f0a6cc97 (SO_PASSRIGHTS=0 before SO_PASSPIDFD, fail closed; socket type check; 29 cases, 11 mutants killed).
+Final re-review: all findings Addressed, no new defects.
+Branch complete; rebased on master e0057cc2 (corpus speed) and pushed to master.
