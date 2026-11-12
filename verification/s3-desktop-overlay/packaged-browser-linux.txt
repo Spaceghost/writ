@@ -1,0 +1,11 @@
+PASS connection form verifies two real storage destinations
+PASS actual copy control displays a pre-upload policy denial
+PASS same copy control persists an approved destination copy
+PASS background watcher observes a real desktop file edit and publishes it
+PASS history control restores actual old bytes without dropping newer restrictions
+PASS activity records both denied and verified operations
+PASS narrow window has no horizontal page overflow
+PASS unauthenticated API calls are refused
+PASS cross-origin mutations are refused
+PASS control API does not expose storage credentials
+PASS no browser runtime errors

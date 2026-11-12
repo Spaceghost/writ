@@ -105,7 +105,7 @@ use the files-and-rules Quit button for this workspace.
 | `app.mjs` | Bounded loopback control requests, private process session, singleton and watcher lifetime. APIs name files and operations, not authority contexts. |
 | `launcher.cpp`, Linux `public-sync/provider.cpp` | Native process launch into the same packaged app; no policy decisions. Windows uses hidden `CreateProcessW`; Linux uses literal `execl`. |
 | `ui/*` | Presentation and requests only. These controls are not authorization. |
-| `Smoke.mjs`, `BrowserSmoke.mjs`, `Lifecycle.mjs`, `S3Fixture.py`, `fixture-pins.json` | Native S3/disk/process/browser/installer probes. SeaweedFS is checksum-pinned test infrastructure, not a shipped runtime dependency or Writ reference policy service. |
+| `Smoke.mjs`, `BrowserSmoke.mjs`, `Lifecycle.mjs`, `S3Fixture.py`, `fixture-pins.json`, `browser-tools/*` | Native S3/disk/process/browser/installer probes. SeaweedFS and the Playwright probe dependency are pinned with integrity hashes. They are test infrastructure, not shipped runtime dependencies or Writ reference policy services. |
 
 The OS, same-account broker/configuration, packaged runtime, S3 service's
 conditional semantics and protected catalog credentials are trusted. A writer
@@ -131,6 +131,13 @@ provisions the pinned real service and runs this probe with the packaged Node.
 Raw fixture credentials/server logs are never published. `BrowserSmoke.mjs`
 drives the actual controls against that service; `Lifecycle.mjs` checks native
 launch and uninstall byte retention in unused account paths.
+
+CI installs the locked browser-probe tools outside the checkout with scripts
+disabled, then passes `--playwright PATH_TO_INDEX_MJS` to the fixture driver.
+The probe uses the runner's installed Edge on Windows and Chrome on Linux and
+records the observed browser version; no browser is bundled in Writ. Screenshots
+are taken after the connection form is cleared, and navigation errors redact
+local session bearers as well as storage credentials.
 
 The contract and remaining shell-integration work are in
 `openspec/changes/add-s3-desktop-overlay/`; evidence is tracked in

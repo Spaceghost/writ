@@ -196,6 +196,23 @@ def exercise(probe):
         check(probe.info(winner)["mounted"], "refused cleanup leaves provider available")
     finally:
         os.close(held)
+    # Synchronize on the real CLI's observed busy response, then release the
+    # descriptor. This checks the drain window without relying on sleep timing.
+    held = os.open(winner / "hello.txt", os.O_RDONLY)
+    closer = subprocess.Popen([probe.exe, "stop", winner], text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    try:
+        ready, _, _ = select.select([closer.stdout], [], [], 5)
+        check(bool(ready) and closer.stdout.readline().startswith("WAITING for open files to close"),
+              "graceful stop observes a retained native descriptor")
+        os.close(held); held = None
+        output = closer.communicate(timeout=10)[0]
+        check(closer.returncode == 0, "graceful stop drains a closing descriptor: " + output.strip())
+    finally:
+        if held is not None:
+            os.close(held)
+        if closer.poll() is None:
+            closer.kill(); closer.wait(timeout=10)
     probe.stop(winner)
     check((winner / "hello.txt").read_bytes() == winner_bytes, "cleanup preserves winner bytes")
     print("ALL LINUX NATIVE PARITY CHECKS PASSED", flush=True)

@@ -16,6 +16,7 @@ import socket
 import subprocess
 import sys
 import tarfile
+import time
 import urllib.request
 import zipfile
 
@@ -91,6 +92,35 @@ let last;for(let attempt=0;attempt<60;attempt++){
                 subprocess.run([node, drive / "Smoke.mjs", drive, connection, root / "acceptance"],
                                stdout=log, stderr=subprocess.STDOUT, check=True, timeout=300)
             shutil.copyfile(root / "acceptance/acceptance.json", logs / "drive-acceptance.json")
+            if args.playwright:
+                browser_evidence = logs / "drive-browser"; browser_evidence.mkdir()
+                app_args = [node, drive / "app.mjs", "--data", root / "ui-state", "--folder", root / "ui-files"]
+                with (root / "browser-app-private.log").open("w") as app_log:
+                    app = subprocess.Popen([*app_args, "--no-open"], stdout=app_log, stderr=subprocess.STDOUT)
+                    try:
+                        for _ in range(300):
+                            if app.poll() is not None:
+                                raise RuntimeError("Packaged browser app exited during startup")
+                            try:
+                                session = json.loads((root / "ui-state/session.json").read_text())
+                                if session.get("url"):
+                                    break
+                            except (FileNotFoundError, json.JSONDecodeError):
+                                pass
+                            time.sleep(0.1)
+                        else:
+                            raise RuntimeError("Packaged browser app startup timed out")
+                        with (logs / "drive-browser.txt").open("w") as log:
+                            subprocess.run([node, Path(__file__).with_name("BrowserSmoke.mjs"), args.playwright.resolve(),
+                                            root / "ui-state", connection, browser_evidence],
+                                           stdout=log, stderr=subprocess.STDOUT, check=True, timeout=300)
+                    finally:
+                        try:
+                            subprocess.run([*app_args, "--stop"], stdout=app_log, stderr=subprocess.STDOUT, timeout=40)
+                            app.wait(timeout=10)
+                        finally:
+                            if app.poll() is None:
+                                app.kill(); app.wait(timeout=10)
             (logs / "drive-fixture.json").write_text(json.dumps({"server": "SeaweedFS", "version": pins["version"],
                 "archive": pin, "transport": "signed S3 over loopback HTTP", "nativePlatform": platform,
                 "node": subprocess.check_output([node, "--version"], text=True).strip()}, indent=2) + "\n")
@@ -111,4 +141,5 @@ if __name__ == "__main__":
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--logs", type=Path, required=True)
     parser.add_argument("--archive", type=Path)
+    parser.add_argument("--playwright", type=Path, help="Installed pinned Playwright index.mjs for packaged UI checks")
     main(parser.parse_args())

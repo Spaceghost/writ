@@ -1,0 +1,66 @@
+PASS: metadata listing exposes logical size without payload allocation
+PASS: metadata-only root fetches zero payload bytes
+PASS: first read hydrates public fixture
+PASS: hydration fetch counted exactly once
+PASS: native guard probe responds
+PASS: commit guard retained
+PASS: native guard released
+PASS: competing write and rename block throughout commit guard
+PASS: queued native write resumes
+PASS: saved bytes match exactly
+PASS: ordinary save keeps recovery bytes
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: same-root restart retains committed cache
+PASS: saved bytes match exactly
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: stop materializes hydrated bytes
+PASS: saved bytes match exactly
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: saved bytes match exactly
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: saved bytes match exactly
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: failed backing write stays out of sync
+PASS: failed write preserves local bytes
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: saved bytes match exactly
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: saved bytes match exactly
+PASS: stale base is not marked in sync
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: stop retains conflicting local bytes
+PASS: restart never silently rebases conflict
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: cleanup refuses live file handles
+PASS: refused cleanup leaves provider available
+PASS: graceful stop observes a retained native descriptor
+PASS: graceful stop drains a closing descriptor:
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: cleanup preserves winner bytes
+ALL LINUX NATIVE PARITY CHECKS PASSED

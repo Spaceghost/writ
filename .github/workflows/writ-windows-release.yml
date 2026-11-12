@@ -113,10 +113,17 @@ jobs:
             -PackageDir "$env:RUNNER_TEMP\writ-release\payload" -OutputDir "$env:RUNNER_TEMP\writ-release\logs" `
             -ProbeExe "$env:RUNNER_TEMP\writ-release\build-1\Release\writ-desktop-probe.exe"
       - name: Exercise shared files and rules against a real S3 service
+        env:
+          WRIT_BROWSER_CHANNEL: msedge
         run: |
+          New-Item -ItemType Directory -Path "$env:RUNNER_TEMP\writ-browser" | Out-Null
+          Copy-Item contrib/native-hosts/drive/browser-tools/*.json "$env:RUNNER_TEMP\writ-browser"
+          npm ci --prefix "$env:RUNNER_TEMP\writ-browser" --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE) { throw 'Pinned browser probe tools could not be installed.' }
           python contrib/native-hosts/drive/S3Fixture.py `
             --package "$env:RUNNER_TEMP\writ-release\portable with spaces" `
-            --output "$env:RUNNER_TEMP\writ-drive-fixture" --logs "$env:RUNNER_TEMP\writ-release\logs"
+            --output "$env:RUNNER_TEMP\writ-drive-fixture" --logs "$env:RUNNER_TEMP\writ-release\logs" `
+            --playwright "$env:RUNNER_TEMP\writ-browser\node_modules\playwright\index.mjs"
           if ($LASTEXITCODE) { throw 'Shared desktop S3 acceptance failed.' }
       - name: Seal verified release assets and evidence
         run: |
@@ -197,10 +204,16 @@ jobs:
           python3 contrib/native-hosts/linux/public-sync/release/Test-Package.py \
             --output "$RUNNER_TEMP/writ-linux-release" 2>&1 | tee "$RUNNER_TEMP/writ-linux-release/logs/package-smoke.txt"
       - name: Exercise shared files and rules against a real S3 service
+        env:
+          WRIT_BROWSER_CHANNEL: chrome
         run: |
+          mkdir "$RUNNER_TEMP/writ-browser"
+          cp contrib/native-hosts/drive/browser-tools/*.json "$RUNNER_TEMP/writ-browser/"
+          npm ci --prefix "$RUNNER_TEMP/writ-browser" --ignore-scripts --no-audit --no-fund
           python3 contrib/native-hosts/drive/S3Fixture.py \
             --package "$RUNNER_TEMP/writ-linux-release/portable with spaces" \
-            --output "$RUNNER_TEMP/writ-drive-fixture" --logs "$RUNNER_TEMP/writ-linux-release/logs"
+            --output "$RUNNER_TEMP/writ-drive-fixture" --logs "$RUNNER_TEMP/writ-linux-release/logs" \
+            --playwright "$RUNNER_TEMP/writ-browser/node_modules/playwright/index.mjs"
       - name: Seal verified release assets and evidence
         run: |
           set -euo pipefail

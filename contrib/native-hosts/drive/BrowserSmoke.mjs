@@ -9,7 +9,7 @@ const [playwrightPath, data, connectionFile, evidence] = process.argv.slice(2);
 const { chromium } = await import(pathToFileURL(playwrightPath));
 const session = JSON.parse(await readFile(join(data, 'session.json')));
 const config = JSON.parse(await readFile(connectionFile));
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, channel: process.env.WRIT_BROWSER_CHANNEL || undefined });
 const page = await browser.newPage({ viewport: { width: 1440, height: 1050 } });
 const errors = []; page.on('pageerror', error => errors.push(error.message));
 const checks = [];
@@ -78,4 +78,12 @@ try {
   check('control API does not expose storage credentials', !visible.includes(config.secretKey) && !visible.includes(config.accessKey));
   check('no browser runtime errors', errors.length === 0);
   await writeFile(join(evidence, 'browser-check.json'), JSON.stringify({ browser: await browser.version(), checks, errors }, null, 2));
+} catch (error) {
+  let message = error.stack || String(error);
+  // Browser call logs may include the launch URL on navigation failure.
+  // Neither that local bearer nor any storage credential belongs in evidence.
+  for (const secret of [session.url, new URL(session.url).hash.slice('#token='.length),
+    config.accessKey, config.secretKey, config.sessionToken].filter(Boolean))
+    message = message.replaceAll(secret, '[redacted]');
+  process.stderr.write(message + '\n'); process.exitCode = 1;
 } finally { await browser.close(); }

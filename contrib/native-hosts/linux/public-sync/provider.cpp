@@ -562,9 +562,18 @@ static fs::path package_directory() {
 }
 static void stop(const fs::path& root) {
     try {
-        auto client = connect_control(root); send_control(client, "STOP");
-        auto result = receive_control(client);
-        if (result != "STOPPED") throw Error(result.c_str(), EBUSY);
+        // close(2) may return before FUSE dispatches its release callback.
+        // Give only that native lifetime observation a bounded drain window;
+        // a retained handle still refuses shutdown, and no unmount is forced.
+        for (int attempt = 0;; ++attempt) {
+            auto client = connect_control(root); send_control(client, "STOP");
+            auto result = receive_control(client);
+            if (result == "STOPPED") return;
+            if (result != "ERROR close files before stopping Writ" || attempt == 10)
+                throw Error(result.c_str(), EBUSY);
+            if (attempt == 0) std::cout << "WAITING for open files to close before stopping Writ\n" << std::flush;
+            ::usleep(100000);
+        }
     } catch (const Error& e) { if (e.code != ENOENT && e.code != ECONNREFUSED) throw; }
 }
 static void remove(const fs::path& root, const Store& store) {

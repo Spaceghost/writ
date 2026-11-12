@@ -1,0 +1,1 @@
+PASS failed browser navigation redacts the local session bearer

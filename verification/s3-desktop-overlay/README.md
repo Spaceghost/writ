@@ -56,3 +56,27 @@ model compilation: Ubuntu's default GCC rejected Bend's generated
 ran. The generator now selects Clang explicitly and records its version;
 generated source and tail-call requirements are unchanged. The local Zig-backed
 native test had already passed. The retry remains required.
+
+Retry `43149875538` at `223a1c0e` passed the policy job and both full native
+platform jobs, including all shared S3 and install/removal gates. An additional
+run of those exact Ubuntu-built packages on Fedora then exposed a pre-existing
+local-FUSE lifetime race: the fresh empty-file read had closed its descriptor,
+but STOP arrived before FUSE delivered release. The immediate retry in cleanup
+succeeded and preserved bytes. The CLI now waits at most one second for that
+specific native busy observation; held handles still refuse, other errors are
+not retried, and no forced/lazy unmount is introduced. Native revalidation is
+required before publication. The initial Fedora failure remains recorded.
+
+The local fix passes the full native FUSE suite on Fedora, including a new
+deterministic control: retain a real descriptor, wait until the CLI reports its
+busy observation, close that descriptor, and require graceful completion. The
+separate permanently held descriptor still refuses shutdown and leaves the
+provider available. `fedora-close-drain.txt` captures both outcomes; the tested
+development executable used the new provider source with unchanged packaged
+Node/policy/libfuse from the verified `223a1c0e` CI bundle.
+
+The fixture driver now also starts the exact packaged local app and executes
+the eleven browser/control checks. That combined driver passes locally with
+the Ubuntu-built `223a1c0e` payload. The hosted gate runs the same workflow on
+Edge/Windows and Chrome/Linux using locked Playwright 1.65.0 probe tools; those
+new hosted browser results remain pending until the next run completes.

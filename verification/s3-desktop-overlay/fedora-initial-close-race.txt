@@ -1,0 +1,44 @@
+PASS: metadata listing exposes logical size without payload allocation
+PASS: metadata-only root fetches zero payload bytes
+PASS: first read hydrates public fixture
+PASS: hydration fetch counted exactly once
+PASS: native guard probe responds
+PASS: commit guard retained
+PASS: native guard released
+PASS: competing write and rename block throughout commit guard
+PASS: queued native write resumes
+PASS: saved bytes match exactly
+PASS: ordinary save keeps recovery bytes
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: same-root restart retains committed cache
+PASS: saved bytes match exactly
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: stop materializes hydrated bytes
+PASS: saved bytes match exactly
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+PASS: provider stops cleanly
+PASS: owned mount detached
+PASS: saved bytes match exactly
+PASS: fresh root starts unhydrated
+PASS: fresh root reads durable backing bytes
+Traceback (most recent call last):
+  File "/var/home/jack/build/writ-drive/fedora-ci-package/portable with spaces/Smoke.py", line 211, in <module>
+    exercise(probe)
+    ~~~~~~~~^^^^^^^
+  File "/var/home/jack/build/writ-drive/fedora-ci-package/portable with spaces/Smoke.py", line 159, in exercise
+    probe.fresh_read("fresh-empty", b"")
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/var/home/jack/build/writ-drive/fedora-ci-package/portable with spaces/Smoke.py", line 89, in fresh_read
+    self.stop(root)
+    ~~~~~~~~~^^^^^^
+  File "/var/home/jack/build/writ-drive/fedora-ci-package/portable with spaces/Smoke.py", line 73, in stop
+    self.run("stop", root)
+    ~~~~~~~~^^^^^^^^^^^^^^
+  File "/var/home/jack/build/writ-drive/fedora-ci-package/portable with spaces/Smoke.py", line 42, in run
+    raise AssertionError(result.stdout)
+AssertionError: ERROR close files before stopping Writ (16: Device or resource busy)
