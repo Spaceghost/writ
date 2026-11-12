@@ -36,6 +36,8 @@ WizardStyle=modern
 
 [Files]
 Source: "{#Payload}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs notimestamp
+Source: "{#Payload}\Writ.exe"; DestName: "writ-desktop-upgrade.exe"; Flags: dontcopy notimestamp
+Source: "{#Payload}\writ-cloud.exe"; DestName: "writ-provider-upgrade.exe"; Flags: dontcopy notimestamp
 
 [Icons]
 Name: "{group}\Writ"; Filename: "{app}\Writ.exe"; WorkingDir: "{app}"
@@ -59,9 +61,22 @@ begin
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  Code: Integer;
+  Stopped: Boolean;
 begin
   Result := '';
-  if not StopDesktop() then
+  { The helpers come from the new package, so a preview.2 console-only install
+    and a portable desktop instance can both be stopped before replacement. }
+  ExtractTemporaryFile('writ-desktop-upgrade.exe');
+  ExtractTemporaryFile('writ-provider-upgrade.exe');
+  Stopped := Exec(ExpandConstant('{tmp}\writ-desktop-upgrade.exe'), '--quit', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if Stopped then Stopped := Code = 0;
+  if Stopped then begin
+    Stopped := Exec(ExpandConstant('{tmp}\writ-provider-upgrade.exe'), 'stop-wait', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    if Stopped then Stopped := Code = 0;
+  end;
+  if not Stopped then
     Result := 'Writ is still running. Close editors and quit Writ, then retry installation.';
 end;
 

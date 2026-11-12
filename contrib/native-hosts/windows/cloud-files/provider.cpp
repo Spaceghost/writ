@@ -378,7 +378,7 @@ static void stop(const fs::path& root) {
     if (!signal.value && GetLastError() == ERROR_FILE_NOT_FOUND) return;
     check(signal.value != nullptr, "open stop event"); check(SetEvent(signal), "stop");
 }
-static void cleanup_default() {
+static void stop_default_and_wait() {
     auto root = default_path(CSIDL_PROFILE, L"Writ");
     auto path = default_path(CSIDL_LOCAL_APPDATA, L"WritDemo\\store");
     Store store(path);
@@ -397,6 +397,14 @@ static void cleanup_default() {
             Sleep(100);
         }
     }
+}
+static void cleanup_default() {
+    auto root = default_path(CSIDL_PROFILE, L"Writ");
+    auto path = default_path(CSIDL_LOCAL_APPDATA, L"WritDemo\\store");
+    Store store(path);
+    local_user_path(path); validate_root(root, store);
+    if (!fs::exists(state_path(store, root) / L"provider.lock") || !fs::exists(root)) return;
+    stop_default_and_wait();
     try { remove(root, store); }
     catch (const Error& e) {
         // Repeated uninstall/cleanup is harmless only for an absent registration.
@@ -430,6 +438,7 @@ int wmain(int argc, wchar_t** argv) {
             std::cout << "Writ " WRIT_VERSION " (" WRIT_SOURCE_COMMIT ") public Files On-Demand preview\n"; return 0;
         }
         if (argc == 2 && !wcscmp(argv[1], L"cleanup")) { cleanup_default(); return 0; }
+        if (argc == 2 && !wcscmp(argv[1], L"stop-wait")) { stop_default_and_wait(); return 0; }
         if (argc == 2 && !wcscmp(argv[1], L"stop")) { stop(default_path(CSIDL_PROFILE, L"Writ")); return 0; }
         if (argc == 3 && !wcscmp(argv[1], L"seed")) {
             auto path = canonical(argv[2]); local_user_path(path); seed(Store(path)); return 0;
@@ -471,7 +480,7 @@ int wmain(int argc, wchar_t** argv) {
             local_user_path(path); validate_root(root, Store(path));
             remove(root, Store(path)); return 0;
         }
-        std::cout << "start (default) | stop [ROOT] | cleanup | version\n"
+        std::cout << "start (default) | stop [ROOT] | stop-wait | cleanup | version\n"
             "seed STORE | serve ROOT STORE NODE BRIDGE MODULE [--fail-writeback] | inspect ROOT | remove ROOT STORE\n";
         return argc == 2 && !wcscmp(argv[1], L"--help") ? 0 : 2;
     } catch (const Error& e) {

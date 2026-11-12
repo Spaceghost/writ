@@ -21,6 +21,13 @@ public static class WritWindow {
   [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr window);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr window, out Rect rect);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr window, IntPtr dc, uint flags);
+  [DllImport("shell32.dll")] static extern int Shell_NotifyIconGetRect(ref IconIdentifier id, out Rect rect);
+  [StructLayout(LayoutKind.Sequential)] struct IconIdentifier { public uint cbSize; public IntPtr hWnd; public uint id; public Guid guid; }
+  public static bool TrayIconExists(IntPtr window) {
+    var id = new IconIdentifier { cbSize=(uint)Marshal.SizeOf(typeof(IconIdentifier)), hWnd=window, id=1,
+      guid=new Guid("7ddda5c1-3eb0-4f92-aca4-916b35912004") };
+    Rect rect; return Shell_NotifyIconGetRect(ref id, out rect) == 0 && rect.Right > rect.Left;
+  }
   [StructLayout(LayoutKind.Sequential)] public struct Rect { public int Left, Top, Right, Bottom; }
 }
 '@
@@ -86,12 +93,13 @@ function Snapshot([string]$Name) {
 }
 try {
     $app = Start-Process -FilePath $exe -PassThru
-    Wait-For { [WritWindow]::FindWindow('WritDesktop.7DDDA5C1', $null) -ne [IntPtr]::Zero } 'desktop window created'
-    $script:window = [WritWindow]::FindWindow('WritDesktop.7DDDA5C1', $null)
+    Wait-For { [WritWindow]::FindWindow('WritDesktop.7DDDA5C1', 'Writ') -ne [IntPtr]::Zero } 'desktop window created'
+    $script:window = [WritWindow]::FindWindow('WritDesktop.7DDDA5C1', 'Writ')
     Wait-For { (Text 204) -eq 'Watching hello.txt' } 'GUI observes provider readiness'
     Assert ((Text 203) -match 'only hello.txt.*64 KiB') 'public single-file scope visible'
     Assert (-not (Get-ItemProperty -LiteralPath $runKey -Name Writ -ErrorAction SilentlyContinue)) 'sign-in startup is opt-in'
     Assert ((Get-Content -LiteralPath $log -Raw) -match 'DESKTOP_TRAY_ADDED') 'Shell accepted notification-area icon'
+    Assert ([WritWindow]::TrayIconExists($script:window)) 'Shell returns actual notification-icon rectangle'
     Snapshot 'activity-ready'
     $second = Start-Process -FilePath $exe -PassThru
     Assert ($second.WaitForExit(10000) -and $second.ExitCode -eq 0) 'second launch activates existing app'
@@ -100,7 +108,13 @@ try {
     Assert ($bytes.Length -gt 0) 'GUI-owned provider hydrates public file'
     [IO.File]::WriteAllText($hello, "Saved through the desktop app.`r`n", (New-Object Text.UTF8Encoding $false))
     Wait-For { (Text 205) -eq 'Last save confirmed in the local backing store.' } 'GUI observes real confirmed save'
-    Invoke-Control 103
+    # Drive the documented version-4 keyboard callback into the real window.
+    # This covers callback and flyout controls, not human taskbar key injection.
+    [void][WritWindow]::PostMessage($script:window, 0x8001, [IntPtr]::Zero, [IntPtr]0x00010401)
+    Wait-For { [WritWindow]::FindWindow('WritFlyout.7DDDA5C1', 'Writ activity') -ne [IntPtr]::Zero } 'keyboard callback opens native activity flyout'
+    $flyout = [WritWindow]::FindWindow('WritFlyout.7DDDA5C1', 'Writ activity')
+    $flyPause = [Windows.Automation.AutomationElement]::FromHandle([WritWindow]::GetDlgItem($flyout, 103))
+    $flyPause.GetCurrentPattern([Windows.Automation.InvokePattern]::Pattern).Invoke()
     Wait-For { (Text 204) -eq 'Syncing paused' } 'Pause waits for actual provider exit'
     Assert ((Text 205) -match 'Unopened files need Writ running') 'pause explains hydration limitation'
     [IO.File]::WriteAllText($hello, "Edited while paused.`r`n", (New-Object Text.UTF8Encoding $false))
@@ -142,7 +156,10 @@ try {
     Assert ([IO.File]::ReadAllText($hello) -ceq "Recovered valid edit.`r`n") 'Quit retains hydrated user edit'
     Write-Host 'ALL WINDOWS DESKTOP CHECKS PASSED'
 } catch {
-    if ($script:window -and -not ($app -and $app.HasExited)) { Snapshot 'failure' }
+    Write-Host $_.ScriptStackTrace
+    if ($script:window -ne [IntPtr]::Zero -and -not ($app -and $app.HasExited)) {
+        try { Snapshot 'failure' } catch { Write-Host "Failure capture unavailable: $_" }
+    }
     throw
 } finally {
     if ($app -and -not $app.HasExited) {

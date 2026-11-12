@@ -27,9 +27,26 @@ try {
     Expand-Archive -LiteralPath (Get-Item (Join-Path $dist '*-portable.zip')).FullName -DestinationPath $extract
     Check-Payload $extract
     & (Join-Path $extract 'Smoke.ps1') -PackageDir $extract -Base (Join-Path $env:LOCALAPPDATA 'WritReleaseSmoke')
+    # Reproduce the user's actual preview.2 upgrade, including its running CLI.
+    $oldInstaller = Join-Path $OutputDir 'preview.2-setup.exe'
+    Invoke-WebRequest -Uri 'https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-windows-x64-setup.exe' -OutFile $oldInstaller
+    Assert ((Get-FileHash -LiteralPath $oldInstaller).Hash.ToLowerInvariant() -ceq 'e8c2ee982bdab37f84f0a6e83c253437811322b9ce79d68b3123cf797684f34a') 'published preview.2 installer checksum'
+    $oldInstall = Start-Process -FilePath $oldInstaller -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR=`"$installed`"" -Wait -PassThru
+    Assert ($oldInstall.ExitCode -eq 0) 'published preview.2 installs'
+    $oldProvider = Start-Process -FilePath (Join-Path $installed 'writ-cloud.exe') -ArgumentList 'start' -PassThru -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $logs 'upgrade-provider.txt') -RedirectStandardError (Join-Path $logs 'upgrade-provider-errors.txt')
+    $deadline = [DateTime]::UtcNow.AddSeconds(45)
+    do {
+        $oldReady = [bool]((Get-Content -LiteralPath (Join-Path $logs 'upgrade-provider.txt') -Raw) -match '(?m)^READY ')
+        if (-not $oldReady) { Start-Sleep -Milliseconds 200 }
+    } while (-not $oldReady -and -not $oldProvider.HasExited -and [DateTime]::UtcNow -lt $deadline)
+    Assert $oldReady 'preview.2 provider is running during upgrade'
+    $oldBytes = [IO.File]::ReadAllBytes((Join-Path $defaultRoot 'hello.txt'))
     $installer = (Get-Item (Join-Path $dist '*-setup.exe')).FullName
     $install = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR=`"$installed`" /LOG=`"$logs\install.txt`"" -Wait -PassThru
     Assert ($install.ExitCode -eq 0) 'installer succeeds'
+    Assert ($oldProvider.WaitForExit(10000)) 'upgrade stops actual preview.2 provider'
+    Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $defaultRoot 'hello.txt'))) -ceq [Convert]::ToBase64String($oldBytes)) 'upgrade retains hydrated data'
     Check-Payload $installed
     $exe = Join-Path $installed 'writ-cloud.exe'
     & $exe version

@@ -33,7 +33,7 @@ bend writfs/PublicSyncTests.bend
 
 Copy `public-sync.mjs` to the Windows user's Downloads directory. Generated
 JavaScript is a build artifact, not authored source. On Windows x64 use an
-MSVC Developer PowerShell, CMake 3.24 or later, Windows SDK 10.0.26100.0,
+MSVC Developer PowerShell, CMake 3.30 or later, Windows SDK 10.0.26100.0,
 PowerShell 7.4 or later, and native Node. The existing Windows lane pins Node
 22.23.4; the local bridge check in this contribution used Node 26.10.0.
 From the repository root:
