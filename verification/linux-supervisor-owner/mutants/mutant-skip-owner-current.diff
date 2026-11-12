@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:30.379928204 -0600
+@@ -298,7 +298,7 @@
+ # contained before attribution, matching `LH.dispatch`.
+ def control_sampled(+roles: C.RoleMap, +state: LH.State, +now: Nat, +fact: C.ChannelFact,
+     +bytes: +List<U32>) -> Handled:
+-  f = Bool.pick(Unit -> Handled, LH.joint_sample_current(state, now),
++  f = Bool.pick(Unit -> Handled, True{},
+     x => on_attributed(state, C.attribute(roles, fact), bytes),
+     x => contained_control(roles, LH.joint_containment(state), fact, bytes))
+   f(Unit{})

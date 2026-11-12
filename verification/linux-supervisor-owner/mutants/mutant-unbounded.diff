@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:39.640038861 -0600
+@@ -132,7 +132,7 @@
+
+ # Public entry point: decode one control payload (see the layout above).
+ def decode_control(+bytes: +List<U32>) -> ControlRead:
+-  control_bounded(LH.frame_within(max_control_bytes(), bytes), bytes)
++  control_bounded(True{}, bytes)
+
+ # Public entry point: the encoding a trusted test sender writes for `control`.
+ def word_bytes(+word: U32) -> +List<U32>:

@@ -158,6 +158,31 @@ These are receiver-level evidence only. Pidfs `dev` matching, capable-sender and
 exec behaviour, namespace and ptrace isolation, supervisor wiring, protected role
 provisioning and native host qualification remain reviewed-only gaps.
 
+The [supervisor owner record](../../verification/linux-supervisor-owner/README.md)
+feeds attributed channel messages to one serialized model owner of the issuer
+and clock, [SupervisorOwner.bend](../../hosts/linux/monitor/SupervisorOwner.bend).
+Its checks in [SupervisorOwnerTests.bend](../../hosts/linux/monitor/SupervisorOwnerTests.bend)
+map to these scenarios at the model boundary only:
+
+- LH-011 "An unprovisioned sender is not attributed": `SupervisorOwner
+  unattributed and malformed senders deny and only advance the clock` (no
+  revoke reaches the issuer, whose revision is unchanged).
+- LH-012 "A request is denied after a later trusted sample": the same refused
+  revoke and `SupervisorOwner malformed control payloads deny and only advance
+  the clock`.
+- LH-013 "An accepted issuer revoke requires containment": `SupervisorOwner
+  issuer role revoke applies, advances clock and requires containment` and
+  `SupervisorOwner revoke then frame: the frame sees containment and no effect
+  is handed off`.
+- LH-015 "A malformed request observes a later time": `SupervisorOwner frame and
+  control share one watermark`.
+- LH-015 "Clock poison blocks use but allows cleanup": `SupervisorOwner faulted
+  sample contains; issuer revoke still applies, refused revoke does not` and
+  `SupervisorOwner revoke and drain remain available after containment`.
+
+No native driver runs this owner, and nothing samples a host clock or binds a
+worker's role to its session. Host acceptance for these scenarios remains open.
+
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 
 [LinuxJointOwnerTests.bend](../../hosts/linux/monitor/LinuxJointOwnerTests.bend)

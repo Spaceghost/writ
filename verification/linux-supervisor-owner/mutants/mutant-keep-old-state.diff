@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:33.807081032 -0600
+@@ -329,6 +329,6 @@
+ # before the host performs `effects(result)`.
+ def step(owner: Owner, event: OwnerInput, sample: LH.ClockSample, authority: P.AdmissionAuthority) -> OwnerStep:
+   match owner:
+-    case Owner{+roles, state}:
++    case Owner{+roles, +state}:
+       +result = result_of(roles, state, event, sample, authority)
+-      OwnerStep{Owner{roles, OwnerResult.state(result)}, result}
++      OwnerStep{Owner{roles, state}, result}

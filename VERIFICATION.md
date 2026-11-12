@@ -1169,6 +1169,18 @@ failing mutants) on one unprivileged Linux 7.2.9 run. The receiver needs
 also passed with `--verdict`. The record establishes no capable-sender, exec,
 isolation, wiring or host qualification result.
 
+The [supervisor owner record](verification/linux-supervisor-owner/README.md)
+adds one serialized Bend owner of the issuer and clock that takes an attributed
+channel datagram or a monitor frame per step, samples the clock first, and
+submits only a decoded revoke under the sender's role principal to the existing
+joint revoke; revocation and drain stay available after containment. Sixteen
+checks and fifteen failing mutants cover issuer and non-issuer revokes, denied
+and malformed inputs that only advance the watermark, faulted and expired
+samples, cleanup after containment and ordering with a later frame. The suite
+output differs from master only by those checks, the native CPU run is
+identical, and the existing-law proof passed with `--verdict`. No native
+driver, host clock or restart continuity is established.
+
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
 that returns the same answer for every list. Six direct lookup checks and two

@@ -1,0 +1,2 @@
+PASS: SupervisorOwner control payload round-trips a revoke
+FAIL: SupervisorOwner receiver verdicts translate in enum order

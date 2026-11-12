@@ -1,0 +1,7 @@
+PASS: SupervisorOwner control payload round-trips a revoke
+PASS: SupervisorOwner receiver verdicts translate in enum order
+PASS: SupervisorOwner issuer role revoke applies, advances clock and requires containment
+PASS: SupervisorOwner non-issuer role revoke is refused and only advances the clock
+PASS: SupervisorOwner unattributed and malformed senders deny and only advance the clock
+PASS: SupervisorOwner malformed control payloads deny and only advance the clock
+FAIL: SupervisorOwner oversized control payload denies and only advances the clock

@@ -1,0 +1,10 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:38.144337871 -0600
+@@ -249,7 +249,6 @@
+ def requires_containment(result: OwnerResult) -> Bool:
+   match result:
+     case Control{RevokeApplied{_}}: True{}
+-    case Control{Contained{_}}: True{}
+     case Monitor{LH.Served{LH.ContainmentRequired{_}}}: True{}
+     case Cleanup{_}: True{}
+     case _: False{}

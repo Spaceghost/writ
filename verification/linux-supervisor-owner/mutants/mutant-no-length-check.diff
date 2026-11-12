@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:36.724687013 -0600
+@@ -102,7 +102,7 @@
+   match words:
+     case +version <> +tag <> +length <> +body:
+       pick_read(Bool.not(U32.is_eq(version, control_version())), ControlBad{ControlVersion{}},
+-        pick_read(Bool.not(Nat.is_eq(U32.to_nat(length), List.length(&2, U32, body))), ControlBad{ControlLength{}},
++        pick_read(False{},  ControlBad{ControlLength{}},
+           control_body(tag, body)))
+     case _:
+       ControlBad{ControlLength{}}

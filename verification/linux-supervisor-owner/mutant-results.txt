@@ -1,0 +1,15 @@
+contained-drops-revoke: SupervisorOwner faulted sample contains; issuer revoke still applies, refused revoke does not
+contained-no-containment: SupervisorOwner faulted sample contains; issuer revoke still applies, refused revoke does not
+contained-reports-denial: SupervisorOwner expired owner contains; only an issuer revoke still applies
+contained-reports-refusal: SupervisorOwner standalone owner reports a faulted sample as containment
+drain-no-effects: SupervisorOwner revoke and drain remain available after containment
+drain-samples-clock: SupervisorOwner revoke and drain remain available after containment
+keep-old-state: SupervisorOwner issuer role revoke applies, advances clock and requires containment
+no-length-check: SupervisorOwner malformed control payloads deny and only advance the clock
+refused-as-applied: SupervisorOwner non-issuer role revoke is refused and only advances the clock
+roles-dropped: SupervisorOwner role map is retained across steps
+sample-not-retained: SupervisorOwner issuer role revoke applies, advances clock and requires containment
+skip-owner-current: SupervisorOwner expired owner contains; only an issuer revoke still applies
+swap-verdicts: SupervisorOwner receiver verdicts translate in enum order
+unbounded: SupervisorOwner oversized control payload denies and only advances the clock
+unknown-tag-as-revoke: SupervisorOwner malformed control payloads deny and only advance the clock

@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:47.382814955 -0600
+@@ -216,7 +216,7 @@
+
+ def drain_effects(drain: LH.JointDrain) -> +List<P.Effect>:
+   match drain:
+-    case LH.JointDrainStep{_, effects}: effects
++    case LH.JointDrainStep{_, _}: []
+     case _: []
+
+ type OwnerStep is Data:

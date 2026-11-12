@@ -1,0 +1,4 @@
+native exit 0; byte-identical to the Bend run (cmp)
+clang -std=c11 -O0 core-tests.c -lpthread -lm; +RTS --threads 4 --gpu off
+Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
+ALL LIBRARY TESTS PASSED

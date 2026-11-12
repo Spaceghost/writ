@@ -43,6 +43,7 @@ import ./hosts/linux/monitor/LinuxClockTests.bend as LinuxClock
 import ./hosts/linux/monitor/LinuxJointOwnerTests.bend as LinuxJointOwner
 import ./hosts/linux/monitor/LinuxSessionLossTests.bend as LinuxSessionLoss
 import ./hosts/linux/monitor/LocalChannelTests.bend as LocalChannel
+import ./hosts/linux/monitor/SupervisorOwnerTests.bend as SupervisorOwner
 import ./FacadeTests.bend as Facade
 import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
@@ -53,12 +54,15 @@ import ./RendezvousTests.bend as Rendezvous
 import ./RendezvousBoundaryTests.bend as RendezvousBoundary
 import ./PropertyTests.bend as Properties
 
-# The joint-owner and session-loss checks read one build of the synthetic
-# owner scenario stages instead of each replaying launch through delivery.
+# The joint-owner, session-loss and supervisor-owner checks read one build of
+# the synthetic owner scenario stages instead of each replaying launch through
+# delivery. The channel attribution checks keep their place between them.
 def joint_owner_tests(+stages: LinuxJointOwner.Stages) -> IO(Unit):
   do IO<Unit>:
     LinuxJointOwner.joint_checks(stages)
     LinuxSessionLoss.checks(stages)
+    LocalChannel.main()
+    SupervisorOwner.owner_checks(stages)
 
 def linux_tests() -> IO(Unit):
   do IO<Unit>:
@@ -67,7 +71,6 @@ def linux_tests() -> IO(Unit):
     LinuxCredentialBinding.main()
     LinuxClock.main()
     joint_owner_tests(LinuxJointOwner.owner_stages())
-    LocalChannel.main()
 
 # Keep host corpus ordering while bounding generated continuation arity.
 def host_tests() -> IO(Unit):

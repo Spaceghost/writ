@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:42.725506011 -0600
+@@ -292,7 +292,7 @@
+ # the message is still handled so that an issuer's revoke remains available.
+ def contained_control(+roles: C.RoleMap, outcome: LH.Outcome, fact: C.ChannelFact,
+     +bytes: +List<U32>) -> Handled:
+-  surfaced(on_attributed(LH.Outcome.state(outcome), C.attribute(roles, fact), bytes))
++  Contained{LH.Outcome.state(outcome)}
+
+ # The state has already retained a current sample. A stale or failed owner is
+ # contained before attribution, matching `LH.dispatch`.

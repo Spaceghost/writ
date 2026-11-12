@@ -240,9 +240,15 @@ model does not retain the original reader grant ID. `N.ready` and the reader
 Transfer check do not revalidate trial evidence/sample expiration, a budget or
 committed ledger. This slice does not perform original-graph verification or
 commit a Copy.
-Its issuer and non-grant policy records are frozen synthetic inputs; there is no
-authenticated channel or live update feed. A deployment must serialize every
-relevant authority/policy change or treat the owner as incomplete.
+Its non-grant policy records are frozen synthetic inputs. The
+[supervisor owner](../../../hosts/linux/monitor/SupervisorOwner.bend) model now
+serializes one live issuer change, revocation, with monitor frames: each step
+samples the clock first, attributes a channel datagram to its sender role's
+principal, and passes a decoded revoke to the same joint revoke, which stays
+available, with the drain, after containment. No native
+driver runs it, and installation and approval submission still use trusted
+in-process construction. A deployment must serialize every relevant
+authority/policy change or treat the owner as incomplete.
 
 Every accepted issuer revoke, including an unrelated one, immediately returns
 a sticky whole-instance containment directive after retaining the updated

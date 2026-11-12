@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:28.925938675 -0600
+@@ -260,7 +260,7 @@
+   match action:
+     case LH.JointContain{state, True{}}: RevokeApplied{state}
+     case LH.JointContain{state, False{}}: Contained{state}
+-    case LH.JointRefused{state}: RevokeRefused{state}
++    case LH.JointRefused{state}: RevokeApplied{state}
+     case _: Contained{LH.contain_state(LH.JointAction.state(action))}
+
+ def on_control(+state: LH.State, +from: Iss.Principal, control: Control) -> Handled:

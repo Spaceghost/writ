@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:45.841029083 -0600
+@@ -284,7 +284,7 @@
+   match handled:
+     case RevokeApplied{state}: RevokeApplied{state}
+     case RevokeRefused{state}: Contained{state}
+-    case ChannelDenied{state, _}: Contained{state}
++    case ChannelDenied{state, reason}: ChannelDenied{state, reason}
+     case ControlUndecoded{state, _}: Contained{state}
+     case Contained{state}: Contained{state}
+

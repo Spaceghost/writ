@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:27.479490914 -0600
+@@ -310,7 +310,7 @@
+   match state sample:
+     case LH.State{p, records, old, owner} LH.Sample{+now}:
+       +updated = LH.clock_update(old, LH.Sample{now})
+-      +next = {LH.State{p, records, updated, owner} : LH.State}
++      +next = {LH.State{p, records, LH.FreshClock{}, owner} : LH.State}
+       f = Bool.pick(Unit -> Handled, LH.clock_current(updated, now),
+         x => control_sampled(roles, next, now, fact, bytes),
+         x => contained_control(roles, LH.clock_fault(next), fact, bytes))

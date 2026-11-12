@@ -1,0 +1,11 @@
+--- /tmp/claude-1000/-mnt-MediaVolume-Media-src-github-com-spaceghost-writ/884f3ff4-3534-4f42-9fff-d6e8a8695b80/scratchpad/owner-mutants/orig.bend	2026-11-12 16:57:23.061471641 -0600
++++ SupervisorOwner.bend	2026-11-12 16:58:44.189790913 -0600
+@@ -283,7 +283,7 @@
+ def surfaced(handled: Handled) -> Handled:
+   match handled:
+     case RevokeApplied{state}: RevokeApplied{state}
+-    case RevokeRefused{state}: Contained{state}
++    case RevokeRefused{state}: RevokeRefused{state}
+     case ChannelDenied{state, _}: Contained{state}
+     case ControlUndecoded{state, _}: Contained{state}
+     case Contained{state}: Contained{state}
