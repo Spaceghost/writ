@@ -26,3 +26,12 @@ Ruling: fixed Minor #1 (destination test could pass on a denied attribution) in 
 Ruling: parked Minor #2 (naming roles() synthetic_roles; the header comment already marks it) and #3 (redundant by brief design).
 Task 1: complete (5f0691ea; Tests.bend 3080, check_core OK)
 Task 2: dispatched
+Task 2: implemented 6bf70f8c (DONE_WITH_CONCERNS: duplicate-pidfd mutant survives, kernel cannot produce it; UNEXPECTED_CONTROL reviewed-only; MSG_DONTWAIT); review dispatched (opus)
+Note: master moved to 93f78e0d (capacity guards, count 3128); this lane rebases and recounts (3128+8+native-free) before landing.
+Task 2: review — spec ❌ (Step 5 mutant survives), quality Changes requested; I-1..I-4, M-1..M-5.
+Ruling: accept all; end-of-stream returns EPIPE and no verdict, keeping the 1:1 C↔Bend reject mapping — cost if wrong: one return-code rename.
+Task 2: fix round 1 dispatched (resumed implementer)
+Task 2: fix round 1 3f15722c (27 cases; 9 mutants killed incl. Step 5); scoped re-review dispatched (sonnet)
+Task 2: re-review — all 9 findings Addressed; one nit (header comment line length).
+Ruling: park the nit for the final review's fix pass — cosmetic — cost: none.
+Task 2: complete (3f15722c)
