@@ -2,6 +2,7 @@
 // This test executable is built beside the application, not shipped to users.
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <ole2.h>
 #include <UIAutomation.h>
 #include <wrl/client.h>
 #include <iostream>
@@ -60,7 +61,7 @@ int wmain(int argc, wchar_t** argv) {
             (wcscmp(name, L"WritDesktop.7DDDA5C1") && wcscmp(name, L"WritFlyout.7DDDA5C1")))
             throw std::runtime_error("Only Writ desktop windows may be probed");
         ComPtr<IUIAutomation> automation;
-        check(CoCreateInstance(CLSID_CUIAutomation, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation)), "UI Automation");
+        check(CoCreateInstance(__uuidof(CUIAutomation), nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&automation)), "UI Automation");
         ComPtr<IUIAutomationElement> element;
         check(automation->ElementFromHandle(window, &element), "element from HWND");
         std::wstring operation(argv[1]);
