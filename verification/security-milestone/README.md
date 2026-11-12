@@ -49,6 +49,12 @@ verification. Final emission and execution above used unmodified Bend 2.0.39.
 OpenSpec 1.16.0 strict validation passed all 50 items. Review findings and their
 resolutions are retained in the [work record](../../docs/superpowers/records/2026-11-11-security-milestone/task-1-review.md).
 
+Implementation commit `e60314558f269e04f8e993b5dcf06a055959997b` was pushed to
+master. Its [hosted core run](https://github.com/Spaceghost/writ/actions/runs/43154211028)
+passed the complete suite, ordinary proofs, OpenSpec and repository tooling
+checks. `hosted-core.json` retains the exact head, run and artifact digest.
+This evidence follow-up changes documentation and manifests only.
+
 These are synthetic monitor, storage, witness and receiver facts. They do not
 establish authenticated storage, real crash recovery, external receiver
 idempotency, legal admissibility, a cryptographic history chain, or protected

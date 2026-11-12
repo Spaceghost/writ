@@ -1,0 +1,34 @@
+{
+  "run": {
+    "id": 43154211028,
+    "name": "Writ core checks",
+    "head_sha": "e60314558f269e04f8e993b5dcf06a055959997b",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "html_url": "https://github.com/Spaceghost/writ/actions/runs/43154211028",
+    "created_at": "2026-11-12T04:21:02Z",
+    "updated_at": "2026-11-12T04:21:30Z"
+  },
+  "artifacts": [
+    {
+      "id": 13915096317,
+      "name": "writ-core-1",
+      "size_in_bytes": 50235,
+      "url": "https://api.github.com/repos/Spaceghost/writ/actions/artifacts/13915096317",
+      "archive_download_url": "https://api.github.com/repos/Spaceghost/writ/actions/artifacts/13915096317/zip",
+      "expired": false,
+      "created_at": "2026-11-12T04:21:27Z",
+      "expires_at": "2026-11-26T04:21:26Z",
+      "updated_at": "2026-11-12T04:21:27Z",
+      "digest": "sha256:94bf250d938d4d5875ede8d3bcd4279baeea87453acd11f5b3b9f43d778d67e0",
+      "workflow_run": {
+        "id": 43154211028,
+        "repository_id": 1444892433,
+        "head_repository_id": 1444892433,
+        "head_branch": "master",
+        "head_sha": "e60314558f269e04f8e993b5dcf06a055959997b"
+      }
+    }
+  ]
+}

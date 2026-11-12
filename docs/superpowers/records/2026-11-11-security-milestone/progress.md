@@ -11,5 +11,8 @@ Branch: `lane/security-milestone`
 - Reviewed: all design findings resolved; 84 new checks and five ordinary laws.
 - Verified: 3,220 full JavaScript core checks, 585 native CPU regression checks
   (including all 84 new cases), ordinary proofs and strict OpenSpec 50/50.
-- In progress: final manifest and user-authorized master integration.
+- Integrated: pushed implementation `e60314558f269e04f8e993b5dcf06a055959997b`
+  directly to master as authorized. Hosted core run `43154211028` passed.
+- Bounded shared-model tranche complete; broader native CI runs retain their
+  separate results and do not qualify a corporate profile.
 - Native corporate store/witness/confinement qualification remains pending.
