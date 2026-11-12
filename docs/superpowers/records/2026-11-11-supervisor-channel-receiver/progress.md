@@ -1,0 +1,22 @@
+# SDD ledger — plan: docs/superpowers/plans/2026-11-11-supervisor-channel-receiver.md
+Branch: lane/supervisor-channel-receiver
+
+Base: 2755b171 (origin/master). Spec: openspec/changes/add-linux-host/local-supervisor-profile.md (transport selected in q24).
+
+## Pre-flight scan
+
+| Pair / task | Produces vs consumes | Finding |
+| --- | --- | --- |
+| T1 ↔ T2 | T1 `ChannelReject` (7 constructors) vs T2 `writ_channel_verdict` values from `WRIT_MISSING_SENDER` on (7) | Same order and count; consistent. |
+| T1 ↔ T3 | T3 traceability cites T1 test names | Consistent. |
+| T2 ↔ T3 | T3 cites T2 test names and evidence outputs | Consistent. |
+| T1 ↔ T3 | Both touch nothing in common except docs links | No shared file. |
+| T1 self | Tests use `I.submit_source` with fixtures patterned on LocalSupervisorTests; `payload_principal_is_ignored` asserts attribution to 102 | Agrees with itself. |
+| T2 self | `control_truncated` needs a test seam; plan declares it under `WRIT_CHANNEL_TESTING` | Agrees with itself. |
+| T3 self | Manifest refreshed last | Agrees. |
+
+Ruling: run tasks sequentially, not T1 and T2 in parallel as told to Josh — the skill forbids parallel implementers in one worktree (commit conflicts) — costs only wall-clock time.
+Ruling: the ledger lives in this committed records dir (project board convention); briefs and review packages stay in the git-ignored .superpowers/sdd workspace — if wrong, the board shows less detail.
+Ruling: core-check-count.txt will conflict with lane/finish-capacity-guards, which also adds checks; resolve at integration by recounting the merged tree — costs one recount.
+
+Task 1: dispatched
