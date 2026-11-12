@@ -1,0 +1,13 @@
+uname -srmo: Linux 7.2.9-1-MANJARO x86_64 GNU/Linux
+gcc: gcc (GCC) 16.2.1 20260810
+clang: clang version 23.1.1
+glibc: ldd (GNU libc) 2.44
+id: uid=1000(jadams) gid=1000(jadams) groups=1000(jadams),3(sys),90(network),98(power),108(vboxusers),150(wireshark),906(openwebrx),921(ollama),954(nix-users),955(libvirt),956(realtime),962(docker),975(adbusers),987(uucp),991(lp),992(kvm),994(disk),998(wheel),1001(plugdev),1002(qb64)
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+captured: 2026-11-12T01:50:41Z
+git HEAD: 352a8598 plus the uncommitted final-review fix (SO_PASSRIGHTS, socket type check)
+source sha256: 6fedd222fbc7189ad5080cb157cfbae82469ceb15e9a038d7fb30910ec1fed97 supervisor_channel.c
+07fedc9529a9783156dbb47538cb84edcccc88eb55b874aa94c1b27135086da1 supervisor_channel.h
+ffd237bc89b5c3cff98178cebbccff1db0c6ae08a5b9433390ad3a7280ce32ba supervisor-channel-test.c
+binary sha256: 35d76531986f6c74569a8872945c2e1a1ebb9221d0bf28d15d3b75c2cbcc7a0e  /home/jadams/tmp/writ-sc-final-fix/out/supervisor-channel-test

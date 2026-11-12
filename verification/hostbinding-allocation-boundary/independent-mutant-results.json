@@ -1,0 +1,58 @@
+[
+  {
+    "mutant": "mint-object-guard",
+    "backend": "bend",
+    "exit": 1,
+    "stdout_sha256": "a047ab8d66ace42b46b4ba10873ef3bf1593f6c7a5fb9913efc8b47bb2749989",
+    "stderr_sha256": "3053036dfde4cfa64601b3de5c0154baf426ddcd201854c6757548b0759be0cd"
+  },
+  {
+    "mutant": "mint-object-guard",
+    "backend": "node",
+    "exit": 1,
+    "stdout_sha256": "a047ab8d66ace42b46b4ba10873ef3bf1593f6c7a5fb9913efc8b47bb2749989",
+    "stderr_sha256": "b0d6eee79acb21e8cf2eb570824f8dc41807dccd602adcefb29efcb4408f6941"
+  },
+  {
+    "mutant": "mint-alias-guard",
+    "backend": "bend",
+    "exit": 1,
+    "stdout_sha256": "a047ab8d66ace42b46b4ba10873ef3bf1593f6c7a5fb9913efc8b47bb2749989",
+    "stderr_sha256": "3053036dfde4cfa64601b3de5c0154baf426ddcd201854c6757548b0759be0cd"
+  },
+  {
+    "mutant": "mint-alias-guard",
+    "backend": "node",
+    "exit": 1,
+    "stdout_sha256": "a047ab8d66ace42b46b4ba10873ef3bf1593f6c7a5fb9913efc8b47bb2749989",
+    "stderr_sha256": "b0d6eee79acb21e8cf2eb570824f8dc41807dccd602adcefb29efcb4408f6941"
+  },
+  {
+    "mutant": "delegate-alias-guard",
+    "backend": "bend",
+    "exit": 1,
+    "stdout_sha256": "464f13683e3f755bc023379cd3f84eb27ef57bf0e0f08e0b7c835daeafaba25d",
+    "stderr_sha256": "3053036dfde4cfa64601b3de5c0154baf426ddcd201854c6757548b0759be0cd"
+  },
+  {
+    "mutant": "delegate-alias-guard",
+    "backend": "node",
+    "exit": 1,
+    "stdout_sha256": "464f13683e3f755bc023379cd3f84eb27ef57bf0e0f08e0b7c835daeafaba25d",
+    "stderr_sha256": "b0d6eee79acb21e8cf2eb570824f8dc41807dccd602adcefb29efcb4408f6941"
+  },
+  {
+    "mutant": "provisional-mount-leak",
+    "backend": "bend",
+    "exit": 1,
+    "stdout_sha256": "a047ab8d66ace42b46b4ba10873ef3bf1593f6c7a5fb9913efc8b47bb2749989",
+    "stderr_sha256": "359486f9078d51fafa618cc44222662ff16ab0efc641461944c9ccc1e94ad861"
+  },
+  {
+    "mutant": "provisional-mount-leak",
+    "backend": "node",
+    "exit": 1,
+    "stdout_sha256": "a047ab8d66ace42b46b4ba10873ef3bf1593f6c7a5fb9913efc8b47bb2749989",
+    "stderr_sha256": "70986df86a7b77ba8005568ca6b43efd65b49f789f040f354d41fe29578e8197"
+  }
+]

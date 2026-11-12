@@ -1,0 +1,8 @@
+session-pin bend terminal exit 1
+session-pin bend near exit 0
+session-pin node terminal exit 1
+session-pin node near exit 0
+session-commit bend terminal exit 1
+session-commit bend near exit 0
+session-commit node terminal exit 1
+session-commit node near exit 0

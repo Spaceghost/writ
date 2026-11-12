@@ -1,0 +1,6 @@
+PASS ready-gate named failure observed on Bend and Node
+PASS unsafe-successor named failure observed on Bend and Node
+PASS move-terminal-preservation named failure observed on Bend and Node
+PASS finish-terminal-preservation named failure observed on Bend and Node
+PASS backplane-ready-gate named failure observed on Bend and Node
+ALL NEGOTIATION REVISION MUTANTS REJECTED

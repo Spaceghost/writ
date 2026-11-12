@@ -1,0 +1,31 @@
+Source: commits d71f8f05, 94bfb0dd, e5be680d cherry-picked from lane/hostbinding-allocation-boundary
+(a4d8bd04, 4380bb72, 454e0d15) onto master 2ad65eeb; tested HEAD e5be680d with a clean
+worktree for every .bend file (bend-inputs.sha256, re-verified after code generation).
+Conflicts were limited to per-file count pins that master moved into
+utils/verification/core-check-count.txt, VERIFICATION.md placement and the manifest; the
+manifest was regenerated. HostBinding.bend was identical on base 70f05b25 and master.
+Toolchain: pinned Bend 2.0.39 SHA-256 2ec160fa4486d33aff51e9eedcc294d6b531dc10c279c00b0c00685dae2045cd,
+BEND_NO_TELEMETRY=1, clang 23.1.1, OpenSpec 1.16.0, TMPDIR and outputs outside the checkout.
+Full suite: nice bend Tests.bend (exit 0; bend.log; 3098 PASS, 28 s).
+  Sorted PASS names versus the 3072-check reference /home/jadams/tmp/writ-channel-identity/tests-bend.txt:
+  none missing; exactly the 26 HostBindingBoundaryTests names added. Non-PASS diff: VECTOR GA-008-4 and the summary line.
+  python3 utils/verification/check_core.py bend.log and native.log: Verified 3098 core checks.
+  python3 -m unittest discover -s utils/verification -p 'test_*.py': 4 tests OK.
+Ordinary proof: timeout 300 nice bend PROOF.bend (exit 0; proof.txt).
+Verdict: BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict
+  (exit 0; verdict.txt); kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18.
+Verdict negative: BENDTT=/bin/false bend PROOF.bend --verdict (exit 1; verdict-negative.txt).
+OpenSpec: openspec validate --all --strict --no-interactive (exit 0; openspec.txt, 45 items).
+C generation: ulimit -v 16777216; timeout 900 nice -n 15 bend Tests.bend -o tests.c (exit 0, 7 min 15 s, empty output).
+Native build: timeout 1800 nice -n 15 clang -std=c11 -O0 -static tests.c -o tests-native -lpthread -lm (exit 0, 9 min 25 s, no diagnostics).
+  Executable SHA-256 34ef92467bb353599b9dca7550dfd75edf2074f979ea9ce5c90a6c4ba042e3a0.
+Native run: ulimit -c 0; timeout 600 nice -n 15 tests-native +RTS --threads 1 --gpu off (exit 0, 71 s; native.log, empty stderr).
+  The attempted ulimit -v 20971520 was refused, so the run kept the inherited 16 GiB limit.
+  cmp bend.log native.log: identical (SHA-256 9019c6adabbded400db4350c34ddafbb7bbba6e08dccb24df43f8bff101df17b).
+Host QuickJS: cat genode-prof/prelude.js tests.js | qjs --std --stack-size 524288 (exit 0, 83 s wall);
+  output minus the prelude's EXIT line and ms prefix is identical to bend.log. The 28 new lines
+  (qjs-new-checks.txt) sum to 13 ms at 1 ms resolution. qjs SHA-256
+  4f951eed230ec0a1c8357f4b036c5250d193b931bc4f42a40e5ebab31fced594; prelude SHA-256
+  ae0b67da2340e7aa9f20dbcc186ba70c276e645bc2daab6f5d7bc435f442af4d. This is a host replica of the
+  Genode prelude, not a Genode run.
+Generated tests.c/tests.js hashes are in generated.sha256; the files stay outside the checkout.

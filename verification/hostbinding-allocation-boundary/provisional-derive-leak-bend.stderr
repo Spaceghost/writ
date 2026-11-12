@@ -1,0 +1,2 @@
+FAIL: host binding exhausted object or alias rejects open unchanged
+bend 2.0.40 is available: run bend update

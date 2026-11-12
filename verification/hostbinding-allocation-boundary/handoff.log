@@ -1,0 +1,19 @@
+PASS bounded stdout and stderr exact cap and cap plus one; direct children waited
+PASS selector setup failure closes pipes and waits the direct child
+generated test JS SHA-256 ac02541efb160aeb6f6a0890744f6005c56ad9882a9888a9e798953002bace1e
+PASS oversized ABI lengths rejected before slicing and invocation
+PASS canonical positive pair
+PASS changed manifest rejected
+PASS changed status rejected
+PASS swapped canonical pair exceeds status cap and does not launch
+PASS NUL LF high bytes preserved
+PASS empty snapshots preserved
+PASS both native caps preserved
+PASS manifest syntax cap plus one preserved
+PASS status syntax cap plus one preserved
+PASS manifest capture cap plus one does not launch
+PASS status capture cap plus one does not launch
+PASS missing entry does not launch
+PASS close uncertainty does not launch
+PASS fixed decoder rejects malformed, oversized and missing hex on Bend and Node
+ALL SYNTHETIC PAIR HANDOFF CHECKS PASSED

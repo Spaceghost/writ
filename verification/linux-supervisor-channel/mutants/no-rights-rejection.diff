@@ -1,0 +1,10 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/no-rights-rejection.c	2026-11-11 19:50:08.772295527 -0600
+@@ -132,7 +132,6 @@
+     enum writ_channel_verdict verdict = WRIT_UNKNOWN_SENDER;
+     if ((msg->msg_flags & MSG_CTRUNC) || short_control) verdict = WRIT_CONTROL_TRUNCATED;
+     else if (msg->msg_flags & MSG_TRUNC) verdict = WRIT_PAYLOAD_TRUNCATED;
+-    else if (rights) verdict = WRIT_UNEXPECTED_RIGHTS;
+     else if (other) verdict = WRIT_UNEXPECTED_CONTROL;
+     else if (negative) verdict = WRIT_SENDER_ERROR;
+     else if (pidfds > 1) verdict = WRIT_DUPLICATE_SENDER;

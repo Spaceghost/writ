@@ -1,0 +1,2 @@
+PASS: neg revision exact supported limit and successor
+FAIL: neg revision terminal direct move preserves session

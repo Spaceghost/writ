@@ -23,4 +23,3 @@ PASS: namespace new entry begins at revision one
 PASS: namespace publication requires a nonzero revision
 PASS: namespace cannot mutate an unsealed listing
 24 directory namespace checks passed
-

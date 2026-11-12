@@ -1,0 +1,10 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/unchecked-count.c	2026-11-11 19:50:12.218243712 -0600
+@@ -137,7 +137,6 @@
+     else if (negative) verdict = WRIT_SENDER_ERROR;
+     else if (pidfds > 1) verdict = WRIT_DUPLICATE_SENDER;
+     else if (pidfds == 0) verdict = WRIT_MISSING_SENDER;
+-    else if (roles->count > WRIT_CHANNEL_ROLES) verdict = WRIT_SENDER_ERROR; /* corrupt table fails closed */
+     else {
+         dev_t dev;
+         ino_t ino;

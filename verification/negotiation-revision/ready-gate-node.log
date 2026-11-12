@@ -1,0 +1,4 @@
+PASS: neg revision exact supported limit and successor
+PASS: neg revision terminal direct move preserves session
+PASS: neg revision terminal direct finish preserves session
+FAIL: neg revision terminal pin matching unchanged

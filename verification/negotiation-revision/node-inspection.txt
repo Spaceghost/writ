@@ -1,0 +1,6 @@
+Generated Node artifact inspected: /tmp/writ-neg-focused.js
+SHA-256: 5b179cdd8bdd0f697b23768cd57ba4bf4a84d7ee91dcd1ba2a3ada3b3204f59f
+Negotiation.bend SHA-256: e455f80f7ef8320b7a40928d75e31ed8cdf8e80439752a7fc23be628b3401a4c
+NegotiationRevisionTests.bend SHA-256: c4d6de84efcf061341ba52f01138905cbd3ed57aa85039bca8b0d995fb049888
+Node eagerly constructs candidate Session values before selection. Its bounded_successor computes max-minus-revision with saturating subtraction, min with 1, then checked addition; at max, the added value is 0. Session.select_next returns the old session when no successor exists, while ready includes a separate revision_has_successor gate.
+This is inspection of this exact external generated file, not process attestation or a proof for other backends. Focused runtime and mutation results are separate evidence.

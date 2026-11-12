@@ -1,0 +1,31 @@
+2	PASS: neg revision exact supported limit and successor
+0	PASS: neg revision terminal direct move preserves session
+0	PASS: neg revision terminal direct finish preserves session
+0	PASS: neg revision terminal pin matching unchanged
+0	PASS: neg revision terminal pin stale unchanged
+0	PASS: neg revision terminal challenge matching unchanged
+1	PASS: neg revision terminal challenge stale unchanged
+0	PASS: neg revision terminal sample matching unchanged
+1	PASS: neg revision terminal sample stale unchanged
+0	PASS: neg revision terminal sample permit denied
+0	PASS: neg revision terminal approve matching unchanged
+0	PASS: neg revision terminal approve stale unchanged
+2	PASS: neg revision terminal reserve matching preserves both
+0	PASS: neg revision terminal reserve stale preserves both
+0	PASS: neg revision terminal start matching unchanged
+0	PASS: neg revision terminal start stale unchanged
+3	PASS: neg revision terminal backplane matching preserves both
+1	PASS: neg revision terminal backplane stale preserves both
+1	PASS: neg revision terminal facade matching preserves both
+2	PASS: neg revision terminal facade stale preserves both
+0	PASS: neg revision max minus one stale pin unchanged
+3	PASS: neg revision max minus one stale backplane preserves both
+1	PASS: neg revision max minus one pin advances to max
+0	PASS: neg revision max minus one challenge advances to max
+1	PASS: neg revision max minus one sample advances to max
+1	PASS: neg revision max minus one approve advances to max
+2	PASS: neg revision max minus one reserve advances both
+1	PASS: neg revision max minus one start advances to max
+7	PASS: neg revision max minus one backplane commits
+8	PASS: neg revision max minus one facade commits
+0	Negotiation revision: 30 checks passed

@@ -477,6 +477,7 @@ def reason_name(reason: H.Error) -> String:
     case H.UnknownObject{}: "UnknownObject"
     case H.UnknownAlias{}: "UnknownAlias"
     case H.FrontendRejected{}: "FrontendRejected"
+    case H.IdExhausted{}: "IdExhausted"
     case H.StaleRevision{}: "StaleRevision"
 
 # mount, open, attenuate, and delegate issue an alias. The object it names is

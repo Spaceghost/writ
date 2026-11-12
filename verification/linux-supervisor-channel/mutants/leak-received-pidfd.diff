@@ -1,0 +1,10 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/leak-received-pidfd.c	2026-11-11 19:50:09.988958580 -0600
+@@ -155,7 +155,6 @@
+             }
+         }
+     }
+-    if (pidfd >= 0) close(pidfd);
+
+     if (verdict != WRIT_FROM_ROLE && verdict != WRIT_UNKNOWN_SENDER) {
+         out->length = 0;

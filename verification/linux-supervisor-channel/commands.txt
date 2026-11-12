@@ -1,0 +1,19 @@
+export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1
+# Focused Bend (bend-focused.txt)
+bend hosts/linux/monitor/LocalChannelTests.bend
+# Full suite, then the core count check (bend-suite-tail.txt). Do not wrap bend in `time`: it appends text after the success marker.
+bend Tests.bend > tests.log 2>&1; python3 utils/verification/check_core.py tests.log
+# Proof (proof-tail.txt).
+bend PROOF.bend
+# Native build outside the checkout (Makefile refuses an in-tree OUT), then one run (native-run.txt, exit appended).
+make -C contrib/native-hosts/linux OUT="$HOME/tmp/writ-sc-final-fix/out" "$HOME/tmp/writ-sc-final-fix/out/supervisor-channel-test"
+timeout 60 "$HOME/tmp/writ-sc-final-fix/out/supervisor-channel-test"; echo "exit=$?"
+# 20 repeats, tallied (native-repeat.txt)
+for i in $(seq 1 20); do timeout 60 ./supervisor-channel-test > r.txt 2>&1; echo "$? $(tail -1 r.txt)"; done | sort | uniq -c
+# Mutants (mutants/*.diff, mutants/*.out, mutant-results.txt): each diff is against supervisor_channel.c; build the
+# mutated copy with the same flags and the unmodified test, run it, expect exit 1.
+cc -D_FILE_OFFSET_BITS=64 -DWRIT_CHANNEL_TESTING -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow \
+   -I contrib/native-hosts/linux contrib/native-hosts/linux/supervisor-channel-test.c MUTANT.c -o m && ./m; echo "exit=$?"
+# All mutants were built with -w (some mutations leave unused or maybe-uninitialised code); eleven mutants incl. drop-passrights and no-socket-type-check.
+# Lean-backed verdict (verdict.txt), run on the e0d985be tree with a restored BendTT kernel, kernel SHA-256 e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18; exit 0.
+BENDTT=/home/jadams/tmp/writ-lean-434-restored/kernel/bendtt LEAN_STACK_SIZE_KB=4194304 bend PROOF.bend --verdict

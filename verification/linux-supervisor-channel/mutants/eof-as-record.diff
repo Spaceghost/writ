@@ -1,0 +1,11 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/eof-as-record.c	2026-11-11 19:50:11.640073071 -0600
+@@ -179,7 +179,7 @@
+     ssize_t got = recvmsg(fd, &msg, MSG_CMSG_CLOEXEC | MSG_DONTWAIT);
+     if (got < 0) return -1;
+     /* End of stream is not a record: the peer closed and nothing is queued. */
+-    if (got == 0 && msg.msg_controllen == 0 && !(msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
++    if (0 && got == 0 && msg.msg_controllen == 0 && !(msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
+         errno = EPIPE;
+         return -1;
+     }

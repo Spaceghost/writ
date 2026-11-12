@@ -116,6 +116,7 @@ type Error is Data:
   UnknownObject{}
   UnknownAlias{}
   FrontendRejected{}
+  IdExhausted{}
   StaleRevision{}
 
 # A rejection carries the supplied state unchanged; a change carries the next
@@ -144,6 +145,7 @@ def Error.equal(a: Error, b: Error) -> Bool:
     case UnknownObject{} UnknownObject{}: True{}
     case UnknownAlias{} UnknownAlias{}: True{}
     case FrontendRejected{} FrontendRejected{}: True{}
+    case IdExhausted{} IdExhausted{}: True{}
     case StaleRevision{} StaleRevision{}: True{}
     case _ _: False{}
 
@@ -188,6 +190,23 @@ def frontend(state: State) -> F.State:
   match state:
     case State{_, _, _, _, _, _, _, _, _, frontend}:
       frontend
+
+# The pinned Nat runtime stops at 2^48 - 1. An allocated id needs a
+# representable successor because each next counter must remain strictly
+# above every id ever allocated. These checks do not establish authority and
+# must not gate resolution, cleanup, revocation or unrelated counters.
+def id_has_successor(id: Nat) -> Bool:
+  Nat.is_lt(id, Nat.add(Nat.mul(65536n, 4294967295n), 65535n))
+
+def mint_ids_available(state: State) -> Bool:
+  match state:
+    case State{_, next_object, next_alias, _, _, _, _, _, _, _}:
+      id_has_successor(next_object) && id_has_successor(next_alias)
+
+def alias_id_available(state: State) -> Bool:
+  match state:
+    case State{_, _, next_alias, _, _, _, _, _, _, _}:
+      id_has_successor(next_alias)
 
 def object_id(object: Object) -> Nat:
   match object:
@@ -951,12 +970,20 @@ def commit_mint(state: State, +next_frontend: F.State, +handle: Nat, +holder: Na
         link_node(delegated, Delegation{used_alias, holder, recorded, next_alias}, delegations),
         Bindings{Binding{next_object, handle}, bindings}, next_frontend}, next_alias}
 
+def mount_ids(ok: Bool, +state: State, +next_frontend: F.State, +handle: Nat,
+    +holder: Nat, +owner: Nat, +service: Nat) -> Change:
+  match ok:
+    case False{}:
+      Rejected{state, IdExhausted{}}
+    case True{}:
+      commit_mint(state, next_frontend, handle, holder, owner, Session{}, 0n, service, False{}, 0n, 0)
+
 def mount_frontend(change: F.Change, +state: State, +holder: Nat, +owner: Nat, +service: Nat) -> Change:
   match change:
     case F.Rejected{_}:
       Rejected{state, FrontendRejected{}}
     case F.Changed{next_frontend, handle}:
-      commit_mint(state, next_frontend, handle, holder, owner, Session{}, 0n, service, False{}, 0n, 0)
+      mount_ids(mint_ids_available(state), state, next_frontend, handle, holder, owner, service)
 
 def mount_quota(ok: Bool, +state: State, +route: Route, +caller: F.Caller, +registry: F.Registry,
     +rights: U32, +live: F.Live) -> Change:
@@ -993,7 +1020,8 @@ def mount_checked(ok: Bool, +state: State, +route: Route, +caller: F.Caller, +re
 # applies every Writ check (FrontendRejected). On success the child holds the
 # only alias to a root Session owned by the route subject on the route's
 # service; the change id is that alias. Denial order: StaleRevision,
-# RouteMismatch, QuotaExhausted, FrontendRejected.
+# RouteMismatch, QuotaExhausted, FrontendRejected, IdExhausted. Counter
+# exhaustion discards the provisional Frontend result and returns the input.
 def bind_mount(+state: State, expected_revision: Nat, +route: Route, +caller: F.Caller,
     +registry: F.Registry, +rights: U32, +live: F.Live) -> Change:
   mount_checked(valid(state) && Nat.is_eq(revision(state), expected_revision),
@@ -1033,14 +1061,23 @@ def derive_frontend(step: Derivation, +current: F.State, +registry: F.Registry, 
       attenuate_dup(F.dup(current, registry, F.revision(current), F.Ref{caller, parent_handle}, live),
         registry, caller, rights, live)
 
+def derive_ids(ok: Bool, +state: State, +next_frontend: F.State, +handle: Nat, +holder: Nat,
+    +parent: Object, +delegated: Bool, +used_alias: Nat, +recorded: U32) -> Change:
+  match ok:
+    case False{}:
+      Rejected{state, IdExhausted{}}
+    case True{}:
+      commit_mint(state, next_frontend, handle, holder, object_owner(parent), Descriptor{},
+        object_id(parent), object_service(parent), delegated, used_alias, recorded)
+
 def derive_frontend_done(change: F.Change, +state: State, +holder: Nat, +parent: Object,
     +delegated: Bool, +used_alias: Nat, +recorded: U32) -> Change:
   match change:
     case F.Rejected{_}:
       Rejected{state, FrontendRejected{}}
     case F.Changed{next_frontend, handle}:
-      commit_mint(state, next_frontend, handle, holder, object_owner(parent), Descriptor{},
-        object_id(parent), object_service(parent), delegated, used_alias, recorded)
+      derive_ids(mint_ids_available(state), state, next_frontend, handle, holder, parent,
+        delegated, used_alias, recorded)
 
 def derive_quota(ok: Bool, +step: Derivation, +state: State, +parent: Object, +handle: F.Handle,
     +holder: Nat, +delegated: Bool, +used_alias: Nat, +recorded: U32, +caller: F.Caller,
@@ -1098,7 +1135,8 @@ def derive_checked(ok: Bool, step: Derivation, +state: State, expected_alias: Na
 # change id is the new alias.
 # Denial order: StaleRevision, UnknownAlias (no such alias, or `holder` does
 # not hold it), StaleGeneration, SubjectMismatch, WidenedRights,
-# QuotaExhausted, FrontendRejected (UnknownObject only for an unbound object).
+# QuotaExhausted, FrontendRejected, IdExhausted (UnknownObject only for an
+# unbound object). Exhaustion returns the input, not the provisional frontend.
 # A Descriptor alias is FrontendRejected: F.open opens only from a mount.
 def bind_open(+state: State, expected_revision: Nat, +alias_id: Nat, +holder: Nat,
     +caller: F.Caller, +registry: F.Registry, +rights: U32, +live: F.Live) -> Change:
@@ -1130,12 +1168,19 @@ def commit_delegate(state: State, +from_alias: Alias, +to_holder: Nat, +rights: 
         routes, quotas, Delegations{Delegation{alias_id(from_alias), to_holder, rights, next_alias}, delegations},
         bindings, frontend}, next_alias}
 
+def delegate_ids(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +rights: U32) -> Change:
+  match ok:
+    case False{}:
+      Rejected{state, IdExhausted{}}
+    case True{}:
+      commit_delegate(state, alias, to_holder, rights)
+
 def delegate_rights(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +rights: U32) -> Change:
   match ok:
     case False{}:
       Rejected{state, WidenedRights{}}
     case True{}:
-      commit_delegate(state, alias, to_holder, rights)
+      delegate_ids(alias_id_available(state), state, alias, to_holder, rights)
 
 def delegate_target(ok: Bool, +state: State, +alias: Alias, +to_holder: Nat, +effective: U32,
     +rights: U32) -> Change:
@@ -1178,7 +1223,7 @@ def delegate_checked(ok: Bool, +state: State, +alias_id: Nat, +from_holder: Nat,
 # delegatee's new alias. Denial order: StaleRevision, UnknownAlias (no such
 # alias, or `from_holder` does not hold it), StaleGeneration, SubjectMismatch
 # (`from_holder` unauthorized, then `to_holder` routed as another subject),
-# WidenedRights (UnknownObject only for an unbound object).
+# WidenedRights, IdExhausted (UnknownObject only for an unbound object).
 def delegate(+state: State, expected_revision: Nat, +alias_id: Nat, +from_holder: Nat,
     +to_holder: Nat, +rights: U32) -> Change:
   delegate_checked(valid(state) && Nat.is_eq(revision(state), expected_revision), state, alias_id,

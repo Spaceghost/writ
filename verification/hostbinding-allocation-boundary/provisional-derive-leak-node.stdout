@@ -1,0 +1,10 @@
+PASS: host binding exhaustion reason is distinct
+PASS: host binding last object mount preserves full state
+PASS: host binding last alias mount preserves full state
+PASS: host binding last object open preserves full state
+PASS: host binding last alias open preserves full state
+PASS: host binding last object attenuation preserves full state
+PASS: host binding last alias attenuation preserves full state
+PASS: host binding last alias delegation preserves full state
+PASS: host binding exhausted object or alias rejects mount unchanged
+VECTOR GA-008-4 bind_mount denied IdExhausted

@@ -1,0 +1,228 @@
+/* See supervisor_channel.h. Translates kernel facts only; policy, grants and
+   principal naming stay in Bend (hosts/linux/monitor/LocalChannel.bend). */
+#define _GNU_SOURCE
+#include "supervisor_channel.h"
+
+#include <errno.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/syscall.h>
+#include <sys/vfs.h>
+#include <unistd.h>
+
+#ifndef SO_PASSPIDFD
+#define SO_PASSPIDFD 76
+#endif
+#ifndef SO_PASSRIGHTS
+#define SO_PASSRIGHTS 83 /* Linux 6.16+ */
+#endif
+#ifndef SCM_PIDFD
+#define SCM_PIDFD 0x04
+#endif
+#ifndef PID_FS_MAGIC
+#define PID_FS_MAGIC 0x50494446
+#endif
+
+_Static_assert(sizeof(ino_t) == 8, "pidfs inode identity needs a 64-bit ino_t");
+
+#define CONTROL_FDS 4 /* receive buffer room; parsing never clamps to it */
+
+union control_buffer {
+    char buf[CMSG_SPACE(sizeof(int) * CONTROL_FDS) * 2];
+    struct cmsghdr align;
+};
+
+/* pidfs identity of a descriptor. 0 on success, ENOTSUP when it is not a
+   pidfs file, else errno from fstatfs/fstat. */
+static int pidfs_identity(int fd, dev_t *dev, ino_t *ino)
+{
+    struct statfs fs;
+    struct stat st;
+    if (fstatfs(fd, &fs)) return errno;
+    if ((unsigned long)fs.f_type != PID_FS_MAGIC) return ENOTSUP;
+    if (fstat(fd, &st)) return errno;
+    *dev = st.st_dev;
+    *ino = st.st_ino;
+    return 0;
+}
+
+int writ_channel_enable(int fd)
+{
+    /* The bounded-record guarantees hold only for a connected-style AF_UNIX
+       SOCK_SEQPACKET socket; refuse anything else. */
+    int domain = 0, type = 0;
+    socklen_t len = sizeof domain;
+    if (getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &domain, &len)) return -1;
+    len = sizeof type;
+    if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &len)) return -1;
+    if (domain != AF_UNIX || type != SOCK_SEQPACKET) { errno = EINVAL; return -1; }
+
+    /* Refuse SCM_RIGHTS at the sender (its sendmsg fails with EPERM). Closing a
+       sender-supplied descriptor in the receiver can block indefinitely, for
+       example a FUSE file served by the sender, which would stall revocation
+       and STOP. Fail closed: if the kernel cannot do this, enabling fails and
+       the receiver must not run. The SCM_RIGHTS rejection in classify stays as
+       defence in depth. */
+    int off = 0;
+    if (setsockopt(fd, SOL_SOCKET, SO_PASSRIGHTS, &off, sizeof off)) return -1;
+
+    int on = 1;
+    return setsockopt(fd, SOL_SOCKET, SO_PASSPIDFD, &on, sizeof on);
+}
+
+int writ_roles_add(struct writ_roles *roles, uint32_t index, int pidfd)
+{
+    dev_t dev;
+    ino_t ino;
+    if (index == 0) return EINVAL;
+    if (roles->count > WRIT_CHANNEL_ROLES) return EINVAL; /* corrupt table: never index past role[] */
+    if (pidfs_identity(pidfd, &dev, &ino)) return EINVAL;
+    for (size_t i = 0; i < roles->count; ++i) {
+        if (roles->role[i].index == index) return EINVAL;
+        if (roles->role[i].dev == dev && roles->role[i].ino == ino) return EINVAL;
+    }
+    if (roles->count >= WRIT_CHANNEL_ROLES) return ENOSPC;
+    roles->role[roles->count].index = index;
+    roles->role[roles->count].dev = dev;
+    roles->role[roles->count].ino = ino;
+    ++roles->count;
+    return 0;
+}
+
+/* Classifies one received message. `msg` describes what the kernel returned:
+   msg_control/msg_controllen are the returned control bytes and msg_flags the
+   returned flags; `got` is the payload length recvmsg reported and the payload
+   is already in out->payload. Closes every descriptor found in the returned
+   control bytes. This is the only classification path: production and the
+   WRIT_CHANNEL_TESTING seam both use it. */
+static void classify(struct msghdr *msg, size_t got, const struct writ_roles *roles,
+                     struct writ_channel_record *out)
+{
+    out->length = got < sizeof out->payload ? got : sizeof out->payload;
+
+    int pidfd = -1;
+    int pidfds = 0, rights = 0, other = 0, negative = 0, short_control = 0;
+    const unsigned char *control_end = (const unsigned char *)msg->msg_control + msg->msg_controllen;
+    for (struct cmsghdr *c = CMSG_FIRSTHDR(msg); c; c = CMSG_NXTHDR(msg, c)) {
+        if (c->cmsg_level != SOL_SOCKET || c->cmsg_len < CMSG_LEN(0)) { ++other; continue; }
+        /* Read only bytes the kernel actually returned: a header claiming
+           more than msg_controllen is control truncation, and every
+           descriptor within the returned bytes is still closed. */
+        const unsigned char *data = CMSG_DATA(c);
+        size_t claimed = c->cmsg_len - CMSG_LEN(0);
+        size_t available = data <= control_end ? (size_t)(control_end - data) : 0;
+        if (claimed > available) { ++short_control; claimed = available; }
+        size_t n = claimed / sizeof(int);
+        for (size_t i = 0; i < n; ++i) {
+            int value;
+            memcpy(&value, data + i * sizeof(int), sizeof(int));
+            if (c->cmsg_type == SCM_PIDFD) {
+                ++pidfds;
+                if (value < 0) { ++negative; continue; }
+                if (pidfd < 0) pidfd = value; else close(value);
+            } else if (c->cmsg_type == SCM_RIGHTS) {
+                ++rights;
+                if (value >= 0) close(value);
+            }
+        }
+        if (c->cmsg_type != SCM_PIDFD && c->cmsg_type != SCM_RIGHTS) ++other;
+    }
+
+    enum writ_channel_verdict verdict = WRIT_UNKNOWN_SENDER;
+    if ((msg->msg_flags & MSG_CTRUNC) || short_control) verdict = WRIT_CONTROL_TRUNCATED;
+    else if (msg->msg_flags & MSG_TRUNC) verdict = WRIT_PAYLOAD_TRUNCATED;
+    else if (rights) verdict = WRIT_UNEXPECTED_RIGHTS;
+    else if (other) verdict = WRIT_UNEXPECTED_CONTROL;
+    else if (negative) verdict = WRIT_SENDER_ERROR;
+    else if (pidfds > 1) verdict = WRIT_DUPLICATE_SENDER;
+    else if (pidfds == 0) verdict = WRIT_MISSING_SENDER;
+    else if (roles->count > WRIT_CHANNEL_ROLES) verdict = WRIT_SENDER_ERROR; /* corrupt table fails closed */
+    else {
+        dev_t dev;
+        ino_t ino;
+        if (pidfs_identity(pidfd, &dev, &ino)) {
+            verdict = WRIT_SENDER_ERROR;
+        } else {
+            /* Reviewed-only: every unprivileged pidfs inode shares one st_dev,
+               so no owned-process test can show that dev is compared. */
+            for (size_t i = 0; i < roles->count; ++i) {
+                if (roles->role[i].dev == dev && roles->role[i].ino == ino) {
+                    verdict = WRIT_FROM_ROLE;
+                    out->role = roles->role[i].index;
+                    break;
+                }
+            }
+        }
+    }
+    if (pidfd >= 0) close(pidfd);
+
+    if (verdict != WRIT_FROM_ROLE && verdict != WRIT_UNKNOWN_SENDER) {
+        out->length = 0;
+        memset(out->payload, 0, sizeof out->payload);
+    }
+    out->verdict = verdict;
+}
+
+static int receive_impl(int fd, const struct writ_roles *roles,
+                        struct writ_channel_record *out, size_t control_len)
+{
+    union control_buffer control;
+    memset(&control, 0, sizeof control);
+    memset(out, 0, sizeof *out);
+    out->verdict = WRIT_SENDER_ERROR; /* fails closed if the caller ignores -1 */
+    if (control_len > sizeof control.buf) control_len = sizeof control.buf;
+
+    struct iovec iov = { .iov_base = out->payload, .iov_len = sizeof out->payload };
+    struct msghdr msg = { .msg_iov = &iov, .msg_iovlen = 1,
+                          .msg_control = control.buf, .msg_controllen = control_len };
+    ssize_t got = recvmsg(fd, &msg, MSG_CMSG_CLOEXEC | MSG_DONTWAIT);
+    if (got < 0) return -1;
+    /* End of stream is not a record: the peer closed and nothing is queued. */
+    if (got == 0 && msg.msg_controllen == 0 && !(msg.msg_flags & (MSG_TRUNC | MSG_CTRUNC))) {
+        errno = EPIPE;
+        return -1;
+    }
+    classify(&msg, (size_t)got, roles, out);
+    return 0;
+}
+
+int writ_channel_receive(int fd, const struct writ_roles *roles, struct writ_channel_record *out)
+{
+    return receive_impl(fd, roles, out, sizeof(union control_buffer));
+}
+
+#ifdef WRIT_CHANNEL_TESTING
+void writ_channel_classify(struct msghdr *msg, size_t got, const struct writ_roles *roles,
+                           struct writ_channel_record *out)
+{
+    out->verdict = WRIT_SENDER_ERROR;
+    out->role = 0;
+    classify(msg, got, roles, out);
+}
+
+int writ_channel_receive_with_control(int fd, const struct writ_roles *roles,
+                                      struct writ_channel_record *out, size_t control_len)
+{
+    return receive_impl(fd, roles, out, control_len);
+}
+#endif
+
+int writ_channel_profile_check(void)
+{
+    int pair[2];
+    if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_CLOEXEC, 0, pair)) return errno;
+    int result = 0;
+    if (writ_channel_enable(pair[0])) result = errno == ENOPROTOOPT ? ENOTSUP : errno;
+    close(pair[0]);
+    close(pair[1]);
+    if (result) return result;
+
+    long self = syscall(SYS_pidfd_open, getpid(), 0);
+    if (self < 0) return errno == ENOSYS ? ENOTSUP : errno;
+    dev_t dev;
+    ino_t ino;
+    result = pidfs_identity((int)self, &dev, &ino);
+    close((int)self);
+    return result;
+}

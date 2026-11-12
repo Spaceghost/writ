@@ -26,6 +26,69 @@ def launched(+w: RT.Sc) -> LH.State:
   +initial = LH.joint_initial(issuer, RT.sc_evidenced(w), RT.sc_policies(), RT.sc_running(w), RT.sc_raw(issuer, 110n))
   LH.Outcome.state(LH.dispatch(initial, LH.FromBroker{LH.Launch{fact()}}, LH.Sample{110n}, V.fixture_authority(110n)))
 
+# Shared synthetic scenario stages. Bend backends do not memoize fixture
+# defs, so each check that formerly rebuilt delivery or called `issued_once(w)` replayed
+# launch, dispatch, issue and delivery (each an owner transition that rechecks
+# every issuer grant). `stages` runs each transition once from one world and
+# the checks read the result. Every field is exactly the value of the fixture
+# expression listed below, and all of it is pure, so a check that reads a
+# stage asserts the same thing as one that rebuilt it. These are synthetic
+# records, not authenticated input; the checks still run their own transition
+# under test against the stage, except `check_dispatch` and `check_delivery`,
+# whose transition under test is the dispatch or delivery stage itself. Fields: `launched(world)`; its
+# `LH.joint_dispatch(launched, 1n, 110n)` action; `issued_once(world)`;
+# `delivery_of` on that issued state; slots 1 and 2 issued and delivered (the former
+# `issue_twice` scenario); and the short-reader launch from
+# `launched_with(world, shortened_issuer(...))`, dispatched, then issued.
+type Stages is Data:
+  Stages{world: RT.Sc, launched: LH.State, dispatch: LH.JointAction, issued: LH.State,
+    delivered: LH.Outcome, two_roots: LH.State, short_launched: LH.State, short_ready: LH.State,
+    short_issued: LH.State}
+
+def stage_world(+s: Stages) -> RT.Sc:
+  match s:
+    case Stages{w, _, _, _, _, _, _, _, _}: w
+
+def stage_launched(+s: Stages) -> LH.State:
+  match s:
+    case Stages{_, launched, _, _, _, _, _, _, _}: launched
+
+def stage_dispatch(+s: Stages) -> LH.JointAction:
+  match s:
+    case Stages{_, _, dispatch, _, _, _, _, _, _}: dispatch
+
+# dispatch_ready(world)
+def stage_ready(+s: Stages) -> LH.State:
+  LH.JointAction.state(stage_dispatch(s))
+
+def stage_issued(+s: Stages) -> LH.State:
+  match s:
+    case Stages{_, _, _, issued, _, _, _, _, _}: issued
+
+def stage_delivered(+s: Stages) -> LH.Outcome:
+  match s:
+    case Stages{_, _, _, _, delivered, _, _, _, _}: delivered
+
+# The owner state after the delivered stage.
+def stage_running(+s: Stages) -> LH.State:
+  LH.Outcome.state(stage_delivered(s))
+
+def stage_two_roots(+s: Stages) -> LH.State:
+  match s:
+    case Stages{_, _, _, _, _, two_roots, _, _, _}: two_roots
+
+def stage_short_launched(+s: Stages) -> LH.State:
+  match s:
+    case Stages{_, _, _, _, _, _, short_launched, _, _}: short_launched
+
+def stage_short_ready(+s: Stages) -> LH.State:
+  match s:
+    case Stages{_, _, _, _, _, _, _, short_ready, _}: short_ready
+
+def stage_short_issued(+s: Stages) -> LH.State:
+  match s:
+    case Stages{_, _, _, _, _, _, _, _, short_issued}: short_issued
+
 def did_dispatch(action: LH.JointAction) -> Bool:
   match action:
     case LH.JointChanged{_}: True{}
@@ -36,27 +99,19 @@ def did_issue(action: LH.JointAction) -> Bool:
     case LH.JointIssued{_, slot}: Nat.is_eq(slot, 1n)
     case _: False{}
 
-def check_dispatch(+w: RT.Sc) -> Bool:
-  did_dispatch(LH.joint_dispatch(launched(w), 1n, 110n))
+def check_dispatch(+s: Stages) -> Bool:
+  did_dispatch(stage_dispatch(s))
 
-def check_issue(+w: RT.Sc) -> Bool:
-  did_issue(LH.joint_issue(LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)), 1n, 4, 120n, 110n))
+def check_issue(+s: Stages) -> Bool:
+  did_issue(LH.joint_issue(stage_ready(s), 1n, 4, 120n, 110n))
 
 def deliver_result(outcome: LH.Outcome) -> Bool:
   match outcome:
     case LH.Stepped{_, _, _, P.Admitted{_, P.DeliverInputs{_, _} <> []}}: True{}
     case _: False{}
 
-def delivered(+w: RT.Sc) -> LH.Outcome:
-  +launched = launched(w)
-  +dispatched = LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n))
-  +issued = LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n))
-  +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
-  LH.dispatch(issued, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
-    LH.Sample{110n}, V.fixture_authority(110n))
-
-def check_delivery(+w: RT.Sc) -> Bool:
-  deliver_result(delivered(w))
+def check_delivery(+s: Stages) -> Bool:
+  deliver_result(stage_delivered(s))
 
 def revoke_is_applied(action: LH.JointAction) -> Bool:
   match action:
@@ -79,8 +134,8 @@ def drain_correct(drain: LH.JointDrain) -> Bool:
       Nat.is_eq(worker, 1n) && drain_complete(LH.joint_drain(state))
     case _: False{}
 
-def check_revoke(+w: RT.Sc) -> Bool:
-  +change = LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)
+def check_revoke(+s: Stages) -> Bool:
+  +change = LH.joint_revoke(stage_running(s), IT.source_authority(), 5n)
   revoke_is_applied(change) && drain_correct(LH.joint_drain(LH.JointAction.state(change)))
 
 def is_contained(outcome: LH.Outcome) -> Bool:
@@ -88,18 +143,18 @@ def is_contained(outcome: LH.Outcome) -> Bool:
     case LH.ContainmentRequired{_}: True{}
     case _: False{}
 
-def check_expiry(+w: RT.Sc) -> Bool:
-  +state = LH.Outcome.state(delivered(w))
+def check_expiry(+s: Stages) -> Bool:
+  +state = stage_running(s)
   +result = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{125n}, V.fixture_authority(110n)) : LH.Outcome}
   is_contained(result) && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
 
-def check_clock(+w: RT.Sc) -> Bool:
-  +state = LH.Outcome.state(delivered(w))
+def check_clock(+s: Stages) -> Bool:
+  +state = stage_running(s)
   +result = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{109n}, V.fixture_authority(110n)) : LH.Outcome}
   is_contained(result) && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
 
-def check_unavailable(+w: RT.Sc) -> Bool:
-  +state = LH.Outcome.state(delivered(w))
+def check_unavailable(+s: Stages) -> Bool:
+  +state = stage_running(s)
   +result = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.UnavailableClock{}, V.fixture_authority(110n)) : LH.Outcome}
   is_contained(result) && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
 
@@ -108,7 +163,8 @@ def is_failed(owner: JA.Joint) -> Bool:
     case JA.Joint{_, _, _, _, _, _, _, JA.JointFailed{_}, JA.NoJoint{}}: True{}
     case _: False{}
 
-def boot_rejects_dispatched(+w: RT.Sc) -> Bool:
+def boot_rejects_dispatched(+s: Stages) -> Bool:
+  +w = {stage_world(s) : RT.Sc}
   +issuer = RT.sc_issuer(w)
   is_failed(LH.joint(LH.joint_initial(issuer, RT.sc_dispatched(w), RT.sc_policies(), RT.sc_running(w),
     RT.sc_raw(issuer, 110n))))
@@ -127,8 +183,8 @@ def exact_lineage(action: LH.JointAction) -> Bool:
     case _: False{}
 
 
-def exact_issue(+w: RT.Sc) -> Bool:
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)) : LH.State}
+def exact_issue(+s: Stages) -> Bool:
+  +dispatched = {stage_ready(s) : LH.State}
   exact_lineage(LH.joint_issue(dispatched, 1n, 4, 120n, 110n))
 
 def refused(action: LH.JointAction) -> Bool:
@@ -136,8 +192,8 @@ def refused(action: LH.JointAction) -> Bool:
     case LH.JointRefused{_}: True{}
     case _: False{}
 
-def wrong_session_issue(+w: RT.Sc) -> Bool:
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)) : LH.State}
+def wrong_session_issue(+s: Stages) -> Bool:
+  +dispatched = {stage_ready(s) : LH.State}
   refused(LH.joint_issue(dispatched, 2n, 4, 120n, 110n))
 
 
@@ -146,8 +202,8 @@ def issuer_revision(owner: JA.Joint) -> Nat:
     case JA.Joint{issuer, _, _, _, _, _, _, _, JA.NoJoint{}}: Iss.revision(issuer)
     case _: 0n
 
-def no_revoke_denial_effect(+w: RT.Sc) -> Bool:
-  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+def no_revoke_denial_effect(+s: Stages) -> Bool:
+  +before = {stage_running(s) : LH.State}
   +denied = {LH.joint_revoke(before, IT.write_authority(), 5n) : LH.JointAction}
   refused(denied) && PT.state_equal(LH.portable(LH.JointAction.state(denied)), LH.portable(before))
     && Nat.is_eq(issuer_revision(LH.joint(LH.JointAction.state(denied))), issuer_revision(LH.joint(before)))
@@ -158,13 +214,13 @@ def repeated_is_contained(action: LH.JointAction) -> Bool:
     case LH.JointContain{_, False{}}: True{}
     case _: False{}
 
-def repeat_revocation_contains(+w: RT.Sc) -> Bool:
-  +first = {LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n) : LH.JointAction}
+def repeat_revocation_contains(+s: Stages) -> Bool:
+  +first = {LH.joint_revoke(stage_running(s), IT.source_authority(), 5n) : LH.JointAction}
   repeated_is_contained(LH.joint_revoke(LH.JointAction.state(first), IT.source_authority(), 5n))
 
 
-def unrelated_revoke_contains(+w: RT.Sc) -> Bool:
-  +change = {LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 9n) : LH.JointAction}
+def unrelated_revoke_contains(+s: Stages) -> Bool:
+  +change = {LH.joint_revoke(stage_running(s), IT.source_authority(), 9n) : LH.JointAction}
   revoke_is_applied(change) && drain_correct(LH.joint_drain(LH.JointAction.state(change)))
 
 def clock_still_live(clock: LH.Clock) -> Bool:
@@ -227,8 +283,8 @@ def direct_helpers_for(+state: LH.State, +now: Nat) -> Bool:
     && direct_routing_guards(state, now) && direct_barrier_guards_1(state, now)
     && direct_barrier_guards_2(state, now)
 
-def direct_helpers_contain(+w: RT.Sc) -> Bool:
-  +state = {LH.JointAction.state(LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)) : LH.State}
+def direct_helpers_contain(+s: Stages) -> Bool:
+  +state = {LH.JointAction.state(LH.joint_revoke(stage_running(s), IT.source_authority(), 5n)) : LH.State}
   direct_helpers_for(state, 110n)
     && served_is_contained(LH.served_of(LH.Unframed{LH.FrameLength{}}, state, 110n, V.fixture_authority(110n)))
 
@@ -239,8 +295,8 @@ def restart_result(outcome: LH.Outcome) -> Bool:
         && is_contained(LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.Sample{111n}, V.fixture_authority(110n)))
     case _: False{}
 
-def restart_contains(+w: RT.Sc) -> Bool:
-  +state = {LH.Outcome.state(delivered(w)) : LH.State}
+def restart_contains(+s: Stages) -> Bool:
+  +state = {stage_running(s) : LH.State}
   restart_result(LH.restart(state, P.revision(LH.portable(state)), 2n))
 
 def standalone_stop(outcome: LH.Outcome) -> Bool:
@@ -248,8 +304,8 @@ def standalone_stop(outcome: LH.Outcome) -> Bool:
     case LH.Stepped{_, _, _, P.Admitted{_, P.StopEffects{worker} <> []}}: Nat.is_eq(worker, LT.worker())
     case _: False{}
 
-def direct_revoke_preserves(+w: RT.Sc) -> Bool:
-  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+def direct_revoke_preserves(+s: Stages) -> Bool:
+  +before = {stage_running(s) : LH.State}
   +result = {LH.revoke(before, P.revision(LH.portable(before)), 1n) : LH.Outcome}
   +after = {LH.Outcome.state(result) : LH.State}
   is_contained(result) && LT.no_effect(result) && PT.state_equal(LH.portable(before), LH.portable(after))
@@ -257,11 +313,6 @@ def direct_revoke_preserves(+w: RT.Sc) -> Bool:
     && Nat.is_eq(issuer_revision(LH.joint(before)), issuer_revision(LH.joint(after)))
     && drain_correct(LH.joint_drain(after))
     && standalone_stop(LH.revoke(LT.admitted(), P.revision(LH.portable(LT.admitted())), V.slot_of(LT.L(), V.Input{})))
-
-def issue_twice(+w: RT.Sc) -> LH.State:
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched(w), 1n, 110n)) : LH.State}
-  +first = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
-  LH.JointAction.state(LH.joint_issue(first, 1n, 4, 120n, 110n))
 
 def deliver_slot(+state: LH.State, slot: U32) -> LH.State:
   +use = {W.Use{W.Ref{60, 1, slot, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
@@ -285,8 +336,8 @@ def first_drain(drain: LH.JointDrain) -> Bool:
     case LH.JointDrainStep{state, P.StopEffects{2n} <> []}: second_drain(LH.joint_drain(state))
     case _: False{}
 
-def multiple_roots(+w: RT.Sc) -> Bool:
-  +both = {deliver_slot(deliver_slot(issue_twice(w), 1), 2) : LH.State}
+def multiple_roots(+s: Stages) -> Bool:
+  +both = {stage_two_roots(s) : LH.State}
   +revoked = {LH.joint_revoke(both, IT.source_authority(), 5n) : LH.JointAction}
   revoke_is_applied(revoked) && first_drain(LH.joint_drain(LH.JointAction.state(revoked)))
 
@@ -356,20 +407,24 @@ def delivery_of(+state: LH.State) -> LH.Outcome:
   LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}}, LH.Sample{110n},
     V.fixture_authority(110n))
 
-def terminal_cases_at(+w: RT.Sc, +maximum: Nat) -> Bool:
-  +ready = {dispatch_ready(w) : LH.State}
+# `ready`, `launched` and `issued` are the shared `dispatch_ready`,
+# `launched` and `issued_once` stages, passed as separate states.
+def terminal_cases_on(+ready: LH.State, +launched: LH.State, +issued: LH.State, +maximum: Nat) -> Bool:
   action_contained(LH.joint_issue(host_revision(ready, maximum), 1n, 4, 120n, 110n))
     && action_contained(LH.joint_issue(identity_revision(ready, maximum), 1n, 4, 120n, 110n))
     && action_contained(LH.joint_issue(frontend_revision_set(ready, maximum), 1n, 4, 120n, 110n))
     && action_contained(LH.joint_issue(identity_next(ready, Nat.add(4294967295n, 1n)), 1n, 4, 120n, 110n))
-    && action_contained(LH.joint_dispatch(rendezvous_revision_set(launched(w), maximum), 1n, 110n))
-    && action_contained(LH.joint_revoke(issuer_revision_set(issued_once(w), maximum), IT.source_authority(), 5n))
-    && is_contained(delivery_of(worker_counter(issued_once(w), maximum)))
+    && action_contained(LH.joint_dispatch(rendezvous_revision_set(launched, maximum), 1n, 110n))
+    && action_contained(LH.joint_revoke(issuer_revision_set(issued, maximum), IT.source_authority(), 5n))
+    && is_contained(delivery_of(worker_counter(issued, maximum)))
 
-def terminal_cases(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def terminal_cases_at(+s: Stages, +maximum: Nat) -> Bool:
+  terminal_cases_on(stage_ready(s), stage_launched(s), stage_issued(s), maximum)
+
+def terminal_cases(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
-    case Some{maximum}: terminal_cases_at(w, maximum)
+    case Some{maximum}: terminal_cases_at(s, maximum)
 
 def first_history(owner: JA.Joint) -> Bool:
   match owner:
@@ -387,11 +442,11 @@ def partial_at(drain: LH.JointDrain, maximum: Nat) -> Bool:
       incomplete_with_prior(LH.joint_drain(host_revision(state, maximum)))
     case _: False{}
 
-def partial_case(+w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def partial_case(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
     case Some{maximum}:
-      +both = {deliver_slot(deliver_slot(issue_twice(w), 1), 2) : LH.State}
+      +both = {stage_two_roots(s) : LH.State}
       +revoked = {LH.joint_revoke(both, IT.source_authority(), 5n) : LH.JointAction}
       partial_at(LH.joint_drain(LH.JointAction.state(revoked)), maximum)
 
@@ -413,16 +468,16 @@ def drain_incomplete(drain: LH.JointDrain) -> Bool:
     case LH.JointDrainIncomplete{+state}: is_failed(LH.joint(state))
     case _: False{}
 
-def generation_case_at(+w: RT.Sc, maximum: Nat) -> Bool:
-  +issued = {root_generation_set(issued_once(w), maximum) : LH.State}
+def generation_case_at(+s: Stages, maximum: Nat) -> Bool:
+  +issued = {root_generation_set(stage_issued(s), maximum) : LH.State}
   +revoked = {LH.joint_revoke(issued, IT.source_authority(), 5n) : LH.JointAction}
   revoke_is_applied(revoked) && drain_incomplete(LH.joint_drain(LH.JointAction.state(revoked)))
 
 
-def generation_case(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def generation_case(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
-    case Some{maximum}: generation_case_at(w, maximum)
+    case Some{maximum}: generation_case_at(s, maximum)
 
 def duplicate_lineage(state: LH.State) -> LH.State:
   match state:
@@ -487,8 +542,8 @@ def dispatch_denials(+issued: LH.State) -> Bool:
   authority_denied(delivery_of(bad_dispatch(issued, 1n, 2n)))
     && authority_denied(delivery_of(bad_dispatch(issued, 2n, 1n)))
 
-def antirevival(+w: RT.Sc) -> Bool:
-  +issued = {issued_once(w) : LH.State}
+def antirevival(+s: Stages) -> Bool:
+  +issued = {stage_issued(s) : LH.State}
   reselect_denials(issued) && lineage_denials(issued) && dispatch_denials(issued)
 
 def child_at_limit(entries: I.Entries, maximum: Nat) -> I.Entries:
@@ -513,17 +568,17 @@ def drain_incomplete_unchanged(drain: LH.JointDrain, before: LH.State) -> Bool:
       is_failed(LH.joint(state)) && PT.state_equal(LH.portable(state), LH.portable(before))
     case _: False{}
 
-def descendant_case_at(+w: RT.Sc, maximum: Nat) -> Bool:
-  +before = {child_generation_state(issued_once(w), maximum) : LH.State}
+def descendant_case_at(+s: Stages, maximum: Nat) -> Bool:
+  +before = {child_generation_state(stage_issued(s), maximum) : LH.State}
   +revoked = {LH.joint_revoke(before, IT.source_authority(), 5n) : LH.JointAction}
   I.valid(P.identity(LH.portable(before))) && revoke_is_applied(revoked)
     && drain_incomplete_unchanged(LH.joint_drain(LH.JointAction.state(revoked)), LH.JointAction.state(revoked))
 
 
-def descendant_case(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def descendant_case(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
-    case Some{maximum}: descendant_case_at(w, maximum)
+    case Some{maximum}: descendant_case_at(s, maximum)
 
 def frontend_next_set(state: LH.State, value: Nat) -> LH.State:
   match state:
@@ -533,8 +588,8 @@ def frontend_next_set(state: LH.State, value: Nat) -> LH.State:
         negotiation, context, lineage, phase, JA.NoJoint{}}}
     case _: state
 
-def frontend_boundaries_at(+w: RT.Sc, +maximum: Nat) -> Bool:
-  +ready = {dispatch_ready(w) : LH.State}
+def frontend_boundaries_at(+s: Stages, +maximum: Nat) -> Bool:
+  +ready = {stage_ready(s) : LH.State}
   +one_left = {Nat.sub(maximum, 1n) : Nat}
   +two_left = {Nat.sub(maximum, 2n) : Nat}
   action_contained(LH.joint_issue(frontend_revision_set(ready, one_left), 1n, 4, 120n, 110n))
@@ -542,10 +597,10 @@ def frontend_boundaries_at(+w: RT.Sc, +maximum: Nat) -> Bool:
     && did_issue(LH.joint_issue(frontend_revision_set(ready, two_left), 1n, 4, 120n, 110n))
     && did_issue(LH.joint_issue(frontend_next_set(ready, two_left), 1n, 4, 120n, 110n))
 
-def frontend_boundaries(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def frontend_boundaries(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
-    case Some{maximum}: frontend_boundaries_at(w, maximum)
+    case Some{maximum}: frontend_boundaries_at(s, maximum)
 
 def partial_identity_at(drain: LH.JointDrain, maximum: Nat) -> Bool:
   match drain:
@@ -553,11 +608,11 @@ def partial_identity_at(drain: LH.JointDrain, maximum: Nat) -> Bool:
       incomplete_with_prior(LH.joint_drain(identity_revision(state, maximum)))
     case _: False{}
 
-def partial_identity_case(+w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def partial_identity_case(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
     case Some{maximum}:
-      +both = {deliver_slot(deliver_slot(issue_twice(w), 1), 2) : LH.State}
+      +both = {stage_two_roots(s) : LH.State}
       +revoked = {LH.joint_revoke(both, IT.source_authority(), 5n) : LH.JointAction}
       partial_identity_at(LH.joint_drain(LH.JointAction.state(revoked)), maximum)
 
@@ -577,25 +632,25 @@ def terminal_issuer_result(action: LH.JointAction, maximum: Nat) -> Bool:
     case LH.JointContain{state, False{}}: terminal_issuer_owner(LH.joint(state), maximum)
     case _: False{}
 
-def terminal_issuer_case_at(+w: RT.Sc, +maximum: Nat) -> Bool:
-  terminal_issuer_result(LH.joint_revoke(issuer_revision_set(issued_once(w), maximum), IT.source_authority(), 5n), maximum)
+def terminal_issuer_case_at(+s: Stages, +maximum: Nat) -> Bool:
+  terminal_issuer_result(LH.joint_revoke(issuer_revision_set(stage_issued(s), maximum), IT.source_authority(), 5n), maximum)
 
-def terminal_issuer_case(w: RT.Sc, value: Maybe<&2, Nat>) -> Bool:
+def terminal_issuer_case(+s: Stages, value: Maybe<&2, Nat>) -> Bool:
   match value:
     case None{}: False{}
-    case Some{maximum}: terminal_issuer_case_at(w, maximum)
+    case Some{maximum}: terminal_issuer_case_at(s, maximum)
 
 def empty_authority() -> P.AdmissionAuthority:
   P.AdmissionAuthority{F.empty(), 0n, F.EmptyRegistry{}, V.fixture_transfer()}
 
-def empty_fallback_delivery(+w: RT.Sc) -> Bool:
-  +state = {issued_once(w) : LH.State}
+def empty_fallback_delivery(+s: Stages) -> Bool:
+  +state = {stage_issued(s) : LH.State}
   +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
   deliver_result(LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
     LH.Sample{110n}, empty_authority()))
 
-def empty_fallback_no_bypass(+w: RT.Sc) -> Bool:
-  +state = {duplicate_lineage(issued_once(w)) : LH.State}
+def empty_fallback_no_bypass(+s: Stages) -> Bool:
+  +state = {duplicate_lineage(stage_issued(s)) : LH.State}
   +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
   authority_denied(LH.dispatch(state, LH.FromBroker{LH.Barrier{1n, fact(), W.encode_bytes(use)}},
     LH.Sample{110n}, empty_authority()))
@@ -623,8 +678,8 @@ def direct_step_denied(step: P.Step) -> Bool:
     case P.Denied{_, P.AuthorityUnavailable{}}: True{}
     case _: False{}
 
-def actual_fact_guards(+w: RT.Sc) -> Bool:
-  +state = {issued_once(w) : LH.State}
+def actual_fact_guards(+s: Stages) -> Bool:
+  +state = {stage_issued(s) : LH.State}
   +use = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_execute(), 4, W.ClaimedSubject{0}} : W.Message}
   +good_report = {LT.linux_report() : P.TargetReport}
   +good_inventory = {LH.inventory_of(fact()) : P.Fact}
@@ -652,14 +707,14 @@ def drain_keeps_issuer(drain: LH.JointDrain) -> Bool:
     case LH.JointDrainStep{state, P.StopEffects{1n} <> []}: issuer_has_revocation(LH.joint(state))
     case _: False{}
 
-def issuer_retained(+w: RT.Sc) -> Bool:
-  +revoked = {LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n) : LH.JointAction}
+def issuer_retained(+s: Stages) -> Bool:
+  +revoked = {LH.joint_revoke(stage_running(s), IT.source_authority(), 5n) : LH.JointAction}
   issuer_has_revocation(LH.joint(LH.JointAction.state(revoked)))
     && drain_keeps_issuer(LH.joint_drain(LH.JointAction.state(revoked)))
 
 
-def ancestry_checks(+w: RT.Sc) -> Bool:
-  +identity = {P.identity(LH.portable(child_generation_state(issued_once(w), 1n))) : I.State}
+def ancestry_checks(+s: Stages) -> Bool:
+  +identity = {P.identity(LH.portable(child_generation_state(stage_issued(s), 1n))) : I.State}
   +entries = {I.entries(identity) : I.Entries}
   I.valid(identity) && JA.reaches_root(5n, entries, 2n, 1n)
     && Bool.not(JA.reaches_root(5n, entries, 1n, 2n)) && JA.reaches_root(5n, entries, 1n, 1n)
@@ -671,8 +726,8 @@ def clock_at_125(clock: LH.Clock) -> Bool:
     case LH.LiveClock{now}: Nat.is_eq(now, 125n)
     case _: False{}
 
-def served_expiry(+w: RT.Sc) -> Bool:
-  +state = {LH.Outcome.state(delivered(w)) : LH.State}
+def served_expiry(+s: Stages) -> Bool:
+  +state = {stage_running(s) : LH.State}
   +served = {LH.serve(state, [1], LH.Sample{125n}, V.fixture_authority(110n)) : LH.Served}
   String.eq(LH.served_status(served), "FAILSTOP") && String.eq(LH.served_detail(served), "not-processed")
     && PT.effects_equal(LH.served_effects(served), []) && clock_at_125(LH.clock(LH.next(served)))
@@ -684,8 +739,8 @@ def clock_at_111(clock: LH.Clock) -> Bool:
     case LH.LiveClock{now}: Nat.is_eq(now, 111n)
     case _: False{}
 
-def failed_samples_advance(+w: RT.Sc) -> Bool:
-  +failed = {LH.JointAction.state(LH.joint_revoke(LH.Outcome.state(delivered(w)), IT.source_authority(), 5n)) : LH.State}
+def failed_samples_advance(+s: Stages) -> Bool:
+  +failed = {LH.JointAction.state(LH.joint_revoke(stage_running(s), IT.source_authority(), 5n)) : LH.State}
   +outcome = {LH.dispatch(failed, LH.FromWorker{1n, [1]}, LH.Sample{111n}, V.fixture_authority(110n)) : LH.Outcome}
   is_contained(outcome) && clock_at_111(LH.clock(LH.Outcome.state(outcome)))
 
@@ -709,12 +764,8 @@ def launched_with(+w: RT.Sc, +issuer: Iss.State) -> LH.State:
     RT.sc_raw(issuer, 110n)) : LH.State}
   LH.Outcome.state(LH.dispatch(initial, LH.FromBroker{LH.Launch{fact()}}, LH.Sample{110n}, V.fixture_authority(110n)))
 
-def delivered_short_reader(+w: RT.Sc) -> LH.State:
-  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
-  +state = {launched_with(w, issuer) : LH.State}
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(state, 1n, 110n)) : LH.State}
-  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
-  deliver_slot(issued, 1)
+def delivered_short_reader(+s: Stages) -> LH.State:
+  deliver_slot(stage_short_issued(s), 1)
 
 def provider_current_reader_not(owner: JA.Joint, +now: Nat) -> Bool:
   match owner:
@@ -725,14 +776,14 @@ def provider_current_reader_not(owner: JA.Joint, +now: Nat) -> Bool:
           JA.joint_snapshot(issuer, rendezvous, transfer, now), now))
     case _: False{}
 
-def reader_expiry(+w: RT.Sc) -> Bool:
-  +before = {delivered_short_reader(w) : LH.State}
+def reader_expiry(+s: Stages) -> Bool:
+  +before = {delivered_short_reader(s) : LH.State}
   +result = {LH.dispatch(before, LH.FromWorker{1n, [1]}, LH.Sample{115n}, V.fixture_authority(110n)) : LH.Outcome}
   provider_current_reader_not(LH.joint(before), 115n) && is_contained(result)
     && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
 
-def reader_revoke(+w: RT.Sc) -> Bool:
-  +before = {LH.Outcome.state(delivered(w)) : LH.State}
+def reader_revoke(+s: Stages) -> Bool:
+  +before = {stage_running(s) : LH.State}
   +result = {LH.joint_revoke(before, IT.source_authority(), 1n) : LH.JointAction}
   revoke_is_applied(result) && provider_current_reader_not(LH.joint(LH.JointAction.state(result)), 110n)
     && drain_correct(LH.joint_drain(LH.JointAction.state(result)))
@@ -765,8 +816,8 @@ def deadline_state(state: LH.State) -> LH.State:
         deadline_session(negotiation), context, lineage, phase, JA.NoJoint{}}}
     case _: state
 
-def deadline_case(+w: RT.Sc) -> Bool:
-  +before = {deadline_state(LH.Outcome.state(delivered(w))) : LH.State}
+def deadline_case(+s: Stages) -> Bool:
+  +before = {deadline_state(stage_running(s)) : LH.State}
   +result = {LH.dispatch(before, LH.FromWorker{1n, [1]}, LH.Sample{115n}, V.fixture_authority(110n)) : LH.Outcome}
   provider_current_reader_not(LH.joint(before), 115n) && is_contained(result)
     && drain_correct(LH.joint_drain(LH.Outcome.state(result)))
@@ -777,9 +828,9 @@ def replace_issuer(state: LH.State, issuer: Iss.State) -> LH.State:
       LH.State{p, records, time, JA.Joint{issuer, rendezvous, frontend, transfer, negotiation, context, lineage, phase, JA.NoJoint{}}}
     case _: state
 
-def missing_reader_projection(+w: RT.Sc) -> Bool:
-  +before = {LH.Outcome.state(delivered(w)) : LH.State}
-  +current = {RT.sc_issuer(w) : Iss.State}
+def missing_reader_projection(+s: Stages) -> Bool:
+  +before = {stage_running(s) : LH.State}
+  +current = {RT.sc_issuer(stage_world(s)) : Iss.State}
   +revoked = {Iss.Change.state(Iss.revoke(current, Iss.revision(current), IT.source_authority(), 1n)) : Iss.State}
   +missing = {replace_issuer(before, revoked) : LH.State}
   +result = {LH.dispatch(missing, LH.FromWorker{1n, [1]}, LH.Sample{110n}, V.fixture_authority(110n)) : LH.Outcome}
@@ -805,10 +856,10 @@ def undecoded(outcome: LH.Outcome) -> Bool:
     case LH.Undecoded{_, _}: True{}
     case _: False{}
 
-def alternate_reader_authority(+w: RT.Sc) -> Bool:
-  +short = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
+def alternate_reader_authority(+s: Stages) -> Bool:
+  +short = {shortened_issuer(RT.sc_issuer(stage_world(s))) : Iss.State}
   +issuer = {RT.sc_grant(short, IT.subject_principal(), 100n, 200n, T.CodeId{3, 1, 4, 1, 5, 9, 2, 6}) : Iss.State}
-  +state = {launched_with(w, issuer) : LH.State}
+  +state = {launched_with(stage_world(s), issuer) : LH.State}
   +dispatched = {LH.JointAction.state(LH.joint_dispatch(state, 1n, 110n)) : LH.State}
   +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
   +running = {deliver_slot(issued, 1) : LH.State}
@@ -819,11 +870,10 @@ def with_clock(state: LH.State, now: Nat) -> LH.State:
   match state:
     case LH.State{p, records, _, owner}: LH.State{p, records, LH.LiveClock{now}, owner}
 
-def reader_direct_guards(+w: RT.Sc) -> Bool:
-  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
-  +launched = {launched_with(w, issuer) : LH.State}
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n)) : LH.State}
-  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+def reader_direct_guards(+s: Stages) -> Bool:
+  +launched = {stage_short_launched(s) : LH.State}
+  +dispatched = {stage_short_ready(s) : LH.State}
+  +issued = {stage_short_issued(s) : LH.State}
   +stale_launch = {with_clock(launched, 115n) : LH.State}
   +stale_dispatch = {with_clock(dispatched, 115n) : LH.State}
   +stale_issue = {with_clock(issued, 115n) : LH.State}
@@ -857,13 +907,13 @@ def direct_launch_translated(+state: LH.State) -> Bool:
     && is_contained(LH.launch_report(LH.Report{LT.linux_report()}, state, evidence, credential, 110n))
     && is_contained(LH.launch_with(LH.Evidence{evidence}, LH.Report{LT.linux_report()}, state, credential, 110n))
 
-def direct_launch_guards(+w: RT.Sc) -> Bool:
-  +state = {sampled_initial(w) : LH.State}
+def direct_launch_guards(+s: Stages) -> Bool:
+  +state = {sampled_initial(stage_world(s)) : LH.State}
   direct_launch_translated(state) && peer_denial(LH.launch_fact(state, spoofed_fact(), 110n))
     && opened(LH.launch_fact(state, fact(), 110n))
 
-def diagnostics_redacted(+w: RT.Sc) -> Bool:
-  +active = {delivered(w) : LH.Outcome}
+def diagnostics_redacted(+s: Stages) -> Bool:
+  +active = {stage_delivered(s) : LH.Outcome}
   +state = {LH.Outcome.state(active) : LH.State}
   +malformed = {LH.serve(state, [1], LH.Sample{110n}, V.fixture_authority(110n)) : LH.Served}
   +failed = {LH.dispatch(state, LH.FromWorker{1n, [1]}, LH.UnavailableClock{}, V.fixture_authority(110n)) : LH.Outcome}
@@ -871,19 +921,13 @@ def diagnostics_redacted(+w: RT.Sc) -> Bool:
     && String.eq(LH.reply(malformed), "LINUXMON1\tJOINT\tredacted\tredacted\n")
     && String.eq(LH.reply(LH.Served{failed}), "LINUXMON1\tFAILSTOP\tnot-processed\tredacted\n")
 
-def expired_direct_helpers(+w: RT.Sc) -> Bool:
-  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
-  +launched = {launched_with(w, issuer) : LH.State}
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n)) : LH.State}
-  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+def expired_direct_helpers(+s: Stages) -> Bool:
+  +issued = {stage_short_issued(s) : LH.State}
   +stale = {with_clock(issued, 115n) : LH.State}
   provider_current_reader_not(LH.joint(stale), 115n) && direct_helpers_for(stale, 115n)
 
-def expired_cleanup_denials(+w: RT.Sc) -> Bool:
-  +issuer = {shortened_issuer(RT.sc_issuer(w)) : Iss.State}
-  +launched = {launched_with(w, issuer) : LH.State}
-  +dispatched = {LH.JointAction.state(LH.joint_dispatch(launched, 1n, 110n)) : LH.State}
-  +issued = {LH.JointAction.state(LH.joint_issue(dispatched, 1n, 4, 120n, 110n)) : LH.State}
+def expired_cleanup_denials(+s: Stages) -> Bool:
+  +issued = {stage_short_issued(s) : LH.State}
   +stale = {with_clock(issued, 115n) : LH.State}
   +denied = {LH.joint_revoke(stale, IT.write_authority(), 5n) : LH.JointAction}
   +restart = {LH.restart(stale, P.revision(LH.portable(stale)), 1n) : LH.Outcome}
@@ -932,13 +976,13 @@ def malformed_setup_guards(+state: LH.State) -> Bool:
   action_contained(dispatch) && nested_retained(LH.JointAction.state(dispatch))
     && action_contained(issue) && nested_retained(LH.JointAction.state(issue))
 
-def malformed_owner_contained(+w: RT.Sc) -> Bool:
-  +state = {nested_owner_state(LH.Outcome.state(delivered(w))) : LH.State}
+def malformed_owner_contained(+s: Stages) -> Bool:
+  +state = {nested_owner_state(stage_running(s)) : LH.State}
   nested_retained(state) && malformed_input_guards(state) && malformed_control_guards(state)
     && malformed_setup_guards(state) && nested_drain(LH.joint_drain(state)) && direct_helpers_for(state, 110n)
 
-def malformed_attempts(+w: RT.Sc) -> Bool:
-  +portable = {LH.portable(launched(w)) : P.State}
+def malformed_attempts(+s: Stages) -> Bool:
+  +portable = {LH.portable(stage_launched(s)) : P.State}
   +bad_open = {LH.OpenAttempt{F.empty(), 1n, LH.OpenAttempt{F.empty(), 2n, LH.NoOpenAttempt{}}} : LH.OpenAttempt}
   +bad_issue = {LH.IssueAttempt{F.empty(), P.Issued{portable, 1n},
     LH.IssueAttempt{F.empty(), P.Issued{portable, 2n}, LH.NoIssueAttempt{}}} : LH.IssueAttempt}
@@ -948,69 +992,101 @@ def malformed_attempts(+w: RT.Sc) -> Bool:
     && Bool.not(LH.issue_attempt_shape(bad_issue)) && Bool.not(LH.issue_attempt_ready(bad_issue))
     && Bool.not(LH.drain_step_ok(bad_drain)) && Bool.not(LH.drain_skipped(bad_drain))
 
-def joint_checks_1() -> IO(Unit):
-  do IO<Unit>:
-    Test.check(check_dispatch(RT.sc_world()), "synthetic owner calls actual Rendezvous dispatch")
-    Test.check(check_issue(RT.sc_world()), "synthetic owner issues actual slot")
-    Test.check(check_delivery(RT.sc_world()), "synthetic owner delivers through retained selection")
-    Test.check(check_revoke(RT.sc_world()), "accepted issuer revoke contains and drains exact stop")
-    Test.check(check_expiry(RT.sc_world()), "expiry contains before malformed request")
-    Test.check(check_clock(RT.sc_world()), "regressed clock contains before malformed request")
-    Test.check(check_unavailable(RT.sc_world()), "unavailable clock contains before malformed request")
-    Test.check(boot_rejects_dispatched(RT.sc_world()), "joint bootstrap rejects imported dispatch")
-    Test.check(exact_issue(RT.sc_world()), "joint issue retains same-transition selection grant and slot")
-    Test.check(wrong_session_issue(RT.sc_world()), "joint issue requires exact dispatched credential session")
+# Implementation helpers for `stages`: each one passes the stages it built
+# to the next, so no scenario transition runs twice. The slot-2 state is
+# `joint_issue` on `issued` again, then slots 1 and 2 delivered.
+def stages_from(+w: RT.Sc, +launched: LH.State, +dispatch: LH.JointAction, +issued: LH.State,
+    +short_launched: LH.State) -> Stages:
+  +short_ready = {LH.JointAction.state(LH.joint_dispatch(short_launched, 1n, 110n)) : LH.State}
+  +second = {LH.JointAction.state(LH.joint_issue(issued, 1n, 4, 120n, 110n)) : LH.State}
+  Stages{w, launched, dispatch, issued, delivery_of(issued), deliver_slot(deliver_slot(second, 1), 2),
+    short_launched, short_ready, LH.JointAction.state(LH.joint_issue(short_ready, 1n, 4, 120n, 110n))}
 
-def joint_checks_2() -> IO(Unit):
-  do IO<Unit>:
-    Test.check(no_revoke_denial_effect(RT.sc_world()), "denied issuer revoke preserves active owner and host")
-    Test.check(repeat_revocation_contains(RT.sc_world()), "repeat denied revoke remains contained")
-    Test.check(unrelated_revoke_contains(RT.sc_world()), "unrelated accepted revoke also contains and stops")
-    Test.check(direct_helpers_contain(RT.sc_world()), "direct helpers surface sticky containment")
-    Test.check(restart_contains(RT.sc_world()), "restart returns stop and cannot reopen joint mode")
-    Test.check(direct_revoke_preserves(RT.sc_world()), "joint direct revoke contains unchanged; standalone still stops")
-    Test.check(multiple_roots(RT.sc_world()), "joint revoke drains two exact roots and retains stop history")
-    Test.check(terminal_cases(RT.sc_world(), Nat.read("281474976710655")), "joint capacity gates avoid terminal transitions")
-    Test.check(partial_case(RT.sc_world(), Nat.read("281474976710655")), "partial drain preserves earlier exact stop on terminal failure")
-    Test.check(generation_case(RT.sc_world(), Nat.read("281474976710655")), "terminal descendant generation prevents unsafe drain")
+def stages_issued(+w: RT.Sc, +launched: LH.State, +dispatch: LH.JointAction) -> Stages:
+  stages_from(w, launched, dispatch,
+    LH.JointAction.state(LH.joint_issue(LH.JointAction.state(dispatch), 1n, 4, 120n, 110n)),
+    launched_with(w, shortened_issuer(RT.sc_issuer(w))))
 
-def joint_checks_3() -> IO(Unit):
+def stages_launched(+w: RT.Sc, +launched: LH.State) -> Stages:
+  stages_issued(w, launched, LH.joint_dispatch(launched, 1n, 110n))
+
+# Exported test helper: every stage of the accepted synthetic owner scenario.
+def stages(+w: RT.Sc) -> Stages:
+  stages_launched(w, launched(w))
+
+def joint_checks_1(+s: Stages) -> IO(Unit):
   do IO<Unit>:
-    Test.check(antirevival(RT.sc_world()), "selection lineage and exact dispatch prevent reauthorization")
-    Test.check(descendant_case(RT.sc_world(), Nat.read("281474976710655")), "terminal live descendant leaves subtree and issuer retained")
-    Test.check(frontend_boundaries(RT.sc_world(), Nat.read("281474976710655")), "two frontend allocation boundaries refuse or succeed precisely")
-    Test.check(partial_identity_case(RT.sc_world(), Nat.read("281474976710655")), "partial drain retains earlier stop when identity revision is terminal")
-    Test.check(terminal_issuer_case(RT.sc_world(), Nat.read("281474976710655")), "terminal issuer revoke is unapplied and requires containment")
-    Test.check(empty_fallback_delivery(RT.sc_world()) && empty_fallback_no_bypass(RT.sc_world()),
+    Test.check(check_dispatch(s), "synthetic owner calls actual Rendezvous dispatch")
+    Test.check(check_issue(s), "synthetic owner issues actual slot")
+    Test.check(check_delivery(s), "synthetic owner delivers through retained selection")
+    Test.check(check_revoke(s), "accepted issuer revoke contains and drains exact stop")
+    Test.check(check_expiry(s), "expiry contains before malformed request")
+    Test.check(check_clock(s), "regressed clock contains before malformed request")
+    Test.check(check_unavailable(s), "unavailable clock contains before malformed request")
+    Test.check(boot_rejects_dispatched(s), "joint bootstrap rejects imported dispatch")
+    Test.check(exact_issue(s), "joint issue retains same-transition selection grant and slot")
+    Test.check(wrong_session_issue(s), "joint issue requires exact dispatched credential session")
+
+def joint_checks_2(+s: Stages) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(no_revoke_denial_effect(s), "denied issuer revoke preserves active owner and host")
+    Test.check(repeat_revocation_contains(s), "repeat denied revoke remains contained")
+    Test.check(unrelated_revoke_contains(s), "unrelated accepted revoke also contains and stops")
+    Test.check(direct_helpers_contain(s), "direct helpers surface sticky containment")
+    Test.check(restart_contains(s), "restart returns stop and cannot reopen joint mode")
+    Test.check(direct_revoke_preserves(s), "joint direct revoke contains unchanged; standalone still stops")
+    Test.check(multiple_roots(s), "joint revoke drains two exact roots and retains stop history")
+    Test.check(terminal_cases(s, Nat.read("281474976710655")), "joint capacity gates avoid terminal transitions")
+    Test.check(partial_case(s, Nat.read("281474976710655")), "partial drain preserves earlier exact stop on terminal failure")
+    Test.check(generation_case(s, Nat.read("281474976710655")), "terminal descendant generation prevents unsafe drain")
+
+def joint_checks_3(+s: Stages) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(antirevival(s), "selection lineage and exact dispatch prevent reauthorization")
+    Test.check(descendant_case(s, Nat.read("281474976710655")), "terminal live descendant leaves subtree and issuer retained")
+    Test.check(frontend_boundaries(s, Nat.read("281474976710655")), "two frontend allocation boundaries refuse or succeed precisely")
+    Test.check(partial_identity_case(s, Nat.read("281474976710655")), "partial drain retains earlier stop when identity revision is terminal")
+    Test.check(terminal_issuer_case(s, Nat.read("281474976710655")), "terminal issuer revoke is unapplied and requires containment")
+    Test.check(empty_fallback_delivery(s) && empty_fallback_no_bypass(s),
       "joint mode ignores generic snapshot for acceptance and denial")
-    Test.check(actual_fact_guards(RT.sc_world()), "joint direct helper recomputes broker facts")
-    Test.check(issuer_retained(RT.sc_world()), "accepted issuer revocation survives actual root drain")
-    Test.check(ancestry_checks(RT.sc_world()), "joint ancestry rejects zero and unrelated root at high fuel")
-    Test.check(served_expiry(RT.sc_world()), "framed expiry reports not processed and retains sample")
+    Test.check(actual_fact_guards(s), "joint direct helper recomputes broker facts")
+    Test.check(issuer_retained(s), "accepted issuer revocation survives actual root drain")
+    Test.check(ancestry_checks(s), "joint ancestry rejects zero and unrelated root at high fuel")
+    Test.check(served_expiry(s), "framed expiry reports not processed and retains sample")
 
-def joint_checks_4() -> IO(Unit):
+def joint_checks_4(+s: Stages) -> IO(Unit):
   do IO<Unit>:
-    Test.check(failed_samples_advance(RT.sc_world()), "failed owner still retains later clock samples")
-    Test.check(reader_expiry(RT.sc_world()), "reader-only grant expiry contains with provider selection current")
-    Test.check(reader_revoke(RT.sc_world()), "reader-only approval revoke retains provider selection and stops")
-    Test.check(deadline_case(RT.sc_world()), "running Negotiation deadline requires containment")
-    Test.check(missing_reader_projection(RT.sc_world()), "missing reader projection contains with provider still current")
-    Test.check(alternate_reader_authority(RT.sc_world()), "different current reader grant may satisfy subject projection")
-    Test.check(reader_direct_guards(RT.sc_world()), "direct dispatch issue and effect helper recheck reader authority")
-    Test.check(direct_launch_guards(RT.sc_world()), "joint launch recomputes raw broker fact checks")
-    Test.check(diagnostics_redacted(RT.sc_world()), "joint replies redact active and failed metadata")
-    Test.check(expired_direct_helpers(RT.sc_world()), "direct helpers contain expired reader authority")
+    Test.check(failed_samples_advance(s), "failed owner still retains later clock samples")
+    Test.check(reader_expiry(s), "reader-only grant expiry contains with provider selection current")
+    Test.check(reader_revoke(s), "reader-only approval revoke retains provider selection and stops")
+    Test.check(deadline_case(s), "running Negotiation deadline requires containment")
+    Test.check(missing_reader_projection(s), "missing reader projection contains with provider still current")
+    Test.check(alternate_reader_authority(s), "different current reader grant may satisfy subject projection")
+    Test.check(reader_direct_guards(s), "direct dispatch issue and effect helper recheck reader authority")
+    Test.check(direct_launch_guards(s), "joint launch recomputes raw broker fact checks")
+    Test.check(diagnostics_redacted(s), "joint replies redact active and failed metadata")
+    Test.check(expired_direct_helpers(s), "direct helpers contain expired reader authority")
 
-def joint_checks_5() -> IO(Unit):
+def joint_checks_5(+s: Stages) -> IO(Unit):
   do IO<Unit>:
-    Test.check(expired_cleanup_denials(RT.sc_world()), "denied cleanup still contains expired reader state")
-    Test.check(malformed_owner_contained(RT.sc_world()), "nested owner remains contained and retained")
-    Test.check(malformed_attempts(RT.sc_world()), "nested transition attempts cannot be accepted")
+    Test.check(expired_cleanup_denials(s), "denied cleanup still contains expired reader state")
+    Test.check(malformed_owner_contained(s), "nested owner remains contained and retained")
+    Test.check(malformed_attempts(s), "nested transition attempts cannot be accepted")
 
+def joint_checks(+s: Stages) -> IO(Unit):
+  do IO<Unit>:
+    joint_checks_1(s)
+    joint_checks_2(s)
+    joint_checks_3(s)
+    joint_checks_4(s)
+    joint_checks_5(s)
+
+# Exported test helper: the stages of the accepted scenario from `RT.sc_world()`.
+def owner_stages() -> Stages:
+  stages(RT.sc_world())
+
+# Public entry point: build the synthetic scenario stages once, then run the
+# joint-owner checks against them. Tests.bend instead calls `joint_checks`
+# with stages it shares with LinuxSessionLossTests.
 def main() -> IO(Unit):
-  do IO<Unit>:
-    joint_checks_1()
-    joint_checks_2()
-    joint_checks_3()
-    joint_checks_4()
-    joint_checks_5()
+  joint_checks(owner_stages())
