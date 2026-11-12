@@ -155,6 +155,16 @@ inline Snapshot inspect(HANDLE handle) {
         throw writ::Error("Unsupported file or 1 GiB file limit exceeded", ERROR_NOT_SUPPORTED);
     return {info.Directory ? 2u : 1u, 0, info.Directory ? 0u : static_cast<DWORD>(info.EndOfFile.QuadPart), empty_hash()};
 }
+inline void exact_path(HANDLE handle, const fs::path& expected) {
+    std::array<wchar_t, 32768> name{};
+    DWORD length = GetFinalPathNameByHandleW(handle, name.data(), static_cast<DWORD>(name.size()), FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+    writ::check(length > 0 && length < name.size(), "Retained file pathname");
+    std::wstring actual(name.data(), length);
+    if (actual.rfind(L"\\\\?\\", 0) == 0) actual.erase(0, 4);
+    auto wanted = expected.native();
+    if (CompareStringOrdinal(actual.c_str(), static_cast<int>(actual.size()), wanted.c_str(), static_cast<int>(wanted.size()), TRUE) != CSTR_EQUAL)
+        throw writ::Error("Filename alias or renamed object is not an exact sync path", ERROR_BAD_PATHNAME);
+}
 // Holding each ancestor without WRITE/DELETE sharing excludes replacement or
 // reparse-point mutation while opening/applying a descendant. Child I/O remains
 // possible; each target is separately frozen and verified through Bend.
@@ -172,6 +182,7 @@ public:
             writ::check(handle != INVALID_HANDLE_VALUE, "Retain directory ancestor");
             handles.emplace_back(handle);
             if (inspect(handles.back()).kind != 2) throw writ::Error("Directory ancestor required", ERROR_DIRECTORY);
+            exact_path(handles.back(), path);
         }
     }
 };
@@ -180,7 +191,7 @@ inline writ::Handle frozen(const fs::path& path, bool deleting = false) {
         nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
     if (file == INVALID_HANDLE_VALUE && (GetLastError() == ERROR_FILE_NOT_FOUND || GetLastError() == ERROR_PATH_NOT_FOUND)) return writ::Handle{};
     writ::check(file != INVALID_HANDLE_VALUE, "Freeze local object (close any writer and retry)");
-    writ::Handle result(file); inspect(result); return result;
+    writ::Handle result(file); inspect(result); exact_path(result, path); return result;
 }
 inline void move_retained(HANDLE handle, const fs::path& destination) {
     auto name = destination.native();

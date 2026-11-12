@@ -13,6 +13,12 @@ def folder() -> N.State:
   N.next(entry(N.initial(), 2, "6100", "-"))
 def end() -> Mount.Request:
   Mount.Request{"END", 0, 0, 0, 0, "-"}
+def change(op: String, kind: U32, version: U32, key: String, parent: String) -> Mount.Request:
+  Mount.Request{op, kind, version, 0, 0, key ++ ":" ++ parent ++ ":" ++ Sync.empty_hash()}
+def sealed() -> N.State:
+  N.next(N.command(end(), folder()))
+def populated() -> N.State:
+  N.next(N.command(end(), N.next(entry(folder(), 1, "6100/6200", "6100"))))
 
 def main() -> IO(Unit):
   do IO<Unit>:
@@ -30,4 +36,14 @@ def main() -> IO(Unit):
     Test.check(ok(N.command(end(), folder())), "namespace seal confirms complete catalog")
     Test.check(Bool.not(ok(entry(N.next(N.command(end(), folder())), 1, "6200", "-"))), "namespace cannot append after seal")
     Test.check(Bool.not(ok(N.command(end(), N.next(N.command(end(), folder()))))), "namespace cannot seal twice")
-    IO.print("14 directory namespace checks passed\n")
+    Test.check(Bool.not(ok(entry(folder(), 1, "6100/6200", "-"))), "namespace child cannot claim root parent")
+    Test.check(Bool.not(ok(entry(folder(), 1, "6200/6300", "6100"))), "namespace cannot claim unrelated directory parent")
+    Test.check(ok(N.command(change("CHECK", 1, 1, "6100/6200", "6100"), sealed())), "namespace checks new child without mutating catalog")
+    Test.check(ok(N.command(change("SET", 1, 1, "6100/6200", "6100"), sealed())), "namespace commits admitted new child")
+    Test.check(Bool.not(ok(N.command(change("SET", 0, 2, "6100", "-"), populated()))), "namespace cannot remove folder with live descendants")
+    Test.check(Bool.not(ok(N.command(change("SET", 1, 2, "6100", "-"), populated()))), "namespace cannot replace nonempty folder with file")
+    Test.check(Bool.not(ok(N.command(change("SET", 1, 1, "6100", "-"), sealed()))), "namespace rejects new spelling colliding with existing folded name")
+    Test.check(Bool.not(ok(N.command(change("SET", 1, 3, "6100/6200", "6100"), sealed()))), "namespace new entry begins at revision one")
+    Test.check(Bool.not(ok(N.command(change("SET", 0, 0, "6200", "-"), sealed()))), "namespace publication requires a nonzero revision")
+    Test.check(Bool.not(ok(N.command(change("SET", 1, 1, "6100/6200", "6100"), folder()))), "namespace cannot mutate an unsealed listing")
+    IO.print("24 directory namespace checks passed\n")

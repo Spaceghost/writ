@@ -71,6 +71,11 @@ struct Connection {
         if (result != ERROR_SUCCESS) throw writ::Error("Save S3 settings", result);
     }
 };
+inline std::string profile_id(const Connection& connection, const fs::path& root) {
+    auto path = writ::folded(writ::canonical(root));
+    auto value = connection.identity() + ":" + utf8(path);
+    return writ::digest(value.data(), value.size());
+}
 
 template<size_t Count> struct SecretFields {
     std::array<std::string, Count> values;

@@ -304,7 +304,7 @@ class App {
         if (provider.valid()) return;
         auto connection = writ_sync::Connection::load(); remote_mode = connection.has_value();
         root = user_path(CSIDL_PROFILE, remote_mode ? L"Writ Cloud" : L"Writ");
-        if (connection) recovery_path = user_path(CSIDL_LOCAL_APPDATA, L"WritSync") / connection->identity() / L"Recovery";
+        if (connection) recovery_path = user_path(CSIDL_LOCAL_APPDATA, L"WritSync") / writ_sync::profile_id(*connection, root) / L"Recovery";
         else {
             auto key = writ::folded(writ::canonical(root));
             recovery_path = data / L"store" / L"roots" / writ::digest(key.data(), key.size() * sizeof(wchar_t)) / L"recovery";

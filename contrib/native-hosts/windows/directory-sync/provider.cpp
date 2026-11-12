@@ -162,7 +162,21 @@ public:
         ownership.value = CreateMutexW(nullptr, TRUE, object_name(root, L"-owner").c_str());
         writ::check(ownership.value != nullptr, "Directory ownership mutex");
         if (GetLastError() == ERROR_ALREADY_EXISTS) throw writ::Error("This folder is already syncing", ERROR_BUSY);
+        bool existing_state = fs::exists(state / L"binding");
+        if (existing_state && !fs::exists(root)) throw writ::Error("The established sync folder is missing; remote files retained", ERROR_PATH_NOT_FOUND);
         writ::private_directory(root); writ::private_directory(state); writ::private_directory(recovery);
+        Parents root_guard(root), state_guard(state);
+        auto root_handle = frozen(root); FILE_ID_INFO id{};
+        writ::check(GetFileInformationByHandleEx(root_handle, FileIdInfo, &id, sizeof(id)), "Sync root native identity");
+        auto identity = profile_id(connection, root) + ":" + writ::hex(reinterpret_cast<const unsigned char*>(&id), sizeof(id));
+        auto binding = writ::digest(identity.data(), identity.size());
+        if (existing_state) {
+            auto file = frozen(state / L"binding"); auto bytes = writ::read_bytes(file);
+            if (std::string(bytes.begin(), bytes.end()) != binding) throw writ::Error("Sync state belongs to another folder identity or connection", ERROR_INVALID_DATA);
+        } else {
+            if (fs::exists(state / L"baseline")) throw writ::Error("Unbound sync state cannot be reused", ERROR_INVALID_DATA);
+            writ::durable_file(state / L"binding", binding.data(), static_cast<DWORD>(binding.size()));
+        }
         stopped.value = CreateEventW(nullptr, TRUE, FALSE, object_name(root, L"-stop").c_str());
         writ::check(stopped.value != nullptr, "Directory stop event"); ResetEvent(stopped);
         baseline = decode(read_catalog(state / L"baseline"));
@@ -193,7 +207,7 @@ public:
                     return a < b;
                 });
                 for (const auto& name : ordered) {
-                    if (WaitForSingleObject(stopped, 0) == WAIT_OBJECT_0) return errors ? 2 : 0;
+                    if (WaitForSingleObject(stopped, 0) == WAIT_OBJECT_0) return 0;
                     try { reconcile(name, catalog, etag, names); }
                     catch (const writ::Error& error) {
                         ++errors; std::string message = "ERROR " + name + ": " + error.what() + " (" + std::to_string(error.code) + ")";
@@ -208,7 +222,7 @@ public:
                 last_error = message;
             }
         } while (!once && WaitForSingleObject(stopped, errors ? 15000 : 5000) == WAIT_TIMEOUT);
-        return errors ? 2 : 0;
+        return once && errors ? 2 : 0;
     }
 };
 } // namespace writ_sync
@@ -240,7 +254,7 @@ int wmain(int argc, wchar_t** argv) {
         if ((command != L"run" && command != L"once") || argc > 4) throw writ::Error("Usage: writ-sync [run|once [folder [state]]] | stop [folder] | configure-stdin", ERROR_INVALID_PARAMETER);
         auto connection = Connection::load();
         if (!connection) throw writ::Error("Connect S3-compatible storage in Writ Settings", ERROR_NOT_FOUND);
-        auto state = writ::canonical(argc > 3 ? fs::path(argv[3]) : app_directory() / connection->identity());
+        auto state = writ::canonical(argc > 3 ? fs::path(argv[3]) : app_directory() / profile_id(*connection, root));
         wchar_t binary[32768]; DWORD length = GetModuleFileNameW(nullptr, binary, 32768);
         writ::check(length && length < 32768, "Executable path");
         Provider provider(fs::path(binary).parent_path(), root, state, *connection);
