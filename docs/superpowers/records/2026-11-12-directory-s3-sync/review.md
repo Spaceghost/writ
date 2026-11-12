@@ -21,4 +21,11 @@ Reviewer: existing `site_research` agent, read-only review of the working lane.
 The reviewer found no further ordinary-path data-loss issue in the revised
 per-file reconciliation, but native acceptance remains required. The repeat
 native test found the separate Win32 rename-buffer terminator bug; its fix and
-the direct recreated-target probe require a passing run before delivery.
+the direct recreated-target probe passed in run 43140516742 at `7664c20`.
+
+Final integration review found no code blocker in the public-fixture UIA value
+entry or the connection-aware `--open-folder` shortcut. It identified the
+expected publication dependency: preview.3 download/evidence links return 404
+until the immutable release exists, so the page must not deploy first. Setup
+links are now pinned to the preview.3 tag. The final source still requires its
+own native CI run; the previous successful source is not substituted for it.

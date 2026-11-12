@@ -7,9 +7,10 @@ test with `-std=c11 -O0 -lpthread -lm`. Each binary ran with
 `+RTS --threads 1 --gpu off`: 20 streaming SHA-256, 42 reconciliation and 24
 namespace checks passed. These are Linux CPU model tests, not Windows effects.
 
-`core-js.txt` contains all 3,072 existing core checks and the final success marker;
-`utils/verification/check_core.py` passed. `proof.txt` is the ordinary Bend proof
-check. No independent Lean verdict or physical GPU verification was run here.
+`core-js.txt` contains all 3,136 core checks and the final success marker after
+integrating master `c36a740` in `55b9994`; `utils/verification/check_core.py`
+passed. `proof.txt` is the ordinary Bend proof check at the same source.
+No independent Lean verdict or physical GPU verification was run here.
 Attempts to build the full monolithic C corpus exceeded local compiler resource
 limits; they receive no pass credit. Focused native C results above are separate.
 

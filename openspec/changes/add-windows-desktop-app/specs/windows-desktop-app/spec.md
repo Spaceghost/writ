@@ -6,13 +6,15 @@
 
 The application SHALL expose a Windows notification-area icon, flyout and
 keyboard-accessible desktop activity/settings window. It SHALL show bounded,
-observed provider activity and identify the public single-file local-store scope.
+observed provider activity and identify the active profile: the public single-file
+local store or the configured multi-file S3 folder.
 
 #### Scenario: Provider confirms a save
 
 - **WHEN** the owned provider reports a confirmed save
 - **THEN** the app records that observed save in its activity history
-- **AND** it does not imply remote sync or protected-host qualification.
+- **AND** local-profile status does not imply remote sync and neither profile
+  implies protected-host qualification.
 
 ### Requirement: WDA-002 Process lifetime and pause
 

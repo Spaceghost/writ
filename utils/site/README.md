@@ -34,7 +34,12 @@ prefix boundaries, redirects, missing assets, HTTP methods, HEAD and ETags.
 These are website checks and are not included in the Bend assertion count.
 
 Claims are grounded in the README, library reference, examples, platform
-documents and linked execution records at source `be40588`. Avoid numerical
+documents and linked execution records. The desktop download section targets
+the immutable `desktop-v0.1.0-preview.3` release; publish and verify its assets
+before deploying this page. Windows directory/S3 scope is documented in
+`contrib/native-hosts/windows/directory-sync/README.md`; Linux remains the local
+single-file preview. Compatible HTTPS fixture results do not establish actual
+R2 execution, and OneDrive sign-in remains future work. Avoid numerical
 test totals on the page so a new core test cannot silently stale a headline.
 Revisit the status prose when host qualification changes. Keep historical and
 synthetic evidence distinct from production qualification.

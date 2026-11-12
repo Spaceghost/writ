@@ -34,6 +34,7 @@ cmp "$writ_out/policy/directory-namespace.mjs" "$writ_out/directory-namespace-re
 "$writ_bend" writfs/DirectoryNamespaceTests.bend > "$writ_out/logs/namespace-tests.txt"
 "$writ_bend" lib/Sha256StreamTests.bend > "$writ_out/logs/stream-tests.txt"
 "$writ_bend" Tests.bend > "$writ_out/logs/core-tests.txt"
+python3 utils/verification/check_core.py "$writ_out/logs/core-tests.txt"
 "$writ_bend" PROOF.bend > "$writ_out/logs/proof.txt"
 git rev-parse HEAD > "$writ_out/policy/commit.txt"
 cp "$writ_out/logs/bend-version.txt" "$writ_out/policy/"

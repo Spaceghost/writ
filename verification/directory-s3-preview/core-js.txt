@@ -223,6 +223,37 @@ PASS: expiry is exclusive at deadline
 PASS: cannot execute before negotiation
 PASS: authority epoch drift denies start
 Negotiation: 26 checks passed
+PASS: neg revision exact supported limit and successor
+PASS: neg revision terminal direct move preserves session
+PASS: neg revision terminal direct finish preserves session
+PASS: neg revision terminal pin matching unchanged
+PASS: neg revision terminal pin stale unchanged
+PASS: neg revision terminal challenge matching unchanged
+PASS: neg revision terminal challenge stale unchanged
+PASS: neg revision terminal sample matching unchanged
+PASS: neg revision terminal sample stale unchanged
+PASS: neg revision terminal sample permit denied
+PASS: neg revision terminal approve matching unchanged
+PASS: neg revision terminal approve stale unchanged
+PASS: neg revision terminal reserve matching preserves both
+PASS: neg revision terminal reserve stale preserves both
+PASS: neg revision terminal start matching unchanged
+PASS: neg revision terminal start stale unchanged
+PASS: neg revision terminal backplane matching preserves both
+PASS: neg revision terminal backplane stale preserves both
+PASS: neg revision terminal facade matching preserves both
+PASS: neg revision terminal facade stale preserves both
+PASS: neg revision max minus one stale pin unchanged
+PASS: neg revision max minus one stale backplane preserves both
+PASS: neg revision max minus one pin advances to max
+PASS: neg revision max minus one challenge advances to max
+PASS: neg revision max minus one sample advances to max
+PASS: neg revision max minus one approve advances to max
+PASS: neg revision max minus one reserve advances both
+PASS: neg revision max minus one start advances to max
+PASS: neg revision max minus one backplane commits
+PASS: neg revision max minus one facade commits
+Negotiation revision: 30 checks passed
 PASS: backplane commits fully verified transaction
 PASS: write intent retains origins, types, restrictions and DLM label
 PASS: committed session is terminal
@@ -901,6 +932,34 @@ PASS: GA-011 revoking a delegatee destroys the delegator's object too
 VECTOR GA-011-7 delegate denied StaleGeneration
 PASS: GA-011 the delegator's Session survives and its descriptor slot is refunded
 HostBinding: 154 checks passed, 41 vectors emitted; GA-010 is a reviewed host obligation, not a model test
+PASS: host binding exhaustion reason is distinct
+PASS: host binding last object mount preserves full state
+PASS: host binding last alias mount preserves full state
+PASS: host binding last object open preserves full state
+PASS: host binding last alias open preserves full state
+PASS: host binding last object attenuation preserves full state
+PASS: host binding last alias attenuation preserves full state
+PASS: host binding last alias delegation preserves full state
+PASS: host binding exhausted object or alias rejects mount unchanged
+VECTOR GA-008-4 bind_mount denied IdExhausted
+PASS: host binding exhausted object or alias rejects open unchanged
+PASS: host binding exhausted object or alias rejects attenuation unchanged
+PASS: host binding exhausted alias rejects delegation unchanged
+PASS: host binding stale revision precedes exhaustion
+PASS: host binding mount route denial precedes exhaustion
+PASS: host binding mount quota denial precedes exhaustion
+PASS: host binding mount frontend denial precedes exhaustion
+PASS: host binding derive identity rights and quota precede exhaustion
+PASS: host binding derive frontend denial precedes exhaustion
+PASS: host binding delegation identity and rights precede exhaustion
+PASS: host binding stale generation precedes exhaustion
+PASS: host binding original graph validation precedes exhaustion
+PASS: host binding object exhaustion does not deny delegation
+PASS: host binding exhausted allocators preserve exact owner close
+PASS: host binding exhausted allocators preserve exact revocation
+PASS: host binding exhausted allocators preserve existing resolution
+PASS: host binding object exhaustion preserves delegation graph and revocation
+Host binding allocation boundary: 26 checks passed
 PASS: PH-011 Use decode of encode is the same message
 PASS: PH-011 Use words decode and re-encode to the same words
 PASS: PH-011 Delegate decode of encode is the same message
@@ -2070,6 +2129,15 @@ PASS: LH-session-loss standalone state is unrouted and unchanged
 PASS: LH-session-loss malformed owner stays unnormalized and contained
 PASS: LH-session-loss terminal cleanup remains incomplete
 LinuxSessionLoss: 9 checks passed
+PASS: LocalChannel provisioned role attributes to its principal
+PASS: LocalChannel unknown role index denies
+PASS: LocalChannel unknown sender denies
+PASS: LocalChannel each malformed reason denies with the same reason
+PASS: LocalChannel duplicate or zero role index denies even for a provisioned role
+PASS: LocalChannel attributed source role submits a source approval
+PASS: LocalChannel destination role cannot submit source and leaves state unchanged
+PASS: LocalChannel payload-named principal is ignored; sender role decides
+LocalChannel: 8 checks passed
 PASS: facade links capability descriptor through complete commit
 PASS: facade preserves output provenance
 PASS: capability revocation is checked at commit

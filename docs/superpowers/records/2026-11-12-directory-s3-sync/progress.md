@@ -26,8 +26,7 @@ the root and staging/recovery. Run 43140516742 passed those changes and the clou
 desktop, root and missing-manifest tests. Captured screenshots were inspected.
 
 Still required: verify credential entry/submission through the real native form,
-finalize documentation/traceability and review, integrate current master (now
-`c36a740`, 3,136 core checks) without disturbing other lanes, revalidate/source-hash,
+finalize independent review and packaging on the merged source, revalidate/source-hash,
 push master, publish the immutable preview and update the project website.
 
 Full monolithic native C core compilation was attempted but not credited: the
@@ -36,3 +35,9 @@ retry hit an LLVM registration error, and GCC attempts hit memory/time bounds.
 The 86 new focused C tests do pass. No independent Lean kernel or GPU result is
 claimed in this lane. Generated C, binaries and complete build logs remain
 outside the checkout in `/var/home/jack/build/writ-windows-desktop`.
+
+Master `c36a740` was integrated at `55b9994` with only the source manifest
+conflicting. The merged 3,136-check core passed the output checker and ordinary
+PROOF.bend passed. Named desktop and directory acceptance maps now live under
+`openspec/traceability/`; the release generator also checks the complete core
+output count before accepting the generated policy package.
