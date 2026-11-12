@@ -1,0 +1,11 @@
+--- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
++++ /home/jadams/tmp/writ-sc-task2/mut2/no-nonpidfs-check.c	2026-11-11 19:29:27.551994583 -0600
+@@ -120,7 +120,7 @@
+     else {
+         dev_t dev;
+         ino_t ino;
+-        if (pidfs_identity(pidfd, &dev, &ino)) {
++        if (0) {
+             verdict = WRIT_SENDER_ERROR;
+         } else {
+             /* Reviewed-only: every unprivileged pidfs inode shares one st_dev,

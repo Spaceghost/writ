@@ -1,0 +1,10 @@
+--- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
++++ /home/jadams/tmp/writ-sc-task2/mut2/roles-add-no-count-check.c	2026-11-11 19:29:26.234759196 -0600
+@@ -55,7 +55,6 @@
+     dev_t dev;
+     ino_t ino;
+     if (index == 0) return EINVAL;
+-    if (roles->count > WRIT_CHANNEL_ROLES) return EINVAL; /* corrupt table: never index past role[] */
+     if (pidfs_identity(pidfd, &dev, &ino)) return EINVAL;
+     for (size_t i = 0; i < roles->count; ++i) {
+         if (roles->role[i].index == index) return EINVAL;

@@ -131,6 +131,20 @@ is native kernel-behaviour evidence for the candidate transport only:
 `reaped-sender` and the receive rejections. It does not implement or accept any
 LH-011–LH-017 requirement.
 
+The [supervisor channel receiver record](../../verification/linux-supervisor-channel/README.md)
+maps two LH-011 scenarios to named tests. "A transferred administrative endpoint
+does not carry its role": `supervisor-channel-test.c` cases
+`transferred_endpoint_attributes_receiver_role` and `reaped_role_sender`, and
+[LocalChannelTests.bend](../../hosts/linux/monitor/LocalChannelTests.bend) check
+`LocalChannel provisioned role attributes to its principal` and
+`LocalChannel payload-named principal is ignored; sender role decides`.
+"An unprovisioned sender is not attributed": `unregistered_sender_unknown` and
+`missing_sender_without_enable`, and the Bend checks `LocalChannel unknown
+sender denies` and `LocalChannel unknown role index denies`. These are
+receiver-level evidence only. Pidfs `dev` matching, capable-sender and exec
+behaviour, namespace and ptrace isolation, supervisor wiring, protected role
+provisioning and native host qualification remain reviewed-only gaps.
+
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 
 [LinuxJointOwnerTests.bend](../../hosts/linux/monitor/LinuxJointOwnerTests.bend)

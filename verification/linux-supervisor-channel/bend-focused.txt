@@ -1,0 +1,9 @@
+PASS: LocalChannel provisioned role attributes to its principal
+PASS: LocalChannel unknown role index denies
+PASS: LocalChannel unknown sender denies
+PASS: LocalChannel each malformed reason denies with the same reason
+PASS: LocalChannel duplicate or zero role index denies even for a provisioned role
+PASS: LocalChannel attributed source role submits a source approval
+PASS: LocalChannel destination role cannot submit source and leaves state unchanged
+PASS: LocalChannel payload-named principal is ignored; sender role decides
+LocalChannel: 8 checks passed

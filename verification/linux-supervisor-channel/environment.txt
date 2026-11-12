@@ -1,0 +1,13 @@
+uname -srmo: Linux 7.2.9-1-MANJARO x86_64 GNU/Linux
+gcc: gcc (GCC) 16.2.1 20260810
+clang: clang version 23.1.1
+glibc: ldd (GNU libc) 2.44
+id: uid=1000(jadams) gid=1000(jadams) groups=1000(jadams),3(sys),90(network),98(power),108(vboxusers),150(wireshark),906(openwebrx),921(ollama),954(nix-users),955(libvirt),956(realtime),962(docker),975(adbusers),987(uucp),991(lp),992(kvm),994(disk),998(wheel),1001(plugdev),1002(qb64)
+CapPrm:	0000000000000000
+CapEff:	0000000000000000
+captured: 2026-11-12T01:34:56Z
+git HEAD: f644064e50974c386a1d60f6ba3af06da5869b39
+source sha256: ffefd440e29043533efe97cfb3c98e41e4a1c20b8c299d9bf67de1d215f15279 supervisor_channel.c
+0b533d732d1752be8bd5136df98e5dbaffff539a570c9b9837eaae585e57bd13 supervisor_channel.h
+29ba4da8fe41bc3e14723034757052b2fc57594e112a54b14d5f66cafb5abdd1 supervisor-channel-test.c
+binary sha256: 10540db88682b7c8e9e363fe518565e272c5adfc44d367f9cea5b1a6b63dc0f3  /home/jadams/tmp/writ-sc-task3/out/supervisor-channel-test

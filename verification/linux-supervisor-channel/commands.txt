@@ -1,0 +1,17 @@
+export PATH="$HOME/.local/share/writ-toolchains/bend-2.0.39/bend/bin:$PATH" BEND_NO_TELEMETRY=1
+# Focused Bend (bend-focused.txt)
+bend hosts/linux/monitor/LocalChannelTests.bend
+# Full suite, then the core count check (bend-suite-tail.txt). Do not wrap bend in `time`: it appends text after the success marker.
+bend Tests.bend > tests.log 2>&1; python3 utils/verification/check_core.py tests.log
+# Proof (proof-tail.txt); --verdict NOT run: no lake or lean on this machine.
+bend PROOF.bend
+# Native build outside the checkout (Makefile refuses an in-tree OUT), then one run (native-run.txt, exit appended).
+make -C contrib/native-hosts/linux OUT="$HOME/tmp/writ-sc-task3/out" "$HOME/tmp/writ-sc-task3/out/supervisor-channel-test"
+timeout 60 "$HOME/tmp/writ-sc-task3/out/supervisor-channel-test"; echo "exit=$?"
+# 20 repeats, tallied (native-repeat.txt)
+for i in $(seq 1 20); do timeout 60 ./supervisor-channel-test > r.txt 2>&1; echo "$? $(tail -1 r.txt)"; done | sort | uniq -c
+# Mutants (mutants/*.diff, mutants/*.out, mutant-results.txt): each diff is against supervisor_channel.c; build the
+# mutated copy with the same flags and the unmodified test, run it, expect exit 1.
+cc -D_FILE_OFFSET_BITS=64 -DWRIT_CHANNEL_TESTING -std=c11 -O2 -g -Wall -Wextra -Werror -Wformat=2 -Wconversion -Wshadow \
+   -I contrib/native-hosts/linux contrib/native-hosts/linux/supervisor-channel-test.c MUTANT.c -o m && ./m; echo "exit=$?"
+# no-nonpidfs-check and no-rights-rejection were built without -Werror (the mutation leaves unused or maybe-uninitialised code).

@@ -1,0 +1,11 @@
+--- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
++++ /home/jadams/tmp/writ-sc-task2/mut2/no-close-rights.c	2026-11-11 19:29:22.167842612 -0600
+@@ -102,7 +102,7 @@
+                 if (pidfd < 0) pidfd = value; else close(value);
+             } else if (c->cmsg_type == SCM_RIGHTS) {
+                 ++rights;
+-                if (value >= 0) close(value);
++                (void)value;
+             }
+         }
+         if (c->cmsg_type != SCM_PIDFD && c->cmsg_type != SCM_RIGHTS) ++other;

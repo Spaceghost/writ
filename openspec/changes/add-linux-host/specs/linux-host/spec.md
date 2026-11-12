@@ -183,6 +183,20 @@ The proposed profile SHALL establish an operator-controlled supervisor boundary 
 - **WHEN** it sends a claimed subject, registry, authority directory, timestamp or serialized monitor state
 - **THEN** those bytes cannot replace the supervisor-owned identity, clock or issuer state.
 
+#### Scenario: A transferred administrative endpoint does not carry its role
+
+- **GIVEN** an administrative channel endpoint provisioned for one role has been passed to a different process
+- **WHEN** the receiver reads a record sent by the second process
+- **THEN** the receiver attributes the record to the role retained for the actual sender's lifetime, or denies it
+- **AND** possession of the endpoint never attributes the record to the role that owned the endpoint before the transfer.
+
+#### Scenario: An unprovisioned sender is not attributed
+
+- **GIVEN** a record arrives from a process with no retained role
+- **WHEN** the receiver classifies the record
+- **THEN** the record is denied
+- **AND** no `from` is attached to any issuance.
+
 ### Requirement: LH-012 Trusted time advances independently of denied policy state
 
 The supervisor SHALL retain a trusted monotone clock high-water mark separately from policy state, sampling before every untrusted request, including malformed and denied requests. An unavailable, ambiguous, overflowing or regressing sample SHALL poison protected effects. Revocation, retirement, quiescence and STOP SHALL remain available as fail-closed cleanup; handed-off bytes cannot be recalled.

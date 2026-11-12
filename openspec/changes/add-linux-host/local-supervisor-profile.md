@@ -91,8 +91,16 @@ separate implementation and host-qualification work.
 
 Consider a separate local `AF_UNIX` `SOCK_SEQPACKET` channel for each explicitly
 provisioned authority role, with `SO_PASSPIDFD` enabled on the receiver before
-it accepts messages. This is a candidate to evaluate, not a selected or
-implemented authentication method. The operator's protected bootstrap must
+it accepts messages. Josh selected this restricted profile in
+[board question 24](../../../docs/superpowers/records/questions/q24.html)
+(`select-scm-pidfd`). It is a selected transport, not an implemented or
+qualified authentication method: the Bend attribution
+([`LocalChannel.bend`](../../../hosts/linux/monitor/LocalChannel.bend), Task 1)
+and the bounded native receiver
+([`supervisor_channel.c`](../../../contrib/native-hosts/linux/supervisor_channel.c), Task 2)
+exist and are tested separately, and nothing connects them. Their
+[evidence record](../../../verification/linux-supervisor-channel/README.md)
+lists what remains unproven. The operator's protected bootstrap must
 first bind each role to a trusted program and exact process lifetime; a public
 path, inherited socket, UID, PID or received pidfd alone cannot create that
 binding. Source- and destination-role submissions and revocations must attach
