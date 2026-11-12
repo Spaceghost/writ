@@ -221,20 +221,23 @@ def published(+adapter: V.Adapter) -> P.State:
 # The monitor revokes the worker's input, as `use` resolved it, before
 # publication.
 def early_revoke(+adapter: V.Adapter) -> P.Step:
-  revoke_on(sealed(adapter), resolved_slot(use_on(sealed(adapter), V.session_worker(),
+  +sealed = {sealed(adapter) : P.State}
+  revoke_on(sealed, resolved_slot(use_on(sealed, V.session_worker(),
     use_of(adapter, V.Input{}, V.claim_none()))))
 
 # The monitor revokes the client's root, as `use` resolved it, after
 # publication; the whole subtree is retired.
 def late_revoke(+adapter: V.Adapter) -> P.Step:
-  revoke_on(published(adapter), resolved_slot(use_on(published(adapter), V.session_client(),
+  +published = {published(adapter) : P.State}
+  revoke_on(published, resolved_slot(use_on(published, V.session_client(),
     use_of(adapter, V.Root{}, V.claim_none()))))
 
 def late_revoked(+adapter: V.Adapter) -> P.State:
   P.Step.state(late_revoke(adapter))
 
 def quiesce_step(+adapter: V.Adapter) -> P.Step:
-  H.quiesce(late_revoked(adapter), P.revision(late_revoked(adapter)), V.quiesced_fact())
+  +revoked = {late_revoked(adapter) : P.State}
+  H.quiesce(revoked, P.revision(revoked), V.quiesced_fact())
 
 def reclaim_step(+adapter: V.Adapter) -> P.Step:
   +quiesced = P.Step.state(quiesce_step(adapter))
@@ -244,7 +247,8 @@ def torn_down(+adapter: V.Adapter) -> P.State:
   P.Step.state(reclaim_step(adapter))
 
 def restart_step(+adapter: V.Adapter) -> P.Step:
-  H.restart(admitted(adapter), P.revision(admitted(adapter)), V.adapter_successor(adapter))
+  +admitted = {admitted(adapter) : P.State}
+  H.restart(admitted, P.revision(admitted), V.adapter_successor(adapter))
 
 # After restart the client alone is bound again (id 1) and the adapter
 # allocates as before, so the new root has the old root's slot and generation.
@@ -612,7 +616,8 @@ def agree(ok_a: Bool, ok_b: Bool, line_a: String, line_b: String, +expected: Str
 # --- Vectors: exact plan binding (PH-009, PH-005) ----------------------------------
 
 def ph009_1_ok(+a: V.Adapter) -> Bool:
-  published_ok(baseline_publish(a), sealed(a), V.fixture_ledger()) && retained(baseline_publish(a))
+  +result = {baseline_publish(a) : H.PublishResult}
+  published_ok(result, sealed(a), V.fixture_ledger()) && retained(result)
 
 def ph009_1_line(+a: V.Adapter) -> String:
   publish_line("PH-009-1", a, baseline_publish(a))
@@ -638,8 +643,9 @@ def ph005_2_line(+a: V.Adapter) -> String:
 
 # The proxy entry is allocated once with the requested narrower rights.
 def ph005_3_ok(+a: V.Adapter) -> Bool:
-  Nat.is_eq(I.next_slot(P.identity(proxied(a))), 1n+I.next_slot(P.identity(delegated(a))))
-    && live_with(entry_of(use_on(proxied(a), V.session_proxy(), use_of(a, V.Proxy{}, V.claim_none()))),
+  +proxied = {proxied(a) : P.State}
+  Nat.is_eq(I.next_slot(P.identity(proxied)), 1n+I.next_slot(P.identity(delegated(a))))
+    && live_with(entry_of(use_on(proxied, V.session_proxy(), use_of(a, V.Proxy{}, V.claim_none()))),
       V.proxy_rights())
 
 def ph005_3_line(+a: V.Adapter) -> String:
@@ -651,12 +657,16 @@ def narrow_plan(+a: V.Adapter) -> Maybe<&2, T.Plan>:
 def proxy_plan(+a: V.Adapter) -> Maybe<&2, T.Plan>:
   plan_of(entry_of(use_on(narrowed(a), V.session_proxy(), use_of(a, V.Proxy{}, V.claim_none()))))
 
+# `plan` is `narrow_plan(a)`, computed once by the caller.
+def narrow_plan_matches(+plan: Maybe<&2, T.Plan>, +a: V.Adapter) -> Bool:
+  plans_equal(plan, proxy_plan(a)) && plans_equal(plan, Some{V.plan()})
+
 # The narrow entry is live with its rights, and its plan is its parent's,
 # which is the root's.
 def ph005_4_ok(+a: V.Adapter) -> Bool:
   live_with(entry_of(use_on(narrowed(a), V.session_worker(), use_of(a, V.Narrow{}, V.claim_none()))),
       V.narrow_rights())
-    && plans_equal(narrow_plan(a), proxy_plan(a)) && plans_equal(narrow_plan(a), Some{V.plan()})
+    && narrow_plan_matches(narrow_plan(a), a)
 
 def ph005_4_line(+a: V.Adapter) -> String:
   delegate_line("PH-005-4", a, narrow_step(a))
@@ -665,8 +675,9 @@ def narrow_publish(+a: V.Adapter) -> H.PublishResult:
   publish_on(sealed_from(narrow_admitted(a)))
 
 def ph005_5_ok(+a: V.Adapter) -> Bool:
-  published_ok(narrow_publish(a), sealed_from(narrow_admitted(a)), V.fixture_ledger())
-    && same_intent(narrow_publish(a), baseline_publish(a)) && retained(narrow_publish(a))
+  +result = {narrow_publish(a) : H.PublishResult}
+  published_ok(result, sealed_from(narrow_admitted(a)), V.fixture_ledger())
+    && same_intent(result, baseline_publish(a)) && retained(result)
 
 def ph005_5_line(+a: V.Adapter) -> String:
   publish_line("PH-005-5", a, narrow_publish(a))
@@ -676,7 +687,8 @@ def root_use(+a: V.Adapter) -> P.UseResult:
 
 # The broader root is still live with all its rights after the proxy.
 def ph005_6_ok(+a: V.Adapter) -> Bool:
-  granted_at(root_use(a), V.slot_of(a, V.Root{})) && live_with(entry_of(root_use(a)), V.root_rights())
+  +used = {root_use(a) : P.UseResult}
+  granted_at(used, V.slot_of(a, V.Root{})) && live_with(entry_of(used), V.root_rights())
 
 def ph005_6_line(+a: V.Adapter) -> String:
   use_line("PH-005-6", a, root_use(a))
@@ -795,7 +807,7 @@ def bypass_reached(+a: V.Adapter) -> Bool:
     && T.Plan.equal(N.Session.plan(V.fixture_session()), V.plan())
     && Bool.not(T.Plan.equal(V.destination_plan(), V.plan()))
     && PT.phase_of(P.workers(host), V.worker_id(), P.Running{})
-    && Bool.not(PT.seals_equal(P.seals(bypassed_sealed(a)), P.NoSeals{}))
+    && Bool.not(PT.seals_equal(P.seals(host), P.NoSeals{}))
 
 def ph005_8_ok(+a: V.Adapter) -> Bool:
   bypass_reached(a) && refused_unchanged(bypassed_publish(a), bypassed_sealed(a), V.fixture_session(),
@@ -832,9 +844,11 @@ def ph002_1_line(+a: V.Adapter) -> String:
 
 # The same entry, rights, and effective caller as with the claim.
 def ph002_2_ok(+a: V.Adapter) -> Bool:
-  granted_at(unclaimed_use(a), V.slot_of(a, V.Input{}))
-    && plans_equal(plan_of(entry_of(unclaimed_use(a))), plan_of(entry_of(claimed_use(a))))
-    && live_with(entry_of(claimed_use(a)), V.root_rights()) && live_with(entry_of(unclaimed_use(a)), V.root_rights())
+  +unclaimed = {unclaimed_use(a) : P.UseResult}
+  +claimed = {claimed_use(a) : P.UseResult}
+  granted_at(unclaimed, V.slot_of(a, V.Input{}))
+    && plans_equal(plan_of(entry_of(unclaimed)), plan_of(entry_of(claimed)))
+    && live_with(entry_of(claimed), V.root_rights()) && live_with(entry_of(unclaimed), V.root_rights())
 
 def ph002_2_line(+a: V.Adapter) -> String:
   use_line("PH-002-2", a, unclaimed_use(a))
@@ -843,8 +857,9 @@ def claimed_publish(+a: V.Adapter) -> H.PublishResult:
   publish_on(sealed_from(admitted_with(a, V.claim_other())))
 
 def ph002_3_ok(+a: V.Adapter) -> Bool:
-  published_ok(claimed_publish(a), sealed_from(admitted_with(a, V.claim_other())), V.fixture_ledger())
-    && same_intent(claimed_publish(a), baseline_publish(a))
+  +result = {claimed_publish(a) : H.PublishResult}
+  published_ok(result, sealed_from(admitted_with(a, V.claim_other())), V.fixture_ledger())
+    && same_intent(result, baseline_publish(a))
 
 def ph002_3_line(+a: V.Adapter) -> String:
   publish_line("PH-002-3", a, claimed_publish(a))
@@ -852,8 +867,9 @@ def ph002_3_line(+a: V.Adapter) -> String:
 # An identity denial on `use` and on `admit_worker` with the same reason, the
 # admission returning its input state unchanged.
 def identity_denied(+a: V.Adapter, +session: Nat, +bytes: +List<U32>, +reason: I.Error) -> Bool:
-  refused_with(use_on(delegated(a), session, bytes), P.Identity{reason})
-    && PT.denied(admit_on(delegated(a), a, session, bytes), delegated(a), P.Identity{reason})
+  +delegated = {delegated(a) : P.State}
+  refused_with(use_on(delegated, session, bytes), P.Identity{reason})
+    && PT.denied(admit_on(delegated, a, session, bytes), delegated, P.Identity{reason})
 
 def endpoint_admit(+a: V.Adapter, +session: Nat) -> P.Step:
   admit_on(delegated(a), a, session, use_of(a, V.Root{}, V.claim_none()))
@@ -907,8 +923,9 @@ def admitted_effects(+step: P.Step, +effects: +List<P.Effect>, +revision: Nat) -
       False{}
 
 def ph010_1_ok(+a: V.Adapter) -> Bool:
-  admitted_effects(early_revoke(a), stop_input(), 1n+P.revision(sealed(a)))
-    && PT.phase_of(P.workers(P.Step.state(early_revoke(a))), V.worker_id(), P.Revoked{})
+  +step = {early_revoke(a) : P.Step}
+  admitted_effects(step, stop_input(), 1n+P.revision(sealed(a)))
+    && PT.phase_of(P.workers(P.Step.state(step)), V.worker_id(), P.Revoked{})
 
 def ph010_1_line(+a: V.Adapter) -> String:
   revoke_line("PH-010-1", a, V.slot_of(a, V.Input{}), early_revoke(a))
@@ -925,14 +942,17 @@ def ph009_2_line(+a: V.Adapter) -> String:
 
 # Revocation after publication keeps the record and recalls nothing.
 def ph010_2_ok(+a: V.Adapter) -> Bool:
-  admitted_effects(late_revoke(a), stop_input(), 1n+P.revision(published(a)))
-    && PT.publications_equal(P.publications(late_revoked(a)), P.publications(published(a)))
+  +step = {late_revoke(a) : P.Step}
+  +published = {published(a) : P.State}
+  admitted_effects(step, stop_input(), 1n+P.revision(published))
+    && PT.publications_equal(P.publications(P.Step.state(step)), P.publications(published))
 
 def ph010_2_line(+a: V.Adapter) -> String:
   revoke_line("PH-010-2", a, V.slot_of(a, V.Root{}), late_revoke(a))
 
 def late_reconcile(+a: V.Adapter) -> P.Step:
-  H.reconcile(late_revoked(a), P.revision(late_revoked(a)), V.invocation(), V.sealed_digest(), V.destination())
+  +revoked = {late_revoked(a) : P.State}
+  H.reconcile(revoked, P.revision(revoked), V.invocation(), V.sealed_digest(), V.destination())
 
 def ph010_3_ok(+a: V.Adapter) -> Bool:
   admitted_effects(late_reconcile(a), [P.Reconcile{V.invocation(), V.sealed_digest(), V.destination()}],
@@ -942,21 +962,24 @@ def ph010_3_line(+a: V.Adapter) -> String:
   reconcile_line("PH-010-3", late_reconcile(a))
 
 def ph010_4_ok(+a: V.Adapter) -> Bool:
-  admitted_effects(quiesce_step(a), [], 1n+P.revision(late_revoked(a)))
-    && PT.phase_of(P.workers(P.Step.state(quiesce_step(a))), V.worker_id(), P.Quiesced{})
+  +step = {quiesce_step(a) : P.Step}
+  admitted_effects(step, [], 1n+P.revision(late_revoked(a)))
+    && PT.phase_of(P.workers(P.Step.state(step)), V.worker_id(), P.Quiesced{})
 
 def ph010_4_line(+a: V.Adapter) -> String:
   worker_line("PH-010-4", "quiesce", a, quiesce_step(a))
 
 def ph010_5_ok(+a: V.Adapter) -> Bool:
-  admitted_effects(reclaim_step(a), [P.Reclaim{V.worker_id()}], 2n+P.revision(late_revoked(a)))
-    && PT.phase_of(P.workers(torn_down(a)), V.worker_id(), P.Reclaimed{})
+  +step = {reclaim_step(a) : P.Step}
+  admitted_effects(step, [P.Reclaim{V.worker_id()}], 2n+P.revision(late_revoked(a)))
+    && PT.phase_of(P.workers(P.Step.state(step)), V.worker_id(), P.Reclaimed{})
 
 def ph010_5_line(+a: V.Adapter) -> String:
   worker_line("PH-010-5", "reclaim", a, reclaim_step(a))
 
 def stale_completion(+a: V.Adapter) -> P.Step:
-  H.complete(torn_down(a), P.revision(torn_down(a)), H.CompletionFact{V.session_worker(),
+  +torn = {torn_down(a) : P.State}
+  H.complete(torn, P.revision(torn), H.CompletionFact{V.session_worker(),
     decode(input_completion(a))}, V.now())
 
 def ph010_6_ok(+a: V.Adapter) -> Bool:
@@ -990,8 +1013,11 @@ def replay_ledger(+a: V.Adapter) -> L.State:
 
 # A second publication with the session and ledger the first commit returned.
 def replay(+a: V.Adapter) -> H.PublishResult:
-  H.publish(published(a), P.revision(published(a)), V.worker_id(), V.clean_fact(), replay_session(a),
-    N.Session.revision(replay_session(a)), L.revision(replay_ledger(a)), replay_ledger(a), V.fixture_candidate(),
+  +published = {published(a) : P.State}
+  +session = {replay_session(a) : N.Session}
+  +ledger = {replay_ledger(a) : L.State}
+  H.publish(published, P.revision(published), V.worker_id(), V.clean_fact(), session,
+    N.Session.revision(session), L.revision(ledger), ledger, V.fixture_candidate(),
     V.fixture_context(), V.fixture_frontend())
 
 def ph009_3_ok(+a: V.Adapter) -> Bool:
@@ -1001,8 +1027,9 @@ def ph009_3_line(+a: V.Adapter) -> String:
   publish_line("PH-009-3", a, replay(a))
 
 def ph004_1_ok(+a: V.Adapter) -> Bool:
-  admitted_effects(restart_step(a), stop_input(), 1n+P.revision(admitted(a)))
-    && Nat.is_eq(I.incarnation(P.identity(P.Step.state(restart_step(a)))), V.adapter_successor(a))
+  +step = {restart_step(a) : P.Step}
+  admitted_effects(step, stop_input(), 1n+P.revision(admitted(a)))
+    && Nat.is_eq(I.incarnation(P.identity(P.Step.state(step))), V.adapter_successor(a))
 
 def ph004_1_line(+a: V.Adapter) -> String:
   restart_line("PH-004-1", a, restart_step(a))
@@ -1021,15 +1048,17 @@ def prior_admit(+a: V.Adapter) -> P.Step:
   admit_on(reissued(a), a, V.session_client(), use_of(a, V.Root{}, V.claim_none()))
 
 def ph004_3_ok(+a: V.Adapter) -> Bool:
-  refused_with(use_on(reissued(a), V.session_client(), use_of(a, V.Root{}, V.claim_none())),
+  +reissued = {reissued(a) : P.State}
+  refused_with(use_on(reissued, V.session_client(), use_of(a, V.Root{}, V.claim_none())),
       P.Identity{I.StaleIncarnation{}})
-    && PT.denied(prior_admit(a), reissued(a), P.Identity{I.StaleIncarnation{}})
+    && PT.denied(prior_admit(a), reissued, P.Identity{I.StaleIncarnation{}})
 
 def ph004_3_line(+a: V.Adapter) -> String:
   plain_line("PH-004-3", "admit_worker", prior_admit(a))
 
 def substituted(+a: V.Adapter) -> P.Step:
-  H.reconcile(published(a), P.revision(published(a)), V.invocation(), V.other_digest(), V.destination())
+  +published = {published(a) : P.State}
+  H.reconcile(published, P.revision(published), V.invocation(), V.other_digest(), V.destination())
 
 def ph009_4_ok(+a: V.Adapter) -> Bool:
   PT.denied(substituted(a), published(a), P.Substitution{})
@@ -1041,7 +1070,8 @@ def ph009_4_line(+a: V.Adapter) -> String:
 # destination object version of plan E (object 21) instead of the recorded
 # plan-D destination.
 def retargeted_recovery(+a: V.Adapter) -> P.Step:
-  H.reconcile(published(a), P.revision(published(a)), V.invocation(), V.sealed_digest(), V.other_destination())
+  +published = {published(a) : P.State}
+  H.reconcile(published, P.revision(published), V.invocation(), V.sealed_digest(), V.other_destination())
 
 def ph009_5_ok(+a: V.Adapter) -> Bool:
   PT.denied(retargeted_recovery(a), published(a), P.Substitution{})
@@ -1066,9 +1096,12 @@ def compare_outcome(ok: Bool, +count: Nat) -> String:
     case False{}:
       "denied Mismatch"
 
-def compare_line() -> String:
-  line_of("PH-012-1", "compare", compare_outcome(strings_equal(lines_for(V.adapter_a()), lines_for(V.adapter_b())),
-    List.length(&2, String, lines_for(V.adapter_a()))))
+# The comparison line over already replayed vector lines: `a_lines` and
+# `b_lines` are `lines_for` of adapters A and B. Replaying every vector is the
+# expensive part, so a caller that already holds both replays passes them in.
+def compare_line_of(+a_lines: List<&2, String>, b_lines: List<&2, String>) -> String:
+  line_of("PH-012-1", "compare", compare_outcome(strings_equal(a_lines, b_lines),
+    List.length(&2, String, a_lines)))
 
 # The adapters really differ: host, incarnation, allocation, and report.
 def adapters_differ() -> Bool:
@@ -1198,11 +1231,16 @@ def replay_checks() -> IO(Unit):
     Test.check(agree(ph009_5_ok(A()), ph009_5_ok(Bd()), ph009_5_line(A()), ph009_5_line(Bd()), V.expected_ph009_5()), "PH-009-5 recovery from a log naming another destination than the recorded publication is denied Substitution with the state unchanged")
     vector(ph009_5_line(A()))
 
-def adapter_checks() -> IO(Unit):
+# `a_lines` and `b_lines` are `lines_for(A())` and `lines_for(Bd())`, each
+# replayed once by `adapter_checks` and shared by the check and its vector.
+def adapter_checks_of(+a_lines: List<&2, String>, +b_lines: List<&2, String>) -> IO(Unit):
   do IO<Unit>:
-    Test.check(strings_equal(lines_for(A()), lines_for(Bd())) && strings_equal(lines_for(A()), V.expected_lines())
-      && String.eq(compare_line(), V.expected_ph012_1()), "PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector")
-    vector(compare_line())
+    Test.check(strings_equal(a_lines, b_lines) && strings_equal(a_lines, V.expected_lines())
+      && String.eq(compare_line_of(a_lines, b_lines), V.expected_ph012_1()), "PH-012-1 PH-001 adapters A and B give identical decisions and identical vector lines for every vector")
+    vector(compare_line_of(a_lines, b_lines))
+
+def adapter_checks() -> IO(Unit):
+  adapter_checks_of(lines_for(A()), lines_for(Bd()))
 
 # Public entry point, run by Tests.bend. Checks are grouped per requirement and
 # fixtures are named functions rather than shared locals, so the native

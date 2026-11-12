@@ -80,14 +80,12 @@ def joint_zero_result(+outcome: LH.Outcome, +before: LH.State) -> Bool:
         && PT.effects_equal(LH.Outcome.effects(JT.delivery_of(after)), [])
     case _: False{}
 
-def joint_zero(+world: RT.Sc) -> Bool:
-  +base = JT.issued_once(world)
+def joint_zero(+base: LH.State) -> Bool:
   +zero = linux_counter(base, P.revision(LH.portable(base)), 0n)
   P.valid(LH.portable(zero)) && Bool.not(LH.joint_commit_room(zero))
     && joint_zero_result(JT.delivery_of(zero), zero)
 
-def joint_old_failure(+world: RT.Sc) -> Bool:
-  +base = JT.issued_once(world)
+def joint_old_failure(+base: LH.State) -> Bool:
   +zero = linux_counter(base, P.revision(LH.portable(base)), 0n)
   +read = {W.Use{W.Ref{60, 1, 1, 1}, W.operation_read(), 4, W.ClaimedSubject{0}} : W.Message}
   +outcome = {LH.dispatch(zero, LH.FromBroker{LH.Barrier{1n, JT.fact(), W.encode_bytes(read)}},
@@ -111,6 +109,13 @@ def with_parsed(a: Maybe<&2, Nat>, b: Maybe<&2, Nat>, which: Nat) -> Bool:
 def parsed(which: Nat) -> Bool:
   with_parsed(Nat.read("281474976710655"), Nat.read("281474976710654"), which)
 
+# `issued` is `JT.issued_once(RT.sc_world())`, built once for both joint
+# checks; each check applies its own zero-allocator edit and transitions.
+def joint_checks(+issued: LH.State) -> IO(Unit):
+  do IO<Unit>:
+    Test.check(joint_zero(issued), "LH-worker joint zero contains without delivery and stays failed")
+    Test.check(joint_old_failure(issued), "LH-worker joint earlier denial precedes zero containment")
+
 def main() -> IO(Unit):
   do IO<Unit>:
     Test.check(parsed(0n), "PH-worker zero allocator denies unchanged before capacity")
@@ -118,6 +123,5 @@ def main() -> IO(Unit):
     Test.check(parsed(2n), "PH-worker max-minus-one admits valid model worker beyond U32")
     Test.check(parsed(3n), "PH-worker earlier admission and authority denials retain precedence")
     Test.check(standalone_zero(), "LH-worker standalone zero denies with no effects")
-    Test.check(joint_zero(RT.sc_world()), "LH-worker joint zero contains without delivery and stays failed")
-    Test.check(joint_old_failure(RT.sc_world()), "LH-worker joint earlier denial precedes zero containment")
+    joint_checks(JT.issued_once(RT.sc_world()))
     IO.print("HostWorkerCapacity: 7 checks passed")

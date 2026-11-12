@@ -51,14 +51,20 @@ import ./RendezvousTests.bend as Rendezvous
 import ./RendezvousBoundaryTests.bend as RendezvousBoundary
 import ./PropertyTests.bend as Properties
 
+# The joint-owner and session-loss checks read one build of the synthetic
+# owner scenario stages instead of each replaying launch through delivery.
+def joint_owner_tests(+stages: LinuxJointOwner.Stages) -> IO(Unit):
+  do IO<Unit>:
+    LinuxJointOwner.joint_checks(stages)
+    LinuxSessionLoss.checks(stages)
+
 def linux_tests() -> IO(Unit):
   do IO<Unit>:
     LinuxHost.main()
     LinuxSessionOpen.main()
     LinuxCredentialBinding.main()
     LinuxClock.main()
-    LinuxJointOwner.main()
-    LinuxSessionLoss.main()
+    joint_owner_tests(LinuxJointOwner.owner_stages())
 
 # Keep host corpus ordering while bounding generated continuation arity.
 def host_tests() -> IO(Unit):

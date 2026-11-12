@@ -643,9 +643,12 @@ def same(ok: Bool, line: String, expected: String) -> Bool:
 def linux_lines() -> List<&2, String>:
   CT.lines_for(L())
 
-def compare_line() -> String:
-  CT.line_of("PH-012-1", "compare", CT.compare_outcome(CT.strings_equal(linux_lines(), CT.lines_for(V.adapter_a()))
-    && CT.strings_equal(linux_lines(), CT.lines_for(V.adapter_b())), List.length(&2, String, linux_lines())))
+# The comparison line over already replayed vector lines: `linux`, `a` and
+# `b` are `CT.lines_for` of the Linux adapter and adapters A and B. Each
+# replay runs every conformance vector, so callers replay each adapter once.
+def compare_line_of(+linux: List<&2, String>, a: List<&2, String>, b: List<&2, String>) -> String:
+  CT.line_of("PH-012-1", "compare", CT.compare_outcome(CT.strings_equal(linux, a)
+    && CT.strings_equal(linux, b), List.length(&2, String, linux)))
 
 def fixture_ok() -> Bool:
   U32.is_eq(P.report_families(V.adapter_report(L())), P.all_families())
@@ -654,8 +657,8 @@ def fixture_ok() -> Bool:
     && Nat.is_eq(V.adapter_host(L()), LH.linux_host()) && Nat.is_eq(V.adapter_incarnation(L()), LH.linux_incarnation())
 
 # The 37 replay lines: the 36 decision lines, then the comparison line.
-def replay_lines() -> List<&2, String>:
-  List.append(&2, String, linux_lines(), [compare_line()])
+def replay_lines_of(+linux: List<&2, String>, a: List<&2, String>, b: List<&2, String>) -> List<&2, String>:
+  List.append(&2, String, linux, [compare_line_of(linux, a, b)])
 
 # Keep each vector in a separate diagnostic so bounded hosts can emit it.
 def emit_replay(lines: List<&2, String>) -> IO(Unit):
@@ -719,11 +722,17 @@ def replay_restart_checks() -> IO(Unit):
     Test.check(same(CT.ph009_4_ok(L()), CT.ph009_4_line(L()), V.expected_ph009_4()), "LH-010 PH-009-4 replays on the Linux adapter with adapter A's and B's outcome and line")
     Test.check(same(CT.ph009_5_ok(L()), CT.ph009_5_line(L()), V.expected_ph009_5()), "LH-010 PH-009-5 replays on the Linux adapter with adapter A's and B's outcome and line")
 
-def replay_compare_checks() -> IO(Unit):
+# `linux`, `a` and `b` are `linux_lines()` and `CT.lines_for` of adapters A
+# and B, each replayed once by `replay_compare_checks` and shared by both
+# checks and the emitted replay.
+def replay_compare_checks_of(+linux: List<&2, String>, +a: List<&2, String>, +b: List<&2, String>) -> IO(Unit):
   do IO<Unit>:
-    Test.check(CT.strings_equal(linux_lines(), V.expected_lines()) && CT.strings_equal(linux_lines(), CT.lines_for(V.adapter_a())) && CT.strings_equal(linux_lines(), CT.lines_for(V.adapter_b())), "LH-010 the Linux adapter's 36 decision lines equal V.expected_lines() and adapters A's and B's")
-    Test.check(String.eq(compare_line(), V.expected_ph012_1()), "LH-010 PH-012-1 the Linux adapter compared with adapters A and B renders the expected compare line")
-    emit_replay(replay_lines())
+    Test.check(CT.strings_equal(linux, V.expected_lines()) && CT.strings_equal(linux, a) && CT.strings_equal(linux, b), "LH-010 the Linux adapter's 36 decision lines equal V.expected_lines() and adapters A's and B's")
+    Test.check(String.eq(compare_line_of(linux, a, b), V.expected_ph012_1()), "LH-010 PH-012-1 the Linux adapter compared with adapters A and B renders the expected compare line")
+    emit_replay(replay_lines_of(linux, a, b))
+
+def replay_compare_checks() -> IO(Unit):
+  replay_compare_checks_of(linux_lines(), CT.lines_for(V.adapter_a()), CT.lines_for(V.adapter_b()))
 
 # Synthetic framed facts only. These exercise the actual LINUXB decode/serve
 # path; they do not authenticate a process, establish a kernel observation,
