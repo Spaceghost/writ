@@ -601,14 +601,21 @@ int main(int argc, char** argv) {
     struct sigaction action{}; action.sa_handler = interrupt; ::sigemptyset(&action.sa_mask);
     ::sigaction(SIGINT, &action, nullptr); ::sigaction(SIGTERM, &action, nullptr);
     try {
-        if (argc == 1 || (argc == 2 && !std::strcmp(argv[1], "start"))) {
+        if (argc == 1 || (argc == 2 && !std::strcmp(argv[1], "app")) ||
+            (argc == 3 && !std::strcmp(argv[1], "app") &&
+             (!std::strcmp(argv[2], "--no-open") || !std::strcmp(argv[2], "--stop")))) {
+            auto package = package_directory(), node = package / "node", app = package / "drive/app.mjs";
+            ::execl(node.c_str(), node.c_str(), app.c_str(), argc == 3 ? argv[2] : static_cast<char*>(nullptr), static_cast<char*>(nullptr));
+            throw Error("start packaged Writ Drive application");
+        }
+        if (argc == 2 && !std::strcmp(argv[1], "start")) {
             auto root = default_root(), path = default_store(), package = package_directory();
             local_store(path); user_path(root, true);
             fs::create_directories(path.parent_path()); private_directory(path.parent_path()); seed(Store(path));
             std::cout << "Writ public preview: " << root << "/hello.txt\nKeep this window open while editing.\n";
             serve(root, Store(path), package / "node", package / "node-policy.mjs", package / "public-sync.mjs", false); return 0;
         }
-        if (argc == 2 && !std::strcmp(argv[1], "version")) { std::cout << "Writ " WRIT_VERSION " (" WRIT_SOURCE_COMMIT ") public Linux Files On-Demand preview\n"; return 0; }
+        if (argc == 2 && !std::strcmp(argv[1], "version")) { std::cout << "Writ " WRIT_VERSION " (" WRIT_SOURCE_COMMIT ") Linux desktop preview\n"; return 0; }
         if (argc == 2 && !std::strcmp(argv[1], "cleanup")) { cleanup_default(); return 0; }
         if ((argc == 2 || argc == 3) && !std::strcmp(argv[1], "stop")) { stop(argc == 3 ? writ::canonical(argv[2]) : default_root()); return 0; }
         if (argc == 3 && !std::strcmp(argv[1], "seed")) { seed(Store(writ::canonical(argv[2]))); return 0; }
@@ -635,7 +642,7 @@ int main(int argc, char** argv) {
             serve(writ::canonical(argv[2]), Store(writ::canonical(argv[3])), fs::absolute(argv[4]), fs::absolute(argv[5]), fs::absolute(argv[6]), fail); return 0;
         }
         if (argc == 4 && !std::strcmp(argv[1], "remove")) { remove(writ::canonical(argv[2]), Store(writ::canonical(argv[3]))); return 0; }
-        std::cout << "start (default) | stop [ROOT] | cleanup | version\n"
+        std::cout << "app (default) [--no-open | --stop] | start (local FUSE demo) | stop [ROOT] | cleanup | version\n"
             "seed STORE | serve ROOT STORE NODE BRIDGE MODULE [--fail-writeback] | inspect ROOT | remove ROOT STORE\n";
         return argc == 2 && !std::strcmp(argv[1], "--help") ? 0 : 2;
     } catch (const Error& e) { std::cerr << e.what() << " (" << e.code << ": " << std::strerror(e.code) << ")\n"; return 1; }

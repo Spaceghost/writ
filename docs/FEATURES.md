@@ -12,6 +12,14 @@ on both platforms, including Ubuntu-built Linux packages on Fedora. Combined
 reproducible packages and public downloads are tracked in the
 [Linux release record](../verification/linux-release/README.md).
 
+The [files-and-rules app](../contrib/native-hosts/drive/README.md) adds a concrete
+evaluation workflow: connect S3 destinations, refuse a restricted copy before
+upload, keep origins on approved copies, edit ordinary files, and restore older
+bytes without dropping current restrictions. It uses the existing Bend commit
+gate. Its [contract and remaining shell integration](../openspec/changes/add-s3-desktop-overlay/proposal.md)
+and [qualification record](../verification/s3-desktop-overlay/README.md) are
+separate from the seven proposed protected-data features below.
+
 ## A summary without downloading the records
 
 A client mounts a scoped Writ session. It can see a view named

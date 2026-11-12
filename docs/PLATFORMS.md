@@ -24,6 +24,13 @@ and the combined release requires Windows regression checks too. These
 public-save results do not change
 the protected-reader confinement qualifications below.
 
+The [shared files-and-rules app](../contrib/native-hosts/drive/README.md) uses
+the same Bend decisions and local browser controls on Linux and Windows, with
+ordinary working files and S3-compatible storage. Its owner-approved managed
+copies and provenance do not confine arbitrary desktop applications. Native
+Cloud Files/FUSE placeholders for this multi-storage catalog remain unimplemented;
+the existing Windows tray/folder-sync contribution stays a separate profile.
+
 ## Platform roles
 
 | Target | Role | Native boundary to use | Current Writ evidence |

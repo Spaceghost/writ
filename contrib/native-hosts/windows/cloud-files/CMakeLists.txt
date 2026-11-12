@@ -42,5 +42,10 @@ target_compile_definitions(writ-directory-probe PRIVATE UNICODE _UNICODE NOMINMA
   _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00 NTDDI_VERSION=0x0A000004)
 target_compile_options(writ-directory-probe PRIVATE /W4 /WX /sdl /EHsc /utf-8)
 target_link_libraries(writ-directory-probe PRIVATE CldApi bcrypt advapi32 shell32 ole32)
+add_executable(WritDrive WIN32 ../../drive/launcher.cpp)
+target_compile_definitions(WritDrive PRIVATE UNICODE _UNICODE _WIN32_WINNT=0x0A00)
+target_compile_options(WritDrive PRIVATE /W4 /WX /sdl /guard:cf /Brepro /EHsc)
+target_link_options(WritDrive PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT /Brepro /INCREMENTAL:NO)
+target_link_libraries(WritDrive PRIVATE user32)
 file(WRITE "${CMAKE_BINARY_DIR}/writ-toolchain.txt"
   "MSVC=${CMAKE_CXX_COMPILER_VERSION}\nCompiler=${CMAKE_CXX_COMPILER}\nToolset=${CMAKE_VS_PLATFORM_TOOLSET_VERSION}\nSDK=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}\nCMake=${CMAKE_VERSION}\n")

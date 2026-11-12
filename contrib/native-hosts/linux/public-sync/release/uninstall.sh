@@ -5,6 +5,7 @@ prefix=$(cd -- "$(dirname -- "$0")" && pwd -P)
 # This must succeed BEFORE removing any application files or the launcher.
 # Busy mounts retain the application so the user can close files and retry.
 "$prefix/writ-linux" cleanup
+"$prefix/node" "$prefix/drive/app.mjs" --stop
 desktop=$(cat -- "$prefix/.writ-desktop-path")
 if [[ -f $desktop ]] && cmp -s -- "$desktop" "$prefix/.writ-desktop"; then rm -- "$desktop"; fi
 while IFS= read -r line; do
@@ -14,5 +15,6 @@ while IFS= read -r line; do
 done < "$prefix/SHA256SUMS"
 rm -- "$prefix/SHA256SUMS" "$prefix/.writ-install" "$prefix/.writ-desktop-path" "$prefix/.writ-desktop"
 rmdir -- "$prefix/lib"
+rmdir -- "$prefix/drive/ui" "$prefix/drive"
 if ! rmdir -- "$prefix"; then echo 'Additional files in the application directory were retained.'; fi
 echo 'Writ removed. Hydrated files, local edits, backing data and recovery copies were retained.'

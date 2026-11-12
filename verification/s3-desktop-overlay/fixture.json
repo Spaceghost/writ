@@ -1,0 +1,11 @@
+{
+  "server": "SeaweedFS",
+  "version": "4.53",
+  "archive": {
+    "url": "https://github.com/seaweedfs/seaweedfs/releases/download/4.53/linux_amd64.tar.gz",
+    "sha256": "d1a7dec9f48d8b33895a0ea8951971defc2dc5312906dcc76fa5a5f74a6ee90d"
+  },
+  "transport": "signed S3 over loopback HTTP",
+  "nativePlatform": "linux",
+  "node": "v22.23.4"
+}

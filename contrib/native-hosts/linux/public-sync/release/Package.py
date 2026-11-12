@@ -146,6 +146,15 @@ def build(args):
     for source, name in copies.items():
         shutil.copyfile(source, payload / name)
         (payload / name).chmod(0o755 if name in ("writ-linux", "node", "install.sh", "uninstall.sh") else 0o644)
+    drive = REPO / "contrib/native-hosts/drive"
+    (payload / "drive/ui").mkdir(parents=True)
+    for name in ("app.mjs", "broker.mjs", "policy.mjs", "s3.mjs", "Smoke.mjs", "Lifecycle.mjs"):
+        shutil.copyfile(drive / name, payload / "drive" / name)
+    for name in ("index.html", "app.js", "style.css"):
+        shutil.copyfile(drive / "ui" / name, payload / "drive/ui" / name)
+    for name in ("drive.mjs", "directory-sync.mjs"):
+        shutil.copyfile(policy / name, payload / "drive" / name)
+    run([payload / "node", policy / "drive-tests.js"], logs / "linux-drive-model.txt")
     run([payload / "node", policy / "public-sync-tests.js"], logs / "linux-model.txt")
     run([payload / "writ-linux", "version"], logs / "version.txt")
     run(["ldd", payload / "writ-linux"], logs / "native-dependencies.txt")
@@ -156,7 +165,7 @@ def build(args):
                 runnerImage=(env.get("ImageOS", "") + " " + env.get("ImageVersion", "")).strip(),
                 osRelease=Path("/etc/os-release").read_text(), python=sys.version,
                 nativeRebuildSha256=sha(payload / "writ-linux"), fuseRebuildSha256=sha(payload / "lib/libfuse3.so.4"),
-                profile="Public single-file local-store preview; no interactive editor or protected-host qualification")
+                profile="S3-compatible managed desktop folder and Writ rules; public Cloud Files/FUSE canary retained separately; protected desktop confinement unqualified")
     (payload / "BUILD-INFO.json").write_text(json.dumps(info, indent=2) + "\n")
     (payload / "SHA256SUMS").write_text("".join(f"{sha(p)}  {p.relative_to(payload)}\n" for p in sorted(payload.rglob("*")) if p.is_file()))
     name = f"Writ-{version}-linux-x64"

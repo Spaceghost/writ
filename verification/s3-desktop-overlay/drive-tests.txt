@@ -1,0 +1,94 @@
+PASS: public copy reaches public storage through capability commit
+PASS: restricted copy reaches an approved destination
+PASS: restricted copy to public storage denied
+PASS: all inherited restriction bits required
+PASS: combined destination clearance admits exact copy
+PASS: revocation checked at final capability commit
+PASS: retained output policy admits another approved copy
+PASS: renaming or copying cannot erase original restriction
+PASS: policy tightening retains existing bits
+PASS: tightened origin blocks old destination clearance
+ALL DESKTOP AUTHORITY TESTS PASSED
+PASS: local owner ingress creates a core-authorized pending intent
+PASS: admission remains pending until exact readback
+PASS: wrong readback length does not publish
+PASS: pending intent excludes a second transfer
+PASS: rules cannot mutate around a durable pending intent
+PASS: approved copy uses current source and destination
+PASS: public destination is refused before any native effect
+PASS: source revocation is checked at commit
+PASS: stale edit cannot silently rebase
+PASS: cross-platform case aliases rejected
+PASS: file and directory ancestry collision rejected
+PASS: path traversal and Windows device aliases rejected
+PASS: copying obsolete source metadata requires refresh
+PASS: restore keeps all current restrictions
+PASS: restored version retains both historical and current origins
+PASS: restoring historical bytes does not reopen public release
+PASS: copy binds exact bytes and size
+ALL DRIVE MODEL TESTS PASSED
+PASS: directory unchanged content adopts observed version
+PASS: directory local edit with unchanged remote uploads
+PASS: directory unchanged local with remote edit downloads
+PASS: directory remote ABA version rejects implicit rebase
+PASS: directory distinct concurrent creation conflicts
+PASS: directory identical concurrent creation adopts
+PASS: directory local deletion proposes tombstone
+PASS: directory remote deletion applies only to unchanged local
+PASS: directory delete versus edit preserves conflict
+PASS: directory empty folder creation is explicit
+PASS: directory present base requires version
+PASS: directory folder cannot carry file data
+PASS: directory unknown object kind refused
+PASS: directory initialized transaction cannot be replaced
+PASS: directory file size is bounded
+PASS: directory cannot finish short local hash
+PASS: directory requires exact chunk offset
+PASS: directory chunk cannot exceed declared size
+PASS: directory malformed chunk refused
+PASS: directory streamed edit admitted with exact expected base
+PASS: directory same-version mutation is rejected
+PASS: directory rollback to missing remote is rejected
+PASS: directory cannot acknowledge unadmitted publication
+PASS: directory wrong uploaded checksum cannot advance base
+PASS: directory wrong uploaded version cannot advance base
+PASS: directory exact conditional publication advances baseline
+PASS: directory publication acknowledgement cannot replay
+PASS: directory remote change selected only after local hashing
+PASS: directory cannot apply remote before verifying its bytes
+PASS: directory short remote body rejected
+PASS: directory corrupt remote body rejected
+PASS: directory application needs local recheck
+PASS: directory changed local length blocks remote application
+PASS: directory changed local content blocks remote application
+PASS: directory exact frozen recheck admits remote effect
+PASS: directory wrong applied artifact rejected
+PASS: directory exact applied artifact advances baseline
+PASS: directory application cannot replay
+PASS: directory rejects noncanonical framing
+PASS: directory maximum revision remains adoptable
+PASS: directory maximum revision remains downloadable
+PASS: directory maximum revision rejects further upload
+ALL DIRECTORY SYNC TESTS PASSED
+PASS: stream empty SHA-256
+PASS: stream abc with empty and single-byte chunks
+PASS: stream 55-byte padding boundary
+PASS: stream 56-byte padding boundary
+PASS: stream 63-byte tail
+PASS: stream exact compression block
+PASS: stream update crosses block with retained tail
+PASS: stream 127-byte boundary
+PASS: stream two blocks
+PASS: stream exceeds old whole-file limit
+PASS: stream one MiB independent vector
+PASS: stream rejects odd hex
+PASS: stream rejects non-hex
+PASS: stream rejects noncanonical uppercase hex
+PASS: stream bounds each message
+PASS: stream capacity fails before addition
+PASS: stream forged counter cannot wrap
+PASS: stream tail length must match counter
+PASS: stream finalization rejects inconsistent state
+PASS: stream finalization enforces total bound
+ALL STREAMING SHA-256 TESTS PASSED
+ALL DRIVE AND STORAGE TESTS PASSED

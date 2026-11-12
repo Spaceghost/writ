@@ -2,7 +2,7 @@ name: Writ desktop release
 
 on:
   push:
-    branches: [master, 'windows/**', 'linux/**']
+    branches: [master, 'windows/**', 'linux/**', 'desktop/**']
     tags: ['desktop-v*']
     paths:
       - '*.bend'
@@ -10,6 +10,7 @@ on:
       - 'writfs/**'
       - 'contrib/native-hosts/**'
       - 'contrib/rclone/bend/**'
+      - 'examples/drive/**'
       - 'verification/source-sha256.txt'
       - '.github/workflows/writ-windows-release.yml'
   pull_request:
@@ -19,6 +20,7 @@ on:
       - 'writfs/**'
       - 'contrib/native-hosts/**'
       - 'contrib/rclone/bend/**'
+      - 'examples/drive/**'
       - 'verification/source-sha256.txt'
       - '.github/workflows/writ-windows-release.yml'
   workflow_dispatch:
@@ -110,6 +112,12 @@ jobs:
           ./contrib/native-hosts/windows/directory-sync/Smoke.ps1 `
             -PackageDir "$env:RUNNER_TEMP\writ-release\payload" -OutputDir "$env:RUNNER_TEMP\writ-release\logs" `
             -ProbeExe "$env:RUNNER_TEMP\writ-release\build-1\Release\writ-desktop-probe.exe"
+      - name: Exercise shared files and rules against a real S3 service
+        run: |
+          python contrib/native-hosts/drive/S3Fixture.py `
+            --package "$env:RUNNER_TEMP\writ-release\portable with spaces" `
+            --output "$env:RUNNER_TEMP\writ-drive-fixture" --logs "$env:RUNNER_TEMP\writ-release\logs"
+          if ($LASTEXITCODE) { throw 'Shared desktop S3 acceptance failed.' }
       - name: Seal verified release assets and evidence
         run: |
           $ErrorActionPreference = 'Stop'
@@ -188,6 +196,11 @@ jobs:
           set -euo pipefail
           python3 contrib/native-hosts/linux/public-sync/release/Test-Package.py \
             --output "$RUNNER_TEMP/writ-linux-release" 2>&1 | tee "$RUNNER_TEMP/writ-linux-release/logs/package-smoke.txt"
+      - name: Exercise shared files and rules against a real S3 service
+        run: |
+          python3 contrib/native-hosts/drive/S3Fixture.py \
+            --package "$RUNNER_TEMP/writ-linux-release/portable with spaces" \
+            --output "$RUNNER_TEMP/writ-drive-fixture" --logs "$RUNNER_TEMP/writ-linux-release/logs"
       - name: Seal verified release assets and evidence
         run: |
           set -euo pipefail
@@ -251,13 +264,15 @@ jobs:
           cat SHA256SUMS-windows SHA256SUMS-linux | sort -k2 > SHA256SUMS
           rm SHA256SUMS-windows SHA256SUMS-linux
           cat > "$RUNNER_TEMP/release-notes.txt" <<'NOTES'
-          Download **windows-x64-setup.exe** for the Windows tray applet and desktop app, or **linux-x64-setup.run** for the Linux local Files On-Demand preview. On Linux run `bash Writ-*-linux-x64-setup.run`. Extract the entire portable ZIP/tar.gz and run **Writ.exe** or **./writ-linux**. Node and the policy runtime are included; Linux also bundles libfuse. No compiler or source checkout is needed.
+          Download **windows-x64-setup.exe** or **linux-x64-setup.run** for a per-user installation. On Linux run `bash Writ-*-linux-x64-setup.run`. Portable ZIP and tar.gz bundles include Node and the policy runtime. Extract the entire bundle. Run **WritDrive.exe** on Windows or **./writ-linux** on Linux for the shared files-and-rules app. The Windows Start menu includes **Writ files and rules**. No compiler or checkout is needed.
 
-          **Windows:** the notification-area applet and desktop include activity, pause/resume, recovery, diagnostics and opt-in sign-in startup. In Settings, connect S3-compatible storage using an HTTPS endpoint, bucket, prefix, region and credentials saved in Windows Credential Manager. R2 uses region `auto`; actual R2 account execution remains unrun. Nested folders and multiple files sync in `Writ Cloud`, fully available offline, with limits of 2048 tracked paths and 1 GiB per file. Conditional writes preserve conflicting edits; recovery copies precede remote replacement/deletion. A dedicated conflict-resolution UI, remote Files On-Demand and OneDrive account sign-in are future work. See the bundled README and source directory-sync guide for supported names, retained remote objects and recovery limits.
+          **The same Writ workflows on Linux and Windows:** connect multiple S3-compatible endpoints; browse metadata without downloading every file; open ordinary working files; sync edits; copy to an approved destination while retaining provenance; refuse a restricted copy before destination payload; restore earlier bytes while retaining current restrictions; inspect real decisions and verified storage confirmations. Use **Try with sample files** to exercise these with actual public example bytes. The workspace is `Writ Drive`; its bounds are 64 MiB per file, 512 retained versions, 16 connections and 128 origin rules per version. The first connection coordinates the workspace. Credentials remain in account-private configuration, protected with DPAPI on Windows. The bundled guide describes recovery and limits.
 
-          Without a cloud connection, Windows retains its preview.2 local `hello.txt` Cloud Files demo. Linux remains a local single-file FUSE preview. Linux requires x86-64, glibc 2.35+, OpenSSL 3, system fusermount3 and /dev/fuse; backing storage must be local ext4, XFS or Btrfs beneath your home. Windows requires local NTFS, plus native Cloud Files support for its local placeholder demo. Both packages are unsigned previews; protected-data host qualification is incomplete.
+          This shared app is an ordinary-folder evaluation profile for the trusted local owner. Remote Cloud Files/FUSE placeholders and shell overlays, automatic deletion/rename, conflict-resolution choices, OneDrive sign-in and protected-data confinement are not implemented. Concurrent edits stay local for review; pending writes require exact readback before confirmation. Downloaded files remain accessible to desktop apps. Destination approvals are owner declarations, not residency or compliance attestations. Real S3 tests use pinned SeaweedFS on each native OS; live R2 account execution remains separate and unrun.
 
-          Both platforms pass native metadata-only listing, hydration, saves, restart/readback, failed-write recovery, stale-base conflicts, writer/rename exclusion, installation and uninstallation. Windows additionally tests actual preview.2 upgrade, native accessible desktop controls, cloud offline edits, real HTTPS/SigV4 requests, competing S3 conditional publishers, corrupt downloads and recovery races. The tray test exercises the documented Shell callback, not physical taskbar input. Interactive editor operation, power-loss and broader host qualification remain separate gates. Uninstall retains hydrated user files and recovery copies.
+          **Existing Windows functionality is retained:** `Writ.exe` opens the tray/folder-sync application from preview.3, with its separate `Writ Cloud` folder, Windows Credential Manager connection and 1 GiB/2048-path limits. Its storage format and lifecycle are separate from WritDrive. The local single-file Cloud Files canary is retained too. Linux's local FUSE canary is available explicitly through `./writ-linux start`; the default now opens the shared app. Linux needs x86-64, glibc 2.35+ and OpenSSL 3; only the separate local canary needs system fusermount3, /dev/fuse and ext4/XFS/Btrfs backing under the account home. Windows native canary/tray tests require local NTFS and Cloud Files support. Packages are unsigned previews.
+
+          Both platforms must pass shared S3 denial/provenance, native edits, competing-client conflicts, restored restrictions, terminated-process recovery, exact-ETag imports, credential privacy, native app launch and uninstall retention tests. Existing native Cloud Files/FUSE and Windows tray/directory-sync gates remain required. Power-loss, arbitrary-editor confinement and complete protected-host qualification remain open. Uninstall retains working files and recovery.
 
           Publication requires both native platform jobs to pass. Each job compares two clean native builds and two copies of both packages byte-for-byte. Platform BUILD-INFO JSON files record the source revision and toolchain environment; SHA256SUMS covers every release asset; platform verification archives contain native test evidence. Compiler/runner servicing updates can affect bytes across environments.
           NOTES

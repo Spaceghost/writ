@@ -12,13 +12,12 @@ for path in "$prefix" "$data_home"; do
     # These characters need extra desktop Exec escaping; reject them explicitly.
     if [[ $path == *[$'\n\r"\\`$%']* ]]; then echo 'Unsupported character in install path.' >&2; exit 1; fi
 done
-for retained in "$user_home/Writ" "$data_home/WritDemo"; do
+for retained in "$user_home/Writ" "$user_home/Writ Drive" "$data_home/WritDemo" "$data_home/WritDrive"; do
     case "$prefix/" in "$retained/"*) echo 'Keep the application outside Writ user data.' >&2; exit 1;; esac
     case "$retained/" in "$prefix/"*) echo 'Keep the application outside Writ user data.' >&2; exit 1;; esac
 done
 desktop="$data_home/applications/writ.desktop"
 [[ ! -e $prefix && ! -L $prefix && ! -e $desktop && ! -L $desktop ]] || { echo 'Writ installation or launcher already exists; uninstall it first. User files are retained.' >&2; exit 1; }
-[[ -x /usr/bin/fusermount3 && -r /dev/fuse && -w /dev/fuse ]] || { echo 'Install your distribution’s fuse3 package and enable access to /dev/fuse first.' >&2; exit 1; }
 (cd -- "$source_dir" && sha256sum --quiet -c SHA256SUMS)
 "$source_dir/writ-linux" version
 mkdir -p -- "$(dirname -- "$prefix")" "$(dirname -- "$desktop")"
@@ -29,9 +28,9 @@ cat > "$prefix/.writ-desktop" <<EOF
 [Desktop Entry]
 Type=Application
 Name=Writ
-Comment=Public Files On-Demand preview
-Exec="$prefix/writ-linux" start
-Terminal=true
+Comment=S3-compatible files, provenance and managed transfer rules
+Exec="$prefix/writ-linux" app
+Terminal=false
 Categories=Utility;
 EOF
 cp -- "$prefix/.writ-desktop" "$desktop"

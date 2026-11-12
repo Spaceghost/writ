@@ -42,8 +42,9 @@ def main(output):
         subprocess.run(["bash", installer, "--prefix", installed], env=env, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=60)
     payload_check(installed)
     check((data / "applications/writ.desktop").is_file(), "per-user application launcher installed")
+    subprocess.run([installed / "node", installed / "drive/Lifecycle.mjs", installed, "start"], env=env, check=True, timeout=45)
     with (logs / "installed-provider.txt").open("w") as log:
-        proc = subprocess.Popen([installed / "writ-linux"], env=env, stdout=log, stderr=log)
+        proc = subprocess.Popen([installed / "writ-linux", "start"], env=env, stdout=log, stderr=log)
     try:
         deadline = time.monotonic() + 45
         while "READY " not in (logs / "installed-provider.txt").read_text():
@@ -51,7 +52,7 @@ def main(output):
             if time.monotonic() > deadline:
                 raise AssertionError("installed launch timeout")
             time.sleep(.2)
-        check((root / "hello.txt").read_bytes().startswith(b"Hello from Writ!"), "installed default launch hydrates")
+        check((root / "hello.txt").read_bytes().startswith(b"Hello from Writ!"), "installed legacy canary hydrates")
         saved = b"Installed Linux save retained by uninstall\n"
         (root / "hello.txt").write_bytes(saved)
         held = os.open(root / "hello.txt", os.O_RDONLY)
@@ -66,6 +67,7 @@ def main(output):
         with (logs / "uninstall.txt").open("w") as log:
             subprocess.run([installed / "uninstall.sh"], env=env, stdout=log, stderr=subprocess.STDOUT, check=True, timeout=45)
         check(proc.wait(timeout=10) == 0, "uninstaller stops provider")
+        subprocess.run([package / "node", package / "drive/Lifecycle.mjs", package, "stopped"], env=env, check=True, timeout=15)
         check(not installed.exists() and not (data / "applications/writ.desktop").exists(), "application and launcher removed")
         check((root / "hello.txt").read_bytes() == saved, "uninstaller retains exact edited bytes")
         check((data / "WritDemo/store/head").is_file(), "uninstaller retains backing store")

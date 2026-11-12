@@ -4,6 +4,26 @@ Install Writ-<version>-windows-x64-setup.exe for the current user, then open
 Writ from the Start menu. Or extract the ENTIRE portable ZIP and double-click
 Writ.exe. The provider, Node and Bend policy runtime are included.
 
+FILES AND RULES — SHARED WITH LINUX
+Open "Writ files and rules" from the Start menu, or run WritDrive.exe. Its local
+browser interface connects multiple S3-compatible destinations and keeps rules
+and provenance attached to managed copies. Connect your storage, then select
+"Try with sample files" to exercise allowed/refused copies with public sample
+bytes. Keep a file offline, edit it normally, add a restriction, and restore an
+earlier version while keeping that restriction. Activity records real outcomes.
+
+This workspace uses %USERPROFILE%\Writ Drive and separate account-private state
+under %LOCALAPPDATA%\WritDrive. Keys are protected by DPAPI. It has the same
+controls and Bend rules on Linux: 64 MiB per file, 512 retained versions,
+16 connections and 128 origin rules per version. It uses ordinary local files;
+remote shell placeholders, automatic deletion/rename and conflict-resolution
+choices are not yet implemented. Downloaded files are accessible to other apps.
+Use its Quit Writ button or WritDrive.exe --stop to stop its watcher. The older
+Windows tray/cloud-folder app below is separate and retains its existing limits.
+Both apps remain evaluation previews, not qualified protected-data desktops.
+See contrib/native-hosts/drive/README.md in the release source for the workflow,
+trust boundary, storage format and remaining qualification gates.
+
 Click the Writ icon in the Windows notification area for activity, Open folder,
 Pause/Resume and Settings. Closing the main window keeps sync running. Quit
 stops it. Start at Windows sign-in is an opt-in setting.

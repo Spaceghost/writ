@@ -9,6 +9,12 @@ observable behavior to its complete normative contract and unchecked task list.
 
 ## Feature gates
 
+The [S3 desktop app proposal](changes/add-s3-desktop-overlay/proposal.md) adds
+an ordinary-file evaluation profile using the existing capability-to-commit
+gate. [SDO traceability](traceability/s3-desktop-overlay.md) separates local model,
+native S3, browser and package checks from unimplemented remote shell placeholders
+and protected-host qualification.
+
 The separate [public Windows sync milestone](changes/add-windows-public-sync/proposal.md)
 has [WPS traceability](traceability/windows-public-sync.md) and a runnable native
 smoke test. Its [native evidence record](../verification/windows-release/README.md)

@@ -1,0 +1,21 @@
+PASS three real S3 connections enforce conditional creation, replacement and competing writes
+PASS metadata-only browse fetches no file payload
+PASS ingress persisted and exact S3 readback verified
+PASS denied copy sends zero destination payload
+PASS approved cross-storage copy preserves original bytes and provenance
+PASS copying or renaming retained output cannot erase the original restriction
+PASS hydration creates a real ordinary desktop file
+PASS normal filesystem save syncs a new verified version
+PASS fresh instance reconstructs full policy and history without fetching bytes
+PASS competing edit stays local and reports conflict
+PASS history restore returns old bytes while retaining newer restrictions
+PASS restored history does not reopen public export
+PASS revoked source cannot be copied through another active destination
+PASS catalog decoder independently reconstructs inherited restrictions
+PASS terminated process leaves a durable pending intent, not a synced file
+PASS new process completes exact pending operation from private recovery
+PASS existing S3 object is imported at its exact ETag without replacing it
+PASS local removal is reported while the exact cloud version remains recoverable
+PASS UI status and activity contain no storage credentials
+PASS Linux credentials are private to the local account
+ALL 20 NATIVE DRIVE CHECKS PASSED

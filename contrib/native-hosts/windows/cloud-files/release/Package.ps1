@@ -31,7 +31,7 @@ function Download($Pin, [string]$Path) {
 }
 foreach ($line in Get-Content -LiteralPath (Join-Path $PolicyDir 'SHA256SUMS')) {
     $parts = $line -split '  ', 2
-    if ($parts.Count -ne 2 -or $parts[1] -notin @('public-sync.mjs', 'public-sync-tests.js', 'directory-sync.mjs', 'directory-namespace.mjs', 'directory-sync-tests.js', 'directory-namespace-tests.js', 'stream-tests.js', 'commit.txt', 'bend-version.txt')) { throw 'Invalid policy manifest.' }
+    if ($parts.Count -ne 2 -or $parts[1] -notin @('public-sync.mjs', 'public-sync-tests.js', 'directory-sync.mjs', 'directory-namespace.mjs', 'directory-sync-tests.js', 'directory-namespace-tests.js', 'stream-tests.js', 'drive.mjs', 'drive-tests.js', 'commit.txt', 'bend-version.txt')) { throw 'Invalid policy manifest.' }
     if ((Hash (Join-Path $PolicyDir $parts[1])) -cne $parts[0]) { throw 'Policy checksum mismatch.' }
 }
 if ((Get-Content -LiteralPath (Join-Path $PolicyDir 'commit.txt')) -cne $commit) { throw 'Policy came from another source commit.' }
@@ -50,6 +50,15 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\..\..\runtime\node-policy.mj
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\Smoke.ps1') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\DesktopSmoke.ps1') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.txt') -Destination $payload
+$drive = New-Item -ItemType Directory -Path (Join-Path $payload 'drive')
+$driveSource = Join-Path $repo 'contrib\native-hosts\drive'
+foreach ($name in 'app.mjs', 'broker.mjs', 'policy.mjs', 's3.mjs', 'Smoke.mjs', 'Lifecycle.mjs') {
+    Copy-Item -LiteralPath (Join-Path $driveSource $name) -Destination $drive
+}
+Copy-Item -LiteralPath (Join-Path $driveSource 'ui') -Destination $drive -Recurse
+foreach ($name in 'drive.mjs', 'directory-sync.mjs') { Copy-Item -LiteralPath (Join-Path $PolicyDir $name) -Destination $drive }
+& (Join-Path $payload 'node.exe') (Join-Path $PolicyDir 'drive-tests.js') 2>&1 | Tee-Object -FilePath (Join-Path $logs 'windows-drive-model.txt')
+if ($LASTEXITCODE) { throw 'Drive model failed on bundled Windows Node.' }
 & (Join-Path $payload 'node.exe') (Join-Path $PolicyDir 'public-sync-tests.js') 2>&1 | Tee-Object -FilePath (Join-Path $logs 'windows-model.txt')
 if ($LASTEXITCODE) { throw 'Bend model failed on bundled Windows Node.' }
 foreach ($suite in 'directory-sync-tests', 'directory-namespace-tests', 'stream-tests') {
@@ -65,7 +74,7 @@ foreach ($pass in 1, 2) {
     & cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $logs "build-$pass.txt")
     if ($LASTEXITCODE) { throw "MSVC build $pass failed." }
 }
-foreach ($executable in 'writ-cloud.exe', 'Writ.exe', 'writ-sync.exe') {
+foreach ($executable in 'writ-cloud.exe', 'Writ.exe', 'writ-sync.exe', 'WritDrive.exe') {
     $first = Join-Path $OutputDir "build-1\Release\$executable"
     $second = Join-Path $OutputDir "build-2\Release\$executable"
     if ((Hash $first) -cne (Hash $second)) { throw "Two clean builds differ: $executable" }
@@ -84,10 +93,11 @@ $info = [ordered]@{
     nativeRebuildSha256 = Hash (Join-Path $payload 'writ-cloud.exe')
     desktopRebuildSha256 = Hash (Join-Path $payload 'Writ.exe')
     directoryRebuildSha256 = Hash (Join-Path $payload 'writ-sync.exe')
-    profile = 'Public Windows tray/desktop preview; S3-compatible hydrated folder sync and separate local single-file Cloud Files demo; unsigned'
+    driveRebuildSha256 = Hash (Join-Path $payload 'WritDrive.exe')
+    profile = 'Shared Linux/Windows S3 files-and-rules app; Windows tray/folder sync and local Cloud Files preview also included; unsigned; protected desktop confinement unqualified'
 }
 $info | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $payload 'BUILD-INFO.json') -Encoding utf8NoBOM
-Get-ChildItem -LiteralPath $payload -File | Sort-Object Name | ForEach-Object { "$(Hash $_.FullName)  $($_.Name)" } |
+Get-ChildItem -LiteralPath $payload -File -Recurse | Sort-Object FullName | ForEach-Object { "$(Hash $_.FullName)  $([IO.Path]::GetRelativePath($payload, $_.FullName).Replace('\', '/'))" } |
     Set-Content -LiteralPath (Join-Path $payload 'SHA256SUMS') -Encoding ascii
 Download $pins.inno (Join-Path $OutputDir 'inno-setup.exe')
 $innoDir = Join-Path $OutputDir 'inno'
@@ -99,8 +109,8 @@ $stamp = [DateTimeOffset]::FromUnixTimeSeconds([long](& git -C $repo show -s --f
 function Make-Zip([string]$Path) {
     $zip = [IO.Compression.ZipFile]::Open($Path, [IO.Compression.ZipArchiveMode]::Create)
     try {
-        foreach ($file in Get-ChildItem -LiteralPath $payload -File | Sort-Object Name) {
-            $entry = $zip.CreateEntry($file.Name, [IO.Compression.CompressionLevel]::Optimal)
+        foreach ($file in Get-ChildItem -LiteralPath $payload -File -Recurse | Sort-Object FullName) {
+            $entry = $zip.CreateEntry([IO.Path]::GetRelativePath($payload, $file.FullName).Replace('\', '/'), [IO.Compression.CompressionLevel]::Optimal)
             $entry.LastWriteTime = $stamp
             $inputFile = $file.OpenRead(); $outputFile = $entry.Open()
             try { $inputFile.CopyTo($outputFile) } finally { $outputFile.Dispose(); $inputFile.Dispose() }

@@ -17,7 +17,7 @@ function Assert($Condition, [string]$Name) {
 function Check-Payload([string]$Path) {
     foreach ($line in Get-Content -LiteralPath (Join-Path $Path 'SHA256SUMS')) {
         $parts = $line -split '  ', 2
-        if ($parts.Count -ne 2 -or $parts[1] -notmatch '^[A-Za-z0-9.-]+$') { throw 'Invalid package manifest.' }
+        if ($parts.Count -ne 2 -or $parts[1] -notmatch '^[A-Za-z0-9./-]+$' -or $parts[1].Contains('..') -or $parts[1].StartsWith('/')) { throw 'Invalid package manifest.' }
         Assert ((Get-FileHash -LiteralPath (Join-Path $Path $parts[1])).Hash.ToLowerInvariant() -ceq $parts[0]) "payload hash: $($parts[1])"
     }
 }
@@ -71,11 +71,15 @@ try {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installed 'DesktopSmoke.ps1') -PackageDir $installed -OutputDir $logs -ProbeExe (Join-Path $OutputDir 'build-1\Release\writ-desktop-probe.exe')
     Assert ($LASTEXITCODE -eq 0) 'installed desktop UI and provider checks pass'
     $bytes = [IO.File]::ReadAllBytes($hello)
+    & (Join-Path $installed 'node.exe') (Join-Path $installed 'drive\Lifecycle.mjs') $installed 'start'
+    Assert ($LASTEXITCODE -eq 0) 'shared files and rules app starts through its native launcher'
     $desktop = Start-Process -FilePath (Join-Path $installed 'Writ.exe') -ArgumentList '--background' -PassThru
     Start-Sleep -Seconds 3
     Assert (-not $desktop.HasExited) 'background app stays running for uninstall test'
     $uninstall = Start-Process -FilePath (Join-Path $installed 'unins000.exe') -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=`"$logs\uninstall.txt`"" -Wait -PassThru
     Assert ($uninstall.ExitCode -eq 0) 'uninstaller succeeds while provider is running'
+    & (Join-Path $extract 'node.exe') (Join-Path $extract 'drive\Lifecycle.mjs') $extract 'stopped'
+    Assert ($LASTEXITCODE -eq 0) 'shared app stops and retains working files through uninstall'
     Assert ($provider.WaitForExit(10000)) 'uninstaller stops provider'
     Assert ($desktop.WaitForExit(10000)) 'uninstaller stops desktop application'
     Assert (-not (Test-Path -LiteralPath $exe)) 'application removed'
