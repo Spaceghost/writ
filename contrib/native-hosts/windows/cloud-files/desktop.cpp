@@ -416,7 +416,7 @@ class App {
     }
     void show_flyout() {
         if (!flyout) {
-            flyout = CreateWindowExW(WS_EX_TOOLWINDOW, flyout_class, L"Writ activity", WS_POPUP | WS_BORDER | WS_CLIPCHILDREN,
+            flyout = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_CONTROLPARENT, flyout_class, L"Writ activity", WS_POPUP | WS_BORDER | WS_CLIPCHILDREN,
                 0, 0, px(390), px(310), main, nullptr, instance, this);
             writ::check(flyout != nullptr, "activity flyout");
             HWND title = control(L"STATIC", L"writ.  /  Public preview", SS_LEFT, 301, flyout);
@@ -469,6 +469,11 @@ class App {
         fonts(); layout();
     }
     LRESULT message(HWND window, UINT message, WPARAM wp, LPARAM lp) {
+        if (message == WM_CTLCOLORSTATIC) {
+            auto dc = reinterpret_cast<HDC>(wp);
+            SetBkMode(dc, TRANSPARENT); SetTextColor(dc, GetSysColor(COLOR_WINDOWTEXT));
+            return reinterpret_cast<LRESULT>(GetSysColorBrush(COLOR_WINDOW));
+        }
         if (window == flyout || (window != main && message != WM_NCCREATE)) {
             if (message == WM_COMMAND) { command(LOWORD(wp)); return 0; }
             if (message == WM_ACTIVATE && LOWORD(wp) == WA_INACTIVE) { ShowWindow(window, SW_HIDE); return 0; }

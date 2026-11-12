@@ -8,7 +8,11 @@ param(
 # standard controls. No test-only commands are added to the application.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
+Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, UIAutomationClientsideProviders, System.Drawing
+# Windows PowerShell's hosted automation client can otherwise expose only
+# generic HWND panes. Register Microsoft's standard Win32 proxy assembly.
+$proxies = [AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'UIAutomationClientsideProviders' } | Select-Object -First 1
+[Windows.Automation.ClientSettings]::RegisterClientSideProviderAssembly($proxies.GetName())
 Add-Type @'
 using System;
 using System.Text;
