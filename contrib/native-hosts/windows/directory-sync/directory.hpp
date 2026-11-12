@@ -195,7 +195,10 @@ inline writ::Handle frozen(const fs::path& path, bool deleting = false) {
 }
 inline void move_retained(HANDLE handle, const fs::path& destination) {
     auto name = destination.native();
-    size_t bytes = offsetof(FILE_RENAME_INFO, FileName) + name.size() * sizeof(wchar_t);
+    // The Win32 wrapper accepts a DOS absolute path and requires its string
+    // terminator even though FileNameLength excludes it. Without spare zeroed
+    // storage, heap contents can produce intermittent ERROR_INVALID_NAME.
+    size_t bytes = offsetof(FILE_RENAME_INFO, FileName) + (name.size() + 1) * sizeof(wchar_t);
     std::vector<unsigned char> storage(bytes); auto rename = reinterpret_cast<FILE_RENAME_INFO*>(storage.data());
     rename->ReplaceIfExists = FALSE; rename->RootDirectory = nullptr;
     rename->FileNameLength = static_cast<DWORD>(name.size() * sizeof(wchar_t)); memcpy(rename->FileName, name.data(), rename->FileNameLength);

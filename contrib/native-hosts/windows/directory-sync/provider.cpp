@@ -54,7 +54,7 @@ class Provider {
     std::pair<Catalog, std::string> remote() {
         auto response = s3.request("GET", "manifest.writ");
         if (response.status == 404) {
-            if (!baseline.empty()) throw writ::Error("Established remote manifest is missing; local files retained", ERROR_FILE_NOT_FOUND);
+            if (!baseline.empty() || fs::exists(state / L"remote-established")) throw writ::Error("Established remote manifest is missing; local files retained", ERROR_FILE_NOT_FOUND);
             return {{}, ""};
         }
         if (response.status != 200 || response.etag.empty()) throw writ::Error("Cannot read the S3 manifest", response.status);
@@ -168,6 +168,10 @@ public:
         Parents root_guard(root), state_guard(state);
         auto root_handle = frozen(root); FILE_ID_INFO id{};
         writ::check(GetFileInformationByHandleEx(root_handle, FileIdInfo, &id, sizeof(id)), "Sync root native identity");
+        auto state_handle = frozen(state); FILE_ID_INFO state_id{};
+        writ::check(GetFileInformationByHandleEx(state_handle, FileIdInfo, &state_id, sizeof(state_id)), "State directory native identity");
+        if (id.VolumeSerialNumber != state_id.VolumeSerialNumber)
+            throw writ::Error("Sync folder and private staging/recovery must be on the same NTFS volume", ERROR_NOT_SAME_DEVICE);
         auto identity = profile_id(connection, root) + ":" + writ::hex(reinterpret_cast<const unsigned char*>(&id), sizeof(id));
         auto binding = writ::digest(identity.data(), identity.size());
         if (existing_state) {
@@ -192,6 +196,8 @@ public:
                 Catalog local; scan(root, root, local); validate_catalog(package, local);
                 auto [catalog, etag] = remote();
                 Monitor names(package, L"directory-namespace.mjs"); validate_catalog(names, catalog);
+                if (!etag.empty() && !fs::exists(state / L"remote-established"))
+                    writ::durable_file(state / L"remote-established", "1", 1);
                 std::set<std::string> paths;
                 for (const auto* list : {&local, &catalog, &baseline}) for (const auto& [name, value] : *list) { (void)value; paths.insert(name); }
                 if (paths.size() > maximum_entries) throw writ::Error("2048-path sync limit reached", ERROR_FILE_TOO_LARGE);

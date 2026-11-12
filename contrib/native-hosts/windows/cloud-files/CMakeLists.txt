@@ -37,5 +37,10 @@ target_compile_definitions(writ-sync PRIVATE UNICODE _UNICODE NOMINMAX
 target_compile_options(writ-sync PRIVATE /W4 /WX /sdl /guard:cf /Brepro $<$<COMPILE_LANGUAGE:CXX>:/EHsc> /utf-8)
 target_link_options(writ-sync PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT /Brepro /INCREMENTAL:NO)
 target_link_libraries(writ-sync PRIVATE CldApi bcrypt advapi32 shell32 ole32 winhttp)
+add_executable(writ-directory-probe ../directory-sync/native_probe.cpp)
+target_compile_definitions(writ-directory-probe PRIVATE UNICODE _UNICODE NOMINMAX
+  _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00 NTDDI_VERSION=0x0A000004)
+target_compile_options(writ-directory-probe PRIVATE /W4 /WX /sdl /EHsc /utf-8)
+target_link_libraries(writ-directory-probe PRIVATE CldApi bcrypt advapi32 shell32 ole32)
 file(WRITE "${CMAKE_BINARY_DIR}/writ-toolchain.txt"
   "MSVC=${CMAKE_CXX_COMPILER_VERSION}\nCompiler=${CMAKE_CXX_COMPILER}\nToolset=${CMAKE_VS_PLATFORM_TOOLSET_VERSION}\nSDK=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}\nCMake=${CMAKE_VERSION}\n")

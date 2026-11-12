@@ -104,6 +104,9 @@ jobs:
           ./contrib/native-hosts/windows/cloud-files/release/Test-Package.ps1 -OutputDir "$env:RUNNER_TEMP\writ-release"
       - name: Exercise real HTTPS directory syncing and competing S3 clients
         run: |
+          & "$env:RUNNER_TEMP\writ-release\build-1\Release\writ-directory-probe.exe" `
+            "$env:USERPROFILE\WritDirectoryExclusionProbe" | Tee-Object "$env:RUNNER_TEMP\writ-release\logs\directory-exclusion.txt"
+          if ($LASTEXITCODE) { throw 'Native directory exclusion probes failed.' }
           ./contrib/native-hosts/windows/directory-sync/Smoke.ps1 `
             -PackageDir "$env:RUNNER_TEMP\writ-release\payload" -OutputDir "$env:RUNNER_TEMP\writ-release\logs" `
             -ProbeExe "$env:RUNNER_TEMP\writ-release\build-1\Release\writ-desktop-probe.exe"

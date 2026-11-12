@@ -83,7 +83,8 @@ $info = [ordered]@{
     powershell = $PSVersionTable.PSVersion.ToString()
     nativeRebuildSha256 = Hash (Join-Path $payload 'writ-cloud.exe')
     desktopRebuildSha256 = Hash (Join-Path $payload 'Writ.exe')
-    profile = 'Public single-file local-store desktop preview; unsigned; interactive Notepad not automated'
+    directoryRebuildSha256 = Hash (Join-Path $payload 'writ-sync.exe')
+    profile = 'Public Windows tray/desktop preview; S3-compatible hydrated folder sync and separate local single-file Cloud Files demo; unsigned'
 }
 $info | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $payload 'BUILD-INFO.json') -Encoding utf8NoBOM
 Get-ChildItem -LiteralPath $payload -File | Sort-Object Name | ForEach-Object { "$(Hash $_.FullName)  $($_.Name)" } |
