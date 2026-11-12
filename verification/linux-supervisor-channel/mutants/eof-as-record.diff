@@ -1,6 +1,6 @@
---- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
-+++ /home/jadams/tmp/writ-sc-task2/mut2/eof-as-record.c	2026-11-11 19:29:23.739526861 -0600
-@@ -158,7 +158,7 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/eof-as-record.c	2026-11-11 19:50:11.640073071 -0600
+@@ -179,7 +179,7 @@
      ssize_t got = recvmsg(fd, &msg, MSG_CMSG_CLOEXEC | MSG_DONTWAIT);
      if (got < 0) return -1;
      /* End of stream is not a record: the peer closed and nothing is queued. */

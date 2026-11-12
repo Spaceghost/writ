@@ -1,0 +1,11 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/no-socket-type-check.c	2026-11-11 19:50:14.796261446 -0600
+@@ -56,7 +56,7 @@
+     if (getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &domain, &len)) return -1;
+     len = sizeof type;
+     if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &len)) return -1;
+-    if (domain != AF_UNIX || type != SOCK_SEQPACKET) { errno = EINVAL; return -1; }
++
+
+     /* Refuse SCM_RIGHTS at the sender (its sendmsg fails with EPERM). Closing a
+        sender-supplied descriptor in the receiver can block indefinitely, for

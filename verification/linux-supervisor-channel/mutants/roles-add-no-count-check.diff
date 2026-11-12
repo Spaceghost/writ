@@ -1,6 +1,6 @@
---- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
-+++ /home/jadams/tmp/writ-sc-task2/mut2/roles-add-no-count-check.c	2026-11-11 19:29:26.234759196 -0600
-@@ -55,7 +55,6 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/roles-add-no-count-check.c	2026-11-11 19:50:13.009256836 -0600
+@@ -76,7 +76,6 @@
      dev_t dev;
      ino_t ino;
      if (index == 0) return EINVAL;

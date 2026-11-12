@@ -1,6 +1,6 @@
---- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
-+++ /home/jadams/tmp/writ-sc-task2/mut2/leak-received-pidfd.c	2026-11-11 19:29:19.388179367 -0600
-@@ -134,7 +134,6 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/leak-received-pidfd.c	2026-11-11 19:50:09.988958580 -0600
+@@ -155,7 +155,6 @@
              }
          }
      }

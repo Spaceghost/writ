@@ -91,7 +91,10 @@ separate implementation and host-qualification work.
 
 Consider a separate local `AF_UNIX` `SOCK_SEQPACKET` channel for each explicitly
 provisioned authority role, with `SO_PASSPIDFD` enabled on the receiver before
-it accepts messages. Josh selected this restricted profile in
+it accepts messages, and `SO_PASSRIGHTS` set to 0 (Linux 6.16+) so a sender's
+`SCM_RIGHTS` is refused at its `sendmsg` rather than installed in the receiver
+(closing a sender-supplied descriptor can block indefinitely and would stall
+revocation). Josh selected this restricted profile in
 [board question 24](../../../docs/superpowers/records/questions/q24.html)
 (`select-scm-pidfd`, recorded on the board; its answer files are kept out of
 the tree, so the committed question page is the in-tree reference). It is a selected transport, not an implemented or

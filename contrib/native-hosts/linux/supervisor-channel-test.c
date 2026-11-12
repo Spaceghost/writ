@@ -101,7 +101,8 @@ static int receive_endpoint(int fd)
    replies 'k' after the action succeeded or 'e' otherwise.
      M  send exactly WRIT_CHANNEL_PAYLOAD_MAX bytes on tx
      g  send "ok" on tx          e  send a zero-length record on tx
-     r  send "R" on tx carrying SCM_RIGHTS   L  send an oversize record on tx
+     r  try to send "R" on tx carrying SCM_RIGHTS; reply k only if refused with EPERM
+         L  send an oversize record on tx
      n  send "ok" on tx2         p  pass tx to the peer on xfer, drop own copy
      v  receive an endpoint from xfer into tx    x  exit 0 without replying */
 static void child_loop(int cmd, int tx, int tx2, int xfer)
@@ -115,7 +116,7 @@ static void child_loop(int cmd, int tx, int tx2, int xfer)
         case 'g': ok = send_bytes(tx, "ok", 2, -1) == 0; break;
         case 'M': memset(large, 'M', WRIT_CHANNEL_PAYLOAD_MAX); ok = send_bytes(tx, large, WRIT_CHANNEL_PAYLOAD_MAX, -1) == 0; break;
         case 'e': ok = send_bytes(tx, "", 0, -1) == 0; break;
-        case 'r': ok = send_bytes(tx, "R", 1, tx) == 0; break;
+        case 'r': ok = send_bytes(tx, "R", 1, tx) != 0 && errno == EPERM; break; /* refused */
         case 'L': memset(large, 'L', sizeof large); ok = send_bytes(tx, large, sizeof large, -1) == 0; break;
         case 'n': ok = send_bytes(tx2, "ok", 2, -1) == 0; break;
         case 'p': ok = send_bytes(xfer, "P", 1, tx) == 0 && close(tx) == 0; tx = -1; break;
@@ -172,6 +173,16 @@ static struct child spawn(int tx, int tx2, int xfer)
     }
     close(pair[1]);
     return (struct child){ pidfd, pair[0] };
+}
+
+/* Like command, but returns the reply instead of dying on 'e'. */
+static char command_try(struct child *c, char op, const char *name)
+{
+    char reply;
+    if (send(c->cmd, &op, 1, MSG_NOSIGNAL) != 1) die(name);
+    ssize_t got = recv(c->cmd, &reply, 1, 0);
+    if (got != 1) { if (got == 0) errno = EPIPE; die(name); }
+    return reply;
 }
 
 static void command(struct child *c, char op, const char *name)
@@ -350,6 +361,16 @@ static void classifier_cases(const struct writ_roles *roles)
     check(r.verdict == WRIT_CONTROL_TRUNCATED && count_own_fds() == before,
           "overclaimed_header", "header longer than returned bytes: control truncated, in-bounds fd closed");
 
+    /* Defence in depth: the kernel refuses SCM_RIGHTS, but a rights message
+       that did arrive is classified and every descriptor in it is closed. */
+    memset(&c, 0, sizeof c);
+    fds[0] = dup_or_die(self);
+    fds[1] = dup_or_die(self);
+    len = put_cmsg(&c, 0, SOL_SOCKET, SCM_RIGHTS, fds, 2);
+    r = classify_built(&c, len, 0, roles);
+    check(r.verdict == WRIT_UNEXPECTED_RIGHTS && count_own_fds() == before,
+          "unexpected_rights_classified", "SCM_RIGHTS in a built buffer: unexpected rights, both closed");
+
     /* A caller-corrupted table fails closed instead of indexing past role[]. */
     {
         struct writ_roles bad = *roles;
@@ -380,9 +401,9 @@ int main(void)
     int baseline = count_own_fds();
 
     int profile = writ_channel_profile_check();
-    if (profile == ENOTSUP) { errno = ENOTSUP; unsupported("pidfs or SO_PASSPIDFD"); }
+    if (profile == ENOTSUP) { errno = ENOTSUP; unsupported("pidfs, SO_PASSPIDFD or SO_PASSRIGHTS"); }
     if (profile) { errno = profile; die("profile check"); }
-    check(1, "profile_check_passes", "pidfs and SO_PASSPIDFD available");
+    check(1, "profile_check_passes", "pidfs, SO_PASSPIDFD and SO_PASSRIGHTS available");
 
     /* B exists before the channel, so only an explicit transfer gives it the
        sending endpoint. A also holds a sender whose receiver never enabled
@@ -415,16 +436,26 @@ int main(void)
     expect("empty_record_attributed", &r, WRIT_FROM_ROLE, 1);
     check(r.length == 0, "empty_record_length", "length 0");
 
-    command(&a, 'r', "A send rights");
-    r = receive("rights_rejected", ch[0], &roles);
-    expect("rights_rejected", &r, WRIT_UNEXPECTED_RIGHTS, 0);
+    /* The kernel refuses SCM_RIGHTS at the sender (SO_PASSRIGHTS=0), so no
+       record, and no installed descriptor, ever reaches the receiver. */
+    {
+        char refused = command_try(&a, 'r', "A try rights");
+        struct writ_channel_record rr;
+        int before = count_own_fds();
+        int rc = writ_channel_receive(ch[0], &roles, &rr);
+        int e = errno;
+        fd_balance("rights_rejected", before);
+        check(refused == 'k' && rc == -1 && e == EAGAIN, "rights_rejected",
+              "sender's SCM_RIGHTS sendmsg fails with EPERM; receiver sees no record");
+    }
 
-    command(&a, 'r', "A send rights again");
-    command(&a, 'g', "A send good");
-    struct writ_channel_record first = receive("reject_then_accept", ch[0], &roles);
-    r = receive("reject_then_accept", ch[0], &roles);
-    check(first.verdict == WRIT_UNEXPECTED_RIGHTS && r.verdict == WRIT_FROM_ROLE && r.role == 1,
-          "reject_then_accept", "rights record rejected, next record from role 1");
+    {
+        char refused = command_try(&a, 'r', "A try rights again");
+        command(&a, 'g', "A send good");
+        r = receive("reject_then_accept", ch[0], &roles);
+        check(refused == 'k' && r.verdict == WRIT_FROM_ROLE && r.role == 1,
+              "reject_then_accept", "rights refused, next record from role 1");
+    }
 
     command(&a, 'L', "A send oversize");
     r = receive("payload_truncated", ch[0], &roles);
@@ -478,6 +509,17 @@ int main(void)
         if (rc) die("receive under limit");
         fd_balance("sender_error_emfile", before);
         expect("sender_error_emfile", &lr, WRIT_SENDER_ERROR, 0);
+    }
+
+    /* Only AF_UNIX SOCK_SEQPACKET may be enabled. */
+    {
+        int st[2];
+        if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, st)) die("socketpair stream");
+        errno = 0;
+        int rc = writ_channel_enable(st[0]);
+        check(rc == -1 && errno == EINVAL, "enable_rejects_stream_socket",
+              "SOCK_STREAM socket: enable fails with EINVAL");
+        close(st[0]); close(st[1]);
     }
 
     /* End of stream is not a record. */

@@ -36,9 +36,12 @@ enum writ_channel_verdict {
 
 /* Matching compares pidfs dev and ino. The dev comparison is reviewed-only:
    every unprivileged pidfs inode shares one device, so no owned-process test
-   can distinguish it. The table retains pidfs identity, not descriptor numbers. The caller keeps
-   its own pidfds open for each role's lifetime so the identity cannot be
-   recycled; this module never stores or closes them. */
+   can distinguish it. The table retains pidfs identity, not descriptor
+   numbers. The caller keeps its own pidfds open for each role's lifetime so
+   the identity cannot be recycled; this module never stores or closes them.
+   One role per process lifetime keeps the lifetime-to-index lookup
+   unambiguous. That is not an authority rule: principals, and any rule about
+   which roles may differ, are decided in Bend. */
 struct writ_roles {
     size_t count;
     struct {
@@ -55,7 +58,8 @@ struct writ_channel_record {
     unsigned char payload[WRIT_CHANNEL_PAYLOAD_MAX];
 };
 
-/* Returns 0, or an errno (ENOTSUP when pidfs or SO_PASSPIDFD is unavailable).
+/* Returns 0, or an errno (ENOTSUP when pidfs, SO_PASSPIDFD or SO_PASSRIGHTS
+   (Linux 6.16+) is unavailable).
    Probes on a private socket pair and on pidfd_open(getpid()). */
 int writ_channel_profile_check(void);
 
@@ -64,7 +68,13 @@ int writ_channel_profile_check(void);
    full. On any error the table is unchanged. */
 int writ_roles_add(struct writ_roles *roles, uint32_t index, int pidfd);
 
-/* Sets SO_PASSPIDFD on the receiving end. Call before any record is queued. */
+/* Prepares the receiving end; call before any record is queued. Returns 0, or
+   -1 with errno. Fails with EINVAL unless the socket is AF_UNIX
+   SOCK_SEQPACKET. Sets SO_PASSRIGHTS=0 so a sender's SCM_RIGHTS is refused
+   with EPERM at its sendmsg (closing a sender-supplied descriptor can block
+   indefinitely, for example a FUSE file the sender serves, and would stall
+   revocation and STOP); if that fails, so does enable, and the receiver must
+   not run. Then sets SO_PASSPIDFD. */
 int writ_channel_enable(int fd);
 
 /* Receives one record. NON-BLOCKING (MSG_DONTWAIT): with nothing queued it

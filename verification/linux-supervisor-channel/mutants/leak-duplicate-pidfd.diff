@@ -1,6 +1,6 @@
---- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
-+++ /home/jadams/tmp/writ-sc-task2/mut2/leak-duplicate-pidfd.c	2026-11-11 19:29:20.628004038 -0600
-@@ -99,7 +99,7 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/leak-duplicate-pidfd.c	2026-11-11 19:50:10.505547678 -0600
+@@ -120,7 +120,7 @@
              if (c->cmsg_type == SCM_PIDFD) {
                  ++pidfds;
                  if (value < 0) { ++negative; continue; }

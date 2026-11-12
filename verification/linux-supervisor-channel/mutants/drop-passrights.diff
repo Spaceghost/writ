@@ -1,0 +1,11 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/drop-passrights.c	2026-11-11 19:50:14.262171268 -0600
+@@ -65,7 +65,7 @@
+        the receiver must not run. The SCM_RIGHTS rejection in classify stays as
+        defence in depth. */
+     int off = 0;
+-    if (setsockopt(fd, SOL_SOCKET, SO_PASSRIGHTS, &off, sizeof off)) return -1;
++    (void)off;
+
+     int on = 1;
+     return setsockopt(fd, SOL_SOCKET, SO_PASSPIDFD, &on, sizeof on);

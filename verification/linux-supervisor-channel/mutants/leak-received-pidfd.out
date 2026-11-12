@@ -1,41 +1,40 @@
 INFO supervisor-channel-test: owned processes only, timeout 30s
-PASS profile_check_passes: pidfs and SO_PASSPIDFD available
+PASS profile_check_passes: pidfs, SO_PASSPIDFD and SO_PASSRIGHTS available
 FAIL role_one_attributed: descriptors 12 before receive, 13 after
 PASS role_one_attributed: verdict 0 role 1 length 2 (expected 0 role 1)
 PASS role_one_payload: payload ok, length 2
 FAIL empty_record_attributed: descriptors 13 before receive, 14 after
 PASS empty_record_attributed: verdict 0 role 1 length 0 (expected 0 role 1)
 PASS empty_record_length: length 0
-FAIL rights_rejected: descriptors 14 before receive, 15 after
-PASS rights_rejected: verdict 6 role 0 length 0 (expected 6 role 0)
-FAIL reject_then_accept: descriptors 15 before receive, 16 after
-FAIL reject_then_accept: descriptors 16 before receive, 17 after
-PASS reject_then_accept: rights record rejected, next record from role 1
-FAIL payload_truncated: descriptors 17 before receive, 18 after
+PASS rights_rejected: sender's SCM_RIGHTS sendmsg fails with EPERM; receiver sees no record
+FAIL reject_then_accept: descriptors 14 before receive, 15 after
+PASS reject_then_accept: rights refused, next record from role 1
+FAIL payload_truncated: descriptors 15 before receive, 16 after
 PASS payload_truncated: verdict 4 role 0 length 0 (expected 4 role 0)
 PASS control_truncated: verdict 5 role 0 length 0 (expected 5 role 0)
-FAIL unregistered_sender_unknown: descriptors 18 before receive, 19 after
+FAIL unregistered_sender_unknown: descriptors 16 before receive, 17 after
 PASS unregistered_sender_unknown: verdict 1 role 0 length 2 (expected 1 role 0)
 PASS missing_sender_without_enable: verdict 2 role 0 length 0 (expected 2 role 0)
-FAIL payload_at_max_attributed: descriptors 19 before receive, 20 after
+FAIL payload_at_max_attributed: descriptors 17 before receive, 18 after
 PASS payload_at_max_attributed: verdict 0 role 1 length 4096 (expected 0 role 1)
 PASS payload_at_max_length: length 4096
-FAIL unexpected_control_passcred: descriptors 20 before receive, 21 after
+FAIL unexpected_control_passcred: descriptors 18 before receive, 19 after
 PASS unexpected_control_passcred: verdict 7 role 0 length 0 (expected 7 role 0)
 PASS sender_error_emfile: verdict 8 role 0 length 0 (expected 8 role 0)
+PASS enable_rejects_stream_socket: SOCK_STREAM socket: enable fails with EINVAL
 PASS peer_closed: peer close with empty queue: -1/EPIPE every time, no verdict
 FAIL duplicate_sender_closes_both: two SCM_PIDFD messages: duplicate, both closed
 FAIL duplicate_sender_one_header: two descriptors in one SCM_PIDFD: duplicate, both closed
 FAIL non_pidfs_sender_error: non-pidfs descriptor in sender slot: sender error, closed
 FAIL foreign_level_control: non-SOL_SOCKET control message: unexpected control, pidfd closed
 FAIL overclaimed_header: header longer than returned bytes: control truncated, in-bounds fd closed
+FAIL unexpected_rights_classified: SCM_RIGHTS in a built buffer: unexpected rights, both closed
 FAIL corrupt_table_fails_closed: role count above capacity: sender error, pidfd closed
 PASS duplicate_role_rejected: duplicate lifetime/index, index 0, non-pidfd: EINVAL, table unchanged
 PASS role_table_full: ninth add: ENOSPC, table unchanged
-FAIL reaped_role_sender: descriptors 24 before receive, 25 after
+FAIL reaped_role_sender: descriptors 22 before receive, 23 after
 PASS reaped_role_sender: role 1 after reaping
-FAIL transferred_endpoint_attributes_receiver_role: descriptors 25 before receive, 26 after
+FAIL transferred_endpoint_attributes_receiver_role: descriptors 23 before receive, 24 after
 PASS transferred_endpoint_attributes_receiver_role: verdict 0 role 2 length 2 (expected 0 role 2)
-FAIL descriptor_cleanup: 3 descriptors at start and 19 at end
-RESULT FAIL (18 failures)
-exit=1
+FAIL descriptor_cleanup: 3 descriptors at start and 17 at end
+RESULT FAIL (17 failures)

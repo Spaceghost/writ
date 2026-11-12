@@ -14,6 +14,9 @@
 #ifndef SO_PASSPIDFD
 #define SO_PASSPIDFD 76
 #endif
+#ifndef SO_PASSRIGHTS
+#define SO_PASSRIGHTS 83 /* Linux 6.16+ */
+#endif
 #ifndef SCM_PIDFD
 #define SCM_PIDFD 0x04
 #endif
@@ -46,6 +49,24 @@ static int pidfs_identity(int fd, dev_t *dev, ino_t *ino)
 
 int writ_channel_enable(int fd)
 {
+    /* The bounded-record guarantees hold only for a connected-style AF_UNIX
+       SOCK_SEQPACKET socket; refuse anything else. */
+    int domain = 0, type = 0;
+    socklen_t len = sizeof domain;
+    if (getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &domain, &len)) return -1;
+    len = sizeof type;
+    if (getsockopt(fd, SOL_SOCKET, SO_TYPE, &type, &len)) return -1;
+    if (domain != AF_UNIX || type != SOCK_SEQPACKET) { errno = EINVAL; return -1; }
+
+    /* Refuse SCM_RIGHTS at the sender (its sendmsg fails with EPERM). Closing a
+       sender-supplied descriptor in the receiver can block indefinitely, for
+       example a FUSE file served by the sender, which would stall revocation
+       and STOP. Fail closed: if the kernel cannot do this, enabling fails and
+       the receiver must not run. The SCM_RIGHTS rejection in classify stays as
+       defence in depth. */
+    int off = 0;
+    if (setsockopt(fd, SOL_SOCKET, SO_PASSRIGHTS, &off, sizeof off)) return -1;
+
     int on = 1;
     return setsockopt(fd, SOL_SOCKET, SO_PASSPIDFD, &on, sizeof on);
 }

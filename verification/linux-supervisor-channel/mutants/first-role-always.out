@@ -1,11 +1,11 @@
 INFO supervisor-channel-test: owned processes only, timeout 30s
-PASS profile_check_passes: pidfs and SO_PASSPIDFD available
+PASS profile_check_passes: pidfs, SO_PASSPIDFD and SO_PASSRIGHTS available
 PASS role_one_attributed: verdict 0 role 1 length 2 (expected 0 role 1)
 PASS role_one_payload: payload ok, length 2
 PASS empty_record_attributed: verdict 0 role 1 length 0 (expected 0 role 1)
 PASS empty_record_length: length 0
-PASS rights_rejected: verdict 6 role 0 length 0 (expected 6 role 0)
-PASS reject_then_accept: rights record rejected, next record from role 1
+PASS rights_rejected: sender's SCM_RIGHTS sendmsg fails with EPERM; receiver sees no record
+PASS reject_then_accept: rights refused, next record from role 1
 PASS payload_truncated: verdict 4 role 0 length 0 (expected 4 role 0)
 PASS control_truncated: verdict 5 role 0 length 0 (expected 5 role 0)
 FAIL unregistered_sender_unknown: verdict 0 role 1 length 2 (expected 1 role 0)
@@ -14,12 +14,14 @@ PASS payload_at_max_attributed: verdict 0 role 1 length 4096 (expected 0 role 1)
 PASS payload_at_max_length: length 4096
 PASS unexpected_control_passcred: verdict 7 role 0 length 0 (expected 7 role 0)
 PASS sender_error_emfile: verdict 8 role 0 length 0 (expected 8 role 0)
+PASS enable_rejects_stream_socket: SOCK_STREAM socket: enable fails with EINVAL
 PASS peer_closed: peer close with empty queue: -1/EPIPE every time, no verdict
 PASS duplicate_sender_closes_both: two SCM_PIDFD messages: duplicate, both closed
 PASS duplicate_sender_one_header: two descriptors in one SCM_PIDFD: duplicate, both closed
 PASS non_pidfs_sender_error: non-pidfs descriptor in sender slot: sender error, closed
 PASS foreign_level_control: non-SOL_SOCKET control message: unexpected control, pidfd closed
 PASS overclaimed_header: header longer than returned bytes: control truncated, in-bounds fd closed
+PASS unexpected_rights_classified: SCM_RIGHTS in a built buffer: unexpected rights, both closed
 PASS corrupt_table_fails_closed: role count above capacity: sender error, pidfd closed
 PASS duplicate_role_rejected: duplicate lifetime/index, index 0, non-pidfd: EINVAL, table unchanged
 PASS role_table_full: ninth add: ENOSPC, table unchanged
@@ -27,4 +29,3 @@ PASS reaped_role_sender: role 1 after reaping
 FAIL transferred_endpoint_attributes_receiver_role: verdict 0 role 1 length 2 (expected 0 role 2)
 PASS descriptor_cleanup: 3 descriptors at start and 3 at end
 RESULT FAIL (2 failures)
-exit=1

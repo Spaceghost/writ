@@ -1,6 +1,6 @@
---- /home/jadams/tmp/writ-sc-task2/orig2.c	2026-11-11 19:29:18.113280026 -0600
-+++ /home/jadams/tmp/writ-sc-task2/mut2/no-nonpidfs-check.c	2026-11-11 19:29:27.551994583 -0600
-@@ -120,7 +120,7 @@
+--- /home/jadams/tmp/writ-sc-final-fix/orig.c	2026-11-11 19:50:08.643243089 -0600
++++ /home/jadams/tmp/writ-sc-final-fix/mut/no-nonpidfs-check.c	2026-11-11 19:50:13.642683614 -0600
+@@ -141,7 +141,7 @@
      else {
          dev_t dev;
          ino_t ino;
