@@ -1,0 +1,248 @@
+name: Writ desktop release
+
+on:
+  push:
+    branches: [master, 'windows/**', 'linux/**']
+    tags: ['desktop-v*']
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/native-hosts/**'
+      - 'contrib/rclone/bend/**'
+      - 'verification/source-sha256.txt'
+      - '.github/workflows/writ-windows-release.yml'
+  pull_request:
+    paths:
+      - '*.bend'
+      - 'lib/**'
+      - 'writfs/**'
+      - 'contrib/native-hosts/**'
+      - 'contrib/rclone/bend/**'
+      - 'verification/source-sha256.txt'
+      - '.github/workflows/writ-windows-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  policy:
+    name: Verify source and generate Bend policy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      artifact-id: ${{ steps.policy.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Generate from checksum-pinned Bend and run model/proof checks
+        shell: bash
+        run: bash contrib/native-hosts/windows/cloud-files/release/Generate.sh "$RUNNER_TEMP/writ-release"
+      - name: Retain exact generated policy
+        id: policy
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-release-policy-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/policy
+          if-no-files-found: error
+          retention-days: 14
+      - name: Retain policy verification logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: desktop-release-policy-logs-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  windows:
+    name: Build twice, exercise Cloud Files, install and uninstall
+    needs: policy
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.packages.outputs.artifact-id }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Preserve source bytes on Windows checkout
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.policy.outputs.artifact-id }}
+          path: ${{ runner.temp }}/writ-policy
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Build native executable and complete offline packages twice
+        run: |
+          ./contrib/native-hosts/windows/cloud-files/release/Package.ps1 `
+            -PolicyDir "$env:RUNNER_TEMP\writ-policy" -OutputDir "$env:RUNNER_TEMP\writ-release"
+      - name: Enable Cloud Files in disposable CI host and test exact packages
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $logs = "$env:RUNNER_TEMP\writ-release\logs"
+          Get-CimInstance Win32_OperatingSystem | Format-List Caption,Version,OSArchitecture | Out-File "$logs\os.txt"
+          # Runner preparation only. The installer never changes drivers/services.
+          & sc.exe config CldFlt start= auto
+          if ($LASTEXITCODE) { throw 'Cloud Files filter is unavailable.' }
+          & fltmc.exe load cldflt
+          # An already-loaded filter is expected on some runner revisions.
+          & fltmc.exe filters | Tee-Object -FilePath "$logs\filters.txt"
+          if ($LASTEXITCODE) { throw 'Cannot inspect native filters.' }
+          & fsutil.exe usn queryjournal "$($env:SystemDrive)" | Out-File "$logs\journal.txt"
+          if ($LASTEXITCODE) { throw 'An active NTFS USN journal is required.' }
+          ./contrib/native-hosts/windows/cloud-files/release/Test-Package.ps1 -OutputDir "$env:RUNNER_TEMP\writ-release"
+      - name: Seal verified release assets and evidence
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = "$env:RUNNER_TEMP\writ-release"
+          $version = (Get-Content contrib/native-hosts/windows/cloud-files/release/VERSION -Raw).Trim()
+          Copy-Item "$env:LOCALAPPDATA\WritReleaseSmoke\*.txt" "$out\logs"
+          Compress-Archive -Path "$out\logs\*" -DestinationPath "$out\dist\Writ-$version-windows-verification.zip"
+          Move-Item "$out\dist\BUILD-INFO.json" "$out\dist\BUILD-INFO-windows.json"
+          Get-ChildItem "$out\dist" -File | Sort-Object Name | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)"
+          } | Set-Content "$out\dist\SHA256SUMS-windows" -Encoding ascii
+      - name: Retain tested release assets
+        id: packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-assets-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/dist
+          if-no-files-found: error
+          retention-days: 30
+      - name: Collect native logs from both runner drives
+        if: always()
+        run: |
+          $logs = "$env:RUNNER_TEMP\writ-release\logs"
+          New-Item -ItemType Directory -Force -Path $logs | Out-Null
+          $smoke = "$env:LOCALAPPDATA\WritReleaseSmoke"
+          if (Test-Path -LiteralPath $smoke) { Copy-Item "$smoke\*.txt" $logs }
+      - name: Retain native logs, including failed runs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-release-native-logs-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-release/logs
+          if-no-files-found: warn
+          retention-days: 30
+
+  linux:
+    name: Build twice, exercise FUSE, install and uninstall
+    needs: policy
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    outputs:
+      artifact-id: ${{ steps.packages.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.policy.outputs.artifact-id }}
+          path: ${{ runner.temp }}/writ-policy
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Prepare disposable native build and FUSE host
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-11 g++-11 libssl-dev python3-venv fuse3
+          test -c /dev/fuse
+          test -r /dev/fuse && test -w /dev/fuse
+      - name: Build complete offline packages twice
+        run: |
+          python3 contrib/native-hosts/linux/public-sync/release/Package.py \
+            --policy "$RUNNER_TEMP/writ-policy" --output "$RUNNER_TEMP/writ-linux-release"
+      - name: Test exact portable and installed payloads on native Linux
+        run: |
+          set -euo pipefail
+          python3 contrib/native-hosts/linux/public-sync/release/Test-Package.py \
+            --output "$RUNNER_TEMP/writ-linux-release" 2>&1 | tee "$RUNNER_TEMP/writ-linux-release/logs/package-smoke.txt"
+      - name: Seal verified release assets and evidence
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/writ-linux-release"
+          version=$(cat contrib/native-hosts/windows/cloud-files/release/VERSION)
+          uname -a > "$out/logs/kernel.txt"
+          fusermount3 --version > "$out/logs/fusermount.txt"
+          tar -czf "$out/dist/Writ-$version-linux-verification.tar.gz" -C "$out" logs
+          cd "$out/dist"
+          sha256sum ./* > SHA256SUMS-linux
+      - name: Retain tested release assets
+        id: packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-release-assets-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/writ-linux-release/dist
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain native logs, including failed runs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux-release-native-logs-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/writ-linux-release/logs
+            ${{ runner.temp }}/writ-linux-release/native-smoke/*.log
+          if-no-files-found: warn
+          retention-days: 30
+
+  publish:
+    name: Publish verified Linux and Windows prerelease
+    if: startsWith(github.ref, 'refs/tags/desktop-v')
+    needs: [policy, windows, linux]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.windows.outputs.artifact-id }},${{ needs.linux.outputs.artifact-id }}
+          path: ${{ runner.temp }}/writ-assets
+          merge-multiple: true
+          digest-mismatch: error
+      - name: Verify version and publish complete assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(cat contrib/native-hosts/windows/cloud-files/release/VERSION)
+          test "$RELEASE_TAG" = "desktop-v$version"
+          cd "$RUNNER_TEMP/writ-assets"
+          sha256sum -c SHA256SUMS-windows
+          sha256sum -c SHA256SUMS-linux
+          cat SHA256SUMS-windows SHA256SUMS-linux | sort -k2 > SHA256SUMS
+          rm SHA256SUMS-windows SHA256SUMS-linux
+          cat > "$RUNNER_TEMP/release-notes.txt" <<'NOTES'
+          Download the **windows-x64-setup.exe** or **linux-x64-setup.run** for a per-user installation. On Linux run `bash Writ-*-linux-x64-setup.run`. Portable ZIP (Windows) and tar.gz (Linux) bundles include Node and the policy runtime; Linux also bundles libfuse. Extract the entire portable archive and run **writ-cloud.exe** or **./writ-linux**. No compiler or source checkout is needed.
+
+          Linux requires x86-64, glibc 2.35+, OpenSSL 3, system fusermount3 and access to /dev/fuse; backing storage must be local ext4, XFS or Btrfs beneath your home. Windows requires native Cloud Files support on local NTFS. These are unsigned public single-file previews backed by a local store, not a remote storage service.
+
+          Both platforms pass native metadata-only listing, hydration, ordinary and replacement saves, crash/restart readback, failed-write recovery/retry, stale-base conflicts, concurrent write/rename exclusion, installation and uninstallation tests. Linux unmount/uninstall materializes hydrated and edited files and refuses busy cleanup. Interactive desktop editors, power-loss and protected-data host qualification remain separate gates.
+
+          Publication requires both native platform jobs to pass. Each job compares two clean native builds and two copies of both packages byte-for-byte. Platform BUILD-INFO JSON files record the source revision and toolchain environment; SHA256SUMS covers every release asset; platform verification archives contain native test evidence. Compiler/runner servicing updates can affect bytes across environments.
+          NOTES
+          printf '\nSource: `%s`\nBuild: https://github.com/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" >> "$RUNNER_TEMP/release-notes.txt"
+          # Existing releases are never replaced. A failed upload leaves a draft.
+          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease \
+            --title "Writ $version for Linux and Windows" --notes-file "$RUNNER_TEMP/release-notes.txt" \
+            ./*
+          gh release edit "$RELEASE_TAG" --draft=false

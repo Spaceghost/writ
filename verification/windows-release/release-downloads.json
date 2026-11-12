@@ -1,0 +1,37 @@
+{
+  "release": "https://github.com/Spaceghost/writ/releases/tag/windows-v0.1.0-preview.1",
+  "source": "02d52be08d6a9898780fc27b48e6e74b1613ab07",
+  "assets": [
+    {
+      "name": "BUILD-INFO.json",
+      "bytes": 1559,
+      "sha256": "dc73403383009221285ad7e9743cc2115169d2e71c4c2197c5cf34111174bfa4",
+      "url": "https://github.com/Spaceghost/writ/releases/download/windows-v0.1.0-preview.1/BUILD-INFO.json"
+    },
+    {
+      "name": "SHA256SUMS",
+      "bytes": 419,
+      "sha256": "485145b70cb908dac084ec0dd2ddfcb05bcb0ef1be71d473c2f48c2ef6715f35",
+      "url": "https://github.com/Spaceghost/writ/releases/download/windows-v0.1.0-preview.1/SHA256SUMS"
+    },
+    {
+      "name": "Writ-0.1.0-preview.1-windows-verification.zip",
+      "bytes": 17174,
+      "sha256": "0c3d994255cabb599938ad8d30b0b33fa7c0911b2f1fb2ed9f6ef87ea205ef5b",
+      "url": "https://github.com/Spaceghost/writ/releases/download/windows-v0.1.0-preview.1/Writ-0.1.0-preview.1-windows-verification.zip"
+    },
+    {
+      "name": "Writ-0.1.0-preview.1-windows-x64-portable.zip",
+      "bytes": 34675396,
+      "sha256": "da613fc36f2312f193f0ff2d8b76d2005f205f029f0d32c1e279b2c19519abb6",
+      "url": "https://github.com/Spaceghost/writ/releases/download/windows-v0.1.0-preview.1/Writ-0.1.0-preview.1-windows-x64-portable.zip"
+    },
+    {
+      "name": "Writ-0.1.0-preview.1-windows-x64-setup.exe",
+      "bytes": 23752255,
+      "sha256": "32c94476c48c3c476cb07bd5a5a27509158036bdb4ba2994d244d8440213087f",
+      "url": "https://github.com/Spaceghost/writ/releases/download/windows-v0.1.0-preview.1/Writ-0.1.0-preview.1-windows-x64-setup.exe"
+    }
+  ],
+  "passed": true
+}

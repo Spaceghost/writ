@@ -1,0 +1,70 @@
+#requires -Version 7.4
+[CmdletBinding()]
+param([Parameter(Mandatory)][string]$OutputDir)
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+$OutputDir = (Resolve-Path -LiteralPath $OutputDir).Path
+$dist = Join-Path $OutputDir 'dist'
+$logs = Join-Path $OutputDir 'logs'
+$extract = Join-Path $OutputDir 'portable with spaces'
+$installed = Join-Path $env:LOCALAPPDATA ('WritInstallTest-' + [guid]::NewGuid().ToString('N'))
+$defaultRoot = Join-Path $env:USERPROFILE 'Writ'
+$defaultData = Join-Path $env:LOCALAPPDATA 'WritDemo'
+if ((Test-Path -LiteralPath $defaultRoot) -or (Test-Path -LiteralPath $defaultData)) { throw 'Install probe requires unused default Writ paths; existing user data is not touched.' }
+function Assert($Condition, [string]$Name) {
+    if (-not $Condition) { throw "FAIL: $Name" }; Write-Host "PASS: $Name"
+}
+function Check-Payload([string]$Path) {
+    foreach ($line in Get-Content -LiteralPath (Join-Path $Path 'SHA256SUMS')) {
+        $parts = $line -split '  ', 2
+        if ($parts.Count -ne 2 -or $parts[1] -notmatch '^[A-Za-z0-9.-]+$') { throw 'Invalid package manifest.' }
+        Assert ((Get-FileHash -LiteralPath (Join-Path $Path $parts[1])).Hash.ToLowerInvariant() -ceq $parts[0]) "payload hash: $($parts[1])"
+    }
+}
+Start-Transcript -Path (Join-Path $logs 'package-smoke.txt') | Out-Null
+$provider = $null
+try {
+    Expand-Archive -LiteralPath (Get-Item (Join-Path $dist '*-portable.zip')).FullName -DestinationPath $extract
+    Check-Payload $extract
+    & (Join-Path $extract 'Smoke.ps1') -PackageDir $extract -Base (Join-Path $env:LOCALAPPDATA 'WritReleaseSmoke')
+    $installer = (Get-Item (Join-Path $dist '*-setup.exe')).FullName
+    $install = Start-Process -FilePath $installer -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /DIR=`"$installed`" /LOG=`"$logs\install.txt`"" -Wait -PassThru
+    Assert ($install.ExitCode -eq 0) 'installer succeeds'
+    Check-Payload $installed
+    $exe = Join-Path $installed 'writ-cloud.exe'
+    & $exe version
+    Assert ($LASTEXITCODE -eq 0) 'installed executable starts'
+    # Use only bundled dependencies and the default launch command.
+    $provider = Start-Process -FilePath $exe -ArgumentList 'start' -PassThru -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $logs 'installed-provider.txt') -RedirectStandardError (Join-Path $logs 'installed-provider-errors.txt')
+    $deadline = [DateTime]::UtcNow.AddSeconds(45)
+    do {
+        if ($provider.HasExited) { throw 'Installed provider exited; inspect installed-provider logs.' }
+        # Empty startup logs can produce AutomationNull before the first write.
+        # The match operator safely accepts an empty pipeline on all PS versions.
+        $ready = [bool]((Get-Content -LiteralPath (Join-Path $logs 'installed-provider.txt') -Raw) -match '(?m)^READY ')
+        if (-not $ready) { Start-Sleep -Milliseconds 200 }
+    } while (-not $ready -and [DateTime]::UtcNow -lt $deadline)
+    Assert $ready 'Start menu command creates default Writ root'
+    $hello = Join-Path $defaultRoot 'hello.txt'
+    $bytes = [IO.File]::ReadAllBytes($hello)
+    Assert ($bytes.Length -gt 0) 'installed provider hydrates'
+    $uninstall = Start-Process -FilePath (Join-Path $installed 'unins000.exe') -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=`"$logs\uninstall.txt`"" -Wait -PassThru
+    Assert ($uninstall.ExitCode -eq 0) 'uninstaller succeeds while provider is running'
+    Assert ($provider.WaitForExit(10000)) 'uninstaller stops provider'
+    Assert (-not (Test-Path -LiteralPath $exe)) 'application removed'
+    Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($hello)) -ceq [Convert]::ToBase64String($bytes)) 'uninstall preserves hydrated user file'
+    Assert (Test-Path -LiteralPath (Join-Path $defaultData 'store\head')) 'uninstall preserves backing store'
+    $info = & (Join-Path $extract 'writ-cloud.exe') inspect $defaultRoot | ConvertFrom-Json
+    Assert ($LASTEXITCODE -eq 0 -and -not $info.placeholder) 'uninstall unregisters placeholder'
+    Write-Host 'ALL WINDOWS PACKAGE CHECKS PASSED'
+} catch {
+    Write-Host $_.ScriptStackTrace
+    throw
+} finally {
+    if ($provider -and -not $provider.HasExited) {
+        & (Join-Path $extract 'writ-cloud.exe') stop
+        if (-not $provider.WaitForExit(10000)) { $provider.Kill(); $provider.WaitForExit() }
+    }
+    Stop-Transcript | Out-Null
+}

@@ -1,5 +1,11 @@
 # Native Windows WritFS
 
+The separate [Cloud Files demo](cloud-files/README.md) adds public
+`Writ\hello.txt` placeholders, conditional writeback and recoverable edits.
+It includes start/remove commands and a Windows/Notepad smoke test. Its native
+Windows execution remains pending; it does not change the protected WinFsp
+profile documented below.
+
 The native canary runner mounts a real WinFsp volume containing one immutable
 file, `data`. Its supervised reader must pass the shared Bend gate before that
 file or its metadata can be read. A second process under the same account is

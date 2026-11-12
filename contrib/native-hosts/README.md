@@ -1,5 +1,9 @@
 # Native Writ filesystem canaries
 
+The writable public desktop preview has separate [Linux FUSE](linux/public-sync/README.md)
+and [Windows Cloud Files](windows/cloud-files/README.md) bindings and a combined
+release gate. The canary qualifications below remain separate.
+
 Mount one immutable public object as `data`. Let the supervisor's admitted reader
 read it, refuse another native caller, then revoke access through the same Bend
 state machine. These optional contributions implement that bounded slice on

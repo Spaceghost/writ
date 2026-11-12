@@ -1,0 +1,42 @@
+PASS: payload hash: BUILD-INFO.json
+PASS: payload hash: FUSE-LGPL2.txt
+PASS: payload hash: FUSE-LICENSE.txt
+PASS: payload hash: NODE-LICENSE.txt
+PASS: payload hash: README.txt
+PASS: payload hash: Smoke.py
+PASS: payload hash: install.sh
+PASS: payload hash: lib/libfuse3.so.4
+PASS: payload hash: libfuse-source.tar.gz
+PASS: payload hash: node
+PASS: payload hash: node-policy.mjs
+PASS: payload hash: public-sync.mjs
+PASS: payload hash: uninstall.sh
+PASS: payload hash: writ-linux
+PASS: payload hash: BUILD-INFO.json
+PASS: payload hash: FUSE-LGPL2.txt
+PASS: payload hash: FUSE-LICENSE.txt
+PASS: payload hash: NODE-LICENSE.txt
+PASS: payload hash: README.txt
+PASS: payload hash: Smoke.py
+PASS: payload hash: install.sh
+PASS: payload hash: lib/libfuse3.so.4
+PASS: payload hash: libfuse-source.tar.gz
+PASS: payload hash: node
+PASS: payload hash: node-policy.mjs
+PASS: payload hash: public-sync.mjs
+PASS: payload hash: uninstall.sh
+PASS: payload hash: writ-linux
+PASS: per-user application launcher installed
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed default launch hydrates
+PASS: uninstaller aborts when native cleanup refuses
+PASS: failed uninstall retains application and running provider
+PASS: uninstaller stops provider
+PASS: application and launcher removed
+PASS: uninstaller retains exact edited bytes
+PASS: uninstaller retains backing store
+PASS: uninstaller leaves an ordinary file
+ALL LINUX PACKAGE CHECKS PASSED

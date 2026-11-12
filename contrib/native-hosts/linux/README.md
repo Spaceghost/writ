@@ -1,5 +1,9 @@
 # Native Linux WritFS canary
 
+For writable public desktop files and downloadable Linux packages, see the
+[separate public sync preview](public-sync/README.md). This document covers the
+protected-reader canary contribution.
+
 Mount one frozen object as `data`, let its admitted worker read it, and refuse
 another process using the same Unix account. Revoke the object and test both the
 original descriptor and a duplicate. This contribution implements that real

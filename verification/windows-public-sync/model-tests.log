@@ -1,0 +1,31 @@
+PASS: metadata initializes without payload
+PASS: listing exact name and logical size
+PASS: namespace escape refused
+PASS: cannot replace initialized state
+PASS: read exact version and bytes
+PASS: read wrong version refused
+PASS: read corrupted bytes refused
+PASS: replacement sealed against expected base
+PASS: stale backing head retains edit
+PASS: caller cannot rebase implicitly
+PASS: one outstanding writeback
+PASS: cannot mark before persistence
+PASS: wrong persisted artifact refused
+PASS: wrong persisted version refused
+PASS: wrong persisted size refused
+PASS: persistence advances version
+PASS: newer local edit cannot be marked in sync
+PASS: exact persisted edit may be marked
+PASS: mark cannot be replayed
+PASS: failed commit preserves old base
+PASS: retry uses original expected base
+PASS: malformed replacement refused
+PASS: oversize metadata refused
+PASS: zero version refused
+PASS: noncanonical version refused
+PASS: empty-file save is a real replacement
+PASS: matching bytes with wrong version cannot mark
+PASS: mark failure retains confirmed persisted version
+PASS: sequence exhaustion denies further effects
+PASS: version exhaustion never wraps
+ALL PUBLIC SYNC TESTS PASSED

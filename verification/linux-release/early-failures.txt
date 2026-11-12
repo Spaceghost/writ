@@ -1,0 +1,18 @@
+Initial shorter save (before O_TRUNC fix):
+READY version=1 payload_bytes_fetched=0
+FETCH bytes=77 version=1
+RECOVERY 7c2b1b3710caeb53b400fe3e0a9f0967.bin
+COMMIT version=2 sha256=60f637d00223be18ea83f4109055cd34280ff88262bf31c09cb3deca5fe61b71
+STOPPED hydrated files, backing state and recoveries retained
+Observed file retained old suffix after Linux saved this.\n
+
+Directory listing before nullpath fix:
+Traceback (most recent call last):
+  File "/var/home/jack/Projects/writ/contrib/native-hosts/linux/public-sync/Smoke.py", line 211, in <module>
+    exercise(probe)
+    ~~~~~~~~^^^^^^^
+  File "/var/home/jack/Projects/writ/contrib/native-hosts/linux/public-sync/Smoke.py", line 105, in exercise
+    check(os.listdir(root) == ["hello.txt"] and hello.stat().st_size == 77 and hello.stat().st_blocks == 0,
+          ~~~~~~~~~~^^^^^^
+ConnectionAbortedError: [Errno 103] Software caused connection abort: '/var/home/jack/build/writ-linux/smoke-2/ordinary'
+Native process terminated with SIGSEGV at provider.cpp readdir strcmp(path, "/") with a null path.

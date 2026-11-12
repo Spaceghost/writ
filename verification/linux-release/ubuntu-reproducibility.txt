@@ -1,0 +1,2 @@
+MATCH 5565432242fcd79a1c9f77a1fafcbc7ce6e2103a6733276b52d7ccf6aad5bea1 Writ-0.1.0-preview.2-linux-x64-portable.tar.gz
+MATCH 7b99b71717405a4a020e6532022830e8805ee7b5b197b41468141179432fda20 Writ-0.1.0-preview.2-linux-x64-setup.run

@@ -9,6 +9,18 @@ observable behavior to its complete normative contract and unchecked task list.
 
 ## Feature gates
 
+The separate [public Windows sync milestone](changes/add-windows-public-sync/proposal.md)
+has [WPS traceability](traceability/windows-public-sync.md) and a runnable native
+smoke test. Its [native evidence record](../verification/windows-release/README.md)
+covers automated save/recovery/conflict and locking checks. Interactive
+Notepad/Explorer remains pending, and no protected-feature credit is given.
+
+The [Linux public sync and desktop release milestone](changes/add-linux-public-sync-release/proposal.md)
+adds the matching FUSE save/recovery profile and a release gate requiring both
+platforms. [LPS traceability](traceability/linux-public-sync-release.md) links
+native Ubuntu and Fedora package results, including busy-uninstall refusal and
+byte retention. Interactive desktop and protected-host qualification remain open.
+
 | Feature | Required demonstration | Contract | Tasks | Current evidence |
 | --- | --- | --- | --- | --- |
 | WritFS | A scoped mount exposes permitted objects/jobs; scans cause no work or unauthorized disclosure; control replay creates one operation | [WF requirements](changes/add-writfs-namespace/specs/writfs-namespace/spec.md) | [WritFS tasks](changes/add-writfs-namespace/tasks.md) | Design and scenarios only |

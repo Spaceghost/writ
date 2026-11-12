@@ -1,0 +1,40 @@
+Windows x64 cross-build only; no Windows execution.
+Zig 0.16.0 (bundled Clang/MinGW), Linux x86_64.
+All three translation units compiled and PE32+ x86-64 linked, exit 0.
+CldApi import library generated from these SDK exports:
+LIBRARY CldApi.dll
+EXPORTS
+CfRegisterSyncRoot
+CfUnregisterSyncRoot
+CfConnectSyncRoot
+CfDisconnectSyncRoot
+CfCreatePlaceholders
+CfExecute
+CfGetPlaceholderStateFromAttributeTag
+CfGetPlaceholderInfo
+CfGetSyncRootInfoByPath
+CfUpdatePlaceholder
+CfConvertToPlaceholder
+CfSetInSyncState
+
+Compiler-only compatibility declarations for missing MinGW SDK types:
+// Cross-check only: missing SDK declarations in Zig's bundled MinGW headers.
+// These declarations are not shipped or used by the MSVC build.
+#include <windows.h>
+#include <winternl.h>
+#include <winioctl.h>
+typedef struct CORRELATION_VECTOR { CHAR Version; CHAR Vector[129]; } CORRELATION_VECTOR;
+typedef CORRELATION_VECTOR* PCORRELATION_VECTOR;
+typedef USN_RECORD USN_RECORD_V2;
+typedef struct { WORD MinMajorVersion; WORD MaxMajorVersion; } READ_FILE_USN_DATA;
+
+Microsoft win32metadata commit: 15fc870a5e96df7c560877ff30136c0fb5a21e9b
+cfapi.h SHA256: 9926ab4f658d2e84f10c82bb90ef8026fcfc79f16e06cbc4340106cbabae3e89
+
+Final C++ compiler output:
+(empty; exit 0)
+Final linker output:
+(empty; exit 0)
+writ-cloud.exe SHA256: 2e6323829f95eb3747bea4ceccef989a8dfa840e06957d773b8273b1e6afe154
+public-sync.mjs SHA256: ae0bbe4a815e93d08ff45996ab41d61fdda624de267cb6476337effe848a0e09
+public-sync-tests SHA256: f9d4957a4b0106261ef8ad44affe777fa847d92c81c673ee271c280aab8df211

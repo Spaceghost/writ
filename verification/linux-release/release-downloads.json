@@ -1,0 +1,68 @@
+{
+  "releaseUrl": "https://github.com/Spaceghost/writ/releases/tag/desktop-v0.1.0-preview.2",
+  "tag": "desktop-v0.1.0-preview.2",
+  "sourceCommit": "20d39f6979362b9e6f26b818db3db140a1b6f58a",
+  "workflowRun": "https://github.com/Spaceghost/writ/actions/runs/43114127708",
+  "anonymous": true,
+  "allAssetDigestsAndChecksumsVerified": true,
+  "allPortablePayloadHashesVerified": true,
+  "sharedPolicyBytesIdentical": true,
+  "linuxReleasePackagesIdenticalToFedoraTestedBranch": true,
+  "nativeEvidenceVerified": true,
+  "assets": [
+    {
+      "name": "BUILD-INFO-linux.json",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/BUILD-INFO-linux.json",
+      "size": 2289,
+      "sha256": "d1bb584e3ac87f8344a5ee81d780756d37b1f34158b70505352089ed0b15fd47"
+    },
+    {
+      "name": "BUILD-INFO-windows.json",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/BUILD-INFO-windows.json",
+      "size": 1559,
+      "sha256": "85be2549d76f48f41210fd6aaa59a9d039da83afdc79c32ea1c98d90a1561d0a"
+    },
+    {
+      "name": "SHA256SUMS",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/SHA256SUMS",
+      "size": 856,
+      "sha256": "9b1b9ec101afb05c480030b9d78dd80e1fadd8274e061a4e4f7cfddf234b0b20"
+    },
+    {
+      "name": "Writ-0.1.0-preview.2-linux-verification.tar.gz",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-linux-verification.tar.gz",
+      "size": 5539,
+      "sha256": "84b13de147c081412e1c4314515f15aee1e3ad2c50b16058cba9a3724ea17b22"
+    },
+    {
+      "name": "Writ-0.1.0-preview.2-linux-x64-portable.tar.gz",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-linux-x64-portable.tar.gz",
+      "size": 49332914,
+      "sha256": "5565432242fcd79a1c9f77a1fafcbc7ce6e2103a6733276b52d7ccf6aad5bea1"
+    },
+    {
+      "name": "Writ-0.1.0-preview.2-linux-x64-setup.run",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-linux-x64-setup.run",
+      "size": 49333456,
+      "sha256": "7b99b71717405a4a020e6532022830e8805ee7b5b197b41468141179432fda20"
+    },
+    {
+      "name": "Writ-0.1.0-preview.2-windows-verification.zip",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-windows-verification.zip",
+      "size": 17191,
+      "sha256": "badc7aabec6a3a3fe1205ca663294b117bc5d1637f798c8a44934792d6b14bed"
+    },
+    {
+      "name": "Writ-0.1.0-preview.2-windows-x64-portable.zip",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-windows-x64-portable.zip",
+      "size": 34675394,
+      "sha256": "5f2215f29328779dabf72f1795192945efaa528b099b82e65a51d3367c1071a7"
+    },
+    {
+      "name": "Writ-0.1.0-preview.2-windows-x64-setup.exe",
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.2/Writ-0.1.0-preview.2-windows-x64-setup.exe",
+      "size": 23745376,
+      "sha256": "e8c2ee982bdab37f84f0a6e83c253437811322b9ce79d68b3123cf797684f34a"
+    }
+  ]
+}
