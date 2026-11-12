@@ -330,7 +330,7 @@ public:
         while (WaitForSingleObject(stopped, 500) == WAIT_TIMEOUT) {
             try { reconcile(); last_error = 0; }
             catch (const Error& e) {
-                if (e.code != ERROR_SHARING_VIOLATION && e.code != HRESULT_FROM_WIN32(ERROR_SHARING_VIOLATION) &&
+                if (e.code != ERROR_SHARING_VIOLATION && e.code != static_cast<DWORD>(HRESULT_FROM_WIN32(ERROR_SHARING_VIOLATION)) &&
                     e.code != ERROR_FILE_NOT_FOUND && e.code != last_error)
                     event(std::string("DEFERRED ") + e.what() + " code=" + std::to_string(e.code));
                 if (std::string(e.what()) == "Bend transport stopped") throw;

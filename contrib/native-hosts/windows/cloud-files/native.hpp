@@ -256,7 +256,7 @@ public:
         auto h = open(version_path(m.version), GENERIC_READ, FILE_SHARE_READ);
         Meta actual; read_exact(h, &actual, sizeof(actual));
         LARGE_INTEGER size{}; check(GetFileSizeEx(h, &size), "record size");
-        if (!same(m, actual) || size.QuadPart != sizeof(Meta) + m.size) throw Error("version mismatch", ERROR_INVALID_DATA);
+        if (!same(m, actual) || size.QuadPart != static_cast<LONGLONG>(sizeof(Meta) + m.size)) throw Error("version mismatch", ERROR_INVALID_DATA);
         Bytes bytes(m.size); read_exact(h, bytes.data(), m.size);
         if (digest(bytes.data(), bytes.size()) != hash(m)) throw Error("version checksum", ERROR_CRC);
         return bytes;
