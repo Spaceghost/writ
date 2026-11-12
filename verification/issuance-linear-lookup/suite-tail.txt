@@ -1,4 +1,4 @@
 PASS: equality-conflict oracle, topology 63
 Property: 324 checks passed; 320 graph cases, each checked against CPU and Bend parallel producers
 ALL LIBRARY TESTS PASSED
-Verified 3142 core checks; final success marker present.
+Verified 3226 core checks; final success marker present.
