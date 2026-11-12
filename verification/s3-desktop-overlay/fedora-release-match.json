@@ -1,0 +1,5 @@
+{
+  "release": "https://github.com/Spaceghost/writ/releases/tag/desktop-v0.1.0-preview.4",
+  "linuxInstallerAndPortable": "byte-identical to the exact artifacts tested on Fedora in run 43152175554",
+  "prior_evidence": "fedora-package.json"
+}

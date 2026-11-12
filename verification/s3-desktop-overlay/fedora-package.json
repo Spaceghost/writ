@@ -1,0 +1,19 @@
+{
+  "source_commit": "ffac77853f064f3ca47cfd579e2a486af050b9d5",
+  "workflow_run": "https://github.com/Spaceghost/writ/actions/runs/43152175554",
+  "native_host": "Fedora 44 x86-64",
+  "package_origin": "unmodified Ubuntu CI portable archive and per-user installer",
+  "package_checks": "passed",
+  "native_fuse_checks": "passed including held-handle refusal and closing-handle drain",
+  "working_data": "fresh isolated paths; existing user Writ data unchanged",
+  "artifacts": [
+    {
+      "name": "Writ-0.1.0-preview.4-linux-x64-portable.tar.gz",
+      "sha256": "462e75565b394adb30d6cc529cbbd1ba5234172d4e9ef0160c16181108551bf6"
+    },
+    {
+      "name": "Writ-0.1.0-preview.4-linux-x64-setup.run",
+      "sha256": "72ef3990ee1bc2d082ba21f3fe462d9d759c98c1c4bc6147c46abfcf7740952b"
+    }
+  ]
+}

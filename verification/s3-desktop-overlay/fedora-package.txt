@@ -1,0 +1,67 @@
+PASS: payload hash: BUILD-INFO.json
+PASS: payload hash: FUSE-LGPL2.txt
+PASS: payload hash: FUSE-LICENSE.txt
+PASS: payload hash: NODE-LICENSE.txt
+PASS: payload hash: README.txt
+PASS: payload hash: Smoke.py
+PASS: payload hash: drive/Lifecycle.mjs
+PASS: payload hash: drive/Smoke.mjs
+PASS: payload hash: drive/app.mjs
+PASS: payload hash: drive/broker.mjs
+PASS: payload hash: drive/directory-sync.mjs
+PASS: payload hash: drive/drive.mjs
+PASS: payload hash: drive/policy.mjs
+PASS: payload hash: drive/s3.mjs
+PASS: payload hash: drive/ui/app.js
+PASS: payload hash: drive/ui/index.html
+PASS: payload hash: drive/ui/style.css
+PASS: payload hash: install.sh
+PASS: payload hash: lib/libfuse3.so.4
+PASS: payload hash: libfuse-source.tar.gz
+PASS: payload hash: node
+PASS: payload hash: node-policy.mjs
+PASS: payload hash: public-sync.mjs
+PASS: payload hash: uninstall.sh
+PASS: payload hash: writ-linux
+PASS: payload hash: BUILD-INFO.json
+PASS: payload hash: FUSE-LGPL2.txt
+PASS: payload hash: FUSE-LICENSE.txt
+PASS: payload hash: NODE-LICENSE.txt
+PASS: payload hash: README.txt
+PASS: payload hash: Smoke.py
+PASS: payload hash: drive/Lifecycle.mjs
+PASS: payload hash: drive/Smoke.mjs
+PASS: payload hash: drive/app.mjs
+PASS: payload hash: drive/broker.mjs
+PASS: payload hash: drive/directory-sync.mjs
+PASS: payload hash: drive/drive.mjs
+PASS: payload hash: drive/policy.mjs
+PASS: payload hash: drive/s3.mjs
+PASS: payload hash: drive/ui/app.js
+PASS: payload hash: drive/ui/index.html
+PASS: payload hash: drive/ui/style.css
+PASS: payload hash: install.sh
+PASS: payload hash: lib/libfuse3.so.4
+PASS: payload hash: libfuse-source.tar.gz
+PASS: payload hash: node
+PASS: payload hash: node-policy.mjs
+PASS: payload hash: public-sync.mjs
+PASS: payload hash: uninstall.sh
+PASS: payload hash: writ-linux
+PASS: per-user application launcher installed
+PASS packaged native launcher opens the local app with an empty connection state
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed provider starts
+PASS: installed legacy canary hydrates
+PASS: uninstaller aborts when native cleanup refuses
+PASS: failed uninstall retains application and running provider
+PASS: uninstaller stops provider
+PASS uninstaller stops the app and retains ordinary working files
+PASS: application and launcher removed
+PASS: uninstaller retains exact edited bytes
+PASS: uninstaller retains backing store
+PASS: uninstaller leaves an ordinary file
+ALL LINUX PACKAGE CHECKS PASSED

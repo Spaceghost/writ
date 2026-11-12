@@ -1,0 +1,28 @@
+{
+  "platform": "win32",
+  "node": "v22.23.4",
+  "backend": "127.0.0.1",
+  "passed": [
+    "three real S3 connections enforce conditional creation, replacement and competing writes",
+    "metadata-only browse fetches no file payload",
+    "ingress persisted and exact S3 readback verified",
+    "denied copy sends zero destination payload",
+    "approved cross-storage copy preserves original bytes and provenance",
+    "copying or renaming retained output cannot erase the original restriction",
+    "hydration creates a real ordinary desktop file",
+    "normal filesystem save syncs a new verified version",
+    "fresh instance reconstructs full policy and history without fetching bytes",
+    "competing edit stays local and reports conflict",
+    "history restore returns old bytes while retaining newer restrictions",
+    "restored history does not reopen public export",
+    "revoked source cannot be copied through another active destination",
+    "catalog decoder independently reconstructs inherited restrictions",
+    "terminated process leaves a durable pending intent, not a synced file",
+    "new process completes exact pending operation from private recovery",
+    "existing S3 object is imported at its exact ETag without replacing it",
+    "local removal is reported while the exact cloud version remains recoverable",
+    "UI status and activity contain no storage credentials",
+    "Windows config uses account-bound DPAPI protection"
+  ],
+  "prefix": "workspace/acceptance-ab22dfa525534302d8b6"
+}

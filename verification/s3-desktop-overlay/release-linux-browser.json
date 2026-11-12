@@ -1,0 +1,17 @@
+{
+  "browser": "156.0.8078.79",
+  "checks": [
+    "connection form verifies two real storage destinations",
+    "actual copy control displays a pre-upload policy denial",
+    "same copy control persists an approved destination copy",
+    "background watcher observes a real desktop file edit and publishes it",
+    "history control restores actual old bytes without dropping newer restrictions",
+    "activity records both denied and verified operations",
+    "narrow window has no horizontal page overflow",
+    "unauthenticated API calls are refused",
+    "cross-origin mutations are refused",
+    "control API does not expose storage credentials",
+    "no browser runtime errors"
+  ],
+  "errors": []
+}
