@@ -1,0 +1,21 @@
+PASS: stream empty SHA-256
+PASS: stream abc with empty and single-byte chunks
+PASS: stream 55-byte padding boundary
+PASS: stream 56-byte padding boundary
+PASS: stream 63-byte tail
+PASS: stream exact compression block
+PASS: stream update crosses block with retained tail
+PASS: stream 127-byte boundary
+PASS: stream two blocks
+PASS: stream exceeds old whole-file limit
+PASS: stream one MiB independent vector
+PASS: stream rejects odd hex
+PASS: stream rejects non-hex
+PASS: stream rejects noncanonical uppercase hex
+PASS: stream bounds each message
+PASS: stream capacity fails before addition
+PASS: stream forged counter cannot wrap
+PASS: stream tail length must match counter
+PASS: stream finalization rejects inconsistent state
+PASS: stream finalization enforces total bound
+ALL STREAMING SHA-256 TESTS PASSED

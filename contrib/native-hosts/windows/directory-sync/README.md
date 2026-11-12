@@ -82,12 +82,12 @@ This is not a distributed transaction across several paths or a power-loss proof
 
 ## Acceptance status
 
-The native folder/S3 protocol suite passed at source `4a437a0` in
-[run 43138918975](https://github.com/Spaceghost/writ/actions/runs/43138918975),
-including competing conditional publishers and an open local writer during a
-download. The cloud desktop flow and additional root/manifest recovery tests
-are still being validated. Do not infer an execution pass from a successful
-model check or executable build. The HTTPS
+The native folder/S3 and cloud-desktop suites passed at source `7664c20` in
+[run 43140516742](https://github.com/Spaceghost/writ/actions/runs/43140516742),
+including competing conditional publishers, an open writer during a download,
+retained-handle rename/recreated-target exclusion, root replacement, missing
+manifest, desktop offline saves and settings display. Do not infer an execution
+pass from a successful model check or executable build. The HTTPS
 fixture verifies the S3 protocol on Windows without disabling TLS checks; it
 does not establish execution against an actual Cloudflare R2 account. That
 account-specific test requires separately provisioned credentials and remains

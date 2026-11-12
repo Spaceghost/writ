@@ -1,0 +1,43 @@
+PASS: directory unchanged content adopts observed version
+PASS: directory local edit with unchanged remote uploads
+PASS: directory unchanged local with remote edit downloads
+PASS: directory remote ABA version rejects implicit rebase
+PASS: directory distinct concurrent creation conflicts
+PASS: directory identical concurrent creation adopts
+PASS: directory local deletion proposes tombstone
+PASS: directory remote deletion applies only to unchanged local
+PASS: directory delete versus edit preserves conflict
+PASS: directory empty folder creation is explicit
+PASS: directory present base requires version
+PASS: directory folder cannot carry file data
+PASS: directory unknown object kind refused
+PASS: directory initialized transaction cannot be replaced
+PASS: directory file size is bounded
+PASS: directory cannot finish short local hash
+PASS: directory requires exact chunk offset
+PASS: directory chunk cannot exceed declared size
+PASS: directory malformed chunk refused
+PASS: directory streamed edit admitted with exact expected base
+PASS: directory same-version mutation is rejected
+PASS: directory rollback to missing remote is rejected
+PASS: directory cannot acknowledge unadmitted publication
+PASS: directory wrong uploaded checksum cannot advance base
+PASS: directory wrong uploaded version cannot advance base
+PASS: directory exact conditional publication advances baseline
+PASS: directory publication acknowledgement cannot replay
+PASS: directory remote change selected only after local hashing
+PASS: directory cannot apply remote before verifying its bytes
+PASS: directory short remote body rejected
+PASS: directory corrupt remote body rejected
+PASS: directory application needs local recheck
+PASS: directory changed local length blocks remote application
+PASS: directory changed local content blocks remote application
+PASS: directory exact frozen recheck admits remote effect
+PASS: directory wrong applied artifact rejected
+PASS: directory exact applied artifact advances baseline
+PASS: directory application cannot replay
+PASS: directory rejects noncanonical framing
+PASS: directory maximum revision remains adoptable
+PASS: directory maximum revision remains downloadable
+PASS: directory maximum revision rejects further upload
+ALL DIRECTORY SYNC TESTS PASSED

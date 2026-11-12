@@ -64,6 +64,16 @@ try {
     Assert ((Text ([WritCloudWindow]::GetDlgItem($connection, 420))).StartsWith('https://localhost:')) 'Storage form shows configured endpoint'
     Assert ((Text ([WritCloudWindow]::GetDlgItem($connection, 425))).Length -eq 0) 'Stored secret is not exposed in storage form'
     Snapshot $connection 'cloud-connection'
+    & $ProbeExe value ([WritCloudWindow]::GetDlgItem($connection, 424)).ToInt64() 'writ-native-fixture'
+    if ($LASTEXITCODE) { throw 'Cannot fill fixture access ID through UI Automation.' }
+    & $ProbeExe value ([WritCloudWindow]::GetDlgItem($connection, 425)).ToInt64() 'public-disposable-fixture-secret'
+    if ($LASTEXITCODE) { throw 'Cannot fill fixture secret through UI Automation.' }
+    & $ProbeExe invoke ([WritCloudWindow]::GetDlgItem($connection, 1)).ToInt64()
+    if ($LASTEXITCODE) { throw 'Cannot submit storage connection through UI Automation.' }
+    Wait-For { (Status) -eq 'Files are up to date' } 'Connect form saves credentials and starts real cloud sync'
+    Invoke 111
+    Wait-For { [WritCloudWindow]::FindWindow('WritConnection.7DDDA5C1', 'Writ — Connect storage') -ne [IntPtr]::Zero } 'Storage settings reopen'
+    $connection = [WritCloudWindow]::FindWindow('WritConnection.7DDDA5C1', 'Writ — Connect storage')
     [void][WritCloudWindow]::PostMessage($connection, 0x10, [IntPtr]::Zero, [IntPtr]::Zero)
     Wait-For { (Status) -eq 'Syncing paused' } 'Cancel storage settings leaves sync paused'
     Invoke 103

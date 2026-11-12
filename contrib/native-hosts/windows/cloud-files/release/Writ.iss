@@ -42,7 +42,7 @@ Source: "{#Payload}\writ-cloud.exe"; DestName: "writ-provider-upgrade.exe"; Flag
 [Icons]
 Name: "{group}\Writ"; Filename: "{app}\Writ.exe"; WorkingDir: "{app}"
 Name: "{group}\Quit Writ"; Filename: "{app}\Writ.exe"; Parameters: "--quit"
-Name: "{group}\Open Writ folder"; Filename: "{win}\explorer.exe"; Parameters: """{%USERPROFILE}\Writ"""
+Name: "{group}\Open Writ folder"; Filename: "{app}\Writ.exe"; Parameters: "--open-folder"
 Name: "{group}\Read me"; Filename: "{app}\README.txt"
 
 [Run]

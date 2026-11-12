@@ -115,6 +115,60 @@ figure {
 .source-link span {
   font-size: 20px;
 }
+.download-section {
+  padding: 72px 0;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 24px;
+}
+.download-heading {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 64px;
+  align-items: end;
+  margin-bottom: 40px;
+}
+.download-heading h2 {
+  font: normal clamp(30px, 3.4vw, 46px) / 1.12 var(--serif);
+  letter-spacing: -1.5px;
+  margin-top: 16px;
+}
+.download-heading > p,
+.download-grid p {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+.download-grid {
+  display: grid;
+  grid-template-columns: 1.55fr 1fr;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+.download-main { padding: 32px 44px 32px 0; }
+.download-other { border-left: 1px solid var(--line); padding: 32px 0 32px 36px; }
+.download-grid h3 { font-size: 22px; margin: 14px 0 16px; font-weight: 500; }
+.download-grid .text-link { margin-top: 20px; }
+.download-grid .small-link { margin-top: 20px; }
+.download-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 22px; margin: 26px 0; }
+.download-actions .text-link { margin: 0; }
+.download-steps { padding-left: 20px; font-size: 13px; line-height: 1.7; color: var(--muted); }
+.download-steps li { padding-left: 7px; margin: 12px 0; }
+.download-steps strong { font-weight: 500; color: var(--ink); }
+.download-command { margin: 18px 0; }
+.download-command code { overflow-wrap: anywhere; font-size: 12px; }
+.download-other > p:last-of-type { margin-top: 24px; }
+.download-footnote { display: flex; gap: 40px; margin-top: 22px; align-items: start; }
+.download-footnote p { flex: 1; font-size: 12px; color: var(--muted); line-height: 1.7; }
+.download-footnote > div { display: grid; gap: 12px; flex-shrink: 0; font-size: 12px; }
+.download-footnote a:hover { text-decoration: underline; }
+@media (max-width: 800px) {
+  .download-heading, .download-grid { grid-template-columns: 1fr; gap: 24px; }
+  .download-main { padding: 28px 0; }
+  .download-other { border-left: 0; border-top: 1px solid var(--line); padding: 28px 0; }
+  .download-footnote { flex-direction: column; gap: 20px; }
+  .download-heading h2 { letter-spacing: -1px; }
+  .download-section { padding: 48px 0; }
+}
 .hero {
   display: grid;
   grid-template-columns: 1.1fr 1fr;

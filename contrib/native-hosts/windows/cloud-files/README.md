@@ -1,4 +1,27 @@
-# Save a public file in the Windows Writ folder
+# Writ for the Windows notification area and desktop
+
+Open **Writ** from the Start menu or run `Writ.exe` from the complete portable
+ZIP. The notification-area icon opens an activity applet; the desktop window
+shows recent operations, pause/resume, recovery, diagnostics and an opt-in
+Windows sign-in preference. Closing the window keeps Writ running; Quit waits
+for its owned provider to exit. The installer upgrades an actual preview.2
+installation without unregistering its data during replacement.
+
+Choose **Settings → Connect / manage storage** for
+[S3-compatible folder syncing, including R2 endpoints](../directory-sync/README.md).
+That profile keeps nested folders and multiple files fully hydrated in
+`%USERPROFILE%\Writ Cloud`. The existing local Files On-Demand demo below remains
+available when no cloud connection is configured. The desktop does not grant a
+protected-data profile to ordinary Windows editors.
+
+Native desktop controls, tray callback, provider lifecycle, real HTTPS S3
+transfers, repeated packaging and installer lifecycle pass in
+[run 43140516742 at 7664c20](https://github.com/Spaceghost/writ/actions/runs/43140516742).
+The tray test posts the documented Shell keyboard callback; it does not claim
+physical taskbar input. Separate user-session/editor and full protected-host
+qualification remain open.
+
+## Save a public file in the local Windows Writ folder
 
 Open `%USERPROFILE%\Writ\hello.txt` in Notepad, edit, and save. After a
 `COMMIT` line, stop the provider and start it on an empty `Writ-fresh` directory
@@ -10,7 +33,7 @@ See the [native evidence](../../../../verification/windows-release/README.md).
 
 Download the installer or complete portable ZIP from
 [GitHub Releases](https://github.com/Spaceghost/writ/releases). Run the installed
-Start Writ shortcut, or extract the ZIP and run `writ-cloud.exe`; Node and the
+Writ shortcut, or extract the ZIP and run `Writ.exe`; Node and the
 Bend-generated policy are included. The [release pathway](release/README.md)
 describes version tags, pinned inputs, repeated builds and package verification.
 

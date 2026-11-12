@@ -625,10 +625,16 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
         int count = 0; wchar_t** args = CommandLineToArgvW(GetCommandLineW(), &count);
         writ::check(args != nullptr, "command line");
         std::wstring option = count == 2 ? args[1] : L"";
-        bool valid = count == 1 || (count == 2 && (option == L"--background" || option == L"--quit" || option == L"--unregister-startup"));
+        bool valid = count == 1 || (count == 2 && (option == L"--background" || option == L"--quit" || option == L"--unregister-startup" || option == L"--open-folder"));
         LocalFree(args);
-        if (!valid) throw writ::Error("Use Writ.exe [--background | --quit | --unregister-startup]", ERROR_INVALID_PARAMETER);
-        if (option == L"--unregister-startup") { set_startup(false); result = 0; }
+        if (!valid) throw writ::Error("Use Writ.exe [--background | --quit | --open-folder | --unregister-startup]", ERROR_INVALID_PARAMETER);
+        if (option == L"--open-folder") {
+            auto folder = user_path(CSIDL_PROFILE, writ_sync::Connection::load() ? L"Writ Cloud" : L"Writ");
+            if (!fs::exists(folder)) throw writ::Error("Start Writ once to create your sync folder", ERROR_PATH_NOT_FOUND);
+            auto opened = reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", folder.c_str(), nullptr, nullptr, SW_SHOWNORMAL));
+            writ::check(opened > 32, "Open Writ folder"); result = 0;
+        }
+        else if (option == L"--unregister-startup") { set_startup(false); result = 0; }
         else if (option == L"--quit") {
             Handle signal(OpenEventW(EVENT_MODIFY_STATE, FALSE, quit_name));
             if (!signal.valid()) {

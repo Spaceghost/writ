@@ -1,0 +1,26 @@
+PASS: namespace root folder admitted
+PASS: namespace nested file has directory parent
+PASS: namespace rejects duplicate folded key
+PASS: namespace rejects missing directory parent
+PASS: namespace file cannot contain descendants
+PASS: namespace tombstone cannot contain live descendants
+PASS: namespace deleted descendants survive parent removal
+PASS: namespace rejects malformed native identity
+PASS: namespace rejects empty identity
+PASS: namespace rejects unknown object kind
+PASS: namespace rejects entry beyond capacity
+PASS: namespace seal confirms complete catalog
+PASS: namespace cannot append after seal
+PASS: namespace cannot seal twice
+PASS: namespace child cannot claim root parent
+PASS: namespace cannot claim unrelated directory parent
+PASS: namespace checks new child without mutating catalog
+PASS: namespace commits admitted new child
+PASS: namespace cannot remove folder with live descendants
+PASS: namespace cannot replace nonempty folder with file
+PASS: namespace rejects new spelling colliding with existing folded name
+PASS: namespace new entry begins at revision one
+PASS: namespace publication requires a nonzero revision
+PASS: namespace cannot mutate an unsealed listing
+24 directory namespace checks passed
+

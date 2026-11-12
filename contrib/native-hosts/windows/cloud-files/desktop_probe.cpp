@@ -52,7 +52,7 @@ int wmain(int argc, wchar_t** argv) {
     int result = 1;
     try {
         check(initialized, "COM");
-        if (argc != 3) throw std::runtime_error("Usage: desktop-probe invoke|toggle|settings|dump HWND_DECIMAL");
+        if (argc != 3 && argc != 4) throw std::runtime_error("Usage: desktop-probe invoke|toggle|settings|dump|value HWND_DECIMAL [PUBLIC_TEST_VALUE]");
         size_t used = 0; auto value = std::stoull(argv[2], &used);
         if (used != wcslen(argv[2])) throw std::runtime_error("Invalid HWND");
         HWND window = reinterpret_cast<HWND>(static_cast<UINT_PTR>(value));
@@ -65,6 +65,7 @@ int wmain(int argc, wchar_t** argv) {
         ComPtr<IUIAutomationElement> element;
         check(automation->ElementFromHandle(window, &element), "element from HWND");
         std::wstring operation(argv[1]);
+        if ((operation == L"value") != (argc == 4)) throw std::runtime_error("Unexpected probe arguments");
         if (operation == L"invoke") {
             ComPtr<IUIAutomationInvokePattern> invoke;
             check(element->GetCurrentPatternAs(UIA_InvokePatternId, IID_PPV_ARGS(&invoke)), "invoke pattern");
@@ -84,6 +85,10 @@ int wmain(int argc, wchar_t** argv) {
             ComPtr<IUIAutomationSelectionItemPattern> selection;
             check(tab->GetCurrentPatternAs(UIA_SelectionItemPatternId, IID_PPV_ARGS(&selection)), "selection pattern");
             check(selection->Select(), "select settings");
+        } else if (operation == L"value") {
+            ComPtr<IUIAutomationValuePattern> value_pattern;
+            check(element->GetCurrentPatternAs(UIA_ValuePatternId, IID_PPV_ARGS(&value_pattern)), "value pattern");
+            check(value_pattern->SetValue(argv[3]), "set public fixture value");
         } else if (operation == L"dump") dump(automation.Get(), element.Get());
         else throw std::runtime_error("Unknown probe operation");
         result = 0;

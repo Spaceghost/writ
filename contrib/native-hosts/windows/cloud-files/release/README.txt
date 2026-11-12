@@ -1,42 +1,69 @@
-Writ public Files On-Demand preview for Windows x64
+Writ desktop preview for Windows x64
 
-Install Writ-<version>-windows-x64-setup.exe for the current user, then choose
-Start Writ in the Start menu. Or extract the ENTIRE portable ZIP and double-click
-writ-cloud.exe. Node is included. No compiler, PowerShell, WinFsp, or separate
-Node installation is needed to use Writ. Keep the provider window open.
+Install Writ-<version>-windows-x64-setup.exe for the current user, then open
+Writ from the Start menu. Or extract the ENTIRE portable ZIP and double-click
+Writ.exe. The provider, Node and Bend policy runtime are included.
 
-Open %USERPROFILE%\Writ\hello.txt in Notepad. Edit and save. Wait for COMMIT in
-the provider window before stopping Writ. The file begins as a metadata-only
-placeholder and loads from the local backing store when opened.
+Click the Writ icon in the Windows notification area for activity, Open folder,
+Pause/Resume and Settings. Closing the main window keeps sync running. Quit
+stops it. Start at Windows sign-in is an opt-in setting.
 
-This preview syncs one PUBLIC test file, limited to 64 KiB, to an independent
-local backing store. It is not a cloud account or a protected-data product.
-Windows 10/11 x64 with local NTFS and the Cloud Files filter is required.
-The application and installer are unsigned; Windows may show a reputation prompt.
+CONNECT YOUR STORAGE
+In Settings choose Connect / manage storage. Enter an HTTPS S3 endpoint,
+bucket, dedicated prefix, region, access key ID and secret. Cloudflare R2 uses
+its account S3 API endpoint and region auto. Keys are saved in Windows
+Credential Manager. OneDrive account sign-in is not included yet.
 
-Start Writ:       writ-cloud.exe start
-Stop Writ:        writ-cloud.exe stop
-Remove its root:  writ-cloud.exe cleanup
-Show version:    writ-cloud.exe version
-Show advanced commands: writ-cloud.exe --help
+Open folder now opens %USERPROFILE%\Writ Cloud. Add files and nested folders.
+They stay fully available offline. Writ syncs with other Writ clients using
+the same bucket/prefix; it does not mirror arbitrary existing S3 objects.
+The current bounds are 2048 tracked paths (including deletion records) and
+1 GiB per file. State, staging and recovery must be on the same local NTFS
+volume as the sync folder. Symlinks, junctions, hard links, short-name aliases
+and ambiguous Windows filenames are refused. Large-folder throughput is not
+qualified; scans are serial and polling-based.
 
-The backing store and recovery copies live under %LOCALAPPDATA%\WritDemo\store.
-Failed/conflicting edits remain local and have independent recovery copies.
-Uninstall stops Writ and removes its default sync registration. Hydrated files,
-the backing store and recovery copies are retained. Clean unhydrated placeholders
-are removed by Windows. Close editors before uninstall. If cleanup fails,
-uninstall stops without deleting the application. If you manually registered
-custom roots with 'serve', stop and remove those roots before uninstalling.
+Needs attention means at least one operation did not finish. Local edits are
+retained on failures and conflicts. Differing concurrent edits are never
+silently overwritten. Preserve your local edit separately before resolving a
+conflict with the desired remote version. Settings opens recovery copies and
+diagnostics. Recovery retains displaced files before a remote replacement or
+deletion; its 1024-item limit requires reviewing/moving older copies. Remote
+content objects and deletion records are retained without automatic cleanup.
 
-To run the full automated native smoke test, use PowerShell 7.4 or newer:
-  pwsh -File .\Smoke.ps1 -PackageDir .
-For the actual Notepad save check:
-  pwsh -File .\Smoke.ps1 -PackageDir . -InteractiveNotepad
-Automated CI does not claim an interactive Notepad or Explorer UI test.
+Disconnect removes the active connection setting and its credential; files
+stay on this device and in storage. Connecting another bucket/prefix uses a
+separate history and syncs the files already present in Writ Cloud.
 
-BUILD-INFO.json records the source commit, dependencies and compiler environment.
-SHA256SUMS inside this directory covers the package contents. The separate release
-SHA256SUMS covers the downloaded installer, portable ZIP and evidence archive.
-GitHub: https://github.com/Spaceghost/writ
-Release instructions: contrib/native-hosts/windows/cloud-files/release/README.md
+LOCAL FILES ON DEMAND
+Without a cloud connection, Open folder opens %USERPROFILE%\Writ. Its hello.txt
+is a public test file, up to 64 KiB, backed by a local store. It begins as a
+placeholder and hydrates when opened. Unopened placeholders need Writ running.
+This existing preview.2 behavior is separate from fully hydrated cloud folders.
+
+These are unsigned Windows 10/11 x64 previews. Local NTFS is required; the local
+placeholder demo also requires the Windows Cloud Files filter. Windows may
+show a reputation prompt. Protected-data host qualification is incomplete.
+The S3 protocol is tested against a real HTTPS fixture; an actual Cloudflare R2
+account execution is recorded separately and has not yet been performed.
+
+Uninstall stops the desktop/provider and removes the local demo registration.
+Hydrated files, cloud-folder files, private history and recovery are retained.
+Clean unhydrated local-demo placeholders are removed by Windows. Close editors
+before uninstall. A failed cleanup aborts uninstall without deleting the app.
+Disconnect first if you want its active cloud credential removed too.
+
+Writ.exe --quit          Stop the running desktop app
+Writ.exe --open-folder   Open the currently selected local/cloud folder
+writ-cloud.exe --help    Advanced local Files On-Demand commands
+writ-sync.exe           Run the configured folder sync in a console
+
+BUILD-INFO.json records source and compiler/dependency identities. SHA256SUMS
+inside the bundle covers its contents; release SHA256SUMS covers downloads.
+Native desktop and HTTPS sync tests are retained with each release. Interactive
+Notepad/Explorer editing and complete protected-host acceptance remain separate.
+
+Project: https://spacegho.st/writ/
+Source and issues: https://github.com/Spaceghost/writ
+S3 protocol/limits: contrib/native-hosts/windows/directory-sync/README.md
 Node's license and third-party notices are in NODE-LICENSE.txt.
