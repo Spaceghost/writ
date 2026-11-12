@@ -93,7 +93,8 @@ Consider a separate local `AF_UNIX` `SOCK_SEQPACKET` channel for each explicitly
 provisioned authority role, with `SO_PASSPIDFD` enabled on the receiver before
 it accepts messages. Josh selected this restricted profile in
 [board question 24](../../../docs/superpowers/records/questions/q24.html)
-(`select-scm-pidfd`). It is a selected transport, not an implemented or
+(`select-scm-pidfd`, recorded on the board; its answer files are kept out of
+the tree, so the committed question page is the in-tree reference). It is a selected transport, not an implemented or
 qualified authentication method: the Bend attribution
 ([`LocalChannel.bend`](../../../hosts/linux/monitor/LocalChannel.bend), Task 1)
 and the bounded native receiver

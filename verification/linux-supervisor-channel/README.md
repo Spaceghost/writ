@@ -18,7 +18,9 @@ session, no authenticated bridge, and no host qualification.
 
 Josh selected this transport in
 [board question 24](../../docs/superpowers/records/questions/q24.html)
-(answer `select-scm-pidfd`), following the observation recorded under
+(answer `select-scm-pidfd`; the answer is recorded on the board, whose answer
+files are deliberately kept out of the tree, so `q24.html` is the in-tree
+reference), following the observation recorded under
 [board question 23](../../docs/superpowers/records/questions/q23.html) and the
 [owned-process channel identity record](../linux-channel-identity/README.md).
 The [local supervisor profile](../../openspec/changes/add-linux-host/local-supervisor-profile.md)
@@ -31,7 +33,7 @@ now says the transport is *selected*; it does not say *implemented end to end*.
 | Bend attribution | [`LocalChannel.bend`](../../hosts/linux/monitor/LocalChannel.bend), [`LocalChannelTests.bend`](../../hosts/linux/monitor/LocalChannelTests.bend) | 8 checks, [focused run](bend-focused.txt) |
 | Native receiver | [`supervisor_channel.c`](../../contrib/native-hosts/linux/supervisor_channel.c), [`.h`](../../contrib/native-hosts/linux/supervisor_channel.h), [`supervisor-channel-test.c`](../../contrib/native-hosts/linux/supervisor-channel-test.c) | 27 cases, [one run](native-run.txt), exit 0 |
 | Full Bend suite | `Tests.bend` | `ALL LIBRARY TESTS PASSED`; [`check_core.py` verified 3136 core checks](bend-suite-tail.txt) |
-| Proof | `PROOF.bend` | [`ALL PROOFS CHECK`](proof-tail.txt), without `--verdict` |
+| Proof | `PROOF.bend` | [`ALL PROOFS CHECK`](proof-tail.txt) without `--verdict`; with the Lean kernel, [`--verdict` also exited 0](verdict.txt) |
 
 The test creates every process, socket and descriptor it uses, requests no
 privilege (`CapEff` was zero), signals nobody and mounts nothing. It requires
@@ -46,17 +48,19 @@ Bend (`LocalChannelTests.bend`): a provisioned role attributes to its
 principal; an unknown role index, an unknown sender, each malformed reason and a
 duplicate or zero role index deny; an attributed source role submits a source
 approval; a destination role cannot submit source and leaves state unchanged;
-a principal named in the payload is ignored.
+`attribute` has no payload parameter, so payload independence is structural, by
+signature; the "payload-named principal is ignored" check only confirms that
+role 2 maps to principal 102. No Bend test decodes a payload or models a transfer.
 
-Native (27 PASS lines; the names below are the cases that carry the two new
-scenarios):
+Native (27 PASS lines; `transferred_endpoint_attributes_receiver_role` and
+`unregistered_sender_unknown` assert the two new scenarios, the others support them):
 
 | Case | Observed |
 | --- | --- |
 | `transferred_endpoint_attributes_receiver_role` | After an endpoint transfer, the record is attributed to the receiving process's registered role |
-| `reaped_role_sender` | A record queued by a role process that was then reaped is still attributed to that role |
-| `unregistered_sender_unknown` | A sender with no registered lifetime yields `UNKNOWN_SENDER` |
-| `missing_sender_without_enable` | A receiver without `SO_PASSPIDFD` gets no sender and does not attribute |
+| `reaped_role_sender` | Supporting only: a record queued before the sender was reaped is FROM_ROLE 1 or SENDER_ERROR (either accepted) |
+| `unregistered_sender_unknown` | Asserts the unprovisioned-sender scenario: no registered lifetime yields `UNKNOWN_SENDER`. That no `from` is attached is structural (`Denied` carries no principal) |
+| `missing_sender_without_enable` | Supporting, a receiver-configuration denial: without `SO_PASSPIDFD` there is no sender and nothing is attributed; not the unprovisioned-sender scenario |
 | `rights_rejected`, `reject_then_accept` | `SCM_RIGHTS` is rejected, the installed descriptors are closed, and a later good record is accepted |
 | `payload_truncated`, `control_truncated`, `payload_at_max_attributed` | `MSG_TRUNC` and `MSG_CTRUNC` fail closed; a record of the 4096-byte maximum is attributed |
 | `unexpected_control_passcred` | `SCM_CREDENTIALS` (real kernel control) is rejected as unexpected control |
@@ -106,6 +110,8 @@ maybe-uninitialised variable. The mutants were re-run on this tree.
   messages are queued.
 - One kernel (Linux 7.2.9), one architecture, 64-bit `ino_t`. Older kernels and
   32-bit `ino_t` need separate evidence. No Genode, Windows or Drift evidence.
-- The proof ran without `--verdict` (no Lean kernel available here), so it
-  checks the proof terms but not mathematical validity. No GPU was involved;
-  the Bend runs are CPU.
+- The proofs cover the existing laws; this change adds no law. The `--verdict`
+  run used a restored BendTT kernel (SHA-256
+  `e365eba1741602bb45261aa0eb6bd2c6f5db885d4b9d4cd603a27bc3c5a9ed18`),
+  `LEAN_STACK_SIZE_KB=4194304`, on the e0d985be tree, exit 0, `ALL PROOFS CHECK`.
+  No GPU was involved; the Bend runs are CPU.

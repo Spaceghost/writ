@@ -132,17 +132,30 @@ is native kernel-behaviour evidence for the candidate transport only:
 LH-011–LH-017 requirement.
 
 The [supervisor channel receiver record](../../verification/linux-supervisor-channel/README.md)
-maps two LH-011 scenarios to named tests. "A transferred administrative endpoint
-does not carry its role": `supervisor-channel-test.c` cases
-`transferred_endpoint_attributes_receiver_role` and `reaped_role_sender`, and
-[LocalChannelTests.bend](../../hosts/linux/monitor/LocalChannelTests.bend) check
-`LocalChannel provisioned role attributes to its principal` and
-`LocalChannel payload-named principal is ignored; sender role decides`.
-"An unprovisioned sender is not attributed": `unregistered_sender_unknown` and
-`missing_sender_without_enable`, and the Bend checks `LocalChannel unknown
-sender denies` and `LocalChannel unknown role index denies`. These are
-receiver-level evidence only. Pidfs `dev` matching, capable-sender and exec
-behaviour, namespace and ptrace isolation, supervisor wiring, protected role
+maps two LH-011 scenarios to named tests.
+
+"A transferred administrative endpoint does not carry its role": the asserting
+test is `supervisor-channel-test.c` case `transferred_endpoint_attributes_receiver_role`
+(a record sent by the second process is attributed to role 2). `reaped_role_sender`
+is supporting evidence only: it covers a record queued before the sender was
+reaped and accepts either FROM_ROLE 1 or SENDER_ERROR. On the Bend side,
+[LocalChannelTests.bend](../../hosts/linux/monitor/LocalChannelTests.bend)
+`LocalChannel provisioned role attributes to its principal` and `LocalChannel
+payload-named principal is ignored; sender role decides` show only role-to-principal
+mapping. `attribute` has no payload parameter, so payload independence is
+structural, by signature; the second check confirms only that role 2 maps to
+102. No Bend test models a transfer or decodes a payload.
+
+"An unprovisioned sender is not attributed": the asserting test is
+`unregistered_sender_unknown` (UNKNOWN_SENDER), with the Bend checks `LocalChannel
+unknown sender denies` and `LocalChannel unknown role index denies`. That no
+`from` is attached is structural: `Denied` carries no principal, and no check
+builds an issuance. `missing_sender_without_enable` is supporting evidence, a
+receiver-configuration denial (no `SO_PASSPIDFD`), not a sender without a
+retained role.
+
+These are receiver-level evidence only. Pidfs `dev` matching, capable-sender and
+exec behaviour, namespace and ptrace isolation, supervisor wiring, protected role
 provisioning and native host qualification remain reviewed-only gaps.
 
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)

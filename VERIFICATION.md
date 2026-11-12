@@ -1165,7 +1165,7 @@ The [supervisor channel receiver record](verification/linux-supervisor-channel/R
 covers the selected per-message `SCM_PIDFD` transport: a Bend role-attribution
 function (8 checks) and a bounded native receiver (27 cases, 20 repeats, nine
 failing mutants) on one unprivileged Linux 7.2.9 run. The two are not connected,
-and the record establishes no capable-sender, exec, isolation, wiring or host
+and the existing-law proof also passed with `--verdict`. The record establishes no capable-sender, exec, isolation, wiring or host
 qualification result.
 
 The [negotiation revision boundary record](verification/negotiation-revision/README.md)
