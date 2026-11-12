@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Should the local supervisor channel use per-message kernel sender identity?</title>
+<meta name="writ-topic" content="linux-authenticated-bridge">
+<style>
+:root{--bg:#f7f6f2;--fg:#1d2230;--muted:#5b6474;--line:#d9dbe0;--accent:#15655c;--soft:#e2efec}
+@media(prefers-color-scheme:dark){:root{--bg:#15181f;--fg:#e6e4dc;--muted:#a4a9b4;--line:#333945;--accent:#5fc2b2;--soft:#1d3330}}
+body{margin:0;padding:1rem 1.2rem 2rem;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem}h1{font-size:1.3rem}h2{font-size:1.05rem;margin-top:1.3rem}p{max-width:72ch}a{color:var(--accent)}code{background:var(--soft);padding:.05em .25em;border-radius:4px}fieldset{border:1px solid var(--line);border-radius:8px;padding:.6rem 1rem;margin:1rem 0}legend{font-weight:600}label{display:block;margin:.8rem 0;cursor:pointer}input{margin-right:.5rem}textarea{width:100%;box-sizing:border-box;min-height:5rem;font:inherit;padding:.5rem;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px}button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:6px;padding:.5rem 1rem}.note{color:var(--muted);font-size:.9rem}
+</style></head><body>
+<h1>Should the local supervisor channel use per-message kernel sender identity?</h1>
+<p>Josh, the <a href="https://github.com/Spaceghost/writ/blob/2ad65eeb/verification/linux-channel-identity/README.md">owned-process test you approved in question 23</a> passed on Linux 7.2.9. When one child handed its socket end to another, the kernel's per-message sender handle (<code>SCM_PIDFD</code>) named the child that actually sent each message, not the original holder. A message queued just before its sender exited still named that sender, and malformed, oversized or extra control data was rejected without leaking descriptors.</p>
+<p>The <a href="https://github.com/Spaceghost/writ/blob/2ad65eeb/openspec/changes/add-linux-host/local-supervisor-profile.md">local supervisor profile</a> still lists this mechanism as only a <em>candidate</em>. The next bridge step needs a decision: do we select it for the protected administrator and worker channels, so we can build the native receiver?</p>
+<h2>What selecting it would mean</h2>
+<p>We would build a small native receiver under <code>contrib/native-hosts/linux/</code>, using the same receive rules the test exercised. It would only translate facts. It would compare each message's sender handle against the process lifetimes the supervisor launched and retained, then hand Bend a bounded fact: "message from retained role N", "unknown sender" or "malformed". Every decision would stay in Bend, including which role may do what, the issuer, revocation and the clock. Testing would use only our own disposable processes, as in question 23.</p>
+<p>The profile would be restricted to a 64-bit kernel with pidfs. If the kernel lacks the needed semantics, the receiver refuses to start rather than falling back to user IDs, process numbers or socket possession.</p>
+<h2>What it would not establish</h2>
+<p>A sender handle names a process lifetime, not a person, a program image or a role. A process holding <code>CAP_SYS_ADMIN</code> or <code>CAP_SETUID</code> in the relevant namespace can supply other credentials, and a process can exec a different program while keeping its lifetime. The profile therefore still needs protected role provisioning, no capabilities for untrusted senders, namespace and ptrace isolation, and a decision about exec. None of that is built yet, and choosing the transport does not qualify a host.</p>
+<p class="note">Alternatives: keep the transport open and continue only synthetic model work, or evaluate another mechanism first, such as one inherited socket pair per role created at launch, which avoids passing endpoints at all.</p>
+<form method="post" action="/questions/q24/answer">
+<fieldset><legend>How should we proceed?</legend>
+<label><input type="radio" name="direction" value="select-scm-pidfd" required>Select per-message sender identity (restricted 64-bit pidfs profile) and build the native receiver, testing with our own disposable processes only.</label>
+<label><input type="radio" name="direction" value="synthetic-only">Keep the transport unselected; continue only synthetic model work for now.</label>
+<label><input type="radio" name="direction" value="other">Use another approach; see my notes.</label>
+</fieldset>
+<label>Notes<textarea name="text"></textarea></label><button type="submit">Send answer</button>
+</form>
+</body></html>
