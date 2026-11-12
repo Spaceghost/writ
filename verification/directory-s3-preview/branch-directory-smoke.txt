@@ -1,0 +1,99 @@
+**********************
+PowerShell transcript start
+Start time: 20261112024557
+Username: runnervmm7ud1\runneradmin
+RunAs User: runnervmm7ud1\runneradmin
+Configuration Name:
+Machine: runnervmm7ud1 (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -command . 'D:\a\_temp\088cd8b9-cfcd-4927-a172-d73d86e6f47c.ps1'
+Process ID: 7588
+PSVersion: 7.6.9
+PSEdition: Core
+GitCommitId: 7.6.9
+OS: Microsoft Windows 10.0.26100
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.4
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+PASS: disposable fixture certificate trusted without changing application TLS validation
+PASS: HTTPS S3 fixture ready
+PASS: Connection and credentials saved through native CLI
+PASS: Client A expected exit (0)
+PASS: Client B expected exit (0)
+PASS: Multi-chunk binary download matches independent SHA-256
+PASS: Unicode nested filename round trips
+PASS: Empty directory syncs
+PASS: Client A expected exit (0)
+PASS: Client B expected exit (0)
+PASS: Offline edit downloads
+PASS: Remote deletion removes only unchanged local file
+PASS: Rename creates destination
+PASS: Rename tombstones source
+PASS: Replaced and deleted files have recovery copies
+PASS: Client A expected exit (0)
+PASS: Client B expected exit (2)
+PASS: Conflict preserves local bytes
+PASS: Client B expected exit (0)
+PASS: Client A expected exit (0)
+PASS: Client B expected exit (2)
+PASS: Corrupt remote body cannot replace local data
+PASS: Client B expected exit (0)
+PASS: Client A expected exit (2)
+PASS: Failed manifest publication retains edited file
+PASS: Client A expected exit (0)
+PASS: Client B expected exit (0)
+PASS: Client A expected exit (0)
+PASS: Download reached deterministic local-race barrier
+PASS: Writer-race client exits
+PASS: Already-open writer blocks remote replacement
+PASS: Open writer bytes survive download race
+PASS: Client B expected exit (0)
+PASS: A reached conditional publication barrier
+PASS: Client B expected exit (0)
+PASS: Competing publisher exits
+PASS: Losing conditional publisher reports conflict
+PASS: Independent S3 oracle rejected stale If-Match
+PASS: Losing publisher keeps its local version
+PASS: Client B expected exit (2)
+PASS: Reparse target untouched
+PASS: Real HTTPS requests independently authenticated with SigV4
+PASS: Cloud desktop appears
+PASS: Desktop completes initial remote folder hydration
+PASS: Desktop owns real multi-file remote sync
+PASS: Remote scope shown in desktop
+PASS: Cloud window screenshot captured
+
+PASS: Cloud pause waits for provider exit
+
+PASS: Cloud resume publishes offline desktop edit
+
+
+PASS: Storage settings open after graceful pause
+PASS: Storage form shows configured endpoint
+PASS: Stored secret is not exposed in storage form
+PASS: Cloud window screenshot captured
+
+
+
+PASS: Connect form saves credentials and starts real cloud sync
+
+PASS: Storage settings reopen
+PASS: Cancel storage settings leaves sync paused
+
+PASS: Existing cloud connection resumes
+PASS: Cloud desktop quits gracefully
+PASS: Cloud desktop process exits
+PASS: Cloud quit retains offline files
+PASS: Client C expected exit (0)
+PASS: A new client retrieves the desktop app save
+PASS: Client C expected exit (2)
+PASS: Missing established manifest cannot remove working files
+PASS: Client C expected exit (2)
+PASS: Replacement root identity cannot reuse previous baseline
+PASS: native directory and S3 protocol acceptance complete; actual Cloudflare R2 account test is separate.
+**********************
+PowerShell transcript end
+End time: 20261112024807
+**********************

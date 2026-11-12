@@ -1,0 +1,11 @@
+{
+  "source": "27d588aa5f2b25ad756d435d2b71570612ad84f7",
+  "run": "https://github.com/Spaceghost/writ/actions/runs/43143228798",
+  "policy": "success",
+  "windows": "success",
+  "linux": "success",
+  "native_log_artifact": 13910881844,
+  "native_log_artifact_sha256": "91d6e08037ab22e7a931740ace0fe86a38383fe6bf858e1d1721351603d10d3b",
+  "screenshot_artifact": 13911111379,
+  "screenshot_artifact_sha256": "39b4a03be861b73c4d8ad536409ad00260fcae9b5c0f6f626a59a70c26199c5e"
+}

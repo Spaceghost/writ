@@ -15,4 +15,4 @@
 - [x] 3.1 Pass native directory, concurrent-edit, restart/offline and recovery tests.
 - [x] 3.2 Exercise real HTTPS S3 protocol and conflict/failure paths on exact packaged bytes.
 - [x] 3.3 Record any actual Cloudflare R2 execution separately from compatible-server evidence.
-- [ ] 3.4 Review, validate, push, package and publish verified source and downloads.
+- [x] 3.4 Review, validate, push, package and publish verified source and downloads.

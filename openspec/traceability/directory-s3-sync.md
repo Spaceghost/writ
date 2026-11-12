@@ -1,6 +1,6 @@
 # Directory/S3 preview traceability
 
-Contract: [directory/S3 change](../changes/add-directory-s3-sync/specs/directory-s3-sync/spec.md).
+Contract: [directory/S3 sync](../specs/directory-s3-sync/spec.md).
 Source-bound execution: [verification record](../../verification/directory-s3-preview/README.md).
 This ordinary Windows file-sync profile does not qualify a protected Writ host.
 

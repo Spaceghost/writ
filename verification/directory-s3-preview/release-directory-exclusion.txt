@@ -1,0 +1,11 @@
+PASS: probe owns a fresh directory
+PASS: retained target excludes a competing writer
+PASS: retained target excludes a competing rename
+PASS: newly recreated destination cannot be overwritten
+PASS: recreated destination bytes survive
+PASS: exact displaced bytes remain in retained recovery handle
+PASS: failed installation retains verified download
+PASS: native parent path escape rejected
+PASS: native reserved filename rejected
+PASS: Windows case variants share a namespace identity
+PASS: native directory exclusion probes complete

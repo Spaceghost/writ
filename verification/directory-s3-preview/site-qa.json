@@ -1,0 +1,20 @@
+{
+  "source": "27d588aa5f2b25ad756d435d2b71570612ad84f7",
+  "browser": "158.0.8127.18",
+  "viewports": [
+    {
+      "width": 390,
+      "noOverflow": true,
+      "exactReleaseLinks": 8,
+      "illustrations": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "noOverflow": true,
+      "exactReleaseLinks": 8,
+      "illustrations": true,
+      "pageErrors": []
+    }
+  ]
+}

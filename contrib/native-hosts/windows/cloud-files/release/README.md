@@ -1,12 +1,13 @@
 # Windows release pathway
 
 The [Writ desktop release workflow](../../../../../.github/workflows/writ-windows-release.yml)
-builds both Linux and Windows public Files On-Demand previews. The shared VERSION
+builds the Windows tray/desktop app with S3 folder syncing and both platforms'
+local Files On-Demand previews. The shared VERSION
 file governs both platforms; tagged publication requires both native jobs. See
 [Linux packaging](../../../linux/public-sync/README.md) for its build instructions.
 Download published installers and
 portable executables from [GitHub Releases](https://github.com/Spaceghost/writ/releases).
-The ZIP includes `writ-cloud.exe`, Node, the Bend-generated policy, existing bridge,
+The ZIP includes `Writ.exe`, `writ-cloud.exe`, `writ-sync.exe`, Node, the Bend-generated policy, existing bridge,
 smoke script and dependency notices. Setup installs the same payload for the
 current user and creates Start menu shortcuts. Uninstall unregisters the default
 root and retains hydrated files, backing state and recovery copies.
@@ -21,8 +22,9 @@ root and retains hydrated files, backing state and recovery copies.
 3. After both Linux and Windows pass for the intended commit, create and push a new tag:
 
    ```sh
-   git tag -a desktop-v0.1.0-preview.2 <tested-commit> -m 'Writ desktop public preview 0.1.0-preview.2'
-   git push origin desktop-v0.1.0-preview.2
+   writ_version=$(cat contrib/native-hosts/windows/cloud-files/release/VERSION)
+   git tag -a "desktop-v$writ_version" <tested-commit> -m "Writ desktop public preview $writ_version"
+   git push origin "desktop-v$writ_version"
    ```
 
 4. The tag workflow rebuilds and retests, checks the tag against VERSION, creates
@@ -41,7 +43,7 @@ the source manifest and runs the public-sync model, library suite and ordinary
 proofs. Windows checks generated-artifact checksums and source revision, runs the
 model on bundled Node, and builds in two clean directories with MSVC `/Brepro`.
 
-The two native EXEs, portable ZIPs and setup EXEs must match byte-for-byte. ZIP
+Each native EXE, portable ZIP and setup EXE must match its repeated build byte-for-byte. ZIP
 entry order and timestamps are stable; installer timestamps are omitted.
 `BUILD-INFO.json` records source, manifest hash, dependencies, SDK, actual compiler,
 CMake, PowerShell and image. SDK and MSVC family are selected explicitly. Hosted

@@ -17,8 +17,10 @@ producing a scoped write intent.
 ## Try it
 
 Linux and Windows public preview installers and portable packages are published
-on [GitHub Releases](https://github.com/Spaceghost/writ/releases). Both use the
-same Bend save monitor and must pass native tests before a desktop release.
+on [GitHub Releases](https://github.com/Spaceghost/writ/releases). Windows includes
+a tray applet, desktop activity/settings and [S3 folder syncing](contrib/native-hosts/windows/directory-sync/README.md).
+The local single-file previews share a Bend save monitor; directory reconciliation
+also runs in Bend. Both platforms must pass native tests before a desktop release.
 See [Linux packaging](contrib/native-hosts/linux/public-sync/README.md) and the
 [Windows release pathway](contrib/native-hosts/windows/cloud-files/release/README.md)
 for reproducible builds, checksums and the native test gates.

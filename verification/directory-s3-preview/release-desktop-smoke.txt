@@ -1,0 +1,51 @@
+**********************
+Windows PowerShell transcript start
+Start time: 20261112025157
+Username: runnervmm7ud1\runneradmin
+RunAs User: runnervmm7ud1\runneradmin
+Configuration Name:
+Machine: runnervmm7ud1 (Microsoft Windows NT 10.0.26100.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\runneradmin\AppData\Local\WritInstallTest-caef72698df6437b9da44ff6a5f6edae\DesktopSmoke.ps1 -PackageDir C:\Users\runneradmin\AppData\Local\WritInstallTest-caef72698df6437b9da44ff6a5f6edae -OutputDir D:\a\_temp\writ-release\logs -ProbeExe D:\a\_temp\writ-release\build-1\Release\writ-desktop-probe.exe
+Process ID: 2724
+PSVersion: 5.1.26100.33648
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.33648
+BuildVersion: 10.0.26100.33648
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+PASS: desktop window created
+PASS: GUI observes provider readiness
+PASS: public single-file scope visible
+PASS: sign-in startup is opt-in
+PASS: Shell accepted notification-area icon
+PASS: Shell returns actual notification-icon rectangle
+PASS: second launch activates existing app
+PASS: original app retains ownership
+PASS: GUI-owned provider hydrates public file
+PASS: GUI observes real confirmed save
+PASS: keyboard callback opens native activity flyout
+PASS: Pause waits for actual provider exit
+PASS: pause explains hydration limitation
+PASS: Resume reconciles paused edit through provider
+PASS: resumed edit marked in sync by existing provider
+PASS: oversized file produces visible error
+PASS: failed edit retained
+PASS: valid edit clears observed error after commit
+PASS: settings panel displayed
+PASS: sign-in preference saved
+PASS: startup uses quoted exact installed executable
+PASS: sign-in preference removed
+PASS: window close hides to notification area
+PASS: close-to-tray retains provider owner
+PASS: reopen command exits
+PASS: second launch reopens hidden dashboard
+PASS: Quit gracefully exits GUI and provider
+PASS: Quit retains hydrated user edit
+ALL WINDOWS DESKTOP CHECKS PASSED
+**********************
+Windows PowerShell transcript end
+End time: 20261112025203
+**********************

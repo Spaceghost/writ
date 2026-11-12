@@ -61,6 +61,8 @@ it cannot be converted to a legacy source by erasing labels.
 | [Optional rclone remote](specs/rclone-contrib-remote/spec.md) | Bounded memory-only integration with Bend authority and a minimal Go client adapter | [Traceability](traceability/rclone-contrib-remote.md) |
 | [Native snapshot staging](specs/native-snapshot-staging/spec.md) | Private Btrfs snapshots and ZFS filesystem/zvol clones through the common Bend gate | [Traceability](traceability/native-snapshot-staging.md) |
 | [Native canary mounts](specs/native-host-canary-mounts/spec.md) | One immutable public object through WinFsp, Linux FUSE and native Genode File_system/VFS; confinement qualification recorded separately | [Traceability](traceability/native-host-canary-mounts.md) |
+| [Windows desktop](specs/windows-desktop-app/spec.md) | Tray applet, desktop activity/settings and observed provider lifecycle | [Traceability](traceability/windows-desktop-app.md) |
+| [Directory/S3 sync](specs/directory-s3-sync/spec.md) | Bounded Windows folder reconciliation, conditional remote writes and recovery-preserving effects | [Traceability](traceability/directory-s3-sync.md) |
 
 The authority-boundary spec records obligations of an enforcing integration.
 It does not claim those host services already exist. GPU-directed source is

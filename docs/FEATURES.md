@@ -12,6 +12,14 @@ on both platforms, including Ubuntu-built Linux packages on Fedora. Combined
 reproducible packages and public downloads are tracked in the
 [Linux release record](../verification/linux-release/README.md).
 
+Windows preview.3 adds a native tray applet and desktop app with
+[S3-compatible folder syncing](../contrib/native-hosts/windows/directory-sync/README.md).
+Nested files remain available offline; Bend reconciliation preserves conflicting
+edits and the native binding retains recovery copies before remote replacement.
+The [preview.3 record](../verification/directory-s3-preview/README.md) links the
+released source, native tests and downloads. OneDrive and actual R2 account
+acceptance remain separate next steps.
+
 ## A summary without downloading the records
 
 A client mounts a scoped Writ session. It can see a view named

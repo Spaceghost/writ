@@ -1,0 +1,38 @@
+{
+  "version": "0.1.0-preview.3",
+  "sourceCommit": "27d588aa5f2b25ad756d435d2b71570612ad84f7",
+  "sourceManifestSha256": "2e28b3f9d2fdae7156a08156bf33b96b3928ac8c6a082a58831edb3befc9aa3f",
+  "dependencies": {
+    "bend": {
+      "version": "2.0.39",
+      "url": "https://github.com/bendlang/bend/releases/download/v2.0.39/bend-2.0.39-linux-x64.tar.gz",
+      "sha256": "6cf462fd8f70b094a4950ebb709a9c4ffd8f1d1189d9cedf1fd63cd5d041c7ab"
+    },
+    "node": {
+      "version": "22.23.4",
+      "url": "https://nodejs.org/dist/v22.23.4/node-v22.23.4-win-x64.zip",
+      "sha256": "cbc74b5e0982c9dbb41525fd8fb5dcd32fbee237863f7829072f4639a1ce5f20"
+    },
+    "inno": {
+      "version": "6.7.4",
+      "url": "https://github.com/jrsoftware/issrc/releases/download/is-6_7_4/innosetup-6.7.4.exe",
+      "sha256": "a549929319f9120716677c685535ca4671e4b937b5fdc87e2585f32d8eb30e8c"
+    },
+    "cmakeGenerator": "Visual Studio 18 2026",
+    "msvcToolset": "v143,version=14.44.35207",
+    "windowsSdk": "10.0.26100.0"
+  },
+  "nativeToolchain": [
+    "MSVC=19.44.35229.0",
+    "Compiler=C:/Program Files/Microsoft Visual Studio/18/Enterprise/VC/Tools/MSVC/14.44.35207/bin/HostX64/x64/cl.exe",
+    "Toolset=14.44.17.14",
+    "SDK=10.0.26100.0",
+    "CMake=4.4.5"
+  ],
+  "runnerImage": "win25-vs2026 20261103.298.1",
+  "powershell": "7.6.9",
+  "nativeRebuildSha256": "00e1cac13a6e13b886d46c77afc39590754304d6f1c13c76860881511d57a234",
+  "desktopRebuildSha256": "13ffae36cca2b5ac1b5c987795ef4f10f24f17213ed56a0f26a0be618481fe07",
+  "directoryRebuildSha256": "8254a492cb10ac456918d8ca984f7a423c0251784d9844b852b7db2f802366ce",
+  "profile": "Public Windows tray/desktop preview; S3-compatible hydrated folder sync and separate local single-file Cloud Files demo; unsigned"
+}

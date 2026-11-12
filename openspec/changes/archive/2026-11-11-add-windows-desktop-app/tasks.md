@@ -9,4 +9,4 @@
 - [x] 2.1 Exercise actual native Windows controls and provider save/pause/recovery behavior.
 - [x] 2.2 Pass repeated builds/packages and existing Windows/Linux regression gates.
 - [x] 2.3 Complete independent review and preserve source-bound evidence.
-- [ ] 2.4 Publish and verify the new immutable release and website download path.
+- [x] 2.4 Publish and verify the new immutable release and website download path.

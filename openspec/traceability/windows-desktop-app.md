@@ -1,6 +1,6 @@
 # Windows desktop preview traceability
 
-Contract: [desktop change](../changes/add-windows-desktop-app/specs/windows-desktop-app/spec.md).
+Contract: [Windows desktop](../specs/windows-desktop-app/spec.md).
 Execution: [desktop progress](../../docs/superpowers/records/2026-11-12-windows-desktop-app/progress.md)
 and [directory/S3 evidence](../../verification/directory-s3-preview/README.md).
 

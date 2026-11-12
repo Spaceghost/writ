@@ -13,5 +13,8 @@ The directory/S3 lane incorporates this history and extends the same app with
 cloud connection and folder status. Its complete run 43140516742 at `7664c20`
 also passes cloud desktop/offline saves, settings display, recovery races and
 competing HTTPS S3 clients. Captured desktop and connection screenshots were
-inspected. Publication and the website download update remain pending final
-integration; the newer source keeps these passes scoped to their exact commits.
+inspected. Final source `27d588aa` passed branch run 43143228798 and tag run
+43143997933, including real credential form submission. Preview.3 is published,
+all nine assets were downloaded/hash-verified, and the updated website's eight
+release/help links pass. The completed desktop contract is now baseline; the
+immutable release retains its source even as master gains final evidence records.

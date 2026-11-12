@@ -21,6 +21,14 @@ platforms. [LPS traceability](traceability/linux-public-sync-release.md) links
 native Ubuntu and Fedora package results, including busy-uninstall refusal and
 byte retention. Interactive desktop and protected-host qualification remain open.
 
+The [Windows desktop contract](specs/windows-desktop-app/spec.md) and
+[directory/S3 contract](specs/directory-s3-sync/spec.md) describe the bounded
+preview.3 app and cloud folder. [Desktop](traceability/windows-desktop-app.md)
+and [directory](traceability/directory-s3-sync.md) traceability link native
+controls, offline edits, recovery races and conditional S3 publication to their
+[execution record](../verification/directory-s3-preview/README.md). Actual R2,
+OneDrive, remote Files On-Demand and protected-host qualification remain open.
+
 | Feature | Required demonstration | Contract | Tasks | Current evidence |
 | --- | --- | --- | --- | --- |
 | WritFS | A scoped mount exposes permitted objects/jobs; scans cause no work or unauthorized disclosure; control replay creates one operation | [WF requirements](changes/add-writfs-namespace/specs/writfs-namespace/spec.md) | [WritFS tasks](changes/add-writfs-namespace/tasks.md) | Design and scenarios only |

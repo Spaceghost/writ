@@ -1,0 +1,46 @@
+{
+  "source": "27d588aa5f2b25ad756d435d2b71570612ad84f7",
+  "site": "https://spacegho.st/writ/",
+  "assets": {
+    "index.html": "1787b544c49675fa1066ce8331f34516c02d9648a16c2be34d74310d6ea1eac4",
+    "style.css": "dd242b727e7cbf09e7255523eb412a659553d04e6ba8182c33a35c897c55ee88",
+    "site.js": "fd3049f663ac8fa6647b1ce68968ab6e703ea6f5248e3e393a1533a1e5d9d9c3",
+    "mark.svg": "a3beea32d805bad5edfc135e36f5ec5f7097784ac1368a3b6c431830733d2794"
+  },
+  "edgeHtmlNote": "Existing zone injects a Cloudflare challenge script; authored HTML matches after removing only that identified injection. Security settings unchanged.",
+  "links": [
+    {
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-windows-x64-setup.exe",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-windows-x64-portable.zip",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.3/contrib/native-hosts/windows/directory-sync/README.md",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-linux-x64-setup.run",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/Writ-0.1.0-preview.3-linux-x64-portable.tar.gz",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/blob/desktop-v0.1.0-preview.3/contrib/native-hosts/linux/public-sync/README.md",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/releases/tag/desktop-v0.1.0-preview.3",
+      "status": 200
+    },
+    {
+      "url": "https://github.com/Spaceghost/writ/releases/download/desktop-v0.1.0-preview.3/SHA256SUMS",
+      "status": 200
+    }
+  ],
+  "canonicalRedirect": 308
+}

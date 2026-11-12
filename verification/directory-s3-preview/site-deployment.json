@@ -1,0 +1,47 @@
+{
+  "site": "https://spacegho.st/writ/",
+  "sourceCommit": "27d588aa5f2b25ad756d435d2b71570612ad84f7",
+  "releaseTag": "desktop-v0.1.0-preview.3",
+  "worker": "writ-site",
+  "deploymentId": "90ca92ab-40f7-4a4a-a6ea-2e71aaec1b0d",
+  "versionId": "e21818d3-87ac-479d-9aaf-c37162282a56",
+  "deployedAt": "2026-11-12T03:01:40.235045Z",
+  "bundleSha256": "bdcef10ed9d44627e480159ec4a0835e9817cb0af3b0ec16cdf858c70f197fea",
+  "bundleBytes": 63783,
+  "assets": {
+    "index.html": {
+      "sha256": "1787b544c49675fa1066ce8331f34516c02d9648a16c2be34d74310d6ea1eac4",
+      "bytes": 26654,
+      "type": "text/html; charset=utf-8"
+    },
+    "style.css": {
+      "sha256": "dd242b727e7cbf09e7255523eb412a659553d04e6ba8182c33a35c897c55ee88",
+      "bytes": 28919,
+      "type": "text/css; charset=utf-8"
+    },
+    "site.js": {
+      "sha256": "fd3049f663ac8fa6647b1ce68968ab6e703ea6f5248e3e393a1533a1e5d9d9c3",
+      "bytes": 2638,
+      "type": "text/javascript; charset=utf-8"
+    },
+    "mark.svg": {
+      "sha256": "a3beea32d805bad5edfc135e36f5ec5f7097784ac1368a3b6c431830733d2794",
+      "bytes": 264,
+      "type": "image/svg+xml"
+    }
+  },
+  "routes": [
+    {
+      "id": "965ebce9883a4793839177a3c8af62c3",
+      "pattern": "spacegho.st/writ",
+      "script": "writ-site"
+    },
+    {
+      "id": "159d10c63e9441038432532effa04916",
+      "pattern": "spacegho.st/writ/*",
+      "script": "writ-site"
+    }
+  ],
+  "zoneRouteCountBefore": 69,
+  "zoneRouteCountAfter": 69
+}

@@ -25,9 +25,17 @@ persists an observed-remote marker and explicitly requires one NTFS volume for
 the root and staging/recovery. Run 43140516742 passed those changes and the cloud
 desktop, root and missing-manifest tests. Captured screenshots were inspected.
 
-Still required: verify credential entry/submission through the real native form,
-finalize independent review and packaging on the merged source, revalidate/source-hash,
-push master, publish the immutable preview and update the project website.
+Completed: master integration, native credential form submission, independent
+review, strict OpenSpec validation, push to master, tagged publication and the
+live website download path. Released source is `27d588aa`; branch run 43143228798
+and tag run 43143997933 both passed. All nine downloaded release assets matched
+their published digests; both build manifests match the tag and source manifest.
+The live page passed mobile/desktop browser checks and all eight release links.
+The completed WDA/DSS changes were archived and promoted to baseline contracts.
+
+Next scope remains actual R2 account acceptance, a dedicated conflict-resolution
+UI, larger-folder throughput work and OneDrive account sign-in after registration.
+The application never embeds a confidential OneDrive client secret.
 
 Full monolithic native C core compilation was attempted but not credited: the
 local Zig/Clang frontend used excessive memory and was stopped, a bounded O0
