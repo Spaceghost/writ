@@ -74,6 +74,13 @@ mutex holder rather than the real `fs_release_under_lock`, the harness
 mirrors but does not execute production's mutex initialization, and
 `pthread_mutex_clocklock` requires glibc 2.30+ (not musl).
 
-No mount ran locally. The native mounted result is the next
-`WritFS native Linux mount` run on `master`; this record does not claim it.
+No mount ran locally. The mounted result came from GitHub's runner:
+[workflow run 43072348886](https://github.com/Spaceghost/writ/actions/runs/43072348886)
+on `3007993` passed `WritFS native Linux mount`, the first pass since
+`750d3e5`. Both the `revoke` and `policy-exit` cases printed
+`ALL LINUX NATIVE CANARY CHECKS PASSED; cleanup attempted`, the broker-crash
+probe passed with its abandoned mount removed, and the deliberate
+missing-Landlock setup refusal behaved as expected. This shows only that the
+canary passes on that runner; it does not establish that teardown always
+meets the 2-second bound.
 This is not crash-recovery, mutex-fairness or protected-host qualification.

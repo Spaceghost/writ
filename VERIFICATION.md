@@ -41,7 +41,7 @@ qualification.
 The [Linux cleanup lock wait record](verification/linux-cleanup-lock-wait/README.md)
 diagnoses the native canary failure since `bc1d349` (a FUSE RELEASE callback
 holding the effect lock at teardown) and bounds cleanup's wait for it. Mocked
-lifecycle checks pass; the native mounted result is the next CI run on master.
+lifecycle checks pass, and mounted CI run 43072348886 on `3007993` passed.
 
 The [Linux canary handoff record](verification/linux-canary-handoff/README.md)
 covers mocked callback scheduling and a real private-pipe process-loss check.
