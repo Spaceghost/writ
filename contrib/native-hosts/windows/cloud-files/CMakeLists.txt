@@ -20,5 +20,12 @@ target_compile_definitions(writ-cloud PRIVATE UNICODE _UNICODE NOMINMAX
 target_compile_options(writ-cloud PRIVATE /W4 /sdl /guard:cf /Brepro $<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
 target_link_options(writ-cloud PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT /Brepro /INCREMENTAL:NO)
 target_link_libraries(writ-cloud PRIVATE CldApi bcrypt advapi32 shell32 ole32)
+add_executable(Writ WIN32 desktop.cpp desktop.manifest)
+target_compile_definitions(Writ PRIVATE UNICODE _UNICODE NOMINMAX
+  _CRT_SECURE_NO_WARNINGS _WIN32_WINNT=0x0A00 NTDDI_VERSION=0x0A000004
+  WRIT_VERSION="${WRIT_VERSION}" WRIT_SOURCE_COMMIT="${WRIT_SOURCE_COMMIT}")
+target_compile_options(Writ PRIVATE /W4 /WX /sdl /guard:cf /Brepro /EHsc /utf-8)
+target_link_options(Writ PRIVATE /guard:cf /DYNAMICBASE /NXCOMPAT /Brepro /INCREMENTAL:NO)
+target_link_libraries(Writ PRIVATE CldApi bcrypt advapi32 shell32 ole32 comctl32 gdi32 user32)
 file(WRITE "${CMAKE_BINARY_DIR}/writ-toolchain.txt"
   "MSVC=${CMAKE_CXX_COMPILER_VERSION}\nCompiler=${CMAKE_CXX_COMPILER}\nToolset=${CMAKE_VS_PLATFORM_TOOLSET_VERSION}\nSDK=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION}\nCMake=${CMAKE_VERSION}\n")

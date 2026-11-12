@@ -137,6 +137,17 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
+      - name: Retain native desktop screenshots and accessibility trees
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-desktop-ui-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/writ-release/logs/*.png
+            ${{ runner.temp }}/writ-release/logs/*-ui.json
+          if-no-files-found: warn
+          retention-days: 30
+
   linux:
     name: Build twice, exercise FUSE, install and uninstall
     needs: policy

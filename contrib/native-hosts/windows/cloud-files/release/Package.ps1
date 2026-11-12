@@ -46,6 +46,7 @@ Copy-Item -LiteralPath (Join-Path $nodeDir 'LICENSE') -Destination (Join-Path $p
 Copy-Item -LiteralPath (Join-Path $PolicyDir 'public-sync.mjs') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\..\..\runtime\node-policy.mjs') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\Smoke.ps1') -Destination $payload
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\DesktopSmoke.ps1') -Destination $payload
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'README.txt') -Destination $payload
 & (Join-Path $payload 'node.exe') (Join-Path $PolicyDir 'public-sync-tests.js') 2>&1 | Tee-Object -FilePath (Join-Path $logs 'windows-model.txt')
 if ($LASTEXITCODE) { throw 'Bend model failed on bundled Windows Node.' }
@@ -58,10 +59,12 @@ foreach ($pass in 1, 2) {
     & cmake --build $build --config Release --parallel 2 2>&1 | Tee-Object -FilePath (Join-Path $logs "build-$pass.txt")
     if ($LASTEXITCODE) { throw "MSVC build $pass failed." }
 }
-$first = Join-Path $OutputDir 'build-1\Release\writ-cloud.exe'
-$second = Join-Path $OutputDir 'build-2\Release\writ-cloud.exe'
-if ((Hash $first) -cne (Hash $second)) { throw 'Two clean native builds produced different bytes.' }
-Copy-Item -LiteralPath $first -Destination $payload
+foreach ($executable in 'writ-cloud.exe', 'Writ.exe') {
+    $first = Join-Path $OutputDir "build-1\Release\$executable"
+    $second = Join-Path $OutputDir "build-2\Release\$executable"
+    if ((Hash $first) -cne (Hash $second)) { throw "Two clean builds differ: $executable" }
+    Copy-Item -LiteralPath $first -Destination $payload
+}
 & (Join-Path $payload 'writ-cloud.exe') version | Tee-Object -FilePath (Join-Path $logs 'version.txt')
 if ($LASTEXITCODE) { throw 'Built executable did not start.' }
 $info = [ordered]@{
@@ -72,8 +75,9 @@ $info = [ordered]@{
     nativeToolchain = @(Get-Content -LiteralPath (Join-Path $OutputDir 'build-1\writ-toolchain.txt'))
     runnerImage = "$env:ImageOS $env:ImageVersion".Trim()
     powershell = $PSVersionTable.PSVersion.ToString()
-    nativeRebuildSha256 = Hash $first
-    profile = 'Public single-file local-store preview; unsigned; interactive Notepad not automated'
+    nativeRebuildSha256 = Hash (Join-Path $payload 'writ-cloud.exe')
+    desktopRebuildSha256 = Hash (Join-Path $payload 'Writ.exe')
+    profile = 'Public single-file local-store desktop preview; unsigned; interactive Notepad not automated'
 }
 $info | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $payload 'BUILD-INFO.json') -Encoding utf8NoBOM
 Get-ChildItem -LiteralPath $payload -File | Sort-Object Name | ForEach-Object { "$(Hash $_.FullName)  $($_.Name)" } |

@@ -29,7 +29,7 @@ SolidCompression=yes
 TimeStampsInUTC=yes
 VersionInfoVersion={#NumericVersion}
 VersionInfoProductTextVersion={#Version}
-UninstallDisplayIcon={app}\writ-cloud.exe
+UninstallDisplayIcon={app}\Writ.exe
 CloseApplications=no
 RestartApplications=no
 WizardStyle=modern
@@ -38,21 +38,48 @@ WizardStyle=modern
 Source: "{#Payload}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs notimestamp
 
 [Icons]
-Name: "{group}\Start Writ"; Filename: "{app}\writ-cloud.exe"; Parameters: "start"; WorkingDir: "{app}"
-Name: "{group}\Stop Writ"; Filename: "{app}\writ-cloud.exe"; Parameters: "stop"
+Name: "{group}\Writ"; Filename: "{app}\Writ.exe"; WorkingDir: "{app}"
+Name: "{group}\Quit Writ"; Filename: "{app}\Writ.exe"; Parameters: "--quit"
 Name: "{group}\Open Writ folder"; Filename: "{win}\explorer.exe"; Parameters: """{%USERPROFILE}\Writ"""
 Name: "{group}\Read me"; Filename: "{app}\README.txt"
 
 [Run]
-Filename: "{app}\writ-cloud.exe"; Parameters: "start"; Description: "Start Writ public preview"; Flags: postinstall nowait skipifsilent unchecked
+Filename: "{app}\Writ.exe"; Description: "Start Writ public preview"; Flags: postinstall nowait skipifsilent
 
 [Code]
+function StopDesktop(): Boolean;
+var
+  Code: Integer;
+begin
+  Result := True;
+  if FileExists(ExpandConstant('{app}\Writ.exe')) then begin
+    Result := Exec(ExpandConstant('{app}\Writ.exe'), '--quit', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    if Result then Result := Code = 0;
+  end;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  Result := '';
+  if not StopDesktop() then
+    Result := 'Writ is still running. Close editors and quit Writ, then retry installation.';
+end;
+
 function InitializeUninstall(): Boolean;
 var
   Code: Integer;
 begin
+  Result := StopDesktop();
+  if not Result then begin
+    SuppressibleMsgBox('Writ is still running. Close editors and quit Writ before uninstalling.', mbError, MB_OK, IDOK);
+    exit;
+  end;
   Result := Exec(ExpandConstant('{app}\writ-cloud.exe'), 'cleanup', '', SW_HIDE, ewWaitUntilTerminated, Code);
   if Result then Result := Code = 0;
+  if Result then begin
+    Result := Exec(ExpandConstant('{app}\Writ.exe'), '--unregister-startup', '', SW_HIDE, ewWaitUntilTerminated, Code);
+    if Result then Result := Code = 0;
+  end;
   if not Result then
     SuppressibleMsgBox('Writ could not safely remove its sync registration. Close editors and run writ-cloud.exe cleanup, then retry uninstall. Your files and recovery copies have been retained.', mbError, MB_OK, IDOK);
 end;

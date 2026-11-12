@@ -49,9 +49,18 @@ try {
     $hello = Join-Path $defaultRoot 'hello.txt'
     $bytes = [IO.File]::ReadAllBytes($hello)
     Assert ($bytes.Length -gt 0) 'installed provider hydrates'
+    & $exe stop
+    Assert ($LASTEXITCODE -eq 0 -and $provider.WaitForExit(10000)) 'CLI provider stops before desktop test'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $installed 'DesktopSmoke.ps1') -PackageDir $installed -OutputDir $logs
+    Assert ($LASTEXITCODE -eq 0) 'installed desktop UI and provider checks pass'
+    $bytes = [IO.File]::ReadAllBytes($hello)
+    $desktop = Start-Process -FilePath (Join-Path $installed 'Writ.exe') -ArgumentList '--background' -PassThru
+    Start-Sleep -Seconds 3
+    Assert (-not $desktop.HasExited) 'background app stays running for uninstall test'
     $uninstall = Start-Process -FilePath (Join-Path $installed 'unins000.exe') -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /LOG=`"$logs\uninstall.txt`"" -Wait -PassThru
     Assert ($uninstall.ExitCode -eq 0) 'uninstaller succeeds while provider is running'
     Assert ($provider.WaitForExit(10000)) 'uninstaller stops provider'
+    Assert ($desktop.WaitForExit(10000)) 'uninstaller stops desktop application'
     Assert (-not (Test-Path -LiteralPath $exe)) 'application removed'
     Assert ([Convert]::ToBase64String([IO.File]::ReadAllBytes($hello)) -ceq [Convert]::ToBase64String($bytes)) 'uninstall preserves hydrated user file'
     Assert (Test-Path -LiteralPath (Join-Path $defaultData 'store\head')) 'uninstall preserves backing store'
