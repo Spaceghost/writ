@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -305,7 +305,7 @@
+     case True{}:
+       failed(advance(state), "EXHAUSTED")
+     case False{}:
+-      dispatch_phase(advance(state), line, stopped(state))
++      dispatch_phase(advance(state), line, False{})
+ 
+ # Public entry point: one frame (LF excluded) against the retained state.
+ def dispatch(+state: State, line: String) -> Step:

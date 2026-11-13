@@ -44,6 +44,7 @@ import ./hosts/linux/monitor/LinuxJointOwnerTests.bend as LinuxJointOwner
 import ./hosts/linux/monitor/LinuxSessionLossTests.bend as LinuxSessionLoss
 import ./hosts/linux/monitor/LocalChannelTests.bend as LocalChannel
 import ./hosts/linux/monitor/SupervisorOwnerTests.bend as SupervisorOwner
+import ./hosts/linux/monitor/SupervisorWireTests.bend as SupervisorWire
 import ./FacadeTests.bend as Facade
 import ./LocalSupervisorTests.bend as LocalSupervisor
 import ./IssuanceTests.bend as Issuance
@@ -54,7 +55,7 @@ import ./RendezvousTests.bend as Rendezvous
 import ./RendezvousBoundaryTests.bend as RendezvousBoundary
 import ./PropertyTests.bend as Properties
 
-# The joint-owner, session-loss and supervisor-owner checks read one build of
+# The joint-owner, session-loss, supervisor-owner and supervisor-wire checks read one build of
 # the synthetic owner scenario stages instead of each replaying launch through
 # delivery. The channel attribution checks keep their place between them.
 def joint_owner_tests(+stages: LinuxJointOwner.Stages) -> IO(Unit):
@@ -63,6 +64,7 @@ def joint_owner_tests(+stages: LinuxJointOwner.Stages) -> IO(Unit):
     LinuxSessionLoss.checks(stages)
     LocalChannel.main()
     SupervisorOwner.owner_checks(stages)
+    SupervisorWire.wire_checks(stages)
 
 def linux_tests() -> IO(Unit):
   do IO<Unit>:

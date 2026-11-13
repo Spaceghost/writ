@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -231,7 +231,7 @@
+             return ready == 1 && (p.revents & POLLIN) ? 0 : -1;
+         }
+     }
+-    return -1;
++    return 0;
+ }
+ 
+ int writ_supervisor_drain(struct writ_supervisor *s, struct writ_owner_reply *reply)

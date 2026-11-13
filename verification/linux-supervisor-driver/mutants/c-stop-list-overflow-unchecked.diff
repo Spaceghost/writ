@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -82,7 +82,7 @@
+     reply->stops = 0;
+     if (!strcmp(field, "-")) return 0;
+     for (;;) {
+-        if (*field != 'S' || reply->stops == WRIT_OWNER_STOPS) return -1;
++        if (*field != 'S') return -1;
+         ++field;
+         size_t length = strcspn(field, ",");
+         if (canonical_u32(field, length, &reply->stop[reply->stops])) return -1;

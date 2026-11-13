@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -257,7 +257,7 @@
+     bytes: Maybe<&2, +List<U32>>) -> Step:
+   match read bytes:
+     case Some{s} Some{bytes}:
+-      apply(state, O.ControlMessage{O.fact_of_verdict(U32.to_nat(verdict), U32.to_nat(role)), bytes}, s)
++      apply(state, O.MonitorFrame{bytes}, s)
+     case _ _:
+       failed(state, "ERROR")
+ 

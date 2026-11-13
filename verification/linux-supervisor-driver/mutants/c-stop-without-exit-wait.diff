@@ -1,0 +1,10 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -224,6 +224,7 @@
+         if (s->worker[i].worker != worker) continue;
+         if (syscall(SYS_pidfd_send_signal, s->worker[i].pidfd, SIGKILL, NULL, 0) && errno != ESRCH)
+             return -1;
++        return 0;
+         struct pollfd p = { .fd = s->worker[i].pidfd, .events = POLLIN };
+         for (;;) {
+             int ready = poll(&p, 1, STOP_WAIT_MILLISECONDS);

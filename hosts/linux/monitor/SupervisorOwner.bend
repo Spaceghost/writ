@@ -37,8 +37,10 @@ import ../../../Issuance.bend as Iss
 # Containment returns no effects: only `Drain`, the existing `LH.joint_drain`,
 # yields StopEffects, and it needs no usable clock.
 #
-# Gaps (reviewed, not implemented here): no native driver yet runs this fold
-# over the receiver and a clock; nothing establishes clock continuity across a
+# Gaps (reviewed, not implemented here): the native driver
+# (contrib/native-hosts/linux/supervisor_owner.c, over `SupervisorWire`) runs
+# this fold only against synthetic test provisioning; nothing aligns the host
+# clock with the issuer's time base or establishes continuity across a
 # restart; the owner does not bind a worker's channel role to its issued
 # session; only revocation is carried on the control channel.
 

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -178,7 +178,7 @@
+     case False{}: None{}
+ 
+ def fault(+now: U32, sample: LH.ClockSample) -> Maybe<&2, LH.ClockSample>:
+-  fault_checked(U32.is_eq(now, 0), sample)
++  fault_checked(True{}, sample)
+ 
+ # Public entry point (exported for tests): the clock sample a frame carries.
+ def sample(+clock: U32, +now: U32) -> Maybe<&2, LH.ClockSample>:

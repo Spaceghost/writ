@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -155,7 +155,7 @@
+     if (writ_policy_exchange(s->policy, frame, length, line) ||
+         writ_owner_decode(line, s->sequence + 1, reply)) return fail_stop(s);
+     ++s->sequence;
+-    if (reply->contain) s->contained = 1;
++
+     if (!expected(reply->outcome)) return fail_stop(s);
+     return 0;
+ }

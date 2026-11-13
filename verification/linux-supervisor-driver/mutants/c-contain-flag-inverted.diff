@@ -1,0 +1,13 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -114,8 +114,8 @@
+     while (i < names && strcmp(field[2], outcome_names[i])) ++i;
+     if (i == names) return -1;
+     reply->outcome = (enum writ_owner_outcome)i;
+-    if (!strcmp(field[3], "0")) reply->contain = 0;
+-    else if (!strcmp(field[3], "1")) reply->contain = 1;
++    if (!strcmp(field[3], "0")) reply->contain = 1;
++    else if (!strcmp(field[3], "1")) reply->contain = 0;
+     else return -1;
+     return decode_effects(field[4], reply);
+ }

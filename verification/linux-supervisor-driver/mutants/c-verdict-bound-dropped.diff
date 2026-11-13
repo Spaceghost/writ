@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -168,7 +168,7 @@
+                                  char frame[WRIT_OWNER_FRAME_CAP])
+ {
+     static const char hex[] = "0123456789abcdef";
+-    if (record->length > WRIT_CHANNEL_PAYLOAD_MAX || (unsigned int)record->verdict > WRIT_SENDER_ERROR ||
++    if (record->length > WRIT_CHANNEL_PAYLOAD_MAX ||
+         (unsigned int)sample.kind > WRIT_CLOCK_OVERFLOW) return 0;
+     /* The role word and payload are only meaningful for these verdicts
+        (supervisor_channel.h); otherwise they are not forwarded. */

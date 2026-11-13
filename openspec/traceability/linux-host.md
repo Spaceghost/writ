@@ -180,8 +180,28 @@ map to these scenarios at the model boundary only:
   sample contains; issuer revoke still applies, refused revoke does not` and
   `SupervisorOwner revoke and drain remain available after containment`.
 
-No native driver runs this owner, and nothing samples a host clock or binds a
-worker's role to its session. Host acceptance for these scenarios remains open.
+The [supervisor driver record](../../verification/linux-supervisor-driver/README.md)
+runs this owner in a private interpreter behind the native driver
+[`supervisor_owner.c`](../../contrib/native-hosts/linux/supervisor_owner.c) over
+the receiver, on owned processes, against a synthetic provisioning module. Its
+native cases add evidence at that boundary for:
+
+- LH-011: `unregistered_sender_denied` (a real unregistered process's revoke is
+  `CHANNEL_DENIED` and nothing is stopped), with `frame_verdicts_exact` showing
+  that the unknown-sender verdict reaches Bend unchanged and without a role.
+- LH-012: `non_issuer_revoke_refused`, `malformed_payload_undecoded`.
+- LH-013: `issuer_revoke_applied` (containment, no effect from the control
+  message), then `drain_returns_worker_stop` and `drained_worker_killed` (the
+  driver kills worker 1 through its pidfd only on the drain's StopEffects).
+- LH-015: `regressing_sample_contains`, `expired_grant_contains` and
+  `unavailable_clock_issuer_revoke_applies`, with scripted samples;
+  `frame_clock_kinds_exact` shows that each faulted kind reaches Bend by
+  number.
+
+The clock samples there are scripted because the synthetic issuer's times are
+not a host time base; nothing provisions a real issuer or role map, aligns
+`CLOCK_BOOTTIME` with grant times, restarts with continuity or binds a worker's
+role to its session. Host acceptance for these scenarios remains open.
 
 ## Synthetic Rendezvous owner (LH-012, LH-013, LH-015 and LH-016)
 

@@ -1,0 +1,13 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -238,7 +238,6 @@
+ {
+     static const char frame[] = "LINUXSUP1\tDRAIN\t0\t0\t0\t0\t-\n";
+     if (call(s, frame, sizeof frame - 1, reply, drain_outcome)) return -1;
+-    for (size_t i = 0; i < reply->stops; ++i)
+-        if (stop_worker(s, reply->stop[i])) return fail_stop(s);
+-    return 0;
+-}
++    (void)stop_worker;
++    return 0;
++}

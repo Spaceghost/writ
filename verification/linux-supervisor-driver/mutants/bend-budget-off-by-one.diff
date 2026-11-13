@@ -1,0 +1,8 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -309,4 +309,4 @@
+ 
+ # Public entry point: one frame (LF excluded) against the retained state.
+ def dispatch(+state: State, line: String) -> Step:
+-  dispatch_budget(state, line, U32.is_ge(sequence(state), max_requests()))
++  dispatch_budget(state, line, U32.is_gt(sequence(state), max_requests()))

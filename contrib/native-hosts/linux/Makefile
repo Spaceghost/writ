@@ -49,3 +49,8 @@ $(OUT)/channel-identity-test: channel-identity-test.c | $(OUT)
 # question 23 scope): clone3 children and private socket pairs only.
 $(OUT)/supervisor-channel-test: supervisor-channel-test.c supervisor_channel.c supervisor_channel.h | $(OUT)
 	$(CC) $(CPPFLAGS) -DWRIT_CHANNEL_TESTING $(CFLAGS) supervisor-channel-test.c supervisor_channel.c -o "$@"
+
+# Owned-process test of the supervisor driver against the generated Bend
+# owner (SYNTHETIC provisioning module); clone3 children and private sockets.
+$(OUT)/supervisor-owner-test: supervisor-owner-test.c supervisor_owner.c supervisor_owner.h supervisor_channel.c supervisor_channel.h policy_pipe.c policy_pipe.h | $(OUT)
+	$(CC) $(CPPFLAGS) -DWRIT_OWNER_TESTING $(CFLAGS) supervisor-owner-test.c supervisor_owner.c supervisor_channel.c policy_pipe.c -pthread -o "$@"

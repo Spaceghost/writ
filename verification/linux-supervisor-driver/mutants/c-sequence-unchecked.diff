@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -108,7 +108,7 @@
+     }
+     uint32_t got;
+     if (strchr(field[4], '\t') || strcmp(field[0], "LINUXSUP1") ||
+-        canonical_u32(field[1], strlen(field[1]), &got) || got != sequence) return -1;
++        canonical_u32(field[1], strlen(field[1]), &got)) return -1;
+     size_t names = sizeof outcome_names / sizeof outcome_names[0];
+     size_t i = 0;
+     while (i < names && strcmp(field[2], outcome_names[i])) ++i;

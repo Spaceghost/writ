@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -174,7 +174,7 @@
+        (supervisor_channel.h); otherwise they are not forwarded. */
+     int accepted = record->verdict == WRIT_FROM_ROLE || record->verdict == WRIT_UNKNOWN_SENDER;
+     uint32_t role = record->verdict == WRIT_FROM_ROLE ? record->role : 0;
+-    size_t length = accepted ? record->length : 0;
++    size_t length = record->length; (void)accepted;
+     uint32_t now = sample.kind == WRIT_CLOCK_READING ? sample.now : 0;
+     int used = snprintf(frame, WRIT_OWNER_FRAME_CAP, "LINUXSUP1\tCONTROL\t%u\t%" PRIu32 "\t%u\t%" PRIu32 "\t",
+                         (unsigned int)record->verdict, role, (unsigned int)sample.kind, now);

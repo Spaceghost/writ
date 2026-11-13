@@ -245,9 +245,11 @@ Its non-grant policy records are frozen synthetic inputs. The
 serializes one live issuer change, revocation, with monitor frames: each step
 samples the clock first, attributes a channel datagram to its sender role's
 principal, and passes a decoded revoke to the same joint revoke, which stays
-available, with the drain, after containment. No native
-driver runs it, and installation and approval submission still use trusted
-in-process construction. A deployment must serialize every relevant
+available, with the drain, after containment. A native
+driver (`supervisor_owner.c`) now runs it in a private interpreter over the
+receiver, but only against synthetic test provisioning with scripted clock
+samples; installation and approval submission still use trusted in-process
+construction. A deployment must serialize every relevant
 authority/policy change or treat the owner as incomplete.
 
 Every accepted issuer revoke, including an unrelated one, immediately returns

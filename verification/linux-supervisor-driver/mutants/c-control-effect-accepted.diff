@@ -1,0 +1,10 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -197,7 +197,6 @@
+     size_t length = writ_owner_format_control(record, s->clock(s->clock_context), frame);
+     if (!length) return fail_stop(s);
+     if (call(s, frame, length, reply, control_outcome)) return -1;
+-    if (reply->stops) return fail_stop(s);
+     return 0;
+ }
+ 

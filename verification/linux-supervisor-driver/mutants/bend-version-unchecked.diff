@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -120,7 +120,7 @@
+   match parts:
+     case [version, operation, verdict, role, clock, now, argument]:
+       do Maybe<&2, Request>:
+-        _ : Unit <- Wire.require(String.eq(version, "LINUXSUP1"))
++        _ : Unit <- Wire.require(True{})
+         v : U32 <- Wire.decimal(verdict)
+         r : U32 <- Wire.decimal(role)
+         c : U32 <- Wire.decimal(clock)

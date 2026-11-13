@@ -1,0 +1,12 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -181,8 +181,8 @@
+     if (used <= 0 || (size_t)used + 2 * length + 1 > WRIT_OWNER_FRAME_CAP) return 0;
+     size_t at = (size_t)used;
+     for (size_t i = 0; i < length; ++i) {
++        frame[at++] = hex[record->payload[i] & 15];
+         frame[at++] = hex[record->payload[i] >> 4];
+-        frame[at++] = hex[record->payload[i] & 15];
+     }
+     frame[at++] = '\n';
+     return at;

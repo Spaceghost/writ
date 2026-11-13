@@ -1,0 +1,38 @@
+Bend mutants of hosts/linux/monitor/SupervisorWire.bend, each run with: bend hosts/linux/monitor/SupervisorWireTests.bend
+C mutants of contrib/native-hosts/linux/supervisor_owner.c, each built without -Werror and run as supervisor-owner-test NODE BRIDGE MODULE FAKE
+The first failing case of each run is shown.
+
+bend-budget-off-by-one: fails; FAIL: SupervisorWire exhausted and stopped interpreters require containment
+bend-contain-digit-swapped: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
+bend-containment-dropped: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
+bend-control-as-frame: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
+bend-drain-any-argument: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
+bend-failed-keeps-running: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
+bend-fault-ignores-now: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
+bend-frame-any-verdict: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
+bend-nibbles-swapped: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
+bend-no-advance: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
+bend-not-framed-as-served: fails; FAIL: SupervisorWire monitor frames and control messages share one owner and watermark
+bend-payload-bound-4097: fails; FAIL: SupervisorWire forwards a 4096-byte payload and rejects 4097 bytes
+bend-reclaim-as-stop: fails; FAIL: SupervisorWire renders effects in order
+bend-stop-ignored: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
+bend-version-unchecked: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
+c-any-effect-kind: fails; FAIL decode_rejects: non-stop effect, wrong sequence, trailing comma, leading zero, unknown outcome, bad flag
+c-clock-kind-always-0: fails; FAIL frame_clock_kinds_exact: unavailable, ambiguous and overflow framed by kind with now 0
+c-contain-flag-inverted: fails; FAIL decode_stop_list: S1,S7 decoded in order
+c-contain-not-sticky: fails; FAIL issuer_revoke_applied: role 1 (101) revoke 5: REVOKE_APPLIED, containment, control kills nothing
+c-control-effect-accepted: fails; FAIL peer_control_effect: control reply with S1: fail-stop, no worker signalled
+c-drain-stops-ignored: fails; FAIL drained_worker_killed: worker 1 reaped, killed by SIGKILL through its pidfd
+c-fail-stop-keeps-interpreter: fails; FAIL peer_wrong_operation_outcome: SERVED for CONTROL: fail-stop, interpreter killed
+c-nibbles-swapped: fails; FAIL frame_verdicts_exact: verdicts 0-8 framed by number; role and payload only where defined
+c-no-signal: fails; FAIL drain_returns_worker_stop: DRAIN: DRAIN_STEP with S1
+c-outcome-unchecked: fails; FAIL peer_wrong_operation_outcome: SERVED for CONTROL: fail-stop, interpreter killed
+c-payload-always-forwarded: fails; FAIL frame_verdicts_exact: verdicts 0-8 framed by number; role and payload only where defined
+c-role-always-forwarded: fails; FAIL frame_verdicts_exact: verdicts 0-8 framed by number; role and payload only where defined
+c-sample-before-receive: fails; ERROR clock script exhausted: Numerical result out of range
+c-sequence-unchecked: fails; FAIL decode_rejects: non-stop effect, wrong sequence, trailing comma, leading zero, unknown outcome, bad flag
+c-stop-list-overflow-unchecked: fails; FAIL decode_stop_bound: eight stops decoded, a ninth rejected
+c-stop-without-exit-wait: SURVIVES (see README, Mutant notes)
+c-unknown-worker-ignored: fails; FAIL unregistered_worker_fail_stop: S1 for an unregistered worker: fail-stop, nothing signalled
+c-verdict-always-0: fails; FAIL frame_verdicts_exact: verdicts 0-8 framed by number; role and payload only where defined
+c-verdict-bound-dropped: fails; FAIL frame_bounds: verdict 9 and 4097 bytes refused; 4096 bytes framed

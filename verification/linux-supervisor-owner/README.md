@@ -11,7 +11,9 @@ step then returns StopEffects for worker 1. The same datagram from role 2
 
 Current gap: this is a pure Bend owner. No native driver yet runs it over the
 [channel receiver](../linux-supervisor-channel/README.md) and a host clock, so
-no host has carried a revoke end to end.
+no host has carried a revoke end to end. (Since then, the
+[supervisor driver record](../linux-supervisor-driver/README.md) runs this
+owner behind a native driver against synthetic provisioning.)
 
 ## What changed
 

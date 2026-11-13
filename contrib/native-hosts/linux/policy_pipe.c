@@ -190,6 +190,38 @@ done:
     return result;
 }
 
+int writ_policy_exchange(struct writ_policy *p, const char *frame, size_t length,
+                         char line[REPLY_MAX])
+{
+    if (pthread_mutex_lock(&p->lock)) return -1;
+    int result = -1;
+    if (!p->live) goto done;
+    if (!length || length > FRAME_MAX + 1 || frame[length - 1] != '\n' ||
+        memchr(frame, '\n', length - 1)) goto broken;
+    int64_t now = milliseconds();
+    if (now < 0) goto broken;
+    int64_t deadline = now + CALL_MILLISECONDS;
+    if (send_frame(p->input, frame, length, deadline) ||
+        receive_line(p->output, line, deadline)) goto broken;
+    result = 0;
+    goto done;
+broken:
+    /* No restart or replay: the interpreter may have accepted the last frame. */
+    p->live = 0;
+    if (p->pid > 0) kill(p->pid, SIGKILL);
+done:
+    pthread_mutex_unlock(&p->lock);
+    return result;
+}
+
+void writ_policy_abandon(struct writ_policy *p)
+{
+    if (pthread_mutex_lock(&p->lock)) return;
+    p->live = 0;
+    if (p->pid > 0) kill(p->pid, SIGKILL);
+    pthread_mutex_unlock(&p->lock);
+}
+
 void writ_policy_stop(struct writ_policy *p)
 {
     pthread_mutex_lock(&p->lock);

@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -240,7 +240,7 @@
+   match state owned:
+     case State{_, authority, sequence, stopped} O.OwnerStep{owner, +result}:
+       Step{State{owner, authority, sequence, stopped}, outcome_name(result),
+-        O.requires_containment(result), render_effects(O.effects(result))}
++        False{}, render_effects(O.effects(result))}
+ 
+ def owner_of(+state: State) -> O.Owner:
+   match state:

@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -222,7 +222,7 @@
+ {
+     for (size_t i = 0; i < s->workers; ++i) {
+         if (s->worker[i].worker != worker) continue;
+-        if (syscall(SYS_pidfd_send_signal, s->worker[i].pidfd, SIGKILL, NULL, 0) && errno != ESRCH)
++        if (syscall(SYS_pidfd_send_signal, s->worker[i].pidfd, 0, NULL, 0) && errno != ESRCH)
+             return -1;
+         struct pollfd p = { .fd = s->worker[i].pidfd, .events = POLLIN };
+         for (;;) {

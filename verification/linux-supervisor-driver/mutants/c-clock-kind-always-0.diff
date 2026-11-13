@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -177,7 +177,7 @@
+     size_t length = accepted ? record->length : 0;
+     uint32_t now = sample.kind == WRIT_CLOCK_READING ? sample.now : 0;
+     int used = snprintf(frame, WRIT_OWNER_FRAME_CAP, "LINUXSUP1\tCONTROL\t%u\t%" PRIu32 "\t%u\t%" PRIu32 "\t",
+-                        (unsigned int)record->verdict, role, (unsigned int)sample.kind, now);
++                        (unsigned int)record->verdict, role, 0u, now);
+     if (used <= 0 || (size_t)used + 2 * length + 1 > WRIT_OWNER_FRAME_CAP) return 0;
+     size_t at = (size_t)used;
+     for (size_t i = 0; i < length; ++i) {

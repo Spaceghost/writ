@@ -1,0 +1,11 @@
+--- a/contrib/native-hosts/linux/supervisor_owner.c
++++ b/contrib/native-hosts/linux/supervisor_owner.c
+@@ -125,7 +125,7 @@
+ {
+     s->failed = 1;
+     s->contained = 1;
+-    if (s->policy) writ_policy_abandon(s->policy);
++
+     return -1;
+ }
+ 

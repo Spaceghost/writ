@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -143,7 +143,7 @@
+   parse_checked(line, frame_scan(line, Some{0}))
+ 
+ def byte_of(hi: U32, lo: U32) -> U32:
+-  (hi * 16 + lo : U32)
++  (lo * 16 + hi : U32)
+ 
+ def hex_pairs(s: String) -> Maybe<&2, +List<U32>>:
+   match s:

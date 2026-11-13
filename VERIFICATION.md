@@ -1181,6 +1181,18 @@ output differs from master only by those checks, the native CPU run is
 identical, and the existing-law proof passed with `--verdict`. No native
 driver, host clock or restart continuity is established.
 
+The [supervisor driver record](verification/linux-supervisor-driver/README.md)
+runs that owner behind a native driver: one received channel record and one
+clock sample go over a private LINUXSUP1 pipe (`SupervisorWire.bend`, 8 Bend
+checks, fifteen failing mutants) to the interpreter, and the driver executes
+only returned StopEffects, by SIGKILL through a registered worker pidfd. An
+unprivileged owned-process test (26 cases; 18 of 19 C mutants fail) shows a
+refused, a denied, an undecoded and an applied revoke, a drain that kills
+worker 1, clock containment, exact frames for every receiver verdict and clock
+kind, and fail-stop on interpreter loss and on replies the owner never sends. Provisioning is
+a synthetic test module and the clock samples are scripted; no real issuer,
+host time base, restart continuity or host qualification is established.
+
 The [linear stored-approval lookup record](verification/issuance-linear-lookup/README.md)
 replaces a quadratic duplicate scan in `Issuance.find_stored` with one pass
 that returns the same answer for every list. Six direct lookup checks and two

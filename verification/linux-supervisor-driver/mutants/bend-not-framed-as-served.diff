@@ -1,0 +1,11 @@
+--- a/hosts/linux/monitor/SupervisorWire.bend
++++ b/hosts/linux/monitor/SupervisorWire.bend
+@@ -220,7 +220,7 @@
+ def served_name(served: LH.Served) -> String:
+   match served:
+     case LH.Served{_}: "SERVED"
+-    case LH.NotFramed{_, _}: "NOT_FRAMED"
++    case LH.NotFramed{_, _}: "SERVED"
+ 
+ def drain_name(drain: LH.JointDrain) -> String:
+   match drain:

@@ -1,0 +1,28 @@
+INFO supervisor-owner-test: owned processes only, timeout 120s
+PASS decode_stop_list: S1,S7 decoded in order
+PASS decode_stop_bound: eight stops decoded, a ninth rejected
+PASS decode_rejects: non-stop effect, wrong sequence, trailing comma, leading zero, unknown outcome, bad flag
+PASS frame_verdicts_exact: verdicts 0-8 framed by number; role and payload only where defined
+PASS frame_clock_kinds_exact: unavailable, ambiguous and overflow framed by kind with now 0
+PASS frame_bounds: verdict 9 and 4097 bytes refused; 4096 bytes framed
+PASS boottime_reading: CLOCK_BOOTTIME seconds read twice, nondecreasing
+PASS non_issuer_revoke_refused: role 2 (102) revoke 5: REVOKE_REFUSED, no containment, worker alive
+PASS unregistered_sender_denied: unregistered process revoke 5: CHANNEL_DENIED
+PASS malformed_payload_undecoded: role 1 three-byte payload: CONTROL_UNDECODED
+PASS issuer_revoke_applied: role 1 (101) revoke 5: REVOKE_APPLIED, containment, control kills nothing
+FAIL drain_returns_worker_stop: DRAIN: DRAIN_STEP with S1
+FAIL drained_worker_killed: worker 1 reaped, killed by SIGKILL through its pidfd
+FAIL second_drain_complete: second DRAIN: DRAIN_COMPLETE, no stop
+FAIL idle_channel_not_forwarded: nothing queued: EAGAIN, no frame sent, no sample taken
+PASS regressing_sample_contains: samples 115 then 112: second message CONTAINED
+FAIL regressing_then_drain_stops: DRAIN after clock containment stops worker 1
+PASS expired_grant_contains: sample 125 past expiry 120: refused revoke reported CONTAINED
+PASS unavailable_clock_issuer_revoke_applies: unavailable sample: issuer revoke still applies, containment
+PASS unregistered_worker_fail_stop: S1 for an unregistered worker: fail-stop, nothing signalled
+PASS interpreter_loss_fail_stop: killed interpreter: fail-stop, later DRAIN not sent, no replay
+PASS peer_wrong_operation_outcome: SERVED for CONTROL: fail-stop, interpreter killed
+PASS peer_control_effect: control reply with S1: fail-stop, no worker signalled
+PASS peer_interpreter_error: interpreter ERROR: fail-stop, interpreter killed
+PASS peer_drain_wrong_outcome: REVOKE_APPLIED for DRAIN: fail-stop, no worker signalled
+PASS descriptor_cleanup: descriptor count unchanged
+RESULT FAIL (5 failures)
