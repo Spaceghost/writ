@@ -165,9 +165,14 @@ def payload_checked(within: Bool, s: String) -> Maybe<&2, +List<U32>>:
     case True{}:
       hex_pairs(s)
 
-# Public entry point (exported for tests): lowercase hex to bytes, bounded.
+# Exported for tests: lowercase hex to bytes, at most `maximum` bytes.
+def bounded_payload(+s: String, maximum: U32) -> Maybe<&2, +List<U32>>:
+  payload_checked(Bool.or(String.eq(s, ""), Maybe.is_some(&2, U32, Wire.hex_bytes(s, maximum))), s)
+
+# Public entry point (exported for tests): a frame's payload, at most
+# `max_payload()` bytes.
 def payload(+s: String) -> Maybe<&2, +List<U32>>:
-  payload_checked(Bool.or(String.eq(s, ""), Maybe.is_some(&2, U32, Wire.hex_bytes(s, max_payload()))), s)
+  bounded_payload(s, max_payload())
 
 def reading(+now: U32) -> Maybe<&2, LH.ClockSample>:
   Some{LH.Sample{U32.to_nat(now)}}

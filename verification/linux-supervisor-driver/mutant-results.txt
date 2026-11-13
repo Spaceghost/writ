@@ -13,7 +13,7 @@ bend-frame-any-verdict: fails; FAIL: SupervisorWire malformed frames reply ERROR
 bend-nibbles-swapped: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
 bend-no-advance: fails; FAIL: SupervisorWire refused, applied and drained revoke replies in sequence
 bend-not-framed-as-served: fails; FAIL: SupervisorWire monitor frames and control messages share one owner and watermark
-bend-payload-bound-4097: fails; FAIL: SupervisorWire forwards a 4096-byte payload and rejects 4097 bytes
+bend-payload-bound-4097: fails; FAIL: SupervisorWire bounds frame payloads at 4096 bytes
 bend-reclaim-as-stop: fails; FAIL: SupervisorWire renders effects in order
 bend-stop-ignored: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter
 bend-version-unchecked: fails; FAIL: SupervisorWire malformed frames reply ERROR and stop the interpreter

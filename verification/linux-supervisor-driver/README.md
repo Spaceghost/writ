@@ -102,7 +102,8 @@ The Bend checks cover:
 - unattributed senders and malformed payloads, which deny without containment;
 - faulted, expired and regressing samples;
 - twelve malformed frames, each of which replies `ERROR` and stops the interpreter;
-- the 4096/4097-byte payload bound;
+- the payload bound, checked at a small maximum, with the frame maximum
+  pinned at 4096 bytes (the native C cases frame a full 4096-byte payload);
 - a frame and a later message sharing one watermark, so a refused revoke sampled behind a frame is `CONTAINED`;
 - the exhausted and stopped interpreters;
 - effect rendering.
@@ -119,6 +120,19 @@ Mutant notes:
   An unprivileged test cannot hold a worker in an uninterruptible wait, so the
   wait for exit is reviewed only. Treating `ESRCH` as a stop that already
   happened is also reviewed only.
+
+## Genode corpus timeout (fixed)
+
+At `6335e76e`, the [Genode native lane](https://github.com/Spaceghost/writ/actions/runs/43347503819)
+failed with `Test execution timed out`. The corpus ran through
+`SupervisorWire malformed frames` in about 85 seconds, then made no progress
+for 19 minutes on the next check. That check built a 4096-byte and a
+4097-byte hex payload by deep non-tail recursion and pushed each through the
+wire. The previous commit's corpus had finished in about five minutes, inside
+its 1200 s deadline. The check now tests the bound at a small explicit maximum
+and pins `max_payload()` at 4096; the deadline is unchanged. Linux and the
+native CPU suite never stalled; the cause on Genode was not reproduced
+locally.
 
 ## Not established
 

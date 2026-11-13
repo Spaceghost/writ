@@ -2,6 +2,6 @@ PASS: SupervisorWire refused, applied and drained revoke replies in sequence
 PASS: SupervisorWire unattributed senders and malformed payloads deny without containment
 PASS: SupervisorWire faulted, expired and regressing samples contain
 PASS: SupervisorWire malformed frames reply ERROR and stop the interpreter
-PASS: SupervisorWire forwards a 4096-byte payload and rejects 4097 bytes
+PASS: SupervisorWire bounds frame payloads at 4096 bytes
 PASS: SupervisorWire monitor frames and control messages share one owner and watermark
 FAIL: SupervisorWire exhausted and stopped interpreters require containment

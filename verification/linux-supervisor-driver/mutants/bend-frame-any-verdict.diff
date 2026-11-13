@@ -1,6 +1,6 @@
 --- a/hosts/linux/monitor/SupervisorWire.bend
 +++ b/hosts/linux/monitor/SupervisorWire.bend
-@@ -279,7 +279,7 @@
+@@ -284,7 +284,7 @@
    match request:
      case Request{"CONTROL", verdict, role, clock, now, argument}:
        control(state, verdict, role, clock, now, argument)
